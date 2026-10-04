@@ -78,6 +78,7 @@ compaction cap does not reach it.
 | A passing thought to record, or a finding this session will not fix; or repository work no item names - a merge, a stale ref, a docs sweep, a stranded item | `.claude/skills/docket/modes/capture.md` |
 | "What should we work on next", "I have some time", "what's left", "what is next debt", "what have we forgotten"; or planning a batch that can run together | `.claude/skills/docket/modes/picking.md` |
 | About to start a named item | `.claude/skills/docket/modes/start.md` |
+| An item at `needs-decision`, or a brief that asks for a decision, before any code is written for it | `.claude/skills/docket/modes/design.md` |
 | Untriaged items to fold into the queue, your own new capture's fields included; a grooming pass; or writing an item's `verify:` command | `.claude/skills/docket/modes/triage.md` |
 | Scoping a milestone's debt gate, or there is finished work to ship | `.claude/skills/docket/modes/release.md` |
 | An item's work is done and wants closing out | `.claude/skills/docket/modes/close-out.md` |

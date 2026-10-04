@@ -5,7 +5,8 @@ Brochure, 9th edition, 2019, Table 8), so nothing here is a measured constant
 and nothing carries a provenance note. What the module buys is one place to
 import them from: five core modules each declared `SECONDS_PER_MINUTE` in
 their own header, and a reference test borrowed that name to turn minutes into
-hours (`PL-QRBB`).
+hours (`PL-QRBB`). The hour in seconds is their product rather than a third
+literal, after seven sites typed `3600` by hand (`PL-06M7`).
 
 It imports nothing from the package, so a module importing it cannot form a
 cycle.
@@ -20,6 +21,9 @@ SECONDS_PER_MINUTE: Final = 60.0
 
 MINUTES_PER_HOUR: Final = 60.0
 """Minutes in one hour."""
+
+SECONDS_PER_HOUR: Final = SECONDS_PER_MINUTE * MINUTES_PER_HOUR
+"""Seconds in one hour, derived from the two above so it cannot disagree with them."""
 
 MILLISECONDS_PER_SECOND: Final = 1000
 """Milliseconds in one second."""

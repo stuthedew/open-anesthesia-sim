@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Hold `src/anesthesia_sim/` to the import boundaries declared in `BOUNDARIES`.
 
-A boundary names a package, the tree it is confined within, and the modules
-permitted to import it - which may be no module at all. Three invariants are
-declared today, and they are confined for unrelated reasons.
+A boundary names a package - or a dotted module prefix within one - the tree
+it is confined within, and the modules permitted to import it, which may be no
+module at all. Four invariants are declared today, and they are confined for
+unrelated reasons.
 
 **Pydantic, to one module.** `core/parameters.py` pairs each `_...Payload`
 Pydantic model with a public, frozen, Pydantic-independent dataclass, and
@@ -32,6 +33,15 @@ under `src/` may import Flet again. While the port ran, the two Flet
 allowances were the tool's own checklist for it - the unused-allowance error
 fired as each module stopped importing one, so the entry went in the same
 commit - and the last entries took the allowances with them (`PL-9KDK`).
+
+**The interface, out of `core/`.** `docs/ARCHITECTURE.md` § "Layering" draws
+one direction - `data/` loaded by `core/`, `core/` read by `app/` - and the
+interface reads immutable snapshots from the model, which knows nothing of what
+displays it. `anesthesia_sim.app` is permitted in no module under `core/`. It
+is the first boundary inside this package rather than around a dependency, and
+a comment in `tests/unit/test_formatting.py` credited this tool with it for as
+long as the tool read only root packages, to which `anesthesia_sim.app` and
+`anesthesia_sim.core` are both `anesthesia_sim` (`PL-YXFF`).
 
 Nothing measured any of them. The first two held on 2026-09-04 - `pydantic`
 appeared in exactly two lines of that one file, and no module under `core/`
@@ -76,6 +86,21 @@ mentions, not only about what it loads: a compartment annotated with a payload
 model has coupled itself to the validation library whether or not the import
 executes.
 
+**A boundary matches every dotted name an import makes available.** `import
+a.b` makes `a.b` available; `from X import a, b` makes `X`, `X.a` and `X.b`,
+so `from anesthesia_sim import app` is caught as surely as
+`from anesthesia_sim.app import formatting`. A name reaches a boundary when it
+equals the boundary's package or continues it past a dot, so
+`anesthesia_sim.app_metadata` is not `anesthesia_sim.app`, and one statement
+is one finding however many of its names match.
+
+**Relative imports are resolved, not skipped.** `from ..app import formatting`
+under `core/` reaches `anesthesia_sim.app`. The old reading - that a relative
+import cannot name a package outside the tree - holds for a root package and
+for nothing inside one, which is where the layering boundary lives. The
+importing module's package is read from its path under `src/`, and the
+resolution is importlib's own: `package.rsplit(".", level - 1)[0]`.
+
 **Dynamic imports are read, within a stated limit.** `import_module("pydantic")`
 and `__import__("pydantic")` are caught when the name is a literal, because a
 boundary that a one-line refactor can step around silently is the same
@@ -105,10 +130,15 @@ from pathlib import Path
 #: Call names whose first literal string argument names a module.
 _DYNAMIC_IMPORTERS = frozenset({"import_module", "__import__"})
 
+#: The directory a module's dotted name is read from: `src/anesthesia_sim/core/x.py`
+#: is `anesthesia_sim.core.x`, whose relative imports resolve against
+#: `anesthesia_sim.core`.
+SOURCE_ROOT = "src"
+
 
 @dataclass(frozen=True)
 class Boundary:
-    """One package confined to a named set of modules, and why."""
+    """One package, or a dotted module prefix within one, confined to a named set of modules."""
 
     package: str
     tree: str
@@ -288,16 +318,35 @@ BOUNDARIES: tuple[Boundary, ...] = (
             "the entry to add here would carry the argument"
         ),
     ),
+    Boundary(
+        package="anesthesia_sim.app",
+        tree="src/anesthesia_sim/core",
+        allowed=(),
+        why=(
+            'the layering `docs/ARCHITECTURE.md` § "Layering" draws runs one way: `core/` '
+            "is read by `app/`, and the model knows nothing of what displays it. A "
+            "compartment importing from the interface has taken a dependency on the "
+            "display, and on whatever the interface module itself imports, which "
+            "`CLAUDE.md`'s first architecture rule keeps out of simulation code. "
+            "`PL-X9KD` cut one such route, the displayed decimal count reaching back into "
+            "`core/`; a comment in `tests/unit/test_formatting.py` credited this tool with "
+            "the rule while it read only root packages and declared none (PL-YXFF)"
+        ),
+    ),
 )
 
 
 @dataclass(frozen=True)
 class Imported:
-    """One import found in one module."""
+    """One import statement found in one module, and every dotted name it makes available."""
 
-    root: str
+    names: tuple[str, ...]
     line: int
     statement: str
+
+    def reaches(self, package: str) -> bool:
+        """Does any name equal `package`, or continue it past a dot?"""
+        return any(name == package or name.startswith(package + ".") for name in self.names)
 
 
 @dataclass(frozen=True)
@@ -309,12 +358,12 @@ class Violation:
     imported: Imported
 
 
-def _dynamic_root(node: ast.Call) -> str | None:
-    """The root package of a dynamic import written with a literal name.
+def _dynamic_name(node: ast.Call) -> str | None:
+    """The module a dynamic import names, where the name is a literal.
 
     Returns `None` for anything undecidable by reading the source: a computed
-    name, a keyword-only call, or a relative name, which cannot reach outside
-    the package doing the importing.
+    name, a keyword-only call, or a relative name, which resolves against a
+    `package` argument this does not evaluate.
     """
     function = node.func
     if isinstance(function, ast.Attribute):
@@ -330,39 +379,71 @@ def _dynamic_root(node: ast.Call) -> str | None:
         return None
     if first.value.startswith("."):
         return None
-    return first.value.split(".")[0] or None
+    return first.value or None
 
 
-def module_imports(source: str, filename: str = "<unknown>") -> tuple[Imported, ...]:
-    """Every root package one module imports, by any form this can decide.
+def _resolve(module: str | None, level: int, package: str | None) -> str | None:
+    """The absolute module a `from` statement names, relative or not.
+
+    importlib's own rule. `None` where it cannot be decided: a relative import
+    read without the importing module's package, or one climbing past the top
+    of it, which would fail at import time anyway.
+    """
+    if not level:
+        return module
+    if not package:
+        return None
+    bits = package.rsplit(".", level - 1)
+    if len(bits) < level:
+        return None
+    return f"{bits[0]}.{module}" if module else bits[0]
+
+
+def module_imports(
+    source: str, filename: str = "<unknown>", package: str | None = None
+) -> tuple[Imported, ...]:
+    """Every import one module makes, by any form this can decide.
 
     Args:
         source: The module's text.
         filename: Reported in a `SyntaxError` if the text does not parse.
+        package: The importing module's package, `anesthesia_sim.core` for
+            `core/x.py`, against which relative imports resolve. Without it
+            they cannot be decided and are omitted.
 
     Returns:
-        One entry per import site, in source order. Relative imports are
-        omitted: they cannot name a package outside the tree being walked.
+        One entry per import statement, in source order, each carrying every
+        dotted name the statement makes available.
     """
     tree = ast.parse(source, filename=filename)
     found: list[Imported] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                found.append(
-                    Imported(alias.name.split(".")[0], node.lineno, f"import {alias.name}")
-                )
+                found.append(Imported((alias.name,), node.lineno, f"import {alias.name}"))
         elif isinstance(node, ast.ImportFrom):
-            if node.level or node.module is None:
+            module = _resolve(node.module, node.level, package)
+            if module is None:
                 continue
-            found.append(
-                Imported(node.module.split(".")[0], node.lineno, f"from {node.module} import ...")
-            )
+            members = [alias.name for alias in node.names if alias.name != "*"]
+            names = (module, *(f"{module}.{member}" for member in members))
+            written = "." * node.level + (node.module or "")
+            imported = ", ".join(alias.name for alias in node.names)
+            found.append(Imported(names, node.lineno, f"from {written} import {imported}"))
         elif isinstance(node, ast.Call):
-            root = _dynamic_root(node)
-            if root is not None:
-                found.append(Imported(root, node.lineno, f"a dynamic import of {root!r}"))
+            name = _dynamic_name(node)
+            if name is not None:
+                found.append(Imported((name,), node.lineno, f"a dynamic import of {name!r}"))
     return tuple(sorted(found, key=lambda entry: (entry.line, entry.statement)))
+
+
+def _package_of(root: Path, path: Path) -> str | None:
+    """The package a module's relative imports resolve against, read from its path."""
+    try:
+        parts = path.relative_to(root / SOURCE_ROOT).parts
+    except ValueError:
+        return None
+    return ".".join(parts[:-1]) or None
 
 
 @dataclass(frozen=True)
@@ -407,8 +488,12 @@ def analyze(root: Path, boundaries: Sequence[Boundary] = BOUNDARIES) -> Report:
             found_any = True
             relative = path.relative_to(root).as_posix()
             read.add(relative)
-            imports = module_imports(path.read_text(encoding="utf-8"), filename=str(path))
-            hits = [entry for entry in imports if entry.root == boundary.package]
+            imports = module_imports(
+                path.read_text(encoding="utf-8"),
+                filename=str(path),
+                package=_package_of(root, path),
+            )
+            hits = [entry for entry in imports if entry.reaches(boundary.package)]
             if not hits:
                 continue
             if relative in allowed:

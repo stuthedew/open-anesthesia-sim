@@ -147,6 +147,40 @@ the honest answer was that Blender does not appear to state something, that is
 what is recorded, rather than a confident summary assembled from general
 knowledge.
 
+### What a later design thread owes this study
+
+Written 2026-10-03 from the rules the project owner set for the v0.6.0
+Projects trial's threads, which until then its instructions alone carried
+(`PL-PDVF`; the rules are the owner's, read there on 2026-10-03, their kind
+unrecorded). They bind every thread that designs or builds Workspaces, Areas
+or Views, in a Project or not:
+
+- **Start here.** This file records what was adopted, diverged from and
+  refused, and why - § "What this project adopts, diverges from, and refuses"
+  is the list - and a design that would contradict an entry says so.
+- **Read Blender freely; copy nothing.** The table under § "The prose is the
+  encumbered half, not the source" is the whole rule: the source is read and
+  never copied, adapted, translated or ported; the Manual and the Developer
+  Documentation are paraphrased and cited, never pasted.
+- **Where this study leaves a behaviour open, read Blender's own pages**: the
+  Manual at https://docs.blender.org/manual/en/latest/interface/window_system/
+  and the source at https://raw.githubusercontent.com/blender/blender/main/
+  followed by the file's path, and cite the page, or the file and the
+  function, in the item the design is recorded in.
+- **Re-check a claim before a design rests on it.** § "What the code cannot
+  answer: Blender's stated reasoning" was written from search summaries and
+  grades each claim; before a design rests on one, read Blender's own page for
+  it and record what the page said.
+- **A recorded divergence or refusal stands unless the owner reopens it.** A
+  thread that thinks Blender's behaviour is the better one puts the case to
+  the owner with a recommendation and builds nothing on it meanwhile. The
+  milestone's "Explicitly out of scope" list stands either way, and
+  `CLAUDE.md`'s safety-critical clinical-output standard and the milestone's
+  Definition of done win wherever Blender disagrees with them.
+- **A Blender host refused at CONNECT is reported, naming the host**, after a
+  probe of it rather than from this file's record of the day it was refused
+  (`.claude/rules/instruction-writing.md` rule 14; `PL-M701`).
+
 ## What Blender's window system is
 
 Read at `blender/blender` commit `931bb2e7` (Blender 5.3). Implementation, not

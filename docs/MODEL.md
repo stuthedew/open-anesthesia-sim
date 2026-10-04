@@ -5341,6 +5341,22 @@ the interface's one signal for a real fault, and teaches a reader to discount
 it. What the interface must equally not do is present the stop as a pause:
 Start is refused, because a resumed run's first step would be refused again.
 
+**Standing there is read from the run, never from the refusal alone**
+(`PL-5291`). A run comes to stand on 24 hours by three routes, and only one of
+them refuses a step: a trunk stepping onto the last supported count; a branch
+forked on it, at a mark that halted the trunk there or at a dial moved there;
+and a branch reset onto such a fork. A stop recorded only when a step was
+refused left the other two reading as an ordinary pause - Start offered, no
+limit notice, and a mark the run never reached reported as still ahead of a
+run that could not step. So the controller asks the core's own guard,
+`require_supported_run_length`, whether the run's next step would be refused,
+on every read and after every step, and reports the limit with the reason that
+refusal would give; a run stepping onto the count halts on the arriving step
+rather than on the one refused after it, so no run reads as running, or as
+paused, while standing where no step is left. A `SimulationDomainLimitError`
+the interface catches on some other path - a setting - is recorded as the
+reason and outranks the derived one.
+
 **Volatile sedation in intensive care is out of scope, deliberately.** It runs
 for days through an anesthetic-conserving device, and is exactly the regime
 this model is wrong in. Reaching it is a model extension — metabolism first —
