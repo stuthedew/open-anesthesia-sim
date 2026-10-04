@@ -3,11 +3,13 @@ id: PL-J0F7
 title: The Qt chart's hover box was never looked at rendered: its placement flips near the window's right edge and the axis top, and nothing has confirmed the flip lands the box inside the plot or that INK on PANEL in a pg.TextItem is what is painted
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: qt-port
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_rendering.py
 added: 2026-09-14
+closed: 2026-10-04
+pr: 1340
 verify: grep -q 'def test_the_hover_box_stays_inside_the_plot_at_every_edge' tests/integration/test_qt_rendering.py && uv run pytest tests/integration/test_qt_rendering.py
 ---
 
@@ -34,3 +36,96 @@ and to the axis top and asserts the box's bounding rectangle lies inside the
 plot's, the painted foreground and background of the `pg.TextItem` are read back
 and checked against `INK` on `PANEL`, and a screenshot of each case has been
 looked at by a person.
+
+**Measured 2026-10-04, before the claim** (scratch scripts outside the tree,
+against the shipped dashboard under the `offscreen` platform). About 50,000
+hovers - every drawn point of one run and of two, at sevoflurane dials of 4.4,
+5, 5.5, 6 and 8%, in the fitted window and in the chosen 15- and 30-minute
+widths (the 15-minute one following, its newest point at the right edge), at
+1600x1000 and 1024x768. Every painted box lay inside the plot, the view box's
+scene rectangle. The one miss was a point exactly on the left edge of a
+following window at 1024x768, where the box's left edge sat on the plot's and
+the comparison failed by under 0.05 px, so the test compares with a sub-pixel
+tolerance.
+
+So the flip holds as built, and the work is the test and the screenshots
+rather than a placement fix. The rule is fractional rather than size-aware - it
+puts the box above whenever the anchor is at or below three quarters of the
+axis, so a box taller than the remaining quarter would cross the top - but
+nothing measured comes near it: the tallest box anywhere above the plot's middle
+was 64 px, a two-run reading of four lines, against at least 80 px of room at
+the theme's minimum plot height of 321 px; the 106 px seven-line box occurs only
+at time zero, at the bottom left.
+
+**Why nothing had exercised the flips.** The fixture in
+`tests/integration/test_qt_rendering.py` runs 480 s into a 900 s fitted window,
+and its highest trace is 2.2% on a 6% axis (`CHART_AXIS_TOP_MAC`, three times
+sevoflurane's 2%), so it reaches neither the right edge nor the top quarter,
+above 4.5%. The test needs its own run: a dial of 6 or 8% with the 15-minute
+width chosen and the run past 15 minutes puts the newest point at the right
+edge and the circuit trace through the top quarter.
+
+**Colours.** Inside the box, inset past its border, the modal colour is exactly
+`PANEL` (#FFFFFF), `INK` (#243B53) itself appears in every box's text (3 to 27
+pixels at full coverage), and the rest are anti-aliasing blends, colour fringes
+included.
+
+**A trap for the test.** pyqtgraph 0.14.0's `TextItem.updateTransform` returns
+at once while the item is hidden and is otherwise driven by the scene's
+`sigPrepareForPaint`, so until the box has been painted its
+`mapRectToScene(boundingRect())` can read thousands of pixels tall - 254x4165 px
+before a grab, 390x78 px after. Measure after `chart.painted()`, which grabs and
+so paints.
+
+[superseded 2026-10-04] **Driving the pointer waited on `PL-TCR5`.** One
+`QTest.mouseMove` onto the plot answered nothing and the next answered the
+previous position, so a test that drives the pointer to an edge could not pass
+while that lag stood. The two were taken on one branch, `PL-TCR5`'s fix first.
+The test as built sends the move to the widget under the pixel rather than
+through `QTest.mouseMove`, and waits on the event loop until the box answers;
+"Built 2026-10-04" below says why.
+
+**Built 2026-10-04.** `test_the_hover_box_stays_inside_the_plot_at_every_edge`
+builds its own dashboard at the module's 1600x1000: sevoflurane dialled to 8%,
+its maximum delivered concentration, for twenty minutes, paused, in the
+15-minute width. That puts the circuit and alveolar traces in the top quarter
+of the 6% axis and the newest points at the right edge. It drives the real
+pointer to six cases - the concentration chart's four corners and the wash-in
+plot's two edges - and after `painted()` reads back two new seams on both
+charts, `hover_box` and `plot_area` (both views, per
+`.claude/rules/ui-areas.md`). It asserts the box inside the plot within half a
+pixel, the modal colour inside the border exactly `PANEL`, and `INK` among the
+text's pixels. Each case is the first or last drawn point whose whole pixel
+lies inside the plot: the window's first instant stands on the left edge, and
+its rounded pixel can fall outside, where rightly no hover answers. The plot
+area has to be read after painting too, not only the box: a sweep that read
+the wash-in plot's rectangle once flagged 14 boxes "outside" at 1024x768 with
+two runs, because that plot grew from 208 to 242 px tall on its first paint;
+read after each paint, none was. The test fails with either flip removed. The
+six cases were rendered on one sheet, looked at in this session, and sent to
+the project owner on 2026-10-04 at 10:29 CDT; the owner's read of the pull
+request is the person's look the brief asks for.
+
+**Review, 2026-10-04: three weaknesses in the first test, fixed here.**
+
+- *The fill check could not fail.* The plot's background is `PANEL` as well,
+  so a box with no fill still had `PANEL` as its modal colour. The test now
+  paints the plot with the pointer off it, then again with the box up, and
+  requires that at most 5% of what was drawn beneath the box shows through.
+  With the fill: 0 to 1% of 239 to 3,271 pixels. With the fill taken away:
+  56 to 100%.
+- *The `INK` check depended on the font.* With sub-pixel smoothing, a font
+  such as Liberation Sans paints no pixel exactly `INK`. The test now
+  requires the box's darkest pixel to lie nearer `INK` than `MUTED`. As
+  shipped it is exactly `INK`; with the text made `MUTED`, it is exactly
+  `MUTED`.
+- *The wash-in claim overreached.* The wash-in points stay below that plot's
+  own top quarter, so the docstrings now say its two ends, which take the
+  left-right flip.
+
+The box is now shown through pyqtgraph's own `setVisible(True)` rather than
+Qt's `show`. `show` skips the override that orients the box for the view, so
+before its next paint the box could measure thousands of pixels tall, which
+was the trap noted above. Shown this way, `hover_box` needs no paint first,
+and the test asserts that: with `show` restored, the box measured 11,843 px
+tall before its paint.

@@ -120,7 +120,6 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
     "src/anesthesia_sim/app/qt_chart.py": {
         ("TraceLegend.__init__", "6"): 1,
         ("_GridLines.place", "90"): 1,
-        ("_HoverReadout.__init__", "60"): 1,
         ("_HoverReadout.show", "0.75"): 1,
         ("_branch_point_mark", "90"): 1,
         ("_control_mark_pool", "90"): 1,
