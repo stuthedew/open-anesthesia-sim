@@ -1983,9 +1983,11 @@ before anything is stamped. Stamping first left the store recording a release
 that never happened, with nothing saying which stamps to unpick; the next run
 then reported nothing to release, because the work it would have shipped
 claimed to have shipped already. So `prepare_bump` settles everything the bump
-can reject — an absent version file, one carrying no version field — before
-the first stamp is written, and hands back the text to put there. A rejected
-file costs an exit code and a message naming it, not a half-written store.
+can reject — an absent version file, one that is not TOML, one carrying no
+version field, and one declaring its version where the bump's one-line write
+does not reach (`PL-3DD9`) — before the first stamp is written, and hands back
+the text to put there. A rejected file costs an exit code and a message naming
+it, not a half-written store.
 
 The second is a write that is *interrupted*, which no ordering prevents: the
 stamps go in a file at a time, so a lost container leaves some written and the
@@ -2609,7 +2611,10 @@ quietly.
 **The write is exempt from the close-out audit and the withdrawal is not.** An
 append rides a capture `CLAUDE.md` requires unconditionally, and its value is
 dictated rather than chosen, so `verify.sanctioned_queue_edit` forgives a
-worker for editing an item it was never commissioned to touch. A withdrawal is
+worker for editing an item it was never commissioned to touch. It reads the
+field through `model._fold`, as the writer does, so an append onto a value
+continued on an indented line is the append it is rather than an edit
+(`PL-J503`). A withdrawal is
 chosen, and what it changes is how much evidence an item carries — so the item
 doing it declares the file in its `touches` like any other work, and `withdraw`
 says so where it has not. Withdrawing the last recorded entry appends to that
@@ -3724,13 +3729,22 @@ cell. The real v0.4.30 cut reported seven such lines and REJECTed on them.
 Counted before the narrowing was written, because the safe direction here is
 reporting: across 1,109 commits the added lines the matcher finds are 69 `.py`
 and 41 `.md`, with no other suffix carrying one at all (`PL-5MFL`, `PL-BHBZ`).
-Prose *inside* a file Python executes is narrowed the same way, by blanking a
-line's quoted spans, backtick spans and trailing comment before matching what
-is left - so a docstring naming the tokens, a fixture writing a suppression
-into a test file as a string, and a comment explaining why one was *not* used
-are each read as what they are. Only `.py` and `.pyi` are stripped: in a `.cfg`
-or `.ini` a quote is an ordinary character in a value and an inline `#` is part
-of that value, so the same strip would delete configuration rather than prose.
+Prose *inside* a file Python executes is narrowed the same way, and the unit
+read there is the statement rather than the line (`PL-CFWP`): a `.py` or `.pyi`
+file is read by logical line, as Python's tokenizer ends one, with every string
+and comment dropped before matching what is left. So a marker a backslash or a
+bracket carries across lines is found as the one statement it is; a docstring
+naming the tokens, a fixture writing a suppression into a test file as a
+string, and a comment explaining why one was *not* used are each read as what
+they are; and a reflow that changes no token adds nothing. A file the running
+interpreter cannot parse is read line by line instead, its quoted spans,
+backtick spans and trailing comment blanked, and named on the page as read that
+way, as the assertion check below does. Replayed under 3.11 over `main`'s 680
+non-merge commits that change a `.py` or `.pyi` file, on 2026-10-04, the
+statement reader finds exactly what the line reader found: the `bash` guard
+below. Only `.py` and `.pyi` are stripped: in a `.cfg` or `.ini` a quote is an
+ordinary character in a value and an inline `#` is part of that value, so the
+same strip would delete configuration rather than prose.
 
 `# type: ignore` is deliberately not one of the markers. Replayed over `main`'s
 1,004 non-merge commits it is the only one that has ever matched a real

@@ -3331,10 +3331,15 @@ def released_on_base(
     declared = run(["show", f"{ref}:{version_file}"], root)
     if not declared.strip():
         return BaseRelease(base=ref)
+    try:
+        version = version_in(declared)
+    except ValueError:
+        # Not TOML: the base's version is unread rather than absent (`PL-3DD9`).
+        return BaseRelease(base=ref)
 
     return BaseRelease(
         base=ref,
-        version=version_in(declared),
+        version=version,
         notes=_notes_on(ref, notes_dir, root, run),
         known=not run.unanswered,
     )

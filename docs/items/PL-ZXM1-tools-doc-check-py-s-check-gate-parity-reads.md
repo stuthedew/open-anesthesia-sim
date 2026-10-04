@@ -10,6 +10,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 payoff: a script CI runs only on a push to main can no longer pass gate parity as merge-gate coverage, so a check cannot merge unenforced behind a step condition
 verify: grep -q 'def test_gate_parity_leaves_out_a_step_whose_if_excludes_pull_requests' tests/unit/test_doc_check.py
+recurrences: 2026-10-04 PL-S3XS withdrawn 2026-10-04 PL-R417
 ---
 
 **Problem.** tools/doc_check.py's check_gate_parity reads every run: line of a workflow triggered on pull_request as part of the merge gate, a step whose if: keeps it off pull requests included, so a script run only on a push to main passes as covered on every pull request: quality.yml's whole-store bin/docket check --verify step is one

@@ -26,11 +26,13 @@ project, and that separation is what keeps a bare checkout able to use it.
 from __future__ import annotations
 
 import ast
+import io
 import os
 import re
 import subprocess
 import tempfile
 import time
+import tokenize
 import warnings
 from collections import Counter
 from collections.abc import Collection, Mapping, Sequence
@@ -45,6 +47,7 @@ from .model import (
     CLOSED_STATUSES,
     WITHDRAWN_MARKER,
     Item,
+    _front_matter_pairs,
     _split_list,
     is_under,
     parse_front_matter,
@@ -253,12 +256,135 @@ def is_suppression_line(path: str, line: str) -> bool:
     exactly as `is_assertion_line` keeps it: where the file cannot be
     identified, the line is printed rather than guessed at - and unstripped
     for the same reason, since the strip is what a known Python file earns.
+
+    **A line, so a Python file is no longer read with it** (`PL-CFWP`). A
+    marker split by a backslash or inside brackets - `@pytest.mark.\\` over
+    `skip(...)` - holds no entry on either of its lines, so the check read
+    `none`. A Python file is read as logical lines instead
+    (`added_suppressions`), and this reads the configuration files, where no
+    token can wrap, and a Python file some version of which this interpreter
+    cannot parse, which the page names.
     """
     if path and not path.endswith(SUPPRESSION_BEARING_SUFFIXES):
         return False
     if path.endswith(QUOTING_SUFFIXES):
         line = strip_non_code(line)
     return bool(_SUPPRESSION_RE.search(line))
+
+
+#: The token types that hold no code: a comment, and the layout between
+#: lines and blocks. `NEWLINE`, which ends a logical line, is read as that.
+_LAYOUT = frozenset(
+    {
+        tokenize.COMMENT,
+        tokenize.NL,
+        tokenize.INDENT,
+        tokenize.DEDENT,
+        tokenize.ENCODING,
+        tokenize.ENDMARKER,
+    }
+)
+
+#: The tokens that open and close a formatted string, by name, since no
+#: constant exists for them before 3.12 (`FSTRING_*`) and 3.14 (`TSTRING_*`).
+#: From those versions the tokenizer hands such a string over in parts, with
+#: each replacement field's code as tokens of its own, where 3.11 hands over
+#: one `STRING`. Blanked whole either way, so a file reads the same under the
+#: bare `python3` docket runs on and under the project's own interpreter.
+_STRING_OPENS = ("FSTRING_START", "TSTRING_START")
+_STRING_CLOSES = ("FSTRING_END", "TSTRING_END")
+
+
+@dataclass(frozen=True)
+class LogicalLine:
+    """One logical line of Python source, as the tokenizer builds it from physical ones.
+
+    Python continues a statement across physical lines after a backslash,
+    inside brackets and inside a triple-quoted string, and ends it at the end
+    of the logical line (Python Language Reference § 2.1). A suppression is
+    written in one - a decorator, an assignment, a call - so it is the unit
+    `no suppression added` reads (`PL-CFWP`).
+    """
+
+    #: Its tokens, comments and layout left out: what makes two the same line
+    #: to the fold, so a re-wrap, a re-indent or a changed comment is no change.
+    tokens: str
+    #: The same with each string blanked whole and each dotted name joined
+    #: however it was split: what `SUPPRESSIONS` is matched against.
+    code: str
+    #: Its source as written, on one line: what the report prints.
+    shown: str
+
+
+def read_logical_lines(source: str) -> tuple[LogicalLine, ...]:
+    """Every logical line `source` holds, in order.
+
+    Parsed first, so a file this interpreter cannot read is refused rather than
+    tokenized into a guess: the bare `python3` docket runs on can be older
+    than the project's, and 3.11's tokenizer does not refuse newer syntax.
+    Raises what `ast.parse` raises - `SyntaxError`, or `ValueError` for a null
+    byte - and `RecursionError` for an expression too deep to parse, so that
+    the caller can read the file another way and say that it did.
+    """
+    with warnings.catch_warnings():
+        # As `read_assertions`: an invalid escape is the file's linter's to report.
+        warnings.simplefilter("ignore")
+        ast.parse(source)
+    # The rows `readline` hands the tokenizer, which splits on "\n" alone.
+    physical = source.split("\n")
+    found: list[LogicalLine] = []
+    tokens: list[tokenize.TokenInfo] = []
+    pieces: list[str] = []
+    depth = 0
+    for token in tokenize.generate_tokens(io.StringIO(source).readline):
+        if token.type == tokenize.NEWLINE:
+            if tokens:
+                found.append(_logical_line(tokens, pieces, physical))
+            tokens, pieces = [], []
+            continue
+        if token.type in _LAYOUT:
+            continue
+        tokens.append(token)
+        kind = tokenize.tok_name[token.type]
+        if kind in _STRING_OPENS:
+            depth += 1
+        elif kind in _STRING_CLOSES:
+            depth -= 1
+            if not depth:
+                pieces.append('""')
+        elif not depth:
+            pieces.append('""' if token.type == tokenize.STRING else token.string)
+    return tuple(found)
+
+
+def _logical_line(
+    tokens: Sequence[tokenize.TokenInfo], pieces: Sequence[str], physical: Sequence[str]
+) -> LogicalLine:
+    code = pieces[0] if pieces else ""
+    for before, piece in zip(pieces, pieces[1:], strict=False):
+        # A dotted name is one name however it was split, and a decorator's `@`
+        # belongs to the name after it. Every other pair keeps a space, so a
+        # binary `@` before a name starting `skip` is not read as `@skip`.
+        joined = "." in (before, piece) or (before == "@" and code == "@")
+        code += piece if joined else f" {piece}"
+    (first_row, first_column), (last_row, last_column) = tokens[0].start, tokens[-1].end
+    rows = list(physical[first_row - 1 : last_row])
+    rows[-1] = rows[-1][:last_column]
+    rows[0] = rows[0][first_column:]
+    return LogicalLine(
+        " ".join(token.string for token in tokens), code, " ".join(" ".join(rows).split())
+    )
+
+
+def is_suppression_statement(line: LogicalLine) -> bool:
+    """Whether a logical line's code holds an entry of `SUPPRESSIONS`.
+
+    Its strings are already blanked and its comments are not in it, which are
+    the three spans `strip_non_code` removes from a line - here read by the
+    tokenizer rather than guessed at from one line, where a string opened on
+    another line could not be seen.
+    """
+    return bool(_SUPPRESSION_RE.search(line.code))
 
 
 #: Only a file Python executes can hold an assertion, so a removed line from
@@ -593,8 +719,10 @@ class _FileStep:
     after: str
 
 
-def _changed_python(listing: str, statuses: bool) -> list[tuple[str, str]]:
-    """`(old, new)` for each `.py` file in a `-z` listing, "" for a side that is not one."""
+def _changed_python(
+    listing: str, statuses: bool, suffixes: tuple[str, ...] = (ASSERTION_BEARING_SUFFIX,)
+) -> list[tuple[str, str]]:
+    """`(old, new)` for each file `suffixes` names in a `-z` listing, "" for a side it does not."""
     fields = listing.split("\0")
     pairs: list[tuple[str, str]] = []
     at = 0
@@ -616,16 +744,19 @@ def _changed_python(listing: str, statuses: bool) -> list[tuple[str, str]]:
                 old = "" if status[:1] == "A" else path
                 new = "" if status[:1] == "D" else path
                 at += 2
-        pair = (old if old.endswith(".py") else "", new if new.endswith(".py") else "")
+        pair = (old if old.endswith(suffixes) else "", new if new.endswith(suffixes) else "")
         if any(pair):
             pairs.append(pair)
     return pairs
 
 
 def _file_steps(
-    root: Path, base: str, commits: tuple[str, ...]
+    root: Path,
+    base: str,
+    commits: tuple[str, ...],
+    suffixes: tuple[str, ...] = (ASSERTION_BEARING_SUFFIX,),
 ) -> tuple[list[_FileStep], dict[str, str], str]:
-    """The item's changes to `.py` files, oldest first, and what each file is keyed by.
+    """The item's changes to the files `suffixes` names, oldest first, and their keys.
 
     Returns the steps, every path they name mapped to its file's key - the
     name the file had before the item's first commit touched it - and a
@@ -665,7 +796,7 @@ def _file_steps(
         status, listing = _run(args, root)
         if status != 0:
             return [], {}, f"the files {revision[:12]} changed could not be listed"
-        for old, new in _changed_python(listing, statuses="--name-status" in args):
+        for old, new in _changed_python(listing, "--name-status" in args, suffixes):
             key = keys.get(old or new, old or new)
             keys.update({path: key for path in (old, new) if path})
             steps.append(
@@ -735,16 +866,8 @@ def removed_assertions(
         if oid not in parsed:
             try:
                 parsed[oid] = read_assertions(body.decode("utf-8-sig"))
-            except UnicodeDecodeError:
-                unparsed.setdefault(key, f"its copy at {_short(spec)} is not UTF-8")
-                parsed[oid] = AssertionReading()
             except (SyntaxError, ValueError, RecursionError) as error:
-                where = f", line {error.lineno}" if isinstance(error, SyntaxError) else ""
-                unparsed.setdefault(
-                    key,
-                    f"this interpreter cannot parse its copy at {_short(spec)} "
-                    f"({getattr(error, 'msg', None) or type(error).__name__}{where})",
-                )
+                unparsed.setdefault(key, _unparsable(spec, error))
                 parsed[oid] = AssertionReading()
         return parsed[oid]
 
@@ -789,6 +912,127 @@ def removed_assertions(
                 existing[line] -= 1
                 lines.append((path, line))
     return AssertionAudit(tuple(absent), tuple(unparsed.items()), tuple(lines))
+
+
+def _unparsable(spec: str, error: Exception) -> str:
+    """Why this interpreter could not read the copy of a file at `spec`, as the page says it.
+
+    `UnicodeDecodeError` is a `ValueError`, so a caller catching what a parse
+    raises catches it too.
+    """
+    if isinstance(error, UnicodeDecodeError):
+        return f"its copy at {_short(spec)} is not UTF-8"
+    where = f", line {error.lineno}" if isinstance(error, SyntaxError) else ""
+    return (
+        f"this interpreter cannot parse its copy at {_short(spec)} "
+        f"({getattr(error, 'msg', None) or type(error).__name__}{where})"
+    )
+
+
+@dataclass(frozen=True)
+class SuppressionAudit:
+    """What the item's own commits added that could suppress a test."""
+
+    #: Each logical line of a Python file, and each line of a file read line by
+    #: line, that the commits added and that holds a suppression - as the
+    #: report prints it, in the order the files and their lines come.
+    found: tuple[str, ...] = ()
+    #: Python files a version of which this interpreter could not parse, and
+    #: why. Each is read line by line instead, and named on the page as read so.
+    unparsed: tuple[tuple[str, str], ...] = ()
+    #: Why nothing could be read, where that is the answer. The check refuses
+    #: on it: "could not look" is not "looked, found nothing".
+    unread: str = ""
+
+
+def added_suppressions(
+    root: Path, base: str, commits: tuple[str, ...], added_lines: Sequence[tuple[str, str]]
+) -> SuppressionAudit:
+    """The suppressions the item's own commits added, each read whole (`PL-CFWP`).
+
+    A suppression is written in a statement, and Python continues a statement
+    across physical lines, so a diff line holds a fragment of one: `@pytest.mark.\\`
+    over `skip(reason="flaky")` matched on neither line, and the check said
+    `none`. Each Python file is read as `removed_assertions` reads it - every
+    version before and after each of the item's commits, through
+    `_file_steps` - and split into logical lines. The lines each commit added
+    and removed are folded per file across the commits, as `PL-VP40` folds
+    diff lines, and `SUPPRESSIONS` is matched against the code of each one the
+    commits leave added. So a statement re-wrapped or re-indented without a
+    token changing, or given a new comment, adds nothing, while a token changed
+    on any line of a wrapped marker - an argument, or the trailing comma a
+    formatter adds when it wraps - adds the whole statement, as an edit to a
+    one-line marker always did.
+
+    `added_lines` is `_net_line_changes`' added half, read for every file the
+    logical lines did not read: a configuration file, where no token can
+    wrap, and a Python file some version of which this interpreter cannot
+    parse, which is named.
+    """
+    steps, keys, unread = _file_steps(root, base, commits, QUOTING_SUFFIXES)
+    if unread:
+        return SuppressionAudit(unread=unread)
+    order = list(dict.fromkeys(step.key for step in steps))
+    blobs = _blobs(root, {spec for step in steps for spec in (*step.before, step.after) if spec})
+    if blobs is None:
+        return SuppressionAudit(unread="git could not be asked for the files' contents")
+
+    read: dict[str, tuple[LogicalLine, ...]] = {}  # by object id: one version, one read
+    unparsed: dict[str, str] = {}
+
+    def lines_of(key: str, spec: str) -> tuple[LogicalLine, ...]:
+        held = blobs.get(spec) if spec else None
+        if held is None:
+            return ()
+        oid, body = held
+        if oid not in read:
+            try:
+                read[oid] = read_logical_lines(body.decode("utf-8-sig"))
+            except (SyntaxError, ValueError, RecursionError, tokenize.TokenError) as error:
+                unparsed.setdefault(key, _unparsable(spec, error))
+                read[oid] = ()
+        return read[oid]
+
+    removed: dict[str, Counter[str]] = {key: Counter() for key in order}
+    added: dict[str, Counter[str]] = {key: Counter() for key in order}
+    last: dict[str, str] = {}
+    for step in steps:
+        parents = [
+            Counter(line.tokens for line in lines_of(step.key, spec)) for spec in step.before
+        ]
+        now = Counter(line.tokens for line in lines_of(step.key, step.after))
+        for tokens in set(now).union(*parents):
+            removed[step.key][tokens] += max(0, min(p[tokens] for p in parents) - now[tokens])
+            added[step.key][tokens] += max(0, now[tokens] - max(p[tokens] for p in parents))
+        last[step.key] = step.after
+
+    found: list[str] = []
+    for key in order:
+        if key in unparsed:
+            continue
+        net = added[key] - removed[key]
+        for line in lines_of(key, last[key]):
+            if net[line.tokens] > 0 and is_suppression_statement(line):
+                net[line.tokens] -= 1
+                found.append(line.shown)
+    read_whole = {key for key in order if key not in unparsed}
+    found += [
+        line.strip()
+        for path, line in added_lines
+        if keys.get(path, path) not in read_whole and is_suppression_line(path, line)
+    ]
+    return SuppressionAudit(tuple(found), tuple(unparsed.items()))
+
+
+def suppression_check(audit: SuppressionAudit) -> Check:
+    """`no suppression added`, from an audit."""
+    name = "no suppression added"
+    if audit.unread:
+        return Check(name, False, f"not read: {audit.unread}")
+    shown = _capped(audit.found)
+    shown += [f"read line by line, not parsed: {path} - {why}" for path, why in audit.unparsed]
+    detail = f"{len(audit.found)} line(s)" if audit.found else "none"
+    return Check(name, not audit.found, detail, tuple(shown))
 
 
 #: How many functions the report prints - or lines, where a check reads lines
@@ -1645,11 +1889,12 @@ def _net_line_changes(
     and so the worker cannot argue with it (`PL-VP40`).
 
     Cancelling an added line against an identical removed line within the same
-    file is exactly as precise as what consumes this - the suppression check,
-    and the assertion check's fallback for a file it cannot parse, both of
-    which read a line's text rather than the tree it parses to - and it costs
-    no extra git call. The assertion check proper makes the same fold over
-    parsed statements instead (`removed_assertions`). Counting rather than
+    file is exactly as precise as what consumes this - the suppression check's
+    reading of a configuration file, and both checks' fallback for a Python
+    file they cannot parse, all of which read a line's text rather than the
+    statement it belongs to - and it costs no extra git call. Both checks
+    proper make the same fold over parsed statements instead
+    (`removed_assertions`, `added_suppressions`). Counting rather than
     de-duplicating is what keeps it safe: a file whose patches remove one
     `# type: ignore` and add two still reports one added. A line merely *moved*
     within a file cancels too, which is the right answer to both questions -
@@ -1732,13 +1977,10 @@ RECURRENCE_ENTRY = (
     rf"\d{{4}}-\d{{2}}-\d{{2}} \S+(?: {re.escape(WITHDRAWN_MARKER)} \d{{4}}-\d{{2}}-\d{{2}} \S+)?"
 )
 
-#: A `recurrences:` line as `cmd_new` writes it: those entries,
-#: comma-separated. Anchored at both ends for the reason `PR_LINE_RE` is, and
-#: spelling the whole value rather than a prefix so that a line carrying one
-#: real entry and one invented clause is not read as one.
-RECURRENCE_LINE_RE = re.compile(
-    rf"^recurrences:\s*{RECURRENCE_ENTRY}(?:,\s*{RECURRENCE_ENTRY})*\s*$"
-)
+#: One entry whole, matched against each entry of the value as the item's
+#: reader splits it, so an entry carrying one real filing and an invented
+#: clause is not read as one.
+RECURRENCE_ENTRY_RE = re.compile(RECURRENCE_ENTRY)
 
 #: A body file's name as `tools/pr_body_check.py` writes it: the pull
 #: request's number, and nothing else.
@@ -1786,10 +2028,14 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
 
     The growth case is the one that needs care, because extending a line reads
     as a removal and a removal is what the `pr` rule is allowed to be exact
-    about. So it is matched rather than forgiven: the one removed line and the
-    one added line must both be whole `recurrences:` values, and the added one
-    must begin with the removed one - which is an append and cannot be an edit
-    of what was already recorded.
+    about. So it is matched rather than forgiven, and on the value rather than
+    on a line: the item is read before and after each of the scope's changes,
+    by the reader every other command reads it with, and the change must leave
+    every other field and the body as they were and add whole entries after
+    the ones already recorded - which is an append and cannot be an edit of
+    what was there. Matched on one diff line, an append to a value continued on
+    an indented line read as an edit, since the line it grew carries no key
+    (`PL-J503`).
 
     **`"record"`** - a pull request's body the branch added: `<N>.md` directly
     under `RECORDS`, which the base does not hold and whose copy at `HEAD`
@@ -1829,37 +2075,94 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
         elif line.startswith("-"):
             removed.append(line[1:])
     if removed:
-        return "recurrence" if _recurrences_grew(added, removed) else ""
+        return "recurrence" if _recurrence_appended(root, base, commits, path) else ""
     if created:
         return "capture" if any(line.strip() == "status: untriaged" for line in added) else ""
     if added and all(PR_LINE_RE.match(line) for line in added):
         return "pr"
-    return "recurrence" if added and all(RECURRENCE_LINE_RE.match(line) for line in added) else ""
+    return "recurrence" if added and _recurrence_appended(root, base, commits, path) else ""
 
 
-def _recurrences_grew(added: list[str], removed: list[str]) -> bool:
-    """Whether the only change is one `recurrences:` line gaining entries on its right.
+def _recurrence_appended(root: Path, base: str, commits: tuple[str, ...], path: str) -> bool:
+    """Whether every change the scope made to `path` appended entries to its `recurrences:`.
 
-    The append `cmd_new` makes on the second and later filings, and the only
-    shape of removal this exemption admits. Both lines have to be whole
-    `recurrences:` values and the new one has to start with the old one, so an
-    entry that was already recorded cannot be altered or dropped under cover of
-    the append.
+    Each commit is read against its first parent, and the branch against its
+    fork point where no commit names the item, which are the changes
+    `sanctioned_queue_edit`'s diff shows. A commit that left the file alone is
+    passed over; one that created or deleted it is no append.
+    """
+    if commits:
+        steps = [(f"{commit}^:{path}", f"{commit}:{path}") for commit in commits]
+    else:
+        status, fork = _run(["git", "merge-base", base, "HEAD"], root)
+        if status != 0:
+            return False
+        steps = [(f"{fork.strip()}:{path}", f"HEAD:{path}")]
+    blobs = _blobs(root, {spec for step in steps for spec in step})
+    if blobs is None:
+        return False
+    grew = False
+    for before_spec, after_spec in steps:
+        before, after = blobs.get(before_spec), blobs.get(after_spec)
+        if before == after:
+            continue
+        if before is None or after is None:
+            return False
+        try:
+            if not _recurrences_grew(before[1].decode("utf-8"), after[1].decode("utf-8")):
+                return False
+        except UnicodeDecodeError:
+            return False
+        grew = True
+    return grew
 
-    **And what the old line grew by has to be a new entry, not a suffix on the
+
+def _recurrences_grew(before: str, after: str) -> bool:
+    """Whether `after` is `before` with whole entries added after its recorded `recurrences:`.
+
+    The append `cmd_new` makes, and the only change this exemption admits. Both
+    copies are read as `parse_item` reads them - `_front_matter_pairs`, whose
+    fold is the one definition of where a value ends, and `_split_list` - so
+    the value is whole whichever lines carry it (`PL-J503`). Every other field,
+    every line no field reads and the body have to read the same on both sides,
+    and the entries already recorded have to stand first and unaltered, so an
+    entry cannot be altered or dropped under cover of the append.
+
+    **And what the value grew by has to be a new entry, not a suffix on the
     last one.** Withdrawing the final entry appends ` withdrawn DATE PL-XXXX`
-    to it, which starts with the old line exactly as an append does - so
-    without this the one edit that *cancels* evidence would be exempted by the
+    to it, which leaves it the same entry growing on its right - so a rule
+    reading text would exempt the one edit that *cancels* evidence under the
     rule written for the edit that adds it. A withdrawal is a deliberate act
     with something to gain, so it declares the file it touches like any other
-    work (`PL-34BG`).
+    work (`PL-34BG`). Comparing entries rather than text is what refuses it:
+    the last entry changed, so the recorded ones do not stand unaltered.
     """
-    if len(added) != 1 or len(removed) != 1:
+    was, now = _front_matter_pairs(before), _front_matter_pairs(after)
+    if was is None or now is None:
         return False
-    before, after = removed[0].rstrip(), added[0].rstrip()
-    if not RECURRENCE_LINE_RE.match(before) or not RECURRENCE_LINE_RE.match(after):
+    pairs_was, block_lists_was, unread_was, body_was = was
+    pairs_now, block_lists_now, unread_now, body_now = now
+    if "recurrences" in block_lists_now or (block_lists_was, unread_was, body_was) != (
+        block_lists_now,
+        unread_now,
+        body_now,
+    ):
         return False
-    return after.startswith(before) and after[len(before) :].lstrip().startswith(",")
+    if [p for p in pairs_was if p[0] != "recurrences"] != [
+        p for p in pairs_now if p[0] != "recurrences"
+    ]:
+        return False
+    recorded = [value for key, value in pairs_was if key == "recurrences"]
+    values = [value for key, value in pairs_now if key == "recurrences"]
+    if len(recorded) > 1 or len(values) != 1:
+        return False
+    entries_was = _split_list(recorded[0]) if recorded else ()
+    entries_now = _split_list(values[0])
+    return (
+        len(entries_now) > len(entries_was)
+        and entries_now[: len(entries_was)] == entries_was
+        and all(RECURRENCE_ENTRY_RE.fullmatch(entry) for entry in entries_now)
+    )
 
 
 def _added_record(root: Path, base: str, path: str) -> bool:
@@ -2557,17 +2860,11 @@ def _check_item(
         )
     )
 
-    # One diff read for both checks, where there were two.
+    # One diff read for both checks, where there were two. Each reads the
+    # statements of a Python file rather than its lines, and the lines only
+    # where the statements could not be read (`PL-4W2L`, `PL-CFWP`).
     added, removed = _net_line_changes(root, base, commits)
-    suppressed = [line.strip() for path, line in added if is_suppression_line(path, line)]
-    report.checks.append(
-        Check(
-            "no suppression added",
-            not suppressed,
-            f"{len(suppressed)} line(s)" if suppressed else "none",
-            tuple(_capped(suppressed)),
-        )
-    )
+    report.checks.append(suppression_check(added_suppressions(root, base, commits, added)))
 
     # Read at statement altitude rather than line by line (`PL-4W2L`). An
     # assertion the base holds that the item's commits leave absent is the one
