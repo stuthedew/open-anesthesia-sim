@@ -129,6 +129,7 @@ from anesthesia_sim.app.theme import (
     WASH_IN_STROKE_WIDTH,
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO
+from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 
 __all__ = [
     "BRANCH_POINT_LEGEND_LABEL",
@@ -409,7 +410,7 @@ class _PointerMoves(QObject):
         self._newest: QPointF | None = None
         self._cooldown = QTimer(self)
         self._cooldown.setSingleShot(True)
-        self._cooldown.setInterval(ceil(1000 / _HOVER_ANSWERS_PER_SECOND))
+        self._cooldown.setInterval(ceil(MILLISECONDS_PER_SECOND / _HOVER_ANSWERS_PER_SECOND))
         self._cooldown.timeout.connect(self._deliver)
         plot.viewport().installEventFilter(self)
 
