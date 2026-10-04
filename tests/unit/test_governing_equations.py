@@ -288,7 +288,7 @@ def test_a_record_cannot_be_built_without_a_vaporizer_maximum() -> None:
     }
 
     with pytest.raises(TypeError, match="max_delivered_concentration_percent"):
-        UptakeEquationSettings(**without_a_maximum)  # type: ignore[arg-type]
+        UptakeEquationSettings(**without_a_maximum)
 
 
 def test_the_matrix_is_square_and_the_right_size() -> None:
