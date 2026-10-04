@@ -109,10 +109,16 @@ rules, "phases," or "closed loops" in the output itself.
       answer rests on** (project owner, 2026-09-19). Theirs are the
       consequential questions: the order features come in, what the project
       is for, behavior a learner would see, and anything the safety-critical
-      standard reaches. A choice whose options are all defensible and whose
-      blast radius is one document's phrasing, one internal structure or one
-      item's disposition is yours - decide it, say in a line what you decided
-      and why, and carry on. Resting on "what the project wants" does not
+      standard reaches. **A choice with one clearly correct option is never
+      offered: take it, record why in the item, and say in one line what you
+      did** (project owner, 2026-09-27), closing an item whose own
+      measurements show the work is not worth doing included. Offer a choice
+      only where it is genuinely close, changes the goal, or cannot be
+      undone, and then lead with the recommendation. A choice whose options
+      are all defensible and whose blast radius is one document's phrasing,
+      one internal structure or one item's disposition is one of those -
+      decide it, say in a line what you decided and why, and carry on.
+      Resting on "what the project wants" does not
       make a granular choice theirs, and handing one back spends their
       attention on exactly what they have said they do not want to spend it
       on. Where one specific point genuinely needs them, ask that point

@@ -30,7 +30,15 @@ while the continuation differs.
 command make hands the shell, by gate parity and the coverage gate alike, and a
 test pins the continued case.
 
-**Generator check.** A one-off: the Makefile's readers miss make's continuation
-rule rather than disagreeing with another spelling of it, so not `PL-KGYT`'s
-fact. Filed in `PL-Q9LK`'s closing commit as the sibling its workflow-side fix
-left, so not a re-entry.
+[superseded 2026-10-04: a member of `PL-R417`, below] **Generator check.** A
+one-off: the Makefile's readers miss make's continuation rule rather than
+disagreeing with another spelling of it, so not `PL-KGYT`'s fact. Filed in
+`PL-Q9LK`'s closing commit as the sibling its workflow-side fix left, so not a
+re-entry.
+
+**Generator check, 2026-10-04.** A member of `PL-R417`: make hands the shell a
+recipe line and its backslash continuations as one command (GNU make,
+"Splitting Recipe Lines"), so the reader took a physical line for a statement
+its format continues - the fact `PL-JCS3` found six readers misreading. The
+reading above, that no second spelling disagrees, still holds; it tested a
+different fact.

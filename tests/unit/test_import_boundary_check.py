@@ -28,6 +28,11 @@ def _tree(root: Path, **modules: str) -> None:
         (package / f"{name}.py").write_text(source, encoding="utf-8")
 
 
+def _reaches(source: str, package: str, importer: str | None = None) -> bool:
+    """Does any import in `source`, read as a module of package `importer`, reach `package`?"""
+    return any(entry.reaches(package) for entry in module_imports(source, package=importer))
+
+
 def _boundary(*allowed: str, package: str = "pydantic") -> Boundary:
     return Boundary(package=package, tree="src/pkg", allowed=allowed, why="a test fixture")
 
@@ -67,7 +72,7 @@ class TestModuleImports:
         ],
     )
     def test_reaches_the_package(self, source: str, expected: str) -> None:
-        assert expected in {entry.root for entry in module_imports(source)}
+        assert _reaches(source, expected)
 
     @pytest.mark.parametrize(
         "source",
@@ -83,7 +88,7 @@ class TestModuleImports:
         ],
     )
     def test_does_not_reach_the_package(self, source: str) -> None:
-        assert "pydantic" not in {entry.root for entry in module_imports(source)}
+        assert not _reaches(source, "pydantic")
 
     def test_a_computed_dynamic_name_is_a_stated_limit(self) -> None:
         """Not a defect to fix later: a computed name is undecidable from source.
@@ -93,7 +98,7 @@ class TestModuleImports:
         import, not against a module determined to evade it.
         """
         found = module_imports("import importlib\nx = importlib.import_module(chosen_name)")
-        assert {entry.root for entry in found} == {"importlib"}
+        assert [entry.names for entry in found] == [("importlib",)]
 
     def test_an_import_guarded_by_type_checking_still_counts(self) -> None:
         """No runtime dependency, but the module's API now mentions the type."""
@@ -102,17 +107,54 @@ class TestModuleImports:
             "if TYPE_CHECKING:\n"
             "    from pydantic import BaseModel\n"
         )
-        assert "pydantic" in {entry.root for entry in module_imports(source)}
+        assert _reaches(source, "pydantic")
 
     def test_an_import_inside_a_function_still_counts(self) -> None:
         source = "def load():\n    import pydantic\n    return pydantic\n"
-        assert "pydantic" in {entry.root for entry in module_imports(source)}
+        assert _reaches(source, "pydantic")
 
     def test_the_reported_line_is_the_import_statement(self) -> None:
         source = "import json\n\n\nfrom pydantic import BaseModel\n"
-        (found,) = [entry for entry in module_imports(source) if entry.root == "pydantic"]
+        (found,) = [entry for entry in module_imports(source) if entry.reaches("pydantic")]
         assert found.line == 4
-        assert found.statement == "from pydantic import ..."
+        assert found.statement == "from pydantic import BaseModel"
+
+    @pytest.mark.parametrize(
+        ("source", "importer"),
+        [
+            ("from anesthesia_sim.app import formatting", None),
+            ("from anesthesia_sim import app", None),
+            ("import anesthesia_sim.app.formatting", None),
+            ("from ..app import formatting", "anesthesia_sim.core"),
+            ("from .. import app", "anesthesia_sim.core"),
+            ("from ...app.formatting import x", "anesthesia_sim.core.tissue"),
+            ("import importlib\nx = importlib.import_module('anesthesia_sim.app')", None),
+        ],
+    )
+    def test_a_dotted_boundary_is_reached_by_every_form(
+        self, source: str, importer: str | None
+    ) -> None:
+        """A root-only reading saw `anesthesia_sim` in every one of these (`PL-YXFF`)."""
+        assert _reaches(source, "anesthesia_sim.app", importer)
+
+    @pytest.mark.parametrize(
+        ("source", "importer"),
+        [
+            ("from anesthesia_sim import app_metadata", None),
+            ("from anesthesia_sim.core import units", None),
+            ("from . import units", "anesthesia_sim.core"),
+            ("from .... import app", "anesthesia_sim.core"),
+        ],
+    )
+    def test_a_dotted_boundary_is_not_reached_by_a_neighbour(
+        self, source: str, importer: str | None
+    ) -> None:
+        """A prefix continues past a dot or not at all; a climb past the top resolves to nothing."""
+        assert not _reaches(source, "anesthesia_sim.app", importer)
+
+    def test_one_statement_is_one_entry_however_many_names_match(self) -> None:
+        (entry,) = module_imports("from pydantic import BaseModel, Field\n")
+        assert entry.names == ("pydantic", "pydantic.BaseModel", "pydantic.Field")
 
     def test_unparseable_source_raises_rather_than_reporting_clean(self) -> None:
         """A file the parser cannot read is not a file with no imports."""
@@ -146,6 +188,7 @@ class TestAnalyze:
             "PySide6",
             "pyqtgraph",
             "numpy",
+            "anesthesia_sim.app",
         )
         by_package = {boundary.package: boundary for boundary in BOUNDARIES}
         assert by_package["pydantic"].allowed == ("src/anesthesia_sim/core/parameters.py",)
@@ -355,7 +398,7 @@ class TestMain:
         assert main(["--root", str(tmp_path)]) == 1
         out = capsys.readouterr().out
         assert "src/anesthesia_sim/core/tissue.py:1: import numpy" in out
-        assert "src/anesthesia_sim/core/tissue.py:2: from PySide6.QtCore import ..." in out
+        assert "src/anesthesia_sim/core/tissue.py:2: from PySide6.QtCore import QObject" in out
         assert "src/anesthesia_sim/core/tissue.py:3: import pyqtgraph" in out
 
     def test_any_module_importing_flet_is_a_violation(
@@ -404,3 +447,34 @@ class TestMain:
         )
         assert main(["--root", str(tmp_path)]) == 0
         assert "0 errors" in capsys.readouterr().out
+
+    def test_the_compartments_may_not_import_the_interface(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The layering's one direction, by each route into it, and the other direction left open.
+
+        `tests/unit/test_formatting.py` credited this tool with the rule while
+        it read only root packages, to which both layers are `anesthesia_sim`
+        (`PL-YXFF`); the relative form is the one a root-only reading skipped
+        outright.
+        """
+        package = tmp_path / "src" / "anesthesia_sim"
+        app = _allowed_modules(package)
+        (package / "core" / "tissue.py").write_text(
+            "from anesthesia_sim.app.formatting import format_percent\n"
+            "from anesthesia_sim import app\n"
+            "from ..app import formatting\n",
+            encoding="utf-8",
+        )
+        (app / "formatting.py").write_text(
+            "from anesthesia_sim.core import units\nfrom ..core.units import SECONDS_PER_HOUR\n",
+            encoding="utf-8",
+        )
+        assert main(["--root", str(tmp_path)]) == 1
+        out = capsys.readouterr().out
+        tissue = "src/anesthesia_sim/core/tissue.py"
+        assert f"{tissue}:1: from anesthesia_sim.app.formatting import format_percent" in out
+        assert f"{tissue}:2: from anesthesia_sim import app" in out
+        assert f"{tissue}:3: from ..app import formatting" in out
+        assert "anesthesia_sim.app is permitted in no module under src/anesthesia_sim/core/" in out
+        assert "3 errors" in out
