@@ -191,7 +191,8 @@ def test_rejects_a_flow_outside_its_supported_range(flow: Flow) -> None:
     output and the range guards ran only in the compartments. Each flow field
     now takes a type only its guard builds (`PL-0YYV`), so the refusal is the
     guard's, in the guard's own words, at the first float past the maximum as
-    much as at a hundred times it, and the record never exists.
+    much as at a hundred times it, and the record never exists: `_settings_with_flow`
+    is never entered, and the test below is the one that reaches the record.
     """
 
     past_each_end = (nextafter(flow.maximum, inf), nextafter(flow.minimum, -inf))
@@ -214,7 +215,7 @@ def test_rejects_a_flow_handed_in_as_a_bare_float(flow: Flow) -> None:
 
     held = getattr(_settings(), flow.field)
 
-    with pytest.raises(TypeError, match=f"not a {flow.flow_type.__name__}"):
+    with pytest.raises(TypeError, match=f"not built as {flow.flow_type.__name__}"):
         _settings(**{flow.field: float(held)})
 
 

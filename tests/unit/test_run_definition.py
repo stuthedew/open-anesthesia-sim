@@ -359,8 +359,10 @@ def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges(
     Each flow field now takes a type only its guard builds (`PL-0YYV`), so the
     record cannot exist: built as its type, the flow is refused in the guard's
     words before `replace` runs; handed in as a bare float, it is refused by
-    the record itself. The run keeps the segments it had either way, and
-    checks nothing of its own.
+    the record itself. Neither `RunDefinition(...)` nor `record_change` is
+    entered, since its argument is refused first; the two calls stand as the
+    entry points the reproduction went through. The run keeps the segments it
+    had either way, and checks nothing of its own.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -383,7 +385,7 @@ def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges(
     definition = RunDefinition(held, system.state_vector(), opened_at_s=0.0)
     definition.advance_to(30.0)
     segments = definition.segments
-    refused = f"not a {flow_type.__name__}"
+    refused = f"not built as {flow_type.__name__}"
 
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
         RunDefinition(rebuilt(flow_type(reproduced_l_min)), system.state_vector(), opened_at_s=0.0)

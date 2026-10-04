@@ -1020,9 +1020,10 @@ class SimulationController:
         branch = SimulationController(
             agent_id=self._agent_id,
             circuit_volume_l=circuit.circuit_volume_l,
-            # The timeline records every control as a plain `float`, so each
-            # setting is built back into its checked type here; the record
-            # holds values the core accepted, so none can be refused.
+            # The timeline's `ControlChange` is typed `float`, so a setting read
+            # back from it is built into its checked type here, a value already
+            # of the type being re-checked harmlessly; the record holds values
+            # the core accepted, so none can be refused.
             fresh_gas_flow_l_min=FreshGasFlow(
                 self._setting_at(
                     ControlInput.FRESH_GAS_FLOW, fork_at_s, circuit.fresh_gas_flow_l_min

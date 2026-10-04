@@ -179,12 +179,14 @@ def test_the_type_holds_the_value_it_was_built_from_exactly(control: Control) ->
 
     A type that rounded or re-derived its value would move the envelope corner
     the reference gates measure at; `hex` compares the bits rather than the
-    printed digits.
+    printed digits, and two of the values carry a full mantissa, since a
+    rounding to any number of decimals leaves the endpoints where they are.
     """
 
     midpoint = (control.minimum + control.maximum) / 2.0
+    full_mantissa = (nextafter(control.maximum, -inf), control.maximum / 3.0)
 
-    for value in (control.minimum, midpoint, control.maximum):
+    for value in (control.minimum, midpoint, control.maximum, *full_mantissa):
         built = control.flow_type(value)
 
         assert isinstance(built, control.flow_type)
@@ -257,7 +259,7 @@ def test_a_bare_float_is_refused_wherever_a_flow_is_stored(control: Control) -> 
     setter = f"set_{control.name.removesuffix('_l_min')}"
     held = getattr(compartment, control.name)
     bare = float(held)
-    refused = f"not a {control.flow_type.__name__}"
+    refused = f"not built as {control.flow_type.__name__}"
 
     assert type(held) is control.flow_type
 
@@ -267,12 +269,42 @@ def test_a_bare_float_is_refused_wherever_a_flow_is_stored(control: Control) -> 
     with pytest.raises(TypeError, match=refused):
         getattr(system, setter)(bare)
 
-    with pytest.raises(TypeError, match=refused):
-        replace(compartment, **{control.name: bare})
+    if control.stored_on != "patient":
+        # `replace` on `PatientCompartments` rewrites the flows of the tissue
+        # and venous objects it shares with the original (`PL-Z0T3`), so its
+        # constructor is not driven from here.
+        with pytest.raises(TypeError, match=refused):
+            replace(compartment, **{control.name: bare})
 
     with pytest.raises(TypeError, match=refused):
         replace(system.equation_settings(), **{control.name: bare})
 
+    assert getattr(compartment, control.name) is held
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
+def test_another_flows_type_is_refused_as_a_swapped_argument(control: Control) -> None:
+    """A flow of another type is named as that, and not told to rebuild as this one.
+
+    A fresh gas flow arriving where a cardiac output belongs is a swapped
+    argument. A refusal that prescribed `CardiacOutput(4.0)` would have the
+    caller check and store the wrong quantity under the right type, so the
+    message names the type the value was built as and prescribes nothing.
+    """
+
+    system = AgentUptakeSystem.default()
+    compartment = getattr(system, control.stored_on)
+    setter = getattr(compartment, f"set_{control.name.removesuffix('_l_min')}")
+    held = getattr(compartment, control.name)
+    other = next(each for each in CONTROLS if each.flow_type is not control.flow_type)
+
+    with pytest.raises(TypeError) as raised:
+        setter(other.flow_type(float(held)))
+
+    message = str(raised.value)
+
+    assert f"was built as {other.flow_type.__name__}" in message
+    assert f"{control.flow_type.__name__}(" not in message
     assert getattr(compartment, control.name) is held
 
 

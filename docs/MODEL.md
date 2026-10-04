@@ -5056,10 +5056,10 @@ setting outside it is refused rather than simulated:
 
 | Control | Range | Declared and refused by |
 | --- | --- | --- |
-| Fresh gas flow | 0 to 10 L/min | `core/supported_ranges.py`, where every fresh gas flow is built as a `FreshGasFlow` |
+| Fresh gas flow | 0 to 10 L/min | `FreshGasFlow` in `core/supported_ranges.py`, which every fresh gas flow is built as |
 | Delivered concentration | 0 to the agent's `max_delivered_concentration_percent` | `BreathingCircuit` |
-| Alveolar ventilation | 0 to 12 L/min | `core/supported_ranges.py`, where every alveolar ventilation is built as an `AlveolarVentilation` |
-| Cardiac output | 0 to 10 L/min | `core/supported_ranges.py`, where every cardiac output is built as a `CardiacOutput` |
+| Alveolar ventilation | 0 to 12 L/min | `AlveolarVentilation` in `core/supported_ranges.py`, which every alveolar ventilation is built as |
+| Cardiac output | 0 to 10 L/min | `CardiacOutput` in `core/supported_ranges.py`, which every cardiac output is built as |
 
 Fresh gas flow carries a **second** bound that is not in this table and is
 not the model's: what the anesthesia machine in front of the patient can
@@ -5097,15 +5097,18 @@ in § "Supported simulation step". A flow is persistent state with four ways in:
 an `AgentUptakeSystem` setter, the setter of the compartment it belongs to,
 that compartment's constructor, and the `UptakeEquationSettings` record a
 `RunDefinition` is built from and records a change as. Until `PL-0YYV` the
-compartment checked the first three and nothing checked the fourth, so a
+compartment checked the first three and the fourth checked only sign and
+finiteness, so a
 record rebuilt with `dataclasses.replace` to a cardiac output of 1000 L/min,
 a hundred times the supported maximum, opened a run and answered with finite,
 plausible fractions (`PL-HSFV`, measured 2026-10-04). Each flow is now a
 `float` subclass in `core/supported_ranges.py` — `FreshGasFlow`,
 `AlveolarVentilation`, `CardiacOutput` — whose constructor is the only thing
-that runs its guard, and every field and signature that holds a flow past that
-point, in the compartments, the settings record and the application's
-snapshot alike, takes the type. The check is made once, where the value is
+that runs its guard, and every field and signature that holds a flow in the
+compartments, the settings record, the application's snapshot and the setters
+that feed them takes the type; the control timeline is annotated `float`, and
+a setting reopened from it is built back into its type. The check is made
+once, where the value is
 built, and no way in has to remember it: a bare `float` handed to any of the
 four is refused with a `TypeError` naming the type to build, whatever its
 value, and arithmetic on a flow returns a plain `float`, so a derived

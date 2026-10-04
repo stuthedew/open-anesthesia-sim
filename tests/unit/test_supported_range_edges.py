@@ -22,8 +22,10 @@ annotates it (`PL-0GJC`), and any other quantity by its name and the type it is
 checked as, on the run's own classes. That type is the guard's own parameter
 type or, where the quantity is built only through the guard as the three flows
 are since `PL-0YYV`, the `float` subclass whose constructor names it. Matching
-a flow by its type anywhere, as the step is matched, waits for `PL-51B7`, when
-every field that holds one takes the type. What is kept by hand is how to build
+a flow by its type anywhere, as the step is matched, would reach the
+compartments' own setters, which `RECEIVERS` cannot build - a compartment
+stepped alone reports an infinite time constant at zero flow - so it waits
+for `PL-51B7`'s last slice to decide. What is kept by hand is how to build
 those classes at their defaults, `RECEIVERS`, and a function taking the step
 that this cannot call fails the test by name rather than going untested. A
 function that
@@ -213,8 +215,9 @@ CHECKED = _checked_types()
 # The types a guard itself takes, which the package annotates wherever it
 # passes them: a function is behind such a guard wherever it takes the type.
 # A flow's type is not among them, since its guard takes the `float` it
-# checks, so a flow is found by name on the run's own classes until `PL-51B7`
-# puts the type on every field and signature that holds one.
+# checks, so a flow is found by name on the run's own classes: by type it
+# would reach the compartments' own setters, which `RECEIVERS` cannot build
+# (`PL-51B7`'s last slice decides that).
 TAKEN = frozenset(
     annotation
     for guard in GUARDS

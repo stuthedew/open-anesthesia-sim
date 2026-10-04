@@ -186,8 +186,9 @@ def test_rejects_fresh_gas_flow_above_the_supported_range() -> None:
 
     A bare circuit is an exact exponential at any flow, so this guard is not
     about the circuit's own arithmetic — it is the model's declared input
-    domain, and the circuit is where every path that can change the flow
-    passes through, the same argument the vaporizer maximum above rests on.
+    domain, which since `PL-0YYV` the flow's own type carries: the refusal
+    here is `FreshGasFlow`'s, before the circuit is reached, on the same
+    argument the vaporizer maximum above rests on.
     """
 
     circuit = BreathingCircuit(fresh_gas_flow_l_min=FreshGasFlow(4.0))

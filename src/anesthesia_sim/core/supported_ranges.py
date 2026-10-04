@@ -303,7 +303,7 @@ class FreshGasFlow(float):
     Raises:
         SimulationConfigurationError: the flow is not finite, or is outside
             `MINIMUM_FRESH_GAS_FLOW_L_MIN` to `MAXIMUM_FRESH_GAS_FLOW_L_MIN`,
-            as `require_supported_fresh_gas_flow` states.
+            the model's envelope (`docs/MODEL.md`, "Supported input ranges").
     """
 
     __slots__ = ()
@@ -323,8 +323,8 @@ class AlveolarVentilation(float):
     Raises:
         SimulationConfigurationError: the ventilation is not finite, or is
             outside `MINIMUM_ALVEOLAR_VENTILATION_L_MIN` to
-            `MAXIMUM_ALVEOLAR_VENTILATION_L_MIN`, as
-            `require_supported_alveolar_ventilation` states.
+            `MAXIMUM_ALVEOLAR_VENTILATION_L_MIN`, the model's envelope
+            (`docs/MODEL.md`, "Supported input ranges").
     """
 
     __slots__ = ()
@@ -347,7 +347,7 @@ class CardiacOutput(float):
     Raises:
         SimulationConfigurationError: the output is not finite, or is outside
             `MINIMUM_CARDIAC_OUTPUT_L_MIN` to `MAXIMUM_CARDIAC_OUTPUT_L_MIN`,
-            as `require_supported_cardiac_output` states.
+            the model's envelope (`docs/MODEL.md`, "Supported input ranges").
     """
 
     __slots__ = ()
@@ -359,20 +359,34 @@ class CardiacOutput(float):
 
 
 def _require_built(name: str, value: object, flow_type: type[float]) -> None:
-    """Refuse a flow that was not built as `flow_type`, naming what to build instead.
+    """Refuse a flow that was not built as `flow_type`, naming what to do instead.
 
     One message for the three flows, as `_require_supported` is one message
-    for their ranges: the refusal names the parameter, the value and its
-    type, the type it should have been built as, and where the range it
-    would then be checked against is argued.
+    for their ranges: the refusal names the parameter, the value and the
+    type it has, the type it should have been built as, and where the range
+    it would then be checked against is argued. A value built as one of the
+    other two flow types is named as that and not told to rebuild, because a
+    fresh gas flow arriving where a cardiac output belongs is a swapped
+    argument, and rebuilding it as a `CardiacOutput` would check and store
+    the wrong quantity under the right type.
     """
 
-    if not isinstance(value, flow_type):
+    if isinstance(value, flow_type):
+        return
+
+    if isinstance(value, (FreshGasFlow, AlveolarVentilation, CardiacOutput)):
         raise TypeError(
-            f"{name} of {value!r} is a {type(value).__name__}, not a {flow_type.__name__}: "
-            f"build the flow as {flow_type.__name__}({value!r}) where it is set, which checks "
-            'it against the supported range once (docs/MODEL.md, "Supported input ranges")'
+            f"{name} of {value!r} was built as {type(value).__name__}, which is not "
+            f"{flow_type.__name__}: it was set from another flow, so build "
+            f"{flow_type.__name__} from this flow's own value where it is set"
         )
+
+    raise TypeError(
+        f"{name} of {value!r} was not built as {flow_type.__name__}, it is "
+        f"{type(value).__name__}: build it as {flow_type.__name__}(...) where it is set, "
+        'which checks it against the supported range once (docs/MODEL.md, "Supported input '
+        'ranges")'
+    )
 
 
 def require_fresh_gas_flow(fresh_gas_flow_l_min: object) -> None:
