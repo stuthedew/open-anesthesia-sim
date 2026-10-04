@@ -10,6 +10,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-03
 payoff: a what's-left report reads every frozen entry's lane from docket, the non-debt ones included, instead of computing two by hand
 verify: grep -q 'def test_wave_prints_each_entry_lane' subprojects/docket/tests/test_roadmap.py
+recurrences: 2026-10-04 PL-G2HP withdrawn 2026-10-04 PL-G2HP
 ---
 
 **Problem.** A report on a frozen gate cannot read every open entry's lane from docket: bin/docket gate lists lanes for open debt only, and wave, show and list print none, so v0.6.0's PL-5B1N (classed feature) and PL-B396 (ux, docs) still need Item.lane by hand
