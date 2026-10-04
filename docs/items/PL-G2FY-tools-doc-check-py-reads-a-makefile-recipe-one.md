@@ -3,12 +3,14 @@ id: PL-G2FY
 title: tools/doc_check.py reads a Makefile recipe one tab-led line at a time, so a recipe command continued by a backslash is declined by gate parity and compared as a fragment by the coverage gate, where make hands the shell the command whole
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+closed: 2026-10-04
+pr: 1338
 payoff: a Makefile recipe line continued with a backslash is compared with CI as the whole command make runs, not as a fragment
 verify: grep -q 'def test_recipe_commands_join_a_backslash_continuation' tests/unit/test_doc_check.py
 ---
@@ -42,3 +44,15 @@ recipe line and its backslash continuations as one command (GNU make,
 its format continues - the fact `PL-JCS3` found six readers misreading. The
 reading above, that no second spelling disagrees, still holds; it tested a
 different fact.
+
+**Worked 2026-10-04, slice 2 of `PL-R417` (`#1338`).** Re-confirmed on
+`73673e1e`: still true as written. `_make_lines` is now the one reading of a
+Makefile's logical lines, as GNU make 4.3 was run to read them: a recipe line
+keeps each backslash-newline and loses each continuation's leading tab, and any
+other line is joined into one, a comment included. `_recipe_commands` yields
+the command make hands the shell, so gate parity reads its script and mode whole
+and the coverage gate compares it whole. The coverage gate keeps `PL-D3M2`'s
+strict rule rather than gaining a normalization: the two files split a
+continued run alike or not at all. Pinned by
+`test_recipe_commands_join_a_backslash_continuation` and the `recipe commands,`,
+`coverage gate,` and `gate parity,` cases of `PL-R417`'s guard.

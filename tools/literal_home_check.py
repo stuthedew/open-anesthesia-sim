@@ -139,7 +139,6 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("RunView.build_parameter_controls", "12"): 1,
         ("RunView.build_readout_section", "12"): 1,
         ("RunView.build_readout_section", "4"): 1,
-        ("RunView.build_sidebar_panels", "4"): 1,
         ("RunView.build_transport_row", "8"): 1,
     },
     "src/anesthesia_sim/app/simulation_view.py": {

@@ -650,6 +650,13 @@ NUMBER_WORDS = {
 # A Makefile target is a line-initial name followed by a colon. `:=` is an
 # assignment, and `.PHONY` and its kin start with a dot, so neither matches.
 MAKE_TARGET_RE = re.compile(r"^(?P<name>[A-Za-z][\w.-]*)\s*:(?!=)")
+#: A Makefile line that make carries on to the next one (`PL-R417`): it ends in
+#: an odd run of backslashes, since in an even run each escapes the next. Read
+#: from GNU make 4.3's `readline` and run through it on 2026-10-04: `echo a \\`
+#: over `echo next` ran as two commands.
+MAKE_CONTINUED_RE = re.compile(r"(?<!\\)(?:\\\\)*\\$")
+# The target a `make` command names, read from the word after `make`.
+MAKE_TARGET_WORD_RE = re.compile(r"[a-z][\w.-]*")
 # `.PHONY` names targets without defining them. A name listed here and given no
 # recipe is the silent failure this check exists for: `make` accepts it and
 # exits 0. A name in neither place fails loudly, which needs no tool.
@@ -4511,6 +4518,42 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                 )
 
 
+def _make_lines(text: str) -> Iterator[tuple[str, int]]:
+    """Every logical line of a Makefile, as make reads it, with the line it opens on.
+
+    The one reading of where a Makefile statement ends (`PL-R417`), which every
+    reader of the file takes. Make carries a line ending in a backslash on to
+    the next, and does one of two things with the pair. On a recipe line, which
+    opens with a tab, it keeps the backslash and the newline and drops only the
+    continuation's leading tab, handing the shell the whole command to read the
+    pair itself (GNU make manual, "Splitting Recipe Lines"). On any other line -
+    a rule, an assignment, a comment - the pair and the whitespace around it
+    become one space (GNU make manual, "Splitting Long Lines"), so a rule's
+    prerequisites go on past its first line, and a comment ending in a
+    backslash takes the next line with it, recipe line or not. All three were
+    run through GNU make 4.3 on 2026-10-04. A recipe line comes back with its
+    leading tab, so a reader still knows it for one.
+
+    Read a physical line at a time, a continued command was two (`PL-G2FY`),
+    and a continued prerequisite list's second line was a recipe line.
+    """
+    lines = text.splitlines()
+    index = 0
+    while index < len(lines):
+        opens = index
+        parts = [lines[index]]
+        while MAKE_CONTINUED_RE.search(parts[-1]) and index + 1 < len(lines):
+            index += 1
+            parts.append(lines[index])
+        index += 1
+        if parts[0].startswith("\t"):
+            yield "\n".join([parts[0], *(part.removeprefix("\t") for part in parts[1:])]), opens + 1
+            continue
+        joined = [part[:-1].rstrip() for part in parts[:-1]] + [parts[-1]]
+        pieces = [joined[0], *(part.lstrip() for part in joined[1:])]
+        yield " ".join(piece for piece in pieces if piece), opens + 1
+
+
 def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
     """Every target a Makefile names, and the subset that carries a recipe.
 
@@ -4520,12 +4563,14 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
     0. Documentation that tells a session to run it is therefore naming a
     check that reports success without running, which is worse than one that
     errors - an erroring command gets investigated, a passing one gets
-    believed.
+    believed. Read by logical line, so a `.PHONY` list or a prerequisite list a
+    backslash continues is read whole, and its second line is not taken for a
+    recipe (`PL-R417`).
     """
     declared: set[str] = set()
     with_recipe: set[str] = set()
     current: str | None = None
-    for line in text.splitlines():
+    for line, _ in _make_lines(text):
         if line.startswith("\t"):
             if current is not None:
                 with_recipe.add(current)
@@ -4547,15 +4592,30 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
 def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
     """Every `make <target>` written as code, with the line it sits on.
 
-    Anywhere in a code span; in a fence, only as a line's first word.
+    Anywhere in a code span; in a fence, only as a command's first word, the
+    fence read as bash reads its lines, through docket's `shell.script_lines`
+    (`PL-R417`): `make \\` over `check` is `make check`, which a line at a time
+    read as nothing. A fence bash cannot read - prose, output, another language
+    - is read a line at a time from the line where it stops being readable, as
+    every fence was before.
     """
     for match in _code_spans(text):
         for mention in MAKE_MENTION_RE.finditer(match["content"]):
             yield mention.group("name"), _line_of(text, match.start())
     for start, body in _fenced_blocks(text):
-        for offset, line in enumerate(body):
-            if (command := FENCED_MAKE_RE.match(line)) is not None:
-                yield command.group("name"), start + offset + 1
+        script = "".join(f"{line}\n" for line in body)
+        for piece, offset in script_lines(script):
+            first = start + script.count("\n", 0, offset) + 1
+            clauses = shell_words(piece).clauses
+            if not clauses:
+                for at, line in enumerate(piece.split("\n")):
+                    if (command := FENCED_MAKE_RE.match(line)) is not None:
+                        yield command.group("name"), first + at
+                continue
+            words = clauses[0].tokens
+            if len(words) > 1 and words[0] == Word("make") and isinstance(words[1], Word):
+                if (name := MAKE_TARGET_WORD_RE.match(words[1].text)) is not None:
+                    yield name.group(), first
 
 
 def check_make_targets(root: Path, documents: dict[Path, str], report: Report) -> None:
@@ -4640,7 +4700,8 @@ def _shell_words(where: str, command: str, report: Report, unread: str) -> tuple
 
     The reading is of one line as bash reads one: a workflow's, which
     `workflow_commands` cuts so that a line holds every physical line a
-    command spans, or a Makefile recipe's, which is still one physical line.
+    command spans, or a Makefile recipe's, which `_make_lines` hands over as
+    make hands it to the shell, its continuations included.
     One whose quote, substitution or trailing backslash runs past its end, or
     whose `<<` never meets its delimiter, is a command this cannot place, so
     it is declined, naming `unread`, and answers no words rather than a guess
@@ -4783,15 +4844,17 @@ COVERAGE_GATE_MARK = "--cov-fail-under"
 
 
 def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
-    """Every command line in a Makefile recipe, with its line number.
+    """Every command a Makefile recipe hands the shell, with the line it opens on.
 
     A recipe line is one beginning with a tab; which target it belongs to does
     not matter here, because the mark above is what selects the line rather
-    than its position.
+    than its position. A command a backslash continues is one, spelled as make
+    hands it over (`_make_lines`); read a physical line at a time it was two,
+    the first ending in the backslash (`PL-G2FY`).
     """
-    for offset, line in enumerate(text.splitlines(), start=1):
+    for line, number in _make_lines(text):
         if line.startswith("\t") and line.strip():
-            yield line.strip(), offset
+            yield line.strip(), number
 
 
 def check_coverage_gate(root: Path, report: Report) -> None:
@@ -4818,6 +4881,13 @@ def check_coverage_gate(root: Path, report: Report) -> None:
     reads the runner the way `auto` did while asking for twice the width, for a
     suite where much of the work waits on subprocesses rather than CPU
     (`PL-VZ8P`).
+
+    A command continued across lines is compared whole, as each shell is
+    handed it - make's continuation less its leading tab, the workflow's less
+    YAML's indentation - and with its continuations, under the same strict
+    rule: the two files split it alike or not at all. Read a physical line at
+    a time, the Makefile's first fragment was compared with CI's whole command
+    (`PL-G2FY`).
 
     Silent where neither file names the mark, so a checkout that has not
     adopted a coverage gate is not failed for the absence of one.
@@ -4863,10 +4933,12 @@ def check_coverage_gate(root: Path, report: Report) -> None:
         )
 
 
-#: A `ruff check` invocation, however it is prefixed. Token-anchored rather than
-#: a substring test so that `ruff format --check` - which is a different command
-#: with a sound cache - is not swept in by the word `check`.
-RUFF_CHECK_RE = re.compile(r"\bruff\s+check\b")
+#: A `ruff check` invocation, however it is prefixed: the two words, one after
+#: the other, in one simple command as the shell reads it. Word by word, so that
+#: `ruff format --check` - which is a different command with a sound cache - is
+#: not swept in by the word `check`; and words rather than a pattern over the
+#: text, so that a continuation between the two is no gap (`PL-R417`).
+RUFF_CHECK = ("ruff", "check")
 RUFF_NO_CACHE_FLAG = "--no-cache"
 
 
@@ -4914,13 +4986,16 @@ def check_ruff_cache(root: Path, report: Report) -> None:
     makefile = root / "Makefile"
     if not makefile.is_file():
         return
+    unread = "whether it runs `ruff check` without the flag was not decided"
     for command, line in _recipe_commands(makefile.read_text(encoding="utf-8")):
-        if RUFF_CHECK_RE.search(command) and RUFF_NO_CACHE_FLAG not in command:
-            report.errors.append(
-                f"Makefile:{line} runs `{command}` without `{RUFF_NO_CACHE_FLAG}`, so a "
-                "module deleted since the last run leaves a stale clean result on every "
-                "file that imports it and the local gate passes where CI fails"
-            )
+        for words in _shell_commands(f"Makefile:{line}", command, report, unread):
+            pairs = zip(words, words[1:], strict=False)
+            if RUFF_CHECK in pairs and RUFF_NO_CACHE_FLAG not in words:
+                report.errors.append(
+                    f"Makefile:{line} runs `{' '.join(words)}` without `{RUFF_NO_CACHE_FLAG}`, "
+                    "so a module deleted since the last run leaves a stale clean result on "
+                    "every file that imports it and the local gate passes where CI fails"
+                )
 
 
 def _without_code(text: str) -> list[str]:
@@ -5117,11 +5192,15 @@ def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str
     this Makefile carries a paragraph of reasoning above almost every command.
     Reading a comment as the end of the target would have found one command
     under `check` where there are twenty.
+
+    Read by logical line (`_make_lines`), so a command a backslash continues
+    is one, and a prerequisite list it continues is read whole rather than its
+    second line taken for a command (`PL-G2FY`).
     """
     recipes: dict[str, list[str]] = {}
     prerequisites: dict[str, list[str]] = {}
     current: str | None = None
-    for line in text.splitlines():
+    for line, _ in _make_lines(text):
         if line.startswith("\t"):
             if current is not None and line.strip():
                 recipes.setdefault(current, []).append(line.strip())

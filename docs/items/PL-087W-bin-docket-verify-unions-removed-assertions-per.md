@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_
 added: 2026-09-20
 payoff: putting a flagged assertion back clears the check, so the response the check asks for is one a session can actually complete
 verify: grep -q 'def test_an_assertion_restored_in_a_later_commit_is_not_counted' subprojects/docket/tests/test_verify.py
+recurrences: 2026-10-04 PL-P66B withdrawn 2026-10-04 PL-P66B
 ---
 
 **Problem.** bin/docket verify unions removed assertions per commit and never nets them against a later restore, so a line a session puts back on the check's own advice keeps refusing the branch

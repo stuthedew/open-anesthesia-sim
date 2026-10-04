@@ -223,6 +223,10 @@ PANEL_PADDING = 14
 
 PANEL_RADIUS = 10
 
+# Between the rows of the control-change panel: its heading, caption, entries
+# and overflow line.
+CONTROL_TIMELINE_ROW_SPACING = 4
+
 # The clinical gloss under a compartment name is deliberately smaller than the
 # name above it. Which quantity the model computes is the primary claim; what
 # a clinician would compare it against is a secondary one, and the type sizes
