@@ -7,7 +7,7 @@ status: dropped
 classes: session-cost, infra
 feature: dev-tooling
 touches: Makefile, .github/workflows/quality.yml
-reason: >-
+reason:
   Measured 2026-09-04 and rejected on three counts, all of them numbers rather
   than judgment. The expected saving is about 1.7 s of a 67 s `make check`; the
   real cost is `PL-P3B6`'s verify replay, which a path split does not touch.
