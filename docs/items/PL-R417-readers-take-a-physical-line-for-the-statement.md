@@ -11,8 +11,8 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 payoff: a statement a shell script, Makefile, workflow or Markdown document continues across lines is read as the one statement its format makes it, or refused by name, so the close-out sweep and the checks stop answering from fragments
 verify: grep -q 'def test_candidates_find_a_title_cited_across_a_line_wrap' tests/unit/test_doc_check.py && grep -q 'def test_each_reader_reads_its_formats_continued_statement_whole' tests/unit/test_doc_check.py && grep -q 'recipe commands, ' tests/unit/test_doc_check.py && grep -q 'workflow commands, ' tests/unit/test_doc_check.py && grep -q '^generator: spent' docs/items/PL-R417-readers-take-a-physical-line-for-the-statement.md
-root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G, PL-TY1Z, PL-YSMD, PL-HKHP, PL-5NC3, PL-WF35, PL-FP7J, PL-BLKJ, PL-J0C6, PL-GMR6, PL-VQBY, PL-4ZDZ, PL-GT0J, PL-KT0H, PL-FBWD, PL-F7Z6, PL-V2HK, PL-TC2D, PL-S3XS, PL-4T49, PL-PPNV, PL-97CF, PL-2JYP, PL-WG6S, PL-4MLK, PL-4ZVH, PL-T1X0, PL-BYJ5
-generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory until link 8, then PL-T1X0 and PL-BYJ5, which that day's triage pass put to it
+root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G, PL-TY1Z, PL-YSMD, PL-HKHP, PL-5NC3, PL-WF35, PL-FP7J, PL-BLKJ, PL-J0C6, PL-GMR6, PL-VQBY, PL-4ZDZ, PL-GT0J, PL-KT0H, PL-FBWD, PL-F7Z6, PL-V2HK, PL-TC2D, PL-S3XS, PL-4T49, PL-PPNV, PL-97CF, PL-2JYP, PL-WG6S, PL-4MLK, PL-4ZVH, PL-T1X0, PL-BYJ5, PL-0Y7J, PL-T73L
+generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory until link 8, then PL-T1X0 and PL-BYJ5, which that day's triage pass put to it, and PL-0Y7J and PL-T73L in link 11
 misread: Where one statement ends, in a format that lets a statement continue across physical lines
 ---
 
@@ -263,15 +263,40 @@ inside a fence as a heading, which `PL-HKHP` was in docket; and `PL-BYJ5`,
 as the opposite direction, though `PL-4ZDZ` and `PL-FP7J` read past a
 statement's end the same way. `generator:` stays `live`.
 
-**Next steps (recorded 2026-10-04, revised by link 8).** The members, one
-format per pull request as before, each closing its members and adding their
-cases to `CONTINUED_STATEMENTS`: the two Markdown members left, `PL-T1X0`,
-whose item holds a second half of its own, a link anchor named for a bold
-lead-in, and `PL-BYJ5`; then the Python readers (`PL-V2HK`, `PL-TC2D`), the
+**Link 11, the last two Markdown members (`#1371`, 2026-10-05).** Done:
+`PL-T1X0` and `PL-BYJ5`. `_hash_headings`, and so `_headings`, reads its
+headings through `markdown.headings`, as docket's walkers have since
+`PL-HKHP`, with a frontmatter block read as nothing, since GitHub renders it as
+a table where cmark-gfm reads its close as a setext underline. So a `#` line
+inside a fence or a comment answers no `§` citation, and a setext heading
+answers one. A link's anchor is held to those headings alone, so one naming a
+`**Bold.**` marker is reported, `PL-T1X0`'s other half and not this head's
+fact. `POSSESSIVE_RE` reads its quotation a `QUOTATION_CHAR` at a time, any
+character but its mark or a line end, or a `SOFT_BREAK`, so it stops at a
+paragraph end in a blockquote or out of one. Nothing over the tree moved: the
+38 documents keep their 501 headings and 2,325 section titles, and the quoting
+sources, none declined under the project interpreter, keep their 14
+possessive quotations. The guard gained ten cases, four `section titles, `,
+one `links, ` and five `possessive citations, `; six fail on main's readers,
+and four pin a reading main already gave, the frontmatter and the possessive's
+soft break, blockquote and list-item wraps. It found two more members, filed
+and recorded here: `PL-0Y7J`, six more `doc_check` heading readers that match
+`HEADING_RE` a line at a time, and `PL-T73L`, the four section and
+quoted-source patterns that quote across a blank line as `POSSESSIVE_RE` did,
+where a bound alone would leave an unclosed quotation unread, so its fix needs
+a refusal by name. Filed beside them and not a member: `PL-9XP0`, an anchor
+slug that is not GitHub's. `generator:` stays `live`.
+
+**Next steps (recorded 2026-10-04, revised by links 8 and 11).** The members,
+one format per pull request as before, each closing its members and adding
+their cases to `CONTINUED_STATEMENTS`: the Python readers (`PL-V2HK`,
+`PL-TC2D`), the
 YAML readers (`PL-S3XS`'s run-step half and `PL-PPNV`; `PL-4T49` and
 `PL-S3XS`'s `on:` half closed with `PL-848V` in `#1366`), the shell readers (`PL-97CF`,
 `PL-2JYP`, `PL-WG6S`), the Makefile reader (`PL-4MLK`), and the two that read a
-change or a commit record (`PL-F7Z6`, `PL-4ZVH`). `PL-TC2D` reads a file the
+change or a commit record (`PL-F7Z6`, `PL-4ZVH`); then link 11's two Markdown
+members, `PL-0Y7J` and `PL-T73L`, in one pull request before the sweep, since
+the chain running these slices names neither yet. `PL-TC2D` reads a file the
 interpreter cannot parse through `tokenize` first (project owner, 2026-10-04,
 ratified, over keeping the line fallback). Then one more sweep of the same
 reach, and `generator:` rewritten `spent` only when it finds nothing (the
