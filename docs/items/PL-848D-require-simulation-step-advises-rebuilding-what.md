@@ -58,3 +58,12 @@ in `tests/unit/test_simulation_step.py` and
 in `tests/unit/test_supported_ranges.py` pin the swapped arguments, and
 `test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one` is
 extended to the step's check and the three flows'.
+
+**Two more sites, found 2026-10-05 (`PL-LLMN`).** `Fraction` and `Percent`
+print the refused value with `{value}` in their range refusals, so a bare
+`int` too long to print - `Fraction(10**5000)` - raises `ValueError` from the
+format rather than the `SimulationConfigurationError` their Raises sections
+name; the three flows' `_require_supported` has printed through `_shown` since
+`PL-LLMN`. Where the shared form of `_shown` comes to live is this item's
+choice with the rest, `core/checked_number.py` being the leaf both modules
+already import from.

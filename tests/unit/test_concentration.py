@@ -21,10 +21,13 @@ import copy
 import pickle
 import struct
 from dataclasses import replace
+from decimal import Decimal
 from math import inf, nan, nextafter
 
+import numpy
 import pytest
 
+from anesthesia_sim.app.formatting import format_percent
 from anesthesia_sim.core.circuit import BreathingCircuit, BreathingCircuitState
 from anesthesia_sim.core.concentration import (
     PERCENT_PER_UNIT_FRACTION,
@@ -84,6 +87,43 @@ def test_a_fraction_outside_0_to_1_cannot_be_built(value: float) -> None:
 
     with pytest.raises(SimulationConfigurationError, match=r"is outside 0 to 1"):
         Fraction(value)
+
+
+@pytest.mark.parametrize(
+    ("concentration", "name"), [(Fraction, "fraction"), (Percent, "percent")], ids=repr
+)
+def test_a_concentration_refuses_what_is_not_a_number_and_holds_negative_zero_as_zero(
+    concentration: type[float], name: str
+) -> None:
+    """Built from an int or a float and nothing else, with no sign at zero (`PL-LLMN`).
+
+    The same holes the flows had, kept consistent with them on purpose so one
+    rule settles all: `Fraction(True)` was a fraction of 1.0 and
+    `Percent(Decimal('2.5'))` was admitted, where a slip is a plausible
+    concentration; a string was refused in `math.isfinite`'s words and a
+    signalling NaN escaped as its `ValueError`; and `Fraction(-0.0)` held
+    minus zero, which `format_percent` printed as `-0.00%`. Each is now a
+    `TypeError` naming the value under the name it was built with, before any
+    comparison reads it, and minus zero is held as the zero it is.
+    """
+
+    for value in (True, numpy.True_, Decimal("2.5"), Decimal("sNaN"), "0.5"):
+        with pytest.raises(TypeError) as raised:
+            concentration(value, name="alveolar " + name)  # type: ignore[call-arg]
+
+        assert str(raised.value).startswith(
+            f"alveolar {name} of {value!r} is a {type(value).__name__}, not an int or a float"
+        )
+
+    from_negative_zero = concentration(-0.0)
+
+    assert type(from_negative_zero) is concentration
+    assert from_negative_zero.hex() == (0.0).hex()
+
+    for number in (1, 1.0, numpy.float64(1.0)):
+        assert concentration(number).hex() == (1.0).hex()
+
+    assert format_percent(Fraction(-0.0)) == "0.00%"
 
 
 def test_a_refused_fraction_is_named_as_it_was_built() -> None:

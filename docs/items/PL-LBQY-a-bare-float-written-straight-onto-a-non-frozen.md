@@ -3,11 +3,13 @@ id: PL-LBQY
 title: A bare float written straight onto a non-frozen compartment field (circuit.fresh_gas_flow_l_min = 1000.0) is caught only at the next equation_settings(), so for one tick the snapshot and the readouts carry an unchecked value and SimulationSnapshot's typed fields carry no runtime check of their own; decide whether a __setattr__ guard or frozen compartments moves the check to the write, or record the one-tick window as accepted (found reviewing #1350)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py, tests/unit/test_state_capture.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py, tests/unit/test_state_capture.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1370
 payoff: a flow nobody checked can never appear on the setting readout, and a Reset after a bad write cannot leave a paused run showing a hundred times the supported maximum with no notice
 verify: grep -q 'def test_a_bare_float_written_onto_a_compartment_is_refused_at_the_write' tests/unit/test_supported_ranges.py
 ---

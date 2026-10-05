@@ -207,17 +207,22 @@ def test_reset_frees_the_step_so_a_fresh_run_may_take_a_different_one() -> None:
     assert state.elapsed_s == 0.05
 
 
-@pytest.mark.parametrize("step_count", [-1, 2.5, True])
-def test_a_count_that_is_not_whole_and_nonnegative_cannot_be_built(step_count: object) -> None:
+def test_a_count_that_is_not_whole_and_nonnegative_cannot_be_built() -> None:
     """Refused where the count is built, before any state holds it (`PL-CN5S`).
 
-    A count below zero stands before the run began, and one that is not whole
-    reaches a time no sequence of steps does. `True` is an `int` to Python
-    and is not a count of anything.
+    A count below zero stands before the run began, and is refused as a
+    setting is. One that is not whole reaches a time no sequence of steps
+    does, and `True` is an `int` to Python and is not a count of anything;
+    since `PL-LLMN` both are refused as the programming errors they are, with
+    the `TypeError` `tests/unit/test_supported_ranges.py` pins the words of.
     """
 
     with pytest.raises(SimulationConfigurationError, match="whole, nonnegative number of steps"):
-        StepCount(step_count)  # type: ignore[arg-type]
+        StepCount(-1)
+
+    for not_a_count in (2.5, True):
+        with pytest.raises(TypeError, match="not an int"):
+            StepCount(not_a_count)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("step_count", [0, 10, -1])

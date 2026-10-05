@@ -49,6 +49,7 @@ src/anesthesia_sim/
 ├── app_metadata.py      # app name, bundle id, and the version the header shows: the installed distribution's version, plus the commit where the running code is not a clean checkout of the released tag, because between two releases every build otherwise displays the same string and a fix confirmed by eye cannot be told from the code it replaced
 ├── core/                # scientific simulation — no toolkit dependency
 │   ├── validation.py              # shared input-validation guards (raise SimulationConfigurationError)
+│   ├── checked_number.py          # what every checked type is built from: an int or a float and nothing else, with minus zero held as zero
 │   ├── concentration.py           # fraction vs percent: the two forms, and the only crossing
 │   ├── units.py                   # seconds, minutes, hours, milliseconds: the factors between them, each written once
 │   ├── supported_ranges.py        # the declared domain: FreshGasFlow, AlveolarVentilation and CardiacOutput, which cannot hold a flow outside it, CaseInstant, which cannot hold an instant outside the run length, StepCount, a whole nonnegative count, and the guards that refuse a run outside it
@@ -268,8 +269,11 @@ different treatment:
   compartment constructors and setters, and by the parameter-file loaders.
   The view's `_apply_setting` catches it, restores the control from the
   snapshot, and says the setting was refused; the run is untouched and keeps
-  going. A setter handed a value not built as its type raises `TypeError`
-  instead, a programming error rather than a refused setting. A
+  going. A setter, or a compartment's flow field written directly, handed a
+  value not built as its type raises `TypeError` instead, a programming error
+  rather than a refused setting; so does a checked type built from something
+  that is not an `int` or a `float` - a `bool`, a `Decimal`, a string -
+  before its range is read (`core/checked_number.py`). A
   concentration the display builds is not a setting, and one refused there
   halts the run; no supported setting makes one refuse (`PL-7DJK`).
 - `SimulationExecutionError` (and its `SimulationNumericalError` /
