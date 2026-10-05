@@ -611,10 +611,13 @@ $$
 
 **The range is enforced by the type, where a value is built** (`PL-4R3W`).
 `Fraction` and `Percent` in `core/concentration.py` refuse a value that is not
-finite or lies outside 0 to 1, or 0 to 100, when one is built, and refuse a
-value of the other type, which is a missed conversion rather than a
-concentration out of range. Every place that holds a concentration takes the
-type: each compartment's setter, the driving fraction a compartment's own
+finite or lies outside 0 to 1, or 0 to 100, when one is built; refuse a value
+of the other type, which is a missed conversion rather than a concentration
+out of range; and refuse, as a `TypeError` before the range is read, whatever
+is not an `int` or a `float` - a `bool`, a `Decimal`, a string - and hold
+minus zero as zero, the rule `core/checked_number.py` states once for them and
+for the flows (`PL-LLMN`; § "Supported input ranges"). Every place that holds
+a concentration takes the type: each compartment's setter, the driving fraction a compartment's own
 closed form takes, `BreathingCircuit` when it is built or set, the
 `BreathingCircuitState` a rollback restores it from, the
 `UptakeEquationSettings` a run is built from, and the `AgentParameters` an
@@ -5175,10 +5178,12 @@ and for a reason the two cases do not share. A step is an argument to one call,
 and a compartment advanced alone has no truncation error at any step, so
 guarding a compartment at `MAXIMUM_SIMULATION_STEP_S` would refuse an exact
 calculation; why the floor binds the run rather than the compartment is argued
-in § "Supported simulation step". A flow is persistent state with four ways in:
+in § "Supported simulation step". A flow is persistent state with five ways in:
 an `AgentUptakeSystem` setter, the setter of the compartment it belongs to,
-that compartment's constructor, and the `UptakeEquationSettings` record a
-`RunDefinition` is built from and records a change as. Until `PL-0YYV` the
+that compartment's constructor, the `UptakeEquationSettings` record a
+`RunDefinition` is built from and records a change as, and an assignment
+straight onto the compartment's field, which `mypy` refuses in `src/` and
+nothing refused elsewhere until `PL-LBQY`, below. Until `PL-0YYV` the
 compartment checked the first three and the fourth checked only sign and
 finiteness, so a
 record rebuilt with `dataclasses.replace` to a cardiac output of 1000 L/min,
@@ -5192,11 +5197,64 @@ that feed them takes the type; the control timeline is annotated `float`, and
 a setting reopened from it is built back into its type. The check is made
 once, where the value is
 built, and no way in has to remember it: a bare `float` handed to any of the
-four is refused with a `TypeError` naming the type to build, whatever its
+five is refused with a `TypeError` naming the type to build, whatever its
 value, and arithmetic on a flow returns a plain `float`, so a derived
 quantity never reads as checked. It is the shape `SimulationStep` gives the
 step, and the first slice of `PL-51B7`, which carries it to the remaining
 checked quantities.
+
+**An assignment straight onto the field meets the same refusal, at the write**
+(`PL-LBQY`; project owner, 2026-10-04, ratified, over frozen compartments, at
+45 test rewrites and an `object.__setattr__` on every per-step write, and over
+accepting the window, which leaves the Reset path open). `mypy` refuses
+`circuit.fresh_gas_flow_l_min = 1000.0` in `src/`, and the compartments' own
+methods write the field from a checked flow; what reaches it is a caller
+`mypy` does not read - a notebook, a test, a value typed `Any` - and until
+`PL-LBQY` a bare `float` written that way was caught only when the next step
+rebuilt the settings record, after the snapshot had copied it and the readouts
+had shown it, and a paused run showed it for as long as it stayed paused.
+`BreathingCircuit`, `AlveolarCompartment` and `PatientCompartments` now run the
+flow's `require_*` in `__setattr__`, so a write to the flow field is refused
+with the same `TypeError` in the same words and leaves the field holding what
+it held; the dataclass constructor, `dataclasses.replace`, a copy and a pickle
+all write through it - the last two because each compartment is a `slots=True`
+dataclass, whose state a copy or a pickle restores one field at a time through
+`__setattr__` where a `__dict__` would be updated past it - so the constructors
+run no check of their own. The type is all the write checks. The circuit's setter still compares the flow against
+the machine's range before the write, and the patient's still recomputes the
+tissue flows after it, so a checked cardiac output written past the setter
+leaves the tissue flows stale, which `UptakeEquationSettings` refuses at the
+next step, as the `SimulationNumericalError` that `advance()` restates every
+guard reached inside a step as, and at Reset, where the view handles no
+refusal (`PL-M4M0`). A copy `dataclasses.replace` makes at another cardiac
+output does not reach it: the patient's constructor checks each compartment's
+flow against its own output and writes none, so the copy is refused and the
+original is left as it was. One made at the same output shares the original's
+compartments, so moving its output moves the original's flows with it
+(`PL-Z0T3`).
+
+**Built from an `int` or a `float` and nothing else, with no sign at zero**
+(`PL-LLMN`). Until `PL-LLMN` each guard asked `math.isfinite` and then made
+the two comparisons, and admitted whatever those admit: `True` was a flow of
+1 L/min, a `Decimal` was converted and held, a string was refused in
+`isfinite`'s words rather than the simulator's, and `-0.0`, inside every
+interval, was held with its sign and displayed as `-0.0 L/min`.
+`core/checked_number.py` now states what every checked type is built from, and
+`FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`, `Fraction`, `Percent`
+and, since `PL-7N8P`, `CaseInstant` all build through it: an `int` or a
+`float`, subclasses included, so a NumPy double passes; a `bool`, a `Decimal`
+or a string is refused with a `TypeError` naming the value and its type before
+any comparison reads it; and minus zero is held as the zero it is. The range
+check is the chained closed-interval comparison alone, with no `isfinite`
+before it: a NaN fails both halves and an infinity one, and an `int` too long
+for a `float` is compared exactly and refused against the range in the
+setting's own words, where `isfinite` raised `OverflowError`. `StepCount`
+refuses what is not an `int` the same way, as a `TypeError`. Until `PL-7N8P`
+`CaseInstant` kept its own guard, which built an instant of 1 s from `True`,
+held a `Decimal`, and let an `int` past the float range escape as
+`OverflowError` instead of refusing it against the run length;
+`SimulationStep`, and the `require_positive_finite` and
+`require_nonnegative_finite` guards in `core/validation.py`, are `PL-3800`'s.
 
 **The dial's bound is enforced in both records that hold the pair, through one
 guard** (`PL-BBMG`). The delivered concentration has the same four ways in as a
@@ -5391,7 +5449,11 @@ arithmetic that bounds a trunk bounds every branch of it (`PL-J2TD`).
 (`PL-CN5S`, the second slice of `PL-51B7`, in the shape § "Supported input
 ranges" gives the flows). An instant a run is opened at, moved to, keyframed,
 marked or branched at is a `CaseInstant`, a `float` subclass whose constructor
-is the only thing that runs `require_supported_case_instant`. Where an instant
+is the only thing that runs `require_supported_case_instant`, and which, since
+`PL-7N8P`, is built from an `int` or a `float` and nothing else and holds
+minus zero as zero, as § "Supported input ranges" says of the flows: a `bool`,
+a `Decimal` or a string is refused with a `TypeError` before any comparison,
+and an `int` past the float range against the run length. Where an instant
 is kept or a run is moved to one, the type is required and anything else refused
 with a `TypeError`, whatever its value: a `RunDefinition`'s opening and every
 reach it is advanced to, each `Keyframe`, a `TimeBookmark` and the
@@ -8237,8 +8299,8 @@ carry, and the interface must preserve it rather than adding a decimal the
 model cannot support.
 
 A negative fraction is deliberately excluded from the below-resolution form.
-No `Fraction` can hold one (§ "Concentrations"; minus zero, which renders as
-`-0.00%`, is the exception `PL-LLMN` records), so a negative reaching the
+No `Fraction` can hold one, minus zero included since `PL-LLMN`
+(§ "Concentrations"), so a negative reaching the
 formatter means something upstream is wrong, and the formatter refuses it
 rather than absorbing it into a plausible small positive reading. Until
 `PL-4R3W` it was rendered with its sign, as the anomaly it is; refusing it

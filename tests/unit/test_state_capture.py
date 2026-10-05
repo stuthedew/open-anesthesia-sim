@@ -25,7 +25,10 @@ against it:
 
 The perturbation below writes fields directly rather than through their
 setters, deliberately: what is being measured is which fields a method
-writes, and a setter would reject most of the values used to measure it.
+writes, and a setter would reject most of the values used to measure it. A
+flow field is the exception that proves the rule the other way: the write
+itself refuses anything not built as the flow's type (`PL-LBQY`), so a flow is
+perturbed as its own type, one litre a minute up.
 """
 
 from collections.abc import Callable
@@ -177,6 +180,11 @@ def _perturb(value: object) -> object:
 
     if isinstance(value, str):
         return f"{value} (perturbed)"
+
+    if isinstance(value, (FreshGasFlow, AlveolarVentilation, CardiacOutput)):
+        # Arithmetic on a flow is a plain float, which the field refuses at
+        # the write, so the perturbed flow is built as its type again.
+        return type(value)(value + 1.0)
 
     if isinstance(value, float):
         return value + 1.0

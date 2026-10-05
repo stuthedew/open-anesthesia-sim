@@ -3,11 +3,13 @@ id: PL-LLMN
 title: _require_supported admits -0.0 (shown as -0.0 L/min), True (as 1.0 L/min) and Decimal, and refuses a str with math.isfinite's own TypeError rather than the simulator's wording; none is reachable from the sliders (found reviewing #1350)
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py, src/anesthesia_sim/core/concentration.py, tests/unit/test_concentration.py
+touches: src/anesthesia_sim/core/checked_number.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_checked_number.py, tests/unit/test_supported_ranges.py, tests/unit/test_concentration.py, tests/unit/test_simulation.py, docs/MODEL.md, docs/ARCHITECTURE.md, docs/items/PL-848D-require-simulation-step-advises-rebuilding-what.md
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1370
 payoff: a flow is never shown with a minus sign, a programming slip never becomes a plausible 1.0 L/min, and every refused flow names its setting and range
 verify: grep -q 'def test_the_type_refuses_what_is_not_a_number_and_holds_negative_zero_as_zero' tests/unit/test_supported_ranges.py
 ---

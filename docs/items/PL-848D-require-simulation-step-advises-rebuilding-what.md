@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 payoff: a quantity handed in where the step or a flow belongs is named as the swapped argument it is, never prescribed a rebuild that stores the wrong quantity under the right type, and no refusal of either check can itself raise
 verify: grep -q 'def test_another_quantity_handed_in_as_the_step_is_refused_as_a_swapped_argument' tests/unit/test_simulation_step.py && grep -q 'def test_a_step_a_count_or_an_instant_handed_in_as_a_flow_is_refused_as_a_swapped_argument' tests/unit/test_supported_ranges.py
+recurrences: 2026-10-05 PL-979Z
 ---
 
 **Problem.** require_simulation_step advises rebuilding what it refuses from the same value - SimulationStep(0.1) for a CaseInstant(0.1) handed in as the step, which would build a 0.1 s step from an instant - and _require_built names only the three flows as swapped arguments; both print with repr, so an int past 4,300 digits raises ValueError instead of TypeError (measured 2026-10-04); bring both to the refusal require_case_instant and require_step_count use, _CHECKED_QUANTITIES and _shown (found folding #1354's review)
@@ -58,3 +59,11 @@ in `tests/unit/test_simulation_step.py` and
 in `tests/unit/test_supported_ranges.py` pin the swapped arguments, and
 `test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one` is
 extended to the step's check and the three flows'.
+
+**The helper this work can use, since 2026-10-05 (`PL-LLMN`).** `shown` in
+`core/checked_number.py` names any refused value as a refusal should - by its
+`repr`, or an `int` past the digits CPython prints by how long it is - and
+`describe_count` delegates to it. `_require_supported`, `Fraction` and
+`Percent` print through it, so a bare `int` too long to print is refused
+against each range in the simulator's words; `require_simulation_step` and
+`_require_built` still do not, which is the escape above.

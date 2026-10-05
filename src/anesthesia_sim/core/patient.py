@@ -14,6 +14,7 @@ compartments, which is the rule `alveolar.py` states for the same reason.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.blood import VenousBloodCompartment, VenousBloodCompartmentState
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -65,14 +66,13 @@ class PatientCompartments:
         Both compute the product the check does, so the comparison is exact.
 
         Raises:
-            TypeError: `cardiac_output_l_min` was not built as a `CardiacOutput`.
             SimulationConfigurationError: the tissue perfusion fractions do not
                 sum to 1, or a compartment's blood flow is not its share of
                 this patient's cardiac output.
         """
 
-        require_cardiac_output(self.cardiac_output_l_min)
-
+        # The cardiac output's type was required as the constructor wrote the
+        # field, by `__setattr__` below.
         if abs(self.total_perfusion_fraction - 1.0) > FLOW_FRACTION_TOLERANCE:
             raise SimulationConfigurationError("tissue perfusion fractions must sum to 1")
 
@@ -86,6 +86,45 @@ class PatientCompartments:
         self._require_perfused_at(
             "venous_blood", self.venous_blood.blood_flow_l_min, self.cardiac_output_l_min
         )
+
+    if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
+        # Hidden from `mypy` on purpose. A class that defines `__setattr__` is
+        # one `mypy` lets assign any attribute name, typed by the method's
+        # `value`, so with the guard in view a misspelt field written in `src/`
+        # would pass `--strict` and fail at run time against the slots - on
+        # these three classes alone. Hidden, `mypy` reads the dataclass's
+        # fields and their types as before, and this is the runtime half for
+        # the callers it does not read; its three lines are checked by their
+        # tests rather than by `mypy` (`PL-LBQY`, found at review).
+
+        def __setattr__(self, name: str, value: object) -> None:
+            """Write a field, refusing a cardiac output that was not built as a `CardiacOutput`.
+
+            The one place a cardiac output is stored on the patient is this field,
+            so its type is required here, for the constructor, `set_cardiac_output`
+            and an assignment made past both alike, as
+            `BreathingCircuit.__setattr__` explains (`PL-LBQY`). Nothing is written
+            when it is refused. The type is all it requires: a checked output
+            written past the setter leaves every tissue's blood flow at the old
+            output, which is the relation `set_cardiac_output` keeps and
+            `UptakeEquationSettings` refuses at the next step, as the
+            `SimulationNumericalError` `advance()` restates every guard reached
+            inside a step as, and at Reset, where `SimulationController.reset()`
+            rebuilds the record and the view handles no refusal (`PL-M4M0`). A
+            copy `dataclasses.replace` makes at another output is refused by
+            `__post_init__` before anything is written; one made at the same
+            output shares the original's compartments, so moving its output
+            moves the original's flows with it (`PL-Z0T3`).
+
+            Raises:
+                TypeError: `name` is `cardiac_output_l_min` and `value` was not
+                    built as a `CardiacOutput` (`require_cardiac_output`).
+            """
+
+            if name == "cardiac_output_l_min":
+                require_cardiac_output(value)
+
+            super().__setattr__(name, value)
 
     @classmethod
     def from_parameters(
@@ -190,15 +229,15 @@ class PatientCompartments:
 
         The output arrives checked against the supported range, which its
         type was built through and nothing here checks again
-        (`core/supported_ranges.py`); every tissue's blood flow is then its
-        perfusion fraction of the new value.
+        (`core/supported_ranges.py`); that it was built as the type is
+        required by the write itself, in `__setattr__`. Every tissue's blood
+        flow is then its perfusion fraction of the new value.
 
         Raises:
             TypeError: `cardiac_output_l_min` was not built as a
                 `CardiacOutput`. Nothing is written when it is refused.
         """
 
-        require_cardiac_output(cardiac_output_l_min)
         self.cardiac_output_l_min = cardiac_output_l_min
         self._update_blood_flows()
 

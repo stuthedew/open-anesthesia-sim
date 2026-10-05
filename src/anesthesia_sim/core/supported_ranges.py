@@ -65,15 +65,23 @@ hand at each way in, the three were checked by every compartment and by no
 settings record, and a `RunDefinition` built from one ran a cardiac output of
 1000 L/min (`PL-HSFV`); a record whose fields take the types cannot be built
 holding one. `mypy` reads `src/` and not `tests/`, and passes a value typed
-`Any`, so each place a flow is *stored* - a compartment's constructor and
-setter, and `UptakeEquationSettings` - calls `require_fresh_gas_flow`,
+`Any`, so each place a flow is *stored* calls `require_fresh_gas_flow`,
 `require_alveolar_ventilation` or `require_cardiac_output` first, which refuse
-a bare `float` as the programming error it is; the layers that forward a flow,
-`AgentUptakeSystem` and `app/controller.py`, take the type and check nothing.
+a bare `float` as the programming error it is. For a compartment that place is
+the write to its flow field, whoever makes it: `BreathingCircuit`,
+`AlveolarCompartment` and `PatientCompartments` each refuse the write in
+`__setattr__` before the field changes, so the constructor, the setter and an
+assignment made past both meet one check, and no snapshot can copy a flow
+nobody built (`PL-LBQY`, which found the assignment caught only by the next
+step). `UptakeEquationSettings` checks its three as it is built. The layers
+that forward a flow, `AgentUptakeSystem` and `app/controller.py`, take the
+type and check nothing.
 
 **The case instant and the step count are types too** (`PL-CN5S`, slice 2 of
 `PL-51B7`). `CaseInstant` is a `float` subclass built only through
-`require_supported_case_instant`, for the reasons the flows are. What opens,
+`require_supported_case_instant`, for the reasons the flows are, and from
+what they are built from - an `int` or a `float` and nothing else, with minus
+zero held as zero (`core/checked_number.py`, `PL-7N8P`). What opens,
 moves, keyframes, marks or branches a run takes it - `RunDefinition`'s
 opening, reach and keyframes, the marks in `app/bookmarks.py`, and the instant
 a branch is taken at - and `SimulationState.elapsed_s` returns one. The
@@ -143,9 +151,9 @@ chain is cut: neither is derived from anything measured over this envelope.
 
 from __future__ import annotations
 
-import sys
-from math import floor, isfinite
+from math import floor
 
+from anesthesia_sim.core.checked_number import negative_zero_as_zero, require_a_number, shown
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.units import SECONDS_PER_HOUR
@@ -252,16 +260,31 @@ MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86_400.0
 
 
 def _require_supported(name: str, value: float, minimum: float, maximum: float) -> None:
-    """Require a finite value inside one control's closed supported interval.
+    """Require a number inside one control's closed supported interval.
 
-    One check rather than a finiteness guard followed by a range guard, so
-    that every rejection - negative, NaN, infinite, or merely too large -
-    carries the same message naming the interval the caller has to return to.
+    The value is required to be a number first, by `require_a_number`
+    (`core/checked_number.py`), so that a `bool`, a `Decimal` or a `str` is
+    refused in the simulator's words before any comparison reads it
+    (`PL-LLMN`). Then one comparison rather than a finiteness guard followed
+    by a range guard, so that every rejection - negative, NaN, infinite, or
+    merely too large - carries the same message naming the interval the
+    caller has to return to. The closed interval refuses NaN on its own, since
+    a NaN compares false against either bound, and it compares an `int` past
+    the float range exactly, where `math.isfinite` would raise `OverflowError`
+    converting it; the message prints such an `int` through `shown`, as a
+    refusal of a count does.
+
+    Raises:
+        TypeError: `value` is not an `int` or a `float`, or is a `bool`.
+        SimulationConfigurationError: `value` is not finite, or is outside
+            `minimum` to `maximum`.
     """
 
-    if not isfinite(value) or not minimum <= value <= maximum:
+    require_a_number(name, value)
+
+    if not minimum <= value <= maximum:
         raise SimulationConfigurationError(
-            f"{name} of {value} is outside the supported input range of "
+            f"{name} of {shown(value)} is outside the supported input range of "
             f"{minimum} to {maximum} L/min, which is the domain this "
             f"compartment model is claimed to represent a patient over "
             f'(docs/MODEL.md, "Supported input ranges")'
@@ -277,6 +300,8 @@ def require_supported_fresh_gas_flow(fresh_gas_flow_l_min: float) -> None:
     reaching this guard directly is bounded by the envelope alone (`PL-8PS6`).
 
     Raises:
+        TypeError: the flow is not an `int` or a `float`, or is a `bool`
+            (`core/checked_number.py`).
         SimulationConfigurationError: the flow is not finite, or is outside
             `MINIMUM_FRESH_GAS_FLOW_L_MIN` to `MAXIMUM_FRESH_GAS_FLOW_L_MIN`.
     """
@@ -290,7 +315,15 @@ def require_supported_fresh_gas_flow(fresh_gas_flow_l_min: float) -> None:
 
 
 def require_supported_alveolar_ventilation(alveolar_ventilation_l_min: float) -> None:
-    """Require an alveolar ventilation inside the range the model is claimed over."""
+    """Require an alveolar ventilation inside the range the model is claimed over.
+
+    Raises:
+        TypeError: the ventilation is not an `int` or a `float`, or is a
+            `bool`, as `require_supported_fresh_gas_flow` says.
+        SimulationConfigurationError: the ventilation is not finite, or is
+            outside `MINIMUM_ALVEOLAR_VENTILATION_L_MIN` to
+            `MAXIMUM_ALVEOLAR_VENTILATION_L_MIN`.
+    """
 
     _require_supported(
         "alveolar_ventilation_l_min",
@@ -301,7 +334,14 @@ def require_supported_alveolar_ventilation(alveolar_ventilation_l_min: float) ->
 
 
 def require_supported_cardiac_output(cardiac_output_l_min: float) -> None:
-    """Require a cardiac output inside the range the model is claimed over."""
+    """Require a cardiac output inside the range the model is claimed over.
+
+    Raises:
+        TypeError: the output is not an `int` or a `float`, or is a `bool`,
+            as `require_supported_fresh_gas_flow` says.
+        SimulationConfigurationError: the output is not finite, or is outside
+            `MINIMUM_CARDIAC_OUTPUT_L_MIN` to `MAXIMUM_CARDIAC_OUTPUT_L_MIN`.
+    """
 
     _require_supported(
         "cardiac_output_l_min",
@@ -314,14 +354,19 @@ def require_supported_cardiac_output(cardiac_output_l_min: float) -> None:
 class FreshGasFlow(float):
     """A fresh gas flow in L/min, checked against the supported range when built.
 
-    It compares and computes as the `float` it was built from. A product or
-    quotient of it is a plain `float`: the litres per second the circuit
+    It compares and computes as the `float` it was built from, with one
+    exception: built from minus zero it holds zero, the flow it is, so no
+    readout prints a flow with a sign (`core/checked_number.py`). A product
+    or quotient of it is a plain `float`: the litres per second the circuit
     balance reads, or the circuit's wash-in time constant, is not a flow and
     is not presented as a checked one. The machine's own bound on this
     control is not checked here, since it is the device's and not the
     model's; `BreathingCircuit` checks it where the flow is set (`PL-8PS6`).
 
     Raises:
+        TypeError: the flow is not an `int` or a `float`, or is a `bool`,
+            which is a programming error in the caller rather than a refused
+            setting (`core/checked_number.py`).
         SimulationConfigurationError: the flow is not finite, or is outside
             `MINIMUM_FRESH_GAS_FLOW_L_MIN` to `MAXIMUM_FRESH_GAS_FLOW_L_MIN`,
             the model's envelope (`docs/MODEL.md`, "Supported input ranges").
@@ -332,16 +377,19 @@ class FreshGasFlow(float):
     def __new__(cls, fresh_gas_flow_l_min: float) -> FreshGasFlow:
         require_supported_fresh_gas_flow(fresh_gas_flow_l_min)
 
-        return super().__new__(cls, fresh_gas_flow_l_min)
+        return super().__new__(cls, negative_zero_as_zero(fresh_gas_flow_l_min))
 
 
 class AlveolarVentilation(float):
     """An alveolar ventilation in L/min, checked against the supported range when built.
 
-    It compares and computes as the `float` it was built from, and a product
-    or quotient of it is a plain `float`, as `FreshGasFlow` says.
+    It compares and computes as the `float` it was built from, holds minus
+    zero as zero, and a product or quotient of it is a plain `float`, as
+    `FreshGasFlow` says.
 
     Raises:
+        TypeError: the ventilation is not an `int` or a `float`, or is a
+            `bool`, as `FreshGasFlow` says.
         SimulationConfigurationError: the ventilation is not finite, or is
             outside `MINIMUM_ALVEOLAR_VENTILATION_L_MIN` to
             `MAXIMUM_ALVEOLAR_VENTILATION_L_MIN`, the model's envelope
@@ -353,19 +401,22 @@ class AlveolarVentilation(float):
     def __new__(cls, alveolar_ventilation_l_min: float) -> AlveolarVentilation:
         require_supported_alveolar_ventilation(alveolar_ventilation_l_min)
 
-        return super().__new__(cls, alveolar_ventilation_l_min)
+        return super().__new__(cls, negative_zero_as_zero(alveolar_ventilation_l_min))
 
 
 class CardiacOutput(float):
     """A cardiac output in L/min, checked against the supported range when built.
 
-    It compares and computes as the `float` it was built from. Every tissue's
-    blood flow is a perfusion fraction of it and the venous pool's is all of
-    it, and each of those is a plain `float` that no supported-range guard
-    bounds: a tissue cannot receive more than a checked cardiac output, and
+    It compares and computes as the `float` it was built from, and holds
+    minus zero as zero, as `FreshGasFlow` says. Every tissue's blood flow is a
+    perfusion fraction of it and the venous pool's is all of it, and each of
+    those is a plain `float` that no supported-range guard bounds: a tissue
+    cannot receive more than a checked cardiac output, and
     `UptakeEquationSettings` holds the three to summing to it.
 
     Raises:
+        TypeError: the output is not an `int` or a `float`, or is a `bool`,
+            as `FreshGasFlow` says.
         SimulationConfigurationError: the output is not finite, or is outside
             `MINIMUM_CARDIAC_OUTPUT_L_MIN` to `MAXIMUM_CARDIAC_OUTPUT_L_MIN`,
             the model's envelope (`docs/MODEL.md`, "Supported input ranges").
@@ -376,7 +427,7 @@ class CardiacOutput(float):
     def __new__(cls, cardiac_output_l_min: float) -> CardiacOutput:
         require_supported_cardiac_output(cardiac_output_l_min)
 
-        return super().__new__(cls, cardiac_output_l_min)
+        return super().__new__(cls, negative_zero_as_zero(cardiac_output_l_min))
 
 
 def _require_built(name: str, value: object, flow_type: type[float]) -> None:
@@ -416,9 +467,12 @@ def require_fresh_gas_flow(fresh_gas_flow_l_min: object) -> None:
     The runtime half of the type, for the callers `mypy` does not read: a
     test, a notebook, or a value typed `Any`. It checks the type and not the
     range, which the constructor has already checked, and it runs where a flow
-    is stored - `BreathingCircuit`, built or set, and `UptakeEquationSettings`
-    - rather than at each layer that forwards one, so a bare `float` is
-    refused once, before anything changes.
+    is stored - every write to `BreathingCircuit.fresh_gas_flow_l_min`, which
+    the circuit's `__setattr__` refuses before the field changes, whether the
+    constructor, `set_fresh_gas_flow` or an assignment made past both is
+    writing it (`PL-LBQY`), and `UptakeEquationSettings` as it is built -
+    rather than at each layer that forwards one, so a bare `float` is refused
+    once, before anything changes.
 
     Raises:
         TypeError: `fresh_gas_flow_l_min` is not a `FreshGasFlow` - a bare
@@ -433,9 +487,10 @@ def require_fresh_gas_flow(fresh_gas_flow_l_min: object) -> None:
 def require_alveolar_ventilation(alveolar_ventilation_l_min: object) -> None:
     """Require an alveolar ventilation built as an `AlveolarVentilation`, and so checked.
 
-    The runtime half of the type, run where a ventilation is stored -
-    `AlveolarCompartment`, built or set, and `UptakeEquationSettings` - as
-    `require_fresh_gas_flow` explains.
+    The runtime half of the type, run where a ventilation is stored - every
+    write to `AlveolarCompartment.alveolar_ventilation_l_min`, which the
+    compartment's `__setattr__` refuses before the field changes, and
+    `UptakeEquationSettings` - as `require_fresh_gas_flow` explains.
 
     Raises:
         TypeError: `alveolar_ventilation_l_min` is not an
@@ -449,9 +504,10 @@ def require_alveolar_ventilation(alveolar_ventilation_l_min: object) -> None:
 def require_cardiac_output(cardiac_output_l_min: object) -> None:
     """Require a cardiac output that was built as a `CardiacOutput`, and so checked.
 
-    The runtime half of the type, run where a cardiac output is stored -
-    `PatientCompartments`, built or set, and `UptakeEquationSettings` - as
-    `require_fresh_gas_flow` explains.
+    The runtime half of the type, run where a cardiac output is stored - every
+    write to `PatientCompartments.cardiac_output_l_min`, which the patient's
+    `__setattr__` refuses before the field changes, and
+    `UptakeEquationSettings` - as `require_fresh_gas_flow` explains.
 
     Raises:
         TypeError: `cardiac_output_l_min` is not a `CardiacOutput` - a bare
@@ -468,23 +524,11 @@ def describe_count(count: int) -> str:
 
     Printing such a count raises `ValueError`, so a refusal that printed it
     escaped the simulator's own exceptions while it was being written
-    (`PL-5F76`).
+    (`PL-5F76`). `shown` in `core/checked_number.py` is the rule for any
+    refused value, the concentrations' included; this is its name for a count.
     """
 
-    try:
-        return str(count)
-    except ValueError:
-        sign = "-" if count < 0 else ""
-
-        return f"{sign}<more than {sys.get_int_max_str_digits():,} digits>"
-
-
-def _shown(value: object) -> str:
-    """A value as a refusal names it: an `int` through `describe_count`, since
-    its `repr` raises past the digits CPython will print, and anything else by
-    its `repr`."""
-
-    return describe_count(value) if isinstance(value, int) else repr(value)
+    return shown(count)
 
 
 class StepCount(int):
@@ -500,17 +544,32 @@ class StepCount(int):
     it returns a plain `int`, so the count after one more step is built as a
     `StepCount` again where it is stored (`SimulationState.advance`).
 
+    What is not an `int` at all is refused as the flows refuse what is not a
+    number (`core/checked_number.py`): a `TypeError`, because a `float`, a
+    `str` or a `bool` where a count belongs is a programming error in the
+    caller rather than a count the simulator declined. `2.0` is whole and is
+    refused with them, since a `float` handed in is a sign that something
+    computed it as a time, and a `bool` is an `int` to Python and is refused
+    all the same: `True` is not a count of steps (`PL-LLMN`, which brought the
+    `bool` from the configuration error below to this).
+
     Raises:
-        SimulationConfigurationError: `step_count` is not an `int`, is a
-            `bool`, which is not a count, or is negative.
+        TypeError: `step_count` is not an `int`, or is a `bool`.
+        SimulationConfigurationError: `step_count` is negative.
     """
 
     __slots__ = ()
 
     def __new__(cls, step_count: int) -> StepCount:
-        if isinstance(step_count, bool) or not isinstance(step_count, int) or step_count < 0:
+        if isinstance(step_count, bool) or not isinstance(step_count, int):
+            raise TypeError(
+                f"step_count of {shown(step_count)} has type {type(step_count).__name__}, not "
+                "int: build it from the count itself, which is then checked whole and nonnegative"
+            )
+
+        if step_count < 0:
             raise SimulationConfigurationError(
-                f"step_count must be a whole, nonnegative number of steps, not {_shown(step_count)}"
+                f"step_count must be a whole, nonnegative number of steps, not {shown(step_count)}"
             )
 
         return super().__new__(cls, step_count)
@@ -537,17 +596,17 @@ def require_step_count(step_count: object) -> None:
     if isinstance(step_count, StepCount):
         return
 
-    shown = _shown(step_count)
+    shown_count = shown(step_count)
 
     if isinstance(step_count, _CHECKED_QUANTITIES):
         raise TypeError(
-            f"step_count of {shown} was built as {type(step_count).__name__}, which is not "
+            f"step_count of {shown_count} was built as {type(step_count).__name__}, which is not "
             "StepCount: it is another quantity, so build StepCount from the count's own value "
             "where the count is taken"
         )
 
     raise TypeError(
-        f"step_count of {shown} was not built as StepCount, it is "
+        f"step_count of {shown_count} was not built as StepCount, it is "
         f"{type(step_count).__name__}: build it as StepCount(...) where the count is taken, "
         "which checks once that it is a whole, nonnegative number of steps"
     )
@@ -718,15 +777,31 @@ def require_supported_case_instant(instant_s: float) -> None:
     It raises `SimulationConfigurationError` for the reason
     `require_supported_step_count` gives (`PL-73ZN`).
 
+    The instant is required to be a number first, by `require_a_number`
+    (`core/checked_number.py`), as `_require_supported` requires of a flow:
+    until `PL-7N8P` a `bool` was an instant of 1 s on the case's axis, a
+    `Decimal` was converted and held, and a string or a signalling NaN was
+    refused in `math.isfinite`'s words. Then the one closed-interval
+    comparison, with no finiteness guard before it, so that a NaN, an
+    infinity and an `int` past the float range - which `math.isfinite`
+    raised `OverflowError` converting - are each refused against the run
+    length in these words, an `int` too long to print named by how long it
+    is through `shown`.
+
     Raises:
+        TypeError: `instant_s` is not an `int` or a `float`, or is a `bool`.
+            A programming error in the caller rather than a refused instant,
+            as `require_a_number` says.
         SimulationConfigurationError: `instant_s` is not finite, or is
             outside 0 to `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
     """
 
-    if not isfinite(instant_s) or not 0.0 <= instant_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S:
+    require_a_number("instant_s", instant_s)
+
+    if not 0.0 <= instant_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S:
         raise SimulationConfigurationError(
-            f"a case instant of {instant_s} s is outside the supported run length of 0 to "
-            f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
+            f"a case instant of {shown(instant_s)} s is outside the supported run length of "
+            f"0 to {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), the span this "
             f'model is claimed to represent a patient over (docs/MODEL.md, "Supported run '
             f'length")'
@@ -744,7 +819,12 @@ class CaseInstant(float):
     `CaseInstant` where something holds it as an instant
     (`SimulationState.elapsed_s`).
 
+    Built from an `int` or a `float` and nothing else, and holding minus zero
+    as zero, as each flow is (`core/checked_number.py`, `PL-7N8P`).
+
     Raises:
+        TypeError: the instant is not an `int` or a `float`, or is a `bool`,
+            as `require_supported_case_instant` states.
         SimulationConfigurationError: the instant is not finite, or is
             outside 0 to `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, as
             `require_supported_case_instant` states.
@@ -755,7 +835,7 @@ class CaseInstant(float):
     def __new__(cls, instant_s: float) -> CaseInstant:
         require_supported_case_instant(instant_s)
 
-        return super().__new__(cls, instant_s)
+        return super().__new__(cls, negative_zero_as_zero(instant_s))
 
 
 # Every quantity built only through its own check. One handed in where another
@@ -801,17 +881,18 @@ def require_case_instant(name: str, instant_s: object) -> None:
     if isinstance(instant_s, CaseInstant):
         return
 
-    shown = _shown(instant_s)
+    shown_instant = shown(instant_s)
 
     if isinstance(instant_s, _CHECKED_QUANTITIES):
         raise TypeError(
-            f"{name} of {shown} was built as {type(instant_s).__name__}, which is not "
+            f"{name} of {shown_instant} was built as {type(instant_s).__name__}, which is not "
             "CaseInstant: it is another quantity, so build CaseInstant from the instant's own "
             "value where the instant is chosen"
         )
 
     raise TypeError(
-        f"{name} of {shown} was not built as CaseInstant, it is {type(instant_s).__name__}: "
+        f"{name} of {shown_instant} was not built as CaseInstant, it is "
+        f"{type(instant_s).__name__}: "
         "build it as CaseInstant(...) where the instant is chosen, which checks it against "
         'the supported run length once (docs/MODEL.md, "Supported run length")'
     )

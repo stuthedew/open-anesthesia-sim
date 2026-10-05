@@ -5,7 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: safety, defect
-touches: src/anesthesia_sim/core/patient.py, tests/unit/test_patient.py, tests/unit/test_supported_ranges.py, tests/unit/test_supported_range_edges.py
+touches: src/anesthesia_sim/core/patient.py, tests/unit/test_patient.py, tests/unit/test_supported_ranges.py, tests/unit/test_supported_range_edges.py, docs/MODEL.md
 added: 2026-10-04
 closed: 2026-10-05
 pr: 1372
@@ -93,3 +93,14 @@ refusal points at the copy that has none.
 cardiac output with that same `replace`, and was refused once the check
 landed; it now sets the output on a patient of its own (`_patient_at`, beside
 the settings record's `_equation_settings_at`), so it joins `touches`.
+
+**Merged with `PL-LBQY` 2026-10-05.** Pull request 1370 landed first, moving
+the cardiac output's type check from `__post_init__` into a `__setattr__` guard
+that the dataclass constructor writes through, so the merge keeps that guard
+and this item's flow check beside it, and `__post_init__` no longer lists the
+`TypeError` it no longer raises. It also brought two sentences saying this item
+records the copy that reaches stale flows - the guard's docstring and
+`docs/MODEL.md` § "Supported input ranges" - which this change made untrue for
+a copy at another output, so both now say that copy is refused, and that one
+at the same output still shares the original's compartments. That is why
+`docs/MODEL.md` joins `touches`.
