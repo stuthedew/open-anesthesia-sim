@@ -3,11 +3,13 @@ id: PL-LBQY
 title: A bare float written straight onto a non-frozen compartment field (circuit.fresh_gas_flow_l_min = 1000.0) is caught only at the next equation_settings(), so for one tick the snapshot and the readouts carry an unchecked value and SimulationSnapshot's typed fields carry no runtime check of their own; decide whether a __setattr__ guard or frozen compartments moves the check to the write, or record the one-tick window as accepted (found reviewing #1350)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py, tests/unit/test_state_capture.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py, tests/unit/test_state_capture.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1370
 payoff: a flow nobody checked can never appear on the setting readout, and a Reset after a bad write cannot leave a paused run showing a hundred times the supported maximum with no notice
 verify: grep -q 'def test_a_bare_float_written_onto_a_compartment_is_refused_at_the_write' tests/unit/test_supported_ranges.py
 ---
@@ -60,7 +62,14 @@ scratch pytest plugin over the whole suite:
 assigned, after which the setters' and `__post_init__`'s own calls are
 redundant. A step costs 20.3 us without it and 19.9 us with it (median of
 seven runs of 20 000 steps, inside noise), since only two of a step's six
-trajectory writes land on those classes. Four test cases fail, the capture
+trajectory writes land on those classes. [Measured again at review,
+2026-10-05, interleaved with the guards present and deleted, seven runs of
+20 000 steps: 22.78 us with and 21.94 us without, 0.83 us or 3.8% a step,
+the same sign in every round, so a cost rather than noise - and immaterial,
+2.5 ms of CPU per wall second at 300x. The guards are hidden from `mypy`
+under `if not TYPE_CHECKING:`, since a class defining `__setattr__` is one
+`mypy` lets assign any attribute name, which would have cost these three
+classes the check that a field exists.] Four test cases fail, the capture
 and restore and the reset cases for the circuit and the alveoli in
 `tests/unit/test_state_capture.py`, whose perturbation writes a bare `float`
 onto the flow; the 680 integration and reference tests pass. It refuses the

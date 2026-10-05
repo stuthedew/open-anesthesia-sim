@@ -10,10 +10,12 @@ Since `PL-0YYV` each flow is a type - `FreshGasFlow`, `AlveolarVentilation`
 and `CardiacOutput` - built only through its guard, and every field that
 stores a flow takes the type. The tests under "Each flow is a type" hold that
 the type admits and refuses exactly what its guard does, keeps the value it
-was built from, and is required wherever a flow is stored. Since `PL-CN5S`
-the case instant and the step count are types too, `CaseInstant` and
-`StepCount`, and the tests under "The case instant and the step count are
-types" hold them to the same.
+was built from, and is required wherever a flow is stored - at the write to
+the compartment's field itself since `PL-LBQY`, whoever makes it - and, since
+`PL-LLMN`, that it is built from a number and nothing else, and holds minus
+zero as zero. Since `PL-CN5S` the case instant and the step count are types
+too, `CaseInstant` and `StepCount`, and the tests under "The case instant and
+the step count are types" hold them to the same.
 
 The endpoints are tested as carefully as the rejections. Every range is
 closed, and both ends are load-bearing: one reference gate trajectory holds
@@ -28,11 +30,14 @@ import pickle
 import sys
 from collections.abc import Callable
 from dataclasses import replace
+from decimal import Decimal
 from math import inf, nan, nextafter
 from typing import NamedTuple
 
+import numpy
 import pytest
 
+from anesthesia_sim.app.formatting import format_flow
 from anesthesia_sim.core.circuit import BreathingCircuit, DeliverableFreshGasFlowRange
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
@@ -314,6 +319,135 @@ def test_another_flows_type_is_refused_as_a_swapped_argument(control: Control) -
     assert f"was built as {other.flow_type.__name__}" in message
     assert f"{control.flow_type.__name__}(" not in message
     assert getattr(compartment, control.name) is held
+
+
+NOT_A_NUMBER = (True, numpy.True_, Decimal("2.5"), Decimal("sNaN"), "2.5")
+"""What a flow was built from before `PL-LLMN`, and what came of it.
+
+`True` and `numpy.True_` were each a flow of 1.0 L/min, the `Decimal` one of
+2.5 L/min, the signalling NaN escaped as `math.isfinite`'s `ValueError` and
+the string as its `TypeError`, naming neither the setting nor the range. The
+NumPy `bool` is here because it is not a `bool`: a guard refusing `bool` alone
+admits it.
+"""
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
+def test_the_type_refuses_what_is_not_a_number_and_holds_negative_zero_as_zero(
+    control: Control,
+) -> None:
+    """A flow is built from an int or a float and nothing else, and has no sign at zero.
+
+    Each of `NOT_A_NUMBER` is refused by the guard and the type alike, before
+    any comparison reads it, with a `TypeError` in the simulator's words
+    naming the setting, the value and its type - a programming error in the
+    caller, as `require_fresh_gas_flow` names a bare float, and not a refused
+    setting. Minus zero is the supported zero that arithmetic reaches with a
+    sign, so it is held as zero and `format_flow` prints it as the flow it is,
+    where it printed `-0.0 L/min`. An `int` is admitted as a `float` is, and
+    both hold the number they were built from (`PL-LLMN`).
+    """
+
+    for value in NOT_A_NUMBER:
+        for build in (control.guard, control.flow_type):
+            with pytest.raises(TypeError) as raised:
+                build(value)  # type: ignore[arg-type]
+
+            message = str(raised.value)
+
+            assert message.startswith(
+                f"{control.name} of {value!r} has type {type(value).__name__}"
+            )
+            assert "not int or float" in message
+
+    from_negative_zero = control.flow_type(-0.0)
+
+    assert from_negative_zero.hex() == (0.0).hex()
+    assert format_flow(from_negative_zero) == "0.0 L/min"
+
+    for number in (1, 1.0, numpy.float64(1.0)):
+        built = control.flow_type(number)
+
+        assert type(built) is control.flow_type
+        assert built.hex() == (1.0).hex()
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
+def test_an_int_past_the_float_range_is_refused_against_the_interval(control: Control) -> None:
+    """An `int` too large for a `float` is outside every interval here, and is refused as that.
+
+    `math.isfinite` raises `OverflowError` converting it, which is the same
+    escape in Python's words that `PL-7N8P` records for the case instant; the
+    closed interval compares it exactly instead. One too long to print is
+    named by how long it is, as a refused count is (`PL-5F76`).
+    """
+
+    with pytest.raises(SimulationConfigurationError, match="is outside the supported input range"):
+        control.flow_type(10**400)
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        control.guard(10**5000)
+
+    assert f"{control.name} of <more than {sys.get_int_max_str_digits():,} digits> is" in str(
+        raised.value
+    )
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
+def test_a_bare_float_written_onto_a_compartment_is_refused_at_the_write(control: Control) -> None:
+    """An assignment straight onto the field is the fifth way in, and meets the same refusal.
+
+    `mypy` refuses `circuit.fresh_gas_flow_l_min = 1000.0` in `src/`, and the
+    compartments' own methods write the field from a checked flow; what
+    reaches it is a caller `mypy` does not read, which until `PL-LBQY` was
+    caught only when the next step rebuilt the settings - after the snapshot
+    had copied the bare float and the readout had shown it. The compartment's
+    `__setattr__` now runs the flow's `require_*` at the write, in its words,
+    and leaves the field holding what it held, so the settings a snapshot is
+    built from never see it. A flow built as its type is written, by the
+    setter and by assignment alike; the type is all the write checks, so the
+    setter's own relations - the machine's range, the tissue flows - stay the
+    setter's. The constructor, `dataclasses.replace`, a copy and a pickle
+    write through the same `__setattr__`, the last two because the compartment
+    is a `slots=True` dataclass whose state is restored one field at a time, so
+    a bare float smuggled past the guard is refused by each of them, before
+    the patient's `__post_init__` can touch a tissue flow.
+    """
+
+    system = AgentUptakeSystem.default()
+    compartment = getattr(system, control.stored_on)
+    held = getattr(compartment, control.name)
+    refused = f"{control.name} of {float(held)!r} was not built as {control.flow_type.__name__}"
+
+    with pytest.raises(TypeError, match=refused):
+        setattr(compartment, control.name, float(held))
+
+    assert getattr(compartment, control.name) is held
+    assert getattr(system.equation_settings(), control.name) is held
+
+    rebuilt = control.flow_type(float(held))
+    setattr(compartment, control.name, rebuilt)
+
+    assert getattr(compartment, control.name) is rebuilt
+
+    with pytest.raises(
+        TypeError, match=f"{control.name} of True was not built as {control.flow_type.__name__}"
+    ):
+        setattr(compartment, control.name, True)
+
+    assert getattr(compartment, control.name) is rebuilt
+
+    with pytest.raises(TypeError, match=refused):
+        replace(compartment, **{control.name: float(held)})
+
+    smuggled = copy.copy(compartment)
+    object.__setattr__(smuggled, control.name, float(held))
+
+    with pytest.raises(TypeError, match=refused):
+        copy.copy(smuggled)
+
+    with pytest.raises(TypeError, match=refused):
+        pickle.loads(pickle.dumps(smuggled))
 
 
 # --- The supported run length (PL-Y5WR) -------------------------------------
@@ -803,20 +937,38 @@ def test_a_step_count_is_any_whole_nonnegative_count_however_long(step_count: in
     assert built == step_count
 
 
-@pytest.mark.parametrize(
-    "step_count", [-1, -(10**5000), 2.5, 2.0, nan, inf, True, False, "3", None], ids=_id
-)
+@pytest.mark.parametrize("step_count", [-1, -(10**5000)], ids=_id)
 def test_a_step_count_refuses_what_is_not_a_whole_nonnegative_count(step_count: object) -> None:
     """In the words `SimulationState` used for it before the count was a type.
 
-    `2.0` is whole and is still refused, as it was: a count is an `int`, so a
-    `float` handed in is a sign that something computed it as a time. A
-    `bool` is an `int` to Python and is refused here, which `SimulationState`
-    did not do: `True` is not a count of steps.
+    A count below zero stands before the run began, and is the one refusal
+    left to a configuration error: what is not an `int` at all is a
+    programming error, below.
     """
 
     with pytest.raises(SimulationConfigurationError, match="whole, nonnegative number of steps"):
         StepCount(step_count)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("step_count", [2.5, 2.0, nan, inf, True, False, "3", None], ids=_id)
+def test_a_step_count_refuses_what_is_not_an_int_as_a_programming_error(step_count: object) -> None:
+    """A `TypeError`, as the flows refuse what is not a number (`PL-LLMN`).
+
+    `2.0` is whole and is refused all the same: a count is an `int`, so a
+    `float` handed in is a sign that something computed it as a time. A
+    `bool` is an `int` to Python and is refused with the rest, which
+    `SimulationState` did not do before the count was a type: `True` is not a
+    count of steps. Until `PL-LLMN` these were configuration errors, and a
+    caller catching the exception a refused setting raises would have caught
+    its own slip with it.
+    """
+
+    with pytest.raises(TypeError) as raised:
+        StepCount(step_count)  # type: ignore[arg-type]
+
+    assert str(raised.value).startswith(
+        f"step_count of {_id(step_count)} has type {type(step_count).__name__}, not int"
+    )
 
 
 def test_arithmetic_on_an_instant_or_a_count_is_a_plain_number() -> None:

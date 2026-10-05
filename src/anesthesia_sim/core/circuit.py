@@ -33,6 +33,7 @@ below 0.5 L/min must not move the model's floor for every other machine.
 
 from dataclasses import dataclass
 from math import exp, inf
+from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.concentration import (
     Fraction,
@@ -221,7 +222,10 @@ class BreathingCircuit:
     Each percent and fraction field is checked for its type when the circuit
     is built and when it is set, and not for its range: a `Percent` or a
     `Fraction` was checked against 0 to 100 or 0 to 1 when it was built, so
-    holding one is the proof (`PL-4R3W`).
+    holding one is the proof (`PL-4R3W`). The fresh gas flow is checked for
+    its type at every write to its field, in `__setattr__`, so an assignment
+    made past the constructor and the setter is refused as they refuse it
+    (`PL-LBQY`).
 
     `deliverable_fresh_gas_flow_range` is the machine's counterpart of that
     dial maximum, and carries its `None` the same way: "no machine range
@@ -246,9 +250,11 @@ class BreathingCircuit:
     deliverable_fresh_gas_flow_range: DeliverableFreshGasFlowRange | None = None
 
     def __post_init__(self) -> None:
+        # The fresh gas flow's type was required as the constructor wrote the
+        # field, by `__setattr__` below; what is left to check of it here is
+        # the machine's range.
         require_positive_finite("circuit_volume_l", self.circuit_volume_l)
         self._require_the_two_flow_claims_overlap()
-        require_fresh_gas_flow(self.fresh_gas_flow_l_min)
         self._require_deliverable_flow(self.fresh_gas_flow_l_min)
         require_percent(
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
@@ -261,6 +267,46 @@ class BreathingCircuit:
         require_fraction(
             "inspired_partial_pressure_fraction", self.inspired_partial_pressure_fraction
         )
+
+    if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
+        # Hidden from `mypy` on purpose. A class that defines `__setattr__` is
+        # one `mypy` lets assign any attribute name, typed by the method's
+        # `value`, so with the guard in view a misspelt field written in `src/`
+        # would pass `--strict` and fail at run time against the slots - on
+        # these three classes alone. Hidden, `mypy` reads the dataclass's
+        # fields and their types as before, and this is the runtime half for
+        # the callers it does not read; its three lines are checked by their
+        # tests rather than by `mypy` (`PL-LBQY`, found at review).
+
+        def __setattr__(self, name: str, value: object) -> None:
+            """Write a field, refusing a fresh gas flow that was not built as a `FreshGasFlow`.
+
+            The one place a flow is stored on the circuit is this field, so this
+            is where its type is required, for every writer at once: the
+            constructor, `set_fresh_gas_flow`, and an assignment made past both by
+            a caller `mypy` does not read - a test, a notebook, a value typed
+            `Any`. Until `PL-LBQY` that assignment was caught only when the next
+            step rebuilt the settings, after a snapshot had copied the bare
+            `float` and the readout beside the slider had shown it, and a Reset in
+            the meantime left the run paused at it with no notice. A copy, a
+            pickle and `dataclasses.replace` write through it too, because this is
+            a `slots=True` dataclass, whose state a copy or a pickle restores one
+            field at a time through `__setattr__`; a `__dict__` would be updated
+            past it. Nothing is written when it is refused, so the field holds
+            what it held. The
+            machine's range is not checked here: it is a relation the setter and
+            the constructor hold, and `PL-BBMG` records why the dial's bound is
+            not either.
+
+            Raises:
+                TypeError: `name` is `fresh_gas_flow_l_min` and `value` was not
+                    built as a `FreshGasFlow` (`require_fresh_gas_flow`).
+            """
+
+            if name == "fresh_gas_flow_l_min":
+                require_fresh_gas_flow(value)
+
+            super().__setattr__(name, value)
 
     def _require_the_two_flow_claims_overlap(self) -> None:
         """Reject a machine that can deliver no flow the model is claimed over.
@@ -432,7 +478,10 @@ class BreathingCircuit:
         when the flow was built as a `FreshGasFlow`, so a flow outside both is
         refused there, against the envelope: it is the stronger statement of
         the two, and the one that holds whichever machine is mounted. What
-        reaches this is checked against the machine's range alone.
+        reaches this is checked against the machine's range alone - after its
+        type, which the write below requires too, is required here first, so
+        that a value of the wrong type is refused in the simulator's words
+        rather than by the comparison with the machine's range.
 
         Raises:
             SimulationConfigurationError: the flow is outside what this

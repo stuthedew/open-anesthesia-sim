@@ -21,7 +21,9 @@ through 1 for a fraction, 0 through 100 for a percent - and `MacMultiple` is a
 `NewType` over `float`. `mypy` refuses any one of the three where another is
 wanted and refuses a bare `float` for any of them, and a value built as a
 `Fraction` or a `Percent` is the proof that its range was checked, so nothing
-that holds one checks it again. That is the pattern
+that holds one checks it again. What either may be built from, an `int` or a
+`float` and nothing else, and how either holds a zero, without a sign, are
+decided once for every checked type in `core/checked_number.py` (`PL-LLMN`). That is the pattern
 `.claude/rules/core-domain.md` § "A quantity with a check of its own is a
 type, checked once" states, applied here by `PL-4R3W`: until then both were
 `NewType`s, which the interpreter erases, and their ranges were checked by hand
@@ -88,9 +90,9 @@ right, so twelve hand-written conversions were twelve chances at one.
 
 from __future__ import annotations
 
-from math import isfinite
 from typing import Final, NewType
 
+from anesthesia_sim.core.checked_number import negative_zero_as_zero, require_a_number, shown
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 PERCENT_PER_UNIT_FRACTION: Final = 100.0
@@ -118,10 +120,18 @@ class Fraction(float):
     `AgentUptakeSystem._write_state_vector` does for each compartment it writes
     (`PL-SPN6`). It defaults to the type's own word.
 
+    Built from minus zero it holds zero, the concentration it is, so
+    `format_percent` never prints a fraction with a sign; what is not an `int`
+    or a `float` is refused before the range is read (`core/checked_number.py`,
+    `PL-LLMN`). The closed range refuses NaN on its own, since a NaN compares
+    false against either bound, and compares an `int` past the float range
+    exactly, naming one too long to print by how long it is (`shown`).
+
     Raises:
         TypeError: the value is a `Percent`, which is a conversion missed
             rather than a value refused, so it is told to convert, as
-            `require_fraction` tells it.
+            `require_fraction` tells it; or it is not an `int` or a `float`,
+            or is a `bool`, which is a programming error in the caller.
         SimulationConfigurationError: the value is not finite, or is outside
             0 to 1. The message gives the value under `name`.
     """
@@ -132,13 +142,15 @@ class Fraction(float):
         if isinstance(fraction, Percent):
             raise _percent_where_a_fraction_belongs(name, fraction)
 
-        if not isfinite(fraction) or not 0.0 <= fraction <= 1.0:
+        require_a_number(name, fraction)
+
+        if not 0.0 <= fraction <= 1.0:
             raise SimulationConfigurationError(
-                f"{name} of {fraction} is outside 0 to 1, the range a fraction of one "
+                f"{name} of {shown(fraction)} is outside 0 to 1, the range a fraction of one "
                 'atmosphere takes (docs/MODEL.md, "Concentrations")'
             )
 
-        return super().__new__(cls, fraction)
+        return super().__new__(cls, negative_zero_as_zero(fraction))
 
 
 class Percent(float):
@@ -161,11 +173,14 @@ class Percent(float):
     and computes as the `float` it was built from, and arithmetic on it returns
     a plain `float`.
 
-    `name` is what a refusal calls the value, as `Fraction` takes it.
+    `name` is what a refusal calls the value, as `Fraction` takes it, and it
+    holds minus zero as zero and refuses what is not a number as `Fraction`
+    does.
 
     Raises:
         TypeError: the value is a `Fraction`, for the reason `Fraction` gives
-            about a `Percent`.
+            about a `Percent`; or it is not an `int` or a `float`, or is a
+            `bool`.
         SimulationConfigurationError: the value is not finite, or is outside
             0 to 100. The message gives the value under `name`.
     """
@@ -176,13 +191,15 @@ class Percent(float):
         if isinstance(percent, Fraction):
             raise _fraction_where_a_percent_belongs(name, percent)
 
-        if not isfinite(percent) or not 0.0 <= percent <= PERCENT_PER_UNIT_FRACTION:
+        require_a_number(name, percent)
+
+        if not 0.0 <= percent <= PERCENT_PER_UNIT_FRACTION:
             raise SimulationConfigurationError(
-                f"{name} of {percent} is outside 0 to 100, the range a percent of one "
+                f"{name} of {shown(percent)} is outside 0 to 100, the range a percent of one "
                 'atmosphere takes (docs/MODEL.md, "Concentrations")'
             )
 
-        return super().__new__(cls, percent)
+        return super().__new__(cls, negative_zero_as_zero(percent))
 
 
 MacMultiple = NewType("MacMultiple", float)
@@ -323,12 +340,22 @@ def require_percent(name: str, percent: object) -> None:
 def fraction_from_percent(percent: Percent) -> Fraction:
     """Convert a percent of one atmosphere to the model's fraction.
 
-    Checks nothing of its own. The percent's range was checked when it was
+    Checks nothing of the range. The percent's range was checked when it was
     built, and the quotient is built as a `Fraction`, which cannot refuse it:
     division rounds monotonically and 100 divides to exactly 1, so a percent
     from 0 through 100 gives a fraction from 0 through 1 (`PL-4R3W` measured a
-    million of them).
+    million of them). What is handed in is required to be a number first, as
+    the constructors require it, because the arithmetic runs before either
+    constructor sees the value: `True` divided by a hundred was a fraction of
+    0.01, and a `str` was refused as Python's unsupported operand (`PL-LLMN`).
+    A `Fraction` handed in as the percent is `PL-SWD1`'s.
+
+    Raises:
+        TypeError: `percent` is not an `int` or a `float`, or is a `bool`
+            (`core/checked_number.py`).
     """
+
+    require_a_number("percent", percent)
 
     return Fraction(percent / PERCENT_PER_UNIT_FRACTION)
 
@@ -343,11 +370,19 @@ def percent_from_fraction(fraction: Fraction) -> Percent:
     `Fraction`: multiplication rounds monotonically and 1 gives exactly 100.
     Handed a value that was never a `Fraction` - an impossible negative, from a
     caller `mypy` does not read - it refuses that value here, before anything
-    can display it (`PL-4R3W`).
+    can display it (`PL-4R3W`). What is handed in is required to be a number
+    first, as `fraction_from_percent` says: `True` times a hundred was a
+    percent of 100, inside the range, and `format_percent(True)` printed
+    `100.00%` (`PL-LLMN`). A `Percent` handed in as the fraction is
+    `PL-SWD1`'s.
 
     Raises:
+        TypeError: `fraction` is not an `int` or a `float`, or is a `bool`
+            (`core/checked_number.py`).
         SimulationConfigurationError: `fraction` times a hundred is outside 0
             to 100, which no `Fraction` can make.
     """
+
+    require_a_number("fraction", fraction)
 
     return Percent(fraction * PERCENT_PER_UNIT_FRACTION)

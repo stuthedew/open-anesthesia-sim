@@ -58,3 +58,11 @@ in `tests/unit/test_simulation_step.py` and
 in `tests/unit/test_supported_ranges.py` pin the swapped arguments, and
 `test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one` is
 extended to the step's check and the three flows'.
+
+**The helper this work can use, since 2026-10-05 (`PL-LLMN`).** `shown` in
+`core/checked_number.py` names any refused value as a refusal should - by its
+`repr`, or an `int` past the digits CPython prints by how long it is - and
+`describe_count` delegates to it. `_require_supported`, `Fraction` and
+`Percent` print through it, so a bare `int` too long to print is refused
+against each range in the simulator's words; `require_simulation_step` and
+`_require_built` still do not, which is the escape above.
