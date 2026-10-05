@@ -3,12 +3,14 @@ id: PL-WG6S
 title: fixture_id_check.scan_text reads ids one physical line at a time in a shell file under .claude/, where a backslash-newline joins a word, so an id split that way is reported as malformed and the joined one is missed; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: tools/fixture_id_check.py, subprojects/docket/src/docket/shell.py, subprojects/docket/tests, tests/unit
+touches: tools/fixture_id_check.py, subprojects/docket/src/docket/shell.py, subprojects/docket/tests, tests/unit, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-R417's shell slice, 2026-10-05
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1377
 payoff: an id a shell file under .claude/ carries across a backslash-newline is judged as the one id bash reads, so a malformed one can no longer pass as two fragments
 verify: grep -q 'fixture ids, an id a backslash-newline joins' tests/unit/test_doc_check.py
 ---
@@ -40,3 +42,11 @@ the lines from wherever that lexer stops reading are judged as written.
 `PL-R417`'s guard gains a `fixture ids, ` case, failing on today's reader.
 
 **Generator check.** A member of `PL-R417`: the reader takes a physical line for a statement its format continues, the fact that head names.
+
+**Built 2026-10-05 in `#1377`.** `scan_text` reads a `.sh` file through
+docket's `shell.joined_text`, which hands back the text bash reads and where
+each character came from, so an id a backslash-newline builds is judged whole
+and reported on the line it starts on, and a marker on any line it spans
+exempts it. Every other file is read a line at a time, as before. No tracked
+`.sh` file holds a backslash-newline bash removes, so nothing the check reports
+moved.

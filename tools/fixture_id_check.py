@@ -78,7 +78,10 @@ available for markdown or shell, so this half is a text scan and its rule has to
 be exact without one. It is, and only here: measured 2026-09-21, every `PL-`
 token under `.claude/` failing the grammar was a defect - 2 of 2, both
 `PL-A1B2`. `.claude/` is the resident instruction set a session reads to learn
-the conventions, so a malformed id in it is a template, not a discussion.
+the conventions, so a malformed id in it is a template, not a discussion. A
+shell script's lines are the ones bash reads, joined where a backslash-newline
+continues one, so an id carried across two lines is judged as the one id bash
+builds (`PL-WG6S`).
 
 **What makes a token an attempted id is its shape, not its prefix** (`PL-VH5V`,
 under `PL-GPJ7`'s rule that a hard gate recognises what it checks by explicit
@@ -142,6 +145,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import bisect
 import re
 import sys
 from collections.abc import Iterator
@@ -152,6 +156,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.lines import split_lines  # noqa: E402
+from docket.shell import joined_text  # noqa: E402
 from docket.store import ID_RE  # noqa: E402
 
 #: A token written the way an id is written, to be judged against `ID_RE`: the
@@ -356,14 +361,39 @@ def scan_text(path: Path) -> list[Offender]:
     Nothing is exempt but the marker, because there is no parser here to tell a
     value from prose - which is the whole reason this half runs over one tree
     rather than over `docs/`.
+
+    A shell script is judged as bash reads its characters (`PL-WG6S`): bash
+    removes a backslash-newline before it splits words, so `echo PL-K7\\` over
+    `QX` is the id `PL-K7QX`, which a line at a time read as the malformed
+    `PL-K7`, and a malformed id split that way passed as two fragments.
+    docket's `shell.joined_text` takes out each pair bash removes - none in
+    single quotes, a comment or a quoted here-document's body - and a token is
+    reported on the line it starts on, the marker exempting it from any line
+    it spans, as a Python literal's does. Markdown and JSON join no token, so
+    every other file is read as written.
     """
-    offenders: list[Offender] = []
-    for number, line in enumerate(split_lines(path.read_text(encoding="utf-8")), start=1):
-        if MARKER in line:
+    text = path.read_text(encoding="utf-8")
+    lines = split_lines(text)
+    if path.suffix != ".sh":
+        offenders: list[Offender] = []
+        for number, line in enumerate(lines, start=1):
+            if MARKER in line:
+                continue
+            for token in malformed(line):
+                offenders.append(Offender(path, number, token))
+        return offenders
+    joined, origin = joined_text(text)
+    starts = [0, *(at + 1 for at, char in enumerate(text) if char == "\n")]
+    found: list[Offender] = []
+    for candidate in CANDIDATE_RE.finditer(joined):
+        if ID_RE.match(candidate.group(0)):
             continue
-        for token in malformed(line):
-            offenders.append(Offender(path, number, token))
-    return offenders
+        first = bisect.bisect_right(starts, origin[candidate.start()])
+        last = bisect.bisect_right(starts, origin[candidate.end() - 1])
+        if any(MARKER in line for line in lines[first - 1 : last]):
+            continue
+        found.append(Offender(path, first, candidate.group(0)))
+    return found
 
 
 def _walk(root: Path) -> Iterator[Path]:

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from docket.shell import Word, script_lines, shell_words
+from docket.shell import Word, joined_text, script_lines, shell_words
 
 
 def _words(command: str) -> list[str]:
@@ -47,6 +47,26 @@ def _words(command: str) -> list[str]:
             'git commit -m "$(cat <<\'EOF\'\nsay "hi"\nEOF\n)"\nnext\n',
             ['git commit -m "$(cat <<\'EOF\'\nsay "hi"\nEOF\n)"', "next"],
         ),
+        # A quoted delimiter's body keeps its lines, and an even run of
+        # backslashes continues none, so `EOF` ends each body (`PL-2JYP`).
+        ("cat <<'EOF'\nabc\\\nEOF\nnext\n", ["cat <<'EOF'", "next"]),
+        ("cat <<EOF\nab\\\\\nEOF\nnext\n", ["cat <<EOF", "next"]),
+        # `case` is a word away from a command's head, so its `)` closes.
+        ("x=$(echo case a in a)\nnext\n", ["x=$(echo case a in a)", "next"]),
+        # `((` whose `)` is not followed by another is two subshells, whose
+        # newline ends a line as any other does.
+        ("((echo a\necho b) )\nnext\n", ["((echo a", "echo b) )", "next"]),
+        # Inside `[[ ]]` a newline ends no line, but the bodies waiting on it start.
+        (
+            "cat <<EOF; [[\nhello\nEOF\na == a ]]\nnext\n",
+            ["cat <<EOF; [[\nhello\nEOF\na == a ]]", "next"],
+        ),
+        # The word after a function definition's `()` starts a command, so a
+        # `case` there is one, and its pattern's `)` closes nothing.
+        (
+            "x=$(f() case a in a) echo A;;\nesac; f)\nnext\n",
+            ["x=$(f() case a in a) echo A;;\nesac; f)", "next"],
+        ),
     ],
 )
 def test_script_lines_cuts_where_bash_ends_a_line(script: str, pieces: list[str]) -> None:
@@ -67,8 +87,8 @@ def test_each_piece_carries_the_offset_its_line_starts_at() -> None:
 def test_the_rest_of_a_script_that_stops_reading_is_one_unreadable_piece(script: str) -> None:
     """Bash reads an unended body to the end, with a warning; here it is unreadable.
 
-    The likelier cause is a `<<` misread - a shift inside `(( ))` - and taking
-    it as bash does would skip the rest of the script without a word.
+    Where the `<<` is one this reading took for an introducer, taking it as
+    bash does would skip the rest of the script without a word.
     """
     (first, _), (rest, _) = script_lines(script)
 
@@ -96,6 +116,39 @@ def test_shell_words_reads_the_newlines_in_a_line_as_bash_does(
     command: str, words: list[str]
 ) -> None:
     assert _words(command) == words
+
+
+def test_an_operator_a_continuation_splits_cuts_its_clauses() -> None:
+    """`&\\` over `&` is the `&&` the prerequisite rule cuts at, not two `&` (`PL-2JYP`)."""
+    reading = shell_words("test -f x &\\\n& grep -q y x")
+
+    assert [clause.text for clause in reading.clauses] == ["test -f x", "grep -q y x"]
+    assert reading.refusal is None
+
+
+@pytest.mark.parametrize(
+    ("script", "joined"),
+    [
+        # A pair bash removes goes, outside quotes, in double quotes and in an
+        # unquoted delimiter's body.
+        ("echo run\\\nner\n", "echo runner\n"),
+        ('echo "a\\\nb"\n', 'echo "ab"\n'),
+        ("cat <<EOF\na\\\nb\nEOF\n", "cat <<EOF\nab\nEOF\n"),
+        # It stays in single quotes, a comment and a quoted delimiter's body,
+        # and under an even run of backslashes.
+        ("echo 'a\\\nb'\n", "echo 'a\\\nb'\n"),
+        ("# a\\\nb\n", "# a\\\nb\n"),
+        ("cat <<'EOF'\na\\\nb\nEOF\n", "cat <<'EOF'\na\\\nb\nEOF\n"),
+        ("echo a\\\\\nb\n", "echo a\\\\\nb\n"),
+        # From the line that stops reading on, the script is as written.
+        ("a\\\nb\necho 'open\nc\\\nd\n", "ab\necho 'open\nc\\\nd\n"),
+    ],
+)
+def test_joined_text_removes_each_backslash_newline_bash_removes(script: str, joined: str) -> None:
+    text, origin = joined_text(script)
+
+    assert text == joined
+    assert "".join(script[at] for at in origin) == text
 
 
 def test_a_newline_in_a_substitution_ends_a_command() -> None:

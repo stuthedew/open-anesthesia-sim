@@ -3,14 +3,17 @@ id: PL-2JYP
 title: docket's shell lexer compares an unquoted here-document's body with its delimiter one physical line at a time, cuts a ${...} at a newline, and closes a multi-line $( ) at a case pattern's ), so script_lines hands doc_check fragments as commands; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-R417's shell slice, 2026-10-05
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1377
 payoff: a workflow step or a shell fence whose here-document, parameter expansion, case substitution or bash compound continues across lines is cut where bash ends its lines, so doc_check judges the commands the script runs and no fragment of one
 verify: grep -q 'shell lines, a case pattern does not close its substitution' tests/unit/test_doc_check.py
+recurrences: 2026-10-05 PL-C45K withdrawn 2026-10-05 PL-C45K
 ---
 
 **Problem.** docket's shell lexer compares an unquoted here-document's body with its delimiter one physical line at a time, cuts a ${...} at a newline, and closes a multi-line $( ) at a case pattern's ), so script_lines hands doc_check fragments as commands; latent
@@ -69,3 +72,24 @@ lines as one command, a newline inside it whitespace and a `<<` inside
 failing on today's reader.
 
 **Generator check.** A member of `PL-R417`: the reader takes a physical line for a statement its format continues, the fact that head names.
+
+**Built 2026-10-05 in `#1377`.** docket's lexer reads an operator across a
+continuation as the longest one (`_Lexer.operator`), an unquoted
+here-document's body in logical lines (`_Lexer.body_line`), and a `${...}` to
+the `}` that closes it (`_Lexer.parameter`). `_Grammar` carries the part of
+bash's grammar that decides where a line ends: a `case` from a command's head
+through its patterns, `(( ))` and `$(( ))` as arithmetic, where a newline is a
+space and `<<` a shift, and `[[ ]]`. `joined_text` hands `fixture_id_check` the
+text bash reads, each backslash-newline it removes gone (`PL-WG6S`). Found in
+the fix, each run through bash 5.2.21 first:
+
+- `$(( ))` is arithmetic as `(( ))` is, so on `main` `x=$((1 << 2))` opened a
+  here-document whose body took the rest of the script.
+- Inside `[[ ]]` a newline ends no line but starts the bodies waiting on it, so
+  the Done-when's "a newline inside it whitespace" holds for the line and not
+  for the bodies.
+- `case` is reserved only where a command starts, so `x=$(echo case a in a)`
+  closes at its `)`, and the word after a function definition's `()` starts a
+  command.
+- `$\` over `(` or `{` opens the substitution or expansion it spells, outside
+  quotes and inside double quotes.
