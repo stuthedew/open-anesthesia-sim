@@ -137,6 +137,7 @@ from docket.claims import (  # noqa: E402
 )
 from docket.config import Config  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
+from docket.lines import split_lines  # noqa: E402
 from docket.model import SEMVER_PATTERN  # noqa: E402
 from docket.vcs import (  # noqa: E402
     BRANCH_ID_RE,
@@ -234,7 +235,7 @@ def _subjects(base: str) -> tuple[list[str], bool] | None:
         return None
     sound = True
     subjects: list[str] = []
-    for line in log.splitlines():
+    for line in split_lines(log):
         parents, _, subject = line.partition("\x1f")
         if not parents.strip():
             sound = False

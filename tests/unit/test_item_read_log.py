@@ -86,6 +86,24 @@ def test_a_tab_in_a_pattern_does_not_shift_the_columns(tmp_path: Path) -> None:
     assert len(log_lines(tmp_path)[0].split("\t")) == 4
 
 
+def test_a_carriage_return_in_a_pattern_does_not_split_the_record(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """`PL-LRBV`: the hook writes the `\\r` raw, and `read_text` made it a line end.
+
+    The record came back cut at it, target `PL-K7QX`, and the tail holding
+    `PL-BBBB` was dropped for having one field.
+    """
+    import item_reads
+
+    run_hook(payload("Grep", pattern="PL-K7QX\rPL-BBBB"), tmp_path)
+    monkeypatch.setattr(item_reads, "LOG", tmp_path / item_read_log.LOG_NAME)
+
+    ((_stamp, _session, tool, target),) = item_reads.parse_log()
+
+    assert (tool, target) == ("Grep", "PL-K7QX\rPL-BBBB")
+
+
 def test_writing_stops_at_the_cap_rather_than_rotating(tmp_path: Path) -> None:
     """Truncating the front would destroy the sequence the traversal count needs."""
     log = tmp_path / item_read_log.LOG_NAME

@@ -43,6 +43,7 @@ from pathlib import Path
 from . import vcs
 from .arming import RECORDS
 from .config import Config
+from .lines import split_lines
 from .model import (
     CLOSED_STATUSES,
     WITHDRAWN_MARKER,
@@ -774,7 +775,7 @@ def _file_steps(
             return [], {}, f"the parents of {len(commits)} commit(s) could not be read"
         parents_of = {
             fields[0]: tuple(fields[1:])
-            for fields in (line.split() for line in listing.splitlines())
+            for fields in (line.split() for line in split_lines(listing))
             if fields
         }
         revisions = [(commit, parents_of.get(commit, ())) for commit in reversed(commits)]
@@ -807,6 +808,18 @@ def _file_steps(
                 )
             )
     return steps, keys, ""
+
+
+def _decoded_lines(blob: bytes) -> list[str]:
+    """A blob's lines as the text-mode diff beside it names them.
+
+    `git diff` is read through `subprocess.run(text=True)`, which turns `\\r\\n`
+    and a lone `\\r` into `\\n`, so a removed line of a CRLF file arrives without
+    its `\\r`. The blob is decoded here by hand, so the same translation runs
+    before the split, or no line of such a file would match its removal.
+    """
+    text = blob.decode("utf-8", errors="replace")
+    return split_lines(text.replace("\r\n", "\n").replace("\r", "\n"))
 
 
 def removed_assertions(
@@ -904,9 +917,7 @@ def removed_assertions(
     lines: list[tuple[str, str]] = []
     for key in unparsed:
         held_lines = blobs.get(f"{base}:{key}")
-        existing = Counter(
-            held_lines[1].decode("utf-8", errors="replace").splitlines() if held_lines else ()
-        )
+        existing = Counter(_decoded_lines(held_lines[1]) if held_lines else ())
         for path, line in removed_lines:
             if keys.get(path, path) == key and is_assertion_line(path, line) and existing[line]:
                 existing[line] -= 1
@@ -1768,7 +1779,7 @@ def _git(args: list[str], root: Path) -> str:
         # the audit stops rather than passing a path it cannot compare.
         raise GitUnanswered(f"{command} printed a path this cannot read: {error}") from error
     if result.returncode != 0:
-        said = next((line.strip() for line in result.stderr.splitlines() if line.strip()), "")
+        said = next((line.strip() for line in split_lines(result.stderr) if line.strip()), "")
         raise GitUnanswered(
             f"{command} exited {result.returncode}: {said or 'with nothing on stderr'}"
         )
@@ -1914,7 +1925,7 @@ def _net_line_changes(
     per_file: dict[str, tuple[str, tuple[Counter[str], Counter[str]]]] = {}
     current = ""
     path = ""
-    for line in diff.splitlines():
+    for line in split_lines(diff):
         if line.startswith("diff --git "):
             current = line
             header = DIFF_HEADER_RE.match(line)
@@ -1946,7 +1957,7 @@ def _store_at(root: Path, base: str, items_dir: str) -> tuple[str, ...] | None:
     status, listing = _run(["git", "ls-tree", "--name-only", f"{base}:{items_dir}"], root)
     if status != 0:
         return None
-    return tuple(line.strip() for line in listing.splitlines() if line.strip())
+    return tuple(line.strip() for line in split_lines(listing) if line.strip())
 
 
 def _base_copy(held: tuple[str, ...], identifier: str) -> str:
@@ -2065,7 +2076,7 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     if status != 0 or not diff.strip():
         return ""
     added, removed, created = [], [], False
-    for line in diff.splitlines():
+    for line in split_lines(diff):
         if line.startswith("new file mode"):
             created = True
         elif line.startswith("+++") or line.startswith("---"):
@@ -2976,7 +2987,7 @@ def _check_item(
         return report
 
     status, output = _run([item.verify], root, shell=True, env=_command_env())
-    lines = () if status == 0 else tuple(output.strip().splitlines()[-4:])
+    lines = () if status == 0 else tuple(split_lines(output.strip())[-4:])
     # A rejection either way, and for opposite reasons, so the report says
     # which. "The command failed" sends a reviewer to look for the missing
     # work; "the command selected no test" sends them to the command, which is
@@ -3020,7 +3031,7 @@ def project_check(root: Path, config: Config) -> Check:
         "the project's own checks pass",
         status == 0,
         config.check_command,
-        () if status == 0 else tuple(output.strip().splitlines()[-4:]),
+        () if status == 0 else tuple(split_lines(output.strip())[-4:]),
     )
 
 
