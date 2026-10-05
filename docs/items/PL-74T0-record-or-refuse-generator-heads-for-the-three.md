@@ -105,3 +105,5 @@ items.
 1306, 1308 and 1309 have merged.
 
 **Generator check.** Work the project owner asked for: this item is the recording step for three candidate heads, answering their 2026-10-03 question whether that day's captures come from known failure modes, and it is a member of no cluster.
+
+**Third triage pass, 2026-10-05.** `PL-C45K` joins cluster 1: docket's lexer reads `$'...'` as a `$` and a single-quoted string where the hooks' `shell_split` reads it as bash does, so the two spellings of one shell grammar disagree again after `PL-KGYT` closed. Its own `**Generator check.**` carries the reasoning, and `PL-JNYL` is the merge that would end the pair.

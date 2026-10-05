@@ -1,10 +1,16 @@
 ---
 id: PL-JNYL
 title: The guard hooks' shell_split.py and docket's shell.py read one shell grammar twice, so #1377 found and fixed the same three bash facts in each - an operator a backslash-newline splits, an unquoted here-document's logical lines, a ${...} - and the next one will be found in one and missed in the other
-status: untriaged
+priority: P3
+effort: L
+status: ready
+classes: refactor
 feature: one-answer
 touches: .claude/hooks/shell_split.py, subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
+payoff: each bash fact a shell reader learns lands once, for the guard hooks and for docket alike, instead of being found in one and left wrong in the other until somebody trips on it again
+not-delegable: its Done-when has two endings - one module both sides import, or a measured close keeping two - and where the merged module lives is the design the work settles, so no grep written now proves either; it also edits .claude/hooks/, which docket verify will not judge
 ---
 
 **Problem.** The guard hooks' shell_split.py and docket's shell.py read one shell grammar twice, so #1377 found and fixed the same three bash facts in each - an operator a backslash-newline splits, an unquoted here-document's logical lines, a ${...} - and the next one will be found in one and missed in the other
@@ -60,6 +66,21 @@ beside that fix, so the match is withdrawn on this brief.
 to each other by nothing. It is `PL-P72R`'s pair of files read whole rather
 than by their operator tables, so `PL-74T0`'s count for that cluster does not
 move.
+
+**Reproduced 2026-10-05 at triage** on `main` at `b67dace8`, by the next bash
+fact the brief predicts: over `"echo $'a\\'b'\necho next\n"`,
+`.claude/hooks/shell_split.py`'s `segments` read two commands and docket's
+`shell.script_lines` returned the whole script as one unreadable piece. The
+hooks read `$'...'` as bash does (`_ansi_c_end`) and docket does not; that
+divergence is `PL-C45K`, filed the same day.
+
+**Why it matters.** The two lexers decide what the guard hooks let a Bash call
+do and what docket and `tools/doc_check.py` read a `verify:` field, a workflow
+step or a fenced command to run. Each bash fact is found by whichever reader
+trips on it, so the other keeps reading it wrong until somebody trips again:
+`#1377` paid for three facts twice, and `PL-C45K` is a fact one already
+reads and the other does not. One reading would make each such fix land once,
+for both.
 
 **Done when.** One module reads a shell command for both docket and the guard
 hooks. Each caller chooses its answer to an unended here-document, no guard
