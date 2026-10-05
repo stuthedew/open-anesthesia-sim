@@ -8,6 +8,7 @@ classes: safety, defect
 touches: src/anesthesia_sim/core/patient.py, tests/unit/test_patient.py, tests/unit/test_supported_ranges.py, tests/unit/test_supported_range_edges.py
 added: 2026-10-04
 closed: 2026-10-05
+pr: 1372
 payoff: copying a patient can no longer rewrite a running patient's blood flow, so a run is never failed, or shown a setting as refused while holding it, because of a copy made elsewhere
 verify: grep -q 'def test_replace_leaves_the_original_perfused_at_its_own_output' tests/unit/test_patient.py && ! grep -q 'stored_on != "patient"' tests/unit/test_supported_ranges.py
 ---
