@@ -47,6 +47,11 @@ write that skips every checked path, or a 100% dial no application path sets.
 `PL-4R3W`'s close-out review measured all four on 2026-10-05 by writing the
 state directly; on main each value was shown and the run went on.
 
+**Settled at `PL-4R3W`'s read.** Until this lands, a refusal on the display
+path halts the run rather than drawing the value (project owner, 2026-10-05,
+ratified, over drawing it as `main` did), so what is left here is how the halt
+is shown, and whether the display re-checks at all.
+
 **What a fix probably wants.** Settle first whether the display should re-check
 these at all: `.claude/rules/core-domain.md`'s pattern does not re-check a held
 proof, and these arrive as bare floats only because each compartment exposes a

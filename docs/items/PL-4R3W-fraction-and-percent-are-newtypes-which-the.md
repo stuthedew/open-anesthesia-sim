@@ -333,3 +333,9 @@ item's `touches`. Left as they are: `isfinite` in either constructor is
 redundant beside the range comparison, which already refuses nan and both
 infinities, and stays because it says what the `Raises` section says; and
 `__slots__ = ()` has no behaviour a test can see.
+
+**Read 2026-10-05.** The display path's refusal stands as built: a fraction
+past 1 or below 0 reaching the chart, a readout or the hover halts the run
+rather than being drawn (project owner, 2026-10-05, ratified, over drawing it
+as `main` did until `PL-7DJK` settles how a refusal there is shown), and the
+pull request was approved for merge on the same read.
