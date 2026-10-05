@@ -3,11 +3,13 @@ id: PL-552M
 title: bin/docket arm holds every change under tests/ for the owner's read, a test of the tooling that imports no anesthesia_sim included, so 16 of the 51 merges held for a read since 2026-10-03 had nothing to judge
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra
 feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_portability.py, tools/workflow_paths_check.py, CLAUDE.md, docs/maintainer.md, docs/items/PL-WW0Q-bin-docket-arm-holds-a-change-to-arming-py-for.md
 added: 2026-10-05
+closed: 2026-10-05
+pr: 1375
 payoff: a pull request that changes only tests of the tooling merges on green CI instead of waiting on the owner's read with nothing to judge, while every change to a simulator test still waits on it
 verify: grep -q 'def test_arm_arms_a_test_of_the_tooling_under_tests_on_green' subprojects/docket/tests/test_cli.py
 ---
