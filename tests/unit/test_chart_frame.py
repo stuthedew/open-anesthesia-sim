@@ -7,7 +7,7 @@ display and no plotting library, which is the point of that module.
 """
 
 from dataclasses import replace
-from math import hypot
+from math import hypot, inf, nextafter
 from types import MappingProxyType
 
 import pytest
@@ -54,6 +54,7 @@ from anesthesia_sim.app.formatting import (
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.theme import COMPARED_RUN_WIDTH_STEP, ONE_MAC_LINE_DASH_PATTERN
 from anesthesia_sim.core.concentration import Fraction, Percent
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 
@@ -487,6 +488,27 @@ def test_the_hover_reads_as_the_specification_shows() -> None:
     assert format_wash_in_hover(run, run.wash_in[0], 0, 1) == (
         f"Modelled sevoflurane · 20m8s\n{WASH_IN_HOVER_LABEL}\n0.71"
     )
+
+
+def test_a_drawn_fraction_past_one_atmosphere_is_refused_rather_than_drawn() -> None:
+    """The chart builds each value it draws as a `Fraction`, so an impossible one is refused.
+
+    `core/concentration.py`'s fourth limit: a computed fraction a rounding
+    past 1, which only a 100% dial can make and no supported setting reaches,
+    is refused where the chart converts it rather than clamped to 100.00% or
+    drawn above the axis (`PL-4R3W`). How that refusal is shown is
+    `PL-7DJK`'s, so this pins only that it is one, in the conversion and in
+    the hover.
+    """
+
+    run = _run_frame((1208.0,), alveolar=(nextafter(1.0, inf),))
+    refusal = r"^fraction of 1\.0000000000000002 is outside 0 to 1"
+
+    with pytest.raises(SimulationConfigurationError, match=refusal):
+        run.percents(RecordedQuantity.ALVEOLAR)
+
+    with pytest.raises(SimulationConfigurationError, match=refusal):
+        format_trace_hover(run, RecordedQuantity.ALVEOLAR, 0, 1)
 
 
 def test_the_hover_names_the_run_only_while_more_than_one_is_drawn() -> None:

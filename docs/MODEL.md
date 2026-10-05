@@ -610,11 +610,14 @@ $$
 
 **The range is enforced by the type, where a value is built** (`PL-4R3W`).
 `Fraction` and `Percent` in `core/concentration.py` refuse a value that is not
-finite or lies outside 0 to 1, or 0 to 100, when one is built, and every place
-that holds a concentration takes the type: each compartment's setter, the
-driving fraction a compartment's own closed form takes, `BreathingCircuit`
-when it is built or set, the `BreathingCircuitState` a rollback restores it
-from, and the `UptakeEquationSettings` a run is built from.
+finite or lies outside 0 to 1, or 0 to 100, when one is built, and refuse a
+value of the other type, which is a missed conversion rather than a
+concentration out of range. Every place that holds a concentration takes the
+type: each compartment's setter, the driving fraction a compartment's own
+closed form takes, `BreathingCircuit` when it is built or set, the
+`BreathingCircuitState` a rollback restores it from, the
+`UptakeEquationSettings` a run is built from, and the `AgentParameters` an
+agent's data file is parsed into, which holds its MAC and vaporizer maximum.
 Each of those refuses a value that was not built as the type, a bare number
 included, so a concentration is checked once, where it is built, rather than
 again at each way in. A fraction a step computes is built as one before any

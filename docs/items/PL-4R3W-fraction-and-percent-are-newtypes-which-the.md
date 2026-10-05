@@ -296,3 +296,40 @@ refusal on the display path is shown - unreachable from any supported setting,
 but when the snapshot itself refuses, the halt is not shown at all, the
 failure `PL-25KS` fixed for the frame - and `PL-5D1Z`, the pickle protocols 0
 and 1 that load every checked type around its check.
+
+**The test pass, folded in a third commit.** It re-ran its mutants on the
+second commit, and the thirteen that survived it, or that its findings
+implied, are killed now (re-run 2026-10-05):
+
+- `AgentParameters` held the MAC and the vaporizer maximum without the type
+  check every other holder makes, so `replace(sevoflurane,
+  mac_percent=Fraction(0.02))` was accepted and would have put 1 MAC at
+  "100.00 ×MAC". It checks both when built, and § "Concentrations" lists it.
+- Each constructor accepted the other type: `mypy` passes `Percent(fraction)`,
+  a `Fraction` being a `float`, which is the rebuild `require_percent` tells a
+  caller not to make. Each refuses it now, with the message `require_*` gives,
+  written once.
+- Three tests did not reach the code they named: two in `test_circuit.py` and
+  one in `test_governing_equations.py` handed values `Percent` refuses before
+  the circuit or the record is reached. They keep zero, of either sign, which
+  the circuit and the record refuse themselves; the values outside the range
+  stay on the constructor, where `test_concentration.py` pins them, and
+  `test_rejects_invalid_delivered_concentration`, left with no case of its
+  own, is gone.
+- Names nobody pinned: the cross-type refusals now match the name they are
+  handed under, a named `Percent` refusal is pinned, and the dial handler's
+  test drives 150% beside 50%, which catches the handler dropping the name or
+  building the `Percent` before `_apply_setting` rather than inside it.
+- The chart's conversion and its hover are pinned to refuse a fraction past 1
+  rather than clamp it, the module docstring's fourth limit; how that is shown
+  stays `PL-7DJK`'s.
+- `test_core_vocabulary_check.py` still called `require_fraction` the range
+  guard, and two test doubles' setters took a `float`.
+
+Filed: `PL-CX2C`, `_CHECKED_QUANTITIES` leaving out `Fraction` and `Percent`,
+so a swapped checked argument is told to rebuild; its fix puts an import
+between `core/concentration.py` and `core/supported_ranges.py`, outside this
+item's `touches`. Left as they are: `isfinite` in either constructor is
+redundant beside the range comparison, which already refuses nan and both
+infinities, and stays because it says what the `Raises` section says; and
+`__slots__ = ()` has no behaviour a test can see.

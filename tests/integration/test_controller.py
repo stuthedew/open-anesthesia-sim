@@ -674,7 +674,7 @@ class _FatThatRefusesTheStep(TissueGroup):
     `_write_state_vector` writes it last.
     """
 
-    def set_partial_pressure_fraction(self, partial_pressure_fraction: float) -> None:
+    def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         super().set_partial_pressure_fraction(
             Fraction(-1.0, name=f"{self.name} partial_pressure_fraction")
         )

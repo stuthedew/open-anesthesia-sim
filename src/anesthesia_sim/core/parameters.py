@@ -34,7 +34,7 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, field_validator, mo
 from pydantic import ValidationError as PydanticValidationError
 
 from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
-from anesthesia_sim.core.concentration import MacMultiple, Percent
+from anesthesia_sim.core.concentration import MacMultiple, Percent, require_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 
@@ -212,6 +212,14 @@ class AgentParameters:
     the file and is discarded. The two carry overlapping field names on
     purpose; `_StrictPayload` says why that is a boundary rather than
     duplication.
+
+    Raises:
+        TypeError: `max_delivered_concentration_percent` or `mac_percent` was
+            not built as a `Percent` - a `Fraction` or a bare `float`
+            included (`core/concentration.py`'s `require_percent`). Their
+            ranges were checked when each was built, so nothing here checks
+            them again; a MAC handed in as a fraction would be a divisor a
+            hundred times too small for every MAC multiple shown (`PL-4R3W`).
     """
 
     schema_version: int
@@ -228,6 +236,12 @@ class AgentParameters:
     # Why no primary source is adopted, where none is; `None` where one is.
     # See `SOURCE_TIERS` above for what the pair of fields is separating.
     provenance_gap: str | None
+
+    def __post_init__(self) -> None:
+        require_percent(
+            "max_delivered_concentration_percent", self.max_delivered_concentration_percent
+        )
+        require_percent("mac_percent", self.mac_percent)
 
     @property
     def vessel_rich_tissue_blood_partition_coefficient(self) -> float:

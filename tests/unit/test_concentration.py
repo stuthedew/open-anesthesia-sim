@@ -34,6 +34,7 @@ from anesthesia_sim.core.concentration import (
     percent_from_fraction,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.parameters import load_sevoflurane_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -117,6 +118,45 @@ def test_a_percent_from_0_through_100_is_the_number_it_was_built_from(value: flo
 def test_a_percent_outside_0_to_100_cannot_be_built(value: float) -> None:
     with pytest.raises(SimulationConfigurationError, match=r"is outside 0 to 100"):
         Percent(value)
+
+
+def test_a_refused_percent_is_named_as_it_was_built() -> None:
+    """A percent is refused under the name its caller gives it, as a fraction is.
+
+    The dial's handler names the percent it builds (`app/run_view.py`), so a
+    setting refused here says which control it came from rather than
+    "percent".
+    """
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^delivered_concentration_percent of 150\.0 is outside 0 to 100, ",
+    ):
+        Percent(150.0, name="delivered_concentration_percent")
+
+
+def test_neither_type_can_be_built_from_the_other() -> None:
+    """Rebuilding a concentration as the other type is the conversion missed.
+
+    `mypy` passes both calls, because each type is a `float` and the other's
+    constructor takes one, so the constructor is what refuses them, with the
+    advice `require_fraction` and `require_percent` give: convert, since a
+    rebuild keeps the number and changes what it means a hundredfold.
+    """
+
+    with pytest.raises(
+        TypeError,
+        match=r"^delivered_concentration_percent of 0\.08 is a Fraction, not a Percent: "
+        r"convert it with percent_from_fraction, ",
+    ):
+        Percent(Fraction(0.08), name="delivered_concentration_percent")
+
+    with pytest.raises(
+        TypeError,
+        match=r"^fraction of 0\.5 is a Percent, not a Fraction: convert it with "
+        r"fraction_from_percent, ",
+    ):
+        Fraction(Percent(0.5))
 
 
 def test_neither_conversion_can_refuse_a_value_of_its_own_type() -> None:
@@ -210,7 +250,10 @@ def test_a_fraction_reaching_a_percent_parameter_is_refused() -> None:
 
     circuit = BreathingCircuit(max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT)
 
-    with pytest.raises(TypeError, match="is a Fraction, not a Percent: convert it"):
+    with pytest.raises(
+        TypeError,
+        match="^delivered_concentration_percent of 0.08 is a Fraction, not a Percent: convert it",
+    ):
         circuit.set_delivered_concentration_percent(Fraction(0.08))  # type: ignore[arg-type]
 
     assert circuit.delivered_concentration_percent == 0.0
@@ -221,10 +264,30 @@ def test_a_percent_reaching_a_fraction_parameter_is_refused() -> None:
 
     circuit = BreathingCircuit()
 
-    with pytest.raises(TypeError, match="is a Percent, not a Fraction: convert it"):
+    with pytest.raises(
+        TypeError,
+        match="^inspired_partial_pressure_fraction of 0.5 is a Percent, not a Fraction: convert it",
+    ):
         circuit.set_inspired_partial_pressure_fraction(Percent(0.5))  # type: ignore[arg-type]
 
     assert circuit.inspired_partial_pressure_fraction == 0.0
+
+
+def test_a_mac_handed_in_as_a_fraction_is_refused() -> None:
+    """The divisor of every MAC multiple shown, a hundred times too small.
+
+    Sevoflurane's MAC is 2%, and as a fraction it is 0.02: held as the
+    percent, it would put 1 MAC at "100.00 ×MAC". The agent's parameters
+    refuse it when they are built, which `dataclasses.replace` does, so a
+    MAC edited in a test or a notebook meets the check a file's MAC meets.
+    """
+
+    sevoflurane = load_sevoflurane_parameters()
+
+    with pytest.raises(
+        TypeError, match="^mac_percent of 0.02 is a Fraction, not a Percent: convert it"
+    ):
+        replace(sevoflurane, mac_percent=Fraction(0.02))  # type: ignore[arg-type]
 
 
 def test_a_percent_built_from_a_fractions_value_is_not_caught() -> None:
@@ -255,6 +318,7 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
 
     system = AgentUptakeSystem.default()
     settings = system.equation_settings()
+    agent = load_sevoflurane_parameters()
     venous = system.patient.venous_blood
     fat = system.patient.fat
     vector_before = system.state_vector()
@@ -300,6 +364,12 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
 
     with pytest.raises(TypeError, match="^max_delivered_concentration_percent of 8.0 was not"):
         replace(settings, max_delivered_concentration_percent=8.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^max_delivered_concentration_percent of 8.0 was not"):
+        replace(agent, max_delivered_concentration_percent=8.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^mac_percent of 2.0 was not built"):
+        replace(agent, mac_percent=2.0)  # type: ignore[arg-type]
 
 
 def test_a_percent_past_100_is_refused_where_it_is_built_and_the_maximum_where_it_is_set() -> None:

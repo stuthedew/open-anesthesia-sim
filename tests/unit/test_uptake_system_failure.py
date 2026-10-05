@@ -904,7 +904,7 @@ class _TissueGroupThatCanUnwindNonlocally(TissueGroup):
 
     unwind_on_next_write: bool = False
 
-    def set_partial_pressure_fraction(self, partial_pressure_fraction: float) -> None:
+    def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         if self.unwind_on_next_write:
             self.unwind_on_next_write = False
 

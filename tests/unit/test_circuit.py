@@ -107,12 +107,6 @@ def test_rejects_invalid_fresh_gas_flow(fresh_gas_flow_l_min: float) -> None:
         BreathingCircuit(fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_flow_l_min))
 
 
-@pytest.mark.parametrize("delivered_concentration_percent", [-1.0, 101.0, float("nan")])
-def test_rejects_invalid_delivered_concentration(delivered_concentration_percent: float) -> None:
-    with pytest.raises(SimulationConfigurationError):
-        BreathingCircuit(delivered_concentration_percent=Percent(delivered_concentration_percent))
-
-
 def test_rejects_delivered_concentration_above_the_vaporizer_maximum() -> None:
     """Regression (PL-015): the vaporizer limit is enforced in the core.
 
@@ -161,11 +155,21 @@ def test_accepts_a_delivered_concentration_of_zero() -> None:
     assert circuit.delivered_concentration_percent == 0.0
 
 
-@pytest.mark.parametrize(
-    "max_delivered_concentration_percent", [0.0, -1.0, 101.0, float("nan"), float("inf")]
-)
+@pytest.mark.parametrize("max_delivered_concentration_percent", [0.0, -0.0], ids=repr)
 def test_rejects_invalid_vaporizer_maximum(max_delivered_concentration_percent: float) -> None:
-    with pytest.raises(SimulationConfigurationError):
+    """A vaporizer that delivers nothing has a percent but no maximum.
+
+    Zero, either sign, is the one maximum the circuit itself refuses. A value
+    outside 0 to 100 cannot be built as a `Percent` to hand it, and
+    `tests/unit/test_concentration.py` pins those on the constructor, as it
+    does the dial's (`PL-4R3W`); the dial's own refusal here is the vaporizer
+    maximum, pinned above.
+    """
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^max_delivered_concentration_percent must be positive and finite$",
+    ):
         BreathingCircuit(
             delivered_concentration_percent=Percent(0.0),
             max_delivered_concentration_percent=Percent(max_delivered_concentration_percent),

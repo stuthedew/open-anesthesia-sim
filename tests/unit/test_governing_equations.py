@@ -261,16 +261,22 @@ def test_accepts_a_dial_at_the_vaporizer_maximum_and_the_vaporizer_off() -> None
         assert settings.max_delivered_concentration_percent == MAX_DELIVERED_PERCENT
 
 
-@pytest.mark.parametrize("maximum", [0.0, -1.0, 101.0, nan, inf], ids=repr)
+@pytest.mark.parametrize("maximum", [0.0, -0.0], ids=repr)
 def test_rejects_a_vaporizer_maximum_no_vaporizer_has(maximum: float) -> None:
-    """The maximum is checked as `BreathingCircuit` checks its own: a positive percent."""
+    """The maximum is checked as `BreathingCircuit` checks its own: a positive percent.
 
-    with pytest.raises(SimulationConfigurationError, match="max_delivered_concentration_percent"):
+    Zero, either sign, is what the record itself refuses. A value outside 0
+    to 100 cannot be built as a `Percent` to hand it, which
+    `tests/unit/test_concentration.py` pins on the constructor (`PL-4R3W`).
+    """
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^max_delivered_concentration_percent must be positive and finite$",
+    ):
         _settings(
             delivered_concentration_percent=Percent(0.0),
-            max_delivered_concentration_percent=Percent(
-                maximum, name="max_delivered_concentration_percent"
-            ),
+            max_delivered_concentration_percent=Percent(maximum),
         )
 
 

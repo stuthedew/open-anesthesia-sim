@@ -38,22 +38,25 @@ does:
 - **`mypy` reads `src/` and not `tests/`, and passes a value typed `Any`.** So
   each place that holds one - a compartment's setter, the driving fraction a
   compartment's own closed form takes, `BreathingCircuit` built or set, the
-  `BreathingCircuitState` a rollback restores it from, and
-  `UptakeEquationSettings` - first calls `require_fraction` or
-  `require_percent`, which refuse with `TypeError` anything not built as the
-  type, a bare `float` included. What only carries a value onward checks
-  nothing.
+  `BreathingCircuitState` a rollback restores it from,
+  `UptakeEquationSettings`, and the `AgentParameters` an agent's data file is
+  parsed into - first calls `require_fraction` or `require_percent`, which
+  refuse with `TypeError` anything not built as the type, a bare `float`
+  included. What only carries a value onward checks nothing.
 - **They cannot catch a wrong magnitude.** `Percent(0.02)` and `Percent(2.0)`
   are 0.02% and 2%, and both are valid percents. What is caught is a *missing
   conversion*: a `Fraction` handed where a `Percent` is wanted is refused by
   `mypy` and, since `PL-4R3W`, by `require_percent` at run time too, which says
-  to convert it rather than rebuild it. A percent built from a fraction's
-  *value* is not caught by anything: every fraction is also a valid percent,
+  to convert it rather than rebuild it. Rebuilding it is refused as well:
+  `mypy` passes `Percent(fraction)`, a `Fraction` being a `float`, so each
+  constructor refuses a value of the other type with `TypeError` and the same
+  advice. A percent built from a fraction's *value* - a bare `float` that held
+  one - is not caught by anything: every fraction is also a valid percent,
   under 1% and so below every agent's vaporizer maximum, and
   `require_within_vaporizer_maximum` passes it. That is why the dial's writers
   are few and each one passes a value already in percent. `PL-WVSK` measured
   the band when the dial was held as a fraction, before `PL-NJPB`. And the
-  run-time refusal stands only where a concentration is held: the two
+  run-time refusal stands only where a concentration is held or built: the two
   conversions below, and the formatters built on them, take what they are
   given, so a `Percent` handed to `percent_from_fraction` is refused by `mypy`
   alone.
@@ -116,6 +119,9 @@ class Fraction(float):
     (`PL-SPN6`). It defaults to the type's own word.
 
     Raises:
+        TypeError: the value is a `Percent`, which is a conversion missed
+            rather than a value refused, so it is told to convert, as
+            `require_fraction` tells it.
         SimulationConfigurationError: the value is not finite, or is outside
             0 to 1. The message gives the value under `name`.
     """
@@ -123,6 +129,9 @@ class Fraction(float):
     __slots__ = ()
 
     def __new__(cls, fraction: float, *, name: str = "fraction") -> Fraction:
+        if isinstance(fraction, Percent):
+            raise _percent_where_a_fraction_belongs(name, fraction)
+
         if not isfinite(fraction) or not 0.0 <= fraction <= 1.0:
             raise SimulationConfigurationError(
                 f"{name} of {fraction} is outside 0 to 1, the range a fraction of one "
@@ -155,6 +164,8 @@ class Percent(float):
     `name` is what a refusal calls the value, as `Fraction` takes it.
 
     Raises:
+        TypeError: the value is a `Fraction`, for the reason `Fraction` gives
+            about a `Percent`.
         SimulationConfigurationError: the value is not finite, or is outside
             0 to 100. The message gives the value under `name`.
     """
@@ -162,6 +173,9 @@ class Percent(float):
     __slots__ = ()
 
     def __new__(cls, percent: float, *, name: str = "percent") -> Percent:
+        if isinstance(percent, Fraction):
+            raise _fraction_where_a_percent_belongs(name, percent)
+
         if not isfinite(percent) or not 0.0 <= percent <= PERCENT_PER_UNIT_FRACTION:
             raise SimulationConfigurationError(
                 f"{name} of {percent} is outside 0 to 100, the range a percent of one "
@@ -200,6 +214,30 @@ and because this module is where the forms of one concentration are declared.
 """
 
 
+def _percent_where_a_fraction_belongs(name: str, percent: Percent) -> TypeError:
+    """The refusal of a `Percent` handed where a `Fraction` belongs.
+
+    Written once for the two places that make it: `require_fraction`, handed
+    one, and `Fraction`, asked to rebuild one.
+    """
+
+    return TypeError(
+        f"{name} of {percent!r} is a Percent, not a Fraction: convert it with "
+        "fraction_from_percent, since a Fraction built from a percent's value holds a "
+        "concentration a hundred times too large"
+    )
+
+
+def _fraction_where_a_percent_belongs(name: str, fraction: Fraction) -> TypeError:
+    """The mirror of `_percent_where_a_fraction_belongs`, for `require_percent` and `Percent`."""
+
+    return TypeError(
+        f"{name} of {fraction!r} is a Fraction, not a Percent: convert it with "
+        "percent_from_fraction, since a Percent built from a fraction's value holds a "
+        "concentration a hundred times too small"
+    )
+
+
 def require_fraction(name: str, fraction: object) -> None:
     """Require a value that was built as a `Fraction`, and so checked.
 
@@ -216,7 +254,7 @@ def require_fraction(name: str, fraction: object) -> None:
     A `Percent` is named as one and told to convert rather than to rebuild: a
     `Fraction` built from a percent's value holds a concentration a hundred
     times too large, which is the missing conversion this module's types exist
-    to refuse.
+    to refuse, and `Fraction` refuses the rebuild with the same message.
 
     Args:
         name: What the value is where it is handed in, for the message. A
@@ -235,11 +273,7 @@ def require_fraction(name: str, fraction: object) -> None:
         return
 
     if isinstance(fraction, Percent):
-        raise TypeError(
-            f"{name} of {fraction!r} is a Percent, not a Fraction: convert it with "
-            "fraction_from_percent, since a Fraction built from a percent's value holds a "
-            "concentration a hundred times too large"
-        )
+        raise _percent_where_a_fraction_belongs(name, fraction)
 
     raise TypeError(
         f"{name} of {fraction!r} was not built as Fraction, it is {type(fraction).__name__}: "
@@ -252,14 +286,16 @@ def require_percent(name: str, percent: object) -> None:
     """Require a value that was built as a `Percent`, and so checked.
 
     The runtime half of the type, as `require_fraction` is for a fraction. It
-    runs where a percent is held - `BreathingCircuit`, built or set, and
-    `UptakeEquationSettings` - and it is the one check that refuses a fraction
+    runs where a percent is held - `BreathingCircuit`, built or set,
+    `UptakeEquationSettings`, and the `AgentParameters` holding an agent's MAC
+    and vaporizer maximum - and it is the one check that refuses a fraction
     reaching the dial at run time as well as under `mypy`.
 
     A `Fraction` is named as one and told to convert rather than to rebuild: a
     `Percent` built from a fraction's value holds a concentration a hundred
     times too small, and is under every agent's vaporizer maximum, so nothing
-    after this would refuse it.
+    after this would refuse it. `Percent` refuses the rebuild with the same
+    message.
 
     Args:
         name: What the value is where it is handed in - the dial, or its
@@ -275,11 +311,7 @@ def require_percent(name: str, percent: object) -> None:
         return
 
     if isinstance(percent, Fraction):
-        raise TypeError(
-            f"{name} of {percent!r} is a Fraction, not a Percent: convert it with "
-            "percent_from_fraction, since a Percent built from a fraction's value holds a "
-            "concentration a hundred times too small"
-        )
+        raise _fraction_where_a_percent_belongs(name, percent)
 
     raise TypeError(
         f"{name} of {percent!r} was not built as Percent, it is {type(percent).__name__}: "
