@@ -3506,6 +3506,89 @@ def test_the_inline_trigger_list_is_read_too(tmp_path: Path) -> None:
     assert any("runs tools/b_check.py and `make check` does not" in m for m in _parity(root))
 
 
+@pytest.mark.parametrize(
+    "trigger",
+    [
+        "on:\n  - push\n  - pull_request\n",
+        "on:\n  pull_request:  # every pull request\n",
+        "on:\n  pull_request: {branches: [main]}\n",
+        "on:  # what starts this workflow\n  pull_request:\n",
+        "on: &triggers\n  pull_request:\n",
+        "on: {push: {branches: [main]}, pull_request: }\n",
+        "on:\n  [push, pull_request]\n",
+        "on:\n    pull_request:\n",
+    ],
+)
+def test_each_spelling_of_a_pull_request_trigger_is_the_merge_gate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, trigger: str
+) -> None:
+    """Each spelling YAML allows `on:` is read as the trigger it is (`PL-848V`).
+
+    `PULL_REQUEST_TRIGGER_RE` matched a bare `pull_request:` key and nothing
+    else, so a workflow spelled any of these ways gated nothing, and a script
+    only it ran read as missing from the merge gate (`PL-PZP7`, `PL-S3XS`).
+    """
+    monkeypatch.setattr(doc_check, "default_branch", lambda root: "main")
+    # Braces doubled, since `_parity_repo` formats the steps into the template.
+    workflow = GATING_WORKFLOW.replace(
+        "on:\n  push:\n    branches: [main]\n  pull_request:\n",
+        trigger.replace("{", "{{").replace("}", "}}"),
+    )
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py"],
+        workflows={
+            "quality.yml": (workflow, ["python3 tools/a_check.py", "python3 tools/b_check.py"])
+        },
+    )
+
+    assert any("runs tools/b_check.py and `make check` does not" in m for m in _parity(root))
+
+
+def test_a_branch_filter_leaving_the_default_branch_out_is_no_merge_gate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A pull request onto the default branch never runs it, so it gates no merge (`PL-C72H`)."""
+    monkeypatch.setattr(doc_check, "default_branch", lambda root: "main")
+    release = GATING_WORKFLOW.replace(
+        "  pull_request:\n", "  pull_request:\n    branches: ['releases/**']\n"
+    )
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py", "python3 tools/b_check.py"],
+        workflows={
+            "quality.yml": (GATING_WORKFLOW, ["python3 tools/a_check.py"]),
+            "release.yml": (release, ["python3 tools/b_check.py"]),
+        },
+    )
+
+    assert any(
+        "runs tools/b_check.py and no workflow triggered by a pull request" in m
+        for m in _parity(root)
+    )
+
+
+def test_a_branch_filter_with_no_default_branch_to_match_is_declined(tmp_path: Path) -> None:
+    """A checkout naming no default branch cannot say whether the filter admits it.
+
+    `_repo` builds no git repository, so the default branch is a guess here, and
+    a guess is not matched against (`PL-C72H`).
+    """
+    release = GATING_WORKFLOW.replace(
+        "  pull_request:\n", "  pull_request:\n    branches: [main]\n"
+    )
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py"],
+        workflows={"quality.yml": (release, ["python3 tools/b_check.py"])},
+    )
+    report = doc_check.Report()
+    doc_check.check_gate_parity(root, report)
+
+    assert report.errors == []
+    assert any("no branch was named to match it against" in line for line in report.declined)
+
+
 def test_a_path_that_does_not_exist_is_not_a_gate(tmp_path: Path) -> None:
     """The rule reads the tree, so a `.py` written as an argument is not swept in."""
     root = _parity_repo(
@@ -6884,7 +6967,23 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     ),
     "pull request trigger, a flow collection carried past its line is refused by name": (
         lambda _: _refused(lambda: doc_check._gates_pull_requests("on: [push,\n  pull_request]\n")),
-        "declined: line 1: its `on:` events are a flow collection carried past the key's line",
+        "declined: line 1: `on:` holds a flow collection carried past its line",
+    ),
+    # The merge gate's trigger, read through `required_checks_check`'s one
+    # reader of `on:` (`PL-848V`): a comment or an anchor after the key leaves
+    # its value on the lines below, where it is read, and a value opening on the
+    # line after the key is read there.
+    "pull request trigger, an on: key carrying a comment": (
+        lambda _: doc_check._gates_pull_requests("on:  # what starts it\n  pull_request:\n"),
+        True,
+    ),
+    "pull request trigger, an on: key carrying an anchor": (
+        lambda _: doc_check._gates_pull_requests("on: &triggers\n  pull_request:\n"),
+        True,
+    ),
+    "pull request trigger, a flow list on the line after the key": (
+        lambda _: doc_check._gates_pull_requests("on:\n  [push, pull_request]\n"),
+        True,
     ),
     "front matter, an indented `---` is a line of the value above it": (
         lambda _: doc_check.is_path_scoped(INDENTED_RULE),
@@ -6911,8 +7010,32 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         "declined: `paths:` is a flow collection",
     ),
     "required checks, a flow collection carried past its line is refused by name": (
-        lambda _: _refused(lambda: rcc._triggers(["on: [push,", "  pull_request]", "jobs:"])),
-        "declined: `on:` is a flow collection carried past the key's line",
+        lambda _: _refused(lambda: rcc.triggers(["on: [push,", "  pull_request]", "jobs:"])),
+        "declined: `on:` holds a flow collection carried past its line",
+    ),
+    "required checks, a flow list carried past a filter's line is refused by name": (
+        lambda _: _refused(
+            lambda: rcc.triggers(["on:", "  pull_request:", "    branches: [main,", "      dev]"])
+        ),
+        "declined: `branches:` holds a flow collection carried past its line",
+    ),
+    "required checks, an event folded into a block scalar is refused by name": (
+        lambda _: _refused(lambda: rcc.triggers(["on: >-", "  pull_request", "jobs:"])),
+        "declined: `on:` holds a block scalar (`>`)",
+    ),
+    "required checks, an event carried onto the next line is refused by name": (
+        lambda _: _refused(lambda: rcc.triggers(["on: pull_request", "  push", "jobs:"])),
+        "declined: `on:` continues onto a line indented under it",
+    ),
+    "required checks, a jobs flow mapping carried past its line is refused by name": (
+        lambda _: _refused(
+            lambda: rcc._jobs(["jobs: {lint: {name: Lint,", "  runs-on: x}}"], "quality.yml")
+        ),
+        "declined: `jobs:` holds its value on the key's line",
+    ),
+    "required checks, an event on the line after the key is read there": (
+        lambda _: sorted(rcc.triggers(["on:", "  # why", "  pull_request", "jobs:"])),
+        ["pull_request"],
     ),
     # A job's display name (`PL-TMX9`), read through `_job_name`: the check name
     # is a plain scalar on the key's line, and a value YAML carries past it is

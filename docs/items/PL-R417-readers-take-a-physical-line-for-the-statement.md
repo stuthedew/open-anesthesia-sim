@@ -268,7 +268,8 @@ format per pull request as before, each closing its members and adding their
 cases to `CONTINUED_STATEMENTS`: the two Markdown members left, `PL-T1X0`,
 whose item holds a second half of its own, a link anchor named for a bold
 lead-in, and `PL-BYJ5`; then the Python readers (`PL-V2HK`, `PL-TC2D`), the
-YAML readers (`PL-S3XS`, `PL-4T49`, `PL-PPNV`), the shell readers (`PL-97CF`,
+YAML readers (`PL-S3XS`'s run-step half and `PL-PPNV`; `PL-4T49` and
+`PL-S3XS`'s `on:` half closed with `PL-848V` in `#1366`), the shell readers (`PL-97CF`,
 `PL-2JYP`, `PL-WG6S`), the Makefile reader (`PL-4MLK`), and the two that read a
 change or a commit record (`PL-F7Z6`, `PL-4ZVH`). `PL-TC2D` reads a file the
 interpreter cannot parse through `tokenize` first (project owner, 2026-10-04,
