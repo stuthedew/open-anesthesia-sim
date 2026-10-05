@@ -2865,7 +2865,7 @@ def test_workflow_commands_reads_a_script_as_bash_does() -> None:
         "            check\n"
     )
 
-    assert list(doc_check.workflow_commands(text)) == [
+    assert _step_commands(text) == [
         ("python3 - <<'PY'", 2),
         ("python3 tools/doc_check.py \\\n  check", 5),
     ]
@@ -2988,9 +2988,104 @@ def test_a_comment_after_a_plain_step_carries_nothing_on() -> None:
     """A comment line is no continuation (YAML 1.2.2 § 6.6), so the step is read, not declined."""
     unread: list[doc_check.UnreadStatement] = []
 
-    commands = list(doc_check.workflow_commands("      - run: bin/x\n          # why\n", unread))
+    commands = _step_commands("      - run: bin/x\n          # why\n", unread)
 
     assert (commands, unread) == ([("bin/x", 1)], [])
+
+
+# PL-S3XS: a `run:` key was read wherever a line opened with one, so a line of
+# another key's block scalar was a step, and a `defaults:` block's `run:` a step
+# declined. Steps are read where a workflow's structure puts them now, through
+# `required_checks_check.steps`.
+
+
+def test_a_defaults_run_block_is_no_step() -> None:
+    """`defaults:` sets the shell a job's steps run in, and runs nothing.
+
+    Read a line at a time, each `run:` here was a step whose value opened on
+    the line after its key, declined, which left the coverage gate and gate
+    parity comparing nothing.
+    """
+    text = (
+        "defaults:\n  run:\n    shell: bash\n"
+        "jobs:\n  checks:\n    defaults:\n      run:\n        shell: bash\n"
+        "    steps:\n      - run: bin/runner check\n"
+    )
+    unread: list[doc_check.UnreadStatement] = []
+
+    commands = list(doc_check.workflow_commands(text, unread))
+
+    assert (commands, unread) == ([("bin/runner check", 10)], [])
+
+
+def test_steps_are_read_where_each_job_lists_them() -> None:
+    """A list at its key's own indentation, a step opening below its `-`, and no input as a step.
+
+    YAML lets a list sit at its key's indentation and a list entry's mapping
+    open on the line below the `-` (YAML 1.2.2 § 8.2.1), and a job set its own
+    indentation; an action's `with:` input named `run` is no step of its own.
+    """
+    text = (
+        "jobs:\n"
+        "  lint:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "    - name: a list at its key's indentation\n"
+        "      run: bin/a\n"
+        "    - uses: actions/x@v1\n"
+        "      with:\n"
+        "        run: bin/an_input\n"
+        "  test:\n"
+        "      steps:\n"
+        "        -\n"
+        "          run: bin/b\n"
+    )
+
+    assert list(doc_check.workflow_commands(text)) == [("bin/a", 6), ("bin/b", 13)]
+
+
+@pytest.mark.parametrize(
+    ("workflow", "commands", "declined"),
+    [
+        (
+            "jobs: {lint: {steps: [{run: bin/a}]}}\n",
+            [],
+            (1, "`jobs:` holds its value on the key's line"),
+        ),
+        (
+            "jobs:\n  lint: {steps: [{run: bin/a}]}\n  test:\n    steps:\n      - run: bin/b\n",
+            [("bin/b", 5)],
+            (2, "job `lint` is written on its key's line"),
+        ),
+        (
+            "jobs:\n  lint:\n    steps: [{run: bin/a}]\n  test:\n    steps:\n      - run: bin/b\n",
+            [("bin/b", 6)],
+            (3, "job `lint` holds its `steps:` on the key's line"),
+        ),
+        (
+            "jobs:\n  lint:\n    steps:\n      run: bin/a\n"
+            "  test:\n    steps:\n      - run: bin/b\n",
+            [("bin/b", 7)],
+            (4, "job `lint`'s `steps:` holds `run: bin/a` where a list entry belongs"),
+        ),
+    ],
+)
+def test_a_job_or_its_steps_in_a_form_this_reader_does_not_read_is_declined(
+    workflow: str, commands: list[tuple[str, int]], declined: tuple[int, str]
+) -> None:
+    """Named at its line, and the jobs after it still read.
+
+    Read a line at a time, the first three were no `run:` step and passed
+    unread and unsaid, and the last read a mapping as a step.
+    """
+    unread: list[doc_check.UnreadStatement] = []
+
+    read = list(doc_check.workflow_commands(workflow, unread))
+
+    assert (read, [(step.line, step.why.partition(",")[0]) for step in unread]) == (
+        commands,
+        [declined],
+    )
 
 
 def test_a_declined_step_leaves_the_coverage_gate_uncompared(tmp_path: Path) -> None:
@@ -6550,11 +6645,32 @@ def _ruff_errors(tmp_path: Path, check: str) -> list[str]:
     return [error for error in _errors(_ruffed(_repo(tmp_path), check=check)) if "ruff" in error]
 
 
+#: The job a step is read under, since `workflow_commands` reads only a job's steps (`PL-S3XS`).
+STEP_JOB = "jobs:\n  checks:\n    steps:\n"
+
+
+def _step_commands(
+    step: str, unread: list[doc_check.UnreadStatement] | None = None
+) -> list[tuple[str, int]]:
+    """What `workflow_commands` reads from `step` under `STEP_JOB`, at the step's own lines."""
+    below = STEP_JOB.count("\n")
+    return [
+        (command, line - below)
+        for command, line in doc_check.workflow_commands(STEP_JOB + step, unread)
+    ]
+
+
 def _run_step(step: str) -> tuple[list[tuple[str, int]], list[tuple[int, str]]]:
     """The commands `workflow_commands` reads from a step, and each step it declines, by form."""
     unread: list[doc_check.UnreadStatement] = []
-    commands = list(doc_check.workflow_commands(step, unread))
-    return commands, [(declined.line, declined.why.partition(",")[0]) for declined in unread]
+    commands = _step_commands(step, unread)
+    return commands, [
+        (
+            declined.line - STEP_JOB.count("\n"),
+            declined.why.removeprefix("this `run:` step is ").partition(",")[0],
+        )
+        for declined in unread
+    ]
 
 
 def _refused(read: Callable[[], object]) -> object:
@@ -7117,6 +7233,24 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: _run_step("      - run: |\n          python3 tools/x.py\n        shell: bash\n"),
         ([("python3 tools/x.py", 2)], []),
     ),
+    # Where a step's `run:` key is (`PL-S3XS`), read from the job's `steps:`
+    # list through `required_checks_check.steps`: a line of another key's block
+    # scalar is that scalar's, and a step YAML carries across lines as a flow
+    # mapping is refused by name, the steps after it read on.
+    "workflow commands, a run key inside another block scalar is no step": (
+        lambda _: _run_step(
+            "      - uses: actions/github-script@v7\n        with:\n          script: |\n"
+            "            run: python3 tools/not_a_step.py\n"
+            "      - run: python3 tools/real_step.py\n"
+        ),
+        ([("python3 tools/real_step.py", 5)], []),
+    ),
+    "workflow commands, a flow mapping step carried across lines is refused by name": (
+        lambda _: _run_step(
+            "      - {name: x,\n         run: python3 tools/real_step.py}\n      - run: bin/next\n"
+        ),
+        ([("bin/next", 3)], [(1, "this step is written as a flow collection (`{`)")]),
+    ),
     "pull request trigger, a flow collection carried past its line is refused by name": (
         lambda _: _refused(lambda: doc_check._gates_pull_requests("on: [push,\n  pull_request]\n")),
         "declined: line 1: `on:` holds a flow collection carried past its line",
@@ -7160,6 +7294,13 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "rules paths, a flow collection is refused by name": (
         lambda _: _refused(lambda: rules_paths_check.entries(['paths: ["/a/**",', '  "/b/**"]'])),
         "declined: `paths:` is a flow collection",
+    ),
+    # `PL-PPNV`: a dash deeper than the list's is a line of the glob above it.
+    "rules paths, an over-indented dash is refused by name": (
+        lambda _: _refused(
+            lambda: rules_paths_check.entries(["paths:", "  - /src/**", "    - /tests/**"])
+        ),
+        "declined: `- /tests/**` under `paths:` is indented past the list's first `- `",
     ),
     "required checks, a flow collection carried past its line is refused by name": (
         lambda _: _refused(lambda: rcc.triggers(["on: [push,", "  pull_request]", "jobs:"])),

@@ -249,7 +249,9 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 
 # `required_checks_check` holds the one reader of a workflow's triggers
 # (`PL-848V`), which the merge gate's question is asked of rather than read a
-# second way: two hand readers had each taken a few of `on:`'s spellings.
+# second way: two hand readers had each taken a few of `on:`'s spellings. It
+# holds the one reader of a workflow's steps too (`PL-S3XS`), for the same
+# reason: a line regex had taken a `run:` inside another block for a step.
 import required_checks_check
 
 # Documentation whose claims this tool holds to the tree. `CLAUDE.md` and the
@@ -780,11 +782,12 @@ LIST_ITEM_RE = re.compile(r"^(?P<marker> *(?:[-*+]|\d{1,9}[.)]))(?:(?P<gap> +)(?
 
 WORKFLOW_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 
-# `run:` opens a step's shell, either inline or as a block scalar whose body
-# is every following line indented past the key. Reading it this way rather
-# than parsing YAML keeps this tool standard-library only, which is what lets
-# a hook or a bare checkout run it. `lead` is everything before the key, so its
-# length is the key's column, which a value's lines are indented past.
+# The line of a step's `run:` key, which `required_checks_check.steps` places:
+# the key opens a step's shell, either inline or as a block scalar whose body is
+# every following line indented past the key. Reading it this way rather than
+# parsing YAML keeps this tool standard-library only, which is what lets a hook
+# or a bare checkout run it. `lead` is everything before the key, so its length
+# is the key's column, which a value's lines are indented past.
 RUN_STEP_RE = re.compile(r"^(?P<lead>\s*-?\s*)run:\s*(?P<inline>.*)$")
 #: A block scalar's header (YAML 1.2.2 § 8.1.1): `|` for a literal block or `>`
 #: for a folded one, then an indentation indicator and a chomping indicator in
@@ -4906,36 +4909,62 @@ def workflow_commands(
     non-blank line sets, and keeps the rest: `x\\` over an indented `y` is
     two words to bash, where stripping each line first would make it `xy`.
 
+    **Which lines are a step's `run:` key is read from the workflow's
+    structure** (`PL-S3XS`), through `required_checks_check.steps`: the `run:`
+    of an entry of a job's `steps:` list. Read a line at a time, a `run:` line
+    inside another key's block scalar was a step, a `defaults:` block's `run:`
+    was a step declined, and a step written as a flow mapping across lines
+    kept its closing brace in the command.
+
     **Where a step's value ends, and in which form, is read as YAML reads it**
-    (`PL-R417`), through `_run_script`. A step whose value is in a form that
-    reader declines is no commands here: it goes on `unread` where the caller
-    passes one, so the check can say which step it did not read and carry on
-    to the next, and is raised where none is passed, so no reading of it is
+    (`PL-R417`), through `_run_script`. A step, a job or a workflow in a form
+    either reader declines is no commands here: it goes on `unread` where the
+    caller passes one, so the check can say which it did not read and carry
+    on to the next, and is raised where none is passed, so no reading of it is
     silent.
     """
     lines = split_lines(text)
-    index = 0
-    while index < len(lines):
-        match = RUN_STEP_RE.match(lines[index])
-        index += 1
-        if match is None:
-            continue
-        first = index
-        while index < len(lines) and (
-            not lines[index].strip() or _indent(lines[index]) > len(match["lead"])
-        ):
-            index += 1
+    try:
+        steps = required_checks_check.steps(lines)
+    except required_checks_check.Undecidable as workflow:
+        steps = [required_checks_check.Step(workflow.line or 1, refused=workflow)]
+    for step in steps:
         try:
-            script = _run_script(match, lines, first, index)
-        except UnreadStatement as step:
+            script = _step_script(step, lines)
+        except UnreadStatement as declined:
             if unread is None:
                 raise
-            unread.append(step)
+            unread.append(declined)
             continue
         body = "".join(f"{line}\n" for line, _ in script)
         for command, offset in script_lines(body):
             if command.strip():
                 yield command.strip(), script[body.count("\n", 0, offset)][1]
+
+
+def _step_script(step: required_checks_check.Step, lines: list[str]) -> list[tuple[str, int]]:
+    """The script one step's `run:` hands bash, a line at a time, or nothing where it has none.
+
+    Raises `UnreadStatement` where the step, or the job holding it, was
+    refused, naming why, or where its `run:` value is in a form `_run_script`
+    declines.
+    """
+    if step.refused is not None:
+        raise UnreadStatement(step.line, step.refused.why)
+    if "run" not in step.keys:
+        return []
+    index, column = step.keys["run"]
+    match = RUN_STEP_RE.match(lines[index])
+    if match is None or len(match["lead"]) != column:
+        raise UnreadStatement(
+            index + 1,
+            "this `run:` step's key is quoted, or spaced from its colon, which this reader "
+            "does not split; write it `run:`",
+        )
+    end = index + 1
+    while end < len(lines) and (not lines[end].strip() or _indent(lines[end]) > column):
+        end += 1
+    return _run_script(match, lines, index + 1, end)
 
 
 def _indent(line: str) -> int:
@@ -5001,23 +5030,25 @@ def _run_script(
     if header is not None:
         raise UnreadStatement(
             line,
-            "a folded block (`>`), whose lines YAML joins into one before bash reads "
-            "them, and this reader does not; write it as a literal block (`|`)",
+            "this `run:` step is a folded block (`>`), whose lines YAML joins into one "
+            "before bash reads them, and this reader does not; write it as a literal block "
+            "(`|`)",
         )
     if inline[:1] in YAML_NODE_INDICATORS:
         form = "a quoted scalar" if inline[0] in "\"'" else f"a YAML node opening `{inline[0]}`"
         raise UnreadStatement(
             line,
-            f"{form}, which YAML resolves before bash reads it, and this reader does "
-            "not; write the command itself, on the key's line or as a literal block (`|`)",
+            f"this `run:` step is {form}, which YAML resolves before bash reads it, and "
+            "this reader does not; write the command itself, on the key's line or as a "
+            "literal block (`|`)",
         )
     if after:
         where = "carried onto the line after it" if inline else "opening on the line after it"
         raise UnreadStatement(
             line,
-            f"a plain scalar {where}, which YAML folds into one line before bash reads "
-            "it, and this reader does not; write it on the key's line or as a literal "
-            "block (`|`)",
+            f"this `run:` step is a plain scalar {where}, which YAML folds into one line "
+            "before bash reads it, and this reader does not; write it on the key's line or "
+            "as a literal block (`|`)",
         )
     return [(inline, line)] if inline else []
 
@@ -5170,11 +5201,9 @@ def check_workflow_paths(root: Path, report: Report) -> None:
 def _decline_steps(
     report: Report, workflow: Path, steps: Iterable[UnreadStatement], unread: str
 ) -> None:
-    """Say which `run:` steps `workflow_commands` declined, and what went unchecked for it."""
+    """Say which steps `workflow_commands` declined, and what went unchecked for it."""
     for step in steps:
-        report.declined.append(
-            f"{workflow}:{step.line}: this `run:` step is {step.why}, so {unread}"
-        )
+        report.declined.append(f"{workflow}:{step.line}: {step.why}, so {unread}")
 
 
 # What marks the invocation the two files promise to keep identical. The

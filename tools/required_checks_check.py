@@ -115,6 +115,15 @@ read for what it leaves out:
   workflows*, docs.github.com, read 2026-10-05), since the commit a left-out
   activity brings is then never checked.
 
+**A workflow's steps are read once here too** (`PL-S3XS`). `steps` walks
+`jobs:` to each job's `steps:` list and gives each step's keys with the line
+and column each opens on, so `doc_check` reads a `run:` where a step holds one
+rather than wherever a line looks like one: its line regex took a `run:` inside
+another block scalar, or under `defaults:`, for a step's shell. A job or step
+in a form it does not read - a flow collection, or a job or `steps:` written on
+its key's line - comes back refused by name and line, and the steps around it
+are read on.
+
 **What agreement here does and does not prove.** It proves that every job
 reporting onto a pull request is in the required list, and that every name in
 that list is reported by a job. It does not prove that the list blocks a merge:
@@ -144,8 +153,8 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -551,6 +560,23 @@ def _passed_over(lines: Sequence[str], index: int, indent: int, inline: str) -> 
     return len(lines)
 
 
+def _entry_key(entry: _Line, seen: Iterable[str], what: str) -> tuple[str, str]:
+    """The key the block mapping entry `entry` opens, and what follows its `:`.
+
+    Raises `Undecidable` where `entry` opens no key, or one `seen` already
+    holds, since YAML allows a key once in a mapping (§ 3.2.1.1).
+    """
+    line = entry.index + 1
+    opened = None if entry.text[:1] in "[{" or _item(entry.text) else _key(entry.text, line)
+    if opened is None:
+        raise Undecidable(f"{what} holds `{entry.text}` among its keys, and it is no key", line)
+    if opened[0] in seen:
+        raise Undecidable(
+            f"`{opened[0]}:` appears twice in {what}, which YAML does not allow", line
+        )
+    return opened
+
+
 def _mapping(
     lines: Sequence[str], first: _Line, what: str, unread: Callable[[str], bool] | None
 ) -> tuple[object, int]:
@@ -563,12 +589,7 @@ def _mapping(
     entry: _Line | None = first
     while entry is not None and entry.indent == first.indent:
         line = entry.index + 1
-        opened = None if entry.text[:1] in "[{" or _item(entry.text) else _key(entry.text, line)
-        if opened is None:
-            raise Undecidable(f"{what} holds `{entry.text}` among its keys, and it is no key", line)
-        key, inline = opened
-        if key in keyed:
-            raise Undecidable(f"`{key}:` appears twice in {what}, which YAML does not allow", line)
+        key, inline = _entry_key(entry, keyed, what)
         if unread is not None and unread(key):
             keyed[key] = (line, UNREAD)
             end = _passed_over(lines, entry.index + 1, entry.indent, inline)
@@ -969,6 +990,35 @@ def _job_name(lines: list[str], index: int, job: str, keys: int) -> str | None:
     return TRAILING_COMMENT.sub("", inline) or None
 
 
+def _first_job(lines: Sequence[str]) -> tuple[int, _Line | None] | None:
+    """The index of the line opening the top-level `jobs:`, and the line its first job opens.
+
+    `None` where no top-level key is `jobs`, and no first job where it holds
+    none. `jobs:` written as a flow mapping, on its key's line or the next,
+    raises `Undecidable` naming the form (`PL-4T49`).
+    """
+    found = _top_level(lines, "jobs")
+    if found is None:
+        return None
+    start, inline = found
+    if inline:
+        raise Undecidable(
+            "`jobs:` holds its value on the key's line, which this parser does not read - "
+            "write the jobs as a block mapping under it",
+            start + 1,
+        )
+    first = _next(lines, start + 1)
+    if first is None or first.indent == 0:
+        return start, None
+    if first.text[:1] in "[{" or _item(first.text):
+        raise Undecidable(
+            "`jobs:` holds a flow collection or a list on the line after it, which this parser "
+            "does not read - write the jobs as a block mapping",
+            first.index + 1,
+        )
+    return start, first
+
+
 def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
     """Return every job in the workflow, with the check name it would report.
 
@@ -980,25 +1030,12 @@ def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
     (`PL-4T49`): read a line at a time, `{lint:` was a job, and a carried
     `runs-on:` another.
     """
-    found = _top_level(lines, "jobs")
-    if found is None:
+    opened = _first_job(lines)
+    if opened is None:
         raise Undecidable("no `jobs:` block at the top level")
-    start, inline = found
-    if inline:
-        raise Undecidable(
-            "`jobs:` holds its value on the key's line, which this parser does not read - "
-            "write the jobs as a block mapping under it",
-            start + 1,
-        )
-    first = _next(lines, start + 1)
-    if first is None or first.indent == 0:
+    start, first = opened
+    if first is None:
         return []
-    if first.text[:1] in "[{" or _item(first.text):
-        raise Undecidable(
-            "`jobs:` holds a flow collection or a list on the line after it, which this parser "
-            "does not read - write the jobs as a block mapping",
-            first.index + 1,
-        )
 
     jobs: list[ReportingJob] = []
     comment_block: list[str] = []
@@ -1074,6 +1111,157 @@ def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
             )
     close()
     return jobs
+
+
+@dataclass(frozen=True)
+class Step:
+    """One entry of a job's `steps:` list, at the line its `-` opens on, counted from 1.
+
+    `keys` maps each key the step carries to the index of the line it opens on
+    and its column, which is where its value is read from. Where the step, or
+    the job holding it, is in a form `steps` does not read, `refused` names it
+    and `keys` is empty.
+    """
+
+    line: int
+    keys: dict[str, tuple[int, int]] = field(default_factory=dict)
+    refused: Undecidable | None = None
+
+
+def _keys(lines: Sequence[str], first: _Line, what: str) -> Iterator[tuple[str, str, _Line, int]]:
+    """Each key of the block mapping whose first key opens `first`, its value passed over unread.
+
+    Yields the key, what follows its `:` on its line, the line it opens and the
+    index past its value, which ends where indentation alone says it does
+    (`_passed_over`), so no line of a value - another key's block scalar, a
+    mapping nested under it - is read as a key. `first` may hold the text after
+    a list entry's `-`, at the column it opens. A line among the keys that
+    opens none raises `Undecidable`, as does a key written twice (§ 8.2.2).
+    """
+    seen: set[str] = set()
+    entry: _Line | None = first
+    while entry is not None and entry.indent == first.indent:
+        key, inline = _entry_key(entry, seen, what)
+        seen.add(key)
+        end = _passed_over(lines, entry.index + 1, entry.indent, inline)
+        yield key, inline, entry, end
+        entry = _next(lines, end)
+
+
+def _step_keys(lines: Sequence[str], entry: _Line) -> dict[str, tuple[int, int]]:
+    """Each key the step whose `-` opens `entry` carries: the index of its line, and its column.
+
+    The step is a block mapping, opening after the `-` or on the line below it.
+    Any other node raises `Undecidable` naming it: a flow mapping, which read a
+    line at a time kept its closing brace in the command (`PL-S3XS`), an alias,
+    an anchor, a tag or a scalar.
+    """
+    rest = entry.text[1:].lstrip(" \t")
+    if rest:
+        first = _Line(entry.index, entry.indent + len(entry.text) - len(rest), rest)
+    else:
+        below = _next(lines, entry.index + 1)
+        if below is None or below.indent <= entry.indent:
+            raise Undecidable("this step holds nothing", entry.index + 1)
+        first = below
+    if first.text[:1] in "[{":
+        raise Undecidable(
+            f"this step is written as a flow collection (`{first.text[0]}`), which this reader "
+            "does not read - write it as a block mapping",
+            first.index + 1,
+        )
+    if _key(first.text, first.index + 1) is None:
+        raise Undecidable(
+            f"this step opens no block mapping, but `{first.text}`, which this reader does not "
+            "read - write it as a block mapping",
+            first.index + 1,
+        )
+    return {
+        key: (opened.index, opened.indent) for key, _, opened, _ in _keys(lines, first, "this step")
+    }
+
+
+def _job_steps(
+    lines: Sequence[str], job: str, inline: str, opened: _Line, end: int
+) -> Iterator[Step]:
+    """The steps of job `job`, its key `opened` holding `inline` and its value ending at `end`.
+
+    A step in a form this does not read comes back refused, and the steps after
+    it are read on. A job, or a `steps:`, in a form this does not read raises
+    `Undecidable`, naming it, after the steps read before it.
+    """
+    if inline:
+        raise Undecidable(
+            f"job `{job}` is written on its key's line, which this reader does not read - "
+            "write its keys as a block mapping under it",
+            opened.index + 1,
+        )
+    body = _next(lines, opened.index + 1)
+    if body is None or body.index >= end:
+        return
+    if body.text[:1] in "[{" or _item(body.text):
+        raise Undecidable(
+            f"job `{job}` holds a flow collection or a list, which this reader does not read - "
+            "write its keys as a block mapping",
+            body.index + 1,
+        )
+    for key, held, key_line, value_end in _keys(lines, body, f"job `{job}`"):
+        if key != "steps":
+            continue
+        if held:
+            raise Undecidable(
+                f"job `{job}` holds its `steps:` on the key's line, which this reader does not "
+                "read - write them as a block list under it",
+                key_line.index + 1,
+            )
+        entry = _next(lines, key_line.index + 1)
+        column = None if entry is None else entry.indent
+        while entry is not None and entry.index < value_end:
+            if entry.indent != column or not _item(entry.text):
+                raise Undecidable(
+                    f"job `{job}`'s `steps:` holds `{entry.text}` where a list entry belongs, "
+                    "which this reader does not read",
+                    entry.index + 1,
+                )
+            step_end = _passed_over(lines, entry.index + 1, entry.indent, "-")
+            try:
+                keys = _step_keys(lines, entry)
+            except Undecidable as unread:
+                yield Step(entry.index + 1, refused=unread)
+            else:
+                yield Step(entry.index + 1, keys)
+            entry = _next(lines, step_end)
+
+
+def steps(lines: Sequence[str]) -> list[Step]:
+    """Every step a workflow's jobs carry, in the order written (`PL-S3XS`).
+
+    A step is an entry of the block list a job's `steps:` holds, and a job a key
+    of the block mapping under the top-level `jobs:`, where GitHub's workflow
+    schema puts them. Each value is passed over by its indentation alone, so a
+    key nested deeper is no step's: a line of another key's block scalar, an
+    action's `with:` input, or the `run:` of a `defaults:` block, which sets
+    the shell steps run in and runs nothing. Read a line at a time, each was a
+    `run:` step to `doc_check`.
+
+    A step or job in a form this does not read comes back as a `Step` that
+    names it in `refused`, at its line, and the rest are read on: a job written
+    on its key's line, a `steps:` held there or holding no block list, and a
+    step that is no block mapping (`PL-R417`). A `jobs:` it does not read raises
+    `Undecidable`, as `_jobs` does.
+    """
+    opened = _first_job(lines)
+    first = None if opened is None else opened[1]
+    if first is None:
+        return []
+    read: list[Step] = []
+    for job, held, at, end in _keys(lines, first, "`jobs:`"):
+        try:
+            for step in _job_steps(lines, job, held, at, end):
+                read.append(step)
+        except Undecidable as unread:
+            read.append(Step(unread.line or at.index + 1, refused=unread))
+    return read
 
 
 def reporting_jobs(workflow_dir: Path, branch: str | None = None) -> list[ReportingJob]:

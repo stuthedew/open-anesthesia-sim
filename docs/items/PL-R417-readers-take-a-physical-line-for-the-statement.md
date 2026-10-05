@@ -315,17 +315,34 @@ ten cases, three `assertions, `, one `suppressions, `, three
 `test definitions, ` and three `changed definitions, `, each failing on main's
 readers. No new member was filed. `generator:` stays `live`.
 
-**Next steps (recorded 2026-10-04, revised by links 8, 11 and 12).** The
+**Link 13, the YAML slice (`#1376`, 2026-10-05).** Done: `PL-S3XS`'s run-step
+half and `PL-PPNV`. `required_checks_check.steps` is the one reader of a
+workflow's steps, beside `triggers` for its `on:`: it walks `jobs:` to each
+job's `steps:` list, passing every value over by its indentation alone, and
+gives each step's keys with the line and column each opens on. `doc_check`'s
+`workflow_commands` reads a `run:` there and nowhere else, so a `run:` inside
+another key's block scalar, an action's `with:` or `defaults:` is no step. A
+step written as a flow mapping is refused by name, as is a job or a `steps:`
+written on its key's line, and the steps around it are read on. Where the jobs
+open and what key a block mapping's line opens are each read by one function
+the older job and trigger readers now share. `rules_paths_check.entries`
+refuses by name a `- ` line under `paths:` at another indentation than the
+list's first item, which YAML joins into the glob above it or refuses. Nothing
+over the tree moved: the six workflows' 66 commands read the same, none
+declined, and `.claude/rules/` keeps its 25 globs. The guard gained three
+cases, two `workflow commands, ` and one `rules paths, `, each failing on main's
+readers. Filed beside it and not a member: `PL-GVDP`, a trailing comment read
+into a `paths:` glob, which is where a value ends on its line rather than
+across lines. `generator:` stays `live`.
+
+**Next steps (recorded 2026-10-04, revised by links 8, 11, 12 and 13).** The
 members, one format per pull request as before, each closing its members and
-adding their cases to `CONTINUED_STATEMENTS`: the
-YAML readers (`PL-S3XS`'s run-step half and `PL-PPNV`; `PL-4T49` and
-`PL-S3XS`'s `on:` half closed with `PL-848V` in `#1366`), the shell readers (`PL-97CF`,
+adding their cases to `CONTINUED_STATEMENTS`: the shell readers (`PL-97CF`,
 `PL-2JYP`, `PL-WG6S`), the Makefile reader (`PL-4MLK`), and the two that read a
 change or a commit record (`PL-F7Z6`, `PL-4ZVH`); then link 11's two Markdown
-members, `PL-0Y7J` and `PL-T73L`, in one pull request before the sweep, since
-the chain running these slices names neither yet. Then one more sweep of the
-same reach, and `generator:` rewritten `spent` only when it finds nothing (the
-coordinator's brief, 2026-10-04). The head closes without waiting for
+members, `PL-0Y7J` and `PL-T73L`, in one pull request before the sweep. Then
+one more sweep of the same reach, and `generator:` rewritten `spent` only when
+it finds nothing (the coordinator's brief, 2026-10-04). The head closes without waiting for
 `PL-RR1N`, naming it in the reason as Done-when says (project owner,
 2026-10-04, ratified, over waiting for it).
 
