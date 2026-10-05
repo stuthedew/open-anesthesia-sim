@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: infra
 feature: review-hold
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_claims.py, tools/workflow_paths_check.py, CLAUDE.md, docs/maintainer.md, docs/resident-instructions.md, docs/items/PL-WW0Q-bin-docket-arm-holds-a-change-to-arming-py-for.md
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, tools/workflow_paths_check.py, CLAUDE.md, docs/maintainer.md, docs/items/PL-WW0Q-bin-docket-arm-holds-a-change-to-arming-py-for.md
 added: 2026-10-05
 payoff: a pull request that changes only tests of the tooling merges on green CI instead of waiting on the owner's read with nothing to judge, while every change to a simulator test still waits on it
 verify: grep -q 'def test_arm_arms_a_test_of_the_tooling_under_tests_on_green' subprojects/docket/tests/test_cli.py
@@ -25,7 +25,7 @@ verify: grep -q 'def test_arm_arms_a_test_of_the_tooling_under_tests_on_green' s
   on the read list, and 16 of those changed none but test files under `tests/`
   that import no `anesthesia_sim` on either side of the commit, every
   `PL-R417` slice among them. Each waited on the owner's read with nothing for
-  him to judge. Counted with `arming.waits_on_read` and
+  the owner to judge. Counted with `arming.waits_on_read` and
   `tools/workflow_paths_check.py`'s `imports_product`, over each commit's
   `git show --no-renames --name-only`.
 - 43 of the 93 test files under `tests/` import no `anesthesia_sim`, all 43 of
@@ -39,7 +39,7 @@ verify: grep -q 'def test_arm_arms_a_test_of_the_tooling_under_tests_on_green' s
   importing it; the only other files under `tests/` are two `.gitkeep`s.
 
 **Decision.** The owner chose "Narrow it" at 2026-10-05 13:45Z, on the card the
-`PL-R417` Python slice's thread put to him: "Stop holding tooling-only test
+`PL-R417` Python slice's thread put to the owner: "Stop holding tooling-only test
 changes under tests/ for your read?", the option reading "Only tests that
 import the simulator wait for your read; tooling tests merge on green CI, as
 subprojects/docket/tests/ already do", recommended because a third of recent
@@ -97,8 +97,8 @@ the runner every other read in `arm` takes.
 **Generator check.** Work the owner asked for, not a misread. The read list is
 the owner's partition of what waits on a read, deliberately not the lane
 boundary (`.github/workflows/` is on it and in the workflow lane), and
-`tests/` was on it whole by his wording of 2026-10-03 until his answer of
-2026-10-05. The fact the narrowed rule reads, whether a test file under
+`tests/` was on it whole by the owner's wording of 2026-10-03 until their
+answer of 2026-10-05. The fact the narrowed rule reads, whether a test file under
 `tests/` is the simulator's, is the one `PL-8ZGY` states for lanes, and it is
 read through the lane check's own import rule rather than a second spelling of
 it, `PL-PVW2`'s fact; neither head is reopened.
