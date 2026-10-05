@@ -6913,6 +6913,14 @@ def _hook_commands(command: str) -> list[list[str]]:
     return [list(words) for words in shell_split.commands(command)]
 
 
+def _make_lines_refusal(text: str) -> tuple[int, str] | list[tuple[str, int]]:
+    """Where `_make_lines` declines `text` and why, or every line it read where it declines none."""
+    try:
+        return list(doc_check._make_lines(text))
+    except doc_check.UnreadStatement as statement:
+        return statement.line, statement.why
+
+
 def _joined_fixture_ids(tmp_path: Path) -> list[tuple[int, str]]:
     """What the fixture id check reports in a hook script that carries ids across lines."""
     script = tmp_path / "hook.sh"
@@ -7180,6 +7188,96 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "make targets, a continued .PHONY list": (
         lambda _: doc_check.make_targets(".PHONY: a \\\n\tb\nb:\n\ttrue\n"),
         (frozenset({"a", "b"}), frozenset({"b"})),
+    ),
+    # A `define` (`PL-4MLK`) is one statement through the `endef` closing it,
+    # its body a variable's value: no rule, recipe line or command is in it.
+    # Each form was run through GNU make 4.3 on 2026-10-05, which answered "No
+    # rule to make target" for every target a body names and ran only the
+    # commands outside one.
+    "make targets, a define body is the variable's value, no rule": (
+        lambda _: doc_check.make_targets(
+            "define DEPLOY_HELP\ndeploy:\n\t./scripts/deploy.sh --check\nendef\n"
+            ".PHONY: check\ncheck:\n\ttrue\n"
+        ),
+        (frozenset({"check"}), frozenset({"check"})),
+    ),
+    "make targets, a nested define closes at its own endef": (
+        lambda _: doc_check.make_targets(
+            "define OUTER\ndefine INNER\nendef\ndeploy:\n\ttrue\nendef\ncheck:\n\ttrue\n"
+        ),
+        (frozenset({"check"}), frozenset({"check"})),
+    ),
+    "make targets, `define :=` assigns a variable named define": (
+        lambda _: doc_check.make_targets("define := x\ndeploy:\n\ttrue\n"),
+        (frozenset({"deploy"}), frozenset({"deploy"})),
+    ),
+    "target recipes, a define ends the target above it": (
+        lambda _: doc_check._target_recipes("check:\n\techo a\ndefine HELP\n\techo b\nendef\n"),
+        ({"check": ["echo a"]}, {"check": []}),
+    ),
+    "target recipes, an endef led by a tab is the body's": (
+        lambda _: doc_check._target_recipes(
+            "define HELP\n\tendef\ndeploy:\n\ttrue\nendef\ncheck:\n\ttrue\n"
+        ),
+        ({"check": ["true"]}, {"check": []}),
+    ),
+    "target recipes, an endef a backslash carries onto is the body's": (
+        lambda _: doc_check._target_recipes(
+            "define HELP\nnote \\\nendef\ndeploy:\n\ttrue\nendef\n"
+        ),
+        ({}, {}),
+    ),
+    "recipe commands, a define body is no command": (
+        lambda _: list(
+            doc_check._recipe_commands(
+                "define HELP\n\tpytest --cov-fail-under=100\nendef\ncheck:\n\techo ok\n"
+            )
+        ),
+        [("echo ok", 5)],
+    ),
+    "recipe commands, a modifier ahead of define": (
+        lambda _: list(
+            doc_check._recipe_commands(
+                "override define HELP\n\techo body\nendef\ncheck:\n\techo ok\n"
+            )
+        ),
+        [("echo ok", 5)],
+    ),
+    "recipe commands, an endef before a comment closes": (
+        lambda _: list(
+            doc_check._recipe_commands("define HELP\nx\nendef # done\ncheck:\n\techo ok\n")
+        ),
+        [("echo ok", 5)],
+    ),
+    "recipe commands, endef# closes no define": (
+        lambda _: list(
+            doc_check._recipe_commands(
+                "define HELP\nendef#\n\techo body\nendef\ncheck:\n\techo ok\n"
+            )
+        ),
+        [("echo ok", 6)],
+    ),
+    # One make refuses, or reads two ways this reader cannot tell apart, is
+    # declined by name at the directive's line.
+    "make lines, a define no endef closes": (
+        lambda _: _make_lines_refusal("define HELP\ndeploy:\n\ttrue\n"),
+        (
+            1,
+            "this `define` is closed by no `endef`, which make refuses as an unterminated `define`",
+        ),
+    ),
+    "make lines, a define naming no variable": (
+        lambda _: _make_lines_refusal("check:\n\ttrue\ndefine # none\nx\nendef\n"),
+        (3, "this `define` names no variable, which make refuses as an empty name"),
+    ),
+    "make lines, a define led by a tab": (
+        lambda _: _make_lines_refusal("\tdefine HELP\nx\nendef\n"),
+        (
+            1,
+            "this `define` is led by a tab, which make reads as opening a variable outside a "
+            "rule and as a recipe line inside one, and this reader does not tell the two apart; "
+            "write it without the tab",
+        ),
     ),
     "coverage gate, one run continued alike in both files": (
         lambda root: _continued_coverage_gate(root, CONTINUED_RUN),
@@ -8030,6 +8128,55 @@ def test_an_even_run_of_backslashes_continues_no_recipe_line() -> None:
     recipe = "check:\n\techo a \\\\\n\techo next\n"
 
     assert list(doc_check._recipe_commands(recipe)) == [("echo a \\\\", 2), ("echo next", 3)]
+
+
+#: A Makefile whose `define` no `endef` closes, which GNU make 4.3 refuses
+#: whole ("missing 'endef', unterminated 'define'"). Read up to the `define`,
+#: it has a `ruff check` without the flag, and the body has a coverage run.
+UNTERMINATED_DEFINE = (
+    ".PHONY: check\ncheck:\n\tuv run ruff check .\ndefine HELP\n\tpytest --cov-fail-under=100\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("check", "unchecked"),
+    [
+        (
+            lambda root, report: doc_check.check_make_targets(
+                root, {root / "README.md": "Run `make deploy`.\n"}, report
+            ),
+            "no documented `make` command was checked against it",
+        ),
+        (doc_check.check_coverage_gate, "the coverage gate was not compared"),
+        (
+            doc_check.check_ruff_cache,
+            "whether the Makefile runs `ruff check` without the flag was not decided",
+        ),
+        (doc_check.check_gate_parity, "the scripts `make check` runs were not compared"),
+    ],
+    ids=["make targets", "coverage gate", "ruff cache", "gate parity"],
+)
+def test_each_makefile_check_declines_a_define_no_endef_closes(
+    check: Callable[[Path, doc_check.Report], None], unchecked: str, tmp_path: Path
+) -> None:
+    """Each check says what went unchecked, at the `define`'s line, and finds nothing (`PL-4MLK`).
+
+    make runs nothing in a file it refuses, so an answer read from the lines
+    above the `define` would be a partial reading handed over as a whole one.
+    """
+    root = _with_workflow(_repo(tmp_path))
+    (root / "Makefile").write_text(UNTERMINATED_DEFINE, encoding="utf-8")
+    report = doc_check.Report()
+
+    check(root, report)
+
+    assert (report.errors, report.declined) == (
+        [],
+        [
+            "Makefile:4: this `define` is closed by no `endef`, which make refuses as an "
+            f"unterminated `define`, so {unchecked}"
+        ],
+    )
 
 
 def test_a_fence_bash_cannot_read_is_still_read_a_line_at_a_time() -> None:
