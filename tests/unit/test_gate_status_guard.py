@@ -695,6 +695,33 @@ def test_only_a_heredoc_body_is_removed(heredoc: str) -> None:
     assert _decision(after) is not None, "the command after the terminator was not read"
 
 
+# Each runs the gate in bash 5.2.21 and was read as hiding it (`PL-97CF`): a
+# continuation inside `<<-` or `<<<`, a delimiter one joins, a `<<` inside a
+# `${...}` carried across lines, a quote inside a `${...}` in double quotes,
+# and a `$'...'` its `$` reaches past a continuation.
+RESHAPED = (
+    "cat <<\\\n-EOF\n\thello\n\tEOF\nGATE",
+    "cat <<\\\n< word\nGATE",
+    "cat <<EOF\nabc\nEO\\\nF\nGATE",
+    "echo ${x:-<<EOF\n}\nGATE\nEOF\n",
+    'echo "${x:-"\'"}"; GATE; echo \'#\'',
+    "echo $\\\n'\\''; GATE #'",
+)
+
+
+@pytest.mark.parametrize("shape", RESHAPED)
+def test_a_continuation_or_an_expansion_hides_no_gate(shape: str) -> None:
+    """A gate bash runs after a shape a continuation or a `${...}` makes is refused (`PL-97CF`)."""
+    command = shape.replace("GATE", "make check 2>&1 | tail -45")
+    assert _decision(command) is not None, f"{command!r} was allowed"
+
+
+def test_a_body_line_a_continuation_carries_onto_the_delimiter_ends_nothing() -> None:
+    """Bash joins `abc\\` to the `EOF` under it, so the gate after is body (`PL-97CF`)."""
+    assert _decision("cat <<EOF\nabc\\\nEOF\nmake check 2>&1 | tail -45\nEOF\n") is None
+    assert _decision("cat <<'EOF'\nabc\\\nEOF\nmake check 2>&1 | tail -45\n") is not None
+
+
 NOT_A_HEREDOC = (
     'cat <<< "a here-string"; make check 2>&1 | tail -45',
     'echo "a << b"; make check 2>&1 | tail -45',
@@ -861,6 +888,12 @@ QUOTED_READ = (
     "here and met by no session, and the guard reads each word with its quotes removed: found "
     "working `PL-1DW7`"
 )
+IN_A_SUBSTITUTION = (
+    "a gate run inside a `$( )` is written nowhere in this tree, and no session is known to "
+    "have written one. The guard reads no command a substitution runs: `shell_split.py` reads "
+    "an unquoted `$(` as a `$` and a `(`, so the gate is never a command's first word, and "
+    "keeps a quoted one inside its word. Found working `PL-97CF`, 2026-10-05"
+)
 LOSES = "exits 0 when the gate fails, with the status of the `tail` it is piped to"
 
 # Spellings outside the promise, each read wrongly today (`PL-61FT`): the
@@ -924,6 +957,19 @@ KNOWN_GAPS = (
         False,
         "exits 0 when the gate fails, and prints the text exit=${PIPESTATUS[0]}",
         QUOTED_READ,
+    ),
+    (
+        "y=$(make check | tail -5)",
+        False,
+        "exits 0 when the gate fails: the assignment takes the substitution's status, which is "
+        "the `tail`'s",
+        IN_A_SUBSTITUTION,
+    ),
+    (
+        'echo "$(make check | tail -5)"',
+        False,
+        "exits 0 when the gate fails, with the status of the `echo`",
+        IN_A_SUBSTITUTION,
     ),
 )
 

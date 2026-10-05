@@ -21,10 +21,12 @@ from typing import Any
 import core_vocabulary_check
 import dead_ends
 import doc_check
+import fixture_id_check
 import possessive_section_check
 import pytest
 import required_checks_check as rcc
 import rules_paths_check
+import shell_split
 from docket import checks as docket_checks
 from docket import verify as docket_verify
 from docket.fences import blocks as fence_blocks
@@ -41,6 +43,7 @@ from docket.roadmap import (
     parse_milestones,
     table_rows,
 )
+from docket.shell import script_lines
 from docket.verify import (
     added_suppressions,
     assertion_check,
@@ -6905,6 +6908,18 @@ def _symbol_rows(text: str) -> list[tuple[int, str]]:
     return [(cell.line, cell.symbol) for cell in core_vocabulary_check.symbol_cells(text)]
 
 
+def _hook_commands(command: str) -> list[list[str]]:
+    """The commands the hooks' `shell_split` finds in `command`, each as its words."""
+    return [list(words) for words in shell_split.commands(command)]
+
+
+def _joined_fixture_ids(tmp_path: Path) -> list[tuple[int, str]]:
+    """What the fixture id check reports in a hook script that carries ids across lines."""
+    script = tmp_path / "hook.sh"
+    script.write_text("echo PL-K7\\\nQX\necho PL-K7QX\\\nZ\n", encoding="utf-8")  # not-an-id
+    return [(found.line, found.token) for found in fixture_id_check.scan_text(script)]
+
+
 #: The Symbols table's header and delimiter rows, and one row under them.
 SYMBOLS = "| Symbol | Meaning | Unit | Code |\n| --- | --- | --- | --- |\n| a | A | - | `X.a` |\n"
 
@@ -7201,6 +7216,74 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "make mentions, a code span wrapped inside a block quote": (
         lambda _: list(doc_check._make_mentions("> Run `make\n> check` first.\n")),
         [("check", 1)],
+    ),
+    # The two shell lexers, each case run through bash 5.2.21 (`PL-97CF`,
+    # `PL-2JYP`): a backslash-newline inside an operator, an unquoted
+    # here-document's body read in logical lines, a `${...}` read to its `}`,
+    # and in docket's a `case`, `(( ))` or `[[ ]]` carried across lines.
+    "hook commands, an operator a backslash-newline splits is one operator": (
+        lambda _: shell_split.segments("make check &\\\n& tail -5 log"),
+        [(["make", "check"], "&&"), (["tail", "-5", "log"], None)],
+    ),
+    "hook commands, a continuation inside `<<-` leaves its body where bash ends it": (
+        lambda _: _hook_commands("cat <<\\\n-EOF\n\thello\n\tEOF\ngit fetch --prune"),
+        [["cat"], ["git", "fetch", "--prune"]],
+    ),
+    "hook commands, a delimiter a continuation joins ends the body": (
+        lambda _: _hook_commands("cat <<EOF\nabc\nEO\\\nF\ngit fetch --prune"),
+        [["cat"], ["git", "fetch", "--prune"]],
+    ),
+    "hook commands, a body line a continuation joins to the delimiter ends nothing": (
+        lambda _: _hook_commands("cat <<EOF\nabc\\\nEOF\ngit fetch --prune\nEOF\n"),
+        [["cat"]],
+    ),
+    "hook commands, a parameter expansion carried across lines opens no body": (
+        lambda _: _hook_commands("echo ${x:-<<EOF\n}\ngit fetch --prune\nEOF\n"),
+        [["echo", "${x:-<<EOF\n}"], ["git", "fetch", "--prune"], ["EOF"]],
+    ),
+    "hook commands, a substitution inside a parameter expansion carried across lines": (
+        lambda _: _hook_commands("echo ${x:-\n$(git fetch --prune)}"),
+        [["echo", "${x:-\n$(git fetch --prune)}"], ["git", "fetch", "--prune"]],
+    ),
+    "hook commands, a quote inside a parameter expansion in double quotes": (
+        lambda _: _hook_commands('echo "${x:-"\'"}"; git fetch --prune; echo \'#\''),
+        [["echo", '${x:-"\'"}'], ["git", "fetch", "--prune"], ["echo", "#"]],
+    ),
+    "hook commands, a `$` reaches the quote it opens past a continuation": (
+        lambda _: _hook_commands("echo $\\\n'\\''; git fetch --prune #'"),
+        [["echo", "\\'"], ["git", "fetch", "--prune"]],
+    ),
+    "shell lines, a case pattern does not close its substitution": (
+        lambda _: script_lines("x=$(case a in\n  a) echo A;;\nesac)\necho after\n"),
+        (("x=$(case a in\n  a) echo A;;\nesac)", 0), ("echo after", 34)),
+    ),
+    "shell lines, an operator a backslash-newline splits is one operator": (
+        lambda _: script_lines("cat <<\\\n-EOF\n\tbody\n\tEOF\necho after\n"),
+        (("cat <<\\\n-EOF", 0), ("echo after", 24)),
+    ),
+    "shell lines, an unquoted here-document's body is read in logical lines": (
+        lambda _: script_lines("cat <<EOF\na\\\nEOF\necho inside-body\nEOF\necho after\n"),
+        (("cat <<EOF", 0), ("echo after", 38)),
+    ),
+    "shell lines, a parameter expansion carried across lines": (
+        lambda _: script_lines("echo ${y:-three\nfour}\necho after\n"),
+        (("echo ${y:-three\nfour}", 0), ("echo after", 22)),
+    ),
+    "shell lines, an arithmetic command carried across lines": (
+        lambda _: script_lines("(( x = 1 +\n 2 ))\necho after\n"),
+        (("(( x = 1 +\n 2 ))", 0), ("echo after", 17)),
+    ),
+    "shell lines, a shift inside arithmetic opens no here-document": (
+        lambda _: script_lines("x=$((1 << 2))\necho after\n"),
+        (("x=$((1 << 2))", 0), ("echo after", 14)),
+    ),
+    "shell lines, a conditional carried across lines": (
+        lambda _: script_lines("[[\n a == a ]]\necho after\n"),
+        (("[[\n a == a ]]", 0), ("echo after", 14)),
+    ),
+    "fixture ids, an id a backslash-newline joins": (
+        _joined_fixture_ids,
+        [(3, "PL-K7QXZ")],  # not-an-id
     ),
     # YAML (`PL-6P6H`), read through `_run_script`: a literal block is read with
     # its header and ends where its content does; every form YAML folds or

@@ -350,6 +350,12 @@ IN_CODE = (
     "a tree named with no slash inside a `-c` string, where the word is as likely code as a "
     "path: `PL-R5N0` reads it as a tree only where it is a whole argument"
 )
+IN_A_SUBSTITUTION = (
+    "a floor check run inside a `$( )` is written nowhere in this tree, and no session is known "
+    "to have written one. The guard reads no command a substitution runs: `shell_split.py` "
+    "reads an unquoted `$(` as a `$` and a `(`, so the interpreter is never a command's first "
+    "word, and keeps a quoted one inside its word. Found working `PL-97CF`, 2026-10-05"
+)
 FLOOR_PARSE_ERROR = (
     "parses 3.14 source with the 3.11 floor, and reports a SyntaxError in correct code"
 )
@@ -385,6 +391,8 @@ KNOWN_GAPS = (
         FLOOR_PARSE_ERROR,
         IN_CODE,
     ),
+    ("y=$(python3 -m compileall -q src/)", False, FLOOR_PARSE_ERROR, IN_A_SUBSTITUTION),
+    ('echo "$(python3 -m compileall -q src/)"', False, FLOOR_PARSE_ERROR, IN_A_SUBSTITUTION),
 )
 
 
@@ -424,6 +432,33 @@ def test_only_a_heredoc_body_is_removed() -> None:
     assert _decision(heredoc + "git status") is None
     assert _decision(heredoc + "python3 -m compileall src/") is not None
     assert _decision("python3 - <<'EOF'\nprint(1)\nEOF\npython3 src/a.py") is not None
+
+
+# Each runs the floor parse in bash 5.2.21 and was read as hiding it
+# (`PL-97CF`): a continuation inside `<<-` or `<<<`, a delimiter one joins, a
+# `<<` inside a `${...}` carried across lines, a quote inside a `${...}` in
+# double quotes, and a `$'...'` its `$` reaches past a continuation.
+RESHAPED = (
+    "cat <<\\\n-EOF\n\thello\n\tEOF\nPARSE",
+    "cat <<\\\n< word\nPARSE",
+    "cat <<EOF\nabc\nEO\\\nF\nPARSE",
+    "echo ${x:-<<EOF\n}\nPARSE\nEOF\n",
+    'echo "${x:-"\'"}"; PARSE; echo \'#\'',
+    "echo $\\\n'\\''; PARSE #'",
+)
+
+
+@pytest.mark.parametrize("shape", RESHAPED)
+def test_a_continuation_or_an_expansion_hides_no_floor_parse(shape: str) -> None:
+    """A floor parse after a shape a continuation or a `${...}` makes is refused (`PL-97CF`)."""
+    command = shape.replace("PARSE", "python3 -m compileall src/")
+    assert _decision(command) is not None, f"{command!r} was allowed"
+
+
+def test_a_body_line_a_continuation_carries_onto_the_delimiter_ends_nothing() -> None:
+    """Bash joins `abc\\` to the `EOF` under it, so the parse after is body (`PL-97CF`)."""
+    assert _decision("cat <<EOF\nabc\\\nEOF\npython3 -m compileall src/\nEOF\n") is None
+    assert _decision("cat <<'EOF'\nabc\\\nEOF\npython3 -m compileall src/\n") is not None
 
 
 def test_a_non_bash_tool_is_ignored() -> None:

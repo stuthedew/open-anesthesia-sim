@@ -380,6 +380,24 @@ def test_a_claude_shell_hook_is_scanned_too(tmp_path: Path) -> None:
     assert _tokens(tmp_path) == ["PL-A1B2"]  # not-an-id
 
 
+def test_a_shell_hook_is_read_as_bash_joins_its_lines(tmp_path: Path) -> None:
+    """An id a backslash-newline carries on is judged whole, and only in a shell script (`PL-WG6S`).
+
+    The marker on any line the id spans exempts it, as a Python literal's does,
+    and a document carries no continuation, so its lines are read as written.
+    """
+    script = "echo PL-K7QX\\\nZ\necho PL-K7QX\\\nZ  # not-an-id\n"  # not-an-id
+    _write(tmp_path, ".claude/hooks/digest.sh", script)
+    _write(tmp_path, ".claude/rules/thing.md", "PL-K7QX\\\nZ\n")
+
+    found = [
+        (offender.path.name, offender.line, offender.token)
+        for offender in fixture_id_check.collect(tmp_path)
+    ]
+
+    assert found == [("digest.sh", 1, "PL-K7QXZ")]  # not-an-id
+
+
 def test_prose_outside_claude_is_not_scanned(tmp_path: Path) -> None:
     """`docs/` is the measurement pointing the other way.
 

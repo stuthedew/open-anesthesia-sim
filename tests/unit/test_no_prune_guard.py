@@ -343,6 +343,33 @@ def test_only_a_heredoc_body_is_removed() -> None:
         assert _decision(heredoc + "git fetch --prune") is not None
 
 
+# Each runs the prune in bash 5.2.21 and was read as hiding it (`PL-97CF`): a
+# continuation inside `<<-` or `<<<`, a delimiter one joins, a `<<` inside a
+# `${...}` carried across lines, a quote inside a `${...}` in double quotes,
+# and a `$'...'` its `$` reaches past a continuation.
+RESHAPED = (
+    "cat <<\\\n-EOF\n\thello\n\tEOF\nPRUNE",
+    "cat <<\\\n< word\nPRUNE",
+    "cat <<EOF\nabc\nEO\\\nF\nPRUNE",
+    "echo ${x:-<<EOF\n}\nPRUNE\nEOF\n",
+    'echo "${x:-"\'"}"; PRUNE; echo \'#\'',
+    "echo $\\\n'\\''; PRUNE #'",
+)
+
+
+@pytest.mark.parametrize("shape", RESHAPED)
+def test_a_continuation_or_an_expansion_hides_no_prune(shape: str) -> None:
+    """A prune bash runs after a shape a continuation or a `${...}` makes is refused (`PL-97CF`)."""
+    command = shape.replace("PRUNE", "git fetch --prune")
+    assert _decision(command) is not None, f"{command!r} was allowed"
+
+
+def test_a_body_line_a_continuation_carries_onto_the_delimiter_ends_nothing() -> None:
+    """Bash joins `abc\\` to the `EOF` under it, so the prune after is body (`PL-97CF`)."""
+    assert _decision("cat <<EOF\nabc\\\nEOF\ngit fetch --prune\nEOF\n") is None
+    assert _decision("cat <<'EOF'\nabc\\\nEOF\ngit fetch --prune\n") is not None
+
+
 def test_a_quoted_separator_starts_no_command() -> None:
     """A `;` or a flag inside quoted text is that text, and starts nothing (`PL-WGFY`).
 
