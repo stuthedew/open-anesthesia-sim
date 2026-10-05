@@ -42,6 +42,14 @@ sets separate cleanly, and it is why the rule keeps working on files nobody has
 written yet - the next `tools/` check's test will import `tools/`, not
 `anesthesia_sim`, without anybody having decided to make it so.
 
+**The rule is spelt in `docket.arming` and imported here (`PL-552M`).**
+`bin/docket arm` reads the same import to let a test of the tooling under
+`tests/` merge on green while a test of the simulator waits on the owner's
+read (project owner, 2026-10-05, ratified). One spelling keeps the lane and
+the read hold from disagreeing about a test file, and putting it in the module
+the merge gate holds for the owner's read means neither can be changed
+without that read.
+
 **A support module is held to half the rule, because it has no such obligation
 (`PL-12P8`).** A test file is one pytest collects; anything else under `tests/`
 - a `conftest.py`, a constant or fixture builder the tests import, a harness
@@ -110,15 +118,14 @@ pins, so it can only run under the project interpreter -
 `tests/unit/test_tools_portability.py` states that rule and names
 `contrast_check.py` and `import_boundary_check.py` as the other two. Like them,
 this file itself imports only what that suite admits - the standard library,
-and the in-tree `docket` package for `is_under` - and parses at the declared
-floor, which is what keeps it in that suite's scope.
+and the in-tree `docket` package for `is_under` and the import rule - and
+parses at the declared floor, which is what keeps it in that suite's scope.
 """
 
 from __future__ import annotations
 
 import argparse
 import ast
-import fnmatch
 import subprocess
 import sys
 import tomllib
@@ -127,6 +134,8 @@ from pathlib import Path, PurePosixPath
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.arming import PRODUCT_PACKAGE, imports_product, is_test_file  # noqa: E402
+from docket.arming import TEST_FILE_PATTERNS as TEST_FILE_PATTERNS  # noqa: E402
 from docket.model import is_under  # noqa: E402
 
 #: Where this check looks. `subprojects/*/tests/` is out of scope: those trees
@@ -143,48 +152,6 @@ CONFIG = Path("docket.toml")
 SKIP_DIRS = frozenset(
     {".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".ruff_cache"}
 )
-
-#: Importing this is what makes a test file the simulator's. Named once here
-#: because the rule is about this package specifically, not about any import.
-PRODUCT_PACKAGE = "anesthesia_sim"
-
-#: What pytest collects as a test module: its default `python_files`, which
-#: this repository does not override. Restated rather than read, and
-#: `tests/unit/test_workflow_paths_check.py` compares it with the setting its
-#: own run collected under, so a changed `python_files` fails a test instead
-#: of quietly turning a new test into a support module.
-TEST_FILE_PATTERNS = ("test_*.py", "*_test.py")
-
-
-def imported_modules(tree: ast.Module) -> set[str]:
-    """Every module name one file imports, in either import form.
-
-    `ast` rather than a regular expression because the question is about
-    imports and not about text: a package named in a docstring, in a fixture
-    path or in a comment is not a dependency, and several of the apparatus
-    tests here write `src/anesthesia_sim/...` as fixture data precisely because
-    they check tools that read the tree.
-    """
-    found: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            found.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            found.add(node.module)
-    return found
-
-
-def imports_product(tree: ast.Module) -> bool:
-    """Whether a file imports the simulator, which makes any file under `tests/` the simulator's."""
-    return any(
-        module == PRODUCT_PACKAGE or module.startswith(PRODUCT_PACKAGE + ".")
-        for module in imported_modules(tree)
-    )
-
-
-def is_test_file(name: str) -> bool:
-    """Whether pytest collects a file of this name, rather than it supporting what it collects."""
-    return any(fnmatch.fnmatchcase(name, pattern) for pattern in TEST_FILE_PATTERNS)
 
 
 def declared_workflow_paths(root: Path) -> tuple[str, ...]:

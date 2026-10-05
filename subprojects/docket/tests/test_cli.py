@@ -9660,7 +9660,7 @@ def test_arm_names_a_path_outside_the_store_beside_an_arm_and_a_move_in_is_still
     assert out.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
     assert (
         "\n  It changes 1 path outside docs/items, subprojects/docket and docs/pr-bodies, which "
-        "arm on green under the owner's rule of 2026-10-03 unless the change raises a question "
+        "arm on green under the owner's read list unless the change raises a question "
         "for them - this session's judgment, not this answer's - so name it in the report as "
         "the hold's reason:\n  docs/PL-D3D3-drafted.md\n"
     ) in out
@@ -10038,10 +10038,37 @@ def test_a_forge_that_could_not_be_asked_is_unknown_to_arm_and_said_by_branch(
 ARM_GATE = "subprojects/docket/src/docket/arming.py"
 
 
-def _put(git: Callable[..., str], root: Path, path: str, when: str = ARM_T0) -> None:
+def _put(
+    git: Callable[..., str], root: Path, path: str, when: str = ARM_T0, *, text: str = "X = 1\n"
+) -> None:
     """Commit a new file at `path` on the checked-out branch, making its directory."""
     (root / path).parent.mkdir(parents=True, exist_ok=True)
-    _commit_file(git, root, path, "X = 1\n", when)
+    _commit_file(git, root, path, text, when)
+
+
+#: A test of the simulator, as its imports say: the import `arm` reads under
+#: `tests/` to tell one from a test of the tooling (`PL-552M`).
+SIMULATOR_TEST = "from anesthesia_sim.core.uptake import AgentUptakeSystem\n"
+
+#: A test of the tooling: it imports the `tools/` script it tests, and names
+#: the simulator's package in fixture text alone, which imports nothing.
+TOOLING_TEST = (
+    "import doc_check\n\n"
+    "def test_reads_the_tree() -> None:\n"
+    "    assert doc_check.ROOT / 'src' / 'anesthesia_sim'\n"
+)
+
+
+def _on_base(git: Callable[..., str], root: Path, files: dict[str, str]) -> None:
+    """Commit `files` on `main`, publish it, and start `ARM_BRANCH` again from its tip."""
+    git("checkout", "-q", "main")
+    for path, text in files.items():
+        (root / path).parent.mkdir(parents=True, exist_ok=True)
+        (root / path).write_text(text, encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "the base's tests")
+    git("push", "-q", "origin", "main")
+    git("checkout", "-qB", ARM_BRANCH)
 
 
 def test_arm_arms_a_docket_only_pull_request_on_green(
@@ -10066,9 +10093,9 @@ def test_arm_arms_a_docket_only_pull_request_on_green(
     assert _arm(root) == 0
     out = capsys.readouterr().out
     assert out.startswith(
-        f"arm - {ARM_BRANCH} changes nothing on the owner's read list (src/, tests/, "
-        "docs/MODEL.md, src/anesthesia_sim/data/, README.md, .github/workflows/, "
-        ".claude/hooks/ and arming.py), holds no open claim"
+        f"arm - {ARM_BRANCH} changes nothing on the owner's read list (src/, tests/ but a "
+        "test importing no anesthesia_sim, docs/MODEL.md, src/anesthesia_sim/data/, "
+        "README.md, .github/workflows/, .claude/hooks/ and arming.py), holds no open claim"
     )
     assert "outside docs/items" not in out
 
@@ -10109,12 +10136,14 @@ def test_arm_holds_for_a_read_a_path_on_the_owners_read_list(
     """The owner's read list waits on a read: the simulator, the model, the workflows, the hooks.
 
     The branch also changes a docket module and `CLAUDE.md`, which arm alone,
-    so the hold is the listed path's own and the answer names it alone.
+    so the hold is the listed path's own and the answer names it alone. Each
+    listed file imports the simulator, so the one under `tests/` is a test of
+    it rather than of the tooling (`PL-552M`).
     """
     root, git = _arm_repo(tmp_path)
     _put(git, root, "subprojects/docket/src/docket/render.py")
     _put(git, root, "CLAUDE.md")
-    _put(git, root, path)
+    _put(git, root, path, text=SIMULATOR_TEST)
 
     assert _arm(root) == 1
     out = capsys.readouterr().out
@@ -10169,7 +10198,7 @@ def test_a_change_outside_the_owners_read_list_arms_on_green(
     else:
         assert rest[0].startswith(
             "  It changes 1 path outside docs/items, subprojects/docket and docs/pr-bodies, "
-            "which arm on green under the owner's rule of 2026-10-03 unless the change raises a "
+            "which arm on green under the owner's read list unless the change raises a "
             "question for them"
         )
         assert rest[1] == f"  {path}"
@@ -10218,6 +10247,169 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
     ):
         assert not arming.waits_on_read(path), path
         assert arming.arms_on_green(path), path
+
+
+def test_arm_arms_a_test_of_the_tooling_under_tests_on_green(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A test importing no `anesthesia_sim` arms, added, edited or deleted (`PL-552M`).
+
+    The owner chose it on 2026-10-05, when 16 of the 51 merges held for a read
+    since 2026-10-03 had been held by such tests alone. Each lies outside the
+    store, so it is named beside the answer, as every path off the list is.
+    """
+    root, git = _arm_repo(tmp_path)
+    _on_base(
+        git,
+        root,
+        {
+            "tests/unit/test_doc_check.py": TOOLING_TEST,
+            "tests/unit/test_gone_check.py": TOOLING_TEST,
+        },
+    )
+    _commit_file(git, root, "tests/unit/test_doc_check.py", TOOLING_TEST + "\nX = 2\n", ARM_T0)
+    git("rm", "-q", "tests/unit/test_gone_check.py")
+    git("commit", "-qm", "drop a check's test", when=ARM_T0)
+    _put(git, root, "tests/unit/test_new_check.py", text=TOOLING_TEST)
+
+    assert _arm(root) == 0
+    first, *rest = capsys.readouterr().out.splitlines()
+    assert first.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
+    assert rest[0].startswith("  It changes 3 paths outside docs/items")
+    assert rest[1:] == [
+        "  tests/unit/test_doc_check.py, tests/unit/test_gone_check.py, "
+        "tests/unit/test_new_check.py"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        (SIMULATOR_TEST, TOOLING_TEST),
+        (SIMULATOR_TEST, None),
+        (None, "def test_lazily() -> None:\n    import anesthesia_sim.core.uptake\n"),
+    ],
+    ids=["import-dropped", "deleted", "imported-inside-a-test"],
+)
+def test_arm_holds_a_test_that_imports_the_simulator_on_either_side_of_the_change(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], before: str | None, after: str | None
+) -> None:
+    """A simulator test waits on a read whether the branch keeps its import, drops it or the test.
+
+    Read at HEAD alone, a branch stripping a test's simulator import, or
+    deleting the test, would arm as a test of the tooling while it removed a
+    check on the simulator, which is what the owner's read is for. An import
+    inside a test function is an import all the same.
+    """
+    root, git = _arm_repo(tmp_path)
+    path = "tests/unit/test_uptake.py"
+    if before is not None:
+        _on_base(git, root, {path: before})
+    if after is None:
+        git("rm", "-q", path)
+        git("commit", "-qm", "drop the test", when=ARM_T0)
+    else:
+        _put(git, root, path, text=after)
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it changes 1 path on the owner's read list, so its pull request "
+        f"waits on a read\n  {path}\n"
+    )
+    assert "note:" not in out
+
+
+@pytest.mark.parametrize("path", ["tests/conftest.py", "tests/unit/helpers.py", "tests/ref.json"])
+def test_arm_holds_a_file_under_tests_that_pytest_does_not_collect_whatever_it_imports(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
+) -> None:
+    """A support module serves the simulator's tests, so its imports say nothing (`PL-12P8`)."""
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, path)
+
+    assert _arm(root) == 1
+    assert f"\n  {path}\n" in capsys.readouterr().out
+
+
+def test_arm_holds_a_test_it_could_not_parse_and_says_why(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A test this python3 cannot parse waits, and the hold says so rather than look complete.
+
+    `bin/docket` runs on the bare `python3`, which can be older than the
+    project's interpreter, so a test written in newer grammar is the likely
+    case. The interpreter's version and its message vary, so neither is pinned.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "tests/unit/test_newer.py", text="def test_newer(:\n")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert "\n  tests/unit/test_newer.py\n" in out
+    (note,) = (line for line in out.splitlines() if line.startswith("  note: "))
+    assert note.startswith("  note: tests/unit/test_newer.py would not parse under this python3 (")
+    assert note.endswith(
+        ", so whether it imports anesthesia_sim was not read, and it waits on the read"
+    )
+
+
+def test_a_test_git_would_not_hand_over_waits_on_the_read_and_says_why(tmp_path: Path) -> None:
+    """A side git did not answer is never a side holding no file, which would import nothing.
+
+    A silence read as an empty file would arm a simulator test whose base
+    copy git failed to show. Without a merge base neither side can be named.
+    """
+    test = "tests/unit/test_doc_check.py"
+
+    def silent_on_show(args: list[str], where: Path) -> str:
+        return "f" * 40 + "\n" if args[0] == "merge-base" else vcs.SILENT
+
+    assert arming._tests_of_the_tooling([test], "origin/main", tmp_path, silent_on_show) == (
+        frozenset(),
+        (
+            f"git would not hand over {test} on both sides of the change, so whether it imports "
+            "anesthesia_sim was not read, and it waits on the read",
+        ),
+    )
+
+    def no_merge_base(args: list[str], where: Path) -> str:
+        return ""
+
+    tests = [test, "tests/conftest.py", "tests/unit/test_uptake.py"]
+    assert arming._tests_of_the_tooling(tests, "origin/main", tmp_path, no_merge_base) == (
+        frozenset(),
+        (
+            "git gave no merge base of origin/main and HEAD, so what the 2 tests it changes "
+            "under tests/ import was not read, and each waits on the read",
+        ),
+    )
+
+
+def test_a_test_of_the_tooling_is_a_collected_test_importing_no_simulator_on_either_side() -> None:
+    """The rule `arm` reads a test by, and what reading one as the tooling's clears.
+
+    `waits_on_read` cannot read a name as the tooling's, so a test under
+    `tests/` nobody read still waits, and naming a path outside `tests/` in
+    `tooling` clears nothing.
+    """
+    test = "tests/unit/test_doc_check.py"
+    tooling = "import doc_check\n"
+    for sides in ([tooling, tooling], ["", tooling], [tooling, ""]):
+        assert arming.tests_the_tooling(test, sides), sides
+    assert arming.tests_the_tooling("tests/unit/doc_check_test.py", ["", tooling])
+    assert not arming.tests_the_tooling(test, [SIMULATOR_TEST, tooling])
+    assert not arming.tests_the_tooling(test, ["", "import anesthesia_sim\n"])
+    for path in ("tests/conftest.py", "tests/test_ref.json", "src/anesthesia_sim/test_x.py"):
+        assert not arming.tests_the_tooling(path, ["", tooling]), path
+    with pytest.raises(SyntaxError):
+        arming.tests_the_tooling(test, ["", "def test_newer(:\n"])
+
+    assert arming.waits_on_read(test)
+    assert not arming.waits_on_read(test, {test})
+    assert arming.arms_on_green(test, {test})
+    for path in ("src/anesthesia_sim/core/uptake.py", ARM_GATE):
+        assert arming.waits_on_read(path, {path}), path
 
 
 @pytest.mark.parametrize("change", ["edit", "move"])

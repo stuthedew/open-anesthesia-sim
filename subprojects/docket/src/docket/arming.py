@@ -14,8 +14,9 @@ every later push while a pull request is open.
 **Five answers, and an exit status for each.**
 
 - `arm` (0): the net change a squash would land - `base...HEAD` - reaches
-  nothing on the owner's read list (`READ_PATHS`) and leaves this module
-  alone, which `arms_on_green` answers path by path; no claim bound to this
+  nothing on the owner's read list (`READ_PATHS`, a test of the tooling under
+  `tests/` aside) and leaves this module alone, which `arms_on_green` answers
+  path by path; no claim bound to this
   branch is unreleased; HEAD holds every commit of the branch's copy on the
   remote; and the branch contains the base's tip. A path outside the store,
   the queue's own tooling, `subprojects/docket/`, and the pull requests'
@@ -88,7 +89,19 @@ has already merged; what went unread is said beside it.
   owner, 2026-10-03, ratified, over holding them as before). `.github/workflows/`
   and `.claude/hooks/` joined the list the same day, since they decide merges
   and tags as this module does (project owner, 2026-10-03, ratified, over
-  leaving them armed on green; `PL-KKHD` records both answers).
+  leaving them armed on green; `PL-KKHD` records both answers);
+- a test of the tooling under `tests/` - a file pytest collects that imports
+  no `anesthesia_sim` on either side of the change - arms on green, as
+  `subprojects/docket/tests/` does, and the rest of `tests/` stays on the list
+  (project owner, 2026-10-05, ratified, over keeping every change under
+  `tests/` on the read list; built by `PL-552M`). Since 2026-10-03, 16 of the
+  51 merges held for a read had been held by such tests alone, every
+  `PL-R417` slice among them, so the hold asked for reads with nothing to
+  judge, the click-through that retired the hold on the tooling (`PL-SQTR`).
+  The import rule is the one `tools/workflow_paths_check.py` holds
+  `docket.toml`'s `workflow_paths` to, spelt here and imported there, and it
+  is read from the tree rather than from `workflow_paths`, which arms on
+  green: widening what arms still takes an edit the gate holds (`PL-0JGZ`).
 
 Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
 holds"): a triage pass moving statuses is the queue-only work auto-merge
@@ -98,10 +111,13 @@ so the paths hold it already.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import ast
+import fnmatch
+import sys
+from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from .claiming import _git
 from .claims import LAPSED, RELEASED, Hold, holdings
@@ -183,18 +199,37 @@ RECORDS = "docs/pr-bodies/"
 #: naming a file nothing reads.
 GATE = TOOLING + "src/docket/arming.py"
 
+#: The simulator's tests, at the root: `subprojects/docket/tests/` starts with
+#: `subprojects/`, so the prefix leaves it to the tooling.
+TESTS = "tests/"
+
+#: Importing this is what makes a test file the simulator's. It is the rule
+#: `tools/workflow_paths_check.py` holds `docket.toml`'s `workflow_paths` to
+#: (`PL-JBZK`), and since 2026-10-05 the one that lets a test under `TESTS`
+#: arm on green (`PL-552M`). Spelt here, in the module the gate holds, and
+#: imported by the lane check, so the two read one rule and neither can
+#: change it without an edit that waits on the owner's read.
+PRODUCT_PACKAGE = "anesthesia_sim"
+
+#: What pytest collects as a test module: its default `python_files`, which
+#: this repository does not override. Restated rather than read, and
+#: `tests/unit/test_workflow_paths_check.py` compares it with the setting its
+#: own run collected under, so a changed `python_files` fails a test instead
+#: of quietly turning a new test into a support module.
+TEST_FILE_PATTERNS = ("test_*.py", "*_test.py")
+
 #: The owner's read list, spelt as they spelt the rule (2026-10-03, `PL-KKHD`):
 #: a change reaching one of these waits on their read, the gate beside them,
 #: and everything else arms on green. A directory holds what is under it, a
-#: file is itself. `tests/` is the simulator's, at the root:
-#: `subprojects/docket/tests/` starts with `subprojects/`, so the prefix leaves
-#: it to the tooling. `src/anesthesia_sim/data/` lies under `src/` and is kept
-#: for the reader who looks for it by name.
-#: `.github/workflows/` and `.claude/hooks/` decide merges and tags as this
-#: module does, and joined on the owner's answer of 2026-10-03.
+#: file is itself. `TESTS` is the simulator's, but for a test of the tooling
+#: (`tests_the_tooling`), which arms on green since the owner's answer of
+#: 2026-10-05. `src/anesthesia_sim/data/` lies under `src/` and is kept for
+#: the reader who looks for it by name. `.github/workflows/` and
+#: `.claude/hooks/` decide merges and tags as this module does, and joined on
+#: the owner's answer of 2026-10-03.
 READ_PATHS = (
     "src/",
-    "tests/",
+    TESTS,
     "docs/MODEL.md",
     "src/anesthesia_sim/data/",
     "README.md",
@@ -204,31 +239,95 @@ READ_PATHS = (
 
 #: The list as the answers name it, the gate included.
 READ_LIST = (
-    "src/, tests/, docs/MODEL.md, src/anesthesia_sim/data/, README.md, "
-    ".github/workflows/, .claude/hooks/ and arming.py"
+    f"src/, {TESTS} but a test importing no {PRODUCT_PACKAGE}, docs/MODEL.md, "
+    "src/anesthesia_sim/data/, README.md, .github/workflows/, .claude/hooks/ and arming.py"
 )
 
 
-def waits_on_read(path: str) -> bool:
-    """Whether a change to `path` waits on the owner's read: the read list, or the gate."""
+def imported_modules(tree: ast.Module) -> set[str]:
+    """Every module name one file imports, in either import form.
+
+    `ast` rather than a regular expression because the question is about
+    imports and not about text: a package named in a docstring, in a fixture
+    path or in a comment is not a dependency, and several of the apparatus
+    tests here write `src/anesthesia_sim/...` as fixture data precisely because
+    they check tools that read the tree.
+    """
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            found.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            found.add(node.module)
+    return found
+
+
+def imports_product(tree: ast.Module) -> bool:
+    """Whether a file imports the simulator, which makes any file under `tests/` the simulator's."""
+    return any(
+        module == PRODUCT_PACKAGE or module.startswith(PRODUCT_PACKAGE + ".")
+        for module in imported_modules(tree)
+    )
+
+
+def is_test_file(name: str) -> bool:
+    """Whether pytest collects a file of this name, rather than it supporting what it collects."""
+    return any(fnmatch.fnmatchcase(name, pattern) for pattern in TEST_FILE_PATTERNS)
+
+
+def tests_the_tooling(path: str, sides: Iterable[str]) -> bool:
+    """Whether a change to `path` is a change to a test of the tooling, which arms on green.
+
+    A test file under `TESTS` - one pytest collects - whose source on every
+    side of the change imports no `PRODUCT_PACKAGE` (project owner,
+    2026-10-05, ratified, over keeping every change under `tests/` on the
+    read list, `PL-552M`). `sides` is the file's source at the merge base and
+    at HEAD, `""` for a side holding no such file, so a change that drops a
+    test's simulator import, or deletes a simulator test, still waits.
+
+    A support module never is, whatever it imports: what a module pytest does
+    not collect imports decides nothing about whose it is (`PL-12P8`), and
+    `tests/conftest.py`, importing nothing, serves the simulator's tests. Nor
+    is a file that is not Python.
+
+    Raises what `ast.parse` raises on a side that will not parse -
+    `SyntaxError`, or `ValueError` for a null byte under Python 3.11 - which
+    `arm` says beside the hold it then gives.
+    """
+    if not path.startswith(TESTS) or not is_test_file(PurePosixPath(path).name):
+        return False
+    return not any(imports_product(ast.parse(side, filename=path)) for side in sides)
+
+
+def waits_on_read(path: str, tooling: Collection[str] = ()) -> bool:
+    """Whether a change to `path` waits on the owner's read: the read list, or the gate.
+
+    `tooling` is the paths under `TESTS` that `tests_the_tooling` read as
+    tests of the tooling, on both sides of the change, which arm on green. A
+    name alone cannot say so, so a path under `TESTS` nobody read waits, and
+    `tooling` clears nothing outside `TESTS`.
+    """
     if path == GATE:
         return True
+    if path in tooling and path.startswith(TESTS):
+        return False
     return any(
         path == entry or (entry.endswith("/") and path.startswith(entry)) for entry in READ_PATHS
     )
 
 
-def arms_on_green(path: str) -> bool:
+def arms_on_green(path: str, tooling: Collection[str] = ()) -> bool:
     """Whether a change to `path` may merge on green CI without the owner's read.
 
     Everything but the owner's read list and `GATE` may (the Projects trial's
     instructions, 2026-10-03, kind unrecorded, over holding every path outside
-    the store, the tooling and the records, `PL-SQTR`; built by `PL-KKHD`).
-    `arm` holds a branch for each path this answers no to, and names beside
-    an `arm` each path `outside_the_store` answers yes to, since the owner's
-    rule arms those only while the change raises no question for them - a
-    judgment this module does not make - and asks for the reason in the
-    report.
+    the store, the tooling and the records, `PL-SQTR`; built by `PL-KKHD`),
+    and so may a test of the tooling under `TESTS`, named in `tooling`
+    (project owner, 2026-10-05, ratified, `PL-552M`). `arm` holds a branch
+    for each path this answers no to, and names beside an `arm` each path
+    `outside_the_store` answers yes to, since the owner's rule arms those only
+    while the change raises no question for them - a judgment this module
+    does not make - and asks for the reason in the report.
 
     It is not `claims.in_queue`, which asks whether a change owes a claim and
     counts the roadmap and the notes as queue records, since a triage pass and
@@ -242,9 +341,9 @@ def arms_on_green(path: str) -> bool:
     module the gate holds, rather than beside `in_queue`, so that widening
     what arms still takes an edit the gate holds (2026-09-26, ratified, over
     two named predicates in `claims`, `PL-0JGZ`), as `RECORDS` is kept here
-    for `PL-F6MM`.
+    for `PL-F6MM`, and the import rule for `PL-552M`.
     """
-    return not waits_on_read(path)
+    return not waits_on_read(path, tooling)
 
 
 def outside_the_store(path: str, items_dir: str) -> bool:
@@ -317,7 +416,7 @@ class Verdict:
                 noun = "path" if count == 1 else "paths"
                 said.append(
                     f"  It changes {count} {noun} outside {self._arming}, which arm on green "
-                    "under the owner's rule of 2026-10-03 unless the change raises a question "
+                    "under the owner's read list unless the change raises a question "
                     "for them - this session's judgment, not this answer's - so name "
                     f"{'it' if count == 1 else 'them'} in the report as the hold's reason:"
                 )
@@ -507,9 +606,15 @@ def arm(
         # back out of what `arms_on_green` holds.
         gate = GATE in paths
         rest = paths - {GATE}
-        on_list = tuple(sorted(path for path in rest if not arms_on_green(path)))
+        tooling, unreadable = _tests_of_the_tooling(sorted(rest), base, root, run)
+        unread.extend(unreadable)
+        on_list = tuple(sorted(path for path in rest if not arms_on_green(path, tooling)))
         outside = tuple(
-            sorted(path for path in rest if arms_on_green(path) and outside_the_store(path, prefix))
+            sorted(
+                path
+                for path in rest
+                if arms_on_green(path, tooling) and outside_the_store(path, prefix)
+            )
         )
     else:
         unread.append(f"git would not diff {name} against {base}, so what a merge lands is unknown")
@@ -559,6 +664,63 @@ def arm(
     if behind:
         return Verdict(BEHIND, branch=name, base=base, items_dir=found.items_dir, behind=behind)
     return Verdict(ARM, branch=name, base=base, items_dir=found.items_dir, outside=outside)
+
+
+def _tests_of_the_tooling(
+    paths: Sequence[str], base: str, root: Path, run: Runner
+) -> tuple[frozenset[str], tuple[str, ...]]:
+    """The tests of the tooling among `paths`, and why any other test under `TESTS` went unread.
+
+    Each test file under `TESTS` is read on both sides of the change: at the
+    merge base, the side `base...HEAD` compares against, and at HEAD, which is
+    what a squash lands. Git answers a side holding no such file - a test the
+    branch added or deleted - with nothing, which imports nothing.
+
+    A test git would not hand over, or that will not parse here, is not read
+    as the tooling's: it waits, and the reason goes beside the hold, since a
+    hold that cannot say why is a partial read handed over as a whole one.
+    `bin/docket` runs on the bare `python3`, which can be older than the
+    project's own interpreter, so a test written in newer grammar is the
+    likeliest such case; none under `TESTS` was, measured 2026-10-05.
+    """
+    tests = [
+        path for path in paths if path.startswith(TESTS) and is_test_file(PurePosixPath(path).name)
+    ]
+    if not tests:
+        return frozenset(), ()
+    fork = run(["merge-base", base, "HEAD"], root).strip()
+    if not fork:
+        one = len(tests) == 1
+        which = "the test it changes" if one else f"the {len(tests)} tests it changes"
+        return frozenset(), (
+            f"git gave no merge base of {base} and HEAD, so what {which} under {TESTS} "
+            f"import{'s' if one else ''} was not read, and {'it' if one else 'each'} waits on "
+            "the read",
+        )
+    tooling: set[str] = set()
+    unreadable: list[str] = []
+    for path in tests:
+        sides = [run(["show", f"{rev}:{path}"], root) for rev in (fork, "HEAD")]
+        if not all(answered(side) for side in sides):
+            unreadable.append(
+                f"git would not hand over {path} on both sides of the change, so whether it "
+                f"imports {PRODUCT_PACKAGE} was not read, and it waits on the read"
+            )
+            continue
+        try:
+            if tests_the_tooling(path, sides):
+                tooling.add(path)
+        except (SyntaxError, ValueError, RecursionError) as error:
+            line = error.lineno if isinstance(error, SyntaxError) else None
+            where = f", line {line}" if line else ""
+            said = error.msg if isinstance(error, SyntaxError) else str(error)
+            version = ".".join(str(part) for part in sys.version_info[:3])
+            unreadable.append(
+                f"{path} would not parse under this python3 ({version}): "
+                f"{said}{where}, so whether it imports {PRODUCT_PACKAGE} was not read, and it "
+                "waits on the read"
+            )
+    return frozenset(tooling), tuple(unreadable)
 
 
 def _unpulled(root: Path, run: Runner, heads: RemoteHeads | None, name: str, branch: str) -> str:
