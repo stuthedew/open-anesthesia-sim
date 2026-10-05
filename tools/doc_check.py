@@ -204,7 +204,9 @@ try:
     # `notes_added` are the one definition of a release's cut, which the
     # printed tag commands use too (`PL-QHCW`). And `subject_pull_request` is
     # the one reading of the pull request number a subject names, which the
-    # tag-span read takes the squash shape of (`PL-YYDT`).
+    # tag-span read takes the squash shape of (`PL-YYDT`). `default_branch` names
+    # the branch the merge gate protects, which a workflow's branch filter is
+    # matched against (`PL-C72H`).
     from docket.vcs import (
         DEFAULT_BRANCHES,
         ITEM_FILE_RE,
@@ -214,6 +216,7 @@ try:
         answered,
         changed_path_args,
         default_base,
+        default_branch,
         find_cut,
         is_shallow,
         listed_paths,
@@ -233,6 +236,11 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
         "and docket/{config,model,store}.py for the queue, "
         f"and could not import them: {error}"
     ) from error
+
+# `required_checks_check` holds the one reader of a workflow's triggers
+# (`PL-848V`), which the merge gate's question is asked of rather than read a
+# second way: two hand readers had each taken a few of `on:`'s spellings.
+import required_checks_check
 
 # Documentation whose claims this tool holds to the tree. `CLAUDE.md` and the
 # docket skill are included because they cite paths as heavily as the docs
@@ -5456,15 +5464,11 @@ GATE_SCRIPT_NAMES = ("bin/docket",)
 
 #: The workflow trigger that makes a job part of the merge gate. A workflow
 #: that runs only on a schedule - `drift.yml` here - is not one: a branch can
-#: be merged without it ever having looked.
-PULL_REQUEST_TRIGGER_RE = re.compile(r"^\s+pull_request:?\s*$")
-#: Both spellings of the trigger list. The block form opens with a bare `on:`
-#: and the events follow indented; the flow form writes them inline, as
-#: `on: [push, pull_request]`. Reading only the first would have reported a
-#: workflow written the second way as gating nothing, which is a wrong answer
-#: rather than a missing one - the failure `.claude/rules/apparatus-standard.md`
-#: puts a floor under.
-ON_BLOCK_RE = re.compile(r"^on:(?P<inline>.*)$")
+#: be merged without it ever having looked. Nor is `pull_request_target`, which
+#: "runs in the context of the default branch of the base repository, rather
+#: than in the context of the merge commit" (*Events that trigger workflows*,
+#: docs.github.com, read 2026-10-05), so the steps it runs are not the branch's.
+MERGE_GATE_EVENTS = frozenset({"pull_request"})
 
 
 def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
@@ -5578,47 +5582,26 @@ def _gate_invocations(root: Path, commands: Iterable[Sequence[str]]) -> Iterator
             yield (script, *_mode(words[at + 1 :]))
 
 
-def _gates_pull_requests(text: str) -> bool:
-    """Whether this workflow runs on `pull_request`, read from its `on:` block.
+def _gates_pull_requests(text: str, branch: str | None = None) -> bool:
+    """Whether every pull request onto `branch` runs this workflow on `pull_request`.
 
-    A flow collection YAML carries past the key's line - `on: [push,` over
-    `pull_request]` - raises `UnreadStatement` naming it (`PL-R417`): read from
-    its first line, `pull_request` was not in it, so the workflow gated nothing
-    and every script only it runs read as missing from the merge gate. No
-    workflow here writes one, so it is refused rather than joined.
+    Asked of `required_checks_check`'s one reader of a workflow's triggers
+    (`PL-848V`), so the merge gate and the required-checks reconciliation read
+    each spelling of `on:` alike. Two hand readers had each read a few: this
+    one took `on:` over a commented or anchored block, `- pull_request` and
+    `pull_request:  # why` for a workflow gating nothing (`PL-PZP7`,
+    `PL-S3XS`). `branch` is what a branch filter is matched against, `None`
+    where no default branch could be established.
+
+    A spelling or filter that reader declines - a flow collection carried past
+    its line (`PL-R417`), a path filter - raises `UnreadStatement` naming it.
     """
-    inside = False
-    for number, line in enumerate(text.splitlines(), start=1):
-        opening = ON_BLOCK_RE.match(line)
-        if opening is not None:
-            inline = opening.group("inline").strip()
-            if _unclosed_flow(inline):
-                raise UnreadStatement(
-                    number,
-                    "its `on:` events are a flow collection carried past the key's line, "
-                    "which this reader does not join; write it on one line, or as a block "
-                    "mapping",
-                )
-            if inline:
-                return "pull_request" in inline
-            inside = True
-            continue
-        if not inside:
-            continue
-        if line.strip() and not line.startswith((" ", "\t", "#")):
-            return False
-        if PULL_REQUEST_TRIGGER_RE.match(line):
-            return True
-    return False
-
-
-def _unclosed_flow(value: str) -> bool:
-    """Whether a YAML value opens a flow collection that its own line does not close (§ 7.4).
-
-    Counted by bracket, which is exact for the event names a workflow lists.
-    """
-    opened = value.count("[") + value.count("{")
-    return value[:1] in "[{" and opened > value.count("]") + value.count("}")
+    try:
+        return required_checks_check.reports_on(
+            required_checks_check.triggers(split_lines(text)), MERGE_GATE_EVENTS, branch
+        )
+    except required_checks_check.Undecidable as unread:
+        raise UnreadStatement(unread.line or 1, unread.why) from unread
 
 
 def check_gate_parity(root: Path, report: Report) -> None:
@@ -5658,12 +5641,14 @@ def check_gate_parity(root: Path, report: Report) -> None:
     each script's parser; an exact match reports the difference and asks for
     its reason instead.
 
-    **Only workflows that run on `pull_request` count as the merge gate.** A
-    branch can merge without a scheduled workflow ever having looked, so
-    counting `drift.yml` would report a script as covered that gates nothing.
-    `pr-title.yml` does count, which is what makes `tools/pr_title_check.py`
-    the worked example rather than a fourth finding: it is `make check`-only
-    within `quality.yml` and has a workflow of its own.
+    **Only workflows that run on every pull request onto the default branch
+    count as the merge gate.** A branch can merge without a scheduled workflow
+    ever having looked, so counting `drift.yml` would report a script as
+    covered that gates nothing; nor does a workflow whose branch filter leaves
+    the default branch out. `_gates_pull_requests` asks that of the one reader
+    of a workflow's triggers. `pr-title.yml` does count, which is what makes
+    `tools/pr_title_check.py` the worked example rather than a fourth finding:
+    it is `make check`-only within `quality.yml` and has a workflow of its own.
 
     Silent where either file is missing, so a partial checkout is not failed
     for what it does not carry.
@@ -5687,11 +5672,12 @@ def check_gate_parity(root: Path, report: Report) -> None:
     }
     merge: set[tuple[str, ...]] = set()
     steps: list[UnreadStatement] = []
+    default = default_branch(root)
     for path in workflows:
         text = path.read_text(encoding="utf-8")
         where = path.relative_to(root)
         try:
-            gates = _gates_pull_requests(text)
+            gates = _gates_pull_requests(text, default if resolved(default) else None)
         except UnreadStatement as trigger:
             report.declined.append(f"{where}:{trigger.line}: {trigger.why}, so {unread}")
             steps.append(trigger)

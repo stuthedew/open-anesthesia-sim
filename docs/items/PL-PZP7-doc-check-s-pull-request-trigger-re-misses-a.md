@@ -3,12 +3,14 @@ id: PL-PZP7
 title: doc_check's PULL_REQUEST_TRIGGER_RE misses a pull_request trigger written as a list entry, with a trailing comment or as a flow mapping, and required_checks_check keeps an on: line's trailing comment in its event name, so a pull-request workflow spelled those ways reads as gating nothing; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: required-check-trigger-reading
 touches: tools/doc_check.py, tools/required_checks_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1366
 payoff: a pull-request workflow whose trigger carries a comment, a list dash or an inline mapping still counts as reporting on pull requests, so neither check passes or fails for not having seen it
 verify: grep -q 'def test_each_spelling_of_a_pull_request_trigger_is_the_merge_gate' tests/unit/test_doc_check.py && grep -q 'def test_a_trailing_comment_is_no_part_of_an_event_name' tests/unit/test_required_checks_check.py
 ---

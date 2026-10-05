@@ -3,12 +3,14 @@ id: PL-4T49
 title: required_checks_check reads an on: value opening on the line after the key, a block-scalar header and an explicit ? paths key as no trigger or no path filter, and a flow mapping spanning lines under jobs: as jobs, so a pull-request workflow can drop out of the reconciliation and the check pass; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: required-check-trigger-reading
 touches: tools/required_checks_check.py, tests/unit/test_required_checks_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-848V's thread, 2026-10-05
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1366
 payoff: a pull-request workflow whose on: value opens on the line after the key, or whose jobs: is a flow mapping, is read or refused by name, so the reconciliation cannot pass without it
 verify: grep -q 'def test_an_on_value_on_the_line_after_the_key_names_its_events' tests/unit/test_required_checks_check.py && grep -q 'def test_a_flow_mapping_under_jobs_is_refused_by_name' tests/unit/test_required_checks_check.py
 recurrences: 2026-10-04 PL-GWQ7 withdrawn 2026-10-04 PL-R417
