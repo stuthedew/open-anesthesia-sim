@@ -54,6 +54,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from .lines import split_lines
 from .markdown import statement_lines
 from .roadmap import SENTENCE_BREAK
 
@@ -139,7 +140,7 @@ def parse(name: str, text: str) -> list[Assertion]:
     a line's start opens none, and an opener nothing closes hides no date below
     it (`PL-92MY`).
     """
-    lines = text.splitlines()
+    lines = split_lines(text)
     assertions: list[Assertion] = []
     for first, end in statement_lines(lines):
         statement = "\n".join(lines[first:end])

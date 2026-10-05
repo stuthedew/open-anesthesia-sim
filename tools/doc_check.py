@@ -972,7 +972,7 @@ def read_docs(root: Path) -> dict[Path, str]:
 
 def _fenced_blocks(text: str) -> Iterator[tuple[int, list[str]]]:
     """Yield each closed fenced block as its opening line's number and the lines inside it."""
-    lines = text.splitlines()
+    lines = split_lines(text)
     for block in blocks(text):
         yield block.start + 1, lines[block.start + 1 : block.end]
 
@@ -1117,7 +1117,7 @@ def _provenance_rows(text: str) -> tuple[list[tuple[int, list[str]]], str]:
     which `parse_version_table`, `parse_timeline` and `parse_milestones` all
     share.
     """
-    lines = text.splitlines()
+    lines = split_lines(text)
     in_section = False
     header: list[str] | None = None
     rows: list[tuple[int, list[str]]] = []
@@ -1546,7 +1546,7 @@ def check_prose_provenance(root: Path, report: Report) -> None:
         return  # `check_provenance` has already reported the missing document.
 
     text = path.read_text(encoding="utf-8")
-    lines = text.splitlines()
+    lines = split_lines(text)
     fenced = fenced_lines(text)
     split = {index: kind for index, kind in _split_markers(lines).items() if kind != "absent"}
     markers = 0
@@ -2084,7 +2084,7 @@ def check_gate_counts(root: Path, report: Report) -> None:
     if not roadmap.is_file():
         return
     text = roadmap.read_text(encoding="utf-8")
-    lines = text.splitlines()
+    lines = split_lines(text)
     store = _read_store(root)
     items = None if store is None else store.items
 
@@ -2196,7 +2196,7 @@ def check_self_cleared_group(root: Path, report: Report) -> None:
     gate = _current_gate(text)
     if gate is None:
         return
-    groups = list(_gate_groups(text.splitlines(), gate))
+    groups = list(_gate_groups(split_lines(text), gate))
     if not groups:
         return
 
@@ -2483,7 +2483,7 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
     belongs in `list_entries` as a depth argument rather than in a second
     walker here.
     """
-    lines = text.splitlines()
+    lines = split_lines(text)
     for index, line in enumerate(lines):
         heading = HEADING_RE.match(line)
         if heading is None or len(heading.group("hashes")) != family.level:
@@ -2659,7 +2659,7 @@ def check_scope_exclusions(root: Path, report: Report) -> None:
         report.declined.append(f"{ROADMAP} is absent, so its scope headings were not compared")
         return
     text = roadmap.read_text(encoding="utf-8")
-    lines = text.splitlines()
+    lines = split_lines(text)
     for section in parse_milestones(text):
         excluded = set(section.excluded_ids)
         both = [identifier for identifier in section.own_scope_ids if identifier in excluded]
@@ -2996,7 +2996,7 @@ def _tags_region(text: str) -> tuple[int, str] | None:
     `**Tags.**` a soft break carries onto a line's start is its paragraph's own
     text (`PL-VQBY`).
     """
-    lines = text.splitlines()
+    lines = split_lines(text)
     start = next(
         (first for first, _ in statement_lines(lines) if TAGS_MARK_RE.match(lines[first])), None
     )
@@ -4028,7 +4028,7 @@ def _hash_headings(text: str) -> list[str]:
     """
     return [
         match.group("title")
-        for line in text.splitlines()
+        for line in split_lines(text)
         if (match := HEADING_RE.match(line)) is not None
     ]
 
@@ -4071,9 +4071,9 @@ def _code_spans(text: str) -> list[re.Match[str]]:
     spans = list(_statement_spans(text))
     fenced = fenced_lines(text)
     offset = 0
-    for index, line in enumerate(text.splitlines(keepends=True)):
+    for index, line in enumerate(split_lines(text, keepends=True)):
         if index in fenced:
-            spans.extend(CODE_SPAN_RE.finditer(text, offset, offset + len(line.splitlines()[0])))
+            spans.extend(CODE_SPAN_RE.finditer(text, offset, offset + len(line.removesuffix("\n"))))
         offset += len(line)
     return sorted(spans, key=lambda span: span.start())
 
@@ -4095,9 +4095,9 @@ def _statement_spans(text: str) -> Iterator[re.Match[str]]:
 def _statement_offsets(text: str) -> Iterator[tuple[int, int]]:
     """Each statement `markdown.statement_lines` cuts `text` into, as offsets into it."""
     starts = [0]
-    for line in text.splitlines(keepends=True):
+    for line in split_lines(text, keepends=True):
         starts.append(starts[-1] + len(line))
-    for first, end in statement_lines(text.splitlines()):
+    for first, end in statement_lines(split_lines(text)):
         yield starts[first], starts[end]
 
 
@@ -4305,7 +4305,7 @@ def _deleted_paths(root: Path) -> dict[str, str] | None:
         return None
     deleted: dict[str, str] = {}
     for record in text.split("\x00")[1:]:
-        lines = [line for line in record.splitlines() if line.strip()]
+        lines = [line for line in split_lines(record) if line.strip()]
         for gone in lines[1:]:
             deleted.setdefault(gone, lines[0])
     return deleted
@@ -4349,7 +4349,7 @@ def _absent_paths(
     presence differs between a working tree and CI. A marker shown in a fence
     is the format being shown, and is not read.
     """
-    lines = without_fences(text).splitlines()
+    lines = split_lines(without_fences(text))
     split = _split_markers(lines)
     declared: dict[int, set[str]] = {}
     for index, line in enumerate(lines):
@@ -4716,7 +4716,7 @@ def _make_lines(text: str) -> Iterator[tuple[str, int]]:
     Read a physical line at a time, a continued command was two (`PL-G2FY`),
     and a continued prerequisite list's second line was a recipe line.
     """
-    lines = text.splitlines()
+    lines = split_lines(text)
     index = 0
     while index < len(lines):
         opens = index
@@ -4853,7 +4853,7 @@ def workflow_commands(
     to the next, and is raised where none is passed, so no reading of it is
     silent.
     """
-    lines = text.splitlines()
+    lines = split_lines(text)
     index = 0
     while index < len(lines):
         match = RUN_STEP_RE.match(lines[index])
@@ -5329,7 +5329,7 @@ def _without_code(text: str) -> list[str]:
     closing = -1  # the closing line of the fenced block being blanked
     items: list[int] = []  # the content column of each open list item, innermost last
     paragraph = False  # whether the line above is prose this line may continue
-    for index, raw in enumerate(text.splitlines()):
+    for index, raw in enumerate(split_lines(text)):
         line = raw.expandtabs(4)
         if index <= closing or not line.strip():
             lines.append("")
@@ -5356,7 +5356,7 @@ def _without_code(text: str) -> list[str]:
     # quotation of the broken syntax rather than a use of it, and a shell
     # snippet like `"$upstream..HEAD"` is not an unclosed expression. Each is
     # read within its statement, as `_statement_spans` reads one (`PL-FP7J`).
-    for first, end in statement_lines(text.splitlines()):
+    for first, end in statement_lines(split_lines(text)):
         prose = "\n".join(lines[first:end])
         blanked = CODE_SPAN_RE.sub(partial(_blanked_span, prose), prose)
         lines[first:end] = blanked.split("\n")
@@ -5802,7 +5802,7 @@ def _frontmatter(text: str) -> list[str] | None:
     value above it, such as a literal block's, which YAML carries on past it
     (`PL-R417`); read as the close, it cut the block short.
     """
-    lines = text.splitlines()
+    lines = split_lines(text)
     if not lines or lines[0].strip() != "---":
         return None
     for index, line in enumerate(lines[1:], start=1):
@@ -5872,7 +5872,7 @@ def _measure(name: str, text: str) -> ResidentFile | None:
         return _skill_description(name, text)
     if name.startswith(f"{RULES_DIR}/") and is_path_scoped(text):
         return None
-    return ResidentFile(name, len(text), len(text.splitlines()))
+    return ResidentFile(name, len(text), len(split_lines(text)))
 
 
 def _measure_on_demand(name: str, text: str) -> ResidentFile | None:
@@ -5886,7 +5886,7 @@ def _measure_on_demand(name: str, text: str) -> ResidentFile | None:
     """
     if name.startswith(f"{RULES_DIR}/") and not is_path_scoped(text):
         return None
-    return ResidentFile(name, len(text), len(text.splitlines()))
+    return ResidentFile(name, len(text), len(split_lines(text)))
 
 
 def measure_resident(root: Path) -> list[ResidentFile]:
@@ -6204,7 +6204,7 @@ def _check_reference_files_exist(root: Path, report: Report) -> None:
         text = path.read_text(encoding="utf-8")
     except UNREADABLE:
         return
-    for number, line in enumerate(text.splitlines(), 1):
+    for number, line in enumerate(split_lines(text), 1):
         for match in REFERENCE_FILE_RE.finditer(line):
             name = match.group("name")
             if (path.parent / name).exists():

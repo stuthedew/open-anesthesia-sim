@@ -92,6 +92,19 @@ def test_a_thread_carries_the_line_its_heading_is_on(tmp_path: Path) -> None:
     assert read(_notes(tmp_path))[0].line == 5
 
 
+def test_a_line_separator_in_prose_opens_no_thread_and_moves_no_line(tmp_path: Path) -> None:
+    """A U+2028 ends no line in CommonMark (0.31.2 § 2.1), so the `##` after one is prose.
+
+    Cut by `str.splitlines()`, it opened a thread nobody wrote, and put every
+    heading below it a line further down than it stands (`PL-BBYJ`).
+    """
+    text = "Intro\u2028## Open thread: PL-B1B1\nMore prose.\n\n## Open thread: PL-C2C2\n"
+
+    threads = read(_notes(tmp_path, text))
+
+    assert [(thread.line, thread.cites) for thread in threads] == [(4, ("PL-C2C2",))]
+
+
 def test_a_missing_file_is_no_threads_rather_than_an_error(tmp_path: Path) -> None:
     """`docket show` must not fail on a sound item because a notes file moved.
 

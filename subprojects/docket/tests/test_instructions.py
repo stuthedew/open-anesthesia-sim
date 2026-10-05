@@ -97,6 +97,20 @@ def test_the_line_number_is_where_the_reader_goes() -> None:
     assert [(row.line, row.when) for row in parse("r.md", text)] == [(3, date(2026, 9, 4))]
 
 
+def test_a_form_feed_moves_no_line_the_reader_is_sent_to() -> None:
+    """A form feed ends no line in CommonMark (0.31.2 § 2.1), so the lines below it hold.
+
+    Cut by `str.splitlines()`, every assertion past one was sent a line further
+    down than it stands (`PL-BBYJ`).
+    """
+    text = "Pasted\ftext, measured 2026-01-01.\n\nA rule, measured 2026-02-02.\n"
+
+    assert [(row.line, row.when) for row in parse("r.md", text)] == [
+        (1, date(2026, 1, 1)),
+        (3, date(2026, 2, 2)),
+    ]
+
+
 def test_a_date_inside_a_code_fence_is_skipped() -> None:
     """A dated example command is a template, not a claim about the world.
 

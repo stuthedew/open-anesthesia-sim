@@ -188,6 +188,22 @@ def test_a_following_bullet_or_heading_is_not_a_continuation() -> None:
     assert dead_ends.check(text) == []
 
 
+def test_a_line_separator_in_an_entry_carries_nothing_on() -> None:
+    """A U+2028 ends no line in CommonMark (0.31.2 § 2.1), so an entry holding one is one line.
+
+    Cut by `str.splitlines()`, what followed it was refused as a continuation
+    of the entry, and the entry below stood a line further down (`PL-BBYJ`).
+    """
+    text = (
+        PREAMBLE
+        + entry("An approach", "refuted\u2028twice. `PL-D188`")
+        + entry("Two", "also refuted. `PL-D188`")
+    )
+
+    assert [line for line, _ in dead_ends.entries(text)] == [9, 10]
+    assert dead_ends.check(text) == []
+
+
 @pytest.mark.parametrize("command", ["emit", "check"])
 def test_the_script_runs_under_a_bare_interpreter(command: str) -> None:
     """No virtualenv: `make check` and the session-start hook both invoke it bare."""

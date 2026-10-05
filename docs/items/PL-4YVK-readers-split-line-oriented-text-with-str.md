@@ -12,7 +12,7 @@ added: 2026-10-04
 payoff: a ref, a transcript record or a log entry is read as the one line its format wrote, so no reader answers from a partial reading it does not name
 verify: grep -q '^generator: spent' docs/items/PL-4YVK-*.md
 root-cause-of: PL-139L, PL-PK4B, PL-K1D6, PL-LRBV, PL-BBYJ, PL-0R4M
-generator: live - tests/unit/test_line_splits.py now refuses splitlines() outside the Markdown readers PL-BBYJ converts, but every git reader still decodes through subprocess text mode, which turns a raw carriage return in a subject into a line end before any split (PL-0R4M), so each new git reader inherits it
+generator: live - tests/unit/test_line_splits.py refuses splitlines() everywhere in those trees since PL-BBYJ converted the Markdown readers, but every git reader still decodes through subprocess text mode, which turns a raw carriage return in a subject into a line end before any split (PL-0R4M), so each new git reader inherits it
 misread: Where one line ends in line-oriented text: git output, a JSON-lines transcript, a log, Python source
 ---
 
@@ -60,3 +60,9 @@ and filed, and hold the head open: `PL-BBYJ`, the Markdown readers, which wait
 for `#1358`; and `PL-0R4M`, the text-mode decoding that cuts a git record at a
 raw `\r` before any reader splits it. The `generator:` line says why it is
 still `live`.
+
+**`PL-BBYJ`, 2026-10-05.** The Markdown readers split with `split_lines` too,
+and so do `tools/doc_check.py`'s readers of git's `log --name-only`, a Makefile
+and a workflow's YAML, which shared their exemption. `MARKDOWN_READERS` is gone,
+so `tests/unit/test_line_splits.py` refuses `splitlines()` everywhere in the
+three trees.

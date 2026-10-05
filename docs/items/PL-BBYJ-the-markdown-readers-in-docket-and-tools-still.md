@@ -3,12 +3,14 @@ id: PL-BBYJ
 title: The Markdown readers in docket and tools still split with str.splitlines(), which breaks at U+2028, U+0085 and form feed where CommonMark ends no line, and pair their line indices with fences.py's; tests/unit/test_line_splits.py exempts their files until they convert together
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: line-ends
 touches: subprojects/docket/src/docket/lines.py, subprojects/docket/src/docket/fences.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/notes.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/roadmap.py, tools/doc_check.py, tools/dead_ends.py, subprojects/docket/tests, tests/unit, docs/items/PL-4YVK-readers-split-line-oriented-text-with-str.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
+closed: 2026-10-05
+pr: 1369
 payoff: A brief, the roadmap or a document holding a pasted U+2028 or form feed is read as the lines GitHub renders, so no reader conjures a heading, fence or thread from one or reports a line past it one too high, and no reader in the apparatus can reach for splitlines() again
 verify: ! grep -qF 'MARKDOWN_READERS' tests/unit/test_line_splits.py && grep -q 'def test_a_fence_is_read_from_lines_cut_at_a_newline_alone' subprojects/docket/tests/test_fences.py
 ---
