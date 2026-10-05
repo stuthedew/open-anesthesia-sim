@@ -10,42 +10,43 @@ opener nothing closed, so the rest of that brief was never read for line
 citations while `make check` passed (`PL-92MY`). So there is one reading, here,
 and `tools/doc_check.py` takes it through the import it already makes.
 
-It is CommonMark's, in three rules and one refusal:
+It is CommonMark 0.31.2's (§ 4.5), read by `markdown`, which knows what holds
+each line (`PL-J0C6`), in four rules and one refusal:
 
-- three or more backticks or tildes open a block, at any indentation, since a
-  fence under a list item is indented to sit inside it;
+- three or more backticks or tildes open a block at most three columns into
+  the block quote or list item holding the line, or into the margin, so a fence
+  under a list item is indented to sit inside it and one indented four columns
+  past its container is a line of an indented code block or a paragraph;
 - a backtick opener's info string holds no backtick, which is what keeps a
   wrapped code span like `PL-6SRZ`'s from opening one;
-- a bare run of the same character, at least as long, closes it;
-- and **a fence nothing closes is not a fence**. The opener and every line after
-  it are read as written, where CommonMark runs the block to the end of the
-  document. Every reader here skips a literal, so CommonMark's reading would
-  skip the rest of the file silently, which is the defect this module exists to
-  remove; read as written, an unclosed fence costs at worst a loud false error on
-  a literal, repaired by closing the fence the document needs anyway.
+- a bare run of the same character, at least as long and at most three columns
+  into the same containers, closes it;
+- the end of the block quote or list item holding it closes it too;
+- and **a fence nothing closes before the document ends is not a fence**. The
+  opener and every line after it are read as written, where CommonMark runs the
+  block to the end of the document. Every reader here skips a literal, so
+  CommonMark's reading would skip the rest of the file silently, which is the
+  defect this module exists to remove; read as written, an unclosed fence costs
+  at worst a loud false error on a literal, repaired by closing the fence the
+  document needs anyway.
 
 A line is what `str.splitlines()` cuts, and an index is 0-based.
 """
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
-#: A fenced block's opening line. The lookahead is the info-string rule: a
-#: backtick run followed anywhere on its line by another backtick is a code
-#: span's delimiter, not a fence.
-OPEN_RE = re.compile(r"^[ \t]*(?P<fence>`{3,}(?=[^`]*$)|~{3,})")
-
-#: A line that can close a block: a bare run, with nothing after it but spaces
-#: or tabs. Whether it closes *this* block is `blocks`'s question, since the run
-#: has to be the opener's character and at least as long.
-CLOSE_RE = re.compile(r"^[ \t]*(?P<fence>`{3,}|~{3,})[ \t]*$")
+from . import markdown
 
 
 @dataclass(frozen=True)
 class Block:
-    """One closed fenced block: the indices of its opening and its closing fence line."""
+    """One closed fenced block: the indices of its opening line and its last line.
+
+    The last is its closing fence line, or, where its container's end closed
+    it, the last line its container held.
+    """
 
     start: int
     end: int
@@ -58,18 +59,11 @@ def blocks(text: str) -> list[Block]:
     its lines are read as written, and a fence-shaped line among them is one of
     them.
     """
-    found: list[Block] = []
-    fence = ""
-    start = 0
-    for index, line in enumerate(text.splitlines()):
-        if fence:
-            closing = CLOSE_RE.match(line)
-            if closing and closing["fence"].startswith(fence):
-                found.append(Block(start, index))
-                fence = ""
-        elif opening := OPEN_RE.match(line):
-            fence, start = opening["fence"], index
-    return found
+    return [
+        Block(block.start, block.end - 1)
+        for block in markdown.read(text.splitlines()).blocks
+        if block.kind == markdown.FENCE
+    ]
 
 
 def fenced_lines(text: str) -> frozenset[int]:

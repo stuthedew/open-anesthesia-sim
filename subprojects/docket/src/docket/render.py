@@ -3239,6 +3239,7 @@ def format_picks(picks: Picks) -> str:
     if picks.folded:
         folded = ", ".join(f"{name} ({count})" for name, count in picks.folded)
         lines.append(f"Folded into their lane lines to keep to {MAX_PICK_LINES}: {folded}.")
+    lines += _unread_lines(picks.unread)
     return "\n".join(lines)
 
 
@@ -3364,13 +3365,19 @@ def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
         lines.append("")
         lines.append("The plan and the project disagree, so the beat above rests on a stale plan:")
         lines.extend(f"  {statement}" for statement in plan.stale)
-    if plan.unread:
-        lines.append("")
-        lines.append(
-            "A list the plan is read from was not read whole, so a count above may be short:"
-        )
-        lines.extend(f"  {entry}" for entry in plan.unread)
+    lines += _unread_lines(plan.unread)
     return "\n".join(lines)
+
+
+def _unread_lines(unread: Sequence[str]) -> list[str]:
+    """Each list entry the plan was not read whole at, as `wave` and `picks` both name them."""
+    if not unread:
+        return []
+    return [
+        "",
+        "A list the plan is read from was not read whole, so a count above may be short:",
+        *(f"  {entry}" for entry in unread),
+    ]
 
 
 def _deferral_lines(plan: Wave, items: Mapping[str, Item]) -> list[str]:

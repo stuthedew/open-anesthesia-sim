@@ -173,7 +173,11 @@ watch.
 **A run is its inputs, and its states are derived from them** (PL-T691).
 The controller holds the run as a `core/run_definition.py`
 `RunDefinition`: the settings in force at each moment, plus one keyframe — the
-state at that instant — per change, and nothing else. Because the equations
+state at that instant — per change, and nothing else of the run. (The chart's
+read keeps the propagators its last window used, for the next frame to reuse,
+but each is a function of settings the definition already holds, so no drawn
+value depends on whether it was kept: `RunDefinition.evaluate_anchored`,
+PL-CNCF.) Because the equations
 are linear and time-invariant while the settings hold, the propagator is exact
 over any horizon and not only over a step, so every state the run passed
 through is one propagation from the keyframe bracketing it and none of them

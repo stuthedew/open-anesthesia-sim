@@ -100,3 +100,16 @@ no margin inside a 16.7 ms frame" does not describe this program:
 budget, and that value landed with the Qt port the day before this was filed.
 The brief disclaims asserting a cadence, so this is framing rather than a
 premise - but re-derive the margin against 200 ms rather than 16.7 ms.
+
+**`PL-CNCF` measured the widened range on 2026-10-04, and changed the
+evaluation half under this table.** "`PL-CNCF` measured only the fixed
+150-column budget" no longer holds: it measured `drawn_window` following a
+15-minute window at 150, 1 069 and 2 401 columns, then made
+`RunDefinition.evaluate_anchored` keep the propagators each frame forms for the
+next. One run's evaluation now costs about 3.9, 10.1 and 18.6 ms at those
+widths, set by the column count - about 7 us a column - rather than by the
+changes in view (`docs/MODEL.md` § "The run is that record, and every state is
+derived from it"). So the `assemble_chart_frame` figures above predate that,
+and the part of them outside `drawn_window` - the per-instant packaging this
+item's growth was attributed to - is still unmeasured. Re-take the table before
+sizing anything.
