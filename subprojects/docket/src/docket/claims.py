@@ -97,6 +97,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from .config import Config
+from .lines import split_lines
 from .model import CLOSED_STATUSES, parse_front_matter
 from .release import NOTES_DIR, notes_name
 from .store import ID_PATTERN
@@ -1081,7 +1082,7 @@ def _below_floor(root: Path, run: Runner) -> str:
 def _local_branches(root: Path, run: Runner) -> frozenset[str]:
     """The checkout's own branches, by the short name `_unlanded_refs` lists them under."""
     listing = run(["for-each-ref", "--format=%(refname:short)", "refs/heads"], root)
-    return frozenset(name.strip() for name in listing.splitlines() if name.strip())
+    return frozenset(name.strip() for name in split_lines(listing) if name.strip())
 
 
 def _checked_out(root: Path, run: Runner, remotes: frozenset[str]) -> str:

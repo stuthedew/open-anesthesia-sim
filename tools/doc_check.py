@@ -136,6 +136,7 @@ try:
     # reads it from here.
     from docket.fences import blocks, fenced_lines
     from docket.fences import without_fences as without_fences
+    from docket.lines import split_lines
     from docket.model import CLOSED_STATUSES, SEMVER_PATTERN, Item
     from docket.release import (
         CODE_SPAN_RE,
@@ -3567,7 +3568,7 @@ def _tag_spans(root: Path) -> _TagSpans | None:
     pull_request: dict[str, str] = {}
     names: set[str] = set()
     current = ""
-    for line in history.splitlines():
+    for line in split_lines(history):
         commit, _, rest = line.partition("\t")
         decoration, _, subject = rest.partition("\t")
         refs = TAG_REF_RE.findall(decoration)
@@ -4389,7 +4390,7 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
             if target is None:
                 continue
             highest = int(last) if last else first
-            count = len(target.read_text(encoding="utf-8", errors="replace").splitlines())
+            count = len(split_lines(target.read_text(encoding="utf-8", errors="replace")))
             if highest > count:
                 report.errors.append(
                     f"{path}:{_line_of(raw, match.start())}: cites `{token}:"
@@ -5876,7 +5877,7 @@ def measure_digest(root: Path) -> ResidentFile | None:
     if result.returncode:
         return None
     return ResidentFile(
-        f"{DIGEST_HOOK} (output)", len(result.stdout), len(result.stdout.splitlines())
+        f"{DIGEST_HOOK} (output)", len(result.stdout), len(split_lines(result.stdout))
     )
 
 
@@ -5959,7 +5960,7 @@ def _baseline(
         if listing is None:
             continue
         measured: list[ResidentFile] = []
-        for name in sorted(listing.splitlines()):
+        for name in sorted(split_lines(listing)):
             if not name.endswith(".md"):
                 continue
             text = _git_text(root, "show", f"{ref}:{name}")
@@ -6266,7 +6267,7 @@ def _git_output(root: Path, *args: str) -> str:
     except UnicodeDecodeError as error:
         raise GitUnanswered(f"{command} printed a path this cannot read: {error}") from error
     if result.returncode:
-        said = next((line.strip() for line in result.stderr.splitlines() if line.strip()), "")
+        said = next((line.strip() for line in split_lines(result.stderr) if line.strip()), "")
         raise GitUnanswered(
             f"{command} exited {result.returncode}: {said or 'with nothing on stderr'}"
         )
@@ -6275,7 +6276,7 @@ def _git_output(root: Path, *args: str) -> str:
 
 def _git(root: Path, *args: str) -> list[str]:
     """The lines git printed, blank ones dropped; raises as `_git_output` does."""
-    return [line for line in _git_output(root, *args).splitlines() if line.strip()]
+    return [line for line in split_lines(_git_output(root, *args)) if line.strip()]
 
 
 # What a diff changes that documentation is likely to name: a definition, a
@@ -6523,7 +6524,7 @@ def format_candidates(root: Path, base: str) -> str:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("mode", choices=("check", "candidates"))
     parser.add_argument("--root", type=Path, default=None, help="path to the repository")
     parser.add_argument("--base", default="HEAD", help="candidates mode: revision to diff against")

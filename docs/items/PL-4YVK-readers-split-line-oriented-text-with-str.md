@@ -6,13 +6,13 @@ effort: M
 status: ready
 classes: defect
 feature: line-ends
-touches: subprojects/docket/src/docket/vcs.py, tools/context_reading.py, tools/item_reads.py, tools/fixture_id_check.py, .claude/hooks/item_read_log.py, subprojects/docket/tests, tests/unit, docs/items
+touches: subprojects/docket/src/docket, tools, .claude/hooks/stop_hook_patch.py, subprojects/docket/tests, tests/unit, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
 payoff: a ref, a transcript record or a log entry is read as the one line its format wrote, so no reader answers from a partial reading it does not name
 verify: grep -q '^generator: spent' docs/items/PL-4YVK-*.md
-root-cause-of: PL-139L, PL-PK4B, PL-K1D6, PL-LRBV
-generator: live - four readers filed by four sessions, the last two on 2026-10-04 at sibling sites of PL-139L's fix eight days after it closed, and 33 files still call splitlines()
+root-cause-of: PL-139L, PL-PK4B, PL-K1D6, PL-LRBV, PL-BBYJ, PL-0R4M
+generator: live - tests/unit/test_line_splits.py now refuses splitlines() outside the Markdown readers PL-BBYJ converts, but every git reader still decodes through subprocess text mode, which turns a raw carriage return in a subject into a line end before any split (PL-0R4M), so each new git reader inherits it
 misread: Where one line ends in line-oriented text: git output, a JSON-lines transcript, a log, Python source
 ---
 
@@ -48,3 +48,15 @@ that refuses a bare `splitlines()` on such text; and `generator:` is rewritten
 items, which no head's `misread:` stated on 2026-10-04. `PL-139L`'s and
 `PL-PK4B`'s own checks set the count. Not `PL-R417`'s, which is the opposite
 reading: a statement its format continues, read as one line.
+
+**Progress, 2026-10-05.** `docket.lines.split_lines` breaks at `\n` alone and
+reads what `splitlines()` read on every file in the tree. Every git, transcript,
+log and Python-source reader under the three trees now splits with it, or with
+`str.split("\n")`/`partition` in a tool that does not import docket, and
+`tests/unit/test_line_splits.py` refuses a `splitlines()` call in those trees
+outside `MARKDOWN_READERS`. `PL-K1D6`, `PL-PK4B` and `PL-LRBV` closed with their
+own tests, each shown failing against the old readers. Two members were found
+and filed, and hold the head open: `PL-BBYJ`, the Markdown readers, which wait
+for `#1358`; and `PL-0R4M`, the text-mode decoding that cuts a git record at a
+raw `\r` before any reader splits it. The `generator:` line says why it is
+still `live`.

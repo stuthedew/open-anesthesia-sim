@@ -58,6 +58,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.claims import holdings, unfinished_work  # noqa: E402
+from docket.lines import split_lines  # noqa: E402
 from docket.model import CLOSED_STATUSES  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import REMOTE, orphaned, stranded  # noqa: E402
@@ -139,7 +140,7 @@ def branches(root: Path) -> list[Branch]:
     if listed.returncode != 0:
         raise Declined(f"git could not list the fetched branches: {listed.stderr.strip()}")
     found = []
-    for line in listed.stdout.splitlines():
+    for line in split_lines(listed.stdout):
         name, tip, stamp = line.split("\t")
         found.append(Branch(name, tip, datetime.fromtimestamp(int(stamp), UTC)))
     return found
@@ -267,7 +268,7 @@ def sweep(branch: Branch, root: Path) -> str:
     )
     if pushed.returncode == 0:
         return ""
-    said = [line.strip() for line in pushed.stderr.splitlines() if line.strip()]
+    said = [line.strip() for line in split_lines(pushed.stderr) if line.strip()]
     refused = [line for line in said if line.startswith(("!", "error:", "fatal:"))]
     return (refused or said or [f"git push exited {pushed.returncode}"])[0]
 

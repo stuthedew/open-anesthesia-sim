@@ -53,6 +53,7 @@ from .concurrency import (
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
 from .duplicates import anchor, near_duplicates
+from .lines import split_lines
 from .model import (
     CLOSED_STATUSES,
     EFFORTS,
@@ -4678,7 +4679,7 @@ def _open_pull_requests(
         if isinstance(done, str) or done.returncode != 0:
             return None
         found: dict[str, int | None] = {}
-        for line in done.stdout.splitlines():
+        for line in split_lines(done.stdout):
             fields = line.split()
             if not fields:
                 continue
@@ -5240,7 +5241,7 @@ def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     _shared(common, "_sub")
 
-    parser = argparse.ArgumentParser(prog="docket", description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(prog="docket", description=__doc__.partition("\n")[0])
     _shared(parser)
     sub = parser.add_subparsers(dest="command", required=True)
 
