@@ -39,6 +39,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
 
+from docket.lines import split_lines  # noqa: E402
 from docket.model import CLOSED_STATUSES, parse_front_matter, parse_item  # noqa: E402
 from docket.store import ID_PATTERN  # noqa: E402
 from docket.vcs import ITEM_FILE_RE  # noqa: E402
@@ -87,8 +88,14 @@ def citations(path: Path, self_id: str) -> set[str]:
 def parse_log() -> list[tuple[str, str, str, str]]:
     if not LOG.exists():
         return []
+    # `newline=""` and a split on `\n` alone, the one character the hook ends a
+    # record with: `read_text` turns a carriage return inside a Grep pattern into
+    # a newline, which cut the record there and dropped every id after it
+    # (`PL-LRBV`).
+    with LOG.open(encoding="utf-8", errors="replace", newline="") as handle:
+        text = handle.read()
     rows = []
-    for line in LOG.read_text(encoding="utf-8", errors="replace").splitlines():
+    for line in split_lines(text):
         fields = line.split("\t")
         if len(fields) == 4:
             rows.append((fields[0], fields[1], fields[2], fields[3]))

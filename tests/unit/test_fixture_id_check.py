@@ -32,6 +32,7 @@ import sys
 from pathlib import Path
 
 import fixture_id_check
+import pytest
 from docket.store import ID_RE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -241,6 +242,23 @@ def test_a_malformed_literal_in_a_value_is_reported_with_its_line(tmp_path: Path
     assert offender.line == 1
     assert offender.token == UNMINTABLE[1]
     assert offender.render(tmp_path).startswith("pkg/thing.py:1")
+
+
+@pytest.mark.parametrize("odd", ["\u2028", "\x85", "\x0c"], ids=["U+2028", "U+0085", "form-feed"])
+def test_a_line_separator_python_accepts_is_scanned_rather_than_crashing(
+    tmp_path: Path, odd: str
+) -> None:
+    """`PL-PK4B`: Python accepts each in a string or a comment, as `compile()` does.
+
+    `scan_python` rebuilt the source from `splitlines()`, which breaks at all
+    three: the string one raised `SyntaxError` out of `make check`, and the
+    comment ones moved every later finding down a line.
+    """
+    _write(tmp_path, "pkg/thing.py", f'NOTE = "a{odd}b"  # c{odd}d\nITEM = "{UNMINTABLE[1]}"\n')
+
+    (offender,) = fixture_id_check.collect(tmp_path)
+
+    assert offender.line == 2
 
 
 def test_a_mintable_literal_is_quiet(tmp_path: Path) -> None:

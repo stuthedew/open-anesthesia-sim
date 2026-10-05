@@ -45,6 +45,7 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+from .lines import split_lines
 from .model import CLOSED_STATUSES, is_under, parse_front_matter, parse_item
 from .release import (
     CUT_FLAGS,
@@ -1512,7 +1513,7 @@ def change_landed(
             # candidate, so a later one that holds the change cannot be called
             # the first, and naming it would name the wrong pull request.
             return None
-        if merged.splitlines()[:1] == [tree]:
+        if split_lines(merged)[:1] == [tree]:
             return Landing(commit=candidate, subject=subject)
     return None
 
@@ -1571,9 +1572,9 @@ def _unlanded_refs(
     if include_remote:
         args.append("refs/remotes")
     merged = {
-        name.strip() for name in run([*args, f"--merged={base}"], root).splitlines() if name.strip()
+        name.strip() for name in split_lines(run([*args, f"--merged={base}"], root)) if name.strip()
     }
-    listing = [name.strip() for name in run(args, root).splitlines() if name.strip()]
+    listing = [name.strip() for name in split_lines(run(args, root)) if name.strip()]
     gone = (
         _deleted_on_remote(root, run, remote)
         if include_remote and remote is not None and remote.known
@@ -1648,7 +1649,7 @@ def _item_paths_on(base: str, items_dir: str, root: Path, run: Runner) -> dict[s
     """
     prefix = items_dir.strip("/") + "/"
     names: dict[str, str] = {}
-    for line in run(["ls-tree", "--name-only", base, "--", prefix], root).splitlines():
+    for line in split_lines(run(["ls-tree", "--name-only", base, "--", prefix], root)):
         path = line.strip()
         if not path:
             continue
@@ -1828,7 +1829,7 @@ class SettledReport:
 
 def _remotes(root: Path, run: Runner) -> frozenset[str]:
     """The remotes this checkout knows, for stripping a tracking ref's prefix."""
-    return frozenset(name.strip() for name in run(["remote"], root).splitlines() if name.strip())
+    return frozenset(name.strip() for name in split_lines(run(["remote"], root)) if name.strip())
 
 
 def _head_name(name: str, remotes: frozenset[str]) -> str:
@@ -3353,7 +3354,7 @@ def _notes_on(ref: str, notes_dir: str, root: Path, run: Runner) -> frozenset[st
     """
     return frozenset(
         line.strip().rsplit("/", 1)[-1]
-        for line in run(["ls-tree", "--name-only", ref, f"{notes_dir}/"], root).splitlines()
+        for line in split_lines(run(["ls-tree", "--name-only", ref, f"{notes_dir}/"], root))
         if line.strip()
     )
 
@@ -3502,9 +3503,9 @@ def cut_window(
     prefix = notes_dir.strip("/") + "/"
     added = [
         line.strip()
-        for line in run(
-            ["diff", "--name-only", "--diff-filter=A", f"{base}...HEAD", "--", notes_dir], root
-        ).splitlines()
+        for line in split_lines(
+            run(["diff", "--name-only", "--diff-filter=A", f"{base}...HEAD", "--", notes_dir], root)
+        )
         if line.strip().startswith(prefix)
     ]
     # By the version each notes file is named for, so a README or a draft added
@@ -3677,7 +3678,7 @@ def tags(root: Path, *, runner: Runner | None = None) -> TagSet:
     """
     run = _Silences(runner or _run_git)
     names = frozenset(
-        line.strip() for line in run(["tag", "--list"], root).splitlines() if line.strip()
+        line.strip() for line in split_lines(run(["tag", "--list"], root)) if line.strip()
     )
     return TagSet(names=names, declined=run.reason)
 
@@ -3720,7 +3721,7 @@ def find_cut(version: str, ref: str, root: Path, *, runner: Runner | None = None
     text = run(query, root)
     if not answered(text):
         return Cut(declined=f"git did not answer `git {' '.join(query)}`")
-    return Cut(commits=tuple(line.strip() for line in text.splitlines() if line.strip()))
+    return Cut(commits=tuple(line.strip() for line in split_lines(text) if line.strip()))
 
 
 def notes_added(
@@ -3761,7 +3762,7 @@ def notes_added(
     for block in text.split("\0")[1:]:
         commit, _, paths = block.partition("\n")
         added.setdefault(commit.strip(), set()).update(
-            line.strip() for line in paths.splitlines() if line.strip()
+            line.strip() for line in split_lines(paths) if line.strip()
         )
     return {commit: frozenset(paths) for commit, paths in added.items()}
 
@@ -4296,7 +4297,7 @@ def _item_blobs(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, 
     cannot print.
     """
     found: dict[str, tuple[str, str]] = {}
-    for line in run(["ls-tree", "-r", ref, "--", items_dir], root).splitlines():
+    for line in split_lines(run(["ls-tree", "-r", ref, "--", items_dir], root)):
         head, _, path = line.partition("\t")
         fields = head.split()
         path = path.strip()
@@ -4385,8 +4386,8 @@ def _standing(base_text: str, ref_text: str) -> str:
         return _EQUAL
     base_fields, base_body = parse_front_matter(base_text)
     ref_fields, ref_body = parse_front_matter(ref_text)
-    held = set(base_body.splitlines())
-    if any(line.strip() and line not in held for line in ref_body.splitlines()):
+    held = set(split_lines(base_body))
+    if any(line.strip() and line not in held for line in split_lines(ref_body)):
         return _AHEAD
     differing = [key for key, value in ref_fields.items() if base_fields.get(key) != value]
     if not differing:
@@ -4874,9 +4875,9 @@ def stranded(
     run = _Silences(runner or _run_git)
     refs = [
         line.strip()
-        for line in run(
-            ["for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"], root
-        ).splitlines()
+        for line in split_lines(
+            run(["for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"], root)
+        )
         if line.strip()
     ]
     if not refs:
@@ -5053,7 +5054,7 @@ def lost(
 
     prefix = items_dir.rstrip("/") + "/"
     ever: dict[str, tuple[str, str]] = {}
-    for line in run(["rev-list", "--objects", ref], root).splitlines():
+    for line in split_lines(run(["rev-list", "--objects", ref], root)):
         blob, _, path = line.partition(" ")
         path = path.strip()
         if not path.startswith(prefix):
@@ -5255,7 +5256,7 @@ def _commits_by_landing(
             continue
         header, _, body = record.partition("\n")
         commit, _, subject = header.partition("\x1f")
-        touched = tuple(line.strip() for line in body.splitlines() if line.strip())
+        touched = tuple(line.strip() for line in split_lines(body) if line.strip())
         if not touched:
             # A merge commit, which lists no paths of its own: it introduces no
             # work to leave behind and proves no merge of this branch either.
@@ -5590,7 +5591,7 @@ def churn(root: Path, *, runner: Runner | None = None) -> Churn:
     out = run(["log", "--no-merges", "--numstat", CHURN_FORMAT], root)
     by_day: dict[date, Counter[str]] = {}
     when: date | None = None
-    for line in out.splitlines():
+    for line in split_lines(out):
         if line.startswith("\x01"):
             try:
                 when = date.fromisoformat(line[1:].strip())
@@ -5636,9 +5637,9 @@ def ref_walk(root: Path, items_dir: str, *, runner: Runner | None = None) -> Ref
     if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
         return RefWalk(declined="no default branch this checkout can read")
     args = ["for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"]
-    listing = [name.strip() for name in run(args, root).splitlines() if name.strip()]
+    listing = [name.strip() for name in split_lines(run(args, root)) if name.strip()]
     merged = {
-        name.strip() for name in run([*args, f"--merged={base}"], root).splitlines() if name.strip()
+        name.strip() for name in split_lines(run([*args, f"--merged={base}"], root)) if name.strip()
     }
     prefix = items_dir.strip("/") + "/"
     walked: list[tuple[str, int, int]] = []

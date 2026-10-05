@@ -3,11 +3,13 @@ id: PL-LRBV
 title: item_read_log writes a Grep pattern into a tab-separated record stripping only tabs and newlines, so a pattern holding a carriage return splits the record and item_reads.parse_log keeps the target cut short; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: .claude/hooks/item_read_log.py, tools/item_reads.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1364
 payoff: Every id a session searched for reaches the read-log counts, instead of the ids after a stray carriage return vanishing with no sign in the report
 verify: grep -q 'def test_a_carriage_return_in_a_pattern_does_not_split_the_record' tests/unit/test_item_read_log.py
 ---

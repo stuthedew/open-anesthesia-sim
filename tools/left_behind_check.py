@@ -76,6 +76,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.lines import split_lines  # noqa: E402
 from docket.vcs import REMOTE, github_token, is_shallow  # noqa: E402
 
 from open_pull_requests import GITHUB_API, LOOKUP_TIMEOUT, repo_slug  # noqa: E402
@@ -181,13 +182,13 @@ def read_remote(run: Runner) -> Remote:
     """
     done = run(["ls-remote", "--symref", REMOTE, "HEAD", "refs/heads/*", "refs/pull/*/head"])
     if done.code != 0:
-        first = (done.err.strip().splitlines() or ["no error text"])[0]
+        first = (split_lines(done.err.strip()) or ["no error text"])[0]
         kind = NO_PERMISSION if any(mark in done.err for mark in _REFUSALS) else NO_NETWORK
         raise Declined(f"{kind}: git ls-remote {REMOTE} failed ({first})")
     default = ""
     heads: dict[str, str] = {}
     frozen: dict[int, str] = {}
-    for line in done.out.splitlines():
+    for line in split_lines(done.out):
         value, _, ref = line.partition("\t")
         if value.startswith("ref: ") and ref == "HEAD":
             default = value.removeprefix("ref: refs/heads/")
@@ -388,7 +389,7 @@ def examine(
     left = tuple(
         Commit(sha, date, subject)
         for sha, date, subject in (
-            line.split("\x1f", 2) for line in listed.out.splitlines() if line
+            line.split("\x1f", 2) for line in split_lines(listed.out) if line
         )
     )
     if not left:

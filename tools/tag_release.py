@@ -45,6 +45,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.lines import split_lines  # noqa: E402
 from docket.release import notes_path, version_in  # noqa: E402
 from docket.vcs import REMOTE, default_branch, find_cut, is_shallow  # noqa: E402
 
@@ -62,7 +63,7 @@ def _git(args: Sequence[str], root: Path) -> subprocess.CompletedProcess[str]:
 
 def _failure(done: subprocess.CompletedProcess[str]) -> str:
     """The last line git wrote about a failure, or its exit status where it wrote none."""
-    lines = (done.stderr or done.stdout).strip().splitlines()
+    lines = split_lines((done.stderr or done.stdout).strip())
     return lines[-1] if lines else f"exit {done.returncode}"
 
 
@@ -81,7 +82,7 @@ def held_on(name: str, root: Path, remote: str = REMOTE) -> tuple[str, str]:
         return "", f"`git ls-remote {remote}` failed: {_failure(done)}"
     named = {
         listed: commit
-        for commit, _, listed in (line.partition("\t") for line in done.stdout.splitlines())
+        for commit, _, listed in (line.partition("\t") for line in split_lines(done.stdout))
     }
     return named.get(f"{ref}^{{}}", named.get(ref, "")), ""
 
@@ -178,7 +179,7 @@ def run(root: Path, *, apply: bool, remote: str = REMOTE, branch: str | None = N
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("--apply", action="store_true", help="tag the cut and push the tag")
     args = parser.parse_args(argv)
     return run(ROOT, apply=args.apply)

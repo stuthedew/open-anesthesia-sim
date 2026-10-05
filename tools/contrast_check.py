@@ -1590,8 +1590,8 @@ def _git_read(root: Path, *args: str) -> str:
     except (OSError, subprocess.SubprocessError) as error:
         raise BaseUnreadable(f"{command}: {error}") from error
     if completed.returncode != 0:
-        said = completed.stderr.strip().splitlines()
-        reason = said[-1] if said else f"exit {completed.returncode}, and nothing on stderr"
+        said = completed.stderr.strip().rpartition("\n")[2]
+        reason = said or f"exit {completed.returncode}, and nothing on stderr"
         raise BaseUnreadable(f"{command}: {reason}")
     return completed.stdout
 
@@ -1647,7 +1647,7 @@ def read_base(root: Path, ref: str) -> Base:
     listed = _git_read(root, "ls-tree", "-r", "--name-only", commit, "--", APP.as_posix())
     at = f"{ref} (merge base {commit[:12]})"
     try:
-        modules = _theme_first(Path(line) for line in listed.splitlines() if line.endswith(".py"))
+        modules = _theme_first(Path(line) for line in listed.split("\n") if line.endswith(".py"))
     except FileNotFoundError as error:
         raise BaseUnreadable(f"at {at}: {error}") from error
     sources = [(path, _git_read(root, "show", f"{commit}:{path.as_posix()}")) for path in modules]
@@ -2125,7 +2125,7 @@ def format_report(report: Report, *, matrix: bool) -> str:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("--root", type=Path, default=None, help="path to the repository")
     parser.add_argument(
         "--matrix", action="store_true", help="also print the chart-trace pairwise ratios"

@@ -60,6 +60,7 @@ from docket.vcs import (
     _run_git,
     _standing,
     _superseded,
+    _unlanded_refs,
     _written_since,
     base_copies,
     behind_remote,
@@ -438,6 +439,26 @@ def test_tags_are_read_from_the_repository() -> None:
 
     assert read.names == frozenset({"v0.1.0", "v0.2.0"})
     assert read.known
+
+
+def test_a_ref_name_holding_a_line_separator_is_read_as_one_ref(tmp_path: Path) -> None:
+    """`PL-K1D6`: git accepts U+2028 in a ref name and prints it raw.
+
+    Read with `splitlines()`, the tag `v1`, U+2028, `x` came back as tags `v1`
+    and `x`, and the branch as two unreadable refs, out of `unlanded`.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("base", a_txt="a\n")
+    tag, branch = "v1\u2028x", "claude/a\u2028b"
+    repo.git("tag", tag)
+    repo.git("checkout", "-q", "-b", branch)
+    repo.commit("work", b_txt="b\n")
+    repo.git("checkout", "-q", "main")
+
+    refs = _unlanded_refs("main", repo.root, _run_git, include_remote=False)
+
+    assert tags(repo.root).names == frozenset({tag})
+    assert (refs.candidates, refs.unlanded, refs.unreadable) == ([branch], [branch], set())
 
 
 def test_a_repository_holding_no_tags_answers_with_an_empty_set() -> None:

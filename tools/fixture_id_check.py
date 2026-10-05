@@ -151,6 +151,7 @@ from typing import NamedTuple
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.lines import split_lines  # noqa: E402
 from docket.store import ID_RE  # noqa: E402
 
 #: A token written the way an id is written, to be judged against `ID_RE`: the
@@ -334,8 +335,9 @@ def scan_python(path: Path) -> list[Offender]:
     file - the ordering `collect` promises was incidental before and is held
     here now that there is a second pass to interleave.
     """
-    lines = path.read_text(encoding="utf-8").splitlines()
-    tree = without_docstrings(ast.parse("\n".join(lines), filename=str(path)))
+    text = path.read_text(encoding="utf-8")
+    lines = split_lines(text)
+    tree = without_docstrings(ast.parse(text, filename=str(path)))
     offenders: list[Offender] = []
     for start, end, value in (*values(tree), *keyword_names(tree)):
         span = "\n".join(lines[start - 1 : end])
@@ -356,7 +358,7 @@ def scan_text(path: Path) -> list[Offender]:
     rather than over `docs/`.
     """
     offenders: list[Offender] = []
-    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    for number, line in enumerate(split_lines(path.read_text(encoding="utf-8")), start=1):
         if MARKER in line:
             continue
         for token in malformed(line):

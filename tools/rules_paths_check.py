@@ -85,8 +85,8 @@ def frontmatter(text: str) -> list[str] | None:
     the caller reports rather than skips - the file declares scope that cannot
     be read, and passing it silently is the failure this check exists to stop.
     """
-    lines = text.splitlines()
-    if not lines or lines[0].strip() != "---":
+    lines = text.split("\n")
+    if lines[0].strip() != "---":
         return None
     for index, line in enumerate(lines[1:], start=1):
         # A `---` that opens its line, never an indented one: that is a line of
