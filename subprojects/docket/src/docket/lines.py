@@ -17,14 +17,26 @@ So `splitlines()` read one record as two at four readers filed by four sessions
 (`PL-139L`, `PL-PK4B`, `PL-K1D6`, `PL-LRBV`, under the head `PL-4YVK`), and
 `tests/unit/test_line_splits.py` now refuses it in the trees those readers live in.
 
-**The text must already be decoded the way Python decodes text.** `read_text`
-and `subprocess.run(text=True)` both translate `\\r\\n` and a lone `\\r` into
-`\\n` before anything here sees them, which is why one character is enough. A
-reader decoding bytes itself translates first, as `vcs`'s blob batch does, or
-reads a carriage return as part of a line.
+**Text reaches here decoded one of two ways, by whose carriage return it is.**
+File content - a file read with `read_text`, a blob, a patch whose `+` and `-`
+lines are file lines - has `\\r\\n` and a lone `\\r` translated into `\\n`
+first, as `read_text` and `subprocess.run(text=True)` both do, which is why one
+character is enough: `file_text` does that for text a reader decoded itself.
+Git's own records - hashes, subjects, bodies, trailers, ref names, `-z` path
+listings - are decoded as written by `record_text`, with nothing translated,
+because a raw `\\r` in one is part of the record git wrote. Text mode turned
+it into a newline before any split saw it, so a subject holding one read as two
+lines (`PL-0R4M`).
 """
 
 from __future__ import annotations
+
+import locale
+
+#: The encoding text mode decodes with (`subprocess._text_encoding`: the
+#: locale's, or UTF-8 in UTF-8 mode), so bytes decoded with it are the `str`
+#: `subprocess.run(text=True)` returned, minus the newline translation.
+ENCODING = locale.getpreferredencoding(False)
 
 
 def split_lines(text: str, *, keepends: bool = False) -> list[str]:
@@ -44,3 +56,27 @@ def split_lines(text: str, *, keepends: bool = False) -> list[str]:
     if last:
         lines.append(last)
     return lines
+
+
+def record_text(raw: bytes) -> str:
+    """One of git's own records, decoded as text mode decoded it, with no line end translated.
+
+    For what git writes rather than what a file holds: hashes, subjects,
+    bodies, trailers, ref names, `-z` path listings and config values. A raw
+    `\\r` in a subject, a body or a `-z` path is part of the record, and the
+    translation text mode applies turned it into a line end before any split
+    saw it (`PL-0R4M`). Strict, so bytes that are not text in `ENCODING` still
+    raise `UnicodeDecodeError` where text mode raised it.
+    """
+    return raw.decode(ENCODING)
+
+
+def file_text(text: str) -> str:
+    """File content with `\\r\\n` and a lone `\\r` read as `\\n`, as `read_text` reads a file.
+
+    For a blob, or a patch whose `+` and `-` lines are file lines: the same
+    translation `read_text` and `subprocess.run(text=True)` apply, so a blob
+    or a patch git printed reads line for line as the file it came from
+    (`PL-0R4M`).
+    """
+    return text.replace("\r\n", "\n").replace("\r", "\n")

@@ -65,6 +65,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.lines import record_text  # noqa: E402
 from docket.vcs import REMOTE, github_slug, github_token  # noqa: E402
 
 #: Where the lookup goes. Named here rather than inline so a test can point it
@@ -111,14 +112,17 @@ class NewestPullRequest:
 
 
 def _git(args: list[str]) -> str:
-    """Run git from the repository root, returning empty output rather than raising."""
+    """Run git from the repository root, returning empty output rather than raising.
+
+    Decoded as written, so a raw `\\r` in a record stays in it (`PL-0R4M`).
+    """
     try:
         result = subprocess.run(
-            ["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=30, check=False
+            ["git", *args], cwd=ROOT, capture_output=True, timeout=30, check=False
         )
     except (OSError, subprocess.SubprocessError):
         return ""
-    return result.stdout if result.returncode == 0 else ""
+    return record_text(result.stdout) if result.returncode == 0 else ""
 
 
 def repo_slug() -> str | None:

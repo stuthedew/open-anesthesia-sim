@@ -115,6 +115,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.lines import record_text  # noqa: E402
 from docket.vcs import REMOTE, default_branch, github_slug  # noqa: E402
 
 # Every way a read of the API can fail, and it is a named tuple rather than an
@@ -447,14 +448,15 @@ def fetch_jobs(slug: str, run_id: object) -> list[object]:
 def main() -> int:
     """Print the advisory if there is one. Always exits 0; never blocks a session."""
     try:
-        remote = subprocess.run(
-            ["git", "remote", "get-url", REMOTE],
-            capture_output=True,
-            text=True,
-            timeout=TIMEOUT_S,
-            check=True,
-            cwd=ROOT,
-        ).stdout
+        remote = record_text(
+            subprocess.run(
+                ["git", "remote", "get-url", REMOTE],
+                capture_output=True,
+                timeout=TIMEOUT_S,
+                check=True,
+                cwd=ROOT,
+            ).stdout
+        )
     except (OSError, subprocess.SubprocessError):
         return 0
 

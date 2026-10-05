@@ -162,14 +162,15 @@ def _git_answering(**refs: dict[str, str]):
     """
     tree = _tree(**refs)
 
-    def run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+    def run(argv: list[str], **_: object) -> subprocess.CompletedProcess[bytes]:
         args = list(argv[1:])
         if args[0] == "rev-parse":
-            return subprocess.CompletedProcess(argv, 0, "claude/pl-1pbv-slug\n", "")
+            return subprocess.CompletedProcess(argv, 0, b"claude/pl-1pbv-slug\n", b"")
         ref = args[3] if args[0] == "ls-tree" else args[1].partition(":")[0]
         if ref in refs:
-            return subprocess.CompletedProcess(argv, 0, tree(args), "")
-        return subprocess.CompletedProcess(argv, 128, "", f"fatal: Not a valid object name {ref}\n")
+            return subprocess.CompletedProcess(argv, 0, tree(args).encode(), b"")
+        said = f"fatal: Not a valid object name {ref}\n"
+        return subprocess.CompletedProcess(argv, 128, b"", said.encode())
 
     return run
 
@@ -418,8 +419,8 @@ def test_a_branch_name_git_cannot_read_is_no_branch_to_look_up(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # `_git` raises now, and `--discover` must still skip rather than crash.
-    def refuse(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(argv, 128, "", "fatal: not a git repository\n")
+    def refuse(argv: list[str], **_: object) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(argv, 128, b"", b"fatal: not a git repository\n")
 
     monkeypatch.setattr(subprocess, "run", refuse)
     assert pr_title_check._branch() is None

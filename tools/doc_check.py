@@ -137,7 +137,7 @@ try:
     # reads it from here.
     from docket.fences import blocks, fenced_lines
     from docket.fences import without_fences as without_fences
-    from docket.lines import split_lines
+    from docket.lines import file_text, record_text, split_lines
 
     # `markdown` is the one reading of a document's blocks (`PL-R417`): where
     # each statement ends, so a code span or a bold run is read within its own
@@ -3965,7 +3965,6 @@ def _covered_by_gitignore(root: Path, token: str) -> bool:
                 ("git", "check-ignore", "-q", "--no-index", "--", candidate),
                 cwd=root,
                 capture_output=True,
-                text=True,
                 timeout=10,
                 check=False,
             )
@@ -6014,15 +6013,17 @@ def _git_text(root: Path, *args: str) -> str | None:
     """Git's stdout verbatim, or `None` when it could not answer.
 
     `_git` drops blank lines, which is right for listing refs and wrong for
-    counting the lines of a file, so the two readers are kept apart.
+    counting the lines of a file, so the two readers are kept apart. Decoded as
+    written, a record's raw `\\r` kept; a caller reading a blob translates it
+    with `file_text` (`PL-0R4M`).
     """
     try:
         result = subprocess.run(
-            ("git", *args), cwd=root, capture_output=True, text=True, timeout=10, check=False
+            ("git", *args), cwd=root, capture_output=True, timeout=10, check=False
         )
     except GIT_UNAVAILABLE:
         return None
-    return None if result.returncode else result.stdout
+    return None if result.returncode else record_text(result.stdout)
 
 
 def _resident_baseline(root: Path) -> tuple[str, tuple[ResidentFile, ...]] | None:
@@ -6058,7 +6059,7 @@ def _baseline(
             text = _git_text(root, "show", f"{ref}:{name}")
             if text is None:
                 continue
-            row = measure(name, text)
+            row = measure(name, file_text(text))
             if row is not None:
                 measured.append(row)
         return ref, tuple(measured)
@@ -6351,19 +6352,20 @@ def _git_output(root: Path, *args: str) -> str:
     # (`PL-0T5X`).
     command = f"`git {subcommand_of(args)}`"
     try:
-        result = subprocess.run(
-            ("git", *args), cwd=root, capture_output=True, text=True, check=False
-        )
+        result = subprocess.run(("git", *args), cwd=root, capture_output=True, check=False)
+        # Decoded as written, so a raw `\r` in a `-z` path stays in it; the
+        # patch read below translates its file lines (`PL-0R4M`).
+        stdout, stderr = record_text(result.stdout), record_text(result.stderr)
     except GIT_UNAVAILABLE as error:
         raise GitUnanswered(f"{command} could not run: {error}") from error
     except UnicodeDecodeError as error:
         raise GitUnanswered(f"{command} printed a path this cannot read: {error}") from error
     if result.returncode:
-        said = next((line.strip() for line in split_lines(result.stderr) if line.strip()), "")
+        said = next((line.strip() for line in split_lines(stderr) if line.strip()), "")
         raise GitUnanswered(
             f"{command} exited {result.returncode}: {said or 'with nothing on stderr'}"
         )
-    return result.stdout
+    return stdout
 
 
 def _git(root: Path, *args: str) -> list[str]:
@@ -6440,7 +6442,10 @@ def changed_tokens(root: Path, base: str, documents: Iterable[Path]) -> dict[str
     docs = {str(path) for path in documents}
     tokens: dict[str, set[str]] = {}
     for relative in _changed_paths(root, base):
-        diff = _git(root, "diff", "-U0", base, "--", relative)
+        # A patch, whose `+` and `-` lines are file lines: translated as
+        # `read_text` translates the file (`PL-0R4M`).
+        patch = file_text(_git_output(root, "diff", "-U0", base, "--", relative))
+        diff = [line for line in split_lines(patch) if line.strip()]
         if relative in docs:
             found = {
                 match.group(1)

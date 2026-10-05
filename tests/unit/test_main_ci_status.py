@@ -251,7 +251,10 @@ class TestMain:
             main_ci_status.subprocess,
             "run",
             lambda *a, **k: subprocess.CompletedProcess(
-                a[0], 0, stdout="https://github.com/stuthedew/open-anesthesia-sim.git\n", stderr=""
+                a[0],
+                0,
+                stdout=b"https://github.com/stuthedew/open-anesthesia-sim.git\n",
+                stderr=b"",
             ),
         )
 
@@ -365,7 +368,9 @@ class TestMain:
         monkeypatch.setattr(
             main_ci_status.subprocess,
             "run",
-            lambda *a, **k: subprocess.CompletedProcess(a[0], 0, stdout="/srv/r.git\n", stderr=""),
+            lambda *a, **k: subprocess.CompletedProcess(
+                a[0], 0, stdout=b"/srv/r.git\n", stderr=b""
+            ),
         )
         assert main_ci_status.main() == 0
         assert capsys.readouterr().out == ""
