@@ -5236,17 +5236,20 @@ the two comparisons, and admitted whatever those admit: `True` was a flow of
 `isfinite`'s words rather than the simulator's, and `-0.0`, inside every
 interval, was held with its sign and displayed as `-0.0 L/min`.
 `core/checked_number.py` now states what every checked type is built from, and
-`FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`, `Fraction` and
-`Percent` all build through it: an `int` or a `float`, subclasses included, so
-a NumPy double passes; a `bool`, a `Decimal` or a string is refused with a
-`TypeError` naming the value and its type before any comparison reads it; and
-minus zero is held as the zero it is. The range check is the chained
-closed-interval comparison alone, with no `isfinite` before it: a NaN fails
-both halves and an infinity one, and an `int` too long for a `float` is
-compared exactly and refused against the range in the setting's own words,
-where `isfinite` raised `OverflowError`. `StepCount` refuses what is not an
-`int` the same way, as a `TypeError`. `CaseInstant` keeps its own guard until
-`PL-7N8P`; `SimulationStep`, and the `require_positive_finite` and
+`FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`, `Fraction`, `Percent`
+and, since `PL-7N8P`, `CaseInstant` all build through it: an `int` or a
+`float`, subclasses included, so a NumPy double passes; a `bool`, a `Decimal`
+or a string is refused with a `TypeError` naming the value and its type before
+any comparison reads it; and minus zero is held as the zero it is. The range
+check is the chained closed-interval comparison alone, with no `isfinite`
+before it: a NaN fails both halves and an infinity one, and an `int` too long
+for a `float` is compared exactly and refused against the range in the
+setting's own words, where `isfinite` raised `OverflowError`. `StepCount`
+refuses what is not an `int` the same way, as a `TypeError`. Until `PL-7N8P`
+`CaseInstant` kept its own guard, which built an instant of 1 s from `True`,
+held a `Decimal`, and let an `int` past the float range escape as
+`OverflowError` instead of refusing it against the run length;
+`SimulationStep`, and the `require_positive_finite` and
 `require_nonnegative_finite` guards in `core/validation.py`, are `PL-3800`'s.
 
 **The dial's bound is enforced in both records that hold the pair, through one
@@ -5442,7 +5445,11 @@ arithmetic that bounds a trunk bounds every branch of it (`PL-J2TD`).
 (`PL-CN5S`, the second slice of `PL-51B7`, in the shape § "Supported input
 ranges" gives the flows). An instant a run is opened at, moved to, keyframed,
 marked or branched at is a `CaseInstant`, a `float` subclass whose constructor
-is the only thing that runs `require_supported_case_instant`. Where an instant
+is the only thing that runs `require_supported_case_instant`, and which, since
+`PL-7N8P`, is built from an `int` or a `float` and nothing else and holds
+minus zero as zero, as § "Supported input ranges" says of the flows: a `bool`,
+a `Decimal` or a string is refused with a `TypeError` before any comparison,
+and an `int` past the float range against the run length. Where an instant
 is kept or a run is moved to one, the type is required and anything else refused
 with a `TypeError`, whatever its value: a `RunDefinition`'s opening and every
 reach it is advanced to, each `Keyframe`, a `TimeBookmark` and the

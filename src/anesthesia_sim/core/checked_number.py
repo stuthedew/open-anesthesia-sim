@@ -1,13 +1,13 @@
 """What a checked type is built from, how it holds a zero, and how a refusal names a value.
 
-`Fraction` and `Percent` (`core/concentration.py`) and the three flows,
-`FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`
-(`core/supported_ranges.py`), are each a `float` subclass checked against its
-own range when it is built, so that holding one is the proof the check ran
-(`.claude/rules/core-domain.md` § "A quantity with a check of its own is a
-type, checked once"). Before a range can be read, the value handed in has to
-be a number at all, and this module decides that once, for all of them,
-together with the one thing a held zero needs.
+`Fraction` and `Percent` (`core/concentration.py`), the three flows,
+`FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`, and the case
+instant, `CaseInstant` (`core/supported_ranges.py`), are each a `float`
+subclass checked against its own range when it is built, so that holding one
+is the proof the check ran (`.claude/rules/core-domain.md` § "A quantity with
+a check of its own is a type, checked once"). Before a range can be read, the
+value handed in has to be a number at all, and this module decides that once,
+for all of them, together with the one thing a held zero needs.
 
 **A number is an `int` or a `float`, and nothing else** (`PL-LLMN`). Until
 that item each constructor read its value straight into `math.isfinite` and a
@@ -51,11 +51,11 @@ prints with its sign: `format_flow` gave `-0.0 L/min` and `format_percent`
 what each constructor hands `float.__new__`, so no checked type can hold a
 signed zero, and the formatters need no rule of their own.
 
-`CaseInstant` and `StepCount`, beside the flows, are `PL-7N8P`'s and
-`PL-LLMN`'s respectively, and the sign-and-finiteness guards in
+`CaseInstant` was brought here by `PL-7N8P`, after `PL-LLMN` had found the
+same holes in it, and `StepCount`, built from an `int` alone, refuses what is
+not one in the same words since `PL-LLMN`. The sign-and-finiteness guards in
 `core/validation.py`, with `SimulationStep` built on one of them, are
-`PL-3800`'s: each has the same holes, and each is brought here as its item
-lands.
+`PL-3800`'s: each has the same holes, and is brought here as its item lands.
 """
 
 from __future__ import annotations

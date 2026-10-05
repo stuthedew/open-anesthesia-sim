@@ -3,11 +3,13 @@ id: PL-7N8P
 title: require_supported_case_instant admits True (as 1.0 s) and Decimal, and lets OverflowError escape for an int past the float range (CaseInstant(10**400)) rather than refusing in the simulator's words - the shape PL-LLMN records for the flows' _require_supported, so decide the two together; none is reachable from the interface (found reviewing #1354)
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py
+touches: src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py, src/anesthesia_sim/core/checked_number.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1373
 payoff: a programming slip can no longer put an instant on the case axis as a plausible 1 s, and every refused instant is named with the supported run length in the simulator's own exception
 verify: grep -q 'def test_a_case_instant_refuses_a_bool_a_decimal_and_an_overflowing_int_in_its_own_words' tests/unit/test_supported_ranges.py
 ---
