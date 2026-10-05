@@ -3,12 +3,14 @@ id: PL-4YVK
 title: Readers split line-oriented text with str.splitlines(), which also breaks at characters that git's output, a JSON-lines transcript, a log record and Python source do not end a line at: PL-139L, PL-PK4B, PL-K1D6 and PL-LRBV are one fact
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect
 feature: line-ends
 touches: subprojects/docket/src/docket, tools, .claude/hooks/stop_hook_patch.py, subprojects/docket/tests, tests/unit, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1369
 payoff: a ref, a transcript record or a log entry is read as the one line its format wrote, so no reader answers from a partial reading it does not name
 verify: grep -q '^generator: spent' docs/items/PL-4YVK-*.md && ! grep -qF '"subprojects/docket/src/docket/fences.py",' tests/unit/test_line_splits.py
 root-cause-of: PL-139L, PL-PK4B, PL-K1D6, PL-LRBV, PL-BBYJ, PL-0R4M
@@ -65,6 +67,10 @@ still `live`.
 and so do `tools/doc_check.py`'s readers of git's `log --name-only`, a Makefile
 and a workflow's YAML, which shared their exemption. `MARKDOWN_READERS` is gone,
 so `tests/unit/test_line_splits.py` refuses `splitlines()` everywhere in the
-three trees. With `PL-0R4M` merged in `#1368`, all six members are closed and
-the head's `verify:` passes; closing the head is left to a pull request of its
-own, since `#1369` carries `PL-BBYJ` alone.
+three trees.
+
+**Closed 2026-10-05, in `#1369`.** `PL-0R4M` merged first, in `#1368`, so with
+`PL-BBYJ` closed all six members are closed, `generator:` reads `spent` with
+both guards as its reason, and the `verify:` command passes. `docket check`
+refuses an open item whose command passes, so the head closes in the second of
+the two pull requests rather than in one of its own.
