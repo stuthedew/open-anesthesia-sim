@@ -285,8 +285,12 @@ and then added to in the same commit, so the base's copy is a strict superset
 and the `recover:` line would overwrite the newer half with the older one. Both
 are settled by the two-dot diff between the tips — a path the tips agree on is
 missing from nowhere, and a path whose diff only *removes* lines is one the base
-holds in full. Every silence there leaves the path outstanding, so the report
-still errs toward naming a branch.
+holds in full where every statement the branch's copy holds is one the base's
+holds too, read in the file's own format. A line cut out of a paragraph, or an
+element out of a bracketed list, removes a line and still leaves the branch a
+statement the base never had (`PL-F7Z6`). Every silence there, a format no
+reader here knows the statements of among them, leaves the path outstanding,
+so the report still errs toward naming a branch.
 
 **A rewritten history is excluded from the verdict and named separately.** This
 whole read is content, and a rewrite changes every commit hash while leaving

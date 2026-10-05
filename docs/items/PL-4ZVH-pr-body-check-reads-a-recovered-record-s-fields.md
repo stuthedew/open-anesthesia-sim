@@ -3,12 +3,14 @@ id: PL-4ZVH
 title: pr_body_check reads a recovered record's fields and an appended trailer one physical line at a time, so a commit: value folded onto the next line reads as empty and anchors skips that record silently, and a folded Co-authored-by trailer is left in the body; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/pr_body_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-R417's change-record slice, 2026-10-05
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1379
 payoff: a recovered record whose commit: is wrapped onto a second line is checked or named rather than skipped in silence, and a folded Co-authored-by trailer no longer makes a matching body read as differs
 verify: grep -q 'recovered records, a commit continued on an indented line' tests/unit/test_doc_check.py && grep -q 'appended trailers, a trailer folded onto a second line' tests/unit/test_doc_check.py
 ---
@@ -54,5 +56,18 @@ trailer reads as GitHub's and not the
 body's, and a trailer quoted on an unindented line is still compared.
 `PL-R417`'s guard gains a case per reader and form, each failing on main's
 reader.
+
+**As built, 2026-10-05.** `parse_record` reads a record through
+`docket.model.parse_front_matter`, the public form of the fold `_added_record`
+reads, after turning CRLF into LF, and drops the one blank line `_write` puts
+after the front matter; it answers `None` where no field is read. Over all 265
+records it reads every field and body exactly as main's line reader did.
+`anchors` prints a line of its own on stdout naming each record with no front
+matter or with a `commit:` holding no value, exit unchanged; a `recorded:`
+record stays unnamed, and over today's tree it prints nothing and exits 0.
+`APPENDED_TRAILER_RE` takes each `Co-authored-by:` trailer with every line
+after it led by a space or a tab. `PL-R417`'s guard gained two cases, and
+`test_anchors_name_a_record_whose_commit_they_cannot_read` holds the naming;
+all three fail with main's `tools/pr_body_check.py` swapped in.
 
 **Generator check.** A member of `PL-R417`: the reader takes a physical line for a statement its format continues, the fact that head names.

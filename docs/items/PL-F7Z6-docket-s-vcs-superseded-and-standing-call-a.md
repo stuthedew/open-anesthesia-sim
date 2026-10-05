@@ -3,12 +3,14 @@ id: PL-F7Z6
 title: docket's vcs._superseded and _standing call a change that only removes lines removals-only, so a ref that cuts a line out of a continued paragraph or a bracketed list reads as superseded or behind though it holds a statement the base lacks; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests, tests/unit/test_doc_check.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests, subprojects/docket/README.md, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-R417's change-record slice, 2026-10-05
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1379
 payoff: a branch whose copy cut a line out of a paragraph or an element out of a bracketed list is still reported as holding work, by orphaned, stranded and the already-edited mark, instead of read as holding nothing the base lacks
 verify: grep -q 'superseded, a line cut out of a continued paragraph' tests/unit/test_doc_check.py && grep -q 'standing, a line cut out of a continued paragraph' tests/unit/test_doc_check.py
 ---
@@ -51,18 +53,44 @@ paragraph the base has since extended.
 removes lines superseded only where every statement the ref's copy holds is
 one the base's copy holds too, read in the path's own format: a Markdown
 file's front-matter fields as `docket.model` folds them and its body's
-statements as `docket.markdown.statement_lines` reads them, each fence whole;
-a Python file's logical lines as `docket.python.read_logical_lines` reads
-them, at their indentation. A ref that deleted the path holds nothing and
-stays superseded. A format none of those readers reads, a copy its reader
-declines (a front-matter line no field reads, a block list or a block scalar,
-source the tokenizer refuses) and a blob git does not answer for each leave
-the path outstanding. `_standing` answers `behind` by removal on the same
+statements as `docket.markdown.statement_lines` reads them, each fence whole
+and each under the list items holding it; a Python file's statements as the
+parser reads them, each under the clauses holding it. A ref that deleted the
+path holds nothing and stays superseded. A format none of those readers
+reads, a copy its reader declines (a front-matter line no field reads, a
+block list or a block scalar, source the parser refuses) and a blob git does
+not answer for each leave the path outstanding. `_standing` answers `behind` by removal on the same
 test, and `ahead` where the ref's copy holds a statement the base's lacks.
 Its closure case stays a line read: it is a reading of fields rather than of
 a removal, and a statement read there would call the eight copies above
 `ahead` the moment one reached it. `PL-R417`'s guard gains a case per reader
 and form, each failing on main's reader, and one per reader pinning a whole
 statement's removal as superseded and behind.
+
+**As built, 2026-10-05.** `vcs._holds_nothing_more` reads both copies of a
+path whose tip diff only removes lines, and `_superseded` calls the path
+superseded only where every statement of the branch's copy is one of the
+base's; `_standing`'s removal case asks the same of an item's two copies, and
+its closure case stays a line read. Each statement is read in its place, which
+the triage's line reads did not reach. A Markdown body statement carries the
+marker line of every list item holding it (CommonMark 0.31.2 § 5.2), so a
+sub-item whose parent's line was cut reads as moved. A Python file is read with
+`ast` rather than `docket.python`'s logical lines: each statement whole, under
+the header and clause of every compound statement holding it (Language
+Reference § 8), because a logical line at its indentation cannot see an
+`else:` cut from over its suite, which moves the suite into the clause above,
+or a decorator cut from its definition. The parser refuses syntax newer than
+the interpreter running it, which reads as a decline: 2 of the repository's
+226 Python files under 3.11. Nothing a caller answers moved: on the 9 refs of
+2026-10-05, `stranded`, `orphaned`, `claims.holdings`' editing marks and
+`landed_whole` print the same under main's reader and this one. Of the 2,522
+removals-only copies between main and those refs, 63 now read outstanding (47
+Python, 7 Markdown, 9 in a format no reader here reads), each a statement the
+base has extended since or an unread format, and none is a path a caller asks
+about. `PL-R417`'s guard gained eight cases that fail with main's `vcs.py`
+swapped in and three pins that pass on both; `test_vcs.py` holds each silence
+of the read to an outstanding path, and a deleted copy to a superseded one.
+The `orphaned` test of supersession on the base now hands its fake git both
+copies, where it had passed on a `show` the fake never answered.
 
 **Generator check.** A member of `PL-R417`: the reader takes a physical line for a statement its format continues, the fact that head names.

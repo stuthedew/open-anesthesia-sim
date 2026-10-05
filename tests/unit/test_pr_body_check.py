@@ -443,6 +443,9 @@ def test_a_trailer_quoted_inside_the_body_is_compared() -> None:
     assert pr_body_check.normalise(quoted) == (
         "Co-authored-by: A <a@example.com> was lost from the subject."
     )
+    assert pr_body_check.normalise("Co-authored-by: A\n <a@example.com>\nwas lost.\n") == (
+        "Co-authored-by: A <a@example.com> was lost."
+    )
     assert pr_body_check.normalise(named) == (
         "GitHub adds the trailer. It appends a `Co-authored-by: ` line"
     )
@@ -668,6 +671,33 @@ def test_a_recovery_file_whose_commit_sha_no_longer_resolves_is_reported(
     assert "768.md: commit 000000000000; its squash commit there is " + "a" * 40 in err
     assert "769.md" not in err
     assert "1059.md" not in err
+
+
+def test_anchors_name_a_record_whose_commit_they_cannot_read(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-4ZVH`: a record whose `commit:` reads as nothing is named, never passed in silence.
+
+    Without failing: nothing says its anchor dangles, only that it went
+    unread. A `recorded:` record never carried one and stays unnamed, and a
+    `commit:` wrapped onto an indented line is read whole and checked.
+    """
+    recovery = tmp_path / "pr-bodies"
+    recovery.mkdir()
+    (recovery / "768.md").write_text("Body with no front matter.\n")
+    (recovery / "769.md").write_text("---\npr: 769\ncommit:\n---\n\nBody.\n")
+    (recovery / "770.md").write_text(f"---\npr: 770\ncommit:\n  {'a' * 40}\n---\n\nBody.\n")
+    (recovery / "1059.md").write_text("---\npr: 1059\nrecorded: 2026-09-26\n---\n\nBody.\n")
+    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
+    _git_serving(monkeypatch, [("a" * 40, "PL-8PS6: a title (#770)", "")])
+
+    assert pr_body_check.anchors("origin/main") == 0
+    printed = capsys.readouterr()
+    assert printed.out.splitlines() == [
+        "pr-body: docs/pr-bodies/768.md: anchor not checked: no front matter is read.",
+        "pr-body: docs/pr-bodies/769.md: anchor not checked: its `commit:` holds no value.",
+    ]
+    assert printed.err == ""
 
 
 def test_anchors_on_a_shallow_clone_say_nothing_was_checked(
