@@ -595,6 +595,13 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             "asks for it - an empty `classes:` is what lets a safety-classed item sit in "
             "the bottom band. Put the entries on the field's own line, comma-separated"
         )
+    if item.block_scalar_fields:
+        report.errors.append(
+            f"{where}: {', '.join(item.block_scalar_fields)} written with a YAML block-scalar "
+            "header (`>-`, `|` and the like); this format does not read that spelling, so the "
+            "field arrives empty rather than opening with the header. Delete the header and "
+            "keep the lines below it indented, which folds them into the value"
+        )
     if item.unread_lines:
         report.errors.append(
             f"{where}: front-matter line(s) {', '.join(repr(line) for line in item.unread_lines)} "
