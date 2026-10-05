@@ -1,9 +1,16 @@
 ---
 id: PL-TDVJ
 title: doc_check's make_targets ends a rule at a comment line, where make and _target_recipes go on reading its recipe, so a target whose first recipe line follows a comment reads as declared with no recipe and a document naming it fails as exiting 0 without running; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
+payoff: a comment between a rule and its recipe no longer makes the make-targets check tell a document that its target exits 0 without running
+verify: grep -qF 'make targets, a comment line ends no rule' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's make_targets ends a rule at a comment line, where make and _target_recipes go on reading its recipe, so a target whose first recipe line follows a comment reads as declared with no recipe and a document naming it fails as exiting 0 without running; latent
@@ -28,7 +35,10 @@ Makefile of `.PHONY: check`, `check:`, `# run the gate`, then a tab and
 it, printed `CHECK-RAN` and exited 0. `check_make_targets` told a document
 naming `make check` that it "is declared but carries no recipe, so it exits 0
 without running". Latent: no rule in the repository's Makefile puts a comment
-line between its rule line and its first recipe line.
+line between its rule line and its first recipe line. Re-run at triage on
+`main` at `b67dace8`, whose `PL-4MLK` changed `_make_lines`: `make_targets`
+still gives `check` declared and no recipe, `_target_recipes` still gives it
+`@echo CHECK-RAN`, and GNU Make 4.3 still runs it and exits 0.
 
 **Why it matters.** It fails loudly, but on a Makefile make reads correctly,
 and the only way to quiet it is to move a comment that is right where it is -
@@ -37,4 +47,12 @@ Makefile disagree about where the same rule ends.
 
 **Generator check.** A member of `PL-R417`: a reader ends a statement - here a
 rule, its recipe lines included - at a line its format carries the statement
-past, the fact that head's `misread:` names.
+past, the fact that head's `misread:` names. `PL-BMZN` misreads it the other
+way, carrying recipe lines past an assignment that ends the rule, and was
+re-read as a member at triage on 2026-10-05; the two are one reading of where a
+Makefile rule ends, and are cheapest built together.
+
+**Done when.** `make_targets` reads a rule on past a comment line, as make 4.3
+and `_target_recipes` do, ending it only at a line make ends it at; the two
+readers end every rule at the same line; and `PL-R417`'s guard gains the case
+`make targets, a comment line ends no rule`, failing on today's reader.

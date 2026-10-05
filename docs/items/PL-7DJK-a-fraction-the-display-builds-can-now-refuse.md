@@ -38,6 +38,16 @@ display that could not:
    a refusal says "fraction of ...", against the convention `Fraction`'s
    docstring states and `_write_state_vector` keeps (`PL-SPN6`).
 
+**Reproduced 2026-10-05**, case 1, on `main` at b67dace8. One `uv run python
+-c` under `QT_QPA_PLATFORM=offscreen`: a `SimulationView` over one
+`SimulationController`, Start clicked, the alveolar `agent_amount_l` written as
+1.0000001 times `gas_volume_l`, then `render_tick()`. It raised out of
+`render_tick` - `SimulationConfigurationError: fraction of 1.0000001 is outside
+0 to 1, the range a fraction of one atmosphere takes` - and left the controller
+at `is_running False` with that failure recorded, while the screen read
+`status 'Running' | Pause enabled True | banner shown False`. Unnamed, as
+item 4 says: "fraction of", no compartment.
+
 **Why it is not live.** No supported setting computes a fraction outside 0 to
 1 - the highest anywhere is 0.18000000000002825, desflurane at its 18% maximum
 (`core/concentration.py`) - every write to a compartment goes through a checked
@@ -60,3 +70,33 @@ cannot fail - `status_word`, `transport` and `notice` read only `is_running`,
 `failure_reason` and `supported_limit_reason` - rather than from a fresh
 snapshot; build every value a frame draws before drawing any; name each
 construction by the quantity it is; and word a refused displayed value as one.
+
+**Why it matters.** A halt that is not shown is the worst of the four: a
+screen reading "Running" with Pause enabled over a failed controller is the
+stale-state display `CLAUDE.md`'s safety standard names, and it is the failure
+`PL-25KS` fixed for the render path, back by a route that fix did not reach.
+The other three mislead the reader who does see the halt - a banner sending
+them to a step that did not fail, a chart whose traces stand at two different
+instants, a refusal that does not say which compartment. P1 rather than P0
+because no supported setting reaches any of them today, as measured above; the
+owner's ratified answer that such a refusal halts the run makes the halt's
+presentation the whole of what is left.
+
+**Done when.** The implementing session settles whether the display re-checks
+these at all, from the code and `.claude/rules/core-domain.md`, and records the
+answer and its reason in this brief before building either way. Whichever it
+is: a halt is shown from facts that cannot fail - the status word, transport and
+banner written without a fresh snapshot - so
+`test_a_halt_is_shown_when_the_snapshot_itself_is_refused` in
+`tests/integration/test_simulation_view.py`, beside
+`test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run`, makes
+`snapshot()` raise on a running run, drives `render_tick()`, and asserts the
+failure is recorded, the status word and banner say so, and Pause and Start are
+off; it fails on today's tree. Where a check stays, three more tests in
+`tests/unit/test_chart_frame.py` and `tests/unit/test_dashboard_frame.py`, named
+by the session, hold the other three: a refused displayed value is worded as
+one rather than as a failed step, a frame that cannot be built draws nothing
+rather than half of itself, and each construction names its quantity. Where
+the check goes, the brief says which types now arrive already proved, and the
+unit tests show a compartment's fraction reaching the display without a
+second check.

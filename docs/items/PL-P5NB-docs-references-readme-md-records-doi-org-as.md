@@ -60,3 +60,5 @@ matching the entry's journal, volume, issue and pages. So do not write that the 
 do not index this venue. Confirm the record against Crossref and add the DOI,
 which is what the entry's closing sentence asks of a session that can reach a
 registry. `www.vldb.org` was still refused. The Baker & Farmery half stands.
+
+**Generator check, 2026-10-05.** A member of `PL-CLW5`: whether a host answers through the egress proxy is a dated probe, not a property of the environment. `doi.org` answered 301 past CONNECT from the cloud container on 2026-10-05, so the sentence this item corrects is now false as well as too broad; `www.vldb.org` was still refused.
