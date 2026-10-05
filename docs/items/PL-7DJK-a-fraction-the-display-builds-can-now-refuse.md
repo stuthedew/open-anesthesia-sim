@@ -1,9 +1,15 @@
 ---
 id: PL-7DJK
 title: A Fraction the display builds can now refuse, and the halt that follows is shown as a failed step, half-drawn, unnamed, or not at all, though no supported setting reaches it
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: safety, defect
 feature: parse-dont-validate
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/patient.py, tests/integration/test_simulation_view.py, tests/unit/test_chart_frame.py, tests/unit/test_dashboard_frame.py
 added: 2026-10-05
+payoff: when a value the display builds is refused, the screen says the run has stopped and why, instead of reading Running over a frozen, half-drawn chart
+verify: grep -q 'def test_a_halt_is_shown_when_the_snapshot_itself_is_refused' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** Since `PL-4R3W`, `Fraction` and `Percent` check their range when

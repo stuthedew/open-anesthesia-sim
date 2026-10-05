@@ -1,9 +1,15 @@
 ---
 id: PL-YT8N
 title: BreathingCircuit.advance_fresh_gas reports a negative exhaust, as low as -3.3e-16 L, at admitted flows from 1e-15 to 1e-6 L/min, because 1 - exp(-dt/tau) loses its digits to cancellation when dt/tau is small; the exhaust it integrates cannot be negative (found fixing PL-B26Y)
-status: untriaged
-touches: src/anesthesia_sim/core/circuit.py, tests/unit/test_compartment_primitives.py
+priority: P1
+effort: S
+status: ready
+classes: safety, defect
+feature: numerical-domain
+touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/__init__.py, tests/unit/test_compartment_primitives.py
 added: 2026-10-05
+payoff: the circuit's closed form never reports agent flowing back in through the exhaust, so a balance summed from it holds only physically possible amounts at every admitted flow
+verify: grep -q 'def test_the_circuit_exhaust_is_never_negative_at_an_admitted_flow' tests/unit/test_compartment_primitives.py
 ---
 
 **Problem.** BreathingCircuit.advance_fresh_gas reports a negative exhaust, as low as -3.3e-16 L, at admitted flows from 1e-15 to 1e-6 L/min, because 1 - exp(-dt/tau) loses its digits to cancellation when dt/tau is small; the exhaust it integrates cannot be negative (found fixing PL-B26Y)
@@ -42,3 +48,31 @@ is exact at zero flow without a branch, and so would move the analysis
 never against a tolerance" and `tests/unit/test_compartment_primitives.py` rest
 on (`PL-79YX`), and `tissue.py` and `blood.py` update their fractions in the
 same `d + (i - d) * exp(-dt/tau)` form.
+
+**Re-run 2026-10-05, at triage: it still holds.** The command above, against
+`main` at `b67dace8` after `PL-B26Y` merged, printed
+`FreshGasExchange(delivered_agent_l=1.6666666666666668e-15,
+exhausted_agent_l=-3.3173277925717057e-16)`.
+
+**Why it matters.** An exhausted amount is agent leaving the circuit, which
+cannot be negative, and the circuit's closed form reports it as the
+difference between what was delivered and what the circuit kept, so at these
+flows the sign is the rounding's rather than the physics'. The size is far
+below anything clinical, but a caller summing the exhaust into a balance - a
+scavenged-agent total, a conservation check in a notebook or a test - is
+handed an impossible value that looks like a number, and `CLAUDE.md` prefers an
+obvious failure or a correct value to a plausible wrong one on this path, as
+`PL-B26Y` was classed for the `nan` at the same function's other edge.
+
+**Done when.** `BreathingCircuit.advance_fresh_gas` reports an exhaust of zero
+or more at every admitted flow, step and circuit state, the 126 cases of the
+walk above included, while the circuit's balance - delivered less exhausted
+equals the change in what the circuit holds - closes no worse than today across
+them. Whether `-expm1(-dt/tau)` goes in the exhaust alone or in the fraction
+update as well, and so whether `core/__init__.py`'s zero-flow analysis and
+`tissue.py` and `blood.py`'s matching form move with it, is the implementer's
+call from the trade-off above; if the fraction update moves, the zero-flow
+claim and its tests are brought along in the same change. A test in
+`tests/unit/test_compartment_primitives.py` named
+`test_the_circuit_exhaust_is_never_negative_at_an_admitted_flow` pins it at
+flows from 1e-15 to 1e-6 L/min.

@@ -1,8 +1,15 @@
 ---
 id: PL-M4M0
 title: RunView._handle_reset wraps SimulationController.reset() in nothing, so the SimulationConfigurationError that equation_settings() raises at Reset when the tissue flows are stale (a CardiacOutput written onto patient.cardiac_output_l_min past set_cardiac_output, the type-only write guard PL-LBQY chose) escapes the slot after pause() and _state.reset(), leaving a half-reset run paused with no failure recorded, the readout showing a cardiac output the model never ran at and case_restarted never emitted; at step time the same stale record is presented as a SimulationNumericalError in L/s where every readout shows L/min (found reviewing PL-LBQY)
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: safety, defect
+feature: parse-dont-validate
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/uptake_system.py, tests/integration/test_simulation_view.py, tests/unit/test_governing_equations.py
 added: 2026-10-05
+payoff: a Reset the simulator refuses stops the run visibly with its reason, rather than leaving a half-reset run showing a cardiac output the model never ran at
+verify: grep -q 'def test_a_reset_the_core_refuses_halts_the_run_visibly' tests/integration/test_simulation_view.py && grep -q 'def test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute' tests/unit/test_governing_equations.py
 ---
 
 **Problem.** `RunView._handle_reset` calls `SimulationController.reset()` with
