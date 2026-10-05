@@ -3,12 +3,14 @@ id: PL-CNCF
 title: controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
 priority: P2
 effort: M
-status: ready
+status: done
 classes: perf
 feature: chart-readout
-touches: src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py, tests/reference/test_canonical_evaluation.py, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/run-is-its-definition.md, docs/items/PL-PGZF-pl-gs3r-made-the-chart-s-column-budget-follow.md, docs/items/PL-HWNG-tests-unit-test-run-definition-py-s-two-change.md
 added: 2026-09-08
-verify: grep -qF 'drawn_window costs' docs/MODEL.md && python3 tools/doc_check.py check
+closed: 2026-10-04
+pr: 1359
+verify: grep -qF 'drawn_window` costs' docs/MODEL.md && grep -qF 'self._last_window_propagators = propagators.used' src/anesthesia_sim/core/run_definition.py
 ---
 
 **Problem.** controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
@@ -143,3 +145,134 @@ consequence once claimed for the stale spelling, that it escaped
 `protected_paths`, never held: `docket.toml` protects the directory
 `src/anesthesia_sim/core`, which either spelling matches (`PL-RWBV`, 2026-09-21).
 <!-- absent: core/run_score.py -->
+
+**Re-confirmed and re-measured 2026-10-04, before the work.** The brief still
+holds against the tree; only `RunDefinition.evaluate_anchored`'s line had
+moved. A 30-minute run with one dial
+change at 600 s, a 15-minute window ending at the run's instant, median of 40
+`drawn_window` calls on this session's container:
+
+| Columns | Per call |
+| ---: | ---: |
+| 150 | 6.6 ms |
+| 601 | 9.3 ms |
+| 1 069 | 12.2 ms |
+| 2 400 | 22.1 ms |
+
+Every call formed four matrix exponentials with one segment in view - the
+window's two bounds, the segment's first grid column, and the spacing - about
+1.4 ms each, plus about 6.9 us a column. A window following the run, two
+steps a frame, read the same.
+
+- *Two of the four repeat frame to frame.* The spacing's propagator is the
+  same matrix every frame, and the keyframe-to-first-grid-column one changes
+  only when the window's start crosses a grid multiple, about once in 30
+  frames at 150 columns. A memo keyed on `(settings, interval_s)` skips both,
+  about 2.8 ms a run a frame, and changes no drawn value:
+  `UptakeEquationSettings` is a frozen dataclass
+  (`src/anesthesia_sim/core/governing_equations.py`) and
+  `build_system_matrix` reads nothing else, so a hit returns the bits a
+  recompute would. Neither `record_change` shape above can fool that key,
+  because neither reuses a settings value for different physics.
+- *The two bounds move every frame*, so they keep costing about 2.8 ms, and
+  the per-column products are untouched: at 1 069 columns the memo saves
+  about a fifth.
+- *Still to measure before choosing the memo or recording the cost as
+  accepted:* the frame interval the dashboard actually runs at, and how many
+  runs it draws a frame. The memo would stay on the display path, per
+  instance and bounded, so `state_at`'s "no cache" guarantee and
+  `docs/MODEL.md` § "The canonical evaluation rule" are untouched.
+
+**Done 2026-10-04: the chart's path keeps the propagators it forms, rather
+than the cost being recorded as accepted.** The two numbers the re-measure
+left open decided it. The dashboard draws every 200 ms (`RENDER_INTERVAL_S`)
+and at most two runs (`MAX_DISPLAYED_RUNS`), so with no change in view one run
+is 6.6-20.3 ms of that frame at 150-2 401 columns - the cost this brief was
+filed about, and affordable. What the brief's measurements never reached is
+changes in view. Each stretch in view paid two exponentials every frame, so
+sixty changes in a following 15-minute window cost 119-135 ms a run and two
+runs about 240 ms, longer than the frame. A learner reaches that by dragging a
+setting slider for about six seconds while the run plays: each position is
+applied as it passes, and a two-second drag at 1x records 20 stretches
+(measured through `SimulationController` today). Accepting that was not close,
+so the choice was taken rather than offered.
+
+What was built, in `RunDefinition.evaluate_anchored`: each call keeps the
+propagators it used, and the next call reuses them - all but three are over
+an interval the grid fixes, the three being the two bounds' and, on a frame
+whose left edge has passed a grid column, the offset in the stretch the window
+opens in. They are keyed by the settings
+record's value and the interval, the key `AgentUptakeSystem._propagator_for`
+already uses on the stepped path and the use `UptakeEquationSettings` is frozen
+and compared by value for. Only the last call's are kept. Measured in one
+process against `main`'s module, frames interleaved, every setting distinct so
+that reuse within a call flatters nothing, a following frame at 1x costs
+3.5-3.9 ms, 9.1-10.1 ms and 18.0-18.8 ms at 150, 1 069 and 2 401 columns
+whatever the changes in view. `docs/MODEL.md` § "The run is that record, and every state is
+derived from it" carries the table, and the first frame at a new spacing still
+costs what it did.
+
+Three routes were weighed and not taken:
+
+- *A bounded LRU*, which the re-measure above proposed. A window walks its
+  stretches in the same order every frame, so once they outnumber the bound
+  an LRU evicts each entry just before it is asked for again and hits nothing.
+  Keeping exactly the last window's is bounded by the window instead - at most
+  two a stretch in view and one a bound, 3.1 KB each, 1.8 MiB at six hundred
+  changes - and cannot thrash.
+- *Keying on the settings object's identity*. It would put a zero's sign in
+  the key, but the stepped path's cache has keyed on value since it was
+  written, and value keys reuse across equal settings, which a dial returned
+  to an earlier position produces.
+- *Cheapening the two bound propagators that remain every frame*, by taking
+  the right-hand one from the canonical state or forming them by
+  eigendecomposition. Both change how a drawn value is computed, which
+  `docs/MODEL.md` would have to re-validate, for about 2.8 ms a run.
+
+Why reuse is safe, checked rather than argued. The spacing a following frame
+asks for came out bit-identical frame to frame on every rung of
+`TIME_BASE_LADDER`, at run lengths from 30 minutes to 30 days and at 150,
+1 069 and 2 400 columns, 3 000 frames each - so reuse hits. A window drawn from
+kept propagators equals the same run drawn with nothing kept, to the bit,
+through a change, a left edge passing grid columns and a new spacing
+(`test_a_window_drawn_from_kept_propagators_is_the_window_drawn_afresh`). Six
+mutations - a key without the settings, a key without the interval, nothing
+kept, a store that only grows, a store holding only what it newly formed, and a
+canonical path reading the store - each fail a new test.
+`tests/reference/test_canonical_evaluation.py` now hammers the canonical answer
+with `evaluate_anchored` calls as well, and
+`test_a_canonical_answer_reads_nothing_the_chart_kept` swaps the store for one
+that fails on any read.
+
+**Two adversarial reviews, before the owner's read.** One found the claim that
+a following frame forms only its two bounds' wrong in kind: the stretch the
+window opens in has a new first grid column each time the left edge passes
+one, so a third forms then - one following frame in four at 1x and 1 069
+columns, and nearly every frame from 5x up, about 1.4 ms more. `docs/MODEL.md`
+now says so, and `test_a_window_drawn_again_forms_only_what_it_did_not_keep`
+pins it. The same review found that the first test's reference ran the same
+reuse code, so a settings-blind key passed it; that the reference test's
+hammering could not see a canonical path reading the store, since a kept
+propagator read under its own key is exact; and that
+`.claude/rules/run-is-its-definition.md`'s new paragraph cited as its warrant a
+test the store meets - by that test it is indexed by the watching, and the
+paragraph now says so and gives the reason it is kept anyway. All three were
+fixed, with a stale `Keyframe` docstring and the misleading name below. The
+other review found no defect the app can reach. Its two gaps outside the app,
+both in what the settings record accepts as a cache key, are `PL-5BD7`.
+
+**The owner's read, 2026-10-04.** Agreed on all three points put to them: the
+store kept as the rule's one exception, which
+`.claude/rules/run-is-its-definition.md` now records as ratified; the cost
+statements in `docs/MODEL.md`; and the memory bound.
+
+**`verify:` was rewritten at the close.** The commissioned grep wanted
+`drawn_window costs` with nothing between the two words, which
+`docs/MODEL.md`'s code formatting of the name never produces, and a command
+written since 2026-09-24 may not run `doc_check`, which `make check` runs
+anyway. The rewrite greps the formatted phrase and the line that keeps the
+propagators. `touches` lost `app/controller.py`, which needed no change, and
+gained the tests, `docs/ARCHITECTURE.md`, the rule that governs this module,
+`PL-PGZF`'s brief and `PL-HWNG`'s `feature:` line. The grep was rewritten once
+more after the reviews, when `_WindowPropagators.formed` became `used`, since it
+holds the propagators a window found kept as well as those it formed.

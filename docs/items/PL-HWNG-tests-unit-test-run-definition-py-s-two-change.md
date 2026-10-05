@@ -5,10 +5,12 @@ priority: P2
 effort: S
 status: ready
 classes: test
+feature: two-change-run-has-two-changes
 touches: tests/unit/test_run_definition.py
 added: 2026-10-01
 payoff: the tests named for a two-change run exercise two changes, so a replay that loses a branch's second change is caught
 verify: grep -q 'def test_the_two_change_run_carries_both_changes' tests/unit/test_run_definition.py
+recurrences: 2026-10-04 PL-KZXJ
 ---
 
 **Problem.** tests/unit/test_run_definition.py's _two_change_run sets sevoflurane's dial to 2.0%, where AgentUptakeSystem.for_agent already opens it at 1 MAC, so its first record_change may record nothing and every test built on it may be exercising one change rather than the two its name promises (reported while building PL-NJPB; the 2.0% matches the opening dial, but whether record_change skips an unchanged setting was not checked)
