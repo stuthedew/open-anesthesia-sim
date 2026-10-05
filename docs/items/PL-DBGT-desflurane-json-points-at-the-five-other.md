@@ -3,12 +3,14 @@ id: PL-DBGT
 title: desflurane.json points at 'the five other candidates ruled out' in a MODEL.md table that now has nine rows, and names tests/reference/test_published_wash_in.py, which does not exist
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, defect
 feature: provenance
 touches: src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md
 added: 2026-09-13
-verify: ! grep -q 'test_published_wash_in.py' src/anesthesia_sim/data/agents/desflurane.json && python3 tools/doc_check.py check
+closed: 2026-10-05
+pr: 1372
+verify: ! grep -q 'test_published_wash_in.py' src/anesthesia_sim/data/agents/desflurane.json && ! grep -q 'five other candidates' src/anesthesia_sim/data/agents/desflurane.json && python3 tools/doc_check.py check
 ---
 
 **Problem.** desflurane.json points at 'the five other candidates ruled out' in a MODEL.md table that now has nine rows, and names tests/reference/test_published_wash_in.py, which does not exist
@@ -81,3 +83,29 @@ the assertion it describes is in that file. No stored value changes.
 **dropped rather than checked**, per the counts rule: a count in prose is
 stated only where a check holds it to what it counts, or it is dated, and this
 one is neither - the sentence states the rule without the number instead.
+
+**Fixed 2026-10-05.** The Yasuda-1989 note in
+`src/anesthesia_sim/data/agents/desflurane.json` now sends the reader to
+`docs/MODEL.md`, "Desflurane's residual, and why the parameter file was not
+changed", "for the other candidates tested or struck" - the section's own
+verb, and no count - and names the assertion by its test,
+`test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination`
+in `tests/reference/test_published_wash_in_and_elimination.py`. Read before
+naming it: the test raises desflurane's vessel-rich coefficient to its own
+measured mean plus 2 SD, and to sevoflurane's, and asserts the elimination
+still misses the published mean on the same side, which is what the note
+says. The section still says what is left open ("So what is left is one
+candidate, and this project cannot test it"). No stored value changed. The
+`verify:` command now also refuses the old count.
+
+**The `check_citations` half of the re-scope is not done here, and is
+`PL-LNFG`.** `PL-PT7M`'s disposition of 2026-09-21, two days after the
+re-scope, classed this item as a live-document repair rather than
+check-building, and the repair is what closes it. Reaching the notes is new
+checking rather than a fix to what `check_citations` reads: it reads code spans,
+links and section marks, and the notes cite as bare paths and as
+`docs/MODEL.md, 'Section'`, so it needs a reader of its own. That is a new
+mechanism of the kind `CLAUDE.md` holds while a generator head is live, and
+`PL-R417` is. Measured after this repair: the data files' 44 `note` strings
+carry 48 bare path citations and the files 24 section citations, and every
+one resolves, so the check would be preventive rather than corrective today.
