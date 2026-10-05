@@ -79,7 +79,9 @@ passed a grid column, one more - and the full span of a 24-hour run with sixty
 changes in view costs 5.9 ms. **By the test above, that store is indexed by the
 watching**: what it holds depends on the window drawn last, so two runs built
 from identical definitions can hold different entries. It is kept as the one
-exception the test's own reason leaves room for. The watching is refused as a
+exception the test's own reason leaves room for (project owner, 2026-10-04,
+ratified, over keeping the test absolute and every frame's cost with it,
+`PL-CNCF`). The watching is refused as a
 second argument because a second argument makes a second source of truth, and
 here it cannot: an entry is found only by a stretch's settings and an interval,
 the whole of what it is formed from, so a hit returns the bits forming it again

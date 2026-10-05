@@ -261,6 +261,11 @@ fixed, with a stale `Keyframe` docstring and the misleading name below. The
 other review found no defect the app can reach. Its two gaps outside the app,
 both in what the settings record accepts as a cache key, are `PL-5BD7`.
 
+**The owner's read, 2026-10-04.** Agreed on all three points put to them: the
+store kept as the rule's one exception, which
+`.claude/rules/run-is-its-definition.md` now records as ratified; the cost
+statements in `docs/MODEL.md`; and the memory bound.
+
 **`verify:` was rewritten at the close.** The commissioned grep wanted
 `drawn_window costs` with nothing between the two words, which
 `docs/MODEL.md`'s code formatting of the name never produces, and a command
