@@ -44,11 +44,16 @@ test rather than a plausible simplification:
   `ZeroDivisionError` on `V/0.0` rather than returning `inf`, so the branch is
   the only route to the `inf` that `docs/MODEL.md` states for an unperfused
   compartment.
-- **`BreathingCircuit.advance_fresh_gas()`'s guard is required.** Its
-  exhausted-agent integral carries the factor `tau * (1 - exp(-dt/tau))`,
-  which at `tau = inf` is `inf * 0.0` and therefore `nan` - for every circuit
-  state, including one already sitting at the dial. Without the branch the
-  circuit would report a `nan` exhaust to the mass-balance check.
+- **`BreathingCircuit.advance_fresh_gas()`'s guard buys an exact no-op.**
+  Without it the circuit's fraction comes out of the general path as
+  `d + (i - d) * exp(-dt/inf)`, which is `i` only while the two are within a
+  factor of two of each other: a 6 L circuit loaded to a fraction of 1e-6
+  under a 100% dial comes back holding 6.000000000172534e-06 L where it held
+  6e-06 (measured 2026-10-05). Its exchange is zero either way. The guard
+  was once required for a second reason: the exhaust carried the factor
+  `tau * (1 - exp(-dt/tau))`, which at `tau = inf` is `inf * 0.0` and so
+  `nan`, and is now written as what was delivered less what the circuit
+  kept, which holds no time constant to overflow (`PL-B26Y`).
 - **The two amount-storing guards buy an exact no-op.** `TissueGroup` and
   `VenousBloodCompartment` would come out of the general path with the right
   *fraction* - `exp(-dt/inf)` is exactly `1.0`, and the fraction update is bit
@@ -60,9 +65,15 @@ test rather than a plausible simplification:
   exactly.
 
 **The test is an equality because there is no band of nearly-zero flows to
-catch.** Walked from zero upwards, the branch agrees with the general path bit
-for bit at the smallest denormal, at 1e-300 and at 1e-30; the first divergence
-is at a flow of 1e-12 L/min, where a real flow moves a real 1e-15 L of agent.
-An epsilon would not remove a discontinuity - it would introduce one, freezing
-flows the model says still move (`PL-79YX`).
+catch.** Walked from zero upwards - the smallest denormal, 1e-300 and 1e-30
+L/min - what each compartment stores lands the same distance from the branch
+at every flow, bit for bit, and within one rounding of it, and the agent each
+step reports moving stays within that rounding of the branch's zero, the
+circuit's exhaust included. The smallest denormal is one of the flows at which
+the circuit's time constant overflows to `inf` - every flow below about 2e-306
+L/min, for a 6 L circuit - and its exhaust there is what was delivered, as it
+is at 1e-300 (`PL-B26Y`). The first divergence is at a flow of 1e-12 L/min,
+where a real flow moves a real 1e-15 L of agent. An epsilon would not remove a
+discontinuity - it would introduce one, freezing flows the model says still
+move (`PL-79YX`).
 """

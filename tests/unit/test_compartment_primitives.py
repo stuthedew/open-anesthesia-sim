@@ -21,7 +21,7 @@ it - which is why `LOADED_FRACTION` is small.
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from math import inf, ulp
+from math import inf, isfinite, ulp
 from typing import Any
 
 import pytest
@@ -31,6 +31,7 @@ from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
+from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 
 # The fraction each compartment is loaded to, and the constant input each is
 # driven with: a compartment at the very start of a wash-in.
@@ -62,6 +63,14 @@ FINE_STEP_COUNT = 600
 # there is, so if the exact branch and the general path ever disagree in a
 # band above zero, this walk is inside it.
 NEARLY_ZERO_FLOWS_L_MIN = (5e-324, 1e-300, 1e-30)
+
+# Two flows the model admits at which the circuit's time constant,
+# `60 * circuit_volume_l / flow`, overflows to `inf`: every flow below about
+# 2e-306 L/min does, for a 6 L circuit (`PL-B26Y`). At the first the agent
+# delivered rounds to zero, so the bound below holds the exhaust to exactly
+# zero; the second, 2**-1023 L/min, still delivers a subnormal amount, so the
+# bound is one a wrong exhaust could break by being too large.
+OVERFLOWING_FLOWS_L_MIN = (5e-324, 1.1125369292536007e-308)
 
 # The floor every comparison near zero flow sits on, as a fraction. The
 # zero-flow closed form reduces to `d + (i - d)`, and that expression's
@@ -215,10 +224,12 @@ def test_zero_flow_is_an_exact_no_op(primitive: CompartmentPrimitive) -> None:
     """`docs/MODEL.md` states the no-flow case as an equality, so it is one.
 
     Exactly the loaded amount and exactly zero agent moved, not within a
-    tolerance of either. Both assertions fail with the compartment's zero-flow
-    branch removed, and they fail for different reasons: the circuit's
-    exhausted-agent integral becomes `nan`, where the two patient compartments
-    come back one unit in the last place away from where they started.
+    tolerance of either. Removing a compartment's zero-flow branch fails it:
+    the two patient compartments come back one unit in the last place away
+    from where they started, and the circuit holds 6.000000000172534e-06 L
+    where it held 6e-06 (measured 2026-10-05), its fraction one rounding of
+    `d + (i - d)` away. The circuit's exchange stays zero without the branch
+    since `PL-B26Y`; before it, the exhausted-agent integral became `nan`.
     """
 
     compartment = primitive.build(0.0)
@@ -249,6 +260,11 @@ def test_the_zero_flow_branch_agrees_with_the_limit_from_above(
     item's own 2026-09-02 walk did - at a loaded fraction comparable to the
     driving one, where `d + (i - d)` happens to be exact and the question
     therefore never arose.
+
+    The agent each step reports moving is held to the same rounding, the
+    circuit's external exchange included. Until `PL-B26Y` the walk compared
+    only what each compartment stored and discarded what the step returned,
+    so the circuit's `nan` exhaust at the smallest of these flows passed it.
     """
 
     at_zero_flow = primitive.build(0.0)
@@ -259,12 +275,16 @@ def test_the_zero_flow_branch_agrees_with_the_limit_from_above(
 
     for flow_l_min in NEARLY_ZERO_FLOWS_L_MIN:
         nearly_zero = primitive.build(flow_l_min)
-        primitive.step(nearly_zero, FINE_STEP_S)
+        agent_moved_l = primitive.step(nearly_zero, FINE_STEP_S)
         difference_l = primitive.stored_agent_l(nearly_zero) - branch_agent_l
 
         assert abs(difference_l) <= primitive.zero_flow_rounding_l, (
             f"{primitive.name} leaves its zero-flow branch by more than one rounding "
             f"at {flow_l_min:g} L/min"
+        )
+        assert abs(agent_moved_l) <= primitive.zero_flow_rounding_l, (
+            f"{primitive.name} reports {agent_moved_l!r} L moved at {flow_l_min:g} L/min, "
+            "where its zero-flow branch reports none"
         )
         differences_l.add(difference_l)
 
@@ -291,3 +311,36 @@ def test_a_real_flow_moves_more_agent_than_the_rounding_does(
 
     assert abs(difference_l) > primitive.zero_flow_rounding_l
     assert abs(difference_l) < 1e-12
+
+
+@pytest.mark.parametrize("fresh_gas_flow_l_min", OVERFLOWING_FLOWS_L_MIN)
+@pytest.mark.parametrize(
+    "inspired_partial_pressure_fraction",
+    (LOADED_FRACTION, DRIVING_FRACTION),
+    ids=("washing-in", "at-the-dial"),
+)
+def test_the_circuit_exhaust_is_finite_where_its_time_constant_overflows(
+    fresh_gas_flow_l_min: float, inspired_partial_pressure_fraction: Fraction
+) -> None:
+    """A flow the model admits gets an exhaust, not a `nan` (`PL-B26Y`).
+
+    The exhaust is the flow times the inspired fraction integrated over the
+    step, and the inspired fraction stays between where it started and the
+    dial, so the exhaust lies between zero and the flow times the step times
+    the larger of the two. The closed form used to carry the time constant as
+    a factor, `tau * (1 - exp(-dt/tau))`, which at these flows is
+    `inf * 0.0`, and the exhaust came back `nan` from either state.
+    """
+
+    circuit = _build_circuit(fresh_gas_flow_l_min)
+    circuit.set_inspired_partial_pressure_fraction(inspired_partial_pressure_fraction)
+    larger_fraction = max(inspired_partial_pressure_fraction, DRIVING_FRACTION)
+    # Associated as the closed form associates the agent it delivers, so the
+    # bound is exact rather than one rounding either side of what it bounds.
+    exhaust_bound_l = fresh_gas_flow_l_min / SECONDS_PER_MINUTE * larger_fraction * FINE_STEP_S
+
+    exchange = circuit.advance_fresh_gas(FINE_STEP_S)
+
+    assert circuit.time_constant_s == inf
+    assert isfinite(exchange.exhausted_agent_l)
+    assert 0.0 <= exchange.exhausted_agent_l <= exhaust_bound_l
