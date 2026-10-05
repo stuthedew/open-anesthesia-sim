@@ -56,7 +56,7 @@ The continued case is the head's fact outright: make joins a non-recipe line's
 backslash-newlines and keeps a recipe line's for the shell. `_target_recipes`
 already reads where a rule ends, so one reading of it shared by the three
 Makefile readers is the likely fix, and `PL-TDVJ` the item to build it beside.
-Not yet in `PL-R417`'s `root-cause-of:`, which its next edit records. Holding
+Recorded in `PL-R417`'s `root-cause-of:` by its link 16. Holding
 that state in `_make_lines` would also let it read a tab-led `define` outside a
 rule as make does, which `PL-4MLK` declines by name.
 

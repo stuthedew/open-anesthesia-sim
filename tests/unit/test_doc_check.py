@@ -23,11 +23,13 @@ import dead_ends
 import doc_check
 import fixture_id_check
 import possessive_section_check
+import pr_body_check
 import pytest
 import required_checks_check as rcc
 import rules_paths_check
 import shell_split
 from docket import checks as docket_checks
+from docket import vcs as docket_vcs
 from docket import verify as docket_verify
 from docket.fences import blocks as fence_blocks
 from docket.instructions import parse as dated_assertions
@@ -6928,6 +6930,36 @@ def _joined_fixture_ids(tmp_path: Path) -> list[tuple[int, str]]:
     return [(found.line, found.token) for found in fixture_id_check.scan_text(script)]
 
 
+def _superseded_copy(tmp_path: Path, path: str, base: str, branch: str) -> set[str]:
+    """What `vcs._superseded` makes of `path`, held as `base` on the base, `branch` on a branch."""
+    root = tmp_path / "repo"
+    (root / path).parent.mkdir(parents=True, exist_ok=True)
+    (root / path).write_text(base, encoding="utf-8")
+    _git_init(root)
+    _git(root, "tag", "base")
+    _git(root, "checkout", "-qb", "branch")
+    (root / path).write_text(branch, encoding="utf-8")
+    _git(root, "commit", "-qam", "the branch's copy")
+    return docket_vcs._superseded("branch", "base", (path,), root, docket_vcs._run_git)
+
+
+def _item_copy(body: str) -> str:
+    """One item file's copy, its body `body`, as `vcs._standing` compares two."""
+    return f"---\nid: PL-K7QX\ntitle: An item\nstatus: ready\n---\n\n{body}"
+
+
+def _recovered_commit(text: str) -> str | None:
+    """The `commit:` `pr_body_check` reads from a recovered record, or None where it reads none."""
+    parsed = pr_body_check.parse_record(text)
+    return parsed[0].get("commit") if parsed else None
+
+
+#: A rule CommonMark carries across three lines, and the same with its middle
+#: line cut: what is left is a rule the base never stated.
+RULE = "**Decision.** Run the full suite\nbefore every commit,\nexcept one touching only docs.\n"
+NARROWED = RULE.replace("before every commit,\n", "")
+
+
 #: The Symbols table's header and delimiter rows, and one row under them.
 SYMBOLS = "| Symbol | Meaning | Unit | Code |\n| --- | --- | --- | --- |\n| a | A | - | `X.a` |\n"
 
@@ -8087,6 +8119,97 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         _bump_refusal,
         'pyproject.toml: declares version 0.5.22, but not on its first `version = "..."` line, '
         "which is the one line a bump rewrites; write the declaration on that line to bump it",
+    ),
+    # docket's removal reads (`PL-F7Z6`): a change from the base that only
+    # removes lines leaves the base holding more only where the branch's copy
+    # holds no statement the base's lacks, read in the file's own format.
+    "superseded, a line cut out of a continued paragraph": (
+        lambda tmp_path: _superseded_copy(tmp_path, "notes.md", RULE, NARROWED),
+        set(),
+    ),
+    "superseded, a line cut out of a fence": (
+        lambda tmp_path: _superseded_copy(
+            tmp_path,
+            "notes.md",
+            "```sh\nmake check\nmake docket\n```\n",
+            "```sh\nmake check\n```\n",
+        ),
+        set(),
+    ),
+    "superseded, a list item's line cut from over its sub-item": (
+        lambda tmp_path: _superseded_copy(
+            tmp_path,
+            "notes.md",
+            "- Never merge unread, except:\n  - a docs-only change\n",
+            "  - a docs-only change\n",
+        ),
+        set(),
+    ),
+    "superseded, a front-matter value's continuation cut": (
+        lambda tmp_path: _superseded_copy(
+            tmp_path,
+            "notes.md",
+            "---\nreason: held until\n  the gate freezes\n---\n",
+            "---\nreason: held until\n---\n",
+        ),
+        set(),
+    ),
+    "superseded, an element cut out of a bracketed list": (
+        lambda tmp_path: _superseded_copy(
+            tmp_path,
+            "allowed.py",
+            'ALLOWED = (\n    "a",\n    "b",\n)\n',
+            'ALLOWED = (\n    "a",\n)\n',
+        ),
+        set(),
+    ),
+    "superseded, a clause header cut from over its suite": (
+        lambda tmp_path: _superseded_copy(
+            tmp_path,
+            "rule.py",
+            "if docs_only:\n    skip()\nelse:\n    run_suite()\n",
+            "if docs_only:\n    skip()\n    run_suite()\n",
+        ),
+        set(),
+    ),
+    "superseded, a decorator cut from its definition": (
+        lambda tmp_path: _superseded_copy(
+            tmp_path, "test_x.py", "@skip\ndef test_it():\n    pass\n", "def test_it():\n    pass\n"
+        ),
+        set(),
+    ),
+    "superseded, a whole paragraph cut": (
+        lambda tmp_path: _superseded_copy(tmp_path, "notes.md", "One.\n\nTwo.\n", "One.\n"),
+        {"notes.md"},
+    ),
+    "superseded, a whole definition cut": (
+        lambda tmp_path: _superseded_copy(
+            tmp_path,
+            "rule.py",
+            "def a():\n    pass\n\n\ndef b():\n    pass\n",
+            "def a():\n    pass\n",
+        ),
+        {"rule.py"},
+    ),
+    "standing, a line cut out of a continued paragraph": (
+        lambda _: docket_vcs._standing(_item_copy(RULE), _item_copy(NARROWED)),
+        "ahead",
+    ),
+    "standing, a whole paragraph cut": (
+        lambda _: docket_vcs._standing(_item_copy("One.\n\nTwo.\n"), _item_copy("One.\n")),
+        "behind",
+    ),
+    # `tools/pr_body_check.py` (`PL-4ZVH`): a recovered record's front matter
+    # is the item convention's, and git folds a trailer as RFC 822 does.
+    "recovered records, a commit continued on an indented line": (
+        lambda _: _recovered_commit(f"---\npr: 768\ncommit:\n  {'a' * 40}\n---\n\nBody.\n"),
+        "a" * 40,
+    ),
+    "appended trailers, a trailer folded onto a second line": (
+        lambda _: pr_body_check.normalise(
+            "Why.\n\nCo-authored-by: A Long Name\n <a@example.com>\n"
+        ),
+        "Why.",
     ),
 }
 

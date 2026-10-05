@@ -39,8 +39,10 @@ dates its fetch.
 commit of the default branch** (`PL-73G8`). It is the one field tying a
 recovered body to the tree, and the 2026-09-06 signing rewrite remapped every
 hash once already. It runs in `make check`, fails naming each file and the
-squash commit its number resolves to now, and on a shallow clone or with no
-default branch says it checked nothing.
+squash commit its number resolves to now, names without failing a file whose
+`commit:` it cannot read (`PL-4ZVH`), and on a shallow clone or with no default
+branch says it checked nothing. A record's front matter is read as an item's
+is, so a `commit:` wrapped onto an indented line is read whole.
 
 **What follows is the history behind that record.** The squash copy did not
 always arrive. Measured 2026-09-20 over all 805 first-parent commits on `main`:
@@ -196,6 +198,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_docket_config  # noqa: E402
 from docket.lines import record_text  # noqa: E402
+from docket.model import parse_front_matter  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import (  # noqa: E402
     REMOTE,
@@ -221,9 +224,14 @@ FRONT_MATTER = "---"
 #: What GitHub appends to a squash body: `Co-authored-by` trailers, after a
 #: `---------` line or directly after a blank one - both shapes are on `main`.
 #: Anchored to the end and to the start of each line, so a trailer quoted
-#: inside the body, or named mid-sentence on its last line, is compared.
+#: inside the body, or named mid-sentence on its last line, is compared. Each
+#: trailer takes every line git folds into it, one led by a space or a tab
+#: (git 2.43.0's `Documentation/git-interpret-trailers.txt`: "each subsequent
+#: line starting with at least one whitespace, like the "folding" in RFC 822"),
+#: so a folded one is GitHub's rather than the body's (`PL-4ZVH`).
 APPENDED_TRAILER_RE = re.compile(
-    r"(?:^-{9}\n)?(?:^[ \t]*\n)*(?:^Co-authored-by: [^\n]*(?:\n|\Z))+\s*\Z",
+    r"(?:^-{9}\n)?(?:^[ \t]*\n)*"
+    r"(?:^Co-authored-by: [^\n]*(?:\n[ \t]+\S[^\n]*)*(?:\n|\Z))+\s*\Z",
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -592,20 +600,18 @@ def write_recovery(
 
 
 def parse_record(text: str) -> tuple[dict[str, str], str] | None:
-    """A record's front matter and body, or None where it opens with no front matter."""
-    lines = text.replace("\r\n", "\n").split("\n")
-    if lines[0] != FRONT_MATTER or FRONT_MATTER not in lines[1:]:
+    """A record's front-matter fields and body, or None where no field is read.
+
+    The front matter follows the item convention, so it is read the way
+    `docket.model` reads an item's: a value continued on an indented line is
+    read whole, as `docket verify` reads the same file (`PL-4ZVH`).
+    """
+    header, body = parse_front_matter(text.replace("\r\n", "\n"))
+    if not header:
         return None
-    end = lines.index(FRONT_MATTER, 1)
-    header: dict[str, str] = {}
-    for line in lines[1:end]:
-        key, colon, value = line.partition(":")
-        if colon:
-            header[key.strip()] = value.strip()
-    rest = lines[end + 1 :]
     #: The one blank line `_write` puts after the front matter, and no more, so
     #: a body that itself opens with a blank line survives the round trip.
-    return header, "\n".join(rest[1:] if rest[:1] == [""] else rest)
+    return header, body.removeprefix("\n")
 
 
 def _shown(path: Path) -> Path:
@@ -658,9 +664,16 @@ def anchors(ref: str | None) -> int:
     stray: list[tuple[str, str, str]] = []
     for path in sorted(RECOVERY_DIR.glob("*.md")) if RECOVERY_DIR.is_dir() else []:
         parsed = parse_record(path.read_text(encoding="utf-8"))
-        sha = parsed[0].get("commit", "") if parsed else ""
+        # A record with no `commit:` at all was `recorded:` before its merge
+        # and has no anchor to check; one whose `commit:` reads as nothing has
+        # one this check cannot read, and says so rather than passing it.
+        if parsed is None or parsed[0].get("commit") == "":
+            why = "no front matter is read" if parsed is None else "its `commit:` holds no value"
+            print(f"pr-body: {RECORD_PATH}/{path.name}: anchor not checked: {why}.")
+            continue
+        sha = parsed[0].get("commit", "")
         if sha and sha not in line:
-            stray.append((path.name, parsed[0].get("pr", path.stem) if parsed else path.stem, sha))
+            stray.append((path.name, parsed[0].get("pr", path.stem), sha))
     if not stray:
         return 0
     now = {str(pr): sha for sha, pr, _, _ in squash_commits(ref or "")}

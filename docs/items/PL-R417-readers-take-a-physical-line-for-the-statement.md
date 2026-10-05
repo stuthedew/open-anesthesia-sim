@@ -11,8 +11,8 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 payoff: a statement a shell script, Makefile, workflow or Markdown document continues across lines is read as the one statement its format makes it, or refused by name, so the close-out sweep and the checks stop answering from fragments
 verify: grep -q 'def test_candidates_find_a_title_cited_across_a_line_wrap' tests/unit/test_doc_check.py && grep -q 'def test_each_reader_reads_its_formats_continued_statement_whole' tests/unit/test_doc_check.py && grep -q 'recipe commands, ' tests/unit/test_doc_check.py && grep -q 'workflow commands, ' tests/unit/test_doc_check.py && grep -q '^generator: spent' docs/items/PL-R417-readers-take-a-physical-line-for-the-statement.md
-root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G, PL-TY1Z, PL-YSMD, PL-HKHP, PL-5NC3, PL-WF35, PL-FP7J, PL-BLKJ, PL-J0C6, PL-GMR6, PL-VQBY, PL-4ZDZ, PL-GT0J, PL-KT0H, PL-FBWD, PL-F7Z6, PL-V2HK, PL-TC2D, PL-S3XS, PL-4T49, PL-PPNV, PL-97CF, PL-2JYP, PL-WG6S, PL-4MLK, PL-4ZVH, PL-T1X0, PL-BYJ5, PL-0Y7J, PL-T73L, PL-TDVJ
-generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory until link 8, then PL-T1X0 and PL-BYJ5, which that day's triage pass put to it, PL-0Y7J and PL-T73L in link 11, and PL-TDVJ in link 15
+root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G, PL-TY1Z, PL-YSMD, PL-HKHP, PL-5NC3, PL-WF35, PL-FP7J, PL-BLKJ, PL-J0C6, PL-GMR6, PL-VQBY, PL-4ZDZ, PL-GT0J, PL-KT0H, PL-FBWD, PL-F7Z6, PL-V2HK, PL-TC2D, PL-S3XS, PL-4T49, PL-PPNV, PL-97CF, PL-2JYP, PL-WG6S, PL-4MLK, PL-4ZVH, PL-T1X0, PL-BYJ5, PL-0Y7J, PL-T73L, PL-TDVJ, PL-BMZN
+generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory until link 8, then PL-T1X0 and PL-BYJ5, which that day's triage pass put to it, PL-0Y7J and PL-T73L in link 11, PL-TDVJ in link 15, and PL-BMZN, filed beside it and re-read as one by that day's second triage pass
 misread: Where one statement ends, in a format that lets a statement continue across physical lines
 ---
 
@@ -373,12 +373,28 @@ rule read as a recipe line, was filed beside it as a one-off, and `PL-M2RB` was
 dropped as `PL-GZXY`'s duplicate, its two further readers folded into that
 brief. `generator:` stays `live`.
 
-**Next steps (recorded 2026-10-04, revised by links 8, 11, 12, 13, 14 and
-15).** The members, one format per pull request as before, each closing its
-members and adding their cases to `CONTINUED_STATEMENTS`: the two that read a
-change or a commit record (`PL-F7Z6`, `PL-4ZVH`) next; then link 11's two
-Markdown members, `PL-0Y7J` and `PL-T73L`, in one pull request, and link 15's
-Makefile member, `PL-TDVJ`, before the sweep. Then one more sweep of the same
+**Link 16, the change-record slice (`#1379`, 2026-10-05).** Done: `PL-F7Z6`
+and `PL-4ZVH`. docket's `_superseded` and `_standing` read a change that only
+removes lines as the base holding more only where the branch's copy holds no
+statement the base's lacks, each read in its place: a Markdown statement under
+the list items holding it, a Python one under the clauses holding it, read with
+`ast`, and a format no reader here knows the statements of left outstanding.
+`_standing`'s closure case stays a line read. `pr_body_check` reads a recovered
+record through `docket.model`'s fold, names a record whose `commit:` it cannot
+read, and strips a trailer with the lines git folds into it. Nothing a caller
+answers moved: on the day's 9 refs every answer of `stranded`, `orphaned`,
+`claims.holdings` and `landed_whole` is the same under main's readers and these,
+and the 265 records read the same. The guard gained thirteen cases: seven
+`superseded, `, one `standing, `, one `recovered records, ` and one `appended
+trailers, ` fail on main's readers, and three pin a whole statement's removal
+as superseded or behind. No new member was filed; `PL-BMZN` joined `root-cause-of:`, re-read as
+a member at the day's second triage pass (`#1380`). `generator:` stays `live`.
+
+**Next steps (recorded 2026-10-04, revised by links 8, 11, 12, 13, 14, 15 and
+16).** The members, one format per pull request as before, each closing its
+members and adding their cases to `CONTINUED_STATEMENTS`: link 11's two
+Markdown members, `PL-0Y7J` and `PL-T73L`, in one pull request, and the two
+Makefile members, `PL-TDVJ` and `PL-BMZN`, in another, before the sweep. Then one more sweep of the same
 reach, and `generator:` rewritten `spent` only when
 it finds nothing (the coordinator's brief, 2026-10-04). The head closes without waiting for
 `PL-RR1N`, naming it in the reason as Done-when says (project owner,

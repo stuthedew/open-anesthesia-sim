@@ -33,19 +33,22 @@ what is on it that nowhere else has.
 
 from __future__ import annotations
 
+import ast
 import os
 import re
 import subprocess
 import time
 import urllib.parse
+import warnings
 from collections import Counter
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+from . import markdown
 from .lines import ENCODING, file_text, record_text, split_lines
-from .model import CLOSED_STATUSES, is_under, parse_front_matter, parse_item
+from .model import CLOSED_STATUSES, _front_matter_pairs, is_under, parse_front_matter, parse_item
 from .release import (
     CUT_FLAGS,
     NOTES_DIR,
@@ -1296,6 +1299,129 @@ def _pathspec_chunks(paths: tuple[str, ...]) -> Iterator[tuple[str, ...]]:
         yield tuple(held)
 
 
+#: One statement of a file, as `_statements` reads it: a tag naming the reading,
+#: then, for a statement something holds, how many of what follows say where it
+#: sits, and those, then what it holds.
+Statement = tuple[str, ...]
+
+#: What the parser raises where this interpreter cannot read a file, as
+#: `verify.UNPARSABLE` names them; that module imports this one.
+_UNPARSABLE = (SyntaxError, ValueError, RecursionError)
+
+
+def _markdown_statements(text: str) -> frozenset[Statement] | None:
+    """A Markdown file's statements: each front-matter field, and each of its body's in its place.
+
+    A field is the value `docket.model` folds from its own line and the
+    indented ones under it. A body statement is a span
+    `markdown.statement_lines` reads - a paragraph with every line CommonMark
+    carries it onto, a heading, a table row - or a fence, whole: that reader
+    passes a fence over as a literal, and a literal is content all the same.
+    Each is read under the marker line of every list item holding it, because
+    an item holds its blocks (CommonMark 0.31.2 § 5.2): a sub-item whose
+    parent's line was cut sits somewhere the base never put it.
+    `None` where the fold declines a line - one no field reads, a block list or
+    a block scalar - since a value it declines is one nobody can say is whole.
+    """
+    parsed = _front_matter_pairs(text)
+    statements: set[Statement] = set()
+    body = text
+    if parsed is not None:
+        pairs, block_lists, block_scalars, unread, body = parsed
+        if block_lists or block_scalars or unread:
+            return None
+        statements |= {("field", key, value) for key, value in pairs}
+    lines = split_lines(body)
+    document = markdown.read(lines)
+    spans = list(markdown.statement_lines(lines))
+    spans += [(block.start, block.end) for block in document.blocks if block.kind == markdown.FENCE]
+    for start, end in spans:
+        place = [lines[item.start] for item in document.items if item.start <= start < item.end]
+        statements.add(("block", str(len(place)), *place, *lines[start:end]))
+    return frozenset(statements)
+
+
+def _clauses(value: object) -> bool:
+    """Whether a node's field holds statements, or the clauses that hold them."""
+    return isinstance(value, list) and any(
+        isinstance(node, ast.stmt | ast.excepthandler | ast.match_case) for node in value
+    )
+
+
+def _parsed_statements(text: str) -> frozenset[Statement]:
+    """`_python_statements`' reading, raising one of `_UNPARSABLE` where the parser refuses."""
+    with warnings.catch_warnings():
+        # An invalid escape sequence warns as it compiles: the file's linter's
+        # to report, and noise on every page that reads a branch.
+        warnings.simplefilter("ignore")
+        tree = ast.parse(text)
+    statements: set[Statement] = set()
+    suites: list[tuple[tuple[str, ...], Sequence[ast.AST]]] = [((), tree.body)]
+    while suites:
+        place, nodes = suites.pop()
+        for node in nodes:
+            fields = dict(ast.iter_fields(node))
+            held = {name: value for name, value in fields.items() if _clauses(value)}
+            own = ast.dump(type(node)(**{**fields, **dict.fromkeys(held, [])}))
+            statements.add(("python", str(len(place)), *place, own))
+            suites += [((*place, own, name), value) for name, value in held.items()]
+    return frozenset(statements)
+
+
+def _python_statements(text: str) -> frozenset[Statement] | None:
+    """A Python file's statements, as the parser reads them, each in its place.
+
+    A simple statement is its whole node, so a bracketed list or a call is one
+    however many lines it is wrapped over (Language Reference § 2.1.6). A
+    compound statement is its header with each clause's statements left out -
+    a decorator is part of a definition's - and each of those statements is
+    read under the header and the clause holding it (§ 8): an `else:` cut from
+    over its suite moves the suite into the clause above, and a definition
+    whose decorator was cut is one the base never had. A comment holds no
+    statement. `None` where the parser refuses the file, syntax newer than the
+    interpreter running this included.
+    """
+    try:
+        return _parsed_statements(text)
+    except _UNPARSABLE:
+        return None
+
+
+def _statements(path: str, text: str) -> frozenset[Statement] | None:
+    """`text`'s statements as the format `path` names reads them (`PL-F7Z6`).
+
+    Markdown and Python, the two formats a reader here knows the statements
+    of. `None` for any other, and where that format's reader declines the copy.
+    """
+    if path.endswith(".md"):
+        return _markdown_statements(text)
+    if path.endswith(".py"):
+        return _python_statements(text)
+    return None
+
+
+def _within(held: frozenset[Statement] | None, holder: frozenset[Statement] | None) -> bool:
+    """Whether every statement of one copy is one of the other's; never where either went unread."""
+    return held is not None and holder is not None and held <= holder
+
+
+def _holds_nothing_more(ref: str, base: str, path: str, root: Path, run: Runner) -> bool:
+    """Whether `ref`'s copy of `path` holds no statement the base's copy lacks.
+
+    Asked of a path whose change from the base only removes lines, which the
+    line count reads as the base holding everything and more. A copy the ref
+    deleted holds nothing, in any format. A blob git does not answer for is
+    `False`, the direction every silence in this module takes.
+    """
+    ref_text = run(["show", f"{ref}:{path}"], root)
+    base_text = run(["show", f"{base}:{path}"], root)
+    if not (answered(ref_text) and answered(base_text)):
+        return False
+    if not ref_text.strip():
+        return True
+    return _within(_statements(path, ref_text), _statements(path, base_text))
+
+
 def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Runner) -> set[str]:
     """Of `paths`, those the base's tip already accounts for, so nothing is left behind.
 
@@ -1324,17 +1450,26 @@ def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Ru
 
     - **Absent from the diff.** The base's tip and the ref's tip agree, so
       there is nothing the base is missing. That is supersession on the branch.
-    - **Removals only.** Going from the base to the ref *deletes* lines and
-      adds none, so the base holds everything the ref holds and more. That is
-      supersession on the base.
+    - **Removals only, of whole statements.** Going from the base to the ref
+      *deletes* lines and adds none, and every statement the ref's copy holds
+      is one the base's holds too, so the base holds everything the ref holds
+      and more. That is supersession on the base. The line count alone was the
+      test until `PL-F7Z6`, and a line cut out of a paragraph CommonMark
+      carries on, or an element cut out of a bracketed list, deletes a line
+      while leaving the ref a statement the base lacks - a rule narrowed, a
+      value withdrawn. `_holds_nothing_more` reads both copies in the path's
+      own format, and a format no reader here knows the statements of is not
+      read as a removal at all. Content cannot tell that cut from a base that
+      extended the statement since, and the read takes the outstanding side.
     - **Anything added or changed.** The ref's tip carries content the base's
       tip does not, which is what work left behind looks like.
 
     **The direction of the read is what makes it safe**, and it is the
     direction the rest of the module takes. Every silence here - a git that did
     not answer, a path git answered for in a shape this cannot parse, a binary
-    file git writes as `-` rather than a count - leaves the path outstanding and
-    so leaves the branch reported. A path wrongly called superseded would hide
+    file git writes as `-` rather than a count, a removal in a copy no reader
+    here can read the statements of - leaves the path outstanding and so leaves
+    the branch reported. A path wrongly called superseded would hide
     work nothing merged, which is the loss `orphaned` exists to catch; a path
     wrongly left outstanding costs a reader one two-dot diff, which is what
     they were doing by hand before this.
@@ -1396,7 +1531,12 @@ def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Ru
                 superseded.add(path)
                 continue
             added, deleted = counts
-            if added == "0" and deleted.isdigit() and int(deleted) > 0:
+            if (
+                added == "0"
+                and deleted.isdigit()
+                and int(deleted) > 0
+                and _holds_nothing_more(ref, base, path, root, run)
+            ):
                 superseded.add(path)
     return superseded
 
@@ -4355,16 +4495,22 @@ def _standing(base_text: str, ref_text: str) -> str:
     The three cases:
 
     - **`_EQUAL`.** The two copies agree.
-    - **`_BEHIND` by removal.** The ref's copy spells no field differently and
-      no line of prose the base's copy lacks, so the base holds everything it
-      holds and more. This is `_superseded`'s "removals only" read, asked of
-      one item file rather than of a path set.
+    - **`_BEHIND` by removal.** The ref's copy spells no field differently,
+      no line of prose the base's copy lacks, and no statement the base's
+      lacks either, so the base holds everything it holds and more. This is
+      `_superseded`'s "removals only" read, asked of one item file rather than
+      of a path set, and a line cut out of a paragraph is `_AHEAD` on the same
+      reasoning (`PL-F7Z6`).
     - **`_BEHIND` by closure.** The base's copy is `done` or `dropped` and the
       ref's is not; the ref's prose adds nothing; and every field it spells
       differently is one the base spells too. A field has one value, and on a
       closed item the base's is the one the project settled on - `status:
       untriaged` against `status: done`, with `closed:`, `pr:` and `verify:`
       beside it - so the branch's line is not content the base is missing.
+      Its prose stays a line read rather than a statement read: what it meets
+      is a stale copy of a paragraph the base has extended since, and a
+      statement read would call that copy `_AHEAD` - eight copies standing on
+      `PL-YBFB`'s and `PL-JW9J`'s branches when `PL-F7Z6` counted, 2026-10-05.
     - **`_AHEAD` otherwise.** Including two copies that each hold something
       the other lacks: the reader is handed a diff either way, and calling
       that case ahead reports it rather than hiding it.
@@ -4394,7 +4540,8 @@ def _standing(base_text: str, ref_text: str) -> str:
         return _AHEAD
     differing = [key for key, value in ref_fields.items() if base_fields.get(key) != value]
     if not differing:
-        return _BEHIND
+        held_whole = _within(_markdown_statements(ref_text), _markdown_statements(base_text))
+        return _BEHIND if held_whole else _AHEAD
     closed_on_base = base_fields.get("status", "") in CLOSED_STATUSES
     closed_on_ref = ref_fields.get("status", "") in CLOSED_STATUSES
     if closed_on_base and not closed_on_ref and all(key in base_fields for key in differing):

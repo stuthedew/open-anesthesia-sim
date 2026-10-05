@@ -249,6 +249,7 @@ def _runner(
     touched: dict[str, list[tuple[str, tuple[str, ...]]]] | None = None,
     tips: dict[str, dict[str, tuple[str, str]]] | None = None,
     duplicated: tuple[str, ...] = (),
+    copies: dict[str, str] | None = None,
 ):
     """A git that holds `refs`, for `orphaned` to read.
 
@@ -266,6 +267,10 @@ def _runner(
     rewritten history: the same commits twice over, which content comparison
     cannot tell from a merge.
 
+    `copies` maps `<rev>:<path>` to what `git show` prints for it: the two
+    copies of a path whose tip diff only removes lines, which `_superseded`
+    reads for a statement the base lacks (`PL-F7Z6`).
+
     `adds` maps a ref to the blobs it introduces since its fork point and
     `on_base` names the blobs the default branch wrote since then, which is
     what separates a branch whose work has landed from one still carrying it.
@@ -278,6 +283,8 @@ def _runner(
     def run(args: list[str], root: Path) -> str:
         if args[0] == "rev-parse":
             return f"{BASE}\n" if args[-1] == BASE else ""
+        if args[0] == "show" and copies is not None:
+            return copies.get(args[1], "")
         if args[0] == "for-each-ref":
             if any(arg.startswith("--merged=") for arg in args):
                 return "\n".join(merged or [])
@@ -434,6 +441,56 @@ def test_a_split_pathspec_answers_every_path_it_was_given() -> None:
 
     assert len(asked) > 1
     assert superseded == agreed
+
+
+def _removal_runner(path: str, base: str, ref: str | None):
+    """A git whose two tips differ on `path` by removals alone, each copy shown as given.
+
+    `None` for the branch's copy is a `show` git did not answer.
+    """
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "diff":
+            return _numstat([(0, 1, path)], args)
+        if args[0] == "show":
+            shown = {f"{BASE}:{path}": base, f"{HARNESS}:{path}": ref}[args[1]]
+            return SILENT if shown is None else shown
+        return _default_run(args, root)
+
+    return run
+
+
+def test_a_path_the_branch_deleted_stays_superseded_in_any_format() -> None:
+    """A deleted copy holds nothing, whether or not a reader here reads its format (`PL-F7Z6`)."""
+    path = "config/settings.toml"
+
+    assert _superseded(HARNESS, BASE, (path,), ROOT, _removal_runner(path, "a = 1\n", "")) == {path}
+
+
+@pytest.mark.parametrize(
+    ("path", "base", "ref"),
+    [
+        ("notes.md", "One.\n\nTwo.\n", None),
+        (
+            "notes.md",
+            "---\nid: X\nno field reads this\n---\nOne.\n\nTwo.\n",
+            "---\nid: X\nno field reads this\n---\nOne.\n",
+        ),
+        ("tool.py", "x = 1\ny = 2\nleft = 'open\n", "x = 1\nleft = 'open\n"),
+        ("config/settings.toml", "a = 1\nb = 2\n", "a = 1\n"),
+    ],
+    ids=["git did not show it", "a line no field reads", "the parser refuses it", "no reader here"],
+)
+def test_a_removal_no_statement_read_answered_leaves_its_path_outstanding(
+    path: str, base: str, ref: str | None
+) -> None:
+    """Each silence of the statement read keeps the path reported (`PL-F7Z6`).
+
+    Every copy here cuts a whole statement, which a read that answered would
+    call superseded. A `show` git did not answer is the dangerous one: its
+    silence strips to the empty string a deleted copy prints.
+    """
+    assert _superseded(HARNESS, BASE, (path,), ROOT, _removal_runner(path, base, ref)) == set()
 
 
 def test_tags_are_read_from_the_repository() -> None:
@@ -2140,6 +2197,7 @@ def _orphaned(
     touched: dict[str, list[tuple[str, tuple[str, ...]]]] | None = None,
     tips: dict[str, dict[str, tuple[str, str]]] | None = None,
     duplicated: tuple[str, ...] = (),
+    copies: dict[str, str] | None = None,
 ) -> OrphanedReport:
     return orphaned(
         ROOT,
@@ -2151,6 +2209,7 @@ def _orphaned(
             touched=touched,
             tips=tips,
             duplicated=duplicated,
+            copies=copies,
         ),
     )
 
@@ -2222,18 +2281,25 @@ def test_a_branch_whose_file_the_base_then_added_to_carries_nothing() -> None:
     deletes the note.
 
     Going from the base to the ref therefore only *removes* lines, and that is
-    what the counts say: nothing is missing from the base.
+    what the counts say: nothing is missing from the base. Each statement the
+    branch's copy holds is one the base's holds too, which is what makes the
+    count's reading true (`PL-F7Z6`); the guard in `tests/unit/test_doc_check.py`
+    pins the copy that cut a line out of a statement instead.
     """
+    path = "docs/items/PL-6YYR-recovered.md"
+    branch_copy = _document("PL-6YYR", "Capture the release tag")
+    note = "\n**Recovered.** Re-applied by `PL-1VFK` in `#437`, which is all\nthe base added.\n"
     report = _orphaned(
-        adds={PARTLY: [("a1", "landed.txt"), ("a2", "docs/items/PL-6YYR-recovered.md")]},
+        adds={PARTLY: [("a1", "landed.txt"), ("a2", path)]},
         on_base={"a1"},
         touched={
             PARTLY: [
-                ("PL-6YYR capture the release tag", ("docs/items/PL-6YYR-recovered.md",)),
+                ("PL-6YYR capture the release tag", (path,)),
                 ("PL-K7QX the work the pull request took", ("landed.txt",)),
             ]
         },
-        tips={PARTLY: {"docs/items/PL-6YYR-recovered.md": ("0", "4")}},
+        tips={PARTLY: {path: ("0", "3")}},
+        copies={f"{PARTLY}:{path}": branch_copy, f"{BASE}:{path}": branch_copy + note},
     )
 
     assert report.branches == ()
