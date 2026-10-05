@@ -19,12 +19,13 @@ there too (`PL-WVSK`).
 
 import copy
 import pickle
+import struct
 from dataclasses import replace
 from math import inf, nan, nextafter
 
 import pytest
 
-from anesthesia_sim.core.circuit import BreathingCircuit
+from anesthesia_sim.core.circuit import BreathingCircuit, BreathingCircuitState
 from anesthesia_sim.core.concentration import (
     PERCENT_PER_UNIT_FRACTION,
     Fraction,
@@ -159,14 +160,42 @@ def test_arithmetic_on_a_concentration_is_a_plain_float() -> None:
 def test_a_copied_or_pickled_concentration_is_still_checked() -> None:
     """A state copied for a branch, or saved, keeps a value still of its type.
 
-    Each of these rebuilds through the constructor rather than around it, so a
-    copy cannot carry an unchecked value under the type's name.
+    A copy, a deep copy and a pickle at the default protocol each rebuild
+    through the constructor rather than around it, which the test below pins
+    for the pickle. A pickle at protocol 0 or 1 does not, which `PL-5D1Z`
+    records for every checked type.
     """
 
     for value in (Fraction(0.02), Percent(8.0)):
         for copied in (copy.copy(value), copy.deepcopy(value), pickle.loads(pickle.dumps(value))):
             assert type(copied) is type(value)
             assert copied == value
+
+
+@pytest.mark.parametrize(
+    ("saved", "tampered_value", "refusal"),
+    [
+        (Fraction(0.5), 1.5, "^fraction of 1.5 is outside 0 to 1"),
+        (Percent(8.0), 150.0, "^percent of 150.0 is outside 0 to 100"),
+    ],
+)
+def test_a_pickle_edited_past_the_range_is_refused_when_it_is_loaded(
+    saved: float, tampered_value: float, refusal: str
+) -> None:
+    """Loading a pickle at the default protocol runs the constructor's check.
+
+    The saved value is overwritten in the bytes, as a file edited by hand would
+    be, so a load that went around the constructor would hand back the type
+    holding a value outside its range.
+    """
+
+    pickled = pickle.dumps(saved)
+    tampered = pickled.replace(struct.pack(">d", saved), struct.pack(">d", tampered_value))
+
+    assert tampered != pickled
+
+    with pytest.raises(SimulationConfigurationError, match=refusal):
+        pickle.loads(tampered)
 
 
 def test_a_fraction_reaching_a_percent_parameter_is_refused() -> None:
@@ -262,6 +291,9 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
 
     with pytest.raises(TypeError, match="^inspired_partial_pressure_fraction of 0.0 was not built"):
         BreathingCircuit(inspired_partial_pressure_fraction=0.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^inspired_partial_pressure_fraction of 0.0 was not built"):
+        BreathingCircuitState(inspired_partial_pressure_fraction=0.0)  # type: ignore[arg-type]
 
     with pytest.raises(TypeError, match="^delivered_concentration_percent of 2.0 was not built"):
         replace(settings, delivered_concentration_percent=2.0)  # type: ignore[arg-type]

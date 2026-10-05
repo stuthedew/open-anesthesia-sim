@@ -258,10 +258,16 @@ on it. The hierarchy's two branches mean different things and get
 different treatment:
 
 - `SimulationConfigurationError` — a value was rejected before it changed
-  anything. Raised by the guards in `core/validation.py`, by compartment
-  constructors and setters, and by the parameter-file loaders. The view's
-  `_apply_setting` catches it, restores the control from the snapshot, and
-  says the setting was refused; the run is untouched and keeps going.
+  anything. Raised by the guards in `core/validation.py`, by the checked
+  types' constructors (`Fraction` and `Percent` in `core/concentration.py`,
+  and those in `core/supported_ranges.py` and `core/simulation_step.py`), by
+  compartment constructors and setters, and by the parameter-file loaders.
+  The view's `_apply_setting` catches it, restores the control from the
+  snapshot, and says the setting was refused; the run is untouched and keeps
+  going. A setter handed a value not built as its type raises `TypeError`
+  instead, a programming error rather than a refused setting. A
+  concentration the display builds is not a setting, and one refused there
+  halts the run; no supported setting makes one refuse (`PL-7DJK`).
 - `SimulationExecutionError` (and its `SimulationNumericalError` /
   `AgentSimulationValidationError` subclasses) — a step began and could
   not be completed, so the run must stop.

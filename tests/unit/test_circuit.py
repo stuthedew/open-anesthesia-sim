@@ -1,7 +1,7 @@
 import json
 import re
 from importlib.resources import files
-from math import exp, inf
+from math import exp, inf, nan
 
 import pytest
 
@@ -253,6 +253,28 @@ def test_a_circuit_volume_too_small_for_its_agent_is_refused_unchanged() -> None
 
     assert circuit.circuit_volume_l == 6.0
     assert circuit.agent_amount_l == pytest.approx(2.0)
+
+
+def test_a_volume_whose_fraction_is_refused_leaves_the_circuit_unchanged() -> None:
+    """The fraction a new volume gives is built before either field is written.
+
+    Since `PL-4R3W` building it is a check, so it can refuse - though only for
+    a fraction already held that no setter would have accepted, which the
+    direct write below stands in for. Built after the volume was written, a
+    refusal there left the volume moved and the fraction not, the partial
+    state the docstring rules out.
+    """
+
+    circuit = BreathingCircuit(circuit_volume_l=6.0)
+    circuit.inspired_partial_pressure_fraction = nan  # type: ignore[assignment]
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^inspired_partial_pressure_fraction of nan is outside 0 to 1",
+    ):
+        circuit.set_circuit_volume(3.0)
+
+    assert circuit.circuit_volume_l == 6.0
 
 
 def test_a_circuit_volume_exactly_equal_to_its_agent_is_accepted() -> None:

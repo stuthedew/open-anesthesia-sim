@@ -115,10 +115,12 @@ class _TissueGroupThatCanRefuseAStep(TissueGroup):
     left in it, which the alveolar guard then refused. No parameter set can
     do that any more. The step is now one matrix exponential of a matrix whose
     every off-diagonal entry is a transfer rate, so the propagator is
-    entrywise nonnegative and cannot carry a compartment out of range from a
+    entrywise nonnegative and cannot carry a compartment below zero from a
     state that was in range - a property of the construction rather than of
     any particular patient file or agent, which is exactly why the old route
-    cannot be rebuilt with different numbers.
+    cannot be rebuilt with different numbers. Above 1 a rounding can carry
+    one only where a fraction stands at 1, which needs a 100% dial no
+    supported setting reaches (`core/concentration.py`).
 
     The guard still has to work, and this is what keeps it testable. It stands
     in for what the guard is now cover for: a model extension whose matrix is
@@ -130,10 +132,12 @@ class _TissueGroupThatCanRefuseAStep(TissueGroup):
     Fat is the group armed, because `_write_state_vector` writes it last: the
     circuit, the alveoli, the venous pool and two of the three tissue groups
     have all been written when it fires, which is the most partial state a
-    compartment guard can leave. Refusing is left to the real guard rather
-    than raised here, so what a caller sees is the production message: since
-    `PL-4R3W` that guard is the `Fraction` constructor, under the name
-    `_write_state_vector` builds the fat fraction with.
+    refused fraction can leave. Refusing is left to the real constructor
+    rather than raised by hand, so what a caller sees is the production
+    message: since `PL-4R3W` the refusal is `Fraction`'s, built here under
+    the name `_write_state_vector` gives the fat fraction, and
+    `test_a_resume_into_an_impossible_fraction_says_which_compartment_refused`
+    pins that name on the production path.
     """
 
     refuse_next_fraction: bool = False

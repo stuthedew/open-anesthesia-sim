@@ -568,7 +568,8 @@ $$
 `src/anesthesia_sim/core/concentration.py` is the only place that arithmetic
 is written, in both directions, and the two forms are distinct types there so
 that a type checker refuses a percent where a fraction is wanted, and since
-`PL-4R3W` so does the code at run time (below). It is used
+`PL-4R3W` so does the code at run time wherever a concentration is held
+(below). It is used
 in two places and no others: the circuit and the recorded settings derive
 $`F_D`$ from the dial's percent where the governing equations read it, and the
 interface converts for display. Before `PL-WVSK` the factor was written
@@ -612,7 +613,8 @@ $$
 finite or lies outside 0 to 1, or 0 to 100, when one is built, and every place
 that holds a concentration takes the type: each compartment's setter, the
 driving fraction a compartment's own closed form takes, `BreathingCircuit`
-when it is built or set, and the `UptakeEquationSettings` a run is built from.
+when it is built or set, the `BreathingCircuitState` a rollback restores it
+from, and the `UptakeEquationSettings` a run is built from.
 Each of those refuses a value that was not built as the type, a bare number
 included, so a concentration is checked once, where it is built, rather than
 again at each way in. A fraction a step computes is built as one before any
@@ -1659,8 +1661,8 @@ in fraction, and it does not grow with the step — it is U-shaped in it, with a
 minimum around 1 to 60 s, because the only error mechanism left is rounding and
 rounding accumulates once per *step*, so a finer step is slightly worse. The
 propagator was entrywise nonnegative exactly at every one of 4374 (settings,
-step) combinations tested, so no compartment guard can be reached by stepping
-coarsely; `advance()` raises nothing until about $`10^{18}`$ s, and the first
+step) combinations tested, so no fraction a step computes is refused for
+stepping coarsely; `advance()` raises nothing until about $`10^{18}`$ s, and the first
 step at which a displayed digit is wrong by a whole count is around
 $`10^{13}`$ s. There is no numerical ceiling a caller can reach.
 
@@ -8173,9 +8175,12 @@ carry, and the interface must preserve it rather than adding a decimal the
 model cannot support.
 
 A negative fraction is deliberately excluded from the below-resolution form.
-The compartment guards make one impossible, so a negative reaching the
-formatter means something upstream is wrong, and it must remain visible as
-an anomaly rather than be absorbed into a plausible small positive reading.
+No `Fraction` can hold one (§ "Concentrations"; minus zero, which renders as
+`-0.00%`, is the exception `PL-LLMN` records), so a negative reaching the
+formatter means something upstream is wrong, and the formatter refuses it
+rather than absorbing it into a plausible small positive reading. Until
+`PL-4R3W` it was rendered with its sign, as the anomaly it is; refusing it
+is the stronger form of the same rule.
 
 **How this section changed when the solver did, stated so a reader comparing
 versions is not misled.** Through v0.4.2 this section carried a paragraph

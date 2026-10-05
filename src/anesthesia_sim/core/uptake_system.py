@@ -284,9 +284,12 @@ class AgentUptakeSystem:
                 completed — a value the step itself produced was refused, a
                 fraction where `_write_state_vector` builds it as a
                 `Fraction`, under the name of the compartment that would have
-                held it. The exact propagator cannot reach this
-                for any step size, because its matrix is Metzler and the
-                propagator therefore entrywise nonnegative; it is cover for a
+                held it. The exact propagator cannot reach the floor for any
+                step size, because its matrix is Metzler and the propagator
+                therefore entrywise nonnegative, and a rounding can carry a
+                fraction past the ceiling only where one stands at 1, which
+                needs a 100% dial no supported setting reaches
+                (`core/concentration.py`). Otherwise this is cover for a
                 model extension whose matrix is not a pure transfer system.
                 The step has been rolled back, so what the system holds is the
                 last completed step; the run must stop rather than continue

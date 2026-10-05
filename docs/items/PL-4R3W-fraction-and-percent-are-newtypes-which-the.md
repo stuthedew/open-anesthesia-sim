@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/run_view.py, tools/core_vocabulary_check.py, .claude/rules/core-domain.md, tests, docs/MODEL.md, docs/items/PL-T137-core-validation-py-rejects-a-value-without.md, docs/items/PL-HXKC-eight-of-the-twenty-three-public-functions-in.md, docs/items/PL-LLMN-require-supported-admits-0-0-shown-as-0-0-l-min.md
+touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/run_view.py, tools/core_vocabulary_check.py, .claude/rules/core-domain.md, tests, docs/MODEL.md, docs/ARCHITECTURE.md, docs/items/PL-T137-core-validation-py-rejects-a-value-without.md, docs/items/PL-HXKC-eight-of-the-twenty-three-public-functions-in.md, docs/items/PL-LLMN-require-supported-admits-0-0-shown-as-0-0-l-min.md
 added: 2026-10-04
 closed: 2026-10-05
 pr: 1365
@@ -266,3 +266,33 @@ reviewer would otherwise have to find:
 The holes the flows have - minus zero, a `bool`, a `Decimal`, a `str` - are
 shared by both types on purpose, so one rule settles all of them, and are
 recorded on `PL-LLMN`, whose `touches` now reach `core/concentration.py`.
+
+**The close-out review, 2026-10-05.** Three adversarial passes over the diff -
+the type boundary and state, the domain, docs and display, and whether each
+test fails with its check inverted. Folded in a second commit:
+
+- `set_circuit_volume` wrote the volume before building the fraction it
+  rewrites, so the one refusal that construction can make - for a fraction
+  already held that no setter would have accepted - left the volume moved. It
+  builds first now, under the circuit's name, and a test pins it.
+- `BreathingCircuitState`, the record a rollback restores the circuit from,
+  took a bare `float`. It checks the type when built, so `restore_state()`,
+  which must not raise, is never handed one.
+- Prose the change had made false: `advance()`'s docstring and a test's said
+  the exact propagator cannot leave the range, which holds for the floor
+  alone; `docs/MODEL.md` § "Displayed precision" still said guards made a
+  negative impossible and that it is rendered; § "Concentrations" claimed the
+  run-time refusal of a missing conversion everywhere, where it stands only
+  where a concentration is held; `docs/ARCHITECTURE.md` left the types'
+  constructors out of what raises `SimulationConfigurationError`; and
+  `Percent`'s docstring stated a MAC's fitting in 0 to 100 as a rule, which
+  nitrous oxide's 1.04 atm (Hornbein et al. 1982, PMID 7201254) falsifies on
+  the roadmap, so it is written as the instance.
+- The 100%-dial overshoot is given at its worst minute, 1.0000000002869551,
+  beside the 24 h endpoint the design round quoted.
+
+Filed rather than folded, under `parse-dont-validate`: `PL-7DJK`, how a
+refusal on the display path is shown - unreachable from any supported setting,
+but when the snapshot itself refuses, the halt is not shown at all, the
+failure `PL-25KS` fixed for the frame - and `PL-5D1Z`, the pickle protocols 0
+and 1 that load every checked type around its check.

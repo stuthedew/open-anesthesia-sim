@@ -37,7 +37,8 @@ does:
   the governing equations are not annotated and could not usefully be.
 - **`mypy` reads `src/` and not `tests/`, and passes a value typed `Any`.** So
   each place that holds one - a compartment's setter, the driving fraction a
-  compartment's own closed form takes, `BreathingCircuit` built or set, and
+  compartment's own closed form takes, `BreathingCircuit` built or set, the
+  `BreathingCircuitState` a rollback restores it from, and
   `UptakeEquationSettings` - first calls `require_fraction` or
   `require_percent`, which refuse with `TypeError` anything not built as the
   type, a bare `float` included. What only carries a value onward checks
@@ -51,21 +52,27 @@ does:
   under 1% and so below every agent's vaporizer maximum, and
   `require_within_vaporizer_maximum` passes it. That is why the dial's writers
   are few and each one passes a value already in percent. `PL-WVSK` measured
-  the band when the dial was held as a fraction, before `PL-NJPB`.
+  the band when the dial was held as a fraction, before `PL-NJPB`. And the
+  run-time refusal stands only where a concentration is held: the two
+  conversions below, and the formatters built on them, take what they are
+  given, so a `Percent` handed to `percent_from_fraction` is refused by `mypy`
+  alone.
 - **A dial at 100% can carry a computed fraction just past 1, and the type
   refuses it.** Measured 2026-10-04 (`PL-4R3W`): no supported setting computes
   a fraction outside 0 to 1 on either path - the highest anywhere was
   0.18000000000002825, desflurane at its 18% maximum - but a circuit built
   without an agent defaults its vaporizer maximum to 100% (`BreathingCircuit`),
-  and a state standing at a 100% dial and propagated exactly over 24 h reached
-  1.000000000099652, which is the shift's documented cost
+  and a state standing at a 100% dial and propagated exactly stood at
+  1.000000000099652 after 24 h, and at 1.0000000002869551 at the worst of its
+  minutes on the way, which is the shift's documented cost
   (`core/matrix_exponential.py`, "What it costs"). The stepped path already
   halted there before this type existed, in ten of the twelve corners measured.
   The display path, which builds each plotted value as a `Fraction`
   (`app/chart_frame.py`), now refuses it as well instead of formatting it as
-  100.00%. A 100% dial is outside `docs/MODEL.md` § "Supported input ranges"
-  and reachable from no application path, so this is the type's documented
-  limit and not a reason to leave a range unchecked.
+  100.00%, and how that halt is shown is `PL-7DJK`'s. A 100% dial is outside
+  `docs/MODEL.md` § "Supported input ranges" and reachable from no
+  application path, so this is the type's documented limit and not a reason
+  to leave a range unchecked.
 
 **Why one module rather than a convention.** Before `PL-WVSK` the factor 100
 was written out twelve times across six modules. Six of the twelve were on the
@@ -129,8 +136,16 @@ class Percent(float):
     """The same quantity as a percent of one atmosphere, from 0 through 100,
     checked against that range when built.
 
-    What a vaporizer dial reads, what a MAC is published as, and what the agent
-    data files store. No governing equation takes one. A dial's real limit is
+    What a vaporizer dial reads and what the agent data files store, a MAC
+    among them. No governing equation takes one. A MAC is held as one because
+    every agent shipped has one under 100%, and that is an instance rather
+    than a rule: nitrous oxide's MAC was measured at 1.04 atm (Hornbein TF et
+    al., Anesth Analg 1982;61(7):553-556; retrieved from PubMed, PMID 7201254,
+    and verified against the abstract 2026-10-05), and `ROADMAP.md` plans that
+    agent for v0.8.0. `core/parameters.py`'s `PositivePercent`
+    refuses its MAC at load already, and `app/dashboard_frame.py`'s
+    `off_scale_notice` builds its axis top, three MACs, as a `Percent`, which
+    refuses any agent's MAC above 33.3%. A dial's real limit is
     the vaporizer maximum of the agent in use, which is not this type's range
     but a relation between two percents, and is checked where both are held
     (`core/validation.py`'s `require_within_vaporizer_maximum`). It compares
@@ -192,8 +207,9 @@ def require_fraction(name: str, fraction: object) -> None:
     a notebook, or a value typed `Any`. It checks the type and not the range,
     which the constructor has already checked, and it runs where a fraction is
     held - each compartment's setter, the driving fraction a compartment's own
-    closed form takes, and `BreathingCircuit` when it is built - so a bare
-    `float` is refused once, before anything changes. Until `PL-4R3W` a range
+    closed form takes, `BreathingCircuit` when it is built or set, and the
+    `BreathingCircuitState` a rollback restores it from - so a bare `float` is
+    refused once, before anything changes. Until `PL-4R3W` a range
     check of the same name in `core/validation.py` stood at those places and
     was made again at each; this is the type's check that replaced it.
 

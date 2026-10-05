@@ -251,10 +251,11 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
 
     A negative fraction is never given the below-resolution form, which
     would absorb it into a plausible-looking reading. No `Fraction` can
-    hold one, so a negative reaching here came from a caller `mypy` does
-    not read, and `percent_from_fraction` refuses it before anything is
-    rendered. Until `PL-4R3W` it was rendered with its sign instead, as
-    the anomaly it is; refusing it is the stronger form of the same rule.
+    hold one - minus zero, which renders as `-0.00%`, aside (`PL-LLMN`) -
+    so a negative reaching here came from a caller `mypy` does not read,
+    and `percent_from_fraction` refuses it before anything is rendered.
+    Until `PL-4R3W` it was rendered with its sign instead, as the anomaly
+    it is; refusing it is the stronger form of the same rule.
 
     Args:
         partial_pressure_fraction: Dimensionless partial-pressure-equivalent
@@ -267,6 +268,9 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
     Raises:
         SimulationConfigurationError: the value is outside 0 to 1, which
             no `Fraction` holds (`core/concentration.py`).
+            `percent_from_fraction` is what refuses it, as the percent it
+            would have been, so the message gives the value times a
+            hundred.
     """
 
     percent = percent_from_fraction(partial_pressure_fraction)
