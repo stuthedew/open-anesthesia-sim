@@ -3,12 +3,14 @@ id: PL-0R4M
 title: Every reader of git's own records runs git through subprocess.run(text=True), whose universal-newline decoding turns a raw carriage return in a commit subject into a newline before any split, so a subject holding one still reads as two lines
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: line-ends
-touches: subprojects/docket/src/docket/lines.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/verify.py, tools, .claude/hooks/stop_hook_patch.py, tests/unit, subprojects/docket/tests
+touches: subprojects/docket/src/docket/lines.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/verify.py, tools, .claude/hooks/stop_hook_patch.py, tests/unit, subprojects/docket/tests, docs/items/PL-4YVK-readers-split-line-oriented-text-with-str.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage
 added: 2026-10-05
+closed: 2026-10-05
+pr: 1368
 payoff: A commit subject, body or -z path holding a raw carriage return is read as the one record git wrote, and a new git reader cannot turn text-mode decoding on without saying why
 verify: grep -q 'def test_a_subject_holding_a_carriage_return_is_read_as_one_subject' subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_subject_holding_a_carriage_return_is_read_as_one_subject' tests/unit/test_branch_id_check.py && grep -q 'def test_no_subprocess_call_turns_text_mode_on_outside_its_exemptions' tests/unit/test_line_splits.py
 ---

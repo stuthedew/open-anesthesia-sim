@@ -76,7 +76,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.lines import split_lines  # noqa: E402
+from docket.lines import record_text, split_lines  # noqa: E402
 from docket.vcs import REMOTE, github_token, is_shallow  # noqa: E402
 
 from open_pull_requests import GITHUB_API, LOOKUP_TIMEOUT, repo_slug  # noqa: E402
@@ -131,7 +131,6 @@ def git_runner(root: Path) -> Runner:
                 ["git", *args],
                 cwd=root,
                 capture_output=True,
-                text=True,
                 timeout=GIT_TIMEOUT,
                 check=False,
                 env=env,
@@ -140,7 +139,8 @@ def git_runner(root: Path) -> Runner:
             return Git(124, "", f"git {args[0]} timed out after {GIT_TIMEOUT:.0f} s")
         except OSError as error:
             return Git(127, "", str(error))
-        return Git(done.returncode, done.stdout, done.stderr)
+        # Decoded as written, so a raw `\r` in a record stays in it (`PL-0R4M`).
+        return Git(done.returncode, record_text(done.stdout), record_text(done.stderr))
 
     return run
 

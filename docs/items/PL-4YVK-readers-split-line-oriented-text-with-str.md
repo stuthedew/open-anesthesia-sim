@@ -12,7 +12,7 @@ added: 2026-10-04
 payoff: a ref, a transcript record or a log entry is read as the one line its format wrote, so no reader answers from a partial reading it does not name
 verify: grep -q '^generator: spent' docs/items/PL-4YVK-*.md
 root-cause-of: PL-139L, PL-PK4B, PL-K1D6, PL-LRBV, PL-BBYJ, PL-0R4M
-generator: live - tests/unit/test_line_splits.py now refuses splitlines() outside the Markdown readers PL-BBYJ converts, but every git reader still decodes through subprocess text mode, which turns a raw carriage return in a subject into a line end before any split (PL-0R4M), so each new git reader inherits it
+generator: spent - tests/unit/test_line_splits.py refuses splitlines() outside the Markdown readers PL-BBYJ converts, and refuses text-mode decoding on every subprocess call in tools/, docket and .claude/hooks but four listed non-git runners (PL-0R4M), so a new git, transcript or log reader can pick neither
 misread: Where one line ends in line-oriented text: git output, a JSON-lines transcript, a log, Python source
 ---
 

@@ -43,7 +43,7 @@ from pathlib import Path
 from . import vcs
 from .arming import RECORDS
 from .config import Config
-from .lines import split_lines
+from .lines import file_text, record_text, split_lines
 from .model import (
     CLOSED_STATUSES,
     WITHDRAWN_MARKER,
@@ -788,14 +788,18 @@ def _file_steps(
     keys: dict[str, str] = {}
     for revision, parents in revisions:
         if revision == "HEAD":
-            args = ["git", "diff", "-z", "-M", "--name-status", parents[0], "HEAD"]
+            args = ["diff", "-z", "-M", "--name-status", parents[0], "HEAD"]
         elif len(parents) > 1:
-            args = ["git", "diff-tree", "-z", "-r", "-c", "--name-only", "--no-commit-id", revision]
+            args = ["diff-tree", "-z", "-r", "-c", "--name-only", "--no-commit-id", revision]
         else:
-            args = ["git", "diff-tree", "-z", "-r", "-M", "--name-status", "--root"]
+            args = ["diff-tree", "-z", "-r", "-M", "--name-status", "--root"]
             args += ["--no-commit-id", revision]
-        status, listing = _run(args, root)
-        if status != 0:
+        # Through `_git` rather than `_run`: a `-z` path can hold a raw `\r`,
+        # which `_run`'s text mode read as a line end, and `_run` mixes stderr
+        # into a listing that must carry nothing but paths (`PL-0R4M`).
+        try:
+            listing = _git(args, root)
+        except GitUnanswered:
             return [], {}, f"the files {revision[:12]} changed could not be listed"
         for old, new in _changed_python(listing, "--name-status" in args, suffixes):
             key = keys.get(old or new, old or new)
@@ -811,15 +815,14 @@ def _file_steps(
 
 
 def _decoded_lines(blob: bytes) -> list[str]:
-    """A blob's lines as the text-mode diff beside it names them.
+    """A blob's lines as the diff beside it names them.
 
-    `git diff` is read through `subprocess.run(text=True)`, which turns `\\r\\n`
+    `_diff_text` passes the diff through `lines.file_text`, which turns `\\r\\n`
     and a lone `\\r` into `\\n`, so a removed line of a CRLF file arrives without
     its `\\r`. The blob is decoded here by hand, so the same translation runs
     before the split, or no line of such a file would match its removal.
     """
-    text = blob.decode("utf-8", errors="replace")
-    return split_lines(text.replace("\r\n", "\n").replace("\r", "\n"))
+    return split_lines(file_text(blob.decode("utf-8", errors="replace")))
 
 
 def removed_assertions(
@@ -1767,11 +1770,13 @@ def _git(args: list[str], root: Path) -> str:
             ["git", *args],
             cwd=root,
             capture_output=True,
-            text=True,
             # The bound these reads had while they went through `_run`.
             timeout=1800,
             check=False,
         )
+        # Decoded as written, so a raw `\r` in a subject or a `-z` path stays
+        # in its record; the two patch reads translate theirs (`PL-0R4M`).
+        stdout, stderr = record_text(result.stdout), record_text(result.stderr)
     except (OSError, subprocess.SubprocessError) as error:
         raise GitUnanswered(f"{command} could not run: {error}") from error
     except UnicodeDecodeError as error:
@@ -1779,11 +1784,11 @@ def _git(args: list[str], root: Path) -> str:
         # the audit stops rather than passing a path it cannot compare.
         raise GitUnanswered(f"{command} printed a path this cannot read: {error}") from error
     if result.returncode != 0:
-        said = next((line.strip() for line in split_lines(result.stderr) if line.strip()), "")
+        said = next((line.strip() for line in split_lines(stderr) if line.strip()), "")
         raise GitUnanswered(
             f"{command} exited {result.returncode}: {said or 'with nothing on stderr'}"
         )
-    return result.stdout
+    return stdout
 
 
 def item_commits(root: Path, base: str, identifier: str) -> tuple[str, ...]:
@@ -1865,10 +1870,12 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
 
 def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
     # Through `_git`, so a diff git would not produce raises instead of
-    # reading as one that added no suppression and removed no assertion.
+    # reading as one that added no suppression and removed no assertion. A
+    # patch's `+` and `-` lines are file lines, translated as `_decoded_lines`
+    # translates the blobs they are paired with (`PL-0R4M`).
     if commits:
-        return _git(["show", "--format=", *commits], root)
-    return _git(["diff", f"{base}...HEAD"], root)
+        return file_text(_git(["show", "--format=", *commits], root))
+    return file_text(_git(["diff", f"{base}...HEAD"], root))
 
 
 #: The post-image path out of a `diff --git a/x b/x` header. A header this

@@ -1577,23 +1577,24 @@ def _git_read(root: Path, *args: str) -> str:
     An empty string is a legitimate answer from `ls-tree` and from `show`, so a
     call that failed must not be able to look like one: that is a partial
     reading handed over as a whole one.
+
+    Read as bytes and decoded as written, so a raw `\\r` in a record stays in
+    it; a `show`, which here only ever reads `<commit>:<path>`, is a blob and is
+    translated as `read_text` translates its file (`PL-0R4M`).
     """
     command = "git " + " ".join(args)
     try:
         completed = subprocess.run(
-            ["git", "-C", str(root), *args],
-            capture_output=True,
-            encoding="utf-8",
-            timeout=30,
-            check=False,
+            ["git", "-C", str(root), *args], capture_output=True, timeout=30, check=False
         )
     except (OSError, subprocess.SubprocessError) as error:
         raise BaseUnreadable(f"{command}: {error}") from error
     if completed.returncode != 0:
-        said = completed.stderr.strip().rpartition("\n")[2]
+        said = completed.stderr.decode("utf-8").strip().rpartition("\n")[2]
         reason = said or f"exit {completed.returncode}, and nothing on stderr"
         raise BaseUnreadable(f"{command}: {reason}")
-    return completed.stdout
+    stdout = completed.stdout.decode("utf-8")
+    return stdout.replace("\r\n", "\n").replace("\r", "\n") if args[0] == "show" else stdout
 
 
 def shortfall_keys(source: str) -> frozenset[tuple[str, str]]:

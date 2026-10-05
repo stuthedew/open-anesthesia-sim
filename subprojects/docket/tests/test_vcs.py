@@ -38,6 +38,7 @@ from docket.vcs import (
     FilingCommit,
     FlightFiles,
     FlightReport,
+    GitRunner,
     GoneReport,
     Landing,
     MergedPullRequest,
@@ -54,6 +55,7 @@ from docket.vcs import (
     StrandedItem,
     StrandedReport,
     SubjectPullRequest,
+    _landed_since,
     _landing_split,
     _Landings,
     _pathspec_chunks,
@@ -3583,6 +3585,40 @@ class _Repo:
 
     def read(self, name: str) -> str:
         return (self.root / name).read_text(encoding="utf-8")
+
+
+def test_a_subject_holding_a_carriage_return_is_read_as_one_subject(tmp_path: Path) -> None:
+    """A raw `\\r` in a subject is part of it, not a line end (`PL-0R4M`).
+
+    Git keeps the `\\r` a message was given, and `subprocess.run(text=True)`
+    turned it into `\\n` before `_landed_since` split the log, so the second
+    half read as a subject of its own and `PL-B1C2`, which leads nothing, was
+    reported as landed.
+    """
+    repo = _Repo(tmp_path / "repo")
+    fork = repo.commit("base", a_txt="a\n")
+    repo.commit("PL-K7QX one\rPL-B1C2 two", b_txt="b\n")
+
+    assert _run_git(["log", "-1", "--format=%s"], repo.root) == "PL-K7QX one\rPL-B1C2 two\n"
+    assert _landed_since(fork, "main", repo.root, _run_git) == ("PL-K7QX",)
+
+
+def test_a_blob_holding_crlf_reads_as_read_text_reads_its_file(tmp_path: Path) -> None:
+    """A blob keeps the translation git's records lost, whichever path serves it (`PL-0R4M`).
+
+    Its `\\r` is the file's, and every reader pairs a blob with the file on
+    disk or with a patch's lines, both read as `read_text` reads them.
+    """
+    repo = _Repo(tmp_path / "repo")
+    (repo.root / "f").write_bytes(b"a\r\nb\rc\n")
+    repo.git("add", "-A")
+    repo.git("commit", "-qm", "crlf")
+    on_disk = (repo.root / "f").read_text()
+
+    assert on_disk == "a\nb\nc\n"
+    assert _run_git(["show", "HEAD:f"], repo.root) == on_disk
+    with GitRunner() as runner:
+        assert runner._blob("HEAD:f", repo.root) == on_disk
 
 
 # What the landing split is judged against: the blobs the base's commits wrote

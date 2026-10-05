@@ -95,7 +95,7 @@ from .claims import (
     _parse_yield,
     holdings,
 )
-from .lines import split_lines
+from .lines import record_text, split_lines
 from .model import CLOSED_STATUSES, parse_front_matter
 from .store import ID_PATTERN
 from .vcs import (
@@ -1484,19 +1484,18 @@ def _unread_because(root: Path, read: Holdings, branch: _Branch, key: str) -> st
 
 
 def _git(args: list[str], root: Path) -> _Ran:
-    """Run one git command whose exit status is the answer, and keep all of what it said."""
+    """Run one git command whose exit status is the answer, and keep all of what it said.
+
+    Read as bytes and decoded as written, so a raw `\\r` in a subject git
+    prints stays inside it rather than becoming a line end (`PL-0R4M`).
+    """
     try:
         done = subprocess.run(
-            ["git", *args],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            timeout=WRITE_TIMEOUT,
-            check=False,
+            ["git", *args], cwd=root, capture_output=True, timeout=WRITE_TIMEOUT, check=False
         )
     except (OSError, subprocess.SubprocessError) as error:
         return _Ran(code=-1, out="", err=str(error))
-    return _Ran(code=done.returncode, out=done.stdout, err=done.stderr)
+    return _Ran(code=done.returncode, out=record_text(done.stdout), err=record_text(done.stderr))
 
 
 def _indented(text: str) -> tuple[str, ...]:

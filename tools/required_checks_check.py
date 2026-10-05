@@ -129,7 +129,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.lines import split_lines  # noqa: E402
+from docket.lines import record_text, split_lines  # noqa: E402
 from docket.vcs import REMOTE, default_branch, github_slug, github_token  # noqa: E402
 
 API_ROOT = "https://api.github.com"
@@ -502,12 +502,13 @@ def reconcile(reporting: dict[str, ReportingJob], required: set[str]) -> list[tu
 def _repo_from_git(root: Path) -> str:
     """Return `owner/name` from the origin remote."""
     try:
-        url = subprocess.run(
-            ["git", "-C", str(root), "remote", "get-url", REMOTE],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
+        url = record_text(
+            subprocess.run(
+                ["git", "-C", str(root), "remote", "get-url", REMOTE],
+                capture_output=True,
+                check=True,
+            ).stdout
+        ).strip()
     except (OSError, subprocess.CalledProcessError) as exc:
         raise RuntimeError(f"no --repo given and no {REMOTE} remote to read one from") from exc
     slug = github_slug(url)

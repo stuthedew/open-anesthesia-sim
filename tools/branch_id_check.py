@@ -137,7 +137,7 @@ from docket.claims import (  # noqa: E402
 )
 from docket.config import Config  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
-from docket.lines import split_lines  # noqa: E402
+from docket.lines import record_text, split_lines  # noqa: E402
 from docket.model import SEMVER_PATTERN  # noqa: E402
 from docket.vcs import (  # noqa: E402
     BRANCH_ID_RE,
@@ -190,12 +190,14 @@ def _git(args: list[str]) -> str:
     """
     try:
         result = subprocess.run(
-            ["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=30, check=False
+            ["git", *args], cwd=ROOT, capture_output=True, timeout=30, check=False
         )
     except (OSError, subprocess.SubprocessError):
         return SILENT
     if result.returncode == 0:
-        return result.stdout
+        # Decoded as written, so a subject holding a raw `\r` is read as the
+        # one subject git wrote rather than as two lines (`PL-0R4M`).
+        return record_text(result.stdout)
     return "" if result.returncode == 1 else SILENT
 
 
