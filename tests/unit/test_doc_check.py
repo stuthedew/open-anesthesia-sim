@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -8420,6 +8421,113 @@ def test_each_reader_reads_its_formats_continued_statement_whole(
     read, expected = CONTINUED_STATEMENTS[reader]
 
     assert read(tmp_path) == expected
+
+
+#: A section title longer than the bound each citation pattern held until
+#: `PL-WJF2`: 160 characters after the mark, `see` or `under`, and 200 after a
+#: quoted source or an item's mark. 256 characters.
+LONG_TITLE = "A section title that " + "goes on and on " * 15 + "to its end"
+#: The fixture README with `LONG_TITLE` as a heading, so a citation of it on
+#: line 7, after `then`, names a section the documents hold.
+LONG_HEADED = f"# Demo\n\n## {LONG_TITLE}\n\nNone.\n\n{{}}\n"
+
+#: Each citation pattern, a closed quotation longer than its old bound, and what
+#: its reader makes of it: compared as a quotation of any length is, where the
+#: bound passed over it without a word (`PL-WJF2`).
+LONG_QUOTATIONS: dict[str, tuple[Callable[[Path], object], object]] = {
+    "section citations, a long title no heading has": (
+        lambda tmp_path: _citation_findings(tmp_path, f'# Demo\n\nSee § "{LONG_TITLE}".\n'),
+        [
+            f'README.md:3: cites section "{LONG_TITLE}", which no documentation file has '
+            "(§ names a section of these documents; write an outside source's section without "
+            "the mark)"
+        ],
+    ),
+    "section citations, a long title a heading has": (
+        lambda tmp_path: _citation_findings(tmp_path, LONG_HEADED.format(f'See § "{LONG_TITLE}".')),
+        [],
+    ),
+    "unmarked citations, a long title after see": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, LONG_HEADED.format(f'See "{LONG_TITLE}" for it.')
+        ),
+        [
+            f'README.md:7: "{LONG_TITLE}" names a section without the mark, so a rename of '
+            f'it would pass unreported; write § "{LONG_TITLE}"'
+        ],
+    ),
+    "unmarked citations, a long title before a direction": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, LONG_HEADED.format(f'Read "{LONG_TITLE}" above.')
+        ),
+        [
+            f'README.md:7: "{LONG_TITLE}" names a section without the mark, so a rename of '
+            f'it would pass unreported; write § "{LONG_TITLE}"'
+        ],
+    ),
+    "quoted sources, a long quotation the file lacks": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, f'# Demo\n\nIt is `docs/MODEL.md` § "{LONG_TITLE}".\n'
+        ),
+        [f'README.md:3: quotes docs/MODEL.md as "{LONG_TITLE}", which is not in that file'],
+    ),
+    "item sections, a long quotation the brief lacks": (
+        lambda tmp_path: _citation_findings(
+            tmp_path,
+            f'# Demo\n\nWho holds an item is `PL-T3ST` § "{LONG_TITLE}".\n',
+            "**Other holds.** The recorded claim decides.",
+        ),
+        [
+            f'README.md:3: quotes PL-T3ST as "{LONG_TITLE}", which is not in '
+            "docs/items/PL-T3ST-demo.md"
+        ],
+    ),
+    "possessive citations, a long title a heading has": (
+        lambda tmp_path: _possessive_sites(
+            tmp_path, LONG_HEADED.format(f'As `README.md`\'s "{LONG_TITLE}" says.')
+        ),
+        [
+            f'README.md:7: `README.md`\'s "{LONG_TITLE}" names a section; write it as '
+            f'`README.md` § "{LONG_TITLE}"'
+        ],
+    ),
+}
+
+
+@pytest.mark.parametrize("reader", sorted(LONG_QUOTATIONS))
+def test_each_citation_reader_reads_a_closed_quotation_of_any_length(
+    reader: str, tmp_path: Path
+) -> None:
+    """A closed quotation past a pattern's old bound is compared, never passed over (`PL-WJF2`)."""
+    read, expected = LONG_QUOTATIONS[reader]
+
+    assert read(tmp_path) == expected
+
+
+def test_a_quotation_never_closed_fails_its_match_without_backtracking() -> None:
+    """Each citation pattern reads a quotation possessively (`PL-WJF2`).
+
+    A lazy repetition of `QUOTATION_CHAR` tries every split of a line's
+    trailing spaces between its two halves before a match fails - three ways
+    per hard break, inside the old 160-character bound as past it - so the
+    thirty short lines here outlast the timeout under either lazy form, where
+    possessive they take microseconds. In a subprocess, because a regular
+    expression cannot be interrupted in the process running it.
+    """
+    script = f"""
+import sys
+sys.path.insert(0, {str(Path(__file__).resolve().parents[2] / "tools")!r})
+import doc_check, possessive_section_check
+body = "A" + "".join(f"word {{i}}  \\n" for i in range(30)) + "\\n"
+for opener in ('See § "', 'See "', '"', '`docs/MODEL.md` § "', '`PL-T3ST` § "',
+               "`docs/MODEL.md`'s \\""):
+    for pattern in (doc_check.CITATION_RE, doc_check.UNMARKED_CITATION_RE,
+                    doc_check.QUOTED_SOURCE_RE, doc_check.ITEM_SECTION_RE,
+                    possessive_section_check.POSSESSIVE_RE):
+        list(pattern.finditer(opener + body))
+"""
+
+    subprocess.run([sys.executable, "-c", script], check=True, timeout=20)
 
 
 def test_recipe_commands_join_a_backslash_continuation() -> None:
