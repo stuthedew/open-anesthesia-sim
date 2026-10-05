@@ -926,12 +926,26 @@ def test_a_drag_of_one_slider_is_marked_and_listed_once(application: QApplicatio
 # ---------------------------------------------- refusals, and the halt
 
 
-def test_a_refused_setting_is_reported_without_stopping_the_run(application: QApplication) -> None:
-    """Isoflurane's vaporizer stops at 5%, so 50% must be refused.
+@pytest.mark.parametrize(
+    ("dialled_percent", "refusal"),
+    [
+        (50.0, "vaporizer maximum"),
+        (150.0, "delivered_concentration_percent of 150.0 is outside 0 to 100"),
+    ],
+    ids=["above the vaporizer maximum", "outside any percent"],
+)
+def test_a_refused_setting_is_reported_without_stopping_the_run(
+    application: QApplication, dialled_percent: float, refusal: str
+) -> None:
+    """Isoflurane's vaporizer stops at 5%, so 50% must be refused, and 150% is no percent.
 
     Called on the handler rather than dragged, because the slider's own
-    ceiling keeps 50% unreachable on the control - which is exactly why the
-    handler needs its own cover.
+    ceiling keeps both unreachable on the control - which is exactly why the
+    handler needs its own cover. They are refused in different places: 50% by
+    the circuit, against the vaporizer maximum, and 150% by `Percent` as the
+    handler builds it. So the handler builds it inside the setting it applies,
+    and names it: built before, its refusal would escape the handler, and no
+    banner would say the setting was refused (`PL-4R3W`).
     """
 
     controller = SimulationController(agent_id="isoflurane")
@@ -939,7 +953,7 @@ def test_a_refused_setting_is_reported_without_stopping_the_run(application: QAp
     controller.start()
     delivered_before = controller.snapshot().delivered_concentration_percent
 
-    run._handle_delivered_concentration_change(50.0)
+    run._handle_delivered_concentration_change(dialled_percent)
 
     assert controller.is_running is True
     assert controller.has_failed is False
@@ -948,7 +962,7 @@ def test_a_refused_setting_is_reported_without_stopping_the_run(application: QAp
     notice = run._notice_text.notice()
     assert notice is not None
     assert "Setting refused" in notice
-    assert "vaporizer maximum" in notice
+    assert refusal in notice
 
     # The control must not keep showing a dial position the simulation is
     # not running at: that is the correct number under the wrong label.

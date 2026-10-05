@@ -58,11 +58,18 @@ from anesthesia_sim.core.agent_simulation_validation import (
 )
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     AnesthesiaSimulationError,
     SimulationConfigurationError,
     SimulationNumericalError,
+)
+from anesthesia_sim.core.governing_equations import (
+    ALVEOLAR_FRACTION,
+    FIRST_TISSUE_FRACTION,
+    INSPIRED_FRACTION,
+    VENOUS_FRACTION,
 )
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import (
@@ -89,8 +96,9 @@ STEPS_BEFORE_FAILURE = 600
 # `partial_pressure_fraction`, so an assertion on that name alone would still
 # pass if a different one of the five refused first - and the runs below arm
 # exactly one of them. The compartment word is what makes the message pin the
-# invariant these tests claim it stays diagnosable back to.
-FAT_REFUSAL_TEXT = "fat partial_pressure_fraction must be between 0 and 1"
+# invariant these tests claim it stays diagnosable back to. Since `PL-4R3W` it
+# is the name the fraction is built under, and the value refused follows it.
+FAT_REFUSAL_TEXT = "fat partial_pressure_fraction of -1.0 is outside 0 to 1"
 
 
 def _sevoflurane_at_one_mac() -> AgentUptakeSystem:
@@ -107,10 +115,12 @@ class _TissueGroupThatCanRefuseAStep(TissueGroup):
     left in it, which the alveolar guard then refused. No parameter set can
     do that any more. The step is now one matrix exponential of a matrix whose
     every off-diagonal entry is a transfer rate, so the propagator is
-    entrywise nonnegative and cannot carry a compartment out of range from a
+    entrywise nonnegative and cannot carry a compartment below zero from a
     state that was in range - a property of the construction rather than of
     any particular patient file or agent, which is exactly why the old route
-    cannot be rebuilt with different numbers.
+    cannot be rebuilt with different numbers. Above 1 a rounding can carry
+    one only where a fraction stands at 1, which needs a 100% dial no
+    supported setting reaches (`core/concentration.py`).
 
     The guard still has to work, and this is what keeps it testable. It stands
     in for what the guard is now cover for: a model extension whose matrix is
@@ -122,16 +132,22 @@ class _TissueGroupThatCanRefuseAStep(TissueGroup):
     Fat is the group armed, because `_write_state_vector` writes it last: the
     circuit, the alveoli, the venous pool and two of the three tissue groups
     have all been written when it fires, which is the most partial state a
-    compartment guard can leave. Refusing is left to the real guard rather
-    than raised here, so what a caller sees is the production message.
+    refused fraction can leave. Refusing is left to the real constructor
+    rather than raised by hand, so what a caller sees is the production
+    message: since `PL-4R3W` the refusal is `Fraction`'s, built here under
+    the name `_write_state_vector` gives the fat fraction, and
+    `test_a_resume_into_an_impossible_fraction_says_which_compartment_refused`
+    pins that name on the production path.
     """
 
     refuse_next_fraction: bool = False
 
-    def set_partial_pressure_fraction(self, partial_pressure_fraction: float) -> None:
+    def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         if self.refuse_next_fraction:
             self.refuse_next_fraction = False
-            partial_pressure_fraction = -1.0
+            partial_pressure_fraction = Fraction(
+                -1.0, name=f"{self.name} partial_pressure_fraction"
+            )
 
         super().set_partial_pressure_fraction(partial_pressure_fraction)
 
@@ -239,29 +255,79 @@ def test_a_failed_step_names_the_step_and_keeps_the_failing_guard() -> None:
     assert FAT_REFUSAL_TEXT in str(cause)
 
 
-def test_every_compartment_guarding_a_fraction_says_which_one_refused() -> None:
-    """Five compartments guard a fraction, and a refusal must pin one of them.
+def test_a_resume_into_an_impossible_fraction_says_which_compartment_refused() -> None:
+    """Six places hold a fraction, and a refusal must pin one of them.
 
     Regression cover for PL-SPN6, the defect the assertion above could not
     have caught. PL-9SH6 gave the alveolar compartment, the venous pool and
     the three tissue groups one accessor name; each passed that name to the
     shared guard unqualified, so all five raised the same sentence and a
-    refusal said only that *a* fraction had left [0, 1].
+    refusal said only that *a* fraction had left [0, 1]. Since `PL-4R3W` the
+    refusal is the `Fraction` constructor's, reached in `_write_state_vector`
+    before any compartment's setter, so the name is the one that call builds
+    each fraction under - which is what this pins, at all six positions.
 
     Not a readability point. The message reaches its reader as a banner
     rather than a traceback - `app/dashboard_frame.py` renders a refused
     setting verbatim, and `advance()` wraps a refused step into the
     halted-run notice - so the frame that would have disambiguated it is not
     available where it is read. And the collision is reachable from outside
-    this file's injected failures: `_write_state_vector` writes all five from
-    a state vector whose range `require_canonical_state` does not check, so a
-    `resume_at` into a malformed state is refused by whichever of the five it
-    reaches first.
+    this file's injected failures: `require_canonical_state` does not check a
+    fraction's range, so a `resume_at` into a malformed state is refused by
+    whichever of the six it reaches first. Each position is driven alone, and
+    the run is left as it was.
 
     Asserted as a prefix and a pairwise-distinctness check rather than
-    against five literal sentences, so the property survives PL-T137 adding
-    the rejected value to the same message, and so a sixth compartment
+    against six literal sentences, so a seventh place holding a fraction
     cannot quietly collide with one already here.
+    """
+
+    system = _sevoflurane_at_one_mac()
+
+    for _ in range(STEPS_BEFORE_FAILURE):
+        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+
+    owners = {
+        INSPIRED_FRACTION: "inspired_partial_pressure_fraction",
+        ALVEOLAR_FRACTION: "alveolar",
+        VENOUS_FRACTION: "venous",
+        **{
+            FIRST_TISSUE_FRACTION + offset: tissue.name
+            for offset, tissue in enumerate(system.patient.tissues)
+        },
+    }
+
+    assert len(owners) == 6, "a compartment was added or renamed without being covered here"
+
+    before = system.state_vector()
+    initial_agent_l = system.agent_simulation_validator.initial_agent_l
+    messages = {}
+
+    for position, owner in owners.items():
+        malformed = list(before)
+        malformed[position] = -1.0
+
+        with pytest.raises(SimulationConfigurationError) as raised:
+            system.resume_at(tuple(malformed), initial_agent_l=initial_agent_l)
+
+        assert system.state_vector() == before
+        messages[owner] = str(raised.value)
+
+    for owner, message in messages.items():
+        assert message.startswith(f"{owner} "), f"{owner} refused without naming itself: {message}"
+        assert "of -1.0 is outside 0 to 1" in message, message
+
+    assert len(set(messages.values())) == len(messages), messages
+
+
+def test_every_compartment_holding_a_fraction_names_itself_refusing_a_bare_float() -> None:
+    """A setter handed a fraction nobody built refuses it under the compartment's name.
+
+    The other half of PL-SPN6 since `PL-4R3W`: a compartment's setter no longer
+    checks a range, which the `Fraction` it takes was built through, but it
+    still refuses a bare `float` - a `TypeError`, the programming error it is -
+    and the five that share an accessor name must still say which one refused.
+    The value is inside 0 to 1, so the type is the only thing refused.
     """
 
     system = _sevoflurane_at_one_mac()
@@ -273,13 +339,16 @@ def test_every_compartment_guarding_a_fraction_says_which_one_refused() -> None:
 
     assert len(compartments) == 5, "a compartment was added or renamed without being covered here"
 
+    before = system.state_vector()
     messages = {}
 
     for owner, compartment in compartments.items():
-        with pytest.raises(SimulationConfigurationError) as raised:
-            compartment.set_partial_pressure_fraction(-1.0)
+        with pytest.raises(TypeError) as raised:
+            compartment.set_partial_pressure_fraction(0.5)
 
         messages[owner] = str(raised.value)
+
+    assert system.state_vector() == before
 
     for owner, message in messages.items():
         assert message.startswith(f"{owner} "), f"{owner} refused without naming itself: {message}"
@@ -341,7 +410,7 @@ def test_the_maximum_simulation_step_does_not_bind_a_bare_compartment() -> None:
     misstate what the bound is about.
     """
 
-    circuit = BreathingCircuit(delivered_concentration_percent=100.0)
+    circuit = BreathingCircuit(delivered_concentration_percent=Percent(100.0))
     step_s = 60.0
 
     assert step_s > MAXIMUM_SIMULATION_STEP_S
@@ -418,7 +487,7 @@ def test_a_rejected_setting_stays_a_configuration_error() -> None:
     before = system.circuit.delivered_concentration_percent
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
-        system.set_delivered_concentration_percent(50.0)
+        system.set_delivered_concentration_percent(Percent(50.0))
 
     assert system.circuit.delivered_concentration_percent == before
 
@@ -765,7 +834,7 @@ def test_reset_anchors_accounting_to_what_the_compartments_actually_hold() -> No
         gas_volume_l=system.alveoli.gas_volume_l,
         alveolar_ventilation_l_min=system.alveoli.alveolar_ventilation_l_min,
     )
-    retained.set_partial_pressure_fraction(0.02)
+    retained.set_partial_pressure_fraction(Fraction(0.02))
     system.alveoli = retained
 
     system.reset()
@@ -835,7 +904,7 @@ class _TissueGroupThatCanUnwindNonlocally(TissueGroup):
 
     unwind_on_next_write: bool = False
 
-    def set_partial_pressure_fraction(self, partial_pressure_fraction: float) -> None:
+    def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         if self.unwind_on_next_write:
             self.unwind_on_next_write = False
 

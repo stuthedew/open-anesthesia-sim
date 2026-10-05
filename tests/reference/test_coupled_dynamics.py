@@ -33,6 +33,7 @@ from pathlib import Path
 
 import pytest
 
+from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
@@ -777,11 +778,16 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
 # solves nothing. The oracle's own operating points stay plain floats; the
 # types are built only where `_apply_operating_point` hands a point to the
 # shipped system.
+#
+# `Percent` is the type the system under test takes its vaporizer dial as, and
+# since `PL-4R3W` it checks a number against 0 to 100 and solves nothing, so
+# the property holds of it as well. It is built at the same one place.
 ALLOWED_PACKAGE_IMPORTS = frozenset(
     {
         "AlveolarVentilation",
         "CardiacOutput",
         "FreshGasFlow",
+        "Percent",
         "load_agent_parameters",
         "load_reference_adult_parameters",
         "load_reference_circle_system_parameters",
@@ -1011,7 +1017,7 @@ def _apply_operating_point(system: AgentUptakeSystem, point: OperatingPoint) -> 
     system.set_fresh_gas_flow(FreshGasFlow(point.fresh_gas_flow_l_min))
     system.set_alveolar_ventilation(AlveolarVentilation(point.alveolar_ventilation_l_min))
     system.set_cardiac_output(CardiacOutput(point.cardiac_output_l_min))
-    system.set_delivered_concentration_percent(point.delivered_percent)
+    system.set_delivered_concentration_percent(Percent(point.delivered_percent))
 
 
 def _shipped_system(agent_id: str, point: OperatingPoint) -> AgentUptakeSystem:

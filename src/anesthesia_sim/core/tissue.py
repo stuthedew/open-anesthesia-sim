@@ -6,14 +6,10 @@ independently of every other tissue group.
 from dataclasses import dataclass
 from math import exp, inf
 
-from anesthesia_sim.core.concentration import Fraction
+from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
-from anesthesia_sim.core.validation import (
-    require_fraction,
-    require_nonnegative_finite,
-    require_positive_finite,
-)
+from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
 
 PERFUSION_FRACTION_UPPER_BOUND = 1.0
 
@@ -154,7 +150,14 @@ class TissueGroup:
         self.blood_flow_l_min = blood_flow_l_min
 
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
-        """Set tissue state from a partial-pressure-equivalent fraction."""
+        """Set tissue state from a partial-pressure-equivalent fraction.
+
+        Raises:
+            TypeError: `partial_pressure_fraction` was not built as a
+                `Fraction`, which is what checks it against 0 to 1
+                (`core/concentration.py`). Nothing is written when it is
+                refused.
+        """
 
         require_fraction(f"{self.name} partial_pressure_fraction", partial_pressure_fraction)
         self.agent_amount_l = self.capacity_l * partial_pressure_fraction
@@ -176,9 +179,11 @@ class TissueGroup:
         from the tissue to blood.
 
         Raises:
-            SimulationConfigurationError: the arterial fraction is not a
-                finite number in [0, 1], or `simulation_step_s` is not
-                positive and finite. Both are checked before anything changes.
+            TypeError: the arterial fraction was not built as a `Fraction`,
+                which is what checks it against 0 to 1
+                (`core/concentration.py`).
+            SimulationConfigurationError: `simulation_step_s` is not positive
+                and finite. Both are checked before anything changes.
         """
 
         require_fraction("arterial_partial_pressure_fraction", arterial_partial_pressure_fraction)

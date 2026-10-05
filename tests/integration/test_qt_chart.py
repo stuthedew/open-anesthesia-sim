@@ -114,7 +114,7 @@ def _run_with_a_dial_change(agent_id: str = "sevoflurane") -> SimulationControll
     _advance(controller, 600.0)
     controller.begin_control_adjustment()
     controller.set_delivered_concentration_percent(
-        controller.snapshot().delivered_concentration_percent * 1.5
+        Percent(controller.snapshot().delivered_concentration_percent * 1.5)
     )
     _advance(controller, 600.0)
 
@@ -415,7 +415,7 @@ def test_the_wash_in_trace_ends_on_the_equilibrium_line_with_a_terminus_dot(
     controller = SimulationController()
     controller.start()
     _advance(controller, 600.0)
-    controller.set_delivered_concentration_percent(0.0)
+    controller.set_delivered_concentration_percent(Percent(0.0))
     _advance(controller, 300.0)
     frame = _frame(controller)
     chart = _shown(application, WashInChart(), 300)

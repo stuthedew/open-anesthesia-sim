@@ -5,16 +5,24 @@ boundary everywhere instead of trusted or coerced silently. One of them,
 than a property of one, and is here for the same reason: the two records that
 hold the pair refuse it in one sentence (`PL-BBMG`).
 
+A concentration's own range is not here. A fraction's 0 to 1 and a percent's 0
+to 100 were checked by guards in this module, at each of the twelve places a
+value entered, until `PL-4R3W` made `Fraction` and `Percent` types built only
+through those checks (`core/concentration.py`), so what is left here is the
+sign and finiteness every other quantity shares and the one relation.
+
 Every guard raises `SimulationConfigurationError`: a value was rejected
-before it changed anything. A guard reached partway through a step means
+before it changed anything. A refusal reached partway through a step means
 something different — the numerics broke down rather than the caller
 passing a bad value — and `AgentUptakeSystem.advance()` is what turns it
 into `SimulationNumericalError`, because it is the only frame that knows a
 step was in progress. It is also the only one that can undo that step, and
-does: the guard fires after earlier sub-exchanges have already written
-their compartments, so the step is rolled back before the numerical error
-is raised. See `core/exceptions.py` for why the hierarchy is kept separate
-from `ValueError`.
+does: the refusal fires after earlier compartments have already been
+written, so the step is rolled back before the numerical error is raised.
+Since `PL-4R3W` that refusal is a computed fraction refused where it is built
+as a `Fraction`, which raises the same exception for the same reason. See
+`core/exceptions.py` for why the hierarchy is kept separate from
+`ValueError`.
 
 **What `name` has to carry.** Each guard raises `f"{name} ..."` and nothing
 else, so `name` is the whole of what a reader is told about *which* value was
@@ -23,19 +31,21 @@ traceback, since `app/dashboard_frame.py` renders a refused setting verbatim
 and `AgentUptakeSystem.advance()` wraps a refused step into the halted-run
 notice. A bare parameter name identifies the value only where one object can
 raise it. Where several can, the caller prefixes the owner: the instance's own
-`name` where it has one — `f"{self.name} partial_pressure_fraction"`, as
-`governing_equations.py`'s `TissueGroupEquationSettings` already does for its
-volume and flow — and the compartment's domain word where it does not,
-`"alveolar ..."` and `"venous ..."`. `PL-SPN6` is what the bare name cost:
-`PL-9SH6` left the alveolar compartment, the venous pool and all three tissue
-groups raising one string, so a refused resume could not say which of the five
-had refused. The prefix is built at the call site rather than from a parameter
-here, so the sentence a reader will see is readable in the line that raises it.
+`name` where it has one — `f"{self.name} volume_l"`, as
+`governing_equations.py`'s `TissueGroupEquationSettings` does for its volume
+and flow — and the compartment's domain word where it does not, `"alveolar
+..."` and `"venous ..."`. `PL-SPN6` is what the bare name cost: `PL-9SH6` left
+the alveolar compartment, the venous pool and all three tissue groups raising
+one string for a refused fraction, so a refused resume could not say which of
+the five had refused. The prefix is built at the call site rather than from a
+parameter here, so the sentence a reader will see is readable in the line that
+raises it, and `Fraction`'s `name` carries the same convention where a fraction
+is built (`core/concentration.py`).
 """
 
 from math import isfinite
 
-from anesthesia_sim.core.concentration import PERCENT_PER_UNIT_FRACTION, Percent
+from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 
@@ -51,37 +61,6 @@ def require_nonnegative_finite(name: str, value: float) -> None:
 
     if not isfinite(value) or value < 0.0:
         raise SimulationConfigurationError(f"{name} must be nonnegative and finite")
-
-
-def require_fraction(name: str, value: float) -> None:
-    """Require a finite dimensionless fraction from zero through one.
-
-    Named for the range it checks rather than for a quantity, which is what
-    `PL-6KNM` settled: every one of its callers is guarding a partial-pressure
-    fraction, and the guard cannot tell which $`F`$ it is guarding — nor does
-    it need to, since a fraction of an atmosphere, a
-    perfusion fraction and a MAC-awake ratio all live in [0, 1]. Its two
-    siblings above name a property of the number for the same reason. Which
-    quantity a value *is* is the `NewType`s in `core/concentration.py`, and
-    they are separate on purpose: a type marks a boundary and checks nothing,
-    this checks a value and marks nothing.
-    """
-
-    if not isfinite(value) or not 0.0 <= value <= 1.0:
-        raise SimulationConfigurationError(f"{name} must be between 0 and 1")
-
-
-def require_percent(name: str, value: float) -> None:
-    """Require a finite percent of one atmosphere from zero through one hundred.
-
-    `require_fraction`'s range in the unit a vaporizer dial reads. The circuit
-    holds the dial as the percent it was set to (`PL-NJPB`), so its guard
-    speaks that unit: checking the derived fraction instead would quote a
-    refused setting back a hundred times smaller than the one that was set.
-    """
-
-    if not isfinite(value) or not 0.0 <= value <= PERCENT_PER_UNIT_FRACTION:
-        raise SimulationConfigurationError(f"{name} must be between 0 and 100")
 
 
 def require_within_vaporizer_maximum(
@@ -106,9 +85,10 @@ def require_within_vaporizer_maximum(
     `CLAUDE.md` forbids. Zero is always allowed - it is the vaporizer turned
     off, which is how washout begins - and so is the maximum itself.
 
-    Both arguments are percents its callers have already passed through
-    `require_percent`, which is what refuses a `nan`, since no comparison
-    does; this compares the two and checks nothing else.
+    Both arguments are `Percent`s, whose constructor is what refuses a `nan`,
+    since no comparison does, and its callers check that each was built as one
+    (`require_percent`, `core/concentration.py`) before calling this; it
+    compares the two and checks nothing else.
 
     Raises:
         SimulationConfigurationError: the dial is above the maximum. The

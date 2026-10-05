@@ -14,14 +14,10 @@ accepted a `bool` where `parameters.py` refuses one (`PL-LKRP`).
 
 from dataclasses import dataclass
 
-from anesthesia_sim.core.concentration import Fraction
+from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, require_alveolar_ventilation
-from anesthesia_sim.core.validation import (
-    require_fraction,
-    require_nonnegative_finite,
-    require_positive_finite,
-)
+from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,7 +100,15 @@ class AlveolarCompartment:
         self.alveolar_ventilation_l_min = alveolar_ventilation_l_min
 
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
-        """Set alveolar state from a partial-pressure-equivalent fraction."""
+        """Set alveolar state from a partial-pressure-equivalent fraction.
+
+        The fraction arrives checked against 0 to 1, which its type was built
+        through and nothing here checks again (`core/concentration.py`).
+
+        Raises:
+            TypeError: `partial_pressure_fraction` was not built as a
+                `Fraction`. Nothing is written when it is refused.
+        """
 
         require_fraction("alveolar partial_pressure_fraction", partial_pressure_fraction)
         self.agent_amount_l = self.gas_volume_l * partial_pressure_fraction

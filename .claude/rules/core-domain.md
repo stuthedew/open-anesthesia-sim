@@ -70,9 +70,9 @@ Python enforces no annotation at run time; and `mypy --strict` refusing a bare
 pattern rather than exceptions to it:
 
 - A `NewType` is erased at run time, so it proves nothing about a range.
-  `Fraction` and `Percent` in `src/anesthesia_sim/core/concentration.py` are
-  NewTypes, and their ranges are still checked by hand wherever a value enters
-  (`PL-4R3W`).
+  `MacMultiple` in `src/anesthesia_sim/core/concentration.py` is one because it
+  has no range to prove; `Fraction` and `Percent` beside it were NewTypes too,
+  checked by hand wherever a value entered, until `PL-4R3W`.
 - Arithmetic on a `float` subclass returns a plain `float`. A derived value
   carries no proof, and is checked where it becomes a guarded parameter, by
   building the type there.
@@ -88,8 +88,12 @@ the flows' sign and finiteness, and skipped their supported ranges. A record
 found letting a bad sign through would be the evidence to widen this. `PL-0YYV`
 brought the flows into line - `FreshGasFlow`, `AlveolarVentilation` and
 `CardiacOutput` in `src/anesthesia_sim/core/supported_ranges.py`, each built
-only through its guard - and `PL-CN5S` the case instant and the step count,
-`CaseInstant` and `StepCount` beside them. The count is where this stops, in
+only through its guard - `PL-CN5S` the case instant and the step count,
+`CaseInstant` and `StepCount` beside them, and `PL-4R3W` the two forms of a
+concentration, `Fraction` and `Percent` in
+`src/anesthesia_sim/core/concentration.py`. A fraction is the alveolar or the
+venous one by where it is held, so its constructor takes the name a refusal
+gives it from the caller that builds it. The count is where this stops, in
 the code: built, it is checked for what a count is alone, whole and
 nonnegative, and how many steps fit is a relation with the step it multiplies,
 which `SimulationState`, holding both, checks.
