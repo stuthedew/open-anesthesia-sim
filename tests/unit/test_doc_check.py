@@ -1062,6 +1062,21 @@ def test_a_bullet_led_bold_marker_is_a_citable_section_title(tmp_path: Path) -> 
     )
 
 
+def test_a_hash_line_inside_a_fence_is_not_a_citable_heading(tmp_path: Path) -> None:
+    """A shell comment in a fenced sample is code, not a section (`PL-T1X0`).
+
+    Read a line at a time, the fence's comment answered a `§` citation of it,
+    so a citation whose section was gone passed on a line of code.
+    """
+    model = MODEL + "\n```bash\n# make sure the venv exists\nuv sync\n```\n"
+    readme = _wrapped('See § "make sure the venv exists" for the setup.')
+    assert (
+        'README.md:3: cites section "make sure the venv exists", which no documentation file '
+        "has (§ names a section of these documents; write an outside source's section without "
+        "the mark)"
+    ) in _errors(_repo(tmp_path, model=model, readme=readme))
+
+
 # --- quoted sources: item briefs and docstrings ------------------------------
 
 
@@ -1455,6 +1470,21 @@ def test_link_anchor_must_name_a_heading(tmp_path: Path) -> None:
     errors = _errors(_repo(tmp_path, readme=readme))
     assert any("#gone" in e for e in errors)
     assert not any("#known-limitations" in e for e in errors)
+
+
+def test_a_link_anchor_naming_a_bold_marker_is_an_error(tmp_path: Path) -> None:
+    """GitHub anchors a heading and nothing else (`PL-T1X0`).
+
+    A `**Bold.**` marker answers a `§` citation, which
+    `test_a_bold_marker_is_a_citable_section_title` holds, but a link naming
+    one opens the page at its top, so its anchor is reported.
+    """
+    model = MODEL + "\n**What the model omits.** Everything else.\n"
+    readme = "# Demo\n\nSee [what it omits](docs/MODEL.md#what-the-model-omits).\n"
+    assert _link_errors(tmp_path, readme, model) == [
+        "README.md:3: links to docs/MODEL.md#what-the-model-omits, but docs/MODEL.md has no "
+        "such heading"
+    ]
 
 
 # --- citations of a path .gitignore covers ----------------------------------
@@ -6648,9 +6678,9 @@ def _bump_refusal(tmp_path: Path) -> str:
     return ""
 
 
-def _link_errors(tmp_path: Path, readme: str) -> list[str]:
-    """What the link check says of `readme`'s links."""
-    report = doc_check.analyze(_repo(tmp_path, readme=readme))
+def _link_errors(tmp_path: Path, readme: str, model: str = MODEL) -> list[str]:
+    """What the link check says of `readme`'s links, `model` the document they may name."""
+    report = doc_check.analyze(_repo(tmp_path, model=model, readme=readme))
     return [error for error in report.errors if "links to" in error]
 
 
@@ -6772,6 +6802,25 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: doc_check._headings("Prose.\n\n- **An entry title.** Its body.\n"),
         ["An entry title"],
     ),
+    # A heading is one where CommonMark renders one (`PL-T1X0`): a `#` line a
+    # fence or a comment holds is that block's, and an underline makes a
+    # paragraph one. Frontmatter is GitHub's table, not a setext heading.
+    "section titles, a # line inside a fence is none": (
+        lambda _: doc_check._headings("# Guide\n\n```bash\n# make sure the venv exists\n```\n"),
+        ["Guide"],
+    ),
+    "section titles, a # line inside a comment is none": (
+        lambda _: doc_check._headings("# Guide\n\n<!--\n# Not yet written\n-->\n"),
+        ["Guide"],
+    ),
+    "section titles, a setext heading": (
+        lambda _: doc_check._headings("Known limitations\n-----------------\n\nNone.\n"),
+        ["Known limitations"],
+    ),
+    "section titles, frontmatter is no setext heading": (
+        lambda _: doc_check._headings("---\nname: guide\ndescription: A guide.\n---\n\n# Guide\n"),
+        ["Guide"],
+    ),
     "links, wrapped link text": (
         lambda _: [link["target"] for link in doc_check.LINK_RE.finditer("[the\nnotes](x.md)")],
         ["x.md"],
@@ -6804,6 +6853,17 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             tmp_path, README + '\nSee [the notes](<missing notes.md>\n"The notes").\n'
         ),
         ["README.md:6: links to missing notes.md, which does not exist"],
+    ),
+    "links, an anchor naming a # line inside a fence is reported": (
+        lambda tmp_path: _link_errors(
+            tmp_path,
+            "# Demo\n\nSee [the setup](docs/MODEL.md#make-sure-the-venv-exists).\n",
+            MODEL + "\n```bash\n# make sure the venv exists\n```\n",
+        ),
+        [
+            "README.md:3: links to docs/MODEL.md#make-sure-the-venv-exists, but docs/MODEL.md "
+            "has no such heading"
+        ],
     ),
     # The counts a frozen list states about itself.
     "gate counts, a wrapped group heading": (

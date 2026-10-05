@@ -3,12 +3,14 @@ id: PL-T1X0
 title: doc_check's _headings and _hash_headings read a # line inside a fence as a heading, and link anchors are checked against bold runs GitHub gives no anchor, so a shell comment in a fence answers a section citation and README.md#cite-this-repository passes; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: tools/doc_check.py, tests/unit
+touches: tools/doc_check.py, tests/unit, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1371
 payoff: a section citation or link anchor whose heading is gone is reported, instead of passing on a shell comment in a code sample or on a bold lead-in GitHub gives no anchor
 verify: grep -q 'def test_a_hash_line_inside_a_fence_is_not_a_citable_heading' tests/unit/test_doc_check.py && grep -q 'def test_a_link_anchor_naming_a_bold_marker_is_an_error' tests/unit/test_doc_check.py
 recurrences: 2026-10-05 PL-0Y7J withdrawn 2026-10-05 PL-0Y7J
