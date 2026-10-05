@@ -6713,15 +6713,17 @@ SPLIT_MARKER_ERROR = (
 
 
 def _citation_findings(tmp_path: Path, readme: str, brief: str = "") -> list[str]:
-    """What the citation checks say of `readme`, with `brief` as `PL-T3ST`'s where given."""
+    """What the citation checks say of `readme`, with `brief` as `PL-T3ST`'s where given.
+
+    A refusal of a quotation its paragraph never closes is among them (`PL-T73L`).
+    """
     root = _repo(tmp_path, readme=readme)
     if brief:
         _item(root, "PL-T3ST-demo", _brief("done", brief))
     report = doc_check.analyze(root)
+    said = ("cites section", "names a section", "quotes ", "opens a quotation")
     return [
-        finding
-        for finding in report.errors + report.advisories
-        if any(said in finding for said in ("cites section", "names a section", "quotes "))
+        finding for finding in report.errors + report.advisories if any(s in finding for s in said)
     ]
 
 
@@ -6954,6 +6956,28 @@ def _recovered_commit(text: str) -> str | None:
     return parsed[0].get("commit") if parsed else None
 
 
+def _provenance_under(above: str) -> tuple[list[tuple[int, list[str]]], str]:
+    """What `_provenance_rows` reads of its section holding `above`, then the table."""
+    return doc_check._provenance_rows(
+        f"## Parameter provenance\n\n{above}| Parameter | Selected value | Unit | Source |\n"
+        "| --- | --- | --- | --- |\n| a | 1 | - | x |\n"
+    )
+
+
+def _both_scope_places(tmp_path: Path, roadmap: str) -> list[str]:
+    """Where the error naming an id under both of a milestone's scope headings points."""
+    errors = _errors(_repo(tmp_path, roadmap=roadmap))
+    return [error.split(": ", 1)[0] for error in errors if "in scope and out of it" in error]
+
+
+#: What the citation readers say of a quotation its paragraph never closes
+#: (`PL-T73L`), after the citation's place and what opened the quotation.
+UNCLOSED = (
+    "{}: {} opens a quotation its paragraph never closes, so {} was not read; "
+    "close it before the paragraph ends"
+)
+
+
 #: A rule CommonMark carries across three lines, and the same with its middle
 #: line cut: what is left is a rule the base never stated.
 RULE = "**Decision.** Run the full suite\nbefore every commit,\nexcept one touching only docs.\n"
@@ -7071,6 +7095,84 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "section titles, frontmatter is no setext heading": (
         lambda _: doc_check._headings("---\nname: guide\ndescription: A guide.\n---\n\n# Guide\n"),
         ["Guide"],
+    ),
+    # The six other readers of where a section starts and ends (`PL-0Y7J`): a
+    # `#` line a fence or a comment holds opens and ends none.
+    "provenance rows, a # line inside a fence is no heading": (
+        lambda _: _provenance_under("```sh\n## a shell comment\n```\n\n"),
+        ([(9, ["a", "1", "-", "x"])], ""),
+    ),
+    "provenance rows, a table inside a fence is none": (
+        lambda _: _provenance_under(
+            "```markdown\n| Parameter | Selected value | Unit | Source |\n"
+            "| --- | --- | --- | --- |\n| fake | 9 | - | y |\n```\n\n"
+        ),
+        ([(11, ["a", "1", "-", "x"])], ""),
+    ),
+    "subsection end, a # line inside a fence is no heading": (
+        lambda tmp_path: _gate_errors(
+            tmp_path,
+            GATE_ROADMAP.replace(
+                "- PL-CCCC (S) The second thing\n",
+                "- PL-CCCC (S) The second thing\n\n```sh\n### not a heading\n```\n",
+            ),
+        ),
+        [],
+    ),
+    "uncheckable heading counts, a # line inside a fence is no heading": (
+        lambda tmp_path: _gate_errors(
+            tmp_path,
+            GATE_ROADMAP.replace(
+                "- Everything above is done.\n",
+                "- Everything above is done.\n\n```markdown\n### Later - three entries\n```\n",
+            ),
+        ),
+        [],
+    ),
+    "uncheckable heading counts, a # line inside a comment is no heading": (
+        lambda tmp_path: _gate_errors(
+            tmp_path,
+            GATE_ROADMAP.replace(
+                "- Everything above is done.\n",
+                "- Everything above is done.\n\n<!--\n### Later - three entries\n-->\n",
+            ),
+        ),
+        [],
+    ),
+    "subsection line, a # line inside a fence is no heading": (
+        lambda tmp_path: _both_scope_places(
+            tmp_path,
+            SCOPED_SECTION_ROADMAP.replace(
+                "Make one case observable.\n",
+                "Make one case observable.\n\n```sh\n## not a section\n```\n",
+            ).replace(
+                "- **A displayed clinical unit** (queue item PL-MNPQ).",
+                "- **A displayed clinical unit** (queue item PL-MNPQ).\n"
+                "- **Horizontal panning** (queue item PL-Z7LY).",
+            ),
+        ),
+        ["ROADMAP.md:26"],
+    ),
+    "list members, a # line inside a fence is no heading": (
+        lambda _: [
+            line
+            for line, _ in doc_check._list_members(
+                "```markdown\n## Minimum displayed outputs\n```\n\n" + LIST_FAMILY_DOCUMENT,
+                _list_family(),
+            )
+        ],
+        [9, 10, 12, 14],
+    ),
+    "tags region, a # line inside a fence is no heading": (
+        lambda _: doc_check._tags_region(
+            "**Tags.** Each is tagged.\n\n```sh\n# c\n```\n\n"
+            "**One version is untagged**: v0.1.0.\n\n## Next\n"
+        ),
+        (
+            1,
+            "**Tags.** Each is tagged.\n\n```sh\n# c\n```\n\n"
+            "**One version is untagged**: v0.1.0.\n",
+        ),
     ),
     "links, wrapped link text": (
         lambda _: [link["target"] for link in doc_check.LINK_RE.finditer("[the\nnotes](x.md)")],
@@ -7907,6 +8009,96 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         [
             'README.md:3: quotes PL-T3ST as "Design round", which is not in '
             "docs/items/PL-T3ST-demo.md"
+        ],
+    ),
+    # A quotation ends with its paragraph (`PL-T73L`): a blank line between two
+    # halves leaves the citation's quotation open, and one its paragraph never
+    # closes is refused by name, where `[^"]` joined the halves or, with no
+    # mark after, read nothing. Each joined case names a heading or a passage
+    # the fixture holds, so the joined reading passed.
+    "section citations, a blank line ends the quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\nSee § "Known\n\nlimitations" for what it omits.\n'
+        ),
+        [UNCLOSED.format("README.md:3", "this §", "the section it names")],
+    ),
+    "section citations, a quotation never closed is refused": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\nSee § "Known limitations for what it omits.\n\nNone.\n'
+        ),
+        [UNCLOSED.format("README.md:3", "this §", "the section it names")],
+    ),
+    "unmarked citations, a blank line ends the quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\nSee "Known\n\nlimitations" for what it omits.\n'
+        ),
+        [UNCLOSED.format("README.md:3", 'this "See"', "whether it names a section")],
+    ),
+    "unmarked citations, a quotation never closed is refused": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\nSee "Known limitations for what it omits.\n\nNone.\n'
+        ),
+        [UNCLOSED.format("README.md:3", 'this "See"', "whether it names a section")],
+    ),
+    "unmarked citations, a blank line ends a directed quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path,
+            '# Demo\n\n## Known limitations\n\nNone.\n\nRead "Known\n\nlimitations" above.\n',
+        ),
+        [],
+    ),
+    "quoted sources, a blank line ends the quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\nIt is `docs/MODEL.md` § "Known\n\nlimitations".\n'
+        ),
+        [
+            UNCLOSED.format(
+                "README.md:3", "this citation of docs/MODEL.md", "whether the file holds the words"
+            )
+        ],
+    ),
+    "quoted sources, a quotation never closed is refused": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\nIt is `docs/MODEL.md` § "Known limitations.\n\nNone.\n'
+        ),
+        [
+            UNCLOSED.format(
+                "README.md:3", "this citation of docs/MODEL.md", "whether the file holds the words"
+            )
+        ],
+    ),
+    "quoted sources, a quotation never closed after a comma is an advisory": (
+        lambda tmp_path: _advisories(
+            _repo(tmp_path, readme='# Demo\n\nAs `docs/MODEL.md`, "Nothing yet.\n\nNone.\n')
+        ),
+        [
+            UNCLOSED.format(
+                "README.md:3", "this citation of docs/MODEL.md", "whether the file holds the words"
+            )
+        ],
+    ),
+    "item sections, a blank line ends the quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path,
+            '# Demo\n\nWho holds an item is `PL-T3ST` § "Other\n\nholds".\n',
+            "**Other holds.** The recorded claim decides.",
+        ),
+        [
+            UNCLOSED.format(
+                "README.md:3", "this citation of PL-T3ST", "whether its brief holds the words"
+            )
+        ],
+    ),
+    "item sections, a quotation never closed is refused": (
+        lambda tmp_path: _citation_findings(
+            tmp_path,
+            '# Demo\n\nWho holds an item is `PL-T3ST` § "Other holds.\n\nNone.\n',
+            "**Other holds.** The recorded claim decides.",
+        ),
+        [
+            UNCLOSED.format(
+                "README.md:3", "this citation of PL-T3ST", "whether its brief holds the words"
+            )
         ],
     ),
     "possessive citations, wrapped in a blockquote": (

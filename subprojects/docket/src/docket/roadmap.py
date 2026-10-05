@@ -20,12 +20,14 @@ the table to it. Both are standard-library only and both must run in a bare
 checkout with no virtualenv, so the constraint that shaped the parser is
 identical on either side.
 
-The markdown primitives at the top are exported for the same reason:
-`doc_check` reads a table of its own with them, and builds its phrase readers
-on `CONTINUED_LINE`, and a second implementation of "where a paragraph goes
-on" is a second thing to keep true. Where a heading, a table or a list entry
-is, the walkers below read from `markdown`, the one reading of a document's
-blocks (`PL-R417`).
+`CONTINUED_LINE`, among the markdown primitives at the top, is exported for
+the same reason: `doc_check` builds its phrase readers on it, and a second
+implementation of "where a paragraph goes on" is a second thing to keep true.
+Where a heading, a table or a list entry is, the walkers below and `doc_check`
+alike read from `markdown`, the one reading of a document's blocks
+(`PL-R417`). The heading and table-row patterns once exported beside it matched
+a line at a time, a `#` or `|` line inside a fence included, and went with
+their last reader (`PL-0Y7J`).
 """
 
 from __future__ import annotations
@@ -43,11 +45,6 @@ from .vcs import leading_ids
 
 # --- markdown primitives ----------------------------------------------------
 
-#: An ATX heading at the margin, for `tools/doc_check.py`'s own scans; the
-#: walkers here read headings from `markdown.headings`, which also reads a
-#: setext heading and none inside a comment or a fence (`PL-HKHP`).
-HEADING_RE = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.+?)\s*#*\s*$")
-TABLE_ROW_RE = re.compile(r"^\|(?P<cells>.+)\|\s*$")
 #: Where a Markdown statement goes on past the end of a physical line
 #: (`PL-R417`): a line ending inside a paragraph, which CommonMark reads as a
 #: soft break (0.31.2 § 6.7), with the indent and blockquote markers that open

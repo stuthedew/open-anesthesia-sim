@@ -36,24 +36,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import doc_check
 
-#: A character of a quotation: any but its closing mark or a line end, or a soft
-#: break, so a quotation runs no further than the paragraph it opens in. A
-#: blank line ends one (CommonMark 0.31.2 § 4.8), in a blockquote or out of one,
-#: and `[^"]` read on past it, so two halves a paragraph break separates were
-#: one quotation equal to a heading, and a correct sentence was told to take
-#: `§` (`PL-BYJ5`).
-QUOTATION_CHAR = rf'(?:[^"\n]|{doc_check.SOFT_BREAK})'
-
 #: The possessive citation, in the two spellings this project writes. Its gaps
 #: are `doc_check.GAP`, so one wrapped inside a blockquote is read past the next
-#: line's `>` as CommonMark reads it (`PL-XW87`).
+#: line's `>` as CommonMark reads it (`PL-XW87`). Its quotation is
+#: `doc_check.QUOTATION_CHAR`'s, which every citation reader there takes, so it
+#: stops at a paragraph end in a blockquote or out of one: read as `[^"]`, two
+#: halves a paragraph break separates were one quotation equal to a heading, and
+#: a correct sentence was told to take `§` (`PL-BYJ5`). One its paragraph never
+#: closes names no heading, and is `doc_check.check_quoted_sources`'s to refuse.
 POSSESSIVE_RE = re.compile(
     r"`(?P<document>[\w./-]+\.md)`['’]s(?:"
     + doc_check.GAP
     + r"+own)?"
     + doc_check.GAP
     + r'*"(?P<quoted>\w'
-    + QUOTATION_CHAR
+    + doc_check.QUOTATION_CHAR
     + r'{2,200}?)"'
 )
 
