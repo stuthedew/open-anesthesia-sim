@@ -3,12 +3,14 @@ id: PL-B26Y
 title: BreathingCircuit.advance_fresh_gas reports a nan exhaust at an admitted fresh-gas flow below about 2e-306 L/min, because the circuit's time constant overflows to inf there and its zero-flow branch tests == 0.0 only; core/__init__.py says the branch agrees with the general path bit for bit at the smallest denormal, which holds for the fraction and not for the exhaust
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/__init__.py, tests/unit/test_compartment_primitives.py
 added: 2026-10-04
+closed: 2026-10-05
 payoff: the circuit closed form can no longer hand a caller nan at a flow the model admits, and the package zero-flow claim becomes true of the exhaust as well as the fraction
 verify: grep -q 'def test_the_circuit_exhaust_is_finite_where_its_time_constant_overflows' tests/unit/test_compartment_primitives.py
+recurrences: 2026-10-05 PL-YT8N
 ---
 
 **Problem.** BreathingCircuit.advance_fresh_gas reports a nan exhaust at an admitted fresh-gas flow below about 2e-306 L/min, because the circuit's time constant overflows to inf there and its zero-flow branch tests == 0.0 only; core/__init__.py says the branch agrees with the general path bit for bit at the smallest denormal, which holds for the fraction and not for the exhaust
@@ -78,3 +80,44 @@ its walk from zero, the flows whose time constant overflows included. A test
 in `tests/unit/test_compartment_primitives.py` named
 `test_the_circuit_exhaust_is_finite_where_its_time_constant_overflows` pins it
 at both flows.
+
+**Fixed 2026-10-05.** The closed form writes the exhaust as what was delivered
+less what the circuit kept, `delivered - V (F_D - F_I0)(1 - exp(-dt/tau))`:
+the flow times the integral of the inspired fraction, with the flow times the
+time constant written as the circuit's volume. Nothing in it multiplies by the
+time constant, so a flow small enough to overflow it gets an exhaust equal to
+what was delivered, as 1e-300 L/min already did: 0 L at 5e-324 L/min, and
+1.854e-311 L over 0.1 s at 1.1125369292536007e-308. Measured against the old
+form: across three circuit states and steps of 0.1, 1 and 60 s, the 27
+overflowing cases go from `nan` to finite; across four states, flows from
+1e-300 to 10 L/min and steps up to 600 s, every other value moves only within
+the rounding the old form already carried - at most 1.4e-11 relative from 0.1
+to 10 L/min, and up to 6e-8 relative at 1e-6 L/min, where the exhaust is
+itself mostly that rounding, since both forms lose digits in
+`1 - exp(-dt/tau)`. The circuit's own balance closes as well or better: a
+worst residual of 5.6e-17 L against 4.4e-16 L at 6 L/min.
+
+Two other routes were refused. A branch on an infinite time constant guards a
+factor the rewrite removes, as a second special case beside `== 0.0`. Widening
+the `== 0.0` branch to the overflowing flows would also freeze the fraction
+there, so the smallest denormal would land on the branch while 1e-300 lands
+one rounding from it, which is the band
+`test_the_zero_flow_branch_agrees_with_the_limit_from_above` says does not
+exist.
+
+`test_the_circuit_exhaust_is_finite_where_its_time_constant_overflows` pins
+both flows for a circuit washing in and one at the dial, and failed in all four
+cases on the old form, `nan` each time. The zero-flow walk now asserts the
+agent each step reports moving as well as what each compartment stores, and on
+the old form it failed for the circuit at 5e-324 L/min. With the fix, the
+circuit's `== 0.0` branch is no longer what stops a `nan`: removed, the circuit
+reports an exchange of zero and holds 6.000000000172534e-06 L where it held
+6e-06, so the branch now buys an exact no-op, as the patient compartments' do.
+`core/__init__.py`'s bullet and walk paragraph and the two test docstrings say
+so.
+
+`PL-YT8N`, filed from this fix, is the same expression's other weakness: at
+flows from 1e-15 to 1e-6 L/min, `1 - exp(-dt/tau)` loses its digits and the
+exhaust comes out as much as 3.3e-16 L below zero, in the old form and the new
+alike. `docket new` recorded it as a recurrence of this item; it is a different
+mechanism, cancellation rather than overflow.
