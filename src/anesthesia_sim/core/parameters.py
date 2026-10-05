@@ -469,28 +469,32 @@ PositiveFraction = Annotated[float, BeforeValidator(_validate_positive_fraction)
 PositivePercent = Annotated[float, BeforeValidator(_validate_positive_percent)]
 """**Which vocabulary a new field in this file takes** (`PL-KL2Q`).
 
-Two overlapping vocabularies meet here and they do opposite halves of one job.
+Two overlapping vocabularies meet here and they do different halves of one job.
 The `Positive*` aliases above are Pydantic `BeforeValidator`s: they check a
 range at parse time and are plain `float` to `mypy`. `core/concentration.py`'s
-`Fraction`, `Percent` and `MacMultiple` are `NewType`s: they separate the
-dimensionless conventions at every call site and check nothing at runtime. The
+`Fraction`, `Percent` and `MacMultiple` separate the dimensionless conventions
+at every call site. The first two are also checked when built, against the
+whole of their range - 0 through 1, 0 through 100, zero included - and
+`MacMultiple` is a `NewType` that checks nothing at runtime (`PL-4R3W`). The
 rule is the layer, not the quantity:
 
 - **A `_...Payload` field takes a `Positive*` alias.** The payload's job is to
   refuse a bad file, and it is discarded immediately afterwards, so a type that
   marks a boundary buys nothing on a value about to be thrown away.
-- **A public dataclass field takes the `concentration` `NewType`.** The public
+- **A public dataclass field takes the `concentration` type.** The public
   types are what the rest of the application holds, so they are where a
   conversion can be missed and where a marked boundary is worth having.
   `parse_agent_parameters` and `parse_reference_adult_parameters` are the one
   crossing, and they wrap explicitly — `Percent(model.mac_percent)`,
-  `MacMultiple(model.mac_awake.fraction_of_mac)`.
+  `MacMultiple(model.mac_awake.fraction_of_mac)`. A `Percent` built there
+  cannot refuse what `PositivePercent` admitted, whose range lies inside its
+  own; the payload's is the stricter check, and the one that names the file.
 - **A dimensionless quantity that is neither a concentration nor a ratio to MAC
   takes `PositiveFraction` and stays a bare `float` on the public side** —
-  `perfusion_fraction` is the instance. Giving each such quantity a `NewType`
-  of its own would be a type per parameter rather than a type per boundary that
-  a wrong value can cross, and `core/concentration.py` states why a `NewType`
-  is worth only the latter.
+  `perfusion_fraction` is the instance. Giving each such quantity a type of its
+  own would be a type per parameter rather than a type per boundary that a
+  wrong value can cross, and `core/concentration.py` states that a missing
+  conversion at such a boundary is what its types are there to catch.
 
 **Merging the two was priced and refused.**
 `Annotated[Fraction, BeforeValidator(_validate_positive_fraction)]` would

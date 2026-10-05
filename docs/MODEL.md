@@ -567,7 +567,8 @@ $$
 
 `src/anesthesia_sim/core/concentration.py` is the only place that arithmetic
 is written, in both directions, and the two forms are distinct types there so
-that a type checker refuses a percent where a fraction is wanted. It is used
+that a type checker refuses a percent where a fraction is wanted, and since
+`PL-4R3W` so does the code at run time (below). It is used
 in two places and no others: the circuit and the recorded settings derive
 $`F_D`$ from the dial's percent where the governing equations read it, and the
 interface converts for display. Before `PL-WVSK` the factor was written
@@ -605,6 +606,23 @@ A concentration fraction must always be finite and satisfy:
 $$
 0 \leq F \leq 1
 $$
+
+**The range is enforced by the type, where a value is built** (`PL-4R3W`).
+`Fraction` and `Percent` in `core/concentration.py` refuse a value that is not
+finite or lies outside 0 to 1, or 0 to 100, when one is built, and every place
+that holds a concentration takes the type: each compartment's setter, the
+driving fraction a compartment's own closed form takes, `BreathingCircuit`
+when it is built or set, and the `UptakeEquationSettings` a run is built from.
+Each of those refuses a value that was not built as the type, a bare number
+included, so a concentration is checked once, where it is built, rather than
+again at each way in. A fraction a step computes is built as one before any
+compartment holds it, under the name of the compartment that will
+(`AgentUptakeSystem._write_state_vector`), so a computed value outside the
+range halts the run naming that compartment instead of being stored or shown.
+The one limit is the type's own: a circuit built without an agent defaults its
+vaporizer maximum to 100%, and at that dial a computed fraction can round past
+1 and is refused there. No supported setting computes a fraction outside the
+range, and `core/concentration.py` records the measurement.
 
 ### Agent amount
 

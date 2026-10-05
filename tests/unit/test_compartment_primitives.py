@@ -28,7 +28,7 @@ import pytest
 
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
-from anesthesia_sim.core.concentration import Percent, fraction_from_percent
+from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 
@@ -49,7 +49,7 @@ from anesthesia_sim.core.tissue import TissueGroup
 # vaporizer dial, which is set in percent (`PL-NJPB`). The fraction the two
 # patient compartments are driven with is derived from it, so all three are
 # driven by the same number.
-LOADED_FRACTION = 1e-6
+LOADED_FRACTION = Fraction(1e-6)
 DRIVING_PERCENT = Percent(100.0)
 DRIVING_FRACTION = fraction_from_percent(DRIVING_PERCENT)
 

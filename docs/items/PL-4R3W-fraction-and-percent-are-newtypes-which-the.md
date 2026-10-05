@@ -3,11 +3,13 @@ id: PL-4R3W
 title: Fraction and Percent are NewTypes, which the interpreter erases, so their ranges of 0 to 1 and 0 to 100 are checked by hand wherever a value enters - require_percent at four sites in circuit.py and governing_equations.py - the hand-checked pattern PL-51B7 replaces with checked types for the supported-range quantities; whether a concentration becomes a checked type too is undecided, because concentration.py chose NewTypes to catch a missing conversion, and whether a fraction computed at a bound can round past it is unmeasured
 priority: P2
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/parameters.py, .claude/rules/core-domain.md, tests, docs/MODEL.md
+touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/run_view.py, tools/core_vocabulary_check.py, .claude/rules/core-domain.md, tests, docs/MODEL.md, docs/items/PL-T137-core-validation-py-rejects-a-value-without.md, docs/items/PL-HXKC-eight-of-the-twenty-three-public-functions-in.md, docs/items/PL-LLMN-require-supported-admits-0-0-shown-as-0-0-l-min.md
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1365
 payoff: whether a concentration is checked once into a type, as the flows are, is answered on a measurement, so the eleven hand checks on its ranges are either replaced or kept for a recorded reason
 verify: ! grep -q "def require_fraction" src/anesthesia_sim/core/validation.py && ! grep -q "def require_percent" src/anesthesia_sim/core/validation.py && grep -q "class Fraction(float)" src/anesthesia_sim/core/concentration.py && grep -q "class Percent(float)" src/anesthesia_sim/core/concentration.py
 ---
@@ -236,3 +238,31 @@ The build, for the thread that takes it (nothing here is built in the round):
   change, 56 `Fraction(` and `Percent(` calls in 15 test files, and the docs.
 - `verify:`, to set at the answer:
   `! grep -q "def require_fraction" src/anesthesia_sim/core/validation.py && ! grep -q "def require_percent" src/anesthesia_sim/core/validation.py && grep -q "class Fraction(float)" src/anesthesia_sim/core/concentration.py && grep -q "class Percent(float)" src/anesthesia_sim/core/concentration.py`.
+
+## Close-out 2026-10-05
+
+Built as the design round's list has it, in `#1365`, with four things a
+reviewer would otherwise have to find:
+
+- **Twelve call sites, not eleven.** `PL-BBMG` landed between the count and
+  the build and gave `UptakeEquationSettings` a `require_percent` of its own
+  for the vaporizer maximum, so twelve range checks left `core/validation.py`.
+- **The type checks keep the pattern's names.** `require_fraction` and
+  `require_percent` now live in `core/concentration.py` beside the types, as
+  `require_simulation_step` and the three flow checks do, and check the type
+  rather than the range. Each names a value of the other type as one and says
+  to convert it, since a `Fraction` built from a percent's value is a
+  hundredfold error that nothing downstream would refuse.
+- **The name is a keyword argument**, `Fraction(value, name=...)`, defaulting
+  to the type's own word, so the refusal still says which of the five
+  compartments and the circuit refused (`PL-SPN6`). `_write_state_vector`
+  passes each compartment's, and so does `app/run_view.py` for the dial.
+- **Two `app/` files beyond the list.** `app/formatting.py`'s docstrings said
+  an impossible negative was rendered with its sign; it is refused now, by
+  `percent_from_fraction`, and the two tests that pinned the rendering pin
+  the refusal. `tools/core_vocabulary_check.py` said the guard "checks a
+  range" in the present tense.
+
+The holes the flows have - minus zero, a `bool`, a `Decimal`, a `str` - are
+shared by both types on purpose, so one rule settles all of them, and are
+recorded on `PL-LLMN`, whose `touches` now reach `core/concentration.py`.

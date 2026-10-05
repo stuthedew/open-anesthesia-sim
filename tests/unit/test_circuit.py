@@ -11,6 +11,7 @@ from anesthesia_sim.core.circuit import (
     BreathingCircuit,
     DeliverableFreshGasFlowRange,
 )
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
     load_reference_circle_system_parameters,
@@ -37,7 +38,7 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
     circuit = BreathingCircuit(
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=FreshGasFlow(6.0),
-        delivered_concentration_percent=100.0,
+        delivered_concentration_percent=Percent(100.0),
     )
 
     circuit.advance(circuit.time_constant_s)
@@ -48,8 +49,8 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
 def test_zero_fresh_gas_flow_preserves_concentration() -> None:
     circuit = BreathingCircuit(
         fresh_gas_flow_l_min=FreshGasFlow(0.0),
-        delivered_concentration_percent=100.0,
-        inspired_partial_pressure_fraction=0.25,
+        delivered_concentration_percent=Percent(100.0),
+        inspired_partial_pressure_fraction=Fraction(0.25),
     )
 
     circuit.advance(60.0)
@@ -62,8 +63,8 @@ def test_zero_delivered_concentration_washes_out_circuit() -> None:
     circuit = BreathingCircuit(
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=FreshGasFlow(6.0),
-        delivered_concentration_percent=0.0,
-        inspired_partial_pressure_fraction=1.0,
+        delivered_concentration_percent=Percent(0.0),
+        inspired_partial_pressure_fraction=Fraction(1.0),
     )
 
     circuit.advance(circuit.time_constant_s)
@@ -80,8 +81,8 @@ def test_exact_update_is_independent_of_step_size() -> None:
     stayed at zero, which is agreement about nothing.
     """
 
-    one_step = BreathingCircuit(delivered_concentration_percent=100.0)
-    many_steps = BreathingCircuit(delivered_concentration_percent=100.0)
+    one_step = BreathingCircuit(delivered_concentration_percent=Percent(100.0))
+    many_steps = BreathingCircuit(delivered_concentration_percent=Percent(100.0))
 
     one_step.advance(60.0)
 
@@ -109,7 +110,7 @@ def test_rejects_invalid_fresh_gas_flow(fresh_gas_flow_l_min: float) -> None:
 @pytest.mark.parametrize("delivered_concentration_percent", [-1.0, 101.0, float("nan")])
 def test_rejects_invalid_delivered_concentration(delivered_concentration_percent: float) -> None:
     with pytest.raises(SimulationConfigurationError):
-        BreathingCircuit(delivered_concentration_percent=delivered_concentration_percent)
+        BreathingCircuit(delivered_concentration_percent=Percent(delivered_concentration_percent))
 
 
 def test_rejects_delivered_concentration_above_the_vaporizer_maximum() -> None:
@@ -120,11 +121,12 @@ def test_rejects_delivered_concentration_above_the_vaporizer_maximum() -> None:
     """
 
     circuit = BreathingCircuit(
-        delivered_concentration_percent=2.0, max_delivered_concentration_percent=5.0
+        delivered_concentration_percent=Percent(2.0),
+        max_delivered_concentration_percent=Percent(5.0),
     )
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
-        circuit.set_delivered_concentration_percent(50.0)
+        circuit.set_delivered_concentration_percent(Percent(50.0))
 
     assert circuit.delivered_concentration_percent == 2.0
 
@@ -132,15 +134,17 @@ def test_rejects_delivered_concentration_above_the_vaporizer_maximum() -> None:
 def test_rejects_construction_above_the_vaporizer_maximum() -> None:
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
         BreathingCircuit(
-            delivered_concentration_percent=8.0, max_delivered_concentration_percent=5.0
+            delivered_concentration_percent=Percent(8.0),
+            max_delivered_concentration_percent=Percent(5.0),
         )
 
 
 def test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum() -> None:
     circuit = BreathingCircuit(
-        delivered_concentration_percent=2.0, max_delivered_concentration_percent=5.0
+        delivered_concentration_percent=Percent(2.0),
+        max_delivered_concentration_percent=Percent(5.0),
     )
-    circuit.set_delivered_concentration_percent(5.0)
+    circuit.set_delivered_concentration_percent(Percent(5.0))
 
     assert circuit.delivered_concentration_percent == 5.0
 
@@ -149,9 +153,10 @@ def test_accepts_a_delivered_concentration_of_zero() -> None:
     """The vaporizer off is always a valid dial position: it is washout."""
 
     circuit = BreathingCircuit(
-        delivered_concentration_percent=2.0, max_delivered_concentration_percent=5.0
+        delivered_concentration_percent=Percent(2.0),
+        max_delivered_concentration_percent=Percent(5.0),
     )
-    circuit.set_delivered_concentration_percent(0.0)
+    circuit.set_delivered_concentration_percent(Percent(0.0))
 
     assert circuit.delivered_concentration_percent == 0.0
 
@@ -162,8 +167,8 @@ def test_accepts_a_delivered_concentration_of_zero() -> None:
 def test_rejects_invalid_vaporizer_maximum(max_delivered_concentration_percent: float) -> None:
     with pytest.raises(SimulationConfigurationError):
         BreathingCircuit(
-            delivered_concentration_percent=0.0,
-            max_delivered_concentration_percent=max_delivered_concentration_percent,
+            delivered_concentration_percent=Percent(0.0),
+            max_delivered_concentration_percent=Percent(max_delivered_concentration_percent),
         )
 
 
@@ -276,7 +281,7 @@ def test_a_bare_circuit_starts_with_the_vaporizer_off() -> None:
     in use. `AgentUptakeSystem.for_agent()` sets the real starting dial.
     """
 
-    circuit = BreathingCircuit(max_delivered_concentration_percent=5.0)
+    circuit = BreathingCircuit(max_delivered_concentration_percent=Percent(5.0))
 
     assert circuit.delivered_concentration_percent == 0.0
     assert circuit.max_delivered_concentration_percent == 5.0

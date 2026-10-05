@@ -1,15 +1,26 @@
-"""The one crossing between the two forms a concentration is written in.
+"""The two checked forms a concentration is written in, and the one crossing
+between them.
 
-`core/concentration.py` states the rule; this is what holds it. Two of the
-tests below assert a *type* error rather than a runtime one, which needs a
-word about the mechanism: `tests/` is outside `[tool.mypy] files`, so a
-`# type: ignore` here is not checked by the gate — it is checked by
-`tools/ignore_check.py`, which runs mypy over this tree with
+`core/concentration.py` states the rule; this is what holds it. `Fraction` and
+`Percent` are checked against their ranges when they are built, so the edges
+of each range are pinned here once, on the constructor, rather than at each
+place a value is held (`PL-4R3W`).
+
+Several tests below hand a value of the wrong type to a parameter `mypy` would
+refuse it for, which needs a word about the mechanism: `tests/` is outside
+`[tool.mypy] files`, so a `# type: ignore` here is not checked by the gate — it
+is checked by `tools/ignore_check.py`, which runs mypy over this tree with
 `warn_unused_ignores` on and reports a directive that has stopped being
 necessary. So a directive below going inert is a failing `make check`, and
-that is the assertion. It costs nothing: that mypy run already happens
-(`PL-WVSK`).
+that is the assertion that `mypy` still refuses the call. What the call does at
+run time is the test's own assertion: since `PL-4R3W` each of them is refused
+there too (`PL-WVSK`).
 """
+
+import copy
+import pickle
+from dataclasses import replace
+from math import inf, nan, nextafter
 
 import pytest
 
@@ -22,12 +33,14 @@ from anesthesia_sim.core.concentration import (
     percent_from_fraction,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # Sevoflurane's vaporizer maximum, in the percent its dial reads. Since
-# `PL-NJPB` the dial is set in percent, so a missing conversion now runs the
-# other way: a fraction mistaken for a percent is a hundred times too small and
-# lands between 0% and 1%, under this maximum and under every shipped agent's,
-# so `BreathingCircuit._require_deliverable` refuses none of them.
+# `PL-NJPB` the dial is set in percent, so a missing conversion runs the other
+# way: a fraction mistaken for a percent is a hundred times too small and lands
+# between 0% and 1%, under this maximum and under every shipped agent's, so
+# `BreathingCircuit._require_deliverable` refuses none of them.
 SEVOFLURANE_MAXIMUM_PERCENT = Percent(8.0)
 
 
@@ -46,57 +59,228 @@ def test_the_factor_is_a_hundred_and_is_written_once() -> None:
     assert fraction_from_percent(Percent(PERCENT_PER_UNIT_FRACTION)) == 1.0
 
 
-def test_a_fraction_reaching_a_percent_parameter_is_refused_by_mypy_alone() -> None:
-    """The guarantee and its limit, in one test.
+@pytest.mark.parametrize("value", [0.0, 5e-324, 0.02, nextafter(1.0, 0.0), 1.0])
+def test_a_fraction_from_0_through_1_is_the_number_it_was_built_from(value: float) -> None:
+    """Both ends are fractions, and so is the closest float to each, unrounded."""
+
+    fraction = Fraction(value)
+
+    assert isinstance(fraction, float)
+    assert float(fraction).hex() == value.hex()
+
+
+@pytest.mark.parametrize(
+    "value", [nextafter(0.0, -1.0), -0.001, nextafter(1.0, inf), 1.001, inf, -inf, nan]
+)
+def test_a_fraction_outside_0_to_1_cannot_be_built(value: float) -> None:
+    """The one place a fraction's range is checked, at each edge and past it.
+
+    The two `nextafter` values are the first floats outside the range. Before
+    `PL-4R3W` this was `require_fraction` in `core/validation.py`, called at each
+    of the twelve places a value entered.
+    """
+
+    with pytest.raises(SimulationConfigurationError, match=r"is outside 0 to 1"):
+        Fraction(value)
+
+
+def test_a_refused_fraction_is_named_as_it_was_built() -> None:
+    """A fraction a rounding past 1 is refused under the name it was given.
+
+    The regression for the refusal moving out of each compartment's setter and
+    into the constructor (`PL-4R3W`). A setter used to name the compartment in
+    the refusal (`PL-SPN6`); the constructor now runs first, so unless the
+    caller names the fraction it builds, the halted-run notice cannot say which
+    of the five compartments and the circuit refused. `1.0000000000000002` is
+    `nextafter(1.0, inf)`, the value a 100% dial's exact path rounds towards.
+    """
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^alveolar partial_pressure_fraction of 1\.0000000000000002 is outside 0 to 1, ",
+    ):
+        Fraction(1.0000000000000002, name="alveolar partial_pressure_fraction")
+
+
+@pytest.mark.parametrize("value", [0.0, 5e-324, 8.0, nextafter(100.0, 0.0), 100.0])
+def test_a_percent_from_0_through_100_is_the_number_it_was_built_from(value: float) -> None:
+    percent = Percent(value)
+
+    assert isinstance(percent, float)
+    assert float(percent).hex() == value.hex()
+
+
+@pytest.mark.parametrize(
+    "value", [nextafter(0.0, -1.0), -0.001, nextafter(100.0, inf), 150.0, inf, -inf, nan]
+)
+def test_a_percent_outside_0_to_100_cannot_be_built(value: float) -> None:
+    with pytest.raises(SimulationConfigurationError, match=r"is outside 0 to 100"):
+        Percent(value)
+
+
+def test_neither_conversion_can_refuse_a_value_of_its_own_type() -> None:
+    """Each crossing builds the checked type, and no value of the other refuses it.
+
+    Division and multiplication round monotonically and 100 maps exactly to 1,
+    so a percent from 0 through 100 gives a fraction from 0 through 1 and back.
+    Pinned over every 0.001% step of the range and both ends' neighbours,
+    because the claim is about rounding, which only a sweep tests.
+    """
+
+    percents = [step / 1000 for step in range(100_001)]
+    percents += [5e-324, nextafter(100.0, 0.0)]
+
+    for value in percents:
+        fraction = fraction_from_percent(Percent(value))
+        assert type(fraction) is Fraction
+        assert type(percent_from_fraction(fraction)) is Percent
+
+    for value in (5e-324, nextafter(1.0, 0.0), 1.0):
+        assert type(percent_from_fraction(Fraction(value))) is Percent
+
+
+def test_arithmetic_on_a_concentration_is_a_plain_float() -> None:
+    """A computed value carries no proof, so it is built into the type again.
+
+    That is the module docstring's first limit, and why `AgentUptakeSystem`
+    builds each fraction a step computes as a `Fraction` before any
+    compartment holds it.
+    """
+
+    fraction = Fraction(0.5)
+    percent = Percent(2.0)
+
+    assert type(fraction * 2.0) is float
+    assert type(fraction + fraction) is float
+    assert type(percent / 100.0) is float
+    assert type(percent - percent) is float
+
+
+def test_a_copied_or_pickled_concentration_is_still_checked() -> None:
+    """A state copied for a branch, or saved, keeps a value still of its type.
+
+    Each of these rebuilds through the constructor rather than around it, so a
+    copy cannot carry an unchecked value under the type's name.
+    """
+
+    for value in (Fraction(0.02), Percent(8.0)):
+        for copied in (copy.copy(value), copy.deepcopy(value), pickle.loads(pickle.dumps(value))):
+            assert type(copied) is type(value)
+            assert copied == value
+
+
+def test_a_fraction_reaching_a_percent_parameter_is_refused() -> None:
+    """The missing conversion the types exist for, refused by `mypy` and at run time.
 
     `0.08` is sevoflurane's full dial, 8%, written as a fraction. Passed as a
-    percent it is 0.08% — a hundredfold error, and the vaporizer all but off
-    rather than at its maximum. Every runtime guard accepts it: it is a finite
-    number in [0, 100] and it does not exceed the vaporizer maximum. Since the
-    dial is set in percent (`PL-NJPB`) the same is true of every fraction from
-    0 through 1, so this is the band `PL-WVSK` was filed about, turned the
-    other way, rather than a case already caught.
-
-    So the directive below is the whole of the safeguard, and the assertions
-    are what a reader needs in order to believe that: the call goes through,
-    and what it stored is 0.08%.
+    percent it would be 0.08% — a hundredfold error, the vaporizer all but off
+    rather than at its maximum — and nothing after this would refuse it: it is
+    under the vaporizer maximum. The directive is `mypy`'s refusal; the
+    `TypeError` is the run-time one `PL-4R3W` added, and it says to convert.
     """
 
     circuit = BreathingCircuit(max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT)
 
-    circuit.set_delivered_concentration_percent(Fraction(0.08))  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="is a Fraction, not a Percent: convert it"):
+        circuit.set_delivered_concentration_percent(Fraction(0.08))  # type: ignore[arg-type]
 
-    assert circuit.delivered_concentration_percent == 0.08
+    assert circuit.delivered_concentration_percent == 0.0
+
+
+def test_a_percent_reaching_a_fraction_parameter_is_refused() -> None:
+    """The same missing conversion in the other direction, a hundred times too large."""
+
+    circuit = BreathingCircuit()
+
+    with pytest.raises(TypeError, match="is a Percent, not a Fraction: convert it"):
+        circuit.set_inspired_partial_pressure_fraction(Percent(0.5))  # type: ignore[arg-type]
+
+    assert circuit.inspired_partial_pressure_fraction == 0.0
+
+
+def test_a_percent_built_from_a_fractions_value_is_not_caught() -> None:
+    """The module docstring's third limit, pinned so it cannot be read as more.
+
+    A percent built from a fraction's *value* is a valid percent, so the type
+    cannot refuse it and the vaporizer maximum passes it. Only the dial's
+    writers each passing a value already in percent stands against it.
+    """
+
+    circuit = BreathingCircuit(max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT)
+
+    circuit.set_delivered_concentration_percent(Percent(0.08))
+
     assert circuit.delivered_partial_pressure_fraction == pytest.approx(0.0008)
 
 
-def test_a_bare_float_reaching_a_percent_parameter_is_refused_too() -> None:
-    """The other half, and the one that catches a *new* unconverted path.
+def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
+    """A value nobody built is refused before anything moves, at every entry point.
 
-    A fraction mistaken for a percent has to come from somewhere, and it
-    usually arrives as an unannotated intermediate rather than as a value
-    something already called a fraction. `0.02` is a 2% setting as a
-    fraction, and what the circuit stores is 0.02%.
+    `mypy` refuses a bare `float` at each of these in `src/`, but it does not
+    read `tests/`, and it passes a value typed `Any`. This is the runtime half:
+    a `TypeError`, because passing the wrong type is a programming error rather
+    than a setting the simulator rejected (`core/exceptions.py`). Every value is
+    inside its range, so what is refused is the type and nothing else, and each
+    refusal names the value it was handed in as.
+    """
+
+    system = AgentUptakeSystem.default()
+    settings = system.equation_settings()
+    venous = system.patient.venous_blood
+    fat = system.patient.fat
+    vector_before = system.state_vector()
+    step = SimulationStep(0.1)
+
+    with pytest.raises(TypeError, match="^inspired_partial_pressure_fraction of 0.0 was not built"):
+        system.circuit.set_inspired_partial_pressure_fraction(0.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^delivered_concentration_percent of 2.0 was not built"):
+        system.circuit.set_delivered_concentration_percent(2.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^alveolar partial_pressure_fraction of 0.0 was not built"):
+        system.alveoli.set_partial_pressure_fraction(0.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^venous partial_pressure_fraction of 0.0 was not built"):
+        venous.set_partial_pressure_fraction(0.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^fat partial_pressure_fraction of 0.0 was not built"):
+        fat.set_partial_pressure_fraction(0.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^tissue_return_partial_pressure_fraction of 0.0 was"):
+        venous.advance(0.0, step)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^arterial_partial_pressure_fraction of 0.0 was not"):
+        fat.advance(0.0, step)  # type: ignore[arg-type]
+
+    assert system.state_vector() == vector_before
+
+    with pytest.raises(TypeError, match="^delivered_concentration_percent of 2.0 was not built"):
+        BreathingCircuit(delivered_concentration_percent=2.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^max_delivered_concentration_percent of 8.0 was not"):
+        BreathingCircuit(max_delivered_concentration_percent=8.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^inspired_partial_pressure_fraction of 0.0 was not built"):
+        BreathingCircuit(inspired_partial_pressure_fraction=0.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^delivered_concentration_percent of 2.0 was not built"):
+        replace(settings, delivered_concentration_percent=2.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^max_delivered_concentration_percent of 8.0 was not"):
+        replace(settings, max_delivered_concentration_percent=8.0)  # type: ignore[arg-type]
+
+
+def test_a_percent_past_100_is_refused_where_it_is_built_and_the_maximum_where_it_is_set() -> None:
+    """The two refusals a dial meets, each in its own place.
+
+    A percent's range is the constructor's, so `Percent(150.0)` never reaches
+    the circuit; the vaporizer maximum is a relation the circuit holds, so it is
+    the circuit that refuses 50% against 8% (`PL-BBMG`). Neither moves the dial.
     """
 
     circuit = BreathingCircuit(max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT)
 
-    circuit.set_delivered_concentration_percent(0.02)  # type: ignore[arg-type]
-
-    assert circuit.delivered_concentration_percent == 0.02
-
-
-def test_the_runtime_guards_are_unchanged_by_any_of_this() -> None:
-    """A `NewType` is erased at runtime, so the refusals still come from code.
-
-    Stated as a test because the module docstring says it: reading
-    `Percent` as something that validates is the way this change could be
-    mistaken for more than it is.
-    """
-
-    circuit = BreathingCircuit(max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT)
-
-    with pytest.raises(SimulationConfigurationError, match="must be between 0 and 100"):
+    with pytest.raises(SimulationConfigurationError, match="percent of 150.0 is outside 0 to 100"):
         circuit.set_delivered_concentration_percent(Percent(150.0))
 
     with pytest.raises(SimulationConfigurationError, match="exceeds the vaporizer maximum"):

@@ -2,6 +2,7 @@ from dataclasses import replace
 
 import pytest
 
+from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
     load_reference_adult_parameters,
@@ -66,9 +67,9 @@ def test_allocates_cardiac_output_to_tissues() -> None:
 
 def test_tissue_return_is_flow_weighted() -> None:
     patient = _build_patient()
-    patient.vessel_rich.set_partial_pressure_fraction(0.08)
-    patient.muscle.set_partial_pressure_fraction(0.04)
-    patient.fat.set_partial_pressure_fraction(0.01)
+    patient.vessel_rich.set_partial_pressure_fraction(Fraction(0.08))
+    patient.muscle.set_partial_pressure_fraction(Fraction(0.04))
+    patient.fat.set_partial_pressure_fraction(Fraction(0.01))
 
     expected = 0.76 * 0.08 + 0.18 * 0.04 + 0.06 * 0.01
 
@@ -85,10 +86,10 @@ def _load_patient_stores(patient: PatientCompartments) -> None:
     it, neither of which needs a trajectory to reach a loaded state.
     """
 
-    patient.vessel_rich.set_partial_pressure_fraction(0.08)
-    patient.muscle.set_partial_pressure_fraction(0.04)
-    patient.fat.set_partial_pressure_fraction(0.01)
-    patient.venous_blood.set_partial_pressure_fraction(0.05)
+    patient.vessel_rich.set_partial_pressure_fraction(Fraction(0.08))
+    patient.muscle.set_partial_pressure_fraction(Fraction(0.04))
+    patient.fat.set_partial_pressure_fraction(Fraction(0.01))
+    patient.venous_blood.set_partial_pressure_fraction(Fraction(0.05))
 
 
 def test_the_patient_side_exposes_no_step_of_its_own() -> None:

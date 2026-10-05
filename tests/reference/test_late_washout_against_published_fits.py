@@ -203,6 +203,7 @@ from test_published_wash_in_and_elimination import (
 )
 
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -778,8 +779,10 @@ def _metabolise(system: AgentUptakeSystem, rate_constant_per_min: float) -> floa
     vessel_rich = system.patient.vessel_rich
     before = vessel_rich.agent_amount_l
     vessel_rich.set_partial_pressure_fraction(
-        vessel_rich.partial_pressure_fraction
-        * math.exp(-rate_constant_per_min * SIMULATION_STEP_S / SECONDS_PER_MINUTE)
+        Fraction(
+            vessel_rich.partial_pressure_fraction
+            * math.exp(-rate_constant_per_min * SIMULATION_STEP_S / SECONDS_PER_MINUTE)
+        )
     )
     removed = before - vessel_rich.agent_amount_l
     system.agent_simulation_validator.record_external_agent_transfer(
@@ -842,7 +845,7 @@ def _washout_curve(
     agent_taken_up_l = system.patient.total_agent_amount_l + metabolised
     muscle_agent_at_discontinuation_l = system.patient.muscle.agent_amount_l
 
-    system.set_delivered_concentration_percent(0.0)
+    system.set_delivered_concentration_percent(Percent(0.0))
     if condition == "open circuit":
         _discard_circuit_contents(system)
 

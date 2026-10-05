@@ -234,7 +234,7 @@ def test_rejects_a_flow_handed_in_as_a_bare_float(flow: Flow) -> None:
 def test_rejects_a_dial_above_the_vaporizer_maximum() -> None:
     """`PL-BBMG`, reproduced 2026-10-04: 20% sevoflurane against an 8% maximum built a record.
 
-    The record held the dial alone and bounded it at `require_percent`'s 100,
+    The record held the dial alone and bounded it at the 100 every percent obeys,
     so a dial the circuit refuses was accepted by the record a run is built
     from. It refuses now, in the circuit's own sentence, and the first percent
     past the maximum is refused with it.
@@ -268,7 +268,9 @@ def test_rejects_a_vaporizer_maximum_no_vaporizer_has(maximum: float) -> None:
     with pytest.raises(SimulationConfigurationError, match="max_delivered_concentration_percent"):
         _settings(
             delivered_concentration_percent=Percent(0.0),
-            max_delivered_concentration_percent=maximum,
+            max_delivered_concentration_percent=Percent(
+                maximum, name="max_delivered_concentration_percent"
+            ),
         )
 
 
@@ -541,11 +543,9 @@ def test_a_zero_tissue_flow_leaves_that_group_alone() -> None:
             0.0,
             "^blood_gas_partition_coefficient must be positive and finite$",
         ),
-        (
-            "delivered_concentration_percent",
-            150.0,
-            "^delivered_concentration_percent must be between 0 and 100$",
-        ),
+        # A dial past 100% stood here until `PL-4R3W`. It can no longer be
+        # built as the `Percent` the record takes, so it never reaches the
+        # record; `test_concentration.py` pins that refusal on the constructor.
     ],
 )
 def test_rejects_a_parameter_set_that_could_not_describe_a_patient(
@@ -637,7 +637,7 @@ def test_equal_settings_compare_equal_so_the_propagator_cache_is_keyed_by_value(
     """
 
     assert _settings() == _settings()
-    assert _settings() != _settings(delivered_concentration_percent=3.0)
+    assert _settings() != _settings(delivered_concentration_percent=Percent(3.0))
 
     fatter = tuple(
         TissueGroupEquationSettings(

@@ -38,6 +38,7 @@ from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValid
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit, DeliverableFreshGasFlowRange
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.governing_equations import (
     TISSUE_GROUP_COUNT,
     TissueGroupEquationSettings,
@@ -77,7 +78,7 @@ def _breathing_circuit() -> BreathingCircuit:
     """
 
     return BreathingCircuit(
-        inspired_partial_pressure_fraction=0.013,
+        inspired_partial_pressure_fraction=Fraction(0.013),
         deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
             minimum_l_min=0.5, maximum_l_min=8.0
         ),
@@ -436,7 +437,10 @@ def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
             lambda s: setattr(s.patient.venous_blood, "blood_gas_partition_coefficient", 0.9),
             "blood:gas partition coefficient",
         ),
-        (lambda s: s.set_delivered_concentration_percent(3.0), "delivered concentration percent"),
+        (
+            lambda s: s.set_delivered_concentration_percent(Percent(3.0)),
+            "delivered concentration percent",
+        ),
         (
             lambda s: setattr(s.circuit, "max_delivered_concentration_percent", 10.0),
             "the vaporizer maximum, which no equation reads and the record carries (PL-BBMG)",

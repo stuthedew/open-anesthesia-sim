@@ -89,6 +89,7 @@ from random import Random
 
 import pytest
 
+from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
@@ -107,10 +108,10 @@ from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstan
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 CHANGES: tuple[tuple[float, str, float], ...] = (
-    (30.0, "set_delivered_concentration_percent", 4.0),
+    (30.0, "set_delivered_concentration_percent", Percent(4.0)),
     (120.0, "set_alveolar_ventilation", AlveolarVentilation(6.0)),
     (450.0, "set_fresh_gas_flow", FreshGasFlow(2.0)),
-    (900.0, "set_delivered_concentration_percent", 1.0),
+    (900.0, "set_delivered_concentration_percent", Percent(1.0)),
 )
 """When each control moves, and to what, in the run every test here uses.
 

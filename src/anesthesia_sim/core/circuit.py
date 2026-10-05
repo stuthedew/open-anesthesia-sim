@@ -34,7 +34,13 @@ below 0.5 L/min must not move the model's floor for every other machine.
 from dataclasses import dataclass
 from math import exp, inf
 
-from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
+from anesthesia_sim.core.concentration import (
+    Fraction,
+    Percent,
+    fraction_from_percent,
+    require_fraction,
+    require_percent,
+)
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -44,9 +50,7 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
-    require_fraction,
     require_nonnegative_finite,
-    require_percent,
     require_positive_finite,
     require_within_vaporizer_maximum,
 )
@@ -195,7 +199,15 @@ class BreathingCircuit:
     circuit physics). Every
     agent-aware path builds the circuit through
     `AgentUptakeSystem.for_agent()`, which sets both the real limit and
-    that agent's own starting dial from the agent data file.
+    that agent's own starting dial from the agent data file. A dial left at
+    that default can carry a computed fraction a rounding past 1, which
+    `Fraction` refuses where it is built; `core/concentration.py` records
+    that as the type's limit (`PL-4R3W`).
+
+    Each percent and fraction field is checked for its type when the circuit
+    is built and when it is set, and not for its range: a `Percent` or a
+    `Fraction` was checked against 0 to 100 or 0 to 1 when it was built, so
+    holding one is the proof (`PL-4R3W`).
 
     `deliverable_fresh_gas_flow_range` is the machine's counterpart of that
     dial maximum, and carries its `None` the same way: "no machine range
@@ -416,7 +428,17 @@ class BreathingCircuit:
         self.fresh_gas_flow_l_min = fresh_gas_flow_l_min
 
     def set_delivered_concentration_percent(self, delivered_concentration_percent: Percent) -> None:
-        """Set the vaporizer dial in the percent it reads, rejecting what it cannot deliver."""
+        """Set the vaporizer dial in the percent it reads, rejecting what it cannot deliver.
+
+        Raises:
+            TypeError: the dial was not built as a `Percent`, which is what
+                checks it against 0 to 100 (`core/concentration.py`) - a
+                `Fraction` included, which is told to convert. Nothing is
+                written when it is refused.
+            SimulationConfigurationError: the dial is above
+                `max_delivered_concentration_percent`. Nothing is written
+                when it is refused.
+        """
 
         require_percent("delivered_concentration_percent", delivered_concentration_percent)
         self._require_deliverable(delivered_concentration_percent)
@@ -434,8 +456,9 @@ class BreathingCircuit:
         nothing.
 
         Raises:
-            SimulationConfigurationError: the fraction is not a finite number
-                in [0, 1]. Nothing is written when it is refused.
+            TypeError: the fraction was not built as a `Fraction`, which is
+                what checks it against 0 to 1 (`core/concentration.py`).
+                Nothing is written when it is refused.
         """
 
         require_fraction("inspired_partial_pressure_fraction", inspired_partial_pressure_fraction)

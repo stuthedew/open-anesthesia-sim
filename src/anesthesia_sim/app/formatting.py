@@ -249,10 +249,12 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
     `<0.01%` says only what is known, and leaves `0.00%` meaning what it
     should, that nothing has arrived yet.
 
-    A negative fraction is deliberately not given the below-resolution
-    form. The compartment guards make one impossible, so if one ever
-    reaches here it must stay visible as the anomaly it is rather than
-    be absorbed into a plausible-looking reading.
+    A negative fraction is never given the below-resolution form, which
+    would absorb it into a plausible-looking reading. No `Fraction` can
+    hold one, so a negative reaching here came from a caller `mypy` does
+    not read, and `percent_from_fraction` refuses it before anything is
+    rendered. Until `PL-4R3W` it was rendered with its sign instead, as
+    the anomaly it is; refusing it is the stronger form of the same rule.
 
     Args:
         partial_pressure_fraction: Dimensionless partial-pressure-equivalent
@@ -261,6 +263,10 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
     Returns:
         Concentration as percent at the displayed resolution, or the
         below-resolution form for a positive value that rounds to zero.
+
+    Raises:
+        SimulationConfigurationError: the value is outside 0 to 1, which
+            no `Fraction` holds (`core/concentration.py`).
     """
 
     percent = percent_from_fraction(partial_pressure_fraction)
@@ -312,6 +318,8 @@ def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percent) -> M
             plausible-looking number — the loader's `PositivePercent`
             already makes one unreachable from a shipped data file, so
             one arriving here means something upstream is wrong.
+        SimulationConfigurationError: the fraction is outside 0 to 1,
+            which no `Fraction` holds, as `format_percent` refuses it.
     """
 
     if not mac_percent > 0.0:
@@ -326,8 +334,9 @@ def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percen
     The same three rules `format_percent` follows, for the same reasons,
     at this unit's own derived resolution: round rather than truncate,
     mark a positive value that rounds to zero as below the resolution
-    instead of showing it as `0.00`, and leave an impossible negative
-    visible as the anomaly it is.
+    instead of showing it as `0.00`, and refuse an impossible negative
+    rather than absorb it, which `mac_multiple` does before anything is
+    rendered.
 
     The below-resolution form matters more here than in percent, not
     less. 0.01 MAC is 0.02 percentage points of sevoflurane and 0.06 of
@@ -349,6 +358,8 @@ def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percen
 
     Raises:
         ValueError: If `mac_percent` is not strictly positive.
+        SimulationConfigurationError: the fraction is outside 0 to 1, as
+            `mac_multiple` refuses it.
     """
 
     return render_mac_multiple(mac_multiple(partial_pressure_fraction, mac_percent))
@@ -1037,9 +1048,11 @@ def format_agent_volume(litres: float) -> str:
     below the resolution rather than showing it as `0.0 L`, because in the
     first minute of a run the exhaust and the stored amounts are real and
     small, and `0.0 L` there would assert that nothing has left the circuit
-    when the model says it has; and leave an impossible negative visible as
-    the anomaly it is rather than absorb it into a plausible reading. Exactly
-    zero reads as zero, which is what it is before a run starts.
+    when the model says it has; and never absorb an impossible negative into
+    a plausible reading. An amount has no checked type to refuse one, as a
+    `Fraction` refuses a negative for `format_percent`, so this leaves it
+    visible as the anomaly it is. Exactly zero reads as zero, which is what
+    it is before a run starts.
 
     Args:
         litres: The amount, in litres of equivalent pure agent gas.

@@ -281,8 +281,10 @@ class AgentUptakeSystem:
                 (`core/simulation_step.py`). Checked before anything is
                 changed, so the system is untouched.
             SimulationNumericalError: the step began and could not be
-                completed — a compartment guard rejected a value produced
-                by the step itself. The exact propagator cannot reach this
+                completed — a value the step itself produced was refused, a
+                fraction where `_write_state_vector` builds it as a
+                `Fraction`, under the name of the compartment that would have
+                held it. The exact propagator cannot reach this
                 for any step size, because its matrix is Metzler and the
                 propagator therefore entrywise nonnegative; it is cover for a
                 model extension whose matrix is not a pure transfer system.
@@ -626,8 +628,8 @@ class AgentUptakeSystem:
                 canonical path, is not `STATE_SIZE` long, holds a non-finite
                 value, or does not carry exactly one in `UNIT_STATE`;
                 `initial_agent_l` or either cumulative total is negative or not
-                finite; or a fraction is outside what the compartment holding
-                it represents.
+                finite; or a fraction is outside 0 to 1, which is refused
+                under the name of the compartment that would hold it.
         """
 
         require_canonical_state(state)
@@ -653,17 +655,19 @@ class AgentUptakeSystem:
     def _write_state_vector(self, state: tuple[float, ...]) -> None:
         """Write an advanced trajectory back into the compartments.
 
-        Each compartment's own validated setter is used, so a fraction the
-        model could not represent is refused by the compartment that owns it
-        rather than stored. `advance()` restates such a refusal as
-        `SimulationNumericalError` and rolls the step back, which is the
-        required behavior: an exact solution of the equations cannot leave
-        the physical range, so a value that does is evidence the run is no
-        longer trustworthy rather than a number to display.
+        Each fraction is built as a `Fraction`, under the name of the
+        compartment that will hold it, and handed to that compartment's own
+        setter, so a fraction the model could not represent is refused -
+        naming the compartment - rather than stored (`PL-SPN6`, `PL-4R3W`).
+        `advance()` restates such a refusal as `SimulationNumericalError` and
+        rolls the step back, which is the required behavior: an exact solution
+        of the equations cannot leave the physical range, so a value that does
+        is evidence the run is no longer trustworthy rather than a number to
+        display.
 
-        This is also the one place a `Fraction` is asserted rather than
-        carried: the state vector is nine bare floats, six of them
-        concentrations and three of them not, and the positions are what
+        This is also where a step's fractions are built, and so checked,
+        rather than carried: the state vector is nine bare floats, six of
+        them concentrations and three of them not, and the positions are what
         separate them. `core/concentration.py` says what the type does and
         does not guarantee.
 
@@ -678,12 +682,23 @@ class AgentUptakeSystem:
         the entry point for a state this system did not itself produce.
         """
 
-        self.circuit.set_inspired_partial_pressure_fraction(Fraction(state[INSPIRED_FRACTION]))
-        self.alveoli.set_partial_pressure_fraction(Fraction(state[ALVEOLAR_FRACTION]))
-        self.patient.venous_blood.set_partial_pressure_fraction(Fraction(state[VENOUS_FRACTION]))
+        self.circuit.set_inspired_partial_pressure_fraction(
+            Fraction(state[INSPIRED_FRACTION], name="inspired_partial_pressure_fraction")
+        )
+        self.alveoli.set_partial_pressure_fraction(
+            Fraction(state[ALVEOLAR_FRACTION], name="alveolar partial_pressure_fraction")
+        )
+        self.patient.venous_blood.set_partial_pressure_fraction(
+            Fraction(state[VENOUS_FRACTION], name="venous partial_pressure_fraction")
+        )
 
         for offset, tissue in enumerate(self.patient.tissues):
-            tissue.set_partial_pressure_fraction(Fraction(state[FIRST_TISSUE_FRACTION + offset]))
+            tissue.set_partial_pressure_fraction(
+                Fraction(
+                    state[FIRST_TISSUE_FRACTION + offset],
+                    name=f"{tissue.name} partial_pressure_fraction",
+                )
+            )
 
     def reset(self) -> None:
         """Clear dynamic state and restart agent accounting.

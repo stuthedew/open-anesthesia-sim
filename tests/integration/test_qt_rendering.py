@@ -122,7 +122,7 @@ def dashboard(application: QApplication) -> Iterator[SimulationView]:
     _advance(controller, 300.0)
     controller.begin_control_adjustment()
     controller.set_delivered_concentration_percent(
-        controller.snapshot().delivered_concentration_percent * 1.5
+        Percent(controller.snapshot().delivered_concentration_percent * 1.5)
     )
     _advance(controller, 180.0)
     view = SimulationView((controller,))

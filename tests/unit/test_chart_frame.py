@@ -407,12 +407,12 @@ def test_a_crossing_above_the_ceiling_is_not_drawn() -> None:
 
 def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> None:
     controller = SimulationController()
-    controller.set_delivered_concentration_percent(2.0)
+    controller.set_delivered_concentration_percent(Percent(2.0))
     controller.start()
     _advance(controller, 600.0)
     # Shutting the vaporizer lets the circuit fall below the alveoli: the
     # patient returns agent, which is elimination and not wash-in.
-    controller.set_delivered_concentration_percent(0.0)
+    controller.set_delivered_concentration_percent(Percent(0.0))
     _advance(controller, 300.0)
     frame = assemble_chart_frame(
         [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX

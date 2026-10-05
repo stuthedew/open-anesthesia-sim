@@ -83,7 +83,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import isfinite
 
-from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
+from anesthesia_sim.core.concentration import (
+    Fraction,
+    Percent,
+    fraction_from_percent,
+    require_percent,
+)
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.matrix_exponential import Matrix
 from anesthesia_sim.core.supported_ranges import (
@@ -97,7 +102,6 @@ from anesthesia_sim.core.supported_ranges import (
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_nonnegative_finite,
-    require_percent,
     require_positive_finite,
     require_within_vaporizer_maximum,
 )
@@ -318,8 +322,8 @@ class UptakeEquationSettings:
     carry it: a dial is deliverable only against a maximum, and the check
     belongs to a record holding both, which is where
     `.claude/rules/core-domain.md` stops the checked-type pattern. Until
-    `PL-BBMG` this record held the dial alone and bounded it at
-    `require_percent`'s 100, so a record rebuilt with `dataclasses.replace`
+    `PL-BBMG` this record held the dial alone and bounded it at the 100
+    every percent is held to, so a record rebuilt with `dataclasses.replace`
     to 20% sevoflurane against an 8% maximum opened a run and answered a
     precise-looking trace. It carries `max_delivered_concentration_percent`
     now, required and with no default, and refuses a dial above it through
@@ -329,17 +333,22 @@ class UptakeEquationSettings:
     record defaulting the same way would be the gap this closes with a field
     added. The matrix never reads the maximum; `AgentUptakeSystem` reads it
     off the circuit into every record it builds, and into the propagator
-    cache key with the rest of the record.
+    cache key with the rest of the record. Both are `Percent`s, checked
+    against 0 to 100 when they were built (`core/concentration.py`), so
+    this checks their type and not that range again (`PL-4R3W`); what it
+    still checks is the relation, and that the maximum is above zero.
 
     Raises:
         SimulationConfigurationError: a volume or the blood:gas partition
             coefficient is not positive and finite, the vaporizer maximum is
-            not a positive percent, the delivered concentration is not a
-            percent in [0, 100] or is above the vaporizer maximum, the number
-            of tissue groups is not the three `patient.py` builds, or the
-            tissue flows do not sum to cardiac output.
+            zero, the delivered concentration is above the vaporizer
+            maximum, the number of tissue groups is not the three
+            `patient.py` builds, or the tissue flows do not sum to cardiac
+            output.
         TypeError: a flow was not built as its checked type, in
-            `core/supported_ranges.py`, or the record was built without a
+            `core/supported_ranges.py`, the delivered concentration or the
+            vaporizer maximum was not built as a `Percent`, in
+            `core/concentration.py`, or the record was built without a
             vaporizer maximum.
     """
 

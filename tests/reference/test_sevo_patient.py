@@ -4,6 +4,7 @@ import pytest
 
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.parameters import (
     AgentParameters,
     load_reference_adult_parameters,
@@ -168,7 +169,7 @@ def _build_system_with_blood_gas_coefficient(
 
 def test_no_delivered_agent_keeps_every_store_zero() -> None:
     system = AgentUptakeSystem.default()
-    system.set_delivered_concentration_percent(0.0)
+    system.set_delivered_concentration_percent(Percent(0.0))
 
     _run_for(system, duration_s=300.0, simulation_step_s=0.1)
 
@@ -386,7 +387,7 @@ def test_long_wash_in_and_washout_validate_agent_simulation() -> None:
 
     _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 
-    system.set_delivered_concentration_percent(0.0)
+    system.set_delivered_concentration_percent(Percent(0.0))
 
     _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 
@@ -448,7 +449,7 @@ def test_washout_never_increases_total_system_mass() -> None:
 
     assert loaded_agent_l > 0.0
 
-    system.set_delivered_concentration_percent(0.0)
+    system.set_delivered_concentration_percent(Percent(0.0))
 
     previous_agent_l = loaded_agent_l
     step_count = round(WASHOUT_DURATION_S / WASHOUT_STEP_S)
@@ -505,7 +506,7 @@ def test_equilibrium_produces_no_net_internal_transfer() -> None:
     system = AgentUptakeSystem.default()
     system.set_fresh_gas_flow(FreshGasFlow(0.0))
 
-    equilibrium_fraction = 0.05
+    equilibrium_fraction = Fraction(0.05)
 
     system.circuit.set_agent_amount(system.circuit.circuit_volume_l * equilibrium_fraction)
     system.alveoli.set_partial_pressure_fraction(equilibrium_fraction)

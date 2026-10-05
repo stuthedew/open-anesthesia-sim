@@ -74,3 +74,9 @@ careful repair, so the numbers are struck and the symbols kept, which is the
 form a rename cannot silently break and `grep` can still find. Two of the eight
 symbols had drifted too, and both are marked above; the `23`/`15` census itself
 was not re-derived, and belongs to whoever takes this item.
+
+**Drift, 2026-10-05.** `require_fraction` left `core/validation.py` with
+`PL-4R3W`, so the census above is one more entry stale. The function of that
+name now in `core/concentration.py` is a different check - whether a value was
+built as a `Fraction`, not its range - and its docstring names the `TypeError`
+it raises.
