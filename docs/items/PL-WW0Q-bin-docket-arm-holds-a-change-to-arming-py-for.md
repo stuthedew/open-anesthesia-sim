@@ -9,6 +9,7 @@ feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-25
+recurrences: 2026-10-05 PL-552M withdrawn 2026-10-05 PL-552M
 ---
 
 **Problem.** bin/docket arm holds a change to arming.py for a read but arms one to what its answer is read through - vcs.changed_path_args and default_base, claims.holdings, cli.cmd_arm and the test_arm_ tests - so the gate can still be loosened unread from beside it
