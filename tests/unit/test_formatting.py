@@ -54,6 +54,7 @@ from anesthesia_sim.app.formatting import (
 )
 from anesthesia_sim.app_metadata import APP_BUILD, APP_BUILD_VERSION, APP_VERSION
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
@@ -165,17 +166,20 @@ def test_format_percent_marks_a_value_below_the_resolution() -> None:
     assert format_percent(5.1e-5) == "0.01%"
 
 
-def test_format_percent_leaves_an_impossible_negative_visible() -> None:
-    """A negative fraction cannot occur, and must not be disguised if it does.
+@pytest.mark.parametrize("impossible", [-1e-8, -0.02, 1.0000000000000002])
+def test_format_percent_refuses_an_impossible_fraction(impossible: float) -> None:
+    """A fraction outside 0 to 1 cannot occur, and must not be disguised if it does.
 
-    The compartment guards reject a negative amount, so reaching here means
-    something upstream is wrong. The below-resolution form would render that
-    as an ordinary small positive reading; `CLAUDE.md` requires the obvious
-    failure instead.
+    No `Fraction` can hold one, so reaching here means a caller `mypy` does not
+    read handed in a bare float, and something upstream is wrong. The
+    below-resolution form would render a small negative as an ordinary small
+    positive reading, and a value a rounding past 1 would read as `100.00%`;
+    `CLAUDE.md` requires the obvious failure instead. Until `PL-4R3W` a negative
+    was rendered with its sign, and the refusal is the stronger form of that.
     """
 
-    assert format_percent(-1e-8) == "-0.00%"
-    assert format_percent(-0.02) == "-2.00%"
+    with pytest.raises(SimulationConfigurationError, match="outside 0 to 100"):
+        format_percent(impossible)
 
 
 def test_format_percent_states_the_below_resolution_form_from_the_constant() -> None:
@@ -346,16 +350,17 @@ def test_format_mac_multiple_marks_a_value_below_the_resolution() -> None:
     assert format_mac_multiple(1e-9, 2.0) == expected
 
 
-def test_format_mac_multiple_leaves_an_impossible_negative_visible() -> None:
-    """A negative is an upstream defect and must stay legible as one.
+@pytest.mark.parametrize("impossible", [-0.02, -1e-9])
+def test_format_mac_multiple_refuses_an_impossible_negative(impossible: float) -> None:
+    """A negative is an upstream defect and must not be read as a value.
 
-    Same rule as `format_percent`, for the same reason: the compartment
-    guards make a negative unreachable, so one arriving here must not be
-    absorbed into the plausible-looking below-resolution form.
+    Same rule as `format_percent`, for the same reason: no `Fraction` holds a
+    negative, so one arriving here is refused before it can be absorbed into
+    the plausible-looking below-resolution form.
     """
 
-    assert format_mac_multiple(-0.02, 2.0).startswith("-")
-    assert not format_mac_multiple(-1e-9, 2.0).startswith("<")
+    with pytest.raises(SimulationConfigurationError, match="outside 0 to 100"):
+        format_mac_multiple(impossible, 2.0)
 
 
 def test_a_non_positive_mac_refuses_to_produce_a_number() -> None:

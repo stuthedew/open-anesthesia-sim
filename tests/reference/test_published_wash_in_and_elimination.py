@@ -302,6 +302,7 @@ import pytest
 
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
@@ -699,7 +700,7 @@ def _configured_system(
         )
 
     system.set_fresh_gas_flow(FreshGasFlow(fresh_gas_flow_l_min))
-    system.set_delivered_concentration_percent(delivered_percent)
+    system.set_delivered_concentration_percent(Percent(delivered_percent))
     system.set_alveolar_ventilation(
         AlveolarVentilation(
             patient_parameters.default_alveolar_ventilation_l_min
@@ -884,7 +885,7 @@ def _eliminate(
     )
     alveolar_fraction_at_discontinuation = system.alveoli.partial_pressure_fraction
 
-    system.set_delivered_concentration_percent(0.0)
+    system.set_delivered_concentration_percent(Percent(0.0))
 
     for _ in range(round(ELIMINATION_DURATION_S / SIMULATION_STEP_S)):
         system.advance(SIMULATION_STEP_S)
@@ -918,7 +919,7 @@ def _discard_circuit_contents(system: AgentUptakeSystem) -> None:
 
     discarded_agent_l = system.circuit.agent_amount_l
 
-    system.circuit.set_inspired_partial_pressure_fraction(0.0)
+    system.circuit.set_inspired_partial_pressure_fraction(Fraction(0.0))
     system.agent_simulation_validator.record_external_agent_transfer(
         delivered_agent_l=0.0, exhausted_agent_l=discarded_agent_l
     )
@@ -1032,7 +1033,7 @@ def _eliminate_without_rebreathing(
     )
     alveolar_fraction_at_discontinuation = system.alveoli.partial_pressure_fraction
 
-    system.set_delivered_concentration_percent(0.0)
+    system.set_delivered_concentration_percent(Percent(0.0))
 
     if elimination_fresh_gas_flow_l_min is not None:
         system.set_fresh_gas_flow(FreshGasFlow(elimination_fresh_gas_flow_l_min))

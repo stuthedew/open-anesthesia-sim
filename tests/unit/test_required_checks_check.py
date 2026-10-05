@@ -25,6 +25,7 @@ it needs no network because it asserts only the tree half.
 
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -111,12 +112,253 @@ def test_pull_request_target_counts(tmp_path: Path) -> None:
     """It reports onto the pull request exactly as `pull_request` does."""
     directory = _workflows(
         tmp_path,
-        label=(
-            "on:\n  pull_request_target:\n    types: [opened]\n\n"
-            "jobs:\n  triage:\n    runs-on: ubuntu-latest\n"
-        ),
+        label="on:\n  pull_request_target:\n\njobs:\n  triage:\n    runs-on: ubuntu-latest\n",
     )
     assert [job.check_name for job in rcc.reporting_jobs(directory)] == ["triage"]
+
+
+# --- the parser: every spelling of `on:`, read once (`PL-848V`) ---------------
+
+
+def _events(on: str) -> set[str]:
+    """The events `triggers` reads off a workflow opening with `on`."""
+    return set(rcc.triggers((on + "jobs:\n").split("\n")))
+
+
+def _reported(directory: Path, branch: str | None = None) -> list[str]:
+    return [job.check_name for job in rcc.reporting_jobs(directory, branch)]
+
+
+@pytest.mark.parametrize(
+    "on", ["on:\n  - push\n  - pull_request\n", "on:\n- push\n- pull_request\n"]
+)
+def test_a_block_sequence_on_names_its_events(tmp_path: Path, on: str) -> None:
+    """A list under `on:`, indented or at the key's own indentation (YAML 1.2.2 § 8.2.1).
+
+    Read as no events, so a pull-request workflow written this way dropped out
+    of the reconciliation and the check passed without it (`PL-848V`).
+    """
+    assert _events(on) == {"push", "pull_request"}
+    directory = _workflows(tmp_path, quality=on + "jobs:\n  checks:\n    runs-on: x\n")
+    assert _reported(directory) == ["checks"]
+
+
+@pytest.mark.parametrize(
+    "on",
+    [
+        "on: {push: {branches: [main]}, pull_request: {branches: [main]}}\n",
+        "on:\n  {push: , pull_request}\n",
+    ],
+)
+def test_a_flow_mapping_on_names_its_events(tmp_path: Path, on: str) -> None:
+    """A flow mapping's keys are the events, and an event's own mapping its filters (§ 7.4.2).
+
+    Read as one event named for the mapping's whole text, so no pull-request
+    event was found (`PL-848V`). `{push: , pull_request}` leaves both values
+    out, which YAML reads as null.
+    """
+    assert _events(on) == {"push", "pull_request"}
+    directory = _workflows(tmp_path, quality=on + "jobs:\n  checks:\n    runs-on: x\n")
+    assert _reported(directory, "main") == ["checks"]
+
+
+@pytest.mark.parametrize(
+    ("on", "events"),
+    [
+        ("on: pull_request  # every pull request\n", {"pull_request"}),
+        ("on: [push, pull_request]  # both\n", {"push", "pull_request"}),
+        ("on:\n  pull_request:  # every pull request\n", {"pull_request"}),
+        ("on:  # what starts this workflow\n  pull_request:\n", {"pull_request"}),
+        ("on: &triggers\n  pull_request:\n", {"pull_request"}),
+        ("on: &triggers\t[push, pull_request]\n", {"push", "pull_request"}),
+    ],
+)
+def test_a_trailing_comment_is_no_part_of_an_event_name(on: str, events: set[str]) -> None:
+    """A `#` after white space opens a comment, which no event name holds (YAML 1.2.2 § 6.6).
+
+    `on: pull_request  # every PR` was the one event `pull_request  # every
+    PR`, so the workflow reported onto no pull request (`PL-PZP7`). An anchor
+    names the value it opens and changes nothing in it (§ 6.9.2).
+    """
+    assert _events(on) == events
+
+
+@pytest.mark.parametrize(
+    "on",
+    ["on:\n  pull_request\n", "on:\n  [push, pull_request]\n", "on:\n  # why\n  pull_request\n"],
+)
+def test_an_on_value_on_the_line_after_the_key_names_its_events(on: str) -> None:
+    """A value may open on the line after its key (§ 8.2.2), which read as no events (`PL-4T49`)."""
+    assert "pull_request" in _events(on)
+
+
+@pytest.mark.parametrize(
+    ("on", "form"),
+    [
+        ("on: >-\n  pull_request\n", "a block scalar (`>`)"),
+        ("on:\n  pull_request:\n    ? paths\n    : ['src/**']\n", "an explicit key (`?`)"),
+        ("on: *triggers\n", "an alias (`*`)"),
+        ("on: !!str pull_request\n", "a tag (`!`)"),
+        ("on: [push,\n  pull_request]\n", "a flow collection carried past its line"),
+        ("on: pull_request\n  push\n", "continues onto a line indented under it"),
+        ("on:\n\tpull_request:\n", "a tab indents this line"),
+        ("on: push\non: pull_request\n", "`on:` appears twice at the top level"),
+        ("on:\n", "`on:` names no event"),
+    ],
+)
+def test_yaml_the_reader_does_not_read_is_refused_by_name(on: str, form: str) -> None:
+    """Refused with its form and line, never read as no trigger (`PL-4T49`, `PL-R417`).
+
+    Read a line at a time, `on: >-` was the event `>-`, and an explicit `?
+    paths` key escaped the path-filter refusal.
+    """
+    with pytest.raises(rcc.Undecidable, match=re.escape(form)) as refused:
+        _events(on)
+    assert refused.value.line is not None
+
+
+def test_a_workflow_indented_four_spaces_reports_its_jobs(tmp_path: Path) -> None:
+    """YAML takes any indentation, so this reads as its two-space twin (`PL-GWQ7`).
+
+    Two spaces were assumed under `on:` and `jobs:`, so this workflow reported
+    nothing; and `_job_name`, assuming them too, read a job's next key as its
+    `name:` carried on. A matrix is still refused at any indentation.
+    """
+    four = (
+        "on:\n    pull_request:\n\njobs:\n    test:\n        name: tests\n"
+        "        runs-on: ubuntu-latest\n    lint:\n        runs-on: ubuntu-latest\n"
+    )
+    directory = _workflows(tmp_path, quality=four)
+    assert sorted(_reported(directory)) == ["lint", "tests"]
+    matrix = four.replace("name: tests\n", "strategy:\n            matrix: {python: ['3.14']}\n")
+    (directory / "quality.yml").write_text(matrix, encoding="utf-8")
+    with pytest.raises(rcc.Undecidable, match="strategy"):
+        rcc.reporting_jobs(directory)
+
+
+@pytest.mark.parametrize(
+    "jobs",
+    [
+        "jobs: {lint: {name: Lint, runs-on: x}}\n",
+        "jobs:\n  {lint: {name: Lint, runs-on: x}}\n",
+        "jobs: {lint: {name: Lint,\n  runs-on: x}}\n",
+        "jobs:\n  lint: {name: Lint, runs-on: x}\n",
+    ],
+)
+def test_a_flow_mapping_under_jobs_is_refused_by_name(tmp_path: Path, jobs: str) -> None:
+    """Read a line at a time, `{lint:` was a job, and a carried `runs-on:` another (`PL-4T49`).
+
+    Either is a check name GitHub never reports, so each form is refused by name.
+    """
+    directory = _workflows(tmp_path, quality="on: pull_request\n" + jobs)
+    with pytest.raises(rcc.Undecidable, match="`jobs:` holds|written on its key's line"):
+        rcc.reporting_jobs(directory)
+
+
+def test_a_tab_indenting_a_job_is_refused_by_name(tmp_path: Path) -> None:
+    """YAML indents with spaces alone (§ 6.1), and a tab read as no indent ended `jobs:` there.
+
+    So `test` and every job after it dropped out of the reconciliation unsaid.
+    """
+    jobs = "jobs:\n  lint:\n    runs-on: x\n\ttest:\n    runs-on: x\n"
+    directory = _workflows(tmp_path, quality="on: pull_request\n" + jobs)
+    with pytest.raises(rcc.Undecidable, match=r"quality\.yml:5: a tab indents this line"):
+        rcc.reporting_jobs(directory)
+
+
+# --- the parser: what a pull-request event's filters leave out (`PL-C72H`) ----
+
+
+def _filtered(tmp_path: Path, filters: str) -> Path:
+    return _workflows(
+        tmp_path, quality=f"on:\n  pull_request:\n{filters}jobs:\n  checks:\n    runs-on: x\n"
+    )
+
+
+@pytest.mark.parametrize(
+    "filters",
+    [
+        "    branches: [release]\n",
+        "    branches-ignore: [main]\n",
+        "    branches-ignore: 'ma*'\n",
+        "    branches:\n      - '**'\n      - '!main'\n",
+    ],
+)
+def test_a_branch_filter_excluding_the_protected_branch_does_not_report(
+    tmp_path: Path, filters: str
+) -> None:
+    """GitHub matches the filter against the branch a pull request targets, and skips the rest.
+
+    "If a workflow is skipped due to branch filtering ... checks associated with
+    that workflow will remain in a "Pending" state" (*Workflow syntax for GitHub
+    Actions*), so a requirement on the job must read as orphaned, not agreed.
+    The filter was not read, and this workflow read as reporting (`PL-C72H`).
+    """
+    assert _reported(_filtered(tmp_path, filters), "main") == []
+
+
+@pytest.mark.parametrize(
+    "filters",
+    [
+        "    branches: [main]\n",
+        "    branches: main\n",
+        "    branches: ['**']\n",
+        "    branches: [ma*]\n",
+        "    branches: ['mai?n', release]\n",
+        "    branches: ['m[a-z]+n']\n",
+        "    branches-ignore: ['releases/**']\n",
+        "    branches: ['**', '!main', main]\n",
+    ],
+)
+def test_a_branch_filter_admitting_the_protected_branch_reports(
+    tmp_path: Path, filters: str
+) -> None:
+    """The cheat sheet's constructs as documented, and a later pattern overriding an earlier one."""
+    assert _reported(_filtered(tmp_path, filters), "main") == ["checks"]
+
+
+@pytest.mark.parametrize(
+    ("filters", "why"),
+    [
+        ("    branches: ['refs/heads/main']\n", "does not document"),
+        ("    branches: ['?main']\n", "does not document"),
+        ("    branches: ['ma[_]n']\n", "does not document"),
+        ("    branches: ['**+']\n", "does not document"),
+        ("    branches: ['!main']\n", "lists only `!` patterns"),
+        ("    branches-ignore: ['!main']\n", "under `branches-ignore:`"),
+        ("    branches: [main]\n    branches-ignore: [dev]\n", "both `branches:`"),
+        ("    tags: [v1]\n", "`tags:`, which GitHub's workflow schema does not allow"),
+        ("    types: [opened, reopened]\n", "without `synchronize`"),
+    ],
+)
+def test_a_filter_that_cannot_be_read_as_reporting_is_refused(
+    tmp_path: Path, filters: str, why: str
+) -> None:
+    """A filter GitHub refuses, a pattern its cheat sheet leaves undocumented, or a commit skipped.
+
+    A `types:` list without `synchronize` runs nothing for a later commit, so
+    that commit's required check hangs as a path filter's does (`PL-NWSK`).
+    """
+    with pytest.raises(rcc.Undecidable, match=re.escape(why)):
+        rcc.reporting_jobs(_filtered(tmp_path, filters), "main")
+
+
+def test_a_branch_filter_with_no_branch_to_match_is_refused(tmp_path: Path) -> None:
+    """In or out would be a guess, so it is refused (`PL-C72H`)."""
+    with pytest.raises(rcc.Undecidable, match="no branch was named"):
+        rcc.reporting_jobs(_filtered(tmp_path, "    branches: [main]\n"))
+
+
+def test_one_event_running_on_every_pull_request_decides(tmp_path: Path) -> None:
+    """Its check runs report on each pull request, whatever the other event's filter."""
+    directory = _workflows(
+        tmp_path,
+        quality=(
+            "on:\n  pull_request:\n    branches: [release]\n  pull_request_target:\n"
+            "jobs:\n  checks:\n    runs-on: x\n"
+        ),
+    )
+    assert _reported(directory, "main") == ["checks"]
 
 
 def test_the_check_name_is_the_display_name_where_a_job_declares_one(tmp_path: Path) -> None:

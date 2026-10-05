@@ -5,6 +5,7 @@ import pytest
 
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.alveolar import AlveolarCompartment
+from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
     load_reference_adult_parameters,
@@ -27,7 +28,7 @@ def test_rejects_agent_amount_above_alveolar_capacity() -> None:
 
 def test_changing_ventilation_preserves_alveolar_agent() -> None:
     alveoli = AlveolarCompartment()
-    alveoli.set_partial_pressure_fraction(0.05)
+    alveoli.set_partial_pressure_fraction(Fraction(0.05))
     amount_before = alveoli.agent_amount_l
 
     alveoli.set_alveolar_ventilation(AlveolarVentilation(8.0))
@@ -40,7 +41,7 @@ def test_reset_clears_agent_and_preserves_settings() -> None:
     alveoli = AlveolarCompartment(
         gas_volume_l=3.0, alveolar_ventilation_l_min=AlveolarVentilation(5.0)
     )
-    alveoli.set_partial_pressure_fraction(0.05)
+    alveoli.set_partial_pressure_fraction(Fraction(0.05))
 
     alveoli.reset()
 

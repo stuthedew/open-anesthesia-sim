@@ -1,5 +1,6 @@
 import pytest
 
+from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
@@ -44,7 +45,7 @@ def test_reset_preserves_settings_and_clears_dynamic_state() -> None:
     system = AgentUptakeSystem.default()
     system.circuit.set_circuit_volume(5.0)
     system.set_fresh_gas_flow(FreshGasFlow(3.0))
-    system.set_delivered_concentration_percent(6.0)
+    system.set_delivered_concentration_percent(Percent(6.0))
     system.set_alveolar_ventilation(AlveolarVentilation(5.5))
     system.set_cardiac_output(CardiacOutput(6.0))
 

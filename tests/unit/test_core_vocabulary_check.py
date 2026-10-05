@@ -5,9 +5,10 @@ has watched fail is a check that might only be reporting success. The near-miss
 cases matter as much: an identifier that merely *contains* a retired one is
 not a revival, and a rule that matched substrings would report it. `PL-6KNM`
 renamed the live instance this was written against - `core/validation.py`'s
-`require_concentration_fraction`, now `require_fraction` - so the fixture below
-carries the name rather than the tree, which is the right place for it: the
-rule outlives any one identifier that would have tripped it.
+`require_concentration_fraction`, then `require_fraction`, a range guard
+`PL-4R3W` moved into the `Fraction` type - so the fixture below carries the
+name rather than the tree, which is the right place for it: the rule outlives
+any one identifier that would have tripped it.
 
 The fourth direction is the one a check of this shape is uniquely prone to, and
 it is why `analyze` reports an empty tree and an unreadable table as errors: a
@@ -211,9 +212,10 @@ class TestRetiredNames:
         """An identifier containing a retired name is not a revival of it.
 
         `require_concentration_fraction` was `core/validation.py`'s [0, 1]
-        guard until `PL-6KNM` renamed it to `require_fraction`, and it is kept
-        here as the fixture because the rule is about the shape of a match
-        rather than about that one name. `PL-JW9J` is where tightening to a
+        guard until `PL-6KNM` renamed it to `require_fraction`, whose range
+        `PL-4R3W` then moved into the `Fraction` type, and it is kept here as
+        the fixture because the rule is about the shape of a match rather than
+        about that one name. `PL-JW9J` is where tightening to a
         substring match is decided, now that `core/` holds no such identifier.
         """
         report = analyze(

@@ -50,7 +50,7 @@ from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 # vaporizer dial, which is set in percent (`PL-NJPB`). The fraction the two
 # patient compartments are driven with is derived from it, so all three are
 # driven by the same number.
-LOADED_FRACTION = 1e-6
+LOADED_FRACTION = Fraction(1e-6)
 DRIVING_PERCENT = Percent(100.0)
 DRIVING_FRACTION = fraction_from_percent(DRIVING_PERCENT)
 

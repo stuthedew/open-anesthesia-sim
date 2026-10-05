@@ -40,3 +40,11 @@ assert on their message text.
 shape `supported_ranges.py` uses, and a non-finite value is distinguishable
 from an out-of-range one. Consider whether one of the two shapes should be
 shared rather than written twice.
+
+**Narrowed 2026-10-05 by `PL-4R3W`.** The fraction guard has left
+`core/validation.py`: a fraction's range and a percent's are now their
+constructors' (`Fraction` and `Percent` in `core/concentration.py`), and each
+refusal there already carries the value in the shape this item asks for -
+`alveolar partial_pressure_fraction of 1.0000000000000002 is outside 0 to 1,
+the range a fraction of one atmosphere takes (docs/MODEL.md, "Concentrations")`.
+What is left here is `require_positive_finite` and `require_nonnegative_finite`.

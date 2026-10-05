@@ -52,6 +52,7 @@ import pytest
 
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
 from anesthesia_sim.core import supported_ranges
+from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
@@ -323,7 +324,7 @@ def _apply(system: AgentUptakeSystem, point: OperatingPoint) -> None:
     system.set_fresh_gas_flow(FreshGasFlow(point.fresh_gas_flow_l_min))
     system.set_alveolar_ventilation(AlveolarVentilation(point.alveolar_ventilation_l_min))
     system.set_cardiac_output(CardiacOutput(point.cardiac_output_l_min))
-    system.set_delivered_concentration_percent(point.delivered_percent)
+    system.set_delivered_concentration_percent(Percent(point.delivered_percent))
 
 
 def _displayed_states(system: AgentUptakeSystem) -> tuple[float, ...]:

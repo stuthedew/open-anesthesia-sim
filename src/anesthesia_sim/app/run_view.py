@@ -809,7 +809,9 @@ class RunView(QWidget):
 
     def _handle_delivered_concentration_change(self, percent: float) -> None:
         self._apply_setting(
-            lambda: self.controller.set_delivered_concentration_percent(Percent(percent)),
+            lambda: self.controller.set_delivered_concentration_percent(
+                Percent(percent, name="delivered_concentration_percent")
+            ),
             coalesce=True,
         )
 

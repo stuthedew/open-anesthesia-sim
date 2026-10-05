@@ -16,7 +16,7 @@ step the whole system takes, so a compartment stepped on its own takes a plain
 compartment's own step should keep the floor is `PL-WP52`.
 
 **Why a `float` subclass rather than either neighbour in `core/`.** A
-`NewType`, which `concentration.py` uses for `Fraction` and `Percent`, is a
+`NewType`, which `concentration.py` keeps for `MacMultiple` alone, is a
 label the type checker reads and the interpreter discards: calling one returns
 its argument unchanged, so it suits a unit, where every float is a valid
 value, and not a range. A frozen dataclass, the shape `tissue.py`'s states

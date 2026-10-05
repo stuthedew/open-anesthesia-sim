@@ -34,7 +34,13 @@ below 0.5 L/min must not move the model's floor for every other machine.
 from dataclasses import dataclass
 from math import exp, inf
 
-from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
+from anesthesia_sim.core.concentration import (
+    Fraction,
+    Percent,
+    fraction_from_percent,
+    require_fraction,
+    require_percent,
+)
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -44,9 +50,7 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
-    require_fraction,
     require_nonnegative_finite,
-    require_percent,
     require_positive_finite,
     require_within_vaporizer_maximum,
 )
@@ -134,9 +138,23 @@ class BreathingCircuitState:
     changes the volume — but a step that ever did (a bellows model, say)
     would have to capture the volume with it, or the restored fraction would
     put back a different amount of agent than the step started with.
+
+    The fraction is checked for its type when the record is built, so
+    `BreathingCircuit.restore_state()`, which must not raise, is never handed
+    one that `set_inspired_partial_pressure_fraction()` would refuse
+    (`PL-4R3W`).
+
+    Raises:
+        TypeError: the fraction was not built as a `Fraction`, which is what
+            checks it against 0 to 1 (`core/concentration.py`).
     """
 
     inspired_partial_pressure_fraction: Fraction
+
+    def __post_init__(self) -> None:
+        require_fraction(
+            "inspired_partial_pressure_fraction", self.inspired_partial_pressure_fraction
+        )
 
 
 @dataclass(slots=True)
@@ -195,7 +213,15 @@ class BreathingCircuit:
     circuit physics). Every
     agent-aware path builds the circuit through
     `AgentUptakeSystem.for_agent()`, which sets both the real limit and
-    that agent's own starting dial from the agent data file.
+    that agent's own starting dial from the agent data file. A dial set to
+    100% under that default maximum can carry a computed fraction a rounding
+    past 1, which `Fraction` refuses where it is built;
+    `core/concentration.py` records that as the type's limit (`PL-4R3W`).
+
+    Each percent and fraction field is checked for its type when the circuit
+    is built and when it is set, and not for its range: a `Percent` or a
+    `Fraction` was checked against 0 to 100 or 0 to 1 when it was built, so
+    holding one is the proof (`PL-4R3W`).
 
     `deliverable_fresh_gas_flow_range` is the machine's counterpart of that
     dial maximum, and carries its `None` the same way: "no machine range
@@ -379,8 +405,9 @@ class BreathingCircuit:
         Raises:
             SimulationConfigurationError: the volume is not positive and
                 finite, or is too small to hold the agent already in the
-                circuit. Both are checked before anything changes, so a
-                refused volume leaves the circuit exactly as it was.
+                circuit. Both are checked, and the fraction the new volume
+                gives is built, before anything changes, so a refused volume
+                leaves the circuit exactly as it was.
         """
 
         require_positive_finite("circuit_volume_l", circuit_volume_l)
@@ -390,8 +417,11 @@ class BreathingCircuit:
         if stored_agent_l > circuit_volume_l:
             raise SimulationConfigurationError("circuit_volume_l is smaller than stored agent")
 
+        inspired_partial_pressure_fraction = Fraction(
+            stored_agent_l / circuit_volume_l, name="inspired_partial_pressure_fraction"
+        )
         self.circuit_volume_l = circuit_volume_l
-        self.inspired_partial_pressure_fraction = Fraction(stored_agent_l / circuit_volume_l)
+        self.inspired_partial_pressure_fraction = inspired_partial_pressure_fraction
 
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: FreshGasFlow) -> None:
         """Set fresh gas flow, rejecting one the machine's claim on it refuses.
@@ -416,7 +446,17 @@ class BreathingCircuit:
         self.fresh_gas_flow_l_min = fresh_gas_flow_l_min
 
     def set_delivered_concentration_percent(self, delivered_concentration_percent: Percent) -> None:
-        """Set the vaporizer dial in the percent it reads, rejecting what it cannot deliver."""
+        """Set the vaporizer dial in the percent it reads, rejecting what it cannot deliver.
+
+        Raises:
+            TypeError: the dial was not built as a `Percent`, which is what
+                checks it against 0 to 100 (`core/concentration.py`) - a
+                `Fraction` included, which is told to convert. Nothing is
+                written when it is refused.
+            SimulationConfigurationError: the dial is above
+                `max_delivered_concentration_percent`. Nothing is written
+                when it is refused.
+        """
 
         require_percent("delivered_concentration_percent", delivered_concentration_percent)
         self._require_deliverable(delivered_concentration_percent)
@@ -434,8 +474,9 @@ class BreathingCircuit:
         nothing.
 
         Raises:
-            SimulationConfigurationError: the fraction is not a finite number
-                in [0, 1]. Nothing is written when it is refused.
+            TypeError: the fraction was not built as a `Fraction`, which is
+                what checks it against 0 to 1 (`core/concentration.py`).
+                Nothing is written when it is refused.
         """
 
         require_fraction("inspired_partial_pressure_fraction", inspired_partial_pressure_fraction)
@@ -533,9 +574,10 @@ class BreathingCircuit:
         """Restore run state previously captured by `capture_state()`.
 
         Assigns the field directly rather than going through
-        `set_agent_amount()`. The value came off a valid circuit, so there
-        is nothing to re-check, and a rollback that could itself raise
-        would leave exactly the partial state it exists to prevent.
+        `set_agent_amount()`. The value came off a valid circuit, and the
+        record refused anything not built as a `Fraction` when it was made,
+        so there is nothing to re-check, and a rollback that could itself
+        raise would leave exactly the partial state it exists to prevent.
         """
 
         self.inspired_partial_pressure_fraction = state.inspired_partial_pressure_fraction

@@ -3,11 +3,13 @@ id: PL-4R3W
 title: Fraction and Percent are NewTypes, which the interpreter erases, so their ranges of 0 to 1 and 0 to 100 are checked by hand wherever a value enters - require_percent at four sites in circuit.py and governing_equations.py - the hand-checked pattern PL-51B7 replaces with checked types for the supported-range quantities; whether a concentration becomes a checked type too is undecided, because concentration.py chose NewTypes to catch a missing conversion, and whether a fraction computed at a bound can round past it is unmeasured
 priority: P2
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/parameters.py, .claude/rules/core-domain.md, tests, docs/MODEL.md
+touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/run_view.py, tools/core_vocabulary_check.py, .claude/rules/core-domain.md, tests, docs/MODEL.md, docs/ARCHITECTURE.md, docs/items/PL-T137-core-validation-py-rejects-a-value-without.md, docs/items/PL-HXKC-eight-of-the-twenty-three-public-functions-in.md, docs/items/PL-LLMN-require-supported-admits-0-0-shown-as-0-0-l-min.md
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1365
 payoff: whether a concentration is checked once into a type, as the flows are, is answered on a measurement, so the eleven hand checks on its ranges are either replaced or kept for a recorded reason
 verify: ! grep -q "def require_fraction" src/anesthesia_sim/core/validation.py && ! grep -q "def require_percent" src/anesthesia_sim/core/validation.py && grep -q "class Fraction(float)" src/anesthesia_sim/core/concentration.py && grep -q "class Percent(float)" src/anesthesia_sim/core/concentration.py
 ---
@@ -236,3 +238,104 @@ The build, for the thread that takes it (nothing here is built in the round):
   change, 56 `Fraction(` and `Percent(` calls in 15 test files, and the docs.
 - `verify:`, to set at the answer:
   `! grep -q "def require_fraction" src/anesthesia_sim/core/validation.py && ! grep -q "def require_percent" src/anesthesia_sim/core/validation.py && grep -q "class Fraction(float)" src/anesthesia_sim/core/concentration.py && grep -q "class Percent(float)" src/anesthesia_sim/core/concentration.py`.
+
+## Close-out 2026-10-05
+
+Built as the design round's list has it, in `#1365`, with four things a
+reviewer would otherwise have to find:
+
+- **Twelve call sites, not eleven.** `PL-BBMG` landed between the count and
+  the build and gave `UptakeEquationSettings` a `require_percent` of its own
+  for the vaporizer maximum, so twelve range checks left `core/validation.py`.
+- **The type checks keep the pattern's names.** `require_fraction` and
+  `require_percent` now live in `core/concentration.py` beside the types, as
+  `require_simulation_step` and the three flow checks do, and check the type
+  rather than the range. Each names a value of the other type as one and says
+  to convert it, since a `Fraction` built from a percent's value is a
+  hundredfold error that nothing downstream would refuse.
+- **The name is a keyword argument**, `Fraction(value, name=...)`, defaulting
+  to the type's own word, so the refusal still says which of the five
+  compartments and the circuit refused (`PL-SPN6`). `_write_state_vector`
+  passes each compartment's, and so does `app/run_view.py` for the dial.
+- **Two `app/` files beyond the list.** `app/formatting.py`'s docstrings said
+  an impossible negative was rendered with its sign; it is refused now, by
+  `percent_from_fraction`, and the two tests that pinned the rendering pin
+  the refusal. `tools/core_vocabulary_check.py` said the guard "checks a
+  range" in the present tense.
+
+The holes the flows have - minus zero, a `bool`, a `Decimal`, a `str` - are
+shared by both types on purpose, so one rule settles all of them, and are
+recorded on `PL-LLMN`, whose `touches` now reach `core/concentration.py`.
+
+**The close-out review, 2026-10-05.** Three adversarial passes over the diff -
+the type boundary and state, the domain, docs and display, and whether each
+test fails with its check inverted. Folded in a second commit:
+
+- `set_circuit_volume` wrote the volume before building the fraction it
+  rewrites, so the one refusal that construction can make - for a fraction
+  already held that no setter would have accepted - left the volume moved. It
+  builds first now, under the circuit's name, and a test pins it.
+- `BreathingCircuitState`, the record a rollback restores the circuit from,
+  took a bare `float`. It checks the type when built, so `restore_state()`,
+  which must not raise, is never handed one.
+- Prose the change had made false: `advance()`'s docstring and a test's said
+  the exact propagator cannot leave the range, which holds for the floor
+  alone; `docs/MODEL.md` § "Displayed precision" still said guards made a
+  negative impossible and that it is rendered; § "Concentrations" claimed the
+  run-time refusal of a missing conversion everywhere, where it stands only
+  where a concentration is held; `docs/ARCHITECTURE.md` left the types'
+  constructors out of what raises `SimulationConfigurationError`; and
+  `Percent`'s docstring stated a MAC's fitting in 0 to 100 as a rule, which
+  nitrous oxide's 1.04 atm (Hornbein et al. 1982, PMID 7201254) falsifies on
+  the roadmap, so it is written as the instance.
+- The 100%-dial overshoot is given at its worst minute, 1.0000000002869551,
+  beside the 24 h endpoint the design round quoted.
+
+Filed rather than folded, under `parse-dont-validate`: `PL-7DJK`, how a
+refusal on the display path is shown - unreachable from any supported setting,
+but when the snapshot itself refuses, the halt is not shown at all, the
+failure `PL-25KS` fixed for the frame - and `PL-5D1Z`, the pickle protocols 0
+and 1 that load every checked type around its check.
+
+**The test pass, folded in a third commit.** It re-ran its mutants on the
+second commit, and the thirteen that survived it, or that its findings
+implied, are killed now (re-run 2026-10-05):
+
+- `AgentParameters` held the MAC and the vaporizer maximum without the type
+  check every other holder makes, so `replace(sevoflurane,
+  mac_percent=Fraction(0.02))` was accepted and would have put 1 MAC at
+  "100.00 ×MAC". It checks both when built, and § "Concentrations" lists it.
+- Each constructor accepted the other type: `mypy` passes `Percent(fraction)`,
+  a `Fraction` being a `float`, which is the rebuild `require_percent` tells a
+  caller not to make. Each refuses it now, with the message `require_*` gives,
+  written once.
+- Three tests did not reach the code they named: two in `test_circuit.py` and
+  one in `test_governing_equations.py` handed values `Percent` refuses before
+  the circuit or the record is reached. They keep zero, of either sign, which
+  the circuit and the record refuse themselves; the values outside the range
+  stay on the constructor, where `test_concentration.py` pins them, and
+  `test_rejects_invalid_delivered_concentration`, left with no case of its
+  own, is gone.
+- Names nobody pinned: the cross-type refusals now match the name they are
+  handed under, a named `Percent` refusal is pinned, and the dial handler's
+  test drives 150% beside 50%, which catches the handler dropping the name or
+  building the `Percent` before `_apply_setting` rather than inside it.
+- The chart's conversion and its hover are pinned to refuse a fraction past 1
+  rather than clamp it, the module docstring's fourth limit; how that is shown
+  stays `PL-7DJK`'s.
+- `test_core_vocabulary_check.py` still called `require_fraction` the range
+  guard, and two test doubles' setters took a `float`.
+
+Filed: `PL-CX2C`, `_CHECKED_QUANTITIES` leaving out `Fraction` and `Percent`,
+so a swapped checked argument is told to rebuild; its fix puts an import
+between `core/concentration.py` and `core/supported_ranges.py`, outside this
+item's `touches`. Left as they are: `isfinite` in either constructor is
+redundant beside the range comparison, which already refuses nan and both
+infinities, and stays because it says what the `Raises` section says; and
+`__slots__ = ()` has no behaviour a test can see.
+
+**Read 2026-10-05.** The display path's refusal stands as built: a fraction
+past 1 or below 0 reaching the chart, a readout or the hover halts the run
+rather than being drawn (project owner, 2026-10-05, ratified, over drawing it
+as `main` did until `PL-7DJK` settles how a refusal there is shown), and the
+pull request was approved for merge on the same read.

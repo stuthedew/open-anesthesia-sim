@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py
+touches: src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py, src/anesthesia_sim/core/concentration.py, tests/unit/test_concentration.py
 added: 2026-10-04
 payoff: a flow is never shown with a minus sign, a programming slip never becomes a plausible 1.0 L/min, and every refused flow names its setting and range
 verify: grep -q 'def test_the_type_refuses_what_is_not_a_number_and_holds_negative_zero_as_zero' tests/unit/test_supported_ranges.py
@@ -58,3 +58,14 @@ as today. A test in `tests/unit/test_supported_ranges.py` named
 pins it for all three. `#1354` landed first, so the same refusal for `CaseInstant` is `PL-7N8P`'s,
 best worked in this branch, and `StepCount`'s refusal of a `bool` is brought to
 the same exception here.
+
+**Wider since `PL-4R3W` (2026-10-05).** `Fraction` and `Percent` in
+`core/concentration.py` became checked types of the same shape, and share each
+hole, kept consistent on purpose so that one rule settles all of them:
+`Fraction(-0.0)` holds minus zero and `format_percent` prints it as `-0.00%`,
+`Fraction(True)` holds `1.0`, `Percent(Decimal('2.5'))` is admitted, a `str` is
+refused with `math.isfinite`'s own `TypeError` and `Decimal('sNaN')` escapes as
+a `ValueError` - each reproduced on that branch. None is reachable from the
+interface, for the reason given above. The concentrations' half belongs in
+this item's fix, `core/concentration.py` and `tests/unit/test_concentration.py`
+beside the flows' files.
