@@ -8188,6 +8188,17 @@ def test_new_and_set_refuse_a_value_holding_a_newline(
         assert _item_text(store) == READY
 
 
+def test_new_strips_the_space_around_a_title_rather_than_refusing_it(tmp_path: Path) -> None:
+    """The reader trims it, so it was never part of the value; capture must not refuse over it."""
+    store = _store(tmp_path)
+
+    assert _run("new", "  Padded title \n", "--items", str(store)) == 0
+
+    (written,) = store.glob("*.md")
+    assert parse_item(written.read_text(encoding="utf-8")).title == "Padded title"
+    assert "title: Padded title\n" in written.read_text(encoding="utf-8")
+
+
 def test_set_removes_a_field_given_an_empty_value(tmp_path: Path) -> None:
     """The renderer omits what is empty, so an empty value is how a field is unset."""
     withheld = READY.replace("added:", "not-delegable: wants the strongest model\nadded:")

@@ -1807,7 +1807,14 @@ def _reads_as_a_path(title: str) -> bool:
 
 
 def _captured(identifier: str, title: str, args: argparse.Namespace) -> Item:
-    """The item `bin/docket new` files for one title, before anything is written."""
+    """The item `bin/docket new` files for one title, before anything is written.
+
+    The space around a title is dropped here rather than refused by the read-back
+    `new` runs before writing: the reader trims it anyway, so it was never part
+    of what gets read, and a capture refused over a trailing space costs the one
+    command meant to cost nothing. A line break inside the title is still refused.
+    """
+    title = title.strip()
     return Item(
         identifier=identifier,
         title=title,
@@ -1824,8 +1831,9 @@ def _captured(identifier: str, title: str, args: argparse.Namespace) -> Item:
         closed=None,
         commit="",
         reason="",
-        # The front matter keeps the title as typed; the brief is markdown, so
-        # its copy is escaped where a placeholder would render as a tag (`PL-PRSF`).
+        # The front matter keeps the title as typed, less the space around it;
+        # the brief is markdown, so its copy is escaped where a placeholder
+        # would render as a tag (`PL-PRSF`).
         body=CAPTURE_TEMPLATE.format(title=markdown_title(title)),
     )
 
