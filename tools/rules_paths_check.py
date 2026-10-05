@@ -113,9 +113,17 @@ def entries(block: list[str]) -> list[str]:
     collection, a glob on the line after the key, or a line carrying a glob on,
     each of which YAML joins into the value. None is written here, and a glob
     read from a fragment would be checked as the rule's scope when it is not.
+
+    So does a `- ` line at another indentation than the list's first item
+    (`PL-PPNV`), which YAML reads as no item of the list: deeper, it is a line
+    of the glob above it (YAML 1.2.2 § 7.3.3), so `- /src/**` over an indented
+    `- /tests/**` is the one glob `/src/** - /tests/**`; shallower, or after a
+    tab, YAML refuses it.
     """
     found: list[str] = []
     in_paths = False
+    # The indentation of the list's first `- `, where every item of it sits.
+    column: int | None = None
     for index, line in enumerate(block):
         stripped = line.strip()
         if not line.startswith((" ", "\t")) and stripped.startswith("paths:"):
@@ -135,13 +143,28 @@ def entries(block: list[str]) -> list[str]:
                 found.append(_unquote(inline))
                 in_paths = False
             else:
-                in_paths = True
+                in_paths, column = True, None
             continue
         if not in_paths:
             continue
         if not stripped or stripped.startswith("#"):
             continue
         if stripped.startswith("- "):
+            indent = len(line) - len(line.lstrip(" "))
+            column = indent if column is None else column
+            if line[indent] != "-" or indent < column:
+                raise Unreadable(
+                    f"`{stripped}` under `paths:` is not at the list's indentation, or a tab "
+                    "indents it, which YAML refuses; write each glob as a `- ` item at the "
+                    "list's indentation"
+                )
+            if indent > column:
+                raise Unreadable(
+                    f"`{stripped}` under `paths:` is indented past the list's first `- `, so "
+                    "YAML joins it into the glob above it, or refuses the file, rather than "
+                    "reading a glob of its own; write each glob as a `- ` item at the list's "
+                    "indentation"
+                )
             found.append(_unquote(stripped[2:]))
             continue
         if line.startswith((" ", "\t")):

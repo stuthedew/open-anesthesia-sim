@@ -3,14 +3,17 @@ id: PL-PPNV
 title: rules_paths_check.entries takes a - line indented past its sequence's dash for a new glob, where YAML continues the item's plain scalar, so the check passes while the harness reads one glob that matches nothing; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/rules_paths_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-R417's YAML slice, 2026-10-05
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1376
 payoff: a rule whose paths: list YAML joins into one glob is refused by name, so the check can no longer report sound a scope the harness reads as matching nothing
 verify: grep -q 'rules paths, an over-indented dash is refused by name' tests/unit/test_doc_check.py
+recurrences: 2026-10-05 PL-GVDP withdrawn 2026-10-05 PL-GVDP
 ---
 
 **Problem.** rules_paths_check.entries takes a - line indented past its sequence's dash for a new glob, where YAML continues the item's plain scalar, so the check passes while the harness reads one glob that matches nothing; latent
