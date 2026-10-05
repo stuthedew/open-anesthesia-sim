@@ -8,8 +8,8 @@ tells them nothing, because this project writes the possessive to quote a
 sentence as often as to cite a section.
 
 **The decidable half is which of the two a given citation is, and only where
-the answer is yes.** A quotation that matches a `#` heading in the cited file
-is a section citation - that is a fact about the tree, not a reading of intent.
+the answer is yes.** A quotation that matches a heading in the cited file is a
+section citation - that is a fact about the tree, not a reading of intent.
 A quotation that matches no heading may still be a faithful quotation of a
 sentence, which is correct as written, so this reports nothing about it. The
 asymmetry is the point: `CLAUDE.md` refuses to script the judgment half, and
@@ -36,6 +36,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import doc_check
 
+#: A character of a quotation: any but its closing mark or a line end, or a soft
+#: break, so a quotation runs no further than the paragraph it opens in. A
+#: blank line ends one (CommonMark 0.31.2 § 4.8), in a blockquote or out of one,
+#: and `[^"]` read on past it, so two halves a paragraph break separates were
+#: one quotation equal to a heading, and a correct sentence was told to take
+#: `§` (`PL-BYJ5`).
+QUOTATION_CHAR = rf'(?:[^"\n]|{doc_check.SOFT_BREAK})'
+
 #: The possessive citation, in the two spellings this project writes. Its gaps
 #: are `doc_check.GAP`, so one wrapped inside a blockquote is read past the next
 #: line's `>` as CommonMark reads it (`PL-XW87`).
@@ -44,8 +52,9 @@ POSSESSIVE_RE = re.compile(
     + doc_check.GAP
     + r"+own)?"
     + doc_check.GAP
-    + r'*"(?P<quoted>\w[^"]{2,200}?)"',
-    re.DOTALL,
+    + r'*"(?P<quoted>\w'
+    + QUOTATION_CHAR
+    + r'{2,200}?)"'
 )
 
 

@@ -141,8 +141,10 @@ try:
 
     # `markdown` is the one reading of a document's blocks (`PL-R417`): where
     # each statement ends, so a code span or a bold run is read within its own
-    # (`PL-FP7J`, `PL-VQBY`), and where an HTML block runs (`PL-GT0J`).
+    # (`PL-FP7J`, `PL-VQBY`), where an HTML block runs (`PL-GT0J`), and which
+    # lines are a heading, so a `#` line inside a fence is none (`PL-T1X0`).
     from docket.markdown import HTML, statement_lines
+    from docket.markdown import headings as read_headings
     from docket.markdown import read as read_blocks
     from docket.model import CLOSED_STATUSES, SEMVER_PATTERN, Item
     from docket.release import (
@@ -4003,7 +4005,7 @@ def _comparable(text: str) -> str:
 
 
 def _headings(text: str) -> list[str]:
-    """Every title a citation may name: `#` headings and `**Bold.**` markers.
+    """Every title a citation may name: headings and `**Bold.**` markers.
 
     Both are section titles here, and the documents cite them the same way.
     Restricting this to `#` lines did not narrow the check, it made it wrong
@@ -4020,15 +4022,25 @@ def _headings(text: str) -> list[str]:
 
 
 def _hash_headings(text: str) -> list[str]:
-    """Every `#` heading's title: the titles that name a section and nothing else.
+    """Every heading's title: the titles that name a section and nothing else.
 
     A `**Bold.**` marker is often a paragraph's or a bullet's lead sentence as
-    well, so quoting one is not by itself a citation of a section (`PL-FKH6`).
+    well, so quoting one is not by itself a citation of a section (`PL-FKH6`),
+    and GitHub gives one no anchor for a link to name.
+
+    Read from `markdown.headings`, as docket's walkers read theirs (`PL-HKHP`),
+    so a heading is one where CommonMark renders one: a `#` line inside a fence
+    or a comment is none, and a setext heading is one. Read a line at a time, a
+    shell sample's `# make sure the venv exists` answered a `§` citation of it
+    (`PL-T1X0`). A frontmatter block is read as nothing, as GitHub renders it
+    as a table where CommonMark reads its closing `---` as a setext underline.
     """
+    lines = split_lines(text)
+    skipped = _frontmatter_end(text)
     return [
-        match.group("title")
-        for line in split_lines(text)
-        if (match := HEADING_RE.match(line)) is not None
+        heading.title
+        for heading in read_headings([""] * skipped + lines[skipped:])
+        if heading.title
     ]
 
 
@@ -4157,8 +4169,14 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                 report.errors.append(f"{path}:{line}: links to {target}, which does not exist")
                 continue
             if anchor:
+                # GitHub anchors a heading and nothing else, so a `**Bold.**`
+                # marker that answers a `§` citation answers no anchor: a link
+                # naming one opens the page at its top (`PL-T1X0`).
                 linked = resolved.relative_to(root)
-                titles = headings.get(linked) or _headings(resolved.read_text(encoding="utf-8"))
+                linked_text = documents.get(linked)
+                if linked_text is None:
+                    linked_text = resolved.read_text(encoding="utf-8")
+                titles = _hash_headings(linked_text)
                 slugs = {re.sub(r"[^a-z0-9-]", "", h.lower().replace(" ", "-")) for h in titles}
                 if anchor.lower() not in slugs:
                     report.errors.append(

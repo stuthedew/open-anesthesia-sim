@@ -50,7 +50,7 @@ def test_a_possessive_quotation_of_a_bold_lead_sentence_is_left_alone(tmp_path: 
 
     `CLAUDE.md`'s bullets open on bold lead sentences, and quoting one with the
     possessive was told to use `§` - a gate refusing a quotation that was
-    right. Only a `#` heading is a title and nothing else, so only that is
+    right. Only a heading is a title and nothing else, so only that is
     reported.
     """
     root = _repo(tmp_path, '`docs/MODEL.md`\'s "Capture, always" is the rule.\n')
@@ -63,6 +63,17 @@ def test_a_possessive_quotation_of_a_bold_lead_sentence_is_left_alone(tmp_path: 
 
 def test_the_section_mark_form_is_already_right_and_is_not_reported(tmp_path: Path) -> None:
     root = _repo(tmp_path, '`docs/MODEL.md` § "Known limitations" says what is lumped.\n')
+    assert possessive_section_check.sites(root, []) == []
+
+
+def test_a_quotation_split_by_a_paragraph_break_is_not_reported(tmp_path: Path) -> None:
+    """A blank line ends a paragraph, and the quotation opened in it (`PL-BYJ5`).
+
+    Read on past the break, the two halves were one quotation equal to a
+    heading, and the sentence was told to take `§`. A quotation a soft break
+    wraps is still one, which `PL-R417`'s guard in `test_doc_check.py` holds.
+    """
+    root = _repo(tmp_path, '`docs/MODEL.md`\'s "Known\n\nlimitations" says what is lumped.\n')
     assert possessive_section_check.sites(root, []) == []
 
 
