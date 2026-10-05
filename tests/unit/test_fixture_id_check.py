@@ -245,7 +245,7 @@ def test_a_malformed_literal_in_a_value_is_reported_with_its_line(tmp_path: Path
 
 
 @pytest.mark.parametrize("odd", ["\u2028", "\x85", "\x0c"], ids=["U+2028", "U+0085", "form-feed"])
-def test_a_character_python_ends_no_line_at_leaves_the_scan_on_the_files_own_lines(
+def test_a_line_separator_python_accepts_is_scanned_rather_than_crashing(
     tmp_path: Path, odd: str
 ) -> None:
     """`PL-PK4B`: Python accepts each in a string or a comment, as `compile()` does.
