@@ -13,9 +13,12 @@ The circuit also owns the vaporizer delivery limit
 (`max_delivered_concentration_percent`), because it owns the delivered
 concentration itself: enforcing the limit here means every path that can
 change that value — core, controller, or UI — is bounded by the same
-guard, rather than relying on the presentation layer to bound it. Fresh
-gas flow is bounded here for the same reason, against the model's own
-supported range in `core/supported_ranges.py`.
+guard, rather than relying on the presentation layer to bound it. A run is
+built from `UptakeEquationSettings` rather than from the circuit, so that
+record carries the same maximum beside its dial and refuses through the same
+guard, `require_within_vaporizer_maximum` in `core/validation.py`
+(`PL-BBMG`). Fresh gas flow is bounded here for the same reason, against the
+model's own supported range in `core/supported_ranges.py`.
 
 **Fresh gas flow is bounded twice, by two claims that are not the same
 claim** (`PL-8PS6`). `core/supported_ranges.py` declares the range the
@@ -45,6 +48,7 @@ from anesthesia_sim.core.validation import (
     require_nonnegative_finite,
     require_percent,
     require_positive_finite,
+    require_within_vaporizer_maximum,
 )
 
 TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN = FreshGasFlow(4.0)
@@ -282,9 +286,10 @@ class BreathingCircuit:
         than a number, so the envelope alone binds, exactly as it did before
         this field existed.
 
-        Rejecting rather than clamping, for the reason `_require_deliverable`
-        gives below: a silently clamped flow would simulate, display and chart
-        a value the caller did not ask for.
+        Rejecting rather than clamping, for the reason
+        `require_within_vaporizer_maximum` gives in `core/validation.py`: a
+        silently clamped flow would simulate, display and chart a value the
+        caller did not ask for.
 
         Raises:
             SimulationConfigurationError: the flow is outside the machine's
@@ -311,19 +316,18 @@ class BreathingCircuit:
     def _require_deliverable(self, delivered_concentration_percent: Percent) -> None:
         """Reject a concentration the vaporizer in use cannot produce.
 
-        Rejecting rather than clamping is deliberate: a silently clamped
-        dial position would simulate, display, and chart a concentration
-        the caller did not ask for, which is the plausible-but-wrong
-        clinical value `CLAUDE.md` forbids. Zero is always allowed — it is
-        the vaporizer turned off, which is how washout begins.
+        The guard is `require_within_vaporizer_maximum` in
+        `core/validation.py`, shared with the `UptakeEquationSettings` record
+        a run is built from so that the two refuse in one sentence
+        (`PL-BBMG`); it carries why the dial is rejected rather than clamped.
+        This reads the maximum off the circuit, which owns it.
         """
 
-        if delivered_concentration_percent > self.max_delivered_concentration_percent:
-            raise SimulationConfigurationError(
-                "delivered_concentration_percent exceeds the vaporizer maximum "
-                f"({delivered_concentration_percent:g}% requested, "
-                f"{self.max_delivered_concentration_percent:g}% maximum)"
-            )
+        require_within_vaporizer_maximum(
+            "delivered_concentration_percent",
+            delivered_concentration_percent,
+            self.max_delivered_concentration_percent,
+        )
 
     @property
     def delivered_partial_pressure_fraction(self) -> Fraction:

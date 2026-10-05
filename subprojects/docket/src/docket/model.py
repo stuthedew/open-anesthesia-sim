@@ -20,7 +20,7 @@ with no virtualenv.
 from __future__ import annotations
 
 import re
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import PurePosixPath
@@ -29,7 +29,13 @@ from pathlib import PurePosixPath
 # file. Deliberately not YAML: a real YAML parser is a dependency, and the
 # subset that is actually wanted here - scalars and comma-separated lists - is
 # a dozen lines of parsing that cannot surprise anyone.
-FRONT_MATTER_RE = re.compile(r"\A---\n(.*?)\n---\n?(.*)\Z", re.DOTALL)
+#
+# The block closes on a line that is exactly `---` and on nothing longer. It
+# used to close on any line merely opening with one, so a `---y` or `----` typed
+# into the block ended it there: every field below fell into the body, and a
+# `touches:` lost that way took the item out of every lane at `docket check`
+# exit 0 (`PL-LNDJ`). Such a line is now one no field reads, and is reported.
+FRONT_MATTER_RE = re.compile(r"\A---\n(.*?)\n---(?:\n|\Z)(.*)\Z", re.DOTALL)
 
 # A field is recognised by its shape and never by its spelling: text at column
 # zero, then a colon. Whether the key is one this format knows is `parse_item`'s
@@ -52,6 +58,14 @@ CONTINUATION_RE = re.compile(r"^[ \t]+\S")
 # A continuation spelling a YAML block-sequence entry, `  - value`. The space
 # after the dash is what makes it one; `-value` is an ordinary word.
 BLOCK_ENTRY_RE = re.compile(r"^[ \t]+-([ \t]|$)")
+
+# A field's own line holding only a YAML block-scalar header - `>`, `|`, either
+# with a chomping indicator, an indentation indicator or both, and perhaps a
+# comment. YAML reads the value from the lines below and none of it from the
+# header; this format reads neither spelling, so the field is declined by name
+# rather than read with the header as the first word of its value, which is
+# how two `reason: >-` fields came to open with `>-` (`PL-LNDJ`).
+BLOCK_SCALAR_RE = re.compile(r"^[|>](?:[1-9]?[-+]?|[-+][1-9])(?:[ \t]+#.*)?$")
 
 PRIORITIES = ("P0", "P1", "P2", "P3")
 EFFORTS = ("S", "M", "L")
@@ -259,7 +273,7 @@ def _fold(lines: list[str]) -> tuple[list[tuple[str, str, int, list[int]]], list
 
 def _front_matter_pairs(
     text: str,
-) -> tuple[list[tuple[str, str]], tuple[str, ...], tuple[str, ...], str] | None:
+) -> tuple[list[tuple[str, str]], tuple[str, ...], tuple[str, ...], tuple[str, ...], str] | None:
     """Every field of the front matter, in file order, with the body.
 
     Pairs rather than a dict, because a dict is exactly where a repeated key
@@ -301,6 +315,14 @@ def _front_matter_pairs(
     an item has to know (`PL-FX0K`). Refused only for `LIST_FIELDS`, because
     that is where the ambiguity is: an indented `- ...` under a prose field is
     prose, and folds like any other continuation.
+
+    The third names the fields written with a YAML block-scalar header
+    (`BLOCK_SCALAR_RE`), declined the same way and for the same reason: a value
+    read here has one multi-line spelling, the indented plain continuation, and
+    reading `|` as YAML does would hand every one-line reader a value holding
+    line breaks that no writer here can write back. Kept as the value instead,
+    the header was its first word (`PL-LNDJ`). Both arrive empty, so nothing
+    downstream reads half a value as the whole.
     """
     match = FRONT_MATTER_RE.match(text)
     if match is None:
@@ -313,15 +335,26 @@ def _front_matter_pairs(
     fields, unread = _fold(lines)
     pairs: list[tuple[str, str]] = []
     block_lists: list[str] = []
+    block_scalars: list[str] = []
     for key, head, _index, folded in fields:
         continuations = [lines[i] for i in folded]
         if key in LIST_FIELDS and any(BLOCK_ENTRY_RE.match(line) for line in continuations):
             block_lists.append(key)
             pairs.append((key, ""))
             continue
+        if BLOCK_SCALAR_RE.match(head):
+            block_scalars.append(key)
+            pairs.append((key, ""))
+            continue
         parts = [part for part in (head, *(line.strip() for line in continuations)) if part]
         pairs.append((key, _unquote(" ".join(parts))))
-    return (pairs, tuple(sorted(set(block_lists))), tuple(lines[i] for i in unread), match.group(2))
+    return (
+        pairs,
+        tuple(sorted(set(block_lists))),
+        tuple(sorted(set(block_scalars))),
+        tuple(lines[i] for i in unread),
+        match.group(2),
+    )
 
 
 def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
@@ -341,7 +374,7 @@ def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
     parsed = _front_matter_pairs(text)
     if parsed is None:
         return {}, text
-    pairs, _block_lists, _unread, body = parsed
+    pairs, _block_lists, _block_scalars, _unread, body = parsed
     return dict(pairs), body
 
 
@@ -358,7 +391,7 @@ def repeated_front_matter_keys(text: str) -> tuple[str, ...]:
     parsed = _front_matter_pairs(text)
     if parsed is None:
         return ()
-    pairs, _block_lists, _unread, _body = parsed
+    pairs, _block_lists, _block_scalars, _unread, _body = parsed
     seen: set[str] = set()
     repeated: set[str] = set()
     for key, _value in pairs:
@@ -389,15 +422,32 @@ def block_list_keys(text: str) -> tuple[str, ...]:
     parsed = _front_matter_pairs(text)
     if parsed is None:
         return ()
-    _pairs, block_lists, _unread, _body = parsed
+    _pairs, block_lists, _block_scalars, _unread, _body = parsed
     return block_lists
+
+
+def block_scalar_keys(text: str) -> tuple[str, ...]:
+    """Fields the file writes with a YAML block-scalar header (`reason: >-`), sorted.
+
+    Declined rather than read, as `block_list_keys` declines a block list, and
+    the value arrives empty. The header was kept as the first word of the value
+    until `PL-LNDJ`, live on two dropped items, and the next `docket set` on
+    either wrote it back as literal text on a one-line value. The repair
+    `docket check` names is to delete the header and keep the lines indented,
+    which is this format's one spelling of a value over several lines.
+    """
+    parsed = _front_matter_pairs(text)
+    if parsed is None:
+        return ()
+    _pairs, _block_lists, block_scalars, _unread, _body = parsed
+    return block_scalars
 
 
 def unread_front_matter_lines(text: str) -> tuple[str, ...]:
     """Front-matter lines no field reads, as written and in file order.
 
-    The fourth channel beside unknown, repeated and block-list keys, and the
-    one those three could not carry: it is not a key at all, so none of them
+    The channel beside unknown, repeated, block-list and block-scalar keys, and
+    the one those could not carry: it is not a key at all, so none of them
     ever named it, and `docket check` exited 0 on a value shortened by a line
     wrapped at column zero (`PL-JD4L`). Recorded rather than read, for the
     reason `block_list_keys` gives: guessing which field a stray line belongs
@@ -406,7 +456,7 @@ def unread_front_matter_lines(text: str) -> tuple[str, ...]:
     parsed = _front_matter_pairs(text)
     if parsed is None:
         return ()
-    _pairs, _block_lists, unread, _body = parsed
+    _pairs, _block_lists, _block_scalars, unread, _body = parsed
     return unread
 
 
@@ -657,6 +707,10 @@ class Item:
     #: here must not invent, because an empty `classes:` is what defeats the
     #: safety pin (`PL-FX0K`).
     block_list_fields: tuple[str, ...] = field(default_factory=tuple)
+    #: Fields the file writes with a YAML block-scalar header, which this format
+    #: does not read either: the value arrives empty rather than opening with
+    #: the header (`PL-LNDJ`).
+    block_scalar_fields: tuple[str, ...] = field(default_factory=tuple)
     #: Front-matter lines belonging to no field, as written: a column-zero
     #: line that is not `key: value`, or an indented one above the first
     #: field. Usually the tail of the value above, which every reader otherwise
@@ -1458,6 +1512,7 @@ def parse_item(text: str, path: str = "") -> Item:
         unknown_fields=tuple(sorted(set(fields) - set(FIELD_ORDER))),
         duplicate_fields=repeated_front_matter_keys(text),
         block_list_fields=block_list_keys(text),
+        block_scalar_fields=block_scalar_keys(text),
         unread_lines=unread_front_matter_lines(text),
     )
 
@@ -1536,6 +1591,48 @@ def _front_matter_values(item: Item) -> dict[str, str]:
     }
 
 
+def _read_back(text: str, written: Mapping[str, str]) -> str:
+    """`text`, once the reader is shown to read each value in `written` back as written.
+
+    The writers' whole statement of the front-matter grammar, which is to state
+    none of it: every writer here serialises its value, hands the file it
+    would write to `_front_matter_pairs` - the one reader, and through `_fold`
+    the one definition of where a value ends - and raises `ValueError` before
+    anything is written where a field reads back as anything else, or as more
+    than one value. So no writer can produce a file its reader cannot read, and
+    a writer cannot drift from the reader by restating a rule it has.
+
+    `PL-9HD1` gave the reader one definition and left the writers saying
+    nothing, and three readings of the gap were filed within two weeks
+    (`PL-HXJY`). The one that cost something was a value holding a line break:
+    `docket new` and `docket set` wrote it at exit 0 into a file the next
+    `docket check` refused, and `--payoff $'x\nstatus: done'` wrote a second
+    `status:` that took an open item out of `list` and `next` (`PL-0779`).
+    Nothing here names that case. A line break is refused because the reader
+    would read the value back shortened; a quote pair the reader would strip,
+    a block-scalar header it declines and surrounding space it trims are
+    refused for the same reason, and so is whatever spelling the reader learns
+    to read differently next.
+    """
+    parsed = _front_matter_pairs(text)
+    pairs = parsed[0] if parsed is not None else []
+    # A value holding a line break first, because it is the cause: the line it
+    # adds can land on another field, which then reads back as two values, and
+    # a refusal naming that field would send the reader to the wrong flag.
+    for name, value in sorted(written.items(), key=lambda pair: "\n" not in pair[1]):
+        read = [got for key, got in pairs if key == name]
+        if read == [value]:
+            continue
+        shown = repr(read[0]) if len(read) == 1 else f"{len(read)} values" if read else "absent"
+        why = (
+            "; it holds a line break, and a front-matter value is one line" if "\n" in value else ""
+        )
+        raise ValueError(
+            f"`{name}` would be read back as {shown} rather than as written, {value!r}{why}"
+        )
+    return text
+
+
 def render_item(item: Item) -> str:
     """Write one item file.
 
@@ -1556,13 +1653,17 @@ def render_item(item: Item) -> str:
     emitted the first line of a multi-line value and deleted the rest of the
     file's copy on the way past - 9 of `PL-9HDH`'s 10 `reason:` lines, at exit
     0. A reflow is a diff to read; that was a deletion nothing reported.
+
+    Raises `ValueError` where a value would not read back as written, and
+    `_read_back` says which and why.
     """
     values = _front_matter_values(item)
-    lines = [
-        f"{name}: {values[name]}" for name in FIELD_ORDER if values[name] or name in ALWAYS_RENDERED
-    ]
+    written = {
+        name: values[name] for name in FIELD_ORDER if values[name] or name in ALWAYS_RENDERED
+    }
+    lines = [f"{name}: {value}" for name, value in written.items()]
     body = item.body if item.body.endswith("\n") else item.body + "\n"
-    return "---\n" + "\n".join(lines) + "\n---\n\n" + body.lstrip("\n")
+    return _read_back("---\n" + "\n".join(lines) + "\n---\n\n" + body.lstrip("\n"), written)
 
 
 def with_front_matter_field(text: str, name: str, value: str, *, append: bool = False) -> str:
@@ -1610,6 +1711,8 @@ def with_front_matter_field(text: str, name: str, value: str, *, append: bool = 
     Each means the caller asked for something this cannot express, and each is
     a bug rather than a state to paper over: `cmd_record` establishes that the
     field is absent before it writes, and `docket check` reports a doubled key.
+    It raises too where the field would not read back as the value written, or
+    as the recorded value with `, value` after it, which `_read_back` decides.
     """
     if name not in FIELD_ORDER:
         raise ValueError(f"`{name}` is not a front-matter field")
@@ -1636,8 +1739,10 @@ def with_front_matter_field(text: str, name: str, value: str, *, append: bool = 
         # files in this store carry a multi-line value.
         index, folded = present[0]
         head = "\n".join(lines[: (folded[-1] if folded else index) + 1])
-        return (
-            text[: match.start(1) + len(head)] + f", {value}" + text[match.start(1) + len(head) :]
+        recorded = parse_front_matter(text)[0][name]
+        return _read_back(
+            text[: match.start(1) + len(head)] + f", {value}" + text[match.start(1) + len(head) :],
+            {name: f"{recorded}, {value}" if recorded else value},
         )
 
     rank = FIELD_ORDER.index(name)
@@ -1657,7 +1762,7 @@ def with_front_matter_field(text: str, name: str, value: str, *, append: bool = 
     # newline comes back with one - a removal, which is the whole defect.
     head = "\n".join(lines[:insert_at])
     at = match.start(1) + (len(head) + 1 if insert_at else 0)
-    return text[:at] + f"{name}: {value}\n" + text[at:]
+    return _read_back(text[:at] + f"{name}: {value}\n" + text[at:], {name: value})
 
 
 def with_front_matter_value(text: str, name: str, value: str) -> str:
@@ -1669,18 +1774,20 @@ def with_front_matter_value(text: str, name: str, value: str) -> str:
     as tampering and a re-render removes every line it normalises on the way
     past (`PL-7K8Y`).
 
-    A withdrawal has to edit a line that is already there, so it cannot be an
-    insert; what it can be is an edit whose diff is *one* line, which is what
-    this buys. That diff is deliberately not exempt from the close-out audit -
-    unlike the append `bin/docket new` makes, a withdrawal is a deliberate act
-    with something to gain, so the item doing it declares the file it touches
-    like any other work (`PL-34BG`).
+    A withdrawal has to edit a value that is already there, so it cannot be an
+    insert; what it can be is an edit whose diff is that value's lines and no
+    others, which is what this buys. Which lines those are is `_fold`'s answer
+    and not restated here. That diff is deliberately not exempt from the
+    close-out audit - unlike the append `bin/docket new` makes, a withdrawal is
+    a deliberate act with something to gain, so the item doing it declares the
+    file it touches like any other work (`PL-34BG`).
 
     Raises `ValueError` where the field is absent, where the file spells it
     more than once so that no single line is the one to replace, or where there
     is no front matter at all. Each is a caller asking for something this
     cannot express: `cmd_withdraw` establishes the field is there before it
-    writes, and `docket check` reports a doubled key.
+    writes, and `docket check` reports a doubled key. It raises too where the
+    field would not read back as the value written, which `_read_back` decides.
     """
     if name not in FIELD_ORDER:
         raise ValueError(f"`{name}` is not a front-matter field")
@@ -1711,4 +1818,6 @@ def with_front_matter_value(text: str, name: str, value: str) -> str:
     through = "\n".join(lines[: last + 1])
     start = match.start(1) + (len(before) + 1 if first else 0)
     replacement = "\n".join([f"{name}: {value}", *kept])
-    return text[:start] + replacement + text[match.start(1) + len(through) :]
+    return _read_back(
+        text[:start] + replacement + text[match.start(1) + len(through) :], {name: value}
+    )

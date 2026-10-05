@@ -41,6 +41,4 @@ character today.
 `split("\n")`. A test in `tests/unit/test_fixture_id_check.py` scans a module
 holding each of the three characters without raising.
 
-**Generator check.** This misreads the same fact as `PL-139L`: where a line
-ends. That is two items and no head. `PL-139L`'s check gives the count that
-would make one.
+**Generator check.** A member of `PL-4YVK`, recorded at triage on 2026-10-04 when `PL-K1D6` and `PL-LRBV` made four items misreading where a line ends, the fact this item shares with `PL-139L`.

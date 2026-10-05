@@ -4,7 +4,7 @@ title: A v0.4.8 tag exists on a commit whose pyproject says 0.4.7 and whose ROAD
 status: dropped
 added: 2026-09-07
 closed: 2026-09-07
-reason: >-
+reason:
   Duplicate of PL-LT77, which is the same condition diagnosed one layer down
   and correctly. The premise below is wrong: `main` is not red. `v0.4.8` was
   pushed onto b03a7d03 and then deleted from origin, and `git fetch --tags`

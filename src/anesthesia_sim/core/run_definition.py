@@ -145,7 +145,8 @@ class RunSegment:
             are the litres per minute that were set and its delivered
             concentration the percent that was dialled, so a system
             configured from them rebuilds these settings exactly (`PL-SM5V`,
-            `PL-NJPB`).
+            `PL-NJPB`); the vaporizer maximum that dial was set under travels
+            with it, and the record refuses a dial above it (`PL-BBMG`).
         opening: The state at the segment's first instant.
     """
 
@@ -261,7 +262,11 @@ class RunDefinition:
             settings: The settings the run begins under. Inside the supported
                 flow ranges by construction: each of its flows is a checked
                 type that cannot hold a value outside its range, so neither
-                this nor `record_change` checks one again (`PL-HSFV`).
+                this nor `record_change` checks one again (`PL-HSFV`). Its
+                dial is deliverable by the same construction: the record
+                carries the vaporizer maximum beside it and refuses a dial
+                above it, so a record a run can be handed is one the circuit
+                would have accepted (`PL-BBMG`).
             initial_state: The state at `opened_at_s`, in
                 `governing_equations`' state order. Its accumulators are the
                 run's starting totals, which is zero for a run that has
