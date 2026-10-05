@@ -2586,6 +2586,19 @@ def test_triage_prints_the_body_and_what_is_still_unset(
     assert "**Why it matters.**" in output  # the brief sections still missing
 
 
+def test_triage_prints_a_brief_line_holding_a_line_separator_as_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A U+2028 ends no line in CommonMark (0.31.2 § 2.1), so the brief is printed as written.
+
+    Cut by `str.splitlines()`, the line was printed as two (`PL-BBYJ`).
+    """
+    _triage(tmp_path, UNTRIAGED.replace("at low flows.", "at low\u2028flows."), READY)
+    output = capsys.readouterr().out
+
+    assert "    **Problem.** The induction curve looks wrong at low\u2028flows.\n" in output
+
+
 def test_triage_states_the_payoff_rule_before_a_pass_writes_ready(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -75,6 +75,7 @@ write: a session that will not start is a worse outcome than a spurious demand.
 
 from __future__ import annotations
 
+import locale
 import os
 import stat
 import subprocess
@@ -199,14 +200,12 @@ def project_root() -> Path:
 
 def _git(args: list[str]) -> tuple[int, str]:
     result = subprocess.run(
-        ["git", *args],
-        cwd=str(project_root()),
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=15,
+        ["git", *args], cwd=str(project_root()), capture_output=True, check=False, timeout=15
     )
-    return result.returncode, result.stdout
+    # Decoded as written, in the encoding text mode used, so a raw `\r` in a
+    # config value stays in it: this hook cannot import docket's `record_text`
+    # (`PL-0R4M`).
+    return result.returncode, result.stdout.decode(locale.getpreferredencoding(False))
 
 
 def main(argv: list[str]) -> int:

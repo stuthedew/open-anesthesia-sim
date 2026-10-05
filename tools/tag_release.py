@@ -45,7 +45,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.lines import split_lines  # noqa: E402
+from docket.lines import file_text, record_text, split_lines  # noqa: E402
 from docket.release import notes_path, version_in  # noqa: E402
 from docket.vcs import REMOTE, default_branch, find_cut, is_shallow  # noqa: E402
 
@@ -58,7 +58,11 @@ ABSENT = 2
 
 
 def _git(args: Sequence[str], root: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, check=False)
+    """Git's answer, decoded as written, so a raw `\\r` in a subject stays in it (`PL-0R4M`)."""
+    done = subprocess.run(["git", *args], cwd=root, capture_output=True, check=False)
+    return subprocess.CompletedProcess(
+        done.args, done.returncode, record_text(done.stdout), record_text(done.stderr)
+    )
 
 
 def _failure(done: subprocess.CompletedProcess[str]) -> str:
@@ -101,7 +105,7 @@ def run(root: Path, *, apply: bool, remote: str = REMOTE, branch: str | None = N
         print(f"Declined: `git fetch {remote} {branch}` failed: {_failure(fetched)}")
         return 1
     try:
-        version = version_in(_git(["show", f"{ref}:{VERSION_FILE}"], root).stdout)
+        version = version_in(file_text(_git(["show", f"{ref}:{VERSION_FILE}"], root).stdout))
     except ValueError as error:
         # Not TOML, which is not the same as declaring no version (`PL-3DD9`).
         print(f"Declined: {ref}:{VERSION_FILE} is not TOML ({error}), so no tag can be named.")

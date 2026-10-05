@@ -33,7 +33,6 @@ what is on it that nowhere else has.
 
 from __future__ import annotations
 
-import locale
 import os
 import re
 import subprocess
@@ -45,7 +44,7 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from .lines import split_lines
+from .lines import ENCODING, file_text, record_text, split_lines
 from .model import CLOSED_STATUSES, is_under, parse_front_matter, parse_item
 from .release import (
     CUT_FLAGS,
@@ -315,15 +314,22 @@ def _run_git(args: list[str], root: Path) -> str:
     `PATH` is what lets the same code work in all of them. That is also why
     pinning one would not harden anything - a checkout that cannot run `git`
     is already a case this function answers with a silence.
+
+    **Read as bytes, and decoded by whose carriage return it is** (`PL-0R4M`).
+    Text mode turned a raw `\\r` in a subject into a line end before any split
+    saw it, so git's records are decoded as written, and only a blob - the one
+    shape `_asks_for_a_blob` names - is translated as `read_text` translates
+    the file it came from.
     """
     try:
         result = subprocess.run(
-            ["git", *args], cwd=root, capture_output=True, text=True, timeout=10, check=False
+            ["git", *args], cwd=root, capture_output=True, timeout=10, check=False
         )
+        stdout = record_text(result.stdout)
     except (OSError, subprocess.SubprocessError, UnicodeDecodeError):
         return SILENT
     if result.returncode == 0:
-        return result.stdout
+        return file_text(stdout) if _asks_for_a_blob(args) else stdout
     if (result.returncode == 1 and not _asks_for_a_diff(args)) or _asks_for_a_blob(args):
         return ""
     return SILENT
@@ -410,10 +416,6 @@ _READ_ONLY = frozenset(
         "show",
     }
 )
-
-#: How `subprocess.run(text=True)` would have decoded git's output, so a blob
-#: served from the batch below is the same `str` `git show` would have given.
-_ENCODING = locale.getpreferredencoding(False)
 
 
 def subcommand_of(argv: Sequence[str]) -> str:
@@ -629,7 +631,7 @@ class GitRunner:
             return None
         try:
             assert stream.stdin is not None and stream.stdout is not None
-            stream.stdin.write(spec.encode(_ENCODING) + b"\n")
+            stream.stdin.write(spec.encode(ENCODING) + b"\n")
             stream.stdin.flush()
             header = stream.stdout.readline()
         except (OSError, ValueError, UnicodeEncodeError):
@@ -658,11 +660,12 @@ class GitRunner:
         if fields[1] != b"blob" or body is None or len(body) != size:
             return None
         try:
-            decoded = body.decode(_ENCODING)
+            decoded = body.decode(ENCODING)
         except UnicodeDecodeError:
             return None
-        # What `subprocess.run(text=True)` would have done to the same bytes.
-        return decoded.replace("\r\n", "\n").replace("\r", "\n")
+        # What `_run_git` does to the same bytes for `git show`, so a blob reads
+        # the same whichever path served it.
+        return file_text(decoded)
 
     def _process(self, root: Path) -> subprocess.Popen[bytes] | None:
         """The batch process for this root, started on first use."""
@@ -1282,7 +1285,7 @@ def _pathspec_chunks(paths: tuple[str, ...]) -> Iterator[tuple[str, ...]]:
     held: list[str] = []
     used = 0
     for path in paths:
-        cost = len(path.encode(_ENCODING, "replace")) + 1
+        cost = len(path.encode(ENCODING, "replace")) + 1
         if held and used + cost > _PATHSPEC_BYTES:
             yield tuple(held)
             held = []

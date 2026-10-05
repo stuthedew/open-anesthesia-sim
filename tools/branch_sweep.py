@@ -58,7 +58,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.claims import holdings, unfinished_work  # noqa: E402
-from docket.lines import split_lines  # noqa: E402
+from docket.lines import record_text, split_lines  # noqa: E402
 from docket.model import CLOSED_STATUSES  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import REMOTE, orphaned, stranded  # noqa: E402
@@ -123,8 +123,10 @@ class Verdict:
 
 
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", *args], cwd=root, capture_output=True, text=True, timeout=120, check=False
+    """Git's answer, decoded as written, so a raw `\\r` in a record stays in it (`PL-0R4M`)."""
+    done = subprocess.run(["git", *args], cwd=root, capture_output=True, timeout=120, check=False)
+    return subprocess.CompletedProcess(
+        done.args, done.returncode, record_text(done.stdout), record_text(done.stderr)
     )
 
 

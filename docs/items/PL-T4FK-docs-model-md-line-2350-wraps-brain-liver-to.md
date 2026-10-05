@@ -3,11 +3,13 @@ id: PL-T4FK
 title: docs/MODEL.md line 2350 wraps '+ brain + liver' to the margin, so CommonMark renders it as a bullet reading 'brain + liver is 3,820 of 6,480 ml/min - 59.0%', which gives the kidney + heart + brain + liver sum to two organs (the wrapped-marker shape PL-DSMK fixed in ROADMAP.md)
 priority: P1
 effort: S
-status: ready
+status: done
 classes: docs, science
 feature: prose-renders-as-written
 touches: docs/MODEL.md
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1367
 payoff: the rendered specification gives the 59.0% share of cardiac output to the four organs it belongs to, so the finding it supports reads as stated
 verify: ! grep -qE '^ *\+ (heart|brain|liver) ' docs/MODEL.md
 ---
@@ -44,3 +46,23 @@ statement misread rather than a formatting nicety; nothing computed or
 displayed depends on it, which is why it is not `safety`. Captured after
 v0.6.0's freeze, it joins the gate's product lane under the `science`
 exception.
+
+**Fixed 2026-10-05.** The paragraph is rewrapped at the file's 80 columns with
+the four-organ sum held on one line, so the line that opened `+ brain + liver`
+(line 2374 by then, ten commits after filing) now opens
+`kidney + heart + brain + liver is 3,820 of 6,480 ml/min`. No word changed:
+`git diff --word-diff` shows none. Rendered whole with the command above
+before and after, the file differs in one place only - the `<ul><li>` holding
+"brain + liver is 3,820 ..." is gone, and its text closes the paragraph it
+belongs to, ahead of the unchanged `<p>` opening "Two of the three
+coincidences". The `verify:` grep passes.
+
+The sum is kept whole rather than broken after `kidney +`, which would also
+have rendered correctly, so that the source reads the four organs together as
+the page does. A later rewrap can still split it; finding that is `PL-LNNL`'s
+check. Until then, a scan for a list marker opening a line whose predecessor
+ends mid-sentence - a non-blank, unindented prose line without closing
+punctuation - finds this line before the fix and nothing in `docs/MODEL.md`
+or `README.md` after it. It is a heuristic and not
+the check `PL-LNNL` asks for: it reads the source rather than a CommonMark
+parse, and it passes over a marker after a line ending a sentence.

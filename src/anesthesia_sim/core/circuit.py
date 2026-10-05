@@ -573,18 +573,20 @@ class BreathingCircuit:
 
         delivered_agent_l = fresh_gas_flow_l_s * delivered_fraction * simulation_step_s
 
-        # $`\int F_I \mathrm{d}t`$ over the step, which is why the unit is
-        # seconds. Written out rather than shortened: `PL-9SH6` retired both
-        # a bare `_fraction` name for this quantity and the `circuit_` stutter
-        # on a `BreathingCircuit` member, and this local carried both
-        # (`PL-BDNB`). The short locals above it are deliberately left — each
-        # is bound one line below the accessor it reads, inside a closed form
-        # short enough that the full name is still in the reader's eye.
-        integrated_inspired_partial_pressure_fraction_s = delivered_fraction * simulation_step_s + (
-            initial_fraction - delivered_fraction
-        ) * self.time_constant_s * (1.0 - fraction_remaining)
+        # The exhaust is the flow times $`\int F_I \mathrm{d}t`$ over the step.
+        # The flow times the time constant is the circuit's volume, so that is
+        # what was delivered less what the circuit kept, and it is written
+        # that way rather than with the time constant: below about 2e-306
+        # L/min a 6 L circuit's time constant overflows to `inf`, and the
+        # integral's `tau * (1 - exp(-dt/tau))` is then `inf * 0.0`, a `nan`
+        # (`PL-B26Y`).
+        stored_agent_change_l = (
+            self.circuit_volume_l
+            * (delivered_fraction - initial_fraction)
+            * (1.0 - fraction_remaining)
+        )
 
-        exhausted_agent_l = fresh_gas_flow_l_s * integrated_inspired_partial_pressure_fraction_s
+        exhausted_agent_l = delivered_agent_l - stored_agent_change_l
 
         self.inspired_partial_pressure_fraction = next_fraction
 
