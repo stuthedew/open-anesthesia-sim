@@ -3,12 +3,14 @@ id: PL-GWQ7
 title: required_checks_check assumes a two-space indent under jobs: and on:, so a workflow indented four spaces is skipped silently; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: required-check-trigger-reading
 touches: tools/required_checks_check.py, tests/unit/test_required_checks_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1366
 payoff: a workflow indented any consistent width is read for its triggers and jobs, so the required-check reconciliation cannot pass by not seeing it
 verify: grep -q 'def test_a_workflow_indented_four_spaces_reports_its_jobs' tests/unit/test_required_checks_check.py
 ---

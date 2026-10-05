@@ -13,7 +13,6 @@ import pytest
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import (
-    require_fraction,
     require_nonnegative_finite,
     require_positive_finite,
     require_within_vaporizer_maximum,
@@ -34,22 +33,12 @@ def test_require_nonnegative_finite_rejects_within_the_hierarchy(value: float) -
         require_nonnegative_finite("agent_amount_l", value)
 
 
-@pytest.mark.parametrize("value", [-0.001, 1.001, inf, -inf, nan])
-def test_require_fraction_rejects_within_the_hierarchy(value: float) -> None:
-    with pytest.raises(SimulationConfigurationError, match="fraction must be between 0 and 1"):
-        require_fraction("fraction", value)
-
-
 @pytest.mark.parametrize(
-    ("guard", "value"),
-    [
-        (require_positive_finite, 0.5),
-        (require_nonnegative_finite, 0.0),
-        (require_fraction, 0.0),
-        (require_fraction, 1.0),
-    ],
+    ("guard", "value"), [(require_positive_finite, 0.5), (require_nonnegative_finite, 0.0)]
 )
 def test_guards_accept_their_boundary_values(guard, value: float) -> None:
+    """A fraction's own edges are its constructor's since `PL-4R3W`, in `test_concentration.py`."""
+
     guard("value", value)
 
 

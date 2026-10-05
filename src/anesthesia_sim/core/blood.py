@@ -6,14 +6,10 @@ arterial input, under this model's flow-limited arterial simplification.
 from dataclasses import dataclass
 from math import exp, inf
 
-from anesthesia_sim.core.concentration import Fraction
+from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
-from anesthesia_sim.core.validation import (
-    require_fraction,
-    require_nonnegative_finite,
-    require_positive_finite,
-)
+from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,7 +84,14 @@ class VenousBloodCompartment:
         self.blood_flow_l_min = blood_flow_l_min
 
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
-        """Set venous state from an equilibrium fraction."""
+        """Set venous state from an equilibrium fraction.
+
+        Raises:
+            TypeError: `partial_pressure_fraction` was not built as a
+                `Fraction`, which is what checks it against 0 to 1
+                (`core/concentration.py`). Nothing is written when it is
+                refused.
+        """
 
         require_fraction("venous partial_pressure_fraction", partial_pressure_fraction)
         self.agent_amount_l = self.capacity_l * partial_pressure_fraction
@@ -107,9 +110,11 @@ class VenousBloodCompartment:
         Returns the signed change in venous agent amount.
 
         Raises:
-            SimulationConfigurationError: the tissue return fraction is not
-                a finite number in [0, 1], or `simulation_step_s` is not
-                positive and finite. Both are checked before anything changes.
+            TypeError: the tissue return fraction was not built as a
+                `Fraction`, which is what checks it against 0 to 1
+                (`core/concentration.py`).
+            SimulationConfigurationError: `simulation_step_s` is not positive
+                and finite. Both are checked before anything changes.
         """
 
         require_fraction(

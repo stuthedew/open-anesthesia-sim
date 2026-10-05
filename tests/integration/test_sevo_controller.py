@@ -7,6 +7,7 @@ import pytest
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.app.run_series import RecordedQuantity, RecordedSeries
+from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -98,7 +99,7 @@ def test_reset_preserves_all_user_settings() -> None:
     controller = SimulationController(
         circuit_volume_l=5.0,
         fresh_gas_flow_l_min=FreshGasFlow(3.0),
-        delivered_concentration_percent=6.0,
+        delivered_concentration_percent=Percent(6.0),
         alveolar_ventilation_l_min=AlveolarVentilation(5.5),
         cardiac_output_l_min=CardiacOutput(6.0),
     )
@@ -135,7 +136,7 @@ def test_identical_runs_produce_identical_snapshots_and_history() -> None:
         controller.set_alveolar_ventilation(AlveolarVentilation(6.0))
         controller.set_cardiac_output(CardiacOutput(4.5))
         _advance_for(controller, duration_s=20.0)
-        controller.set_delivered_concentration_percent(5.0)
+        controller.set_delivered_concentration_percent(Percent(5.0))
         _advance_for(controller, duration_s=20.0)
         return controller
 
@@ -171,7 +172,7 @@ def _scripted_run(
             elif steps_taken == 250:
                 controller.set_cardiac_output(CardiacOutput(4.5))
             elif steps_taken == 400:
-                controller.set_delivered_concentration_percent(5.0)
+                controller.set_delivered_concentration_percent(Percent(5.0))
 
         # What a frame does between ticks: read the run, and never move it.
         controller.drawn_window(
@@ -298,7 +299,7 @@ def test_extreme_ui_slider_range_stays_valid_through_wash_in_and_washout() -> No
         assert isfinite(fraction)
         assert 0.0 <= fraction <= 1.0
 
-    controller.set_delivered_concentration_percent(0.0)
+    controller.set_delivered_concentration_percent(Percent(0.0))
     _advance_for(controller, duration_s=300.0)
 
     washout_snapshot = controller.snapshot()

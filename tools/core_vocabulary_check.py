@@ -50,8 +50,9 @@ repository over: `require_concentration_fraction` in `core/validation.py`, the
 the stutter `PL-9SH6` deliberately left alone.
 
 **Neither is a counterexample any more, and that is recorded rather than acted
-on.** `PL-6KNM` renamed the guard to `require_fraction` — it checks a range and
-never knew which fraction it was guarding — and `circuit_volume_l` was cited for
+on.** `PL-6KNM` renamed the guard to `require_fraction` — it checked a range and
+never knew which fraction it was guarding, until `PL-4R3W` moved the range into
+the `Fraction` type — and `circuit_volume_l` was cited for
 the stutter rather than for containing a retired name, which it does not.
 Measured 2026-09-14 across `core/`: **no live identifier contains a retired name
 as a substring**, so a substring rule would pass today and would have caught the

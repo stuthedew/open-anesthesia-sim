@@ -113,7 +113,7 @@ def _stepped_run(
 
     if changes is None:
         changes = {
-            300: ("set_delivered_concentration_percent", 4.0),
+            300: ("set_delivered_concentration_percent", Percent(4.0)),
             1200: ("set_alveolar_ventilation", AlveolarVentilation(6.0)),
         }
 
@@ -236,7 +236,7 @@ def test_a_window_reads_only_the_segments_it_covers(monkeypatch: pytest.MonkeyPa
 
     for change in range(1, 1501):
         definition.advance_to(CaseInstant(change * total_s / 1501))
-        system.set_delivered_concentration_percent(1.0 + 0.5 * (change % 4))
+        system.set_delivered_concentration_percent(Percent(1.0 + 0.5 * (change % 4)))
         definition.record_change(system.equation_settings())
 
     definition.advance_to(CaseInstant(total_s))
@@ -280,7 +280,7 @@ def test_two_changes_at_one_instant_are_one_segment() -> None:
         system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
     )
     definition.advance_to(CaseInstant(10.0))
-    system.set_delivered_concentration_percent(3.0)
+    system.set_delivered_concentration_percent(Percent(3.0))
     definition.record_change(system.equation_settings())
     system.set_cardiac_output(CardiacOutput(4.0))
     definition.record_change(system.equation_settings())
@@ -894,13 +894,13 @@ def _opening_after_zero() -> RunDefinition:
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
-    system.set_delivered_concentration_percent(2.0)
+    system.set_delivered_concentration_percent(Percent(2.0))
     definition = RunDefinition(
         system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(600.0)
     )
 
     definition.advance_to(CaseInstant(900.0))
-    system.set_delivered_concentration_percent(0.5)
+    system.set_delivered_concentration_percent(Percent(0.5))
     definition.record_change(system.equation_settings())
 
     definition.advance_to(CaseInstant(1200.0))
@@ -1070,12 +1070,12 @@ def test_a_change_undone_before_a_step_runs_leaves_no_segment() -> None:
         system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
     )
     definition.advance_to(CaseInstant(10.0))
-    system.set_delivered_concentration_percent(3.0)
+    system.set_delivered_concentration_percent(Percent(3.0))
     definition.record_change(system.equation_settings())
 
     assert len(definition.segments) == 2
 
-    system.set_delivered_concentration_percent(2.0)
+    system.set_delivered_concentration_percent(Percent(2.0))
     definition.record_change(system.equation_settings())
 
     assert len(definition.segments) == 1
@@ -1094,7 +1094,7 @@ def test_the_first_stretch_is_kept_even_when_a_change_returns_to_it() -> None:
     definition = RunDefinition(
         system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
     )
-    system.set_delivered_concentration_percent(5.0)
+    system.set_delivered_concentration_percent(Percent(5.0))
     definition.record_change(system.equation_settings())
 
     assert len(definition.segments) == 1
@@ -1123,7 +1123,7 @@ def test_recording_a_change_copies_no_segment_already_recorded() -> None:
     for change in range(1, 301):
         before = definition.segments
         definition.advance_to(CaseInstant(change * 10.0))
-        system.set_delivered_concentration_percent(1.0 + 0.5 * (change % 4))
+        system.set_delivered_concentration_percent(Percent(1.0 + 0.5 * (change % 4)))
         definition.record_change(system.equation_settings())
         after = definition.segments
 
@@ -1148,14 +1148,14 @@ def test_a_record_handed_out_is_not_changed_by_later_changes() -> None:
         system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
     )
     definition.advance_to(CaseInstant(10.0))
-    system.set_delivered_concentration_percent(3.0)
+    system.set_delivered_concentration_percent(Percent(3.0))
     definition.record_change(system.equation_settings())
     held = definition.segments
     contents = list(held)
 
     for percent, reach_s in ((4.0, 10.0), (2.0, 10.0), (5.0, 20.0)):
         definition.advance_to(CaseInstant(reach_s))
-        system.set_delivered_concentration_percent(percent)
+        system.set_delivered_concentration_percent(Percent(percent))
         definition.record_change(system.equation_settings())
 
         assert len(held) == len(contents)
@@ -1699,12 +1699,12 @@ def test_a_pixel_wide_chord_misses_an_extremum_by_under_the_readout_s_resolution
     system.set_fresh_gas_flow(FreshGasFlow(10.0))
     system.set_alveolar_ventilation(AlveolarVentilation(12.0))
     system.set_cardiac_output(CardiacOutput(10.0))
-    system.set_delivered_concentration_percent(12.0)
+    system.set_delivered_concentration_percent(Percent(12.0))
     definition = RunDefinition(
         system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
     )
     definition.advance_to(CaseInstant(600.0))
-    system.set_delivered_concentration_percent(6.0)
+    system.set_delivered_concentration_percent(Percent(6.0))
     definition.record_change(system.equation_settings())
     definition.advance_to(CaseInstant(43_200.0))
 

@@ -81,17 +81,39 @@ genuine disagreement - rather than passing on the assumption that nothing has
 changed. `CLAUDE.md`: prefer an obvious failure to a plausible
 answer when correctness cannot be established.
 
-A `paths:` or `paths-ignore:` filter under a `pull_request` or
-`pull_request_target` trigger is refused too, for the opposite reason: the name
-is knowable, and agreement would be false. GitHub runs nothing for a pull
-request the filter excludes and reports nothing for it, so "checks associated
-with that workflow will remain in a "Pending" state", and "a pull request that
-requires those checks to be successful will be blocked from merging" (*Workflow
-syntax for GitHub Actions*, docs.github.com, read 2026-10-01) - `PL-KPP1`'s
-pending-forever merge, with both lists agreeing (`PL-NWSK`). The same page says
-a branch filter can strand a check the same way. That one is read as reporting,
-because whether it strands one depends on which branch the requirement
-protects, which this parser does not compare.
+**Which pull requests a workflow runs for is read once, here** (`PL-848V`).
+`triggers` is the one reader of a workflow's `on:`, and `doc_check`'s gate
+parity asks it too. Before it, this file and `doc_check` each read a few of the
+spellings YAML allows and took the rest for no trigger, and the items `PL-848V`
+heads found them one at a time. It reads each form GitHub's workflow schema
+gives `on:` - an event name, a list of them, or a mapping keyed by them, block
+or flow, on the key's line or the next - and refuses by name and line the YAML
+it does not read: a block scalar, an alias, a tag, an explicit key, and a
+scalar or flow collection carried past its line.
+
+`reports_on` asks the question both tools have of it: whether every pull
+request onto the protected branch runs the workflow. A filter can leave one
+out, and then "checks associated with that workflow will remain in a "Pending"
+state. A pull request that requires those checks to be successful will be
+blocked from merging" (*Workflow syntax for GitHub Actions*, docs.github.com,
+read 2026-10-05) - `PL-KPP1`'s pending-forever merge, with both lists agreeing
+(`PL-NWSK`). So each filter under `pull_request` or `pull_request_target` is
+read for what it leaves out:
+
+- `branches:` and `branches-ignore:` are matched against the branch whose
+  protection is read, `--branch`, since GitHub matches them against the branch
+  a pull request targets. A filter leaving that branch out makes the workflow
+  report nothing there, so a requirement named after one of its jobs reads as
+  orphaned rather than agreed (`PL-C72H`). Patterns are matched as that page's
+  filter pattern cheat sheet documents them, and one it does not document is
+  refused.
+- `paths:` and `paths-ignore:` are refused: the name is knowable, but which
+  pull requests the filter admits turns on what each one changes, so agreement
+  would be false.
+- `types:` is refused when it leaves out `opened`, `synchronize` or `reopened`,
+  the three a pull-request workflow runs for by default (*Events that trigger
+  workflows*, docs.github.com, read 2026-10-05), since the commit a left-out
+  activity brings is then never checked.
 
 **What agreement here does and does not prove.** It proves that every job
 reporting onto a pull request is in the required list, and that every name in
@@ -122,6 +144,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -142,9 +165,17 @@ API_VERSION = "2022-11-28"
 # `schedule` and `workflow_dispatch` and reports on no pull request at all.
 PULL_REQUEST_EVENTS = frozenset({"pull_request", "pull_request_target"})
 
-# A `paths:` or `paths-ignore:` key under one of those triggers, in block or flow
-# form. The module docstring says why its presence is refused (`PL-NWSK`).
-PATH_FILTER = re.compile(r"(?:^|[{,\s])(paths-ignore|paths)\s*:")
+# What GitHub's workflow schema allows under either of those events: its
+# `pull-request-mapping` and `pull-request-target-mapping`, in
+# https://github.com/actions/languageservices/blob/main/workflow-parser/src/workflow-v1.0.json
+# (read 2026-10-05). Each takes one name or a list of them.
+PULL_REQUEST_FILTERS = ("types", "branches", "branches-ignore", "paths", "paths-ignore")
+
+# The activity types a pull-request workflow runs for when `types:` names none:
+# "By default, a workflow only runs when a `pull_request` event's activity type
+# is `opened`, `synchronize`, or `reopened`", and so with `pull_request_target`
+# (*Events that trigger workflows*, docs.github.com, read 2026-10-05).
+DEFAULT_TYPES = frozenset({"opened", "synchronize", "reopened"})
 
 NOT_REQUIRED = re.compile(r"#\s*not-required:\s*(?P<reason>\S.*?)\s*$")
 
@@ -157,9 +188,59 @@ TRAILING_COMMENT = re.compile(r"[ \t]+#.*$")
 # reserved indicator.
 NODE_INDICATORS = frozenset("|>\"'&*![]{}%@`")
 
+# Each indicator `triggers` refuses where a node opens, with what it opens there
+# (YAML 1.2.2 § 5.3). An anchor is read past on a key's line, where it names the
+# value and changes nothing in it, and refused anywhere else.
+REFUSED_OPENERS = {
+    "|": "a block scalar (`|`), which this reader does not fold",
+    ">": "a block scalar (`>`), which this reader does not fold",
+    "*": "an alias (`*`), which this reader does not resolve",
+    "!": "a tag (`!`), which this reader does not apply",
+    "&": "an anchor (`&`) inside its value, which this reader does not read",
+    "%": "a directive (`%`), which opens no node",
+    "@": "a reserved indicator (`@`), which opens no node",
+    "`": "a reserved indicator (a backtick), which opens no node",
+    "?": "an explicit key (`?`), which this reader does not read",
+    "-": "a block list entry (`-`) where none can open",
+    ":": "a value with no key before its `:`",
+    ",": "an empty entry before a `,`",
+    "]": "a `]` that closes nothing",
+    "}": "a `}` that closes nothing",
+}
+
+# The spellings of null (YAML 1.2.2 § 10.3.2).
+NULLS = frozenset({"", "~", "null", "Null", "NULL"})
+
+# A value `triggers` passes over unread, since no question here turns on it.
+UNREAD = object()
+
 
 class Undecidable(Exception):
-    """The tree holds a shape whose check name this parser will not guess."""
+    """The tree holds a shape whose check name this parser will not guess.
+
+    `line` is where, counted from 1, wherever the reader knows it, so
+    `doc_check` names a declined trigger the way it names its own declines.
+    """
+
+    def __init__(self, why: str, line: int | None = None) -> None:
+        super().__init__(why)
+        self.why = why
+        self.line = line
+
+
+@dataclass(frozen=True)
+class Trigger:
+    """One event a workflow's `on:` names, at the line naming it.
+
+    `filters` holds what narrows a pull-request event: each key under it, with
+    the names it lists in the order written, and nothing where it carries none.
+    It is `None` for every other event, whose value no question here turns on
+    and nothing reads.
+    """
+
+    event: str
+    line: int
+    filters: dict[str, tuple[str, ...]] | None
 
 
 @dataclass(frozen=True)
@@ -170,6 +251,651 @@ class ReportingJob:
     job_id: str
     check_name: str
     not_required: str | None
+
+
+@dataclass(frozen=True)
+class _Line:
+    """A line holding more than white space and a comment: its index, indentation and text."""
+
+    index: int
+    indent: int
+    text: str
+
+
+def _uncommented(text: str) -> str:
+    """`text` without its comment: a `#` opening it or after white space, outside quotes.
+
+    YAML 1.2.2 § 6.6. A quote opens a quoted scalar only where a node can open
+    (§ 7.3), so the `'` in `don't` is a character and a `#` after it ends the line.
+    """
+    quote = ""
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if quote:
+            if char == "\\" and quote == '"':
+                index += 1
+            elif char == quote:
+                if quote == "'" and text[index + 1 : index + 2] == "'":
+                    index += 1
+                else:
+                    quote = ""
+        elif char == "#" and (index == 0 or text[index - 1] in " \t"):
+            return text[:index]
+        elif char in "'\"" and (index == 0 or text[index - 1] in " \t[{,"):
+            quote = char
+        index += 1
+    return text
+
+
+def _next(lines: Sequence[str], index: int) -> _Line | None:
+    """The first line from `index` holding more than white space and a comment.
+
+    Raises `Undecidable` where a tab indents it, which YAML forbids (§ 6.1).
+    """
+    for at in range(index, len(lines)):
+        body = lines[at].lstrip(" ")
+        text = _uncommented(body).strip()
+        if text:
+            if body[:1] == "\t":
+                raise Undecidable("a tab indents this line, where YAML takes only spaces", at + 1)
+            return _Line(at, len(lines[at]) - len(body), text)
+    return None
+
+
+def _closing_quote(text: str, start: int = 0) -> int:
+    """Where the quote closing the scalar `text[start]` opens sits, or -1 past the line's end."""
+    quote = text[start]
+    index = start + 1
+    while index < len(text):
+        if quote == '"' and text[index] == "\\":
+            index += 2
+            continue
+        if text[index] == quote:
+            if quote == "'" and text[index + 1 : index + 2] == "'":
+                index += 2
+                continue
+            return index
+        index += 1
+    return -1
+
+
+def _quoted(token: str, line: int, what: str) -> str:
+    """The scalar a quoted `token` holds, read between its quotes (§ 7.3.1, § 7.3.2)."""
+    body = token[1:-1]
+    if token[0] == "'":
+        return body.replace("''", "'")
+    if "\\" in body:
+        raise Undecidable(
+            f"{what} holds a double-quoted scalar with an escape, which this reader does not "
+            "decode",
+            line,
+        )
+    return body
+
+
+def _item(text: str) -> bool:
+    """Whether `text` opens a block list entry (§ 8.2.1)."""
+    return text == "-" or text[:2] in ("- ", "-\t")
+
+
+def _refuse_opener(text: str, line: int, what: str) -> None:
+    """Raise `Undecidable` where `text` opens with an indicator this reader does not read."""
+    opener = text[:1]
+    if opener in "-?:" and text[1:2] not in ("", " ", "\t"):
+        return
+    if opener and opener in REFUSED_OPENERS:
+        raise Undecidable(f"{what} holds {REFUSED_OPENERS[opener]}", line)
+
+
+def _key(text: str, line: int) -> tuple[str, str] | None:
+    """The key a block mapping entry opens `text` with, and what follows its `:`.
+
+    A plain or quoted scalar ended by a `:` that white space or the line's end
+    follows (§ 7.3, § 8.2.2), so `on :` and `"on":` name the key `on`. `None`
+    where `text` opens no key; a key YAML writes some other way raises
+    `Undecidable`, naming it.
+    """
+    if text[:1] in "'\"":
+        end = _closing_quote(text)
+        after = text[end + 1 :].lstrip(" \t") if end >= 0 else ""
+        if after[:1] != ":" or after[1:2] not in ("", " ", "\t"):
+            return None
+        return _quoted(text[: end + 1], line, "a key"), after[1:].strip()
+    for index, char in enumerate(text):
+        if char == ":" and text[index + 1 : index + 2] in ("", " ", "\t"):
+            key = text[:index].rstrip()
+            _refuse_opener(key or ":", line, "a key")
+            return key, text[index + 1 :].strip()
+    return None
+
+
+def _blank(text: str, at: int) -> int:
+    """The index of the first character from `at` that is not white space."""
+    while at < len(text) and text[at] in " \t":
+        at += 1
+    return at
+
+
+def _flow_scalar(text: str, at: int, line: int, what: str) -> tuple[object, int]:
+    """The scalar opening at `text[at]` inside a flow collection, and the index past it (§ 7.3)."""
+    if text[at] in "'\"":
+        end = _closing_quote(text, at)
+        if end < 0:
+            raise Undecidable(
+                f"{what} holds a quoted scalar carried past its line, which this reader does "
+                "not join - write it on one line",
+                line,
+            )
+        return _quoted(text[at : end + 1], line, what), end + 1
+    if text[at] in "[{":
+        raise Undecidable(
+            f"{what} holds a collection as a key, which this reader does not read", line
+        )
+    _refuse_opener(text[at:], line, what)
+    end = at
+    while end < len(text) and text[end] not in ",[]{}":
+        if text[end] == ":" and text[end + 1 : end + 2] in ("", " ", "\t", ",", "]", "}"):
+            break
+        end += 1
+    value = text[at:end].rstrip()
+    return (None if value in NULLS else value), end
+
+
+def _flow(text: str, at: int, line: int, what: str) -> tuple[object, int]:
+    """The flow node opening at `text[at]`, and the index past it (§ 7.4).
+
+    A list comes back as `(line, entry)` pairs and a mapping as `{key: (line,
+    value)}`, as their block forms do. A collection its line does not close
+    raises `Undecidable` (`PL-R417`): read from its first line, `on: [push,`
+    over `pull_request]` named no pull-request event.
+    """
+    carried = (
+        f"{what} holds a flow collection carried past its line, which this reader does not "
+        "join - write it on one line, or as a block collection"
+    )
+    at = _blank(text, at)
+    if at == len(text):
+        raise Undecidable(carried, line)
+    opener = text[at]
+    if opener not in "[{":
+        return _flow_scalar(text, at, line, what)
+    closer = "]" if opener == "[" else "}"
+    entries: list[tuple[int, object]] = []
+    keyed: dict[str, tuple[int, object]] = {}
+    at += 1
+    while True:
+        at = _blank(text, at)
+        if at == len(text):
+            raise Undecidable(carried, line)
+        if text[at] == closer:
+            break
+        if opener == "[":
+            entry, at = _flow(text, at, line, what)
+            if text[_blank(text, at) : _blank(text, at) + 1] == ":":
+                raise Undecidable(
+                    f"{what} holds a mapping inside a flow list, which this reader does not read",
+                    line,
+                )
+            entries.append((line, entry))
+        else:
+            key, at = _flow_scalar(text, at, line, what)
+            if not isinstance(key, str):
+                raise Undecidable(
+                    f"{what} holds an empty key, which this reader does not read", line
+                )
+            value: object = None
+            at = _blank(text, at)
+            if text[at : at + 1] == ":":
+                at = _blank(text, at + 1)
+                if text[at : at + 1] not in ("", ",", "}"):
+                    value, at = _flow(text, at, line, f"`{key}:`")
+            if key in keyed:
+                raise Undecidable(
+                    f"`{key}:` appears twice in {what}, which YAML does not allow", line
+                )
+            keyed[key] = (line, value)
+        at = _blank(text, at)
+        if at == len(text):
+            raise Undecidable(carried, line)
+        if text[at] == ",":
+            at += 1
+        elif text[at] != closer:
+            raise Undecidable(
+                f"{what} holds `{text[at]}` where its flow collection expects `,` or `{closer}`",
+                line,
+            )
+    return (entries if opener == "[" else keyed), at + 1
+
+
+def _inline(text: str, line: int, what: str) -> object:
+    """The node `text` holds whole on `line`: a flow collection, or a quoted or plain scalar."""
+    if text[:1] in "[{":
+        value, end = _flow(text, 0, line, what)
+        if text[end:].strip():
+            raise Undecidable(
+                f"{what} holds `{text[end:].strip()}` after its flow collection", line
+            )
+        return value
+    if text[:1] in "'\"":
+        end = _closing_quote(text)
+        if end < 0:
+            raise Undecidable(
+                f"{what} holds a quoted scalar carried past its line, which this reader does "
+                "not join - write it on one line",
+                line,
+            )
+        if text[end + 1 :].strip():
+            raise Undecidable(f"{what} holds `{text[end + 1 :].strip()}` after its quote", line)
+        return _quoted(text[: end + 1], line, what)
+    _refuse_opener(text, line, what)
+    if _key(text, line) is not None:
+        raise Undecidable(
+            f"{what} opens a mapping on its key's line, which YAML does not allow", line
+        )
+    return None if text in NULLS else text
+
+
+def _not_continued(lines: Sequence[str], index: int, indent: int, what: str) -> None:
+    """Raise `Undecidable` where a line from `index` is indented past `indent`.
+
+    Under a value already read whole, such a line is YAML carrying a scalar on
+    (§ 7.3.3) - `on: pull_request` over an indented `push` is the one event
+    `pull_request push` - or no YAML at all.
+    """
+    after = _next(lines, index)
+    if after is not None and after.indent > indent:
+        raise Undecidable(
+            f"{what} continues onto a line indented under it, which this reader does not join "
+            "- write the value on one line",
+            after.index + 1,
+        )
+
+
+def _sequence(lines: Sequence[str], first: _Line, what: str) -> tuple[object, int]:
+    """The block list whose first entry is `first`, and the index past it (§ 8.2.1)."""
+    entries: list[tuple[int, object]] = []
+    entry: _Line | None = first
+    while entry is not None and entry.indent == first.indent and _item(entry.text):
+        line = entry.index + 1
+        rest = entry.text[1:].strip()
+        if not rest:
+            raise Undecidable(
+                f"{what} holds a list entry whose value opens on the line after its `-`, which "
+                "this reader does not read",
+                line,
+            )
+        if rest[:1] not in "[{" and _key(rest, line) is not None:
+            raise Undecidable(f"{what} holds a mapping in a list entry, where names belong", line)
+        entries.append((line, _inline(rest, line, what)))
+        _not_continued(lines, entry.index + 1, entry.indent, what)
+        entry = _next(lines, entry.index + 1)
+    return entries, len(lines) if entry is None else entry.index
+
+
+def _passed_over(lines: Sequence[str], index: int, indent: int, inline: str) -> int:
+    """The index past the value of a key at `indent`, found by indentation alone.
+
+    Every line of a block value is indented past its key, and a list may sit at
+    the key's own indentation (§ 6.1, § 8.2.1), so where the value ends needs
+    nothing in it read - a block scalar, a `cron:` or an input's description.
+    """
+    for at in range(index, len(lines)):
+        body = lines[at].lstrip(" ")
+        text = _uncommented(body).strip()
+        if not text:
+            continue
+        depth = len(lines[at]) - len(body)
+        if depth < indent or (depth == indent and (inline or not _item(text))):
+            return at
+    return len(lines)
+
+
+def _mapping(
+    lines: Sequence[str], first: _Line, what: str, unread: Callable[[str], bool] | None
+) -> tuple[object, int]:
+    """The block mapping whose first key opens `first`, and the index past it (§ 8.2.2).
+
+    A key `unread` answers yes for is passed over by its indentation, its value
+    `UNREAD`, so nothing in it is read or refused.
+    """
+    keyed: dict[str, tuple[int, object]] = {}
+    entry: _Line | None = first
+    while entry is not None and entry.indent == first.indent:
+        line = entry.index + 1
+        opened = None if entry.text[:1] in "[{" or _item(entry.text) else _key(entry.text, line)
+        if opened is None:
+            raise Undecidable(f"{what} holds `{entry.text}` among its keys, and it is no key", line)
+        key, inline = opened
+        if key in keyed:
+            raise Undecidable(f"`{key}:` appears twice in {what}, which YAML does not allow", line)
+        if unread is not None and unread(key):
+            keyed[key] = (line, UNREAD)
+            end = _passed_over(lines, entry.index + 1, entry.indent, inline)
+        else:
+            _, value, end = _block(lines, entry.index + 1, entry.indent, inline, line, f"`{key}:`")
+            keyed[key] = (line, value)
+        entry = _next(lines, end)
+        if entry is not None and entry.indent > first.indent:
+            raise Undecidable(
+                f"a line indented between `{key}:` and the value under it, which YAML does not "
+                "allow",
+                entry.index + 1,
+            )
+    return keyed, len(lines) if entry is None else entry.index
+
+
+def _block(
+    lines: Sequence[str],
+    index: int,
+    indent: int,
+    inline: str,
+    line: int,
+    what: str,
+    unread: Callable[[str], bool] | None = None,
+) -> tuple[int, object, int]:
+    """The value of the key at `indent` on `line`, which `what` names.
+
+    `inline` is what follows the key's `:` on its line, and `index` the line
+    after. The value may sit there whole or open on the next line holding more
+    than a comment, as a list, a mapping, a flow collection or a scalar (§ 8.2).
+    Returns the line it opens on, the value, and the index past it.
+    """
+    if inline[:1] == "&":
+        # An anchor names the value it opens and changes nothing in it (§ 6.9.2).
+        inline = (inline.split(None, 1) + [""])[1].strip()
+    if inline:
+        value = _inline(inline, line, what)
+        _not_continued(lines, index, indent, what)
+        return line, value, index
+    first = _next(lines, index)
+    if first is None or first.indent < indent or (first.indent == indent and not _item(first.text)):
+        return line, None, index
+    if _item(first.text):
+        entries, end = _sequence(lines, first, what)
+        return first.index + 1, entries, end
+    if first.text[:1] not in "[{" and _key(first.text, first.index + 1) is not None:
+        keyed, end = _mapping(lines, first, what, unread)
+        return first.index + 1, keyed, end
+    value = _inline(first.text, first.index + 1, what)
+    _not_continued(lines, first.index + 1, indent, what)
+    return first.index + 1, value, first.index + 1
+
+
+def _top_level(lines: Sequence[str], name: str) -> tuple[int, str] | None:
+    """The index of the line opening the top-level `name:` key, and what follows its `:`.
+
+    `None` where no top-level key has that name. Two raise `Undecidable`, since
+    YAML allows a key once in a mapping (§ 3.2.1.1) and which one a reader of a
+    malformed file keeps is not this parser's to guess.
+    """
+    found: tuple[int, str] | None = None
+    for index, raw in enumerate(lines):
+        if raw[:1] in ("", " ", "\t", "#"):
+            continue
+        text = _uncommented(raw).strip()
+        if not text or text[:1] in "[{" or _item(text):
+            continue
+        opened = _key(text, index + 1)
+        if opened is not None and opened[0] == name:
+            if found is not None:
+                raise Undecidable(
+                    f"`{name}:` appears twice at the top level, which YAML does not allow",
+                    index + 1,
+                )
+            found = (index, opened[1])
+    return found
+
+
+def _filters(event: str, held: object, line: int) -> dict[str, tuple[str, ...]]:
+    """What narrows a pull-request event, by key, and nothing where it holds nothing.
+
+    GitHub's schema gives a pull-request event nothing or a mapping of
+    `PULL_REQUEST_FILTERS`, each one name or a list of them; anything else
+    raises `Undecidable`, naming it, as does the pair of filters GitHub refuses
+    on one event.
+    """
+    if held is None:
+        return {}
+    if not isinstance(held, dict):
+        form = "a list" if isinstance(held, list) else "a scalar"
+        raise Undecidable(
+            f"`{event}:` holds {form}, where GitHub's workflow schema takes its filters or nothing",
+            line,
+        )
+    filters: dict[str, tuple[str, ...]] = {}
+    for key, (key_line, value) in held.items():
+        if key not in PULL_REQUEST_FILTERS:
+            raise Undecidable(
+                f"`{event}` carries `{key}:`, which GitHub's workflow schema does not allow there",
+                key_line,
+            )
+        if isinstance(value, str):
+            listed: list[object] = [value]
+        elif isinstance(value, list):
+            listed = [name for _, name in value]
+        else:
+            listed = []
+        if not listed or not all(isinstance(name, str) and name for name in listed):
+            raise Undecidable(
+                f"`{event}`'s `{key}:` holds no name or list of names, which GitHub's workflow "
+                "schema requires",
+                key_line,
+            )
+        filters[key] = tuple(name for name in listed if isinstance(name, str))
+    for one, other in (("branches", "branches-ignore"), ("paths", "paths-ignore")):
+        if one in filters and other in filters:
+            raise Undecidable(
+                f"`{event}` carries both `{one}:` and `{other}:`, which GitHub refuses on one "
+                "event",
+                line,
+            )
+    return filters
+
+
+def triggers(lines: Sequence[str]) -> dict[str, Trigger]:
+    """The events a workflow's `on:` names, each with the line naming it.
+
+    GitHub's workflow schema gives `on:` three forms - an event name, a list of
+    them, or a mapping keyed by them - and YAML writes each as a block or a
+    flow node, on the key's line or the next (§ 7, § 8). Each is read here
+    (`PL-848V`, `PL-4T49`), at any indentation (`PL-GWQ7`), and a comment is no
+    part of a name (`PL-PZP7`). A pull-request event's value is read whole,
+    since its filters decide which pull requests run it; any other event's is
+    passed over by its indentation, unread.
+
+    Raises `Undecidable`, with the line, for YAML this does not read: a block
+    scalar, an alias, a tag, an explicit key, and a scalar or flow collection
+    carried past its line (`PL-R417`). So too a pull-request event holding what
+    GitHub's schema does not allow there, an `on:` naming no event, and a
+    workflow with no top-level `on:` or two.
+    """
+    found = _top_level(lines, "on")
+    if found is None:
+        raise Undecidable("no `on:` key at the top level", 1)
+    index, inline = found
+    line, value, end = _block(
+        lines, index + 1, 0, inline, index + 1, "`on:`", lambda key: key not in PULL_REQUEST_EVENTS
+    )
+    after = _next(lines, end)
+    if after is not None and after.indent > 0:
+        raise Undecidable(
+            "a line indented between `on:` and the value under it, which YAML does not allow",
+            after.index + 1,
+        )
+    named: list[tuple[int, str, object]] = []
+    if isinstance(value, dict):
+        named = [(key_line, event, held) for event, (key_line, held) in value.items()]
+    elif isinstance(value, list):
+        for entry_line, entry in value:
+            if not isinstance(entry, str):
+                raise Undecidable("`on:` lists an entry that is no event name", entry_line)
+            named.append((entry_line, entry, None))
+    elif isinstance(value, str):
+        named = [(line, value, None)]
+    else:
+        raise Undecidable("`on:` names no event", line)
+    events: dict[str, Trigger] = {}
+    for event_line, event, held in named:
+        filters = _filters(event, held, event_line) if event in PULL_REQUEST_EVENTS else None
+        events.setdefault(event, Trigger(event, event_line, filters))
+    return events
+
+
+def _branch_pattern(pattern: str, unread: Undecidable) -> re.Pattern[str]:
+    """The expression a branch filter's pattern stands for, or `unread` raised.
+
+    As *Workflow syntax for GitHub Actions* § "Filter pattern cheat sheet"
+    documents them (docs.github.com, read 2026-10-05): `*` matches a run of
+    anything but `/`, `**` a run of anything, `?` and `+` zero or one and one or
+    more of the character before, `[]` one of the letters, digits and `a-z`,
+    `A-Z` or `0-9` ranges it lists, and `\\` makes the next character plain. A
+    construct the cheat sheet does not document is refused rather than guessed.
+    """
+    parts: list[str] = []
+    quantifiable = False
+    at = 0
+    while at < len(pattern):
+        char = pattern[at]
+        if char == "*":
+            double = pattern[at : at + 2] == "**"
+            parts.append(".*" if double else "[^/]*")
+            quantifiable = False
+            at += 2 if double else 1
+            continue
+        if char in "?+":
+            if not quantifiable:
+                raise unread
+            parts.append(char)
+            quantifiable = False
+        elif char == "[":
+            close = pattern.find("]", at)
+            listed = pattern[at + 1 : close] if close > at else ""
+            if not re.fullmatch(r"(?:[a-z]-[a-z]|[A-Z]-[A-Z]|[0-9]-[0-9]|[a-zA-Z0-9])+", listed):
+                raise unread
+            parts.append(f"[{listed}]")
+            quantifiable = True
+            at = close
+        elif char == "\\":
+            if at + 1 == len(pattern):
+                raise unread
+            at += 1
+            parts.append(re.escape(pattern[at]))
+            quantifiable = True
+        elif char == "]":
+            raise unread
+        else:
+            parts.append(re.escape(char))
+            quantifiable = True
+        at += 1
+    try:
+        return re.compile("".join(parts))
+    except re.error:
+        raise unread from None
+
+
+def _admits(trigger: Trigger, key: str, branch: str) -> bool:
+    """Whether `trigger`'s `key:` filter lets a pull request onto `branch` run it.
+
+    The patterns are read in order, so a `!` pattern after a match excludes the
+    branch and a plain one after that includes it again, as the same page
+    documents; `branches-ignore:` admits the branches its patterns do not match.
+    A `!` pattern under `branches-ignore:`, whose meaning the page leaves
+    unsaid, and a `branches:` list of `!` patterns alone, which it says GitHub
+    refuses, raise `Undecidable`.
+    """
+    patterns = (trigger.filters or {})[key]
+    unread = f"`{trigger.event}`'s `{key}:` pattern"
+    if key == "branches-ignore" and any(pattern.startswith("!") for pattern in patterns):
+        raise Undecidable(
+            f"{unread} opens with `!`, whose meaning under `branches-ignore:` GitHub does not "
+            "document",
+            trigger.line,
+        )
+    if all(pattern.startswith("!") for pattern in patterns):
+        raise Undecidable(
+            f"`{trigger.event}`'s `branches:` lists only `!` patterns, and GitHub requires one "
+            "without",
+            trigger.line,
+        )
+    matched = False
+    for pattern in patterns:
+        negated = pattern.startswith("!")
+        written = pattern[1:] if negated else pattern
+        refused = Undecidable(
+            f"{unread} `{pattern}` uses what GitHub's filter pattern cheat sheet does not document",
+            trigger.line,
+        )
+        if written.startswith("refs/"):
+            raise refused
+        if _branch_pattern(written, refused).fullmatch(branch):
+            matched = not negated
+    return matched if key == "branches" else not matched
+
+
+def _runs_on_every(trigger: Trigger, branch: str | None) -> bool:
+    """Whether `trigger` runs on every pull request onto `branch`.
+
+    False where its branch filter leaves `branch` out. A path filter, a `types:`
+    list leaving a default out, and a branch filter with no branch named to
+    match it against raise `Undecidable` (module docstring).
+    """
+    filters = trigger.filters or {}
+    for key in ("branches", "branches-ignore"):
+        if key not in filters:
+            continue
+        if branch is None:
+            raise Undecidable(
+                f"`{trigger.event}` carries a `{key}:` filter, and no branch was named to match "
+                "it against",
+                trigger.line,
+            )
+        if not _admits(trigger, key, branch):
+            return False
+    for key in ("paths", "paths-ignore"):
+        if key in filters:
+            raise Undecidable(
+                f"`{trigger.event}` carries a `{key}:` filter, so GitHub runs it only for the "
+                "pull requests that filter admits and leaves its checks pending on the rest",
+                trigger.line,
+            )
+    left_out = sorted(DEFAULT_TYPES - set(filters.get("types", DEFAULT_TYPES)))
+    if left_out:
+        named = " or ".join(f"`{activity}`" for activity in left_out)
+        raise Undecidable(
+            f"`{trigger.event}` lists `types:` without {named}, so a commit that activity brings "
+            "is never checked",
+            trigger.line,
+        )
+    return True
+
+
+def reports_on(found: Mapping[str, Trigger], events: Iterable[str], branch: str | None) -> bool:
+    """Whether every pull request onto `branch` runs the workflow, by one of `events`.
+
+    `found` is what `triggers` read, and `events` the pull-request events the
+    caller counts: both here for `required_checks_check`, `pull_request` alone
+    for `doc_check`'s merge gate. The first event that runs on every pull
+    request decides yes, since its check runs report on each; one whose branch
+    filter leaves `branch` out runs on none there. `branch` is what a branch
+    filter is matched against, and `None` where no branch was named.
+
+    Raises `Undecidable` where no event decides yes and one could not be read,
+    since the workflow may then run on some pull requests and not others.
+    """
+    asked = set(events)
+    if not asked <= PULL_REQUEST_EVENTS:
+        raise ValueError(f"filters are read for {sorted(PULL_REQUEST_EVENTS)} alone")
+    declined: Undecidable | None = None
+    for event in sorted(asked & found.keys()):
+        try:
+            if _runs_on_every(found[event], branch):
+                return True
+        except Undecidable as error:
+            declined = declined or error
+    if declined is not None:
+        raise declined
+    return False
 
 
 def _key_at(line: str, indent: int) -> str | None:
@@ -185,64 +911,11 @@ def _key_at(line: str, indent: int) -> str | None:
     return key or None
 
 
-def _triggers(lines: list[str]) -> set[str]:
-    """Return the event names in the workflow's `on:` block.
-
-    Three spellings are accepted, which are the three the YAML spec allows and
-    the three this repository uses across its history: a block mapping, a flow
-    sequence (`on: [push, pull_request]`), and a bare scalar (`on: push`).
-
-    Raises `Undecidable` on a path filter under a pull-request trigger, which
-    only the block mapping can carry (`PL-NWSK`), and on a flow collection YAML
-    carries past the key's line (`PL-R417`): read from its first line,
-    `on: [push,` over `pull_request]` reported nothing onto a pull request.
-    """
-    for index, line in enumerate(lines):
-        if _key_at(line, 0) != "on":
-            continue
-        inline = line.strip().split(":", 1)[1].strip()
-        opened = inline.count("[") + inline.count("{")
-        if inline[:1] in "[{" and opened > inline.count("]") + inline.count("}"):
-            raise Undecidable(
-                "`on:` is a flow collection carried past the key's line, which this parser "
-                "does not join - write it on one line, or as a block mapping"
-            )
-        if inline.startswith("["):
-            return {
-                name.strip().strip("'\"") for name in inline.strip("[]").split(",") if name.strip()
-            }
-        if inline and not inline.startswith("#"):
-            return {inline.strip("'\"")}
-        events = set()
-        event: str | None = None
-        for following in lines[index + 1 :]:
-            if not following.strip() or following.lstrip().startswith("#"):
-                continue
-            indent = len(following) - len(following.lstrip(" "))
-            if indent == 0:
-                break
-            key = _key_at(following, 2)
-            if key is not None:
-                events.add(key)
-                event = key
-                nested = following.split(":", 1)[1]
-            elif indent > 2:
-                nested = following
-            else:
-                continue
-            filtered = PATH_FILTER.search(nested) if event in PULL_REQUEST_EVENTS else None
-            if filtered:
-                raise Undecidable(
-                    f"`{event}` carries a `{filtered.group(1)}:` filter - GitHub reports "
-                    "nothing for a pull request the filter excludes, so a required check "
-                    "on these jobs would stay pending forever while the two lists agree"
-                )
-        return events
-    raise Undecidable("no `on:` block at the top level")
-
-
-def _job_name(lines: list[str], index: int, job: str) -> str | None:
+def _job_name(lines: list[str], index: int, job: str, keys: int) -> str | None:
     """The check name a job's `name:` key at `lines[index]` gives, as YAML reads it.
+
+    `keys` is the indentation of the job's keys, so a line indented past it is
+    the value's (`PL-GWQ7`).
 
     Two forms are read, the ones a workflow writes: a plain scalar on the key's
     line, which a comment ends (YAML 1.2.2 § 6.6), and a quoted scalar that
@@ -268,7 +941,7 @@ def _job_name(lines: list[str], index: int, job: str) -> str | None:
     for following in lines[index + 1 :]:
         if not following.strip():
             continue
-        if len(following) - len(following.lstrip(" ")) <= 4:
+        if len(following) - len(following.lstrip(" ")) <= keys:
             break
         if not following.lstrip().startswith("#"):
             after.append(following)
@@ -297,18 +970,40 @@ def _job_name(lines: list[str], index: int, job: str) -> str | None:
 
 
 def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
-    """Return every job in the workflow, with the check name it would report."""
-    start = None
-    for index, line in enumerate(lines):
-        if _key_at(line, 0) == "jobs":
-            start = index + 1
-            break
-    if start is None:
+    """Return every job in the workflow, with the check name it would report.
+
+    The jobs sit at the indentation the first one sets, and each job's keys at
+    the one the first line under it sets, since YAML allows any (§ 6.1, § 8.2.2):
+    a workflow indented four spaces reads as its two-space twin (`PL-GWQ7`).
+    `jobs:` written as a flow mapping, on its key's line or the next, and a job
+    written on its own key's line, raise `Undecidable` naming the form
+    (`PL-4T49`): read a line at a time, `{lint:` was a job, and a carried
+    `runs-on:` another.
+    """
+    found = _top_level(lines, "jobs")
+    if found is None:
         raise Undecidable("no `jobs:` block at the top level")
+    start, inline = found
+    if inline:
+        raise Undecidable(
+            "`jobs:` holds its value on the key's line, which this parser does not read - "
+            "write the jobs as a block mapping under it",
+            start + 1,
+        )
+    first = _next(lines, start + 1)
+    if first is None or first.indent == 0:
+        return []
+    if first.text[:1] in "[{" or _item(first.text):
+        raise Undecidable(
+            "`jobs:` holds a flow collection or a list on the line after it, which this parser "
+            "does not read - write the jobs as a block mapping",
+            first.index + 1,
+        )
 
     jobs: list[ReportingJob] = []
     comment_block: list[str] = []
     current: str | None = None
+    keys = 0
     display_name: str | None = None
     not_required: str | None = None
 
@@ -324,21 +1019,35 @@ def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
             )
         )
 
-    for index, line in enumerate(lines[start:], start):
+    for index, line in enumerate(lines[start + 1 :], start + 1):
         indent = len(line) - len(line.lstrip(" "))
         if not line.strip():
             comment_block = []
             continue
         if line.lstrip().startswith("#"):
-            if indent == 2:
+            if indent == first.indent:
                 comment_block.append(line.strip())
             continue
+        if line[indent : indent + 1] == "\t":
+            # Counted as no indent, it ended `jobs:` there and dropped every job after it.
+            raise Undecidable("a tab indents this line, where YAML takes only spaces", index + 1)
         if indent == 0:
             break
-        key = _key_at(line, 2)
+        if indent < first.indent:
+            raise Undecidable(
+                "a line indented between `jobs:` and the jobs under it, which YAML does not allow",
+                index + 1,
+            )
+        key = _key_at(line, first.indent)
         if key is not None:
             close()
-            current, display_name = key, None
+            if _uncommented(line.split(":", 1)[1]).strip():
+                raise Undecidable(
+                    f"job `{key}` is written on its key's line, which this parser does not read "
+                    "- write its keys as a block mapping under it",
+                    index + 1,
+                )
+            current, display_name, keys = key, None, 0
             not_required = None
             for comment in comment_block:
                 match = NOT_REQUIRED.search(comment)
@@ -347,11 +1056,12 @@ def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
             comment_block = []
             continue
         comment_block = []
-        if current is None:
+        if current is None or indent == first.indent:
             continue
-        inner = _key_at(line, 4)
+        keys = keys or indent
+        inner = _key_at(line, keys)
         if inner == "name":
-            display_name = _job_name(lines, index, current)
+            display_name = _job_name(lines, index, current, keys)
         elif inner == "strategy":
             raise Undecidable(
                 f"job `{current}` declares `strategy:` - a matrix expands into one check "
@@ -366,17 +1076,23 @@ def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
     return jobs
 
 
-def reporting_jobs(workflow_dir: Path) -> list[ReportingJob]:
-    """Return every job in the tree that reports a status check onto a pull request."""
+def reporting_jobs(workflow_dir: Path, branch: str | None = None) -> list[ReportingJob]:
+    """Return every job in the tree that reports a status check onto a pull request.
+
+    `branch` is the protected branch, which a `branches:` or `branches-ignore:`
+    filter is matched against (`PL-C72H`). With none named, a workflow carrying
+    one raises `Undecidable` rather than being guessed in or out.
+    """
     found: list[ReportingJob] = []
     for path in sorted(workflow_dir.glob("*.yml")) + sorted(workflow_dir.glob("*.yaml")):
         lines = split_lines(path.read_text(encoding="utf-8"))
         try:
-            if not (_triggers(lines) & PULL_REQUEST_EVENTS):
+            if not reports_on(triggers(lines), PULL_REQUEST_EVENTS, branch):
                 continue
             found.extend(_jobs(lines, path.name))
         except Undecidable as exc:
-            raise Undecidable(f"{path}: {exc}") from exc
+            where = f"{path}:{exc.line}" if exc.line else f"{path}"
+            raise Undecidable(f"{where}: {exc}", exc.line) from exc
     return found
 
 
@@ -541,7 +1257,7 @@ def main(argv: list[str] | None = None) -> int:
     token = github_token()
 
     try:
-        jobs = reporting_jobs(root / ".github" / "workflows")
+        jobs = reporting_jobs(root / ".github" / "workflows", args.branch)
     except Undecidable as exc:
         print(f"required-checks: cannot decide what this tree reports - {exc}")
         print(

@@ -29,7 +29,7 @@ def test_circuit_matches_analytic_wash_in(elapsed_s: float) -> None:
 
 
 def test_wash_in_is_monotonic_and_never_overshoots() -> None:
-    circuit = BreathingCircuit(delivered_concentration_percent=8.0)
+    circuit = BreathingCircuit(delivered_concentration_percent=Percent(8.0))
     observed_concentrations = [circuit.inspired_partial_pressure_fraction]
 
     for _ in range(1_200):

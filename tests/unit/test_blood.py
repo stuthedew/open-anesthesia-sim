@@ -3,6 +3,7 @@ from math import exp, inf
 import pytest
 
 from anesthesia_sim.core.blood import VenousBloodCompartment
+from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 
@@ -34,7 +35,8 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
     venous = _build_venous_blood()
 
     venous.advance(
-        tissue_return_partial_pressure_fraction=1.0, simulation_step_s=venous.time_constant_s
+        tissue_return_partial_pressure_fraction=Fraction(1.0),
+        simulation_step_s=venous.time_constant_s,
     )
 
     assert venous.partial_pressure_fraction == pytest.approx(1.0 - exp(-1.0))
@@ -42,11 +44,11 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
 
 def test_zero_blood_flow_preserves_venous_state() -> None:
     venous = _build_venous_blood(blood_flow_l_min=0.0)
-    venous.set_partial_pressure_fraction(0.25)
+    venous.set_partial_pressure_fraction(Fraction(0.25))
 
     amount_before = venous.agent_amount_l
     amount_change = venous.advance(
-        tissue_return_partial_pressure_fraction=1.0, simulation_step_s=60.0
+        tissue_return_partial_pressure_fraction=Fraction(1.0), simulation_step_s=60.0
     )
 
     assert venous.time_constant_s == inf
@@ -56,10 +58,10 @@ def test_zero_blood_flow_preserves_venous_state() -> None:
 
 def test_washout_returns_negative_amount_change() -> None:
     venous = _build_venous_blood()
-    venous.set_partial_pressure_fraction(0.5)
+    venous.set_partial_pressure_fraction(Fraction(0.5))
 
     amount_change = venous.advance(
-        tissue_return_partial_pressure_fraction=0.0, simulation_step_s=10.0
+        tissue_return_partial_pressure_fraction=Fraction(0.0), simulation_step_s=10.0
     )
 
     assert amount_change < 0.0
@@ -68,7 +70,7 @@ def test_washout_returns_negative_amount_change() -> None:
 
 def test_changing_flow_preserves_stored_agent() -> None:
     venous = _build_venous_blood()
-    venous.set_partial_pressure_fraction(0.25)
+    venous.set_partial_pressure_fraction(Fraction(0.25))
     amount_before = venous.agent_amount_l
 
     venous.set_blood_flow(7.0)
@@ -79,7 +81,7 @@ def test_changing_flow_preserves_stored_agent() -> None:
 
 def test_reset_clears_agent_and_preserves_parameters() -> None:
     venous = _build_venous_blood()
-    venous.set_partial_pressure_fraction(0.25)
+    venous.set_partial_pressure_fraction(Fraction(0.25))
 
     venous.reset()
 

@@ -2,6 +2,7 @@ import pytest
 
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation_step import SimulationStep
@@ -37,7 +38,7 @@ MASS_BALANCE_RELATIVE_GATE = 1e-10
 # every compartment to: at that dial the circuit would already sit at its own
 # delivered concentration, and that test's `set_fresh_gas_flow(0.0)` would stop
 # being load-bearing - it would pass at any flow, testing less than it reads as.
-DELIVERED_CONCENTRATION_PERCENT = 4.0
+DELIVERED_CONCENTRATION_PERCENT = Percent(4.0)
 
 
 def _run_for(system: AgentUptakeSystem, duration_s: float, simulation_step_s: float) -> None:
@@ -85,7 +86,7 @@ def test_wash_in_and_washout_validates_agent_simulation(agent_id: str) -> None:
 
     _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 
-    system.set_delivered_concentration_percent(0.0)
+    system.set_delivered_concentration_percent(Percent(0.0))
 
     _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 
@@ -112,7 +113,7 @@ def test_equilibrium_produces_no_net_internal_transfer(agent_id: str) -> None:
     system = _build_system_for_agent(agent_id)
     system.set_fresh_gas_flow(FreshGasFlow(0.0))
 
-    equilibrium_fraction = 0.05
+    equilibrium_fraction = Fraction(0.05)
 
     system.circuit.set_agent_amount(system.circuit.circuit_volume_l * equilibrium_fraction)
     system.alveoli.set_partial_pressure_fraction(equilibrium_fraction)
