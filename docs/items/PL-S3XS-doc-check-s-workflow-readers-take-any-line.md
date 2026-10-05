@@ -3,12 +3,14 @@ id: PL-S3XS
 title: doc_check's workflow readers take any line opening with run: for a step's key and whatever follows on: on its line for the whole value, so a line inside a block scalar reads as a step and a workflow whose on: carries a comment or an anchor reads as triggered by nothing, and gate parity passes; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: tools/doc_check.py, tests/unit
+touches: tools/doc_check.py, tools/required_checks_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-848V's thread, 2026-10-05
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1376
 payoff: a workflow's run steps are read where YAML puts them and its on: whatever comment or anchor it carries, so gate parity and the coverage gate compare what CI actually runs
 verify: grep -q 'workflow commands, a run key inside another block scalar is no step' tests/unit/test_doc_check.py && grep -q 'pull request trigger, an on: key carrying a comment' tests/unit/test_doc_check.py
 recurrences: 2026-10-04 PL-PPNV withdrawn 2026-10-04 PL-R417, 2026-10-04 PL-T1X0 withdrawn 2026-10-04 PL-R417
@@ -32,5 +34,15 @@ Latent: all 44 run steps in the six workflows match PyYAML 6.0.3, and every `on:
 **Done when.** `workflow_commands` reads a `run:` only where YAML puts a step's key, under a job's `steps:`, so a `run:` line inside another key's block scalar or under `defaults:` is no step, and a step written as a flow mapping is read whole or refused by name; `CONTINUED_STATEMENTS` in `tests/unit/test_doc_check.py` gains `workflow commands, a run key inside another block scalar is no step`. That is `PL-R417`'s YAML slice's, so this item stays open until that slice.
 
 **The `on:` half is done (`#1366`, 2026-10-05).** `_gates_pull_requests` reads an `on:` carrying a comment or an anchor through `required_checks_check.triggers`, the one reader of a workflow's triggers that `PL-848V` built, and `CONTINUED_STATEMENTS` gained `pull request trigger, an on: key carrying a comment`.
+
+**The run-step half is done (`#1376`, 2026-10-05).** `workflow_commands` reads
+a `run:` only where a step holds one, through `required_checks_check.steps`,
+the one reader of a workflow's steps: a `run:` inside another key's block
+scalar, an action's `with:` or `defaults:` is no step. A step written as a flow
+mapping is refused by name, as is a job or a `steps:` written on its key's
+line, and the steps around it are read on. The six workflows' 66 commands read
+the same before and after, none declined, and `CONTINUED_STATEMENTS` gained
+`workflow commands, a run key inside another block scalar is no step` and
+`workflow commands, a flow mapping step carried across lines is refused by name`.
 
 **Generator check.** A member of `PL-R417`: the reader takes a physical line for a statement its format continues, the fact that head names. Its `on:` half is also a member of `PL-848V`, the head for which events a workflow's `on:` names.

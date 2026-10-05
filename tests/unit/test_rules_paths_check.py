@@ -114,6 +114,36 @@ def test_a_later_key_is_not_read_as_a_path(tmp_path: Path) -> None:
     assert rules_paths_check.problems(root) == []
 
 
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        ('    - "/src/**"', '  - "/README.md"'),
+        ('  - "/src/**"', '- "/README.md"'),
+        ('  - "/src/**"', '\t- "/README.md"'),
+    ],
+    ids=["shallower", "at the key's column", "after a tab"],
+)
+def test_an_item_off_the_list_s_indentation_is_refused_by_name(
+    tmp_path: Path, first: str, second: str
+) -> None:
+    """YAML refuses the front matter, so neither glob is the rule's scope (`PL-PPNV`).
+
+    Read as two globs, both resolving, the check passed a rule whose scope
+    YAML reads as nothing.
+    """
+    root = _rules(
+        tmp_path,
+        tree=("src/", "README.md"),
+        rule=f"---\npaths:\n{first}\n{second}\n---\n\n# A rule\n",
+    )
+
+    assert rules_paths_check.problems(root) == [
+        f".claude/rules/rule.md: `{second.strip()}` under `paths:` is not at the list's "
+        "indentation, or a tab indents it, which YAML refuses; write each glob as a `- ` item "
+        "at the list's indentation, so the scope it declares was not read"
+    ]
+
+
 def test_an_unterminated_block_is_reported_rather_than_skipped(tmp_path: Path) -> None:
     """Declared scope that cannot be read is the failure, not an absence of one."""
     root = _rules(tmp_path, broken='---\npaths:\n  - "/README.md"\n\n# No closing rule\n')

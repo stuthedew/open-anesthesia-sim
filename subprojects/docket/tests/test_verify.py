@@ -54,6 +54,12 @@ from docket.verify import (
 
 KEPT = "def test_a() -> None:\n    assert 1 == 1\n"
 
+#: A statement every interpreter tokenizes and none parses, which stands in for
+#: syntax newer than the interpreter running docket - PEP 758's unparenthesized
+#: `except` under 3.11 - since no syntax is newer than every interpreter a test
+#: may run on (`PL-TC2D`).
+NEWER = "\n\nnewer = = 'grammar this interpreter cannot parse'\n"
+
 BRIEF = "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n"
 
 
@@ -795,8 +801,12 @@ def test_a_suppression_reflowed_or_recommented_adds_nothing(tmp_path: Path) -> N
     assert _check(report, "no suppression added").detail == "none"
 
 
-def test_a_python_file_this_interpreter_cannot_parse_is_read_line_by_line(tmp_path: Path) -> None:
-    """Where the statements cannot be read, the lines are, and the page says so."""
+def test_a_python_file_the_tokenizer_refuses_is_read_line_by_line(tmp_path: Path) -> None:
+    """Where the statements cannot be read, the lines are, and the page says so.
+
+    A bracket nothing closes is refused by every interpreter's tokenizer, so
+    the file is read line by line wherever this runs.
+    """
     root = _repo(tmp_path)
     _work(
         root,
@@ -811,6 +821,34 @@ def test_a_python_file_this_interpreter_cannot_parse_is_read_line_by_line(tmp_pa
     assert suppression.lines[0] == "@pytest.mark.xfail"
     assert suppression.lines[1].startswith(
         "read line by line, not parsed: tests/test_thing.py - this interpreter cannot parse"
+    )
+
+
+def test_a_mark_in_a_file_this_interpreter_cannot_parse_is_read_whole(tmp_path: Path) -> None:
+    """A file the parser refuses is read through the tokenizer, and named (`PL-TC2D`).
+
+    Read line by line, a marker a backslash splits sits on neither of its
+    lines, so a file using syntax newer than the interpreter running docket
+    could add one under `none`. The tokenizer reads such a file whole, so the
+    marker is the one statement it is, and the page says how the file was read.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX silence it beside newer syntax",
+        "tests/test_thing.py",
+        KEPT + "\n\n@pytest.mark.\\\n    skip(reason='flaky')\ndef test_b() -> None:\n"
+        "    assert 2 == 2\n" + NEWER,
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    suppression = _check(report, "no suppression added")
+    assert not suppression.passed
+    assert suppression.detail == "1 line(s)"
+    assert suppression.lines[0] == "@pytest.mark.\\ skip(reason='flaky')"
+    assert suppression.lines[1].startswith(
+        "read through the tokenizer, not parsed: tests/test_thing.py - this interpreter "
+        "cannot parse its copy at "
     )
 
 
@@ -3323,15 +3361,13 @@ def test_a_merge_is_charged_only_with_what_it_changed_against_every_parent(tmp_p
     assert not any("2 == 2" in line for line in check.lines)
 
 
-def test_a_file_this_interpreter_cannot_parse_is_read_line_by_line_and_named(
-    tmp_path: Path,
-) -> None:
+def test_a_file_the_tokenizer_refuses_is_read_line_by_line_and_named(tmp_path: Path) -> None:
     """The floor: a file read another way says so on the page.
 
-    `bin/docket` runs on the bare `python3`, which can be older than the
-    project's own, and source using newer syntax does not parse there. Such a
-    file is neither skipped - which would pass whatever it lost - nor refused
-    whole; the line predicate reads it and the file is named.
+    A file neither the parser nor the tokenizer can read - a bracket nothing
+    closes, which every interpreter refuses - is neither skipped, which would
+    pass whatever it lost, nor refused whole; the line predicate reads it and
+    the file is named, with both refusals.
     """
     root = _repo(tmp_path)
     broken = "\n\ndef broken(:\n    pass\n"
@@ -3361,6 +3397,97 @@ def test_a_file_this_interpreter_cannot_parse_is_read_line_by_line_and_named(
     )
 
 
+def test_a_file_this_interpreter_cannot_parse_is_read_through_the_tokenizer(tmp_path: Path) -> None:
+    """Statements rather than lines, where the parser refuses and the tokenizer reads (`PL-TC2D`).
+
+    `bin/docket` runs on the bare `python3`, which can be older than the
+    project's own, and a file using newer syntax was read a physical line at a
+    time: a docstring line opening `assert` was charged as a removed assertion,
+    and an assertion wrapped in brackets was loosened on a line holding none of
+    the three shapes, uncharged. Through the tokenizer the docstring is one
+    string and the wrapped assertion one statement, charged as a parsed file's
+    would be, and the page names the file as read that way.
+    """
+    root = _repo(tmp_path)
+    test = (
+        'def test_b() -> None:\n    """Pins the result.\n\n    assert this reads as {}.\n    """\n'
+        "    assert (\n        result == {}\n    )\n"
+    )
+    _work(root, "PL-K7QX pin it", "tests/test_thing.py", KEPT + test.format("prose", 1) + NEWER)
+    _work(
+        root,
+        "PL-K7QX loosen it and reword the docstring",
+        "tests/test_thing.py",
+        KEPT + test.format("plainer prose", 2) + NEWER,
+    )
+
+    check = _assertions(root)
+
+    assert check.blocks
+    assert check.detail == "1 assertion(s)"
+    assert "tests/test_thing.py::test_b" in check.lines
+    assert "    was  assert ( result == 1 )" in check.lines
+    assert "    now  assert ( result == 2 )" in check.lines
+    assert not any("prose" in line for line in check.lines)
+    assert any(
+        line.startswith(
+            "read through the tokenizer, not parsed: tests/test_thing.py - this interpreter "
+            "cannot parse its copy at "
+        )
+        for line in check.lines
+    )
+
+
+def test_a_deleted_assertion_is_charged_whatever_a_string_gains(tmp_path: Path) -> None:
+    """A docstring repeating a deleted assertion's text does not restore it (`PL-TC2D`).
+
+    Read line by line, the removed `assert` cancelled against the identical line
+    the docstring added, so a file the parser refused lost an assertion under
+    `none`. Read through the tokenizer, the line the docstring gained is part of
+    a string, and the statement is gone.
+    """
+    root = _repo(tmp_path)
+    pinned = "def test_b() -> None:\n    assert value == 1\n"
+    recalled = 'def test_b() -> None:\n    """Once held:\n\n    assert value == 1\n    """\n'
+    _work(root, "PL-K7QX pin it", "tests/test_thing.py", KEPT + pinned + NEWER)
+    _work(root, "PL-K7QX recall it", "tests/test_thing.py", KEPT + recalled + NEWER)
+
+    check = _assertions(root)
+
+    assert check.blocks
+    assert check.detail == "1 assertion(s)"
+    assert "    was  assert value == 1" in check.lines
+    assert "    now  nothing in its place" in check.lines
+
+
+def test_a_file_the_tokenizer_refuses_names_both_refusals(tmp_path: Path) -> None:
+    """An unterminated quote is refused by every tokenizer, 3.11's as an error token.
+
+    3.11 hands such a quote back as an `ERRORTOKEN` and reads on, where 3.12
+    raises, so reading past the token would split one file into statements
+    differently by interpreter. Refused either way, the file is read line by
+    line, and the page says why each reader could not read it.
+    """
+    root = _repo(tmp_path)
+    tail = "\nbroken = 'unterminated\n"
+    _work(
+        root,
+        "PL-K7QX pin it",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert value == 1\n" + tail,
+    )
+    _work(root, "PL-K7QX drop it", "tests/test_thing.py", KEPT + tail)
+
+    check = _assertions(root)
+
+    assert check.detail == "1 line(s) in a file read line by line"
+    [named] = [line for line in check.lines if line.startswith("read line by line")]
+    assert named.startswith(
+        "read line by line, not parsed: tests/test_thing.py - this interpreter cannot parse "
+    )
+    assert "; the tokenizer refused its copy at " in named
+
+
 @pytest.mark.parametrize("parsed", [True, False], ids=["parsed", "line_by_line"])
 def test_the_removed_assertion_evidence_names_the_lines_it_omits(
     tmp_path: Path, parsed: bool
@@ -3370,8 +3497,8 @@ def test_the_removed_assertion_evidence_names_the_lines_it_omits(
     The count on the check's own line said six while five lines sat under it,
     and nothing named the cap or the line it left out (`PL-7NKD`). A file the
     parser reads is grouped by function and counts what left beyond the fifth;
-    one it cannot parse is read line by line, and that list stopped at five
-    in silence.
+    one the tokenizer refuses too is read line by line, and that list stopped
+    at five in silence.
     """
     root = _repo(tmp_path)
     tail = "" if parsed else "\n\ndef broken(:\n    pass\n"

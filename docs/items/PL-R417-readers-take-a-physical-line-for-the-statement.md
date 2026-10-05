@@ -287,20 +287,62 @@ where a bound alone would leave an unclosed quotation unread, so its fix needs
 a refusal by name. Filed beside them and not a member: `PL-9XP0`, an anchor
 slug that is not GitHub's. `generator:` stays `live`.
 
-**Next steps (recorded 2026-10-04, revised by links 8 and 11).** The members,
-one format per pull request as before, each closing its members and adding
-their cases to `CONTINUED_STATEMENTS`: the Python readers (`PL-V2HK`,
-`PL-TC2D`), the
-YAML readers (`PL-S3XS`'s run-step half and `PL-PPNV`; `PL-4T49` and
-`PL-S3XS`'s `on:` half closed with `PL-848V` in `#1366`), the shell readers (`PL-97CF`,
+**Link 12, the Python slice (`#1374`, 2026-10-05).** Done: `PL-V2HK` and
+`PL-TC2D`. It built `docket.python`, docket's one reading of where a Python
+statement starts and ends: `read_logical_lines` reads source into logical
+lines through `tokenize`, each string one piece however the tokenizer split it,
+and raises where the tokenizer refuses, an error token included, which 3.11
+hands back where 3.12 raises. `doc_check`'s test definitions and changed
+definitions read a Python file's `def` and `class` statements through it, so a
+`def` inside a string is none, an `async def` test is one, and a changed row
+counts toward the definition whose statement spans it, a wrapped signature's
+continuation line included. A citation only a file the tokenizer refuses may
+define is declined, and the candidates sweep reads such a file's changed lines
+a line at a time and says so. `verify`'s assertion check reads a file the
+running interpreter cannot parse through the tokenizer, every version alike
+(project owner, 2026-10-04, ratified, over keeping the line fallback), and the
+suppression check reads every file's logical lines through it, parsing only to
+name the file; both name such a file read through the tokenizer, and only a
+file the tokenizer refuses is read line by line. Nothing over the tree
+moved: the tokenizers of 3.11, 3.12, 3.13 and 3.14 split the 225 tracked Python
+files into the same 67,740 logical lines and 8,272 definitions, the statement
+reader and `ast` find the same 11,007 assertions under 3.14, and the test
+suites define the same 4,563 test names read either way. Replayed under 3.11
+over `main`'s 15 non-merge commits that change `app_metadata.py` or
+`bookmarks.py`, both checks give `main`'s verdict and page on every one, but
+for the label on the nine that read a copy 3.11 cannot parse. The guard gained
+ten cases, three `assertions, `, one `suppressions, `, three
+`test definitions, ` and three `changed definitions, `, each failing on main's
+readers. No new member was filed. `generator:` stays `live`.
+
+**Link 13, the YAML slice (`#1376`, 2026-10-05).** Done: `PL-S3XS`'s run-step
+half and `PL-PPNV`. `required_checks_check.steps` is the one reader of a
+workflow's steps, beside `triggers` for its `on:`: it walks `jobs:` to each
+job's `steps:` list, passing every value over by its indentation alone, and
+gives each step's keys with the line and column each opens on. `doc_check`'s
+`workflow_commands` reads a `run:` there and nowhere else, so a `run:` inside
+another key's block scalar, an action's `with:` or `defaults:` is no step. A
+step written as a flow mapping is refused by name, as is a job or a `steps:`
+written on its key's line, and the steps around it are read on. Where the jobs
+open and what key a block mapping's line opens are each read by one function
+the older job and trigger readers now share. `rules_paths_check.entries`
+refuses by name a `- ` line under `paths:` at another indentation than the
+list's first item, which YAML joins into the glob above it or refuses. Nothing
+over the tree moved: the six workflows' 66 commands read the same, none
+declined, and `.claude/rules/` keeps its 25 globs. The guard gained three
+cases, two `workflow commands, ` and one `rules paths, `, each failing on main's
+readers. Filed beside it and not a member: `PL-GVDP`, a trailing comment read
+into a `paths:` glob, which is where a value ends on its line rather than
+across lines. `generator:` stays `live`.
+
+**Next steps (recorded 2026-10-04, revised by links 8, 11, 12 and 13).** The
+members, one format per pull request as before, each closing its members and
+adding their cases to `CONTINUED_STATEMENTS`: the shell readers (`PL-97CF`,
 `PL-2JYP`, `PL-WG6S`), the Makefile reader (`PL-4MLK`), and the two that read a
 change or a commit record (`PL-F7Z6`, `PL-4ZVH`); then link 11's two Markdown
-members, `PL-0Y7J` and `PL-T73L`, in one pull request before the sweep, since
-the chain running these slices names neither yet. `PL-TC2D` reads a file the
-interpreter cannot parse through `tokenize` first (project owner, 2026-10-04,
-ratified, over keeping the line fallback). Then one more sweep of the same
-reach, and `generator:` rewritten `spent` only when it finds nothing (the
-coordinator's brief, 2026-10-04). The head closes without waiting for
+members, `PL-0Y7J` and `PL-T73L`, in one pull request before the sweep. Then
+one more sweep of the same reach, and `generator:` rewritten `spent` only when
+it finds nothing (the coordinator's brief, 2026-10-04). The head closes without waiting for
 `PL-RR1N`, naming it in the reason as Done-when says (project owner,
 2026-10-04, ratified, over waiting for it).
 

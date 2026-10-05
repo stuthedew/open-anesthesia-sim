@@ -147,6 +147,13 @@ try:
     from docket.markdown import headings as read_headings
     from docket.markdown import read as read_blocks
     from docket.model import CLOSED_STATUSES, SEMVER_PATTERN, Item
+
+    # `python` is the one reading of where a Python statement ends (`PL-R417`):
+    # a test is defined by a `def` statement rather than by a line opening one,
+    # so `def test_ghost():` inside a fixture string defines nothing, and a
+    # changed line counts toward the definition whose statement holds it, a
+    # signature wrapped over several lines included (`PL-V2HK`).
+    from docket.python import UNTOKENIZABLE, definition, read_logical_lines, refusal
     from docket.release import (
         CODE_SPAN_RE,
         NOTES_BULLET_RE,
@@ -235,13 +242,16 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
         "grammar, docket/vcs.py for the tag read and the default-branch list, "
         "docket/release.py for where a cut writes its notes, docket/shell.py for "
         "how a shell line splits, docket/fences.py for where a fenced block is, "
+        "docket/python.py for where a Python statement ends, "
         "and docket/{config,model,store}.py for the queue, "
         f"and could not import them: {error}"
     ) from error
 
 # `required_checks_check` holds the one reader of a workflow's triggers
 # (`PL-848V`), which the merge gate's question is asked of rather than read a
-# second way: two hand readers had each taken a few of `on:`'s spellings.
+# second way: two hand readers had each taken a few of `on:`'s spellings. It
+# holds the one reader of a workflow's steps too (`PL-S3XS`), for the same
+# reason: a line regex had taken a `run:` inside another block for a step.
 import required_checks_check
 
 # Documentation whose claims this tool holds to the tree. `CLAUDE.md` and the
@@ -772,11 +782,12 @@ LIST_ITEM_RE = re.compile(r"^(?P<marker> *(?:[-*+]|\d{1,9}[.)]))(?:(?P<gap> +)(?
 
 WORKFLOW_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 
-# `run:` opens a step's shell, either inline or as a block scalar whose body
-# is every following line indented past the key. Reading it this way rather
-# than parsing YAML keeps this tool standard-library only, which is what lets
-# a hook or a bare checkout run it. `lead` is everything before the key, so its
-# length is the key's column, which a value's lines are indented past.
+# The line of a step's `run:` key, which `required_checks_check.steps` places:
+# the key opens a step's shell, either inline or as a block scalar whose body is
+# every following line indented past the key. Reading it this way rather than
+# parsing YAML keeps this tool standard-library only, which is what lets a hook
+# or a bare checkout run it. `lead` is everything before the key, so its length
+# is the key's column, which a value's lines are indented past.
 RUN_STEP_RE = re.compile(r"^(?P<lead>\s*-?\s*)run:\s*(?P<inline>.*)$")
 #: A block scalar's header (YAML 1.2.2 § 8.1.1): `|` for a literal block or `>`
 #: for a folded one, then an indentation indicator and a chomping indicator in
@@ -2281,10 +2292,25 @@ TEST_NAME_RE = re.compile(r"test_[A-Za-z0-9_]+")
 #: the line it carries on to. No test name holds a space, so a name broken here
 #: was broken by the wrap, and is read with the break taken out (`PL-6SRZ`).
 SPAN_BREAK_RE = re.compile(r"\n[ \t]*(?:>[ \t]*)*")
-#: A test function definition, at module level or inside a class.
-TEST_DEF_RE = re.compile(r"^\s*def (test_[A-Za-z0-9_]+)", re.MULTILINE)
 #: Where test functions are defined: the product suite and the apparatus one.
 TEST_ROOTS = (Path("tests"), Path("subprojects/docket/tests"))
+
+
+def _defined_tests(text: str) -> set[str]:
+    """The test functions a Python file defines, as its `def` statements name them.
+
+    A statement rather than a line (`PL-V2HK`). A pattern over `def ` at a
+    line's start read `def test_ghost():` inside a fixture string as a test,
+    so a document citing a test nothing defines passed, and it read an
+    `async def test_` as none. Raises one of `UNTOKENIZABLE` where the
+    tokenizer refuses the file.
+    """
+    found: set[str] = set()
+    for line in read_logical_lines(text):
+        keyword, name = definition(line)
+        if keyword == "def" and TEST_NAME_RE.fullmatch(name):
+            found.add(name)
+    return found
 
 
 def _named_tests(text: str) -> Iterator[tuple[int, str]]:
@@ -2334,6 +2360,12 @@ def check_named_tests(root: Path, documents: Mapping[Path, str], report: Report)
     What the check cannot judge is whether the test is any good, or whether it
     tests the sentence it is cited under. It validates linkage, exactly as the
     provenance check does, and says so.
+
+    **A test file the tokenizer refuses is declined, not read a line at a
+    time** (`PL-V2HK`). What it defines is unknown, so a name defined nowhere
+    else is neither passed nor failed where such a file holds the name's text,
+    and is an error as before where none does: no file defines a test without
+    spelling its name.
     """
     seen: dict[tuple[Path, str], int] = {}
     for path, text in documents.items():
@@ -2347,6 +2379,7 @@ def check_named_tests(root: Path, documents: Mapping[Path, str], report: Report)
     if not seen:
         return
     defined: set[str] = set()
+    refused: dict[Path, tuple[str, str]] = {}  # each file the tokenizer refused: its text, why
     searched = False
     for relative in TEST_ROOTS:
         directory = root / relative
@@ -2354,7 +2387,11 @@ def check_named_tests(root: Path, documents: Mapping[Path, str], report: Report)
             continue
         searched = True
         for path in sorted(directory.rglob("*.py")):
-            defined |= set(TEST_DEF_RE.findall(path.read_text(encoding="utf-8")))
+            text = path.read_text(encoding="utf-8-sig")
+            try:
+                defined |= _defined_tests(text)
+            except UNTOKENIZABLE as error:
+                refused[path.relative_to(root)] = (text, refusal(error))
     if not searched:
         report.declined.append(
             f"the {len(seen)} test citation(s) in the documentation: no test directory was "
@@ -2364,9 +2401,18 @@ def check_named_tests(root: Path, documents: Mapping[Path, str], report: Report)
     for (path, name), line in sorted(seen.items(), key=lambda pair: (pair[0][0], pair[1])):
         # A name ending in `_` cites the tests it prefixes - "the `test_arm_`
         # tests" - and resolves while one of them is defined.
-        if name not in defined and not (
+        if name in defined or (
             name.endswith("_") and any(test.startswith(name) for test in defined)
         ):
+            continue
+        holders = [f"{file} ({why})" for file, (text, why) in refused.items() if name in text]
+        if holders:
+            report.declined.append(
+                f"{path}:{line}: names the test `{name}`, which no file the tokenizer read "
+                f"defines; Python {platform.python_version()} cannot tokenize "
+                f"{' or '.join(holders)}, which may, so the citation was neither passed nor failed"
+            )
+        else:
             report.errors.append(
                 f"{path}:{line}: names the test `{name}`, which no test under "
                 f"{' or '.join(str(one) for one in TEST_ROOTS)} defines; the statement it "
@@ -4863,36 +4909,62 @@ def workflow_commands(
     non-blank line sets, and keeps the rest: `x\\` over an indented `y` is
     two words to bash, where stripping each line first would make it `xy`.
 
+    **Which lines are a step's `run:` key is read from the workflow's
+    structure** (`PL-S3XS`), through `required_checks_check.steps`: the `run:`
+    of an entry of a job's `steps:` list. Read a line at a time, a `run:` line
+    inside another key's block scalar was a step, a `defaults:` block's `run:`
+    was a step declined, and a step written as a flow mapping across lines
+    kept its closing brace in the command.
+
     **Where a step's value ends, and in which form, is read as YAML reads it**
-    (`PL-R417`), through `_run_script`. A step whose value is in a form that
-    reader declines is no commands here: it goes on `unread` where the caller
-    passes one, so the check can say which step it did not read and carry on
-    to the next, and is raised where none is passed, so no reading of it is
+    (`PL-R417`), through `_run_script`. A step, a job or a workflow in a form
+    either reader declines is no commands here: it goes on `unread` where the
+    caller passes one, so the check can say which it did not read and carry
+    on to the next, and is raised where none is passed, so no reading of it is
     silent.
     """
     lines = split_lines(text)
-    index = 0
-    while index < len(lines):
-        match = RUN_STEP_RE.match(lines[index])
-        index += 1
-        if match is None:
-            continue
-        first = index
-        while index < len(lines) and (
-            not lines[index].strip() or _indent(lines[index]) > len(match["lead"])
-        ):
-            index += 1
+    try:
+        steps = required_checks_check.steps(lines)
+    except required_checks_check.Undecidable as workflow:
+        steps = [required_checks_check.Step(workflow.line or 1, refused=workflow)]
+    for step in steps:
         try:
-            script = _run_script(match, lines, first, index)
-        except UnreadStatement as step:
+            script = _step_script(step, lines)
+        except UnreadStatement as declined:
             if unread is None:
                 raise
-            unread.append(step)
+            unread.append(declined)
             continue
         body = "".join(f"{line}\n" for line, _ in script)
         for command, offset in script_lines(body):
             if command.strip():
                 yield command.strip(), script[body.count("\n", 0, offset)][1]
+
+
+def _step_script(step: required_checks_check.Step, lines: list[str]) -> list[tuple[str, int]]:
+    """The script one step's `run:` hands bash, a line at a time, or nothing where it has none.
+
+    Raises `UnreadStatement` where the step, or the job holding it, was
+    refused, naming why, or where its `run:` value is in a form `_run_script`
+    declines.
+    """
+    if step.refused is not None:
+        raise UnreadStatement(step.line, step.refused.why)
+    if "run" not in step.keys:
+        return []
+    index, column = step.keys["run"]
+    match = RUN_STEP_RE.match(lines[index])
+    if match is None or len(match["lead"]) != column:
+        raise UnreadStatement(
+            index + 1,
+            "this `run:` step's key is quoted, or spaced from its colon, which this reader "
+            "does not split; write it `run:`",
+        )
+    end = index + 1
+    while end < len(lines) and (not lines[end].strip() or _indent(lines[end]) > column):
+        end += 1
+    return _run_script(match, lines, index + 1, end)
 
 
 def _indent(line: str) -> int:
@@ -4958,23 +5030,25 @@ def _run_script(
     if header is not None:
         raise UnreadStatement(
             line,
-            "a folded block (`>`), whose lines YAML joins into one before bash reads "
-            "them, and this reader does not; write it as a literal block (`|`)",
+            "this `run:` step is a folded block (`>`), whose lines YAML joins into one "
+            "before bash reads them, and this reader does not; write it as a literal block "
+            "(`|`)",
         )
     if inline[:1] in YAML_NODE_INDICATORS:
         form = "a quoted scalar" if inline[0] in "\"'" else f"a YAML node opening `{inline[0]}`"
         raise UnreadStatement(
             line,
-            f"{form}, which YAML resolves before bash reads it, and this reader does "
-            "not; write the command itself, on the key's line or as a literal block (`|`)",
+            f"this `run:` step is {form}, which YAML resolves before bash reads it, and "
+            "this reader does not; write the command itself, on the key's line or as a "
+            "literal block (`|`)",
         )
     if after:
         where = "carried onto the line after it" if inline else "opening on the line after it"
         raise UnreadStatement(
             line,
-            f"a plain scalar {where}, which YAML folds into one line before bash reads "
-            "it, and this reader does not; write it on the key's line or as a literal "
-            "block (`|`)",
+            f"this `run:` step is a plain scalar {where}, which YAML folds into one line "
+            "before bash reads it, and this reader does not; write it on the key's line or "
+            "as a literal block (`|`)",
         )
     return [(inline, line)] if inline else []
 
@@ -5127,11 +5201,9 @@ def check_workflow_paths(root: Path, report: Report) -> None:
 def _decline_steps(
     report: Report, workflow: Path, steps: Iterable[UnreadStatement], unread: str
 ) -> None:
-    """Say which `run:` steps `workflow_commands` declined, and what went unchecked for it."""
+    """Say which steps `workflow_commands` declined, and what went unchecked for it."""
     for step in steps:
-        report.declined.append(
-            f"{workflow}:{step.line}: this `run:` step is {step.why}, so {unread}"
-        )
+        report.declined.append(f"{workflow}:{step.line}: {step.why}, so {unread}")
 
 
 # What marks the invocation the two files promise to keep identical. The
@@ -6398,10 +6470,18 @@ def _git(root: Path, *args: str) -> list[str]:
 # rather than a sentence. Without it, a wrapped prose line beginning "class
 # describes the deliverable" reads as a class named `describes`, so editing a
 # single queue item seeded the search with an ordinary English word and
-# returned 26 lines about nothing (`PL-B2NS`).
+# returned 26 lines about nothing (`PL-B2NS`). A Python file's definitions are
+# read from its statements instead (`_changed_definitions`, `PL-V2HK`), so this
+# reads only the lines of a Python file the tokenizer refuses, and of a file in
+# no Python suffix.
 DEFINITION_RE = re.compile(r"^[-+]\s*(?:async\s+)?(?:def|class)\s+(\w+)\s*[(:]")
 JSON_KEY_RE = re.compile(r'^[-+]\s*"(\w+)"\s*:')
 REMOVED_HEADING_RE = re.compile(r"^-#{1,6}\s+(.+?)\s*#*\s*$")
+#: A `-U0` patch's hunk header: the rows it removes from the old file and adds
+#: to the new one, each a first row and a count that is 1 where it is left out.
+HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", re.MULTILINE)
+#: The suffixes whose definitions are read as statements.
+PYTHON_SUFFIXES = (".py", ".pyi")
 
 # A term's shape decides how it is searched for, because the two shapes carry
 # different risk. `doc_check.py`, `changed_tokens` and `TreeMap` cannot be
@@ -6447,7 +6527,9 @@ def _changed_paths(root: Path, base: str) -> list[str]:
     return sorted(set(paths))
 
 
-def changed_tokens(root: Path, base: str, documents: Iterable[Path]) -> dict[str, set[str]]:
+def changed_tokens(
+    root: Path, base: str, documents: Iterable[Path], unread: list[str]
+) -> dict[str, set[str]]:
     """What each changed file gives the documentation a chance to contradict.
 
     A changed *source* file is named in prose by its filename or by a
@@ -6456,6 +6538,9 @@ def changed_tokens(root: Path, base: str, documents: Iterable[Path]) -> dict[str
     heading it no longer has, so a removed heading is the token. Searching a
     documentation file by its own name only reports that other documents link
     to it, which is true whether or not anything drifted.
+
+    A Python file whose definitions could not be read as statements is
+    appended to `unread`, saying why and that its lines were read instead.
     """
     docs = {str(path) for path in documents}
     tokens: dict[str, set[str]] = {}
@@ -6470,6 +6555,13 @@ def changed_tokens(root: Path, base: str, documents: Iterable[Path]) -> dict[str
                 for line in diff
                 if (match := REMOVED_HEADING_RE.match(line)) is not None
             }
+        elif PurePosixPath(relative).suffix in PYTHON_SUFFIXES:
+            name = PurePosixPath(relative)
+            found = {
+                name.name,
+                name.stem,
+                *_changed_definitions(root, base, relative, patch, unread),
+            }
         else:
             name = PurePosixPath(relative)
             found = {name.name, name.stem}
@@ -6483,6 +6575,59 @@ def changed_tokens(root: Path, base: str, documents: Iterable[Path]) -> dict[str
                         found.add(match.group(1))
         tokens[relative] = {token for token in found if len(token) > 3}
     return tokens
+
+
+def _changed_definitions(
+    root: Path, base: str, relative: str, patch: str, unread: list[str]
+) -> set[str]:
+    """What the definitions holding a changed row define, on either side of `patch`.
+
+    A statement rather than a line (`PL-V2HK`). A `def` or `class` line
+    inside a fixture string defines nothing, and a parameter changed on the
+    third line of a wrapped signature changes that definition, which a pattern
+    over each changed line read the other way round both times. So each side's
+    copy is read into logical lines, and each `def` or `class` statement
+    spanning a row the hunk headers name changed is a term: the base's copy for
+    the rows removed, the working tree's for the rows added, as the diff
+    compares them.
+
+    A copy the tokenizer refuses has its changed lines read a line at a time,
+    as every file's were, and is appended to `unread`.
+    """
+    found: set[str] = set()
+    removed: set[int] = set()
+    added: set[int] = set()
+    for hunk in HUNK_RE.finditer(patch):
+        first, count, new_first, new_count = (int(group or 1) for group in hunk.groups())
+        removed.update(range(first, first + count))
+        added.update(range(new_first, new_first + new_count))
+    for rows, copy in ((removed, base), (added, "")):
+        if not rows:
+            continue
+        try:
+            if copy:
+                text = _git_output(root, "show", f"{copy}:{relative}").removeprefix("\ufeff")
+            else:
+                # Undecoded line ends, so its rows are the ones git's counted.
+                text = (root / relative).read_bytes().decode("utf-8-sig")
+            lines = read_logical_lines(text)
+        except (OSError, *UNTOKENIZABLE) as error:
+            said = refusal(error) if not isinstance(error, OSError) else str(error)
+            unread.append(
+                f"{relative}: Python {platform.python_version()} cannot tokenize its copy "
+                f"{f'at {copy}' if copy else 'in the working tree'} ({said}), so its changed "
+                "lines were read a line at a time"
+            )
+            return found | {
+                match.group(1)
+                for line in split_lines(patch)
+                if (match := DEFINITION_RE.match(line)) is not None
+            }
+        for line in lines:
+            name = definition(line)[1]
+            if name and any(line.first <= row <= line.last for row in rows):
+                found.add(name)
+    return found
 
 
 def is_distinctive(term: str) -> bool:
@@ -6572,7 +6717,8 @@ def format_candidates(root: Path, base: str) -> str:
     as a sweep that did not happen rather than one that found nothing.
     """
     documents = read_docs(root)
-    tokens = changed_tokens(root, base, documents)
+    unread: list[str] = []
+    tokens = changed_tokens(root, base, documents, unread)
     if not tokens:
         return f"No changes against {base}; nothing to sweep."
 
@@ -6621,6 +6767,15 @@ def format_candidates(root: Path, base: str) -> str:
 
     if not total:
         lines.append("  Nothing in the documentation mentions anything this diff changed.")
+        lines.append("")
+    if unread:
+        # Read another way rather than skipped, and said, so a definition the
+        # list misses there is one the reader knows to look for (`PL-V2HK`).
+        lines.append(
+            "Read a line at a time rather than as statements, so a definition there inside a "
+            "string or wrapped over several lines may be missed or misread:"
+        )
+        lines.extend(f"  {note}" for note in unread)
         lines.append("")
     if narrowed:
         # Name them, so a reader who suspects a miss knows the one word to
