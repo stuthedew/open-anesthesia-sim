@@ -255,6 +255,17 @@ def test_a_flow_mapping_under_jobs_is_refused_by_name(tmp_path: Path, jobs: str)
         rcc.reporting_jobs(directory)
 
 
+def test_a_tab_indenting_a_job_is_refused_by_name(tmp_path: Path) -> None:
+    """YAML indents with spaces alone (§ 6.1), and a tab read as no indent ended `jobs:` there.
+
+    So `test` and every job after it dropped out of the reconciliation unsaid.
+    """
+    jobs = "jobs:\n  lint:\n    runs-on: x\n\ttest:\n    runs-on: x\n"
+    directory = _workflows(tmp_path, quality="on: pull_request\n" + jobs)
+    with pytest.raises(rcc.Undecidable, match=r"quality\.yml:5: a tab indents this line"):
+        rcc.reporting_jobs(directory)
+
+
 # --- the parser: what a pull-request event's filters leave out (`PL-C72H`) ----
 
 

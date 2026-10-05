@@ -1028,6 +1028,9 @@ def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
             if indent == first.indent:
                 comment_block.append(line.strip())
             continue
+        if line[indent : indent + 1] == "\t":
+            # Counted as no indent, it ended `jobs:` there and dropped every job after it.
+            raise Undecidable("a tab indents this line, where YAML takes only spaces", index + 1)
         if indent == 0:
             break
         if indent < first.indent:
