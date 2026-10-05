@@ -3,12 +3,14 @@ id: PL-4MLK
 title: doc_check's _make_lines reads a define ... endef body as rules and recipes, so a target named only inside a multi-line variable reads as declared and a document citing make deploy passes; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit, docs/items/PL-GZXY-doc-check-s-make-readers-read-only-the-first.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-R417's Makefile slice, 2026-10-05
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1378
 payoff: a target or a command written only inside a define ... endef value is no longer read as one the Makefile runs, so a document naming it fails the make-targets check and the gate checks compare only what make runs
 verify: grep -q 'make targets, a define body is the variable' tests/unit/test_doc_check.py
 recurrences: 2026-10-04 PL-2JYP withdrawn 2026-10-04 PL-R417, 2026-10-04 PL-GZXY withdrawn 2026-10-04 PL-R417, 2026-10-05 PL-TDVJ withdrawn 2026-10-05 PL-TDVJ, 2026-10-05 PL-BMZN withdrawn 2026-10-05 PL-BMZN, 2026-10-05 PL-M2RB withdrawn 2026-10-05 PL-M2RB

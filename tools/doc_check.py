@@ -5370,8 +5370,7 @@ def check_coverage_gate(root: Path, report: Report) -> None:
             ]
         except UnreadStatement as statement:
             report.declined.append(
-                f"Makefile:{statement.line}: {statement.why}, so the coverage gate was not "
-                "compared"
+                f"Makefile:{statement.line}: {statement.why}, so the coverage gate was not compared"
             )
             return
     remote: list[tuple[str, str]] = []
