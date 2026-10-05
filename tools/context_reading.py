@@ -147,7 +147,10 @@ def read(text: str) -> Reading:
     turns = 0
     unread = 0
 
-    for line in text.splitlines():
+    # On `\n` alone, the one character JSON Lines ends a record at. JSON leaves
+    # U+2028, U+2029 and U+0085 raw inside a string, and `splitlines()` broke
+    # such a record in two, both halves then counted unread (`PL-K1D6`).
+    for line in text.split("\n"):
         line = line.strip()
         if not line:
             continue
@@ -222,7 +225,7 @@ def report(reading: Reading) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument(
         "--series", action="store_true", help="print the context of every request, oldest first"
     )

@@ -172,6 +172,21 @@ def test_unreadable_records_are_counted_back_not_dropped() -> None:
     assert any("unread" in line for line in context_reading.report(reading))
 
 
+def test_a_record_holding_a_raw_line_separator_is_read_as_one_record() -> None:
+    """`PL-K1D6`: JSON leaves U+2028, U+2029 and U+0085 raw inside a string.
+
+    `splitlines()` broke such a record in two, both halves unread, so the spend
+    reading came from the request before it.
+    """
+    row = json.loads(assistant("req_1", 81_048))
+    row["message"]["content"] = [{"type": "text", "text": "a\u2028b\u2029c\x85d"}]
+
+    reading = context_reading.read(json.dumps(row, ensure_ascii=False) + "\n")
+
+    assert len(reading.requests) == 1
+    assert reading.unread == 0
+
+
 def test_a_comfortable_reading_says_nothing_about_unread() -> None:
     """The unread line is a real finding, so it must not fire on every run."""
     reading = context_reading.read("\n".join([user(), assistant("req_1", 81_048)]))

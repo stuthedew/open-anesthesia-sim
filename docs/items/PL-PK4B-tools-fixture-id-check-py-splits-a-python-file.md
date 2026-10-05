@@ -3,11 +3,13 @@ id: PL-PK4B
 title: tools/fixture_id_check.py splits a Python file with splitlines() before ast.parse, so legal source holding a U+2028, U+0085 or form feed in a comment or string crashes make check with a SyntaxError traceback instead of a report
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-23
+closed: 2026-10-05
+pr: 1364
 payoff: make check reports on any source Python accepts instead of crashing on it
 verify: grep -q 'def test_a_line_separator_python_accepts_is_scanned_rather_than_crashing' tests/unit/test_fixture_id_check.py
 ---

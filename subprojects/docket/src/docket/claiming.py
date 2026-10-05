@@ -95,6 +95,7 @@ from .claims import (
     _parse_yield,
     holdings,
 )
+from .lines import split_lines
 from .model import CLOSED_STATUSES, parse_front_matter
 from .store import ID_PATTERN
 from .vcs import (
@@ -627,7 +628,7 @@ def _other_copies(
     listing = run(["for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"], root)
     skip = {_head_name(base, branch.remotes), branch.name, "HEAD"}
     found: dict[str, dict[str, str]] = {}
-    for ref in (line.strip() for line in listing.splitlines()):
+    for ref in (line.strip() for line in split_lines(listing)):
         name = _head_name(ref, branch.remotes)
         if not ref or name in skip or ref in branch.remotes:
             continue
@@ -737,7 +738,7 @@ def _first_add(
     # Newest first, so the last commit naming `key`'s file is the oldest add.
     oldest: list[str] = []
     stamped: list[str] = []
-    for line in done.out.splitlines():
+    for line in split_lines(done.out):
         if line.startswith("\x00"):
             stamped = line[1:].split()
             continue
@@ -914,7 +915,7 @@ def _continues(root: Path, branch: _Branch, other: str) -> bool:
         *(f"refs/remotes/{remote}/{other}" for remote in branch.remotes),
     ]
     listing = _git(["for-each-ref", "--format=%(objectname)", *patterns], root)
-    tips = [line.strip() for line in listing.out.splitlines() if line.strip()]
+    tips = [line.strip() for line in split_lines(listing.out) if line.strip()]
     if listing.code != 0 or not tips:
         return False
     return all(_git(["merge-base", "--is-ancestor", tip, "HEAD"], root).code == 0 for tip in tips)
@@ -1500,4 +1501,4 @@ def _git(args: list[str], root: Path) -> _Ran:
 
 def _indented(text: str) -> tuple[str, ...]:
     """git's own words, indented under the line that explains them."""
-    return tuple(f"  {line}" for line in text.strip().splitlines()[-6:] if line.strip())
+    return tuple(f"  {line}" for line in split_lines(text.strip())[-6:] if line.strip())

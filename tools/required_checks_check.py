@@ -129,6 +129,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.lines import split_lines  # noqa: E402
 from docket.vcs import REMOTE, default_branch, github_slug, github_token  # noqa: E402
 
 API_ROOT = "https://api.github.com"
@@ -369,7 +370,7 @@ def reporting_jobs(workflow_dir: Path) -> list[ReportingJob]:
     """Return every job in the tree that reports a status check onto a pull request."""
     found: list[ReportingJob] = []
     for path in sorted(workflow_dir.glob("*.yml")) + sorted(workflow_dir.glob("*.yaml")):
-        lines = path.read_text(encoding="utf-8").splitlines()
+        lines = split_lines(path.read_text(encoding="utf-8"))
         try:
             if not (_triggers(lines) & PULL_REQUEST_EVENTS):
                 continue
@@ -517,7 +518,7 @@ def _repo_from_git(root: Path) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     root = Path(__file__).resolve().parent.parent
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument(
         "--repo",
         default=os.environ.get("GITHUB_REPOSITORY"),
