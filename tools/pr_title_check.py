@@ -85,7 +85,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.lines import split_lines  # noqa: E402
+from docket.lines import file_text, record_text, split_lines  # noqa: E402
 from docket.model import CLOSED_STATUSES, Item, parse_item  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import ITEM_FILE_RE, default_base, leading_ids  # noqa: E402
@@ -118,19 +118,23 @@ def _git(args: list[str]) -> str:
     (`PL-1PBV`, and the module docstring). Any non-zero exit is a failure:
     `ls-tree`, `show` and `rev-parse --abbrev-ref` have no "no" to give, and
     exit 0 whenever they answered at all.
+
+    Decoded as written, so a raw `\\r` in a record stays in it; the one blob
+    read translates its own (`PL-0R4M`).
     """
     try:
         result = subprocess.run(
-            ["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=30, check=False
+            ["git", *args], cwd=ROOT, capture_output=True, timeout=30, check=False
         )
     except (OSError, subprocess.SubprocessError) as error:
         raise GitUnanswered(f"`git {args[0]}` could not run: {error}") from error
     if result.returncode != 0:
-        said = next((line.strip() for line in split_lines(result.stderr) if line.strip()), "")
+        stderr = record_text(result.stderr)
+        said = next((line.strip() for line in split_lines(stderr) if line.strip()), "")
         raise GitUnanswered(
             f"`git {args[0]}` exited {result.returncode}: {said or 'with nothing on stderr'}"
         )
-    return result.stdout
+    return record_text(result.stdout)
 
 
 def closed_items_at(ref: str) -> dict[str, Item]:
@@ -148,7 +152,7 @@ def closed_items_at(ref: str) -> dict[str, Item]:
         name = path.strip().split("/")[-1]
         if not ITEM_FILE_RE.match(name):
             continue
-        text = _git(["show", f"{ref}:{path.strip()}"])
+        text = file_text(_git(["show", f"{ref}:{path.strip()}"]))
         item = parse_item(text, name)
         if item.status in CLOSED_STATUSES and item.identifier:
             closed[item.identifier] = item

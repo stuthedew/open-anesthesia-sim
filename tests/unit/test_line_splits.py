@@ -12,6 +12,18 @@ left every next reader free to pick it again, so this refuses the call itself:
 
 The rule is the call, read from the syntax tree, so a docstring or comment
 naming `splitlines()` is not one.
+
+**The decoding half** (`PL-0R4M`). A `subprocess` call that turns text mode on -
+`text=`, `universal_newlines=`, `encoding=` or `errors=` - translates `\\r\\n`
+and a lone `\\r` into `\\n` before any split sees the output, so a commit
+subject holding a raw `\\r` read as two lines however it was split afterwards.
+So a runner reads bytes, decodes git's own records with
+`docket.lines.record_text` and translates only file content with `file_text`,
+and a call that turns text mode on is refused unless `TEXT_MODE_RUNNERS` names
+it with its reason. It reads `.py` files, so the Python embedded in
+`.claude/hooks/push-check-guard.sh` is outside its reach; that file's reads are
+`rev-parse` paths and `status --porcelain` without `-z`, which git C-quotes, so
+no raw `\\r` reaches them.
 """
 
 from __future__ import annotations
@@ -89,3 +101,111 @@ def test_every_exempt_file_still_needs_its_exemption() -> None:
     found = calls_by_file()
     spent = sorted(path for path in MARKDOWN_READERS if path not in found)
     assert not spent, f"no longer calls splitlines(), so drop it from MARKDOWN_READERS: {spent}"
+
+
+# --- The decoding half: no runner turns text mode on unasked (`PL-0R4M`).
+
+#: The `subprocess` functions that take text mode's keywords.
+SUBPROCESS_RUNNERS = frozenset({"run", "Popen", "check_output", "check_call", "call"})
+
+#: The keywords any one of which turns text mode on, and its newline translation.
+TEXT_MODE_KEYWORDS = frozenset({"text", "universal_newlines", "encoding", "errors"})
+
+#: The calls left in text mode, each with why: none reads a git record that can
+#: hold a raw `\r`, so the translation costs none of them a line.
+TEXT_MODE_RUNNERS: dict[tuple[str, str], str] = {
+    (
+        "subprojects/docket/src/docket/cli.py",
+        "_run_forge_command",
+    ): "runs a project's configured forge command, whose answer is the forge's, not git's",
+    (
+        "subprojects/docket/src/docket/verify.py",
+        "_run",
+    ): "runs recorded shell commands, and its git reads print hashes, C-quoted paths, "
+    "blobs and patches",
+    ("tools/doc_check.py", "measure_digest"): "runs the session-start hook under bash to size it",
+    ("tools/ignore_check.py", "run_mypy"): "runs mypy, whose report is its own and not git's",
+}
+
+
+def text_mode_calls(source: str) -> list[tuple[str, int]]:
+    """Each `subprocess` call in one module that turns text mode on: its function and line.
+
+    The function is the innermost `def` enclosing the call, or `<module>`. A
+    keyword passed as the constant `False` or `None` leaves text mode off, so
+    only another value counts.
+    """
+    found: list[tuple[str, int]] = []
+
+    def visit(node: ast.AST, owner: str) -> None:
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            owner = node.name
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "subprocess"
+            and node.func.attr in SUBPROCESS_RUNNERS
+            and any(
+                keyword.arg in TEXT_MODE_KEYWORDS
+                and not (
+                    isinstance(keyword.value, ast.Constant) and keyword.value.value in (False, None)
+                )
+                for keyword in node.keywords
+            )
+        ):
+            found.append((owner, node.lineno))
+        for child in ast.iter_child_nodes(node):
+            visit(child, owner)
+
+    visit(ast.parse(source), "<module>")
+    return found
+
+
+def text_mode_calls_by_file() -> dict[str, list[tuple[str, int]]]:
+    found: dict[str, list[tuple[str, int]]] = {}
+    for tree in TREES:
+        for path in sorted((REPO_ROOT / tree).rglob("*.py")):
+            calls = text_mode_calls(path.read_text(encoding="utf-8"))
+            if calls:
+                found[path.relative_to(REPO_ROOT).as_posix()] = calls
+    return found
+
+
+def test_the_text_mode_rule_reads_the_keyword_and_not_a_mention() -> None:
+    source = (
+        '"""`subprocess.run(args, text=True)` in prose."""\n'
+        "import subprocess\n"
+        "def counted():\n"
+        "    subprocess.run(['git'], text=True)\n"
+        "def also_counted():\n"
+        "    subprocess.Popen(['git'], encoding='utf-8')\n"
+        "def not_counted():\n"
+        "    subprocess.run(['git'], text=False, capture_output=True)\n"
+        "    subprocess.check_output(['git'], errors=None)\n"
+    )
+    assert text_mode_calls(source) == [("counted", 4), ("also_counted", 6)]
+
+
+def test_no_subprocess_call_turns_text_mode_on_outside_its_exemptions() -> None:
+    offenders = [
+        f"{path}:{line} ({owner})"
+        for path, calls in text_mode_calls_by_file().items()
+        for owner, line in calls
+        if (path, owner) not in TEXT_MODE_RUNNERS
+    ]
+    assert not offenders, (
+        "text mode translates \\r\\n and a lone \\r into \\n before any split, so a raw \\r in a "
+        "commit subject, a body or a -z path reads as a line end; read bytes and decode git's "
+        "records with docket.lines.record_text, translating file content - a blob or a patch - "
+        "with file_text, or list a runner that reads no git in TEXT_MODE_RUNNERS with its "
+        "reason (PL-0R4M): " + ", ".join(offenders)
+    )
+
+
+def test_every_text_mode_exemption_is_still_needed() -> None:
+    found = {
+        (path, owner) for path, calls in text_mode_calls_by_file().items() for owner, _ in calls
+    }
+    spent = sorted(key for key in TEXT_MODE_RUNNERS if key not in found)
+    assert not spent, f"no longer turns text mode on, so drop it from TEXT_MODE_RUNNERS: {spent}"

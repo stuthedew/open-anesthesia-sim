@@ -82,7 +82,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.lines import split_lines  # noqa: E402
+from docket.lines import record_text, split_lines  # noqa: E402
 from docket.model import (  # noqa: E402
     CLOSED_STATUSES,
     MIN_ROOT_CAUSE_ITEMS,
@@ -237,18 +237,19 @@ def creation_parents(repo: Path) -> dict[str, set[str]]:
                 str(ITEM_DIR),
             ],
             capture_output=True,
-            text=True,
             cwd=repo,
             check=False,
         )
     except (OSError, subprocess.SubprocessError) as error:
         raise GitUnanswered(f"`git log` could not run: {error}") from error
     if result.returncode != 0:
-        said = next((line.strip() for line in split_lines(result.stderr) if line.strip()), "")
+        stderr = record_text(result.stderr)
+        said = next((line.strip() for line in split_lines(stderr) if line.strip()), "")
         raise GitUnanswered(
             f"`git log` exited {result.returncode}: {said or 'with nothing on stderr'}"
         )
-    out = result.stdout
+    # Decoded as written, so a raw `\r` in a subject stays in it (`PL-0R4M`).
+    out = record_text(result.stdout)
     parents: dict[str, set[str]] = {}
     for block in out.split("\x01")[1:]:
         subject, _, body = block.partition("\n")
