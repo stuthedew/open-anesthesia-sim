@@ -8,6 +8,7 @@ classes: safety, defect
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/__init__.py, tests/unit/test_compartment_primitives.py
 added: 2026-10-04
 closed: 2026-10-05
+pr: 1367
 payoff: the circuit closed form can no longer hand a caller nan at a flow the model admits, and the package zero-flow claim becomes true of the exhaust as well as the fraction
 verify: grep -q 'def test_the_circuit_exhaust_is_finite_where_its_time_constant_overflows' tests/unit/test_compartment_primitives.py
 recurrences: 2026-10-05 PL-YT8N
