@@ -146,6 +146,7 @@ try:
     from docket.markdown import HTML, statement_lines
     from docket.markdown import headings as read_headings
     from docket.markdown import read as read_blocks
+    from docket.markdown import tables as read_tables
     from docket.model import CLOSED_STATUSES, SEMVER_PATTERN, Item
 
     # `python` is the one reading of where a Python statement ends (`PL-R417`):
@@ -167,20 +168,24 @@ try:
         version_in,
         version_key,
     )
+
+    # `_section_end` and `_subsection_end` are the bounds docket's own walkers
+    # take, so a milestone's section and a gate's subsection end here where
+    # `parse_milestones` and `_gate_entries` read them ending: at a heading as
+    # `markdown` reads one, never a `#` line inside a fence (`PL-0Y7J`).
     from docket.roadmap import (
         BASELINE_MARK,
         CONTINUED_LINE,
         DECLARATION_RE,
         EXCLUDED_SUBSECTION,
-        HEADING_RE,
         SCOPE_SUBSECTION,
-        TABLE_ROW_RE,
         TIMELINE_HEADING,
         VERSION_TABLE_HEADING,
         GateEntry,
         MilestoneSection,
         UnreadEntry,
         _section_end,
+        _subsection_end,
         baseline_gate,
         baseline_heading,
         list_entry_lines,
@@ -424,6 +429,19 @@ STATEMENT_CHAR = rf"(?:[^\n]|{SOFT_BREAK})"
 #: A statement read from the start of the line it opens on: that line and every
 #: line a soft break carries it onto.
 STATEMENT_RE = re.compile(rf"{STATEMENT_CHAR}*")
+#: A character of a quotation: any but its closing mark or a line end, or a soft
+#: break, so a quotation runs no further than the paragraph it opens in. A blank
+#: line ends one (CommonMark 0.31.2 § 4.8), in a blockquote or out of one. Read
+#: as `[^"]`, a quotation ran on past it, so the two halves a paragraph break
+#: separates were one quotation (`PL-BYJ5`, `PL-T73L`). Every reader of a quoted
+#: phrase here and in `tools/possessive_section_check.py` takes it.
+QUOTATION_CHAR = rf'(?:[^"\n]|{SOFT_BREAK})'
+#: The rest of a quotation its paragraph never closes, as a pattern's other
+#: branch to the closed quotation it reads. Bounded, the closed branch alone
+#: matched nothing there, so a citation that opened a quotation and lost its
+#: closing mark went unread where `[^"]` had held it, wrongly joined to the next
+#: paragraph's mark (`PL-T73L`). Each reader refuses it by name instead.
+UNCLOSED_QUOTATION = rf'(?P<unclosed>{QUOTATION_CHAR}*+)(?!")'
 
 
 def _balanced(depth: int) -> str:
@@ -536,15 +554,20 @@ BRACE_RE = re.compile(r"\{([^{}]*)\}")
 # characters, so a section title long enough to wrap was unmatchable while
 # the quotation was `[^"\n]+` - and unmatchable means unchecked, not reported:
 # `check_citations` passed over 18 citations in the documents it already reads
-# without examining one of them. The bound replaces the newline as the thing
-# that stops a runaway match, and `_normalized` puts the term back on one line
-# before it is compared.
+# without examining one of them. It spans a soft break and nothing more, so it
+# ends with its paragraph (`QUOTATION_CHAR`); the bound stops a runaway match
+# inside one, and `_normalized` puts the term back on one line before it is
+# compared. A quotation its paragraph never closes is the `unclosed` branch,
+# refused by name: `[^"]` read on to the next paragraph's mark and held the
+# two halves as one title (`PL-T73L`).
 #
 # The gaps around a quotation are `GAP`s, so a citation wrapped inside a
 # blockquote is read past the next line's `>` as CommonMark reads it, where
 # `[ \n]*` stood and stopped there, leaving it unchecked (`PL-XW87`). The
 # quotation's own wrapped lines lose their markers in `_normalized`.
-CITATION_RE = re.compile(r"§{1,2}" + GAP + r'*"(?P<term>[^"]{1,160}?)"', re.DOTALL)
+CITATION_RE = re.compile(
+    r"§{1,2}" + GAP + rf'*"(?:(?P<term>{QUOTATION_CHAR}{{1,160}}?)"|{UNCLOSED_QUOTATION})'
+)
 # The same two positions without the mark, which is how 147 of the documents'
 # citations were written until `PL-YSMV` marked them. Read only to say that one
 # lacks its mark, and only where its quotation names a heading: that is a fact
@@ -559,10 +582,16 @@ CITATION_RE = re.compile(r"§{1,2}" + GAP + r'*"(?P<term>[^"]{1,160}?)"', re.DOT
 # `**Bold.**` marker does and a quoted measurement - `"~88-256 B each" above` -
 # does not. Measured across the documents this reads on 2026-09-13: 40 directed
 # citations, none of which opens on anything else.
+#
+# Each quotation ends with its paragraph, as `CITATION_RE`'s does (`PL-T73L`).
+# The `named` branch's opening word is what read it as a citation, so one its
+# paragraph never closes is its `unclosed` branch, refused by name; the
+# `directed` branch is known only by the direction after its closing mark, so
+# an unclosed quotation is none.
 UNMARKED_CITATION_RE = re.compile(
-    r"(?:\b(?:see|under)" + GAP + r'+"(?P<named>[^"]{1,160}?)")'
-    r'|(?:"(?P<directed>[`A-Za-z][^"]{0,159}?)"' + GAP + r"+(?:above|below)\b)",
-    re.IGNORECASE | re.DOTALL,
+    rf'(?:\b(?:see|under){GAP}+"(?:(?P<named>{QUOTATION_CHAR}{{1,160}}?)"|{UNCLOSED_QUOTATION}))'
+    rf'|(?:"(?P<directed>[`A-Za-z]{QUOTATION_CHAR}{{0,159}}?)"{GAP}+(?:above|below)\b)',
+    re.IGNORECASE,
 )
 #: A direction after a quotation, matched at the quotation's end.
 DIRECTION_RE = re.compile(GAP + r"*(?:above|below)\b", re.IGNORECASE)
@@ -588,7 +617,9 @@ MARKER_RE = re.compile(rf"^(?:[-*+]\s+)?\*\*(?P<title>(?:[^*\n]|{SOFT_BREAK})+?)
 # which file the quotation belongs to - which is what lets this run over the
 # queue and the docstrings without the guesswork that reading a bare quoted
 # phrase there would need. The quotation must open on a word character, so a
-# stray `")"` in prose is not read as one, and it may span source lines.
+# stray `")"` in prose is not read as one, and it may span source lines inside
+# its paragraph; one its paragraph never closes is the `unclosed` branch,
+# refused by name (`PL-T73L`).
 #: What may stand between a cited document and its quotation. A closed set of
 #: connectives, never a content word: the pattern once allowed only `,` and
 #: `:`, which left the two forms this project actually writes - `§` and the
@@ -626,8 +657,7 @@ QUOTED_SOURCE_RE = re.compile(
     r"(?:\b(?:see|under|in)" + GAP + r"+)?"
     r"`(?P<document>[\w./-]+\.md)`" + GAP + r"*"
     r"(?P<connective>" + CITATION_CONNECTIVE + r")?" + GAP + r"*"
-    r'"(?P<quoted>\w[^"]{2,200}?)"',
-    re.DOTALL,
+    rf'"(?:(?P<quoted>\w{QUOTATION_CHAR}{{2,200}}?)"|(?=\w){UNCLOSED_QUOTATION})'
 )
 #: The connectives that claim the named document holds the words: the section
 #: mark, and the possessive that attributes them to it. A quotation after
@@ -662,8 +692,8 @@ QUALIFIED_RE = re.compile(
 #: did that day, and a quotation after a bare id is prose. The possessive would
 #: claim it, and waits on a comparison that folds emphasis (`PL-RX0W`).
 ITEM_SECTION_RE = re.compile(
-    r"`(?P<item>" + ID_PATTERN + r")`" + GAP + r"*§{1,2}" + GAP + r'*"(?P<quoted>\w[^"]{2,200}?)"',
-    re.DOTALL,
+    rf"`(?P<item>{ID_PATTERN})`{GAP}*§{{1,2}}{GAP}*"
+    rf'"(?:(?P<quoted>\w{QUOTATION_CHAR}{{2,200}}?)"|(?=\w){UNCLOSED_QUOTATION})'
 )
 
 # The `**Tags.**` statement. What it claims is deliberately not a list: the
@@ -1148,39 +1178,29 @@ def _provenance_rows(text: str) -> tuple[list[tuple[int, list[str]]], str]:
     found instead. Fixed here at the call site rather than in `table_rows`,
     which `parse_version_table`, `parse_timeline` and `parse_milestones` all
     share.
+
+    The section and its tables are `markdown`'s, as `table_rows` reads them, so
+    a line a fence or a comment holds is neither a heading nor a row. Matched a
+    line at a time, a shell sample's `## a shell comment` ended the section
+    above the table, and the check reported no table at all (`PL-0Y7J`).
     """
     lines = split_lines(text)
-    in_section = False
-    header: list[str] | None = None
-    rows: list[tuple[int, list[str]]] = []
-    seen: list[str] = []
-    for index, line in enumerate(lines, start=1):
-        heading = HEADING_RE.match(line)
-        if heading is not None and len(heading.group("hashes")) <= 2:
-            if in_section:
-                break
-            in_section = heading.group("title").strip() == "Parameter provenance"
-            continue
-        if not in_section:
-            continue
-        match = TABLE_ROW_RE.match(line)
-        if match is None:
-            if rows:
-                break
-            header = None
-            continue
-        cells = [cell.strip() for cell in match.group("cells").split("|")]
-        if all(set(cell) <= set("-: ") and cell for cell in cells):
-            continue  # the separator row, which follows the header
-        if header is None and not rows:
-            header = cells
-            if tuple(cells[:3]) != PROVENANCE_HEADER:
-                seen.append(" | ".join(cells))
-            continue
-        if header is not None and tuple(header[:3]) == PROVENANCE_HEADER:
-            rows.append((index, cells))
-    if rows:
-        return rows, ""
+    opening = next(
+        (
+            heading
+            for heading in read_headings(lines)
+            if heading.level <= 2 and heading.title == "Parameter provenance"
+        ),
+        None,
+    )
+    if opening is None:
+        return [], ""
+    end = _section_end(lines, opening.end)
+    tables = [table for table in read_tables(lines) if opening.line < table.line < end]
+    for table in tables:
+        if table.header[:3] == PROVENANCE_HEADER and table.rows:
+            return [(index + 1, list(cells)) for index, cells in table.rows], ""
+    seen = [" | ".join(table.header) for table in tables if table.header[:3] != PROVENANCE_HEADER]
     if seen:
         return [], (
             f"the {len(seen)} table(s) under 'Parameter provenance' carry no provenance "
@@ -1864,15 +1884,6 @@ def _count_word(word: str) -> int | None:
     return None
 
 
-def _subsection_end(lines: Sequence[str], start: int) -> int:
-    """Where a gate subsection stops, read the way `_gate_entries` reads it."""
-    for index in range(start, len(lines)):
-        heading = HEADING_RE.match(lines[index])
-        if heading is not None and len(heading.group("hashes")) <= 3:
-            return index
-    return len(lines)
-
-
 @dataclass(frozen=True)
 class _GateGroup:
     """One count-carrying group heading of a frozen list, and the entries under it."""
@@ -1943,17 +1954,20 @@ def _uncheckable_heading_counts(
     the heading that carried a number through twenty hand edits to 228 against
     128 entries listed, was filed three times as a defect, and validated
     identically at `174`, `191` and `999`.
+
+    A heading is one `markdown` reads, so a `###` line inside a fence or a
+    comment states no count (`PL-0Y7J`).
     """
-    for index in range(section.line, _section_end(lines, section.line)):
-        heading = HEADING_RE.match(lines[index])
-        if heading is None or len(heading.group("hashes")) < 3:
+    end = _section_end(lines, section.line)
+    for heading in read_headings(lines):
+        if not section.line <= heading.line < end or heading.level < 3:
             continue
-        match = HEADING_ENTRY_COUNT_RE.search(heading.group("title"))
+        match = HEADING_ENTRY_COUNT_RE.search(heading.title)
         if match is None:
             continue
         stated = _count_word(match.group("count"))
         if stated is not None:
-            yield index + 1, stated
+            yield heading.line + 1, stated
 
 
 def _table_counts(text: str, section: MilestoneSection) -> Iterator[tuple[int, str, int]]:
@@ -2291,16 +2305,18 @@ def _subsection_line(section: MilestoneSection, lines: list[str], prefix: str) -
     list begins on the line *after* it - which is what reading a subsection's
     body means. Returning the 0-based index instead made `_scope_bullets` start
     on the heading and stop on it, so the advisory silently found nothing.
+
+    The headings are `markdown`'s, as `parse_milestones` reads them, so a `#`
+    line inside a fence or a comment neither opens the subsection nor ends the
+    section (`PL-0Y7J`).
     """
-    for index in range(section.line, len(lines)):
-        heading = HEADING_RE.match(lines[index])
-        if heading is None:
+    for heading in read_headings(lines):
+        if heading.line < section.line:
             continue
-        depth = len(heading.group("hashes"))
-        if depth <= 2:
+        if heading.level <= 2:
             return None
-        if depth == 3 and heading.group("title").strip().lower().startswith(prefix):
-            return index + 1
+        if heading.level == 3 and heading.title.lower().startswith(prefix):
+            return heading.line + 1
     return None
 
 
@@ -2549,15 +2565,16 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
     bullets as its own. No family is laid out that way today; one that is
     belongs in `list_entries` as a depth argument rather than in a second
     walker here.
+
+    The family's heading is one `markdown` reads, as its walker's bound is, so
+    a `#` line inside a fence or a comment that repeats the title opens no list
+    (`PL-0Y7J`).
     """
     lines = split_lines(text)
-    for index, line in enumerate(lines):
-        heading = HEADING_RE.match(line)
-        if heading is None or len(heading.group("hashes")) != family.level:
-            continue
-        if heading.group("title").strip() == family.heading:
+    for heading in read_headings(lines):
+        if heading.level == family.level and heading.title == family.heading:
             try:
-                for first, end in list_entry_lines(lines, index + 1):
+                for first, end in list_entry_lines(lines, heading.end):
                     yield first + 1, "\n".join(lines[first:end])
             except UnreadEntry as lazy:
                 raise UnreadStatement(lazy.line, lazy.why) from lazy
@@ -3061,7 +3078,9 @@ def _tags_region(text: str) -> tuple[int, str] | None:
     rather than inside it, so the region runs to the heading rather than to the
     blank line. The mark opens a statement, as `statement_lines` reads one: a
     `**Tags.**` a soft break carries onto a line's start is its paragraph's own
-    text (`PL-VQBY`).
+    text (`PL-VQBY`). The heading that ends the region is one `markdown` reads,
+    so a shell sample's `# comment` inside a fence below the claim leaves the
+    exception sentence after it in the region (`PL-0Y7J`).
     """
     lines = split_lines(text)
     start = next(
@@ -3070,8 +3089,7 @@ def _tags_region(text: str) -> tuple[int, str] | None:
     if start is None:
         return None
     end = next(
-        (index for index in range(start + 1, len(lines)) if HEADING_RE.match(lines[index])),
-        len(lines),
+        (heading.line for heading in read_headings(lines) if heading.line > start), len(lines)
     )
     return start + 1, "\n".join(lines[start:end])
 
@@ -4260,8 +4278,11 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
             before = prose[max(0, match.start() - 200) : match.start() + 1]
             if _inside(match.start(), spans) or QUALIFIED_RE.search(before):
                 continue
-            term, same_file = _cited_section(prose, match)
             line = _line_of(prose, match.start())
+            if match["unclosed"] is not None:
+                report.errors.append(_unclosed(f"{path}:{line}", "this §", "the section it names"))
+                continue
+            term, same_file = _cited_section(prose, match)
             if same_file:
                 if not _cites_heading(term, headings[path]):
                     report.errors.append(
@@ -4282,6 +4303,16 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                 or MARKED_RE.search(before)
                 or QUALIFIED_RE.search(before)
             ):
+                continue
+            if match["unclosed"] is not None:
+                opener = match.group(0).split(None, 1)[0]
+                report.advisories.append(
+                    _unclosed(
+                        f"{path}:{_line_of(prose, match.start())}",
+                        f'this "{opener}"',
+                        "whether it names a section",
+                    )
+                )
                 continue
             term, same_file = _cited_section(prose, match)
             if _cites_heading(term, headings[path] if same_file else every_heading):
@@ -4464,13 +4495,29 @@ def _inside(offset: int, spans: Sequence[tuple[int, int]]) -> bool:
     return any(start <= offset < end for start, end in spans)
 
 
+def _unclosed(where: str, opener: str, unread: str) -> str:
+    """What a citation reader says of a quotation its paragraph never closes (`PL-T73L`).
+
+    `opener` is what read the quotation as a citation - the mark, the word or
+    the source before it - and `unread` is what the reader would have decided.
+    One wording for the four readers, so the remedy reads the same wherever the
+    mark went missing.
+    """
+    return (
+        f"{where}: {opener} opens a quotation its paragraph never closes, so {unread} was "
+        "not read; close it before the paragraph ends"
+    )
+
+
 def _cited_section(text: str, match: re.Match[str]) -> tuple[str, bool]:
     """The section a citation names, and whether it names one in its own file.
 
     `above` and `below` point into the citing file, so a heading elsewhere does
     not answer them; any other mark may send the reader anywhere the documents
     go. The term is whichever group matched: `CITATION_RE` has one, and
-    `UNMARKED_CITATION_RE` names its directed position by group.
+    `UNMARKED_CITATION_RE` names its directed position by group. A match on
+    either one's `unclosed` branch names no section, and is refused before it
+    reaches here (`PL-T73L`).
     """
     term = _normalized(match.group(match.lastgroup or 0))
     same_file = match.lastgroup == "directed" or bool(DIRECTION_RE.match(text, match.end()))
@@ -4738,10 +4785,20 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     for path, offset, text in _quoting_sources(root, documents, report.declined):
         prose = without_fences(text)
         for match in QUOTED_SOURCE_RE.finditer(prose):
-            cited, quoted = match.group("document"), _normalized(match.group("quoted"))
+            cited = match.group("document")
+            line = offset + _line_of(text, match.start()) - 1
+            claims = CLAIMING_CONNECTIVE_RE.fullmatch(match.group("connective") or "")
+            if match["unclosed"] is not None:
+                refusal = _unclosed(
+                    f"{path}:{line}",
+                    f"this citation of {cited}",
+                    "whether the file holds the words",
+                )
+                (report.errors if claims else report.advisories).append(refusal)
+                continue
+            quoted = _normalized(match.group("quoted"))
             if "..." in quoted or "…" in quoted:
                 continue
-            line = offset + _line_of(text, match.start()) - 1
             body = body_of(cited)
             if body is None:
                 finding = f"{path}:{line}: quotes {cited}, which does not exist"
@@ -4749,7 +4806,7 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                 finding = f'{path}:{line}: quotes {cited} as "{quoted}", which is not in that file'
             else:
                 continue
-            if CLAIMING_CONNECTIVE_RE.fullmatch(match.group("connective") or ""):
+            if claims:
                 report.errors.append(finding)
             else:
                 report.advisories.append(
@@ -4759,10 +4816,20 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                 )
 
         for match in ITEM_SECTION_RE.finditer(prose):
-            item, quoted = match.group("item"), _normalized(match.group("quoted"))
+            item = match.group("item")
+            line = offset + _line_of(text, match.start()) - 1
+            if match["unclosed"] is not None:
+                report.errors.append(
+                    _unclosed(
+                        f"{path}:{line}",
+                        f"this citation of {item}",
+                        "whether its brief holds the words",
+                    )
+                )
+                continue
+            quoted = _normalized(match.group("quoted"))
             if "..." in quoted or "…" in quoted:
                 continue
-            line = offset + _line_of(text, match.start()) - 1
             held = briefs_of(item)
             if not held:
                 report.errors.append(

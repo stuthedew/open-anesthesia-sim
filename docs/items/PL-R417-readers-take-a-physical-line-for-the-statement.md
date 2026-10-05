@@ -390,15 +390,35 @@ trailers, ` fail on main's readers, and three pin a whole statement's removal
 as superseded or behind. No new member was filed; `PL-BMZN` joined `root-cause-of:`, re-read as
 a member at the day's second triage pass (`#1380`). `generator:` stays `live`.
 
-**Next steps (recorded 2026-10-04, revised by links 8, 11, 12, 13, 14, 15 and
-16).** The members, one format per pull request as before, each closing its
-members and adding their cases to `CONTINUED_STATEMENTS`: link 11's two
-Markdown members, `PL-0Y7J` and `PL-T73L`, in one pull request, and the two
-Makefile members, `PL-TDVJ` and `PL-BMZN`, in another, before the sweep. Then one more sweep of the same
-reach, and `generator:` rewritten `spent` only when
-it finds nothing (the coordinator's brief, 2026-10-04). The head closes without waiting for
-`PL-RR1N`, naming it in the reason as Done-when says (project owner,
-2026-10-04, ratified, over waiting for it).
+**Link 17, the Markdown members (`#1382`, 2026-10-05).** Done: `PL-0Y7J` and
+`PL-T73L`. The six other `doc_check` heading readers walk `markdown.headings`,
+and `_provenance_rows` takes its table from `markdown.tables` inside the section
+docket's `roadmap._section_end` bounds, so a `#` line or a table that a fence
+or a comment holds opens, ends and fills no section; the gate count check takes
+docket's `roadmap._subsection_end`, its own copy deleted. `HEADING_RE` and
+`TABLE_ROW_RE`, read by nothing after that, left `docket.roadmap`.
+`QUOTATION_CHAR` moved from `possessive_section_check` to `doc_check`, and the
+four section and quoted-source patterns read their quotations through it, so
+each ends with its paragraph; one its paragraph never closes takes the
+pattern's `unclosed` branch and is refused by name, at the severity the closed
+form carries. Nothing over the tree moved: `doc_check check` reports the same
+under main's readers and these, the provenance table reads the same 37 rows,
+and over every quoting source, none declined, the five quotation patterns make
+the same 1,029, 126, 509, 15 and 14 matches, none of them unclosed. The guard
+gained eighteen cases, eight for the heading readers and ten for the
+quotations, each failing on main's readers. No new member was filed;
+`PL-WJF2`, a closed quotation longer than its pattern's bound passed over
+without a word, was filed beside them and is not one. `generator:` stays
+`live`.
+
+**Next steps (recorded 2026-10-04, revised by links 8, 11, 12, 13, 14, 15, 16
+and 17).** The members, one format per pull request as before, each closing its
+members and adding their cases to `CONTINUED_STATEMENTS`: the two Makefile
+members, `PL-TDVJ` and `PL-BMZN`, in one pull request, before the sweep. Then
+one more sweep of the same reach, and `generator:` rewritten `spent` only when
+it finds nothing (the coordinator's brief, 2026-10-04). The head closes without
+waiting for `PL-RR1N`, naming it in the reason as Done-when says (project
+owner, 2026-10-04, ratified, over waiting for it).
 
 **Done when.** Every reader the table and the sweep name reads its format's
 statement whole or declines it by name, each pinned by a test; the guard test
