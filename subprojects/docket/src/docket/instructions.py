@@ -37,7 +37,7 @@ carried two such records on 2026-10-04, and its line 229 would have been
 reported stale on 2026-12-16, when its newest date made it 86 days old. Not the
 whole paragraph either, which would date a long rule by the newest of every
 record inside it and hide the old ones. The paragraphs are
-`roadmap.statement_lines`', the one reading of where a Markdown statement ends
+`markdown.statement_lines`', the one reading of where a Markdown statement ends
 (`PL-R417`), and the sentences `SENTENCE_BREAK`'s. Re-reading the instruction
 set this way on 2026-10-04 moved seven of its date occurrences, every one onto
 a newer date, and split no line's dates between two sentences.
@@ -54,8 +54,8 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from .fences import fenced_lines
-from .roadmap import SENTENCE_BREAK, statement_lines
+from .markdown import statement_lines
+from .roadmap import SENTENCE_BREAK
 
 ISO_DATE_RE = re.compile(r"\b(20\d{2})-(\d{2})-(\d{2})\b")
 """An ISO date written out in prose: `2026-09-21`.
@@ -141,7 +141,7 @@ def parse(name: str, text: str) -> list[Assertion]:
     """
     lines = text.splitlines()
     assertions: list[Assertion] = []
-    for first, end in statement_lines(lines, fenced_lines(text)):
+    for first, end in statement_lines(lines):
         statement = "\n".join(lines[first:end])
         for start, stop in _sentences(statement):
             found = _dates(statement[start:stop])

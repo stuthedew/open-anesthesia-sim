@@ -105,6 +105,9 @@ class Picks:
     build_waits: bool
     #: Clearable gate ids led on a generator line rather than grouped.
     led: tuple[str, ...] = ()
+    #: Each list entry the plan was not read whole at (`Wave.unread`), so a
+    #: count above may be short, named as `wave` names it (`PL-GMR6`).
+    unread: tuple[str, ...] = ()
 
 
 def _lanes(items: Iterable[Item], workflow_paths: tuple[str, ...]) -> tuple[tuple[str, int], ...]:
@@ -301,4 +304,5 @@ def picks(
         blocked_outside=len(gate.blocked_outside),
         build_waits=plan.beat == CLEAR,
         led=led,
+        unread=plan.unread,
     )

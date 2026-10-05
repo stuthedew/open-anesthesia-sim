@@ -1394,8 +1394,11 @@ entries of the gate's milestone that hold an item that can start now.
 It reads as `next` does - one fetch, the default branch's copy of an item moved
 since the fork, the claims in flight - and exits non-zero, as `wave` does,
 where there is no list: no roadmap, a plan it cannot read, no recorded gate, or
-a gate naming an id the store does not hold. What a line buys in a sentence,
-and which line to recommend, are judgment, and stay the reply's.
+a gate naming an id the store does not hold. It exits non-zero as well where
+it gives the list but a roadmap list entry the plan is read from was not read
+whole, and names that entry as `wave` does, since a count above it may be short
+(`PL-GMR6`). What a line buys in a sentence, and which line to recommend, are
+judgment, and stay the reply's.
 
 ### What newer work keeps outranking: `docket next --oldest`
 
@@ -1692,10 +1695,10 @@ answer below is:
   frozen-list pair or a scope declaration wrapped that way would lose its
   second half with nothing saying so. The walker records the line on
   `MilestoneSection.unread` instead. `tools/doc_check.py` fails it, `wave`
-  prints it and exits non-zero, and the digest's plan line says the plan was
-  not read whole. A release cut does not refuse on it, as it does on a
-  timeline that does not parse, because a list entry holds no version
-  (`PL-MFVV`).
+  and `picks` print it and exit non-zero (`PL-GMR6`), and the digest's plan
+  line says the plan was not read whole. A release cut does not refuse on it,
+  as it does on a timeline that does not parse, because a list entry holds no
+  version (`PL-MFVV`).
 
 ### Concurrency is computed, and honestly qualified
 
@@ -2275,20 +2278,22 @@ with the answer written under it, and every reader of the queue takes the front
 matter's word, so an answered item left at `needs-decision` is offered to the
 owner as still waiting: `PL-4ZK8` was, first on `next`'s decisions line, for
 three days, and 17 items sat that way on `main` between 2026-09-13 and
-2026-09-30. What the brief still asks is read from its labels in order, and
-only the last decides. An answer is a label opening `Answered`, `Answers`,
-`Decided` or `Question N is answered`, the shapes `docs/worker.md` names, or a
-heading opening `Answered` or `Answers`; a question is a `**Decision needed.**`
-heading, a design round's heading or numbered `Q1.`, or a marked
-recommendation, since one standing after an answer is a question the answer
-raised (`PL-J2TD`'s shape). Labels in code spans, fences, quotations and
-superseded passages are not read. An error rather than an advisory, because
-the labels are exact - none of the 17 was an item still waiting, and each later
+2026-09-30. What the brief still asks is read from its labels in order, and only
+the last decides. An answer is a label opening `Answered`, `Answers`, `Decided`
+or `Question N is answered`, the shapes `docs/worker.md` names, or a heading
+opening `Answered` or `Answers`; a question is a `**Decision needed.**` heading,
+a design round's heading or numbered `Q1.`, or a marked recommendation, since
+one standing after an answer is a question the answer raised (`PL-J2TD`'s
+shape). Labels in code spans, fences, HTML comments, indented code blocks,
+quotations and superseded passages are not read; a heading is one as CommonMark
+reads it, setext included, and an emphasis run or a code span ends with its
+statement (`PL-HKHP`, `PL-FP7J`). An error rather than an advisory, because the
+labels are exact - none of the 17 was an item still waiting, and each later
 moved off `needs-decision` with no new question posed - and because the design
 round that left `PL-4ZK8` behind did so on purpose, so an advisory would have
-printed beside a choice already made. It also keeps the
-`falsifies:` fold below honest, which reads `needs-decision` on the base's copy
-as the answer still being the closing session's to make.
+printed beside a choice already made. It also keeps the `falsifies:` fold below
+honest, which reads `needs-decision` on the base's copy as the answer still
+being the closing session's to make.
 
 **The recommendation is the other half of that status, and the half that does
 not survive on its own.** The question is written into the item; the

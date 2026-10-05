@@ -11,8 +11,8 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 payoff: a statement a shell script, Makefile, workflow or Markdown document continues across lines is read as the one statement its format makes it, or refused by name, so the close-out sweep and the checks stop answering from fragments
 verify: grep -q 'def test_candidates_find_a_title_cited_across_a_line_wrap' tests/unit/test_doc_check.py && grep -q 'def test_each_reader_reads_its_formats_continued_statement_whole' tests/unit/test_doc_check.py && grep -q 'recipe commands, ' tests/unit/test_doc_check.py && grep -q 'workflow commands, ' tests/unit/test_doc_check.py && grep -q '^generator: spent' docs/items/PL-R417-readers-take-a-physical-line-for-the-statement.md
-root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G, PL-TY1Z, PL-YSMD, PL-HKHP, PL-5NC3, PL-WF35, PL-FP7J, PL-BLKJ, PL-J0C6, PL-GMR6, PL-VQBY, PL-4ZDZ, PL-GT0J, PL-KT0H, PL-FBWD, PL-F7Z6, PL-V2HK, PL-TC2D, PL-S3XS, PL-4T49, PL-PPNV, PL-97CF, PL-2JYP, PL-WG6S, PL-4MLK, PL-4ZVH
-generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory today
+root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G, PL-TY1Z, PL-YSMD, PL-HKHP, PL-5NC3, PL-WF35, PL-FP7J, PL-BLKJ, PL-J0C6, PL-GMR6, PL-VQBY, PL-4ZDZ, PL-GT0J, PL-KT0H, PL-FBWD, PL-F7Z6, PL-V2HK, PL-TC2D, PL-S3XS, PL-4T49, PL-PPNV, PL-97CF, PL-2JYP, PL-WG6S, PL-4MLK, PL-4ZVH, PL-T1X0, PL-BYJ5
+generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory until link 8, then PL-T1X0 and PL-BYJ5, which that day's triage pass put to it
 misread: Where one statement ends, in a format that lets a statement continue across physical lines
 ---
 
@@ -229,15 +229,52 @@ reading. The two onto `PL-848V` were the same fact misread again, so they stand,
 and `PL-848V` is recorded as the head they surfaced, for which events a
 workflow's `on:` names; `PL-4T49` and `PL-S3XS` are members of both heads.
 
-**Next steps (recorded 2026-10-04, revised by link 7).** The members, one
+**Link 8, the Markdown members (`#1358`, 2026-10-05).** Done: the fourteen
+Markdown members link 7 found, `PL-TY1Z`, `PL-YSMD`, `PL-HKHP`, `PL-5NC3`,
+`PL-WF35`, `PL-FP7J`, `PL-BLKJ`, `PL-J0C6`, `PL-GMR6`, `PL-VQBY`, `PL-4ZDZ`,
+`PL-GT0J`, `PL-KT0H` and `PL-FBWD`. It built `docket.markdown`, one
+container-aware block reader that reads a document as CommonMark 0.31.2's
+appendix "A parsing strategy" does, with GitHub Flavored Markdown 0.29's
+tables, and put every Markdown reader the members name onto it:
+`statement_lines` and `fences`; `roadmap`'s list, table and heading walkers and
+the working-notes threads; the brief prose `checks` reads for labels, markers
+and cues; the Symbols table `core_vocabulary_check` reads; and `doc_check`'s
+code spans, gate groups, tags region, section titles, markers, links, version
+claims and make mentions. It agrees with markdown-it-py 4.2.0 on 2,425 of the
+2,428 tracked Markdown files. The other three are front matter whose `verify:`
+line holds a pipe, which markdown-it reads as a table over the closing `---`
+and cmark-gfm, which this reader follows, as a setext heading, since the two
+rows' cell counts differ (GFM 0.29 § 4.10). `PL-WF35`'s cue patterns now read a
+wait wrapped before its id, which raised the three advisories triage predicted,
+answered on this branch in `PL-KZ99` and `PL-BYMX`. Every other answer over
+the tree is as before but the ones the members were filed to change:
+`doc_check` reads 68 fewer section titles, each a bold run opening a wrapped
+line inside a paragraph, and no citation rested on one; it reads whole the one
+DOI link in `docs/MODEL.md` that holds a pair of parentheses; notes by version
+claims the same 1,387 ids across the 79 notes files; and the vocabulary check
+reads the same 25 Symbols rows. Read through the block reader, `notes_bullets`
+raised `StopIteration` on a bullet holding only its marker; it passes over one
+now, with a case. The guard gained 58 cases, 47 failing on main's readers; the
+other eleven pin a reading main already gave. The 2026-10-04 triage pass
+(`#1362`) put two of link 7's other filings to this head, and both are
+recorded members: `PL-T1X0`'s fence half, `_hash_headings` reading a `#` line
+inside a fence as a heading, which `PL-HKHP` was in docket; and `PL-BYJ5`,
+`POSSESSIVE_RE` quoting across a paragraph break, which link 7 placed outside
+as the opposite direction, though `PL-4ZDZ` and `PL-FP7J` read past a
+statement's end the same way. `generator:` stays `live`.
+
+**Next steps (recorded 2026-10-04, revised by link 8).** The members, one
 format per pull request as before, each closing its members and adding their
-cases to `CONTINUED_STATEMENTS`: Markdown first, fourteen members held to
-`statement_lines` with `PL-WF35` the live one, then the Python, YAML, shell and
-Makefile readers and the two that read a change or a commit record. `PL-TC2D`
-reads a file the interpreter cannot parse through `tokenize` first (project
-owner, 2026-10-04, ratified, over keeping the line fallback). Then one more sweep
-of the same reach, and `generator:` rewritten `spent` only when it finds nothing
-(the coordinator's brief, 2026-10-04). The head closes without waiting for
+cases to `CONTINUED_STATEMENTS`: the two Markdown members left, `PL-T1X0`,
+whose item holds a second half of its own, a link anchor named for a bold
+lead-in, and `PL-BYJ5`; then the Python readers (`PL-V2HK`, `PL-TC2D`), the
+YAML readers (`PL-S3XS`, `PL-4T49`, `PL-PPNV`), the shell readers (`PL-97CF`,
+`PL-2JYP`, `PL-WG6S`), the Makefile reader (`PL-4MLK`), and the two that read a
+change or a commit record (`PL-F7Z6`, `PL-4ZVH`). `PL-TC2D` reads a file the
+interpreter cannot parse through `tokenize` first (project owner, 2026-10-04,
+ratified, over keeping the line fallback). Then one more sweep of the same
+reach, and `generator:` rewritten `spent` only when it finds nothing (the
+coordinator's brief, 2026-10-04). The head closes without waiting for
 `PL-RR1N`, naming it in the reason as Done-when says (project owner,
 2026-10-04, ratified, over waiting for it).
 
