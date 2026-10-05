@@ -3,12 +3,14 @@ id: PL-TC2D
 title: docket verify reads a Python file the running interpreter cannot parse one physical line at a time for both integrity checks, so a docstring line opening assert is charged as a removed assertion and a deleted assertion folds against a matching docstring line; the fallback is PL-4W2L's ratified choice
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/python.py, subprojects/docket/tests, subprojects/docket/README.md, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-R417's Python slice, 2026-10-05
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1374
 payoff: an assertion deleted or loosened in a file the bare interpreter cannot parse is charged, and a reworded docstring there is not, so both integrity checks hold on the files docket's python3 cannot parse
 verify: grep -qF '"assertions, ' tests/unit/test_doc_check.py && grep -q 'def test_a_file_this_interpreter_cannot_parse_is_read_through_the_tokenizer' subprojects/docket/tests/test_verify.py
 recurrences: 2026-10-04 PL-MR8Z withdrawn 2026-10-04 PL-R417

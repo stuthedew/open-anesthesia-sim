@@ -3,12 +3,14 @@ id: PL-V2HK
 title: doc_check's TEST_DEF_RE and DEFINITION_RE read a def or class line inside a triple-quoted string as a definition, so a cited test that does not exist passes and the candidates search gains terms; 20 such lines live, advisory only
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/src/docket/python.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-R417's Python slice, 2026-10-05
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1374
 payoff: a document's test citation is checked against the tests the suite defines, so a fixture string can no longer stand in for a deleted test, and the close-out sweep searches only for names the change defines
 verify: grep -qF '"test definitions, ' tests/unit/test_doc_check.py && grep -qF '"changed definitions, ' tests/unit/test_doc_check.py
 recurrences: 2026-10-04 PL-4MLK withdrawn 2026-10-04 PL-R417

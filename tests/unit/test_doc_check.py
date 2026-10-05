@@ -26,10 +26,12 @@ import pytest
 import required_checks_check as rcc
 import rules_paths_check
 from docket import checks as docket_checks
+from docket import verify as docket_verify
 from docket.fences import blocks as fence_blocks
 from docket.instructions import parse as dated_assertions
 from docket.model import with_front_matter_field
 from docket.notes import read as read_threads
+from docket.python import read_logical_lines
 from docket.release import notes_by_version, prepare_bump, unreferenced, version_in
 from docket.roadmap import (
     LAZY_ENTRY,
@@ -39,7 +41,14 @@ from docket.roadmap import (
     parse_milestones,
     table_rows,
 )
-from docket.verify import is_suppression_statement, read_logical_lines, sanctioned_queue_edit
+from docket.verify import (
+    added_suppressions,
+    assertion_check,
+    is_suppression_statement,
+    removed_assertions,
+    sanctioned_queue_edit,
+    suppression_check,
+)
 
 ARCHITECTURE = """# Architecture overview
 
@@ -6667,6 +6676,77 @@ def _suppressions(source: str) -> list[str]:
     return [line.shown for line in read_logical_lines(source) if is_suppression_statement(line)]
 
 
+#: A statement every interpreter tokenizes and none parses, standing in for
+#: syntax newer than the bare `python3` docket runs on (`PL-TC2D`).
+NEWER_SYNTAX = "\n\nnewer = = 'syntax this interpreter cannot parse'\n"
+#: A test whose docstring opens a line with `assert` and whose assertion wraps.
+WRAPPED_TEST = (
+    'def test_b() -> None:\n    """Pins the result.\n\n    assert this reads as {}.\n    """\n'
+    "    assert (\n        result == {}\n    )\n"
+)
+
+
+def _integrity(tmp_path: Path, before: str, after: str, check: str) -> list[str]:
+    """What `docket verify`'s `check` says of a test file rewritten from `before` to `after`.
+
+    Its detail, then the lines under it but the closing note, a file named as
+    read another way cut before the reason, which names a commit.
+    """
+    root = tmp_path / "audited"
+    test = root / "tests" / "test_x.py"
+    test.parent.mkdir(parents=True)
+    test.write_text(before, encoding="utf-8")
+    _git_init(root)
+    test.write_text(after, encoding="utf-8")
+    _git(root, "commit", "-qam", "PL-K7QX rewrite it")
+    commits = (_git(root, "rev-parse", "HEAD"),)
+    added, removed = docket_verify._net_line_changes(root, "HEAD~1", commits)
+    if check == "assertions":
+        audit = removed_assertions(root, "HEAD~1", commits, removed)
+        found, _ = assertion_check(audit, "", "", "HEAD~1")
+    else:
+        found = suppression_check(added_suppressions(root, "HEAD~1", commits, added))
+    return [found.detail] + [
+        line.partition(" - ")[0] if line.startswith("read ") else line
+        for line in found.lines
+        if not line.startswith("which of these")
+    ]
+
+
+def _test_citations(tmp_path: Path, suite: str, name: str) -> list[str]:
+    """What `check_named_tests` says of one citation of `name`, `suite` a test file beside it."""
+    root = _repo(tmp_path)
+    (root / "tests" / "unit" / "test_suite.py").write_text(suite, encoding="utf-8")
+    (root / "docs" / "WORKING_NOTES.md").write_text(
+        f"# Notes\n\nHeld by `{name}`.\n", encoding="utf-8"
+    )
+    report = doc_check.analyze(root)
+    return [
+        f"{kind}: {line.split(', which')[0]}"
+        for kind, lines in (("error", report.errors), ("declined", report.declined))
+        for line in lines
+        if f"`{name}`" in line
+    ]
+
+
+def _changed_terms(tmp_path: Path, before: str, after: str) -> list[str]:
+    """The terms the close-out sweep takes from a module rewritten from `before` to `after`.
+
+    Then each file it read a line at a time, cut before the interpreter's
+    version and the tokenizer's reason, which differ by interpreter.
+    """
+    root = _repo(tmp_path)
+    module = root / "src" / "anesthesia_sim" / "core" / "thing.py"
+    module.write_text(before, encoding="utf-8")
+    _git_init(root)
+    module.write_text(after, encoding="utf-8")
+    unread: list[str] = []
+    terms = doc_check.changed_tokens(root, "HEAD", doc_check.read_docs(root), unread)
+    return sorted(terms["src/anesthesia_sim/core/thing.py"]) + [
+        f"{note.split(': Python ')[0]}: {note.rpartition('), ')[2]}" for note in unread
+    ]
+
+
 def _bump_refusal(tmp_path: Path) -> str:
     """What `prepare_bump` says of a version TOML continues across lines, or "" if it bumps."""
     pyproject = tmp_path / "pyproject.toml"
@@ -7566,6 +7646,114 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "suppressions, a field of a formatted string continued across lines is none": (
         lambda _: _suppressions('NOTE = f"""\n{pytest.mark.skip}\n"""\n'),
         [],
+    ),
+    # Both integrity checks again, on a file the parser refuses and the
+    # tokenizer reads (`PL-TC2D`): through the tokenizer, a docstring is one
+    # string and a bracketed `assert` one statement, so neither is a fragment.
+    "assertions, a docstring line opening assert where the parser refuses": (
+        lambda tmp_path: _integrity(
+            tmp_path,
+            WRAPPED_TEST.format("prose", 1) + NEWER_SYNTAX,
+            WRAPPED_TEST.format("plainer prose", 1) + NEWER_SYNTAX,
+            "assertions",
+        ),
+        ["none", "read through the tokenizer, not parsed: tests/test_x.py"],
+    ),
+    "assertions, a bracketed assert loosened where the parser refuses": (
+        lambda tmp_path: _integrity(
+            tmp_path,
+            WRAPPED_TEST.format("prose", 1) + NEWER_SYNTAX,
+            WRAPPED_TEST.format("prose", 2) + NEWER_SYNTAX,
+            "assertions",
+        ),
+        [
+            "1 assertion(s)",
+            "tests/test_x.py::test_b",
+            "    was  assert ( result == 1 )",
+            "    now  assert ( result == 2 )",
+            "read through the tokenizer, not parsed: tests/test_x.py",
+        ],
+    ),
+    "assertions, a deleted assert a docstring repeats where the parser refuses": (
+        lambda tmp_path: _integrity(
+            tmp_path,
+            "def test_b() -> None:\n    assert value == 1\n" + NEWER_SYNTAX,
+            'def test_b() -> None:\n    """Once held:\n\n    assert value == 1\n    """\n'
+            + NEWER_SYNTAX,
+            "assertions",
+        ),
+        [
+            "1 assertion(s)",
+            "tests/test_x.py::test_b",
+            "    was  assert value == 1",
+            "    now  nothing in its place",
+            "read through the tokenizer, not parsed: tests/test_x.py",
+        ],
+    ),
+    "suppressions, a mark split by a backslash where the parser refuses": (
+        lambda tmp_path: _integrity(
+            tmp_path,
+            "def test_b(): ...\n" + NEWER_SYNTAX,
+            "@pytest.mark.\\\n    skip(reason='flaky')\ndef test_b(): ...\n" + NEWER_SYNTAX,
+            "suppressions",
+        ),
+        [
+            "1 line(s)",
+            "@pytest.mark.\\ skip(reason='flaky')",
+            "read through the tokenizer, not parsed: tests/test_x.py",
+        ],
+    ),
+    # `check_named_tests` (`PL-V2HK`): a test is a `def` statement, which a
+    # string does not hold, and a file the tokenizer refuses is declined.
+    "test definitions, a def inside a string continued across lines is none": (
+        lambda tmp_path: _test_citations(
+            tmp_path, 'FIXTURE = """\ndef test_ghost():\n    pass\n"""\n', "test_ghost"
+        ),
+        ["error: docs/WORKING_NOTES.md:3: names the test `test_ghost`"],
+    ),
+    "test definitions, an async def test is one": (
+        lambda tmp_path: _test_citations(
+            tmp_path, "async def test_awaited() -> None:\n    pass\n", "test_awaited"
+        ),
+        [],
+    ),
+    "test definitions, a file the tokenizer refuses declines what only it may define": (
+        lambda tmp_path: _test_citations(
+            tmp_path, "def test_maybe():\n    pass\n\nLEFT = 'open\n", "test_maybe"
+        ),
+        ["declined: docs/WORKING_NOTES.md:3: names the test `test_maybe`"],
+    ),
+    # The close-out sweep's terms, `changed_tokens` (`PL-V2HK`): a changed row
+    # counts toward the definition whose statement holds it.
+    "changed definitions, a def or class inside a string is none": (
+        lambda tmp_path: _changed_terms(
+            tmp_path,
+            'FIXTURE = """\nclass Old:\n    def _old(self):\n        pass\n"""\n',
+            'FIXTURE = """\nclass SimulationView:\n'
+            '    def _refresh_view(self):\n        pass\n"""\n',
+        ),
+        ["thing", "thing.py"],
+    ),
+    "changed definitions, a parameter on a wrapped signature's continuation line": (
+        lambda tmp_path: _changed_terms(
+            tmp_path,
+            "def advance(\n    state: int,\n    step: int,\n) -> int:\n    return state\n",
+            "def advance(\n    state: int,\n    step: float,\n) -> int:\n    return state\n",
+        ),
+        ["advance", "thing", "thing.py"],
+    ),
+    "changed definitions, a file the tokenizer refuses is read a line at a time and said so": (
+        lambda tmp_path: _changed_terms(
+            tmp_path,
+            "def kept():\n    pass\n",
+            "def kept():\n    pass\n\n\ndef added_here():\n    LEFT = 'open\n",
+        ),
+        [
+            "added_here",
+            "thing",
+            "thing.py",
+            "src/anesthesia_sim/core/thing.py: so its changed lines were read a line at a time",
+        ],
     ),
     # The version reader (`PL-3DD9`): TOML carries a string across lines, and a
     # bump its one-line substitution cannot make is refused by name.

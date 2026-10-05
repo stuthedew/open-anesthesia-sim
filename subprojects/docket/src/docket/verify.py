@@ -26,19 +26,18 @@ project, and that separation is what keeps a bare checkout able to use it.
 from __future__ import annotations
 
 import ast
-import io
 import os
 import re
 import subprocess
 import tempfile
 import time
-import tokenize
 import warnings
 from collections import Counter
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TypeVar
 
 from . import vcs
 from .arming import RECORDS
@@ -53,6 +52,7 @@ from .model import (
     is_under,
     parse_front_matter,
 )
+from .python import UNTOKENIZABLE, LogicalLine, Piece, definition, read_logical_lines, refusal
 from .release import CODE_SPAN_PATTERN
 from .shell import Clause, Word, shell_words
 
@@ -263,118 +263,14 @@ def is_suppression_line(path: str, line: str) -> bool:
     `skip(...)` - holds no entry on either of its lines, so the check read
     `none`. A Python file is read as logical lines instead
     (`added_suppressions`), and this reads the configuration files, where no
-    token can wrap, and a Python file some version of which this interpreter
-    cannot parse, which the page names.
+    token can wrap, and a Python file some version of which the tokenizer
+    refuses, which the page names (`PL-TC2D`).
     """
     if path and not path.endswith(SUPPRESSION_BEARING_SUFFIXES):
         return False
     if path.endswith(QUOTING_SUFFIXES):
         line = strip_non_code(line)
     return bool(_SUPPRESSION_RE.search(line))
-
-
-#: The token types that hold no code: a comment, and the layout between
-#: lines and blocks. `NEWLINE`, which ends a logical line, is read as that.
-_LAYOUT = frozenset(
-    {
-        tokenize.COMMENT,
-        tokenize.NL,
-        tokenize.INDENT,
-        tokenize.DEDENT,
-        tokenize.ENCODING,
-        tokenize.ENDMARKER,
-    }
-)
-
-#: The tokens that open and close a formatted string, by name, since no
-#: constant exists for them before 3.12 (`FSTRING_*`) and 3.14 (`TSTRING_*`).
-#: From those versions the tokenizer hands such a string over in parts, with
-#: each replacement field's code as tokens of its own, where 3.11 hands over
-#: one `STRING`. Blanked whole either way, so a file reads the same under the
-#: bare `python3` docket runs on and under the project's own interpreter.
-_STRING_OPENS = ("FSTRING_START", "TSTRING_START")
-_STRING_CLOSES = ("FSTRING_END", "TSTRING_END")
-
-
-@dataclass(frozen=True)
-class LogicalLine:
-    """One logical line of Python source, as the tokenizer builds it from physical ones.
-
-    Python continues a statement across physical lines after a backslash,
-    inside brackets and inside a triple-quoted string, and ends it at the end
-    of the logical line (Python Language Reference § 2.1). A suppression is
-    written in one - a decorator, an assignment, a call - so it is the unit
-    `no suppression added` reads (`PL-CFWP`).
-    """
-
-    #: Its tokens, comments and layout left out: what makes two the same line
-    #: to the fold, so a re-wrap, a re-indent or a changed comment is no change.
-    tokens: str
-    #: The same with each string blanked whole and each dotted name joined
-    #: however it was split: what `SUPPRESSIONS` is matched against.
-    code: str
-    #: Its source as written, on one line: what the report prints.
-    shown: str
-
-
-def read_logical_lines(source: str) -> tuple[LogicalLine, ...]:
-    """Every logical line `source` holds, in order.
-
-    Parsed first, so a file this interpreter cannot read is refused rather than
-    tokenized into a guess: the bare `python3` docket runs on can be older
-    than the project's, and 3.11's tokenizer does not refuse newer syntax.
-    Raises what `ast.parse` raises - `SyntaxError`, or `ValueError` for a null
-    byte - and `RecursionError` for an expression too deep to parse, so that
-    the caller can read the file another way and say that it did.
-    """
-    with warnings.catch_warnings():
-        # As `read_assertions`: an invalid escape is the file's linter's to report.
-        warnings.simplefilter("ignore")
-        ast.parse(source)
-    # The rows `readline` hands the tokenizer, which splits on "\n" alone.
-    physical = source.split("\n")
-    found: list[LogicalLine] = []
-    tokens: list[tokenize.TokenInfo] = []
-    pieces: list[str] = []
-    depth = 0
-    for token in tokenize.generate_tokens(io.StringIO(source).readline):
-        if token.type == tokenize.NEWLINE:
-            if tokens:
-                found.append(_logical_line(tokens, pieces, physical))
-            tokens, pieces = [], []
-            continue
-        if token.type in _LAYOUT:
-            continue
-        tokens.append(token)
-        kind = tokenize.tok_name[token.type]
-        if kind in _STRING_OPENS:
-            depth += 1
-        elif kind in _STRING_CLOSES:
-            depth -= 1
-            if not depth:
-                pieces.append('""')
-        elif not depth:
-            pieces.append('""' if token.type == tokenize.STRING else token.string)
-    return tuple(found)
-
-
-def _logical_line(
-    tokens: Sequence[tokenize.TokenInfo], pieces: Sequence[str], physical: Sequence[str]
-) -> LogicalLine:
-    code = pieces[0] if pieces else ""
-    for before, piece in zip(pieces, pieces[1:], strict=False):
-        # A dotted name is one name however it was split, and a decorator's `@`
-        # belongs to the name after it. Every other pair keeps a space, so a
-        # binary `@` before a name starting `skip` is not read as `@skip`.
-        joined = "." in (before, piece) or (before == "@" and code == "@")
-        code += piece if joined else f" {piece}"
-    (first_row, first_column), (last_row, last_column) = tokens[0].start, tokens[-1].end
-    rows = list(physical[first_row - 1 : last_row])
-    rows[-1] = rows[-1][:last_column]
-    rows[0] = rows[0][first_column:]
-    return LogicalLine(
-        " ".join(token.string for token in tokens), code, " ".join(" ".join(rows).split())
-    )
 
 
 def is_suppression_statement(line: LogicalLine) -> bool:
@@ -432,15 +328,17 @@ NOT_AN_ASSERTION_RE = re.compile(r"^\s*(?:#|@|def\s|async\s+def\s|import\s|from\
 
 
 def is_assertion_line(path: str, line: str) -> bool:
-    """Whether a removed line was an assertion, in a file this interpreter cannot parse.
+    """Whether a removed line was an assertion, in a file neither reader here can read.
 
-    **The fallback, no longer the check.** `no existing assertion removed`
-    reads statements with `ast` (`removed_assertions`, `PL-4W2L`). This reads
-    only a file some version of which the running interpreter cannot parse -
-    `bin/docket` runs on the bare `python3`, which can be older than the
-    project's own - and the file is named on the page as read this way. What
-    follows is the history of the predicate as it was when it was the check,
-    kept because the counts are what its shape rests on.
+    **The last fallback, no longer the check.** `no existing assertion
+    removed` reads statements with `ast` (`removed_assertions`, `PL-4W2L`), and
+    a file some version of which the running interpreter cannot parse through
+    the tokenizer (`read_assertion_statements`, `PL-TC2D`) - `bin/docket` runs
+    on the bare `python3`, which can be older than the project's own. This
+    reads only a file the tokenizer refuses too, and the file is named on the
+    page as read this way. What follows is the history of the predicate as it
+    was when it was the check, kept because the counts are what its shape
+    rests on.
 
     The check used to ask `"assert" in line`, which is true of a comment, a
     docstring, a release note, an item's brief, a variable called
@@ -566,6 +464,26 @@ def _segment(lines: Sequence[str], node: ast.expr | ast.stmt) -> str:
     return "".join([head, *lines[first + 1 : last], tail])
 
 
+#: What reading a file with the parser raises where this interpreter cannot:
+#: `SyntaxError`, `ValueError` for a null byte or for text that is not UTF-8,
+#: and `RecursionError` for an expression too deep to parse or to dump.
+UNPARSABLE = (SyntaxError, ValueError, RecursionError)
+
+
+def _parse(source: str) -> ast.Module:
+    with warnings.catch_warnings():
+        # Compiling warns on an invalid escape sequence. That is the file's
+        # linter's to report, and a verify report is the wrong page for it.
+        warnings.simplefilter("ignore")
+        return ast.parse(source)
+
+
+def _parses(source: str) -> bool:
+    """`True`, or one of `UNPARSABLE` raised: whether a page must name the file."""
+    _parse(source)
+    return True
+
+
 def read_assertions(source: str) -> AssertionReading:
     """Every assertion `source` holds, as `ast` reads it.
 
@@ -577,15 +495,10 @@ def read_assertions(source: str) -> AssertionReading:
     could not do: in the parenthesized multi-manager form the item sits on a
     line of its own with no `with` on it (`PL-XQGH`).
 
-    Raises what `ast.parse` raises - `SyntaxError`, or `ValueError` for a null
-    byte - and `RecursionError` for an expression too deep to dump, so that the
-    caller can read the file another way and say that it did.
+    Raises one of `UNPARSABLE`, so that the caller can read the file another
+    way and say that it did.
     """
-    with warnings.catch_warnings():
-        # Compiling warns on an invalid escape sequence. That is the file's
-        # linter's to report, and a verify report is the wrong page for it.
-        warnings.simplefilter("ignore")
-        tree = ast.parse(source)
+    tree = _parse(source)
     lines = PARSER_LINE_RE.findall(source)
     found: list[Assertion] = []
     defines: set[str] = set()
@@ -620,6 +533,99 @@ def read_assertions(source: str) -> AssertionReading:
     return AssertionReading(tuple(found), frozenset(defines))
 
 
+def read_assertion_statements(source: str) -> AssertionReading:
+    """Every assertion `source` holds, read from its logical lines rather than parsed.
+
+    `read_assertions`' reading for a file some version of which this
+    interpreter cannot parse (project owner, 2026-10-04, ratified, over keeping
+    `PL-4W2L`'s line fallback for it, `PL-TC2D`). The same three kinds, found
+    among the pieces of each statement the tokenizer builds, so a docstring is
+    a string and never an assertion, and an assertion wrapped across lines is
+    one statement however it was wrapped. Its form is its kind and the tokens
+    that assert - an `assert`'s test without its message, a call or a `with`
+    item whole - so a re-wrap, a re-indent or a comment leaves it as it was,
+    and an edit to any token of it, on any of its lines, changes it. `where`
+    comes from the indentation each `class` and `def` opens at, as a block's
+    statements are indented under it.
+
+    Raises one of `UNTOKENIZABLE` where the tokenizer refuses the file.
+    """
+    found: list[Assertion] = []
+    defines: set[str] = set()
+    scopes: list[tuple[int, str]] = []  # each open class and function: its indent and name
+    for line in read_logical_lines(source):
+        while scopes and scopes[-1][0] >= line.indent:
+            scopes.pop()
+        if name := definition(line)[1]:
+            scopes.append((line.indent, name))
+            defines.add("::".join(scope for _, scope in scopes))
+        where = "::".join(scope for _, scope in scopes)
+        for kind, asserting, written in _asserted(line):
+            text = line.text(written[0].start, written[-1].end)
+            prefix = "with " if kind == "with" else ""
+            form = " ".join(piece.text for piece in asserting)
+            found.append(Assertion(f"{kind}:{form}", where, text, prefix + " ".join(text.split())))
+    return AssertionReading(tuple(found), frozenset(defines))
+
+
+_OPENERS, _CLOSERS = ("(", "[", "{"), (")", "]", "}")
+
+
+def _asserted(line: LogicalLine) -> Iterator[tuple[str, Sequence[Piece], Sequence[Piece]]]:
+    """Each assertion a logical line holds: its kind, the pieces that assert, and those written.
+
+    `read_assertions`' three kinds, by the words that make each: `assert`,
+    which is a keyword and so opens its statement, asserting its test - which
+    runs to the first comma outside brackets, where its message begins; a call
+    whose name begins `assert`, its dotted receiver included; and a `raises` or
+    `warns` call in a `with` statement's header, which runs to the colon
+    outside brackets, so the parenthesized multi-manager form is read as the
+    one header it is. A string is one piece holding no code, so none of the
+    three is ever found in one.
+    """
+    pieces = line.pieces
+    words = [piece.code for piece in pieces]
+    closing: dict[int, int] = {}
+    opened: list[int] = []
+    for at, word in enumerate(words):
+        if word in _OPENERS:
+            opened.append(at)
+        elif word in _CLOSERS and opened:
+            closing[opened.pop()] = at
+    header = 0
+    if words[:1] == ["with"] or words[:2] == ["async", "with"]:
+        header = _ends_at(words, words.index("with") + 1, ":")
+    for at, word in enumerate(words):
+        if word == "assert":
+            end = _ends_at(words, at + 1, ";")
+            yield "assert", pieces[at + 1 : _ends_at(words, at + 1, ",", end)], pieces[at:end]
+            continue
+        if words[at + 1 : at + 2] != ["("] or words[at - 1 : at] in (["def"], ["class"]):
+            continue
+        if word.startswith("assert") and word.isidentifier():
+            kind = "call"
+        elif at < header and word in EXPECTING:
+            kind = "with"
+        else:
+            continue
+        start = at
+        while start >= 2 and words[start - 1] == "." and words[start - 2].isidentifier():
+            start -= 2
+        call = pieces[start : closing.get(at + 1, len(words) - 1) + 1]
+        yield kind, call, call
+
+
+def _ends_at(words: Sequence[str], start: int, stop: str, end: int | None = None) -> int:
+    """Where the first `stop` outside brackets falls from `start`, or `end` where none does."""
+    end = len(words) if end is None else end
+    depth = 0
+    for at in range(start, end):
+        if not depth and words[at] == stop:
+            return at
+        depth += (words[at] in _OPENERS) - (words[at] in _CLOSERS)
+    return end
+
+
 @dataclass(frozen=True)
 class FileAbsence:
     """The existing assertions one file lost to the item's own commits."""
@@ -644,8 +650,9 @@ class AssertionAudit:
     """What the item's own commits did to the assertions the base holds."""
 
     absent: tuple[FileAbsence, ...] = ()
-    #: Files a version of which this interpreter could not parse, and why.
-    #: Each is read line by line instead, and named on the page as read so.
+    #: Files a version of which neither this interpreter's parser nor its
+    #: tokenizer could read, and why. Each is read line by line instead, and
+    #: named on the page as read so.
     unparsed: tuple[tuple[str, str], ...] = ()
     #: The removed lines from those files that `is_assertion_line` flags and
     #: that the base's copy holds, as `(path, line)`.
@@ -653,6 +660,10 @@ class AssertionAudit:
     #: Why nothing could be read, where that is the answer. The check refuses
     #: on it: "could not look" is not "looked, found nothing".
     unread: str = ""
+    #: Files a version of which this interpreter could not parse, and why. Each
+    #: is read through the tokenizer instead, every version of it alike, and
+    #: named on the page as read so (`PL-TC2D`).
+    tokenized: tuple[tuple[str, str], ...] = ()
 
 
 def _short(spec: str) -> str:
@@ -849,9 +860,13 @@ def removed_assertions(
     branch was never an existing one, however the commits naming this id
     treat it (`PL-2DTK`).
 
-    `removed_lines` is `_net_line_changes`' removed half, read only for a file
-    this interpreter cannot parse - `bin/docket` runs on the bare `python3`,
-    which can be older than the project's own. There the line predicate reads
+    **A file some version of which this interpreter cannot parse is read
+    through the tokenizer** (`read_assertion_statements`, `PL-TC2D`), every
+    version of it, since forms two readers produced are not comparable -
+    `bin/docket` runs on the bare `python3`, which can be older than the
+    project's own. Its absences are charged as a parsed file's are, and the
+    file is named. `removed_lines` is `_net_line_changes`' removed half, read
+    only for a file the tokenizer refuses too: there the line predicate reads
     it, the base's copy still decides what existed, and the file is named.
     """
     steps, keys, unread = _file_steps(root, base, commits)
@@ -871,21 +886,31 @@ def removed_assertions(
     if blobs is None:
         return AssertionAudit(unread="git could not be asked for the files' contents")
 
-    parsed: dict[str, AssertionReading] = {}  # by object id: one version, one parse
+    versions = _versions(order, steps)
+    for key in order:
+        versions[key].append(f"{base}:{key}")
+    parsed: dict[str, AssertionReading] = {}  # by object id: one version, one read
+    read_so: dict[str, AssertionReading] = {}  # the same, through the tokenizer
+    tokenized: dict[str, str] = {}
     unparsed: dict[str, str] = {}
+    for key in order:
+        refused = _read_versions(blobs, versions[key], read_assertions, UNPARSABLE, parsed)
+        if refused is None:
+            continue
+        why = _unparsable(*refused)
+        refused = _read_versions(
+            blobs, versions[key], read_assertion_statements, UNTOKENIZABLE, read_so
+        )
+        if refused is None:
+            tokenized[key] = why
+        else:
+            unparsed[key] = _untokenizable(why, *refused)
 
     def reading(key: str, spec: str) -> AssertionReading:
         held = blobs.get(spec) if spec else None
-        if held is None:
+        if held is None or key in unparsed:
             return AssertionReading()
-        oid, body = held
-        if oid not in parsed:
-            try:
-                parsed[oid] = read_assertions(body.decode("utf-8-sig"))
-            except (SyntaxError, ValueError, RecursionError) as error:
-                unparsed.setdefault(key, _unparsable(spec, error))
-                parsed[oid] = AssertionReading()
-        return parsed[oid]
+        return (read_so if key in tokenized else parsed)[held[0]]
 
     removed: dict[str, Counter[str]] = {key: Counter() for key in order}
     added: dict[str, Counter[str]] = {key: Counter() for key in order}
@@ -925,7 +950,49 @@ def removed_assertions(
             if keys.get(path, path) == key and is_assertion_line(path, line) and existing[line]:
                 existing[line] -= 1
                 lines.append((path, line))
-    return AssertionAudit(tuple(absent), tuple(unparsed.items()), tuple(lines))
+    return AssertionAudit(
+        tuple(absent), tuple(unparsed.items()), tuple(lines), tokenized=tuple(tokenized.items())
+    )
+
+
+_Read = TypeVar("_Read")
+
+
+def _versions(order: Sequence[str], steps: Sequence[_FileStep]) -> dict[str, list[str]]:
+    """Every version of each file the steps reach, before and after each, as a blob spec.
+
+    In the order the steps reach them, so the copy a refusal names is the
+    earliest one refused, as it was when each version was read as it came.
+    """
+    versions: dict[str, dict[str, None]] = {key: {} for key in order}
+    for step in steps:
+        versions[step.key].update(dict.fromkeys(s for s in (*step.before, step.after) if s))
+    return {key: list(specs) for key, specs in versions.items()}
+
+
+def _read_versions(
+    blobs: Mapping[str, tuple[str, bytes] | None],
+    specs: Sequence[str],
+    reader: Callable[[str], _Read],
+    refusals: tuple[type[Exception], ...],
+    read: dict[str, _Read],
+) -> tuple[str, Exception] | None:
+    """Read each version `specs` names with `reader`, into `read` by object id.
+
+    The first version `reader` refuses and its error, or `None` once it has
+    read them all. A file is read one way across all its versions or not at
+    all, because what one reader makes of a version is not comparable with
+    what another makes of the next.
+    """
+    for spec in specs:
+        held = blobs.get(spec)
+        if held is None or held[0] in read:
+            continue
+        try:
+            read[held[0]] = reader(held[1].decode("utf-8-sig"))
+        except refusals as error:
+            return spec, error
+    return None
 
 
 def _unparsable(spec: str, error: Exception) -> str:
@@ -943,6 +1010,14 @@ def _unparsable(spec: str, error: Exception) -> str:
     )
 
 
+def _untokenizable(why: str, spec: str, error: Exception) -> str:
+    """Why a file is read line by line: the parser's refusal, if any, then the tokenizer's."""
+    refused = f"the tokenizer refused its copy at {_short(spec)}"
+    if why:
+        return f"{why}; {refused} too ({refusal(error)})"
+    return f"{refused} ({refusal(error)}), though this interpreter parses every copy"
+
+
 @dataclass(frozen=True)
 class SuppressionAudit:
     """What the item's own commits added that could suppress a test."""
@@ -951,12 +1026,17 @@ class SuppressionAudit:
     #: line, that the commits added and that holds a suppression - as the
     #: report prints it, in the order the files and their lines come.
     found: tuple[str, ...] = ()
-    #: Python files a version of which this interpreter could not parse, and
-    #: why. Each is read line by line instead, and named on the page as read so.
+    #: Python files a version of which the tokenizer refused, and why. Each is
+    #: read line by line instead, and named on the page as read so.
     unparsed: tuple[tuple[str, str], ...] = ()
     #: Why nothing could be read, where that is the answer. The check refuses
     #: on it: "could not look" is not "looked, found nothing".
     unread: str = ""
+    #: Python files the tokenizer read whole and a version of which this
+    #: interpreter could not parse, and why: read as every other file is, and
+    #: named on the page, since a newer interpreter's tokenizer can split a
+    #: formatted string differently (`PL-TC2D`).
+    tokenized: tuple[tuple[str, str], ...] = ()
 
 
 def added_suppressions(
@@ -978,10 +1058,12 @@ def added_suppressions(
     formatter adds when it wraps - adds the whole statement, as an edit to a
     one-line marker always did.
 
-    `added_lines` is `_net_line_changes`' added half, read for every file the
-    logical lines did not read: a configuration file, where no token can
-    wrap, and a Python file some version of which this interpreter cannot
-    parse, which is named.
+    The logical lines are the tokenizer's, so a file this interpreter cannot
+    parse is read the same way and named as read so (`PL-TC2D`); each version
+    is parsed only to say that. `added_lines` is `_net_line_changes`' added
+    half, read for every file the logical lines did not read: a configuration
+    file, where no token can wrap, and a Python file some version of which the
+    tokenizer refuses, which is named.
     """
     steps, keys, unread = _file_steps(root, base, commits, QUOTING_SUFFIXES)
     if unread:
@@ -991,21 +1073,23 @@ def added_suppressions(
     if blobs is None:
         return SuppressionAudit(unread="git could not be asked for the files' contents")
 
+    versions = _versions(order, steps)
     read: dict[str, tuple[LogicalLine, ...]] = {}  # by object id: one version, one read
+    parsed: dict[str, bool] = {}
+    tokenized: dict[str, str] = {}
     unparsed: dict[str, str] = {}
+    for key in order:
+        refused = _read_versions(blobs, versions[key], read_logical_lines, UNTOKENIZABLE, read)
+        unparsable = _read_versions(blobs, versions[key], _parses, UNPARSABLE, parsed)
+        why = _unparsable(*unparsable) if unparsable else ""
+        if refused is not None:
+            unparsed[key] = _untokenizable(why, *refused)
+        elif why:
+            tokenized[key] = why
 
     def lines_of(key: str, spec: str) -> tuple[LogicalLine, ...]:
         held = blobs.get(spec) if spec else None
-        if held is None:
-            return ()
-        oid, body = held
-        if oid not in read:
-            try:
-                read[oid] = read_logical_lines(body.decode("utf-8-sig"))
-            except (SyntaxError, ValueError, RecursionError, tokenize.TokenError) as error:
-                unparsed.setdefault(key, _unparsable(spec, error))
-                read[oid] = ()
-        return read[oid]
+        return () if held is None or key in unparsed else read[held[0]]
 
     removed: dict[str, Counter[str]] = {key: Counter() for key in order}
     added: dict[str, Counter[str]] = {key: Counter() for key in order}
@@ -1035,7 +1119,9 @@ def added_suppressions(
         for path, line in added_lines
         if keys.get(path, path) not in read_whole and is_suppression_line(path, line)
     ]
-    return SuppressionAudit(tuple(found), tuple(unparsed.items()))
+    return SuppressionAudit(
+        tuple(found), tuple(unparsed.items()), tokenized=tuple(tokenized.items())
+    )
 
 
 def suppression_check(audit: SuppressionAudit) -> Check:
@@ -1045,8 +1131,14 @@ def suppression_check(audit: SuppressionAudit) -> Check:
         return Check(name, False, f"not read: {audit.unread}")
     shown = _capped(audit.found)
     shown += [f"read line by line, not parsed: {path} - {why}" for path, why in audit.unparsed]
+    shown += [_tokenized(path, why) for path, why in audit.tokenized]
     detail = f"{len(audit.found)} line(s)" if audit.found else "none"
     return Check(name, not audit.found, detail, tuple(shown))
+
+
+def _tokenized(path: str, why: str) -> str:
+    """The page's line naming a file read through the tokenizer rather than parsed."""
+    return f"read through the tokenizer, not parsed: {path} - {why}"
 
 
 #: How many functions the report prints - or lines, where a check reads lines
@@ -1165,6 +1257,7 @@ def assertion_check(
     by_line = len(unfolded)
     shown += _capped(unfolded)
     shown += [f"read line by line, not parsed: {path} - {why}" for path, why in audit.unparsed]
+    shown += [_tokenized(path, why) for path, why in audit.tokenized]
     parts = [f"{counted} assertion(s)"] if counted else []
     parts += [f"{by_line} line(s) in a file read line by line"] if by_line else []
     detail = ", ".join(parts) or "none"
@@ -1909,10 +2002,10 @@ def _net_line_changes(
     Cancelling an added line against an identical removed line within the same
     file is exactly as precise as what consumes this - the suppression check's
     reading of a configuration file, and both checks' fallback for a Python
-    file they cannot parse, all of which read a line's text rather than the
+    file the tokenizer refuses, all of which read a line's text rather than the
     statement it belongs to - and it costs no extra git call. Both checks
-    proper make the same fold over parsed statements instead
-    (`removed_assertions`, `added_suppressions`). Counting rather than
+    proper make the same fold over statements instead (`removed_assertions`,
+    `added_suppressions`). Counting rather than
     de-duplicating is what keeps it safe: a file whose patches remove one
     `# type: ignore` and add two still reports one added. A line merely *moved*
     within a file cancels too, which is the right answer to both questions -

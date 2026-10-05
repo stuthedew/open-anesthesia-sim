@@ -3760,10 +3760,14 @@ and comment dropped before matching what is left. So a marker a backslash or a
 bracket carries across lines is found as the one statement it is; a docstring
 naming the tokens, a fixture writing a suppression into a test file as a
 string, and a comment explaining why one was *not* used are each read as what
-they are; and a reflow that changes no token adds nothing. A file the running
-interpreter cannot parse is read line by line instead, its quoted spans,
-backtick spans and trailing comment blanked, and named on the page as read that
-way, as the assertion check below does. Replayed under 3.11 over `main`'s 680
+they are; and a reflow that changes no token adds nothing. The logical lines are
+the tokenizer's, `docket.python`'s one reading of where a Python statement ends,
+so a file the running interpreter cannot parse is read the same way and named
+on the page as read through the tokenizer (`PL-TC2D`). Only a file the
+tokenizer refuses as well - an error token included, which 3.11 hands back
+where 3.12 raises - is read line by line, its quoted spans, backtick spans and
+trailing comment blanked, and named as read that way, as the assertion check
+below does. Replayed under 3.11 over `main`'s 680
 non-merge commits that change a `.py` or `.pyi` file, on 2026-10-04, the
 statement reader finds exactly what the line reader found: the `bash` guard
 below. Only `.py` and `.pyi` are stripped: in a `.cfg` or `.ini` a quote is an
@@ -3841,10 +3845,17 @@ the same branch is never this item's to lose (`PL-2DTK`). A renamed file is
 followed as `git show` follows it, and a merge commit is read against every
 parent, as git reads one. And a file the running interpreter cannot parse -
 `bin/docket` runs on the bare `python3`, which can be older than the project's
-own - is read line by line with the predicate the parser replaced, and named on
-the page as read that way. Not decided, as before: whether a new test asserts
-the right value, an assertion moved to another file, which stays two facts, and
-anything outside `.py`.
+own - is read through the tokenizer instead, every version of it alike, so a
+docstring is one string and a bracketed `assert` one statement, and named on the
+page as read that way (project owner, 2026-10-04, ratified, over keeping the
+line predicate for it, `PL-TC2D`). Every syntax the project has adopted past
+3.11 adds grammar rather than tokens: on 2026-10-05 the tokenizers of 3.11,
+3.12, 3.13 and 3.14 split all 225 tracked Python files into the same 67,740
+logical lines.
+Only a file the tokenizer refuses as well is read line by line with the
+predicate the parser replaced, and named with both refusals. Not decided, as
+before: whether a new test asserts the right value, an assertion moved to
+another file, which stays two facts, and anything outside `.py`.
 
 Two of the four take a **declared** exemption, which is what lets them stay
 absolute rather than a softening of them. Both were checks a correct close-out
