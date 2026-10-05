@@ -26,9 +26,10 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-from . import fences
+from . import fences, markdown
 from .config import Config
 from .instructions import Assertion
+from .markdown import statement_lines
 from .model import (
     CLOSED_STATUSES,
     EFFORTS,
@@ -61,7 +62,7 @@ from .release import (
     unrecorded_milestones,
     version_key,
 )
-from .roadmap import SENTENCE_BREAK, MilestoneStates, statement_lines
+from .roadmap import SENTENCE_BREAK, MilestoneStates
 from .shell import Clause, Word, shell_words
 from .store import ID_PATTERN, ID_RE, filename_for
 from .vcs import (
@@ -118,10 +119,7 @@ ANSWER_LABEL = re.compile(r"(?:Answer(?:ed|s)|Decided|Question \d+ is answered)\
 #: marked recommendation as one too, since it is a question put to the owner.
 QUESTION_LABEL = re.compile(r"(?:Decision needed|Design round|Q(?:uestion )?\d+[.:])")
 
-# A Markdown heading line, a paragraph - a run of lines none of them blank -
-# and an asterisk CommonMark reads as no emphasis delimiter at all.
-_HEADING_LINE = re.compile(r"^[ \t]{0,3}#{1,6}[ \t]+(.+)$", re.MULTILINE)
-_PARAGRAPH = re.compile(r"[^\n]*\S[^\n]*(?:\n[^\n]*\S[^\n]*)*")
+# An asterisk CommonMark reads as no emphasis delimiter at all.
 _NOT_EMPHASIS = re.compile(r"(?<!\S)\*(?=\s)")
 
 #: The line a triage pass writes once it has asked an item touching the
@@ -238,15 +236,21 @@ def _marks_recommendation(body: str) -> bool:
     a brief quoting the marker it has not written. Both measured 2026-09-26:
     no `needs-decision` item's reading changed.
 
-    Matched on the brief with its wrapping flattened. A marker falling across
-    a line break is the same marker to a reader and a different string to a
-    regex, and four of the eight briefs carrying one in this store wrap
-    somewhere inside it.
+    Matched a statement at a time, with its wrapping flattened. A marker
+    falling across a line break is the same marker to a reader and a different
+    string to a regex, and four of the eight briefs carrying one in this store
+    wrap somewhere inside it. A statement rather than the whole brief, because
+    a code span or an emphasis run ends with its statement: flattened whole, a
+    stray backtick paired with the first span of a later paragraph and hid the
+    `Recommendation:` between them (`PL-FP7J`).
     """
-    flat = CODE_SPAN_RE.sub(" ", " ".join(body.split()))
-    if "Recommendation:" in flat:
-        return True
-    return any(re.search(r"recommend", span, re.IGNORECASE) for span in _emphasised(flat))
+    for start, end in _statements(body):
+        flat = CODE_SPAN_RE.sub(" ", " ".join(body[start:end].split()))
+        if "Recommendation:" in flat or any(
+            re.search(r"recommend", span, re.IGNORECASE) for span in _emphasised(flat)
+        ):
+            return True
+    return False
 
 
 def _answered_beneath(body: str) -> str | None:
@@ -268,28 +272,29 @@ def _answered_beneath(body: str) -> str | None:
     against the source on 2026-09-14, and still waiting on the owner for the
     narrowing its answer recommended.
 
-    A label is a heading or an emphasised run. One in a code span or a fence is
-    a literal, and one in a quotation or a superseded passage is not the
-    brief's own current claim (`_standing`), so neither is read. Over `main`'s
-    history on 2026-09-30, 17 items met this at `needs-decision` and every one
-    later moved off it with no new question posed, which is what makes the
-    reading exact enough to refuse on.
+    A label is a heading or an emphasised run. One in a code span, a fence, an
+    HTML block or an indented code block is a literal, and one in a quotation
+    or a superseded passage is not the brief's own current claim (`_standing`),
+    so neither is read. Over `main`'s history on 2026-09-30, 17 items met this
+    at `needs-decision` and every one later moved off it with no new question
+    posed, which is what makes the reading exact enough to refuse on.
     """
-    text = CODE_SPAN_RE.sub(_blanked, fences.without_fences(body))
     labels: list[tuple[int, bool, str]] = []
     runs: list[tuple[int, int]] = []
-    for start, end, words in _labels(text):
+    for start, end, words in _labels(body):
         runs.append((start, end))
         flat = " ".join(words.strip("*_ \t").split())
         if ANSWER_LABEL.match(flat):
             labels.append((start, True, flat))
         elif QUESTION_LABEL.match(flat) or re.search("recommend", flat, re.IGNORECASE):
             labels.append((start, False, flat))
-    labels.extend(
-        (found.start(), False, found.group(0))
-        for found in re.finditer("Recommendation:", text)
-        if not any(start <= found.start() < end for start, end in runs)
-    )
+    for start, end in _statements(body):
+        text = CODE_SPAN_RE.sub(_blanked, body[start:end])
+        labels.extend(
+            (start + found.start(), False, found.group(0))
+            for found in re.finditer("Recommendation:", text)
+            if not any(opens <= start + found.start() < ends for opens, ends in runs)
+        )
     standing = sorted(label for label in labels if _standing(body, label[0]))
     if not standing or not standing[-1][1]:
         return None
@@ -297,23 +302,29 @@ def _answered_beneath(body: str) -> str | None:
     return answer if len(answer) <= 80 else answer[:79] + "…"
 
 
-def _labels(text: str) -> Iterator[tuple[int, int, str]]:
-    """Every heading and emphasised run in `text`: where it opens, where it ends, its words.
+def _labels(body: str) -> Iterator[tuple[int, int, str]]:
+    """Every heading and emphasised run in `body`: where it opens, where it ends, its words.
 
-    `_emphasised`'s tokenising kept positional: split on the delimiter rather
-    than matched by a regex, so the gap between two emphasised runs is never
-    read as one. Split per paragraph, since emphasis never crosses a blank line,
-    so a stray delimiter costs its own paragraph and not the rest of the brief.
-    A `*` with whitespace after it and none before opens nothing - a list
-    bullet, a multiplication - so it is blanked before the split rather than
-    left to turn the words after it into a label.
+    A heading is one `markdown` reads at the top level, ATX or setext, so a
+    heading line inside a comment or a fence is none and a setext heading is
+    one (`PL-HKHP`). An emphasised run is `_emphasised`'s tokenising kept
+    positional: split on the delimiter rather than matched by a regex, so the
+    gap between two emphasised runs is never read as one. Split per statement,
+    with its code spans blanked first, since neither emphasis nor a span runs
+    past where its statement ends, so a stray delimiter costs its own statement
+    and not the rest of the brief (`PL-FP7J`). A `*` with whitespace after it
+    and none before opens nothing - a list bullet, a multiplication - so it is
+    blanked before the split rather than left to turn the words after it into a
+    label.
     """
-    text = _NOT_EMPHASIS.sub(" ", text)
-    for heading in _HEADING_LINE.finditer(text):
-        yield heading.start(), heading.end(), heading.group(1)
-    for paragraph in _PARAGRAPH.finditer(text):
-        at = paragraph.start()
-        for index, chunk in enumerate(paragraph.group(0).split("**")):
+    starts = _line_starts(body)
+    for heading in markdown.headings(body.splitlines()):
+        title = CODE_SPAN_RE.sub(_blanked, heading.title)
+        yield starts[heading.line], starts[heading.end], title
+    for start, end in _statements(body):
+        text = _NOT_EMPHASIS.sub(" ", CODE_SPAN_RE.sub(_blanked, body[start:end]))
+        at = start
+        for index, chunk in enumerate(text.split("**")):
             if index % 2:
                 yield at - 2, at + len(chunk) + 2, chunk
             else:
@@ -328,6 +339,26 @@ def _labels(text: str) -> Iterator[tuple[int, int, str]]:
 def _blanked(literal: re.Match[str]) -> str:
     """A match's text as spaces, its line breaks kept, so every offset past it holds."""
     return re.sub(r"[^\n]", " ", literal.group(0))
+
+
+def _line_starts(body: str) -> list[int]:
+    """The offset each line `str.splitlines()` cuts from `body` opens at, then its length."""
+    starts = [0]
+    for line in body.splitlines(keepends=True):
+        starts.append(starts[-1] + len(line))
+    return starts
+
+
+def _statements(body: str) -> list[tuple[int, int]]:
+    """Each statement of prose in `body`, as its offsets: a paragraph, a heading, a table row.
+
+    `markdown.statement_lines`' reading, kept to `markdown.PROSE`: a fence, an
+    HTML block and an indented code block hold a literal, which no reader of a
+    brief's own claims reads.
+    """
+    starts = _line_starts(body)
+    lines = body.splitlines()
+    return [(starts[first], starts[end]) for first, end in statement_lines(lines, markdown.PROSE)]
 
 
 def _section_text(body: str, marker: str) -> str | None:
@@ -2875,10 +2906,13 @@ def _cue_pattern(cues: tuple[str, ...]) -> re.Pattern[str]:
     stays silent, which is the answer that item deserves. The other excluded
     characters are clause boundaries: without them the window jumps a semicolon
     or a closing bracket into an unrelated mention, which was where the false
-    positives came from.
+    positives came from. A line break is not one: the item format wraps at 80
+    columns, so a cue ending one line with its id on the next is one clause
+    (`PL-WF35`), and `_prerequisite_matches` reads a statement at a time, which
+    is what keeps the window off a blank line and a block's start.
     """
     return re.compile(
-        rf"\b(?:{'|'.join(cues)})\b(?:\.?\*\*)?[^.\n;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?",
+        rf"\b(?:{'|'.join(cues)})\b(?:\.?\*\*)?[^.;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?",
         re.IGNORECASE,
     )
 
@@ -2908,15 +2942,15 @@ NEGATED_CUE = re.compile(
 # separate pattern rather than another entry in the cue list because "and on" is
 # ordinary English: unanchored it fires on "reports on `PL-A` and on `PL-B`",
 # which states no prerequisite at all. So a continuation counts only inside a
-# paragraph that already carries a real cue, which `_cued_paragraphs` supplies.
+# statement that already carries a real cue, which `_prerequisite_matches` reads
+# a statement at a time to know.
 #
 # `PL-GGCN` is what this cost. `PL-VZL0` names `PL-GS5X` and `PL-X2XX` off one
 # cue, declares only the first, and nothing fired - the first id was skipped as
 # declared and the second matched no cue - so an open prerequisite of a v0.4.1
 # item stayed invisible to `docket next` while the check reported clean.
 PROSE_DEPENDENCY_CONTINUATION = re.compile(
-    rf"\band\s+(?:(?:up)?on|by)\b(?:\.?\*\*)?[^.\n;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?",
-    re.IGNORECASE,
+    rf"\band\s+(?:(?:up)?on|by)\b(?:\.?\*\*)?[^.;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?", re.IGNORECASE
 )
 
 # The same second blocker with no preposition repeated - "**Blocked by `PL-S6WW`
@@ -2933,8 +2967,11 @@ PROSE_DEPENDENCY_LIST = re.compile(
 # The one greppable token that says a passage records a state the item has
 # left, so the check stops reading it without the history being deleted. The
 # date is when the passage stopped being true; anything after it, up to the
-# bracket, is free text saying what replaced it.
-SUPERSEDED = re.compile(r"\[superseded \d{4}-\d{2}-\d{2}\b[^\]]{0,300}\]")
+# bracket, is free text saying what replaced it. A soft break may fall between
+# the keyword and the date, where the prose wraps (`PL-TY1Z`), and a blank line
+# may not; `_standing` searches only the passage holding the claim, so neither
+# may a block's start.
+SUPERSEDED = re.compile(r"\[superseded(?:[ \t]+|[ \t]*\n[ \t>]*)\d{4}-\d{2}-\d{2}\b[^\]]{0,300}\]")
 
 # A brief naming its own status: "Left at `needs-decision`", "it stays
 # `blocked`". The coined statuses are read bare as well, since no English uses
@@ -3110,18 +3147,20 @@ def _undeclared_prerequisites(item: Item, known: dict[str, Item]) -> list[tuple[
     - **A sentence about some third item's dependency.** "then `PL-SN2C`,
       which depends on `PL-VM40`" is a true sentence in a brief that owns
       neither edge; the subject of the verb is not something a regex settles.
-    - **A cue ending one line with its id on the next.** Letting the window
-      cross one line break was measured on 2026-09-23 and added four passages,
-      two of them a negation ("nothing waiting on") and a third item's edge,
-      so the window stays on one line and the wrapped case goes unread.
 
-    Two more used to belong here and no longer do: a second blocker written as
-    "and on B" after the cue that introduced A, and the same with no
-    preposition, "blocked by A and B". `PROSE_DEPENDENCY` stops at the first
+    Three more used to belong here and no longer do. A second blocker written
+    as "and on B" after the cue that introduced A, and the same with no
+    preposition, "blocked by A and B": `PROSE_DEPENDENCY` stops at the first
     id, so the compound form - the natural way to state two prerequisites - was
     the shape the check could not see, and it reported clean over a real open
     edge twice (`PL-GGCN`, then `PL-B396`'s `PL-KZ99` in `PL-8YXJ`).
-    `PROSE_DEPENDENCY_CONTINUATION` and `PROSE_DEPENDENCY_LIST` cover them.
+    `PROSE_DEPENDENCY_CONTINUATION` and `PROSE_DEPENDENCY_LIST` cover them. And
+    a cue ending one line with its id on the next, left unread on a 2026-09-23
+    count of four passages, two of them a negation that `NEGATED_CUE` now reads
+    across the break. Read since `PL-WF35`: on 2026-10-04 it added three
+    advisories over the open items, one a true wait on an item done since
+    2026-09-17 and two a third item's edge narrated, the blind spot above, and
+    each was resolved in its brief.
 
     So this reports what it matched and claims nothing about what it did not.
     """
@@ -3231,7 +3270,18 @@ def _prerequisite_matches(body: str, cue: re.Pattern[str]) -> list[re.Match[str]
     reads the "and on B" that follows it, and `PROSE_DEPENDENCY_LIST` the bare
     "and B" or comma list running straight on from an id already matched. The
     continuation is admitted only where a cue already fired in the same
-    paragraph, which is what keeps "and on" from matching ordinary prose.
+    statement, which is what keeps "and on" from matching ordinary prose.
+
+    Read a statement at a time (`_statements`), so a cue, a continuation and a
+    list each run across a soft break and stop where the statement does - at a
+    blank line, a list item's or a block quote's start, a heading - and never
+    in a literal. The statement rather than the line, because the item format
+    wraps at 80 columns: `PL-VZL0` puts "Blocked on `PL-GS5X`" on one line and
+    "and on `PL-X2XX`" on the next, so a line-scoped anchor would miss exactly
+    the case this exists for. The statement rather than the whole body, because
+    a brief that states one real dependency should not thereby license every
+    "and on" in the rest of the file, and a list item stating one should not
+    license the next item's (`PL-FP7J`).
 
     A match that is not the brief's own current claim - quoted, or in a passage
     marked superseded - is dropped here, so no reading of it sees one. So is a
@@ -3241,45 +3291,23 @@ def _prerequisite_matches(body: str, cue: re.Pattern[str]) -> list[re.Match[str]
     Ordered by position so the advisories for one item read in the order a
     person meets them in the file.
     """
-    matches = [
-        match
-        for match in cue.finditer(body)
-        if not NEGATED_CUE.search(body, max(0, match.start() - 24), match.start())
-    ]
-    cued = _cued_paragraphs(body, matches)
-    matches += [
-        match
-        for match in PROSE_DEPENDENCY_CONTINUATION.finditer(body)
-        if any(start <= match.start() < end for start, end in cued)
-    ]
-    listed: list[re.Match[str]] = []
-    for match in matches:
-        tail = PROSE_DEPENDENCY_LIST.match(body, match.end())
-        # A list does not run on past its paragraph, which `\s` alone would let it.
-        while tail is not None and "\n\n" not in tail.group(0):
-            listed.append(tail)
-            tail = PROSE_DEPENDENCY_LIST.match(body, tail.end())
-    standing = [match for match in matches + listed if _standing(body, match.start())]
+    matches: list[re.Match[str]] = []
+    for start, end in _statements(body):
+        cued = [
+            match
+            for match in cue.finditer(body, start, end)
+            if not NEGATED_CUE.search(body, max(start, match.start() - 24), match.start())
+        ]
+        if cued:
+            cued += PROSE_DEPENDENCY_CONTINUATION.finditer(body, start, end)
+        for match in list(cued):
+            tail = PROSE_DEPENDENCY_LIST.match(body, match.end(), end)
+            while tail is not None:
+                cued.append(tail)
+                tail = PROSE_DEPENDENCY_LIST.match(body, tail.end(), end)
+        matches += cued
+    standing = [match for match in matches if _standing(body, match.start())]
     return sorted(standing, key=lambda match: match.start())
-
-
-def _cued_paragraphs(body: str, cues: list[re.Match[str]]) -> list[tuple[int, int]]:
-    """The blank-line-delimited blocks in which a prerequisite cue fired.
-
-    The paragraph rather than the line, because the item format wraps at 80
-    columns: `PL-VZL0` puts "Blocked on `PL-GS5X`" on one line and "and on
-    `PL-X2XX`" on the next, so a line-scoped anchor would miss exactly the case
-    this exists for. The paragraph rather than the whole body, because a brief
-    that states one real dependency should not thereby license every "and on"
-    in the rest of the file.
-    """
-    bounds: list[tuple[int, int]] = []
-    for match in cues:
-        opened = body.rfind("\n\n", 0, match.start())
-        start = 0 if opened < 0 else opened + 2
-        closed = body.find("\n\n", match.start())
-        bounds.append((start, len(body) if closed < 0 else closed))
-    return bounds
 
 
 def _passage(body: str, position: int) -> tuple[int, int]:
@@ -3290,7 +3318,7 @@ def _passage(body: str, position: int) -> tuple[int, int]:
     are separate claims: marking one instance in a list of them says nothing
     about the rest.
 
-    Each is a statement as `roadmap.statement_lines` reads one, so a passage
+    Each is a statement as `markdown.statement_lines` reads one, so a passage
     goes on wherever CommonMark carries its paragraph on (`PL-XYJF`): a line
     opening `17. ` or a pipe, under a line of the paragraph, began a passage of
     its own, and the superseded marker above it covered nothing below. A fenced
@@ -3305,13 +3333,8 @@ def _passage(body: str, position: int) -> tuple[int, int]:
 
 def _passages(body: str) -> list[tuple[int, int]]:
     """Every passage of `body` as its offsets: each statement, and each fenced block."""
-    starts = [0]
-    for line in body.splitlines(keepends=True):
-        starts.append(starts[-1] + len(line))
-    spans = [
-        (starts[first], starts[end])
-        for first, end in statement_lines(body.splitlines(), fences.fenced_lines(body))
-    ]
+    starts = _line_starts(body)
+    spans = [(starts[first], starts[end]) for first, end in statement_lines(body.splitlines())]
     spans += ((starts[block.start], starts[block.end + 1]) for block in fences.blocks(body))
     return spans
 
@@ -3342,7 +3365,7 @@ def _names_another_item(item: Item, position: int) -> bool:
 
 
 def _sentence(body: str, match: re.Match[str]) -> str:
-    """The line a match sits on, collapsed to one line and bounded for a message.
+    """The line a match sits on - both, across a soft break - collapsed and bounded for a message.
 
     The line rather than a parsed sentence: the item format writes prose
     wrapped at 80 columns with bold headings inside it, so `.` is not a

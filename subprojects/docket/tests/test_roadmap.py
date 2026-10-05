@@ -16,7 +16,7 @@ from __future__ import annotations
 import pytest
 
 from docket.checks import Report
-from docket.fences import fenced_lines
+from docket.markdown import statement_lines
 from docket.model import Item, parse_item
 from docket.render import format_digest, format_wave
 from docket.roadmap import (
@@ -39,7 +39,6 @@ from docket.roadmap import (
     parse_timeline,
     parse_version_table,
     scope_status,
-    statement_lines,
     wave,
 )
 
@@ -1302,17 +1301,26 @@ def test_the_walker_declines_a_lazy_continuation_by_name() -> None:
 
 @pytest.mark.parametrize(
     "follows",
-    ["| PL-GHJK (S) |", "<PL-GHJK> (S)", "``` `PL-GHJK` (S) ```", "#1234 and PL-GHJK", "*PL-GHJK*"],
+    [
+        "| PL-GHJK (S) |",
+        "| PL-GHJK | (S) |\n| - | - |",
+        "<PL-GHJK> (S)",
+        "``` `PL-GHJK` (S) ```",
+        "#1234 and PL-GHJK",
+        "*PL-GHJK*",
+    ],
 )
 def test_a_lazy_line_opening_like_a_block_is_declined_too(follows: str) -> None:
     """A line that only looks like a block's opening carries the entry on (`PL-F5B9`).
 
     A pipe line with no delimiter row under it is paragraph text (GitHub
-    Flavored Markdown § 4.10), a tag outside § 4.6's first six kinds cannot
-    interrupt a paragraph, a backtick run with a backtick after it is a code
-    span (§ 4.5), and `#1234` and `*bold*` open no heading or item. CommonMark
-    reads each into the entry above, so the walker declines it as it declines
-    any other lazy line, rather than ending the entry short.
+    Flavored Markdown § 4.10), and so is one with a delimiter row under it here:
+    a table's header row is a paragraph line, never a lazy one, as cmark-gfm and
+    markdown-it-py 4.2.0 both read it. A tag outside § 4.6's first six kinds
+    cannot interrupt a paragraph, a backtick run with a backtick after it is a
+    code span (§ 4.5), and `#1234` and `*bold*` open no heading or item.
+    CommonMark reads each into the entry above, so the walker declines it as it
+    declines any other lazy line, rather than ending the entry short.
     """
     unread: list[UnreadEntry] = []
     lines = ["### Required scope", "", "- PL-BCDF (S) one entry", follows]
@@ -1322,36 +1330,36 @@ def test_a_lazy_line_opening_like_a_block_is_declined_too(follows: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "follows",
+    ("follows", "entries"),
     [
-        "",
-        "---",
-        "***",
-        "_ _ _",
-        "> A block quote",
-        "#### A deeper heading",
-        "```",
-        "+ A list of another marker",
-        "1) A list of another delimiter",
-        "| a | table |\n| - | - |",
-        "<!-- a comment -->",
-        "<details>",
+        ("", [(2, 3)]),
+        ("---", [(2, 3)]),
+        ("***", [(2, 3)]),
+        ("_ _ _", [(2, 3)]),
+        ("> A block quote", [(2, 3)]),
+        ("#### A deeper heading", [(2, 3)]),
+        ("```\nshown\n```", [(2, 3)]),
+        ("+ A list of another marker", [(2, 3), (3, 4)]),
+        ("1) A list of another delimiter", [(2, 3), (3, 4)]),
+        ("<!-- a comment -->", [(2, 3)]),
+        ("<details>", [(2, 3)]),
     ],
 )
-def test_a_line_opening_a_block_of_its_own_ends_the_entry_unrefused(follows: str) -> None:
+def test_a_line_opening_a_block_of_its_own_ends_the_entry_unrefused(
+    follows: str, entries: list[tuple[int, int]]
+) -> None:
     """Only a line that carries on the paragraph is lazy (0.31.2 § 5.2).
 
     A blank line ends it (§ 4.8), and a thematic break, block quote, heading,
-    fence, list or HTML block interrupts it (§ 4.1, 5.1, 4.2, 4.5, 5.3, 4.6),
-    as does a table's header row with its delimiter row under it (GitHub
-    Flavored Markdown § 4.10). Each ends the entry where the walker always has,
-    and refusing one would hold `make check` red over a document that reads as
-    written.
+    fence, list or HTML block interrupts it (§ 4.1, 5.1, 4.2, 4.5, 5.3, 4.6).
+    Each ends the entry, and refusing one would hold `make check` red over a
+    document that reads as written. A list of another marker or delimiter is
+    an entry of its own (`PL-YSMD`).
     """
     unread: list[UnreadEntry] = []
     lines = ["### Required scope", "", "- PL-BCDF (S) one entry", *follows.split("\n")]
 
-    assert list(list_entry_lines(lines, 1, unread)) == [(2, 3)]
+    assert list(list_entry_lines(lines, 1, unread)) == entries
     assert unread == []
 
 
@@ -2138,4 +2146,4 @@ def test_statement_lines_ends_a_statement_where_commonmark_does(
     and gave these spans; a delimiter row is a line of its own here, where
     markdown-it makes it no row.
     """
-    assert list(statement_lines(text.split("\n"), fenced_lines(text))) == statements
+    assert list(statement_lines(text.split("\n"))) == statements
