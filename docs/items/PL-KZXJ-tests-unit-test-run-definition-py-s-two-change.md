@@ -1,9 +1,11 @@
 ---
 id: PL-KZXJ
 title: tests/unit/test_run_definition.py's _two_change_run says it carries two setting changes, but its first - a 2.0% sevoflurane dial at 300 s - is the agent's default, so record_change drops it and the run carries one; the fork-divergence ceiling and the comment pinned on that run describe a two-change run that never existed
-status: untriaged
+status: dropped
 feature: two-change-run-has-two-changes
 added: 2026-10-04
+closed: 2026-10-05
+reason: Folded into PL-HWNG: the same two-change run, with HWNG's open question answered there
 ---
 
 **Problem.** tests/unit/test_run_definition.py's _two_change_run says it carries two setting changes, but its first - a 2.0% sevoflurane dial at 300 s - is the agent's default, so record_change drops it and the run carries one; the fork-divergence ceiling and the comment pinned on that run describe a two-change run that never existed
