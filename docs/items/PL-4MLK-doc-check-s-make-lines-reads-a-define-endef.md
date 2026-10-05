@@ -6,12 +6,12 @@ effort: S
 status: ready
 classes: defect
 feature: one-answer
-touches: tools/doc_check.py, tests/unit
+touches: tools/doc_check.py, tests/unit, docs/items/PL-GZXY-doc-check-s-make-readers-read-only-the-first.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-R417's Makefile slice, 2026-10-05
 added: 2026-10-04
 payoff: a target or a command written only inside a define ... endef value is no longer read as one the Makefile runs, so a document naming it fails the make-targets check and the gate checks compare only what make runs
 verify: grep -q 'make targets, a define body is the variable' tests/unit/test_doc_check.py
-recurrences: 2026-10-04 PL-2JYP withdrawn 2026-10-04 PL-R417, 2026-10-04 PL-GZXY withdrawn 2026-10-04 PL-R417
+recurrences: 2026-10-04 PL-2JYP withdrawn 2026-10-04 PL-R417, 2026-10-04 PL-GZXY withdrawn 2026-10-04 PL-R417, 2026-10-05 PL-TDVJ withdrawn 2026-10-05 PL-TDVJ, 2026-10-05 PL-BMZN withdrawn 2026-10-05 PL-BMZN, 2026-10-05 PL-M2RB withdrawn 2026-10-05 PL-M2RB
 ---
 
 **Problem.** doc_check's _make_lines reads a define ... endef body as rules and recipes, so a target named only inside a multi-line variable reads as declared and a document citing make deploy passes; latent
@@ -39,11 +39,10 @@ exited 2. The repository's Makefile holds no `define`.
 
 **Done when.** `_make_lines` reads a `define` directive through the `endef`
 that closes it as one statement, as GNU make 4.3 reads one: the word `define`
-after any modifier make allows ahead of it (`override`, `export`, `unexport`,
-`private`), not followed by an assignment operator, which would make `define`
-a variable's name; a body in logical lines, where a line led by a tab is the
-body's, a bare `define` nests, and an `endef` standing alone or before a blank
-closes. So `make_targets`, `_target_recipes` and `_recipe_commands` take
+after any modifier make allows ahead of it (`export`, `override`, `private`),
+not followed by an assignment operator, which would make `define` a variable's
+name; a body in logical lines, where a line led by a tab is the body's, a bare
+`define` nests, and an `endef` standing alone or before a blank closes. So `make_targets`, `_target_recipes` and `_recipe_commands` take
 nothing in a body for a rule or a recipe line, and the four checks reading
 them read the Makefile as make does. A `define` no `endef` closes, one naming
 no variable, both of which make refuses, and one led by a tab, which make

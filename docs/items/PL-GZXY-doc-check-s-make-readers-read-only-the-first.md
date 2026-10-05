@@ -25,3 +25,15 @@ verify: grep -q 'def test_a_make_command_chained_after_another_in_a_fence_is_rea
 **Generator check.** Two facts. Its first half is an instance of `PL-61FT`'s fact, which program a shell line runs, filed after that head closed on 2026-09-26, the second since the close with `PL-P95F`; its second half, GNU make's inline recipe after `;`, is a one-off reading of make's rule grammar.
 
 **Done when.** `_make_mentions` reads each simple command on a fenced line as bash runs it, so `cd sub && make nosuch` and `true; make nosuch` each name `nosuch`, while a fenced shell comment and pasted make output still name nothing; `make_targets` counts a rule whose recipe follows a `;` on the rule's own line as carrying one; and `tests/unit/test_doc_check.py` gains `test_a_make_command_chained_after_another_in_a_fence_is_read` and `test_a_rule_with_an_inline_recipe_carries_a_recipe`, pinning each.
+
+**Widened 2026-10-05, from `PL-M2RB`, dropped as a duplicate of this item's
+second half.** The inline recipe is missed by all three readers of the
+Makefile's rules, not by `make_targets` alone: on `main` at `e2d43eb7`,
+`_target_recipes` gave `inline: lint ; @echo RECIPE-RAN` no recipe lines and
+took `;`, `@echo` and `RECIPE-RAN` for prerequisites, and `_recipe_commands`
+never yielded the command, so gate parity, the coverage gate and the ruff cache
+check would none of them see it. All three read `_make_lines` (`PL-R417`), so
+handing the recipe back from there as the rule's recipe line answers them at
+once. Done when therefore also asks that `_target_recipes` give the rule that
+recipe and only `lint` for a prerequisite, and that `_recipe_commands` yield
+the command.

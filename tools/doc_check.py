@@ -726,6 +726,25 @@ MAKE_TARGET_RE = re.compile(r"^(?P<name>[A-Za-z][\w.-]*)\s*:(?!=)")
 #: from GNU make 4.3's `readline` and run through it on 2026-10-04: `echo a \\`
 #: over `echo next` ran as two commands.
 MAKE_CONTINUED_RE = re.compile(r"(?<!\\)(?:\\\\)*\\$")
+#: A `define` directive, which opens a variable whose value is every line up to
+#: the `endef` closing it (`PL-4MLK`): the word `define` after any of the
+#: modifiers make takes ahead of it - `export`, `override`, `private` - alone or
+#: before a blank, and with no assignment operator after it, since `define := x`
+#: assigns a variable named `define`. Not `unexport`, which make reads as its
+#: own directive, so `unexport define X` unexports two variables. Read from
+#: `parse_var_assignment` in GNU make 4.3's `src/read.c` and run through make
+#: 4.3 on 2026-10-05. `name` is empty where the directive names no variable,
+#: which make refuses.
+MAKE_DEFINE_RE = re.compile(
+    r"[ \t]*(?:(?:export|override|private)[ \t]+)*define"
+    r"(?:[ \t]+(?![ \t]|(?:::|[:+?!])?=)|$)(?P<name>[^#]*)"
+)
+#: The body lines that nest a `define` or close one, as `do_define` in the same
+#: file reads them: a bare `define`, no modifier ahead of it, opens another, and
+#: an `endef` alone or before a blank closes one, so `endef # done` closes and
+#: `endef#` does not. A line led by a tab is neither, whatever it says.
+MAKE_DEFINE_OPENS_RE = re.compile(r"[ \t]*define(?:[ \t]|$)")
+MAKE_DEFINE_CLOSES_RE = re.compile(r"[ \t]*endef(?:[ \t]|$)")
 # The target a `make` command names, read from the word after `make`.
 MAKE_TARGET_WORD_RE = re.compile(r"[a-z][\w.-]*")
 # `.PHONY` names targets without defining them. A name listed here and given no
@@ -4778,22 +4797,78 @@ def _make_lines(text: str) -> Iterator[tuple[str, int]]:
 
     Read a physical line at a time, a continued command was two (`PL-G2FY`),
     and a continued prerequisite list's second line was a recipe line.
+
+    **A `define` is one statement, through the `endef` closing it**
+    (`PL-4MLK`). The lines between are a variable's value (GNU make manual,
+    "Defining Multi-Line Variables"), so none is a rule or a recipe line, and
+    the directive ends the rule above it as any assignment does. It comes back
+    as written, its lines joined by newlines, on the directive's line. The body
+    is read as make 4.3's `do_define` reads it, in logical lines, by
+    `MAKE_DEFINE_OPENS_RE` and `MAKE_DEFINE_CLOSES_RE`. Read a line at a time,
+    a `define` holding `deploy:` declared a target make has no rule for.
+
+    Raises `UnreadStatement` where make's reading cannot be given: a `define`
+    no `endef` closes, or one naming no variable, both of which make refuses;
+    and a `define` led by a tab, which make reads as a directive outside a rule
+    and as a recipe line inside one, two readings this reader, holding no
+    rules, cannot tell apart. Each was run through GNU make 4.3 on 2026-10-05.
     """
     lines = split_lines(text)
     index = 0
     while index < len(lines):
         opens = index
-        parts = [lines[index]]
-        while MAKE_CONTINUED_RE.search(parts[-1]) and index + 1 < len(lines):
-            index += 1
-            parts.append(lines[index])
-        index += 1
+        parts = _make_physical_lines(lines, index)
+        index += len(parts)
         if parts[0].startswith("\t"):
+            if MAKE_DEFINE_RE.match(_make_joined(parts)):
+                raise UnreadStatement(
+                    opens + 1,
+                    "this `define` is led by a tab, which make reads as opening a variable "
+                    "outside a rule and as a recipe line inside one, and this reader does not "
+                    "tell the two apart; write it without the tab",
+                )
             yield "\n".join([parts[0], *(part.removeprefix("\t") for part in parts[1:])]), opens + 1
             continue
-        joined = [part[:-1].rstrip() for part in parts[:-1]] + [parts[-1]]
-        pieces = [joined[0], *(part.lstrip() for part in joined[1:])]
-        yield " ".join(piece for piece in pieces if piece), opens + 1
+        line = _make_joined(parts)
+        define = MAKE_DEFINE_RE.match(line)
+        if define is None:
+            yield line, opens + 1
+            continue
+        if not define["name"].strip():
+            raise UnreadStatement(
+                opens + 1, "this `define` names no variable, which make refuses as an empty name"
+            )
+        depth = 1
+        while depth:
+            if index == len(lines):
+                raise UnreadStatement(
+                    opens + 1,
+                    "this `define` is closed by no `endef`, which make refuses as an "
+                    "unterminated `define`",
+                )
+            body = _make_physical_lines(lines, index)
+            index += len(body)
+            if not body[0].startswith("\t"):
+                if MAKE_DEFINE_OPENS_RE.match(_make_joined(body)):
+                    depth += 1
+                elif MAKE_DEFINE_CLOSES_RE.match(_make_joined(body)):
+                    depth -= 1
+        yield "\n".join(lines[opens:index]), opens + 1
+
+
+def _make_physical_lines(lines: list[str], index: int) -> list[str]:
+    """The physical lines from `index` on that make reads as one logical line."""
+    end = index + 1
+    while end < len(lines) and MAKE_CONTINUED_RE.search(lines[end - 1]):
+        end += 1
+    return lines[index:end]
+
+
+def _make_joined(parts: list[str]) -> str:
+    """One logical line outside a recipe: each continuation, with the blanks around it, a space."""
+    joined = [part[:-1].rstrip() for part in parts[:-1]] + [parts[-1]]
+    pieces = [joined[0], *(part.lstrip() for part in joined[1:])]
+    return " ".join(piece for piece in pieces if piece)
 
 
 def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
@@ -4807,7 +4882,8 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
     errors - an erroring command gets investigated, a passing one gets
     believed. Read by logical line, so a `.PHONY` list or a prerequisite list a
     backslash continues is read whole, and its second line is not taken for a
-    recipe (`PL-R417`).
+    recipe (`PL-R417`); and a `define` body, a variable's value, declares
+    nothing (`PL-4MLK`). Raises `UnreadStatement` where `_make_lines` does.
     """
     declared: set[str] = set()
     with_recipe: set[str] = set()
@@ -4870,11 +4946,21 @@ def check_make_targets(root: Path, documents: dict[Path, str], report: Report) -
     documents promised had not run once. The failure is silent by
     construction, which is what makes it worth a check rather than a reader's
     attention.
+
+    A Makefile whose statements `_make_lines` declines is reported as declined,
+    since the targets it declares are then not known.
     """
     makefile = root / "Makefile"
     if not makefile.is_file():
         return
-    declared, with_recipe = make_targets(makefile.read_text(encoding="utf-8"))
+    try:
+        declared, with_recipe = make_targets(makefile.read_text(encoding="utf-8"))
+    except UnreadStatement as statement:
+        report.declined.append(
+            f"Makefile:{statement.line}: {statement.why}, so no documented `make` command "
+            "was checked against it"
+        )
+        return
     for path, text in sorted(documents.items()):
         reported: set[tuple[str, int]] = set()
         for name, line in _make_mentions(text):
@@ -5223,7 +5309,9 @@ def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
     not matter here, because the mark above is what selects the line rather
     than its position. A command a backslash continues is one, spelled as make
     hands it over (`_make_lines`); read a physical line at a time it was two,
-    the first ending in the backslash (`PL-G2FY`).
+    the first ending in the backslash (`PL-G2FY`). A line in a `define` body is
+    a variable's value and no command (`PL-4MLK`). Raises `UnreadStatement`
+    where `_make_lines` does.
     """
     for line, number in _make_lines(text):
         if line.startswith("\t") and line.strip():
@@ -5263,7 +5351,8 @@ def check_coverage_gate(root: Path, report: Report) -> None:
     (`PL-G2FY`).
 
     Silent where neither file names the mark, so a checkout that has not
-    adopted a coverage gate is not failed for the absence of one.
+    adopted a coverage gate is not failed for the absence of one; declined
+    where `_make_lines` declines the Makefile, since its side is then unknown.
     """
     makefile = root / "Makefile"
     workflows = sorted(
@@ -5271,13 +5360,20 @@ def check_coverage_gate(root: Path, report: Report) -> None:
     )
     local: list[tuple[str, str]] = []
     if makefile.is_file():
-        local = [
-            # `$$` -> `$` per the docstring: this is Make's escape for a literal
-            # `$`, so the shell sees what the workflow's line already says.
-            (command.replace("$$", "$"), f"Makefile:{line}")
-            for command, line in _recipe_commands(makefile.read_text(encoding="utf-8"))
-            if COVERAGE_GATE_MARK in command
-        ]
+        try:
+            local = [
+                # `$$` -> `$` per the docstring: this is Make's escape for a literal
+                # `$`, so the shell sees what the workflow's line already says.
+                (command.replace("$$", "$"), f"Makefile:{line}")
+                for command, line in _recipe_commands(makefile.read_text(encoding="utf-8"))
+                if COVERAGE_GATE_MARK in command
+            ]
+        except UnreadStatement as statement:
+            report.declined.append(
+                f"Makefile:{statement.line}: {statement.why}, so the coverage gate was not "
+                "compared"
+            )
+            return
     remote: list[tuple[str, str]] = []
     steps: list[UnreadStatement] = []
     for path in workflows:
@@ -5361,12 +5457,22 @@ def check_ruff_cache(root: Path, report: Report) -> None:
 
     Silent where the Makefile runs no `ruff check` at all: the rule is about how
     an invocation is spelled, not about whether a checkout ought to have one.
+    Declined where `_make_lines` declines the Makefile, whose commands are then
+    not known.
     """
     makefile = root / "Makefile"
     if not makefile.is_file():
         return
+    try:
+        commands = list(_recipe_commands(makefile.read_text(encoding="utf-8")))
+    except UnreadStatement as statement:
+        report.declined.append(
+            f"Makefile:{statement.line}: {statement.why}, so whether the Makefile runs "
+            "`ruff check` without the flag was not decided"
+        )
+        return
     unread = "whether it runs `ruff check` without the flag was not decided"
-    for command, line in _recipe_commands(makefile.read_text(encoding="utf-8")):
+    for command, line in commands:
         for words in _shell_commands(f"Makefile:{line}", command, report, unread):
             pairs = zip(words, words[1:], strict=False)
             if RUFF_CHECK in pairs and RUFF_NO_CACHE_FLAG not in words:
@@ -5576,7 +5682,10 @@ def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str
 
     Read by logical line (`_make_lines`), so a command a backslash continues
     is one, and a prerequisite list it continues is read whole rather than its
-    second line taken for a command (`PL-G2FY`).
+    second line taken for a command (`PL-G2FY`). A `define` is one statement, an
+    assignment, so it ends the target above it and nothing in its body is a
+    target or a command (`PL-4MLK`). Raises `UnreadStatement` where
+    `_make_lines` does.
     """
     recipes: dict[str, list[str]] = {}
     prerequisites: dict[str, list[str]] = {}
@@ -5740,7 +5849,8 @@ def check_gate_parity(root: Path, report: Report) -> None:
     it is `make check`-only within `quality.yml` and has a workflow of its own.
 
     Silent where either file is missing, so a partial checkout is not failed
-    for what it does not carry.
+    for what it does not carry; declined where `_make_lines` declines the
+    Makefile, since what `make check` runs is then not known.
     """
     makefile = root / "Makefile"
     workflows = sorted(
@@ -5748,7 +5858,14 @@ def check_gate_parity(root: Path, report: Report) -> None:
     )
     if not makefile.is_file() or not workflows:
         return
-    recipes, prerequisites = _target_recipes(makefile.read_text(encoding="utf-8"))
+    try:
+        recipes, prerequisites = _target_recipes(makefile.read_text(encoding="utf-8"))
+    except UnreadStatement as statement:
+        report.declined.append(
+            f"Makefile:{statement.line}: {statement.why}, so the scripts `make check` runs "
+            "were not compared"
+        )
+        return
     if "check" not in recipes:
         return
     unread = "the scripts it runs were not compared"
