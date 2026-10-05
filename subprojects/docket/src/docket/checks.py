@@ -29,6 +29,7 @@ from pathlib import Path
 from . import fences, markdown
 from .config import Config
 from .instructions import Assertion
+from .lines import split_lines
 from .markdown import statement_lines
 from .model import (
     CLOSED_STATUSES,
@@ -318,7 +319,7 @@ def _labels(body: str) -> Iterator[tuple[int, int, str]]:
     label.
     """
     starts = _line_starts(body)
-    for heading in markdown.headings(body.splitlines()):
+    for heading in markdown.headings(split_lines(body)):
         title = CODE_SPAN_RE.sub(_blanked, heading.title)
         yield starts[heading.line], starts[heading.end], title
     for start, end in _statements(body):
@@ -342,9 +343,9 @@ def _blanked(literal: re.Match[str]) -> str:
 
 
 def _line_starts(body: str) -> list[int]:
-    """The offset each line `str.splitlines()` cuts from `body` opens at, then its length."""
+    """The offset each line `split_lines` cuts from `body` opens at, then its length."""
     starts = [0]
-    for line in body.splitlines(keepends=True):
+    for line in split_lines(body, keepends=True):
         starts.append(starts[-1] + len(line))
     return starts
 
@@ -357,7 +358,7 @@ def _statements(body: str) -> list[tuple[int, int]]:
     brief's own claims reads.
     """
     starts = _line_starts(body)
-    lines = body.splitlines()
+    lines = split_lines(body)
     return [(starts[first], starts[end]) for first, end in statement_lines(lines, markdown.PROSE)]
 
 
@@ -3334,7 +3335,7 @@ def _passage(body: str, position: int) -> tuple[int, int]:
 def _passages(body: str) -> list[tuple[int, int]]:
     """Every passage of `body` as its offsets: each statement, and each fenced block."""
     starts = _line_starts(body)
-    spans = [(starts[first], starts[end]) for first, end in statement_lines(body.splitlines())]
+    spans = [(starts[first], starts[end]) for first, end in statement_lines(split_lines(body))]
     spans += ((starts[block.start], starts[block.end + 1]) for block in fences.blocks(body))
     return spans
 

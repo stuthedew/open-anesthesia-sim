@@ -28,6 +28,7 @@ from .claims import CLAIM, DISPOSITION, LEASE_TERM, LIVE, NAMED, Hold, Holdings,
 from .concurrency import undeclared
 from .config import Config
 from .duplicates import Candidate
+from .lines import split_lines
 from .model import (
     CLOSED_STATUSES,
     LANE_CROSSING,
@@ -2580,7 +2581,7 @@ def format_triage(
         lines.extend(_generator_check(item, config.workflow_paths))
         lines.append("")
         lines.extend(
-            f"    {line}" if line.strip() else "" for line in item.body.strip().splitlines()
+            f"    {line}" if line.strip() else "" for line in split_lines(item.body.strip())
         )
         lines.append("")
 

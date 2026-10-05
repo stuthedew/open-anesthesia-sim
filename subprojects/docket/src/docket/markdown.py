@@ -36,8 +36,9 @@ Three departures, each deliberate:
   tab after a block quote's `>` a column later than § 2.2's partial tab.
 - A link reference definition is read as the paragraph it is written as.
 
-A line is what `str.splitlines()` cuts, and an index is 0-based. Standard
-library only, and it imports nothing from docket, so `fences` can stand on it.
+A line is what `docket.lines.split_lines` cuts, and an index is 0-based.
+Standard library only, and it imports nothing from docket, so `fences` can
+stand on it.
 """
 
 from __future__ import annotations

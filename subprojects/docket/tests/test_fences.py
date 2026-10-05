@@ -85,15 +85,30 @@ def test_nothing_after_an_unclosed_opener_is_a_block() -> None:
     assert blocks(text) == []
 
 
-def test_without_fences_blanks_each_fenced_line_and_keeps_its_terminator() -> None:
-    """A line's terminator is what `str.splitlines()` cut, and it survives the blanking.
+def test_a_fence_is_read_from_lines_cut_at_a_newline_alone() -> None:
+    """A form feed, a U+0085 or a U+2028 ends no line in CommonMark (0.31.2 § 2.1).
 
-    Blanked with the line, a form feed or a U+2028 would join two lines into
-    one and move every line number below it.
+    Cut by `str.splitlines()`, the run after the U+2028 stood at a line's start
+    and opened a block the next fence closed, so the prose a writer sees was
+    read as a literal and the block below it was not (`PL-BBYJ`). markdown-it-py
+    4.2.0 renders the first two lines as one paragraph.
     """
-    text = "a\r\n```\fx\u2028```\nb"
+    text = "Intro\u2028```\nprose a writer sees\n\n```\ncode\fstill\x85code\n```\nafter\n"
 
-    assert without_fences(text) == "a\r\n   \f \u2028   \nb"
+    assert blocks(text) == [Block(3, 5)]
+    assert fenced_lines(text) == frozenset({3, 4, 5})
+
+
+def test_without_fences_blanks_a_fenced_line_whole_and_keeps_its_newline() -> None:
+    """A form feed or a U+2028 inside a fenced line is one of its characters.
+
+    It ends no line, so it is blanked with the rest of it, and the newline is
+    all the line keeps: every offset, and every line counted by newlines, past
+    it still holds (`PL-BBYJ`).
+    """
+    text = "a\n```\nx\fy\u2028z\n```\nb"
+
+    assert without_fences(text) == "a\n   \n     \n   \nb"
 
 
 def test_without_fences_keeps_every_offset_and_line_number() -> None:
