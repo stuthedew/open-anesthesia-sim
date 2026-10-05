@@ -12,7 +12,7 @@ added: 2026-10-04
 payoff: a statement a shell script, Makefile, workflow or Markdown document continues across lines is read as the one statement its format makes it, or refused by name, so the close-out sweep and the checks stop answering from fragments
 verify: grep -q 'def test_candidates_find_a_title_cited_across_a_line_wrap' tests/unit/test_doc_check.py && grep -q 'def test_each_reader_reads_its_formats_continued_statement_whole' tests/unit/test_doc_check.py && grep -q 'recipe commands, ' tests/unit/test_doc_check.py && grep -q 'workflow commands, ' tests/unit/test_doc_check.py && grep -q '^generator: spent' docs/items/PL-R417-readers-take-a-physical-line-for-the-statement.md
 root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G, PL-TY1Z, PL-YSMD, PL-HKHP, PL-5NC3, PL-WF35, PL-FP7J, PL-BLKJ, PL-J0C6, PL-GMR6, PL-VQBY, PL-4ZDZ, PL-GT0J, PL-KT0H, PL-FBWD, PL-F7Z6, PL-V2HK, PL-TC2D, PL-S3XS, PL-4T49, PL-PPNV, PL-97CF, PL-2JYP, PL-WG6S, PL-4MLK, PL-4ZVH, PL-T1X0, PL-BYJ5, PL-0Y7J, PL-T73L, PL-TDVJ
-generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory until link 8, then PL-T1X0 and PL-BYJ5, which that day's triage pass put to it, and PL-0Y7J and PL-T73L in link 11
+generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory until link 8, then PL-T1X0 and PL-BYJ5, which that day's triage pass put to it, PL-0Y7J and PL-T73L in link 11, and PL-TDVJ in link 15
 misread: Where one statement ends, in a format that lets a statement continue across physical lines
 ---
 
@@ -354,13 +354,32 @@ and one `fixture ids, `, each failing on main's readers, and the three guards'
 tests run the reshaped commands end to end. No new member was filed.
 `generator:` stays `live`.
 
-**Next steps (recorded 2026-10-04, revised by links 8, 11, 12, 13 and 14).** The
-members, one format per pull request as before, each closing its members and
-adding their cases to `CONTINUED_STATEMENTS`: the Makefile reader (`PL-4MLK`)
-next, then the two that read a change or a commit record (`PL-F7Z6`,
-`PL-4ZVH`); then link 11's two Markdown
-members, `PL-0Y7J` and `PL-T73L`, in one pull request before the sweep. Then
-one more sweep of the same reach, and `generator:` rewritten `spent` only when
+**Link 15, the Makefile slice (`#1378`, 2026-10-05).** Done: `PL-4MLK`.
+`_make_lines` reads a `define` directive, after any modifier GNU make 4.3 takes
+ahead of it (`export`, `override`, `private`), through the `endef` closing it as
+one statement, its body in logical lines as `do_define` in make 4.3's
+`src/read.c` reads them, so no rule, recipe line or command in a body reaches
+`make_targets`, `_target_recipes` or `_recipe_commands`. A `define` no `endef`
+closes, one naming no variable and one led by a tab are declined by name, and
+the four checks reading the Makefile say what went unchecked. Nothing over the
+tree moved: the Makefile holds no `define`, and its 477 logical lines, 10
+targets and 37 recipe commands read the same. The guard gained thirteen cases,
+three `make targets, `, three `target recipes, `, four `recipe commands, ` and
+three `make lines, `, ten failing on main's reader and three pinning a reading
+main already gave, and a test holds each of the four checks to its decline. One
+member was filed, `PL-TDVJ`: `make_targets` ends a rule at a comment line,
+where make and `_target_recipes` read on. `PL-BMZN`, a tab-led line outside any
+rule read as a recipe line, was filed beside it as a one-off, and `PL-M2RB` was
+dropped as `PL-GZXY`'s duplicate, its two further readers folded into that
+brief. `generator:` stays `live`.
+
+**Next steps (recorded 2026-10-04, revised by links 8, 11, 12, 13, 14 and
+15).** The members, one format per pull request as before, each closing its
+members and adding their cases to `CONTINUED_STATEMENTS`: the two that read a
+change or a commit record (`PL-F7Z6`, `PL-4ZVH`) next; then link 11's two
+Markdown members, `PL-0Y7J` and `PL-T73L`, in one pull request, and link 15's
+Makefile member, `PL-TDVJ`, before the sweep. Then one more sweep of the same
+reach, and `generator:` rewritten `spent` only when
 it finds nothing (the coordinator's brief, 2026-10-04). The head closes without waiting for
 `PL-RR1N`, naming it in the reason as Done-when says (project owner,
 2026-10-04, ratified, over waiting for it).
