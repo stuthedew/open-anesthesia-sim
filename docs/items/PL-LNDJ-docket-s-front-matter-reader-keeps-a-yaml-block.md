@@ -3,12 +3,14 @@ id: PL-LNDJ
 title: docket's front-matter reader keeps a YAML block-scalar header in a field's value and closes the block on any line opening with ---, so reason: >- reads as '>- Duplicate of ...' and a ---y line ends the front matter; live on two dropped items
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: front-matter-round-trip
-touches: subprojects/docket/src/docket/model.py, subprojects/docket/tests
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/verify.py, subprojects/docket/README.md, subprojects/docket/tests, docs/items/PL-B1DQ-a-v0-4-8-tag-exists-on-a-commit-whose-pyproject.md, docs/items/PL-K1DL-splitting-make-check-by-path-docket-changes.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1363
 payoff: a YAML block-scalar header or a stray dashed line in an item's front matter can no longer put text into a value nobody wrote, or drop every field below it, while check reports no errors
 verify: grep -q 'def test_a_block_scalar_header_is_never_read_as_part_of_the_value' subprojects/docket/tests/test_model.py && grep -q 'def test_front_matter_closes_only_on_a_line_that_is_exactly_three_dashes' subprojects/docket/tests/test_model.py
 ---

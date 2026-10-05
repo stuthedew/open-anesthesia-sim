@@ -2845,6 +2845,18 @@ def test_no_block_list_error_on_a_clean_item() -> None:
     assert not _has(_errors(_item()), "YAML block list")
 
 
+def test_a_block_scalar_header_reaches_the_checker_from_a_real_file() -> None:
+    """`PL-LNDJ`: the field arrives empty, so `check` names it and the repair."""
+    item = parse_item(
+        "---\nid: PL-K7QX\ntitle: t\nstatus: ready\npriority: P2\neffort: S\n"
+        "touches: a.py\npayoff: >-\n  buys a thing\n---\n\n" + BRIEF
+    )
+
+    assert _has(_errors(item), "payoff written with a YAML block-scalar header")
+    assert _has(_errors(item), "Delete the header")
+    assert not _has(_errors(_item()), "block-scalar")
+
+
 def test_a_value_wrapped_at_column_zero_is_reported() -> None:
     """`PL-JD4L`: the reader passed over the tail, so the value arrived short at exit 0.
 

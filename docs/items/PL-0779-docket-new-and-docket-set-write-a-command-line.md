@@ -3,12 +3,14 @@ id: PL-0779
 title: docket new and docket set write a command-line value holding a newline verbatim and exit 0, leaving a file the next check refuses; latent
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: front-matter-round-trip
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/tests
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/README.md, subprojects/docket/tests
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1363
 payoff: a line break typed into a title or field is refused where it is typed, instead of landing as a stray line the next check refuses or as a second status line that hides an open item from list and next
 verify: grep -q 'def test_new_and_set_refuse_a_value_holding_a_newline' subprojects/docket/tests/test_cli.py
 ---
