@@ -2658,6 +2658,19 @@ value alongside the derived one — the tissue:blood coefficients are computed
 at load time from the tissue:gas and blood:gas values, so their rows name the
 stored tissue:gas key and show the division.
 
+Both directions start from a data file, so a constant that never entered one is
+invisible to that check, as the circuit volume was while it sat as a
+`BreathingCircuit` field default with no row here (`PL-4YY1`).
+`test_every_constant_a_core_dataclass_defaults_to_is_a_value_the_provenance_table_selects`
+screens for the next one (`PL-65HT`): it reads every numeric field default on a
+`core/` dataclass through `dataclasses.fields()`, so a default spelled as a named
+constant is read too, and requires each to appear in this table's Selected-value
+column. Zero and the whole of the field's own scale, 1 or 100 for a percent,
+carry no science and are not screened. It is a screen and not a proof, because
+it matches values rather than names: a new constant equal to one the table
+already selects passes, and 6.0 is selected for the circuit and the vessel-rich
+tissue alike.
+
 The table is not the only place these values appear. Where the prose restates
 one — the reference adult's alveolar volume and ventilation, each agent's
 blood:gas coefficient, vaporizer maximum and MAC — the sentence carries a
@@ -5226,8 +5239,12 @@ tissue flows after it, so a checked cardiac output written past the setter
 leaves the tissue flows stale, which `UptakeEquationSettings` refuses at the
 next step, as the `SimulationNumericalError` that `advance()` restates every
 guard reached inside a step as, and at Reset, where the view handles no
-refusal (`PL-M4M0`; `PL-Z0T3` records the same hazard reached through
-`dataclasses.replace`).
+refusal (`PL-M4M0`). A copy `dataclasses.replace` makes at another cardiac
+output does not reach it: the patient's constructor checks each compartment's
+flow against its own output and writes none, so the copy is refused and the
+original is left as it was. One made at the same output shares the original's
+compartments, so moving its output moves the original's flows with it
+(`PL-Z0T3`).
 
 **Built from an `int` or a `float` and nothing else, with no sign at zero**
 (`PL-LLMN`). Until `PL-LLMN` each guard asked `math.isfinite` and then made

@@ -1,7 +1,9 @@
+from copy import deepcopy
 from dataclasses import replace
 
 import pytest
 
+from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
@@ -9,7 +11,9 @@ from anesthesia_sim.core.parameters import (
     load_sevoflurane_parameters,
 )
 from anesthesia_sim.core.patient import FLOW_FRACTION_TOLERANCE, PatientCompartments
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import MAXIMUM_CARDIAC_OUTPUT_L_MIN, CardiacOutput
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
 def _build_patient() -> PatientCompartments:
@@ -63,6 +67,70 @@ def test_allocates_cardiac_output_to_tissues() -> None:
     assert patient.muscle.blood_flow_l_min == pytest.approx(5.0 * 0.18)
     assert patient.fat.blood_flow_l_min == pytest.approx(5.0 * 0.06)
     assert patient.venous_blood.blood_flow_l_min == 5.0
+
+
+def _assert_perfused_at_5_l_min(patient: PatientCompartments) -> None:
+    assert patient.cardiac_output_l_min == 5.0
+    assert [tissue.blood_flow_l_min for tissue in patient.tissues] == [
+        5.0 * tissue.perfusion_fraction for tissue in patient.tissues
+    ]
+    assert patient.venous_blood.blood_flow_l_min == 5.0
+
+
+def test_replace_leaves_the_original_perfused_at_its_own_output() -> None:
+    """Regression (`PL-Z0T3`): a copy at another output rewrote the original's flows.
+
+    `dataclasses.replace` hands its copy the original's own tissue groups and
+    venous pool, and the constructor set the copy's flows on them, so the
+    original went on recording 5 L/min while perfused at 10, and its next step
+    was refused as a numerical failure though nothing numerical had failed.
+    """
+
+    system = AgentUptakeSystem.default()
+    patient = system.patient
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^vessel_rich is perfused at 3\.8 L/min, but this patient's cardiac output "
+        r"of 10\.0 L/min gives it 7\.6 L/min ",
+    ):
+        replace(patient, cardiac_output_l_min=CardiacOutput(10.0))
+
+    _assert_perfused_at_5_l_min(patient)
+    system.advance(SimulationStep(0.1))
+
+
+def test_rejects_a_venous_pool_perfused_at_another_output() -> None:
+    patient = _build_patient()
+    venous_blood = patient.venous_blood
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^venous_blood is perfused at 7\.0 L/min, but this patient's cardiac output "
+        r"of 5\.0 L/min gives it 5\.0 L/min ",
+    ):
+        replace(
+            patient,
+            venous_blood=VenousBloodCompartment(
+                volume_l=venous_blood.volume_l,
+                blood_gas_partition_coefficient=venous_blood.blood_gas_partition_coefficient,
+                blood_flow_l_min=7.0,
+            ),
+        )
+
+
+def test_a_deep_copy_takes_another_output_without_the_original() -> None:
+    """The copy the refusal above names: compartments of its own, set apart."""
+
+    system = AgentUptakeSystem.default()
+    patient = system.patient
+    copied = deepcopy(patient)
+
+    copied.set_cardiac_output(CardiacOutput(10.0))
+
+    assert copied.venous_blood.blood_flow_l_min == 10.0
+    _assert_perfused_at_5_l_min(patient)
+    system.advance(SimulationStep(0.1))
 
 
 def test_tissue_return_is_flow_weighted() -> None:
