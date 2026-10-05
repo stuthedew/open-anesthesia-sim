@@ -2370,16 +2370,17 @@ blood flow to any region is a fixed fraction of the total cardiac output** from
 20 to 70 years of age."
 
 **And the negative finding, which is the one that matters.** Figure 4.1b's flow
-column reproduces from none of the four. On Mapleson's own rows, kidney + heart
-+ brain + liver is 3,820 of 6,480 ml/min — **59.0%** — and every well-perfused
-organ together is **63.0%**, against Lowe's **76%** and Smith and Zwart's 64.0%;
-muscle plus skin nutritive is 10.2% against Lowe's 13%, and fat plus fatty
-marrow 4.0% against Lowe's 5%. **The perfusion fractions this model runs on
-have no identified origin in any reference the book names for them.** Reference
-26 has no flows at all, and the other three do not match. That is established
-now rather than outstanding — **and it is a statement about four documents that
-have been read, not about the world.** It does not follow that no origin
-exists: the book prints more than one table and Gas Man may lump differently.
+column reproduces from none of the four. On Mapleson's own rows,
+kidney + heart + brain + liver is 3,820 of 6,480 ml/min — **59.0%** — and every
+well-perfused organ together is **63.0%**, against Lowe's **76%** and Smith and
+Zwart's 64.0%; muscle plus skin nutritive is 10.2% against Lowe's 13%, and fat
+plus fatty marrow 4.0% against Lowe's 5%. **The perfusion fractions this model
+runs on have no identified origin in any reference the book names for them.**
+Reference 26 has no flows at all, and the other three do not match. That is
+established now rather than outstanding — **and it is a statement about four
+documents that have been read, not about the world.** It does not follow that no
+origin exists: the book prints more than one table and Gas Man may lump
+differently.
 
 **Two of the three coincidences above are lineage after all, and one is not**
 (`PL-ZD67`). The 2.5 L is Mapleson's functional residual capacity, a mean of
