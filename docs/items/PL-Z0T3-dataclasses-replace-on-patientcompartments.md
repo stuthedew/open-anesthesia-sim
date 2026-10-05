@@ -3,10 +3,11 @@ id: PL-Z0T3
 title: dataclasses.replace() on PatientCompartments rewrites the tissue and venous flows of the original it shares those sub-objects with, because __post_init__ calls _update_blood_flows on them: a running system is left perfusing at the twin's cardiac output while its snapshot reports the old one, until the next step's tissue-sum check halts the run (found reviewing #1350)
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
-touches: src/anesthesia_sim/core/patient.py, tests/unit/test_patient.py, tests/unit/test_supported_ranges.py
+touches: src/anesthesia_sim/core/patient.py, tests/unit/test_patient.py, tests/unit/test_supported_ranges.py, tests/unit/test_supported_range_edges.py
 added: 2026-10-04
+closed: 2026-10-05
 payoff: copying a patient can no longer rewrite a running patient's blood flow, so a run is never failed, or shown a setting as refused while holding it, because of a copy made elsewhere
 verify: grep -q 'def test_replace_leaves_the_original_perfused_at_its_own_output' tests/unit/test_patient.py && ! grep -q 'stored_on != "patient"' tests/unit/test_supported_ranges.py
 ---
@@ -59,3 +60,35 @@ the other two (it would pass today, since `require_cardiac_output` refuses a
 bare `float` before any flow is written); and a test in
 `tests/unit/test_patient.py` named
 `test_replace_leaves_the_original_perfused_at_its_own_output` pins it.
+
+**Fixed 2026-10-05.** `PatientCompartments.__post_init__` checks the relation
+`docs/MODEL.md` § "Tissue groups" defines - each tissue group perfused at its
+fraction of cardiac output, the venous pool at the whole of it - and writes
+nothing, so a copy no longer reaches into the compartments it shares with the
+original. `from_parameters` builds each compartment at its flow, and
+`set_cardiac_output` still moves them together; both compute the product the
+check does, so it compares exactly. The reproduction above now stops at the
+copy, refused with `SimulationConfigurationError` naming the compartment, its
+flow and the flow this patient's output gives it; the original keeps
+`5.0 [3.8, 0.9, 0.3] 5.0` and steps. The refusal names `copy.deepcopy` and
+`set_cardiac_output` as the way to a copy at another output, and
+`test_a_deep_copy_takes_another_output_without_the_original` holds that route
+to it; `test_rejects_a_venous_pool_perfused_at_another_output` covers the
+venous branch, and the exclusion in
+`test_a_bare_float_is_refused_wherever_a_flow_is_stored` is gone.
+
+Refusing the copy was chosen over building it with compartments of its own (a
+defensive copy in the constructor), which the Done when also allows. A copy
+taken inside the constructor would leave a caller holding the tissue it passed
+in reading one the patient no longer steps - a plausible zero where uptake
+should be - and would be the only constructor in `core/` that copies what it
+is handed. What stays is ordinary shallow-copy behaviour: a `replace` keeping
+the output shares the original's compartments, so setting or stepping that
+copy moves the original too, as with any mutable field `replace` copies. That
+is Python's documented semantics rather than a defect of this class, and the
+refusal points at the copy that has none.
+
+`tests/unit/test_supported_range_edges.py` built its patient at each drawn
+cardiac output with that same `replace`, and was refused once the check
+landed; it now sets the output on a patient of its own (`_patient_at`, beside
+the settings record's `_equation_settings_at`), so it joins `touches`.

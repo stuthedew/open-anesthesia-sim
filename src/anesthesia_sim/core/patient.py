@@ -52,12 +52,40 @@ class PatientCompartments:
     venous_blood: VenousBloodCompartment
 
     def __post_init__(self) -> None:
+        """Refuse compartments that are not perfused at this patient's own output.
+
+        Each tissue group's blood flow is its perfusion fraction of cardiac
+        output, and the venous pool's is the whole of it (`docs/MODEL.md`
+        § "Tissue groups"). That relation is checked here and nothing is
+        written, because the compartments a patient is handed need not be its
+        alone: `dataclasses.replace` hands its copy the original's own, and
+        setting the copy's flows on them would leave the original perfused at
+        the copy's output (`PL-Z0T3`). `from_parameters` builds each
+        compartment at its flow, and `set_cardiac_output` moves them together.
+        Both compute the product the check does, so the comparison is exact.
+
+        Raises:
+            TypeError: `cardiac_output_l_min` was not built as a `CardiacOutput`.
+            SimulationConfigurationError: the tissue perfusion fractions do not
+                sum to 1, or a compartment's blood flow is not its share of
+                this patient's cardiac output.
+        """
+
         require_cardiac_output(self.cardiac_output_l_min)
 
         if abs(self.total_perfusion_fraction - 1.0) > FLOW_FRACTION_TOLERANCE:
             raise SimulationConfigurationError("tissue perfusion fractions must sum to 1")
 
-        self._update_blood_flows()
+        for tissue in self.tissues:
+            self._require_perfused_at(
+                tissue.name,
+                tissue.blood_flow_l_min,
+                self.cardiac_output_l_min * tissue.perfusion_fraction,
+            )
+
+        self._require_perfused_at(
+            "venous_blood", self.venous_blood.blood_flow_l_min, self.cardiac_output_l_min
+        )
 
     @classmethod
     def from_parameters(
@@ -69,7 +97,9 @@ class PatientCompartments:
         here, where the patient is built from it, so a file naming one outside
         the supported range is refused in the words a refused control uses
         (`core/supported_ranges.py`); `core/parameters.py` checks the value
-        for sign and finiteness alone and holds no copy of the range.
+        for sign and finiteness alone and holds no copy of the range. Each
+        compartment is built perfused at its share of that output, which the
+        constructor checks rather than sets.
 
         Raises:
             SimulationConfigurationError: the file's default cardiac output is
@@ -77,9 +107,10 @@ class PatientCompartments:
         """
 
         blood_gas = agent.blood_gas_partition_coefficient
+        cardiac_output_l_min = CardiacOutput(patient.default_cardiac_output_l_min)
 
         return cls(
-            cardiac_output_l_min=CardiacOutput(patient.default_cardiac_output_l_min),
+            cardiac_output_l_min=cardiac_output_l_min,
             vessel_rich=TissueGroup(
                 name="vessel_rich",
                 volume_l=patient.vessel_rich_volume_l,
@@ -88,6 +119,7 @@ class PatientCompartments:
                 tissue_gas_partition_coefficient=(
                     agent.vessel_rich_tissue_gas_partition_coefficient
                 ),
+                blood_flow_l_min=cardiac_output_l_min * patient.vessel_rich_perfusion_fraction,
             ),
             muscle=TissueGroup(
                 name="muscle",
@@ -95,6 +127,7 @@ class PatientCompartments:
                 perfusion_fraction=patient.muscle_perfusion_fraction,
                 blood_gas_partition_coefficient=blood_gas,
                 tissue_gas_partition_coefficient=agent.muscle_tissue_gas_partition_coefficient,
+                blood_flow_l_min=cardiac_output_l_min * patient.muscle_perfusion_fraction,
             ),
             fat=TissueGroup(
                 name="fat",
@@ -102,11 +135,12 @@ class PatientCompartments:
                 perfusion_fraction=patient.fat_perfusion_fraction,
                 blood_gas_partition_coefficient=blood_gas,
                 tissue_gas_partition_coefficient=agent.fat_tissue_gas_partition_coefficient,
+                blood_flow_l_min=cardiac_output_l_min * patient.fat_perfusion_fraction,
             ),
             venous_blood=VenousBloodCompartment(
                 volume_l=patient.venous_pool_volume_l,
                 blood_gas_partition_coefficient=blood_gas,
-                blood_flow_l_min=patient.default_cardiac_output_l_min,
+                blood_flow_l_min=cardiac_output_l_min,
             ),
         )
 
@@ -199,3 +233,16 @@ class PatientCompartments:
             tissue.set_blood_flow(self.cardiac_output_l_min * tissue.perfusion_fraction)
 
         self.venous_blood.set_blood_flow(self.cardiac_output_l_min)
+
+    def _require_perfused_at(
+        self, compartment: str, blood_flow_l_min: float, own_blood_flow_l_min: float
+    ) -> None:
+        if blood_flow_l_min != own_blood_flow_l_min:
+            raise SimulationConfigurationError(
+                f"{compartment} is perfused at {blood_flow_l_min} L/min, but this patient's "
+                f"cardiac output of {self.cardiac_output_l_min} L/min gives it "
+                f'{own_blood_flow_l_min} L/min (docs/MODEL.md, "Tissue groups"): compartments '
+                "perfused at another output are another patient's, as a dataclasses.replace "
+                "copy's are, so copy a patient whole with copy.deepcopy and change its output "
+                "with set_cardiac_output"
+            )

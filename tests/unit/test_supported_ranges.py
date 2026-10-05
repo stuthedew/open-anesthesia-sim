@@ -277,12 +277,8 @@ def test_a_bare_float_is_refused_wherever_a_flow_is_stored(control: Control) -> 
     with pytest.raises(TypeError, match=refused):
         getattr(system, setter)(bare)
 
-    if control.stored_on != "patient":
-        # `replace` on `PatientCompartments` rewrites the flows of the tissue
-        # and venous objects it shares with the original (`PL-Z0T3`), so its
-        # constructor is not driven from here.
-        with pytest.raises(TypeError, match=refused):
-            replace(compartment, **{control.name: bare})
+    with pytest.raises(TypeError, match=refused):
+        replace(compartment, **{control.name: bare})
 
     with pytest.raises(TypeError, match=refused):
         replace(system.equation_settings(), **{control.name: bare})

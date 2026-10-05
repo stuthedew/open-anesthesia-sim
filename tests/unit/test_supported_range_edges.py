@@ -134,6 +134,17 @@ def _equation_settings_at(cardiac_output_l_min: CardiacOutput) -> UptakeEquation
     return system.equation_settings()
 
 
+def _patient_at(cardiac_output_l_min: CardiacOutput) -> PatientCompartments:
+    """A patient at this cardiac output, set rather than copied: its constructor
+    refuses compartments perfused at another output, which a copy made with
+    `dataclasses.replace` hands it (`PL-Z0T3`)."""
+
+    patient = AgentUptakeSystem.default().patient
+    patient.set_cardiac_output(cardiac_output_l_min)
+
+    return patient
+
+
 # A time bookmark has no default, so the one the bookmark classes are built
 # with marks the middle of the span, where a step can reach it from either side.
 MARK = TimeBookmark(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S / 2))
@@ -164,7 +175,8 @@ RECEIVERS: Mapping[type, Callable[[], object]] = {
 # others, so that the field replaced alone would be refused at every value but
 # the one it holds: the tissue flows sum to cardiac output.
 TIED: Mapping[tuple[type, type], Callable[[typing.Any], object]] = {
-    (UptakeEquationSettings, CardiacOutput): _equation_settings_at
+    (UptakeEquationSettings, CardiacOutput): _equation_settings_at,
+    (PatientCompartments, CardiacOutput): _patient_at,
 }
 
 # A value for a parameter the guard being drawn does not bound, where a
