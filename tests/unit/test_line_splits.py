@@ -27,9 +27,10 @@ TREES = ("tools", "subprojects/docket/src/docket", ".claude/hooks")
 #: The Markdown readers, exempt until `PL-BBYJ` converts them together. They
 #: read CommonMark, which ends no line at those characters either, but their
 #: line indices pair with `docket/fences.py`'s, so converting one file alone
-#: would leave two readers of one document disagreeing on which line is which;
-#: and `#1358` (`PL-R417`'s Markdown readers) is rewriting most of them as this
-#: is written. A file, not a call, so that rewrite cannot make this list stale.
+#: would leave two readers of one document disagreeing on which line is which.
+#: A file, not a call, so a rewrite such as `#1358` (`PL-R417`'s Markdown
+#: readers) cannot make this list stale; it took the last call out of
+#: `tools/core_vocabulary_check.py`, which the test below caught.
 MARKDOWN_READERS = frozenset(
     {
         "subprojects/docket/src/docket/checks.py",
@@ -38,7 +39,6 @@ MARKDOWN_READERS = frozenset(
         "subprojects/docket/src/docket/notes.py",
         "subprojects/docket/src/docket/render.py",
         "subprojects/docket/src/docket/roadmap.py",
-        "tools/core_vocabulary_check.py",
         "tools/dead_ends.py",
         "tools/doc_check.py",
     }

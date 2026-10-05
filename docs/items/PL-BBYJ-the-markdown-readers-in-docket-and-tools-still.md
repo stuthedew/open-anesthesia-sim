@@ -27,3 +27,9 @@ was rewriting most of them, adding three more `splitlines()` calls to
 spans and `checks.py`'s statement reader), `fences.py`'s "A line is what
 `str.splitlines()` cuts" says `\n`, and `MARKDOWN_READERS` is gone, so the
 guard refuses `splitlines()` everywhere in the three trees.
+
+**`#1358` landed, 2026-10-05.** It merged as `f84e31f9` and took the last
+`splitlines()` call out of `tools/core_vocabulary_check.py`, which
+`test_every_exempt_file_still_needs_its_exemption` caught on the base merge
+into `#1364`, so that file left `MARKDOWN_READERS` there. `docket/markdown.py`,
+which `#1358` added, calls none. The wait above is over.
