@@ -8146,7 +8146,9 @@ def test_set_refuses_a_file_it_could_not_rewrite_faithfully(
     doubled = READY.replace("effort: S\n", "effort: S\neffort: M\n")
     unknown = READY.replace("touches: a.py\n", "touches: a.py\ncolour: red\n")
     unread = READY.replace("touches: a.py\n", "touches: a.py\nb.py\n")
-    for name, document in (("a", doubled), ("b", unknown), ("c", unread)):
+    # A block-scalar value arrives empty, so a re-render would drop its lines (`PL-LNDJ`).
+    scalar = READY.replace("touches: a.py\n", "touches: a.py\npayoff: >-\n  buys a thing\n")
+    for name, document in (("a", doubled), ("b", unknown), ("c", unread), ("d", scalar)):
         (tmp_path / name).mkdir()
         store = _store(tmp_path / name, document)
 
@@ -8154,6 +8156,47 @@ def test_set_refuses_a_file_it_could_not_rewrite_faithfully(
 
         assert "nothing was written" in capsys.readouterr().out
         assert _item_text(store) == document
+
+
+def test_new_and_set_refuse_a_value_holding_a_newline(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-0779`: both wrote the value at exit 0, for the next `check` to refuse.
+
+    The `status: done` line is the case that cost something: written under
+    `payoff`, it was a second status that took an open item out of `list` and
+    `next` until somebody ran `check`. Each refusal names the field, and the
+    store is as it was - for `new` with two titles, the clean one included,
+    since a refusal after the first write would leave half a capture.
+    """
+    store = _store(tmp_path, READY)
+
+    assert _run("new", "first line\nsecond line", "--items", str(store)) == 1
+    out = capsys.readouterr().out
+    assert "nothing was written" in out
+    assert "`title`" in out
+    assert "line break" in out
+    assert _run("new", "A clean title", "x\nstatus: done", "--items", str(store)) == 1
+    assert "`title`" in capsys.readouterr().out
+    assert [path.name for path in store.glob("*.md")] == ["item-0.md"]
+
+    for flag, value in (("--payoff", "first half\nsecond half"), ("--payoff", "x\nstatus: done")):
+        assert _run("set", "PL-B1B1", flag, value, "--items", str(store)) == 1
+        out = capsys.readouterr().out
+        assert "PL-B1B1: nothing was written" in out
+        assert "`payoff`" in out
+        assert _item_text(store) == READY
+
+
+def test_new_strips_the_space_around_a_title_rather_than_refusing_it(tmp_path: Path) -> None:
+    """The reader trims it, so it was never part of the value; capture must not refuse over it."""
+    store = _store(tmp_path)
+
+    assert _run("new", "  Padded title \n", "--items", str(store)) == 0
+
+    (written,) = store.glob("*.md")
+    assert parse_item(written.read_text(encoding="utf-8")).title == "Padded title"
+    assert "title: Padded title\n" in written.read_text(encoding="utf-8")
 
 
 def test_set_removes_a_field_given_an_empty_value(tmp_path: Path) -> None:

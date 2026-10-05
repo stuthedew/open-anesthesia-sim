@@ -2189,9 +2189,13 @@ payoff: a learner who pauses mid-induction stops seeing numbers that look live
 
 Deliberately not YAML. A real YAML parser is a dependency this package will not
 take, and the subset actually wanted — scalars and comma-separated lists — is a
-few lines of parsing that cannot surprise anyone. Four rules, and they are the
+few lines of parsing that cannot surprise anyone. Five rules, and they are the
 whole format:
 
+- **The block is fenced by `---` lines**, and closes on the first line that is
+  exactly `---`. A `---y` or `----` inside it is a line no field reads, and is
+  reported; it used to close the block, dropping every field below it into the
+  body at `docket check` exit 0 (`PL-LNDJ`).
 - **A field is `key: value` at column zero**, and the value runs to the end of
   the line.
 - **A list is one comma-separated line.** `classes: safety, ux`. There is no
@@ -2206,7 +2210,10 @@ whole format:
   column zero that is not `key: value` belongs to no field, and nor does an
   indented line above the first field. Both are *reported* at `docket check`
   rather than passed over, because what such a line usually holds is the tail
-  of the value above it (`PL-JD4L`).
+  of the value above it (`PL-JD4L`). That is the one multi-line spelling: a
+  YAML block-scalar header (`reason: >-`, `|` and the rest) is *refused by
+  name*, as a block list is, and the field arrives empty rather than opening
+  with the header (`PL-LNDJ`).
 - **A value wrapped in matching quotes parses to the unquoted string.**
   Quoting is the correct instinct everywhere else, so `title: "Untested: every
   test reads the controller"` means what it looks like it means. The pair has
@@ -2214,7 +2221,7 @@ whole format:
   `payoff: 'are the generators dealt with' is answered by ...` — is one nobody
   quoted, and is taken verbatim.
 
-All four are one decision. `_front_matter_pairs` used to keep only the lines
+The last four are one decision. `_front_matter_pairs` used to keep only the lines
 matching `key: value` and skip the rest, and that single skip produced three
 separately-briefed defects — a truncated multi-line value that the next field
 write then deleted outright (`PL-5B39`), a block-list `touches:` that reached
@@ -2223,13 +2230,25 @@ no lane (`PL-FX0K`), and quote characters landing inside 56 titles and 3
 127 having run nothing (`PL-V6CR`, `PL-MZH2`). `PL-9HD1` is the cluster.
 
 Where a field cannot be read, it is **reported rather than guessed at** —
-`unknown_fields`, `duplicate_fields`, `block_list_fields` and `unread_lines`
-on the parsed item, all four named by `docket check`. Guessing is what turns a
-validation failure into a silently wrong queue position. The writers that edit
-a value in place, `docket new`'s recurrence append and `docket withdraw`'s
-replace, take the lines a value spans from the same function the reader does,
-`model._fold`. When each had its own definition, an append landed on a line
-the reader passed over and a replace deleted one (`PL-JD4L`).
+`unknown_fields`, `duplicate_fields`, `block_list_fields`,
+`block_scalar_fields` and `unread_lines` on the parsed item, all five named by
+`docket check`. Guessing is what turns a validation failure into a silently
+wrong queue position. The writers that edit a value in place, `docket new`'s
+recurrence append and `docket withdraw`'s replace, take the lines a value spans
+from the same function the reader does, `model._fold`. When each had its own
+definition, an append landed on a line the reader passed over and a replace
+deleted one (`PL-JD4L`).
+
+**The writers state none of these rules.** Every one of them - the full
+render behind `new` and `set`, the insert and append behind `record` and
+`new`'s recurrence, the replace behind `withdraw` - hands the file it would
+write to `model._read_back`, which reads it through the same
+`_front_matter_pairs` and refuses, before anything is written, where a field
+would read back as anything but the value written. So no command can write a
+file its own reader cannot read: a title holding a line break is refused where
+it is typed rather than at the next `docket check`, and `--payoff $'x\nstatus:
+done'` cannot write a second status (`PL-0779`, `PL-HXJY`). A rule the reader
+gains later reaches the writers with no edit to them.
 
 `**Problem.**`, `**Why it matters.**` and `**Done when.**` are required once
 an item leaves `untriaged`; the others are conventions. A heading is matched

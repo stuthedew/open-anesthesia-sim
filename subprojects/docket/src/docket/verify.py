@@ -2140,13 +2140,14 @@ def _recurrences_grew(before: str, after: str) -> bool:
     was, now = _front_matter_pairs(before), _front_matter_pairs(after)
     if was is None or now is None:
         return False
-    pairs_was, block_lists_was, unread_was, body_was = was
-    pairs_now, block_lists_now, unread_now, body_now = now
-    if "recurrences" in block_lists_now or (block_lists_was, unread_was, body_was) != (
-        block_lists_now,
-        unread_now,
-        body_now,
-    ):
+    pairs_was, block_lists_was, block_scalars_was, unread_was, body_was = was
+    pairs_now, block_lists_now, block_scalars_now, unread_now, body_now = now
+    if "recurrences" in block_lists_now or (
+        block_lists_was,
+        block_scalars_was,
+        unread_was,
+        body_was,
+    ) != (block_lists_now, block_scalars_now, unread_now, body_now):
         return False
     if [p for p in pairs_was if p[0] != "recurrences"] != [
         p for p in pairs_now if p[0] != "recurrences"

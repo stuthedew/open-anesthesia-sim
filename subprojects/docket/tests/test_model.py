@@ -7,6 +7,7 @@ that a file the tool writes reads back identically.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 
 import pytest
@@ -21,6 +22,7 @@ from docket.model import (
     MISREAD_LIMIT,
     Item,
     block_list_keys,
+    block_scalar_keys,
     generator_defect_faults,
     generator_faults,
     impairs_generators_soundly,
@@ -836,6 +838,104 @@ def test_a_block_list_classes_cannot_hand_a_safety_item_an_empty_class_silently(
 
     assert item.safety_classes == ()
     assert item.block_list_fields == ("classes",)
+
+
+def test_a_block_scalar_header_is_never_read_as_part_of_the_value() -> None:
+    """`PL-LNDJ`: `reason: >-` read as '>- Duplicate of ...', live on two dropped items.
+
+    Declined by name, as a block list is: the field arrives empty and says why,
+    rather than opening with the header or being read as a YAML reader would
+    read it into a value holding line breaks no writer here can write back.
+    """
+    for header in (">-", ">", "|", "|-", ">+", "|2", ">-2", ">2-", "> # folded"):
+        text = (
+            f"---\nid: PL-K7QX\ntitle: t\nreason: {header}\n"
+            "  Duplicate of PL-LT77, which is the same\n  condition.\n---\nBody\n"
+        )
+        item = parse_item(text)
+
+        assert block_scalar_keys(text) == ("reason",), header
+        assert item.block_scalar_fields == ("reason",), header
+        assert item.reason == "", header
+        assert unread_front_matter_lines(text) == (), header
+
+
+def test_a_value_merely_opening_with_a_block_indicator_is_prose() -> None:
+    """The header is the whole of the field's own line, or it is not one."""
+    for value in ("> 5 minutes of washout", "|x| is the magnitude", ">-1 dB"):
+        item = parse_item(f"---\nid: PL-K7QX\ntitle: {value}\n---\nBody\n")
+
+        assert item.title == value
+        assert item.block_scalar_fields == ()
+
+
+def test_front_matter_closes_only_on_a_line_that_is_exactly_three_dashes() -> None:
+    """`PL-LNDJ`: a `---y` line closed the block, and every field below it fell into the body.
+
+    `touches:` lost that way took the item out of every lane at `docket check`
+    exit 0. The line is one no field reads now, and is reported as one.
+    """
+    for stray in ("---y", "----", "--- "):
+        text = f"---\nid: PL-K7QX\ntitle: t\n{stray}\nstatus: done\ntouches: a.py\n---\nBody\n"
+        fields, body = parse_front_matter(text)
+
+        assert fields["status"] == "done", stray
+        assert fields["touches"] == "a.py", stray
+        assert body == "Body\n", stray
+        assert unread_front_matter_lines(text) == (stray,), stray
+
+
+def test_front_matter_still_closes_at_the_end_of_a_file_with_no_body() -> None:
+    fields, body = parse_front_matter("---\nid: PL-K7QX\ntitle: t\n---")
+
+    assert fields == {"id": "PL-K7QX", "title": "t"}
+    assert body == ""
+
+
+def test_every_writer_refuses_a_value_the_reader_would_not_read_back() -> None:
+    """`PL-HXJY`: each writer asks the one reader, so none can write a file it cannot read.
+
+    `PL-0779` was a line break written at exit 0 for the next `docket check` to
+    refuse, and a second line spelling `status: done` that hid an open item
+    from `list` and `next`. The refusal is not a list of bad characters: each
+    value below is refused because the reader would read it back as something
+    else, which is the one rule the writers state.
+    """
+    text = render_item(_item())
+    unreadable = (
+        "first line\nsecond line",
+        "buys a thing\nstatus: done",
+        "'quoted the way YAML quotes'",
+        ">-",
+        " padded ",
+    )
+    # An appended entry follows the recorded value on its line, so a quote pair
+    # or a header there is ordinary text and reads back as written; a line break
+    # or a trailing space still does not.
+    appended = ("a.py\nstatus: done", "b.py ")
+    writers: tuple[tuple[str, tuple[str, ...], Callable[[str], str]], ...] = (
+        ("payoff", unreadable, lambda value: render_item(_item(payoff=value))),
+        ("payoff", unreadable, lambda value: with_front_matter_field(text, "payoff", value)),
+        ("title", unreadable, lambda value: with_front_matter_value(text, "title", value)),
+        (
+            "touches",
+            appended,
+            lambda value: with_front_matter_field(text, "touches", value, append=True),
+        ),
+    )
+    for field_name, values, write in writers:
+        refusal = f"`{field_name}` would be read back as"
+        for value in values:
+            with pytest.raises(ValueError, match=refusal) as refused:
+                write(value)
+            assert ("line break" in str(refused.value)) == ("\n" in value), value
+
+    # And a value the reader reads back as written goes through every one of them.
+    assert parse_item(render_item(_item(payoff="buys a thing"))).payoff == "buys a thing"
+    assert parse_item(with_front_matter_field(text, "payoff", "a: b")).payoff == "a: b"
+    assert parse_item(with_front_matter_value(text, "title", "New")).title == "New"
+    appended_text = with_front_matter_field(text, "touches", "'b.py'", append=True)
+    assert parse_item(appended_text).touches == ("src/app/view.py", "'b.py'")
 
 
 def test_a_dash_continuation_under_a_prose_field_is_prose_not_a_block_list() -> None:
