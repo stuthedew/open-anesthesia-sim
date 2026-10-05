@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: infra
 feature: review-hold
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, tools/workflow_paths_check.py, CLAUDE.md, docs/maintainer.md, docs/items/PL-WW0Q-bin-docket-arm-holds-a-change-to-arming-py-for.md
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_portability.py, tools/workflow_paths_check.py, CLAUDE.md, docs/maintainer.md, docs/items/PL-WW0Q-bin-docket-arm-holds-a-change-to-arming-py-for.md
 added: 2026-10-05
 payoff: a pull request that changes only tests of the tooling merges on green CI instead of waiting on the owner's read with nothing to judge, while every change to a simulator test still waits on it
 verify: grep -q 'def test_arm_arms_a_test_of_the_tooling_under_tests_on_green' subprojects/docket/tests/test_cli.py

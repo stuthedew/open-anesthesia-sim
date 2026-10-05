@@ -113,7 +113,7 @@ from __future__ import annotations
 
 import ast
 import fnmatch
-import platform
+import sys
 from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -714,8 +714,9 @@ def _tests_of_the_tooling(
             line = error.lineno if isinstance(error, SyntaxError) else None
             where = f", line {line}" if line else ""
             said = error.msg if isinstance(error, SyntaxError) else str(error)
+            version = ".".join(str(part) for part in sys.version_info[:3])
             unreadable.append(
-                f"{path} would not parse under this python3 ({platform.python_version()}): "
+                f"{path} would not parse under this python3 ({version}): "
                 f"{said}{where}, so whether it imports {PRODUCT_PACKAGE} was not read, and it "
                 "waits on the read"
             )
