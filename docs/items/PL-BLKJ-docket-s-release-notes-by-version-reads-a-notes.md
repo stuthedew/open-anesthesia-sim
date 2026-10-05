@@ -3,12 +3,14 @@ id: PL-BLKJ
 title: docket's release.notes_by_version reads a notes bullet with its own one-line pattern rather than through notes_bullets, so a bullet inside an HTML comment or a fence is claimed and one opening on an empty marker line is missed; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1358
 payoff: the items a release is recorded as shipping are the bullets its notes page shows, so a commented-out or fenced bullet claims nothing
 verify: grep -qF '"notes by version, ' tests/unit/test_doc_check.py
 ---
@@ -26,3 +28,14 @@ verify: grep -qF '"notes by version, ' tests/unit/test_doc_check.py
 **Generator check.** A member of `PL-R417`: the reader takes a physical line for a statement its format continues, the fact that head names.
 
 **Done when.** `notes_by_version` reads its ids through `notes_bullets`, so the two agree on every notes file; a `notes by version, ...` case in `CONTINUED_STATEMENTS` pins it.
+
+**Done 2026-10-05 (`#1358`), through the walker `notes_bullets` is built on
+rather than through `notes_bullets` itself.** `notes_by_version` takes each
+top-level bullet's leading id through `release.notes_ids`, which reads the
+bullets `roadmap.document_entry_lines` reads. Calling `notes_bullets` would
+have left out a bullet carried on from the margin, which it declines because
+neither the bullet's end nor its reference can be read there; the leading id
+sits on the bullet's first line either way, so leaving it out would drop a
+claim the page plainly makes. The two agree on all 79 notes files, 1,387 ids
+(measured 2026-10-05), and the one input where they differ is pinned by the
+case `notes by version, a bullet carried on from the margin keeps its leader`.

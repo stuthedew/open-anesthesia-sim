@@ -3,12 +3,14 @@ id: PL-KT0H
 title: doc_check's LINK_RE takes no line ending after a link's destination, nor a title or an angle-bracket destination at all, so a link whose ) or title follows on the next line is never checked and its missing target passes; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1358
 payoff: a link with a title, an angle-bracket destination or its closing parenthesis on the next line is checked like any other, so its broken target fails make check
 verify: grep -qF '"links, a destination' tests/unit/test_doc_check.py && grep -qF '"links, an angle-bracket destination' tests/unit/test_doc_check.py
 ---

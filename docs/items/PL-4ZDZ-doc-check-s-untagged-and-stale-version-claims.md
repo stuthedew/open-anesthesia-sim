@@ -3,12 +3,14 @@ id: PL-4ZDZ
 title: doc_check's untagged and stale-version claims and its make-mention span reader stop at a block quote's > on a continuation line, and the version list runs on past a blank line, so a quoted claim or make command wrapped onto a second line reads short and a list a paragraph end closes reads long; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1358
 payoff: a tags claim or a make command wrapped inside a block quote is read whole, and a version list ends with its paragraph
 verify: grep -qF '"untagged claims, ' tests/unit/test_doc_check.py && grep -qF '"make mentions, a code span wrapped inside a block quote' tests/unit/test_doc_check.py
 ---

@@ -141,7 +141,8 @@ try:
     # `markdown` is the one reading of a document's blocks (`PL-R417`): where
     # each statement ends, so a code span or a bold run is read within its own
     # (`PL-FP7J`, `PL-VQBY`), and where an HTML block runs (`PL-GT0J`).
-    from docket.markdown import statement_lines
+    from docket.markdown import HTML, statement_lines
+    from docket.markdown import read as read_blocks
     from docket.model import CLOSED_STATUSES, SEMVER_PATTERN, Item
     from docket.release import (
         CODE_SPAN_RE,
@@ -403,10 +404,36 @@ STATEMENT_CHAR = rf"(?:[^\n]|{SOFT_BREAK})"
 #: line a soft break carries it onto.
 STATEMENT_RE = re.compile(rf"{STATEMENT_CHAR}*")
 
-#: An inline link, its text and the gap after `(` allowed to wrap as CommonMark
-#: allows (§ 6.3): a link whose text a wrap split was not read, so its target
-#: went unchecked.
-LINK_RE = re.compile(rf"\[(?:[^\]\n]|{SOFT_BREAK})*\]\({GAP}?(?P<target>[^)\s]+)\)")
+
+def _balanced(depth: int) -> str:
+    """A character of a bare link destination, a pair of parentheses `depth` deep taken whole."""
+    unit = r"[^\s()]"
+    for _ in range(depth):
+        unit = rf"(?:[^\s()]|\({unit}*\))"
+    return unit
+
+
+#: A link title (CommonMark 0.31.2 § 6.3): in double quotes, single quotes or
+#: parentheses, and wrapped over lines as a paragraph is, never past a blank one.
+LINK_TITLE = (
+    rf"(?:\"(?:[^\"\\\n]|\\.|{SOFT_BREAK})*\""
+    rf"|'(?:[^'\\\n]|\\.|{SOFT_BREAK})*'"
+    rf"|\((?:[^()\\\n]|\\.|{SOFT_BREAK})*\))"
+)
+#: An inline link, read as CommonMark 0.31.2 § 6.3 reads one (`PL-KT0H`): its
+#: text, `(`, a destination, an optional title and `)`, with spaces, tabs and at
+#: most one line ending between each. A destination is `bracketed` - in angle
+#: brackets, which may hold a space - or a bare `target`, whose parentheses
+#: come in pairs nested to the three levels the specification asks an
+#: implementation to read; a backslash escape in it is not decoded. Each form
+#: this left out was a link read as nothing, so its target went unchecked: one
+#: whose text a wrap split, and one with a title, a bracketed destination, or
+#: its `)` on the next line.
+LINK_RE = re.compile(
+    rf"\[(?:[^\]\n]|{SOFT_BREAK})*\]\({GAP}?"
+    rf"(?:<(?P<bracketed>[^<>\n]*)>|(?P<target>(?!<){_balanced(3)}+))"
+    rf"(?:{GAP}{LINK_TITLE})?{GAP}?\)"
+)
 NUMBER_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
 
 # A prose value that restates a data-file constant declares which one, so it
@@ -447,6 +474,9 @@ ABSENT_MARKER_RE = re.compile(r"^<!--\s*absent:\s*(?P<paths>.+?)\s*-->$")
 # read as nothing and the claim it made went unchecked; it is refused by name
 # instead, which costs the writer one join.
 SPLIT_MARKER_RE = re.compile(r"^<!--\s*(?P<kind>provenance|derived|absent):(?!.*-->)")
+#: A marker's kind after its comment's opening, on that line or a later one; a
+#: comment is read whole by `_split_markers`.
+MARKER_OPENING_RE = re.compile(r"<!--\s*(?P<kind>provenance|derived|absent):")
 DERIVED_FROM_RE = re.compile(r"^(?P<figure>.+?)\s+from\s+(?P<rest>\S+\.json\s.+)$")
 MARKER_SOURCE_RE = re.compile(r"^(?P<relative>\S+\.json)\s+(?P<assertions>.+)$")
 ASSERTION_RE = re.compile(r"^(?P<key>[A-Za-z_][\w.]*)\s*=\s*(?P<value>[-+]?\d+(?:\.\d+)?)$")
@@ -627,20 +657,23 @@ ITEM_SECTION_RE = re.compile(
 # decision is not, and is left alone.
 TAGS_MARK_RE = re.compile(r"^\*\*Tags\.\*\*")
 UNTAGGED_CLAIM_RE = re.compile(
-    r"\*\*(?P<count>[A-Za-z]+|\d+)\s+versions?\s+(?:are|is)\s+untagged\*\*", re.I
+    rf"\*\*(?P<count>[A-Za-z]+|\d+){GAP}+versions?{GAP}+(?:are|is){GAP}+untagged\*\*", re.I
 )
 # The second exception, written the same way: a version whose tag is on the
 # commit it shipped from although that commit's version file was never bumped.
 # The wording is the claim - the release went out like that - so a tag that is
 # merely on the wrong commit cannot honestly be excused by it, and is moved.
 STALE_VERSION_CLAIM_RE = re.compile(
-    r"\*\*(?P<count>[A-Za-z]+|\d+)\s+versions?\s+shipped\s+with\s+"
-    r"a\s+stale\s+version\s+file\*\*",
+    rf"\*\*(?P<count>[A-Za-z]+|\d+){GAP}+versions?{GAP}+shipped{GAP}+with{GAP}+"
+    rf"a{GAP}+stale{GAP}+version{GAP}+file\*\*",
     re.I,
 )
 # `: v0.1.0, v0.2.0 and v0.3.0` - read one version at a time so the list ends
 # where the prose resumes, rather than sweeping up every version in the region.
-LIST_SEPARATOR_RE = re.compile(r"[\s,:]*(?:and\s+)?")
+# Both claims and their lists cross a soft break as `GAP` does, a block quote's
+# `>` included, so the list also ends where its statement does rather than
+# running on past a blank line (`PL-4ZDZ`).
+LIST_SEPARATOR_RE = re.compile(rf"(?:[,:]|{GAP})*(?:and{GAP}+)?")
 LIST_VERSION_RE = re.compile(rf"v(?P<version>{SEMVER_PATTERN})")
 # The status cell that says a version has gone out.
 COMPLETED_MARK = "completed"
@@ -1378,11 +1411,35 @@ def _is_marker(text: str) -> bool:
 
 
 def _split_marker(document: Path, line: int, kind: str) -> str:
-    """What a marker split across lines is told; see `SPLIT_MARKER_RE`."""
+    """What a marker split across lines is told; see `_split_markers`."""
     return (
         f"{document}:{line}: this `{kind}:` marker does not close on its line; a marker is "
         "read a line at a time, so this one was read as nothing - write it on one line"
     )
+
+
+def _split_markers(lines: Sequence[str]) -> dict[int, str]:
+    """Each marker split across lines, by the index of the line it opens on, with its kind.
+
+    A comment is read as the HTML block it is (CommonMark 0.31.2 § 4.6), so a
+    marker whose `<!--` stands alone on the line above its kind is split as
+    one broken after its kind is: read a line at a time it was nothing, and the
+    value or the absence it declared went unchecked (`PL-GT0J`).
+    `SPLIT_MARKER_RE` still reads a line on its own, for the comment nothing
+    closes, which the block reader reads as the paragraph it is written as.
+    """
+    split: dict[int, str] = {}
+    if any("<!--" in line for line in lines):
+        for block in read_blocks(lines).blocks:
+            if block.kind != HTML or block.end - block.start < 2:
+                continue
+            comment = "\n".join(line.strip() for line in lines[block.start : block.end])
+            if (opening := MARKER_OPENING_RE.match(comment)) is not None:
+                split[block.start] = opening.group("kind")
+    for index, line in enumerate(lines):
+        if (opening := SPLIT_MARKER_RE.match(line.strip())) is not None:
+            split.setdefault(index, opening.group("kind"))
+    return split
 
 
 def _marked_span(lines: Sequence[str], index: int) -> tuple[int, int]:
@@ -1482,6 +1539,7 @@ def check_prose_provenance(root: Path, report: Report) -> None:
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
     fenced = fenced_lines(text)
+    split = {index: kind for index, kind in _split_markers(lines).items() if kind != "absent"}
     markers = 0
     for index, line in enumerate(lines):
         # A marker inside a code fence is the format being *shown*, not a claim
@@ -1490,9 +1548,8 @@ def check_prose_provenance(root: Path, report: Report) -> None:
         # coincidentally true of the shipped data.
         if index in fenced:
             continue
-        split = SPLIT_MARKER_RE.match(line.strip())
-        if split is not None and split.group("kind") != "absent":
-            report.errors.append(_split_marker(MODEL, index + 1, split.group("kind")))
+        if index in split:
+            report.errors.append(_split_marker(MODEL, index + 1, split[index]))
             continue
         match = PROSE_MARKER_RE.match(line.strip())
         if match is None:
@@ -1798,14 +1855,16 @@ def _gate_groups(lines: Sequence[str], section: MilestoneSection) -> Iterator[_G
     A heading is read as the statement it is, from its line on through every
     line a soft break carries it onto (`PL-R417`): a label wrapped before its
     count was read as a heading stating none, and the entries under it went to
-    the group above.
+    the group above. And only a statement opens one, as `statement_lines`
+    reads it, so an emphasis run a soft break carries onto a line's start is
+    its paragraph's own text rather than a heading (`PL-VQBY`).
     """
     end = _subsection_end(lines, section.gate_line)
     text = "\n".join(lines)
     starts = list(itertools.accumulate((len(line) + 1 for line in lines), initial=0))
     headings: list[tuple[int, str, int, int | None]] = []
-    for index in range(section.gate_line, end):
-        if not lines[index].startswith("*"):
+    for index, _ in statement_lines(lines):
+        if not section.gate_line <= index < end or not lines[index].startswith("*"):
             continue  # what `GATE_GROUP_RE` opens with, so no other line is one
         statement = STATEMENT_RE.match(text, starts[index])
         heading = _normalized(statement.group(0)) if statement is not None else ""
@@ -2924,10 +2983,14 @@ def _tags_region(text: str) -> tuple[int, str] | None:
 
     The exception sentence has historically sat in a paragraph below the claim
     rather than inside it, so the region runs to the heading rather than to the
-    blank line.
+    blank line. The mark opens a statement, as `statement_lines` reads one: a
+    `**Tags.**` a soft break carries onto a line's start is its paragraph's own
+    text (`PL-VQBY`).
     """
     lines = text.splitlines()
-    start = next((index for index, line in enumerate(lines) if TAGS_MARK_RE.match(line)), None)
+    start = next(
+        (first for first, _ in statement_lines(lines) if TAGS_MARK_RE.match(lines[first])), None
+    )
     if start is None:
         return None
     end = next(
@@ -3939,8 +4002,13 @@ def _headings(text: str) -> list[str]:
     in one direction only - `docs/MODEL.md` cites its own `**The chart's
     vertical range is denominated in MAC, and fixed.**` marker, and that
     citation is correct.
+
+    A marker opens a statement, as `statement_lines` reads one. A bold run a
+    soft break carries onto a line's start is its paragraph's own text, and was
+    read as a title of its own (`PL-VQBY`).
     """
-    return _hash_headings(text) + [_normalized(title) for title in MARKER_RE.findall(text)]
+    markers = (MARKER_RE.match(text, start, end) for start, end in _statement_offsets(text))
+    return _hash_headings(text) + [_normalized(match["title"]) for match in markers if match]
 
 
 def _hash_headings(text: str) -> list[str]:
@@ -4011,11 +4079,17 @@ def _statement_spans(text: str) -> Iterator[re.Match[str]]:
     across them, a stray backtick paired with the next statement's first span
     and blanked the prose between them (`PL-FP7J`). Offsets are the document's.
     """
+    for start, end in _statement_offsets(text):
+        yield from CODE_SPAN_RE.finditer(text, start, end)
+
+
+def _statement_offsets(text: str) -> Iterator[tuple[int, int]]:
+    """Each statement `markdown.statement_lines` cuts `text` into, as offsets into it."""
     starts = [0]
     for line in text.splitlines(keepends=True):
         starts.append(starts[-1] + len(line))
     for first, end in statement_lines(text.splitlines()):
-        yield from CODE_SPAN_RE.finditer(text, starts[first], starts[end])
+        yield starts[first], starts[end]
 
 
 def _unresolved(token: str) -> str:
@@ -4065,7 +4139,7 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
             report.errors.append(f"{path}:{line}: cites `{token}`, {_unresolved(token)}")
 
         for match in LINK_RE.finditer(text):
-            target = match.group("target")
+            target = match["target"] if match["target"] is not None else match["bracketed"]
             if target.startswith(("http://", "https://", "mailto:", "#")):
                 continue
             relative, _, anchor = target.partition("#")
@@ -4267,10 +4341,10 @@ def _absent_paths(
     is the format being shown, and is not read.
     """
     lines = without_fences(text).splitlines()
+    split = _split_markers(lines)
     declared: dict[int, set[str]] = {}
     for index, line in enumerate(lines):
-        split = SPLIT_MARKER_RE.match(line.strip())
-        if split is not None and split.group("kind") == "absent":
+        if split.get(index) == "absent":
             report.errors.append(_split_marker(path, index + 1, "absent"))
         marker = ABSENT_MARKER_RE.match(line.strip())
         if marker is None:
@@ -4688,15 +4762,17 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
 def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
     """Every `make <target>` written as code, with the line it sits on.
 
-    Anywhere in a code span; in a fence, only as a command's first word, the
-    fence read as bash reads its lines, through docket's `shell.script_lines`
-    (`PL-R417`): `make \\` over `check` is `make check`, which a line at a time
-    read as nothing. A fence bash cannot read - prose, output, another language
-    - is read a line at a time from the line where it stops being readable, as
-    every fence was before.
+    Anywhere in a code span, a line ending in it read as the space it renders
+    as and a block quote's markers taken out, as `_named_tests` takes them
+    (`PL-4ZDZ`); in a fence, only as a command's first word, the fence read as
+    bash reads its lines, through docket's `shell.script_lines` (`PL-R417`):
+    `make \\` over `check` is `make check`, which a line at a time read as
+    nothing. A fence bash cannot read - prose, output, another language - is
+    read a line at a time from the line where it stops being readable, as every
+    fence was before.
     """
     for match in _code_spans(text):
-        for mention in MAKE_MENTION_RE.finditer(match["content"]):
+        for mention in MAKE_MENTION_RE.finditer(SPAN_BREAK_RE.sub(" ", match["content"])):
             yield mention.group("name"), _line_of(text, match.start())
     for start, body in _fenced_blocks(text):
         script = "".join(f"{line}\n" for line in body)

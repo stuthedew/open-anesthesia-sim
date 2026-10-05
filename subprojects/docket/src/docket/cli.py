@@ -4438,6 +4438,9 @@ def cmd_picks(args: argparse.Namespace) -> int:
     Exits non-zero where there is no list to give, as `wave` does: no
     roadmap, a plan that cannot be read, no recorded gate, or a gate naming an
     id the store does not hold, whose state is then unknown rather than open.
+    And where the list is given but a roadmap list entry was not read whole,
+    which it names as `wave` does, since a count it printed may be short
+    (`PL-GMR6`).
     """
     _, items, config = _load(args)
     root = _invocation(args).root
@@ -4475,7 +4478,7 @@ def cmd_picks(args: argparse.Namespace) -> int:
     )
     _say_read_from_base(args, replaced)
     _say_unread(args, flight)
-    return 0
+    return 1 if plan.unread else 0
 
 
 def cmd_trend(args: argparse.Namespace) -> int:

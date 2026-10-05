@@ -3,12 +3,14 @@ id: PL-GMR6
 title: docket picks drops the plan walker's unread entries, so a gate entry the walker declines by name is left out of the pick list at exit 0, where docket wave names it and exits 1; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/picks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests
+touches: subprojects/docket/src/docket/picks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1358
 payoff: the pick list says when a gate entry went unread, so it is never taken for the whole of what is left
 verify: grep -q 'def test_picks_names_a_gate_entry_the_plan_walker_declines' subprojects/docket/tests/test_picks.py
 ---

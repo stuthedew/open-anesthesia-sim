@@ -3,12 +3,14 @@ id: PL-GT0J
 title: doc_check reads a provenance or absent-path marker as nothing when its <!-- stands alone on the line before, so a prose value that disagrees with its data file and a path marked absent that exists both pass; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1358
 payoff: a provenance or absent marker written across lines is refused by name, so no restated value or denied path goes unchecked for its layout
 verify: grep -qF '"markers, a marker whose comment opens on the line above' tests/unit/test_doc_check.py
 ---

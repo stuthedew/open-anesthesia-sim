@@ -314,11 +314,31 @@ def notes_by_version(root: Path, notes_dir: str = NOTES_DIR) -> dict[str, frozen
     and comes back empty rather than raising.
     """
     return {
-        path.stem: frozenset(
-            NOTES_ENTRY_RE.findall(notes_claims(path.read_text(encoding="utf-8"))[0])
-        )
+        path.stem: notes_ids(notes_claims(path.read_text(encoding="utf-8"))[0])
         for path in notes_files(root, notes_dir)
     }
+
+
+def notes_ids(text: str) -> frozenset[str]:
+    """The items one notes file's text claims: the id leading each top-level bullet.
+
+    Read through the walker `notes_bullets` reads (`PL-BLKJ`), so the two agree
+    on which bullets a file holds: none inside a comment or a fence, and one
+    opening on a marker line of its own. Read a line at a time, a commented-out
+    or fenced bullet was claimed as released and the bare marker's was not. A
+    bullet `notes_bullets` declines, for a line carrying it on from the margin,
+    still claims the id leading it, since where it ends is what went unread.
+    """
+    # A runtime import, since `roadmap` imports this module.
+    from .roadmap import document_entry_lines
+
+    lines = text.split("\n")
+    claimed: set[str] = set()
+    for first, end in document_entry_lines(lines, []):
+        bullet = " ".join(line.strip() for line in lines[first:end])
+        if (leader := NOTES_ENTRY_RE.match(bullet)) is not None:
+            claimed.add(leader.group(1))
+    return frozenset(claimed)
 
 
 def unrecorded_milestones(
@@ -670,7 +690,8 @@ def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, 
     a second. A list nested under the bullet is the bullet's but not its text,
     which the reference ends - `PL-QYBW`'s in v0.5.9's notes carries one. A
     bullet carried on from the margin is declined onto `unread` and left out,
-    since neither where it ends nor what it ends with can be read.
+    since neither where it ends nor what it ends with can be read, and an empty
+    one - a marker with nothing after it - holds no text and is passed over.
     """
     # A runtime import, since `roadmap` imports this module.
     from .markdown import statement_lines
@@ -683,9 +704,10 @@ def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, 
     ended = {entry.line - 1 for entry in declined}
     bullets: list[tuple[int, int, str]] = []
     for first, end in spans:
-        if end in ended:
-            continue
-        end = first + next(statement_lines(lines[first:end]))[1]
+        statement = next(statement_lines(lines[first:end]), None)
+        if end in ended or statement is None:
+            continue  # declined, or a marker with nothing after it, which holds no text
+        end = first + statement[1]
         bullets.append(
             (
                 first,

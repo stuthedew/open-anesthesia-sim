@@ -18,6 +18,7 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+import core_vocabulary_check
 import dead_ends
 import doc_check
 import possessive_section_check
@@ -29,7 +30,7 @@ from docket.fences import blocks as fence_blocks
 from docket.instructions import parse as dated_assertions
 from docket.model import with_front_matter_field
 from docket.notes import read as read_threads
-from docket.release import prepare_bump, unreferenced, version_in
+from docket.release import notes_by_version, prepare_bump, unreferenced, version_in
 from docket.roadmap import (
     LAZY_ENTRY,
     UnreadEntry,
@@ -6552,6 +6553,41 @@ def _bump_refusal(tmp_path: Path) -> str:
     return ""
 
 
+def _link_errors(tmp_path: Path, readme: str) -> list[str]:
+    """What the link check says of `readme`'s links."""
+    report = doc_check.analyze(_repo(tmp_path, readme=readme))
+    return [error for error in report.errors if "links to" in error]
+
+
+def _marker_opened_above(tmp_path: Path, kind: str) -> list[str]:
+    """A marker whose `<!--` stands alone on the line above its kind."""
+    if kind == "absent":
+        readme = README + "\nA `tools/planned.py` will do it.\n<!--\nabsent: tools/planned.py -->\n"
+        return _split_marker_errors(_repo(tmp_path, readme=readme))
+    model = MODEL + (
+        "\nThe fraction is 0.5.\n<!--\n"
+        "provenance: data/agents/demo.json blood_gas_partition_coefficient = 0.5 -->\n"
+    )
+    return _split_marker_errors(_repo(tmp_path, model=model))
+
+
+def _notes_claimed(tmp_path: Path, notes: str) -> dict[str, frozenset[str]]:
+    """The ids `notes_by_version` reads from one release's notes, written as `notes`."""
+    directory = tmp_path / "docs" / "releases"
+    directory.mkdir(parents=True)
+    (directory / "v0.2.6.md").write_text(notes, encoding="utf-8")
+    return notes_by_version(tmp_path)
+
+
+def _symbol_rows(text: str) -> list[tuple[int, str]]:
+    """The Symbols table's rows `core_vocabulary_check` reads, as each one's line and symbol."""
+    return [(cell.line, cell.symbol) for cell in core_vocabulary_check.symbol_cells(text)]
+
+
+#: The Symbols table's header and delimiter rows, and one row under them.
+SYMBOLS = "| Symbol | Meaning | Unit | Code |\n| --- | --- | --- | --- |\n| a | A | - | `X.a` |\n"
+
+
 #: Each reader, a statement its format carries across a line break,
 #: and what the reader must make of it: the statement read whole, or refused by
 #: name. Keyed by reader, so a failure names the one that read a fragment.
@@ -6633,9 +6669,46 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: "A title that wraps" in doc_check._headings("**A title that\nwraps.** Body.\n"),
         True,
     ),
+    "section titles, a bold run opening a continuation line is its paragraph's text": (
+        lambda _: doc_check._headings("A paragraph that wraps\n**Not a title.** It goes on.\n"),
+        [],
+    ),
+    "section titles, a bold run opening a list item": (
+        lambda _: doc_check._headings("Prose.\n\n- **An entry title.** Its body.\n"),
+        ["An entry title"],
+    ),
     "links, wrapped link text": (
         lambda _: [link["target"] for link in doc_check.LINK_RE.finditer("[the\nnotes](x.md)")],
         ["x.md"],
+    ),
+    # A destination as CommonMark 0.31.2 § 6.3 reads one (`PL-KT0H`).
+    "links, a destination with a title": (
+        lambda _: [link["target"] for link in doc_check.LINK_RE.finditer('[a](x.md "T")')],
+        ["x.md"],
+    ),
+    "links, a destination whose ) or title follows on the next line": (
+        lambda _: [
+            link["target"] for link in doc_check.LINK_RE.finditer('[a](x.md\n)\n[b](y.md\n"T")')
+        ],
+        ["x.md", "y.md"],
+    ),
+    "links, a destination two line endings from its ) is no link": (
+        lambda _: [link["target"] for link in doc_check.LINK_RE.finditer("[a](x.md\n\n)")],
+        [],
+    ),
+    "links, a destination holding a pair of parentheses": (
+        lambda _: [link["target"] for link in doc_check.LINK_RE.finditer("[a](x(1).md)")],
+        ["x(1).md"],
+    ),
+    "links, an angle-bracket destination": (
+        lambda _: [link["bracketed"] for link in doc_check.LINK_RE.finditer("[a](<my x.md>)")],
+        ["my x.md"],
+    ),
+    "links, an angle-bracket destination that is missing is reported": (
+        lambda tmp_path: _link_errors(
+            tmp_path, README + '\nSee [the notes](<missing notes.md>\n"The notes").\n'
+        ),
+        ["README.md:6: links to missing notes.md, which does not exist"],
     ),
     # The counts a frozen list states about itself.
     "gate counts, a wrapped group heading": (
@@ -6654,6 +6727,53 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             "`not-delegable`, but 2 of them hold an item carrying that field"
         ],
     ),
+    # A statement opens a group heading or the Tags region, never a line a
+    # soft break carries one onto (`PL-VQBY`).
+    "gate groups, an emphasis run a soft break carries onto a line heads no group": (
+        lambda tmp_path: _gate_errors(
+            tmp_path,
+            GATE_ROADMAP.replace(
+                "Two entries were added later, per the note beneath this list.",
+                "Two entries were added later, per the note\n*beneath this list - two entries:*.",
+            ),
+        ),
+        [],
+    ),
+    "tags region, a mark a soft break carries onto a line opens none": (
+        lambda _: doc_check._tags_region(
+            "A line that wraps\n**Tags.** in passing.\n\n**Tags.** Each is tagged.\n\n## Next\n"
+        ),
+        (4, "**Tags.** Each is tagged.\n"),
+    ),
+    # The tag claims cross a block quote's soft break, and a list ends with its
+    # statement (`PL-4ZDZ`).
+    "untagged claims, a claim wrapped inside a block quote": (
+        lambda _: doc_check._version_claim(
+            doc_check.UNTAGGED_CLAIM_RE,
+            "untagged",
+            "> **Two versions\n> are untagged**: v0.1.0\n> and v0.2.0.\n",
+            1,
+        ),
+        (frozenset({"0.1.0", "0.2.0"}), [], 1),
+    ),
+    "untagged claims, a version list ends with its statement": (
+        lambda _: doc_check._version_claim(
+            doc_check.UNTAGGED_CLAIM_RE,
+            "untagged",
+            "**One version is untagged**: v0.1.0\n\nv0.2.0 went out tagged.\n",
+            1,
+        ),
+        (frozenset({"0.1.0"}), [], 1),
+    ),
+    "stale-version claims, a claim wrapped inside a block quote": (
+        lambda _: doc_check._version_claim(
+            doc_check.STALE_VERSION_CLAIM_RE,
+            "with a stale version file",
+            "> **One version shipped with a stale\n> version file**: v0.1.0.\n",
+            1,
+        ),
+        (frozenset({"0.1.0"}), [], 1),
+    ),
     # Markers are syntax, read a line at a time, so a split one is refused.
     "markers, a provenance marker split across lines": (
         _provenance_marker_split,
@@ -6661,6 +6781,15 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     ),
     "markers, an absent marker split across lines": (
         _absent_marker_split,
+        [SPLIT_MARKER_ERROR.format("README.md:7", "absent")],
+    ),
+    # A comment read as the HTML block it is (`PL-GT0J`).
+    "markers, a marker whose comment opens on the line above: provenance": (
+        lambda tmp_path: _marker_opened_above(tmp_path, "provenance"),
+        [SPLIT_MARKER_ERROR.format("docs/MODEL.md:32", "provenance")],
+    ),
+    "markers, a marker whose comment opens on the line above: absent": (
+        lambda tmp_path: _marker_opened_above(tmp_path, "absent"),
         [SPLIT_MARKER_ERROR.format("README.md:7", "absent")],
     ),
     # The Makefile (`PL-G2FY`), read through `_make_lines`: a recipe line keeps
@@ -6717,6 +6846,10 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "make mentions, `make` continued in a shell fence": (
         lambda _: list(doc_check._make_mentions("```bash\nmake \\\n  lint\n```\n")),
         [("lint", 2)],
+    ),
+    "make mentions, a code span wrapped inside a block quote": (
+        lambda _: list(doc_check._make_mentions("> Run `make\n> check` first.\n")),
+        [("check", 1)],
     ),
     # YAML (`PL-6P6H`), read through `_run_script`: a literal block is read with
     # its header and ends where its content does; every form YAML folds or
@@ -7012,6 +7145,24 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: list(table_rows("## T\n\n| a |\n| - |\n| x |\n> quoted |\n", "T")),
         [(5, ["x"])],
     ),
+    # The Symbols table `core_vocabulary_check` resolves, read by the same
+    # table reader (`PL-FBWD`).
+    "vocabulary symbols, a row inside a comment is none": (
+        lambda _: _symbol_rows(f"## Symbols\n\n{SYMBOLS}<!--\n| b | B | - | `X.b` |\n-->\n"),
+        [(5, "a")],
+    ),
+    "vocabulary symbols, a second table after a blank line is not this one": (
+        lambda _: _symbol_rows(f"## Symbols\n\n{SYMBOLS}\n{SYMBOLS}"),
+        [(5, "a")],
+    ),
+    "vocabulary symbols, a row without its leading pipe": (
+        lambda _: _symbol_rows(f"## Symbols\n\n{SYMBOLS}b | B | - | `X.b`\n"),
+        [(5, "a"), (6, "b")],
+    ),
+    "vocabulary symbols, the table under a setext heading": (
+        lambda _: _symbol_rows(f"Symbols\n-------\n\n{SYMBOLS}"),
+        [(6, "a")],
+    ),
     # `docs/dead-ends.md`, an entry at a time through docket's list walker (`PL-F5B9`).
     "dead ends, a title wrapped onto an indented line": (
         lambda _: dead_ends.entries("- **One shared\n  queue document** — rejected.\n"),
@@ -7032,6 +7183,33 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "release notes, a list nested under a bullet is not its text": (
         lambda _: unreferenced("- PL-2222 A title — #48\n  - A note on it.\n"),
         (),
+    ),
+    "release notes, an empty bullet holds no text": (
+        lambda _: unreferenced("- PL-2222 A title\n-\n"),
+        ("PL-2222",),
+    ),
+    # Which items a release claims, read through the same walker (`PL-BLKJ`).
+    "notes by version, a bullet inside a comment claims nothing": (
+        lambda tmp_path: _notes_claimed(
+            tmp_path, "## v0.2.6\n\n<!--\n- PL-CCCC Withdrawn\n\n-->\n- PL-BBBB Kept\n"
+        ),
+        {"v0.2.6": frozenset({"PL-BBBB"})},
+    ),
+    "notes by version, a bullet inside a fence claims nothing": (
+        lambda tmp_path: _notes_claimed(
+            tmp_path, "## v0.2.6\n\n```\n- PL-CCCC Shown\n```\n\n- PL-BBBB Kept\n"
+        ),
+        {"v0.2.6": frozenset({"PL-BBBB"})},
+    ),
+    "notes by version, a bullet opening on its own marker line": (
+        lambda tmp_path: _notes_claimed(tmp_path, "## v0.2.6\n\n-\n  PL-CCCC A title — #5\n"),
+        {"v0.2.6": frozenset({"PL-CCCC"})},
+    ),
+    "notes by version, a bullet carried on from the margin keeps its leader": (
+        lambda tmp_path: _notes_claimed(
+            tmp_path, "## v0.2.6\n\n- PL-BBBB One\n- PL-CCCC Two that\nwraps.\n"
+        ),
+        {"v0.2.6": frozenset({"PL-BBBB", "PL-CCCC"})},
     ),
     "tag span, a pull request named after a wrapped title": (
         lambda tmp_path: _notes_span_report(tmp_path, WRAPPED_CLAIM).errors,

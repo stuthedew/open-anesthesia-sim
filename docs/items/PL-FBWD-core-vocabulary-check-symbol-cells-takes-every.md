@@ -3,12 +3,14 @@ id: PL-FBWD
 title: core_vocabulary_check.symbol_cells takes every line opening with | under its heading for a Symbols row, so a row inside an HTML comment or a fence, the table under a setext heading, or a second table after a blank line is read into the vocabulary, and a row without its leading pipe is skipped; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/core_vocabulary_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1358
 payoff: the Symbols table is read as GitHub renders it, so no commented, fenced or second-table row reaches the vocabulary check and no row without its leading pipe escapes it
 verify: grep -qF '"vocabulary symbols, ' tests/unit/test_doc_check.py
 ---

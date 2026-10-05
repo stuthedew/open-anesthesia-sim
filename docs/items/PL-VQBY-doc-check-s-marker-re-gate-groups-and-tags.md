@@ -3,12 +3,14 @@ id: PL-VQBY
 title: doc_check's MARKER_RE, _gate_groups and _tags_region take a bold or emphasis run at the start of a physical line for the start of a statement, so a run opening a soft-break continuation line reads as a section title, a gate group heading or the Tags region; 68 such titles live, no wrong verdict today
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1358
 payoff: a bold run a reflow puts at a line's start is read as the sentence it continues, so no citation, gate count or tags claim rests on a heading the page does not show
 verify: grep -qF '"gate groups, ' tests/unit/test_doc_check.py && grep -qF '"tags region, ' tests/unit/test_doc_check.py && grep -qF '"section titles, a bold run opening a continuation line' tests/unit/test_doc_check.py
 ---

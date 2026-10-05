@@ -1394,8 +1394,11 @@ entries of the gate's milestone that hold an item that can start now.
 It reads as `next` does - one fetch, the default branch's copy of an item moved
 since the fork, the claims in flight - and exits non-zero, as `wave` does,
 where there is no list: no roadmap, a plan it cannot read, no recorded gate, or
-a gate naming an id the store does not hold. What a line buys in a sentence,
-and which line to recommend, are judgment, and stay the reply's.
+a gate naming an id the store does not hold. It exits non-zero as well where
+it gives the list but a roadmap list entry the plan is read from was not read
+whole, and names that entry as `wave` does, since a count above it may be short
+(`PL-GMR6`). What a line buys in a sentence, and which line to recommend, are
+judgment, and stay the reply's.
 
 ### What newer work keeps outranking: `docket next --oldest`
 
@@ -1692,10 +1695,10 @@ answer below is:
   frozen-list pair or a scope declaration wrapped that way would lose its
   second half with nothing saying so. The walker records the line on
   `MilestoneSection.unread` instead. `tools/doc_check.py` fails it, `wave`
-  prints it and exits non-zero, and the digest's plan line says the plan was
-  not read whole. A release cut does not refuse on it, as it does on a
-  timeline that does not parse, because a list entry holds no version
-  (`PL-MFVV`).
+  and `picks` print it and exit non-zero (`PL-GMR6`), and the digest's plan
+  line says the plan was not read whole. A release cut does not refuse on it,
+  as it does on a timeline that does not parse, because a list entry holds no
+  version (`PL-MFVV`).
 
 ### Concurrency is computed, and honestly qualified
 
