@@ -15,7 +15,8 @@ the compartment's field itself since `PL-LBQY`, whoever makes it - and, since
 `PL-LLMN`, that it is built from a number and nothing else, and holds minus
 zero as zero. Since `PL-CN5S` the case instant and the step count are types
 too, `CaseInstant` and `StepCount`, and the tests under "The case instant and
-the step count are types" hold them to the same.
+the step count are types" hold them to the same, the instant's number check
+and its zero since `PL-7N8P`.
 
 The endpoints are tested as carefully as the rejections. Every range is
 closed, and both ends are load-bearing: one reference gate trajectory holds
@@ -915,6 +916,60 @@ def test_a_case_instant_refuses_what_its_guard_refuses_in_the_guards_words() -> 
         assert str(by_the_type.value) == str(by_the_guard.value)
 
 
+def test_a_case_instant_refuses_a_bool_a_decimal_and_an_overflowing_int_in_its_own_words() -> None:
+    """An instant is built from an int or a float and nothing else, and has no sign at zero.
+
+    Each of `NOT_A_NUMBER` is refused by the guard and the type alike, before
+    any comparison reads it, with a `TypeError` in the simulator's words
+    naming the value and its type, as each flow refuses it (`PL-LLMN`). Until
+    `PL-7N8P` `True` and `numpy.True_` were each an instant of 1 s on the
+    case's axis, `Decimal('2.5')` one of 2.5 s, and the string and the
+    signalling NaN escaped in `math.isfinite`'s words. An `int` past the
+    float range is compared exactly and refused against the run length, in
+    the words any instant outside it is, where `isfinite` raised
+    `OverflowError`; one too long to print is named by how long it is, as a
+    refused count is (`PL-5F76`). Minus zero is held as zero, and an `int` is
+    admitted as a `float` is.
+    """
+
+    for value in NOT_A_NUMBER:
+        for build in (require_supported_case_instant, CaseInstant):
+            with pytest.raises(TypeError) as raised:
+                build(value)  # type: ignore[arg-type]
+
+            message = str(raised.value)
+
+            assert message.startswith(f"instant_s of {value!r} has type {type(value).__name__}")
+            assert "not int or float" in message
+
+    with pytest.raises(SimulationConfigurationError, match="supported run length") as by_the_type:
+        CaseInstant(10**400)
+
+    with pytest.raises(SimulationConfigurationError) as by_the_guard:
+        require_supported_case_instant(10**400)
+
+    assert str(by_the_type.value) == str(by_the_guard.value)
+    assert f"a case instant of {10**400} s is outside the supported run length" in str(
+        by_the_guard.value
+    )
+
+    with pytest.raises(SimulationConfigurationError) as too_long:
+        require_supported_case_instant(10**5000)
+
+    assert (
+        f"a case instant of <more than {sys.get_int_max_str_digits():,} digits> s is outside"
+        in str(too_long.value)
+    )
+
+    assert CaseInstant(-0.0).hex() == (0.0).hex()
+
+    for number in (1, 1.0, numpy.float64(1.0)):
+        built = CaseInstant(number)
+
+        assert type(built) is CaseInstant
+        assert built.hex() == (1.0).hex()
+
+
 def _id(value: object) -> str:
     """A parameter's test id, naming a count too long to print by how long it is."""
 
@@ -1006,8 +1061,8 @@ def test_a_value_not_built_as_the_type_is_refused_whatever_it_holds() -> None:
 
     An equal plain number, a `bool` and `None` are each refused by name, and
     the refusal says what to build without repeating the value as the thing
-    to build it from: `CaseInstant(True)` would be built, as 1 s, and
-    `StepCount(None)` would not.
+    to build it from: `CaseInstant(True)` was built, as 1 s, until `PL-7N8P`,
+    and `StepCount(None)` never was.
     """
 
     for unbuilt in (600.0, 600, True, None):

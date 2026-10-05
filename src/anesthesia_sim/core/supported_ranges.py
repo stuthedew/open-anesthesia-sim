@@ -79,7 +79,9 @@ type and check nothing.
 
 **The case instant and the step count are types too** (`PL-CN5S`, slice 2 of
 `PL-51B7`). `CaseInstant` is a `float` subclass built only through
-`require_supported_case_instant`, for the reasons the flows are. What opens,
+`require_supported_case_instant`, for the reasons the flows are, and from
+what they are built from - an `int` or a `float` and nothing else, with minus
+zero held as zero (`core/checked_number.py`, `PL-7N8P`). What opens,
 moves, keyframes, marks or branches a run takes it - `RunDefinition`'s
 opening, reach and keyframes, the marks in `app/bookmarks.py`, and the instant
 a branch is taken at - and `SimulationState.elapsed_s` returns one. The
@@ -149,7 +151,7 @@ chain is cut: neither is derived from anything measured over this envelope.
 
 from __future__ import annotations
 
-from math import floor, isfinite
+from math import floor
 
 from anesthesia_sim.core.checked_number import negative_zero_as_zero, require_a_number, shown
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
@@ -269,7 +271,7 @@ def _require_supported(name: str, value: float, minimum: float, maximum: float) 
     caller has to return to. The closed interval refuses NaN on its own, since
     a NaN compares false against either bound, and it compares an `int` past
     the float range exactly, where `math.isfinite` would raise `OverflowError`
-    converting it; the message prints such an `int` through `_shown`, as a
+    converting it; the message prints such an `int` through `shown`, as a
     refusal of a count does.
 
     Raises:
@@ -775,15 +777,31 @@ def require_supported_case_instant(instant_s: float) -> None:
     It raises `SimulationConfigurationError` for the reason
     `require_supported_step_count` gives (`PL-73ZN`).
 
+    The instant is required to be a number first, by `require_a_number`
+    (`core/checked_number.py`), as `_require_supported` requires of a flow:
+    until `PL-7N8P` a `bool` was an instant of 1 s on the case's axis, a
+    `Decimal` was converted and held, and a string or a signalling NaN was
+    refused in `math.isfinite`'s words. Then the one closed-interval
+    comparison, with no finiteness guard before it, so that a NaN, an
+    infinity and an `int` past the float range - which `math.isfinite`
+    raised `OverflowError` converting - are each refused against the run
+    length in these words, an `int` too long to print named by how long it
+    is through `shown`.
+
     Raises:
+        TypeError: `instant_s` is not an `int` or a `float`, or is a `bool`.
+            A programming error in the caller rather than a refused instant,
+            as `require_a_number` says.
         SimulationConfigurationError: `instant_s` is not finite, or is
             outside 0 to `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
     """
 
-    if not isfinite(instant_s) or not 0.0 <= instant_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S:
+    require_a_number("instant_s", instant_s)
+
+    if not 0.0 <= instant_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S:
         raise SimulationConfigurationError(
-            f"a case instant of {instant_s} s is outside the supported run length of 0 to "
-            f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
+            f"a case instant of {shown(instant_s)} s is outside the supported run length of "
+            f"0 to {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), the span this "
             f'model is claimed to represent a patient over (docs/MODEL.md, "Supported run '
             f'length")'
@@ -801,7 +819,12 @@ class CaseInstant(float):
     `CaseInstant` where something holds it as an instant
     (`SimulationState.elapsed_s`).
 
+    Built from an `int` or a `float` and nothing else, and holding minus zero
+    as zero, as each flow is (`core/checked_number.py`, `PL-7N8P`).
+
     Raises:
+        TypeError: the instant is not an `int` or a `float`, or is a `bool`,
+            as `require_supported_case_instant` states.
         SimulationConfigurationError: the instant is not finite, or is
             outside 0 to `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, as
             `require_supported_case_instant` states.
@@ -812,7 +835,7 @@ class CaseInstant(float):
     def __new__(cls, instant_s: float) -> CaseInstant:
         require_supported_case_instant(instant_s)
 
-        return super().__new__(cls, instant_s)
+        return super().__new__(cls, negative_zero_as_zero(instant_s))
 
 
 # Every quantity built only through its own check. One handed in where another
