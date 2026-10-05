@@ -553,7 +553,7 @@ deviating from a described deliverable, not acting without one.
   is open.** `arm`: mark it ready and arm it, and name in the report the paths
   outside the store it armed, unless the change raises a question for the
   owner, which is your call and holds it. `hold`, for a claim or a path on the
-  owner's read list - `src/`, `tests/`, `docs/MODEL.md`,
+  owner's read list - `src/`, `tests/` but a test of the tooling, `docs/MODEL.md`,
   `src/anesthesia_sim/data/`, `README.md`, `.github/workflows/`,
   `.claude/hooks/` and `arming.py` - leave it unarmed, disarming it before the
   push that brings the hold or green CI merges half the work, a draft while

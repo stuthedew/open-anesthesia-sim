@@ -36,6 +36,7 @@ ALLOWED_IMPORTS = {
     "concurrent",
     "dataclasses",
     "datetime",
+    "fnmatch",
     "functools",
     "io",
     "locale",

@@ -235,8 +235,9 @@ set it when the session opens rather than toggling it.
 ## Read a simulator change before you arm it
 
 `bin/docket arm` holds a pull request for your read where it changes `src/`,
-`tests/` outside `subprojects/`, `docs/MODEL.md`, `src/anesthesia_sim/data/`
-or `README.md` - the paths where a wrong clinical value could reach the screen
+`tests/` outside `subprojects/` but for a test of the tooling (below),
+`docs/MODEL.md`, `src/anesthesia_sim/data/` or `README.md` - the paths where a
+wrong clinical value could reach the screen
 - or `.github/workflows/`, `.claude/hooks/` and
 `subprojects/docket/src/docket/arming.py`, which decide what merges and what
 is tagged and could loosen the rule (the Projects trial's instructions,
@@ -268,6 +269,20 @@ so (project owner, 2026-10-03, ratified, over holding them as before,
 `update-armed.yml`, `tag-release.yml` and `direct-merge-guard.sh` decide
 merges and tags as `arming.py` does, at about one read a day lately (project
 owner, 2026-10-03, ratified, over leaving them armed on green, `PL-KKHD`).
+
+One answer of 2026-10-05. A test of the tooling under `tests/` - a file pytest
+collects that imports no `anesthesia_sim` - arms on green, as
+`subprojects/docket/tests/` does: 16 of the 51 merges held for a read since
+2026-10-03 had been held by such tests alone, with nothing in them for you to
+judge (project owner, 2026-10-05, ratified, over keeping every change under
+`tests/` on the read list, `PL-552M`). A test of the simulator still waits, and
+so does a branch that drops a test's simulator import or deletes a simulator
+test, because `arm` reads the file before and after the change. So do
+`tests/conftest.py` and every other file pytest does not collect, which serve
+the simulator's tests whatever they import, and any test `arm` could not read,
+with the reason beside the hold. The rule is the one
+`tools/workflow_paths_check.py` sorts the lanes by, spelt once in `arming.py`,
+so changing it still waits on your read.
 
 ## Merge on the Mac or by auto-merge, never in the GitHub app
 
