@@ -3,12 +3,14 @@ id: PL-BYJ5
 title: possessive_section_check's POSSESSIVE_RE quotes across a blank line, so a possessive naming a file followed by a quotation a paragraph break separates is read as one quotation equal to a heading, a false names-a-section report; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/possessive_section_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1371
 payoff: make check stops refusing a correct sentence quotation that merely wraps across a paragraph break
 verify: grep -q 'def test_a_quotation_split_by_a_paragraph_break_is_not_reported' tests/unit/test_possessive_section_check.py
 recurrences: 2026-10-05 PL-T73L withdrawn 2026-10-05 PL-T73L

@@ -7484,6 +7484,48 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             '`docs/MODEL.md` § "Known limitations"'
         ],
     ),
+    # A quotation's own wraps (`PL-BYJ5`): a soft break carries it on, in a
+    # blockquote or a list item as at the margin, and a blank line ends it with
+    # its paragraph, in a blockquote or out of one.
+    "possessive citations, a quotation a soft break wraps": (
+        lambda tmp_path: _possessive_sites(
+            tmp_path, '# Demo\n\nAs `docs/MODEL.md`\'s "Known\nlimitations" says.\n'
+        ),
+        [
+            'README.md:3: `docs/MODEL.md`\'s "Known limitations" names a section; write it as '
+            '`docs/MODEL.md` § "Known limitations"'
+        ],
+    ),
+    "possessive citations, a quotation wrapped inside a blockquote": (
+        lambda tmp_path: _possessive_sites(
+            tmp_path, '# Demo\n\n> As `docs/MODEL.md`\'s "Known\n> limitations" says.\n'
+        ),
+        [
+            'README.md:3: `docs/MODEL.md`\'s "Known limitations" names a section; write it as '
+            '`docs/MODEL.md` § "Known limitations"'
+        ],
+    ),
+    "possessive citations, a quotation wrapped inside a list item": (
+        lambda tmp_path: _possessive_sites(
+            tmp_path, '# Demo\n\n- As `docs/MODEL.md`\'s "Known\n  limitations" says.\n'
+        ),
+        [
+            'README.md:3: `docs/MODEL.md`\'s "Known limitations" names a section; write it as '
+            '`docs/MODEL.md` § "Known limitations"'
+        ],
+    ),
+    "possessive citations, a blank line ends the quotation": (
+        lambda tmp_path: _possessive_sites(
+            tmp_path, '# Demo\n\nAs `docs/MODEL.md`\'s "Known\n\nlimitations" says.\n'
+        ),
+        [],
+    ),
+    "possessive citations, a blank line inside a blockquote ends the quotation": (
+        lambda tmp_path: _possessive_sites(
+            tmp_path, '# Demo\n\n> As `docs/MODEL.md`\'s "Known\n>\n> limitations" says.\n'
+        ),
+        [],
+    ),
     # The queue-edit audit (`PL-J503`): `docket new` appends at the end of the
     # last line the reader folds into `recurrences:`, an indented one where the
     # value wraps, and a line carrying no key is no `recurrences:` line.
