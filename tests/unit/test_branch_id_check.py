@@ -41,7 +41,7 @@ from pathlib import Path
 import branch_id_check
 import pytest
 from docket.claims import Holdings
-from docket.vcs import SILENT, answered
+from docket.vcs import SILENT, answered, leading_ids
 
 #: The items the fake store holds, in both copies: every id the tests below
 #: expect to attribute work. `PL-SN2T`'s two reproductions are not among them.
@@ -416,6 +416,24 @@ def record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def _run(monkeypatch: pytest.MonkeyPatch, *argv: str) -> int:
     monkeypatch.setattr("sys.argv", ["branch_id_check.py", "--now", NOW, *argv])
     return branch_id_check.main()
+
+
+def test_a_subject_holding_a_carriage_return_is_read_as_one_subject(record: Path) -> None:
+    """A raw `\\r` in a subject is part of it, not a line end (`PL-0R4M`).
+
+    Git keeps the `\\r` a message was given, and `subprocess.run(text=True)`
+    turned it into `\\n` before `_subjects` split the log, so the subject was
+    cut in two and its second half, `PL-B1C2`'s, read as a line of its own.
+    """
+    _branch(record, "claude/some-session-a1b2c3")
+    _commit(record, "PL-K7QX: one\rPL-B1C2: two", "10:00", files=WORK)
+
+    walked = branch_id_check._subjects("main")
+    assert walked is not None
+    subjects, sound = walked
+    assert subjects == ["PL-K7QX: one\rPL-B1C2: two"]
+    assert sound
+    assert [leading_ids(subject) for subject in subjects] == [("PL-K7QX",)]
 
 
 def test_a_work_branch_holding_no_claim_is_refused(

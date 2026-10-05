@@ -182,14 +182,15 @@ def _git_answering(**refs: dict[str, str]):
     """`subprocess.run` as git answers `_git`: each ref's tree, exit 128 for any other."""
     tree = _tree(**refs)
 
-    def run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+    def run(argv: list[str], **_: object) -> subprocess.CompletedProcess[bytes]:
         args = list(argv[1:])
         if args[0] == "rev-parse":
-            return subprocess.CompletedProcess(argv, 0, "claude/pl-hmzz-slug\n", "")
+            return subprocess.CompletedProcess(argv, 0, b"claude/pl-hmzz-slug\n", b"")
         ref = args[3] if args[0] == "ls-tree" else args[1].partition(":")[0]
         if ref in refs:
-            return subprocess.CompletedProcess(argv, 0, tree(args), "")
-        return subprocess.CompletedProcess(argv, 128, "", f"fatal: Not a valid object name {ref}\n")
+            return subprocess.CompletedProcess(argv, 0, tree(args).encode(), b"")
+        said = f"fatal: Not a valid object name {ref}\n"
+        return subprocess.CompletedProcess(argv, 128, b"", said.encode())
 
     return run
 

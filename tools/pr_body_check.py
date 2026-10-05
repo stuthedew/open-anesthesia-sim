@@ -195,6 +195,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_docket_config  # noqa: E402
+from docket.lines import record_text  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import (  # noqa: E402
     REMOTE,
@@ -260,11 +261,17 @@ TOMBSTONE = (
 
 
 def _git(*args: str) -> str:
-    """Run git in the repository root, returning stdout, or "" on any failure."""
+    """Run git in the repository root, returning stdout, or "" on any failure.
+
+    Decoded as written, so a raw `\\r` in a subject or a body stays in it
+    (`PL-0R4M`).
+    """
     try:
-        return subprocess.run(
-            ["git", *args], capture_output=True, text=True, timeout=TIMEOUT_S, check=True, cwd=ROOT
-        ).stdout
+        return record_text(
+            subprocess.run(
+                ["git", *args], capture_output=True, timeout=TIMEOUT_S, check=True, cwd=ROOT
+            ).stdout
+        )
     except (OSError, subprocess.SubprocessError):
         return ""
 

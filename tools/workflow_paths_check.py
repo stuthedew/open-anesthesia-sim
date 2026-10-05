@@ -312,12 +312,11 @@ def tracked_files(root: Path) -> list[str]:
     """
     if (root / ".git").exists():
         completed = subprocess.run(
-            ["git", "-C", str(root), "ls-files", "-z"],
-            capture_output=True,
-            check=True,
-            encoding="utf-8",
+            ["git", "-C", str(root), "ls-files", "-z"], capture_output=True, check=True
         )
-        return sorted(name for name in completed.stdout.split("\0") if name)
+        # Decoded as written: a `-z` path can hold a raw `\r` (`PL-0R4M`).
+        listed = completed.stdout.decode("utf-8")
+        return sorted(name for name in listed.split("\0") if name)
     found = []
     for path in sorted(root.rglob("*")):
         relative = path.relative_to(root)
