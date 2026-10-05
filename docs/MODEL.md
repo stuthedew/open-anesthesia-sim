@@ -174,7 +174,7 @@ stays a reviewer's question.
 | --- | --- | --- |
 | reading a correct concentration as belonging to a different agent | agent colour is a redundant cue, never the sole identifier: the agent name is always visible - carried by the invariant tier every top-level window shows, subject to the observability limit stated there (§ "Minimum displayed outputs" -> "What this list requires once the layout is the reader's") - and the ISO 5360 colours and their accessible foregrounds are audited as one unit in `src/anesthesia_sim/app/theme.py` by `tools/agent_identity_check.py` | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
 | reading a run halted by a failure as one the user paused | a halt gets its own status words rather than falling back to "Paused", and the two failure modes are distinguished from each other as well | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed` |
-| believing a setting above the vaporizer maximum was simulated | such a setting is **rejected, not clamped**, so no run proceeds on a value the user did not choose; the boundary itself is accepted | `test_rejects_delivered_concentration_above_the_vaporizer_maximum`, `test_explicit_delivered_concentration_above_the_agent_max_is_rejected`, `test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum` |
+| believing a setting above the vaporizer maximum was simulated | such a setting is **rejected, not clamped**, so no run proceeds on a value the user did not choose; the boundary itself is accepted - by the circuit, and by the settings record a run is built from, which carries the maximum beside the dial (`PL-BBMG`) | `test_rejects_delivered_concentration_above_the_vaporizer_maximum`, `test_explicit_delivered_concentration_above_the_agent_max_is_rejected`, `test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum`, `test_rejects_a_dial_above_the_vaporizer_maximum`, `test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum` |
 | reading a displayed value as resolved to its last digit | displayed precision is a recorded choice within a justified band, and the model retains precision the display discards rather than rounding its own state | `test_the_model_keeps_precision_the_display_throws_away`, `test_concentration_decimals_are_a_choice_within_a_recorded_band` |
 | reading a control mark on the timeline as a measurement | the timeline labels its marks "Settings only — not a measurement." | `test_the_interface_says_a_control_mark_is_an_input_not_a_measurement` |
 | reading a modelled compartment value as a measured one | the readout section states beside its values that they are model outputs and not measurements (`INTERPRETATION_DISCLAIMER_TEXT`, `PL-2K1R`), and the chart's hover names every value it reports as modelled (§ "The chart's hover readout: what the tooltip may show") | `test_the_interface_says_the_readouts_are_model_outputs_not_measurements`, `test_the_readouts_say_they_are_model_outputs_beside_the_values`, `test_the_hover_reports_the_drawn_state_through_the_formatters` |
@@ -5057,7 +5057,7 @@ setting outside it is refused rather than simulated:
 | Control | Range | Declared and refused by |
 | --- | --- | --- |
 | Fresh gas flow | 0 to 10 L/min | `FreshGasFlow` in `core/supported_ranges.py`, which every fresh gas flow is built as |
-| Delivered concentration | 0 to the agent's `max_delivered_concentration_percent` | `BreathingCircuit` |
+| Delivered concentration | 0 to the agent's `max_delivered_concentration_percent` | `BreathingCircuit`, and `UptakeEquationSettings`, which carries the maximum beside the dial; both through `require_within_vaporizer_maximum` in `core/validation.py` |
 | Alveolar ventilation | 0 to 12 L/min | `AlveolarVentilation` in `core/supported_ranges.py`, which every alveolar ventilation is built as |
 | Cardiac output | 0 to 10 L/min | `CardiacOutput` in `core/supported_ranges.py`, which every cardiac output is built as |
 
@@ -5115,6 +5115,27 @@ value, and arithmetic on a flow returns a plain `float`, so a derived
 quantity never reads as checked. It is the shape `SimulationStep` gives the
 step, and the first slice of `PL-51B7`, which carries it to the remaining
 checked quantities.
+
+**The dial's bound is enforced in both records that hold the pair, through one
+guard** (`PL-BBMG`). The delivered concentration has the same four ways in as a
+flow, and its bound is not a constant of the model but the maximum of the
+agent's vaporizer, so no type can carry it: a dial is checked against a
+maximum, and only a record holding both can make the check. `BreathingCircuit`
+always held both and refused the one above the other; `UptakeEquationSettings`
+held the dial alone and bounded it at 100%, so a record rebuilt with
+`dataclasses.replace` to 20% sevoflurane against the agent's 8% maximum opened
+a run, was recorded as a change to one, and answered an alveolar fraction of
+0.033306 at 60 s (measured 2026-10-04). The record now carries
+`max_delivered_concentration_percent`, required and with no default, beside
+the dial, and its constructor refuses a dial above it through
+`require_within_vaporizer_maximum` in `core/validation.py`, the function the
+circuit calls, so both refuse in one sentence and the relation is written once.
+`AgentUptakeSystem.equation_settings()` reads the maximum off the circuit, so
+each stretch of a run records the limit its dial was set under, and the
+propagator cache key carries it with the rest of the record, which the matrix
+never reads. Zero, the vaporizer off, and the maximum itself are accepted by
+both records; the first percent past the maximum is refused by both.
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
 #### What a setting outside the range costs
 

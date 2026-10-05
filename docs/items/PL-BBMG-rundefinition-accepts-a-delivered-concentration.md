@@ -3,11 +3,13 @@ id: PL-BBMG
 title: RunDefinition accepts a delivered concentration above the agent's vaporizer maximum - 20% sevoflurane against an 8% maximum ran on 2026-10-04 - because UptakeEquationSettings carries no agent and no vaporizer maximum, so a run built from a settings record bounds the dial only at 100%, and the BreathingCircuit that refuses it is never built
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/validation.py, tests/unit/test_governing_equations.py, tests/unit/test_run_definition.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/validation.py, tests/unit/test_governing_equations.py, tests/unit/test_run_definition.py, tests/unit/test_state_capture.py, tests/unit/test_validation.py, docs/MODEL.md
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1361
 payoff: a run built from a settings record refuses a dial above the vaporizer maximum exactly as the circuit does, so no caller gets a trace for a setting the machine cannot deliver
 verify: grep -q "max_delivered_concentration_percent" src/anesthesia_sim/core/governing_equations.py && grep -q "test_rejects_a_dial_above_the_vaporizer_maximum" tests/unit/test_governing_equations.py && grep -q "test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum" tests/unit/test_run_definition.py
 ---
@@ -191,3 +193,34 @@ shotgun parsing this feature removes.
   dial's bound is enforced.
 - `verify:`, to set at the answer:
   `grep -q "max_delivered_concentration_percent" src/anesthesia_sim/core/governing_equations.py && grep -q "test_rejects_a_dial_above_the_vaporizer_maximum" tests/unit/test_governing_equations.py && grep -q "test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum" tests/unit/test_run_definition.py`.
+
+## Built 2026-10-04
+
+On `main` at `8cc0698d`, under Python 3.14.7, as the design round decided, with
+two choices the round left open taken here:
+
+- **The shared guard is `require_within_vaporizer_maximum` in
+  `core/validation.py`**, not in `core/circuit.py`. Both records already import
+  that module and `governing_equations.py` imports nothing from the circuit, so
+  the guard adds no edge to the import graph, and the module's own docstring
+  names it as the home of guards a compartment's `__post_init__` shares.
+  `BreathingCircuit._require_deliverable` stays, as a one-call method reading
+  the maximum off the circuit, so the three places that cite it by name
+  (`core/concentration.py`, `tests/unit/test_concentration.py`,
+  `docs/MODEL.md`) stay true.
+- **`touches` widened** to `tests/unit/test_state_capture.py`, where the
+  moving-key test gains the maximum as a case, and
+  `tests/unit/test_validation.py`, where the guard is tested beside its
+  siblings.
+
+The reproduction, run against `origin/main` and against this branch in one
+script: `main` refuses the 20% dial at the circuit and accepts it at the record
+(alveolar fraction 0.033306 at 60 s); this branch refuses it at both, in the
+one sentence "delivered_concentration_percent exceeds the vaporizer maximum
+(20% requested, 8% maximum)".
+
+**Found and filed, not fixed:** `app/controller.py` keeps its own copy of the
+agent's maximum for the snapshot, so `_disagreements_with`, which compares
+every settings field and then the display references, now names an edited
+maximum twice. Filed as `PL-1MGB`, since the fix is outside this item's
+`touches`.

@@ -418,6 +418,68 @@ def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges(
     assert definition.segments == segments
 
 
+def test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum() -> None:
+    """Neither way into a run can be handed a record whose dial the vaporizer cannot deliver.
+
+    `PL-BBMG`, reproduced 2026-10-04: the settings a sevoflurane system holds,
+    rebuilt with `replace` to a 20% dial against the agent's 8% maximum, opened
+    a run and was recorded as a change to one, and the run answered an alveolar
+    fraction of 0.033306 at 60 s - because the record held no maximum and
+    bounded the dial at 100%, and the circuit that refuses the dial is never
+    built on this path.
+
+    The record now carries the maximum its dial was set under, read off the
+    circuit, and refuses a dial above it in the circuit's own sentence before
+    `replace` returns, so neither `RunDefinition(...)` nor `record_change` is
+    entered; the two calls stand as the entry points the reproduction went
+    through. The maximum itself opens a run and records a change, and the
+    first percent past it is refused at both. The run keeps the segments it
+    had either way.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    held = system.equation_settings()
+    maximum = system.circuit.max_delivered_concentration_percent
+    reproduced = r"exceeds the vaporizer maximum \(20% requested, 8% maximum\)"
+
+    assert held.max_delivered_concentration_percent == maximum == 8.0
+
+    definition = RunDefinition(held, system.state_vector(), opened_at_s=CaseInstant(0.0))
+    definition.advance_to(CaseInstant(30.0))
+    segments = definition.segments
+
+    with pytest.raises(SimulationConfigurationError, match=reproduced):
+        RunDefinition(
+            replace(held, delivered_concentration_percent=Percent(20.0)),
+            system.state_vector(),
+            opened_at_s=CaseInstant(0.0),
+        )
+
+    with pytest.raises(SimulationConfigurationError, match=reproduced):
+        definition.record_change(replace(held, delivered_concentration_percent=Percent(20.0)))
+
+    past_the_maximum = Percent(nextafter(maximum, inf))
+
+    with pytest.raises(SimulationConfigurationError, match="exceeds the vaporizer maximum"):
+        RunDefinition(
+            replace(held, delivered_concentration_percent=past_the_maximum),
+            system.state_vector(),
+            opened_at_s=CaseInstant(0.0),
+        )
+
+    with pytest.raises(SimulationConfigurationError, match="exceeds the vaporizer maximum"):
+        definition.record_change(replace(held, delivered_concentration_percent=past_the_maximum))
+
+    assert definition.segments == segments
+
+    at_the_maximum = replace(held, delivered_concentration_percent=maximum)
+    opened = RunDefinition(at_the_maximum, system.state_vector(), opened_at_s=CaseInstant(0.0))
+    definition.record_change(at_the_maximum)
+
+    assert opened.segments[0].settings.delivered_concentration_percent == maximum
+    assert definition.segments[-1].settings.delivered_concentration_percent == maximum
+
+
 def test_a_recorded_segment_gives_back_each_vaporizer_percent_as_dialled() -> None:
     """A segment holds the vaporizer setting as the percent dialled, at every dial position.
 

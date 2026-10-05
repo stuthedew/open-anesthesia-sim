@@ -75,6 +75,7 @@ from .model import (
     parse_item,
     recurrence_count,
     recurrences_of,
+    render_item,
 )
 from .picks import picks
 from .plan import (
@@ -1425,14 +1426,27 @@ def cmd_new(args: argparse.Namespace) -> int:
     # defect, is what fell through that hole. Read once for the whole call,
     # since every title in it was captured from the same working tree.
     inferred = () if declared else _inferred_paths(args)
+    captures: list[Item] = []
     for title in args.title:
+        captures.append(_captured(new_id(taken), title, args))
+        taken.add(captures[-1].identifier)
+    # Every capture's file is read back before the first is written, so a value
+    # the reader would not read as typed - a title holding a line break, most
+    # likely - is refused with nothing on disk, rather than written for the next
+    # `docket check` to refuse (`PL-0779`).
+    for capture in captures:
+        try:
+            render_item(capture)
+        except ValueError as refusal:
+            print(f"new: nothing was written; {refusal}")
+            return 1
+    for capture in captures:
         # Searched before the write so that the capture cannot match itself, and
         # printed after it so that the id and path stay the first line: a session
         # that reads no further has still recorded its finding, which is the half
         # of this command that may not be made conditional on anything.
-        found = near_duplicates(title, declared or inferred, items)
-        identifier = _capture(directory, title, taken, args)
-        taken.add(identifier)
+        found = near_duplicates(capture.title, declared or inferred, items)
+        identifier = _capture(directory, capture)
         if found:
             print(render.format_near_duplicates(found, identifier, declared=bool(declared)))
             onto = anchor(found)
@@ -1663,7 +1677,8 @@ def cmd_withdraw(args: argparse.Namespace) -> int:
     Refuses on a doubled `recurrences:` key, where no single line is the one to
     change, and on nothing else about the file's formatting. An unrelated
     unknown key is no reason to leave a false entry standing: the write here
-    replaces one line and cannot disturb another.
+    replaces the value's own lines, which are whatever `model._fold` folds into
+    the field, and cannot disturb another field's.
     """
     directory, items, _ = _load(args)
     matched = find_item(items, args.item)
@@ -1791,9 +1806,16 @@ def _reads_as_a_path(title: str) -> bool:
     return bool(stem and dot and suffix.isalpha() and suffix.islower() and len(suffix) <= 4)
 
 
-def _capture(directory: Path, title: str, taken: set[str], args: argparse.Namespace) -> str:
-    identifier = new_id(taken)
-    item = Item(
+def _captured(identifier: str, title: str, args: argparse.Namespace) -> Item:
+    """The item `bin/docket new` files for one title, before anything is written.
+
+    The space around a title is dropped here rather than refused by the read-back
+    `new` runs before writing: the reader trims it anyway, so it was never part
+    of what gets read, and a capture refused over a trailing space costs the one
+    command meant to cost nothing. A line break inside the title is still refused.
+    """
+    title = title.strip()
+    return Item(
         identifier=identifier,
         title=title,
         priority="",
@@ -1809,13 +1831,17 @@ def _capture(directory: Path, title: str, taken: set[str], args: argparse.Namesp
         closed=None,
         commit="",
         reason="",
-        # The front matter keeps the title as typed; the brief is markdown, so
-        # its copy is escaped where a placeholder would render as a tag (`PL-PRSF`).
+        # The front matter keeps the title as typed, less the space around it;
+        # the brief is markdown, so its copy is escaped where a placeholder
+        # would render as a tag (`PL-PRSF`).
         body=CAPTURE_TEMPLATE.format(title=markdown_title(title)),
     )
+
+
+def _capture(directory: Path, item: Item) -> str:
     path = write_item(directory, item)
-    print(f"{identifier}  {path}")
-    return identifier
+    print(f"{item.identifier}  {path}")
+    return item.identifier
 
 
 #: The fields `set` writes, as the file spells them, paired with the `Item`
@@ -1918,6 +1944,7 @@ def cmd_set(args: argparse.Namespace) -> int:
         *item.duplicate_fields,
         *item.unknown_fields,
         *item.block_list_fields,
+        *item.block_scalar_fields,
         *(repr(line) for line in item.unread_lines),
     )
     if unsafe:
@@ -2001,6 +2028,16 @@ def cmd_set(args: argparse.Namespace) -> int:
         print(f"{item.identifier}: nothing was written; `docket check` would then report{raised}:")
         for error in introduced:
             print(f"  {error}")
+        return 1
+    # Then the writer's own read-back, before the file is touched and before a
+    # `verify:` is replayed: `analyze` reads the in-memory item, where a line
+    # break is one more character, and never the lines the file would split
+    # into, so a value holding one passed every rule above at exit 0 (`PL-0779`).
+    # A rule that names the field's own fault has already spoken by here.
+    try:
+        render_item(updated)
+    except ValueError as refusal:
+        print(f"{item.identifier}: nothing was written; {refusal}")
         return 1
 
     original = (directory / item.path).read_bytes()
@@ -3813,8 +3850,18 @@ def cmd_release(args: argparse.Namespace) -> int:
         print(f"Cannot bump {config.version_file}, so nothing was stamped and nothing was written:")
         print(f"  {error}")
         return 1
+    # And every stamp's file is read back before the first is written, for the
+    # same reason: a refusal raised by the third write leaves two stamped.
+    stamped = stamp(ready.shippable, name)
+    for item in stamped:
+        try:
+            render_item(item)
+        except ValueError as refusal:
+            print(f"Cannot stamp {item.identifier}, so nothing was stamped or written:")
+            print(f"  {refusal}")
+            return 1
 
-    for item in stamp(ready.shippable, name):
+    for item in stamped:
         # `milestone:` is a field write, so it keeps the file it found, exactly
         # as `pr:` does. A cut stamps a whole batch at once, so one drifted name
         # among them would put a rename nobody asked for into the commit the

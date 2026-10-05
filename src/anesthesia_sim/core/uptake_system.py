@@ -425,7 +425,9 @@ class AgentUptakeSystem:
         are written in, so the value a run records is the value that was set
         (`PL-SM5V`). The delivered concentration is passed on in the percent it
         was dialled, for the same reason, and the settings derive the fraction
-        (`PL-NJPB`).
+        (`PL-NJPB`). The vaporizer maximum goes with it, read off the circuit
+        that owns it, so the record refuses what the circuit refuses and a
+        stretch of a run says which limit its dial was set under (`PL-BBMG`).
         """
 
         patient = self.patient
@@ -440,6 +442,7 @@ class AgentUptakeSystem:
             cardiac_output_l_min=patient.cardiac_output_l_min,
             blood_gas_partition_coefficient=venous_blood.blood_gas_partition_coefficient,
             delivered_concentration_percent=self.circuit.delivered_concentration_percent,
+            max_delivered_concentration_percent=self.circuit.max_delivered_concentration_percent,
             tissues=tuple(
                 TissueGroupEquationSettings(
                     name=tissue.name,
@@ -495,14 +498,18 @@ class AgentUptakeSystem:
         return self._propagator
 
     def _propagator_cache_key(self, simulation_step_s: SimulationStep) -> tuple[float, ...]:
-        """Return the step and every compartment value the system matrix reads.
+        """Return the step and every compartment value the settings record holds.
 
         One entry per field of `UptakeEquationSettings`, in its order, read
         straight off the compartments and converted by nothing.
         `test_the_propagator_cache_key_covers_every_equation_setting` holds the
         two in step against `dataclasses.fields()`, so a field added to the
         settings without an entry here fails rather than reintroducing the
-        stale propagator this key exists to make unrepresentable.
+        stale propagator this key exists to make unrepresentable. The
+        vaporizer maximum is the one entry the matrix never reads; it is here
+        because it is in the record, which keeps the key a bijection of the
+        settings, and it costs at most one rebuild per run, where a run's
+        maximum differs from the last run's (`PL-BBMG`).
 
         Flows are the litres per minute the compartments hold, which is what
         the settings hold too since `PL-SM5V`, and the delivered concentration
@@ -529,6 +536,7 @@ class AgentUptakeSystem:
             patient.cardiac_output_l_min,
             venous_blood.blood_gas_partition_coefficient,
             self.circuit.delivered_concentration_percent,
+            self.circuit.max_delivered_concentration_percent,
             *(
                 value
                 for tissue in patient.tissues
