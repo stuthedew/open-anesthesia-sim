@@ -5688,7 +5688,7 @@ named here, for the reason beat 3 gives.
 
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
 
-**Cleared before v0.6.0 begins, the product lane - 61 entries**
+**Cleared before v0.6.0 begins, the product lane - 64 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-0YYV (L) The three flows - fresh gas flow, alveolar ventilation and cardiac output - are bare floats range-checked by hand at each way in, so the way in nobody checked, UptakeEquationSettings, ran a cardiac output of 1000 L/min (PL-HSFV); slice 1 of PL-51B7 gives each a checked type built only through its require_supported_* guard, as SimulationStep is for the step
@@ -5702,10 +5702,13 @@ named here, for the reason beat 3 gives.
 - PL-624C (S) test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis draws its own frame, so it cannot detect a fork that fails to redraw
 - PL-73ZN (S) RunDefinition bounds opened_at_s below at induction but not above, so a definition may declare an opening past the 24 h envelope the model is claimed over
 - PL-7CRY (S) The fresh gas flow slider reads the model envelope alone, so a machine profile declaring a narrower deliverable range would offer settings the circuit refuses
+- PL-7N8P (S) require_supported_case_instant admits True (as 1.0 s) and Decimal, and lets OverflowError escape for an int past the float range (CaseInstant(10**400)) rather than refusing in the simulator's words - the shape PL-LLMN records for the flows' _require_supported, so decide the two together; none is reachable from the interface (found reviewing #1354)
 - PL-7TBQ (S) SimulationController.has_recorded_run reads elapsed_s > 0.0, so it is True the instant a branch is made and before the learner has touched it
 - PL-7TXJ (M) RunDefinition.record_change rebuilds the whole segment tuple per change, and each segment carries a keyframe, so it is the larger of the two unbounded records
+- PL-8W1W (S) SimulationState.step_count and simulation_step_s can be assigned after construction without any check - state.step_count = 5 stores a bare int, and = -3 after a step makes elapsed_s raise - the shape PL-LBQY records for the compartments' flows, on the run's own state; nothing in src writes either outside advance and reset; decide it with PL-LBQY: a __setattr__ guard, read-only fields, or the window recorded as accepted (found reviewing #1354)
 - PL-921Y (S) docs/MODEL.md's first-24-hours subsection compares the model's isolated muscle time constant with Yasuda's fitted one, which is an apparent constant read off the whole washout curve; read the same way, off the eigenvalues of the model's open-circuit system, the model's muscle term runs 1.9 to 2.0 times the fitted one at about half its amplitude (measured 2026-10-03), not 1.5 to 1.7
 - PL-95NW (M) Test whether the model's slower muscle return explains the open-circuit washout tail's closest approach to Yasuda's fitted mean curves over hours 2 to 4, by varying the muscle tissue:gas coefficient in the late-washout module; docs/MODEL.md's first-24-hours subsection records that reading as inferred from the isolated time constants and not tested (PL-KK1Q)
+- PL-B26Y (S) BreathingCircuit.advance_fresh_gas reports a nan exhaust at an admitted fresh-gas flow below about 2e-306 L/min, because the circuit's time constant overflows to inf there and its zero-flow branch tests == 0.0 only; core/__init__.py says the branch agrees with the general path bit for bit at the smallest denormal, which holds for the fraction and not for the exhaust
 - PL-BBMG (M) RunDefinition accepts a delivered concentration above the agent's vaporizer maximum - 20% sevoflurane against an 8% maximum ran on 2026-10-04 - because UptakeEquationSettings carries no agent and no vaporizer maximum, so a run built from a settings record bounds the dial only at 100%, and the BreathingCircuit that refuses it is never built
 - PL-BMY5 (S) SimulationState can be constructed already past the supported run length, and only the next advance refuses it
 - PL-CBDX (M) Read every simulator diff merged unread since 2026-09-23 against the safety-critical standard, since the review hold was clicked through rather than read
@@ -5925,6 +5928,15 @@ same day for a write guard; minus zero, a
 `bool` and a `Decimal` admitted as flows; and `dataclasses.replace` rewriting
 the original patient's tissue flows. The triage pass that classed them placed
 them in the product lane.
+`PL-7N8P` and `PL-8W1W` (`safety`, 2026-10-04) are the review of `#1354`
+finding the same shapes in the case instant and the run's own state: a `bool`,
+a `Decimal` and an `int` past the float range admitted as an instant, worked
+with `PL-LLMN`; and a step count or step written onto a built
+`SimulationState` with no check, given `PL-LBQY`'s write guard. `PL-B26Y`
+(`safety`, 2026-10-04) is the circuit's closed form reporting a `nan` exhaust
+at an admitted fresh-gas flow below about 2e-306 L/min, found in `PL-51B7`'s
+session. The triage pass that classed them placed all three in the product
+lane.
 
 `PL-YVV4` (`planning`, filed 2026-09-13) was let in on 2026-10-03 and sits in
 the workflow lane with `PL-VV6N`, which waits on it. It was in the store at the

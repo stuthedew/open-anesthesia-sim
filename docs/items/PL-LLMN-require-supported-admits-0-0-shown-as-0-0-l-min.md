@@ -55,6 +55,6 @@ naming the setting, the value and its type, before any comparison runs, as
 the caller rather than a refused setting. An `int` and a `float` are admitted
 as today. A test in `tests/unit/test_supported_ranges.py` named
 `test_the_type_refuses_what_is_not_a_number_and_holds_negative_zero_as_zero`
-pins it for all three. Whichever of this and `#1354` lands second carries the
-same to `CaseInstant` and brings `StepCount`'s refusal of a `bool` to the same
-exception.
+pins it for all three. `#1354` landed first, so the same refusal for `CaseInstant` is `PL-7N8P`'s,
+best worked in this branch, and `StepCount`'s refusal of a `bool` is brought to
+the same exception here.
