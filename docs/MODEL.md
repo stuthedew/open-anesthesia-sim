@@ -2658,6 +2658,19 @@ value alongside the derived one — the tissue:blood coefficients are computed
 at load time from the tissue:gas and blood:gas values, so their rows name the
 stored tissue:gas key and show the division.
 
+Both directions start from a data file, so a constant that never entered one is
+invisible to that check, as the circuit volume was while it sat as a
+`BreathingCircuit` field default with no row here (`PL-4YY1`).
+`test_every_constant_a_core_dataclass_defaults_to_is_a_value_the_provenance_table_selects`
+screens for the next one (`PL-65HT`): it reads every numeric field default on a
+`core/` dataclass through `dataclasses.fields()`, so a default spelled as a named
+constant is read too, and requires each to appear in this table's Selected-value
+column. Zero and the whole of the field's own scale, 1 or 100 for a percent,
+carry no science and are not screened. It is a screen and not a proof, because
+it matches values rather than names: a new constant equal to one the table
+already selects passes, and 6.0 is selected for the circuit and the vessel-rich
+tissue alike.
+
 The table is not the only place these values appear. Where the prose restates
 one — the reference adult's alveolar volume and ventilation, each agent's
 blood:gas coefficient, vaporizer maximum and MAC — the sentence carries a

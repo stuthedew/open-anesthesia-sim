@@ -3,12 +3,14 @@ id: PL-65HT
 title: A core/ dataclass numeric field default other than 0 or 1 that appears in no provenance-table value is an unsourced scientific constant, and nothing checks for one
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra, docs
 feature: provenance
-touches: tests/unit
+touches: tests/unit, docs/MODEL.md
 added: 2026-09-13
-verify: grep -q 'Selected value' tests/unit/test_core_constant_provenance.py && grep -q 'fields(' tests/unit/test_core_constant_provenance.py
+closed: 2026-10-05
+pr: 1372
+verify: uv run pytest tests/unit/test_core_constant_provenance.py && grep -q 'test_every_constant_a_core_dataclass_defaults_to_is_a_value_the_provenance_table_selects' docs/MODEL.md
 ---
 
 **Problem.** `PL-4YY1` found `circuit_volume_l: float = 6.0` and
@@ -115,3 +117,50 @@ The alternative is to close on the counting - four constants, all pinned by name
 Build the screen as one unit test under `tests/unit/`, reading `dataclasses.fields()` defaults against `docs/MODEL.md`'s Selected-value column (project owner, 2026-10-03, ratified, over a home in `tools/core_vocabulary_check.py`, `tools/doc_check.py` or a third tool, and over closing on the counting). `touches` re-pointed from `tools, tests/unit, Makefile` to `tests/unit` and status moved to `ready` with this answer.
 
 The test file is named here so the `verify:` can name it before it exists: `tests/unit/test_core_constant_provenance.py`. The build thread may rename it with the `verify:`.
+
+## Built 2026-10-05
+
+`tests/unit/test_core_constant_provenance.py`, as answered: a walk over every
+module under `anesthesia_sim.core` collects each dataclass defined there, reads
+each field's default through `dataclasses.fields()` (a default factory's result
+included), and requires every numeric one to appear in the Selected-value
+column, read through `doc_check._provenance_rows` and `doc_check.NUMBER_RE` so
+the table compared against is the one `check_provenance` holds to the data
+files. The failure message names each field and value, says what to do (store
+it in a data file with a row, as `PL-4YY1` did, or drop the default), and says
+it is a screen and not a proof. A second test runs the same comparison on a
+dataclass built to reach each branch, against a set of its own, so it does not
+depend on what the table happens to select. `docs/MODEL.md` § "Parameter
+provenance" says the screen exists beside the paragraph on what `doc_check.py`
+holds, and `touches` gained it.
+
+**The count through `fields()`, which is what the test reads: 15 numeric
+defaults, 10 of them 0, and 5 others.** The four the brief names, and
+`BreathingCircuit.max_delivered_concentration_percent = Percent(100.0)`, which
+the 2026-10-03 count did not list. It is not in the table, so the screen as
+written - 0 and 1 exempt - failed the tree on its first run.
+
+**Decided here: the exempt values are zero and the whole of the field's own
+scale, so 0 and 100 for a `Percent` and 0 and 1 for anything else.** 100 is a
+percent's whole, the counterpart of a `Fraction`'s 1 that the brief already
+exempts as identity, and the circuit's docstring gives it the meaning "no
+device limit declared"; no data file stores it, so no row could name it. A
+`Percent` default of 1 is a 1% dial and is screened. Not taken: a named
+exemption for the one field (the hand-kept list the brief refused), a row for
+100 (the table documents data-file values), and a `None` default in
+`core/circuit.py` (a change to the circuit's interface, outside this item; the
+100 is a defensible choice its docstring explains, so nothing is filed).
+
+**Shown to fail, each on a tree changed and restored:** `circuit_volume_l`
+at 6.5 failed naming `BreathingCircuit.circuit_volume_l = 6.5`;
+`TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` at 4.25 failed naming
+`fresh_gas_flow_l_min = 4.25`, so a named constant is read; and the `Percent`
+rule removed failed naming the vaporizer maximum at 100.0.
+
+**The generator pause, which the design round answered on a premise that has
+since changed.** It read no head as `generator: live` on 2026-10-03; on
+2026-10-05 `PL-R417` is. The pause holds new apparatus work (`CLAUDE.md` §
+"What this project is"), and this is a test under `tests/unit`, the
+simulator's half by that file's own two-standards list and the product lane by
+`touches`, built on the owner's answer above rather than on standing approval.
+So it was built rather than held.
