@@ -335,11 +335,30 @@ readers. Filed beside it and not a member: `PL-GVDP`, a trailing comment read
 into a `paths:` glob, which is where a value ends on its line rather than
 across lines. `generator:` stays `live`.
 
-**Next steps (recorded 2026-10-04, revised by links 8, 11, 12 and 13).** The
+**Link 14, the shell slice (`#1377`, 2026-10-05).** Done: `PL-97CF`,
+`PL-2JYP` and `PL-WG6S`, each against bash 5.2.21 and dash 0.5.12. Both shell
+lexers, the hooks' `.claude/hooks/shell_split.py` and docket's `shell.py`, read
+an operator a backslash-newline splits as the one operator, an unquoted
+here-document's body in logical lines, bash followed where dash compares the
+first physical line, and a `${...}` to the `}` that closes it. docket's also
+reads `case`, `(( ))`, `$(( ))` and `[[ ]]` carried across lines, and hands
+`fixture_id_check` the text of a `.sh` file as bash reads it. The two lexers
+were fixed in place, and merging them is filed beside the fix as `PL-JNYL`
+(project owner, 2026-10-05, ratified, over merging them in `#1377`). Nothing
+over the tree moved: the 1,611 `make` mentions in tracked Markdown, the 66
+workflow commands and the 1,645 `verify:` fields read the same; the five fence
+lines whose words moved are GitHub `${{ }}` expressions in two item briefs, none
+a command; and no tracked `.sh` file holds a backslash-newline bash removes.
+The guard gained sixteen cases, eight `hook commands, `, seven `shell lines, `
+and one `fixture ids, `, each failing on main's readers, and the three guards'
+tests run the reshaped commands end to end. No new member was filed.
+`generator:` stays `live`.
+
+**Next steps (recorded 2026-10-04, revised by links 8, 11, 12, 13 and 14).** The
 members, one format per pull request as before, each closing its members and
-adding their cases to `CONTINUED_STATEMENTS`: the shell readers (`PL-97CF`,
-`PL-2JYP`, `PL-WG6S`), the Makefile reader (`PL-4MLK`), and the two that read a
-change or a commit record (`PL-F7Z6`, `PL-4ZVH`); then link 11's two Markdown
+adding their cases to `CONTINUED_STATEMENTS`: the Makefile reader (`PL-4MLK`)
+next, then the two that read a change or a commit record (`PL-F7Z6`,
+`PL-4ZVH`); then link 11's two Markdown
 members, `PL-0Y7J` and `PL-T73L`, in one pull request before the sweep. Then
 one more sweep of the same reach, and `generator:` rewritten `spent` only when
 it finds nothing (the coordinator's brief, 2026-10-04). The head closes without waiting for

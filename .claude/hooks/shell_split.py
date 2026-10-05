@@ -10,25 +10,32 @@ the `;` after it hid the separator (`PL-63TT`), a backslash-newline read as one
 (`PL-R5RF`), and everything after the first `<<` was dropped rather than only
 the heredoc's body (`PL-39LD`). Those are one question answered three times,
 which is `PL-PVW2`'s fact, and this module is the one answer the hooks import.
+docket reads a command with a lexer of its own,
+`subprojects/docket/src/docket/shell.py`, and what merging the two would have
+to settle first is `PL-JNYL`'s.
 
 **A small lexer rather than `shlex`, because every one of those fixes needs to
 know what is quoted.** `shlex` returns a run of `();<>|&` as one token, and
 splitting that run by character would make `>|` a pipe; a backslash-newline is
 a continuation only outside single quotes; and a `<<` opens a heredoc only
 unquoted. So the rules are bash's own, from the Bash Reference Manual (§2
-"Definitions" for the operators, §3.1.2 "Quoting", §3.1.3 "Comments", §3.6.6
-"Here Documents") and POSIX.1-2017 XCU §2.3 "Token Recognition" and §2.7.4
+"Definitions" for the operators, §3.1.2 "Quoting", §3.1.3 "Comments", §3.5.3
+"Shell Parameter Expansion", §3.6.6 "Here Documents") and POSIX.1-2017 XCU §2.2
+"Quoting", §2.3 "Token Recognition", §2.6.2 "Parameter Expansion" and §2.7.4
 "Here-Document", and the shapes the hooks' tests pin were checked against bash
 5.2 itself:
 
 - An operator is the longest match in bash's table, so `2>&1` is `2`, `>&`,
-  `1`, and `>|`, `&>` and `&>>` never yield a separator.
+  `1`, and `>|`, `&>` and `&>>` never yield a separator. A backslash-newline
+  inside one is removed first, as bash removes it before it splits tokens, so
+  `&\\` over `&` is `&&` and `<<\\` over `-EOF` is `<<-` (`PL-97CF`).
 - `'...'` is literal. In `"..."` a backslash escapes only `$`, a backtick, `"`,
   a backslash and a newline, and a `$( )` inside is read as the command it is,
   so its own quotes and heredocs do not end the word around it - the shape of
   every `git commit -m "$(cat <<'EOF' ... EOF )"`. In `$'...'` a backslash
   escapes the next character, so `\\'` does not close it.
-- A backslash-newline outside single quotes is removed, and the line goes on.
+- A backslash-newline outside single quotes is removed, and the line goes on,
+  so a `$` reads what follows it past one: `$\\` over `'...'` is a `$'...'`.
 - `#` opens a comment only where no word is in progress, and the comment ends
   at its line: under `shlex` it ran to the end of the input, hiding every line
   after it.
@@ -38,9 +45,18 @@ unquoted. So the rules are bash's own, from the Bash Reference Manual (§2
 - At each unquoted newline the pending heredocs' bodies are removed, in order.
   A body runs to the line equal to its delimiter - the word after `<<` or
   `<<-` with its quotes removed, leading tabs stripped for `<<-` - or, left
-  unterminated, to the end of the input, as bash reads it.
-- `$` and the backtick are word characters, and `$(` yields `$` and `(`, so a
-  substitution's parentheses reach a walker counting subshells as they did.
+  unterminated, to the end of the input, as bash reads it. Where no part of
+  the delimiter is quoted the lines compared are logical ones: a line ending in
+  an odd run of backslashes goes on to the next, less that backslash-newline,
+  and `<<-` strips the tabs opening the joined line only. dash compares the
+  first physical line instead, and bash is followed (`PL-97CF`).
+- A `${...}` is part of the word, to the first `}` not escaped, quoted or
+  inside a nested expansion, newlines included, in double quotes or out: a
+  `<<` or a `;` inside it is the expansion's text. A `$( )` inside one is read
+  as the command it is, as one inside double quotes is (`PL-97CF`).
+- Otherwise `$` and the backtick are word characters, and an unquoted `$(`
+  yields `$` and `(`, so a substitution's parentheses reach a walker counting
+  subshells as they did.
 
 **Where a command's words start is answered here too**, by `command_words`,
 so no guard can disagree with another about which word is the command. It
@@ -558,8 +574,8 @@ def commands(command: str) -> list[Command]:
     A segment ends only at a separator; a command also starts after each `(`
     or `)` read as an operator, so a subshell, a `$( )`, a `<( )` and the
     command after a `case` pattern each yield their own. The commands in a
-    `$( )` inside double quotes are read too: their text stays in the quoted
-    word, and they run all the same.
+    `$( )` inside double quotes or a `${...}` are read too: their text stays in
+    the word, and they run all the same.
 
     Never None, unlike `words` and `segments`. Where bash would refuse the
     command, it has still run every line before the one it could not finish,
@@ -617,24 +633,76 @@ def _kept(text: str, removed: list[tuple[int, int]], start: int, end: int) -> st
     return "".join(parts)
 
 
-def _operator_at(text: str, at: int) -> str:
-    """The longest of bash's operators starting at `at`, where an operator character stands."""
-    for length in (3, 2):
-        if text[at : at + length] in OPERATORS:
-            return text[at : at + length]
-    return text[at]
+def _past_continuations(text: str, at: int) -> int:
+    """Where the first character from `at` that no backslash-newline removes stands."""
+    while text.startswith("\\\n", at):
+        at += 2
+    return at
+
+
+def _operator_at(text: str, at: int) -> tuple[str, int]:
+    """The longest of bash's operators at `at`, where an operator character stands, and its end.
+
+    Read past any backslash-newline between its characters, which bash removes
+    before it splits tokens (POSIX.1-2017 XCU §2.2.1), so `&\\` over `&` is
+    `&&`. Every prefix of an operator in the table is one too, so extending one
+    character at a time finds the longest.
+    """
+    operator, end = text[at], at + 1
+    while True:
+        after = _past_continuations(text, end)
+        longer = operator + text[after : after + 1]
+        if after == len(text) or longer not in OPERATORS:
+            return operator, end
+        operator, end = longer, after + 1
 
 
 def _takes_a_descriptor(text: str, at: int) -> bool:
     """Whether the operator at `at` is a redirection a descriptor can be written against.
 
     One opening with `<` or `>`, and not a process substitution's `<(` or `>(`:
-    bash 5.2.21 prints `2/dev/fd/63` for `echo 2>(cat)`, the `2` a word.
+    bash 5.2.21 prints `2/dev/fd/63` for `echo 2>(cat)`, the `2` a word, and
+    for `echo 2>\\` over `(cat)` too.
     """
-    operator = _operator_at(text, at)
+    operator, end = _operator_at(text, at)
     if operator not in REDIRECTIONS or operator[0] not in "<>":
         return False
-    return not (operator in ("<", ">") and text[at + 1 : at + 2] == "(")
+    return not (operator in ("<", ">") and text.startswith("(", _past_continuations(text, end)))
+
+
+def _ansi_c_end(text: str, quote: int) -> int:
+    """Where the quote closing the `$'...'` whose opening quote stands at `quote` is.
+
+    A backslash escapes the next character in one, so `\\'` does not close it.
+    """
+    at = quote + 1
+    while at < len(text) and text[at] != "'":
+        at += 2 if text[at] == "\\" else 1
+    if at >= len(text):
+        raise _Unreadable
+    return at
+
+
+def _logical_line(text: str, start: int, joined: bool) -> tuple[str, int]:
+    """The heredoc body line starting at `start`, and where the line after it starts.
+
+    `joined` reads it as bash reads the body of an unquoted delimiter: a line
+    whose trailing run of backslashes is odd goes on to the next, less that
+    backslash and the newline, since each backslash before it escapes the one
+    after (bash 5.2.21; POSIX.1-2017 XCU §2.7.4).
+    """
+    pieces: list[str] = []
+    while True:
+        end = text.find("\n", start)
+        if end < 0:
+            pieces.append(text[start:])
+            return "".join(pieces), len(text)
+        piece = text[start:end]
+        if not (joined and (len(piece) - len(piece.rstrip("\\"))) % 2):
+            pieces.append(piece)
+            return "".join(pieces), end + 1
+        pieces.append(piece[:-1])
+        start = end + 1
 
 
 def _backquote_end(text: str, opening: int) -> int:
@@ -654,8 +722,8 @@ class _Reader:
     """One pass over a command list, left to right, the way bash reads it.
 
     `removed` collects the spans bash discards before it runs anything, and is
-    shared with any `$( )` read inside a double-quoted word, whose spans are
-    the command's too.
+    shared with any `$( )` read inside a double-quoted word or a `${...}`,
+    whose spans are the command's too.
     """
 
     def __init__(
@@ -675,13 +743,15 @@ class _Reader:
         # keeps a number written against a redirection a word.
         self.quoted = False
         # The heredocs whose bodies start at the next unquoted newline: each
-        # delimiter, and whether `<<-` strips its lines' leading tabs.
-        self.pending: list[tuple[str, bool]] = []
+        # delimiter, whether `<<-` strips its lines' leading tabs, and whether
+        # its body is read in logical lines, as it is where no part of the
+        # delimiter was quoted.
+        self.pending: list[tuple[str, bool, bool]] = []
         # Whether a `<<` still waiting for its delimiter is a `<<-`, which
         # strips tabs; None where no `<<` is waiting.
         self.introducer: bool | None = None
-        # The tokens of each `$( )` read inside double quotes, whose commands
-        # run although their text stays in the quoted word.
+        # The tokens of each `$( )` read inside double quotes or a `${...}`,
+        # whose commands run although their text stays in the word.
         self.substituted: list[list[str]] = []
 
     def read(self) -> int:
@@ -712,8 +782,8 @@ class _Reader:
                 self._single_quoted()
             elif character == '"':
                 self._double_quoted()
-            elif character == "$" and following == "'":
-                self._ansi_c_quoted()
+            elif character == "$":
+                self._dollar()
             elif character in OPERATOR_CHARACTERS:
                 self._end_word(redirected=_takes_a_descriptor(text, self.at))
                 if self._operator() == ")" and self.nested:
@@ -737,28 +807,35 @@ class _Reader:
         if not self.in_word:
             return
         word = "".join(self.word)
+        quoted = self.quoted
         # Unquoted, and not the delimiter a `<<` is waiting for, which takes
         # this word whatever follows it.
-        descriptor = redirected and not self.quoted and self.introducer is None
+        descriptor = redirected and not quoted and self.introducer is None
         if descriptor and DESCRIPTOR.fullmatch(word):
             word = Descriptor(word)
         self.tokens.append(word)
         self.word.clear()
         self.in_word = self.quoted = False
         if self.introducer is not None:
-            self.pending.append((word, self.introducer))
+            self.pending.append((word, self.introducer, not quoted))
             self.introducer = None
 
     def _operator(self) -> str:
         if self.introducer is not None:
             raise _Unreadable
-        operator = _operator_at(self.text, self.at)
+        operator, end = _operator_at(self.text, self.at)
+        spot = self.at + 1
+        while spot < end:
+            after = _past_continuations(self.text, spot)
+            if after > spot:
+                self._remove(spot, after)
+            spot = max(after, spot + 1)
         if operator in ("<<", "<<-"):
             self.introducer = operator == "<<-"
         elif operator == "(" and self.nested:
             self.depth += 1
         self.tokens.append(Operator(operator))
-        self.at += len(operator)
+        self.at = end
         return operator
 
     def _newline(self) -> None:
@@ -768,18 +845,20 @@ class _Reader:
         if last is not None and not (isinstance(last, Operator) and last in LINEBREAK_AFTER):
             self.tokens.append(Operator(";"))
         self.at += 1
-        for delimiter, strip_tabs in self.pending:
-            self.at = self._body(delimiter, strip_tabs)
+        for delimiter, strip_tabs, joined in self.pending:
+            self.at = self._body(delimiter, strip_tabs, joined)
         self.pending.clear()
 
-    def _body(self, delimiter: str, strip_tabs: bool) -> int:
-        """Remove one heredoc body and its terminator line; return where the next line starts."""
+    def _body(self, delimiter: str, strip_tabs: bool, joined: bool) -> int:
+        """Remove one heredoc body and its terminator line; return where the next line starts.
+
+        `joined` compares logical lines with the delimiter, as `_logical_line`
+        reads them, and otherwise each line as written.
+        """
         text = self.text
         line = self.at
         while line < len(text):
-            end = text.find("\n", line)
-            stop = len(text) if end < 0 else end + 1
-            content = text[line:stop] if end < 0 else text[line:end]
+            content, stop = _logical_line(text, line, joined)
             if (content.lstrip("\t") if strip_tabs else content) == delimiter:
                 self._remove(self.at, stop)
                 return stop
@@ -795,47 +874,129 @@ class _Reader:
         self.in_word = self.quoted = True
         self.at = close + 1
 
-    def _ansi_c_quoted(self) -> None:
-        text = self.text
-        at = self.at + 2
-        while at < len(text) and text[at] != "'":
-            at += 2 if text[at] == "\\" else 1
-        if at >= len(text):
-            raise _Unreadable
-        # Its escapes are kept as written: no guard reads what they decode to.
-        self.word.append(text[self.at + 2 : at])
-        self.in_word = self.quoted = True
-        self.at = at + 1
+    def _dollar(self) -> None:
+        """Read an unquoted `$`: the `$'...'` or `${...}` it opens, or else itself.
 
-    def _double_quoted(self) -> None:
+        Past a backslash-newline, which bash removes before it reads what the
+        `$` opens. A `$( )` is left to `read`, whose walk reads its parentheses.
+        """
         text = self.text
-        at = self.at + 1
+        after = _past_continuations(text, self.at + 1)
+        if after > self.at + 1 and text[after : after + 1] in ("'", "{"):
+            self._remove(self.at + 1, after)
+        if text.startswith("'", after):
+            close = _ansi_c_end(text, after)
+            # Its escapes are kept as written: no guard reads what they decode to.
+            self.word.append(text[after + 1 : close])
+            self.quoted = True
+            end = close + 1
+        elif text.startswith("{", after):
+            end = self._parameter(after)
+            self.word.append(_kept(text, self.removed, self.at, end))
+        else:
+            self.word.append("$")
+            end = self.at + 1
+        self.in_word = True
+        self.at = end
+
+    def _expansion(self, dollar: int) -> int | None:
+        """Read the `$( )` or `${...}` a `$` at `dollar` opens inside a word; return its end.
+
+        None where that `$` opens neither. Each command in a `$( )` is kept
+        in `substituted`, since it runs although its text stays in the word.
+        """
+        text = self.text
+        after = _past_continuations(text, dollar + 1)
+        if text.startswith("(", after):
+            inner = _Reader(text, self.removed, after + 1, nested=True)
+            end = inner.read()
+            self.substituted += [inner.tokens, *inner.substituted]
+        elif text.startswith("{", after):
+            end = self._parameter(after)
+        else:
+            return None
+        if after > dollar + 1:
+            self._remove(dollar + 1, after)
+        return end
+
+    def _parameter(self, brace: int) -> int:
+        """Read the `${...}` whose `{` stands at `brace`; return where it ends, past its `}`.
+
+        bash ends one at the first `}` not escaped, not quoted and not inside
+        a nested expansion or substitution - a `{` with no `$` opens nothing -
+        and reads newlines inside it as its text (Bash Reference Manual §3.5.3;
+        POSIX.1-2017 XCU §2.6.2). Its quotes are skipped in double quotes too,
+        and a `$'...'` inside it takes escapes, both as bash 5.2.21 reads them.
+        """
+        text = self.text
+        at = brace + 1
         while at < len(text):
             character = text[at]
-            following = text[at + 1 : at + 2]
-            if character == '"':
-                self.in_word = self.quoted = True
-                self.at = at + 1
-                return
-            if character == "\\" and following in ESCAPED_IN_DOUBLE_QUOTES:
-                if following == "\n":
+            if character == "}":
+                return at + 1
+            if character == "\\":
+                if text.startswith("\n", at + 1):
                     self._remove(at, at + 2)
-                else:
-                    self.word.append(following)
                 at += 2
-            elif character == "$" and following == "(":
-                inner = _Reader(text, self.removed, at + 2, nested=True)
-                end = inner.read()
-                self.substituted += [inner.tokens, *inner.substituted]
-                self.word.append(_kept(text, self.removed, at, end))
-                at = end
+            elif character == "'":
+                close = text.find("'", at + 1)
+                if close < 0:
+                    raise _Unreadable
+                at = close + 1
+            elif character == '"':
+                at = self._double_quoted_end(at, [])
             elif character == "`":
                 close = _backquote_end(text, at)
                 if close < 0:
                     raise _Unreadable
-                self.word.append(text[at : close + 1])
+                at = close + 1
+            elif character == "$":
+                after = _past_continuations(text, at + 1)
+                if text.startswith("'", after):
+                    if after > at + 1:
+                        self._remove(at + 1, after)
+                    at = _ansi_c_end(text, after) + 1
+                else:
+                    end = self._expansion(at)
+                    at = at + 1 if end is None else end
+            else:
+                at += 1
+        raise _Unreadable
+
+    def _double_quoted(self) -> None:
+        self.at = self._double_quoted_end(self.at, self.word)
+        self.in_word = self.quoted = True
+
+    def _double_quoted_end(self, opening: int, word: list[str]) -> int:
+        """Read the `"..."` opening at `opening` into `word`; return where it ends, past its `"`."""
+        text = self.text
+        at = opening + 1
+        while at < len(text):
+            character = text[at]
+            following = text[at + 1 : at + 2]
+            if character == '"':
+                return at + 1
+            if character == "\\" and following in ESCAPED_IN_DOUBLE_QUOTES:
+                if following == "\n":
+                    self._remove(at, at + 2)
+                else:
+                    word.append(following)
+                at += 2
+            elif character == "$":
+                end = self._expansion(at)
+                if end is None:
+                    word.append(character)
+                    at += 1
+                else:
+                    word.append(_kept(text, self.removed, at, end))
+                    at = end
+            elif character == "`":
+                close = _backquote_end(text, at)
+                if close < 0:
+                    raise _Unreadable
+                word.append(text[at : close + 1])
                 at = close + 1
             else:
-                self.word.append(character)
+                word.append(character)
                 at += 1
         raise _Unreadable
