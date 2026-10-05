@@ -314,11 +314,31 @@ def notes_by_version(root: Path, notes_dir: str = NOTES_DIR) -> dict[str, frozen
     and comes back empty rather than raising.
     """
     return {
-        path.stem: frozenset(
-            NOTES_ENTRY_RE.findall(notes_claims(path.read_text(encoding="utf-8"))[0])
-        )
+        path.stem: notes_ids(notes_claims(path.read_text(encoding="utf-8"))[0])
         for path in notes_files(root, notes_dir)
     }
+
+
+def notes_ids(text: str) -> frozenset[str]:
+    """The items one notes file's text claims: the id leading each top-level bullet.
+
+    Read through the walker `notes_bullets` reads (`PL-BLKJ`), so the two agree
+    on which bullets a file holds: none inside a comment or a fence, and one
+    opening on a marker line of its own. Read a line at a time, a commented-out
+    or fenced bullet was claimed as released and the bare marker's was not. A
+    bullet `notes_bullets` declines, for a line carrying it on from the margin,
+    still claims the id leading it, since where it ends is what went unread.
+    """
+    # A runtime import, since `roadmap` imports this module.
+    from .roadmap import document_entry_lines
+
+    lines = text.split("\n")
+    claimed: set[str] = set()
+    for first, end in document_entry_lines(lines, []):
+        bullet = " ".join(line.strip() for line in lines[first:end])
+        if (leader := NOTES_ENTRY_RE.match(bullet)) is not None:
+            claimed.add(leader.group(1))
+    return frozenset(claimed)
 
 
 def unrecorded_milestones(
@@ -582,8 +602,11 @@ def release_notes(milestone: Milestone, today: date) -> str:
 #: has needed. A blank line closes the paragraph, so a span open across one is
 #: not a span, which keeps a stray backtick from pairing with a run paragraphs
 #: below and reading every span after it inside out. The other places a
-#: paragraph ends - a heading, a list item - are not read. The pattern carries
-#: no flags, so `verify.NON_CODE_RE` takes it into an alternation as it stands.
+#: paragraph ends - a heading, a list item, a block quote - are not the
+#: pattern's to read, so a reader of a whole document applies it a statement
+#: at a time, as `markdown.statement_lines` cuts them (`PL-FP7J`). The pattern
+#: carries no flags, so `verify.NON_CODE_RE` takes it into an alternation as it
+#: stands.
 CODE_SPAN_PATTERN = (
     r"(?<!`)(?P<run>`+)(?!`)(?P<content>(?:(?!\n[ \t]*\n)[\s\S])+?)(?<!`)(?P=run)(?!`)"
 )
@@ -660,17 +683,19 @@ def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, 
     last line of the bullet's text, and the text is the bullet's own paragraph,
     its wrapped lines joined by a space. Read through
     `roadmap.document_entry_lines`, section by section, and
-    `roadmap.statement_lines` within the bullet (`PL-CL8R`, `PL-R417`): an
+    `markdown.statement_lines` within the bullet (`PL-CL8R`, `PL-R417`): an
     indented line carries a bullet's paragraph on, as CommonMark reads it
     (0.31.2 § 5.2), so a title wrapped before its reference is one bullet with
     one reference, where a line at a time read it as none and a writer appended
     a second. A list nested under the bullet is the bullet's but not its text,
     which the reference ends - `PL-QYBW`'s in v0.5.9's notes carries one. A
     bullet carried on from the margin is declined onto `unread` and left out,
-    since neither where it ends nor what it ends with can be read.
+    since neither where it ends nor what it ends with can be read, and an empty
+    one - a marker with nothing after it - holds no text and is passed over.
     """
     # A runtime import, since `roadmap` imports this module.
-    from .roadmap import document_entry_lines, statement_lines
+    from .markdown import statement_lines
+    from .roadmap import document_entry_lines
 
     lines = text.split("\n")
     declined: list[UnreadEntry] = []
@@ -679,9 +704,10 @@ def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, 
     ended = {entry.line - 1 for entry in declined}
     bullets: list[tuple[int, int, str]] = []
     for first, end in spans:
-        if end in ended:
-            continue
-        end = first + next(statement_lines(lines[first:end]))[1]
+        statement = next(statement_lines(lines[first:end]), None)
+        if end in ended or statement is None:
+            continue  # declined, or a marker with nothing after it, which holds no text
+        end = first + statement[1]
         bullets.append(
             (
                 first,

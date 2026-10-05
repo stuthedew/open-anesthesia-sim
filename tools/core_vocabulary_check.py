@@ -81,10 +81,19 @@ from __future__ import annotations
 import argparse
 import ast
 import re
+import sys
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeVar
+
+# The Symbols table is read by `docket`'s table reader, in-tree and itself
+# standard-library-only, so the one reading of where a Markdown table is and
+# how its row splits into cells is the one `bin/docket` reads the roadmap's
+# tables with (`PL-FBWD`).
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "subprojects" / "docket" / "src"))
+
+from docket.roadmap import section_table
 
 #: The tree whose vocabulary is governed, relative to the repository root.
 CORE_TREE = "src/anesthesia_sim/core"
@@ -291,42 +300,26 @@ def symbol_cells(text: str) -> tuple[SymbolCell, ...]:
     """The Symbols table's rows, or nothing if the section or table is absent.
 
     Nothing here guesses at a table it cannot find: `analyze` reports an empty
-    result as an error rather than passing over it.
+    result as an error rather than passing over it. The table is the first
+    under the heading, as `docket.roadmap.section_table` reads one, header row
+    included (`PL-FBWD`): read a line at a time, a row inside a comment or a
+    fence and a second table after a blank line were read into it, the table
+    under a setext heading was not read, and a row without its leading pipe was
+    skipped.
     """
-    lines = text.splitlines()
-    start = None
-    for index, line in enumerate(lines):
-        if line.strip() == f"## {SYMBOLS_HEADING}":
-            start = index + 1
-            break
-    if start is None:
+    table = section_table(text, SYMBOLS_HEADING)
+    if table is None or not table.rows:
         return ()
-
-    rows: list[list[str]] = []
-    numbers: list[int] = []
-    for offset, line in enumerate(lines[start:], start=start):
-        stripped = line.strip()
-        if stripped.startswith("## "):
-            break
-        if not stripped.startswith("|"):
-            continue
-        rows.append([cell.strip() for cell in stripped.strip("|").split("|")])
-        numbers.append(offset + 1)
-    if len(rows) < 3:
-        return ()
-
-    header = rows[0]
+    header = list(table.header)
     if CODE_COLUMN not in header or SYMBOL_COLUMN not in header:
         return ()
     code_index = header.index(CODE_COLUMN)
     symbol_index = header.index(SYMBOL_COLUMN)
-
-    cells: list[SymbolCell] = []
-    for row, number in zip(rows[2:], numbers[2:], strict=True):
-        if len(row) <= max(code_index, symbol_index):
-            continue
-        cells.append(SymbolCell(number, row[symbol_index], row[code_index]))
-    return tuple(cells)
+    return tuple(
+        SymbolCell(index + 1, cells[symbol_index], cells[code_index])
+        for index, cells in table.rows
+        if len(cells) > max(code_index, symbol_index)
+    )
 
 
 def _resolve(cell: SymbolCell, defined: dict[str, list[ClassDefinition]]) -> Iterator[Unresolved]:

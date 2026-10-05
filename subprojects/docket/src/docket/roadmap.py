@@ -22,16 +22,19 @@ identical on either side.
 
 The markdown primitives at the top are exported for the same reason:
 `doc_check` reads a table of its own with them, and builds its phrase readers
-on `CONTINUED_LINE`, and a second implementation of "the rows under this
-heading" or "where a paragraph goes on" is a second thing to keep true.
+on `CONTINUED_LINE`, and a second implementation of "where a paragraph goes
+on" is a second thing to keep true. Where a heading, a table or a list entry
+is, the walkers below read from `markdown`, the one reading of a document's
+blocks (`PL-R417`).
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Container, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 
+from . import markdown
 from .model import MILESTONE_BLOCKER_RE, SEMVER_PATTERN
 from .release import SEMVER_RE, version_key
 from .store import ID_PATTERN
@@ -39,13 +42,11 @@ from .vcs import leading_ids
 
 # --- markdown primitives ----------------------------------------------------
 
+#: An ATX heading at the margin, for `tools/doc_check.py`'s own scans; the
+#: walkers here read headings from `markdown.headings`, which also reads a
+#: setext heading and none inside a comment or a fence (`PL-HKHP`).
 HEADING_RE = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.+?)\s*#*\s*$")
 TABLE_ROW_RE = re.compile(r"^\|(?P<cells>.+)\|\s*$")
-#: A top-level list entry: a bullet, or a numbered item. Both are entries,
-#: because `ROADMAP.md` writes v0.5.0's `Required scope` as bullets and
-#: v0.6.0's as a numbered list - so a reader that knew only the bullet was
-#: blind to a whole milestone's worth of entries.
-LIST_ENTRY_RE = re.compile(r"^(?:[-*]|\d+\.)\s+(?P<text>\S.*)$")
 #: Where a Markdown statement goes on past the end of a physical line
 #: (`PL-R417`): a line ending inside a paragraph, which CommonMark reads as a
 #: soft break (0.31.2 § 6.7), with the indent and blockquote markers that open
@@ -56,9 +57,7 @@ LIST_ENTRY_RE = re.compile(r"^(?:[-*]|\d+\.)\s+(?P<text>\S.*)$")
 #: same). Possessive, so backtracking cannot hand a list marker to whatever
 #: follows as the continued text. Every reader of a phrase the documents may
 #: wrap takes its whitespace from here, rather than each meeting the wrap one
-#: capture at a time. Here rather than in `tools/doc_check.py`, which builds its
-#: phrase readers on it, because the list walker below asks the same question
-#: and docket cannot import `doc_check` (`PL-MFVV`).
+#: capture at a time: `tools/doc_check.py` builds its phrase readers on it.
 #:
 #: A fence and an HTML block are refused only where they would open: a backtick
 #: run with a backtick after it on its line is a code span, since a backtick
@@ -70,8 +69,7 @@ LIST_ENTRY_RE = re.compile(r"^(?:[-*]|\d+\.)\s+(?P<text>\S.*)$")
 #: 2026-10-04 (`PL-2S1G`). Every ordered marker, every pipe line and every
 #: block's opening indented four columns or more is still refused, though each
 #: can carry a paragraph on: whether one does turns on the paragraph's list
-#: item or the line under it, which a pattern cannot see, so `statement_lines`
-#: reads that context below.
+#: item or the line under it, which a pattern cannot see and `markdown` reads.
 CONTINUED_LINE = (
     r"[ \t]*+(?:>[ \t]*+)*+"
     r"(?!\n|\Z|[-*+][ \t]|\d{1,9}[.)][ \t]|#{1,6}(?:[ \t\n]|\Z)"
@@ -84,13 +82,6 @@ CONTINUED_LINE = (
     r"|thead|title|track|tr|ul)(?=[ \t\n]|/?>|\Z))"
     r"|(?:-[ \t]*+){3,}(?:\n|\Z)|(?:\*[ \t]*+){3,}(?:\n|\Z)|(?:_[ \t]*+){3,}(?:\n|\Z))"
 )
-#: A line that carries on a list entry's paragraph from the margin: CommonMark's
-#: lazy continuation line (0.31.2 § 5.2). Any line `CONTINUED_LINE` would carry a
-#: paragraph onto, less one opening a block quote, which interrupts the
-#: paragraph (§ 5.1); inside a quote the same marker only continues it.
-LAZY_LINE_RE = re.compile(rf"(?![ \t]*+>){CONTINUED_LINE}")
-#: `CONTINUED_LINE` on its own, for a walker reading one line at a time.
-CONTINUED_RE = re.compile(CONTINUED_LINE)
 #: Why the walker declines an entry a lazy line carries on, in the words every
 #: reader of it passes on.
 LAZY_ENTRY = (
@@ -98,42 +89,12 @@ LAZY_ENTRY = (
     "part of that entry and the list walker does not; indent it to keep it in the entry, "
     "or put a blank line before it"
 )
-#: A table's delimiter row (GitHub Flavored Markdown 0.29 § 4.10): the line
-#: that makes the pipe line above it a table's header row. Without one under
-#: it, a pipe line is paragraph text, carried on to like any other (`PL-XYJF`).
-#: `CONTINUED_LINE` refuses every pipe line all the same, because a pattern
-#: cannot see that the line above it is a row; the walkers below can.
-DELIMITER_ROW_RE = re.compile(
-    r"[ \t]*+(?:>[ \t]*+)*+\|?[ \t]*+:?-++:?[ \t]*+(?:\|[ \t]*+:?-++:?[ \t]*+)*+\|?[ \t]*+$"
-)
-#: A list item's marker at any depth, with the indent before it and the gap
-#: after it (CommonMark 0.31.2 § 5.2): what opens an item, and where its
-#: content starts. An empty gap is the line's end, an item opened empty.
-LIST_MARKER_RE = re.compile(
-    r"(?P<indent> *+)(?P<marker>[-*+]|(?P<start>\d{1,9})[.)])(?P<gap>[ \t]++|$)"
-)
-#: One block-quote marker and the space it takes with it (§ 5.1).
-QUOTE_MARKER_RE = re.compile(r" {0,3}> ?")
-#: The lines that are a block of their own and carry nothing on: an ATX
-#: heading (§ 4.2) and a thematic break (§ 4.1).
-SINGLE_LINE_BLOCK_RE = re.compile(
-    r" {0,3}(?:#{1,6}(?:[ \t]|$)|(?:-[ \t]*){3,}$|(?:\*[ \t]*){3,}$|(?:_[ \t]*){3,}$)"
-)
-#: A setext heading's underline (§ 4.3), which ends the paragraph it underlines.
-SETEXT_UNDERLINE_RE = re.compile(r" {0,3}(?:=+|-+)[ \t]*$")
-#: The HTML blocks that run to an end marker rather than to a blank line, kinds
-#: 1 to 5 of § 4.6, as the line opening each and the marker closing it, which
-#: may sit on the opening line itself: `<!-- absent: ... -->` is one line.
-HTML_BLOCKS = (
-    (
-        re.compile(r" {0,3}<(?i:pre|script|style|textarea)(?:[ \t>]|$)"),
-        re.compile(r"</(?i:pre|script|style|textarea)>"),
-    ),
-    (re.compile(r" {0,3}<!--"), re.compile(r"-->")),
-    (re.compile(r" {0,3}<\?"), re.compile(r"\?>")),
-    (re.compile(r" {0,3}<![A-Za-z]"), re.compile(r">")),
-    (re.compile(r" {0,3}<!\[CDATA\["), re.compile(r"\]\]>")),
-)
+#: A list item's marker and the gap after it (CommonMark 0.31.2 § 5.2), which an
+#: entry's text is read without.
+ENTRY_MARKER_RE = re.compile(r" {0,3}(?:[-+*]|\d{1,9}[.)])(?:[ \t]+|$)")
+#: The blocks a heading's section, and an entry's text, read no id from: each
+#: holds a literal or a comment rather than what the page says (`PL-HKHP`).
+LITERAL_BLOCKS = (markdown.FENCE, markdown.HTML)
 #: Where a sentence of prose ends: its stop, any closing emphasis, code,
 #: parenthesis or bracket, and the space after it. A soft break is a space.
 SENTENCE_BREAK = re.compile(r"[.!?][*`)\]]*\s")
@@ -154,40 +115,40 @@ class UnreadEntry(Exception):
         self.why = why
 
 
-def table_rows(text: str, heading: str, level: int = 2) -> Iterator[tuple[int, list[str]]]:
-    """Yield the rows of the first markdown table under `heading`.
+def section_table(text: str, heading: str, level: int = 2) -> markdown.Table | None:
+    """The first table under the first top-level `heading` that has one.
 
     `level` is the heading's depth, so a table under a `###` subsection can be
     read as readily as one under a `##` section. Any heading at or above that
     depth ends the search, which is what stops a table further down the file
-    being mistaken for this one.
+    being mistaken for this one. The headings and the table are `markdown`'s,
+    so neither is read inside a comment or a fence, a setext heading is one,
+    and a row written without its outer pipes, or holding an escaped one, is
+    read as GitHub renders it (`PL-HKHP`, `PL-5NC3`).
     """
     lines = text.splitlines()
-    in_section = False
-    started = False
-    for index, line in enumerate(lines, start=1):
-        heading_match = HEADING_RE.match(line)
-        if heading_match is not None and len(heading_match.group("hashes")) <= level:
-            if started:
-                return
-            in_section = (
-                len(heading_match.group("hashes")) == level
-                and heading_match.group("title").strip() == heading
-            )
+    found = markdown.headings(lines)
+    tables = markdown.tables(lines)
+    for position, opening in enumerate(found):
+        if opening.level != level or opening.title != heading:
             continue
-        if not in_section:
-            continue
-        match = TABLE_ROW_RE.match(line)
-        if match is None:
-            if started:
-                return
-            continue
-        cells = [cell.strip() for cell in match.group("cells").split("|")]
-        if all(set(cell) <= set("-: ") and cell for cell in cells):
-            started = True
-            continue
-        if started:
-            yield index, cells
+        end = next((later.line for later in found[position + 1 :] if later.level <= level), None)
+        table = next((t for t in tables if opening.line < t.line < (end or len(lines))), None)
+        if table is not None:
+            return table
+    return None
+
+
+def table_rows(text: str, heading: str, level: int = 2) -> Iterator[tuple[int, list[str]]]:
+    """Yield the body rows of the first markdown table under `heading`, as (line, cells).
+
+    The line is 1-based. `section_table` reads the table; its header and
+    delimiter rows are not yielded.
+    """
+    table = section_table(text, heading, level)
+    if table is not None:
+        for index, cells in table.rows:
+            yield index + 1, list(cells)
 
 
 # --- the version table ------------------------------------------------------
@@ -246,14 +207,15 @@ def released_versions(rows: Iterable[VersionRow]) -> frozenset[str]:
 
 
 def baseline_heading(text: str) -> tuple[int, str] | None:
-    """The version named by the `## Current baseline: vX.Y.Z` heading, if any."""
-    for index, line in enumerate(text.splitlines(), start=1):
-        heading = HEADING_RE.match(line)
-        if heading is None:
-            continue
-        match = BASELINE_HEADING_RE.match(heading.group("title").strip())
+    """The version named by the `## Current baseline: vX.Y.Z` heading, if any.
+
+    Read from `markdown.headings`, so a heading inside a comment or a fence is
+    none (`PL-HKHP`). The line is 1-based.
+    """
+    for heading in markdown.headings(text.splitlines()):
+        match = BASELINE_HEADING_RE.match(heading.title)
         if match is not None:
-            return index, match.group("version")
+            return heading.line + 1, match.group("version")
     return None
 
 
@@ -619,14 +581,32 @@ def _subsection_ids(lines: Sequence[str], start: int) -> Iterator[str]:
 
     `start` is the heading's line number, so reading begins on the line after
     it and stops at the next heading of the same depth or shallower - the same
-    bound `_gate_entries` uses, for the same reason.
+    bound `_gate_entries` uses, for the same reason. No id is read from a fence
+    or an HTML block, which holds a literal or a comment (`PL-HKHP`).
     """
-    for index in range(start, len(lines)):
-        heading = HEADING_RE.match(lines[index])
-        if heading is not None and len(heading.group("hashes")) <= 3:
-            return
-        for match in SECTION_ID_RE.finditer(lines[index]):
+    for line in _subsection_lines(lines, start):
+        for match in SECTION_ID_RE.finditer(line):
             yield match.group(0)
+
+
+def _subsection_end(lines: Sequence[str], start: int, level: int = 3) -> int:
+    """The index of the first top-level heading at `level` or shallower from `start` on."""
+    return next(
+        (
+            heading.line
+            for heading in markdown.headings(lines)
+            if heading.line >= start and heading.level <= level
+        ),
+        len(lines),
+    )
+
+
+def _subsection_lines(lines: Sequence[str], start: int) -> Iterator[str]:
+    """Each line under one `###` heading, less those of a fence or an HTML block."""
+    literal = markdown.block_lines(lines, LITERAL_BLOCKS)
+    for index in range(start, _subsection_end(lines, start)):
+        if index not in literal:
+            yield lines[index]
 
 
 def _deduped(ids: Iterable[str]) -> tuple[str, ...]:
@@ -655,21 +635,26 @@ def list_entries(
     it and stops at the next heading of the same depth or shallower - the same
     bound `_subsection_ids` uses, for the same reason.
 
-    Continuation lines are folded into the entry they open, because an entry
-    routinely wraps and a phrase split across the break would be invisible to
-    every reader of this - the declaration slot included, where a pair of ids
-    can wrap between them. A nested bullet folds in too: `LIST_ENTRY_RE`
-    anchors at the margin, so only a top-level marker starts an entry.
+    Every line of the entry is folded into its text, less its marker, because
+    an entry routinely wraps and a phrase split across the break would be
+    invisible to every reader of this - the declaration slot included, where a
+    pair of ids can wrap between them. A nested list and a later paragraph fold
+    in too, since CommonMark reads both as the entry's (`PL-YSMD`); a fence and
+    an HTML block inside it do not, holding a literal or a comment.
 
     One walker and three readers - the frozen list, `Required scope`, and the
     exclusion advisory in `tools/doc_check.py` - because what an entry *is* is
     one question, and it was answered in three places that could drift. An
     entry it cannot read whole is declined by the walker, through `unread`.
     """
+    literal = markdown.block_lines(lines, LITERAL_BLOCKS)
     for first, end in list_entry_lines(lines, start, unread):
-        parts = [LIST_ENTRY_RE.sub(r"\g<text>", lines[first])]
-        parts.extend(line.strip() for line in lines[first + 1 : end])
-        yield first + 1, " ".join(parts)
+        marker = ENTRY_MARKER_RE.match(lines[first])
+        parts = [lines[first][marker.end() if marker else 0 :].strip()]
+        parts.extend(
+            lines[index].strip() for index in range(first + 1, end) if index not in literal
+        )
+        yield first + 1, " ".join(part for part in parts if part)
 
 
 def list_entry_lines(
@@ -678,207 +663,57 @@ def list_entry_lines(
     """The walker `list_entries` reads, as each entry's span of `lines`.
 
     Each pair is the 0-based index of the entry's own line and the index one
-    past its last continuation line. A reader that needs an entry as written -
-    its line breaks kept, so a name wrapped inside a code span is read whole
-    rather than joined with a space no test name holds (`PL-6SRZ`) - slices
-    `lines` with it, and what an entry *is* stays answered once.
+    past its last line. A reader that needs an entry as written - its line
+    breaks kept, so a name wrapped inside a code span is read whole rather than
+    joined with a space no test name holds (`PL-6SRZ`) - slices `lines` with
+    it, and what an entry *is* stays answered once.
+
+    An entry is a top-level list item as `markdown` reads one (`PL-YSMD`): any
+    bullet or ordered marker, an item opening on an empty marker line, its later
+    paragraphs and nested blocks, and none inside an HTML block or a fence,
+    where a thematic break is none and an ordered marker past 1 under a
+    paragraph carries it on, as CommonMark 0.31.2 § 5.2 reads them.
 
     **An entry carried on from the margin is declined, not read short**
-    (`PL-MFVV`). An entry ends at the first line with no indent, and CommonMark
-    folds such a line into the entry when it carries on the entry's paragraph
-    (0.31.2 § 5.2), so its words - a gate entry's second id, a scope entry's
-    declaration - would belong to no entry while the entry read as whole. Here
-    that line is as often a blank line forgotten before a new paragraph, so
-    neither reading can be assumed. The walker raises `UnreadEntry` naming the
-    line, or, where the caller passes `unread`, puts it there and ends the entry
-    where it always has, so one doubtful line costs the reader nothing it could
-    read.
+    (`PL-MFVV`). CommonMark folds a line with no indent into the entry when it
+    carries on the entry's paragraph (§ 5.2), so its words - a gate entry's
+    second id, a scope entry's declaration - belong to the entry. Here that line
+    is as often a blank line forgotten before a new paragraph, so neither
+    reading can be assumed. The walker raises `UnreadEntry` naming the line, or,
+    where the caller passes `unread`, puts it there and ends the entry before
+    it, so one doubtful line costs the reader nothing it could read.
     """
-    first = -1
-    end = len(lines)
-    for index in range(start, len(lines)):
-        line = lines[index]
-        heading = HEADING_RE.match(line)
-        if heading is not None and len(heading.group("hashes")) <= 3:
-            end = index
-            break
-        if LIST_ENTRY_RE.match(line) is not None:
-            if first >= 0:
-                yield first, index
-            first = index
-        elif first >= 0 and not (line.strip() and line[:1].isspace()):
-            if line.strip() and (LAZY_LINE_RE.match(line) or _pipe_text(lines, index, line)):
-                lazy = UnreadEntry(index + 1, LAZY_ENTRY)
-                if unread is None:
-                    raise lazy
-                unread.append(lazy)
-            yield first, index
-            first = -1
-    if first >= 0:
-        yield first, end
+    end = _subsection_end(lines, start)
+    found = (item for item in markdown.read(lines).items if start <= item.start < end)
+    yield from _entries(found, unread)
 
 
 def document_entry_lines(
     lines: Sequence[str], unread: list[UnreadEntry] | None = None
 ) -> Iterator[tuple[int, int]]:
-    """`list_entry_lines` over a whole document: the entries under every heading.
+    """`list_entry_lines` over a whole document: every top-level entry under every heading.
 
-    The walker stops at a heading of depth three or less, so it starts again
-    after each one, and once at the top for the entries before the first. For
-    a document that is a list in sections - a release's notes,
+    For a document that is a list in sections - a release's notes,
     `docs/dead-ends.md` - so that each is read by the one walker (`PL-R417`).
     """
-    starts = [0] + [
-        index + 1
-        for index, line in enumerate(lines)
-        if (heading := HEADING_RE.match(line)) is not None and len(heading["hashes"]) <= 3
-    ]
-    for start in starts:
-        yield from list_entry_lines(lines, start, unread)
+    yield from _entries(markdown.read(lines).items, unread)
 
 
-def _pipe_text(lines: Sequence[str], index: int, line: str) -> bool:
-    """Whether `line`, at `lines[index]`, is a pipe line opening no table.
-
-    Such a line is paragraph text, so it carries on the paragraph above it as
-    any other text would (GitHub Flavored Markdown 0.29 § 4.10): only a
-    delimiter row under it makes it a header row instead.
-    """
-    if not line.lstrip(" \t").startswith("|"):
-        return False
-    return index + 1 >= len(lines) or DELIMITER_ROW_RE.match(lines[index + 1]) is None
-
-
-def _unquoted(line: str) -> tuple[int, str]:
-    """How many block-quote markers open `line`, and what follows them (§ 5.1)."""
-    depth = 0
-    while (marker := QUOTE_MARKER_RE.match(line)) is not None:
-        depth += 1
-        line = line[marker.end() :]
-    return depth, line
-
-
-def _interrupts(marker: re.Match[str], line: str) -> bool:
-    """Whether the list item `marker` opens may interrupt a paragraph (§ 5.2).
-
-    A bullet may, and an ordered item numbered 1; neither may when it opens
-    empty. So `17. ` under a line of a paragraph carries the paragraph on.
-    """
-    if not line[marker.end() :].strip():
-        return False
-    return marker["start"] is None or int(marker["start"]) == 1
-
-
-def _content_column(marker: re.Match[str], line: str) -> int:
-    """The column a list item's content starts at, from its marker (§ 5.2).
-
-    One space past the marker where the item opens empty, or where five or
-    more follow it - the content is then an indented code block, and the
-    item's own column is the first of those spaces.
-    """
-    gap = len(marker["gap"])
-    if gap == 0 or gap > 4 or not line[marker.end() :].strip():
-        gap = 1
-    return len(marker["indent"]) + len(marker["marker"]) + gap
-
-
-def statement_lines(
-    lines: Sequence[str], skip: Container[int] = frozenset()
+def _entries(
+    items: Iterable[markdown.Item], unread: list[UnreadEntry] | None
 ) -> Iterator[tuple[int, int]]:
-    """Each statement of a Markdown document, as its span of `lines` (`PL-R417`).
-
-    A statement is a paragraph, with every line CommonMark 0.31.2 carries it
-    onto - a soft break's (§ 6.7) and a lazy continuation line's (§ 5.2) - or a
-    line that is a block of its own: a heading, a table row, a thematic break.
-    A list item's paragraph is one, so a list is as many statements as it has
-    items. A blank line ends a statement, and so does a line in `skip`, where a
-    caller passes its fenced lines, which are a literal rather than prose. Each
-    pair is the 0-based index of the statement's first line and the index one
-    past its last, as `list_entry_lines` gives an entry's.
-
-    **The context `CONTINUED_LINE` cannot see is read here.** That pattern
-    refuses every line opening with an ordered item's marker or a pipe, because
-    whether one carries a paragraph on depends on what holds the paragraph.
-    `17. ` cannot interrupt a paragraph - only an item numbered 1 can, and
-    only a non-empty one - so it carries the paragraph on where the line sits
-    inside the paragraph's own list item and quote, and opens an item where it
-    sits outside them (`PL-XYJF`). Which item holds a paragraph is kept across
-    blank lines, as the content columns of the items still open. A pipe line
-    carries a paragraph on unless a delimiter row under it opens a table.
-
-    An HTML block of § 4.6's kinds 1 to 5 is one statement, through the line
-    holding its end marker; one nothing closes is read as written, as `fences`
-    reads a fence nothing closes. Kinds 6 and 7, which run to a blank line, are
-    read as paragraphs. Indentation is read from the content column of the
-    list item a line sits in, with tabs at four-column stops, so a line four
-    columns past it carries a paragraph on whatever it opens with, as an
-    indented code block cannot interrupt one (§ 4.4). A list item inside a
-    block quote inside a list item is read as the quote alone: a change of
-    quote depth starts its items afresh. Checked against
-    markdown-it-py 4.2.0 on every tracked Markdown document on 2026-10-04.
-    """
-    items: list[int] = []
-    depth = 0
-    first = html_end = -1
-    paragraph = row = False
-    for index, raw in enumerate(lines):
-        if index <= html_end:
+    """Each top-level item's span, an item carried on from the margin declined as above."""
+    for item in items:
+        if item.depth:
             continue
-        quotes, line = _unquoted(raw)
-        line = line.expandtabs(4)
-        if index in skip or not line.strip():
-            if first >= 0:
-                yield first, index
-            first, paragraph, row = -1, False, False
+        if item.lazy < 0:
+            yield item.start, item.end
             continue
-        indent = len(line) - len(line.lstrip(" "))
-        if paragraph and quotes <= depth:
-            # Inside the paragraph's own item and quote, or lazily outside them,
-            # where a line is read from the column of the item it sits in.
-            held = quotes == depth and indent >= (items[-1] if items else 0)
-            base = max((c for c in items if c <= indent), default=0) if quotes == depth else 0
-            if indent - base >= 4:
-                continue  # an indented code block cannot interrupt a paragraph (§ 4.4)
-            if held and SETEXT_UNDERLINE_RE.match(line[base:]):
-                paragraph = False
-                continue
-            if CONTINUED_RE.match(line) or _pipe_text(lines, index, line):
-                continue
-            marker = LIST_MARKER_RE.match(line)
-            if held and marker is not None and not _interrupts(marker, line):
-                continue
-        if first >= 0:
-            yield first, index
-        if quotes != depth:
-            items, depth = [], quotes
-        while items and items[-1] > indent:
-            items.pop()
-        block = line[items[-1] if items else 0 :]
-        marker = LIST_MARKER_RE.match(line)
-        if marker is not None:
-            items.append(_content_column(marker, line))
-        first = index
-        html_end = _html_block_end(lines, index, block)
-        row = line.lstrip(" ").startswith("|") and (row or not _pipe_text(lines, index, line))
-        paragraph = html_end < 0 and not row and SINGLE_LINE_BLOCK_RE.match(block) is None
-    if first >= 0:
-        yield first, len(lines)
-
-
-def _html_block_end(lines: Sequence[str], index: int, line: str) -> int:
-    """The index of the line closing the HTML block `line` opens, or -1.
-
-    -1 where `line` opens none of `HTML_BLOCKS`' kinds, and where nothing
-    closes the one it opens.
-    """
-    for opening, closing in HTML_BLOCKS:
-        if opening.match(line):
-            if closing.search(line):
-                return index
-            return next(
-                (end for end in range(index + 1, len(lines)) if closing.search(lines[end])), -1
-            )
-    return -1
+        lazy = UnreadEntry(item.lazy + 1, LAZY_ENTRY)
+        if unread is None:
+            raise lazy
+        unread.append(lazy)
+        yield item.start, item.lazy
 
 
 def _subsection_text(lines: Sequence[str], start: int) -> str:
@@ -892,15 +727,11 @@ def _subsection_text(lines: Sequence[str], start: int) -> str:
     The whole subsection rather than its entries, because a milestone with one
     thing to say writes a sentence rather than a list - v0.2.0's scope is a
     paragraph - and the slot is the statement wherever it is written. The entry
-    unit is what `tools/doc_check.py` needs, and it reads `scope_entries`.
+    unit is what `tools/doc_check.py` needs, and it reads `scope_entries`. A
+    fence or an HTML block declares nothing, holding a literal or a comment
+    (`PL-HKHP`).
     """
-    end = len(lines)
-    for index in range(start, len(lines)):
-        heading = HEADING_RE.match(lines[index])
-        if heading is not None and len(heading.group("hashes")) <= 3:
-            end = index
-            break
-    return " ".join(line.strip() for line in lines[start:end])
+    return " ".join(line.strip() for line in _subsection_lines(lines, start))
 
 
 def _declared_ids(text: str) -> tuple[str, ...]:
@@ -967,11 +798,7 @@ def _section_end(lines: Sequence[str], start: int) -> int:
     subsection's own extent wants and the wrong bound for a sweep across the
     sibling subsections beside it.
     """
-    for index in range(start, len(lines)):
-        heading = HEADING_RE.match(lines[index])
-        if heading is not None and len(heading.group("hashes")) <= 2:
-            return index
-    return len(lines)
+    return _subsection_end(lines, start, 2)
 
 
 def parse_milestones(text: str) -> list[MilestoneSection]:
@@ -1014,12 +841,10 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
             )
         )
 
-    for index, line in enumerate(lines, start=1):
-        heading = HEADING_RE.match(line)
-        if heading is None:
-            continue
-        depth = len(heading.group("hashes"))
-        heading_title = heading.group("title").strip()
+    # `markdown`'s headings, so none is read inside a comment or a fence and a
+    # setext one is read (`PL-HKHP`); `index` is each one's 1-based line.
+    for heading in markdown.headings(lines):
+        index, depth, heading_title = heading.line + 1, heading.level, heading.title
         if depth <= 2:
             flush()
             match = SECTION_VERSION_RE.search(heading_title) if depth == 2 else None

@@ -287,3 +287,25 @@ def test_picks_prints_the_list_from_the_command(
     out = capsys.readouterr().out
     assert "  1. PL-G1G1, a live generator head" in out
     assert "build entry 1, The layout model" in out
+
+
+def test_picks_names_a_gate_entry_the_plan_walker_declines(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A gate entry the walker declines is named, and the list exits 1 (`PL-GMR6`).
+
+    The walker declines an entry carried on from the margin rather than reading
+    it short, and `wave` names the entry and exits 1. This list printed what it
+    read at exit 0 and said nothing, so a count it gave could be short with no
+    sign of it.
+    """
+    roadmap = _roadmap().replace(
+        "- PL-B2B2 (S) entry PL-B2B2", "- PL-B2B2 (S) entry **wrapped**\nPL-B2B2 lazily"
+    )
+    store = _project(tmp_path, roadmap)
+
+    assert main(["picks", "--items", str(store), "--no-git"]) == 1
+    out = capsys.readouterr().out
+    assert "A list the plan is read from was not read whole" in out
+    assert "carries on the entry above it without an indent" in out
+    assert main(["wave", "--items", str(store), "--no-git"]) == 1
