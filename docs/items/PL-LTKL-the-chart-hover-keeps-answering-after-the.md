@@ -9,6 +9,7 @@ feature: qt-port
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_chart.py, docs/MODEL.md
 added: 2026-10-04
 closed: 2026-10-05
+pr: 1367
 payoff: once the pointer leaves the chart, no modelled concentration stays on screen updating with the run, so a glance back cannot take a stale hover for the live state
 verify: grep -q 'def test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_bring_it_back' tests/integration/test_qt_chart.py
 ---
