@@ -53,7 +53,7 @@ signed zero, and the formatters need no rule of their own.
 
 `CaseInstant` was brought here by `PL-7N8P`, after `PL-LLMN` had found the
 same holes in it, and `StepCount`, built from an `int` alone, refuses what is
-not one in the same words since `PL-LLMN`. The sign-and-finiteness guards in
+not one in the same form since `PL-LLMN`. The sign-and-finiteness guards in
 `core/validation.py`, with `SimulationStep` built on one of them, are
 `PL-3800`'s: each has the same holes, and is brought here as its item lands.
 """
