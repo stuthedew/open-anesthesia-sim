@@ -729,6 +729,118 @@ def test_the_hover_answers_the_point_under_the_pointer(application: QApplication
     assert wash_in.hover_text() == under_pointer
 
 
+def _leave(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> None:
+    """Take the pointer off the chart from over one pixel, as the platform reports it.
+
+    A `Leave` to the widget under that pixel and no move, which is all a
+    pointer leaving a widget sends it.
+    """
+
+    QApplication.sendEvent(chart.childAt(pixel), QEvent(QEvent.Type.Leave))
+
+
+def _two_points(
+    chart: ConcentrationChart | WashInChart, frame: ChartFrame
+) -> tuple[QPoint, QPoint]:
+    """Two pixels of the chart over drawn points of the frame's run, answered differently.
+
+    On the compartment chart, the circuit trace where
+    `test_the_hover_answers_the_point_under_the_pointer` finds it clear of the
+    other five; on the wash-in plot, two points of the first stretch.
+    """
+
+    run = frame.runs[0]
+
+    if isinstance(chart, ConcentrationChart):
+        count = len(run.times_s)
+        circuit = run.percents(RecordedQuantity.CIRCUIT)
+        earlier, later = count // 4, 3 * count // 4
+
+        return (
+            QPoint(*chart.plot_pixel(run.times_s[earlier], circuit[earlier])),
+            QPoint(*chart.plot_pixel(run.times_s[later], circuit[later])),
+        )
+
+    stretch = run.wash_in[0]
+    earlier, later = len(stretch.times_s) // 4, len(stretch.times_s) // 2
+
+    return (
+        QPoint(*chart.plot_pixel(stretch.times_s[earlier], stretch.ratios[earlier])),
+        QPoint(*chart.plot_pixel(stretch.times_s[later], stretch.ratios[later])),
+    )
+
+
+def test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_bring_it_back(
+    application: QApplication,
+) -> None:
+    """`PL-LTKL`: the box goes with the pointer, on both plots, and stays gone.
+
+    A pointer leaving the plot sends it no move, only a `Leave`, and the box
+    was hidden by moves alone. So it stayed up at the last point, and each
+    later frame answered that point again - while the run played, for a new
+    instant each frame, so a modelled value climbed with the run for a pointer
+    that had gone. A move still waiting out the cooldown when the pointer
+    leaves goes with it, or the cooldown's end would put the box back up.
+    """
+
+    controller = _run_with_a_dial_change()
+    assert controller.is_running
+    frame = _frame(controller)
+    charts = (
+        _shown(application, ConcentrationChart(), 480),
+        _shown(application, WashInChart(), 300),
+    )
+
+    for chart in charts:
+        chart.draw(frame)
+
+    # Labelling the axes can widen one and move the plot, so the layout is
+    # settled before a pixel is read off it.
+    application.processEvents()
+
+    for chart in charts:
+        first, second = _two_points(chart, frame)
+        _move_pointer(chart, first)
+        answered = chart.hover_text()
+        assert answered is not None, "the hover must have answered for this to test it"
+        _move_pointer(chart, second)
+        assert chart.hover_text() == answered, "the second move must be held for this to test it"
+
+        _leave(chart, second)
+
+        assert chart.hover_text() is None
+
+    # Past the longest a held move waits to be answered, neither box has come
+    # back up.
+    shown: set[str] = set()
+    held = QDeadlineTimer(_HOVER_DELIVERY_MS)
+
+    while not held.hasExpired():
+        QTest.qWait(10)
+        shown.update(text for chart in charts if (text := chart.hover_text()) is not None)
+
+    assert not shown
+
+    # Nor does a following frame, the run having played on.
+    _advance(controller, 30.0)
+    following = _frame(controller)
+
+    for chart in charts:
+        chart.draw(following)
+
+        assert chart.hover_text() is None
+
+    application.processEvents()
+
+    # A pointer that comes back is answered again: leaving did not withdraw
+    # the hover.
+    for chart in charts:
+        back, _ = _two_points(chart, following)
+        _move_pointer(chart, back)
+
+        assert chart.hover_text() is not None
+
+
 def test_a_chart_let_go_is_freed_at_once_rather_than_by_the_collector(
     application: QApplication,
 ) -> None:
