@@ -13,6 +13,7 @@ accepted a `bool` where `parameters.py` refuses one (`PL-LKRP`).
 """
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -73,24 +74,34 @@ class AlveolarCompartment:
                 "agent_amount_l exceeds the alveolar capacity for a concentration fraction of 1"
             )
 
-    def __setattr__(self, name: str, value: object) -> None:
-        """Write a field, refusing a ventilation that was not built as an `AlveolarVentilation`.
+    if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
+        # Hidden from `mypy` on purpose. A class that defines `__setattr__` is
+        # one `mypy` lets assign any attribute name, typed by the method's
+        # `value`, so with the guard in view a misspelt field written in `src/`
+        # would pass `--strict` and fail at run time against the slots - on
+        # these three classes alone. Hidden, `mypy` reads the dataclass's
+        # fields and their types as before, and this is the runtime half for
+        # the callers it does not read; its three lines are checked by their
+        # tests rather than by `mypy` (`PL-LBQY`, found at review).
 
-        The one place a ventilation is stored on the compartment is this
-        field, so its type is required here, for the constructor, the setter
-        and an assignment made past both alike, as `BreathingCircuit.__setattr__`
-        explains (`PL-LBQY`). Nothing is written when it is refused.
+        def __setattr__(self, name: str, value: object) -> None:
+            """Write a field, refusing a ventilation that was not built as an `AlveolarVentilation`.
 
-        Raises:
-            TypeError: `name` is `alveolar_ventilation_l_min` and `value` was
-                not built as an `AlveolarVentilation`
-                (`require_alveolar_ventilation`).
-        """
+            The one place a ventilation is stored on the compartment is this
+            field, so its type is required here, for the constructor, the setter
+            and an assignment made past both alike, as `BreathingCircuit.__setattr__`
+            explains (`PL-LBQY`). Nothing is written when it is refused.
 
-        if name == "alveolar_ventilation_l_min":
-            require_alveolar_ventilation(value)
+            Raises:
+                TypeError: `name` is `alveolar_ventilation_l_min` and `value` was
+                    not built as an `AlveolarVentilation`
+                    (`require_alveolar_ventilation`).
+            """
 
-        super().__setattr__(name, value)
+            if name == "alveolar_ventilation_l_min":
+                require_alveolar_ventilation(value)
+
+            super().__setattr__(name, value)
 
     @property
     def partial_pressure_fraction(self) -> float:

@@ -5215,12 +5215,16 @@ had shown it, and a paused run showed it for as long as it stayed paused.
 flow's `require_*` in `__setattr__`, so a write to the flow field is refused
 with the same `TypeError` in the same words and leaves the field holding what
 it held; the dataclass constructor, `dataclasses.replace`, a copy and a pickle
-all write through it, so the constructors run no check of their own. The type
-is all the write checks. The circuit's setter still compares the flow against
+all write through it - the last two because each compartment is a `slots=True`
+dataclass, whose state a copy or a pickle restores one field at a time through
+`__setattr__` where a `__dict__` would be updated past it - so the constructors
+run no check of their own. The type is all the write checks. The circuit's setter still compares the flow against
 the machine's range before the write, and the patient's still recomputes the
 tissue flows after it, so a checked cardiac output written past the setter
 leaves the tissue flows stale, which `UptakeEquationSettings` refuses at the
-next step (`PL-Z0T3` records the same hazard reached through
+next step, as the `SimulationNumericalError` that `advance()` restates every
+guard reached inside a step as, and at Reset, where the view handles no
+refusal (`PL-M4M0`; `PL-Z0T3` records the same hazard reached through
 `dataclasses.replace`).
 
 **Built from an `int` or a `float` and nothing else, with no sign at zero**

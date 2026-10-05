@@ -221,7 +221,7 @@ def test_a_count_that_is_not_whole_and_nonnegative_cannot_be_built() -> None:
         StepCount(-1)
 
     for not_a_count in (2.5, True):
-        with pytest.raises(TypeError, match="not an int"):
+        with pytest.raises(TypeError, match="not int"):
             StepCount(not_a_count)  # type: ignore[arg-type]
 
 

@@ -33,6 +33,7 @@ below 0.5 L/min must not move the model's floor for every other machine.
 
 from dataclasses import dataclass
 from math import exp, inf
+from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.concentration import (
     Fraction,
@@ -267,31 +268,45 @@ class BreathingCircuit:
             "inspired_partial_pressure_fraction", self.inspired_partial_pressure_fraction
         )
 
-    def __setattr__(self, name: str, value: object) -> None:
-        """Write a field, refusing a fresh gas flow that was not built as a `FreshGasFlow`.
+    if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
+        # Hidden from `mypy` on purpose. A class that defines `__setattr__` is
+        # one `mypy` lets assign any attribute name, typed by the method's
+        # `value`, so with the guard in view a misspelt field written in `src/`
+        # would pass `--strict` and fail at run time against the slots - on
+        # these three classes alone. Hidden, `mypy` reads the dataclass's
+        # fields and their types as before, and this is the runtime half for
+        # the callers it does not read; its three lines are checked by their
+        # tests rather than by `mypy` (`PL-LBQY`, found at review).
 
-        The one place a flow is stored on the circuit is this field, so this
-        is where its type is required, for every writer at once: the
-        constructor, `set_fresh_gas_flow`, and an assignment made past both by
-        a caller `mypy` does not read - a test, a notebook, a value typed
-        `Any`. Until `PL-LBQY` that assignment was caught only when the next
-        step rebuilt the settings, after a snapshot had copied the bare
-        `float` and the readout beside the slider had shown it, and a Reset in
-        the meantime left the run paused at it with no notice. Nothing is
-        written when it is refused, so the field holds what it held. The
-        machine's range is not checked here: it is a relation the setter and
-        the constructor hold, and `PL-BBMG` records why the dial's bound is
-        not either.
+        def __setattr__(self, name: str, value: object) -> None:
+            """Write a field, refusing a fresh gas flow that was not built as a `FreshGasFlow`.
 
-        Raises:
-            TypeError: `name` is `fresh_gas_flow_l_min` and `value` was not
-                built as a `FreshGasFlow` (`require_fresh_gas_flow`).
-        """
+            The one place a flow is stored on the circuit is this field, so this
+            is where its type is required, for every writer at once: the
+            constructor, `set_fresh_gas_flow`, and an assignment made past both by
+            a caller `mypy` does not read - a test, a notebook, a value typed
+            `Any`. Until `PL-LBQY` that assignment was caught only when the next
+            step rebuilt the settings, after a snapshot had copied the bare
+            `float` and the readout beside the slider had shown it, and a Reset in
+            the meantime left the run paused at it with no notice. A copy, a
+            pickle and `dataclasses.replace` write through it too, because this is
+            a `slots=True` dataclass, whose state a copy or a pickle restores one
+            field at a time through `__setattr__`; a `__dict__` would be updated
+            past it. Nothing is written when it is refused, so the field holds
+            what it held. The
+            machine's range is not checked here: it is a relation the setter and
+            the constructor hold, and `PL-BBMG` records why the dial's bound is
+            not either.
 
-        if name == "fresh_gas_flow_l_min":
-            require_fresh_gas_flow(value)
+            Raises:
+                TypeError: `name` is `fresh_gas_flow_l_min` and `value` was not
+                    built as a `FreshGasFlow` (`require_fresh_gas_flow`).
+            """
 
-        super().__setattr__(name, value)
+            if name == "fresh_gas_flow_l_min":
+                require_fresh_gas_flow(value)
+
+            super().__setattr__(name, value)
 
     def _require_the_two_flow_claims_overlap(self) -> None:
         """Reject a machine that can deliver no flow the model is claimed over.

@@ -62,7 +62,14 @@ scratch pytest plugin over the whole suite:
 assigned, after which the setters' and `__post_init__`'s own calls are
 redundant. A step costs 20.3 us without it and 19.9 us with it (median of
 seven runs of 20 000 steps, inside noise), since only two of a step's six
-trajectory writes land on those classes. Four test cases fail, the capture
+trajectory writes land on those classes. [Measured again at review,
+2026-10-05, interleaved with the guards present and deleted, seven runs of
+20 000 steps: 22.78 us with and 21.94 us without, 0.83 us or 3.8% a step,
+the same sign in every round, so a cost rather than noise - and immaterial,
+2.5 ms of CPU per wall second at 300x. The guards are hidden from `mypy`
+under `if not TYPE_CHECKING:`, since a class defining `__setattr__` is one
+`mypy` lets assign any attribute name, which would have cost these three
+classes the check that a field exists.] Four test cases fail, the capture
 and restore and the reset cases for the circuit and the alveoli in
 `tests/unit/test_state_capture.py`, whose perturbation writes a bare `float`
 onto the flow; the 680 integration and reference tests pass. It refuses the

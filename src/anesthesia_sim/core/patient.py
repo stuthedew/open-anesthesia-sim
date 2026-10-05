@@ -14,6 +14,7 @@ compartments, which is the rule `alveolar.py` states for the same reason.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.blood import VenousBloodCompartment, VenousBloodCompartmentState
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -59,28 +60,41 @@ class PatientCompartments:
 
         self._update_blood_flows()
 
-    def __setattr__(self, name: str, value: object) -> None:
-        """Write a field, refusing a cardiac output that was not built as a `CardiacOutput`.
+    if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
+        # Hidden from `mypy` on purpose. A class that defines `__setattr__` is
+        # one `mypy` lets assign any attribute name, typed by the method's
+        # `value`, so with the guard in view a misspelt field written in `src/`
+        # would pass `--strict` and fail at run time against the slots - on
+        # these three classes alone. Hidden, `mypy` reads the dataclass's
+        # fields and their types as before, and this is the runtime half for
+        # the callers it does not read; its three lines are checked by their
+        # tests rather than by `mypy` (`PL-LBQY`, found at review).
 
-        The one place a cardiac output is stored on the patient is this field,
-        so its type is required here, for the constructor, `set_cardiac_output`
-        and an assignment made past both alike, as
-        `BreathingCircuit.__setattr__` explains (`PL-LBQY`). Nothing is written
-        when it is refused. The type is all it requires: a checked output
-        written past the setter leaves every tissue's blood flow at the old
-        output, which is the relation `set_cardiac_output` keeps and
-        `UptakeEquationSettings` refuses at the next step (`PL-Z0T3` records
-        the one copy that reaches it).
+        def __setattr__(self, name: str, value: object) -> None:
+            """Write a field, refusing a cardiac output that was not built as a `CardiacOutput`.
 
-        Raises:
-            TypeError: `name` is `cardiac_output_l_min` and `value` was not
-                built as a `CardiacOutput` (`require_cardiac_output`).
-        """
+            The one place a cardiac output is stored on the patient is this field,
+            so its type is required here, for the constructor, `set_cardiac_output`
+            and an assignment made past both alike, as
+            `BreathingCircuit.__setattr__` explains (`PL-LBQY`). Nothing is written
+            when it is refused. The type is all it requires: a checked output
+            written past the setter leaves every tissue's blood flow at the old
+            output, which is the relation `set_cardiac_output` keeps and
+            `UptakeEquationSettings` refuses at the next step, as the
+            `SimulationNumericalError` `advance()` restates every guard reached
+            inside a step as, and at Reset, where `SimulationController.reset()`
+            rebuilds the record and the view handles no refusal (`PL-M4M0`;
+            `PL-Z0T3` records the one copy that reaches it).
 
-        if name == "cardiac_output_l_min":
-            require_cardiac_output(value)
+            Raises:
+                TypeError: `name` is `cardiac_output_l_min` and `value` was not
+                    built as a `CardiacOutput` (`require_cardiac_output`).
+            """
 
-        super().__setattr__(name, value)
+            if name == "cardiac_output_l_min":
+                require_cardiac_output(value)
+
+            super().__setattr__(name, value)
 
     @classmethod
     def from_parameters(

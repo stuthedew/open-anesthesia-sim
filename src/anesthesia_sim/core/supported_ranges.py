@@ -149,10 +149,9 @@ chain is cut: neither is derived from anything measured over this envelope.
 
 from __future__ import annotations
 
-import sys
 from math import floor, isfinite
 
-from anesthesia_sim.core.checked_number import negative_zero_as_zero, require_a_number
+from anesthesia_sim.core.checked_number import negative_zero_as_zero, require_a_number, shown
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.units import SECONDS_PER_HOUR
@@ -283,7 +282,7 @@ def _require_supported(name: str, value: float, minimum: float, maximum: float) 
 
     if not minimum <= value <= maximum:
         raise SimulationConfigurationError(
-            f"{name} of {_shown(value)} is outside the supported input range of "
+            f"{name} of {shown(value)} is outside the supported input range of "
             f"{minimum} to {maximum} L/min, which is the domain this "
             f"compartment model is claimed to represent a patient over "
             f'(docs/MODEL.md, "Supported input ranges")'
@@ -523,23 +522,11 @@ def describe_count(count: int) -> str:
 
     Printing such a count raises `ValueError`, so a refusal that printed it
     escaped the simulator's own exceptions while it was being written
-    (`PL-5F76`).
+    (`PL-5F76`). `shown` in `core/checked_number.py` is the rule for any
+    refused value, the concentrations' included; this is its name for a count.
     """
 
-    try:
-        return str(count)
-    except ValueError:
-        sign = "-" if count < 0 else ""
-
-        return f"{sign}<more than {sys.get_int_max_str_digits():,} digits>"
-
-
-def _shown(value: object) -> str:
-    """A value as a refusal names it: an `int` through `describe_count`, since
-    its `repr` raises past the digits CPython will print, and anything else by
-    its `repr`."""
-
-    return describe_count(value) if isinstance(value, int) else repr(value)
+    return shown(count)
 
 
 class StepCount(int):
@@ -574,13 +561,13 @@ class StepCount(int):
     def __new__(cls, step_count: int) -> StepCount:
         if isinstance(step_count, bool) or not isinstance(step_count, int):
             raise TypeError(
-                f"step_count of {_shown(step_count)} is a {type(step_count).__name__}, not an "
+                f"step_count of {shown(step_count)} has type {type(step_count).__name__}, not "
                 "int: build it from the count itself, which is then checked whole and nonnegative"
             )
 
         if step_count < 0:
             raise SimulationConfigurationError(
-                f"step_count must be a whole, nonnegative number of steps, not {_shown(step_count)}"
+                f"step_count must be a whole, nonnegative number of steps, not {shown(step_count)}"
             )
 
         return super().__new__(cls, step_count)
@@ -607,17 +594,17 @@ def require_step_count(step_count: object) -> None:
     if isinstance(step_count, StepCount):
         return
 
-    shown = _shown(step_count)
+    shown_count = shown(step_count)
 
     if isinstance(step_count, _CHECKED_QUANTITIES):
         raise TypeError(
-            f"step_count of {shown} was built as {type(step_count).__name__}, which is not "
+            f"step_count of {shown_count} was built as {type(step_count).__name__}, which is not "
             "StepCount: it is another quantity, so build StepCount from the count's own value "
             "where the count is taken"
         )
 
     raise TypeError(
-        f"step_count of {shown} was not built as StepCount, it is "
+        f"step_count of {shown_count} was not built as StepCount, it is "
         f"{type(step_count).__name__}: build it as StepCount(...) where the count is taken, "
         "which checks once that it is a whole, nonnegative number of steps"
     )
@@ -871,17 +858,18 @@ def require_case_instant(name: str, instant_s: object) -> None:
     if isinstance(instant_s, CaseInstant):
         return
 
-    shown = _shown(instant_s)
+    shown_instant = shown(instant_s)
 
     if isinstance(instant_s, _CHECKED_QUANTITIES):
         raise TypeError(
-            f"{name} of {shown} was built as {type(instant_s).__name__}, which is not "
+            f"{name} of {shown_instant} was built as {type(instant_s).__name__}, which is not "
             "CaseInstant: it is another quantity, so build CaseInstant from the instant's own "
             "value where the instant is chosen"
         )
 
     raise TypeError(
-        f"{name} of {shown} was not built as CaseInstant, it is {type(instant_s).__name__}: "
+        f"{name} of {shown_instant} was not built as CaseInstant, it is "
+        f"{type(instant_s).__name__}: "
         "build it as CaseInstant(...) where the instant is chosen, which checks it against "
         'the supported run length once (docs/MODEL.md, "Supported run length")'
     )

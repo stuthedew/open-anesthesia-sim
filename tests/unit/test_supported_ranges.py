@@ -355,8 +355,10 @@ def test_the_type_refuses_what_is_not_a_number_and_holds_negative_zero_as_zero(
 
             message = str(raised.value)
 
-            assert message.startswith(f"{control.name} of {value!r} is a {type(value).__name__}")
-            assert "not an int or a float" in message
+            assert message.startswith(
+                f"{control.name} of {value!r} has type {type(value).__name__}"
+            )
+            assert "not int or float" in message
 
     from_negative_zero = control.flow_type(-0.0)
 
@@ -405,7 +407,11 @@ def test_a_bare_float_written_onto_a_compartment_is_refused_at_the_write(control
     built from never see it. A flow built as its type is written, by the
     setter and by assignment alike; the type is all the write checks, so the
     setter's own relations - the machine's range, the tissue flows - stay the
-    setter's.
+    setter's. The constructor, `dataclasses.replace`, a copy and a pickle
+    write through the same `__setattr__`, the last two because the compartment
+    is a `slots=True` dataclass whose state is restored one field at a time, so
+    a bare float smuggled past the guard is refused by each of them, before
+    the patient's `__post_init__` can touch a tissue flow.
     """
 
     system = AgentUptakeSystem.default()
@@ -430,6 +436,18 @@ def test_a_bare_float_written_onto_a_compartment_is_refused_at_the_write(control
         setattr(compartment, control.name, True)
 
     assert getattr(compartment, control.name) is rebuilt
+
+    with pytest.raises(TypeError, match=refused):
+        replace(compartment, **{control.name: float(held)})
+
+    smuggled = copy.copy(compartment)
+    object.__setattr__(smuggled, control.name, float(held))
+
+    with pytest.raises(TypeError, match=refused):
+        copy.copy(smuggled)
+
+    with pytest.raises(TypeError, match=refused):
+        pickle.loads(pickle.dumps(smuggled))
 
 
 # --- The supported run length (PL-Y5WR) -------------------------------------
@@ -949,7 +967,7 @@ def test_a_step_count_refuses_what_is_not_an_int_as_a_programming_error(step_cou
         StepCount(step_count)  # type: ignore[arg-type]
 
     assert str(raised.value).startswith(
-        f"step_count of {_id(step_count)} is a {type(step_count).__name__}, not an int"
+        f"step_count of {_id(step_count)} has type {type(step_count).__name__}, not int"
     )
 
 

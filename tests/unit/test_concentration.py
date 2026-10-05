@@ -20,9 +20,12 @@ there too (`PL-WVSK`).
 import copy
 import pickle
 import struct
+import sys
+from collections.abc import Callable
 from dataclasses import replace
 from decimal import Decimal
 from math import inf, nan, nextafter
+from typing import Any
 
 import numpy
 import pytest
@@ -104,7 +107,10 @@ def test_a_concentration_refuses_what_is_not_a_number_and_holds_negative_zero_as
     signalling NaN escaped as its `ValueError`; and `Fraction(-0.0)` held
     minus zero, which `format_percent` printed as `-0.00%`. Each is now a
     `TypeError` naming the value under the name it was built with, before any
-    comparison reads it, and minus zero is held as the zero it is.
+    comparison reads it, and minus zero is held as the zero it is. An `int`
+    past the float range is compared exactly and refused against the range,
+    one too long to print named by how long it is, where `math.isfinite`
+    raised `OverflowError` and the message itself raised `ValueError`.
     """
 
     for value in (True, numpy.True_, Decimal("2.5"), Decimal("sNaN"), "0.5"):
@@ -112,7 +118,7 @@ def test_a_concentration_refuses_what_is_not_a_number_and_holds_negative_zero_as
             concentration(value, name="alveolar " + name)  # type: ignore[call-arg]
 
         assert str(raised.value).startswith(
-            f"alveolar {name} of {value!r} is a {type(value).__name__}, not an int or a float"
+            f"alveolar {name} of {value!r} has type {type(value).__name__}, not int or float"
         )
 
     from_negative_zero = concentration(-0.0)
@@ -124,6 +130,45 @@ def test_a_concentration_refuses_what_is_not_a_number_and_holds_negative_zero_as
         assert concentration(number).hex() == (1.0).hex()
 
     assert format_percent(Fraction(-0.0)) == "0.00%"
+
+    with pytest.raises(
+        SimulationConfigurationError, match=f"^{name} of 1" + "0" * 400 + " is outside"
+    ):
+        concentration(10**400)
+
+    with pytest.raises(SimulationConfigurationError) as refused:
+        concentration(-(10**5000))
+
+    assert str(refused.value).startswith(
+        f"{name} of -<more than {sys.get_int_max_str_digits():,} digits> is outside"
+    )
+
+
+@pytest.mark.parametrize(
+    ("crossing", "name"),
+    [(fraction_from_percent, "percent"), (percent_from_fraction, "fraction")],
+    ids=["fraction_from_percent", "percent_from_fraction"],
+)
+def test_a_crossing_refuses_what_is_not_a_number_before_converting_it(
+    crossing: Callable[[Any], float], name: str
+) -> None:
+    """`True` times a hundred is 100.0, a percent the range admits (`PL-LLMN`).
+
+    Each crossing does its arithmetic before a constructor sees the result, so
+    a `bool` came through as a held value - `format_percent(True)` printed
+    `100.00%` - and a `str` or a `Decimal` was refused as Python's unsupported
+    operand. Both now meet the constructors' own rule first, in its words. A
+    value of the other checked type handed in is `PL-SWD1`'s.
+    """
+
+    for value in (True, numpy.True_, Decimal("50"), "50"):
+        with pytest.raises(TypeError) as raised:
+            crossing(value)
+
+        assert str(raised.value).startswith(f"{name} of {value!r} has type {type(value).__name__}")
+
+    with pytest.raises(TypeError, match="^fraction of True has type bool"):
+        format_percent(True)  # type: ignore[arg-type]
 
 
 def test_a_refused_fraction_is_named_as_it_was_built() -> None:

@@ -1,4 +1,4 @@
-"""What every checked type is built from, and how it holds a zero.
+"""What a checked type is built from, how it holds a zero, and how a refusal names a value.
 
 `Fraction` and `Percent` (`core/concentration.py`) and the three flows,
 `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`
@@ -29,15 +29,18 @@ words, measured 2026-10-04 on `main` at `8f24fe78`:
   not str`, naming neither the setting nor the range.
 
 So `require_a_number` runs first, and refuses what is not an `int` or a
-`float` with a `TypeError` naming the setting, the value and its type. A
+`float` with a `TypeError` naming the setting, the value and its type, as
+`has type int64, not int or float` for a NumPy integer, which is not the
+`int` its name suggests. A
 `TypeError` because it is a programming error in the caller rather than a
 refused setting, as `require_fraction` and `require_fresh_gas_flow` say of a
 value never built as its type; nothing the interface does reaches it, since a
 slider's value is an `int` position over a power of ten and the data-file
-loaders admit only an `int` or a `float`. A `numpy.float64` is a `float` and
-is admitted; every other NumPy scalar - `numpy.float32`, `numpy.int64` - is
-refused, and its caller converts it, so that a value rounded in a narrower
-format never reads as the number it was.
+loaders admit only an `int` or a `float`. Subclasses of either are admitted
+with them: a `numpy.float64` is a `float`, and an `IntEnum` member an `int`.
+Every other NumPy scalar - `numpy.float32`, `numpy.int64` - is refused, and
+its caller converts it, so that a value rounded in a narrower format never
+reads as the number it was.
 
 **Minus zero is held as zero** (`PL-LLMN`). `-0.0` equals zero and is inside
 every closed interval here, so refusing it would refuse the supported zero -
@@ -57,14 +60,40 @@ lands.
 
 from __future__ import annotations
 
+import sys
+
+
+def shown(value: object) -> str:
+    """A value as a refusal names it: its `repr`, or an `int` too long to print by how long it is.
+
+    `repr` keeps a string's quotes, so `'2.5'` reads as the string it was.
+    `repr` of an `int` of more than `sys.get_int_max_str_digits()` digits
+    (4,300 unless set otherwise) raises `ValueError`, so a refusal that printed
+    one escaped the simulator's own exceptions while its message was being
+    built - the count's escape `PL-5F76` closed, and the flows' and the
+    concentrations' `PL-LLMN` closes the same way.
+    """
+
+    if isinstance(value, int) and not isinstance(value, bool):
+        try:
+            return str(value)
+        except ValueError:
+            sign = "-" if value < 0 else ""
+
+            return f"{sign}<more than {sys.get_int_max_str_digits():,} digits>"
+
+    return repr(value)
+
 
 def require_a_number(name: str, value: object) -> None:
     """Require an `int` or a `float`, before any comparison reads the value.
 
-    Admits exactly those two types, and `float` subclasses with them, so a
-    `numpy.float64` or a value already built as a checked type passes and a
+    Admits those two types and their subclasses, so a `numpy.float64`, an
+    `IntEnum` member or a value already built as a checked type passes, and a
     `bool`, a `numpy.bool_`, a `Decimal` and a `str` do not. A `bool` is an
-    `int` to Python and is refused all the same: `True` is not a setting.
+    `int` to Python and is refused all the same: `True` is not a setting. An
+    `IntEnum` member is an `int` its caller chose to name, and is admitted as
+    the `int` it is; `src/` defines no such enum.
 
     Args:
         name: What the value is where it is handed in, for the message - the
@@ -80,8 +109,9 @@ def require_a_number(name: str, value: object) -> None:
 
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise TypeError(
-            f"{name} of {value!r} is a {type(value).__name__}, not an int or a float: build it "
-            "from a number, which is then checked against its range"
+            f"{name} of {value!r} has type {type(value).__name__}, not int or float: "
+            "build it from an int or a float, which is then checked against its range "
+            "(core/checked_number.py)"
         )
 
 
@@ -90,8 +120,9 @@ def negative_zero_as_zero(value: float) -> float:
 
     `-0.0 == 0.0`, so a comparison cannot tell them apart and a range check
     admits both; `float.__new__` would keep the sign and a formatter would
-    print it. Every other value is returned as it was given, bit for bit,
-    since the type's promise is to hold what it was built from.
+    print it. A zero of either sign, the `int` zero included, is returned as
+    `0.0`; every other value is returned as it was given, bit for bit, since
+    the type's promise is to hold what it was built from.
     """
 
     return 0.0 if value == 0 else value
