@@ -3,11 +3,13 @@ id: PL-LTKL
 title: The chart hover keeps answering after the pointer leaves the plot: nothing clears the stored pointer position on a Leave event, so the box stays up and every later frame re-answers for a pointer that has gone
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
 feature: qt-port
-touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_chart.py
+touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_chart.py, docs/MODEL.md
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1367
 payoff: once the pointer leaves the chart, no modelled concentration stays on screen updating with the run, so a glance back cannot take a stale hover for the live state
 verify: grep -q 'def test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_bring_it_back' tests/integration/test_qt_chart.py
 ---
@@ -68,3 +70,19 @@ standard counts as a safety failure even where the number is right for its
 point. `PL-TCR5`, on the same hover, was classed `defect, ux`; this does not
 follow it, for that reason. Captured after v0.6.0's freeze, it joins the
 gate's product lane under the `safety` exception.
+
+**Fixed 2026-10-05.** `_PointerMoves` takes the viewport's `Leave` as well as
+its moves. It drops the move waiting out the cooldown, stops the cooldown and
+delivers `None` at once. Each chart's `_on_pointer` stores that through
+`_HoverReadout.move_to`, and `_refresh_hover` already hid the box for a
+position of `None`. It is one signal rather than a second one for leaving, so
+the one-slot ordering `PL-TCR5` set up still holds. The signal is declared
+`object`, because a signal declared `QPointF` and handed `None` delivers the
+scene's origin with only a line on standard error (measured under PySide6 in
+this container). The test failed on `main`'s code with the box still reading
+`1.45%   0.73 ×MAC` after the `Leave`. Against a half-fix that left the
+waiting move in place, both boxes came back after the cooldown, the
+compartment chart's reading `2.40%   1.20 ×MAC`, the reviewer's own value.
+`docs/MODEL.md` gains the hazard's row in § "Reasonably foreseeable misuse,
+and the hazards the presentation carries" and a paragraph under § "When it
+answers", which is why it joined `touches`.

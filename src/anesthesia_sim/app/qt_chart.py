@@ -401,9 +401,21 @@ class _PointerMoves(QObject):
     timer on every signal, so moves under a millisecond apart, as a 1 kHz
     mouse reports them, held its delivery back for as long as the pointer kept
     moving.
+
+    **A pointer that leaves is delivered at once, as `None`** (`PL-LTKL`).
+    Leaving the widget sends it no move, only a `Leave`, so a position kept
+    from moves alone outlived the pointer: the box stayed up at the last
+    point, and each later frame answered that point again - while a run
+    played, for a new instant each frame, so a modelled value climbed with
+    the run for a pointer that had gone. The `Leave` drops a move still
+    waiting out the cooldown too, which would otherwise put the box back up
+    when the cooldown ended.
     """
 
-    moved = Signal(QPointF)
+    # `object` because the payload is a `QPointF` or `None`: a signal declared
+    # `QPointF` does not refuse `None` but delivers the scene's origin in its
+    # place, with nothing but a line on standard error to say so.
+    moved = Signal(object)
 
     def __init__(self, plot: Any) -> None:
         super().__init__(plot)
@@ -421,6 +433,12 @@ class _PointerMoves(QObject):
 
             if not self._cooldown.isActive():
                 self._deliver()
+        elif event.type() == QEvent.Type.Leave:
+            # The cooldown is stopped as well as emptied, so a pointer that
+            # comes back is answered on its first move.
+            self._newest = None
+            self._cooldown.stop()
+            self.moved.emit(None)
 
         return False
 
@@ -439,7 +457,9 @@ class _HoverReadout:
     Holds the last pointer position so a frame drawn under a resting pointer
     re-answers rather than going quiet: at high playback the reported value
     moves as the run does, which `docs/MODEL.md` § "When it answers" says is
-    correct rather than a defect to design around.
+    correct rather than a defect to design around. It holds `None` once the
+    pointer has left the plot, so a frame drawn after that answers nothing
+    (`PL-LTKL`).
     """
 
     def __init__(self, plot: Any) -> None:
@@ -453,7 +473,7 @@ class _HoverReadout:
 
     @property
     def moved(self) -> SignalInstance:
-        """Each new pointer position over the plot, in scene coordinates, from `_PointerMoves`.
+        """Each new pointer position over the plot, in scene coordinates, or `None` once it leaves.
 
         The plot connects a slot of its own here, which stores the position
         and then answers it: one slot, so nothing can answer before the
@@ -467,8 +487,8 @@ class _HoverReadout:
 
         return self._moves.moved
 
-    def move_to(self, scene_position: QPointF) -> None:
-        """Take the pointer's new position, in scene coordinates."""
+    def move_to(self, scene_position: QPointF | None) -> None:
+        """Take the pointer's new position, in scene coordinates, or `None` once it has left."""
 
         self._scene_position = scene_position
 
@@ -931,7 +951,7 @@ class ConcentrationChart(QWidget):
             self._frame, time_s, percent, seconds_per_pixel, percent_per_pixel, HOVER_RADIUS_PIXELS
         )
 
-    def _on_pointer(self, scene_position: QPointF) -> None:
+    def _on_pointer(self, scene_position: QPointF | None) -> None:
         self._hover.move_to(scene_position)
         self._refresh_hover()
 
@@ -1223,7 +1243,7 @@ class WashInChart(QWidget):
             self._frame, time_s, ratio, seconds_per_pixel, ratio_per_pixel, HOVER_RADIUS_PIXELS
         )
 
-    def _on_pointer(self, scene_position: QPointF) -> None:
+    def _on_pointer(self, scene_position: QPointF | None) -> None:
         self._hover.move_to(scene_position)
         self._refresh_hover()
 
