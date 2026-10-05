@@ -82,6 +82,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.lines import split_lines  # noqa: E402
 from docket.model import (  # noqa: E402
     CLOSED_STATUSES,
     MIN_ROOT_CAUSE_ITEMS,
@@ -243,7 +244,7 @@ def creation_parents(repo: Path) -> dict[str, set[str]]:
     except (OSError, subprocess.SubprocessError) as error:
         raise GitUnanswered(f"`git log` could not run: {error}") from error
     if result.returncode != 0:
-        said = next((line.strip() for line in result.stderr.splitlines() if line.strip()), "")
+        said = next((line.strip() for line in split_lines(result.stderr) if line.strip()), "")
         raise GitUnanswered(
             f"`git log` exited {result.returncode}: {said or 'with nothing on stderr'}"
         )
@@ -253,7 +254,7 @@ def creation_parents(repo: Path) -> dict[str, set[str]]:
         subject, _, body = block.partition("\n")
         leading = set(leading_ids(subject))
         created = set()
-        for line in body.splitlines():
+        for line in split_lines(body):
             line = line.strip()
             if not line.startswith(f"{ITEM_DIR}/"):
                 continue
@@ -398,7 +399,7 @@ def _line(cluster: Cluster) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("--repo", type=Path, default=Path("."))
     args = parser.parse_args(argv)
 

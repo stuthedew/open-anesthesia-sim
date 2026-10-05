@@ -176,7 +176,7 @@ def widen_fetch_refspec(run: Callable[[list[str]], tuple[int, str]]) -> str:
     status, output = run(["config", "--get-all", "remote.origin.fetch"])
     if status != 0:
         return "this checkout has no origin remote"
-    if any(line.strip() == WIDE_REFSPEC for line in output.splitlines()):
+    if any(line.strip() == WIDE_REFSPEC for line in output.split("\n")):
         return ""
     status, _ = run(["config", "--unset-all", "remote.origin.fetch"])
     if status not in (0, 5):  # 5 is "nothing to unset", which is not a failure

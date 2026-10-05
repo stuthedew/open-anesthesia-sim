@@ -85,6 +85,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.lines import split_lines  # noqa: E402
 from docket.model import CLOSED_STATUSES, Item, parse_item  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import ITEM_FILE_RE, default_base, leading_ids  # noqa: E402
@@ -125,7 +126,7 @@ def _git(args: list[str]) -> str:
     except (OSError, subprocess.SubprocessError) as error:
         raise GitUnanswered(f"`git {args[0]}` could not run: {error}") from error
     if result.returncode != 0:
-        said = next((line.strip() for line in result.stderr.splitlines() if line.strip()), "")
+        said = next((line.strip() for line in split_lines(result.stderr) if line.strip()), "")
         raise GitUnanswered(
             f"`git {args[0]}` exited {result.returncode}: {said or 'with nothing on stderr'}"
         )
@@ -143,7 +144,7 @@ def closed_items_at(ref: str) -> dict[str, Item]:
         return _closed_on_disk()
     closed: dict[str, Item] = {}
     listing = _git(["ls-tree", "-r", "--name-only", ref, "--", ITEMS_DIR])
-    for path in listing.splitlines():
+    for path in split_lines(listing):
         name = path.strip().split("/")[-1]
         if not ITEM_FILE_RE.match(name):
             continue

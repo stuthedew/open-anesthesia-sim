@@ -3,11 +3,13 @@ id: PL-K1D6
 title: Readers that split git or JSON output with str.splitlines() also break at U+2028, U+2029, U+0085 and \x1c-\x1e, so a ref name, a transcript record or a Python source line holding one reads as two; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/vcs.py, tools/context_reading.py, subprojects/docket/tests, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-05
+pr: 1364
 payoff: A branch, tag or transcript record holding a Unicode line separator is answered about as itself, not as two refs that do not exist or a request the budget reading never counts
 verify: grep -q 'def test_a_ref_name_holding_a_line_separator_is_read_as_one_ref' subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_record_holding_a_raw_line_separator_is_read_as_one_record' tests/unit/test_context_reading.py
 ---

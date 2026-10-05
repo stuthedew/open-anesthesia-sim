@@ -157,9 +157,9 @@ def report(sites: Sequence[str], returncode: int, stdout: str, stderr: str) -> t
     tell "nothing is inert" from "nothing was read" is the failure this whole
     tool exists to avoid.
     """
-    lines = stdout.splitlines()
+    lines = stdout.split("\n")
     if returncode not in (0, 1) or (returncode == 1 and not stdout.strip()):
-        detail = (stderr.strip() or stdout.strip() or "no output").splitlines()
+        detail = (stderr.strip() or stdout.strip() or "no output").split("\n")
         body = "\n".join(f"  {line}" for line in detail[:10])
         return 1, (
             f"type: ignore directives: not checked - mypy exited {returncode} without "
@@ -211,7 +211,7 @@ def evaluate(root: Path) -> tuple[int, str]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("--root", type=Path, default=None, help="path to the repository")
     args = parser.parse_args(argv)
 
