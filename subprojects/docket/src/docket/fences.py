@@ -30,7 +30,9 @@ each line (`PL-J0C6`), in four rules and one refusal:
   at worst a loud false error on a literal, repaired by closing the fence the
   document needs anyway.
 
-A line is what `str.splitlines()` cuts, and an index is 0-based.
+A line is what `lines.split_lines` cuts - the text broken at `\\n` alone, which
+on text decoded as Python decodes it is where CommonMark ends one - and an
+index is 0-based.
 """
 
 from __future__ import annotations
@@ -38,6 +40,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from . import markdown
+from .lines import split_lines
 
 
 @dataclass(frozen=True)
@@ -61,7 +64,7 @@ def blocks(text: str) -> list[Block]:
     """
     return [
         Block(block.start, block.end - 1)
-        for block in markdown.read(text.splitlines()).blocks
+        for block in markdown.read(split_lines(text)).blocks
         if block.kind == markdown.FENCE
     ]
 
@@ -74,16 +77,16 @@ def fenced_lines(text: str) -> frozenset[int]:
 def without_fences(text: str) -> str:
     """`text` with every line of a closed block blanked, offsets and line breaks kept.
 
-    Each such line becomes as many spaces as it held characters and keeps its own
-    terminator, the one `str.splitlines()` cut. So a form feed or a U+2028 is not
-    blanked into the line, and every offset and line number past it still holds,
-    whether a reader counts lines as `splitlines()` does or by newlines.
+    Each such line becomes as many spaces as it held characters and keeps its
+    `\\n`, so every offset and line number past it still holds. A form feed or a
+    U+2028 inside a fenced line ends no line, so it is one of the characters
+    blanked (`PL-BBYJ`).
     """
     fenced = fenced_lines(text)
     out: list[str] = []
-    for index, line in enumerate(text.splitlines(keepends=True)):
+    for index, line in enumerate(split_lines(text, keepends=True)):
         if index in fenced:
-            content = line.splitlines()[0]
+            content = line.removesuffix("\n")
             out.append(" " * len(content) + line[len(content) :])
         else:
             out.append(line)

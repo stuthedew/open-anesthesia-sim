@@ -37,6 +37,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import markdown
+from .lines import split_lines
 from .store import ID_PATTERN
 
 THREAD_HEADING_LEVEL = 2
@@ -117,7 +118,7 @@ def read(path: Path) -> tuple[Thread, ...]:
     # `markdown`'s headings, so a `##` line inside a fence or a comment opens no
     # thread and a setext one opens its own (`PL-HKHP`). A thread's body is
     # every line after its heading up to the next thread's.
-    lines = text.splitlines()
+    lines = split_lines(text)
     found = [h for h in markdown.headings(lines) if h.level == THREAD_HEADING_LEVEL]
     threads: list[Thread] = []
     for position, heading in enumerate(found):

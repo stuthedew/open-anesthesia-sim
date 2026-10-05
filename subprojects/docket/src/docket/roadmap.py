@@ -35,6 +35,7 @@ from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from . import markdown
+from .lines import split_lines
 from .model import MILESTONE_BLOCKER_RE, SEMVER_PATTERN
 from .release import SEMVER_RE, version_key
 from .store import ID_PATTERN
@@ -126,7 +127,7 @@ def section_table(text: str, heading: str, level: int = 2) -> markdown.Table | N
     and a row written without its outer pipes, or holding an escaped one, is
     read as GitHub renders it (`PL-HKHP`, `PL-5NC3`).
     """
-    lines = text.splitlines()
+    lines = split_lines(text)
     found = markdown.headings(lines)
     tables = markdown.tables(lines)
     for position, opening in enumerate(found):
@@ -212,7 +213,7 @@ def baseline_heading(text: str) -> tuple[int, str] | None:
     Read from `markdown.headings`, so a heading inside a comment or a fence is
     none (`PL-HKHP`). The line is 1-based.
     """
-    for heading in markdown.headings(text.splitlines()):
+    for heading in markdown.headings(split_lines(text)):
         match = BASELINE_HEADING_RE.match(heading.title)
         if match is not None:
             return heading.line + 1, match.group("version")
@@ -803,7 +804,7 @@ def _section_end(lines: Sequence[str], start: int) -> int:
 
 def parse_milestones(text: str) -> list[MilestoneSection]:
     """Read every milestone section of the roadmap, in version order."""
-    lines = text.splitlines()
+    lines = split_lines(text)
     found: list[MilestoneSection] = []
 
     line_number = 0

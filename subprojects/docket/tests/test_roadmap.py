@@ -201,6 +201,21 @@ def test_a_section_heading_is_found_by_its_version_not_its_separator() -> None:
     ]
 
 
+def test_a_line_separator_in_prose_opens_no_milestone_section() -> None:
+    """A U+2028 ends no line in CommonMark (0.31.2 § 2.1), so the `##` after one is prose.
+
+    Cut by `str.splitlines()`, a pasted line conjured a milestone the roadmap
+    never planned (`PL-BBYJ`).
+    """
+    pasted = ROADMAP.replace(
+        "Nothing yet.", "Nothing yet.\u2028## v0.9.0 - a milestone nobody planned"
+    )
+
+    versions = [section.version for section in parse_milestones(pasted)]
+
+    assert versions == [(0, 2, 0), (0, 3, 0), (0, 4, 0)]
+
+
 def test_a_milestone_missing_a_required_subsection_does_not_read_as_scoped() -> None:
     """v0.3.0 has no "Required scope" by design; the test is structural only."""
     sections = {section.version: section for section in parse_milestones(ROADMAP)}
@@ -1113,6 +1128,17 @@ def test_the_baseline_heading_is_read_by_its_version() -> None:
 
 def test_a_file_with_no_baseline_heading_names_none() -> None:
     assert baseline_heading(ROADMAP) is None
+
+
+def test_a_form_feed_in_prose_puts_no_baseline_heading_at_a_line_s_start() -> None:
+    """A form feed ends no line in CommonMark (0.31.2 § 2.1), so what follows one is prose.
+
+    Cut by `str.splitlines()`, the pasted heading was the baseline read, and
+    the real one stood a line further down than it does (`PL-BBYJ`).
+    """
+    pasted = VERSION_TABLE.replace("chosen.", "chosen.\f## Current baseline: v0.2.4")
+
+    assert baseline_heading(pasted) == (13, "0.2.5")
 
 
 # --- the digest line --------------------------------------------------------

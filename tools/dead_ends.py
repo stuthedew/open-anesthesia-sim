@@ -98,6 +98,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
 
+from docket.lines import split_lines  # noqa: E402
 from docket.roadmap import UnreadEntry, document_entry_lines  # noqa: E402
 from docket.store import ID_PATTERN  # noqa: E402
 from docket.vcs import ITEM_FILE_RE  # noqa: E402
@@ -146,7 +147,7 @@ def _bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, str]]
     a time, an entry whose bolded title wrapped was no entry at all, and a
     margin line opening `#1234`, `*` or a pipe ended one with its ids unread.
     """
-    lines = text.splitlines()
+    lines = split_lines(text)
     bullets: list[tuple[int, int, str]] = []
     for first, end in document_entry_lines(lines, unread):
         if OPENING.match(lines[first]):

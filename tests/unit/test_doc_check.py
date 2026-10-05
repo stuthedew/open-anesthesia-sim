@@ -4417,6 +4417,18 @@ def test_without_code_reads_a_span_wrapped_across_lines() -> None:
     ]
 
 
+def test_without_code_cuts_a_line_at_a_newline_alone() -> None:
+    """A form feed or a U+2028 ends no line in CommonMark (0.31.2 § 2.1).
+
+    Cut by `str.splitlines()`, the span holding the U+2028 was read as two
+    lines, and every line the math rules reported below it stood one further
+    down than it does (`PL-BBYJ`).
+    """
+    lines = doc_check._without_code("A `code\u2028span`\fthen prose.\nNext line.\n")
+
+    assert lines == ["A " + " " * len("`code\u2028span`") + "\fthen prose.", "Next line."]
+
+
 def test_math_fenced_sample_is_quiet(tmp_path: Path) -> None:
     body = "Before:\n\n```text\n\\(F_A\\) and \\[F = 0.02\\]\n```\n"
 

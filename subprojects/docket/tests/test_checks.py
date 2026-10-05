@@ -632,6 +632,18 @@ def test_a_marker_covers_its_passage_past_a_line_opening_like_a_block() -> None:
     assert _status_advisories("ready", text.replace("| It", "1. It"))
 
 
+def test_a_marker_covers_its_passage_past_a_line_separator() -> None:
+    """A U+2028 ends no line in CommonMark (0.31.2 § 2.1), so the passage goes on past one.
+
+    Cut by `str.splitlines()`, the `- ` after it opened a list item, a passage
+    of its own the marker did not cover, and the claim it retired drew the
+    advisory (`PL-BBYJ`).
+    """
+    text = "[superseded 2026-08-02] Depends on `PL-0002`,\u2028- and blocked on `PL-0002` too."
+
+    assert _prose(text, blocker_status="done") == []
+
+
 def test_a_marker_needs_its_date() -> None:
     """One greppable token, and the date is part of it: it is what tells a
     reader when the passage stopped being true."""
