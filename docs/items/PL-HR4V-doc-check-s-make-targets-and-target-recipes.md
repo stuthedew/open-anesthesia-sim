@@ -3,13 +3,15 @@ id: PL-HR4V
 title: doc_check's make_targets and _target_recipes take a rule line's targets and prerequisites by their own patterns, where _make_lines reads the line as make does, so a trailing comment's words become .PHONY names and prerequisites, and a target-specific variable or a ::= assignment declares a target make has no rule for; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tools/doc_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed at triage 2026-10-06
 added: 2026-10-06
+closed: 2026-10-06
+pr: 1385
 payoff: a word in a Makefile comment, or a target-specific variable, no longer counts as a target, and a rule naming two targets declares both, so a document naming a make target is told the failure make would give
-verify: grep -q 'def test_a_rule_line_comment_declares_no_target_or_prerequisite' tests/unit/test_doc_check.py && grep -q 'def test_a_target_specific_variable_declares_no_target' tests/unit/test_doc_check.py && grep -q 'def test_a_double_colon_assignment_declares_no_target' tests/unit/test_doc_check.py && grep -q 'def test_every_target_a_rule_line_names_is_declared' tests/unit/test_doc_check.py
+verify: grep -q 'def test_a_rule_line_comment_declares_no_target_or_prerequisite' tests/unit/test_doc_check.py && grep -q 'def test_a_target_specific_variable_declares_no_target' tests/unit/test_doc_check.py && grep -q 'def test_a_double_colon_assignment_declares_no_target' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's make_targets and _target_recipes take a rule line's targets and prerequisites by their own patterns, where _make_lines reads the line as make does, so a trailing comment's words become .PHONY names and prerequisites, and a target-specific variable or a ::= assignment declares a target make has no rule for; latent
@@ -56,6 +58,7 @@ makes, handed to both readers in place of their own patterns.
 **Done when.** `make_targets` and `_target_recipes` take a rule line's
 targets, prerequisites and `.PHONY` names as make 4.3 reads them: a comment
 cut off, an assignment after the colon read as a target-specific variable that
-gives no target a rule, `::=` read as an assignment, and every target a rule
-line names declared. Each is pinned by a
+gives no target a rule, and `::=` read as an assignment. Every target a rule
+line names declared is `PL-HD96`'s, filed 2026-10-04 and found at close-out,
+and its test pins that half. Each is pinned by a
 test that fails on today's reader.
