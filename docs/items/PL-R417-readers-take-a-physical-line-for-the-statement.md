@@ -438,7 +438,7 @@ differently on main. No new member was filed: `PL-HR4V`, `PL-GSJ6` and
 conditional's branches, none of them where a statement ends. `generator:`
 stays `live`.
 
-**Link 19, the closing sweep (2026-10-06).** Done: the one more sweep of the
+**Link 19, the closing sweep (`#1386`, 2026-10-06).** Done: the one more sweep of the
 same reach the next steps asked for, ten read-only slices over `tools/`,
 `subprojects/docket/src/docket/` and `.claude/hooks/`, with the workflows'
 `run:` scripts, the Makefile's recipes and the commands in
