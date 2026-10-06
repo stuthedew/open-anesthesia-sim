@@ -6290,8 +6290,8 @@ removed, and this file's history before that change holds their text.
   adds to it.
 - **Re-reading the Blender design rationale against the primary pages** (queue
   item `PL-PV5Q`), which rests on search summaries because `blender.org` was
-  refused by the session egress proxy when that document was written. That no
-  longer holds: every `blender.org` host answered a probe on 2026-09-26
+  refused by the session egress proxy when that document was written, on
+  2026-09-15. That no longer holds: every `blender.org` host answered a probe on 2026-09-26
   (`PL-M701`), so the pages can be read now. It is independent of this
   milestone.
 

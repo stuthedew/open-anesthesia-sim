@@ -654,7 +654,9 @@ has asked for. Where to look, named so nobody has to rediscover it:
   Zeus IE — technical data sections, for apparatus volume, flow ranges, minimum
   oxygen flow and sample gas flow. The Perseus IfU was located at
   `draeger.com/Content/Documents/Content/IfU_Perseus_A500_SW_1.1n_EN_9054101.pdf`
-  and refused by this environment's egress policy, not missing.
+  and refused by this environment's egress policy on 2026-09-19, not missing;
+  `draeger.com` and `www.draeger.com` were still refused at the CONNECT on
+  2026-10-06.
 - GE *User's Reference Manual* for the Aisys CS², Avance and Carestation
   families, and the Aladin cassette's specification, for the same fields.
 - Getinge *User's Manual* for the FLOW-i, for the same fields and for the
@@ -822,9 +824,10 @@ criterion.**
   fourth edition, 2016-02-15. The edition and date are those a CSA adoption
   record states for the standard it adopts.
 
-**Neither was read, and the route to both was a web search.** `www.iso.org`,
-`webstore.ansi.org` and `standards.iteh.ai` were all refused at the gateway, and
-`search.worldcat.org` answered but rate-limited the one query put to it. So
+**Neither was read, and the route to both was a web search.** On 2026-09-19
+`www.iso.org`, `webstore.ansi.org` and `standards.iteh.ai` were all refused at
+the gateway, as they still were on 2026-10-06, and `search.worldcat.org`
+answered but rate-limited the one query put to it. So
 these two entries record identifiers taken from catalogue and adoption records
 surfaced by a search, which `.claude/rules/citing-sources.md` is explicit is not
 a source. They are here as pointers for a session that can open the texts, and

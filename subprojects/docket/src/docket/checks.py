@@ -3658,9 +3658,9 @@ def _check_stale_instructions(
     """Name the dated assertions in the instruction set that are due for re-checking.
 
     The instruction set asserts facts about a world that changes and nothing
-    expires any of them. `PL-BSYZ` stated an egress refusal measured on one
-    day as a standing fact, so it would have gone on telling sessions not to
-    retry `doi.org` the moment the policy opened; `PL-GDB0` records three
+    expires any of them. `PL-BSYZ` stated an egress refusal measured on
+    2026-09-04 as a standing fact, so it would have gone on telling sessions not
+    to retry `doi.org` the moment the policy opened; `PL-GDB0` records three
     current-state facts written as permanent rules in a single session. Both
     were caught by the project owner rather than by any gate, and
     `.claude/rules/expert-review.md` says why no gate will catch the judgment

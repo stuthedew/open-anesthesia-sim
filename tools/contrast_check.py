@@ -198,8 +198,9 @@ agent identity, and by SC 1.4.3's exemption for the splitter handle, which has
 no label at all.
 
 *What is deliberately not claimed.* SC 1.4.11's own exception wording for
-inactive components was **not** read at the source: `w3.org` returns
-`EGRESS_BLOCKED` from this container, as PL-JX0Z recorded across five routes. So
+inactive components was **not** read at the source: `w3.org` returned
+`EGRESS_BLOCKED` from this container on 2026-09-07, as PL-JX0Z recorded across
+five routes, and was still refused at the CONNECT on 2026-10-06. So
 nothing here rests on it - which is why the transport button's *edge* keeps
 `MUTED` in both states and meets 1.4.11's 3:1 outright, rather than being
 softened for the disabled state on an exception nobody here has read.

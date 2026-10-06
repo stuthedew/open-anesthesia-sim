@@ -8847,3 +8847,219 @@ def test_a_fence_bash_cannot_read_is_still_read_a_line_at_a_time() -> None:
     fence = "```text\nIt's done.\nmake lint\n```\n"
 
     assert list(doc_check._make_mentions(fence)) == [("lint", 3)]
+
+
+# --- whether a host answers through the egress proxy, and when (`PL-CLW5`) ----
+
+
+def _host_claim_report(root: Path, files: Mapping[str, str]) -> doc_check.Report:
+    """The host-claim rule's report alone, for `files` written into an empty tree."""
+    for name, body in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8")
+    report = doc_check.Report()
+    doc_check.check_host_claims(root, report)
+    return report
+
+
+def _host_claim_errors(root: Path, files: Mapping[str, str]) -> list[str]:
+    return _host_claim_report(root, files).errors
+
+
+def test_a_host_block_claim_without_its_probe_date_is_refused(tmp_path: Path) -> None:
+    """A host called blocked with no date reads as a property of the environment.
+
+    It is a probe on a day: the owner changes the allowed domains in settings
+    no file reads, so the sentence goes false without anything in the tree
+    moving, and a session reading it works around a route that answers.
+    """
+    errors = _host_claim_errors(
+        tmp_path, {"docs/NOTE.md": "Nothing was checked: `doi.org` is blocked by the proxy.\n"}
+    )
+
+    assert errors == [
+        "docs/NOTE.md:1 names `doi.org` beside a refusal in a sentence that carries no date: "
+        "whether a host answers through the egress proxy is a probe on a day, so write the "
+        "date it was probed in the same sentence (`PL-CLW5`)"
+    ]
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "`doi.org` was refused at CONNECT on 2026-09-04.",
+        "On 2026-10-06 `www.w3.org` still returned `EGRESS_BLOCKED`.",
+        "`github.blog` was blocked (probed 2026-10-06), so the schema was read instead.",
+    ],
+    ids=["date after", "date before", "date in a parenthesis"],
+)
+def test_a_host_block_claim_dated_in_its_own_sentence_is_quiet(
+    tmp_path: Path, sentence: str
+) -> None:
+    assert _host_claim_errors(tmp_path, {"docs/NOTE.md": sentence + "\n"}) == []
+
+
+def test_a_date_in_another_sentence_does_not_date_the_claim(tmp_path: Path) -> None:
+    """The references record's own shape, before 2026-10-06 (`PL-P5NB`).
+
+    Its paragraph dated a `pdftotext` reading, and a later sentence of the same
+    paragraph called two hosts blocked with no date of its own: read a
+    paragraph at a time, the unrelated date passed the claim.
+    """
+    errors = _host_claim_errors(
+        tmp_path,
+        {
+            "docs/NOTE.md": (
+                "Every field was read with `pdftotext` on 2026-09-14. The PDF prints no\n"
+                "DOI, and `doi.org` is blocked by the proxy, so nothing was checked.\n"
+            )
+        },
+    )
+
+    assert [error.split(" names ")[0] for error in errors] == ["docs/NOTE.md:2"]
+
+
+def test_a_claim_wrapped_over_lines_is_read_as_one_sentence(tmp_path: Path) -> None:
+    """A paragraph goes on across its soft breaks, and so does its sentence (`PL-R417`).
+
+    The date two lines below the host still dates it, and an undated claim is
+    reported at the line its host stands on rather than where the sentence began.
+    """
+    report = _host_claim_report(
+        tmp_path,
+        {
+            "docs/DATED.md": "The registry\n`doi.org` was refused at CONNECT\non 2026-09-04.\n",
+            "docs/UNDATED.md": "> The registry\n> `doi.org` is\n> blocked by the proxy.\n",
+        },
+    )
+
+    assert [error.split(" names ")[0] for error in report.errors] == ["docs/UNDATED.md:2"]
+
+
+@pytest.mark.parametrize(
+    ("name", "body", "line"),
+    [
+        (
+            "tools/demo.py",
+            'def f() -> None:\n    """Do it.\n\n'
+            '    `w3.org` returns `EGRESS_BLOCKED` here.\n    """\n',
+            4,
+        ),
+        ("tools/demo.py", "VALUE = 1\n# `w3.org` is refused\n#: by the proxy.\nOTHER = 2\n", 2),
+        ("tools/demo.py", "VALUE = 1  # `w3.org` is refused by the proxy\n", 1),
+        (
+            ".github/workflows/ci.yml",
+            "on: push\n  # Read from the schema, because `github.blog` is\n"
+            "  # blocked.\njobs: {}\n",
+            2,
+        ),
+        (
+            "src/anesthesia_sim/data/agents/demo.json",
+            '{\n    "note": "Read in full. `pmc.ncbi.nlm.nih.gov` is refused by the proxy."\n}\n',
+            2,
+        ),
+    ],
+    ids=["docstring", "comment run", "trailing comment", "workflow comment", "data note"],
+)
+def test_a_host_block_claim_outside_the_documents_is_refused(
+    tmp_path: Path, name: str, body: str, line: int
+) -> None:
+    """Two of the four sites standing on 2026-10-05 were docstrings and one a workflow comment.
+
+    The sweep that `PL-M701` ran read the documents alone, and `PL-B3MK` was a
+    re-entry in a workflow comment nine days later; the 2026-10-06 sweep found
+    a fifth in a data file's provenance note. So every place this tree writes
+    prose a later session reads as the present is read, each by its format's
+    own reading: a docstring with its body dedented, so it is not taken for an
+    indented code block, and a run of comments as one text.
+    """
+    errors = _host_claim_errors(tmp_path, {name: body})
+
+    assert [error.split(" names ")[0] for error in errors] == [f"{name}:{line}"]
+
+
+@pytest.mark.parametrize(
+    ("files", "why"),
+    [
+        (
+            {
+                ".claude/hooks/no-prune-guard.sh": "",
+                "docs/NOTE.md": "`no-prune-guard.sh` refuses it.\n",
+            },
+            "a file in the tree",
+        ),
+        ({"docs/NOTE.md": "`docket.markdown` refuses a heading inside a fence.\n"}, "a module"),
+        (
+            {"docs/NOTE.md": "GitHub refuses it ([issue](https://github.com/o/r/issues/1)).\n"},
+            "a link destination",
+        ),
+        ({"docs/NOTE.md": "```sh\ncurl -sS https://doi.org/  # refused\n```\n"}, "a fence"),
+        ({"docs/NOTE.md": "`doi.org` answered through the proxy.\n"}, "no refusal"),
+        ({"tools/demo.py": 'MESSAGE = "`w3.org` is refused by the proxy"\n'}, "a string"),
+    ],
+    ids=[
+        "a file in the tree",
+        "a module",
+        "a link destination",
+        "a fence",
+        "no refusal",
+        "a string",
+    ],
+)
+def test_a_sentence_naming_no_host_beside_a_refusal_is_quiet(
+    tmp_path: Path, files: Mapping[str, str], why: str
+) -> None:
+    """What is not a host-block claim, each for the reason `why` names.
+
+    A name a file in the tree carries is that file, so a hook refusing a
+    command is not a host; a module path ends in no top-level domain; a link's
+    destination is where the citation points, not what the sentence says; a
+    fence is a literal; a host that answered is not refused; and a string that
+    is not a docstring is the program's text, not prose a session reads.
+    """
+    assert _host_claim_errors(tmp_path, files) == []
+
+
+def test_records_are_not_read_for_host_claims(tmp_path: Path) -> None:
+    """A brief, a release's notes and a recovered pull-request body are dated records.
+
+    Each carries the day it was written - `added:` on a brief, which `bin/docket
+    show` prints above it, the release on its notes, the merge on a body - so a
+    sentence in one is a probe on that day by construction rather than a claim
+    about the present, and reading them would refuse records nobody rewrites.
+    """
+    claim = "`doi.org` is blocked by the proxy.\n"
+
+    assert (
+        _host_claim_errors(
+            tmp_path,
+            {
+                "docs/items/PL-0000-demo.md": claim,
+                "docs/releases/v0.1.0.md": claim,
+                "docs/pr-bodies/1.md": claim,
+            },
+        )
+        == []
+    )
+
+
+def test_a_source_the_parser_refuses_declines_its_docstrings(tmp_path: Path) -> None:
+    """A file this interpreter cannot parse is named as unread, never passed silently (`PL-MB3F`).
+
+    Its comments are still read, since the tokenizer reads further than the
+    parser does.
+    """
+    report = _host_claim_report(
+        tmp_path,
+        {
+            "tools/demo.py": (
+                '"""`w3.org` is refused by the proxy."""\n# `w3.org` is refused.\nx = = 1\n'
+            )
+        },
+    )
+
+    assert [error.split(" names ")[0] for error in report.errors] == ["tools/demo.py:2"]
+    assert len(report.declined) == 1
+    assert report.declined[0].startswith("tools/demo.py:3: Python ")
+    assert "so no host claim in its docstrings was checked" in report.declined[0]

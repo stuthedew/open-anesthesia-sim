@@ -144,9 +144,11 @@ through the DOI.
 > DOI [10.1002/cphy.c100011](https://doi.org/10.1002/cphy.c100011).
 > PMID [23737195](https://pubmed.ncbi.nlm.nih.gov/23737195/).
 
-Metadata confirmed against PubMed. The file's own XMP packet carries Wiley's
-legacy identifier for the same article, `10.1002/j.2040-4603.2011.tb00337.x`;
-both resolve, and the DOI above is the one to cite.
+Metadata confirmed against PubMed's record through the PubMed MCP server on
+2026-10-06: the authors, title, journal, issue, pages, DOI and PMID above all
+match it. The file's own XMP packet carries Wiley's legacy identifier for the
+same article, `10.1002/j.2040-4603.2011.tb00337.x`; both resolve, and the DOI
+above is the one to cite.
 
 This is the closest published statement of what `docs/MODEL.md` specifies. It
 derives single-compartment and multicompartment models of inert gas transfer,
@@ -199,15 +201,18 @@ corpus by their decision, with every other owner-supplied full text.
 > Jugel U, Jerzak Z, Hackenbroich G, Markl V. M4: A Visualization-Oriented
 > Time Series Data Aggregation. *Proceedings of the VLDB Endowment*.
 > 2014;7(10):797–808. ISSN 2150-8097.
+> DOI [10.14778/2732951.2732953](https://doi.org/10.14778/2732951.2732953).
 
-Every field above is taken from the paper's own title page and running
-footer, read with `pdftotext` on 2026-09-14, which is all this entry asserts.
-**No DOI is recorded, deliberately.** The PDF prints none — only the ISSN and
-the copyright line — `doi.org` and `www.vldb.org` are both blocked by the
-session egress proxy, and PubMed does not index the venue, so nothing could be
-checked against a registry. A remembered DOI written down becomes a fact by
-tomorrow. A session that can reach a registry should confirm the record and
-add one.
+Every field but the DOI is taken from the paper's own title page and running
+footer, read with `pdftotext` on 2026-09-14. The PDF prints no DOI — only the
+ISSN and the copyright line — and PubMed does not index the venue, so the DOI
+waited for a registry rather than being written from memory. **Confirmed
+against Crossref on 2026-10-06**, from its record for
+`10.14778/2732951.2732953` at `api.crossref.org`: the four authors, the title
+and subtitle, *Proc. VLDB Endow.* 7(10):797–808, June 2014, and ISSN 2150-8097
+all match, and `doi.org` resolves the DOI to the ACM Digital Library. The
+venue's own site, `www.vldb.org`, was still refused at the CONNECT on
+2026-10-06, which leaves the registry route untouched.
 
 **What the chart takes from it, and what it does not.** `docs/MODEL.md`
 § "What the chart draws" holds the chord between two drawn instants to one
@@ -430,9 +435,11 @@ PubMed indexes all 22 chapters as *Handb Exp Pharmacol.* 2008;(182):pages —
 the volume number sits in the issue field, so a search restricted to volume 182
 returns nothing — each with its own DOI, `10.1007/978-3-540-74806-9_N` for
 chapter *N*, and a PMID; they run consecutively from 18175084 for chapter 1 to
-18175105 for chapter 22. Verified against PubMed 2026-09-15. The corpus folder
-holds the whole table; four chapters are the ones this project would reach for
-first:
+18175105 for chapter 22. Verified against PubMed 2026-09-15, and again on
+2026-10-06 through the PubMed MCP server for chapters 1 and 22 and the four
+below: each record carries the PMID and page range written here and the DOI
+the pattern above gives its chapter. The corpus folder holds the whole table;
+four chapters are the ones this project would reach for first:
 
 - **Hendrickx JFA, De Wolf A. Special aspects of pharmacokinetics of inhalation
   anesthesia.** pp. 159–86. PMID

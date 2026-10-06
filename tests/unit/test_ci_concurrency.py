@@ -166,10 +166,12 @@ def test_an_in_progress_run_survives_on_main_and_is_cancelled_on_a_pull_request(
 def test_the_block_does_not_ask_for_the_larger_queue() -> None:
     """`queue: max` is the alternative shape, and it cannot be scoped to `main`.
 
-    It is a fixed `single | max` enum with no expression form, and combining it
-    with `cancel-in-progress: true` is rejected - which the pull-request lane
-    above evaluates to. Adopting it here would therefore break every pull
-    request's run rather than only the one it was aimed at.
+    GitHub's workflow-syntax page makes combining it with `cancel-in-progress:
+    true` a workflow validation error, and the pull-request lane above evaluates
+    to that. It is a fixed `single | max` enum with no expression form on
+    SchemaStore's declaration, where GitHub's page is silent. Adopting it here
+    would therefore break every pull request's run rather than only the one it
+    was aimed at.
     """
     assert _concurrency().get("queue", "single") == "single"
 

@@ -3,16 +3,18 @@ id: PL-CLW5
 title: Whether a host answers through this container's egress proxy is a dated probe, but the tree states it as a standing property of the environment - quality.yml (docs.github.com), docs/references/README.md (doi.org), qt_widgets.py and contrast_check.py (w3.org) - so each change to the allowed domains leaves sentences that send a session around a route that now works
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect
 feature: host-reachability
-touches: .github/workflows/quality.yml, docs/references/README.md, src/anesthesia_sim/app/qt_widgets.py, tools/contrast_check.py, tools/doc_check.py, tests/unit
+touches: .claude/rules/citing-sources.md, .github/workflows/quality.yml, ROADMAP.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/machine-survey.md, docs/references/README.md, docs/resident-instructions.md, docs/worker.md, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/data/patients/reference_adult.json, subprojects/docket/src/docket/checks.py, tests/unit, tools/contrast_check.py, tools/doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
+closed: 2026-10-06
+pr: 1387
 payoff: a session reading that a host is blocked sees when that was probed, so it tries a route that now works instead of working around it
 verify: grep -q 'def test_a_host_block_claim_without_its_probe_date_is_refused' tests/unit/test_doc_check.py
 root-cause-of: PL-M701, PL-P5NB, PL-B3MK
-generator: live - present-tense block claims still stand at four sites on 2026-10-05, two of them already false, and each change to the allowed domains can falsify the rest
+generator: spent - tools/doc_check.py's check_host_claims refuses a sentence naming a host beside a refusal with no date wherever the tree writes prose a session reads as the present, so an undated block claim now fails make check where it is written; briefs, release notes and pull-request bodies are the dated records it leaves alone
 misread: Whether a host answers through this container's egress proxy: a dated probe, not a standing fact
 ---
 
@@ -63,3 +65,29 @@ claim with no date beside it, pinned by
 record that the other sites cite is the implementing session's call. This fixes
 a live generator, so the pause on new workflow mechanisms does not hold it
 (`CLAUDE.md` § "What this project is").
+
+**Closed 2026-10-06: dated in place, held by `tools/doc_check.py`'s
+`check_host_claims`.** Three calls the brief left to the implementing session,
+each decided on what was measured that day:
+
+- **In place, not one dated record.** A dated probe stays true whatever later
+  happens to the allowed domains, which is what `.claude/rules/citing-sources.md`
+  already asks of the claim. A shared record would be re-measured and
+  rewritten, and every site citing it would then read its newest probe as its
+  own: the present-tense reading again, one hop removed.
+- **"Beside it" is the same sentence**, cut by `docket.instructions._sentences`.
+  Read a paragraph at a time, the Jugel et al. entry's unrelated `pdftotext`
+  date (2026-09-14) passed its undated `doi.org` claim.
+- **Read wherever the tree writes prose a session takes for the present**:
+  every Markdown file, Python docstrings and comments, the `#` comments of
+  YAML, TOML, shell and the Makefile, and JSON strings. That reach found 17
+  undated sentences in 12 files where the brief named four sites, and one of
+  the 13 new ones was false: `reference_adult.json`'s note called
+  `pmc.ncbi.nlm.nih.gov` refused, and it answered on 2026-10-06 (`PL-QPN8`
+  reads the tables it could not). Item briefs, release notes and recovered
+  pull-request bodies are left alone as dated records: 29 closed and 6 open
+  briefs held such a sentence, 3 of the 6 this chain's own quoting what they
+  fix, and holding briefs would fail `make check` at the capture, the one
+  moment the project keeps cheapest. A name a file in the tree carries
+  (`no-prune-guard.sh`) and a link's destination are not read as hosts; after
+  those two, nothing else in the tree tripped the check on 2026-10-06.

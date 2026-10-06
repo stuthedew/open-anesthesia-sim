@@ -289,8 +289,9 @@ def transport_button_stylesheet() -> str:
     So the disabled label is `MUTED`, which is **5.00:1 on PANEL** and clears
     SC 1.4.3's 4.5:1 for normal text outright. No exemption is claimed for it,
     which matters here: SC 1.4.11's own inactive-component wording has never
-    been read at the source from this container (`PL-JX0Z`, `w3.org` is
-    `EGRESS_BLOCKED`), so nothing in this interface may rest on it.
+    been read at the source from this container (`PL-JX0Z`; `w3.org` was still
+    refused at the CONNECT on 2026-10-06), so nothing in this interface may rest
+    on it.
 
     **The two states are not separated by colour alone.** `.claude/rules/ui-color.md`
     judgment 2 asks for a second channel, and the row already carries one in

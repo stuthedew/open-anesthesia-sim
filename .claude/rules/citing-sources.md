@@ -46,11 +46,11 @@ answered. `curl -sS "$HTTPS_PROXY/__agentproxy/status"` names the reason under
 
 **Measured 2026-09-19: the indexes opened and the publishers did not.**
 
-- **Reached** — `doi.org` 301, `api.crossref.org` 302, `api.openalex.org` 429,
+- **Reached on 2026-09-19** — `doi.org` 301, `api.crossref.org` 302, `api.openalex.org` 429,
   `link.springer.com` 303, `arxiv.org` 200, `pubmed.ncbi.nlm.nih.gov` 200,
   `eutils.ncbi.nlm.nih.gov` 301, `search.worldcat.org` 200, and
   `www.sciencedirect.com` 403 (which is the trap below, not a refusal).
-- **Refused at the CONNECT** — `www.nejm.org`, `epubs.siam.org`,
+- **Refused at the CONNECT on 2026-09-19** — `www.nejm.org`, `epubs.siam.org`,
   `journals.sagepub.com`, `www.w3.org`, `www.icrp.org`, `en.wikipedia.org`,
   `www.google.com`, `example.com`.
 
@@ -81,9 +81,9 @@ on both sides of the line:
 | `curl: (56) CONNECT tunnel failed, response 403`, and `%{http_code}` is `000` | the gateway refused — the host was never contacted |
 | `HTTP/1.1 200 Connection Established`, then `HTTP/2 403` | the tunnel opened and the **publisher** refused the client |
 
-`www.sciencedirect.com` is the live instance of the second: it is reachable and
-answers `403` to an unattended client, which is the publisher's bot block
-rather than an egress refusal. Reading that as "still blocked" sends a
+`www.sciencedirect.com` was the live instance of the second on 2026-09-19 and
+again on 2026-10-06: it was reachable and answered `403` to an unattended
+client, which is the publisher's bot block rather than an egress refusal. Reading that as "still blocked" sends a
 reachable source to memory; reading a real refusal as a bot block sends a
 session hunting for a user agent that will never work.
 
@@ -114,7 +114,7 @@ citation needs is a separate question, and the fourth limit below is the case
 where the honest answer is no.
 
 **The 2026-09-04 measurement, kept because it is why the routes below exist.**
-On that date the environment was on `Trusted` and every literature host failed
+On 2026-09-04 the environment was on `Trusted` and every literature host failed
 alike: `curl` returned `CONNECT tunnel failed, response 403` for `doi.org`,
 `api.crossref.org`, `api.openalex.org`, `www.sciencedirect.com`,
 `link.springer.com`, `arxiv.org`, `pubmed.ncbi.nlm.nih.gov` and
@@ -136,7 +136,9 @@ ratified, over a second environment selected per session). `CLAUDE.md` §
 "Prefer deterministic tooling over repeated model work" does not reach this
 one, because the decidable part sits outside the tree. What is owed instead is
 the date, the command that re-measures, and no claim that outlives the next
-environment edit.
+environment edit. Whether a claim carries its date is the half the tree can
+decide, so `tools/doc_check.py` refuses a sentence that names a host beside a
+refusal and carries none (`PL-CLW5`).
 
 ## The PubMed MCP server is that route
 
