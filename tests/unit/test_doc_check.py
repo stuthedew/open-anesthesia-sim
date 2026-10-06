@@ -2188,6 +2188,124 @@ def test_a_repository_with_no_makefile_is_left_alone(tmp_path: Path) -> None:
     assert _errors(_repo(tmp_path, readme=README + "\nRun `make lint`.\n")) == []
 
 
+# A rule line read as `eval` in GNU make 4.3's `src/read.c` reads one, through
+# `_make_rule` (`PL-HR4V`). Each Makefile here was run through make 4.3 on
+# 2026-10-06, which read the targets, prerequisites and recipes asserted.
+
+
+def test_a_rule_line_comment_declares_no_target_or_prerequisite() -> None:
+    """A `#` on a rule line opens a comment, whose words are neither names nor prerequisites."""
+    declared, _ = doc_check.make_targets(".PHONY: check # the gate\ncheck:\n\ttrue\n")
+    _, prerequisites = doc_check._target_recipes("check: lint # and test\n\ttrue\nlint:\n\ttrue\n")
+
+    assert declared == {"check"}
+    assert prerequisites["check"] == ["lint"]
+
+
+def test_a_target_specific_variable_declares_no_target(tmp_path: Path) -> None:
+    """`a: X = 1` sets a variable for `a` and gives it no rule: `make a` answers "No rule"."""
+    root = _with_make(tmp_path, makefile="a: X = 1\n", mentions="\nRun `make a`.\n")
+
+    assert doc_check.make_targets("a: X = 1\n") == (frozenset(), frozenset())
+    assert doc_check._target_recipes("a: X = 1\n") == ({}, {})
+    assert _errors(root) == ["README.md:6 names `make a`, which the Makefile does not define"]
+
+
+def test_a_double_colon_assignment_declares_no_target() -> None:
+    """`a ::= 1` is the POSIX spelling of `:=`, an assignment, though a second colon follows `a`."""
+    assert doc_check.make_targets("a ::= 1\n") == (frozenset(), frozenset())
+    assert doc_check._target_recipes("a ::= 1\n") == ({}, {})
+
+
+@pytest.mark.parametrize("targets", ["fix lint:", "fix lint &:"])
+def test_every_target_a_rule_names_carries_its_recipe(targets: str, tmp_path: Path) -> None:
+    """Each name before a rule's colon is a target, grouped by `&:` or not (`PL-HD96`).
+
+    Make ran `make fix` and `make lint` alike, where a pattern wanting the colon
+    straight after one name read the rule as naming no target, so a documented
+    `make fix` was undefined and gate parity never saw the recipe.
+    """
+    makefile = f"{targets} sync\n\t@echo ran-$@\nsync:\n\t@echo sync\n"
+    root = _with_make(tmp_path, makefile=makefile, mentions="\nRun `make fix`.\n")
+
+    assert doc_check.make_targets(makefile) == ({"fix", "lint", "sync"},) * 2
+    assert doc_check._target_recipes(makefile) == (
+        {"fix": ["@echo ran-$@"], "lint": ["@echo ran-$@"], "sync": ["@echo sync"]},
+        {"fix": ["sync"], "lint": ["sync"], "sync": []},
+    )
+    assert _errors(root) == []
+
+
+@pytest.mark.parametrize(
+    ("makefile", "expected"),
+    [
+        ("all: x | y\n\t@echo all\n", ["x", "y"]),
+        ("all: x|y\n\t@echo all\n", ["x", "y"]),
+        ("all:: x\n\t@echo all\n", ["x"]),
+        ("all: x\nall: y\n\t@echo all\n", ["x", "y"]),
+        ("all p: %: %.c\n\t@echo $@\n", ["%.c"]),
+    ],
+)
+def test_a_rule_lines_prerequisites_are_read_as_make_reads_them(
+    makefile: str, expected: list[str]
+) -> None:
+    """Order-only prerequisites after a `|`, a double-colon rule's, every rule line's, and a
+    static pattern rule's after its target pattern: make runs each ahead of the recipe.
+
+    Which order make runs them in is not read: across two rule lines, make 4.3
+    ran the recipe-carrying rule's `y` ahead of `x`.
+    """
+    _, prerequisites = doc_check._target_recipes(makefile)
+
+    assert sorted(prerequisites["all"]) == expected
+
+
+@pytest.mark.parametrize(
+    "line", ["cd sub && make nosuch", "true; make nosuch", "set -o pipefail; make nosuch | tail"]
+)
+def test_a_make_command_chained_after_another_in_a_fence_is_read(line: str, tmp_path: Path) -> None:
+    """`make` heading any simple command on a fenced line names its target (`PL-GZXY`).
+
+    Read from the line's first clause alone, a target named after another
+    command - the `set -o pipefail;` form `docs/worker.md` teaches for the gate -
+    was never held to the Makefile.
+    """
+    errors = _errors(_with_make(tmp_path, mentions=f"\n```bash\n{line}\n```\n"))
+
+    assert errors == ["README.md:7 names `make nosuch`, which the Makefile does not define"]
+
+
+def test_a_rule_with_an_inline_recipe_carries_a_recipe(tmp_path: Path) -> None:
+    """A recipe after the rule line's `;` is its first recipe line (`PL-GZXY`).
+
+    Make ran `@echo RECIPE-RAN` for `make inline`, where every reader took the
+    target for one carrying no recipe and `_target_recipes` read `;`, `@echo`
+    and `RECIPE-RAN` as prerequisites. `inline: ;`, the manual's spelling of a
+    recipe that runs nothing, still carries none.
+    """
+    makefile = "inline: lint ; @echo RECIPE-RAN # kept\nlint:\n\t@echo lint\nempty: ;\n"
+    root = _with_make(tmp_path, makefile=makefile, mentions="\nRun `make inline`.\n")
+
+    assert doc_check.make_targets(makefile) == ({"inline", "lint", "empty"}, {"inline", "lint"})
+    assert doc_check._target_recipes(makefile) == (
+        {"inline": ["@echo RECIPE-RAN # kept"], "lint": ["@echo lint"], "empty": []},
+        {"inline": ["lint"], "lint": [], "empty": []},
+    )
+    assert list(doc_check._recipe_commands(makefile)) == [
+        ("@echo RECIPE-RAN # kept", 1),
+        ("@echo lint", 3),
+    ]
+    assert _errors(root) == []
+
+
+def test_an_inline_recipe_a_backslash_continues_is_spelled_as_make_hands_it_over() -> None:
+    """The backslash and newline stay and the continuation's tab goes, as on a recipe line."""
+    makefile = "all: x \\\n  y ; echo a \\\n\techo b\n"
+
+    assert list(doc_check._recipe_commands(makefile)) == [("echo a \\\necho b", 1)]
+    assert doc_check._target_recipes(makefile)[1] == {"all": ["x", "y"]}
+
+
 # --- release tags -----------------------------------------------------------
 
 UNTAGGED_CLAIM = "\n\n**One version is untagged**: v0.2.4.\n"
@@ -8573,9 +8691,9 @@ LONG_QUOTATIONS: dict[str, tuple[Callable[[Path], object], object]] = {
 }
 
 
-#: Makefiles whose every rule `MAKE_TARGET_RE` reads, each with a line make reads
-#: on past or a line a tab leads outside any rule, as GNU make 4.3 read them on
-#: 2026-10-06.
+#: Makefiles whose every rule names one target, each with a line make reads on
+#: past, a line a tab leads outside any rule, or a recipe on the rule's own
+#: line, as GNU make 4.3 read them on 2026-10-06.
 AGREEING_MAKEFILES = {
     "a comment line in a rule": ".PHONY: check\ncheck:\n# run the gate\n\t@echo CHECK-RAN\n",
     "a blank line in a rule": "check:\n\t@echo a\n\n\t@echo b\n",
@@ -8589,6 +8707,7 @@ AGREEING_MAKEFILES = {
     "a define between two rules": (
         "a:\n\t@echo a\ndefine HELP\n\t@echo body\nendef\nb:\n\t@echo b\n"
     ),
+    "an inline recipe": "inline: lint ; @echo RAN\nlint:\n\t@echo lint\n",
 }
 
 
@@ -8635,7 +8754,8 @@ def test_the_makefile_readers_agree_about_recipe_lines(makefile: str) -> None:
     `PL-TDVJ` and `PL-BMZN`: each reader once had a say of its own over where a
     rule ends, so one ended a rule at a comment another read past, and one took
     a tab-led assignment for a command the others did not. Read from one
-    `_make_lines`, the three agree wherever `MAKE_TARGET_RE` reads every rule.
+    `_make_lines` and `_make_rule`, the three agree wherever each rule names
+    one target, since a recipe line is then one target's.
     """
     text = AGREEING_MAKEFILES[makefile]
     _, with_recipe = doc_check.make_targets(text)

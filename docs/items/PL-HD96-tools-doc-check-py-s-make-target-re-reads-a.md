@@ -3,11 +3,13 @@ id: PL-HD96
 title: tools/doc_check.py's MAKE_TARGET_RE reads a rule line naming two or more targets (fix lint: sync) as no target, so their recipes go unread by gate parity and a documented make fix is reported as undefined; a target list a backslash continues now joins into that shape
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-06
+pr: 1385
 payoff: an alias rule or a backslash-continued target list neither turns make check red on correct documentation nor drops its recipe from the gate-parity comparison
 verify: grep -q 'def test_every_target_a_rule_names_carries_its_recipe' tests/unit/test_doc_check.py
 ---

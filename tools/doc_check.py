@@ -763,9 +763,6 @@ NUMBER_WORDS = {
     "twelve": 12,
 }
 
-# A Makefile target is a line-initial name followed by a colon. `:=` is an
-# assignment, and `.PHONY` and its kin start with a dot, so neither matches.
-MAKE_TARGET_RE = re.compile(r"^(?P<name>[A-Za-z][\w.-]*)\s*:(?!=)")
 #: A Makefile line that make carries on to the next one (`PL-R417`): it ends in
 #: an odd run of backslashes, since in an even run each escapes the next. Read
 #: from GNU make 4.3's `readline` and run through it on 2026-10-04: `echo a \\`
@@ -812,22 +809,16 @@ MAKE_DIRECTIVES = frozenset(
 MAKE_CONDITIONALS = frozenset({"ifdef", "ifndef", "ifeq", "ifneq", "else", "endif"})
 # The target a `make` command names, read from the word after `make`.
 MAKE_TARGET_WORD_RE = re.compile(r"[a-z][\w.-]*")
-# `.PHONY` names targets without defining them. A name listed here and given no
-# recipe is the silent failure this check exists for: `make` accepts it and
-# exits 0. A name in neither place fails loudly, which needs no tool.
-PHONY_RE = re.compile(r"^\.PHONY\s*:(?P<names>.*)$")
 # `make docket`, as the documentation writes it. Read only inside code spans
 # and fenced blocks: prose says "make sure" and means nothing of the kind.
 MAKE_MENTION_RE = re.compile(r"\bmake\s+(?P<name>[a-z][\w.-]*)")
-# A fenced line names a target only where `make` is its first word, which is
-# the shape of a command. Read anywhere on the line, a fence's shell comment
-# (`# make sure the virtualenv exists`) and make's own output (`No rule to make
-# target`) each failed as a target the Makefile lacks, and the only repair was
-# to reword a correct sample (`PL-L8VP`). Counted 2026-09-26: 2 of the 5
-# fenced mentions in the documents open their line; the other 3 name `check`
-# from mid-line - two in the package map's comments, one after `set -o
-# pipefail;` - and 109 code-span mentions of targets, `make check` among them,
-# are still read.
+# A fenced line names a target only where `make` heads a command, which
+# `_make_mentions` reads through docket's shell lexer. Read anywhere on the
+# line, a fence's shell comment (`# make sure the virtualenv exists`) and
+# make's own output (`No rule to make target`) each failed as a target the
+# Makefile lacks, and the only repair was to reword a correct sample
+# (`PL-L8VP`). This pattern, `make` as a line's first word, is what is left
+# for a fence the lexer cannot read: prose, output, another language.
 FENCED_MAKE_RE = re.compile(r"^\s*make\s+(?P<name>[a-z][\w.-]*)")
 
 # Where CI's commands live. A workflow step names repository scripts by path
@@ -4928,8 +4919,11 @@ def _make_lines(text: str) -> Iterator[tuple[str, int]]:
     comment, a blank line and a conditional's directive end no rule, as they
     end none in make, and come back as no statement, so no reader has a say of
     its own over where a rule ends (`PL-TDVJ`). A rule line opens a rule as
-    `_rule_opened` reads it. Read with no rule held, every line a tab led was a
-    recipe line, so an assignment indented with one reached the coverage gate
+    `_make_rule` reads it, and a recipe it carries after a `;` comes back after
+    it as the rule's first recipe line, on the rule's own line, spelled as make
+    hands it to the shell; a blank one, `target: ;`, runs nothing and comes
+    back as none (`PL-GZXY`). Read with no rule held, every line a tab led was
+    a recipe line, so an assignment indented with one reached the coverage gate
     as a command; and two readers ended a rule at different lines, one of them
     at a comment, where make reads on. Variable references are read as
     written, as every reader of this file reads them.
@@ -5022,7 +5016,19 @@ def _make_lines(text: str) -> Iterator[tuple[str, int]]:
                 '("recipe commences before first target")',
             )
         else:
-            rule = _rule_opened(statement, opens + 1)
+            opened = _make_rule(line)
+            if opened is None:
+                rule = NO_RULE
+            elif not opened.targets:
+                rule = _OpenRule("targetless", opens + 1)
+            else:
+                rule = _OpenRule("targets", opens + 1)
+                written = [parts[0], *(part.removeprefix("\t") for part in parts[1:])]
+                _, inline = _make_rule_line("\n".join(written))
+                if inline is not None and inline.strip(MAKE_SPACE):
+                    yield line, opens + 1
+                    yield f"\t{inline.lstrip(MAKE_SPACE)}", opens + 1
+                    continue
         yield line, opens + 1
 
 
@@ -5050,28 +5056,81 @@ def _make_branch(
     return rule
 
 
-def _rule_opened(statement: str, line: int) -> _OpenRule:
-    """The rule a statement no assignment, directive or conditional takes leaves open below it.
+@dataclass(frozen=True)
+class _MakeRule:
+    """A rule line, as `_make_rule` reads it.
 
-    Read as `eval` in GNU make 4.3's `src/read.c` reads such a line, up to the
-    `;` an inline recipe follows: the first colon outside a variable reference
-    and unescaped ends the targets, `&:` grouping them, and where none stand
-    before it the rule names no target, whose recipe make reads and drops.
-    After it, past a second colon, an assignment makes the line a
-    target-specific variable, which leaves no rule open. A line with no such
-    colon leaves none open either: make ends the rule above it, and reads the
-    line as nothing or refuses it as missing a separator.
+    `targets` is empty for a rule naming none, whose recipe make reads and
+    drops. `prerequisites` holds the normal and the order-only ones alike,
+    since make brings both up to date before the recipe runs.
     """
-    end = _make_unquoted(statement, ";")
-    head = statement if end < 0 else statement[:end]
+
+    targets: tuple[str, ...]
+    prerequisites: tuple[str, ...]
+
+
+NO_TARGETS = _MakeRule((), ())
+
+
+def _make_rule(statement: str) -> _MakeRule | None:
+    """The rule a Makefile statement opens, or `None` where it opens none.
+
+    The one reading of a rule line (`PL-HR4V`), which `_make_lines` and each
+    reader of its statements take, where `make_targets` and `_target_recipes`
+    once read the targets and prerequisites by patterns of their own, so a
+    trailing comment's words were prerequisites and `.PHONY` names, `a: X = 1`
+    and `a ::= 1` each declared a target make has no rule for, and `a b:`
+    declared neither target.
+
+    Read as `eval` in GNU make 4.3's `src/read.c` reads a line no assignment,
+    `define`, directive or conditional takes, each of which opens none. The
+    line ends at its first `;` or `#` outside a variable reference and
+    unescaped (`_make_rule_line`). Its first colon outside a reference and
+    unescaped ends the targets, `&:` grouping them, and a second straight after
+    it makes the rule double-colon. A line with no such colon opens no rule,
+    since make reads it as nothing or refuses it as missing a separator. Past
+    the colon, an assignment makes the line a
+    target-specific variable, which opens no rule; otherwise the words are the
+    prerequisites, the order-only ones after a `|`, and a static pattern rule's
+    after its target pattern's colon. Each form was run through make 4.3 on
+    2026-10-06. Variable references are read as written, as every reader of
+    this file reads them.
+    """
+    uncommented = _make_uncommented(statement)
+    if (
+        _make_assigns(uncommented)
+        or _make_word(uncommented.lstrip(MAKE_SPACE)) in MAKE_DIRECTIVES | MAKE_CONDITIONALS
+    ):
+        return None
+    head, _ = _make_rule_line(statement)
     colon = _make_unquoted(head, ":")
     if colon < 0:
-        return NO_RULE
-    if not head[:colon].removesuffix("&").strip(MAKE_SPACE):
-        return _OpenRule("targetless", line)
-    if _make_assigns(head[colon + 1 :].removeprefix(":")):
-        return NO_RULE
-    return _OpenRule("targets", line)
+        return None
+    targets = tuple(MAKE_SPACE_RE.split(head[:colon].removesuffix("&").strip(MAKE_SPACE)))
+    if targets == ("",):
+        return NO_TARGETS
+    rest = head[colon + 1 :].removeprefix(":")
+    if _make_assigns(rest):
+        return None
+    rest = rest[_make_unquoted(rest, ":") + 1 :]
+    pipe = _make_unquoted(rest, "|")
+    if pipe >= 0:
+        rest = f"{rest[:pipe]} {rest[pipe + 1 :]}"
+    return _MakeRule(targets, tuple(word for word in MAKE_SPACE_RE.split(rest) if word))
+
+
+def _make_rule_line(text: str) -> tuple[str, str | None]:
+    """A rule line cut where make 4.3 ends it, and the recipe it carries.
+
+    Cut at the first `;` or `#` outside a variable reference and unescaped,
+    as `eval` in `src/read.c` cuts it: a `#` opens a comment, and a `;` hands
+    the rest of the line to the shell, `#` and all, as the rule's first recipe
+    line. The recipe is `None` where the line carries none.
+    """
+    stop = _make_unquoted(text, ";#")
+    if stop < 0:
+        return text, None
+    return text[:stop], text[stop + 1 :] if text[stop] == ";" else None
 
 
 def _make_assigns(text: str) -> bool:
@@ -5223,25 +5282,27 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
     variable's value, declares nothing (`PL-4MLK`); and a rule runs on past a
     comment line, as make reads it, where this once ended it, so a target
     whose first recipe line follows a comment read as having none
-    (`PL-TDVJ`). Raises `UnreadStatement` where `_make_lines` does.
+    (`PL-TDVJ`). Each rule line is read by `_make_rule`, so every target it
+    names is declared, and neither a comment's words nor a target-specific
+    variable declares one (`PL-HR4V`). `.PHONY` declares its prerequisites,
+    not itself, being make's special target rather than one a document runs;
+    and a recipe after a `;` on the rule's own line is a recipe (`PL-GZXY`).
+    Raises `UnreadStatement` where `_make_lines` does.
     """
     declared: set[str] = set()
     with_recipe: set[str] = set()
-    current: str | None = None
+    current: tuple[str, ...] = ()
     for line, _ in _make_lines(text):
         if line.startswith("\t"):
-            if current is not None:
-                with_recipe.add(current)
+            with_recipe.update(current)
             continue
-        phony = PHONY_RE.match(line)
-        if phony is not None:
-            declared.update(phony.group("names").split())
-            current = None
+        rule = _make_rule(line) or NO_TARGETS
+        if ".PHONY" in rule.targets:
+            declared.update(rule.prerequisites)
+            current = ()
             continue
-        match = MAKE_TARGET_RE.match(line)
-        current = None if match is None else match.group("name")
-        if current is not None:
-            declared.add(current)
+        current = rule.targets
+        declared.update(current)
     return frozenset(declared), frozenset(with_recipe)
 
 
@@ -5256,6 +5317,11 @@ def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
     nothing. A fence bash cannot read - prose, output, another language - is
     read a line at a time from the line where it stops being readable, as every
     fence was before.
+
+    A fenced line names a target wherever `make` heads one of the simple
+    commands bash runs from it (`_simple_commands`), so `cd sub && make x`,
+    `true; make x` and `set -o pipefail; make check | tail` each name theirs,
+    which read from the line's first clause alone they did not (`PL-GZXY`).
     """
     for match in _code_spans(text):
         for mention in MAKE_MENTION_RE.finditer(SPAN_BREAK_RE.sub(" ", match["content"])):
@@ -5264,16 +5330,16 @@ def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
         script = "".join(f"{line}\n" for line in body)
         for piece, offset in script_lines(script):
             first = start + script.count("\n", 0, offset) + 1
-            clauses = shell_words(piece).clauses
-            if not clauses:
+            reading = shell_words(piece)
+            if not reading.clauses:
                 for at, line in enumerate(piece.split("\n")):
                     if (command := FENCED_MAKE_RE.match(line)) is not None:
                         yield command.group("name"), first + at
                 continue
-            words = clauses[0].tokens
-            if len(words) > 1 and words[0] == Word("make") and isinstance(words[1], Word):
-                if (name := MAKE_TARGET_WORD_RE.match(words[1].text)) is not None:
-                    yield name.group(), first
+            for words in _simple_commands(reading):
+                if len(words) > 1 and words[0] == "make":
+                    if (name := MAKE_TARGET_WORD_RE.match(words[1])) is not None:
+                        yield name.group(), first
 
 
 def check_make_targets(root: Path, documents: dict[Path, str], report: Report) -> None:
@@ -5528,8 +5594,11 @@ def _shell_commands(
     are a descriptor (POSIX Shell Command Language §2.10.1, "IO_NUMBER").
     """
     reading = _shell_reading(where, command, report, unread)
-    if reading is None:
-        return ()
+    return () if reading is None else _simple_commands(reading)
+
+
+def _simple_commands(reading: Reading) -> tuple[tuple[str, ...], ...]:
+    """The simple commands a reading runs, each as its words, cut where `_shell_commands` says."""
     commands: list[tuple[str, ...]] = []
     for clause in reading.every_clause():
         words: list[str] = []
@@ -5644,7 +5713,8 @@ def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
     """Every command a Makefile recipe hands the shell, with the line it opens on.
 
     A recipe line is one beginning with a tab while a rule is open, as
-    `_make_lines` reads it; which target it belongs to does not matter here,
+    `_make_lines` reads it, which hands back a recipe after a rule line's `;`
+    as one (`PL-GZXY`); which target it belongs to does not matter here,
     because the mark above is what selects the line rather than its position.
     A line a tab leads above the first rule, or after an assignment ends the
     rule above it, is the statement its words make and no command: read by its
@@ -6026,23 +6096,27 @@ def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str
     second line taken for a command (`PL-G2FY`). A `define` is one statement, an
     assignment, so it ends the target above it and nothing in its body is a
     target or a command (`PL-4MLK`). A line a tab leads where no rule is open is
-    no command (`PL-BMZN`). Raises `UnreadStatement` where `_make_lines` does.
+    no command (`PL-BMZN`). Each rule line is read by `_make_rule`, so a
+    comment's words are no prerequisites, a target-specific variable gives no
+    target a rule, and every target a rule names takes its recipe and its
+    prerequisites, which make gathers across every rule line naming a target,
+    though not in the order make runs them (`PL-HR4V`); a recipe after a `;`
+    on the rule's own line is its first command (`PL-GZXY`). Raises
+    `UnreadStatement` where `_make_lines` does.
     """
     recipes: dict[str, list[str]] = {}
     prerequisites: dict[str, list[str]] = {}
-    current: str | None = None
+    current: tuple[str, ...] = ()
     for line, _ in _make_lines(text):
         if line.startswith("\t"):
-            if current is not None and line.strip():
-                recipes.setdefault(current, []).append(line.strip())
+            for target in current if line.strip() else ():
+                recipes[target].append(line.strip())
             continue
-        match = MAKE_TARGET_RE.match(line)
-        if match is None:
-            current = None
-            continue
-        current = match.group("name")
-        recipes.setdefault(current, [])
-        prerequisites[current] = line.split(":", 1)[1].split()
+        rule = _make_rule(line) or NO_TARGETS
+        current = rule.targets
+        for target in current:
+            recipes.setdefault(target, [])
+            prerequisites.setdefault(target, []).extend(rule.prerequisites)
     return recipes, prerequisites
 
 
