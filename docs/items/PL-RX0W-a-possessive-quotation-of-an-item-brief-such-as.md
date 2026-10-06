@@ -10,7 +10,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 payoff: a quotation attributed to an item brief with a possessive is held to that brief, so a misquoted brief is caught as a misquoted document already is
 verify: grep -q 'def test_a_possessive_quotation_of_an_item_brief_is_held_to_it' tests/unit/test_doc_check.py
-recurrences: 2026-10-04 PL-XW87 withdrawn 2026-10-04 PL-XW87, 2026-10-04 PL-BYJ5 withdrawn 2026-10-04 PL-R417
+recurrences: 2026-10-04 PL-XW87 withdrawn 2026-10-04 PL-XW87, 2026-10-04 PL-BYJ5 withdrawn 2026-10-04 PL-R417, 2026-10-06 PL-CZ28 withdrawn 2026-10-06 PL-R417
 ---
 
 **Problem.** A possessive quotation of an item brief, such as PL-CNJ1's "writes nothing" in PL-SSQW, is read by no check: QUOTED_SOURCE_RE reads only a .md document and PL-QYN4 holds only the section mark after an item id; of the eleven such quotations on 2026-09-26 the one that misses quotes across emphasis (the brief has writes **nothing**), so reading them needs doc_check's comparison to fold markup first

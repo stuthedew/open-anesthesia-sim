@@ -356,6 +356,12 @@ IN_A_SUBSTITUTION = (
     "reads an unquoted `$(` as a `$` and a `(`, so the interpreter is never a command's first "
     "word, and keeps a quoted one inside its word. Found working `PL-97CF`, 2026-10-05"
 )
+IN_A_HEREDOC = (
+    "a floor check written as the script a heredoc hands the interpreter, which no session is "
+    "known to have written: the guard removes every heredoc body before it reads, so that prose "
+    "about the rule written into a file is not matched, and this script is such a body. The same "
+    "script as a `<<<` string is refused. Found probing, `PL-R417`'s closing sweep, 2026-10-06"
+)
 FLOOR_PARSE_ERROR = (
     "parses 3.14 source with the 3.11 floor, and reports a SyntaxError in correct code"
 )
@@ -393,6 +399,12 @@ KNOWN_GAPS = (
     ),
     ("y=$(python3 -m compileall -q src/)", False, FLOOR_PARSE_ERROR, IN_A_SUBSTITUTION),
     ('echo "$(python3 -m compileall -q src/)"', False, FLOOR_PARSE_ERROR, IN_A_SUBSTITUTION),
+    (
+        "python3 - <<'PY'\nimport compileall\ncompileall.compile_dir('src/', quiet=1)\nPY",
+        False,
+        FLOOR_PARSE_ERROR,
+        IN_A_HEREDOC,
+    ),
 )
 
 

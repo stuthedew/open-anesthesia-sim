@@ -6,13 +6,13 @@ effort: M
 status: ready
 classes: defect
 feature: one-answer
-touches: tools/doc_check.py, tools/required_checks_check.py, tools/rules_paths_check.py, tests/unit, docs/items
+touches: tools/doc_check.py, tools/required_checks_check.py, tools/rules_paths_check.py, .claude/hooks/shell_split.py, tests/unit, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head by PL-JCS3
 added: 2026-10-04
 payoff: a statement a shell script, Makefile, workflow or Markdown document continues across lines is read as the one statement its format makes it, or refused by name, so the close-out sweep and the checks stop answering from fragments
 verify: grep -q 'def test_candidates_find_a_title_cited_across_a_line_wrap' tests/unit/test_doc_check.py && grep -q 'def test_each_reader_reads_its_formats_continued_statement_whole' tests/unit/test_doc_check.py && grep -q 'recipe commands, ' tests/unit/test_doc_check.py && grep -q 'workflow commands, ' tests/unit/test_doc_check.py && grep -q '^generator: spent' docs/items/PL-R417-readers-take-a-physical-line-for-the-statement.md
-root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G, PL-TY1Z, PL-YSMD, PL-HKHP, PL-5NC3, PL-WF35, PL-FP7J, PL-BLKJ, PL-J0C6, PL-GMR6, PL-VQBY, PL-4ZDZ, PL-GT0J, PL-KT0H, PL-FBWD, PL-F7Z6, PL-V2HK, PL-TC2D, PL-S3XS, PL-4T49, PL-PPNV, PL-97CF, PL-2JYP, PL-WG6S, PL-4MLK, PL-4ZVH, PL-T1X0, PL-BYJ5, PL-0Y7J, PL-T73L, PL-TDVJ, PL-BMZN
-generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory until link 8, then PL-T1X0 and PL-BYJ5, which that day's triage pass put to it, PL-0Y7J and PL-T73L in link 11, PL-TDVJ in link 15, and PL-BMZN, filed beside it and re-read as one by that day's second triage pass
+root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G, PL-TY1Z, PL-YSMD, PL-HKHP, PL-5NC3, PL-WF35, PL-FP7J, PL-BLKJ, PL-J0C6, PL-GMR6, PL-VQBY, PL-4ZDZ, PL-GT0J, PL-KT0H, PL-FBWD, PL-F7Z6, PL-V2HK, PL-TC2D, PL-S3XS, PL-4T49, PL-PPNV, PL-97CF, PL-2JYP, PL-WG6S, PL-4MLK, PL-4ZVH, PL-T1X0, PL-BYJ5, PL-0Y7J, PL-T73L, PL-TDVJ, PL-BMZN, PL-P00H, PL-BM8T, PL-HKR5, PL-CK3F, PL-2MLT, PL-CZ28, PL-Z1R7, PL-V7CG, PL-JZNV, PL-B47B, PL-K77Q, PL-X43T, PL-M2J4, PL-5ZZT, PL-YCJJ, PL-24MT, PL-M890, PL-CXK6, PL-FCQP, PL-B83V, PL-2CDW, PL-VJPH, PL-VQ50, PL-M3M4, PL-QSN5
+generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory until link 8, then PL-T1X0 and PL-BYJ5, which that day's triage pass put to it, PL-0Y7J and PL-T73L in link 11, PL-TDVJ in link 15, and PL-BMZN, filed beside it and re-read as one by that day's second triage pass; and twenty-five more in the closing sweep of 2026-10-06, PL-P00H and PL-CK3F among them in code merged after the head was filed
 misread: Where one statement ends, in a format that lets a statement continue across physical lines
 ---
 
@@ -29,7 +29,7 @@ fragment as a statement, or declined what it could have read:
 | `PL-G2FY` | `_recipe_commands` | a make recipe line continued by a backslash (GNU make, "Splitting Recipe Lines") |
 | `PL-Z8RS` | `_without_code`, `_marks_code` | a code span across a line ending (CommonMark 0.31.2 § 6.1) |
 | `PL-6SRZ` | `check_named_tests`'s `NAMED_TEST_RE` | the same; its other half, which documents it reads, is its own |
-| `PL-RR1N` | a `verify:` command's `grep -qF` | a paragraph's soft line breaks (CommonMark § 4.8, § 6.7) |
+| `PL-RR1N` | a `verify:` command's `grep -qF` | a paragraph's soft line breaks (CommonMark § 4.8, § 6.8) |
 
 The Python Language Reference § 2.1 names the distinction: a logical line built
 from one or more physical lines. `PL-9HD1` (done 2026-09-21) was the same fault
@@ -438,12 +438,61 @@ differently on main. No new member was filed: `PL-HR4V`, `PL-GSJ6` and
 conditional's branches, none of them where a statement ends. `generator:`
 stays `live`.
 
-**Next steps (recorded 2026-10-04, revised by links 8, 11, 12, 13, 14, 15, 16,
-17 and 18).** Every member but `PL-RR1N` is built. What remains is one more
-sweep of the same reach, and `generator:` rewritten `spent` only when it finds
-nothing (the coordinator's brief, 2026-10-04). The head closes without waiting
-for `PL-RR1N`, naming it in the reason as Done-when says (project owner,
-2026-10-04, ratified, over waiting for it).
+**Link 19, the closing sweep (2026-10-06).** Done: the one more sweep of the
+same reach the next steps asked for, ten read-only slices over `tools/`,
+`subprojects/docket/src/docket/` and `.claude/hooks/`, with the workflows'
+`run:` scripts, the Makefile's recipes and the commands in
+`.claude/settings.json`, each finding reproduced on `main` at `a76cbf67`
+against a reference reader - markdown-it-py 4.2.0, PyYAML 6.0.3, bash 5.2.21
+and dash, GNU make 4.3 or `tomllib`. It found twenty-five readers that take a
+physical line for a statement their format continues, every one latent, filed
+as members with `feature: one-answer`. Thirteen read Markdown: `PL-Z1R7`,
+`PL-JZNV`, `PL-B47B`, `PL-K77Q`, `PL-M2J4`, `PL-5ZZT`, `PL-YCJJ`, `PL-M890`,
+`PL-B83V`, `PL-2CDW`, `PL-VQ50`, `PL-P00H` and `PL-V7CG`. Six read YAML or
+TOML: `PL-BM8T`, `PL-2MLT`, `PL-CZ28`, `PL-CK3F`, `PL-24MT` and `PL-FCQP`. Six
+read a shell script, or a format a line-at-a-time tool was pointed at:
+`PL-VJPH`, `PL-M3M4`, `PL-QSN5`, `PL-X43T`, `PL-CXK6` and `PL-HKR5`. Two are
+in code written after the head was filed, `PL-P00H` (`#1345`) and `PL-CK3F`
+(`#1366`), so the head is still being handed members; most of the rest are
+forms a link's fix left in the reader it changed, or readers fed by the
+head's shared ones, and the remainder older stock no pass had reached.
+Thirteen findings were filed beside them and are not members, each a misread
+within a line or of the wrong kind of block: `PL-1R9S`, `PL-B53Y`, `PL-HTHC`,
+`PL-PV73`, `PL-K02Q`, `PL-1D89`, `PL-JTCQ`, `PL-LCBQ`, `PL-KR6M`, `PL-Y6LP`,
+`PL-QYF4`, `PL-CQC9` and `PL-4CJ8`; `PL-1R9S` and `PL-B53Y` read the item
+front-matter value grammar, `PL-HXJY`'s fact, and carry its feature. Two more
+were folded into the member whose fix removes them: a diff header misread
+into `PL-24MT`, and a `*` bullet read as emphasis into `PL-YCJJ`. Under
+`PL-61FT`'s rule for gaps found by probing outside a guard's promise, three
+were recorded rather than filed: the list of what `shell_split.py` does not
+read now says that a `#` inside a backtick opens a comment, a `<<` there a
+heredoc of the command around it, and a case pattern's `)` inside a
+double-quoted `$( )` ends the substitution, and the floor guard's
+`KNOWN_GAPS` holds a heredoc handing the interpreter its script. A newline
+after `{` read as `;`, a false refusal of the gate guard's fallback reader, is
+left for a session to meet, as that guard's header asks. `docket new` matched
+eight of these filings to open items by a path this branch changes rather
+than by their problem - `PL-BM8T` to `PL-GVDP`; `PL-X43T`, `PL-VJPH`,
+`PL-QSN5` and `PL-1R9S` to `PL-P95F`; `PL-JTCQ` to `PL-PXT7`; and `PL-CZ28`
+to `PL-RX0W` - and each was withdrawn because of this paragraph: where a pair
+shares a reader, it misreads a different fact. The comment above
+`SOFT_BREAK`, which named a list walker that no longer reads `CONTINUED_LINE`,
+was fixed in passing, and `PL-4CJ8` holds the four other comments citing
+§ 6.7 for a soft break. `generator:` stays `live`.
+
+**Next steps (recorded 2026-10-04, revised by links 8, 11 to 18 and 19).** The
+members the table and the first sweeps named are built but `PL-RR1N`; the
+closing sweep's twenty-five are not, so the head is not spent and keeps its
+rank. **Recommended:** build them as the earlier links were, a format per pull
+request, the Markdown thirteen first, since each reads through
+`docket.markdown`'s blocks and statements and the accessor `PL-YCJJ` asks for,
+a statement's text with its container markers blanked, serves several; then
+the YAML and TOML six, each reading its front matter through one parse; then
+the shell six. Then one more sweep of the same reach, with `generator:`
+rewritten `spent` only when a sweep finds nothing (the coordinator's brief,
+2026-10-04). The head closes without waiting for `PL-RR1N`, naming it in the
+reason as Done-when says (project owner, 2026-10-04, ratified, over waiting
+for it).
 
 **Done when.** Every reader the table and the sweep name reads its format's
 statement whole or declines it by name, each pinned by a test; the guard test
