@@ -10,6 +10,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 payoff: The guard that stops a prune deleting the only copy of an unmerged item sees one inside an unquoted here-document substitution, which bash runs
 verify: grep -q 'def test_a_prune_in_an_unquoted_heredoc_substitution_is_refused' tests/unit/test_no_prune_guard.py
+recurrences: 2026-10-06 PL-X43T withdrawn 2026-10-06 PL-R417, 2026-10-06 PL-VJPH withdrawn 2026-10-06 PL-R417, 2026-10-06 PL-QSN5 withdrawn 2026-10-06 PL-R417, 2026-10-06 PL-1R9S withdrawn 2026-10-06 PL-R417
 ---
 
 **Problem.** The hooks' shell_split drops an unquoted here-document's body whole, but bash runs a $( ) inside one, so cat \<\<EOF over $(git fetch --prune) passes no-prune-guard and the command runs; latent

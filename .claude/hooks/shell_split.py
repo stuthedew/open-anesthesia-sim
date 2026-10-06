@@ -99,18 +99,20 @@ check` was `tools/doc_check.py`, and no `tools/` script is executable
 **What it does not read**, none of which a guard here has needed: arithmetic
 (`$(( ))` and `(( ))`, where a `<<` shift reads as a heredoc here), the `&&`,
 `||`, `<` and `>` inside `[[ ]]`, which read as a separator or a redirection,
-the `)` that ends a `case` pattern, a backtick's contents, which split at
-spaces as `shlex` split them, the command a `coproc` runs, a wrapper `WRAPPERS`
-does not name (`sudo`, `stdbuf`, a `time` run by path), and the string `env -S`
-splits, for which `program_words` reads no program at all. A reserved word
-opens a command here only at the head of its segment, so `command_words` does
-not reach the `make check` in `if (true) then make check; fi` or in `for f do
-make check; done`; `commands` reads the first, splitting at its `)`. And a
-quoted `if` or `{`, or a `time` after a `|`, reads as the reserved word, where
-bash reads a command's name. This list is the construct side of the three
-guards' known gaps (`PL-61FT`): bash's grammar is read as far as sessions
-write it around a guarded command, so a construct found missing only by
-probing is added here rather than filed.
+the `)` that ends a `case` pattern, which inside a double-quoted `$( )` ends
+the substitution, a backtick's contents, which split at spaces as `shlex` split
+them, so a `#` there opens a comment and a `<<` a heredoc of the command around
+the backtick, the command a `coproc` runs, a wrapper `WRAPPERS` does not name
+(`sudo`, `stdbuf`, a `time` run by path), and the string `env -S` splits, for
+which `program_words` reads no program at all. A reserved word opens a command
+here only at the head of its segment, so `command_words` does not reach the
+`make check` in `if (true) then make check; fi` or in `for f do make check;
+done`; `commands` reads the first, splitting at its `)`. And a quoted `if` or
+`{`, or a `time` after a `|`, reads as the reserved word, where bash reads a
+command's name. This list is the construct side of the three guards' known
+gaps (`PL-61FT`): bash's grammar is read as far as sessions write it around a
+guarded command, so a construct found missing only by probing is added here
+rather than filed.
 
 A redirection with no word after it, which bash refuses, is read as taking only
 its operator, and a `<(` or `>(` as the process substitution it is rather than
