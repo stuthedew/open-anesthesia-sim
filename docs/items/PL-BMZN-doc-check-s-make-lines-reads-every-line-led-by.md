@@ -3,12 +3,14 @@ id: PL-BMZN
 title: doc_check's _make_lines reads every line led by a tab as a recipe line, where make reads one outside any rule as an ordinary line, so a tab-indented assignment above the first rule or after a variable reaches the coverage gate and the ruff cache check as a command, and a continued one keeps the backslash-newlines make joins away; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
+closed: 2026-10-06
+pr: 1384
 payoff: a tab-indented assignment outside any rule is no longer compared as a command make runs, so the coverage gate and the ruff cache check stop failing a Makefile make reads correctly
 verify: grep -qF 'recipe commands, a tab-led assignment above the first rule is no command' tests/unit/test_doc_check.py && grep -qF 'recipe commands, a tab-led assignment after a variable is no command' tests/unit/test_doc_check.py
 ---

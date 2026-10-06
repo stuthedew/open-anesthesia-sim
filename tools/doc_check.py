@@ -790,6 +790,26 @@ MAKE_DEFINE_RE = re.compile(
 #: `endef#` does not. A line led by a tab is neither, whatever it says.
 MAKE_DEFINE_OPENS_RE = re.compile(r"[ \t]*define(?:[ \t]|$)")
 MAKE_DEFINE_CLOSES_RE = re.compile(r"[ \t]*endef(?:[ \t]|$)")
+#: What make skips ahead of a word and ends one at: `NEXT_TOKEN` and
+#: `END_OF_TOKEN` in GNU make 4.3's `src/makeint.h`, every character C's
+#: `isspace` takes.
+MAKE_SPACE = " \t\n\v\f\r"
+MAKE_SPACE_RE = re.compile(r"[ \t\n\v\f\r]")
+#: The modifiers `parse_var_assignment` in make 4.3's `src/read.c` takes ahead
+#: of an assignment, and the two words that make an assignment of the line
+#: after them.
+MAKE_MODIFIERS = frozenset({"export", "override", "private"})
+MAKE_DEFINING = frozenset({"define", "undefine"})
+#: The directives `eval` in the same file reads once no assignment takes the
+#: line, each ending the rule above it and opening none: `export` and
+#: `unexport` naming variables to pass on, a search path, and the two ways of
+#: reading another file in.
+MAKE_DIRECTIVES = frozenset(
+    {"export", "unexport", "vpath", "include", "-include", "sinclude", "load", "-load"}
+)
+#: The words that open, turn and close a conditional (`conditional_line`, same
+#: file), none of which ends a rule.
+MAKE_CONDITIONALS = frozenset({"ifdef", "ifndef", "ifeq", "ifneq", "else", "endif"})
 # The target a `make` command names, read from the word after `make`.
 MAKE_TARGET_WORD_RE = re.compile(r"[a-z][\w.-]*")
 # `.PHONY` names targets without defining them. A name listed here and given no
@@ -4861,24 +4881,64 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                 )
 
 
+@dataclass(frozen=True)
+class _OpenRule:
+    """Which rule a line led by a tab belongs to, where `_make_lines` reads one.
+
+    `kind` is `none` where no rule is open, so the line is read as any other;
+    `targets` where one is, so the line is its recipe's; `targetless` where the
+    open rule names no target, whose recipe make reads and drops; and
+    `undecided` where a conditional's branch changed which rule is open, so the
+    answer turns on the branch make takes. `line` is where that rule or
+    conditional opens, which tells two open rules apart.
+    """
+
+    kind: str
+    line: int = 0
+
+
+NO_RULE = _OpenRule("none")
+
+
 def _make_lines(text: str) -> Iterator[tuple[str, int]]:
-    """Every logical line of a Makefile, as make reads it, with the line it opens on.
+    """Every statement of a Makefile, as make reads it, with the line it opens on.
 
     The one reading of where a Makefile statement ends (`PL-R417`), which every
     reader of the file takes. Make carries a line ending in a backslash on to
-    the next, and does one of two things with the pair. On a recipe line, which
-    opens with a tab, it keeps the backslash and the newline and drops only the
-    continuation's leading tab, handing the shell the whole command to read the
-    pair itself (GNU make manual, "Splitting Recipe Lines"). On any other line -
-    a rule, an assignment, a comment - the pair and the whitespace around it
-    become one space (GNU make manual, "Splitting Long Lines"), so a rule's
-    prerequisites go on past its first line, and a comment ending in a
-    backslash takes the next line with it, recipe line or not. All three were
-    run through GNU make 4.3 on 2026-10-04. A recipe line comes back with its
-    leading tab, so a reader still knows it for one.
+    the next, and does one of two things with the pair. On a recipe line it
+    keeps the backslash and the newline and drops only the continuation's
+    leading tab, handing the shell the whole command to read the pair itself
+    (GNU make manual, "Splitting Recipe Lines"). On any other line - a rule, an
+    assignment, a comment - the pair and the whitespace around it become one
+    space (GNU make manual, "Splitting Long Lines"), so a rule's prerequisites
+    go on past its first line, and a comment ending in a backslash takes the
+    next line with it, recipe line or not. All three were run through GNU make
+    4.3 on 2026-10-04. A recipe line comes back with its leading tab, and any
+    other statement without the blanks make skips ahead of it, so a reader
+    knows a recipe line by its tab and by nothing else.
 
     Read a physical line at a time, a continued command was two (`PL-G2FY`),
     and a continued prerequisite list's second line was a recipe line.
+
+    **A line led by a tab is a recipe line only while a rule is open**, as
+    `eval` in GNU make 4.3's `src/read.c` reads one: from a rule line until a
+    statement ends the rule - an assignment, a `define`, a directive
+    (`MAKE_DIRECTIVES`) or another rule line. Outside a rule the line is read
+    as the line its words make it, joined as any other line is (`PL-BMZN`). A
+    comment, a blank line and a conditional's directive end no rule, as they
+    end none in make, and come back as no statement, so no reader has a say of
+    its own over where a rule ends (`PL-TDVJ`). A rule line opens a rule as
+    `_rule_opened` reads it. Read with no rule held, every line a tab led was a
+    recipe line, so an assignment indented with one reached the coverage gate
+    as a command; and two readers ended a rule at different lines, one of them
+    at a comment, where make reads on. Variable references are read as
+    written, as every reader of this file reads them.
+
+    **A conditional is read with every branch taken in turn**, since which one
+    make takes turns on variables this reader does not evaluate. Where a branch
+    changes which rule is open, the line after it may be read under a rule make
+    does not have open, so a line led by a tab is declined until a statement
+    after the branch settles the rule again.
 
     **A `define` is one statement, through the `endef` closing it**
     (`PL-4MLK`). The lines between are a variable's value (GNU make manual,
@@ -4887,55 +4947,250 @@ def _make_lines(text: str) -> Iterator[tuple[str, int]]:
     as written, its lines joined by newlines, on the directive's line. The body
     is read as make 4.3's `do_define` reads it, in logical lines, by
     `MAKE_DEFINE_OPENS_RE` and `MAKE_DEFINE_CLOSES_RE`. Read a line at a time,
-    a `define` holding `deploy:` declared a target make has no rule for.
+    a `define` holding `deploy:` declared a target make has no rule for. Led
+    by a tab, a `define` opens a variable outside a rule and is a recipe line
+    inside one, which the rule held tells apart.
 
     Raises `UnreadStatement` where make's reading cannot be given: a `define`
-    no `endef` closes, or one naming no variable, both of which make refuses;
-    and a `define` led by a tab, which make reads as a directive outside a rule
-    and as a recipe line inside one, two readings this reader, holding no
-    rules, cannot tell apart. Each was run through GNU make 4.3 on 2026-10-05.
+    no `endef` closes, or one naming no variable, both of which make refuses
+    (run through GNU make 4.3 on 2026-10-05); a line led by a tab where no rule
+    is open that is no assignment, directive or conditional, which make refuses
+    where it reads it; and a line led by a tab after a branch that changed which
+    rule is open (both run through make 4.3 on 2026-10-06).
     """
     lines = split_lines(text)
     index = 0
+    rule = NO_RULE
+    # Each open conditional's line, and the rule open where its current branch began.
+    branches: list[tuple[int, _OpenRule]] = []
     while index < len(lines):
         opens = index
         parts = _make_physical_lines(lines, index)
         index += len(parts)
-        if parts[0].startswith("\t"):
-            if MAKE_DEFINE_RE.match(_make_joined(parts)):
+        if parts[0].startswith("\t") and rule != NO_RULE:
+            if rule.kind == "undecided":
                 raise UnreadStatement(
                     opens + 1,
-                    "this `define` is led by a tab, which make reads as opening a variable "
-                    "outside a rule and as a recipe line inside one, and this reader does not "
-                    "tell the two apart; write it without the tab",
+                    f"a branch of the conditional on line {rule.line} changes which rule is "
+                    "open, so which rule this line belongs to turns on the branch make "
+                    "takes, which this reader does not evaluate",
                 )
-            yield "\n".join([parts[0], *(part.removeprefix("\t") for part in parts[1:])]), opens + 1
+            if rule.kind == "targets":
+                recipe = [parts[0], *(part.removeprefix("\t") for part in parts[1:])]
+                yield "\n".join(recipe), opens + 1
             continue
-        line = _make_joined(parts)
+        line = _make_joined(parts).lstrip(MAKE_SPACE)
+        statement = _make_uncommented(line)
+        if not statement.strip(MAKE_SPACE):
+            continue
         define = MAKE_DEFINE_RE.match(line)
-        if define is None:
-            yield line, opens + 1
-            continue
-        if not define["name"].strip():
-            raise UnreadStatement(
-                opens + 1, "this `define` names no variable, which make refuses as an empty name"
-            )
-        depth = 1
-        while depth:
-            if index == len(lines):
+        if define is not None:
+            if not define["name"].strip():
                 raise UnreadStatement(
                     opens + 1,
-                    "this `define` is closed by no `endef`, which make refuses as an "
-                    "unterminated `define`",
+                    "this `define` names no variable, which make refuses as an empty name",
                 )
-            body = _make_physical_lines(lines, index)
-            index += len(body)
-            if not body[0].startswith("\t"):
-                if MAKE_DEFINE_OPENS_RE.match(_make_joined(body)):
-                    depth += 1
-                elif MAKE_DEFINE_CLOSES_RE.match(_make_joined(body)):
-                    depth -= 1
-        yield "\n".join(lines[opens:index]), opens + 1
+            depth = 1
+            while depth:
+                if index == len(lines):
+                    raise UnreadStatement(
+                        opens + 1,
+                        "this `define` is closed by no `endef`, which make refuses as an "
+                        "unterminated `define`",
+                    )
+                body = _make_physical_lines(lines, index)
+                index += len(body)
+                if not body[0].startswith("\t"):
+                    if MAKE_DEFINE_OPENS_RE.match(_make_joined(body)):
+                        depth += 1
+                    elif MAKE_DEFINE_CLOSES_RE.match(_make_joined(body)):
+                        depth -= 1
+            rule = NO_RULE
+            yield "\n".join(lines[opens:index]).lstrip(MAKE_SPACE), opens + 1
+            continue
+        word = _make_word(statement)
+        if _make_assigns(statement) or word in MAKE_DIRECTIVES:
+            rule = NO_RULE
+        elif word in MAKE_CONDITIONALS:
+            rule = _make_branch(word, rule, branches, opens + 1)
+            continue
+        elif parts[0].startswith("\t"):
+            raise UnreadStatement(
+                opens + 1,
+                "this line is led by a tab where no rule is open, and is no assignment, "
+                "directive or conditional, which make refuses where it reads the line "
+                '("recipe commences before first target")',
+            )
+        else:
+            rule = _rule_opened(statement, opens + 1)
+        yield line, opens + 1
+
+
+def _make_branch(
+    word: str, rule: _OpenRule, branches: list[tuple[int, _OpenRule]], line: int
+) -> _OpenRule:
+    """The rule open after a conditional's directive on `line`, which ends none.
+
+    An `ifdef`, `ifndef`, `ifeq` or `ifneq` opens a branch, and an `else` or
+    `endif` closes one. Where the rule open as a branch closes is not the one
+    open where it began, the branch changed it, and which rule make has open
+    after it turns on whether make took it. An `else` or `endif` closing no
+    conditional, which make refuses, changes nothing.
+    """
+    if word not in ("else", "endif"):
+        branches.append((line, rule))
+        return rule
+    if not branches:
+        return rule
+    where, began = branches.pop()
+    if rule != began:
+        rule = _OpenRule("undecided", where)
+    if word == "else":
+        branches.append((where, rule))
+    return rule
+
+
+def _rule_opened(statement: str, line: int) -> _OpenRule:
+    """The rule a statement no assignment, directive or conditional takes leaves open below it.
+
+    Read as `eval` in GNU make 4.3's `src/read.c` reads such a line, up to the
+    `;` an inline recipe follows: the first colon outside a variable reference
+    and unescaped ends the targets, `&:` grouping them, and where none stand
+    before it the rule names no target, whose recipe make reads and drops.
+    After it, past a second colon, an assignment makes the line a
+    target-specific variable, which leaves no rule open. A line with no such
+    colon leaves none open either: make ends the rule above it, and reads the
+    line as nothing or refuses it as missing a separator.
+    """
+    end = _make_unquoted(statement, ";")
+    head = statement if end < 0 else statement[:end]
+    colon = _make_unquoted(head, ":")
+    if colon < 0:
+        return NO_RULE
+    if not head[:colon].removesuffix("&").strip(MAKE_SPACE):
+        return _OpenRule("targetless", line)
+    if _make_assigns(head[colon + 1 :].removeprefix(":")):
+        return NO_RULE
+    return _OpenRule("targets", line)
+
+
+def _make_assigns(text: str) -> bool:
+    """Whether make 4.3 reads `text` as an assignment, `define` and `undefine` included.
+
+    Ported from `parse_var_assignment` in GNU make 4.3's `src/read.c`: a
+    variable's definition (`_make_defines_variable`), after any of the
+    modifiers `export`, `override` and `private`, or the word `define` or
+    `undefine` after them.
+    """
+    rest = text.lstrip(MAKE_SPACE)
+    while rest:
+        if _make_defines_variable(rest):
+            return True
+        word = _make_word(rest)
+        if word in MAKE_DEFINING:
+            return True
+        if word not in MAKE_MODIFIERS:
+            return False
+        rest = rest[len(word) :].lstrip(MAKE_SPACE)
+    return False
+
+
+def _make_defines_variable(text: str) -> bool:
+    """Whether `text` opens with a variable's definition, as make 4.3 reads one.
+
+    Ported from `parse_variable_definition` in GNU make 4.3's
+    `src/variable.c`: a name, with any variable reference in it passed over
+    whole, then any blanks and one of `=`, `:=`, `::=`, `+=`, `?=` and `!=`. A
+    colon that starts none of them is a rule's, and a comment, or a word after
+    the blanks that is no operator, makes the text no definition.
+    """
+    at = len(text) - len(text.lstrip(MAKE_SPACE))
+    blank = False
+    while at < len(text):
+        char = text[at]
+        at += 1
+        if char == "#":
+            return False
+        if char == "$":
+            if at == len(text):
+                return False
+            at += 1
+            if text[at - 1] in "({":
+                at = _make_reference_end(text, at, text[at - 1])
+            continue
+        if char in " \t":
+            blank = True
+            at = len(text) - len(text[at:].lstrip(MAKE_SPACE))
+            if at == len(text):
+                return False
+            char = text[at]
+            at += 1
+        if char == "=":
+            return True
+        if text.startswith("=", at):
+            if char in ":+?!":
+                return True
+            if blank:
+                return False
+            continue
+        if char == ":":
+            return text.startswith(":=", at)
+        if blank:
+            return False
+    return False
+
+
+def _make_unquoted(text: str, stops: str) -> int:
+    """Where the first of `stops` stands in `text`, outside a variable reference and unescaped.
+
+    Ported from `find_map_unquote` in GNU make 4.3's `src/read.c`, given
+    `MAP_VARIABLE`: a `$(...)` or `${...}` reference is passed over whole, `$`
+    and the character after it otherwise, and a stop character after an odd
+    run of backslashes is escaped by them. -1 where none stands.
+    """
+    at = 0
+    while at < len(text):
+        char = text[at]
+        if char == "$":
+            at += 2
+            if text[at - 1 : at] in ("(", "{"):
+                at = _make_reference_end(text, at, text[at - 1])
+            continue
+        if char in stops and (at - len(text[:at].rstrip("\\"))) % 2 == 0:
+            return at
+        at += 1
+    return -1
+
+
+def _make_reference_end(text: str, at: int, opener: str) -> int:
+    """Past the close of the reference `opener` opened just before `at`, or the text's end.
+
+    A reference nested in it with the same bracket is counted, as make 4.3's
+    `find_map_unquote` and `parse_variable_definition` count one.
+    """
+    closer = ")" if opener == "(" else "}"
+    depth = 1
+    while at < len(text):
+        char = text[at]
+        at += 1
+        if char == opener:
+            depth += 1
+        elif char == closer:
+            depth -= 1
+            if not depth:
+                break
+    return at
+
+
+def _make_uncommented(line: str) -> str:
+    """`line` up to its comment, as `remove_comments` in GNU make 4.3's `src/read.c` cuts it."""
+    cut = _make_unquoted(line, "#")
+    return line if cut < 0 else line[:cut]
+
+
+def _make_word(text: str) -> str:
+    """The first word of `text`, which no blank leads: `end_of_token` in make 4.3's `src/misc.c`."""
+    return MAKE_SPACE_RE.split(text, maxsplit=1)[0]
 
 
 def _make_physical_lines(lines: list[str], index: int) -> list[str]:
@@ -4962,10 +5217,13 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
     0. Documentation that tells a session to run it is therefore naming a
     check that reports success without running, which is worse than one that
     errors - an erroring command gets investigated, a passing one gets
-    believed. Read by logical line, so a `.PHONY` list or a prerequisite list a
-    backslash continues is read whole, and its second line is not taken for a
-    recipe (`PL-R417`); and a `define` body, a variable's value, declares
-    nothing (`PL-4MLK`). Raises `UnreadStatement` where `_make_lines` does.
+    believed. Read by statement, as `_make_lines` gives them, so a `.PHONY`
+    list or a prerequisite list a backslash continues is read whole, and its
+    second line is not taken for a recipe (`PL-R417`); a `define` body, a
+    variable's value, declares nothing (`PL-4MLK`); and a rule runs on past a
+    comment line, as make reads it, where this once ended it, so a target
+    whose first recipe line follows a comment read as having none
+    (`PL-TDVJ`). Raises `UnreadStatement` where `_make_lines` does.
     """
     declared: set[str] = set()
     with_recipe: set[str] = set()
@@ -4981,11 +5239,9 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
             current = None
             continue
         match = MAKE_TARGET_RE.match(line)
-        if match is not None:
-            current = match.group("name")
+        current = None if match is None else match.group("name")
+        if current is not None:
             declared.add(current)
-        elif line.strip():
-            current = None
     return frozenset(declared), frozenset(with_recipe)
 
 
@@ -5387,13 +5643,16 @@ COVERAGE_GATE_MARK = "--cov-fail-under"
 def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
     """Every command a Makefile recipe hands the shell, with the line it opens on.
 
-    A recipe line is one beginning with a tab; which target it belongs to does
-    not matter here, because the mark above is what selects the line rather
-    than its position. A command a backslash continues is one, spelled as make
-    hands it over (`_make_lines`); read a physical line at a time it was two,
-    the first ending in the backslash (`PL-G2FY`). A line in a `define` body is
-    a variable's value and no command (`PL-4MLK`). Raises `UnreadStatement`
-    where `_make_lines` does.
+    A recipe line is one beginning with a tab while a rule is open, as
+    `_make_lines` reads it; which target it belongs to does not matter here,
+    because the mark above is what selects the line rather than its position.
+    A line a tab leads above the first rule, or after an assignment ends the
+    rule above it, is the statement its words make and no command: read by its
+    tab alone, an assignment indented with one was a command (`PL-BMZN`). A
+    command a backslash continues is one, spelled as make hands it over; read a
+    physical line at a time it was two, the first ending in the backslash
+    (`PL-G2FY`). A line in a `define` body is a variable's value and no command
+    (`PL-4MLK`). Raises `UnreadStatement` where `_make_lines` does.
     """
     for line, number in _make_lines(text):
         if line.startswith("\t") and line.strip():
@@ -5756,17 +6015,18 @@ def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str
     runs.
 
     Blank lines and comment lines do not end a recipe, which is a rule of Make
-    rather than a convenience: a recipe line is one beginning with a tab, and
-    this Makefile carries a paragraph of reasoning above almost every command.
-    Reading a comment as the end of the target would have found one command
-    under `check` where there are twenty.
+    rather than a convenience: this Makefile carries a paragraph of reasoning
+    above almost every command, and reading a comment as the end of the target
+    would have found one command under `check` where there are twenty.
+    `_make_lines` gives no statement for either, so this reader and
+    `make_targets` end a rule at the same line, where make ends it (`PL-TDVJ`).
 
-    Read by logical line (`_make_lines`), so a command a backslash continues
-    is one, and a prerequisite list it continues is read whole rather than its
+    Read by statement (`_make_lines`), so a command a backslash continues is
+    one, and a prerequisite list it continues is read whole rather than its
     second line taken for a command (`PL-G2FY`). A `define` is one statement, an
     assignment, so it ends the target above it and nothing in its body is a
-    target or a command (`PL-4MLK`). Raises `UnreadStatement` where
-    `_make_lines` does.
+    target or a command (`PL-4MLK`). A line a tab leads where no rule is open is
+    no command (`PL-BMZN`). Raises `UnreadStatement` where `_make_lines` does.
     """
     recipes: dict[str, list[str]] = {}
     prerequisites: dict[str, list[str]] = {}
@@ -5775,8 +6035,6 @@ def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str
         if line.startswith("\t"):
             if current is not None and line.strip():
                 recipes.setdefault(current, []).append(line.strip())
-            continue
-        if not line.strip() or line.lstrip().startswith("#"):
             continue
         match = MAKE_TARGET_RE.match(line)
         if match is None:
