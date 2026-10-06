@@ -52,3 +52,8 @@ left the front matter.
 where they read it at all, and keeping the body's line numbers, pinned by an
 `instruction audit, ` and a `notes, ` case in `PL-R417`'s guard that fail on
 today's readers.
+
+**Decided 2026-10-06.** The rule files' front matter gets one reader, which
+`rules_paths_check.entries` and `instructions.parse` both take, in
+`PL-R417`'s YAML batch (project owner, 2026-10-06, ratified, over patching
+each reader in place).

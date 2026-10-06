@@ -74,3 +74,7 @@ pending heredocs out to the line bash reads them from, and ends a body at a
 delimiter line the substitution's `)` follows, pinned by a case for each form
 above in the floor guard's `RESHAPED` table and in the no-prune and push-check
 guards' tests, failing on today's reader.
+
+**Decided 2026-10-06.** Fixed once, in the shell reader `PL-JNYL` merges from
+the hooks' and docket's two, which opens `PL-R417`'s shell batch (project
+owner, 2026-10-06, ratified, over fixing each shell reader in place).

@@ -480,19 +480,37 @@ shares a reader, it misreads a different fact. The comment above
 was fixed in passing, and `PL-4CJ8` holds the four other comments citing
 § 6.7 for a soft break. `generator:` stays `live`.
 
-**Next steps (recorded 2026-10-04, revised by links 8, 11 to 18 and 19).** The
-members the table and the first sweeps named are built but `PL-RR1N`; the
-closing sweep's twenty-five are not, so the head is not spent and keeps its
-rank. **Recommended:** build them as the earlier links were, a format per pull
-request, the Markdown thirteen first, since each reads through
+**Next steps (recorded 2026-10-04, revised by links 8, 11 to 18 and 19, and
+on 2026-10-06).** The members the table and the first sweeps named are built
+but `PL-RR1N`; the closing sweep's twenty-five are not, so the head is not
+spent and keeps its rank. Build them as the earlier links were, a format per
+pull request, by moving each caller onto its format's one shared reader rather
+than patching a line walk of its own: by their finish lines, nineteen of the
+twenty-five route a caller through a shared reader or the standard library's
+`json` or `tomllib`, four are defects inside a shared reader, and two are
+one-offs. The Markdown thirteen go first, since each reads through
 `docket.markdown`'s blocks and statements and the accessor `PL-YCJJ` asks for,
-a statement's text with its container markers blanked, serves several; then
-the YAML and TOML six, each reading its front matter through one parse; then
-the shell six. Then one more sweep of the same reach, with `generator:`
-rewritten `spent` only when a sweep finds nothing (the coordinator's brief,
-2026-10-04). The head closes without waiting for `PL-RR1N`, naming it in the
-reason as Done-when says (project owner, 2026-10-04, ratified, over waiting
-for it).
+a statement's text with its container markers blanked, serves several. With
+them lands `PL-0C2S`, a test holding `docket.markdown` to markdown-it-py in the
+test environment, so that the next defect inside the shared reader fails CI
+rather than waiting for a sweep (project owner, 2026-10-06, ratified, over the
+one comparison of 2026-10-04). Then the YAML and TOML six, each reading its
+front matter through one parse, the rule files' through one reader that
+`rules_paths_check.entries` and `instructions.parse` both take, for `PL-BM8T`
+and `PL-2MLT` (project owner, 2026-10-06, ratified, over patching each reader
+in place). Then the shell six, opened by `PL-JNYL`'s merge of the hooks' and
+docket's two shell readers, so that `PL-VJPH` and `PL-QSN5` are each fixed
+once, in the merged reader (project owner, 2026-10-06, ratified, over keeping
+both readers and fixing each, as on 2026-10-05). The readers stay on the
+standard library: vendoring markdown-it-py into the tree would replace only
+the shared reader, the nineteen callers need moving onto it either way, and
+`docket.markdown` was already checked against it on every tracked Markdown
+file (project owner, 2026-10-06, ratified, over vendoring it); `PL-0C2S`
+failing on the hand-written reader again and again would reopen that. Then
+one more sweep of the same reach, with `generator:` rewritten `spent` only
+when a sweep finds nothing (the coordinator's brief, 2026-10-04). The head
+closes without waiting for `PL-RR1N`, naming it in the reason as Done-when
+says (project owner, 2026-10-04, ratified, over waiting for it).
 
 **Done when.** Every reader the table and the sweep name reads its format's
 statement whole or declines it by name, each pinned by a test; the guard test

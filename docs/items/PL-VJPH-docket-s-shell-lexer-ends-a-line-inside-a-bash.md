@@ -46,3 +46,7 @@ other copy (`PL-JNYL`), whose gaps its own policy records rather than files.
 **Done when.** `_Lexer` counts `<(`, `>(` and an assignment's `(` as nesting, as
 it counts `$(`, pinned by a `shell lines, ` case in `PL-R417`'s guard for each
 form, failing on today's reader.
+
+**Decided 2026-10-06.** Fixed once, in the shell reader `PL-JNYL` merges from
+the hooks' and docket's two, which opens `PL-R417`'s shell batch (project
+owner, 2026-10-06, ratified, over fixing each shell reader in place).

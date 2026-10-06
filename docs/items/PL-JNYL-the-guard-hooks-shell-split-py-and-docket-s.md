@@ -22,6 +22,13 @@ lexers in place in `#1377` and file the merge as its own item (project owner,
 `subprojects/docket/src/docket/shell.py`, each against bash 5.2.21, with the
 same three facts written twice.
 
+**Reopened 2026-10-06, in the thread for `PL-R417`'s closing sweep.** The
+merge opens `PL-R417`'s shell batch, ahead of `PL-VJPH` and `PL-QSN5`, the
+closing sweep's defects in these readers, one in each, so that each is fixed
+once (project owner, 2026-10-06, ratified, over keeping both readers and
+fixing each, as decided on 2026-10-05). The five points below are that
+batch's first design round.
+
 **What a merge has to settle first.** Each was read or measured on 2026-10-05.
 
 1. **What a here-document its delimiter never ends does.** The hooks read the

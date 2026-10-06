@@ -81,3 +81,8 @@ line does not close, and an inline block indicator, are the two cases to
 decline - and `is_path_scoped` takes a line for the `paths:` key only where no
 quoted scalar is still open above it, each pinned by a `rules paths, ` case in
 `PL-R417`'s guard that fails on today's reader.
+
+**Decided 2026-10-06.** The rule files' front matter gets one reader, which
+`rules_paths_check.entries` and `instructions.parse` both take, in
+`PL-R417`'s YAML batch (project owner, 2026-10-06, ratified, over patching
+each reader in place).
