@@ -3,12 +3,14 @@ id: PL-TDVJ
 title: doc_check's make_targets ends a rule at a comment line, where make and _target_recipes go on reading its recipe, so a target whose first recipe line follows a comment reads as declared with no recipe and a document naming it fails as exiting 0 without running; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
+closed: 2026-10-06
+pr: 1384
 payoff: a comment between a rule and its recipe no longer makes the make-targets check tell a document that its target exits 0 without running
 verify: grep -qF 'make targets, a comment line ends no rule' tests/unit/test_doc_check.py
 ---

@@ -411,14 +411,39 @@ quotations, each failing on main's readers. No new member was filed;
 without a word, was filed beside them and is not one. `generator:` stays
 `live`.
 
-**Next steps (recorded 2026-10-04, revised by links 8, 11, 12, 13, 14, 15, 16
-and 17).** The members, one format per pull request as before, each closing its
-members and adding their cases to `CONTINUED_STATEMENTS`: the two Makefile
-members, `PL-TDVJ` and `PL-BMZN`, in one pull request, before the sweep. Then
-one more sweep of the same reach, and `generator:` rewritten `spent` only when
-it finds nothing (the coordinator's brief, 2026-10-04). The head closes without
-waiting for `PL-RR1N`, naming it in the reason as Done-when says (project
-owner, 2026-10-04, ratified, over waiting for it).
+**Link 18, the Makefile members (`#1384`, 2026-10-06).** Done: `PL-TDVJ` and
+`PL-BMZN`. `_make_lines` holds which rule is open, as `eval` in GNU make 4.3's
+`src/read.c` does: a rule line opens one as `_rule_opened` reads it, and an
+assignment, a `define` or a directive ends it, assignments read by ports of
+make's `parse_var_assignment` and `parse_variable_definition`. A line led by a
+tab is a recipe line only while a rule is open; outside one it is the line its
+words make, joined as one, so a `define` led by a tab, which link 15 declined,
+opens a variable outside a rule and is a recipe line inside one, as make reads
+it. A comment, a blank line and a conditional's directive end
+no rule and come back as no statement, so `make_targets`, `_target_recipes`
+and `_recipe_commands` end every rule at the same line, where make ends it. A
+conditional is read with every branch taken in turn. Two declines are new: a
+tab-led line where no rule is open, which make refuses, and one after a branch
+that changed which rule is open. Nothing over the tree moved: the Makefile's
+477 logical lines are 51 statements, and its 10 targets, 37 recipe commands
+and each target's recipe and prerequisites read the same, as does `doc_check
+check`; 97 Makefile forms run through make 4.3 read as make reads them. The
+guard gained fourteen cases, three `make targets, `, one `target recipes, `,
+five `recipe commands, ` and five `make lines, `, thirteen failing on main's
+reader and one pinning a reading main already gave, and `make lines, a define
+led by a tab` became a reading instead of a decline. A test holds the three
+readers to the same recipe lines over six Makefiles, four of which they read
+differently on main. No new member was filed: `PL-HR4V`, `PL-GSJ6` and
+`PL-HSB3`, filed beside them, read a rule line's grammar, a recipe prefix and a
+conditional's branches, none of them where a statement ends. `generator:`
+stays `live`.
+
+**Next steps (recorded 2026-10-04, revised by links 8, 11, 12, 13, 14, 15, 16,
+17 and 18).** Every member but `PL-RR1N` is built. What remains is one more
+sweep of the same reach, and `generator:` rewritten `spent` only when it finds
+nothing (the coordinator's brief, 2026-10-04). The head closes without waiting
+for `PL-RR1N`, naming it in the reason as Done-when says (project owner,
+2026-10-04, ratified, over waiting for it).
 
 **Done when.** Every reader the table and the sweep name reads its format's
 statement whole or declines it by name, each pinned by a test; the guard test

@@ -6926,6 +6926,21 @@ def _make_lines_refusal(text: str) -> tuple[int, str] | list[tuple[str, int]]:
         return statement.line, statement.why
 
 
+#: A rule whose recipe a conditional splits, both branches read in turn.
+BRANCHED_RECIPE = "check:\nifdef X\n\t@echo x\nelse\n\t@echo y\nendif\n"
+#: Why `_make_lines` declines a line led by a tab where no rule is open.
+NO_RULE_OPEN = (
+    "this line is led by a tab where no rule is open, and is no assignment, directive or "
+    'conditional, which make refuses where it reads the line ("recipe commences before first '
+    'target")'
+)
+#: Why it declines one after a branch that changed which rule is open.
+BRANCH_CHANGED_THE_RULE = (
+    "a branch of the conditional on line {} changes which rule is open, so which rule this "
+    "line belongs to turns on the branch make takes, which this reader does not evaluate"
+)
+
+
 def _joined_fixture_ids(tmp_path: Path) -> list[tuple[int, str]]:
     """What the fixture id check reports in a hook script that carries ids across lines."""
     script = tmp_path / "hook.sh"
@@ -7392,8 +7407,7 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         ),
         [("echo ok", 6)],
     ),
-    # One make refuses, or reads two ways this reader cannot tell apart, is
-    # declined by name at the directive's line.
+    # One make refuses is declined by name at the directive's line.
     "make lines, a define no endef closes": (
         lambda _: _make_lines_refusal("define HELP\ndeploy:\n\ttrue\n"),
         (
@@ -7405,14 +7419,79 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: _make_lines_refusal("check:\n\ttrue\ndefine # none\nx\nendef\n"),
         (3, "this `define` names no variable, which make refuses as an empty name"),
     ),
-    "make lines, a define led by a tab": (
-        lambda _: _make_lines_refusal("\tdefine HELP\nx\nendef\n"),
-        (
-            1,
-            "this `define` is led by a tab, which make reads as opening a variable outside a "
-            "rule and as a recipe line inside one, and this reader does not tell the two apart; "
-            "write it without the tab",
+    # A line led by a tab is a recipe line only while a rule is open
+    # (`PL-BMZN`), and a comment, a blank line or a conditional's directive ends
+    # no rule (`PL-TDVJ`), as `eval` in GNU make 4.3's `src/read.c` reads them.
+    # Each form was run through make 4.3 on 2026-10-06.
+    "make targets, a comment line ends no rule": (
+        lambda _: doc_check.make_targets(
+            ".PHONY: check\ncheck:\n# run the gate\n\t@echo CHECK-RAN\n"
         ),
+        (frozenset({"check"}), frozenset({"check"})),
+    ),
+    "make targets, a conditional line ends no rule": (
+        lambda _: doc_check.make_targets(BRANCHED_RECIPE),
+        (frozenset({"check"}), frozenset({"check"})),
+    ),
+    "target recipes, a conditional line ends no rule": (
+        lambda _: doc_check._target_recipes(BRANCHED_RECIPE),
+        ({"check": ["@echo x", "@echo y"]}, {"check": []}),
+    ),
+    "make targets, a rule line led by spaces": (
+        lambda _: doc_check.make_targets("  check:\n\t@echo ok\n"),
+        (frozenset({"check"}), frozenset({"check"})),
+    ),
+    "recipe commands, a tab-led assignment above the first rule is no command": (
+        lambda _: list(
+            doc_check._recipe_commands(
+                "\tGATE := pytest --cov-fail-under=100\nall:\n\t@echo $(GATE)\n"
+            )
+        ),
+        [("@echo $(GATE)", 3)],
+    ),
+    "recipe commands, a tab-led assignment after a variable is no command": (
+        lambda _: list(
+            doc_check._recipe_commands("all:\n\t@echo a\nX = 1\n\tY = 2\nshow:\n\t@echo $(Y)\n")
+        ),
+        [("@echo a", 2), ("@echo $(Y)", 6)],
+    ),
+    "make lines, a continued tab-led assignment is joined as an assignment": (
+        lambda _: _make_lines_refusal(
+            "\tGATE := pytest \\\n\t--cov-fail-under=100\nall:\n\t@echo ok\n"
+        ),
+        [("GATE := pytest --cov-fail-under=100", 1), ("all:", 3), ("\t@echo ok", 4)],
+    ),
+    "make lines, a define led by a tab where no rule is open": (
+        lambda _: _make_lines_refusal("\tdefine HELP\nx\nendef\n"),
+        [("define HELP\nx\nendef", 1)],
+    ),
+    "recipe commands, a define led by a tab in a rule is a recipe line": (
+        lambda _: list(doc_check._recipe_commands("all:\n\tdefine HELP\n")),
+        [("define HELP", 2)],
+    ),
+    "recipe commands, a rule naming no target drops its recipe": (
+        lambda _: list(doc_check._recipe_commands(": c\n\t@echo dropped\nall:\n\t@echo all\n")),
+        [("@echo all", 4)],
+    ),
+    "recipe commands, a colon in a reference is not the rule's": (
+        lambda _: list(doc_check._recipe_commands("SRC = a.c\n$(SRC:.c=.o):\n\t@echo built\n")),
+        [("@echo built", 3)],
+    ),
+    "make lines, a tab-led line where no rule is open": (
+        lambda _: _make_lines_refusal("\t@echo hi\nall:\n\t@echo all\n"),
+        (1, NO_RULE_OPEN),
+    ),
+    "make lines, a target-specific variable opens no rule": (
+        lambda _: _make_lines_refusal("check: X = 1\n\t@echo hi\n"),
+        (2, NO_RULE_OPEN),
+    ),
+    "make lines, a branch that changes which rule is open": (
+        lambda _: _make_lines_refusal("all:\nifdef X\nY = 1\nendif\n\t@echo b\n"),
+        (5, BRANCH_CHANGED_THE_RULE.format(2)),
+    ),
+    "make lines, an else after a branch that changed the rule": (
+        lambda _: _make_lines_refusal("ifdef X\na:\nelse\n\t@echo y\nendif\n"),
+        (4, BRANCH_CHANGED_THE_RULE.format(1)),
     ),
     "coverage gate, one run continued alike in both files": (
         lambda root: _continued_coverage_gate(root, CONTINUED_RUN),
@@ -8494,6 +8573,25 @@ LONG_QUOTATIONS: dict[str, tuple[Callable[[Path], object], object]] = {
 }
 
 
+#: Makefiles whose every rule `MAKE_TARGET_RE` reads, each with a line make reads
+#: on past or a line a tab leads outside any rule, as GNU make 4.3 read them on
+#: 2026-10-06.
+AGREEING_MAKEFILES = {
+    "a comment line in a rule": ".PHONY: check\ncheck:\n# run the gate\n\t@echo CHECK-RAN\n",
+    "a blank line in a rule": "check:\n\t@echo a\n\n\t@echo b\n",
+    "a conditional in a rule": BRANCHED_RECIPE,
+    "a tab-led assignment above the first rule": (
+        "\tGATE := pytest --cov-fail-under=100\nall:\n\t@echo $(GATE)\n"
+    ),
+    "a tab-led assignment after an assignment": (
+        "all:\n\t@echo a\nX = 1\n\tY = 2\nshow:\n\t@echo $(Y)\n"
+    ),
+    "a define between two rules": (
+        "a:\n\t@echo a\ndefine HELP\n\t@echo body\nendef\nb:\n\t@echo b\n"
+    ),
+}
+
+
 @pytest.mark.parametrize("reader", sorted(LONG_QUOTATIONS))
 def test_each_citation_reader_reads_a_closed_quotation_of_any_length(
     reader: str, tmp_path: Path
@@ -8528,6 +8626,24 @@ for opener in ('See § "', 'See "', '"', '`docs/MODEL.md` § "', '`PL-T3ST` § "
 """
 
     subprocess.run([sys.executable, "-c", script], check=True, timeout=20)
+
+
+@pytest.mark.parametrize("makefile", sorted(AGREEING_MAKEFILES))
+def test_the_makefile_readers_agree_about_recipe_lines(makefile: str) -> None:
+    """`make_targets`, `_target_recipes` and `_recipe_commands` find the same recipe lines.
+
+    `PL-TDVJ` and `PL-BMZN`: each reader once had a say of its own over where a
+    rule ends, so one ended a rule at a comment another read past, and one took
+    a tab-led assignment for a command the others did not. Read from one
+    `_make_lines`, the three agree wherever `MAKE_TARGET_RE` reads every rule.
+    """
+    text = AGREEING_MAKEFILES[makefile]
+    _, with_recipe = doc_check.make_targets(text)
+    recipes, _ = doc_check._target_recipes(text)
+    commands = [command for command, _ in doc_check._recipe_commands(text)]
+
+    assert {target for target, lines in recipes.items() if lines} == with_recipe
+    assert sorted(line for lines in recipes.values() for line in lines) == sorted(commands)
 
 
 def test_recipe_commands_join_a_backslash_continuation() -> None:
