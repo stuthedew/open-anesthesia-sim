@@ -555,18 +555,32 @@ BRACE_RE = re.compile(r"\{([^{}]*)\}")
 # the quotation was `[^"\n]+` - and unmatchable means unchecked, not reported:
 # `check_citations` passed over 18 citations in the documents it already reads
 # without examining one of them. It spans a soft break and nothing more, so it
-# ends with its paragraph (`QUOTATION_CHAR`); the bound stops a runaway match
-# inside one, and `_normalized` puts the term back on one line before it is
-# compared. A quotation its paragraph never closes is the `unclosed` branch,
-# refused by name: `[^"]` read on to the next paragraph's mark and held the
-# two halves as one title (`PL-T73L`).
+# ends with its paragraph (`QUOTATION_CHAR`), and `_normalized` puts the term
+# back on one line before it is compared. A quotation its paragraph never
+# closes is the `unclosed` branch, refused by name: `[^"]` read on to the next
+# paragraph's mark and held the two halves as one title (`PL-T73L`).
+#
+# **A closed quotation is read whatever its length** (`PL-WJF2`). It is the
+# text up to its paragraph's next mark, which nothing else decides, so it is
+# taken possessively, as one reading, here and in the three other citation
+# patterns below. Each bounded it at 160 or 200 characters, and a citation
+# whose closing mark stood further off matched neither branch and went unread
+# without a word. The bound was kept against a stray mark, read on to its
+# paragraph's next one and compared as a title nobody wrote; but a stray mark
+# nearer its neighbour than the bound was compared all along, so the bound
+# never prevented that report, only hid it past a length. Nor did it bound the
+# cost: lazy, the repetition tries every split of a line's trailing spaces
+# between `QUOTATION_CHAR`'s two halves before a match fails, three per hard
+# break, so a quotation never closed across twelve ten-character lines ending
+# in one took 259 ms inside the 160 and sixteen lines about 20 s, measured
+# 2026-10-05, where possessive takes microseconds.
 #
 # The gaps around a quotation are `GAP`s, so a citation wrapped inside a
 # blockquote is read past the next line's `>` as CommonMark reads it, where
 # `[ \n]*` stood and stopped there, leaving it unchecked (`PL-XW87`). The
 # quotation's own wrapped lines lose their markers in `_normalized`.
 CITATION_RE = re.compile(
-    r"§{1,2}" + GAP + rf'*"(?:(?P<term>{QUOTATION_CHAR}{{1,160}}?)"|{UNCLOSED_QUOTATION})'
+    r"§{1,2}" + GAP + rf'*"(?:(?P<term>{QUOTATION_CHAR}++)"|{UNCLOSED_QUOTATION})'
 )
 # The same two positions without the mark, which is how 147 of the documents'
 # citations were written until `PL-YSMV` marked them. Read only to say that one
@@ -583,14 +597,15 @@ CITATION_RE = re.compile(
 # does not. Measured across the documents this reads on 2026-09-13: 40 directed
 # citations, none of which opens on anything else.
 #
-# Each quotation ends with its paragraph, as `CITATION_RE`'s does (`PL-T73L`).
+# Each quotation ends with its paragraph, as `CITATION_RE`'s does (`PL-T73L`),
+# and is read whatever its length, possessively, as that one is (`PL-WJF2`).
 # The `named` branch's opening word is what read it as a citation, so one its
 # paragraph never closes is its `unclosed` branch, refused by name; the
 # `directed` branch is known only by the direction after its closing mark, so
 # an unclosed quotation is none.
 UNMARKED_CITATION_RE = re.compile(
-    rf'(?:\b(?:see|under){GAP}+"(?:(?P<named>{QUOTATION_CHAR}{{1,160}}?)"|{UNCLOSED_QUOTATION}))'
-    rf'|(?:"(?P<directed>[`A-Za-z]{QUOTATION_CHAR}{{0,159}}?)"{GAP}+(?:above|below)\b)',
+    rf'(?:\b(?:see|under){GAP}+"(?:(?P<named>{QUOTATION_CHAR}++)"|{UNCLOSED_QUOTATION}))'
+    rf'|(?:"(?P<directed>[`A-Za-z]{QUOTATION_CHAR}*+)"{GAP}+(?:above|below)\b)',
     re.IGNORECASE,
 )
 #: A direction after a quotation, matched at the quotation's end.
@@ -618,8 +633,8 @@ MARKER_RE = re.compile(rf"^(?:[-*+]\s+)?\*\*(?P<title>(?:[^*\n]|{SOFT_BREAK})+?)
 # queue and the docstrings without the guesswork that reading a bare quoted
 # phrase there would need. The quotation must open on a word character, so a
 # stray `")"` in prose is not read as one, and it may span source lines inside
-# its paragraph; one its paragraph never closes is the `unclosed` branch,
-# refused by name (`PL-T73L`).
+# its paragraph, at any length (`PL-WJF2`); one its paragraph never closes is
+# the `unclosed` branch, refused by name (`PL-T73L`).
 #: What may stand between a cited document and its quotation. A closed set of
 #: connectives, never a content word: the pattern once allowed only `,` and
 #: `:`, which left the two forms this project actually writes - `§` and the
@@ -657,7 +672,7 @@ QUOTED_SOURCE_RE = re.compile(
     r"(?:\b(?:see|under|in)" + GAP + r"+)?"
     r"`(?P<document>[\w./-]+\.md)`" + GAP + r"*"
     r"(?P<connective>" + CITATION_CONNECTIVE + r")?" + GAP + r"*"
-    rf'"(?:(?P<quoted>\w{QUOTATION_CHAR}{{2,200}}?)"|(?=\w){UNCLOSED_QUOTATION})'
+    rf'"(?:(?P<quoted>\w{QUOTATION_CHAR}{{2,}}+)"|(?=\w){UNCLOSED_QUOTATION})'
 )
 #: The connectives that claim the named document holds the words: the section
 #: mark, and the possessive that attributes them to it. A quotation after
@@ -693,7 +708,7 @@ QUALIFIED_RE = re.compile(
 #: claim it, and waits on a comparison that folds emphasis (`PL-RX0W`).
 ITEM_SECTION_RE = re.compile(
     rf"`(?P<item>{ID_PATTERN})`{GAP}*§{{1,2}}{GAP}*"
-    rf'"(?:(?P<quoted>\w{QUOTATION_CHAR}{{2,200}}?)"|(?=\w){UNCLOSED_QUOTATION})'
+    rf'"(?:(?P<quoted>\w{QUOTATION_CHAR}{{2,}}+)"|(?=\w){UNCLOSED_QUOTATION})'
 )
 
 # The `**Tags.**` statement. What it claims is deliberately not a list: the
