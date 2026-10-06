@@ -44,6 +44,9 @@ import doc_check
 #: halves a paragraph break separates were one quotation equal to a heading, and
 #: a correct sentence was told to take `§` (`PL-BYJ5`). One its paragraph never
 #: closes names no heading, and is `doc_check.check_quoted_sources`'s to refuse.
+#: It is read whatever its length, possessively, for the reasons
+#: `doc_check.CITATION_RE` gives (`PL-WJF2`): bounded at 200, a longer one was
+#: never compared with a heading.
 POSSESSIVE_RE = re.compile(
     r"`(?P<document>[\w./-]+\.md)`['’]s(?:"
     + doc_check.GAP
@@ -51,7 +54,7 @@ POSSESSIVE_RE = re.compile(
     + doc_check.GAP
     + r'*"(?P<quoted>\w'
     + doc_check.QUOTATION_CHAR
-    + r'{2,200}?)"'
+    + r'{2,}+)"'
 )
 
 
