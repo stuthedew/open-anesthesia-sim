@@ -414,9 +414,9 @@ TREE_ROOT_RE = re.compile(r"^(?P<path>[\w./-]+/)$")
 REFERENCE_FILE_RE = re.compile(r"`(?P<name>[\w][\w.-]*\.(?:pdf|txt|csv|json))`")
 TREE_ENTRY_RE = re.compile(r"^(?P<indent>(?:(?:│   )|(?:    ))*)(?:├──|└──) (?P<name>\S+)")
 
-#: A soft break (CommonMark 0.31.2 § 6.7): a line ending inside a paragraph, and
+#: A soft break (CommonMark 0.31.2 § 6.8): a line ending inside a paragraph, and
 #: the opening of the line it carries on to. Where a paragraph goes on is
-#: `CONTINUED_LINE`, which is docket's, so its list walker reads the same rule
+#: `CONTINUED_LINE`, which docket exports so that the rule is written once
 #: (`PL-R417`, `PL-MFVV`); every reader of a phrase the documents may wrap takes
 #: its whitespace from here, rather than each meeting the wrap one capture at a
 #: time.
