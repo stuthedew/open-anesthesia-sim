@@ -1,9 +1,16 @@
 ---
 id: PL-2MLT
 title: docket's instructions.parse and notes.read read a file's YAML front matter as Markdown, where its keys are one setext heading, so a dated key is dated by the next key's newer date and a key naming an item opens a notes thread about it; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/notes.py, subprojects/docket/src/docket/frontmatter.py, subprojects/docket/tests, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: each dated front-matter key in the instruction set is dated by its own newest date, and a notes file's front matter opens no thread, so an old record is not hidden behind a newer key's date
+verify: grep -qF '"instruction audit, a front matter' tests/unit/test_doc_check.py && grep -qF '"notes, a front matter' tests/unit/test_doc_check.py
 ---
 
 **Problem.** docket's instructions.parse and notes.read read a file's YAML front matter as Markdown, where its keys are one setext heading, so a dated key is dated by the next key's newer date and a key naming an item opens a notes thread about it; latent
@@ -41,6 +48,13 @@ front-matter extension, reads both files as docket does, so the readings differ
 only once front matter is recognised - which is how this repository's files
 carry it. Latent: 12 of the 24 files in the instruction set carry front matter
 and none of it holds a date; `docs/WORKING_NOTES.md` has none.
+
+**Why it matters.** The instruction audit is what tells a grooming pass which
+dated records in the instruction set are due for re-checking, and `bin/docket
+show` points at the notes threads about an item. Read as one paragraph, a front
+matter hides an old dated key behind the next key's newer date, so the record
+is never named as due, and a key naming an item opens a thread about it that
+the notes file never wrote.
 
 **Generator check.** A member of `PL-R417`: a statement that ends at the next
 key is read as continuing through every key to the fence. `PL-B1D0` and

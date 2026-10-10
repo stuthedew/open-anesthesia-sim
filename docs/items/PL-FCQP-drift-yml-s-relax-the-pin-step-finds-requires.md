@@ -1,9 +1,16 @@
 ---
 id: PL-FCQP
 title: drift.yml's relax-the-pin step finds requires-python in pyproject.toml with a regex anchored per line, so a requires-python-shaped line inside a multi-line string ahead of the key is rewritten in its place while the real pin stays, and the step's one-match guard passes; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: .github/workflows/drift.yml, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: the drift job refuses a pyproject.toml whose parsed interpreter pin it did not relax, so it cannot test the pinned interpreter while its guard reports the pin relaxed
+verify: grep -q tomllib .github/workflows/drift.yml && grep -qF '"drift pin, a requires-python line inside a multi-line string' tests/unit/test_doc_check.py
 ---
 
 **Problem.** drift.yml's relax-the-pin step finds requires-python in pyproject.toml with a regex anchored per line, so a requires-python-shaped line inside a multi-line string ahead of the key is rewritten in its place while the real pin stays, and the step's one-match guard passes; latent
@@ -35,6 +42,13 @@ own value written as a multi-line string gives `n == 0`, and the step raises
 naming the shape, so that form is declined by name. Latent:
 `pyproject.toml` holds no multi-line string, and the consequence would surface
 a step later, as uv refusing or the next step reporting the pinned series.
+
+**Why it matters.** The drift job is the project's monthly warning that the
+next CPython breaks the build, and the step's guard is what stops it testing
+the pinned interpreter while saying otherwise. Rewriting a line inside a
+string instead of the key, the step passes its own guard with the pin
+unchanged, so the job fails a step later for a reason it does not name, or
+reports the pinned series as though nothing newer existed.
 
 **Generator check.** A member of `PL-R417`: a reader takes a physical line for a
 TOML statement where a multi-line string carries one across it, the fact

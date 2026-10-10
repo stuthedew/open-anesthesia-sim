@@ -1,9 +1,16 @@
 ---
 id: PL-24MT
 title: docket verify's sanctioned_queue_edit reads an item file's diff a line at a time as front matter for its pr and capture forms, so a new item whose brief quotes a status line of untriaged in a fence is sanctioned as a capture whatever its status, and a pr: line inserted inside a value continued on an indented line is sanctioned as a record write while it cuts that value's tail into pr; latent
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/store.py, subprojects/docket/tests, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: the queue-edit audit exempts a pr write or a capture only where the parsed item says it is one, so an edit that cuts a value in two or changes the brief cannot pass as either
+verify: grep -qF '"queue edit, a pr line cutting a continued value' tests/unit/test_doc_check.py && grep -qF '"queue edit, a fenced untriaged status' tests/unit/test_doc_check.py && grep -qF '"queue edit, a removed thematic break' tests/unit/test_doc_check.py
 ---
 
 **Problem.** docket verify's sanctioned_queue_edit reads an item file's diff a line at a time as front matter for its pr and capture forms, so a new item whose brief quotes a status line of untriaged in a fence is sanctioned as a capture whatever its status, and a pr: line inserted inside a value continued on an indented line is sanctioned as a record write while it cuts that value's tail into pr; latent
@@ -46,6 +53,13 @@ is never seen: a commit removing one and adding a `pr: 5` line was answered
 function's own copy of the loop; it is a header misread rather than a
 statement's extent, and is folded here because reading both copies through the
 parser, below, removes the loop.
+
+**Why it matters.** `docket verify` refuses work that edits files outside its
+item's `touches`, and these exemptions are the only edits to another item's
+file it lets through. Read a diff line at a time, a hand edit that cuts a
+`verify:` command in two passes as the `pr` record, and a new item filed at
+`ready` passes as a capture, so the audit waves through the edits to a check
+that it exists to refuse.
 
 **Generator check.** A member of `PL-R417`: a reader takes a diff line for a
 front-matter statement where the field continues across lines, or where the

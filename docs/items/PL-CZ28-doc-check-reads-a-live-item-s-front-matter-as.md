@@ -1,9 +1,16 @@
 ---
 id: PL-CZ28
 title: doc_check reads a live item's front matter as one Markdown paragraph in _check_brief_paths, check_quoted_sources and check_line_citations, so a backtick or a quotation one field leaves open pairs with the next field's, hiding a deleted path a later field cites or quoting a source across two fields; latent
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, subprojects/docket/src/docket/model.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: a live brief's front-matter fields are each read on their own, so a stray backtick or quotation in one field cannot hide a deleted path a later field cites or join two fields into one quotation
+verify: grep -qF '"brief paths, a stray backtick in one front-matter field' tests/unit/test_doc_check.py && grep -qF '"quoted sources, a quotation one front-matter field leaves open' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check reads a live item's front matter as one Markdown paragraph in _check_brief_paths, check_quoted_sources and check_line_citations, so a backtick or a quotation one field leaves open pairs with the next field's, hiding a deleted path a later field cites or quoting a source across two fields; latent
@@ -35,6 +42,13 @@ after a section mark and whose `summary:` closes it, made
 `check_quoted_sources` read one quotation spanning the `priority:` field
 between them; `parse_front_matter` keeps the fields apart. Latent: over the 310
 live briefs, no match crosses a field's end.
+
+**Why it matters.** These three checks hold a live brief's cited paths,
+quotations and line citations to the tree, and a brief's front matter is where
+its title, payoff and `verify:` command cite paths. A backtick or quotation
+one field leaves open pairs with the next field's, so a deleted path a later
+field cites is never reported, or a quotation is checked as words spanning two
+fields that no source holds.
 
 **Generator check.** A member of `PL-R417`: three readers take the front
 matter's fields for one statement, where each ends at the next key.

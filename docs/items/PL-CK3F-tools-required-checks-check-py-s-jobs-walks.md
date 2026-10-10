@@ -1,9 +1,16 @@
 ---
 id: PL-CK3F
 title: tools/required_checks_check.py's _jobs walks every physical line under jobs: and takes a tab after a line's leading spaces for indentation, so a run: | body or a multi-line quoted scalar holding one - the tab-led line of a here-document that strips tabs - is refused as a tab indenting the line and the check exits 1 on a workflow YAML reads whole, where steps and triggers read the same file; latent
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/required_checks_check.py, tests/unit, docs/items
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: a workflow whose block or quoted scalar holds a tab-led line is read as GitHub reads it, so the required-checks check stops refusing a sound workflow and failing make check and CI
+verify: grep -qF '"required checks, a tab-led line in a block scalar' tests/unit/test_doc_check.py && grep -qF '"required checks, a tab-led line in a quoted scalar' tests/unit/test_doc_check.py
 ---
 
 **Problem.** tools/required_checks_check.py's _jobs walks every physical line under jobs: and takes a tab after a line's leading spaces for indentation, so a run: | body or a multi-line quoted scalar holding one - the tab-led line of a here-document that strips tabs - is refused as a tab indenting the line and the check exits 1 on a workflow YAML reads whole, where steps and triggers read the same file; latent
@@ -43,6 +50,13 @@ a tab-led `hello` and `EOF`. A second file, an `env:` holding `GREETING:
 way; PyYAML reads `hello world`. Latent: none of the six tracked workflows holds
 a tab. It fails loudly, but on a workflow GitHub reads, and the step it would
 refuse is the required `checks` job's.
+
+**Why it matters.** `required_checks_check` is what `make check` and CI ask
+whether the required checks branch protection names are ones the workflows
+report. Refusing a sound workflow fails both with "cannot decide", and the
+step it would refuse is the required `checks` job's, so a here-document written
+the conventional way, its lines led by the tabs `<<-` strips, would block every
+pull request.
 
 **Generator check.** A member of `PL-R417`: a reader takes each physical line
 under `jobs:` for a structural line where a block or quoted scalar continues
