@@ -660,6 +660,28 @@ keeping the sweep cycle). The owner then asked why not all twenty-eight, and
 was given the case above. So the twenty-one latent members stay open on their
 own band once the head closes, and one later found live reopens it.
 
+**Reopened by the parsing review (2026-10-10).** The owner then asked whether
+the approach itself is sound, and a read-only review answered it
+(parsing-review.md, in the project's shared files rather than the tree). By
+its measurements the shared readers hold: `docket.markdown` reads the blocks of
+all 1,327 CommonMark 0.31.2 and GFM 0.29 spec examples as markdown-it-py does,
+and `frontmatter.keys` agrees with PyYAML and ruamel.yaml on every generated
+front matter outside `PL-YQ9G`'s form. Twenty-three of link 23's twenty-eight
+sit in code that calls or bypasses a shared reader, where 56 of 136 reader
+functions apply their own regex or line walk, so libraries behind the shared
+readers would have prevented one or two of them.
+
+**Recommendation:** link 24 also lands two differential tests in CI before
+`spent` is written: `doc_check`'s inline Markdown held to markdown-it-py over
+the spec examples and every tracked file, and generated front matters held to
+PyYAML (Hypothesis, a new test-only dependency). A latent form then fails the
+pull request that first writes it instead of waiting for a sweep. Typed
+declines for the six members that drop one, retiring the reach of
+`check_host_claims` into YAML, TOML and Makefile comments (none of its 31
+claims sit there), a re-wrap test and bash as the shell reader's oracle follow
+as ordinary items, and vendoring stays in reserve. Put to the owner on
+2026-10-10, since it adds to the answer above.
+
 **Done when.** Every reader the table and the sweeps name reads its format's
 statement whole or declines it by name, each pinned by a test, except `PL-RR1N`
 and link 23's twenty-one latent members, which stay open as ordinary items; the
