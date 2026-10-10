@@ -174,7 +174,7 @@
 # program named `set`; `shell_split.builtin_words` reads past the two alone.
 #
 # **Where one command ends is `shell_split.py`'s answer, not this file's.** The
-# three Bash guards import it, so a shape one of them read differently from bash
+# four Bash guards import it, so a shape one of them read differently from bash
 # - a `)` glued to the `;` after it (`PL-63TT`), a backslash-newline
 # (`PL-R5RF`), a command after a heredoc's terminator (`PL-39LD`) - is read
 # right by all three at once (`PL-PVW2`). It keeps a quoted argument whole, so

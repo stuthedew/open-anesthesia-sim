@@ -72,7 +72,7 @@ if not isinstance(command, str):
     sys.exit(0)
 
 # Where each command starts is the answer `shell_split.py` gives, which the
-# three Bash guards share (`PL-PVW2`), and this guard reads every command it
+# four Bash guards share (`PL-PVW2`), and this guard reads every command it
 # finds: those in a subshell or a `$( )` too, quoted or not, since each runs,
 # and the git a wrapper runs, so `timeout 60 git fetch --prune` is the prune it
 # is (`PL-TRMN`). Its words are the ones bash hands git, every redirection
