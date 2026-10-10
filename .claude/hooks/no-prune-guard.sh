@@ -72,7 +72,7 @@ if not isinstance(command, str):
     sys.exit(0)
 
 # Where each command starts is the answer `shell_split.py` gives, which the
-# three Bash guards share (`PL-PVW2`), and this guard reads every command it
+# four Bash guards share (`PL-PVW2`), and this guard reads every command it
 # finds: those in a subshell or a `$( )` too, quoted or not, since each runs,
 # and the git a wrapper runs, so `timeout 60 git fetch --prune` is the prune it
 # is (`PL-TRMN`). Its words are the ones bash hands git, every redirection
@@ -83,7 +83,9 @@ if not isinstance(command, str):
 # bodies and comments are gone, which is what lets this repository write prose
 # *about* pruning - `CLAUDE.md`, this hook, the ledger - without the guard
 # eating its own documentation; a prune after the terminator of a heredoc is
-# read like any other line (`PL-39LD`).
+# read like any other line (`PL-39LD`), and so is one in a `$( )` or a
+# backquote in the body of a delimiter with no quoted part, which bash runs
+# (`PL-P95F`).
 #
 # **What prunes is read from git 2.43 itself** (`PL-R17X`): its usage lines,
 # `git -h`, `git fetch -h`, `git pull -h`, `git remote -h` and `git config -h`,

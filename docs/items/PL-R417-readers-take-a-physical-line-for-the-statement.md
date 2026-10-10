@@ -527,12 +527,37 @@ a glob's line and `PL-1D89`'s quoted job keys, and each is left to its own
 item. No new member was found. `generator:` stays `live`: `PL-RR1N` and the six
 shell members remain.
 
-**Next steps (recorded 2026-10-04, revised by links 8, 11 to 18, 19, 20 and 21,
-and on 2026-10-06).** The members the table and the first sweeps named are
-built but `PL-RR1N`, and of the closing sweep's twenty-five the Markdown
-thirteen (link 20) and the YAML and TOML six (link 21) are; the shell six are
-not, so the head is not spent and keeps its rank. Build them as the earlier
-links were, a format per
+**Link 22, the shell members (`#1390`, 2026-10-10).** Done: `PL-JNYL`'s merge
+of the guard hooks' and docket's two shell readers, and on it the closing
+sweep's six shell members, `PL-VJPH`, `PL-QSN5`, `PL-M3M4`, `PL-X43T`,
+`PL-CXK6` and `PL-HKR5`, with `PL-P72R`, which the merge closes, and `PL-P95F`
+and `PL-C45K`, folded in on the owner's word, beside them. `docket.shell` is the
+one lexer: one pass builds docket's words and clauses and the hooks' flat
+tokens, and `.claude/hooks/shell_split.py` keeps its functions over it, with no
+lexer or operators table of its own. `PL-VJPH`'s process substitutions and
+array assignments, `PL-QSN5`'s here-documents beside a substitution carried
+across lines, `PL-P95F`'s substitutions in an unquoted body and `PL-C45K`'s
+`$'...'` were each fixed once there, for docket and the four Bash guards
+together. `doc_check` reads a workflow step's script in one pass, so a `case`
+construct's syntax is no command (`PL-M3M4`), and declines a Makefile naming
+`.ONESHELL` by name (`PL-X43T`); the merge and branch guards read the hook
+payload as JSON (`PL-CXK6`); and the fixture id check reads an id a fenced
+shell sample, a TOML multi-line string or a front matter scalar joins
+(`PL-HKR5`). Nothing over the tree moved: over 308 shell samples
+`script_lines` and `joined_text` answer as `main`'s did, and `doc_check`'s
+gate-parity, workflow-paths, coverage-gate and ruff-cache checks and the
+fixture id check report the same. The guard gained eight cases and the guard
+hooks' own suites cases for `PL-QSN5`'s forms and `PL-P95F`'s, each failing on
+`main`'s readers. The lexer joined the owner's read list beside
+`.claude/hooks/`, as recommended to the owner, whose answer `PL-JNYL` records.
+No new member was found. `generator:` stays `live`: `PL-RR1N` and one more
+sweep remain.
+
+**Next steps (recorded 2026-10-04, revised by links 8, 11 to 18, 19, 20, 21 and
+22, and on 2026-10-06).** The members the table and the first sweeps named are
+built but `PL-RR1N`, and so are the closing sweep's twenty-five: the Markdown
+thirteen (link 20), the YAML and TOML six (link 21) and the shell six (link
+22). They were built as the earlier links were, a format per
 pull request, by moving each caller onto its format's one shared reader rather
 than patching a line walk of its own: by their finish lines, nineteen of the
 twenty-five route a caller through a shared reader or the standard library's
@@ -547,17 +572,20 @@ one comparison of 2026-10-04). Then the YAML and TOML six (link 21), each
 reading its front matter through one parse, the rule files' through one reader
 that `rules_paths_check.entries` and `instructions.parse` both take, for
 `PL-BM8T` and `PL-2MLT` (project owner, 2026-10-06, ratified, over patching
-each reader in place). Then the shell six, opened by `PL-JNYL`'s merge of the hooks' and
-docket's two shell readers, so that `PL-VJPH` and `PL-QSN5` are each fixed
-once, in the merged reader (project owner, 2026-10-06, ratified, over keeping
-both readers and fixing each, as on 2026-10-05). The readers stay on the
-standard library: vendoring markdown-it-py into the tree would replace only
-the shared reader, the nineteen callers need moving onto it either way, and
-`docket.markdown` was already checked against it on every tracked Markdown
-file (project owner, 2026-10-06, ratified, over vendoring it); `PL-0C2S`
-failing on the hand-written reader again and again would reopen that. Then
-one more sweep of the same reach, with `generator:` rewritten `spent` only
-when a sweep finds nothing (the coordinator's brief, 2026-10-04). The head
+each reader in place). Then the shell six (link 22), opened by `PL-JNYL`'s
+merge of the hooks' and docket's two shell readers, so that `PL-VJPH` and
+`PL-QSN5` were each fixed once, in the merged reader (project owner,
+2026-10-06, ratified, over keeping both readers and fixing each, as on
+2026-10-05). The readers stay on the standard library: vendoring markdown-it-py
+into the tree would replace only the shared reader, the nineteen callers need
+moving onto it either way, and `docket.markdown` was already checked against
+it on every tracked Markdown file (project owner, 2026-10-06, ratified, over
+vendoring it); `PL-0C2S` failing on the hand-written reader again and again
+would reopen that. No shell library reads both views as bash does, which
+`PL-JNYL` records for the four weighed on 2026-10-10. What is left is one more
+sweep of the same reach, with `generator:` rewritten `spent` only when a sweep
+finds nothing (the coordinator's brief, 2026-10-04); until then the head is not
+spent and keeps its rank. The head
 closes without waiting for `PL-RR1N`, naming it in the reason as Done-when
 says (project owner, 2026-10-04, ratified, over waiting for it).
 

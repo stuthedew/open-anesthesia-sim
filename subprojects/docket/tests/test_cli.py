@@ -26,7 +26,7 @@ from typing import Any
 
 import pytest
 
-from docket import arming, claims, cli, vcs
+from docket import arming, claims, cli, shell, vcs
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.claims import SESSION_VARIABLE, Holdings
 from docket.cli import build_parser, main, merge_shared
@@ -10095,7 +10095,8 @@ def test_arm_arms_a_docket_only_pull_request_on_green(
     assert out.startswith(
         f"arm - {ARM_BRANCH} changes nothing on the owner's read list (src/, tests/ but a "
         "test importing no anesthesia_sim, docs/MODEL.md, src/anesthesia_sim/data/, "
-        "README.md, .github/workflows/, .claude/hooks/ and arming.py), holds no open claim"
+        "README.md, .github/workflows/, .claude/hooks/, docket's shell.py and arming.py), "
+        "holds no open claim"
     )
     assert "outside docs/items" not in out
 
@@ -10206,12 +10207,13 @@ def test_a_change_outside_the_owners_read_list_arms_on_green(
 
 
 def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
-    """The list holds the owner's five paths, the two he added and the gate; `tests/` is the root's.
+    """The list holds the owner's five paths, the two added later, docket's lexer and the gate.
 
     `tests/` outside `subprojects/` was the owner's wording: the docket
     package's own tests arm with the tooling. `.github/workflows/` and
     `.claude/hooks/` are directories whole, so `.github/CODEOWNERS` and
-    `.claude/settings.json` arm.
+    `.claude/settings.json` arm. The lexer is one file, so the rest of
+    docket's `src/` arms with the tooling (`PL-JNYL`).
     """
     assert arming.READ_PATHS == (
         "src/",
@@ -10221,6 +10223,7 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "README.md",
         ".github/workflows/",
         ".claude/hooks/",
+        "subprojects/docket/src/docket/shell.py",
     )
     for path in (
         "src/anesthesia_sim/app/main.py",
@@ -10231,6 +10234,7 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "README.md",
         ".github/workflows/update-armed.yml",
         ".claude/hooks/direct-merge-guard.sh",
+        "subprojects/docket/src/docket/shell.py",
         ARM_GATE,
     ):
         assert arming.waits_on_read(path), path
@@ -10534,6 +10538,17 @@ def test_the_gate_arm_holds_for_a_read_is_the_module_that_decides_the_answer() -
 
     assert arming.GATE == ARM_GATE
     assert (root / arming.GATE).resolve() == Path(arming.__file__).resolve()
+
+
+def test_the_lexer_arm_holds_for_a_read_is_the_one_the_guards_read() -> None:
+    """A move of `docket/shell.py` would leave the hold naming a file nothing reads (`PL-JNYL`).
+
+    The moved lexer would then arm on green, while it still decides what the
+    guard hooks refuse.
+    """
+    root = Path(__file__).resolve().parents[3]
+
+    assert (root / arming.LEXER).resolve() == Path(shell.__file__).resolve()
 
 
 def _flight_row(out: str, start: str) -> str:

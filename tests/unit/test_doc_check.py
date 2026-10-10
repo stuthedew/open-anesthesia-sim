@@ -6808,6 +6808,14 @@ def _run_step(step: str) -> tuple[list[tuple[str, int]], list[tuple[int, str]]]:
     ]
 
 
+def _step_runs(step: str) -> list[tuple[str, ...]]:
+    """The simple commands `workflow_runs` reads from `step` under `STEP_JOB`, as the gate does."""
+    report, unread = doc_check.Report(), []
+    runs = list(doc_check.workflow_runs(STEP_JOB + step, "ci.yml", report, "unread", unread))
+    assert not report.declined and not unread
+    return runs
+
+
 def _refused(read: Callable[[], object]) -> object:
     """A reader's answer, or the form it names in declining to give one."""
     try:
@@ -7155,6 +7163,13 @@ def _joined_fixture_ids(tmp_path: Path) -> list[tuple[int, str]]:
     script = tmp_path / "hook.sh"
     script.write_text("echo PL-K7\\\nQX\necho PL-K7QX\\\nZ\n", encoding="utf-8")  # not-an-id
     return [(found.line, found.token) for found in fixture_id_check.scan_text(script)]
+
+
+def _fixture_ids(tmp_path: Path, name: str, text: str) -> list[tuple[int, str]]:
+    """What the fixture id check reports in a file under `.claude/` named `name` holding `text`."""
+    path = tmp_path / name
+    path.write_text(text, encoding="utf-8")
+    return [(found.line, found.token) for found in fixture_id_check.scan_text(path)]
 
 
 def _superseded_copy(tmp_path: Path, path: str, base: str, branch: str) -> set[str]:
@@ -7755,6 +7770,19 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: list(doc_check._recipe_commands("SRC = a.c\n$(SRC:.c=.o):\n\t@echo built\n")),
         [("@echo built", 3)],
     ),
+    # Under `.ONESHELL` a recipe is one script, which no reader of recipe
+    # lines reads, so the Makefile is declined by name (`PL-X43T`).
+    "recipe commands, a .ONESHELL recipe is refused by name": (
+        lambda _: _refused(
+            lambda: list(
+                doc_check._recipe_commands(
+                    ".ONESHELL:\ncheck:\n\tcat <<'EOF' > notes.txt\n\truff check src\n\tEOF\n"
+                    "\tuv run ruff check --no-cache src\n"
+                )
+            )
+        ),
+        "declined: line 1: this Makefile names `.ONESHELL`",
+    ),
     "make lines, a tab-led line where no rule is open": (
         lambda _: _make_lines_refusal("\t@echo hi\nall:\n\t@echo all\n"),
         (1, NO_RULE_OPEN),
@@ -7871,9 +7899,51 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: script_lines("[[\n a == a ]]\necho after\n"),
         (("[[\n a == a ]]", 0), ("echo after", 14)),
     ),
+    # A process substitution nests as a `$( )` does, and an array assignment's
+    # `(` holds its line open to the `)` (`PL-VJPH`).
+    "shell lines, a process substitution carried across lines": (
+        lambda _: script_lines("echo <(echo a\n) tools/doc_check.py\necho after\n"),
+        (("echo <(echo a\n) tools/doc_check.py", 0), ("echo after", 35)),
+    ),
+    "shell lines, an output process substitution carried across lines": (
+        lambda _: script_lines("tee >(cat\n) < /dev/null tools/doc_check.py\necho after\n"),
+        (("tee >(cat\n) < /dev/null tools/doc_check.py", 0), ("echo after", 43)),
+    ),
+    "shell lines, an array assignment carried across lines": (
+        lambda _: script_lines(
+            'files=(\n  tools/doc_check.py\n  tools/dead_ends.py\n)\necho "${files[@]}"\n'
+        ),
+        (("files=(\n  tools/doc_check.py\n  tools/dead_ends.py\n)", 0), ('echo "${files[@]}"', 52)),
+    ),
     "fixture ids, an id a backslash-newline joins": (
         _joined_fixture_ids,
         [(3, "PL-K7QXZ")],  # not-an-id
+    ),
+    # Three more forms join a token across a line (`PL-HKR5`). In each, the
+    # valid id split after `PL-K7` passes and the unmintable one is found.
+    "fixture ids, an id a fenced shell sample joins": (
+        lambda tmp_path: _fixture_ids(
+            tmp_path,
+            "sample.md",
+            "```bash\nbin/docket show PL-K7\\\nQX\nbin/docket set PL-\\\nAAAA\n```\n",  # not-an-id
+        ),
+        [(4, "PL-AAAA")],  # not-an-id
+    ),
+    "fixture ids, an id a TOML multi-line string joins": (
+        lambda tmp_path: _fixture_ids(
+            tmp_path,
+            "ruff.toml",
+            'note = """see PL-K7\\\n  QX"""\nbad = """PL-\\\n  AAAA"""\n',  # not-an-id
+        ),
+        [(3, "PL-AAAA")],  # not-an-id
+    ),
+    "fixture ids, an id a front matter quoted scalar joins": (
+        lambda tmp_path: _fixture_ids(
+            tmp_path,
+            "SKILL.md",
+            '---\ndescription: "see PL-K7\\\n  QX, or PL-\\\n  AAAA."\n---\n',  # not-an-id
+        ),
+        [(3, "PL-AAAA")],  # not-an-id
     ),
     # YAML (`PL-6P6H`), read through `_run_script`: a literal block is read with
     # its header and ends where its content does; every form YAML folds or
@@ -7923,6 +7993,15 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             "      - {name: x,\n         run: python3 tools/real_step.py}\n      - run: bin/next\n"
         ),
         ([("bin/next", 3)], [(1, "this step is written as a flow collection (`{`)")]),
+    ),
+    # A step's script read whole, as the merge gate reads the scripts it runs
+    # (`PL-M3M4`): a `case` construct's word, patterns and `esac` are no commands.
+    "workflow commands, a case construct runs only the commands in its arms": (
+        lambda _: _step_runs(
+            '      - run: |\n          case "$1" in\n            check) make check ;;\n'
+            "            *) exit 1 ;;\n          esac\n"
+        ),
+        [("make", "check"), ("exit", "1")],
     ),
     "pull request trigger, a flow collection carried past its line is refused by name": (
         lambda _: _refused(lambda: doc_check._gates_pull_requests("on: [push,\n  pull_request]\n")),

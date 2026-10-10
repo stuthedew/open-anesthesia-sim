@@ -200,6 +200,20 @@ def test_every_push_that_sends_is_checked(project: Path, command: str) -> None:
     assert decision["permissionDecision"] == "deny"
 
 
+def test_a_push_after_a_here_document_its_substitution_closes_is_checked(project: Path) -> None:
+    """A body ends at a line opening with its delimiter that the `$( )`'s `)` goes on (`PL-QSN5`).
+
+    Bash 5.2.21 ends the body at `EOF)`, warns that the here-document was
+    delimited by end-of-file, and commits and pushes; read to the end of the
+    input, the body hid the push.
+    """
+    _stub(project, doc=DOC_FAILS)
+    command = "git commit -m \"$(cat <<'EOF'\nPL-K7QX: a message\nEOF)\" && git push -u origin HEAD"
+    decision = _decision(command, cwd=project, project=project)
+    assert decision is not None
+    assert decision["permissionDecision"] == "deny"
+
+
 NOT_SENDING = (
     'git commit -m "note: git push later"',
     "echo git push",

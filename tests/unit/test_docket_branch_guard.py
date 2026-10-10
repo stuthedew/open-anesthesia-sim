@@ -147,6 +147,35 @@ def test_branch_guard_asks_once_per_session_not_once_per_edit(tmp_path: Path) ->
     assert other_session.stdout, "a different session gets its own answer"
 
 
+def test_a_session_id_laid_out_across_lines_is_read_as_json(tmp_path: Path) -> None:
+    """An id on the line after its key is the same member (RFC 8259 § 2), read as `json` reads it.
+
+    Read by a sed a line at a time it was no id, so every such session kept its
+    markers under "unknown" and each after the first was told nothing
+    (`PL-CXK6`).
+    """
+    (tmp_path / "markers").mkdir()
+    work = _clone_of_a_moved_remote(tmp_path)
+    answers = [
+        subprocess.run(
+            ["bash", str(HOOK)],
+            cwd=work,
+            input=(
+                f'{{\n  "session_id":\n    "{session}",\n  "tool_name":\n    "Edit",\n'
+                '  "tool_input": {"file_path": "x"}\n}\n'
+            ),
+            env=_guard_env(work, tmp_path),
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout
+        for session in ("abc-123", "def-456")
+    ]
+
+    assert all("behind origin/main" in answer for answer in answers), answers
+    assert (tmp_path / "markers" / "docket-branch-abc-123").exists()
+
+
 def test_branch_guard_says_nothing_when_the_base_has_not_moved(tmp_path: Path) -> None:
     """A hook that speaks unasked earns each line, and this one has none to say."""
     (tmp_path / "markers").mkdir()

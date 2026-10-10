@@ -244,7 +244,9 @@ is tagged and could loosen the rule (the Projects trial's instructions,
 2026-10-03, kind unrecorded, over holding every path outside `docs/items/`,
 `docs/pr-bodies/` and `subprojects/docket/`; the workflows and hooks project
 owner, 2026-10-03, ratified, over leaving them armed on green; built by
-`PL-KKHD`). A session leaves a held pull
+`PL-KKHD`), and `subprojects/docket/src/docket/shell.py`, the lexer every
+guard hook reads a Bash call through since `PL-JNYL`, which records your
+answer. A session leaves a held pull
 request unarmed, asks for the read with the plain-language summary `arm`
 prints under the hold (`PL-8XQS`), and merges it on your word alone - "Merge
 it" - by the route § "Bring a stale base in when you merge, with Update

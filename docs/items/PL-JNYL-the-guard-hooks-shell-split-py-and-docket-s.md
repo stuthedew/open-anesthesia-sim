@@ -3,12 +3,14 @@ id: PL-JNYL
 title: The guard hooks' shell_split.py and docket's shell.py read one shell grammar twice, so #1377 found and fixed the same three bash facts in each - an operator a backslash-newline splits, an unquoted here-document's logical lines, a ${...} - and the next one will be found in one and missed in the other
 priority: P3
 effort: L
-status: ready
+status: done
 classes: refactor
 feature: one-answer
-touches: .claude/hooks/shell_split.py, subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py
+touches: .claude/hooks/shell_split.py, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/gate-status-guard.sh, .claude/hooks/no-prune-guard.sh, .claude/hooks/push-check-guard.sh, subprojects/docket/src/docket/shell.py, subprojects/docket/src/docket/__init__.py, subprojects/docket/tests/test_shell.py, tests/unit/test_shell_reader.py, tests/unit/test_doc_check.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_no_prune_guard.py, tests/unit/test_push_check_guard.py, docs/ARCHITECTURE.md, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docket.toml, CLAUDE.md, docs/maintainer.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
+closed: 2026-10-10
+pr: 1390
 payoff: each bash fact a shell reader learns lands once, for the guard hooks and for docket alike, instead of being found in one and left wrong in the other until somebody trips on it again
 not-delegable: its Done-when has two endings - one module both sides import, or a measured close keeping two - and where the merged module lives is the design the work settles, so no grep written now proves either; it also edits .claude/hooks/, which docket verify will not judge
 ---
@@ -61,6 +63,100 @@ batch's first design round.
    not read, the construct side of `PL-61FT`'s known gaps. A merge either gives
    the guards that grammar, with their tests re-run, or keeps the gap named.
 
+**Settled 2026-10-10, in the thread building `PL-R417`'s shell batch.** Each
+of the five is decided in the round, on a measurement or on a rule this
+repository already states, so none was put to the owner. The one reader is
+`subprojects/docket/src/docket/shell.py`; `.claude/hooks/shell_split.py` keeps
+the hooks' views over its reading.
+
+1. **A caller chooses what input that ends early means, and the one switch
+   covers two cases.** The reading either takes the input as `bash -c` takes a
+   string, where an unended body runs to the end of the input and a trailing
+   backslash is a backslash, or refuses both as unreadable, as docket does
+   today. The hooks take the first, since the harness hands bash each Bash call
+   as a string, and docket the second, for the reason point 1 gives. The
+   trailing backslash is the same question: bash 5.2.21 keeps one under
+   `bash -c` and `eval` (`echo a\` prints `a\`) and drops one read from a file
+   or standard input, and today the hooks keep it and docket refuses it
+   (measured 2026-10-10). The two tests pinning the answers,
+   `test_an_unterminated_heredoc_runs_to_the_end` in
+   `tests/unit/test_gate_status_guard.py` and the refusal point 1 names, stand
+   unchanged.
+2. **The import a guard pays is held by what it loads, not by a stopwatch.**
+   Measured 2026-10-10 with `python3 -X importtime`, medians of nine, after the
+   guards' own `import json, os, re, sys`: `shell_split` adds 5.3 ms under
+   3.11.17 and 5.5 ms under 3.13.16, `typing` 2.3 to 2.8 ms of it, while
+   `docket` and `docket.shell` add 19.7 and 23.0 ms, nearly all of it
+   `docket.model`'s `dataclasses`, `inspect` and `pathlib`. So
+   `docket/__init__.py` loads `model` only when a name it re-exports is asked
+   for (PEP 562, and no module in the tree asks), `docket.shell` imports
+   nothing a guard has not already loaded, its `Word`, `Clause` and `Reading`
+   becoming plain classes rather than dataclasses, and a test pins the modules
+   a guard's import of `shell_split` loads, so one that brings back
+   `dataclasses`, `inspect`, `pathlib` or `typing` fails rather than slowing
+   every Bash call unnoticed. A timing would be the direct measure, and a
+   flaky one; the module set is the deterministic half of it. Built, the
+   same measure gives 1.3 ms under 3.11.17 and 2.0 ms under 3.13.16 for
+   `shell_split` with docket's lexer, against the 5.3 and 5.5 ms it cost
+   with its own.
+3. **The lexer lives in docket, and the hooks reach it by path.** `bin/docket`
+   runs docket from a bare checkout with its own `src` alone on the path, so
+   docket cannot import from `.claude/hooks/`; the hooks are this repository's,
+   so `shell_split.py` puts `subprojects/docket/src` on `sys.path`, found from
+   its own location, before it imports `docket.shell`. A guard whose import
+   fails passes everything, so the failure has to be loud elsewhere: the four
+   guard suites run each hook in a child process as `.claude/settings.json`
+   runs it, where pytest's `pythonpath` does not reach, so a broken path turns
+   every refusal they pin into a pass; and one more test runs the import alone
+   in a bare interpreter and names the path.
+4. **One reading, two views of it.** The lexer decides once where a word, a
+   quote, an operator, a line, a here-document's body and a substitution end.
+   docket's view is its `Word`s with their quoting and spans, cut into clauses
+   with each substitution's body beside them; the hooks' is flat words with
+   `Operator` and `Descriptor`, a newline read as `;` except after a separator
+   or `(`, an unquoted `$( )` or `<( )` read inline as today, and a quoted
+   one's commands kept in `substituted`. Both are built in the one pass. Where
+   the two readers' tokens differ today on input both read alike, the
+   difference is in what each view keeps - a substitution's text, a newline's
+   spelling, a descriptor - not in where anything ends, so neither suite's
+   expectations move.
+5. **The guards read the grammar docket reads.** Keeping the gap would mean
+   writing a second, weaker grammar into the one reader for the hooks alone,
+   which is the duplication this item exists to remove. So `case` patterns,
+   `(( ))` and `$(( ))`, a newline inside `[[ ]]` and a backquote's body leave
+   the hooks' "What it does not read" list: an arithmetic `<<` no longer opens
+   a body that swallows the lines after it, and a backquote's command is read
+   as a command it runs. No row in the four guard suites pins any of these
+   constructs (searched 2026-10-10), so their expectations do not move. Still
+   on the list: `&&`, `||`, `<` and `>` inside `[[ ]]`, which docket reads as
+   operators too, a `coproc`, a wrapper `WRAPPERS` does not name, `env -S`, and
+   a reserved word read only at the head of a segment.
+
+The merged reader also reads `$'...'` once, as the hooks and bash do (Bash
+Reference Manual § 3.1.2.4), so docket's `script_lines` stops cutting at one.
+That is `PL-C45K`'s defect, and it closes here (project owner, 2026-10-10,
+ratified, over leaving it out of the batch as the Order did). `PL-P72R` closes here, as the paragraph below says,
+since one `OPERATORS` table is left.
+
+**A library in place of the lexer was weighed, 2026-10-10**, when the owner
+asked whether one does all this. Four exist; none reads what the two views
+need as bash reads it. bashlex is a port of bash's own parser, but GPL-3.0
+where this repository is Apache-2.0, and its README says it has no support for
+`$((..))`. tree-sitter-bash is a compiled extension the guards' bare python3
+cannot import, and it parses for editors, recovering from errors rather than
+saying bash refuses a command. `shfmt --to-json` prints mvdan/sh's syntax tree,
+from a Go binary every environment would need, and its README lists where its
+parse departs from bash's. Parable (MIT, one file, no imports, validated
+against bash 5.3's own parse tree) came closest, run from its `main` source at
+`src/parable.py`, since its v0.1.0 Python release fails to import with a
+`SyntaxError` under 3.12.3 and 3.13.16. Over this batch's cases it read
+`PL-QSN5`'s first form with the command after the substitution as the
+here-document's text, where bash 5.2.21 runs that command, and it read the
+carried here-document in the other order; it left a `$( )` inside an unquoted
+body as text (`PL-P95F`); and its words carry no source position and keep
+their quotes as written, so the spans and the quoting half of this lexer would
+stay around it. Swapping one in later touches this one module.
+
 **`PL-P72R` closes with this item** if one `OPERATORS` table is left. It stays
 the cheaper fix, a test holding the two tables equal, if this item closes
 without a merge.
@@ -96,3 +192,49 @@ pays more import time than it does today, and both suites
 `tests/unit/`) pass with their expectations unchanged. Or the item closes with
 the measured reason the two stay apart, and `PL-P72R`'s test holds their shared
 table.
+
+**Built 2026-10-10 (`#1390`).** `subprojects/docket/src/docket/shell.py` is the
+one reader. Its `_Lexer` reads a command once and builds both views from that
+pass: docket's words, clauses and substitutions (`shell_words`, `script_lines`,
+`joined_text`) and the hooks' flat tokens (`flat_reading`). `bash_c` is point
+1's one switch: the hooks read an unended body to the end and keep a trailing
+backslash, as `bash -c` does, and docket refuses both.
+`.claude/hooks/shell_split.py` keeps every function the guards call, now over
+`flat_reading`, and finds docket's `src` from its own place; its own lexer and
+its `OPERATORS` table went, which closes `PL-P72R`. `docket/__init__.py` loads
+`docket.model` on first use (PEP 562), so a guard's import adds only `docket`,
+`docket.shell` and `shell_split`: 1.3 ms under python3 3.11.17 and 2.0 ms under
+3.13.16, medians of nine with `python3 -X importtime`, against 5.3 and 5.5 ms
+for the hooks' own lexer. `tests/unit/test_shell_reader.py` pins that module
+set and the path, from a bare isolated interpreter. Both suites pass with their
+expectations unchanged: an import line and a comment are the only lines taken
+out of the existing tests. Over 308 shell samples from the tree (workflow
+steps, Makefile recipes, `.sh` files and fenced commands), `script_lines` and
+`joined_text` answer as `main`'s did, and the two views part from `main`'s
+readers only where this batch meant them to: a backquote's body is read as
+commands in the hooks' view, and a process substitution is one word with its
+body among the substitutions in docket's. `doc_check`'s gate-parity,
+workflow-paths, coverage-gate and ruff-cache checks report the same over the
+tree. `make check` found the new test outside `docket.toml`'s
+`workflow_paths`, which now places it. Two fix-nows rode the batch, both one
+stale count of three Bash guards sharing the reader, where there are four: in
+three guard headers, and in the gate guard's redirection paragraph and the
+reader's known-gaps paragraph, which now name the guards without a number.
+
+**The lexer joins the owner's read list.** With the reader moved, what the four
+Bash guards refuse is decided outside `.claude/hooks/`, which has waited on the
+owner's read since 2026-10-03, so a change to it would have armed on green.
+`arming.LEXER` holds `subprojects/docket/src/docket/shell.py` beside the hooks,
+and `CLAUDE.md`, `docs/maintainer.md` and `docs/ARCHITECTURE.md` name it
+(project owner, 2026-10-10, ratified, over arming lexer changes on green). The
+answer was Stuart's "Agree with recs and merge" in the project chat at 18:38Z,
+to the coordinator's summary of `#1390`, which put the hold as its first
+recommendation.
+
+**A guard that cannot load the lexer still fails open.** The four Bash guards
+now reach into `subprojects/docket/src/` for their reader, so a broken import
+there lets every command through unseen, as any error in a guard always has.
+The same answer kept it so (project owner, 2026-10-10, ratified, over changing
+what a guard does when the reader cannot load): the summary's second
+recommendation was no change, since `tests/unit/test_shell_reader.py` and each
+guard suite's pinned refusals fail in CI on such an import.

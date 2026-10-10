@@ -165,7 +165,7 @@
 # tail` runs `make`, and `bin/docket 2>/dev/null check | tail` hands it `check`;
 # read as words, the first took `2` for the command and the second `2` for the
 # subcommand, and both lost the status unrefused. `shell_split.py` takes a
-# redirection out of the words for all three guards.
+# redirection out of the words for every guard that reads a command through it.
 #
 # **And a `set` run by `command` or `builtin` is the `set`** (`PL-9RSP`). Both
 # run the builtin in this shell, so `command set -o pipefail; make check 2>&1 |
@@ -174,14 +174,16 @@
 # program named `set`; `shell_split.builtin_words` reads past the two alone.
 #
 # **Where one command ends is `shell_split.py`'s answer, not this file's.** The
-# three Bash guards import it, so a shape one of them read differently from bash
+# four Bash guards import it, so a shape one of them read differently from bash
 # - a `)` glued to the `;` after it (`PL-63TT`), a backslash-newline
 # (`PL-R5RF`), a command after a heredoc's terminator (`PL-39LD`) - is read
 # right by all three at once (`PL-PVW2`). It keeps a quoted argument whole, so
 # the `|` inside `git commit -m "... | tail ..."` reads as the text it is, and
 # it removes a heredoc's body, which is document content: this repository writes
 # prose *about* the hazard through heredocs routinely, and blocking that would be
-# the guard eating its own documentation.
+# the guard eating its own documentation. A `$( )` or a backquote in the body of
+# a delimiter with no quoted part is the exception, a command bash runs
+# (`PL-P95F`).
 #
 # Fails open in every error path - no python3, an unreadable payload, a command
 # bash itself would refuse, `shell_split.py` missing from beside it - like the

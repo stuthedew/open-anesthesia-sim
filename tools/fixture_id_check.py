@@ -148,13 +148,14 @@ import ast
 import bisect
 import re
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.fences import blocks  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.shell import joined_text  # noqa: E402
 from docket.store import ID_RE  # noqa: E402
@@ -213,6 +214,20 @@ SKIP_DIRS = frozenset(
 #: The one tree whose prose is scanned. See the module docstring for why it is
 #: this tree and not `docs/`.
 TEXT_ROOT = ".claude"
+
+#: The info strings that mark a fenced block as a shell sample, which bash would
+#: read as it reads a `.sh` file.
+SHELL_FENCES = frozenset({"bash", "sh", "shell", "zsh"})
+
+#: A fence's opening line with its info string's first word, where no block
+#: quote holds it: up to three columns in, as CommonMark 0.31.2 § 4.5 opens one,
+#: those columns being what it takes off each line inside.
+FENCE_OPENING_RE = re.compile(r"(?P<margin> {0,3})(?:`{3,}|~{3,})[ \t]*(?P<info>[^\s`]*)")
+
+#: What may stand before a quote on its line for the quote to open a YAML
+#: scalar rather than sit inside a plain one: nothing, or an indicator that a
+#: node follows - a mapping value, a sequence entry, a key, a flow collection.
+YAML_NODE_OPENERS = (":", "-", "?", "[", "{", ",")
 
 
 #: The two rules, and the key each finding is grouped under for reporting.
@@ -356,33 +371,28 @@ def scan_python(path: Path) -> list[Offender]:
 
 
 def scan_text(path: Path) -> list[Offender]:
-    """Malformed ids anywhere in one document, judged line by line.
+    """Malformed ids anywhere in one document, judged as its format reads its characters.
 
     Nothing is exempt but the marker, because there is no parser here to tell a
     value from prose - which is the whole reason this half runs over one tree
     rather than over `docs/`.
 
-    A shell script is judged as bash reads its characters (`PL-WG6S`): bash
-    removes a backslash-newline before it splits words, so `echo PL-K7\\` over
-    `QX` is the id `PL-K7QX`, which a line at a time read as the malformed
-    `PL-K7`, and a malformed id split that way passed as two fragments.
-    docket's `shell.joined_text` takes out each pair bash removes - none in
-    single quotes, a comment or a quoted here-document's body - and a token is
-    reported on the line it starts on, the marker exempting it from any line
-    it spans, as a Python literal's does. Markdown and JSON join no token, so
-    every other file is read as written.
+    A token is read where the format joins one across a line break, as
+    `_joined` reads each, and reported on the line it starts on, the marker
+    exempting it from any line it spans, as a Python literal's does. A shell
+    script is judged as bash reads its characters (`PL-WG6S`): bash removes a
+    backslash-newline before it splits words, so `echo PL-K7\\` over `QX` is
+    the id `PL-K7QX`, which a line at a time read as the malformed `PL-K7`, and
+    a malformed id split that way passed as two fragments. Three more forms
+    join one the same way (`PL-HKR5`): a fenced shell sample in Markdown, a
+    TOML multi-line basic string's line-ending backslash, and an escaped line
+    break in a double-quoted scalar of a Markdown file's YAML front matter.
+    Markdown's own prose and JSON join no token, so the rest of a file is read
+    as written.
     """
     text = path.read_text(encoding="utf-8")
     lines = split_lines(text)
-    if path.suffix != ".sh":
-        offenders: list[Offender] = []
-        for number, line in enumerate(lines, start=1):
-            if MARKER in line:
-                continue
-            for token in malformed(line):
-                offenders.append(Offender(path, number, token))
-        return offenders
-    joined, origin = joined_text(text)
+    joined, origin = _joined(path, text)
     starts = [0, *(at + 1 for at, char in enumerate(text) if char == "\n")]
     found: list[Offender] = []
     for candidate in CANDIDATE_RE.finditer(joined):
@@ -394,6 +404,156 @@ def scan_text(path: Path) -> list[Offender]:
             continue
         found.append(Offender(path, first, candidate.group(0)))
     return found
+
+
+def _joined(path: Path, text: str) -> tuple[str, tuple[int, ...]]:
+    """`text` less what its format takes out to join a token, and where each character came from.
+
+    A `.sh` file is read through docket's `shell.joined_text`, which takes out
+    each backslash-newline bash removes - none in single quotes, a comment or
+    a quoted here-document's body. A Markdown file loses the same pairs in each
+    fenced shell sample (`_fence_joins`) and the escaped line breaks of its
+    front matter (`_front_matter_joins`), a TOML file those of its multi-line
+    basic strings (`_toml_joins`), and any other file nothing.
+    """
+    if path.suffix == ".sh":
+        return joined_text(text)
+    removed: Iterable[tuple[int, int]] = ()
+    if path.suffix == ".md":
+        removed = [*_front_matter_joins(text), *_fence_joins(text)]
+    elif path.suffix == ".toml":
+        removed = _toml_joins(text)
+    gone = {at for start, end in removed for at in range(start, end)}
+    origin = tuple(at for at in range(len(text)) if at not in gone)
+    return "".join(text[at] for at in origin), origin
+
+
+def _fence_joins(text: str) -> Iterator[tuple[int, int]]:
+    """Each span bash takes out of a fenced shell sample, as offsets into `text`.
+
+    A sample is a closed block, as `docket.fences` reads one, whose info string
+    names a shell (`SHELL_FENCES`). Its lines are the script less the columns
+    CommonMark takes off each, which are taken out too, and the script is read
+    through `shell.joined_text`, as a `.sh` file is. A fence a block quote
+    holds, or one further in than a list item's three columns, is read as
+    written.
+    """
+    lines = split_lines(text, keepends=True)
+    starts = [0]
+    for line in lines:
+        starts.append(starts[-1] + len(line))
+    for block in blocks(text):
+        opening = FENCE_OPENING_RE.match(lines[block.start])
+        if opening is None or opening["info"].lower() not in SHELL_FENCES:
+            continue
+        script: list[str] = []
+        where: list[int] = []
+        for index in range(block.start + 1, block.end):
+            line = lines[index]
+            margin = min(len(opening["margin"]), len(line) - len(line.lstrip(" ")))
+            yield starts[index], starts[index] + margin
+            script.append(line[margin:])
+            where.extend(range(starts[index] + margin, starts[index + 1]))
+        kept = set(joined_text("".join(script))[1])
+        yield from ((offset, offset + 1) for at, offset in enumerate(where) if at not in kept)
+
+
+def _toml_joins(text: str) -> Iterator[tuple[int, int]]:
+    """Each line-ending backslash a TOML file's multi-line basic strings trim, with what follows.
+
+    "When the last non-whitespace character on a line is an unescaped `\\`, it
+    will be trimmed along with all whitespace (including newlines) up to the
+    next non-whitespace character or closing delimiter" (TOML 1.0.0, § String),
+    so `PL-K7\\` over `  QX` in one is `PL-K7QX`, as `tomllib` reads it. A
+    comment and the other three kinds of string are passed over, since none
+    joins a line.
+    """
+    at, end = 0, len(text)
+    while at < end:
+        if text.startswith('"""', at):
+            at += 3
+            while at < end and not text.startswith('"""', at):
+                if text[at] != "\\":
+                    at += 1
+                    continue
+                rest = at + 1
+                while rest < end and text[rest] in " \t":
+                    rest += 1
+                if not text.startswith(("\n", "\r\n"), rest):
+                    at += 2
+                    continue
+                while rest < end and text[rest] in " \t\r\n":
+                    rest += 1
+                yield at, rest
+                at = rest
+            at += 3
+        elif text.startswith("'''", at):
+            close = text.find("'''", at + 3)
+            at = end if close < 0 else close + 3
+        elif text[at] in "\"'":
+            quote, at = text[at], at + 1
+            while at < end and text[at] not in (quote, "\n"):
+                at += 2 if quote == '"' and text[at] == "\\" else 1
+            at += 1
+        elif text[at] == "#":
+            close = text.find("\n", at)
+            at = end if close < 0 else close
+        else:
+            at += 1
+
+
+def _front_matter_joins(text: str) -> Iterator[tuple[int, int]]:
+    """Each escaped line break in a double-quoted scalar of `text`'s YAML front matter.
+
+    The front matter is the lines between a first line of `---` and the next
+    `---` or `...`, which the harness reads as YAML - a skill's `description:`
+    is shown to sessions. In a double-quoted scalar "the escaped line break is
+    excluded from the content" (YAML 1.2.2 § 7.3.1), and so is the next line's
+    leading white space, so `"PL-K7\\` over `  QX"` holds `PL-K7QX`, as
+    PyYAML 6.0.1 reads it. A quote opens a scalar only where `YAML_NODE_OPENERS`
+    says a node starts; one inside a plain scalar, a single-quoted scalar or a
+    comment escapes nothing.
+    """
+    lines = split_lines(text, keepends=True)
+    if not lines or lines[0].rstrip("\n") != "---":
+        return
+    closing = next(
+        (index for index in range(1, len(lines)) if lines[index].rstrip("\n") in ("---", "...")),
+        None,
+    )
+    if closing is None:
+        return
+    at, end = len(lines[0]), sum(len(line) for line in lines[:closing])
+    while at < end:
+        char = text[at]
+        if char == "#" and text[at - 1] in " \t\n":
+            close = text.find("\n", at)
+            at = end if close < 0 else close
+        elif char not in "\"'" or not _opens_a_node(text, at):
+            at += 1
+        elif char == "'":
+            at += 1
+            while at < end and (text[at] != "'" or text.startswith("''", at)):
+                at += 2 if text[at] == "'" else 1
+            at += 1
+        else:
+            at += 1
+            while at < end and text[at] != '"':
+                if text.startswith("\\\n", at):
+                    rest = at + 2
+                    while rest < end and text[rest] in " \t":
+                        rest += 1
+                    yield at, rest
+                    at = rest
+                else:
+                    at += 2 if text[at] == "\\" else 1
+            at += 1
+
+
+def _opens_a_node(text: str, at: int) -> bool:
+    """Whether what stands before `at` on its line leaves a YAML node to start there."""
+    before = text[text.rfind("\n", 0, at) + 1 : at].strip(" \t")
+    return not before or before.endswith(YAML_NODE_OPENERS)
 
 
 def _walk(root: Path) -> Iterator[Path]:

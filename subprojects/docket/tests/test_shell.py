@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from docket.shell import Word, joined_text, script_lines, shell_words
+from docket.shell import Word, flat_reading, joined_text, script_lines, shell_words
 
 
 def _words(command: str) -> list[str]:
@@ -66,6 +66,29 @@ def _words(command: str) -> list[str]:
         (
             "x=$(f() case a in a) echo A;;\nesac; f)\nnext\n",
             ["x=$(f() case a in a) echo A;;\nesac; f)", "next"],
+        ),
+        # A process substitution carries its line on as a `$( )` does, and an
+        # array assignment as a quote does, a comment and all (`PL-VJPH`).
+        ("echo <(echo a\n) x\nnext\n", ["echo <(echo a\n) x", "next"]),
+        ("files=(\n  a # one\n  b\n)\nnext\n", ["files=(\n  a # one\n  b\n)", "next"]),
+        # A body waits for the end of the line its substitution closes on, not
+        # for a newline inside it, and one a substitution opens and leaves
+        # unended is read after that line, ahead of the line's own (`PL-QSN5`).
+        (
+            "cat <<EOF; x=$(echo a\necho b); next\nbody\nEOF\nlast\n",
+            ["cat <<EOF; x=$(echo a\necho b); next", "last"],
+        ),
+        ("cat <<A; x=$(cat <<B)\nbody-1\nB\nbody-2\nA\nnext\n", ["cat <<A; x=$(cat <<B)", "next"]),
+        # Inside a substitution a line that opens with the delimiter and holds a
+        # `)` ends the body, and the rest of it is read; the bodies after it
+        # take the lines after its own.
+        (
+            "git commit -m \"$(cat <<'EOF'\nsay\nEOF)\" && next\nlast\n",
+            ["git commit -m \"$(cat <<'EOF'\nsay\nEOF)\" && next", "last"],
+        ),
+        (
+            "x=$(cat <<A <<B\na\nAecho mid)\nb\nB\nnext\n",
+            ["x=$(cat <<A <<B\na\nAecho mid)", "next"],
         ),
     ],
 )
@@ -149,6 +172,46 @@ def test_joined_text_removes_each_backslash_newline_bash_removes(script: str, jo
 
     assert text == joined
     assert "".join(script[at] for at in origin) == text
+
+
+def test_an_ansi_c_quoted_string_ends_at_the_quote_bash_ends_it_at() -> None:
+    """A backslash escapes the next character in `$'...'`, an apostrophe included (`PL-C45K`).
+
+    Read as a `$` and a single-quoted string, `$'a\\'b'` ended at its second
+    apostrophe and the rest of the script was one unreadable piece, where bash
+    5.2.21 prints `a'b` and then `next`. Bash keeps a backslash-newline inside
+    one, and the admitted shapes still refuse one at its `$`.
+    """
+    script = "echo $'a\\'b'\necho next\n"
+
+    assert [piece for piece, _ in script_lines(script)] == ["echo $'a\\'b'", "echo next"]
+    assert joined_text("echo $'a\\\nb'\n")[0] == "echo $'a\\\nb'\n"
+    assert (
+        shell_words("echo $'a'").refusal == "carries an unquoted `$`, which no admitted shape uses"
+    )
+
+
+def test_a_substitution_in_an_unquoted_body_is_a_command_it_runs() -> None:
+    """Bash expands the body of a delimiter with no quoted part (POSIX.1-2017 XCU §2.7.4).
+
+    So a `$( )` or a backquote there runs, and is read as a command of its own
+    (`PL-P95F`); a quoted delimiter's body is text. One the delimiter line cuts
+    fails that expansion alone in bash 5.2.21, and the script runs on.
+    """
+    assert _words("cat <<EOF\n$(make check) `ls`\nEOF\n") == ["cat", "EOF", "make", "check", "ls"]
+    assert _words("cat <<'EOF'\n$(make check)\nEOF\n") == ["cat", "EOF"]
+    assert _words("cat <<EOF\n$(make\nEOF\nnext\n") == ["cat", "EOF", "next"]
+
+
+def test_the_hooks_read_input_that_ends_early_as_bash_c_reads_it() -> None:
+    """The hooks' reading runs an unended body to the end and keeps a trailing backslash.
+
+    Bash 5.2.21 reads the string `bash -c` is handed so, and the harness hands
+    it every Bash call, where docket's own reading refuses both (`PL-JNYL`).
+    """
+    assert flat_reading("cat <<EOF\nbody").tokens == ("cat", "<<", "EOF", ";")
+    assert flat_reading("echo a\\").tokens == ("echo", "a\\")
+    assert shell_words("echo a\\").clauses == ()
 
 
 def test_a_newline_in_a_substitution_ends_a_command() -> None:

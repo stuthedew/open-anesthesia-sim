@@ -169,6 +169,19 @@ def test_another_tool_is_let_through(tmp_path: Path) -> None:
     assert _decision(payload, tmp_path) is None
 
 
+def test_a_payload_laid_out_across_lines_is_read_as_json(tmp_path: Path) -> None:
+    """A name on the line after its key is the same member (RFC 8259 § 2), read as `json` reads it.
+
+    Read by a sed a line at a time it was no name, so the call of another tool
+    went on to the merge check and was refused (`PL-CXK6`).
+    """
+    laid_out = (
+        '{\n  "session_id":\n    "abc-123",\n  "tool_name":\n    "Edit",\n'
+        '  "tool_input": {"file_path": "x"}\n}\n'
+    )
+    assert _decision(laid_out, tmp_path) is None
+
+
 @pytest.mark.parametrize("payload", ["", "not json", "{}"], ids=["empty", "not-json", "no-name"])
 def test_a_payload_naming_no_tool_is_refused(payload: str, tmp_path: Path) -> None:
     """The matcher has already chosen a merge call, so an unreadable one fails closed."""

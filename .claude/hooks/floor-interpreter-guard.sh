@@ -88,7 +88,7 @@ if not isinstance(command, str):
     sys.exit(0)
 
 # Split the way bash splits it, by `shell_split.py` beside this file, which the
-# three Bash guards share (`PL-PVW2`). A regex would not do, because the failing
+# four Bash guards share (`PL-PVW2`). A regex would not do, because the failing
 # shape puts the path inside a quoted argument: `python3 -c "import ast;
 # ast.parse(open(\"src/a.py\").read())"` is one command with one `;` that is
 # not a separator. The splitter keeps that string whole, so the path is visible
@@ -97,7 +97,9 @@ if not isinstance(command, str):
 # `print(1);` joined the next command to this one (`PL-GVFC`, `PL-BBV7`), and a
 # `)` glued to the `;` hid it again (`PL-63TT`). A comment and a heredoc body
 # are removed, the body being document content this repository writes about the
-# floor routinely, and the lines after its terminator are read (`PL-39LD`).
+# floor routinely, and the lines after its terminator are read (`PL-39LD`); a
+# `$( )` or a backquote in the body of an unquoted delimiter runs, and is read
+# (`PL-P95F`).
 cut = shell_split.segments(command)
 if cut is None:
     sys.exit(0)

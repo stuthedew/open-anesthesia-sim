@@ -48,12 +48,19 @@ root="${CLAUDE_PROJECT_DIR:-}"
 [ -n "$root" ] || exit 0
 [ -x "$root/bin/docket" ] || exit 0
 
-# The id, reduced to what is safe in a filename. An unreadable payload leaves
-# it empty and the check runs once for "unknown", which is the safe direction:
-# at worst it is asked once more than it needed to be.
-session=$(printf '%s' "$payload" |
-  sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' |
-  tr -cd 'A-Za-z0-9_-')
+# The id, read as JSON as the rest of the payload is, so an id laid out on the
+# line after its key is still the id (`PL-CXK6`), and reduced to what is safe in
+# a filename. A payload that is not JSON or names no id leaves it empty, and
+# every such session shares the markers kept for "unknown": the first is asked,
+# and the rest are not.
+session=$(printf '%s' "$payload" | python3 -c 'import json, sys
+
+try:
+    value = json.load(sys.stdin).get("session_id")
+    print(value if isinstance(value, str) else "")
+except (AttributeError, ValueError):
+    pass
+' 2>/dev/null | tr -cd 'A-Za-z0-9_-')
 stale="${TMPDIR:-/tmp}/docket-branch-${session:-unknown}"
 claim="${TMPDIR:-/tmp}/docket-claim-${session:-unknown}"
 [ -e "$stale" ] && [ -e "$claim" ] && exit 0
