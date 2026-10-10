@@ -309,8 +309,8 @@ def test_a_second_filing_extends_the_line_the_first_one_wrote(tmp_path: Path) ->
 
     Two entries on one line, because that is what `recurrence_count` reads and
     what `plan.recurring` counts to three. The append is byte-faithful for the
-    reason `PL-7K8Y` established - `verify.sanctioned_queue_edit` forgives a
-    queue edit that removes nothing, so re-rendering the file would fail the
+    reason `PL-7K8Y` established - `verify.sanctioned_queue_edit` reads a key
+    a re-render moves as an edit, so re-rendering the file would fail the
     close-out of any worker that captured a finding, which `CLAUDE.md` requires
     unconditionally.
 
@@ -5671,8 +5671,8 @@ def test_record_leaves_a_hand_written_block_alone(tmp_path: Path) -> None:
     On a hand-typed one it did not. `record` rendered from the parsed item, so
     keys in any other order came back canonical and a value continued over an
     indented line came back on one - removals, in a diff about the close-out's
-    own work. `verify.sanctioned_queue_edit` grants the backfill its exemption
-    only where the diff removes nothing, so the close-out that ran the command
+    own work. `verify.sanctioned_queue_edit` granted the backfill its exemption
+    only where the diff removed nothing, so the close-out that ran the command
     exactly as the skill instructs was reported as editing a file outside its
     commission, and the per-commit reading meant a later fixup commit could
     not clear it. Both shapes are here because both were live: 118 of the

@@ -2263,13 +2263,13 @@ def test_record_on_non_canonical_key_order_classifies_as_pr(tmp_path: Path) -> N
 
     `record` used to re-render the item it was adding `pr:` to, so on a file
     whose keys were hand-typed in some other order the write moved them as
-    well - a removal plus an addition, which `sanctioned_queue_edit` reads as
+    well - a removal plus an addition, which `sanctioned_queue_edit` read as
     an ordinary content edit. The close-out that ran the command exactly as
     the skill instructs came back `REJECT` naming the item file, so the reader
     saw an out-of-commission edit and had to diff it to learn a tool wrote it.
-    And because the classifier reads the per-commit diffs rather than the net
-    tree, restoring the order in a later commit left both the removal and its
-    undo on the branch: rebuilding the history was the only way to clear it.
+    And because the classifier reads each commit rather than the net tree,
+    restoring the order in a later commit left both the removal and its undo
+    on the branch: rebuilding the history was the only way to clear it.
 
     Goes through `insert_field`, which is what `cmd_record` calls, so this
     fails again if that call site is changed back to a writer that re-renders.
@@ -2327,14 +2327,13 @@ def test_a_recurrence_written_by_new_classifies_as_a_sanctioned_edit(tmp_path: P
 def test_a_second_recurrence_extending_the_line_is_sanctioned_and_a_rewrite_is_not(
     tmp_path: Path,
 ) -> None:
-    """The growth case, which reads as a removal and so has to be matched exactly.
+    """The growth case, which rewrites a line and so has to be matched exactly.
 
-    Appending to a line removes that line and adds a longer one, and "removes
-    nothing" is what makes the `pr` exemption safe to state exactly. So the
-    append is recognised on its shape - both lines whole `recurrences:` values,
-    the new one starting with the old - rather than by relaxing the removal
-    rule, which would forgive an entry being altered or dropped under cover of
-    one being added.
+    Appending to a line removes that line and adds a longer one. So the append
+    is recognised on the values - both whole `recurrences:` values, the
+    entries recorded before standing first and unaltered after - rather than
+    by forgiving the removal, which would forgive an entry being altered or
+    dropped under cover of one being added.
     """
     root = _repo(tmp_path)
     items = root / "docs" / "items"
@@ -2471,6 +2470,39 @@ def test_a_withdrawal_is_not_exempt_though_an_append_past_one_still_is(tmp_path:
     _git(root, "add", "-A")
     _git(root, "commit", "-qm", "PL-K7QX a capture matched after the withdrawal")
     assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == "recurrence"
+
+
+def test_each_change_to_an_item_file_has_to_be_a_sanctioned_kind(tmp_path: Path) -> None:
+    """Read change by change, so one sanctioned commit cannot carry another that is not.
+
+    Each commit is read before and after on its own (`PL-24MT`): a capture
+    that a later commit's matched filing appends to is two sanctioned writes,
+    reported under both kinds, while a `pr:` write followed by a reopening is
+    an edit, however sanctioned the first change was.
+    """
+    root = _repo(tmp_path)
+    items = root / "docs" / "items"
+    path = "docs/items/PL-N3W1-something-noticed.md"
+    _work(
+        root, "PL-K7QX capture a finding", path, _stored("PL-N3W1", "Noticed", status="untriaged")
+    )
+    captured = items / "PL-N3W1-something-noticed.md"
+    insert_field(
+        items, parse_item(captured.read_text(), captured.name), "recurrences", "2026-10-10 PL-N3W2"
+    )
+    _git(root, "commit", "-qam", "PL-K7QX a second capture matched to the first")
+    assert (
+        sanctioned_queue_edit(root, "HEAD~2", ("HEAD~1", "HEAD"), path) == "capture and recurrence"
+    )
+
+    path = "docs/items/PL-B2B2-do-the-other.md"
+    neighbour = items / "PL-B2B2-do-the-other.md"
+    insert_field(items, parse_item(neighbour.read_text(), neighbour.name), "pr", "495")
+    _git(root, "commit", "-qam", "PL-K7QX record the pr the base was owed")
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == "pr"
+    neighbour.write_text(neighbour.read_text().replace("status: ready\n", "status: blocked\n"))
+    _git(root, "commit", "-qam", "PL-K7QX and reopen it")
+    assert sanctioned_queue_edit(root, "HEAD~2", ("HEAD~1", "HEAD"), path) == ""
 
 
 def test_an_ordinary_edit_to_another_items_file_is_still_outside_touches(tmp_path: Path) -> None:

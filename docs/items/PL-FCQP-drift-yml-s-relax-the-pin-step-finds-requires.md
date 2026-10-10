@@ -3,12 +3,14 @@ id: PL-FCQP
 title: drift.yml's relax-the-pin step finds requires-python in pyproject.toml with a regex anchored per line, so a requires-python-shaped line inside a multi-line string ahead of the key is rewritten in its place while the real pin stays, and the step's one-match guard passes; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: .github/workflows/drift.yml, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1389
 payoff: the drift job refuses a pyproject.toml whose parsed interpreter pin it did not relax, so it cannot test the pinned interpreter while its guard reports the pin relaxed
 verify: grep -q tomllib .github/workflows/drift.yml && grep -qF '"drift pin, a requires-python line inside a multi-line string' tests/unit/test_doc_check.py
 ---
@@ -58,3 +60,14 @@ outside the earlier sweeps' reach.
 **Done when.** The step reads and checks the key with `tomllib` before writing,
 refusing a file whose parsed `requires-python` it did not change, and the
 `drift.yml` change is held for the owner's read as a workflow edit.
+
+**Built 2026-10-10 (`#1389`).** The step still finds the line with the
+anchored pattern, since `tomllib` reads TOML and writes none, and now reads its
+rewrite back with `tomllib` before writing it: the parsed `requires-python` has
+to be the relaxed bound and every other value in the file the same, or the
+step raises naming the pin TOML still reads. Two `drift pin, ` cases in
+`PL-R417`'s guard run the step's own script, cut out of `drift.yml` at its
+heredoc: the multi-line string fixture above is refused, where main's step
+wrote the file with the pin unchanged, and the project's own `pyproject.toml`
+is relaxed to `>=3.14`. The `drift.yml` change holds the pull request for the
+owner's read, as the Done-when asks.

@@ -15,6 +15,8 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import textwrap
+import tomllib
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -6820,6 +6822,31 @@ def _job_names(*name: str) -> list[str]:
     return [job.check_name for job in rcc._jobs(lines, "quality.yml")]
 
 
+def _relaxed_pin(tmp_path: Path, pyproject: str) -> str:
+    """The `requires-python` drift.yml's relax-the-pin step leaves, or what it refused with.
+
+    Runs the step's own script, cut out of the workflow at its heredoc, in a
+    directory holding `pyproject` alone (`PL-FCQP`).
+    """
+    root = Path(__file__).resolve().parents[2]
+    lines = (root / ".github" / "workflows" / "drift.yml").read_text(encoding="utf-8").split("\n")
+    step = lines.index("      - name: relax the interpreter pin for this run only")
+    start = next(i for i in range(step, len(lines)) if lines[i].strip() == "python3 - <<'PY'")
+    end = next(i for i in range(start, len(lines)) if lines[i].strip() == "PY")
+    (tmp_path / "pyproject.toml").write_text(pyproject, encoding="utf-8")
+    ran = subprocess.run(
+        [sys.executable, "-c", textwrap.dedent("\n".join(lines[start + 1 : end]))],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if ran.returncode:
+        return f"refused: {ran.stderr.strip()}"
+    written = tomllib.loads((tmp_path / "pyproject.toml").read_text(encoding="utf-8"))
+    return str(written["project"]["requires-python"])
+
+
 #: A rule's front matter whose description is a literal block holding `---`.
 INDENTED_RULE = '---\ndescription: |\n  ---\n  more\npaths:\n  - "/src/**"\n---\nbody\n'
 #: A rule whose quoted description carries a line opening `paths:`, which
@@ -6951,16 +6978,30 @@ WRAPPED_RECURRENCES = (
 )
 
 
-def _queue_edit(tmp_path: Path, edit: Callable[[str], str]) -> str:
-    """How the queue-edit audit classifies `edit`, made to an item whose recurrences wrap."""
+def _queue_edit(tmp_path: Path, edit: Callable[[str], str], base: str = WRAPPED_RECURRENCES) -> str:
+    """How the queue-edit audit classifies `edit` made to `base`, by default wrapped recurrences."""
     root = tmp_path / "queue"
     item = root / "docs" / "items" / "PL-B2B2-the-other.md"
     item.parent.mkdir(parents=True)
-    item.write_text(WRAPPED_RECURRENCES, encoding="utf-8")
+    item.write_text(base, encoding="utf-8")
     _git_init(root)
-    item.write_text(edit(WRAPPED_RECURRENCES), encoding="utf-8")
+    item.write_text(edit(base), encoding="utf-8")
     _git(root, "commit", "-qam", "PL-K7QX capture a finding")
     return sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), "docs/items/PL-B2B2-the-other.md")
+
+
+def _queue_capture(tmp_path: Path, text: str) -> str:
+    """How the queue-edit audit classifies a commit creating an item file holding `text`."""
+    root = tmp_path / "queue"
+    root.mkdir()
+    (root / "README.md").write_text("Demo.\n", encoding="utf-8")
+    _git_init(root)
+    item = root / "docs" / "items" / "PL-N3W1-noticed.md"
+    item.parent.mkdir(parents=True)
+    item.write_text(text, encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX capture a finding")
+    return sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), "docs/items/PL-N3W1-noticed.md")
 
 
 def _suppressions(source: str) -> list[str]:
@@ -8049,6 +8090,26 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         ),
         ["checks"],
     ),
+    # drift.yml's relax-the-pin step (`PL-FCQP`): a TOML multi-line string
+    # holds its lines whole, one shaped like the key included, so the step
+    # reads its rewrite back with `tomllib` before writing it.
+    "drift pin, a requires-python line inside a multi-line string is refused": (
+        lambda tmp_path: _relaxed_pin(
+            tmp_path,
+            '[project]\nname = "x"\ndescription = """\nrequires-python = "anything"\n"""\n'
+            'requires-python = ">=3.14,<3.15"\n',
+        ),
+        "refused: the line rewritten is not the key TOML reads, whose requires-python is "
+        "'>=3.14,<3.15': a multi-line string may hold a line shaped like it - fix it here "
+        "rather than letting the job silently test the pinned version",
+    ),
+    "drift pin, the project's own pin is relaxed": (
+        lambda tmp_path: _relaxed_pin(
+            tmp_path,
+            (Path(__file__).resolve().parents[2] / "pyproject.toml").read_text(encoding="utf-8"),
+        ),
+        ">=3.14",
+    ),
     # Markdown's paragraph, read by the soft break every `GAP` reader takes:
     # neither a placeholder nor a code span opens a block that ends it.
     "soft break, a line opening with a placeholder": (
@@ -8584,6 +8645,34 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             lambda text: text.replace(
                 "2026-09-03 PL-CCCC", "2026-09-03 PL-ZZZZ, 2026-10-04 PL-DDDD"
             ),
+        ),
+        "",
+    ),
+    # The `pr` and capture forms (`PL-24MT`) read the item too: a `pr:` line
+    # between a value and its continuation cuts the value's tail into `pr`, a
+    # fenced line in the brief is prose, and a diff shows a removed thematic
+    # break as `----`, which is no file header.
+    "queue edit, a pr line cutting a continued value is no pr write": (
+        lambda tmp_path: _queue_edit(
+            tmp_path, lambda text: text.replace(",\n  2026-09-03", ",\npr: 12\n  2026-09-03")
+        ),
+        "",
+    ),
+    "queue edit, a fenced untriaged status in a brief is no capture": (
+        lambda tmp_path: _queue_capture(
+            tmp_path,
+            "---\nid: PL-N3W1\ntitle: Noticed\nstatus: ready\n---\n\n"
+            "A new item starts as:\n\n```yaml\nstatus: untriaged\n```\n",
+        ),
+        "",
+    ),
+    "queue edit, a removed thematic break beside a pr write is an edit to the brief": (
+        lambda tmp_path: _queue_edit(
+            tmp_path,
+            lambda text: text.replace("\n---\n\nMore", "\n\nMore").replace(
+                "status: ready\n", "status: ready\npr: 5\n"
+            ),
+            base=WRAPPED_RECURRENCES.replace("Body.\n", "Body.\n\n---\n\nMore.\n"),
         ),
         "",
     ),

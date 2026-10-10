@@ -5224,9 +5224,10 @@ def _write_pr(directory: Path, item: Item, number: str, dry_run: bool) -> None:
     (`PL-LBR6`, `PL-5QLP`). `rewrite_item` keeps
     the name and still re-renders the block, so on a file whose keys are in
     some other order, or whose value runs over continuation lines, it removes
-    lines as well as adding one - and `verify.sanctioned_queue_edit` reads a
+    lines as well as adding one - and `verify.sanctioned_queue_edit` read a
     removal as an ordinary content edit, so the close-out that ran `record`
-    exactly as instructed came back `REJECT` (`PL-7K8Y`).
+    exactly as instructed came back `REJECT` (`PL-7K8Y`). It reads the item
+    now rather than the diff (`PL-24MT`), and a moved key is still an edit.
 
     Both callers establish that the item records no `pr` before reaching here,
     which is what makes an insert the right operation. The one replacement

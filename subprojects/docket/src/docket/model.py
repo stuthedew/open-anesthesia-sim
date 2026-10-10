@@ -1697,23 +1697,23 @@ def with_front_matter_field(text: str, name: str, value: str, *, append: bool = 
     `render_item` is the wrong writer for this, and the reason is what
     `PL-7K8Y` cost. It renders from the parsed `Item`, so it normalises the
     whole block on the way past: a hand-typed key order comes back canonical,
-    and a value continued over indented lines comes back on one. Both are
-    removals in the diff, and `verify.sanctioned_queue_edit` classifies a
+    and a value continued over indented lines comes back on one. Both were
+    removals in the diff, and `verify.sanctioned_queue_edit` classified a
     queue edit as the `pr` backfill the close-out is told to make only when
-    the diff removes nothing at all. So `bin/docket record`, following the
+    the diff removed nothing at all. So `bin/docket record`, following the
     skill exactly, produced a `REJECT` on any item whose block was not already
-    canonical - and because the classifier reads the per-commit diffs rather
-    than the net tree, putting the order back in a later commit left both the
-    removal and its undo on the branch. Rebuilding the history was the only
-    remedy.
+    canonical - and because the classifier reads each commit rather than the
+    net tree, putting the order back in a later commit left both the removal
+    and its undo on the branch. Rebuilding the history was the only remedy.
 
     Inserting a line settles it at the source instead of teaching the
-    classifier to forgive a removal, which is the narrower of the two fixes
-    the item weighed: "no removed lines" stays exact, and exact is what makes
-    the exemption safe to grant. It also reaches further than key order for
-    free - the continuation lines of a multi-line value survive an insert
-    without anything having to know they are there, and 12 item files in this
-    store carry one.
+    classifier to forgive a reorder, which is the narrower of the two fixes
+    the item weighed: the classifier now reads the item rather than the diff
+    (`PL-24MT`) and still sanctions only every other field the same and in
+    the same order, and exact is what makes the exemption safe to grant. It
+    also reaches further than key order for free - the continuation lines of
+    a multi-line value survive an insert without anything having to know they
+    are there, and 12 item files in this store carry one.
 
     The field goes after the last key already present that `FIELD_ORDER` puts
     before it, so on a file this package wrote the result is byte-identical to
@@ -1726,9 +1726,9 @@ def with_front_matter_field(text: str, name: str, value: str, *, append: bool = 
     adds `, value` to the end of the field's existing line and is otherwise
     this same insert, so a second, third and tenth entry are as byte-faithful
     as the first. Without it the only way to extend a field was to re-render
-    the file, which is exactly what `PL-7K8Y` cost: `sanctioned_queue_edit`
-    forgives a queue edit that removes nothing, and a re-render removes every
-    line it normalises on the way past.
+    the file, which is exactly what `PL-7K8Y` cost: a re-render moves every
+    key it normalises on the way past, and `sanctioned_queue_edit` reads a
+    moved key as an edit.
 
     Raises `ValueError` where the field is already present and `append` was not
     asked for, where the file spells the field more than once so that no single
@@ -1795,9 +1795,9 @@ def with_front_matter_value(text: str, name: str, value: str) -> str:
 
     The fourth writer, and the one the other three cannot be: `write_item` and
     `rewrite_item` re-render the whole block, and `with_front_matter_field`
-    only ever adds - by design, since `sanctioned_queue_edit` reads a removal
-    as tampering and a re-render removes every line it normalises on the way
-    past (`PL-7K8Y`).
+    only ever adds - by design, since a re-render moves every key it
+    normalises on the way past and `sanctioned_queue_edit` reads a moved key
+    as tampering (`PL-7K8Y`).
 
     A withdrawal has to edit a value that is already there, so it cannot be an
     insert; what it can be is an edit whose diff is that value's lines and no

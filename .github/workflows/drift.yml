@@ -155,12 +155,13 @@ jobs:
           # CPython or the current one (`PL-CGSS`).
           echo "PINNED_MINOR=$(cut -d. -f1,2 < .python-version)" >> "$GITHUB_ENV"
           python3 - <<'PY'
-          import pathlib, re
+          import pathlib, re, tomllib
           p = pathlib.Path("pyproject.toml")
           t = p.read_text(encoding="utf-8")
+          relaxed = ">=3.14"
           new, n = re.subn(
               r'^requires-python = "[^"]*"$',
-              'requires-python = ">=3.14"',
+              f'requires-python = "{relaxed}"',
               t,
               count=1,
               flags=re.M,
@@ -170,6 +171,20 @@ jobs:
                   "requires-python not found in the expected shape; this job's "
                   "assumption about pyproject.toml has gone stale - fix it here "
                   "rather than letting the job silently test the pinned version"
+              )
+          # Read back before writing: the line rewritten has to be the key TOML
+          # reads, and the only change. A multi-line string can hold a line
+          # shaped like it, which the pattern finds first while the pin stays
+          # as it was (`PL-FCQP`).
+          was, now = tomllib.loads(t), tomllib.loads(new)
+          pin = now.get("project", {}).pop("requires-python", None)
+          was.get("project", {}).pop("requires-python", None)
+          if pin != relaxed or now != was:
+              raise SystemExit(
+                  "the line rewritten is not the key TOML reads, whose "
+                  f"requires-python is {pin!r}: a multi-line string may hold a "
+                  "line shaped like it - fix it here rather than letting the "
+                  "job silently test the pinned version"
               )
           p.write_text(new, encoding="utf-8")
           PY

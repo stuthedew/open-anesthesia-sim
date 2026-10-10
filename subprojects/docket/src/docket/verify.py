@@ -2074,9 +2074,10 @@ def _base_copy(held: tuple[str, ...], identifier: str) -> str:
     return ""
 
 
-#: A `pr:` line as `cmd_record` writes it, and nothing else. Anchored at both
-#: ends so that `pr: 495 and also something` is not read as one.
-PR_LINE_RE = re.compile(r"^pr:\s*\d+\s*$")
+#: A `pr:` value as `cmd_record` writes it, a number and nothing else, matched
+#: whole against the value the item's reader folds, so that `495 and also
+#: something` is not read as one.
+PR_VALUE_RE = re.compile(r"[0-9]+")
 
 #: One `recurrences:` entry as the store spells it: the date a capture was
 #: filed and its id, optionally followed by the withdrawal `bin/docket withdraw`
@@ -2106,18 +2107,34 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     a hole. Returns the kind for the report to name, or `""` for an ordinary
     edit that stays outside the commission.
 
-    **`"capture"`** - a file this branch *added*, whose front matter says
-    `status: untriaged`. `CLAUDE.md` requires a finding not fixed in the
-    session to be captured before the session ends, and requires every commit
-    subject to lead with the current item's id; doing both puts the new item
-    file on a commit `item_commits` attributes to the item being verified, and
-    the audit then reported a `REJECT` for following the instructions
-    (`PL-66PR`). A capture cannot weaken anything: the file did not exist on
-    the base, so there is no prior content for it to have changed.
+    **The three in the store are read off the item, never off the diff's
+    lines.** Each change the scope made to the file - each commit against its
+    first parent, or the branch against its fork point where no commit names
+    the item - is read before and after it by the reader every other command
+    reads an item with, and every change has to be one of the kinds; a file
+    whose changes are of two kinds is reported under both. Read a line at a
+    time, a diff line looked like a front-matter line wherever it fell: a
+    `pr:` line inserted between a value and the indented line continuing it
+    passed as the `pr` write while it cut the value's tail into `pr`, a brief
+    quoting `status: untriaged` inside a fence passed as a capture at any
+    status, and a removed thematic break, which a diff shows as `----`, was
+    skipped as a file header (`PL-24MT`).
 
-    **`"pr"`** - an existing item file whose whole diff is added `pr:` lines.
-    That is what `bin/docket record N` writes onto the closures a branch
-    introduces while its pull request is open (`PL-HMZZ`), and the `docket`
+    **`"capture"`** - a file the change *created*, whose status as the item's
+    reader reads it is `untriaged`. `CLAUDE.md` requires a finding not fixed
+    in the session to be captured before the session ends, and requires every
+    commit subject to lead with the current item's id; doing both puts the new
+    item file on a commit `item_commits` attributes to the item being
+    verified, and the audit then reported a `REJECT` for following the
+    instructions (`PL-66PR`). A capture cannot weaken anything: the file did
+    not exist on the base, so there is no prior content for it to have
+    changed.
+
+    **`"pr"`** - an existing item file that reads as it did with a `pr:`
+    field added, which `_pr_recorded` decides: every other field the same and
+    in the same order, the body the same, and the number a number. That is
+    what `bin/docket record N` writes onto the closures a branch introduces
+    while its pull request is open (`PL-HMZZ`), and the `docket`
     skill's close-out says to let it ride the closure commit, or the push that
     follows it, rather than composing one for it. `verify` read those writes
     as paths outside the commission and rejected the close-out that followed
@@ -2126,8 +2143,8 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     number on a landed closure, so there is nothing here a worker could use to
     change what a check measures.
 
-    **`"recurrence"`** - an existing item file whose whole diff is its
-    `recurrences:` line arriving, or that line growing by entries on its right.
+    **`"recurrence"`** - an existing item file whose `recurrences:` value
+    arrived, or grew by entries on its right, and nothing else changed.
     `bin/docket new` writes it onto the item a capture matched, so a worker
     that captures a finding - which `CLAUDE.md` requires unconditionally -
     edits an item it was never commissioned to touch, exactly as `record`'s
@@ -2137,16 +2154,13 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     candidate for a human to confirm, and cannot move a band, a status or
     anything a check measures (`PL-X5JR`).
 
-    The growth case is the one that needs care, because extending a line reads
-    as a removal and a removal is what the `pr` rule is allowed to be exact
-    about. So it is matched rather than forgiven, and on the value rather than
-    on a line: the item is read before and after each of the scope's changes,
-    by the reader every other command reads it with, and the change must leave
-    every other field and the body as they were and add whole entries after
-    the ones already recorded - which is an append and cannot be an edit of
-    what was there. Matched on one diff line, an append to a value continued on
-    an indented line read as an edit, since the line it grew carries no key
-    (`PL-J503`).
+    The growth case is the one that needs care, because extending a value can
+    also rewrite what it recorded. So it is matched on the value: the change
+    must leave every other field and the body as they were and add whole
+    entries after the ones already recorded - which is an append and cannot be
+    an edit of what was there. Matched on one diff line, an append to a value
+    continued on an indented line read as an edit, since the line it grew
+    carries no key (`PL-J503`).
 
     **`"record"`** - a pull request's body the branch added: `<N>.md` directly
     under `RECORDS`, which the base does not hold and whose copy at `HEAD`
@@ -2157,75 +2171,114 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     `recovered:`: `--record` wrote one on every pull request's branch while
     `PL-979D`'s per-pull-request record stood, and a branch opened before
     `PL-3PH2` retired it may still carry one. It is the one kind outside the
-    store, and the one read off the base and `HEAD` rather than the diff: a
-    file the branch rewrites reads, commit by commit, as a removal like any
-    other. Like a capture it cannot weaken anything, since the base holds no
-    prior content for it to have changed. A file the base holds is a merged
-    pull request's history, and a file there under another name, or with
-    neither line, is not the write the workflow asked for.
+    store, and the one read off the base and `HEAD` rather than change by
+    change: a file the branch rewrites would read, commit by commit, as an
+    edit to a file already there. Like a capture it cannot weaken anything,
+    since the base holds no prior content for it to have changed. A file the
+    base holds is a merged pull request's history, and a file there under
+    another name, or with neither line, is not the write the workflow asked
+    for.
 
     Nothing else is exempt. An item file this branch edited in any other way -
     a `status`, a `touches`, a `verify:` command - is still outside `touches`
     and still fails, which is the case the audit exists for and the reason
-    this reads the diff rather than the path.
+    this reads each change rather than the path.
     """
     if is_under(path, (RECORDS,)):
         return "record" if _added_record(root, base, path) else ""
-    scope = ["git", "show", "--format=", *commits] if commits else ["git", "diff", f"{base}...HEAD"]
-    status, diff = _run([*scope, "--", path], root)
-    if status != 0 or not diff.strip():
-        return ""
-    added, removed, created = [], [], False
-    for line in split_lines(diff):
-        if line.startswith("new file mode"):
-            created = True
-        elif line.startswith("+++") or line.startswith("---"):
-            continue
-        elif line.startswith("+"):
-            added.append(line[1:])
-        elif line.startswith("-"):
-            removed.append(line[1:])
-    if removed:
-        return "recurrence" if _recurrence_appended(root, base, commits, path) else ""
-    if created:
-        return "capture" if any(line.strip() == "status: untriaged" for line in added) else ""
-    if added and all(PR_LINE_RE.match(line) for line in added):
-        return "pr"
-    return "recurrence" if added and _recurrence_appended(root, base, commits, path) else ""
+    kinds = [_queue_kind(before, after) for before, after in _changes(root, base, commits, path)]
+    return " and ".join(dict.fromkeys(kinds)) if kinds and all(kinds) else ""
 
 
-def _recurrence_appended(root: Path, base: str, commits: tuple[str, ...], path: str) -> bool:
-    """Whether every change the scope made to `path` appended entries to its `recurrences:`.
+def _changes(
+    root: Path, base: str, commits: tuple[str, ...], path: str
+) -> list[tuple[str | None, str | None]]:
+    """Each change the scope made to `path`, as the file read before it and after it.
 
     Each commit is read against its first parent, and the branch against its
-    fork point where no commit names the item, which are the changes
-    `sanctioned_queue_edit`'s diff shows. A commit that left the file alone is
-    passed over; one that created or deleted it is no append.
+    fork point where no commit names the item. A commit that left the file
+    alone is passed over, and `None` stands for no file on that side. Empty
+    where git could not be asked or a copy is not UTF-8, which leaves the file
+    as no kind and so outside `touches`.
     """
     if commits:
         steps = [(f"{commit}^:{path}", f"{commit}:{path}") for commit in commits]
     else:
         status, fork = _run(["git", "merge-base", base, "HEAD"], root)
         if status != 0:
-            return False
+            return []
         steps = [(f"{fork.strip()}:{path}", f"HEAD:{path}")]
     blobs = _blobs(root, {spec for step in steps for spec in step})
     if blobs is None:
-        return False
-    grew = False
+        return []
+    changes: list[tuple[str | None, str | None]] = []
     for before_spec, after_spec in steps:
         before, after = blobs.get(before_spec), blobs.get(after_spec)
         if before == after:
             continue
-        if before is None or after is None:
-            return False
         try:
-            if not _recurrences_grew(before[1].decode("utf-8"), after[1].decode("utf-8")):
-                return False
+            changes.append(
+                (
+                    None if before is None else before[1].decode("utf-8"),
+                    None if after is None else after[1].decode("utf-8"),
+                )
+            )
         except UnicodeDecodeError:
-            return False
-        grew = True
-    return grew
+            return []
+    return changes
+
+
+def _queue_kind(before: str | None, after: str | None) -> str:
+    """Which of `sanctioned_queue_edit`'s kinds one change to an item file is, or `""`.
+
+    `None` is no file on that side: a change that created the file can only be
+    a capture, and one that deleted it is none of them.
+    """
+    if after is None:
+        return ""
+    if before is None:
+        return "capture" if _captured(after) else ""
+    if _pr_recorded(before, after):
+        return "pr"
+    return "recurrence" if _recurrences_grew(before, after) else ""
+
+
+def _captured(text: str) -> bool:
+    """Whether `text`, a file the change created, is an item at `status: untriaged`.
+
+    Its status as `parse_item` reads it, so a brief quoting a `status:
+    untriaged` line inside a fence is prose, as it is to every other reader of
+    the item, and the file is at whatever its front matter says (`PL-24MT`).
+    """
+    fields, _body = parse_front_matter(text)
+    return fields.get("status") == "untriaged"
+
+
+def _pr_recorded(before: str, after: str) -> bool:
+    """Whether `after` is `before` with a `pr:` field added and nothing else changed.
+
+    What `bin/docket record N` writes, read as `_recurrences_grew` reads its
+    append: both copies through `_front_matter_pairs`, so a value is whole
+    whichever lines carry it. A `pr:` line inserted between a value and the
+    indented line continuing it reads as what it does there - the value cut
+    short and its tail folded into `pr` - and a body changed beside it, a
+    thematic break removed included, is an edit to the brief (`PL-24MT`).
+    Every other field has to read the same and stand in the same order, and
+    every line no field reads and the body the same; `before` holds no `pr`,
+    since `record` never replaces the number on a landed closure; and `after`
+    holds one, a number.
+    """
+    was, now = _front_matter_pairs(before), _front_matter_pairs(after)
+    if was is None or now is None or was[1:] != now[1:]:
+        return False
+    if any(key == "pr" for key, _value in was[0]):
+        return False
+    numbers = [value for key, value in now[0] if key == "pr"]
+    return (
+        len(numbers) == 1
+        and PR_VALUE_RE.fullmatch(numbers[0]) is not None
+        and [pair for pair in now[0] if pair[0] != "pr"] == was[0]
+    )
 
 
 def _recurrences_grew(before: str, after: str) -> bool:
