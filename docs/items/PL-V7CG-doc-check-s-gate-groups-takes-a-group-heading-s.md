@@ -1,9 +1,18 @@
 ---
 id: PL-V7CG
 title: doc_check's _gate_groups takes a group heading's opening line from statement_lines but reads its extent with STATEMENT_RE, whose soft break refuses every ordered marker, so a heading wrapped before a line opening with a number and a full stop that cannot start a list there is cut at that line and check_gate_counts fails a correct frozen list twice; latent
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1388
+payoff: a frozen list's group heading wrapped before a year reads whole, so check_gate_counts counts a correct list correctly
+verify: grep -qF '"gate groups, a heading wrapped before a year' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's _gate_groups takes a group heading's opening line from statement_lines but reads its extent with STATEMENT_RE, whose soft break refuses every ordered marker, so a heading wrapped before a line opening with a number and a full stop that cannot start a list there is cut at that line and check_gate_counts fails a correct frozen list twice; latent
@@ -35,6 +44,8 @@ where 5 follow it, and the headings counting 2 between them where the list holds
 both read the heading as one two-line paragraph. Latent: over `ROADMAP.md` all
 33 group headings read the same either way.
 
+**Why it matters.** `check_gate_counts` and `check_self_cleared_group` hold each frozen list's group heading to the entries under it, so a heading wrapped before a year fails a correct list with two false errors.
+
 **Generator check.** A member of `PL-R417`: a reader ends a statement at a line
 its format carries it past. `PL-VQBY`, a member, fixed where such a heading
 opens and left where it ends.
@@ -42,3 +53,10 @@ opens and left where it ends.
 **Done when.** `_gate_groups` reads each heading as `lines[first:end]` of the
 span `statement_lines` gave it, pinned by a `gate groups, ` case in
 `PL-R417`'s guard that fails on today's reader.
+
+**Built 2026-10-10 (`#1388`).** `_gate_groups` reads each heading as the lines
+of the span `statement_lines` gives it, joined and normalised, so a heading
+wrapped before a year is read whole. It was `STATEMENT_RE`'s last reader, so
+that pattern and `STATEMENT_CHAR` went with it, and the two guard cases that
+read through it now read through `mentions`. One `gate groups, ` case, failing
+on main's reader.

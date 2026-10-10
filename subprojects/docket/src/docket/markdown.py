@@ -17,11 +17,15 @@ not a lazy one, under which a delimiter row of as many cells opens the table,
 which then runs to a blank line or another block's start.
 
 `read` hands back every leaf block, as its kind, its span of lines and how many
-containers hold it, and every list item the same way. `fences`,
-`statement_lines`, the heading and table readers below and the list walker in
-`roadmap` are views of it, so they cannot disagree about where a block is.
-Checked against markdown-it-py 4.2.0 on every tracked Markdown file on
-2026-10-04.
+containers hold it, every list item the same way, and the column each line's
+own text starts at. `fences`, `statement_lines`, `unmarked`, the heading and
+table readers below and the list walker in `roadmap` are views of it, so they
+cannot disagree about where a block is.
+`subprojects/docket/tests/test_markdown_reference.py` holds it to
+markdown-it-py on every tracked Markdown file (`PL-0C2S`), with markdown-it-py
+set to cmark-gfm's reading in the one place the two part: a bare run of hyphens
+under a line holding a pipe, a setext underline to cmark-gfm and a one-column
+table's delimiter row to markdown-it-py.
 
 Three departures, each deliberate:
 
@@ -98,6 +102,11 @@ class Document:
 
     blocks: tuple[Block, ...]
     items: tuple[Item, ...]
+    #: Where each line's own text starts: the column past the markers and
+    #: indents of the containers holding it, counted with its tabs expanded to
+    #: four-column stops. A lazy continuation line's starts past the containers
+    #: it matched alone.
+    columns: tuple[int, ...]
 
 
 @dataclass(frozen=True)
@@ -152,13 +161,16 @@ _HTML_BLOCK_TAG = re.compile(
     r"|table|tbody|td|tfoot|th|thead|title|track|tr|ul)(?:[ \t>]|/>|$)"
 )
 #: Kind 7, any other complete tag alone on its line, which runs to a blank line
-#: and is the one kind that cannot interrupt a paragraph.
+#: and is the one kind that cannot interrupt a paragraph. `pre`, `script`,
+#: `style` and `textarea` are kept from an open tag alone, which kind 1 reads;
+#: a closing tag of any name opens one, so `</pre>` alone on its line is an
+#: HTML block rather than a paragraph (`PL-B83V`).
 _HTML_TAG_LINE = re.compile(
     r" {0,3}(?:<(?!(?i:pre|script|style|textarea)(?![A-Za-z0-9-]))[A-Za-z][A-Za-z0-9-]*"
     r"(?:[ \t]+[A-Za-z_:][A-Za-z0-9_.:-]*"
     r"(?:[ \t]*=[ \t]*(?:[^ \t\"'=<>`]+|'[^']*'|\"[^\"]*\"))?)*"
     r"[ \t]*/?>"
-    r"|</(?!(?i:pre|script|style|textarea)(?![A-Za-z0-9-]))[A-Za-z][A-Za-z0-9-]*[ \t]*>)"
+    r"|</[A-Za-z][A-Za-z0-9-]*[ \t]*>)"
     r"[ \t]*$"
 )
 #: The characters a block's start can open with, past its indent; a line
@@ -223,9 +235,9 @@ def _read(lines: tuple[str, ...]) -> Document:
     fence_from = len(lines)
     unread: frozenset[int] = frozenset()
     while True:
-        blocks, items, unclosed = _parse(lines, fence_from, unread)
+        blocks, items, columns, unclosed = _parse(lines, fence_from, unread)
         if unclosed is None:
-            return Document(tuple(blocks), tuple(items))
+            return Document(tuple(blocks), tuple(items), tuple(columns))
         kind, start = unclosed
         if kind == FENCE:
             fence_from = start
@@ -264,6 +276,21 @@ def statement_lines(
             yield first, block.end
         else:
             yield block.start, block.end
+
+
+def unmarked(lines: Sequence[str]) -> tuple[str, ...]:
+    """Each of `lines` with its containers' markers blanked, its length kept (`PL-YCJJ`).
+
+    A block quote's `>` and a list item's marker and indent hold a statement
+    rather than belong to its text, so a pattern read across a soft break
+    (§ 6.8) has to meet the next line's words where a reader meets them, and
+    not a `>` first. Blanked to spaces rather than cut, so an offset into a
+    line is still an offset into the line `lines` holds, the way `checks`
+    blanks a code span. A tab standing before a line's text is a space like
+    any other character there.
+    """
+    columns = read(lines).columns
+    return tuple(_blanked_to(line, column) for line, column in zip(lines, columns, strict=True))
 
 
 def block_lines(lines: Sequence[str], kinds: Collection[str]) -> frozenset[int]:
@@ -352,6 +379,18 @@ def _delimiter_columns(text: str) -> int:
     return count
 
 
+def _blanked_to(line: str, column: int) -> str:
+    """`line` with each character before `column` blanked, its tabs read at four-column stops."""
+    if "\t" not in line:
+        return " " * column + line[column:]
+    width = 0
+    for index, character in enumerate(line):
+        if width >= column:
+            return " " * index + line[index:]
+        width = width + 4 - width % 4 if character == "\t" else width + 1
+    return " " * len(line)
+
+
 def _indent(line: str, position: int) -> int:
     """How many spaces stand at `position` in `line`."""
     end = position
@@ -417,8 +456,8 @@ def _touch(stack: Sequence[_Container], index: int) -> None:
 
 def _parse(
     lines: Sequence[str], fence_from: int, unread: Collection[int]
-) -> tuple[list[Block], list[Item], tuple[str, int] | None]:
-    """One reading of `lines`, and the block left open at the end, as its kind and line.
+) -> tuple[list[Block], list[Item], list[int], tuple[str, int] | None]:
+    """One reading of `lines`: its blocks, its items, each line's column, and the block left open.
 
     A fence opening at `fence_from` or later, and an HTML block of kinds 1 to 5
     opening on a line in `unread`, is read as written: `_read` passes each block
@@ -426,6 +465,7 @@ def _parse(
     """
     blocks: list[Block] = []
     items: list[Item] = []
+    columns: list[int] = []
     stack: list[_Container] = []
     leaf: _Leaf | None = None
 
@@ -463,6 +503,7 @@ def _parse(
         rest = line[position:]
         blank = not rest.strip()
         held = matched == len(stack)
+        columns.append(position)
 
         # A fence, an HTML block and an indented code block take a line whole
         # while every container holds it; a container's end ends them, and a
@@ -558,6 +599,7 @@ def _parse(
                 at = min(after + gap, len(line))
                 continue
             break
+        columns[index] = at
 
         if kind == _SETEXT_LEVEL:
             # The paragraph above, in the same containers, becomes the heading.
@@ -605,4 +647,4 @@ def _parse(
         finish()
     unwind(0)
     items.sort(key=lambda item: (item.start, item.depth))
-    return blocks, items, unclosed
+    return blocks, items, columns, unclosed

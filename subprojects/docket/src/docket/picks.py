@@ -40,7 +40,7 @@ from dataclasses import dataclass
 
 from .model import Item, ranks_as_generator
 from .plan import GATE_LANES, Recommendation, awaits_decision, offerable, recommend
-from .roadmap import CLEAR, Wave
+from .roadmap import CLEAR, ScopeEntry, Wave
 
 #: The cap on pick lines: the Report paragraph's "at most eight lines" in the
 #: Projects trial's instructions, which the list was built to answer.
@@ -151,6 +151,18 @@ def bold_lead(text: str) -> str:
     return found.group("lead").rstrip(".") if found else text.split(". ", 1)[0]
 
 
+def entry_name(entry: ScopeEntry) -> str:
+    """The name a build line gives a `Required scope` entry: `bold_lead` of its lead paragraph.
+
+    The lead alone, as `roadmap` reads it, because emphasis and a sentence both
+    end with their paragraph (CommonMark 0.31.2 § 6.2, § 4.8): read over the
+    entry joined whole, an entry with no closed bold lead was named after a
+    nested item's bold run, a later paragraph, or a `**` pair a blank line
+    splits (`PL-P00H`).
+    """
+    return bold_lead(entry.lead)
+
+
 def _waiting_on(
     targets: frozenset[str], open_items: Mapping[str, Item], scope: Collection[str]
 ) -> tuple[int, int]:
@@ -251,7 +263,7 @@ def picks(
         builds.append(
             _line(
                 BUILD,
-                bold_lead(entry.text),
+                entry_name(entry),
                 startable,
                 in_flight,
                 workflow_paths,

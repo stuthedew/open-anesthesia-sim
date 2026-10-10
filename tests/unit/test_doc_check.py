@@ -30,14 +30,23 @@ import required_checks_check as rcc
 import rules_paths_check
 import shell_split
 from docket import checks as docket_checks
+from docket import markdown as docket_markdown
+from docket import picks as docket_picks
 from docket import vcs as docket_vcs
 from docket import verify as docket_verify
 from docket.fences import blocks as fence_blocks
 from docket.instructions import parse as dated_assertions
-from docket.model import with_front_matter_field
+from docket.model import parse_item, with_front_matter_field
 from docket.notes import read as read_threads
 from docket.python import read_logical_lines
-from docket.release import notes_by_version, prepare_bump, unreferenced, version_in
+from docket.release import (
+    SPAN_HEADING,
+    notes_by_version,
+    notes_claims,
+    prepare_bump,
+    unreferenced,
+    version_in,
+)
 from docket.roadmap import (
     LAZY_ENTRY,
     UnreadEntry,
@@ -7104,6 +7113,75 @@ def _both_scope_places(tmp_path: Path, roadmap: str) -> list[str]:
     return [error.split(": ", 1)[0] for error in errors if "in scope and out of it" in error]
 
 
+def _left_status_names(status: str, body: str) -> list[str]:
+    """The statuses `docket check` reads a brief at `status` as saying its item is at."""
+    found = docket_checks._left_statuses(parse_item(_brief(status, body), "PL-T3ST-demo.md"))
+    return [message.split("says it is at `", 1)[1].split("`", 1)[0] for _, message in found]
+
+
+def _absent_findings(tmp_path: Path, readme: str) -> list[str]:
+    """What the citation checks say of `readme`'s `absent:` markers."""
+    report = doc_check.analyze(_repo(tmp_path, readme=readme))
+    return [finding for finding in report.errors if "absent, but" in finding]
+
+
+def _removed_heading_terms(tmp_path: Path, before: str, after: str) -> list[str]:
+    """The terms the close-out sweep takes from a README rewritten from `before` to `after`."""
+    root = _repo(tmp_path, readme=before)
+    _git_init(root)
+    (root / "README.md").write_text(after, encoding="utf-8")
+    terms = doc_check.changed_tokens(root, "HEAD", doc_check.read_docs(root), [])
+    return sorted(terms["README.md"])
+
+
+#: A milestone with a `Required scope` and a frozen list, each filled by a case.
+DECLARING_MILESTONE = (
+    "## v9.9.9 \u2014 Old\n\n### Required scope\n\n{scope}\n"
+    "### Debt gate: the frozen list\n\n{gate}\n"
+)
+
+
+def _declarations(scope: str, gate: str = "- PL-BBBB (S) The one entry\n") -> object:
+    """What the roadmap reads a milestone as declaring: its own scope, each entry's, the gate's."""
+    (section,) = parse_milestones(DECLARING_MILESTONE.format(scope=scope, gate=gate))
+    return (
+        section.own_scope_ids,
+        [entry.ids for entry in section.scope_entries],
+        [entry.ids for entry in section.gate_entries],
+    )
+
+
+def _scope_entry_names(scope: str) -> list[str]:
+    """The name `docket picks` gives each of a milestone's `Required scope` entries."""
+    (section,) = parse_milestones(
+        DECLARING_MILESTONE.format(scope=scope, gate="- PL-BBBB (S) The one entry\n")
+    )
+    return [docket_picks.entry_name(entry) for entry in section.scope_entries]
+
+
+def _claimed_ids(between: str) -> list[str]:
+    """The ids a notes file claims where `between` stands between its title and its bullets."""
+    text = (
+        f"## v1.0.0\n\n{between}\n- PL-BC12 The first\n- PL-CD34 The second\n\n"
+        f"{SPAN_HEADING}\n\n- PL-DF56 Another release's\n"
+    )
+    head, _ = notes_claims(text)
+    return [line.split()[1] for line in head.splitlines() if line.startswith("- ")]
+
+
+def _blocks(text: str) -> list[tuple[str, int, int]]:
+    """Each leaf block `docket.markdown` reads in `text`, as its kind and its span of lines."""
+    found = docket_markdown.read(text.splitlines()).blocks
+    return [(block.kind, block.start, block.end) for block in found]
+
+
+#: A brief whose `Done when` heading never closes, over another heading and last.
+UNCLOSED_HEADING = (
+    "**Problem.** x\n\n**Why it matters.** y\n\n**Done when. The suite passes.\n\n"
+    "**Generator check.** None.\n"
+)
+
+
 #: What the citation readers say of a quotation its paragraph never closes
 #: (`PL-T73L`), after the citation's place and what opened the quotation.
 UNCLOSED = (
@@ -7870,12 +7948,12 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     # Markdown's paragraph, read by the soft break every `GAP` reader takes:
     # neither a placeholder nor a code span opens a block that ends it.
     "soft break, a line opening with a placeholder": (
-        lambda _: doc_check.STATEMENT_RE.match("It wraps\n<PL-GGGG> here.\n").group(0),
-        "It wraps\n<PL-GGGG> here.",
+        lambda _: doc_check.mentions("wraps <PL-GGGG> here", "It wraps\n<PL-GGGG> here.\n"),
+        [1],
     ),
     "soft break, a line opening with a code span": (
-        lambda _: doc_check.STATEMENT_RE.match("It wraps\n```x``` here.\n").group(0),
-        "It wraps\n```x``` here.",
+        lambda _: doc_check.mentions("wraps ```x``` here", "It wraps\n```x``` here.\n"),
+        [1],
     ),
     "frozen list, a lazy line opening with a placeholder is refused": (
         lambda tmp_path: _lazy_milestone_entry(
@@ -8600,6 +8678,248 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             "Why.\n\nCo-authored-by: A Long Name\n <a@example.com>\n"
         ),
         "Why.",
+    ),
+    # `PL-R417`'s Markdown members, link 20: each reader moved onto
+    # `docket.markdown`'s reading of where a statement or a block ends.
+    # The brief-prose readers read a statement with its container markers
+    # blanked (`PL-YCJJ`), so a quoted form reads as its top-level form does.
+    "brief prose, a negation wrapped inside a block quote": (
+        lambda _: _cue_ids(
+            "> This item is not\n> blocked by `PL-BBBB`; it only reads its output.\n"
+        ),
+        [],
+    ),
+    "brief prose, a blocker list wrapped inside a block quote": (
+        lambda _: _cue_ids("> **Blocked on `PL-BBBB` and\n> `PL-CCCC`.**\n"),
+        ["PL-BBBB", "PL-CCCC"],
+    ),
+    "brief prose, a continuation wrapped inside a block quote": (
+        lambda _: _cue_ids("> Blocked on `PL-BBBB` and\n> on `PL-CCCC`.\n"),
+        ["PL-BBBB", "PL-CCCC"],
+    ),
+    "brief prose, a cue wrapped inside a block quote": (
+        lambda _: _cue_ids("> This item depends\n> on `PL-BBBB`, which is open.\n"),
+        ["PL-BBBB"],
+    ),
+    "brief prose, an own status wrapped inside a block quote": (
+        lambda _: _left_status_names(
+            "ready", "x\n\n> It is left at\n> `needs-decision` until the owner answers.\n"
+        ),
+        ["needs-decision"],
+    ),
+    "brief prose, a question label wrapped inside a block quote": (
+        lambda _: docket_checks._answered_beneath(
+            "**Answered 2026-10-01.** Yes.\n\n> **Decision\n> needed.** Which one?\n"
+        ),
+        None,
+    ),
+    "brief prose, a * bullet marks no recommendation": (
+        lambda _: docket_checks._marks_recommendation("* We recommend nothing yet.\n"),
+        False,
+    ),
+    # An own-status phrase is read a statement at a time (`PL-5ZZT`).
+    "left statuses, a phrase inside a fence is a literal": (
+        lambda _: _left_status_names(
+            "ready", "x\n\n```text\nIt is left at `needs-decision` until the owner answers.\n```\n"
+        ),
+        [],
+    ),
+    "left statuses, a heading's last word does not read into the paragraph under it": (
+        lambda _: _left_status_names(
+            "ready", "x\n\n## What remains\n\nUntriaged captures go to the next pass.\n"
+        ),
+        [],
+    ),
+    # A required heading's closer is looked for in its own statement (`PL-M890`).
+    "brief sections, an unclosed heading has nothing under it wherever it stands": (
+        lambda _: tuple(
+            docket_checks._section_text(body, docket_checks.DONE_WHEN)
+            for body in (UNCLOSED_HEADING, UNCLOSED_HEADING.split("\n\n**Generator")[0] + "\n")
+        ),
+        ("", ""),
+    ),
+    # A closing tag of any name opens an HTML block of § 4.6's seventh kind (`PL-B83V`).
+    "markdown blocks, a closing pre tag over a heading": (
+        lambda _: _blocks("</pre>\n# Not a heading\n"),
+        [("html", 0, 2)],
+    ),
+    "markdown blocks, a closing script tag over a block quote": (
+        lambda _: _blocks("</script>\n> Not a quotation\n"),
+        [("html", 0, 2)],
+    ),
+    "markdown blocks, a closing style tag over a list item": (
+        lambda _: _blocks("</style>\n- Not an entry\n"),
+        [("html", 0, 2)],
+    ),
+    "markdown blocks, a closing textarea tag over a fence": (
+        lambda _: _blocks("</textarea>\n```\nNot a fence\n```\n"),
+        [("html", 0, 4)],
+    ),
+    # The span heading is the one `markdown.headings` reads (`PL-2CDW`).
+    "release notes, a span heading inside a comment ends no claims": (
+        lambda _: _claimed_ids(f"<!--\n{SPAN_HEADING}\n-->\n"),
+        ["PL-BC12", "PL-CD34"],
+    ),
+    "release notes, a span heading inside a fence ends no claims": (
+        lambda _: _claimed_ids(f"```text\n{SPAN_HEADING}\n```\n"),
+        ["PL-BC12", "PL-CD34"],
+    ),
+    # A declaration slot and a run of leading ids end with their paragraph (`PL-VQ50`).
+    "roadmap declarations, a slot left open at a paragraph's end": (
+        lambda _: _declarations(
+            "Ships the reader (queue items `PL-BC12`,\n\n`PL-CD34` is cited only as background.\n"
+        ),
+        (("PL-BC12",), [], [("PL-BBBB",)]),
+    ),
+    "roadmap declarations, a slot left open at an entry's end": (
+        lambda _: _declarations(
+            "* **The reader.** Ships it (queue items `PL-BC12` and\n* `PL-CD34` is another entry.\n"
+        ),
+        (("PL-BC12",), [("PL-BC12",), ()], [("PL-BBBB",)]),
+    ),
+    "roadmap declarations, a slot left open before an entry's later paragraph": (
+        lambda _: _declarations(
+            "- **The reader.** Ships it (queue items `PL-BC12`,\n\n"
+            "  `PL-CD34` opens a later paragraph.\n"
+        ),
+        (("PL-BC12",), [("PL-BC12",)], [("PL-BBBB",)]),
+    ),
+    "roadmap declarations, a gate entry's ids end with its lead paragraph": (
+        lambda _: _declarations(
+            "- X (queue item `PL-BBBB`).\n",
+            "- PL-BC12 and\n\n  PL-CD34 is a later paragraph of a debt-gate entry.\n",
+        ),
+        (("PL-BBBB",), [("PL-BBBB",)], [("PL-BC12",)]),
+    ),
+    # A build line names an entry by its lead paragraph alone (`PL-P00H`).
+    "picks, a nested item's bold run names no entry": (
+        lambda _: _scope_entry_names(
+            "- The View contract and its two classes (queue item PL-F1F1):\n"
+            "  - **Data views**, which read the run.\n  - **Control views**, which change it.\n"
+        ),
+        ["The View contract and its two classes (queue item PL-F1F1):"],
+    ),
+    "picks, a later paragraph is no part of an entry's name": (
+        lambda _: _scope_entry_names(
+            "- Keep the layout model free of Qt (queue item PL-F2F2)\n\n"
+            "  It is pure Python. Nothing in it imports Qt.\n"
+        ),
+        ["Keep the layout model free of Qt (queue item PL-F2F2)"],
+    ),
+    "picks, a bold pair a blank line splits is literal": (
+        lambda _: _scope_entry_names(
+            "- **The adapter (queue item PL-F3F3), one module.\n\n"
+            "  The only importer of QSplitter.** Nothing else.\n"
+        ),
+        ["**The adapter (queue item PL-F3F3), one module."],
+    ),
+    # A frozen list's group heading is the span `statement_lines` gave it (`PL-V7CG`).
+    "gate groups, a heading wrapped before a year reads whole": (
+        lambda tmp_path: _gate_errors(
+            tmp_path,
+            GATE_ROADMAP.replace(
+                "*Stops new debt being introduced \u2014 three entries:*",
+                "*Stops new debt, each one found after the freeze of 30 September\n"
+                "2026. \u2014 three entries:*",
+            ),
+        ),
+        [],
+    ),
+    # An indented code block is `markdown`'s reading of one (`PL-K77Q`).
+    "math, an indented line under an ATX heading is code": (
+        lambda _: doc_check._without_code("## Heading\n    \\(\\d+\\)\n")[1],
+        "",
+    ),
+    "math, an indented line under a thematic break is code": (
+        lambda _: doc_check._without_code("---\n    \\(\\d+\\)\n")[1],
+        "",
+    ),
+    "math, an indented line under a one-line HTML comment is code": (
+        lambda _: doc_check._without_code("<!-- a note -->\n    \\(\\d+\\)\n")[1],
+        "",
+    ),
+    # A link is read from the prose alone (`PL-M2J4`).
+    "links, one inside a fence is no link": (
+        lambda tmp_path: _link_errors(tmp_path, "# Demo\n\n```text\n[guide](docs/guide.md)\n```\n"),
+        [],
+    ),
+    "links, one inside an HTML comment is no link": (
+        lambda tmp_path: _link_errors(tmp_path, "# Demo\n\n<!--\n[guide](docs/guide.md)\n-->\n"),
+        [],
+    ),
+    # A marker's paragraph is the prose block `markdown` reads above it (`PL-JZNV`).
+    "marked span, a tight list's other item is no part of the paragraph": (
+        lambda _: doc_check._marked_span(
+            [
+                "- Sevoflurane is 0.65.",
+                "- Desflurane is 0.42.",
+                "  <!-- provenance: agents.json desflurane.x = 0.65 -->",
+            ],
+            2,
+        ),
+        (1, 2),
+    ),
+    "marked span, a heading above is no part of the paragraph": (
+        lambda _: doc_check._marked_span(
+            [
+                "## Coefficient 0.65",
+                "The value is 0.42.",
+                "<!-- provenance: agents.json desflurane.x = 0.65 -->",
+            ],
+            2,
+        ),
+        (1, 2),
+    ),
+    "marked span, a stray backtick above pairs with nothing in it": (
+        lambda tmp_path: _absent_findings(
+            tmp_path,
+            "# Demo\n\n- A stray ` backtick here.\n- It cites `tools/gone.py`.\n"
+            "  <!-- absent: tools/gone.py -->\n",
+        ),
+        [],
+    ),
+    # A removed heading is one `markdown.headings` reads in the base copy (`PL-B47B`).
+    "removed headings, a setext heading and a fenced comment": (
+        lambda tmp_path: _removed_heading_terms(
+            tmp_path,
+            "# Demo\n\nSetting up the checkout\n-----------------------\n\n"
+            "```bash\n# make sure the venv exists\n```\n",
+            "# Demo\n",
+        ),
+        ["Setting up the checkout"],
+    ),
+    # Every `GAP` and `QUOTATION_CHAR` reader matches within one statement
+    # (`PL-Z1R7`): a block quote, a setext underline or a table under a
+    # paragraph ends it, and an ATX heading ends on its own line.
+    "soft break, a block quote under a paragraph ends its quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\nSee § "Known\n> limitations" for what it omits.\n'
+        ),
+        [UNCLOSED.format("README.md:3", "this §", "the section it names")],
+    ),
+    "soft break, a setext underline ends its heading's quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\nSee § "Known\n=\nlimitations" for what it omits.\n'
+        ),
+        [UNCLOSED.format("README.md:3", "this §", "the section it names")],
+    ),
+    "soft break, a table under a paragraph ends its quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\nSee § "Known\nlimitations" | x\n--- | ---\na | b\n'
+        ),
+        [UNCLOSED.format("README.md:3", "this §", "the section it names")],
+    ),
+    "soft break, an ATX heading ends on its own line": (
+        lambda _: doc_check.mentions(
+            "Dosing limits", "## Dosing\nlimits are read from the agent's data file.\n"
+        ),
+        [],
+    ),
+    "soft break, an ATX heading takes no direction from the paragraph under it": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\n## Read § "Known limitations"\nabove all, it omits x.\n'
+        ),
+        [],
     ),
 }
 

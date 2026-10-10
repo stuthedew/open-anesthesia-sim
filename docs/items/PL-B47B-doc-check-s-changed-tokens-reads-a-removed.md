@@ -1,9 +1,18 @@
 ---
 id: PL-B47B
 title: doc_check's changed_tokens reads a removed heading off each removed line of the diff with REMOVED_HEADING_RE, so a removed setext heading yields no term for the close-out sweep and a removed line opening with # inside a fence yields one; latent
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, tests/unit, docs/items/PL-X229-tools-doc-check-py-candidates-diffs-base.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1388
+payoff: the close-out sweep looks for a removed setext heading's words, and never for a fenced comment's
+verify: grep -qF '"removed headings, ' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's changed_tokens reads a removed heading off each removed line of the diff with REMOVED_HEADING_RE, so a removed setext heading yields no term for the close-out sweep and a removed line opening with # inside a fence yields one; latent
@@ -34,6 +43,8 @@ removed headings are `Setting up the checkout` alone. Latent: the 38 documents
 `DOC_GLOBS` names hold no setext heading and no `#`-led line that is not a
 heading.
 
+**Why it matters.** The close-out sweep looks in the other documents for the words of every heading a change removed, so a removed setext heading's references go unlooked-for, and a fenced comment line sends the sweep after words no heading held.
+
 **Generator check.** A member of `PL-R417`: a reader takes a physical line of a
 diff for a statement of the Markdown it belongs to. `PL-0Y7J`, `PL-T1X0` and
 `PL-V2HK`, all members, fixed other heading and definition readers; this one
@@ -43,3 +54,14 @@ reads the diff rather than the file, so none reached it.
 `markdown.headings` over the base and head copies, as `_changed_definitions`
 reads Python through `read_logical_lines`, pinned by a `removed headings, ` case
 in `PL-R417`'s guard for both forms, failing on today's reader.
+
+**Built 2026-10-10 (`#1388`).** `changed_tokens` takes a document's removed
+headings from `_removed_headings`, which reads `markdown.headings` over the
+base copy and keeps each heading the diff removed a row of, its text or its
+setext underline, unless the working tree's copy still has a heading of that
+title, which keeps a moved heading or a reflowed line from reading as removed.
+A `# comment` inside a fence is code to that reading, so it is no longer taken
+for a heading. `REMOVED_HEADING_RE` went with it. One `removed headings, ` case
+holding both forms, failing on main's reader. `PL-X229`'s brief, which named
+the pattern as the reason a heading the base gained reads as removed, now names
+`_removed_headings`, for which that still holds.

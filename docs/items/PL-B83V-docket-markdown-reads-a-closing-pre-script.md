@@ -1,9 +1,18 @@
 ---
 id: PL-B83V
 title: docket.markdown reads a closing pre, script, style or textarea tag alone on its line as a paragraph, where CommonMark 0.31.2 excludes those names only from an open tag and opens an HTML block running to the next blank line, so a heading, block quote, list item or fence under it is read as a block of its own by every reader of the one Markdown reader; latent
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/markdown.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1388
+payoff: a lone closing pre, script, style or textarea tag opens an HTML block as CommonMark says, so the lines under it are not read as headings, quotes, entries or fences
+verify: grep -qF '"markdown blocks, ' tests/unit/test_doc_check.py
 ---
 
 **Problem.** docket.markdown reads a closing pre, script, style or textarea tag alone on its line as a paragraph, where CommonMark 0.31.2 excludes those names only from an open tag and opens an HTML block running to the next blank line, so a heading, block quote, list item or fence under it is read as a block of its own by every reader of the one Markdown reader; latent
@@ -35,6 +44,8 @@ read the same way, as a quote, an entry and a fence. The controls, a closing
 `div` or `span` tag over a heading, agree in all three readers. Latent: no
 tracked Markdown file holds a closing tag of those four names at all.
 
+**Why it matters.** `docket.markdown` is the one block reader under every Markdown reader in docket and `tools/`, so a closing tag of those four names puts a heading, a quote, an entry or a fence where GitHub renders raw HTML, in every reader at once.
+
 **Generator check.** A member of `PL-R417`: the one reader of where a Markdown
 block ends takes a line for a block of its own where the format carries an HTML
 block over it. Over the specification's 652 examples, `docket.markdown` departs
@@ -44,3 +55,10 @@ auditor's fuzzing found outside those.
 **Done when.** `_HTML_TAG_LINE`'s closing-tag branch admits every tag name, as
 the specification's seventh condition does, pinned by a `markdown blocks, ` case
 in `PL-R417`'s guard for each of the four names, failing on today's reader.
+
+**Built 2026-10-10 (`#1388`).** `_HTML_TAG_LINE`'s closing-tag branch admits
+every tag name; the opening-tag branch keeps out the four names, which open
+kind 1 instead. cmark-gfm 0.29.0.gfm.13 reads the four closing tags the same
+way (measured 2026-10-10: the line under each stays raw HTML). Four `markdown
+blocks, ` cases, each failing on main's reader, and `PL-0C2S`'s fixtures hold
+the same four forms against markdown-it-py.
