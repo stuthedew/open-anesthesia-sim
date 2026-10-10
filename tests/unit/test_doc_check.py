@@ -7165,6 +7165,13 @@ def _joined_fixture_ids(tmp_path: Path) -> list[tuple[int, str]]:
     return [(found.line, found.token) for found in fixture_id_check.scan_text(script)]
 
 
+def _fixture_ids(tmp_path: Path, name: str, text: str) -> list[tuple[int, str]]:
+    """What the fixture id check reports in a file under `.claude/` named `name` holding `text`."""
+    path = tmp_path / name
+    path.write_text(text, encoding="utf-8")
+    return [(found.line, found.token) for found in fixture_id_check.scan_text(path)]
+
+
 def _superseded_copy(tmp_path: Path, path: str, base: str, branch: str) -> set[str]:
     """What `vcs._superseded` makes of `path`, held as `base` on the base, `branch` on a branch."""
     root = tmp_path / "repo"
@@ -7911,6 +7918,32 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "fixture ids, an id a backslash-newline joins": (
         _joined_fixture_ids,
         [(3, "PL-K7QXZ")],  # not-an-id
+    ),
+    # Three more forms join a token across a line (`PL-HKR5`). In each, the
+    # valid id split after `PL-K7` passes and the unmintable one is found.
+    "fixture ids, an id a fenced shell sample joins": (
+        lambda tmp_path: _fixture_ids(
+            tmp_path,
+            "sample.md",
+            "```bash\nbin/docket show PL-K7\\\nQX\nbin/docket set PL-\\\nAAAA\n```\n",  # not-an-id
+        ),
+        [(4, "PL-AAAA")],  # not-an-id
+    ),
+    "fixture ids, an id a TOML multi-line string joins": (
+        lambda tmp_path: _fixture_ids(
+            tmp_path,
+            "ruff.toml",
+            'note = """see PL-K7\\\n  QX"""\nbad = """PL-\\\n  AAAA"""\n',  # not-an-id
+        ),
+        [(3, "PL-AAAA")],  # not-an-id
+    ),
+    "fixture ids, an id a front matter quoted scalar joins": (
+        lambda tmp_path: _fixture_ids(
+            tmp_path,
+            "SKILL.md",
+            '---\ndescription: "see PL-K7\\\n  QX, or PL-\\\n  AAAA."\n---\n',  # not-an-id
+        ),
+        [(3, "PL-AAAA")],  # not-an-id
     ),
     # YAML (`PL-6P6H`), read through `_run_script`: a literal block is read with
     # its header and ends where its content does; every form YAML folds or
