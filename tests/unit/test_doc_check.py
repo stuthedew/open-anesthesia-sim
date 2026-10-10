@@ -7238,6 +7238,23 @@ def _missing_path_citations(tmp_path: Path, readme: str) -> list[str]:
     return [error.split(", ", 1)[0] for error in report.errors if ": cites `" in error]
 
 
+def _json_key_terms(tmp_path: Path, before: str, after: str) -> list[str]:
+    """The terms the close-out sweep takes from a data file rewritten from `before` to `after`.
+
+    Each copy the sweep could not read as `json` follows them, as far as the
+    error `json` gave, whose wording moves between Python versions.
+    """
+    root = _repo(tmp_path)
+    data = root / "src" / "anesthesia_sim" / "data" / "agents" / "demo.json"
+    data.write_text(before, encoding="utf-8")
+    _git_init(root)
+    data.write_text(after, encoding="utf-8")
+    unread: list[str] = []
+    terms = doc_check.changed_tokens(root, "HEAD", doc_check.read_docs(root), unread)
+    said = [line.split(" (", 1)[0] for line in unread]
+    return sorted(terms["src/anesthesia_sim/data/agents/demo.json"]) + said
+
+
 def _absent_findings(tmp_path: Path, readme: str) -> list[str]:
     """What the citation checks say of `readme`'s `absent:` markers."""
     report = doc_check.analyze(_repo(tmp_path, readme=readme))
@@ -8207,6 +8224,45 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             f"docs/NOTE.md:7 writes math as `{delimiter}`, which GitHub does not render; use "
             "`$`...`$` inline or a `$$` fence for a block"
             for delimiter in ("\\(", "\\)")
+        ],
+    ),
+    # `PL-VX3Q`: a changed JSON file's keys are read from both copies' `json`
+    # parse, where read off each changed line a value under a key that stands
+    # on another line seeded no key.
+    "json keys, a value changed inside an array seeds its key": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path,
+            '{\n    "blood_gas_partition": [\n        0.65,\n        0.69\n    ]\n}\n',
+            '{\n    "blood_gas_partition": [\n        0.65,\n        0.70\n    ]\n}\n',
+        ),
+        ["blood_gas_partition", "demo", "demo.json"],
+    ),
+    "json keys, a key whose colon stands on the next line": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path,
+            '{\n    "renamed_key"\n        : 2\n}\n',
+            '{\n    "renamed_key"\n        : 3\n}\n',
+        ),
+        ["demo", "demo.json", "renamed_key"],
+    ),
+    "json keys, a value changed under a nested key seeds every key above it": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path,
+            '{\n    "mac_awake": {\n        "fraction_of_mac": 0.36\n    }\n}\n',
+            '{\n    "mac_awake": {\n        "fraction_of_mac": 0.34\n    }\n}\n',
+        ),
+        ["demo", "demo.json", "fraction_of_mac", "mac_awake"],
+    ),
+    "json keys, a copy json cannot read is declined by name": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path, '{\n    "dose": 1\n}\n', '{\n    "dose": 2,\n}\n'
+        ),
+        [
+            "demo",
+            "demo.json",
+            "dose",
+            "src/anesthesia_sim/data/agents/demo.json: json cannot read its copy in the "
+            "working tree",
         ],
     ),
     "removed headings, a front matter is no heading": (

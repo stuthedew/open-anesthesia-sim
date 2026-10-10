@@ -112,6 +112,7 @@ import tokenize
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache, partial
+from itertools import zip_longest
 from pathlib import Path, PurePosixPath
 
 # `ROADMAP.md`'s release-train grammar lives in `docket`, which reasons about
@@ -7775,7 +7776,9 @@ def _git(root: Path, *args: str) -> list[str]:
 # returned 26 lines about nothing (`PL-B2NS`). A Python file's definitions are
 # read from its statements instead (`_changed_definitions`, `PL-V2HK`), so this
 # reads only the lines of a Python file the tokenizer refuses, and of a file in
-# no Python suffix.
+# no Python suffix. A JSON file's keys are read from both copies' `json` parse
+# (`_changed_json_keys`, `PL-VX3Q`), so `JSON_KEY_RE` reads only the lines of a
+# copy `json` refuses.
 DEFINITION_RE = re.compile(r"^[-+]\s*(?:async\s+)?(?:def|class)\s+(\w+)\s*[(:]")
 JSON_KEY_RE = re.compile(r'^[-+]\s*"(\w+)"\s*:')
 #: A `-U0` patch's hunk header: the rows it removes from the old file and adds
@@ -7840,8 +7843,9 @@ def changed_tokens(
     documentation file by its own name only reports that other documents link
     to it, which is true whether or not anything drifted.
 
-    A Python file whose definitions could not be read as statements is
-    appended to `unread`, saying why and that its lines were read instead.
+    A Python file whose definitions could not be read as statements, and a
+    JSON file a copy of which `json` refuses, is appended to `unread`, saying
+    why and that its lines were read instead.
     """
     docs = {str(path) for path in documents}
     tokens: dict[str, set[str]] = {}
@@ -7865,11 +7869,10 @@ def changed_tokens(
             # A key is a term only where the file declaring it is a data file.
             # The same `"key":` shape inside a changed markdown file is
             # somebody's example, and the tree holds no such key.
-            patterns = (DEFINITION_RE, JSON_KEY_RE) if name.suffix == ".json" else (DEFINITION_RE,)
-            for line in diff:
-                for pattern in patterns:
-                    if (match := pattern.match(line)) is not None:
-                        found.add(match.group(1))
+            if name.suffix == ".json":
+                found |= _changed_json_keys(root, base, relative, diff, unread)
+            else:
+                found |= {match[1] for line in diff if (match := DEFINITION_RE.match(line))}
         tokens[relative] = {token for token in found if len(token) > 3}
     return tokens
 
@@ -7925,6 +7928,84 @@ def _changed_definitions(
             if name and any(line.first <= row <= line.last for row in rows):
                 found.add(name)
     return found
+
+
+#: What a `json` reading holds where its copy holds no file: nothing at all,
+#: so every key the other side holds is one the change added or removed.
+ABSENT = object()
+
+
+def _changed_json_keys(
+    root: Path, base: str, relative: str, diff: Sequence[str], unread: list[str]
+) -> set[str]:
+    """Every key on the path to a value the diff changed, from both copies as `json` reads them.
+
+    JSON lets white space, a line ending included, stand between any two
+    tokens (RFC 8259 § 2), so the key a changed value sits under can stand lines
+    above it - an array's entries - and a key's colon on the line below it.
+    Read off each changed line, such a change seeded no key, and the documents
+    stating the value were left off the list (`PL-VX3Q`). So the base's copy
+    and the working tree's are each parsed, and the two readings compared by
+    `_json_keys_changed`, as `_changed_definitions` reads Python from both
+    copies' statements. A copy missing on one side holds nothing there. A copy
+    `json` refuses has the diff's lines read a line at a time, as every file's
+    were, and is appended to `unread`.
+    """
+    readings: list[object] = []
+    for copy in (base, ""):
+        try:
+            if copy:
+                held = _git_output(root, "ls-tree", "--name-only", copy, "--", relative)
+                text = _git_output(root, "show", f"{copy}:{relative}") if held.strip() else None
+            else:
+                file = root / relative
+                text = file.read_bytes().decode("utf-8") if file.is_file() else None
+            readings.append(ABSENT if text is None else json.loads(text.removeprefix("\ufeff")))
+        except ValueError as error:
+            unread.append(
+                f"{relative}: json cannot read its copy "
+                f"{f'at {copy}' if copy else 'in the working tree'} ({error}), so its changed "
+                "lines were read a line at a time"
+            )
+            return {match[1] for line in diff if (match := JSON_KEY_RE.match(line))}
+    return _json_keys_changed(*readings) or set()
+
+
+def _json_keys_changed(before: object, after: object) -> set[str] | None:
+    """The keys on the path to each value that differs between two `json` readings.
+
+    `None` where none differs. A member whose value differs names its key and
+    every key below it on the way to the difference, as a key changed on its own
+    line was named; a member only one side holds, or a value whose type changed,
+    names every key inside it too. An array is compared an entry at a time, by
+    position, so an entry added or removed changes every entry after it.
+    """
+    if isinstance(before, dict) and isinstance(after, dict):
+        found: set[str] = set()
+        for name in before.keys() | after.keys():
+            below = _json_keys_changed(before.get(name, ABSENT), after.get(name, ABSENT))
+            if below is not None:
+                found |= {name, *below}
+        return found or None
+    if isinstance(before, list) and isinstance(after, list):
+        changes = [
+            change
+            for old, new in zip_longest(before, after, fillvalue=ABSENT)
+            if (change := _json_keys_changed(old, new)) is not None
+        ]
+        return set().union(*changes) if changes else None
+    if type(before) is type(after) and before == after:
+        return None
+    return _json_keys(before) | _json_keys(after)
+
+
+def _json_keys(value: object) -> set[str]:
+    """Every member name a `json` reading holds, at any depth."""
+    if isinstance(value, dict):
+        return set(value).union(*(_json_keys(member) for member in value.values()))
+    if isinstance(value, list):
+        return set().union(*(_json_keys(entry) for entry in value))
+    return set()
 
 
 def _removed_headings(root: Path, base: str, relative: str, patch: str) -> set[str]:

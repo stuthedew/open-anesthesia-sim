@@ -3,12 +3,14 @@ id: PL-VX3Q
 title: doc_check's changed_tokens takes a JSON key off the one diff line it reads, so a changed value continued past its key's line - an array entry, or a key whose colon sits on the next line - seeds no key term, and documents naming that key are left off the candidates list; live in form
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-10
+closed: 2026-10-10
+pr: 1392
 payoff: a value changed inside an array, or under a key written on another line, seeds its key, so the documents naming it reach the close-out sweep
 verify: grep -qF '"json keys, a value changed inside an array seeds its key"' tests/unit/test_doc_check.py && grep -qF '"json keys, a key whose colon stands on the next line"' tests/unit/test_doc_check.py
 ---
@@ -58,3 +60,15 @@ twin of closed `PL-V2HK`'s Python fix.
 **Done when.** A changed JSON line seeds the key path `json` gives the value
 it sits in (both files parsed, the changed values located), or the file is
 declined by name; a test pins both forms above.
+
+**Built 2026-10-10 (`#1392`).** `changed_tokens` reads a changed `.json` file's
+keys from both copies, the base's and the working tree's, each parsed by `json`
+(`_changed_json_keys`), and compares the two readings (`_json_keys_changed`):
+every member whose value differs seeds its key and every key below it on the way
+to the difference, and a member only one side holds, or a value whose type
+changed, seeds every key inside it too. So a value changed inside an array seeds
+the key the array sits under, a value under a key whose colon stands on the next
+line seeds that key, and a nested value seeds its parent keys as well. A copy
+missing on one side holds nothing there. A copy `json` refuses is named in
+`unread` and its changed lines are read a line at a time, as before. Four
+`json keys, ` cases in `PL-R417`'s guard, each failing on main's reader.
