@@ -588,7 +588,7 @@ session to meet, as that guard's header asks, and `KNOWN_GAPS` is unchanged.
 `docket new` recorded no recurrence on an open item. `generator:` stays `live`.
 
 **Next steps (recorded 2026-10-04, revised by links 8, 11 to 18 and 19 to 23,
-and on 2026-10-06).** The members the table and the first sweeps named are
+and on 2026-10-06 and 2026-10-10).** The members the table and the first sweeps named are
 built but `PL-RR1N`, and so are the closing sweep's twenty-five: the Markdown
 thirteen (link 20), the YAML and TOML six (link 21) and the shell six (link
 22). They were built as the earlier links were, a format per pull request, by
@@ -617,11 +617,15 @@ file (project owner, 2026-10-06, ratified, over vendoring it); `PL-0C2S`
 failing on the hand-written reader again and again would reopen that. No shell
 library reads both views as bash does, which `PL-JNYL` records for the four
 weighed on 2026-10-10. The one more sweep they left ran as link 23 and found
-twenty-eight more, so under the rule the coordinator's brief of 2026-10-04 set,
-`generator:` rewritten `spent` only when a sweep finds nothing, the head is not
-spent and keeps its rank. Whether that rule stands is put to the owner below.
-The head closes without waiting for `PL-RR1N`, naming it in the reason as
-Done-when says (project owner, 2026-10-04, ratified, over waiting for it).
+twenty-eight more, so the head was not spent under the rule the coordinator's
+brief of 2026-10-04 set, `generator:` rewritten `spent` only when a sweep finds
+nothing, and the owner has since replaced that rule (below). One batch is left,
+link 24: the seven members live in form, `PL-BCZQ`, `PL-Q6HR`, `PL-WX79`,
+`PL-P6D5`, `PL-VX3Q`, `PL-YQ9G` and `PL-NGKW`, built as the earlier links were
+and each pinned by a test. The same batch rewrites `generator:` `spent` and
+closes the head, with no sweep before it. The head closes without waiting for
+`PL-RR1N`, naming it in the reason as Done-when says (project owner,
+2026-10-04, ratified, over waiting for it).
 
 **How the head ends (put to the owner 2026-10-10).** The rule the coordinator's
 brief of 2026-10-04 set, `spent` only when a sweep finds nothing, has not been
@@ -650,11 +654,18 @@ readers unswept; or keep the cycle, batches and then another sweep, which on
 this record finds about as many members as it fixes, with the head on the
 generator tier meanwhile.
 
-**Done when.** Every reader the table and the sweep name reads its format's
-statement whole or declines it by name, each pinned by a test; the guard test
-fails a reader that takes a physical line for a continued statement; and
-`generator:` is rewritten `spent` with the reason, naming `PL-RR1N` if it is
-still open.
+**Answered:** fix the seven and close, as recommended (project owner,
+2026-10-10, ratified, over fixing all twenty-eight before closing and over
+keeping the sweep cycle). The owner then asked why not all twenty-eight, and
+was given the case above. So the twenty-one latent members stay open on their
+own band once the head closes, and one later found live reopens it.
+
+**Done when.** Every reader the table and the sweeps name reads its format's
+statement whole or declines it by name, each pinned by a test, except `PL-RR1N`
+and link 23's twenty-one latent members, which stay open as ordinary items; the
+guard test fails a reader that takes a physical line for a continued statement;
+and `generator:` is rewritten `spent` with the reason, naming those still open,
+with no sweep before it, as the owner answered above.
 
 **Generator check.** The head: one fact misread by six items, which no head's
 `misread:` stated on 2026-10-04 (`PL-JCS3`).
