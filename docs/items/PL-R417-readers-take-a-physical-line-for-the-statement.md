@@ -11,8 +11,8 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 payoff: a statement a shell script, Makefile, workflow or Markdown document continues across lines is read as the one statement its format makes it, or refused by name, so the close-out sweep and the checks stop answering from fragments
 verify: grep -q 'def test_candidates_find_a_title_cited_across_a_line_wrap' tests/unit/test_doc_check.py && grep -q 'def test_each_reader_reads_its_formats_continued_statement_whole' tests/unit/test_doc_check.py && grep -q 'recipe commands, ' tests/unit/test_doc_check.py && grep -q 'workflow commands, ' tests/unit/test_doc_check.py && grep -q '^generator: spent' docs/items/PL-R417-readers-take-a-physical-line-for-the-statement.md
-root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G, PL-TY1Z, PL-YSMD, PL-HKHP, PL-5NC3, PL-WF35, PL-FP7J, PL-BLKJ, PL-J0C6, PL-GMR6, PL-VQBY, PL-4ZDZ, PL-GT0J, PL-KT0H, PL-FBWD, PL-F7Z6, PL-V2HK, PL-TC2D, PL-S3XS, PL-4T49, PL-PPNV, PL-97CF, PL-2JYP, PL-WG6S, PL-4MLK, PL-4ZVH, PL-T1X0, PL-BYJ5, PL-0Y7J, PL-T73L, PL-TDVJ, PL-BMZN, PL-P00H, PL-BM8T, PL-HKR5, PL-CK3F, PL-2MLT, PL-CZ28, PL-Z1R7, PL-V7CG, PL-JZNV, PL-B47B, PL-K77Q, PL-X43T, PL-M2J4, PL-5ZZT, PL-YCJJ, PL-24MT, PL-M890, PL-CXK6, PL-FCQP, PL-B83V, PL-2CDW, PL-VJPH, PL-VQ50, PL-M3M4, PL-QSN5
-generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory until link 8, then PL-T1X0 and PL-BYJ5, which that day's triage pass put to it, PL-0Y7J and PL-T73L in link 11, PL-TDVJ in link 15, and PL-BMZN, filed beside it and re-read as one by that day's second triage pass; and twenty-five more in the closing sweep of 2026-10-06, PL-P00H and PL-CK3F among them in code merged after the head was filed
+root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G, PL-TY1Z, PL-YSMD, PL-HKHP, PL-5NC3, PL-WF35, PL-FP7J, PL-BLKJ, PL-J0C6, PL-GMR6, PL-VQBY, PL-4ZDZ, PL-GT0J, PL-KT0H, PL-FBWD, PL-F7Z6, PL-V2HK, PL-TC2D, PL-S3XS, PL-4T49, PL-PPNV, PL-97CF, PL-2JYP, PL-WG6S, PL-4MLK, PL-4ZVH, PL-T1X0, PL-BYJ5, PL-0Y7J, PL-T73L, PL-TDVJ, PL-BMZN, PL-P00H, PL-BM8T, PL-HKR5, PL-CK3F, PL-2MLT, PL-CZ28, PL-Z1R7, PL-V7CG, PL-JZNV, PL-B47B, PL-K77Q, PL-X43T, PL-M2J4, PL-5ZZT, PL-YCJJ, PL-24MT, PL-M890, PL-CXK6, PL-FCQP, PL-B83V, PL-2CDW, PL-VJPH, PL-VQ50, PL-M3M4, PL-QSN5, PL-BCZQ, PL-Q6HR, PL-7454, PL-WX79, PL-4J5H, PL-Q8LJ, PL-9TZH, PL-P6D5, PL-F6T5, PL-W9VC, PL-VX3Q, PL-7CQ5, PL-YQ9G, PL-J8ML, PL-0CJC, PL-GJKN, PL-TJ1S, PL-L4X3, PL-BVBB, PL-PNZB, PL-4DM0, PL-NGKW, PL-63Y5, PL-6KHQ, PL-703R, PL-DQ9C, PL-S4JL, PL-QLQF
+generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory until link 8, then PL-T1X0 and PL-BYJ5, which that day's triage pass put to it, PL-0Y7J and PL-T73L in link 11, PL-TDVJ in link 15, and PL-BMZN, filed beside it and re-read as one by that day's second triage pass; twenty-five more in the closing sweep of 2026-10-06, PL-P00H and PL-CK3F among them in code merged after the head was filed; and twenty-eight in the sweep of 2026-10-10, nineteen of them forms a closed member's fix left and eleven, some of the same, in code written or rewritten after 2026-10-06, nine of those in the head's own three batches
 misread: Where one statement ends, in a format that lets a statement continue across physical lines
 ---
 
@@ -553,41 +553,102 @@ hooks' own suites cases for `PL-QSN5`'s forms and `PL-P95F`'s, each failing on
 No new member was found. `generator:` stays `live`: `PL-RR1N` and one more
 sweep remain.
 
-**Next steps (recorded 2026-10-04, revised by links 8, 11 to 18, 19, 20, 21 and
-22, and on 2026-10-06).** The members the table and the first sweeps named are
+**Link 23, the closing sweep (2026-10-10).** Done: the one more sweep link 22
+left, thirteen read-only slices over `tools/`, `subprojects/docket/src/docket/`
+and `.claude/hooks/`, with `bin/`, the workflows' `run:` scripts, the
+Makefile's recipes and `.claude/settings.json`, each finding reproduced on
+`main` at `75e1700d` against a reference reader - markdown-it-py 4.2.0 and
+cmark-gfm 0.29, PyYAML 6.0.3 and ruamel.yaml 0.19.1, bash 5.2.21 and dash, GNU
+make 4.3, `tomllib` or `git interpret-trailers` - under python3 3.11.17 and
+3.13.16. It found twenty-eight more members, filed with `feature: one-answer`,
+and none of them changes an answer over the tree today. Seven are live in form,
+the form standing in a tracked file with no verdict wrong: `PL-BCZQ`,
+`PL-Q6HR`, `PL-WX79`, `PL-P6D5`, `PL-VX3Q`, `PL-YQ9G` and `PL-NGKW`. Twenty-one
+are latent, the form in no tracked file: `PL-7454`, `PL-4J5H`, `PL-Q8LJ`,
+`PL-9TZH`, `PL-F6T5`, `PL-W9VC`, `PL-7CQ5`, `PL-J8ML`, `PL-0CJC`, `PL-GJKN`,
+`PL-TJ1S`, `PL-L4X3`, `PL-BVBB`, `PL-PNZB`, `PL-4DM0`, `PL-63Y5`, `PL-6KHQ`,
+`PL-703R`, `PL-DQ9C`, `PL-S4JL` and `PL-QLQF`. Nineteen are a form a closed
+member's fix left in the reader it changed, and eleven sit in code written or
+rewritten after link 19: nine in the head's own batches, `PL-Q6HR` and
+`PL-F6T5` in `#1388`, `PL-4J5H`, `PL-YQ9G`, `PL-J8ML` and `PL-4DM0` in `#1389`,
+and `PL-7CQ5`, `PL-GJKN` and `PL-S4JL` in `#1390`, with `PL-W9VC` in `#1387`
+and `PL-WX79` in readers from `#1387` and `#1388`. Four read their format
+through its shared reader and then drop the decline it names, `PL-GMR6`'s
+shape: `PL-L4X3`, `PL-4DM0`, `PL-63Y5` and `PL-DQ9C`. Thirteen findings were
+filed beside the head and are not members, each a misread within a line, of the
+wrong kind of block, or of something other than where a statement ends:
+`PL-47NJ`, `PL-W6ZD`, `PL-HLS1`, `PL-RC4S`, `PL-YPLM`, `PL-QY94`, `PL-2B0B`,
+`PL-8NPN`, `PL-5M36`, `PL-BHS7`, `PL-6531`, `PL-MPJL` and `PL-NWZM`. Eight more
+were open items already: `PL-PV73`, `PL-Y6LP`, `PL-JTCQ`, `PL-MR8Z`, `PL-HTHC`,
+`PL-B53Y`, `PL-GSJ6` and `PL-ZXM1`. The rest are recorded in the chain notes
+and not filed: settled designs, misreads that change no verdict, and one that
+did not reproduce. The gate-status guard's false refusal of a `$?` read inside
+an unquoted here-document's body was found by probing, so it is left for a
+session to meet, as that guard's header asks, and `KNOWN_GAPS` is unchanged.
+`docket new` recorded no recurrence on an open item. `generator:` stays `live`.
+
+**Next steps (recorded 2026-10-04, revised by links 8, 11 to 18 and 19 to 23,
+and on 2026-10-06).** The members the table and the first sweeps named are
 built but `PL-RR1N`, and so are the closing sweep's twenty-five: the Markdown
 thirteen (link 20), the YAML and TOML six (link 21) and the shell six (link
-22). They were built as the earlier links were, a format per
-pull request, by moving each caller onto its format's one shared reader rather
-than patching a line walk of its own: by their finish lines, nineteen of the
-twenty-five route a caller through a shared reader or the standard library's
-`json` or `tomllib`, four are defects inside a shared reader, and two are
-one-offs. The Markdown thirteen went first (link 20), since each reads through
-`docket.markdown`'s blocks and statements and the accessor `PL-YCJJ` asked
-for, a statement's text with its container markers blanked, serves several.
-With them landed `PL-0C2S`, a test holding `docket.markdown` to markdown-it-py
-in the test environment, so that the next defect inside the shared reader fails CI
-rather than waiting for a sweep (project owner, 2026-10-06, ratified, over the
-one comparison of 2026-10-04). Then the YAML and TOML six (link 21), each
-reading its front matter through one parse, the rule files' through one reader
-that `rules_paths_check.entries` and `instructions.parse` both take, for
-`PL-BM8T` and `PL-2MLT` (project owner, 2026-10-06, ratified, over patching
-each reader in place). Then the shell six (link 22), opened by `PL-JNYL`'s
-merge of the hooks' and docket's two shell readers, so that `PL-VJPH` and
-`PL-QSN5` were each fixed once, in the merged reader (project owner,
-2026-10-06, ratified, over keeping both readers and fixing each, as on
-2026-10-05). The readers stay on the standard library: vendoring markdown-it-py
-into the tree would replace only the shared reader, the nineteen callers need
-moving onto it either way, and `docket.markdown` was already checked against
-it on every tracked Markdown file (project owner, 2026-10-06, ratified, over
-vendoring it); `PL-0C2S` failing on the hand-written reader again and again
-would reopen that. No shell library reads both views as bash does, which
-`PL-JNYL` records for the four weighed on 2026-10-10. What is left is one more
-sweep of the same reach, with `generator:` rewritten `spent` only when a sweep
-finds nothing (the coordinator's brief, 2026-10-04); until then the head is not
-spent and keeps its rank. The head
-closes without waiting for `PL-RR1N`, naming it in the reason as Done-when
-says (project owner, 2026-10-04, ratified, over waiting for it).
+22). They were built as the earlier links were, a format per pull request, by
+moving each caller onto its format's one shared reader rather than patching a
+line walk of its own: by their finish lines, nineteen of the twenty-five route
+a caller through a shared reader or the standard library's `json` or `tomllib`,
+four are defects inside a shared reader, and two are one-offs. The Markdown
+thirteen went first (link 20), since each reads through `docket.markdown`'s
+blocks and statements and the accessor `PL-YCJJ` asked for, a statement's text
+with its container markers blanked, serves several. With them landed `PL-0C2S`,
+a test holding `docket.markdown` to markdown-it-py in the test environment, so
+that the next defect inside the shared reader fails CI rather than waiting for
+a sweep (project owner, 2026-10-06, ratified, over the one comparison of
+2026-10-04). Then the YAML and TOML six (link 21), each reading its front
+matter through one parse, the rule files' through one reader that
+`rules_paths_check.entries` and `instructions.parse` both take, for `PL-BM8T`
+and `PL-2MLT` (project owner, 2026-10-06, ratified, over patching each reader
+in place). Then the shell six (link 22), opened by `PL-JNYL`'s merge of the
+hooks' and docket's two shell readers, so that `PL-VJPH` and `PL-QSN5` were
+each fixed once, in the merged reader (project owner, 2026-10-06, ratified,
+over keeping both readers and fixing each, as on 2026-10-05). The readers stay
+on the standard library: vendoring markdown-it-py into the tree would replace
+only the shared reader, the nineteen callers need moving onto it either way,
+and `docket.markdown` was already checked against it on every tracked Markdown
+file (project owner, 2026-10-06, ratified, over vendoring it); `PL-0C2S`
+failing on the hand-written reader again and again would reopen that. No shell
+library reads both views as bash does, which `PL-JNYL` records for the four
+weighed on 2026-10-10. The one more sweep they left ran as link 23 and found
+twenty-eight more, so under the rule the coordinator's brief of 2026-10-04 set,
+`generator:` rewritten `spent` only when a sweep finds nothing, the head is not
+spent and keeps its rank. Whether that rule stands is put to the owner below.
+The head closes without waiting for `PL-RR1N`, naming it in the reason as
+Done-when says (project owner, 2026-10-04, ratified, over waiting for it).
+
+**How the head ends (put to the owner 2026-10-10).** The rule the coordinator's
+brief of 2026-10-04 set, `spent` only when a sweep finds nothing, has not been
+met by three sweeps and is not converging: twenty-five members on 2026-10-04,
+twenty-five on 2026-10-06 and twenty-eight on 2026-10-10. The work that fixes
+members makes them: nineteen of link 23's twenty-eight are forms a closed
+member's fix left, and nine sit in code the head's own batches wrote.
+
+**Recommendation:** fix the seven members live in form in one batch, as the
+earlier links did, then rewrite `generator:` `spent` and close the head without
+another sweep, naming `PL-RR1N` and the twenty-one latent members as open; they
+stay ordinary items on their own band, and a member later found live reopens
+the head. The latent ones change nothing until their form is written: links 6,
+11 to 15, 17, 18 and 20 to 22 fixed forty-five members and each records that no
+answer over the tree moved, and of the seventy-eight members the three sweeps
+found, one changed an answer when found (`PL-WF35`). The recommendation is
+wrong if latent members turn live often enough to matter, more than about one
+in ten of those fixed so far; the count is none of forty-five. What it costs:
+twenty-one latent misreads stay in the apparatus until they are worked; `spent`
+then means the head's members are found only by sweeping for forms no tracked
+file holds, not that no reader can misread again; and closing the head ends the
+pause on new workflow mechanisms, which it alone holds (`CLAUDE.md` § "What
+this project is"). The other routes: fix all twenty-eight in three batches and
+close without a sweep, which costs three pull requests and leaves their own new
+readers unswept; or keep the cycle, batches and then another sweep, which on
+this record finds about as many members as it fixes, with the head on the
+generator tier meanwhile.
 
 **Done when.** Every reader the table and the sweep name reads its format's
 statement whole or declines it by name, each pinned by a test; the guard test
