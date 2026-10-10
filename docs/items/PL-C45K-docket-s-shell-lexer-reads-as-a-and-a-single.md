@@ -59,6 +59,13 @@ are `PL-JNYL`'s, whose merge would make it impossible. Not a member of
 `PL-R417`: the misread is where a quote ends on one line, not a statement
 continued across lines.
 
+**Folded into `PL-R417`'s shell batch** (project owner, 2026-10-10, ratified,
+over leaving it out of the batch as the Order did). `PL-JNYL`'s merged reader
+reads `$'...'` as the hooks' reader did, so the defect goes with the merge and
+its test lands with it. Bash 5.2.21 keeps a backslash-newline inside one:
+`x=$'a\` over `b'` holds `a`, a backslash, a newline and `b` (measured
+2026-10-10).
+
 **Done when.** `script_lines` reads a `$'...'` to the `'` that closes it, a
 backslash escaping the next character, so `echo $'a\'b'` over `echo next` is
 two pieces; `joined_text` keeps a backslash-newline inside one, as bash does;
