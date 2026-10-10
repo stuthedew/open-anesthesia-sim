@@ -60,16 +60,6 @@ set -uo pipefail
 
 payload=$(cat)
 
-# The tool's name, from the documented payload. A JSON string escapes its
-# quotes, so a commit message quoting `"tool_name"` cannot supply one.
-tool=$(printf '%s' "$payload" |
-  sed -n 's/.*"tool_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' |
-  head -n 1)
-case "$tool" in
-  "" | *__merge_pull_request) ;;
-  *) exit 0 ;;
-esac
-
 # Exits 0 having printed a refusal, or having printed nothing to let the call
 # through to the ordinary permission flow.
 PAYLOAD="$payload" python3 -c '
@@ -104,7 +94,20 @@ def record(path):
 
 
 try:
-    call = json.loads(os.environ["PAYLOAD"])["tool_input"]
+    payload = json.loads(os.environ["PAYLOAD"])
+except ValueError:
+    payload = None
+
+# The name of the tool, from the documented payload read as JSON: a commit
+# message quoting `"tool_name"` cannot supply one, and a name laid out on the
+# line after its key is still the name, where a sed run a line at a time read
+# none and refused the call of another tool (`PL-CXK6`).
+tool = payload.get("tool_name") if isinstance(payload, dict) else None
+if isinstance(tool, str) and tool and not tool.endswith("__merge_pull_request"):
+    sys.exit(0)
+
+try:
+    call = payload["tool_input"]
     owner, repo, number = str(call["owner"]), str(call["repo"]), int(call["pullNumber"])
 except (KeyError, TypeError, ValueError):
     refuse(
