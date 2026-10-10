@@ -165,7 +165,7 @@
 # tail` runs `make`, and `bin/docket 2>/dev/null check | tail` hands it `check`;
 # read as words, the first took `2` for the command and the second `2` for the
 # subcommand, and both lost the status unrefused. `shell_split.py` takes a
-# redirection out of the words for all three guards.
+# redirection out of the words for every guard that reads a command through it.
 #
 # **And a `set` run by `command` or `builtin` is the `set`** (`PL-9RSP`). Both
 # run the builtin in this shell, so `command set -o pipefail; make check 2>&1 |

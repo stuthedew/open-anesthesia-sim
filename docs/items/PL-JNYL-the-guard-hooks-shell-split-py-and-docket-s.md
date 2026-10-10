@@ -216,8 +216,10 @@ commands in the hooks' view, and a process substitution is one word with its
 body among the substitutions in docket's. `doc_check`'s gate-parity,
 workflow-paths, coverage-gate and ruff-cache checks report the same over the
 tree. `make check` found the new test outside `docket.toml`'s
-`workflow_paths`, which now places it. One fix-now rode the batch: three guard
-headers counted three Bash guards sharing the reader, where there are four.
+`workflow_paths`, which now places it. Two fix-nows rode the batch, both one
+stale count of three Bash guards sharing the reader, where there are four: in
+three guard headers, and in the gate guard's redirection paragraph and the
+reader's known-gaps paragraph, which now name the guards without a number.
 
 **The lexer joins the owner's read list.** With the reader moved, what the four
 Bash guards refuse is decided outside `.claude/hooks/`, which has waited on the
