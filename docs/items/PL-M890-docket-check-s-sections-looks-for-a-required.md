@@ -3,12 +3,14 @@ id: PL-M890
 title: docket check's _sections looks for a required brief heading's closing ** anywhere below it rather than on its own line, so a heading that never closes reads the next heading's words as its own text - where its comment says a heading that never closes has nothing under it - and brief_gaps passes it whenever any bold text follows; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/checks.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1388
 payoff: a required heading that never closes is reported as having nothing under it, whatever bold text follows it
 verify: grep -qF '"brief sections, ' tests/unit/test_doc_check.py
 ---
@@ -54,3 +56,14 @@ statement past the line, and the paragraph, that holds it.
 **Done when.** `_sections` looks for the closer on the heading's own line, as
 its comment says, pinned by a `brief sections, ` case in `PL-R417`'s guard for
 both placements, failing on today's reader.
+
+**Built 2026-10-10 (`#1388`), not as Done when worded it.** The closer is not
+looked for on the heading's own line: 9 of the store's 6,011 required headings
+close their bold on the line after - `PL-7DMJ`, `PL-8G48`, `PL-CJ5R`,
+`PL-D143`, `PL-GS5X`, `PL-KX9N`, `PL-SZ56`, `PL-WK0N` and `PL-Y1LD` - and that
+rule would report each as missing its section. `_sections` looks for it within
+the statement holding the heading, or on the heading's line where no statement
+does, and stops at the next line a brief heading opens, so a heading left
+unclosed above another no longer closes on the next one's bold; its comment now
+says so. One `brief sections, ` case holding both placements, failing on main's
+reader.

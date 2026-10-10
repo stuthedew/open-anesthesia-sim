@@ -3,12 +3,14 @@ id: PL-5ZZT
 title: docket check's own-status reader, checks._left_statuses, matches OWN_STATUS over the whole brief rather than a statement at a time, so a status phrase inside a fence, or one whose words straddle a heading and the paragraph under it, is advised on as the item's own claim about its status; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/checks.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1388
 payoff: an own-status phrase is read inside one statement, so a fenced template or a heading over a paragraph never reads as the item's claim about its own status
 verify: grep -qF '"left statuses, ' tests/unit/test_doc_check.py
 ---
@@ -47,3 +49,9 @@ fault (reading the word in its sense of departing), a different fact.
 `_prerequisite_matches` does, pinned by a `left statuses, ` case in
 `PL-R417`'s guard for the fence and the heading, each failing on today's
 reader.
+
+**Built 2026-10-10 (`#1388`).** `_left_statuses` matches `OWN_STATUS` within
+one `_statements` statement at a time, over the brief with its container
+markers blanked, as `_prerequisite_matches` reads, so a phrase inside a fence
+is not read and none straddles a heading and the paragraph under it. Two `left
+statuses, ` cases, each failing on main's reader.

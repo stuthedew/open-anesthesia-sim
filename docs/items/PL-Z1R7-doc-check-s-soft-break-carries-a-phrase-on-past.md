@@ -3,12 +3,14 @@ id: PL-Z1R7
 title: doc_check's SOFT_BREAK carries a phrase on past the line where a paragraph or heading ends - an ATX heading's own line, or a paragraph that a block quote, a setext underline or a table with no outer pipe opening under it ends - so every GAP and QUOTATION_CHAR reader reads past the statement: a § quotation its paragraph never closes reads as closed, a setext variant cites a section nobody wrote, and mentions and a citation's above or below join a heading to the paragraph under it; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tools/possessive_section_check.py, subprojects/docket/src/docket/roadmap.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1388
 payoff: a quotation, a link text or a mention is read inside the paragraph or heading that holds it, so a block quote, setext underline, table or heading under it ends the statement where GitHub ends it
 verify: grep -qF '"soft break, a block quote' tests/unit/test_doc_check.py && grep -qF '"soft break, a setext' tests/unit/test_doc_check.py && grep -qF '"soft break, a table' tests/unit/test_doc_check.py && grep -qF '"soft break, an ATX heading' tests/unit/test_doc_check.py
 ---
@@ -76,3 +78,14 @@ statement of `docket.markdown.statement_lines`, as `_statement_spans` already
 reads code spans, rather than deciding a statement's end by `CONTINUED_LINE`'s
 test of the next line alone, pinned by a `soft break, ` case in `PL-R417`'s
 guard for each form above, failing on today's reader.
+
+**Built 2026-10-10 (`#1388`).** `doc_check._statement_matches` runs a pattern
+over one `statement_lines` statement at a time, bounded to it, and every `GAP`
+and `QUOTATION_CHAR` reader now matches through it: `_withheld_counts`,
+`declares_none`, `_version_claim`, both citation patterns and
+`_cited_section`'s direction, `check_quoted_sources`, `mentions`, and
+`tools/possessive_section_check.py`. A match carries its statement's bounds, so
+a look-behind window or a match read on from it stops at the statement's end
+too. Five `soft break, ` cases, each failing on main's readers; `python3
+tools/doc_check.py check` and `tools/possessive_section_check.py` report the
+same over the tree before and after.

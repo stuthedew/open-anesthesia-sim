@@ -32,8 +32,9 @@ their last reader (`PL-0Y7J`).
 
 from __future__ import annotations
 
+import bisect
 import re
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from . import markdown
@@ -482,6 +483,10 @@ class ScopeEntry:
     line: int
     ids: tuple[str, ...]
     text: str
+    #: The entry's lead paragraph alone, its lines joined: the statement an
+    #: entry names itself in, which a nested list or a later paragraph does
+    #: not carry on (`PL-P00H`).
+    lead: str = ""
 
 
 @dataclass(frozen=True)
@@ -647,12 +652,52 @@ def list_entries(
     """
     literal = markdown.block_lines(lines, LITERAL_BLOCKS)
     for first, end in list_entry_lines(lines, start, unread):
-        marker = ENTRY_MARKER_RE.match(lines[first])
-        parts = [lines[first][marker.end() if marker else 0 :].strip()]
-        parts.extend(
-            lines[index].strip() for index in range(first + 1, end) if index not in literal
-        )
-        yield first + 1, " ".join(part for part in parts if part)
+        yield first + 1, _entry_text(lines, first, end, literal)
+
+
+def _entry_text(lines: Sequence[str], first: int, end: int, literal: Collection[int]) -> str:
+    """An entry's span of `lines` joined into one line, less its marker and its literals."""
+    marker = ENTRY_MARKER_RE.match(lines[first])
+    parts = [lines[first][marker.end() if marker else 0 :].strip()]
+    parts.extend(lines[index].strip() for index in range(first + 1, end) if index not in literal)
+    return " ".join(part for part in parts if part)
+
+
+@dataclass(frozen=True)
+class _Prose:
+    """A document's statements of prose: its lines with their markers blanked, and their spans.
+
+    Read once per document rather than once per entry, since each reading
+    covers the whole document: read per entry, `ROADMAP.md`'s 8,318 lines took
+    `parse_milestones` from 0.025 s to 0.8 s (measured 2026-10-10).
+    """
+
+    bare: tuple[str, ...]
+    spans: tuple[tuple[int, int], ...]
+    #: Each span's end, in order, for the search `within` starts with.
+    stops: tuple[int, ...]
+
+    @classmethod
+    def of(cls, lines: Sequence[str]) -> _Prose:
+        spans = tuple(markdown.statement_lines(lines, markdown.PROSE))
+        return cls(markdown.unmarked(lines), spans, tuple(stop for _, stop in spans))
+
+    def within(self, first: int, end: int) -> Iterator[str]:
+        """Each statement of prose in the document's `[first:end]`, joined, its markers blanked.
+
+        A declaration slot and a run of leading ids are phrases of the
+        paragraph they open in, which a blank line or the next entry ends
+        (CommonMark 0.31.2 § 4.8, § 5.2), so each is read one prose block at a
+        time (`PL-VQ50`): read from text joined across those ends, a run left
+        open at one declared or held the id opening the next. A statement
+        running past `end` - an entry the walker ends at a lazy line - is cut
+        there, as the entry is.
+        """
+        index = bisect.bisect_right(self.stops, first)
+        while index < len(self.spans) and self.spans[index][0] < end:
+            start, stop = self.spans[index]
+            yield " ".join(line.strip() for line in self.bare[max(start, first) : min(stop, end)])
+            index += 1
 
 
 def list_entry_lines(
@@ -714,13 +759,14 @@ def _entries(
         yield item.start, item.lazy
 
 
-def _subsection_text(lines: Sequence[str], start: int) -> str:
-    """Everything under one `###` heading, joined into a single line.
+def _subsection_declared_ids(lines: Sequence[str], start: int, prose: _Prose) -> tuple[str, ...]:
+    """Every id declared under one `###` heading, a statement at a time, in order.
 
-    Joined rather than read line by line because the declaration slot wraps:
+    A statement rather than a line because the declaration slot wraps:
     "(queue items `PL-1FT6` and `PL-HJPY`)" is one statement however the
     paragraph breaks, and a line-at-a-time reader would drop its second id with
-    nothing reporting the loss.
+    nothing reporting the loss. A statement rather than the subsection joined
+    whole, because the slot ends with its paragraph (`PL-VQ50`).
 
     The whole subsection rather than its entries, because a milestone with one
     thing to say writes a sentence rather than a list - v0.2.0's scope is a
@@ -729,7 +775,10 @@ def _subsection_text(lines: Sequence[str], start: int) -> str:
     fence or an HTML block declares nothing, holding a literal or a comment
     (`PL-HKHP`).
     """
-    return " ".join(line.strip() for line in _subsection_lines(lines, start))
+    end = _subsection_end(lines, start)
+    return _deduped(
+        identifier for text in prose.within(start, end) for identifier in _declared_ids(text)
+    )
 
 
 def _declared_ids(text: str) -> tuple[str, ...]:
@@ -751,7 +800,7 @@ def _declared_ids(text: str) -> tuple[str, ...]:
 
 
 def _gate_entries(
-    lines: Sequence[str], start: int, unread: list[UnreadEntry]
+    lines: Sequence[str], start: int, unread: list[UnreadEntry], prose: _Prose
 ) -> tuple[GateEntry, ...]:
     """Read the list entries under a gate heading, ignoring its prose.
 
@@ -762,31 +811,42 @@ def _gate_entries(
     sentences.
 
     An entry's ids are the run `vcs.leading_ids` reads at its head - a pair is
-    written "PL-Z4GF **and PL-SWFM**" - and only that run: an id later in the
-    sentence is prose about another item, not a second thing the entry is
-    waiting on.
+    written "PL-Z4GF **and PL-SWFM**" - and only that run, read from the
+    entry's lead paragraph: an id later in the sentence is prose about another
+    item, not a second thing the entry is waiting on, and one opening a later
+    paragraph is no part of the run (`PL-VQ50`).
     """
+    literal = markdown.block_lines(lines, LITERAL_BLOCKS)
     entries: list[GateEntry] = []
-    for line_number, text in list_entries(lines, start, unread):
-        ids = leading_ids(text)
+    for first, end in list_entry_lines(lines, start, unread):
+        ids = leading_ids(next(prose.within(first, end), ""))
         if ids:
-            entries.append(GateEntry(line=line_number, ids=ids, text=text))
+            text = _entry_text(lines, first, end, literal)
+            entries.append(GateEntry(line=first + 1, ids=ids, text=text))
     return tuple(entries)
 
 
 def _scope_entries(
-    lines: Sequence[str], start: int, unread: list[UnreadEntry]
+    lines: Sequence[str], start: int, unread: list[UnreadEntry], prose: _Prose
 ) -> tuple[ScopeEntry, ...]:
     """Read the entries of a `Required scope` list, declarations and all.
 
     Every entry, including one declaring nothing: an empty `ids` is exactly
     what `tools/doc_check.py` fails on, so dropping those here would leave the
-    rule unenforceable from the only place that can see them.
+    rule unenforceable from the only place that can see them. Its slot is read
+    a statement at a time, as the subsection's is (`PL-VQ50`), and its lead is
+    its first statement.
     """
-    return tuple(
-        ScopeEntry(line=line_number, ids=_deduped(_declared_ids(text)), text=text)
-        for line_number, text in list_entries(lines, start, unread)
-    )
+    literal = markdown.block_lines(lines, LITERAL_BLOCKS)
+    entries: list[ScopeEntry] = []
+    for first, end in list_entry_lines(lines, start, unread):
+        statements = list(prose.within(first, end))
+        ids = _deduped(identifier for text in statements for identifier in _declared_ids(text))
+        text = _entry_text(lines, first, end, literal)
+        entries.append(
+            ScopeEntry(line=first + 1, ids=ids, text=text, lead=statements[0] if statements else "")
+        )
+    return tuple(entries)
 
 
 def _section_end(lines: Sequence[str], start: int) -> int:
@@ -802,6 +862,7 @@ def _section_end(lines: Sequence[str], start: int) -> int:
 def parse_milestones(text: str) -> list[MilestoneSection]:
     """Read every milestone section of the roadmap, in version order."""
     lines = split_lines(text)
+    prose = _Prose.of(lines)
     found: list[MilestoneSection] = []
 
     line_number = 0
@@ -818,9 +879,9 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
             return
         heading_line, heading_title = gate or (0, "")
         unread: list[UnreadEntry] = []
-        entries = _gate_entries(lines, heading_line, unread) if gate else ()
-        own_scope = _deduped(_declared_ids(_subsection_text(lines, scope))) if scope else ()
-        scope_entries = _scope_entries(lines, scope, unread) if scope else ()
+        entries = _gate_entries(lines, heading_line, unread, prose) if gate else ()
+        own_scope = _subsection_declared_ids(lines, scope, prose) if scope else ()
+        scope_entries = _scope_entries(lines, scope, unread, prose) if scope else ()
         found.append(
             MilestoneSection(
                 line=line_number,

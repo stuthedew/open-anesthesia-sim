@@ -99,7 +99,6 @@ import argparse
 import ast
 import bisect
 import io
-import itertools
 import json
 import os
 import platform
@@ -109,7 +108,7 @@ import subprocess
 import sys
 import textwrap
 import tokenize
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path, PurePosixPath
@@ -158,7 +157,7 @@ try:
     # each statement ends, so a code span or a bold run is read within its own
     # (`PL-FP7J`, `PL-VQBY`), where an HTML block runs (`PL-GT0J`), and which
     # lines are a heading, so a `#` line inside a fence is none (`PL-T1X0`).
-    from docket.markdown import HTML, PROSE, statement_lines
+    from docket.markdown import CODE, HTML, PROSE, block_lines, statement_lines
     from docket.markdown import headings as read_headings
     from docket.markdown import read as read_blocks
     from docket.markdown import tables as read_tables
@@ -434,16 +433,15 @@ TREE_ENTRY_RE = re.compile(r"^(?P<indent>(?:(?:│   )|(?:    ))*)(?:├──|�
 #: `CONTINUED_LINE`, which docket exports so that the rule is written once
 #: (`PL-R417`, `PL-MFVV`); every reader of a phrase the documents may wrap takes
 #: its whitespace from here, rather than each meeting the wrap one capture at a
-#: time.
+#: time. It reads the gap and not where a statement ends: `CONTINUED_LINE` asks
+#: nothing of the line above, so it carried a heading's line on, and a paragraph
+#: past the block quote, setext underline or table opening under it. So every
+#: reader built on it matches within one statement of `statement_lines`
+#: (`_statement_matches`), which decides the end (`PL-Z1R7`).
 SOFT_BREAK = rf"[ \t]*+\n{CONTINUED_LINE}"
 #: The space between two words of a Markdown phrase: spaces or tabs, or a soft
 #: break.
 GAP = rf"(?:[ \t]++|{SOFT_BREAK})"
-#: Any character of a statement's text, a soft break taken as one.
-STATEMENT_CHAR = rf"(?:[^\n]|{SOFT_BREAK})"
-#: A statement read from the start of the line it opens on: that line and every
-#: line a soft break carries it onto.
-STATEMENT_RE = re.compile(rf"{STATEMENT_CHAR}*")
 #: A character of a quotation: any but its closing mark or a line end, or a soft
 #: break, so a quotation runs no further than the paragraph it opens in. A blank
 #: line ends one (CommonMark 0.31.2 § 4.8), in a blockquote or out of one. Read
@@ -865,10 +863,6 @@ MATH_SPAN_RE = re.compile(r"\$(`+)(?:(?!\1).)*\1\$")
 # the rule is worth keeping after the conversion rather than only during it.
 MATH_EDGE_RE = re.compile(r"\$`|`\$")
 
-# A list item's opening line: its marker, a bullet or an ordered number, and
-# the gap to its content, or nothing where the item opens empty. What
-# `_content_column` reads to place an indented code block inside the item.
-LIST_ITEM_RE = re.compile(r"^(?P<marker> *(?:[-*+]|\d{1,9}[.)]))(?:(?P<gap> +)(?=\S)|\s*$)")
 
 WORKFLOW_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 
@@ -1545,11 +1539,20 @@ def _split_markers(lines: Sequence[str]) -> dict[int, str]:
 
 
 def _marked_span(lines: Sequence[str], index: int) -> tuple[int, int]:
-    """The run of prose a marker sits under, as a half-open range of `lines`.
+    """The prose block a marker sits under, as a half-open range of `lines`.
 
     Blank lines between them are allowed. Attaching to what *precedes* the
     marker rather than what follows it is what lets the marker be added without
     moving the sentence it is about, and it reads the way a footnote does.
+
+    The block is the one `markdown` reads as ending there, so a paragraph begins
+    after a list item's start, a heading or a table as well as after a blank
+    line (CommonMark 0.31.2 § 4.8, § 5.2). Taken as every non-blank line above,
+    a neighbouring item's or heading's number satisfied a marker its own
+    paragraph failed, and a stray backtick there hid the paragraph's own
+    citation (`PL-JZNV`). Where the block above holds no prose - an indented
+    code block, an HTML block - the span is empty, so the marker is held to
+    nothing it could pass on.
     """
     # Back over blank lines *and* over sibling markers: one paragraph often
     # restates values from several data files, which is several markers, and
@@ -1559,10 +1562,10 @@ def _marked_span(lines: Sequence[str], index: int) -> tuple[int, int]:
     end = index
     while end > 0 and (not lines[end - 1].strip() or _is_marker(lines[end - 1])):
         end -= 1
-    start = end
-    while start > 0 and lines[start - 1].strip() and not _is_marker(lines[start - 1]):
-        start -= 1
-    return start, end
+    for block in read_blocks(lines).blocks:
+        if block.end == end and block.kind in PROSE:
+            return block.start, end
+    return end, end
 
 
 def _marked_block(lines: list[str], index: int) -> str:
@@ -1950,17 +1953,17 @@ def _gate_groups(lines: Sequence[str], section: MilestoneSection) -> Iterator[_G
     count was read as a heading stating none, and the entries under it went to
     the group above. And only a statement opens one, as `statement_lines`
     reads it, so an emphasis run a soft break carries onto a line's start is
-    its paragraph's own text rather than a heading (`PL-VQBY`).
+    its paragraph's own text rather than a heading (`PL-VQBY`). Its extent is
+    the span `statement_lines` gives it too: read by a pattern refusing every
+    ordered marker, a heading wrapped before a year such as `2026.` was cut
+    there, and a correct list failed its counts (`PL-V7CG`).
     """
     end = _subsection_end(lines, section.gate_line)
-    text = "\n".join(lines)
-    starts = list(itertools.accumulate((len(line) + 1 for line in lines), initial=0))
     headings: list[tuple[int, str, int, int | None]] = []
-    for index, _ in statement_lines(lines):
+    for index, stop in statement_lines(lines):
         if not section.gate_line <= index < end or not lines[index].startswith("*"):
             continue  # what `GATE_GROUP_RE` opens with, so no other line is one
-        statement = STATEMENT_RE.match(text, starts[index])
-        heading = _normalized(statement.group(0)) if statement is not None else ""
+        heading = _normalized("\n".join(lines[index:stop]))
         match = GATE_GROUP_RE.match(heading)
         if match is None:
             continue
@@ -2103,11 +2106,12 @@ def _withheld_counts(lines: Sequence[str], section: MilestoneSection) -> Iterato
     Yields the line the sentence opens on and the number stated. Scanned over
     the gate subsection alone - see `NOT_DELEGABLE_COUNT_RE` for why position
     rather than wording is what bounds it - and read whole, so a sentence a
-    wrap splits is still the one claim (`PL-R417`).
+    wrap splits is still the one claim (`PL-R417`), within the statement
+    holding it (`PL-Z1R7`).
     """
     end = _subsection_end(lines, section.gate_line)
     subsection = "\n".join(lines[section.gate_line : end])
-    for match in NOT_DELEGABLE_COUNT_RE.finditer(subsection):
+    for match in _statement_matches(NOT_DELEGABLE_COUNT_RE, subsection):
         stated = _count_word(match.group("count"))
         if stated is not None:
             yield section.gate_line + _line_of(subsection, match.start()), stated
@@ -2720,7 +2724,7 @@ def check_bound_families(root: Path, report: Report) -> None:
             where = f'{family.document}:{line}: § "{family.heading}"'
             if family.kind.names(member):
                 continue
-            declared = family.kind.declares_none.search(member)
+            declared = next(_statement_matches(family.kind.declares_none, member), None)
             if declared is None:
                 report.errors.append(
                     f"{where} promises that {family.promise}; this member names no "
@@ -3135,13 +3139,13 @@ def _tags_region(text: str) -> tuple[int, str] | None:
     return start + 1, "\n".join(lines[start:end])
 
 
-def _version_list(text: str, start: int) -> list[str]:
-    """Versions written as a run of `v0.1.0`, separated by commas and `and`."""
+def _version_list(text: str, start: int, end: int) -> list[str]:
+    """Versions written as a run of `v0.1.0`, separated by commas and `and`, before `end`."""
     found: list[str] = []
     position = start
     while True:
-        gap = LIST_SEPARATOR_RE.match(text, position)
-        candidate = LIST_VERSION_RE.match(text, gap.end() if gap else position)
+        gap = LIST_SEPARATOR_RE.match(text, position, end)
+        candidate = LIST_VERSION_RE.match(text, gap.end() if gap else position, end)
         if candidate is None:
             return found
         found.append(candidate.group("version"))
@@ -3159,11 +3163,11 @@ def _version_claim(
     to the `**Tags.**` statement take this one form, and `said` is how an error
     quotes the sentence back.
     """
-    match = claim.search(body)
+    match = next(_statement_matches(claim, body), None)
     if match is None:
         return frozenset(), [], 0
     line = first_line + body[: match.start()].count("\n")
-    named = _version_list(body, match.end())
+    named = _version_list(body, match.end(), match.endpos)
 
     stated = match.group("count")
     count = int(stated) if stated.isdigit() else NUMBER_WORDS.get(stated.casefold())
@@ -4227,13 +4231,44 @@ def _statement_spans(text: str) -> Iterator[re.Match[str]]:
         yield from CODE_SPAN_RE.finditer(text, start, end)
 
 
-def _statement_offsets(text: str) -> Iterator[tuple[int, int]]:
+def _without_spans(text: str) -> str:
+    """`text` with each code span `_statement_spans` reads blanked, its offsets kept."""
+    pieces: list[str] = []
+    last = 0
+    for span in _statement_spans(text):
+        pieces += (text[last : span.start()], re.sub(r"[^\n]", " ", span.group(0)))
+        last = span.end()
+    return "".join(pieces) + text[last:]
+
+
+def _statement_offsets(
+    text: str, kinds: Collection[str] | None = None
+) -> Iterator[tuple[int, int]]:
     """Each statement `markdown.statement_lines` cuts `text` into, as offsets into it."""
     starts = [0]
     for line in split_lines(text, keepends=True):
         starts.append(starts[-1] + len(line))
-    for first, end in statement_lines(split_lines(text)):
+    for first, end in statement_lines(split_lines(text), kinds):
         yield starts[first], starts[end]
+
+
+def _statement_matches(
+    pattern: re.Pattern[str], text: str, kinds: Collection[str] | None = None
+) -> Iterator[re.Match[str]]:
+    """Every match of `pattern` in `text`, each within one statement `statement_lines` cuts.
+
+    Matched with the statement's offsets as its bounds, so a `GAP` or a
+    `QUOTATION_CHAR` read across a soft break stops where CommonMark 0.31.2 ends
+    the paragraph, heading or table row holding it - at a block quote, a setext
+    underline or a table opening under it, and on an ATX heading's own line -
+    rather than wherever `CONTINUED_LINE` takes the next line for one going on
+    (`PL-Z1R7`). A fence is no statement, so none is read in one. Each match
+    keeps its bounds as `pos` and `endpos`, so a reader looking before or after
+    it - a mark, a direction - looks no further than its statement. Offsets are
+    `text`'s.
+    """
+    for start, end in _statement_offsets(text, kinds):
+        yield from pattern.finditer(text, start, end)
 
 
 def _unresolved(token: str) -> str:
@@ -4282,7 +4317,12 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                 continue
             report.errors.append(f"{path}:{line}: cites `{token}`, {_unresolved(token)}")
 
-        for match in LINK_RE.finditer(text):
+        # A link is inline content of a paragraph, a heading or a table cell
+        # (CommonMark 0.31.2 § 6.3), so it is read from the prose alone, with its
+        # code spans blanked: a link-shaped line in a fence, an HTML block or a
+        # code span is a literal, and was held to the tree as a link (`PL-M2J4`).
+        unspanned = _without_spans(text)
+        for match in _statement_matches(LINK_RE, unspanned, PROSE):
             target = match["target"] if match["target"] is not None else match["bracketed"]
             if target.startswith(("http://", "https://", "mailto:", "#")):
                 continue
@@ -4312,11 +4352,11 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
         prose = without_fences(text)
         spans = [(span.start(), span.end()) for span in _statement_spans(text)]
 
-        for match in CITATION_RE.finditer(prose):
+        for match in _statement_matches(CITATION_RE, prose):
             # A code-spanned source directly before the mark says where the
             # section lives: a document, or an item brief no heading here
             # answers, and `check_quoted_sources` holds either by containment.
-            before = prose[max(0, match.start() - 200) : match.start() + 1]
+            before = prose[max(match.pos, match.start() - 200) : match.start() + 1]
             if _inside(match.start(), spans) or QUALIFIED_RE.search(before):
                 continue
             line = _line_of(prose, match.start())
@@ -4337,8 +4377,8 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                     "section without the mark)"
                 )
 
-        for match in UNMARKED_CITATION_RE.finditer(prose):
-            before = prose[max(0, match.start() - 200) : match.start() + 1]
+        for match in _statement_matches(UNMARKED_CITATION_RE, prose):
+            before = prose[max(match.pos, match.start() - 200) : match.start() + 1]
             if (
                 _inside(match.start(), spans)
                 or MARKED_RE.search(before)
@@ -4558,10 +4598,13 @@ def _cited_section(text: str, match: re.Match[str]) -> tuple[str, bool]:
     go. The term is whichever group matched: `CITATION_RE` has one, and
     `UNMARKED_CITATION_RE` names its directed position by group. A match on
     either one's `unclosed` branch names no section, and is refused before it
-    reaches here (`PL-T73L`).
+    reaches here (`PL-T73L`). A direction is read within the citation's own
+    statement, so a heading quoting a section does not take one from the
+    paragraph under it (`PL-Z1R7`).
     """
     term = _normalized(match.group(match.lastgroup or 0))
-    same_file = match.lastgroup == "directed" or bool(DIRECTION_RE.match(text, match.end()))
+    direction = DIRECTION_RE.match(text, match.end(), match.endpos)
+    same_file = match.lastgroup == "directed" or bool(direction)
     return term, same_file
 
 
@@ -4827,7 +4870,7 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
 
     for path, offset, text in _quoting_sources(root, documents, report.declined):
         prose = without_fences(text)
-        for match in QUOTED_SOURCE_RE.finditer(prose):
+        for match in _statement_matches(QUOTED_SOURCE_RE, prose):
             cited = match.group("document")
             line = offset + _line_of(text, match.start()) - 1
             claims = CLAIMING_CONNECTIVE_RE.fullmatch(match.group("connective") or "")
@@ -4858,7 +4901,7 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                     "the file holds the words)"
                 )
 
-        for match in ITEM_SECTION_RE.finditer(prose):
+        for match in _statement_matches(ITEM_SECTION_RE, prose):
             item = match.group("item")
             line = offset + _line_of(text, match.start()) - 1
             if match["unclosed"] is not None:
@@ -5920,15 +5963,12 @@ def _without_code(text: str) -> list[str]:
     **An indented code block is code too**, by CommonMark's own definition: a
     run of lines indented four columns past their container, which cannot
     interrupt a paragraph. A regex shown that way failed as LaTeX GitHub does
-    not render, in a document and in an item alike (`PL-XGYH`). The container
-    is the trap: inside a list item the four columns count from the item's
-    content, so `- item` followed by a line indented four is the item's own
-    prose, and blanking every indented line would hide a real delimiter there.
-    So the open items' content columns are tracked, and a line is blanked only
-    where it clears the innermost one by four and the line above it is not
-    prose it could continue. Where the reading is unsure it keeps an item open
-    or a line as prose, so a doubt costs a false refusal, which a fence
-    repairs, and never a delimiter left unread.
+    not render, in a document and in an item alike (`PL-XGYH`). Which lines are
+    one is `markdown`'s reading, as `block_lines` gives it: a heading, a
+    thematic break and a one-line HTML block each end on their own line, so a
+    line indented four under one opens a code block, where a flag set by any
+    non-blank line above read it as that line's paragraph going on and refused
+    its TeX-shaped text (`PL-K77Q`).
 
     A fenced block is where `docket.fences` finds one, blanked from its opening
     line through its closing one, so an opener nothing closes blanks nothing
@@ -5946,34 +5986,12 @@ def _without_code(text: str) -> list[str]:
     that run is left for `MATH_EDGE_RE` to report on its line, as it was when
     neither half read as a span.
     """
-    lines: list[str] = []
-    closes = {block.start: block.end for block in blocks(text)}
-    closing = -1  # the closing line of the fenced block being blanked
-    items: list[int] = []  # the content column of each open list item, innermost last
-    paragraph = False  # whether the line above is prose this line may continue
-    for index, raw in enumerate(split_lines(text)):
-        line = raw.expandtabs(4)
-        if index <= closing or not line.strip():
-            lines.append("")
-            paragraph = False
-            continue
-        indent = len(line) - len(line.lstrip(" "))
-        item = LIST_ITEM_RE.match(line)
-        if not paragraph or item is not None:
-            while items and indent < items[-1]:
-                items.pop()
-        if not paragraph and indent >= (items[-1] if items else 0) + 4:
-            lines.append("")
-            continue
-        if index in closes:
-            closing = closes[index]
-            lines.append("")
-            paragraph = False
-            continue
-        if item is not None:
-            items.append(_content_column(item))
-        paragraph = True
-        lines.append(MATH_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line))
+    source = split_lines(text)
+    code = fenced_lines(text) | block_lines(source, (CODE,))
+    lines = [
+        "" if index in code or not raw.strip() else MATH_SPAN_RE.sub(_spaces, raw.expandtabs(4))
+        for index, raw in enumerate(source)
+    ]
     # A code span is blanked before either rule runs: `\(` inside one is a
     # quotation of the broken syntax rather than a use of it, and a shell
     # snippet like `"$upstream..HEAD"` is not an unclosed expression. Each is
@@ -6002,16 +6020,9 @@ def _blanked_span(prose: str, span: re.Match[str]) -> str:
     return blank
 
 
-def _content_column(item: re.Match[str]) -> int:
-    """The column a list item's content starts on, which its blocks count from.
-
-    CommonMark's rule: the end of the gap after the marker, unless the gap is
-    five spaces or more - one past the marker then, the rest opening an
-    indented code block inside the item - or the item is empty.
-    """
-    gap = item.group("gap")
-    marker = len(item.group("marker"))
-    return marker + len(gap) if gap and len(gap) <= 4 else marker + 1
+def _spaces(match: re.Match[str]) -> str:
+    """A match's text as as many spaces."""
+    return " " * len(match.group(0))
 
 
 #: A script, in one mode, that one gate runs and the other deliberately does
@@ -7263,7 +7274,6 @@ def _git(root: Path, *args: str) -> list[str]:
 # no Python suffix.
 DEFINITION_RE = re.compile(r"^[-+]\s*(?:async\s+)?(?:def|class)\s+(\w+)\s*[(:]")
 JSON_KEY_RE = re.compile(r'^[-+]\s*"(\w+)"\s*:')
-REMOVED_HEADING_RE = re.compile(r"^-#{1,6}\s+(.+?)\s*#*\s*$")
 #: A `-U0` patch's hunk header: the rows it removes from the old file and adds
 #: to the new one, each a first row and a count that is 1 where it is left out.
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", re.MULTILINE)
@@ -7337,11 +7347,7 @@ def changed_tokens(
         patch = file_text(_git_output(root, "diff", "-U0", base, "--", relative))
         diff = [line for line in split_lines(patch) if line.strip()]
         if relative in docs:
-            found = {
-                match.group(1)
-                for line in diff
-                if (match := REMOVED_HEADING_RE.match(line)) is not None
-            }
+            found = _removed_headings(root, base, relative, patch)
         elif PurePosixPath(relative).suffix in PYTHON_SUFFIXES:
             name = PurePosixPath(relative)
             found = {
@@ -7417,6 +7423,34 @@ def _changed_definitions(
     return found
 
 
+def _removed_headings(root: Path, base: str, relative: str, patch: str) -> set[str]:
+    """The title of each heading of a document's base copy that `patch` removed rows of.
+
+    Read from `markdown.headings` over the base copy, as `_changed_definitions`
+    reads Python through statements, rather than from each removed line of the
+    diff (`PL-B47B`): a setext heading spans its text and its underline
+    (CommonMark 0.31.2 § 4.3), so a removed one left no `#` line, and a removed
+    `# comment` inside a fence is code (§ 4.5) and was taken for one. A title
+    the working tree's copy still has as a heading - one moved, or a line
+    reflowed - is not removed.
+    """
+    removed: set[int] = set()
+    for hunk in HUNK_RE.finditer(patch):
+        first, count = int(hunk.group(1)), int(hunk.group(2) or 1)
+        removed.update(range(first, first + count))
+    if not removed:
+        return set()
+    before = split_lines(_git_output(root, "show", f"{base}:{relative}").removeprefix("\ufeff"))
+    after = (root / relative).read_bytes().decode("utf-8-sig")
+    kept = {heading.title for heading in read_headings(split_lines(after))}
+    return {
+        heading.title
+        for heading in read_headings(before)
+        if heading.title not in kept
+        and any(row in removed for row in range(heading.line + 1, heading.end + 1))
+    }
+
+
 def is_distinctive(term: str) -> bool:
     """Is this a shape an English sentence cannot produce by accident?"""
     return ORDINARY_WORD_RE.fullmatch(term) is None
@@ -7456,24 +7490,25 @@ def mentions(term: str, text: str, spans: Sequence[re.Match[str]] | None = None)
     wraps like any other, and a title cited across a soft break lay on no one
     line: 448 of the 2,180 `§ "..."` citations in the tracked Markdown wrapped
     on 2026-10-04, so the sweep left them out or printed that nothing mentioned
-    the term. A mention counts on the line it opens on, and one a code block's
-    own line break splits is not a phrase. `spans` are the document's code
-    spans, read once by a caller asking about many terms.
+    the term. A mention counts on the line it opens on, and one a line break
+    splits counts only inside one statement, as `statement_lines` cuts them:
+    not across a code block's own line break, nor from a heading's line into
+    the paragraph under it (`PL-Z1R7`). `spans` are the document's code spans,
+    read once by a caller asking about many terms.
     """
     distinctive = is_distinctive(term)
     if not distinctive and spans is None:
         spans = _code_spans(text)
     phrase = GAP.join(re.escape(word) for word in term.split())
-    fenced: frozenset[int] | None = None
+    statements: list[tuple[int, int]] | None = None
     lines: list[int] = []
     for match in re.finditer(rf"(?<!\w){phrase}(?!\w)", text):
         if not distinctive and not _marks_code(text, spans or (), match.start(), match.end()):
             continue
         line = _line_of(text, match.start())
         if "\n" in match.group(0):
-            fenced = fenced_lines(text) if fenced is None else fenced
-            last = line + match.group(0).count("\n")
-            if any(number - 1 in fenced for number in range(line, last + 1)):
+            statements = list(_statement_offsets(text)) if statements is None else statements
+            if not any(start <= match.start() and match.end() <= end for start, end in statements):
                 continue
         if not lines or lines[-1] != line:
             lines.append(line)

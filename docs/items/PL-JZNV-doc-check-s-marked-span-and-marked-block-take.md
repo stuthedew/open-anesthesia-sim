@@ -3,12 +3,14 @@ id: PL-JZNV
 title: doc_check's _marked_span and _marked_block take the paragraph a provenance, derived or absent marker sits under as every non-blank line above it, so a list item or heading with no blank line before the marked paragraph is read into it: a number or path there satisfies a marker its own paragraph fails, and a stray backtick there hides the marked paragraph's own citation; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1388
 payoff: a provenance, derived or absent marker is checked against its own paragraph, never a list item or heading above it
 verify: grep -qF '"marked span, ' tests/unit/test_doc_check.py
 ---
@@ -60,3 +62,13 @@ reads as ending nearest above the marker, passing over blank lines and sibling
 marker blocks, and `_absent_paths` pairs code spans within it, pinned by a
 `marked span, ` case in `PL-R417`'s guard for the tight list, the heading and
 the stray backtick, each failing on today's reader.
+
+**Built 2026-10-10 (`#1388`).** `_marked_span` walks back from the marker over
+blank lines and sibling markers, then takes the prose block `read` ends there,
+so a paragraph begins after a list item's start, a heading or a table as well
+as after a blank line, and `_absent_paths` pairs code spans inside that block
+alone. Where the block ending there holds no prose the span is empty, so the
+marker fails rather than passes. Reading the span as a statement was weighed
+and not taken: a table's statement is its last row. Three `marked span, `
+cases, each failing on main's reader; `python3 tools/doc_check.py check`
+reports the same over the tree before and after.

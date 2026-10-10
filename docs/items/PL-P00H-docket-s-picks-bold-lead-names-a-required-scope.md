@@ -3,12 +3,14 @@ id: PL-P00H
 title: docket's picks.bold_lead names a Required-scope entry from roadmap.list_entries' whole entry joined into one line, so an entry that does not open with a closed bold lead is named in docket picks' build line by a nested item's or a later paragraph's bold run, by a first sentence run past its paragraph's end, or by a ** pair a blank line splits; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/picks.py, subprojects/docket/src/docket/roadmap.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1388
 payoff: docket picks names a Required-scope entry by its lead paragraph alone
 verify: grep -qF '"picks, ' tests/unit/test_doc_check.py
 ---
@@ -62,3 +64,11 @@ head was recorded, so it is inflow rather than stock the earlier sweeps missed.
 from a `ScopeEntry` field that `roadmap.list_entry_lines` fills through
 `docket.markdown.read`, and `PL-R417`'s guard gains a `picks, ` case for each
 of the three forms above, failing on today's reader.
+
+**Built 2026-10-10 (`#1388`).** `ScopeEntry` carries its `lead`, the entry's
+first statement as `_scope_entries` reads it through `docket.markdown`, and
+`picks.entry_name` reads `bold_lead` over that alone, so a nested item's bold
+run, a later paragraph's or a pair a blank line splits does not name the entry.
+The guard reaches it through `entry_name` rather than a whole `picks()` run,
+which would need a store, a roadmap and git. Three `picks, ` cases, each
+failing on main's reader; `bin/docket picks` reports the same before and after.

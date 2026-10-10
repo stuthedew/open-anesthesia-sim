@@ -3,12 +3,14 @@ id: PL-VQ50
 title: docket.roadmap reads a queue-items declaration and a gate entry's leading ids from text joined across paragraph ends - the whole Required scope subsection, and each entry with its later paragraphs - so a run of ids left open at a paragraph's end declares or holds the id opening the next paragraph, or the next entry; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/roadmap.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1388
 payoff: a queue-items declaration or a gate entry's leading ids end with their paragraph, so an id opening the next paragraph or entry is never declared or held by them
 verify: grep -qF '"roadmap declarations, ' tests/unit/test_doc_check.py
 ---
@@ -66,3 +68,15 @@ where an entry ends, not what is read inside it.
 time, through `docket.markdown.statement_lines`, pinned by a `roadmap
 declarations, ` case in `PL-R417`'s guard for each of the four forms, failing
 on today's reader.
+
+**Built 2026-10-10 (`#1388`).** `docket.roadmap` reads a queue-items
+declaration and a gate entry's leading ids a statement at a time:
+`_subsection_declared_ids` and `_scope_entries` read each prose statement of
+their span through `_Prose.within`, which joins its lines from
+`markdown.unmarked`, and `_gate_entries` takes its ids from the entry's first
+statement alone. `_Prose` reads the document once per `parse_milestones`: read
+once per entry, it took the parse of `ROADMAP.md` from 0.025 s to 0.8 s, and
+read once it takes 0.022 s. `_subsection_text` went with it. Four
+`roadmap declarations, ` cases, one for each form, each failing on main's
+reader; `bin/docket check` and `bin/docket picks` report the same before and
+after.

@@ -3,12 +3,14 @@ id: PL-M2J4
 title: doc_check's check_citations matches LINK_RE over the raw document, where its other patterns read the text with fences blanked, so a link-shaped line inside a fence or a multi-line HTML comment is held to the tree as a link and a missing target fails the check; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1388
 payoff: a link-shaped line inside a fence or an HTML comment is never held to the tree as a link
 verify: grep -qF '"links, one inside a fence' tests/unit/test_doc_check.py && grep -qF '"links, one inside an HTML comment' tests/unit/test_doc_check.py
 ---
@@ -49,3 +51,10 @@ not where it is read.
 the prose `docket.markdown` reads with fences, HTML blocks and code spans left
 out, pinned by a `links, ` case in `PL-R417`'s guard for the fence and the
 comment, failing on today's reader.
+
+**Built 2026-10-10 (`#1388`).** `check_citations` matches `LINK_RE` through
+`_statement_matches` over the prose blocks `docket.markdown` reads, with code
+spans blanked by `_without_spans`, so a link-shaped line inside a fence, an
+HTML block or a code span is not held to the tree. Two `links, ` cases, for the
+fence and the comment, each failing on main's reader; `python3
+tools/doc_check.py check` reports the same over the tree before and after.

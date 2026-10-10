@@ -46,7 +46,8 @@ import doc_check
 #: closes names no heading, and is `doc_check.check_quoted_sources`'s to refuse.
 #: It is read whatever its length, possessively, for the reasons
 #: `doc_check.CITATION_RE` gives (`PL-WJF2`): bounded at 200, a longer one was
-#: never compared with a heading.
+#: never compared with a heading. And within one statement, as every reader of a
+#: soft break there is (`doc_check._statement_matches`, `PL-Z1R7`).
 POSSESSIVE_RE = re.compile(
     r"`(?P<document>[\w./-]+\.md)`['’]s(?:"
     + doc_check.GAP
@@ -73,7 +74,7 @@ def sites(root: Path, declined: list[str]) -> list[str]:
     }
     found: list[str] = []
     for path, offset, text in doc_check._quoting_sources(root, documents, declined):
-        for match in POSSESSIVE_RE.finditer(doc_check.without_fences(text)):
+        for match in doc_check._statement_matches(POSSESSIVE_RE, doc_check.without_fences(text)):
             quoted = doc_check._comparable(match.group("quoted"))
             titles = headings.get(match.group("document"), ())
             if not any(title == quoted or title.startswith(quoted + " ") for title in titles):

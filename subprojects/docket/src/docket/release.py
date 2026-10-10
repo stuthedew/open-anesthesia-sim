@@ -29,6 +29,8 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from . import markdown
+from .lines import split_lines
 from .model import RELEASE_TRAIN, SEMVER_PATTERN, Item
 from .store import ID_PATTERN
 
@@ -286,10 +288,18 @@ def notes_claims(text: str) -> tuple[str, str]:
     which is the thing the pointer exists to say - and `restate_references`
     would append a second reference to a line that already carries one.
 
-    The second half keeps its heading, so `head + tail` is the file.
+    The second half keeps its heading, so `head + tail` is the file. The
+    heading is the one `markdown` reads at the top level, so its words inside an
+    HTML comment, a fence or a line of prose end nothing: found anywhere in the
+    text, they ended the claims there and every bullet above the real heading
+    was lost (`PL-2CDW`).
     """
-    head, separator, tail = text.partition(SPAN_HEADING)
-    return head, separator + tail
+    level, title = SPAN_HEADING.split(" ", 1)
+    for heading in markdown.headings(split_lines(text)):
+        if heading.level == len(level) and heading.title == title:
+            offset = sum(len(line) for line in split_lines(text, keepends=True)[: heading.line])
+            return text[:offset], text[offset:]
+    return text, ""
 
 
 #: An item id at the head of a notes bullet, which is the only place a release's

@@ -480,19 +480,44 @@ shares a reader, it misreads a different fact. The comment above
 was fixed in passing, and `PL-4CJ8` holds the four other comments citing
 § 6.7 for a soft break. `generator:` stays `live`.
 
-**Next steps (recorded 2026-10-04, revised by links 8, 11 to 18 and 19, and
-on 2026-10-06).** The members the table and the first sweeps named are built
-but `PL-RR1N`; the closing sweep's twenty-five are not, so the head is not
-spent and keeps its rank. Build them as the earlier links were, a format per
+**Link 20, the Markdown members (`#1388`, 2026-10-10).** Done: the closing
+sweep's thirteen Markdown members, `PL-Z1R7`, `PL-JZNV`, `PL-B47B`, `PL-K77Q`,
+`PL-M2J4`, `PL-5ZZT`, `PL-YCJJ`, `PL-M890`, `PL-B83V`, `PL-2CDW`, `PL-VQ50`,
+`PL-P00H` and `PL-V7CG`, with `PL-0C2S` beside them. `docket.markdown` gained
+`unmarked`, each line with its containers' markers blanked in place, and its
+closing-tag branch admits every tag name. docket check's brief readers,
+`release.notes_claims`, `roadmap`'s declaration, gate-entry and scope-entry
+readers and `picks`' entry names read through its blocks and statements, and
+every `GAP` and `QUOTATION_CHAR` reader in `doc_check` and
+`possessive_section_check` matches one statement at a time through
+`_statement_matches`. `STATEMENT_RE`, `STATEMENT_CHAR`, `LIST_ITEM_RE`,
+`_content_column`, `REMOVED_HEADING_RE` and `roadmap._subsection_text`, read by
+nothing after that, went. Nothing over the tree moved: `doc_check check`,
+`possessive_section_check`, `bin/docket check` and `bin/docket picks` report
+the same under main's readers and these. The guard gained thirty-eight cases,
+each failing on main's readers, and its two cases that read through
+`STATEMENT_RE` now read through `mentions`. `PL-0C2S`'s test holds
+`docket.markdown` to markdown-it-py over all 2,507 tracked Markdown files and
+four closing-tag fixtures on every run, with markdown-it-py set to cmark-gfm's
+reading in the one place the two part. `PL-M890` was built differently from its
+finish line, for the reason its brief records. No new member was found.
+`generator:` stays `live`: `PL-RR1N`, the six YAML and TOML members and the six
+shell members remain.
+
+**Next steps (recorded 2026-10-04, revised by links 8, 11 to 18, 19 and 20,
+and on 2026-10-06).** The members the table and the first sweeps named are
+built but `PL-RR1N`, and of the closing sweep's twenty-five the Markdown
+thirteen are (link 20); the other twelve are not, so the head is not spent
+and keeps its rank. Build them as the earlier links were, a format per
 pull request, by moving each caller onto its format's one shared reader rather
 than patching a line walk of its own: by their finish lines, nineteen of the
 twenty-five route a caller through a shared reader or the standard library's
 `json` or `tomllib`, four are defects inside a shared reader, and two are
-one-offs. The Markdown thirteen go first, since each reads through
-`docket.markdown`'s blocks and statements and the accessor `PL-YCJJ` asks for,
-a statement's text with its container markers blanked, serves several. With
-them lands `PL-0C2S`, a test holding `docket.markdown` to markdown-it-py in the
-test environment, so that the next defect inside the shared reader fails CI
+one-offs. The Markdown thirteen went first (link 20), since each reads through
+`docket.markdown`'s blocks and statements and the accessor `PL-YCJJ` asked
+for, a statement's text with its container markers blanked, serves several.
+With them landed `PL-0C2S`, a test holding `docket.markdown` to markdown-it-py
+in the test environment, so that the next defect inside the shared reader fails CI
 rather than waiting for a sweep (project owner, 2026-10-06, ratified, over the
 one comparison of 2026-10-04). Then the YAML and TOML six, each reading its
 front matter through one parse, the rule files' through one reader that

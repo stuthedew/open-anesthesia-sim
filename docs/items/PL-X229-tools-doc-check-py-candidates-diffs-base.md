@@ -38,7 +38,8 @@ being those two merges' work (`tools/left_behind_check.py`,
 call sites read the same two-point diff: `_changed_paths` for the file list and
 `changed_tokens` for each file's `git diff -U0 BASE` hunks. So a heading the
 base gained in a document this branch never opened would also read as one this
-branch removed, since `REMOVED_HEADING_RE` matches the `-` side.
+branch removed, since `_removed_headings` reads the base copy's headings over
+the `-` side's rows.
 
 **Why it matters.** The close-out sweep is where a session checks that nothing
 its change touched has left a statement stale, and this project treats a stale

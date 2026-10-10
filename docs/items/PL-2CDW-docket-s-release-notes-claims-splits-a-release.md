@@ -3,12 +3,14 @@ id: PL-2CDW
 title: docket's release.notes_claims splits a release-notes file at the first occurrence of SPAN_HEADING's text, so that heading's text inside an HTML comment, a fence or a line of prose ends the file's claims there, and notes_by_version, unreferenced_by_version, restate_references and doc_check's _pull_requests_named lose every bullet above the real heading; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/release.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1388
 payoff: a release notes file's claims end at the span heading GitHub renders, so the heading's words in a comment or a fence lose no claimed item
 verify: grep -qF '"release notes, a span heading inside a comment' tests/unit/test_doc_check.py && grep -qF '"release notes, a span heading inside a fence' tests/unit/test_doc_check.py
 ---
@@ -46,3 +48,9 @@ change removes.
 **Done when.** `notes_claims` ends the claims at the span heading
 `docket.markdown.headings` reads, pinned by a `release notes, ` case in
 `PL-R417`'s guard for the comment and the fence, failing on today's reader.
+
+**Built 2026-10-10 (`#1388`).** `notes_claims` splits `SPAN_HEADING` into its
+level and title and ends the claims at the heading of that level and title
+`markdown.headings` reads, so a span heading inside a comment or a fence ends
+nothing; where no heading matches, the whole text is claims. Two `release
+notes, ` cases, each failing on main's reader.

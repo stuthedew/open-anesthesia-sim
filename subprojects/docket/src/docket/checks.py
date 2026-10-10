@@ -243,10 +243,13 @@ def _marks_recommendation(body: str) -> bool:
     wrap somewhere inside it. A statement rather than the whole brief, because
     a code span or an emphasis run ends with its statement: flattened whole, a
     stray backtick paired with the first span of a later paragraph and hid the
-    `Recommendation:` between them (`PL-FP7J`).
+    `Recommendation:` between them (`PL-FP7J`). And with its containers'
+    markers blanked (`_unmarked`), so a `*` bullet opens no emphasis and a
+    marker wrapped inside a block quote is read past the `>` (`PL-YCJJ`).
     """
+    text = _unmarked(body)
     for start, end in _statements(body):
-        flat = CODE_SPAN_RE.sub(" ", " ".join(body[start:end].split()))
+        flat = CODE_SPAN_RE.sub(" ", " ".join(text[start:end].split()))
         if "Recommendation:" in flat or any(
             re.search(r"recommend", span, re.IGNORECASE) for span in _emphasised(flat)
         ):
@@ -282,6 +285,7 @@ def _answered_beneath(body: str) -> str | None:
     """
     labels: list[tuple[int, bool, str]] = []
     runs: list[tuple[int, int]] = []
+    unmarked = _unmarked(body)
     for start, end, words in _labels(body):
         runs.append((start, end))
         flat = " ".join(words.strip("*_ \t").split())
@@ -290,7 +294,7 @@ def _answered_beneath(body: str) -> str | None:
         elif QUESTION_LABEL.match(flat) or re.search("recommend", flat, re.IGNORECASE):
             labels.append((start, False, flat))
     for start, end in _statements(body):
-        text = CODE_SPAN_RE.sub(_blanked, body[start:end])
+        text = CODE_SPAN_RE.sub(_blanked, unmarked[start:end])
         labels.extend(
             (start + found.start(), False, found.group(0))
             for found in re.finditer("Recommendation:", text)
@@ -313,17 +317,20 @@ def _labels(body: str) -> Iterator[tuple[int, int, str]]:
     gap between two emphasised runs is never read as one. Split per statement,
     with its code spans blanked first, since neither emphasis nor a span runs
     past where its statement ends, so a stray delimiter costs its own statement
-    and not the rest of the brief (`PL-FP7J`). A `*` with whitespace after it
-    and none before opens nothing - a list bullet, a multiplication - so it is
-    blanked before the split rather than left to turn the words after it into a
-    label.
+    and not the rest of the brief (`PL-FP7J`). Read with its containers'
+    markers blanked (`_unmarked`), so a label wrapped inside a block quote is
+    read past the `>` and a list bullet's `*` opens nothing (`PL-YCJJ`); a `*`
+    with whitespace after it and none before opens nothing either - a
+    multiplication - so it is blanked before the split rather than left to turn
+    the words after it into a label.
     """
     starts = _line_starts(body)
     for heading in markdown.headings(split_lines(body)):
         title = CODE_SPAN_RE.sub(_blanked, heading.title)
         yield starts[heading.line], starts[heading.end], title
+    unmarked = _unmarked(body)
     for start, end in _statements(body):
-        text = _NOT_EMPHASIS.sub(" ", CODE_SPAN_RE.sub(_blanked, body[start:end]))
+        text = _NOT_EMPHASIS.sub(" ", CODE_SPAN_RE.sub(_blanked, unmarked[start:end]))
         at = start
         for index, chunk in enumerate(text.split("**")):
             if index % 2:
@@ -348,6 +355,21 @@ def _line_starts(body: str) -> list[int]:
     for line in split_lines(body, keepends=True):
         starts.append(starts[-1] + len(line))
     return starts
+
+
+def _unmarked(body: str) -> str:
+    """`body` with each line's container markers blanked in place, its offsets kept (`PL-YCJJ`).
+
+    `markdown.unmarked`'s reading: a block quote's `>` and a list item's marker
+    and indent are blanked to spaces, so a pattern reading a statement across a
+    soft break meets the next line's words, as a reader does, rather than a
+    `>`, and every offset into it is one into `body`.
+    """
+    whole = split_lines(body, keepends=True)
+    return "".join(
+        text + line[len(text) :]
+        for text, line in zip(markdown.unmarked(split_lines(body)), whole, strict=True)
+    )
 
 
 def _statements(body: str) -> list[tuple[int, int]]:
@@ -406,13 +428,28 @@ def _sections(body: str, marker: str) -> list[tuple[int, str]]:
     the sections a writer can see below it as missing.
     """
     scan = fences.without_fences(body)
+    statements = _statements(body)
     sections = []
     for heading in _heading_words(marker).finditer(scan):
         # Past the heading's own closing `**`, so that an elaborated heading is
         # not mistaken for the text under itself. A heading that never closes
         # has nothing under it by this reading, which is the answer that
-        # heading deserves.
-        close = scan.find("**", heading.end())
+        # heading deserves. Its closer is looked for in the statement it opens
+        # and before the next heading-opened line, since emphasis pairs inside
+        # one paragraph (CommonMark 0.31.2 § 6.2): searched to the end of the
+        # brief, an unclosed heading took the next heading's words as its own
+        # text and passed whenever any bold text followed it (`PL-M890`). The
+        # statement rather than the line, because nine elaborated headings in
+        # the store close on their second line.
+        line_end = scan.find("\n", heading.end())
+        bound = next(
+            (end for start, end in statements if start <= heading.start() < end),
+            len(scan) if line_end == -1 else line_end,
+        )
+        following = BRIEF_HEADING.search(scan, heading.end())
+        if following is not None:
+            bound = min(bound, following.start())
+        close = scan.find("**", heading.end(), bound)
         start = len(body) if close == -1 else close + 2
         end = BRIEF_HEADING.search(scan, start)
         sections.append((heading.end(), body[start : end.start() if end else len(body)].strip()))
@@ -3237,10 +3274,22 @@ def _left_statuses(item: Item) -> list[tuple[int, str]]:
     phrase is read as this item's when no other item is named earlier in its
     sentence. `PL-X4RX`'s title, "PL-SYG4's brief says it is left at
     needs-decision", is about `PL-SYG4`, and says so before the phrase.
+
+    Read a statement at a time, as `_prerequisite_matches` reads, so a phrase
+    in a fence is a literal and a heading's last word does not read on into the
+    paragraph under it (`PL-5ZZT`); and with the statement's container markers
+    blanked, so one wrapped inside a block quote is read past the `>`
+    (`PL-YCJJ`).
     """
     found: list[tuple[int, str]] = []
     seen: set[tuple[str, int]] = set()
-    for match in OWN_STATUS.finditer(item.body):
+    text = _unmarked(item.body)
+    matches = (
+        match
+        for start, end in _statements(item.body)
+        for match in OWN_STATUS.finditer(text, start, end)
+    )
+    for match in matches:
         named = (match.group(1) or match.group(2)).lower()
         if named == item.status or not _standing(item.body, match.start()):
             continue
@@ -3289,23 +3338,29 @@ def _prerequisite_matches(body: str, cue: re.Pattern[str]) -> list[re.Match[str]
     cue under `NEGATED_CUE`, with the continuation and the list that would run
     on from it: "not blocked by A and B" says the item waits on neither.
 
+    Each pattern reads the statement with its container markers blanked
+    (`_unmarked`), so a cue, a negation, a continuation or a list wrapped
+    inside a block quote is read past the next line's `>` as it is read at the
+    top level (`PL-YCJJ`).
+
     Ordered by position so the advisories for one item read in the order a
     person meets them in the file.
     """
     matches: list[re.Match[str]] = []
+    text = _unmarked(body)
     for start, end in _statements(body):
         cued = [
             match
-            for match in cue.finditer(body, start, end)
-            if not NEGATED_CUE.search(body, max(start, match.start() - 24), match.start())
+            for match in cue.finditer(text, start, end)
+            if not NEGATED_CUE.search(text, max(start, match.start() - 24), match.start())
         ]
         if cued:
-            cued += PROSE_DEPENDENCY_CONTINUATION.finditer(body, start, end)
+            cued += PROSE_DEPENDENCY_CONTINUATION.finditer(text, start, end)
         for match in list(cued):
-            tail = PROSE_DEPENDENCY_LIST.match(body, match.end(), end)
+            tail = PROSE_DEPENDENCY_LIST.match(text, match.end(), end)
             while tail is not None:
                 cued.append(tail)
-                tail = PROSE_DEPENDENCY_LIST.match(body, tail.end(), end)
+                tail = PROSE_DEPENDENCY_LIST.match(text, tail.end(), end)
         matches += cued
     standing = [match for match in matches if _standing(body, match.start())]
     return sorted(standing, key=lambda match: match.start())
