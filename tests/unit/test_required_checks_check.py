@@ -539,6 +539,27 @@ def test_a_paths_filter_under_push_is_not_refused(tmp_path: Path) -> None:
     assert [job.check_name for job in rcc.reporting_jobs(directory)] == ["checks"]
 
 
+@pytest.mark.parametrize(
+    ("jobs", "form"),
+    [
+        ("  lint:\n    runs-on: x\n stray: 1\n", "quality.yml:5: a line indented between `jobs:`"),
+        ("  lint:\n      runs-on: x\n    name: L\n", "quality.yml:5: a line indented between job"),
+        ("  lint:\n    - runs-on: x\n", "quality.yml:4: job `lint` holds a flow collection"),
+        ("  lint:\n    runs-on: x\n  lint:\n    runs-on: y\n", "quality.yml:5: `lint:` appears"),
+    ],
+)
+def test_a_job_mapping_yaml_refuses_is_refused_by_name(
+    tmp_path: Path, jobs: str, form: str
+) -> None:
+    """`_jobs` reads its keys through `_keys` (`PL-CK3F`), which stops at such a line.
+
+    Passed over, the jobs or keys after it dropped out of the reconciliation unsaid.
+    """
+    directory = _workflows(tmp_path, quality="on: pull_request\njobs:\n" + jobs)
+    with pytest.raises(rcc.Undecidable, match=re.escape(form)):
+        rcc.reporting_jobs(directory)
+
+
 def test_a_workflow_with_no_jobs_block_is_refused(tmp_path: Path) -> None:
     directory = _workflows(tmp_path, quality="on:\n  pull_request:\n")
     with pytest.raises(rcc.Undecidable, match="jobs"):

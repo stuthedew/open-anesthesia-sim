@@ -155,9 +155,10 @@ def insert_field(
     standing exemption from the in-flight guard on the grounds that two
     sessions running it write the same line and git merges them, and
     `verify.sanctioned_queue_edit` exempts its write from the close-out audit
-    on the grounds that the diff adds a line and removes none. A rename
-    defeated the first and a reorder defeated the second; both were the same
-    cause, a field write re-rendering a file it was not asked to rewrite.
+    on the grounds that the item reads as it did with one field added, every
+    other in its place. A rename defeated the first and a reorder defeated the
+    second; both were the same cause, a field write re-rendering a file it was
+    not asked to rewrite.
 
     Reads the file rather than rendering `item`, so the value written is the
     only thing about the block that comes from the caller.

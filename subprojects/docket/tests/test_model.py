@@ -190,7 +190,7 @@ def test_rendering_is_stable_so_rewriting_produces_no_diff() -> None:
 # `render_item` normalises a whole file, which is right when the caller
 # changed a field and wrong when it added one: the normalisation lands as
 # removed lines in a diff about something else, and `sanctioned_queue_edit`
-# reads any removal as an ordinary content edit. These pin the other writer.
+# reads a key it moves as an ordinary content edit. These pin the other writer.
 
 #: Everything `render_item` would normalise, in one file: `verify:` and
 #: `status:` sit ahead of keys `FIELD_ORDER` puts before them, `reason:` runs
@@ -215,11 +215,11 @@ SCRAMBLED = (
 def test_a_field_added_to_a_hand_written_block_removes_nothing() -> None:
     """The defect: `record` re-rendered the file, and a removal is a content edit.
 
-    `verify.sanctioned_queue_edit` exempts the backfill the close-out is told
-    to make only where the diff removes nothing at all, so a reorder or a
+    `verify.sanctioned_queue_edit` exempted the backfill the close-out is told
+    to make only where the diff removed nothing at all, so a reorder or a
     reflowed value turned a correct close-out into a `REJECT` - and because it
-    reads the per-commit diffs rather than the net tree, putting the order
-    back in a later commit left both the removal and its undo on the branch.
+    reads each commit rather than the net tree, putting the order back in a
+    later commit left both the removal and its undo on the branch.
     """
     written = with_front_matter_field(SCRAMBLED, "pr", "495")
 
@@ -276,9 +276,9 @@ def test_an_appended_entry_extends_the_line_and_removes_nothing_else() -> None:
     `bin/docket new` writes a `recurrences:` entry onto the item a capture
     matched, and after the first there is a line to extend rather than a field
     to insert. Re-rendering the file to do it would normalise the whole block,
-    and `verify.sanctioned_queue_edit` reads every normalised line as a
-    removal - which is what `PL-7K8Y` cost and why the append lands here
-    rather than in `rewrite_item`.
+    and `verify.sanctioned_queue_edit` reads every key that moves as an edit -
+    which is what `PL-7K8Y` cost and why the append lands here rather than in
+    `rewrite_item`.
     """
     once = with_front_matter_field(SCRAMBLED, "recurrences", "2026-09-19 PL-4141")
 

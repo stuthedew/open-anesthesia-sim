@@ -3291,8 +3291,9 @@ whatever this branch did to its file, and the number it records is its own
 merge's. Where the draft pull request is already open when the item closes,
 which the start mode permits at the claim push, the number rides the closure
 commit and nothing trails it; where the pull request opens after the closure,
-the number rides one more push. `verify` sanctions that write: a diff that is
-only added `pr:` lines is a queue edit the workflow asked for.
+the number rides one more push. `verify` sanctions that write: an item that
+reads as it did with a `pr:` field added, every other field the same and in
+its place, is a queue edit the workflow asked for.
 
 **The guarantee is a check on the pull request, at the one point that knows
 its own number.** `tools/pr_record_check.py` runs as a step of the required

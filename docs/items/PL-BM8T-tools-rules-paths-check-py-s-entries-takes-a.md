@@ -1,9 +1,18 @@
 ---
 id: PL-BM8T
 title: tools/rules_paths_check.py's entries takes a #-led line under paths: for a YAML comment even inside a quoted or block scalar YAML carries onto it, so a rules file's glob is read from its first line alone and refused as unanchored with a garbled remedy, where YAML reads one sound glob; and it and doc_check's is_path_scoped read a quoted value a lenient parser carries onto a line at column 0 or at the item's column as a new key or a new glob; latent
-status: untriaged
+priority: P3
+effort: M
+status: done
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/frontmatter.py, tools/rules_paths_check.py, tools/doc_check.py, subprojects/docket/tests, tests/unit, docs/items
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1389
+payoff: a rule's paths: scope is read whole or refused by name, so the rules check stops refusing a sound glob with a remedy nobody can apply, and a paths: line inside another key's quoted value no longer takes a resident rule out of the resident total
+verify: grep -qF '"rules paths, a hash-led line inside a quoted' tests/unit/test_doc_check.py && grep -qF '"rules paths, a block scalar is refused by name"' tests/unit/test_doc_check.py && grep -qF '"rules paths, is_path_scoped reads no key inside another key' tests/unit/test_doc_check.py
 ---
 
 **Problem.** tools/rules_paths_check.py's entries takes a #-led line under paths: for a YAML comment even inside a quoted or block scalar YAML carries onto it, so a rules file's glob is read from its first line alone and refused as unanchored with a garbled remedy, where YAML reads one sound glob; and it and doc_check's is_path_scoped read a quoted value a lenient parser carries onto a line at column 0 or at the item's column as a new key or a new glob; latent
@@ -69,6 +78,14 @@ no `paths` key. Latent: all 25 globs under `.claude/rules/` are one-line
 double-quoted scalars, every rules file's front matter holds only `paths:`, and
 `tools/rules_paths_check.py` exits 0.
 
+**Why it matters.** `rules_paths_check` is the one check that a path-scoped rule
+reaches the files it names, and `is_path_scoped` decides which rules count
+toward the resident total that `CLAUDE.md` asks every edit to the resident set
+to pay for. Read from a fragment, a sound glob is refused with a replacement
+nobody can apply, and a resident rule whose quoted description carries a line
+opening `paths:` drops out of the total, so the instruction budget reads
+smaller than what loads at launch.
+
 **Generator check.** A member of `PL-R417`: two readers take a physical line of
 a YAML front matter for a statement YAML carries across lines. `PL-PPNV` fixed
 `entries` for an over-indented dash, and `PL-GVDP`, open and filed beside the
@@ -86,3 +103,16 @@ quoted scalar is still open above it, each pinned by a `rules paths, ` case in
 `rules_paths_check.entries` and `instructions.parse` both take, in
 `PL-R417`'s YAML batch (project owner, 2026-10-06, ratified, over patching
 each reader in place).
+
+**Built 2026-10-10 (`#1389`).** `docket.frontmatter` is the one reading of a
+rule's or a skill's front matter: where it closes, and where each top-level
+key's value ends, following a quoted scalar or flow collection its key's line
+opens past any indentation. `rules_paths_check.entries` reads `paths:` through
+it and refuses by name a quoted glob its own line leaves open, a block scalar
+and `paths:` written twice; `doc_check.is_path_scoped` takes a key only where
+that reader finds one, and counts a block it cannot split as resident, the
+direction that overstates the total. Eight `rules paths, ` cases in the guard,
+each failing on main's readers. `tools/rules_paths_check.py`, the resident
+gauge and `is_path_scoped` read the same over the tree before and after. A
+comment on a glob's own line is now stripped as YAML 1.2.2 § 6.6 strips it,
+which is `PL-GVDP`'s form; that item is left to its own test.

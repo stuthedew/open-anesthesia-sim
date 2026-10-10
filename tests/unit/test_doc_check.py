@@ -15,6 +15,8 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import textwrap
+import tomllib
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -6820,8 +6822,43 @@ def _job_names(*name: str) -> list[str]:
     return [job.check_name for job in rcc._jobs(lines, "quality.yml")]
 
 
+def _relaxed_pin(tmp_path: Path, pyproject: str) -> str:
+    """The `requires-python` drift.yml's relax-the-pin step leaves, or what it refused with.
+
+    Runs the step's own script, cut out of the workflow at its heredoc, in a
+    directory holding `pyproject` alone (`PL-FCQP`).
+    """
+    root = Path(__file__).resolve().parents[2]
+    lines = (root / ".github" / "workflows" / "drift.yml").read_text(encoding="utf-8").split("\n")
+    step = lines.index("      - name: relax the interpreter pin for this run only")
+    start = next(i for i in range(step, len(lines)) if lines[i].strip() == "python3 - <<'PY'")
+    end = next(i for i in range(start, len(lines)) if lines[i].strip() == "PY")
+    (tmp_path / "pyproject.toml").write_text(pyproject, encoding="utf-8")
+    ran = subprocess.run(
+        [sys.executable, "-c", textwrap.dedent("\n".join(lines[start + 1 : end]))],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if ran.returncode:
+        return f"refused: {ran.stderr.strip()}"
+    written = tomllib.loads((tmp_path / "pyproject.toml").read_text(encoding="utf-8"))
+    return str(written["project"]["requires-python"])
+
+
 #: A rule's front matter whose description is a literal block holding `---`.
 INDENTED_RULE = '---\ndescription: |\n  ---\n  more\npaths:\n  - "/src/**"\n---\nbody\n'
+#: A rule whose quoted description carries a line opening `paths:`, which
+#: PyYAML reads as the description's and no key (`PL-BM8T`).
+QUOTED_PATHS_RULE = (
+    '---\ndescription: "Loads at launch, since no\npaths: key defers it"\n---\nbody\n'
+)
+#: A front matter whose keys carry two dates, each its own record (`PL-2MLT`).
+DATED_FRONT_MATTER = (
+    "---\nname: example\ndescription: Decided by the project owner on 2026-06-01\n"
+    "paths: src/**, re-checked 2026-10-04\n---\n\nBody.\n"
+)
 
 
 TEX_ERROR = (
@@ -6853,6 +6890,37 @@ def _citation_findings(tmp_path: Path, readme: str, brief: str = "") -> list[str
     return [
         finding for finding in report.errors + report.advisories if any(s in finding for s in said)
     ]
+
+
+def _live_brief_findings(tmp_path: Path, item: str) -> list[str]:
+    """What the citation checks say of `item`, written whole as `PL-T3ST`'s live file."""
+    root = _repo(tmp_path)
+    _item(root, "PL-T3ST-demo", item)
+    report = doc_check.analyze(root)
+    said = ("cites section", "names a section", "quotes ", "opens a quotation")
+    return [
+        finding for finding in report.errors + report.advisories if any(s in finding for s in said)
+    ]
+
+
+def _brief_path_sites(tmp_path: Path, removed: str, item: str) -> list[str]:
+    """Where the brief path check says `item`, `PL-T3ST`'s live file, cites `removed`, deleted."""
+    root = _removed(tmp_path, removed)
+    _item(root, "PL-T3ST-demo", item)
+    return [error.partition(": cites")[0] for error in _brief_path_report(root).errors]
+
+
+#: A live brief whose title leaves a backtick open and whose payoff cites a
+#: path git history shows deleted (`PL-CZ28`).
+STRAY_BACKTICK_BRIEF = (
+    "---\nid: PL-T3ST\nstatus: ready\ntitle: The reader counts a stray ` backtick\n"
+    "payoff: no brief cites `tools/gone.py` once it is gone\n---\n\n**Problem.** x\n"
+)
+#: A live brief whose title opens a quotation that a later field closes.
+SPLIT_QUOTATION_BRIEF = (
+    '---\nid: PL-T3ST\nstatus: ready\ntitle: It holds `docs/MODEL.md` § "Known\n'
+    'priority: P3\nsummary: limitations" to that file\n---\n\n**Problem.** x\n'
+)
 
 
 def _possessive_sites(tmp_path: Path, readme: str) -> list[str]:
@@ -6910,16 +6978,30 @@ WRAPPED_RECURRENCES = (
 )
 
 
-def _queue_edit(tmp_path: Path, edit: Callable[[str], str]) -> str:
-    """How the queue-edit audit classifies `edit`, made to an item whose recurrences wrap."""
+def _queue_edit(tmp_path: Path, edit: Callable[[str], str], base: str = WRAPPED_RECURRENCES) -> str:
+    """How the queue-edit audit classifies `edit` made to `base`, by default wrapped recurrences."""
     root = tmp_path / "queue"
     item = root / "docs" / "items" / "PL-B2B2-the-other.md"
     item.parent.mkdir(parents=True)
-    item.write_text(WRAPPED_RECURRENCES, encoding="utf-8")
+    item.write_text(base, encoding="utf-8")
     _git_init(root)
-    item.write_text(edit(WRAPPED_RECURRENCES), encoding="utf-8")
+    item.write_text(edit(base), encoding="utf-8")
     _git(root, "commit", "-qam", "PL-K7QX capture a finding")
     return sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), "docs/items/PL-B2B2-the-other.md")
+
+
+def _queue_capture(tmp_path: Path, text: str) -> str:
+    """How the queue-edit audit classifies a commit creating an item file holding `text`."""
+    root = tmp_path / "queue"
+    root.mkdir()
+    (root / "README.md").write_text("Demo.\n", encoding="utf-8")
+    _git_init(root)
+    item = root / "docs" / "items" / "PL-N3W1-noticed.md"
+    item.parent.mkdir(parents=True)
+    item.write_text(text, encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX capture a finding")
+    return sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), "docs/items/PL-N3W1-noticed.md")
 
 
 def _suppressions(source: str) -> list[str]:
@@ -7893,6 +7975,48 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         ),
         "declined: `- /tests/**` under `paths:` is indented past the list's first `- `",
     ),
+    # `PL-BM8T`: a quoted glob its own line leaves open is refused by name, where
+    # a `#`-led line YAML carries it onto was read as a comment, and the glob
+    # from its first line; so is a block scalar, and a continuation at the first
+    # column or at the item's own column, which a lenient parser reads too.
+    "rules paths, a hash-led line inside a quoted value is refused by name": (
+        lambda _: _refused(lambda: rules_paths_check.entries(['paths: "/src/**', '  #x"'])),
+        "declined: `paths:` opens a quoted glob its line does not close",
+    ),
+    "rules paths, a hash-led line inside a quoted list item is refused by name": (
+        lambda _: _refused(
+            lambda: rules_paths_check.entries(["paths:", '  - "/src/**', '    #x"'])
+        ),
+        'declined: `- "/src/**` under `paths:` opens a quoted glob its line does not close',
+    ),
+    "rules paths, a hash-led line inside a single-quoted list item is refused by name": (
+        lambda _: _refused(
+            lambda: rules_paths_check.entries(["paths:", "  - '/docs", "    #/x'", "  - /tools/**"])
+        ),
+        "declined: `- '/docs` under `paths:` opens a quoted glob its line does not close",
+    ),
+    "rules paths, a block scalar is refused by name": (
+        lambda _: _refused(lambda: rules_paths_check.entries(["paths: >-", "  #/src/**"])),
+        "declined: `paths:` is a block scalar",
+    ),
+    "rules paths, a quoted glob continued at the first column is refused by name": (
+        lambda _: _refused(lambda: rules_paths_check.entries(['paths: "/src/**', '/x"'])),
+        "declined: `paths:` opens a quoted glob its line does not close",
+    ),
+    "rules paths, a quoted item continued at the item's column is refused by name": (
+        lambda _: _refused(
+            lambda: rules_paths_check.entries(["paths:", '  - "/src/**', '  - /tests/**"'])
+        ),
+        'declined: `- "/src/**` under `paths:` opens a quoted glob its line does not close',
+    ),
+    "rules paths, a paths line inside another key's quoted value is no key": (
+        lambda _: rules_paths_check.entries(rules_paths_check.frontmatter(QUOTED_PATHS_RULE) or []),
+        [],
+    ),
+    "rules paths, is_path_scoped reads no key inside another key's quoted value": (
+        lambda _: doc_check.is_path_scoped(QUOTED_PATHS_RULE),
+        False,
+    ),
     "required checks, a flow collection carried past its line is refused by name": (
         lambda _: _refused(lambda: rcc.triggers(["on: [push,", "  pull_request]", "jobs:"])),
         "declined: `on:` holds a flow collection carried past its line",
@@ -7945,6 +8069,47 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: _job_names("    name: quality gate", "      # why"),
         ["quality gate"],
     ),
+    # `PL-CK3F`: a job's values are passed over by indentation, so a tab-led
+    # line inside a block or quoted scalar is content, and only a structural
+    # line meets the tab guard.
+    "required checks, a tab-led line in a block scalar is the value's": (
+        lambda _: _refused(
+            lambda: _job_names(
+                "    steps:",
+                "      - run: |",
+                "          cat <<-EOF",
+                "          \thello",
+                "          EOF",
+            )
+        ),
+        ["checks"],
+    ),
+    "required checks, a tab-led line in a quoted scalar is the value's": (
+        lambda _: _refused(
+            lambda: _job_names("    env:", '      GREETING: "hello', '        \tworld"')
+        ),
+        ["checks"],
+    ),
+    # drift.yml's relax-the-pin step (`PL-FCQP`): a TOML multi-line string
+    # holds its lines whole, one shaped like the key included, so the step
+    # reads its rewrite back with `tomllib` before writing it.
+    "drift pin, a requires-python line inside a multi-line string is refused": (
+        lambda tmp_path: _relaxed_pin(
+            tmp_path,
+            '[project]\nname = "x"\ndescription = """\nrequires-python = "anything"\n"""\n'
+            'requires-python = ">=3.14,<3.15"\n',
+        ),
+        "refused: the line rewritten is not the key TOML reads, whose requires-python is "
+        "'>=3.14,<3.15': a multi-line string may hold a line shaped like it - fix it here "
+        "rather than letting the job silently test the pinned version",
+    ),
+    "drift pin, the project's own pin is relaxed": (
+        lambda tmp_path: _relaxed_pin(
+            tmp_path,
+            (Path(__file__).resolve().parents[2] / "pyproject.toml").read_text(encoding="utf-8"),
+        ),
+        ">=3.14",
+    ),
     # Markdown's paragraph, read by the soft break every `GAP` reader takes:
     # neither a placeholder nor a code span opens a block that ends it.
     "soft break, a line opening with a placeholder": (
@@ -7971,6 +8136,23 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             )
         ],
         [(2, "2026-10-04")],
+    ),
+    # `PL-2MLT`: a front matter is no Markdown, so its keys are no paragraph its
+    # closing `---` underlines as a heading. Each key is one statement, dated by
+    # its own newest date, and none opens a notes thread.
+    "instruction audit, a front matter's keys are statements of their own": (
+        lambda _: [
+            (dated.line, str(dated.when))
+            for dated in dated_assertions(".claude/rules/demo.md", DATED_FRONT_MATTER)
+        ],
+        [(3, "2026-06-01"), (4, "2026-10-04")],
+    ),
+    "notes, a front matter opens no thread": (
+        lambda tmp_path: _threads(
+            tmp_path,
+            "---\ntitle: Working notes\nsee: PL-BBBB\n---\n\n## Open thread: PL-CCCC\n\nBody.\n",
+        ),
+        [("Open thread: PL-CCCC", 6)],
     ),
     # The passage a superseded marker covers (`PL-XYJF`): only an item numbered
     # 1 interrupts a paragraph, and a pipe line opens a table only over a
@@ -8343,6 +8525,23 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             )
         ],
     ),
+    # `PL-CZ28`: a live brief is read a front-matter field at a time, so a
+    # quotation one field leaves open is refused there rather than read on into
+    # the next field, and a backtick one leaves open hides nothing in the next.
+    "quoted sources, a quotation one front-matter field leaves open is refused there": (
+        lambda tmp_path: _live_brief_findings(tmp_path, SPLIT_QUOTATION_BRIEF),
+        [
+            UNCLOSED.format(
+                "docs/items/PL-T3ST-demo.md:4",
+                "this citation of docs/MODEL.md",
+                "whether the file holds the words",
+            )
+        ],
+    ),
+    "brief paths, a stray backtick in one front-matter field hides no path the next cites": (
+        lambda tmp_path: _brief_path_sites(tmp_path, "tools/gone.py", STRAY_BACKTICK_BRIEF),
+        ["docs/items/PL-T3ST-demo.md:5"],
+    ),
     "quoted sources, a quotation never closed after a comma is an advisory": (
         lambda tmp_path: _advisories(
             _repo(tmp_path, readme='# Demo\n\nAs `docs/MODEL.md`, "Nothing yet.\n\nNone.\n')
@@ -8446,6 +8645,34 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             lambda text: text.replace(
                 "2026-09-03 PL-CCCC", "2026-09-03 PL-ZZZZ, 2026-10-04 PL-DDDD"
             ),
+        ),
+        "",
+    ),
+    # The `pr` and capture forms (`PL-24MT`) read the item too: a `pr:` line
+    # between a value and its continuation cuts the value's tail into `pr`, a
+    # fenced line in the brief is prose, and a diff shows a removed thematic
+    # break as `----`, which is no file header.
+    "queue edit, a pr line cutting a continued value is no pr write": (
+        lambda tmp_path: _queue_edit(
+            tmp_path, lambda text: text.replace(",\n  2026-09-03", ",\npr: 12\n  2026-09-03")
+        ),
+        "",
+    ),
+    "queue edit, a fenced untriaged status in a brief is no capture": (
+        lambda tmp_path: _queue_capture(
+            tmp_path,
+            "---\nid: PL-N3W1\ntitle: Noticed\nstatus: ready\n---\n\n"
+            "A new item starts as:\n\n```yaml\nstatus: untriaged\n```\n",
+        ),
+        "",
+    ),
+    "queue edit, a removed thematic break beside a pr write is an edit to the brief": (
+        lambda tmp_path: _queue_edit(
+            tmp_path,
+            lambda text: text.replace("\n---\n\nMore", "\n\nMore").replace(
+                "status: ready\n", "status: ready\npr: 5\n"
+            ),
+            base=WRAPPED_RECURRENCES.replace("Body.\n", "Body.\n\n---\n\nMore.\n"),
         ),
         "",
     ),

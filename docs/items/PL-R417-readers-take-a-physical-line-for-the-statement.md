@@ -504,11 +504,35 @@ finish line, for the reason its brief records. No new member was found.
 `generator:` stays `live`: `PL-RR1N`, the six YAML and TOML members and the six
 shell members remain.
 
-**Next steps (recorded 2026-10-04, revised by links 8, 11 to 18, 19 and 20,
+**Link 21, the YAML and TOML members (`#1389`, 2026-10-10).** Done: the closing
+sweep's six YAML and TOML members, `PL-BM8T`, `PL-2MLT`, `PL-CZ28`, `PL-CK3F`,
+`PL-24MT` and `PL-FCQP`, each reading its front matter or file through one
+parse. `docket.frontmatter` is the one reading of a rule's or a skill's YAML
+front matter, where it closes and where each top-level key's value ends, and
+`rules_paths_check.entries`, `doc_check.is_path_scoped`, `instructions.parse`
+and `notes.read` take it (`PL-BM8T`, `PL-2MLT`). `docket.model.front_matter_spans`
+gives the lines each item field takes as `_fold` reads them, and `doc_check`
+reads a live brief a field at a time (`PL-CZ28`). `required_checks_check`
+reads a workflow's jobs, and each job's keys, through `_keys` (`PL-CK3F`).
+`verify.sanctioned_queue_edit` reads each change to an item file through the
+item's own reader rather than the diff's lines (`PL-24MT`), and `drift.yml`'s
+relax-the-pin step reads its rewrite back with `tomllib` before writing it
+(`PL-FCQP`). Nothing over the tree moved: the rules' paths, the resident gauge,
+the instruction audit, the notes threads, `doc_check`,
+`possessive_section_check` and every job of the six workflows read the same
+under main's readers and these. The guard gained nineteen cases, each failing
+on main's readers but the one holding the project's own `pyproject.toml` to the
+step. Two filed items' forms now read as YAML reads them, `PL-GVDP`'s comment on
+a glob's line and `PL-1D89`'s quoted job keys, and each is left to its own
+item. No new member was found. `generator:` stays `live`: `PL-RR1N` and the six
+shell members remain.
+
+**Next steps (recorded 2026-10-04, revised by links 8, 11 to 18, 19, 20 and 21,
 and on 2026-10-06).** The members the table and the first sweeps named are
 built but `PL-RR1N`, and of the closing sweep's twenty-five the Markdown
-thirteen are (link 20); the other twelve are not, so the head is not spent
-and keeps its rank. Build them as the earlier links were, a format per
+thirteen (link 20) and the YAML and TOML six (link 21) are; the shell six are
+not, so the head is not spent and keeps its rank. Build them as the earlier
+links were, a format per
 pull request, by moving each caller onto its format's one shared reader rather
 than patching a line walk of its own: by their finish lines, nineteen of the
 twenty-five route a caller through a shared reader or the standard library's
@@ -519,11 +543,11 @@ for, a statement's text with its container markers blanked, serves several.
 With them landed `PL-0C2S`, a test holding `docket.markdown` to markdown-it-py
 in the test environment, so that the next defect inside the shared reader fails CI
 rather than waiting for a sweep (project owner, 2026-10-06, ratified, over the
-one comparison of 2026-10-04). Then the YAML and TOML six, each reading its
-front matter through one parse, the rule files' through one reader that
-`rules_paths_check.entries` and `instructions.parse` both take, for `PL-BM8T`
-and `PL-2MLT` (project owner, 2026-10-06, ratified, over patching each reader
-in place). Then the shell six, opened by `PL-JNYL`'s merge of the hooks' and
+one comparison of 2026-10-04). Then the YAML and TOML six (link 21), each
+reading its front matter through one parse, the rule files' through one reader
+that `rules_paths_check.entries` and `instructions.parse` both take, for
+`PL-BM8T` and `PL-2MLT` (project owner, 2026-10-06, ratified, over patching
+each reader in place). Then the shell six, opened by `PL-JNYL`'s merge of the hooks' and
 docket's two shell readers, so that `PL-VJPH` and `PL-QSN5` are each fixed
 once, in the merged reader (project owner, 2026-10-06, ratified, over keeping
 both readers and fixing each, as on 2026-10-05). The readers stay on the

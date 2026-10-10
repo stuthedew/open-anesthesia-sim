@@ -1,9 +1,18 @@
 ---
 id: PL-24MT
 title: docket verify's sanctioned_queue_edit reads an item file's diff a line at a time as front matter for its pr and capture forms, so a new item whose brief quotes a status line of untriaged in a fence is sanctioned as a capture whatever its status, and a pr: line inserted inside a value continued on an indented line is sanctioned as a record write while it cuts that value's tail into pr; latent
-status: untriaged
+priority: P3
+effort: M
+status: done
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/store.py, subprojects/docket/README.md, subprojects/docket/tests, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1389
+payoff: the queue-edit audit exempts a pr write or a capture only where the parsed item says it is one, so an edit that cuts a value in two or changes the brief cannot pass as either
+verify: grep -qF '"queue edit, a pr line cutting a continued value' tests/unit/test_doc_check.py && grep -qF '"queue edit, a fenced untriaged status' tests/unit/test_doc_check.py && grep -qF '"queue edit, a removed thematic break' tests/unit/test_doc_check.py
 ---
 
 **Problem.** docket verify's sanctioned_queue_edit reads an item file's diff a line at a time as front matter for its pr and capture forms, so a new item whose brief quotes a status line of untriaged in a fence is sanctioned as a capture whatever its status, and a pr: line inserted inside a value continued on an indented line is sanctioned as a record write while it cuts that value's tail into pr; latent
@@ -47,6 +56,13 @@ function's own copy of the loop; it is a header misread rather than a
 statement's extent, and is folded here because reading both copies through the
 parser, below, removes the loop.
 
+**Why it matters.** `docket verify` refuses work that edits files outside its
+item's `touches`, and these exemptions are the only edits to another item's
+file it lets through. Read a diff line at a time, a hand edit that cuts a
+`verify:` command in two passes as the `pr` record, and a new item filed at
+`ready` passes as a capture, so the audit waves through the edits to a check
+that it exists to refuse.
+
 **Generator check.** A member of `PL-R417`: a reader takes a diff line for a
 front-matter statement where the field continues across lines, or where the
 line belongs to the brief. `PL-FYV7`, open, would replace the diff-shape guess
@@ -58,3 +74,24 @@ it is the one field that differs, a capture only where the created file's
 parsed status is `untriaged`, and nothing sanctioned where the brief also
 changed, pinned by a `queue edit, ` case in `PL-R417`'s guard for each, the
 removed thematic break included, failing on today's reader.
+
+**Built 2026-10-10 (`#1389`).** `sanctioned_queue_edit` no longer reads the
+diff. `_changes` reads the file before and after each change in the scope, each
+commit against its first parent or the branch against its fork point, as
+`_recurrence_appended` did for the recurrence form alone, and `_queue_kind`
+names each change: a capture where the change created the file and
+`parse_front_matter` reads its status as `untriaged` (`_captured`), `pr` where
+`_front_matter_pairs` reads the item as it was with one `pr:` field added, a
+number, every other field the same and in its order, and the unread lines and
+body the same (`_pr_recorded`), and the recurrence form unchanged. Every change
+has to be a kind; a file whose changes are of two kinds is reported under both,
+so a capture a later filing appends to reads `capture and recurrence` where the
+diff read `capture`. Three `queue edit, ` cases in `PL-R417`'s guard, each
+answered `pr`, `capture` and `pr` by main's reader, and a test in
+`test_verify.py` pinning the per-change reading across commits. Since the pairs
+are compared, a write that reflows another field's continued value onto one
+line now reads as no change to it, where the diff read it as a removal; a moved
+key is still an edit. The docstrings in `model.py`, `cli.py`, `store.py` and
+the docket tests that described the diff reading are put in the past tense or
+restated, and `subprojects/docket/README.md`'s sentence on the sanctioned `pr`
+write, which this item's `touches` now names.

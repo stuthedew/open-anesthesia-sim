@@ -54,6 +54,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from .frontmatter import Unread, closing, keys
 from .lines import split_lines
 from .markdown import statement_lines
 from .roadmap import SENTENCE_BREAK
@@ -139,10 +140,20 @@ def parse(name: str, text: str) -> list[Assertion]:
     `fences` decides where a fence is, so a triple-backtick code span wrapped to
     a line's start opens none, and an opener nothing closes hides no date below
     it (`PL-92MY`).
+
+    A YAML front matter is no Markdown, and is read a key at a time
+    (`PL-2MLT`): read from the file's first line, the keys were one paragraph
+    its closing `---` underlines as a setext heading (CommonMark 0.31.2 § 4.3),
+    which dated every key by the newest date in any of them. The body is read
+    as Markdown from the line after the fence, every line in its place.
     """
     lines = split_lines(text)
     assertions: list[Assertion] = []
-    for first, end in statement_lines(lines):
+    fence = closing(lines)
+    body = 0 if fence is None else fence + 1
+    spans = [] if fence is None else [(1 + a, 1 + b) for a, b in _front_matter(lines[1:fence])]
+    spans += statement_lines([""] * body + lines[body:])
+    for first, end in spans:
         statement = "\n".join(lines[first:end])
         for start, stop in _sentences(statement):
             found = _dates(statement[start:stop])
@@ -153,6 +164,24 @@ def parse(name: str, text: str) -> list[Assertion]:
             words = " ".join(statement[start:stop].split())
             assertions.append(Assertion(file=name, line=line, when=when, text=words))
     return assertions
+
+
+def _front_matter(block: Sequence[str]) -> list[tuple[int, int]]:
+    """Each statement of a front matter's lines: a key's value whole, and every other line alone.
+
+    A key ends where `frontmatter.keys` ends it, the one reading of a front
+    matter's keys (`PL-R417`). The other lines are the comments between keys,
+    and every line of a block that reader cannot split, read alone so that none
+    of their dates hides behind another's: a record wrapped across two of them
+    reports its first line until the block is mended.
+    """
+    try:
+        spans = [(key.line, key.end) for key in keys(block)]
+    except Unread:
+        spans = []
+    held = {index for first, end in spans for index in range(first, end)}
+    alone = [(index, index + 1) for index, line in enumerate(block) if line.strip()]
+    return sorted(spans + [span for span in alone if span[0] not in held])
 
 
 def _markdown_under(root: Path, paths: Sequence[str]) -> list[str]:
