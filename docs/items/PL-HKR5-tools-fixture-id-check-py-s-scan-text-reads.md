@@ -1,9 +1,16 @@
 ---
 id: PL-HKR5
 title: tools/fixture_id_check.py's scan_text reads every .claude file but a .sh one a physical line at a time, so an id that a TOML multi-line string's line-ending backslash, a YAML front matter's escaped line break in a double-quoted scalar, or a fenced bash sample's backslash-newline carries across two lines is judged in fragments - a valid id refused, an unmintable one passed - forms PL-WG6S's .sh fix left out; latent
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/fixture_id_check.py, tests/unit/test_doc_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: an id a TOML string, a front matter quoted value or a fenced shell sample carries across lines is judged whole, so a valid one is not refused and an unmintable one does not pass
+verify: grep -qF '"fixture ids, an id a fenced shell sample joins"' tests/unit/test_doc_check.py && grep -qF '"fixture ids, an id a TOML multi-line string joins"' tests/unit/test_doc_check.py && grep -qF '"fixture ids, an id a front matter quoted scalar joins"' tests/unit/test_doc_check.py
 ---
 
 **Problem.** tools/fixture_id_check.py's scan_text reads every .claude file but a .sh one a physical line at a time, so an id that a TOML multi-line string's line-ending backslash, a YAML front matter's escaped line break in a double-quoted scalar, or a fenced bash sample's backslash-newline carries across two lines is judged in fragments - a valid id refused, an unmintable one passed - forms PL-WG6S's .sh fix left out; latent
@@ -47,6 +54,17 @@ and a malformed one passes, which is the silent half the check exists to catch.
 Latent: no TOML file under `.claude/` holds a multi-line string, both skill
 descriptions are one-line plain scalars, and the nine backslash-ended lines in
 `.claude/` fences all break after a space, so none splits an id.
+
+**Reproduced 2026-10-10 at triage** on this branch at `b6b9c382`, whose readers are `main`'s at `fe2e5132`: over the three samples,
+written to a TOML file, a Markdown file's front matter and a Markdown fence,
+`scan_text` reported `PL-K7` as malformed in each and said nothing of the
+unmintable `PL-AAAA`.
+
+**Why it matters.** `tools/fixture_id_check.py` keeps an id the store can never
+mint out of `.claude/`, where sessions read an example as the grammar of an id.
+Read a physical line at a time, an id one of these forms carries across lines
+is refused when it is valid and passed when it is not, which is the silent half
+the check exists to catch.
 
 **Generator check.** A member of `PL-R417`: the reader judges a physical line
 where the format joins a token across two. It is the form `PL-WG6S`, a member,

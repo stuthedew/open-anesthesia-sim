@@ -1,9 +1,16 @@
 ---
 id: PL-VJPH
 title: docket's shell lexer ends a line inside a bash process substitution or a compound array assignment carried across lines, so script_lines hands doc_check the substitution's tail and each array element as commands where bash 5.2 runs one command; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/shell.py, tests/unit/test_doc_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: a process substitution or an array assignment carried across lines reads as the one command bash runs, so doc_check never takes its tail or an element for a script CI runs
+verify: grep -qF '"shell lines, a process substitution carried across lines"' tests/unit/test_doc_check.py && grep -qF '"shell lines, an output process substitution carried across lines"' tests/unit/test_doc_check.py && grep -qF '"shell lines, an array assignment carried across lines"' tests/unit/test_doc_check.py
 ---
 
 **Problem.** docket's shell lexer ends a line inside a bash process substitution or a compound array assignment carried across lines, so script_lines hands doc_check the substitution's tail and each array element as commands where bash 5.2 runs one command; latent
@@ -38,6 +45,17 @@ element and `)`, so each array element read as a command. `bash -x` shows one
 command each, `echo /dev/fd/63 tools/doc_check.py` and `files=(tools/doc_check.py
 tools/dead_ends.py)`. Latent: no tracked file leaves `<(`, `>(` or `name=(` open
 at a line end.
+
+**Reproduced 2026-10-10 at triage** on this branch at `b6b9c382`, whose readers are `main`'s at `fe2e5132`: `script_lines` cut
+`echo <(echo a` from `) tools/doc_check.py`, `tee >(cat` from `) < /dev/null
+tools/doc_check.py`, and the array into `files=(`, each element and `)`.
+
+**Why it matters.** `script_lines` is how `tools/doc_check.py` reads what a
+workflow's `run:` steps and a Markdown fence execute, and `check_gate_parity`
+takes the scripts each piece runs from its first word on. So a substitution's
+tail or an array's element read as a command of its own is a script the merge
+gate is taken to run: `tools/doc_check.py` above reads as run by CI where bash
+hands it to `echo` as an argument.
 
 **Generator check.** A member of `PL-R417`: the one shell reader ends a
 statement at a newline bash carries it past. The hooks' `shell_split` is the
