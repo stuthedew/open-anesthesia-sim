@@ -3,12 +3,14 @@ id: PL-QSN5
 title: The hooks' shell_split misplaces a here-document's body around a command substitution carried across lines - a body pending at a newline inside an unquoted $( ) or process substitution starts there, one opened in a double-quoted $( ) or a ${...} that closes on its own line is dropped and its lines read as commands, and one whose delimiter line goes on with the substitution's closing parenthesis runs to the end of the input - so a guarded command after it passes the no-prune, gate, floor and push-check guards while bash runs it; latent
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/shell.py, .claude/hooks/shell_split.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_no_prune_guard.py, tests/unit/test_push_check_guard.py
+touches: .claude/hooks/shell_split.py, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/gate-status-guard.sh, .claude/hooks/no-prune-guard.sh, .claude/hooks/push-check-guard.sh, subprojects/docket/src/docket/shell.py, subprojects/docket/src/docket/__init__.py, subprojects/docket/tests/test_shell.py, tests/unit/test_shell_reader.py, tests/unit/test_doc_check.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_no_prune_guard.py, tests/unit/test_push_check_guard.py, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1390
 payoff: a guarded command after a here-document beside a substitution carried across lines reaches the no-prune, gate, floor and push-check guards, as bash runs it
 verify: grep -q 'def test_a_here_document_beside_a_substitution_carried_across_lines_hides_no_prune' tests/unit/test_no_prune_guard.py && grep -q 'def test_a_push_after_a_here_document_its_substitution_closes_is_checked' tests/unit/test_push_check_guard.py && grep -qF 'x=$(echo a\necho b); PARSE' tests/unit/test_floor_interpreter_guard.py
 ---
@@ -95,3 +97,13 @@ guards' tests, failing on today's reader.
 **Decided 2026-10-06.** Fixed once, in the shell reader `PL-JNYL` merges from
 the hooks' and docket's two, which opens `PL-R417`'s shell batch (project
 owner, 2026-10-06, ratified, over fixing each shell reader in place).
+
+**Built 2026-10-10 (`#1390`).** Fixed once, in the merged reader. A body waits
+for the end of the line its substitution closes on, not for a newline inside
+it; a body a substitution opens and leaves unended is read after that line,
+ahead of the line's own; and inside a substitution a line that opens with the
+delimiter and holds the `)` ends the body, the rest of that line read on. The
+no-prune guard's test pins the first form and its `<(` twin, the push-check
+guard's the third, and the floor guard's `RESHAPED` table all four, each
+failing on `main`'s reader; `subprojects/docket/tests/test_shell.py` holds the
+same shapes against `script_lines`.

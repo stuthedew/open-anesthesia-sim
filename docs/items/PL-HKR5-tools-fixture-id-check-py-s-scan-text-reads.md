@@ -3,12 +3,14 @@ id: PL-HKR5
 title: tools/fixture_id_check.py's scan_text reads every .claude file but a .sh one a physical line at a time, so an id that a TOML multi-line string's line-ending backslash, a YAML front matter's escaped line break in a double-quoted scalar, or a fenced bash sample's backslash-newline carries across two lines is judged in fragments - a valid id refused, an unmintable one passed - forms PL-WG6S's .sh fix left out; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/fixture_id_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1390
 payoff: an id a TOML string, a front matter quoted value or a fenced shell sample carries across lines is judged whole, so a valid one is not refused and an unmintable one does not pass
 verify: grep -qF '"fixture ids, an id a fenced shell sample joins"' tests/unit/test_doc_check.py && grep -qF '"fixture ids, an id a TOML multi-line string joins"' tests/unit/test_doc_check.py && grep -qF '"fixture ids, an id a front matter quoted scalar joins"' tests/unit/test_doc_check.py
 ---
@@ -76,3 +78,15 @@ by name a TOML multi-line string with a line-ending backslash and a front-matter
 double-quoted scalar a line ends inside with a backslash, each pinned by a
 `fixture ids, ` case in `PL-R417`'s guard that fails on today's reader; the
 comment that says Markdown and JSON join no token says what does.
+
+**Built 2026-10-10 (`#1390`).** `scan_text` reads each file through `_joined`,
+which takes out what its format joins across a line break and keeps each
+character's origin: a `.sh` file and a fenced shell sample in Markdown through
+`docket.fences` and `docket.shell.joined_text`; a TOML multi-line basic
+string's line-ending backslash, with the whitespace and newlines after it, as
+`tomllib` reads it; and an escaped line break in a double-quoted scalar of a
+Markdown file's front matter, with the next line's leading blanks, as PyYAML
+6.0.1 reads it. A single-quoted or plain scalar and a TOML literal string join
+nothing. Three `fixture ids, ` cases in `PL-R417`'s guard pin the three forms,
+each failing on `main`'s check, and the docstring that said Markdown and JSON
+join no token now names what does.

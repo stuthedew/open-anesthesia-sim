@@ -3,12 +3,14 @@ id: PL-VJPH
 title: docket's shell lexer ends a line inside a bash process substitution or a compound array assignment carried across lines, so script_lines hands doc_check the substitution's tail and each array element as commands where bash 5.2 runs one command; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/shell.py, tests/unit/test_doc_check.py
+touches: .claude/hooks/shell_split.py, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/gate-status-guard.sh, .claude/hooks/no-prune-guard.sh, .claude/hooks/push-check-guard.sh, subprojects/docket/src/docket/shell.py, subprojects/docket/src/docket/__init__.py, subprojects/docket/tests/test_shell.py, tests/unit/test_shell_reader.py, tests/unit/test_doc_check.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_no_prune_guard.py, tests/unit/test_push_check_guard.py, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1390
 payoff: a process substitution or an array assignment carried across lines reads as the one command bash runs, so doc_check never takes its tail or an element for a script CI runs
 verify: grep -qF '"shell lines, a process substitution carried across lines"' tests/unit/test_doc_check.py && grep -qF '"shell lines, an output process substitution carried across lines"' tests/unit/test_doc_check.py && grep -qF '"shell lines, an array assignment carried across lines"' tests/unit/test_doc_check.py
 ---
@@ -68,3 +70,11 @@ form, failing on today's reader.
 **Decided 2026-10-06.** Fixed once, in the shell reader `PL-JNYL` merges from
 the hooks' and docket's two, which opens `PL-R417`'s shell batch (project
 owner, 2026-10-06, ratified, over fixing each shell reader in place).
+
+**Built 2026-10-10 (`#1390`).** Fixed once, in the merged reader: `_Lexer`
+counts `<(`, `>(` and an array assignment's `(` as nesting, as it counts `$(`,
+so a newline inside one carries the line on, and a comment inside an
+assignment's list ends at its newline without ending the list. Three
+`shell lines, ` cases in `PL-R417`'s guard pin an input process substitution,
+an output one and an array assignment, each carried across lines and each
+failing on `main`'s reader, which cut it into pieces.

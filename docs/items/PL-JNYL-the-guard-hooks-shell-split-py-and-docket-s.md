@@ -3,12 +3,14 @@ id: PL-JNYL
 title: The guard hooks' shell_split.py and docket's shell.py read one shell grammar twice, so #1377 found and fixed the same three bash facts in each - an operator a backslash-newline splits, an unquoted here-document's logical lines, a ${...} - and the next one will be found in one and missed in the other
 priority: P3
 effort: L
-status: ready
+status: done
 classes: refactor
 feature: one-answer
-touches: .claude/hooks/shell_split.py, subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py
+touches: .claude/hooks/shell_split.py, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/gate-status-guard.sh, .claude/hooks/no-prune-guard.sh, .claude/hooks/push-check-guard.sh, subprojects/docket/src/docket/shell.py, subprojects/docket/src/docket/__init__.py, subprojects/docket/tests/test_shell.py, tests/unit/test_shell_reader.py, tests/unit/test_doc_check.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_no_prune_guard.py, tests/unit/test_push_check_guard.py, docs/ARCHITECTURE.md, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docket.toml, CLAUDE.md, docs/maintainer.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
+closed: 2026-10-10
+pr: 1390
 payoff: each bash fact a shell reader learns lands once, for the guard hooks and for docket alike, instead of being found in one and left wrong in the other until somebody trips on it again
 not-delegable: its Done-when has two endings - one module both sides import, or a measured close keeping two - and where the merged module lives is the design the work settles, so no grep written now proves either; it also edits .claude/hooks/, which docket verify will not judge
 ---
@@ -190,3 +192,38 @@ pays more import time than it does today, and both suites
 `tests/unit/`) pass with their expectations unchanged. Or the item closes with
 the measured reason the two stay apart, and `PL-P72R`'s test holds their shared
 table.
+
+**Built 2026-10-10 (`#1390`).** `subprojects/docket/src/docket/shell.py` is the
+one reader. Its `_Lexer` reads a command once and builds both views from that
+pass: docket's words, clauses and substitutions (`shell_words`, `script_lines`,
+`joined_text`) and the hooks' flat tokens (`flat_reading`). `bash_c` is point
+1's one switch: the hooks read an unended body to the end and keep a trailing
+backslash, as `bash -c` does, and docket refuses both.
+`.claude/hooks/shell_split.py` keeps every function the guards call, now over
+`flat_reading`, and finds docket's `src` from its own place; its own lexer and
+its `OPERATORS` table went, which closes `PL-P72R`. `docket/__init__.py` loads
+`docket.model` on first use (PEP 562), so a guard's import adds only `docket`,
+`docket.shell` and `shell_split`: 1.3 ms under python3 3.11.17 and 2.0 ms under
+3.13.16, medians of nine with `python3 -X importtime`, against 5.3 and 5.5 ms
+for the hooks' own lexer. `tests/unit/test_shell_reader.py` pins that module
+set and the path, from a bare isolated interpreter. Both suites pass with their
+expectations unchanged: an import line and a comment are the only lines taken
+out of the existing tests. Over 308 shell samples from the tree (workflow
+steps, Makefile recipes, `.sh` files and fenced commands), `script_lines` and
+`joined_text` answer as `main`'s did, and the two views part from `main`'s
+readers only where this batch meant them to: a backquote's body is read as
+commands in the hooks' view, and a process substitution is one word with its
+body among the substitutions in docket's. `doc_check`'s gate-parity,
+workflow-paths, coverage-gate and ruff-cache checks report the same over the
+tree. `make check` found the new test outside `docket.toml`'s
+`workflow_paths`, which now places it. One fix-now rode the batch: three guard
+headers counted three Bash guards sharing the reader, where there are four.
+
+**The lexer joins the owner's read list.** With the reader moved, what the four
+Bash guards refuse is decided outside `.claude/hooks/`, which has waited on the
+owner's read since 2026-10-03, so a change to it would have armed on green.
+`arming.LEXER` holds `subprojects/docket/src/docket/shell.py` beside the hooks,
+and `CLAUDE.md`, `docs/maintainer.md` and `docs/ARCHITECTURE.md` name it. Put
+to the owner on 2026-10-10 as the recommendation, over arming lexer changes on
+green; the answer is recorded here when it comes, and the commit carrying the
+hold drops whole if the answer is to arm them.

@@ -3,12 +3,14 @@ id: PL-C45K
 title: docket's shell lexer reads $'...' as a $ and a single-quoted string, so script_lines takes everything after a $'...' holding an escaped quote for one unreadable piece, where bash reads on and the hooks' shell_split reads it as bash does; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py
+touches: .claude/hooks/shell_split.py, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/gate-status-guard.sh, .claude/hooks/no-prune-guard.sh, .claude/hooks/push-check-guard.sh, subprojects/docket/src/docket/shell.py, subprojects/docket/src/docket/__init__.py, subprojects/docket/tests/test_shell.py, tests/unit/test_shell_reader.py, tests/unit/test_doc_check.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_no_prune_guard.py, tests/unit/test_push_check_guard.py, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
+closed: 2026-10-10
+pr: 1390
 payoff: a workflow step or a documented command holding $'...' with an escaped quote can no longer hide every command after it from the checks that read what CI runs
 verify: grep -q 'def test_an_ansi_c_quoted_string_ends_at_the_quote_bash_ends_it_at' subprojects/docket/tests/test_shell.py
 ---
@@ -71,3 +73,12 @@ backslash escaping the next character, so `echo $'a\'b'` over `echo next` is
 two pieces; `joined_text` keeps a backslash-newline inside one, as bash does;
 `shell_words` still refuses it at its `$`; and a test in
 `subprojects/docket/tests/test_shell.py` pins each.
+
+**Built 2026-10-10 (`#1390`).** Fixed in the merged reader: `script_lines`
+reads a `$'...'` to the quote that closes it, a backslash escaping the next
+character, so `echo $'a\'b'` over `echo next` is two pieces where `main`'s
+docket reader returned the rest of the script as one unreadable piece;
+`joined_text` keeps a backslash-newline inside one, as bash does; and
+`shell_words` still refuses it at its `$`.
+`test_an_ansi_c_quoted_string_ends_at_the_quote_bash_ends_it_at` pins all
+three.

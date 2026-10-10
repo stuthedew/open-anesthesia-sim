@@ -3,11 +3,13 @@ id: PL-P95F
 title: The hooks' shell_split drops an unquoted here-document's body whole, but bash runs a $( ) inside one, so cat <<EOF over $(git fetch --prune) passes no-prune-guard and the command runs; latent
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
-touches: subprojects/docket/src/docket/shell.py, tests/unit/test_no_prune_guard.py
+touches: .claude/hooks/shell_split.py, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/gate-status-guard.sh, .claude/hooks/no-prune-guard.sh, .claude/hooks/push-check-guard.sh, subprojects/docket/src/docket/shell.py, subprojects/docket/src/docket/__init__.py, subprojects/docket/tests/test_shell.py, tests/unit/test_shell_reader.py, tests/unit/test_doc_check.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_no_prune_guard.py, tests/unit/test_push_check_guard.py, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-10
+pr: 1390
 payoff: The guard that stops a prune deleting the only copy of an unmerged item sees one inside an unquoted here-document substitution, which bash runs
 verify: grep -q 'def test_a_prune_in_an_unquoted_heredoc_substitution_is_refused' tests/unit/test_no_prune_guard.py
 recurrences: 2026-10-06 PL-X43T withdrawn 2026-10-06 PL-R417, 2026-10-06 PL-VJPH withdrawn 2026-10-06 PL-R417, 2026-10-06 PL-QSN5 withdrawn 2026-10-06 PL-R417, 2026-10-06 PL-1R9S withdrawn 2026-10-06 PL-R417
@@ -36,3 +38,17 @@ fails that one expansion with an error and the script runs on (measured
 2026-10-10); the reader takes such a one for the text it is.
 
 **Done when.** `shell_split.commands` reads each `$( )` in the body of a here-document whose delimiter has no quoted part as a command it runs, and still drops the rest of that body and every body under a quoted delimiter as text. `test_a_prune_in_an_unquoted_heredoc_substitution_is_refused` in `tests/unit/test_no_prune_guard.py` has the guard deny `cat <<EOF` over `$(git fetch --prune)` and over the same with `<<-EOF`, while the quoted-delimiter bodies `test_only_a_heredoc_body_is_removed` allows, and the gate guard's unquoted `cat <<-EOF` body of plain text, stay allowed.
+
+**Built 2026-10-10 (`#1390`).** Fixed in the merged reader, for both views: in
+the body of a here-document whose delimiter has no quoted part, each `$( )` and
+backquote is read as a command it runs, and the rest of the body, and every
+body under a quoted delimiter, stays text.
+`test_a_prune_in_an_unquoted_heredoc_substitution_is_refused` has the no-prune
+guard deny `cat <<EOF` and `cat <<-EOF` over `$(git fetch --prune)`, both
+allowed on `main`, and allow an unquoted body of plain text; the gate guard's
+plain `cat <<-EOF` body and the quoted bodies
+`test_only_a_heredoc_body_is_removed` allows stay allowed. A substitution the
+delimiter line cuts fails that expansion alone in bash 5.2.21, which runs the
+script on, so it reads as nothing and the next line as a command
+(`test_a_substitution_in_an_unquoted_body_is_a_command_it_runs`). The four Bash
+guards' headers say so where they describe the bodies they drop.

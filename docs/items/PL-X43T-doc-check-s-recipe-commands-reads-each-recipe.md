@@ -3,12 +3,14 @@ id: PL-X43T
 title: doc_check's _recipe_commands reads each recipe line as its own command where .ONESHELL hands the whole recipe to one shell, so a here-document body line in a recipe reads as a ruff run without --no-cache, and the coverage gate and the ruff cache check judge a command make never runs; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1390
 payoff: a Makefile setting .ONESHELL is declined by name rather than read a recipe line at a time, so the ruff cache and coverage checks never judge a here-document line as a command make runs
 verify: grep -qF '"recipe commands, a .ONESHELL recipe is refused by name"' tests/unit/test_doc_check.py
 ---
@@ -62,3 +64,14 @@ through `docket.shell.script_lines`, as `workflow_commands` reads a `run: |`
 block, or declines the special target by name so each check says what it left
 unread, pinned by a `recipe commands, ` case in `PL-R417`'s guard that fails on
 today's reader.
+
+**Built 2026-10-10 (`#1390`).** The Done-when's second branch, as triage chose:
+`_recipe_statements` raises `UnreadStatement` naming `.ONESHELL` before any
+recipe is read, wherever in the Makefile the special target is named, since GNU
+make 4.3 applies it named after the rule it changes or beside another target
+(`.PHONY .ONESHELL: check`), so each check says what it left unread. Both
+recipe readers take it: `_recipe_commands`, which the Done-when names, and
+`_target_recipes`, which reads the same recipes for the targets' own checks and
+would have judged the same body lines. The `recipe commands, a .ONESHELL recipe
+is refused by name` case pins it, failing on `main`'s reader, which read the
+brief's Makefile as four commands. No Makefile here names `.ONESHELL`.

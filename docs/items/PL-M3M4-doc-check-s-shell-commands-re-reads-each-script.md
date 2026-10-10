@@ -3,12 +3,14 @@ id: PL-M3M4
 title: doc_check's _shell_commands re-reads each script_lines piece on its own, so a case arm carried across lines reads its pattern as a command, and a pipe or redirection after a multi-line subshell's closing parenthesis is read as belonging to the last inner line alone; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/shell.py, tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1390
 payoff: a case construct in a CI step reads as the commands its arms run, so a pattern or the case line is never taken for a script the merge gate runs
 verify: grep -qF '"workflow commands, a case construct runs only the commands in its arms"' tests/unit/test_doc_check.py
 ---
@@ -68,3 +70,14 @@ already reads case patterns; the context is lost in the re-read.
 pieces, pinned by a `workflow commands, ` case in `PL-R417`'s guard for the case
 arm, failing on today's reader; the piped subshell's commands are the same
 either way, as measured at triage.
+
+**Built 2026-10-10 (`#1390`).** `doc_check`'s `workflow_runs` reads each step's
+script in one pass of `docket.shell.shell_words`, and `_simple_commands` takes
+no word of a `case` construct's own syntax, its word, `in`, its patterns and
+`esac`, for a command, so a `case` whose arms run `make check` and `exit 1`
+yields those two, where `main`'s reader took six commands from it.
+`check_gate_parity` reads through it. A script that pass cannot read to its
+end is read a line at a time as before, each line it cannot read declined at
+its own line. The `workflow commands, a case construct runs only the commands
+in its arms` case pins it, failing on `main`'s reader; the piped subshell's
+commands are the same as `main`'s, as measured at triage.
