@@ -1,10 +1,16 @@
 ---
 id: PL-0C2S
 title: No test holds docket.markdown's block reading to a reference CommonMark parser, so a rule the shared reader gets wrong - PL-B83V's closing pre tag line - is found by a sweep rather than failing CI the day a document first holds it
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: infra
 feature: one-answer
-touches: subprojects/docket/tests, pyproject.toml, uv.lock
+touches: subprojects/docket/tests, subprojects/docket/src/docket/markdown.py, pyproject.toml, uv.lock
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: a block rule docket.markdown gets wrong fails CI against markdown-it-py the day a document or fixture first holds it, rather than waiting for a sweep to find it
+verify: grep -qF '"markdown-it-py==4.2.0"' pyproject.toml && grep -qF 'from markdown_it import MarkdownIt' subprojects/docket/tests/test_markdown_reference.py
 ---
 
 **Problem.** No test holds docket.markdown's block reading to a reference CommonMark parser, so a rule the shared reader gets wrong - PL-B83V's closing pre tag line - is found by a sweep rather than failing CI the day a document first holds it
@@ -26,6 +32,8 @@ dependency it reaches the test environment without reaching the bare checkout
 docket runs from, as `numpy.linalg.eig` serves the model's reference tests
 (`PL-921Y`). Vendoring it into the tree was weighed and not taken, on
 `PL-R417`'s next steps.
+
+**Why it matters.** `docket.markdown` was checked against markdown-it-py once, on 2026-10-04. A test repeating that comparison on every run makes the next block rule the reader gets wrong a CI failure on the day a document or fixture first holds it, rather than a finding a later sweep makes.
 
 **Done when.** A test compares the leaf blocks `docket.markdown.read` hands
 back, their kinds and line spans, with markdown-it-py's block tokens and their

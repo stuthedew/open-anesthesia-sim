@@ -1,9 +1,16 @@
 ---
 id: PL-P00H
 title: docket's picks.bold_lead names a Required-scope entry from roadmap.list_entries' whole entry joined into one line, so an entry that does not open with a closed bold lead is named in docket picks' build line by a nested item's or a later paragraph's bold run, by a first sentence run past its paragraph's end, or by a ** pair a blank line splits; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/picks.py, subprojects/docket/src/docket/roadmap.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: docket picks names a Required-scope entry by its lead paragraph alone
+verify: grep -qF '"picks, ' tests/unit/test_doc_check.py
 ---
 
 **Problem.** docket's picks.bold_lead names a Required-scope entry from roadmap.list_entries' whole entry joined into one line, so an entry that does not open with a closed bold lead is named in docket picks' build line by a nested item's or a later paragraph's bold run, by a first sentence run past its paragraph's end, or by a ** pair a blank line splits; latent
@@ -43,6 +50,8 @@ the pair straddles a blank line. Latent: over all 75 `Required scope` entries in
 `ROADMAP.md`, `bold_lead` gives the same name over the joined text as over the
 lead paragraph alone. Only the name a build line prints goes wrong; the entry
 number is right.
+
+**Why it matters.** `docket picks` prints each build line under its entry's name, so an entry whose lead paragraph carries no closed bold lead is named after a nested item, a later paragraph, or a sentence run past its paragraph's end.
 
 **Generator check.** A member of `PL-R417`: a reader reads past the end of the
 statement it names, the entry's lead paragraph, into the blocks the entry holds

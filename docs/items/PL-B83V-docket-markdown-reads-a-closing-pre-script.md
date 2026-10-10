@@ -1,9 +1,16 @@
 ---
 id: PL-B83V
 title: docket.markdown reads a closing pre, script, style or textarea tag alone on its line as a paragraph, where CommonMark 0.31.2 excludes those names only from an open tag and opens an HTML block running to the next blank line, so a heading, block quote, list item or fence under it is read as a block of its own by every reader of the one Markdown reader; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/markdown.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: a lone closing pre, script, style or textarea tag opens an HTML block as CommonMark says, so the lines under it are not read as headings, quotes, entries or fences
+verify: grep -qF '"markdown blocks, ' tests/unit/test_doc_check.py
 ---
 
 **Problem.** docket.markdown reads a closing pre, script, style or textarea tag alone on its line as a paragraph, where CommonMark 0.31.2 excludes those names only from an open tag and opens an HTML block running to the next blank line, so a heading, block quote, list item or fence under it is read as a block of its own by every reader of the one Markdown reader; latent
@@ -34,6 +41,8 @@ closing `style` tag over a list item and a closing `textarea` tag over a fence
 read the same way, as a quote, an entry and a fence. The controls, a closing
 `div` or `span` tag over a heading, agree in all three readers. Latent: no
 tracked Markdown file holds a closing tag of those four names at all.
+
+**Why it matters.** `docket.markdown` is the one block reader under every Markdown reader in docket and `tools/`, so a closing tag of those four names puts a heading, a quote, an entry or a fence where GitHub renders raw HTML, in every reader at once.
 
 **Generator check.** A member of `PL-R417`: the one reader of where a Markdown
 block ends takes a line for a block of its own where the format carries an HTML

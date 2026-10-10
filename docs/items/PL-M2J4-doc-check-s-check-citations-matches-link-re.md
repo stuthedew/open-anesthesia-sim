@@ -1,9 +1,16 @@
 ---
 id: PL-M2J4
 title: doc_check's check_citations matches LINK_RE over the raw document, where its other patterns read the text with fences blanked, so a link-shaped line inside a fence or a multi-line HTML comment is held to the tree as a link and a missing target fails the check; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: a link-shaped line inside a fence or an HTML comment is never held to the tree as a link
+verify: grep -qF '"links, one inside a fence' tests/unit/test_doc_check.py && grep -qF '"links, one inside an HTML comment' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's check_citations matches LINK_RE over the raw document, where its other patterns read the text with fences blanked, so a link-shaped line inside a fence or a multi-line HTML comment is held to the tree as a link and a missing target fails the check; latent
@@ -30,6 +37,8 @@ which does not exist; markdown-it finds no link in either, and the same line in
 a paragraph gives it the one link. The same holds for the line inside a code
 span, a fault within one line. Latent: of the 62 `LINK_RE` matches in the
 documents, none is inside a literal.
+
+**Why it matters.** `check_citations` fails a document whose link names a missing file, so a link-shaped literal in a fence or a comment fails a correct document.
 
 **Generator check.** A member of `PL-R417`: a reader reads a line inside a
 multi-line literal block as a statement of the document, the class of

@@ -1,9 +1,16 @@
 ---
 id: PL-Z1R7
 title: doc_check's SOFT_BREAK carries a phrase on past the line where a paragraph or heading ends - an ATX heading's own line, or a paragraph that a block quote, a setext underline or a table with no outer pipe opening under it ends - so every GAP and QUOTATION_CHAR reader reads past the statement: a § quotation its paragraph never closes reads as closed, a setext variant cites a section nobody wrote, and mentions and a citation's above or below join a heading to the paragraph under it; latent
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, tools/possessive_section_check.py, subprojects/docket/src/docket/roadmap.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: a quotation, a link text or a mention is read inside the paragraph or heading that holds it, so a block quote, setext underline, table or heading under it ends the statement where GitHub ends it
+verify: grep -qF '"soft break, a block quote' tests/unit/test_doc_check.py && grep -qF '"soft break, a setext' tests/unit/test_doc_check.py && grep -qF '"soft break, a table' tests/unit/test_doc_check.py && grep -qF '"soft break, an ATX heading' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's SOFT_BREAK carries a phrase on past the line where a paragraph or heading ends - an ATX heading's own line, or a paragraph that a block quote, a setext underline or a table with no outer pipe opening under it ends - so every GAP and QUOTATION_CHAR reader reads past the statement: a § quotation its paragraph never closes reads as closed, a setext variant cites a section nobody wrote, and mentions and a citation's above or below join a heading to the paragraph under it; latent
@@ -57,6 +64,8 @@ heading's line; and a heading quoting a section, over a paragraph opening with
 `above`, reads as citing it above. Latent: of 2,601 block ends sitting directly
 over a non-blank line in the 2,465 tracked Markdown files, and seven read-past
 points the auditor of the first half counted, none changes an answer.
+
+**Why it matters.** Every `GAP` and `QUOTATION_CHAR` reader in `doc_check` holds a cited section, a quotation, a link or a mention to the tree, so a statement read past its end checks words its writer never put together: a quotation its paragraph never closes passes, a setext variant cites a section nobody wrote, and a heading is joined to the paragraph under it.
 
 **Generator check.** A member of `PL-R417`: one shared pattern carries a
 statement on past the line its format ends it at. `PL-BYJ5` and `PL-T73L` were

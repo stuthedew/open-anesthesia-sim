@@ -1,9 +1,16 @@
 ---
 id: PL-M890
 title: docket check's _sections looks for a required brief heading's closing ** anywhere below it rather than on its own line, so a heading that never closes reads the next heading's words as its own text - where its comment says a heading that never closes has nothing under it - and brief_gaps passes it whenever any bold text follows; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/checks.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: a required heading that never closes is reported as having nothing under it, whatever bold text follows it
+verify: grep -qF '"brief sections, ' tests/unit/test_doc_check.py
 ---
 
 **Problem.** docket check's _sections looks for a required brief heading's closing ** anywhere below it rather than on its own line, so a heading that never closes reads the next heading's words as its own text - where its comment says a heading that never closes has nothing under it - and brief_gaps passes it whenever any bold text follows; latent
@@ -38,6 +45,8 @@ the unclosed line as a paragraph with a literal `**`, and the next heading as a
 paragraph of its own. `_stub_above_brief` reads `_sections` and misses an
 unclosed stub heading the same way. Latent: no required heading in the store
 closes outside its own paragraph.
+
+**Why it matters.** `brief_gaps` refuses an item missing a required section, so an unclosed heading passes or fails by whether any bold text happens to follow it, and `_stub_above_brief` misses an unclosed stub heading the same way.
 
 **Generator check.** A member of `PL-R417`: a reader searches for the end of a
 statement past the line, and the paragraph, that holds it.

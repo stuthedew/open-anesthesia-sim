@@ -1,9 +1,16 @@
 ---
 id: PL-2CDW
 title: docket's release.notes_claims splits a release-notes file at the first occurrence of SPAN_HEADING's text, so that heading's text inside an HTML comment, a fence or a line of prose ends the file's claims there, and notes_by_version, unreferenced_by_version, restate_references and doc_check's _pull_requests_named lose every bullet above the real heading; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/release.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: a release notes file's claims end at the span heading GitHub renders, so the heading's words in a comment or a fence lose no claimed item
+verify: grep -qF '"release notes, a span heading inside a comment' tests/unit/test_doc_check.py && grep -qF '"release notes, a span heading inside a fence' tests/unit/test_doc_check.py
 ---
 
 **Problem.** docket's release.notes_claims splits a release-notes file at the first occurrence of SPAN_HEADING's text, so that heading's text inside an HTML comment, a fence or a line of prose ends the file's claims there, and notes_by_version, unreferenced_by_version, restate_references and doc_check's _pull_requests_named lose every bullet above the real heading; latent
@@ -28,6 +35,8 @@ headings at lines 0 and 9 and the comment at lines 2 to 5, and
 comment. Latent: the span heading appears once in each of 24 tracked notes
 files, always at column 0 as a heading, and no notes file holds a comment or a
 fence.
+
+**Why it matters.** `notes_claims` decides which items a release's notes claim, so the span heading's words in a comment or a fence above the real heading lose every claimed bullet between them from the release checks and from `doc_check`'s pull-request reader.
 
 **Generator check.** A member of `PL-R417`: a reader takes a heading-shaped
 line inside a multi-line literal block for a heading, the class `PL-T1X0`'s

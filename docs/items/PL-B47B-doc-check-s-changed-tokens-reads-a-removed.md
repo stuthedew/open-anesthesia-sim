@@ -1,9 +1,16 @@
 ---
 id: PL-B47B
 title: doc_check's changed_tokens reads a removed heading off each removed line of the diff with REMOVED_HEADING_RE, so a removed setext heading yields no term for the close-out sweep and a removed line opening with # inside a fence yields one; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: the close-out sweep looks for a removed setext heading's words, and never for a fenced comment's
+verify: grep -qF '"removed headings, ' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's changed_tokens reads a removed heading off each removed line of the diff with REMOVED_HEADING_RE, so a removed setext heading yields no term for the close-out sweep and a removed line opening with # inside a fence yields one; latent
@@ -33,6 +40,8 @@ Setting up the checkout
 removed headings are `Setting up the checkout` alone. Latent: the 38 documents
 `DOC_GLOBS` names hold no setext heading and no `#`-led line that is not a
 heading.
+
+**Why it matters.** The close-out sweep looks in the other documents for the words of every heading a change removed, so a removed setext heading's references go unlooked-for, and a fenced comment line sends the sweep after words no heading held.
 
 **Generator check.** A member of `PL-R417`: a reader takes a physical line of a
 diff for a statement of the Markdown it belongs to. `PL-0Y7J`, `PL-T1X0` and

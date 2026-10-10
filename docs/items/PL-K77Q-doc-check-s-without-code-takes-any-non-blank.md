@@ -1,9 +1,16 @@
 ---
 id: PL-K77Q
 title: doc_check's _without_code takes any non-blank line for an open paragraph, so an indented code block directly under an ATX heading, a thematic break or a one-line HTML comment is read as that paragraph's continuation and TeX-shaped text in it is refused as math GitHub does not render; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: an indented code block under a heading, a thematic break or a one-line comment is read as code, so TeX-shaped text in it is never refused as math
+verify: grep -qF '"math, ' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's _without_code takes any non-blank line for an open paragraph, so an indented code block directly under an ATX heading, a thematic break or a one-line HTML comment is read as that paragraph's continuation and TeX-shaped text in it is refused as math GitHub does not render; latent
@@ -32,6 +39,8 @@ errors in each case; markdown-it reads the line as a code block in all three,
 and `docket.markdown.block_lines` with `CODE` agrees. Under a paragraph line the
 indented line is a lazy continuation, which both read alike. Latent: no line of
 the 2,465 tracked Markdown files reads differently in either direction.
+
+**Why it matters.** `check_math_delimiters` refuses TeX-shaped text GitHub does not render as math, so an indented code block read as prose is refused for a literal a reader sees as code.
 
 **Generator check.** A member of `PL-R417`: a reader carries a paragraph on
 past a block that ends on its own line. `PL-Z8RS` and `PL-FP7J`, both members,

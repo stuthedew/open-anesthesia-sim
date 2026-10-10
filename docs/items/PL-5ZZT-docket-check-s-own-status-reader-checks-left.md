@@ -1,9 +1,16 @@
 ---
 id: PL-5ZZT
 title: docket check's own-status reader, checks._left_statuses, matches OWN_STATUS over the whole brief rather than a statement at a time, so a status phrase inside a fence, or one whose words straddle a heading and the paragraph under it, is advised on as the item's own claim about its status; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/checks.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: an own-status phrase is read inside one statement, so a fenced template or a heading over a paragraph never reads as the item's claim about its own status
+verify: grep -qF '"left statuses, ' tests/unit/test_doc_check.py
 ---
 
 **Problem.** docket check's own-status reader, checks._left_statuses, matches OWN_STATUS over the whole brief rather than a statement at a time, so a status phrase inside a fence, or one whose words straddle a heading and the paragraph under it, is advised on as the item's own claim about its status; latent
@@ -29,6 +36,8 @@ in two blocks, and `OWN_STATUS` over `_statements`' spans finds nothing in
 either; the same phrase wrapped inside one paragraph is still found. Latent:
 reading every tracked item whole and by statement gives the same advisories.
 `PL-20PT`'s brief already quotes front matter in a fence, which is the shape.
+
+**Why it matters.** `_left_statuses` advises where a brief says the item sits at a status other than its own, so a fenced template, or a heading's last word read with the paragraph under it, is advised on as a claim the brief never made.
 
 **Generator check.** A member of `PL-R417`: a reader matches a phrase across
 the end of the statement it stands in. `PL-2GY0`, open, is this reader's other

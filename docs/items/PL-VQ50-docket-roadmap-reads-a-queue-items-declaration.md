@@ -1,9 +1,16 @@
 ---
 id: PL-VQ50
 title: docket.roadmap reads a queue-items declaration and a gate entry's leading ids from text joined across paragraph ends - the whole Required scope subsection, and each entry with its later paragraphs - so a run of ids left open at a paragraph's end declares or holds the id opening the next paragraph, or the next entry; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/roadmap.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+payoff: a queue-items declaration or a gate entry's leading ids end with their paragraph, so an id opening the next paragraph or entry is never declared or held by them
+verify: grep -qF '"roadmap declarations, ' tests/unit/test_doc_check.py
 ---
 
 **Problem.** docket.roadmap reads a queue-items declaration and a gate entry's leading ids from text joined across paragraph ends - the whole Required scope subsection, and each entry with its later paragraphs - so a run of ids left open at a paragraph's end declares or holds the id opening the next paragraph, or the next entry; latent
@@ -48,6 +55,8 @@ two paragraphs. A slot wrapped by a soft break inside one paragraph declares
 both ids in every reader. Latent: reading `ROADMAP.md` one prose block at a time
 gives the same ids as the joined read for all 9 sections' own scope and all 536
 gate and scope entries.
+
+**Why it matters.** `own_scope_ids` and the scope and gate entries decide which items a milestone declares and holds, so an id opening the paragraph or entry after an open run is declared or held by the wrong one, and the subsection-wide and per-entry reads disagree.
 
 **Generator check.** A member of `PL-R417`: readers read a declaration past the
 end of the paragraph it opens in. `PL-YSMD` and `PL-MFVV`, both members, fixed
