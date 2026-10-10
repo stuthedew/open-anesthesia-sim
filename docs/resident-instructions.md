@@ -633,10 +633,11 @@ closes.
 
 Rule 14's re-verification bullet now ends by naming a host's reachability as
 external state: probe the host before a reply repeats that it is blocked, and
-count only a refusal at CONNECT as a block (`PL-M701`). A session asked what
-v0.6.0 holds had told the project owner that `blender.org` was blocked,
-repeating `ROADMAP.md` without probing. The owner had it on the environment's
-allowed domains, and every `blender.org` host answered a probe that day.
+count only a refusal at CONNECT as a block (`PL-M701`). A session asked on
+2026-09-26 what v0.6.0 holds had told the project owner that `blender.org` was
+blocked, repeating `ROADMAP.md` without probing. The owner had it on the
+environment's allowed domains, and every `blender.org` host answered a probe
+that day.
 
 **The carrier test.** The failure was in a reply about the release plan, and
 no read preceded it that a `paths:` scope could hang on.

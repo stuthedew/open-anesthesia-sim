@@ -27,7 +27,7 @@ anything you thought should have been done differently.
 uv sync --locked --dev
 ```
 
-If that refuses with "Required uv version `>=0.12.5` does not match the running version", the container's `uv` is stale, and `uv self update` and the astral.sh installer are both blocked in a web container: run `python3 -m pip install -U 'uv>=0.12.5'`.
+If that refuses with "Required uv version `>=0.12.5` does not match the running version", the container's `uv` is stale. On 2026-09-14 neither obvious route worked in a web container - `uv self update` died on GitHub's unauthenticated API rate limit, and the egress proxy refused the astral.sh installer, as it still refused astral.sh at the CONNECT on 2026-10-06 - so run `python3 -m pip install -U 'uv>=0.12.5'`.
 pip puts it in `/usr/local/bin`, which is behind the stale `/root/.local/bin/uv` on `PATH`, so link it over with `ln -sf /usr/local/bin/uv /root/.local/bin/uv` before `make check` (`PL-SPZT`).
 
 ## Seeing the interface
@@ -313,8 +313,9 @@ own agent-proxy README - whose location the proxy's status endpoint prints as
 does not take this shape: that README documents it as a host-level egress
 denial surfacing as `CONNECT tunnel failed, response 403` before a tunnel
 exists, which is the form recorded above for publisher egress, and says that
-once a tunnel is up the proxy aborts rather than answering; `github.com` is
-plainly an allowed host, since branch pushes over the same proxy succeed.
+once a tunnel is up the proxy aborts rather than answering; `github.com` was
+plainly an allowed host on 2026-09-21, since branch pushes over the same proxy
+succeeded.
 **That last point is an argument from the container's documentation rather than
 a measurement, so it is recorded as what the error's shape rules out and not as
 the cause.** Settling who refuses still needs one authorized deletion read

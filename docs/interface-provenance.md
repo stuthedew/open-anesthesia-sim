@@ -583,11 +583,12 @@ expressive than Blender's representation**, not merely differently organised.
 ## What the code cannot answer: Blender's stated reasoning
 
 **Evidence warning, and it applies to this whole section.** None of the pages
-below could be opened when it was written; every `blender.org` host and
-`web.archive.org` were refused by this environment's egress proxy. What follows
-rests on search-engine summaries of those pages. The `blender.org` hosts
-answered a probe on 2026-09-26 (`PL-M701`), so the pages can be read now, and
-`PL-PV5Q` is that re-reading. Where a claim could be checked against the source
+below could be opened when it was written, on 2026-09-15; every `blender.org`
+host and `web.archive.org` were refused by this environment's egress proxy.
+What follows rests on search-engine summaries of those pages. The `blender.org`
+hosts answered a probe on 2026-09-26 (`PL-M701`), so the pages can be read now,
+and `PL-PV5Q` is that re-reading; `web.archive.org` was still refused at the
+CONNECT on 2026-10-06 (`PL-CLW5`). Where a claim could be checked against the source
 it was, and that is marked. Everything else should be re-read at the page
 itself by any session that can reach one. Where the honest answer was that
 Blender does not appear to say something, that is recorded as the finding.

@@ -80,13 +80,19 @@ on:
 #
 # **`queue: max` is the other shape and does not fit here.** It holds up to 100
 # pending runs in FIFO order instead of one, reaching the same guarantee by
-# serializing where this reaches it by separating. It cannot be combined with
-# `cancel-in-progress: true`, and `queue` is a fixed `single | max` enum with
-# no expression form - unlike `cancel-in-progress` beside it - so it cannot be
-# scoped to `main` pushes while pull requests keep theirs. Read from
-# SchemaStore's `github-workflow.json`, because `docs.github.com` and
-# `github.blog` are both blocked by this container's egress proxy: treat it as
-# the schema's declaration rather than as GitHub's own prose.
+# serializing where this reaches it by separating. Two claims rule it out.
+# It cannot be combined with `cancel-in-progress: true`, which GitHub's
+# workflow-syntax page states in its `concurrency` section, read on 2026-10-06
+# at https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax:
+# "The combination of queue: max and cancel-in-progress: true is not allowed
+# and will result in a workflow validation error." And `queue` takes no
+# expression, unlike `cancel-in-progress` beside it, so it cannot be scoped to
+# `main` pushes while pull requests keep theirs. The page is silent on that:
+# it lists `single` and `max` as the values `queue` accepts and says of
+# `cancel-in-progress` alone that it may be an expression. So the second claim
+# is SchemaStore's `github-workflow.json`, read the same day, which declares
+# `queue` a fixed `single | max` enum and gives `cancel-in-progress` an
+# expression form: the schema's declaration rather than GitHub's own prose.
 #
 # `tests/unit/test_ci_concurrency.py` renders the group for a `main` push and
 # for a pull request and holds both to what this comment claims.

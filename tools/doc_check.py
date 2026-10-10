@@ -57,6 +57,11 @@ checked here, and never left to a session to remember:
   `pyproject.toml` holds. Cutting a release bumps the version file and leaves
   this file naming the previous one until somebody notices, which has now
   happened twice.
+- **Host claims.** Every sentence that names a host beside a word of refusal
+  carries the date the host was probed, in the documents, the docstrings and
+  the comments alike: whether a host answers through the egress proxy is a
+  measurement on a day, not a property of the environment. See
+  `check_host_claims`.
 
 One more thing is *reported* rather than checked:
 
@@ -93,6 +98,7 @@ from __future__ import annotations
 import argparse
 import ast
 import bisect
+import io
 import itertools
 import json
 import os
@@ -101,6 +107,8 @@ import posixpath
 import re
 import subprocess
 import sys
+import textwrap
+import tokenize
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import partial
@@ -137,13 +145,20 @@ try:
     # reads it from here.
     from docket.fences import blocks, fenced_lines
     from docket.fences import without_fences as without_fences
+
+    # `instructions` is the one reading of a dated sentence: `_sentences` cuts a
+    # statement where `docket.roadmap.SENTENCE_BREAK` does, and `ISO_DATE_RE` is
+    # what counts as a date in one. `check_host_claims` asks whether a sentence
+    # naming a host carries a date, the question that module asks of an
+    # instruction, so the two cannot disagree about where a sentence ends.
+    from docket.instructions import ISO_DATE_RE, _sentences
     from docket.lines import file_text, record_text, split_lines
 
     # `markdown` is the one reading of a document's blocks (`PL-R417`): where
     # each statement ends, so a code span or a bold run is read within its own
     # (`PL-FP7J`, `PL-VQBY`), where an HTML block runs (`PL-GT0J`), and which
     # lines are a heading, so a `#` line inside a fence is none (`PL-T1X0`).
-    from docket.markdown import HTML, statement_lines
+    from docket.markdown import HTML, PROSE, statement_lines
     from docket.markdown import headings as read_headings
     from docket.markdown import read as read_blocks
     from docket.markdown import tables as read_tables
@@ -4670,27 +4685,29 @@ def _docstrings(tree: ast.Module) -> Iterator[tuple[int, str]]:
             yield node.body[0].lineno, docstring
 
 
-def _unread_source(relative: Path, error: Exception) -> str:
+def _unread_source(relative: Path, error: Exception, unread: str = "citation") -> str:
     """The `declined` line for a source file whose docstrings were not read.
 
     Names the interpreter, because which one ran is the whole difference: the
     same file parses under one and not another, and a reader shown only "could
-    not parse" would go looking for a syntax error that is not there.
+    not parse" would go looking for a syntax error that is not there. `unread`
+    names what the caller looks for in a docstring, so each check's decline says
+    what it, rather than another check, left unchecked.
     """
     if isinstance(error, OSError):
         return (
-            f"{relative}: could not be read ({error}), so no citation in its docstrings was checked"
+            f"{relative}: could not be read ({error}), so no {unread} in its docstrings was checked"
         )
     if isinstance(error, SyntaxError):
         where = f"{relative}:{error.lineno}" if error.lineno else str(relative)
         return (
             f"{where}: Python {platform.python_version()} cannot parse this file "
-            f"({error.msg}), so no citation in its docstrings was checked; run under "
+            f"({error.msg}), so no {unread} in its docstrings was checked; run under "
             "`uv run python` if the project's own interpreter can"
         )
     return (
         f"{relative}: Python {platform.python_version()} cannot parse this file "
-        f"({error}), so no citation in its docstrings was checked"
+        f"({error}), so no {unread} in its docstrings was checked"
     )
 
 
@@ -6838,6 +6855,245 @@ def _check_reference_files_exist(root: Path, report: Report) -> None:
             )
 
 
+#: A host as prose names one: dotted labels ending in a top-level domain, bare
+#: or after a URL's `//`. Bounded on both sides, so a dotted name inside a longer
+#: one, an address's domain and a path's last segment are not read as a host.
+#: The domains are a list rather than any label, because a dotted identifier is
+#: far commoner in this tree than a host; every host it called blocked on
+#: 2026-10-06 ends in one of them.
+HOST_RE = re.compile(
+    r"(?:(?<=//)|(?<![\w.@/-]))"
+    r"(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+"
+    r"(?:org|com|net|gov|edu|io|dev|ai|sh|blog)(?:\.[a-z]{2})?"
+    r"(?![\w-])"
+)
+#: A word saying a host did not answer. `EGRESS_BLOCKED`, the proxy's own word,
+#: is spelt out because `\b` does not split a word at its `_`.
+HOST_REFUSAL_RE = re.compile(
+    rf"\b(?:block(?:s|ed|ing)?|refus(?:e|es|ed|al|als|ing)|den(?:y|ies|ied|ial)|unreachable"
+    rf"|EGRESS_BLOCKED|(?:cannot|can't|could{GAP}+not|couldn't){GAP}+(?:be{GAP}+)?reach(?:ed)?)\b",
+    re.IGNORECASE,
+)
+#: Every stem `HOST_REFUSAL_RE` reads, so a source holding none of them, nor a
+#: host, is passed over unparsed: it cannot carry a claim in any comment or
+#: docstring however they are joined.
+HOST_REFUSAL_STEM_RE = re.compile(r"block|refus|den(?:y|i)|reach", re.IGNORECASE)
+#: Where a sentence records the day it was written rather than claiming the
+#: present: an item's brief, which `bin/docket show` prints under its `added:`
+#: date; a release's notes, under its version; and a recovered pull request's
+#: body, under its merge. Holding them to this rule would refuse records nobody
+#: rewrites, which is why a closed brief keeps its stale line citations
+#: (`PL-G424`).
+DATED_RECORDS = ("docs/items/", f"{NOTES_DIR}/", "docs/pr-bodies/")
+#: The formats that write a comment as a line opening `#`, by suffix and by
+#: name: YAML, the citation file's YAML among it, TOML, shell and make.
+HASH_COMMENTED_SUFFIXES = frozenset({".yml", ".yaml", ".cff", ".toml", ".sh"})
+HASH_COMMENTED_NAMES = frozenset({"Makefile"})
+#: A comment's marker - `#`, the `#:` that documents an attribute - and the one
+#: space after it, so what is left reads as the prose it is.
+COMMENT_MARK_RE = re.compile(r"^#+:?[ \t]?")
+#: A JSON string on its line, an escape taken whole; JSON allows no line ending
+#: inside one.
+JSON_STRING_RE = re.compile(r'"(?:[^"\\\n]|\\.)*"')
+
+
+def _without_destination(link: re.Match[str]) -> str:
+    """An inline link with its destination blanked, its text and its length kept.
+
+    Where a citation points is not what the sentence says, so `GitHub refuses
+    it ([issue](https://github.com/o/r/issues/1))` calls no host refused.
+    """
+    group = "bracketed" if link["bracketed"] is not None else "target"
+    start, end = (offset - link.start() for offset in link.span(group))
+    whole = link.group(0)
+    return whole[:start] + " " * (end - start) + whole[end:]
+
+
+def _undated_host_claims(
+    text: str, files_named: frozenset[str]
+) -> Iterator[tuple[int, tuple[str, ...]]]:
+    """Each sentence of `text` that names a host beside a refusal and carries no date.
+
+    As the index of the line its first host stands on, and the hosts it names.
+    `text` is read as Markdown, which is what a document is and what this tree
+    writes a docstring and a comment in: a fence is a literal and is passed
+    over, and a sentence goes on across a soft break. A name that a file in the
+    tree carries is that file, so a hook's `.sh` is never a host.
+    """
+    lines = split_lines(text)
+    for first, end in statement_lines(lines, PROSE):
+        statement = LINK_RE.sub(_without_destination, "\n".join(lines[first:end]))
+        for start, stop in _sentences(statement):
+            sentence = statement[start:stop]
+            hosts = [
+                host for host in HOST_RE.finditer(sentence) if host.group(0) not in files_named
+            ]
+            if not hosts or not HOST_REFUSAL_RE.search(sentence) or ISO_DATE_RE.search(sentence):
+                continue
+            line = first + statement.count("\n", 0, start + hosts[0].start())
+            yield line, tuple(dict.fromkeys(host.group(0) for host in hosts))
+
+
+def _dedented(docstring: str) -> str:
+    """A docstring as written, its body's indentation removed and its lines kept.
+
+    Read with `clean=False`, so a claim is reported on the row it stands on;
+    left indented, every line of a method's docstring would read as an indented
+    code block, which is no prose at all.
+    """
+    head, newline, body = docstring.partition("\n")
+    return head.lstrip() + newline + textwrap.dedent(body)
+
+
+def _python_comments(source: bytes) -> Iterator[tuple[int, str]]:
+    """Each comment in `source`, as the row it opens on and its text.
+
+    Read from bytes, as Python reads source, so a byte-order mark or a coding
+    cookie is honoured. Comments standing alone on consecutive rows are one
+    text, since that is how this tree wraps a paragraph of comment; one after
+    code stands alone. Raises one of `UNTOKENIZABLE` where the tokenizer refuses
+    `source`, an error token included, as `docket.python` does, so every
+    interpreter refuses the same files.
+    """
+    run: list[str] = []
+    first = last = 0
+    for token in tokenize.tokenize(io.BytesIO(source).readline):
+        if token.type == tokenize.ERRORTOKEN:
+            raise tokenize.TokenError(f"an error token at {token.string!r}", token.start)
+        if token.type != tokenize.COMMENT:
+            continue
+        row, column = token.start
+        text = COMMENT_MARK_RE.sub("", token.string)
+        if token.line[:column].strip():
+            yield row, text
+            continue
+        if run and row == last + 1:
+            run.append(text)
+        else:
+            if run:
+                yield first, "\n".join(run)
+            run, first = [text], row
+        last = row
+    if run:
+        yield first, "\n".join(run)
+
+
+def _hash_comments(text: str) -> Iterator[tuple[int, str]]:
+    """Each run of lines that hold a `#` comment alone, as its first row and its text.
+
+    A comment after a value or a command is not read: where one opens turns on
+    the quoting before it, which each of these formats spells its own way.
+    """
+    run: list[str] = []
+    first = 0
+    for row, line in enumerate(split_lines(text), 1):
+        stripped = line.lstrip()
+        if stripped.startswith("#"):
+            first = first if run else row
+            run.append(COMMENT_MARK_RE.sub("", stripped))
+        elif run:
+            yield first, "\n".join(run)
+            run = []
+    if run:
+        yield first, "\n".join(run)
+
+
+def _json_strings(text: str) -> Iterator[tuple[int, str]]:
+    """Each string in a JSON file, as its row and what stands between its quotes.
+
+    Not decoded: a host, a refusal and a date are written in ASCII, and an
+    escape left as written cannot open a line the file does not have.
+    """
+    for row, line in enumerate(split_lines(text), 1):
+        for match in JSON_STRING_RE.finditer(line):
+            yield row, match.group(0)[1:-1]
+
+
+def _host_claim_texts(path: Path, relative: Path, report: Report) -> Iterator[tuple[int, str]]:
+    """The prose `path` holds, each piece as the row it opens on and its text.
+
+    Nothing for a file of another format or a dated record; a piece that could
+    not be read is named in `report.declined` rather than passed as read.
+    """
+    posix = relative.as_posix()
+    if posix.startswith(DATED_RECORDS):
+        return
+    suffix = path.suffix
+    hashed = suffix in HASH_COMMENTED_SUFFIXES or path.name in HASH_COMMENTED_NAMES
+    if suffix not in (".md", ".py", ".json") and not hashed:
+        return
+    try:
+        data = path.read_bytes()
+    except OSError as error:
+        report.declined.append(
+            f"{relative}: could not be read ({error}), so no host claim in it was checked"
+        )
+        return
+    # A host, a refusal and a date are all written in ASCII, so a byte UTF-8
+    # cannot decode is replaced rather than declined: no claim is written in it.
+    text = data.decode("utf-8", errors="replace")
+    if suffix == ".md":
+        yield 1, text
+    elif hashed:
+        yield from _hash_comments(text)
+    elif suffix == ".json":
+        yield from _json_strings(text)
+    elif HOST_RE.search(text) and HOST_REFUSAL_STEM_RE.search(text):
+        # Parsed as bytes, as `_quoting_sources` parses them, so a byte-order
+        # mark or a coding cookie is honoured rather than declined.
+        try:
+            tree = ast.parse(data, filename=posix)
+        except (SyntaxError, ValueError) as error:
+            report.declined.append(_unread_source(relative, error, "host claim"))
+        else:
+            for row, docstring in _docstrings(tree):
+                yield row, _dedented(docstring)
+        try:
+            yield from _python_comments(data)
+        except UNTOKENIZABLE as error:
+            report.declined.append(
+                f"{relative}: the tokenizer refused this file ({refusal(error)}), so no "
+                "host claim in a comment past that point was checked"
+            )
+
+
+def check_host_claims(root: Path, report: Report) -> None:
+    """Refuse a sentence calling a host blocked that does not say when (`PL-CLW5`).
+
+    Whether a host answers through this container's egress proxy is a probe on
+    a day. The owner sets the allowed domains in settings no file here reads,
+    so a sentence calling a host blocked goes false without a line of the tree
+    moving, and a session that trusts it works around a route that answers. A
+    dated sentence stays true, since it says what one probe found, and
+    `.claude/rules/citing-sources.md` already asks for the date. So a sentence
+    naming a host beside a word of refusal - blocked, refused, denied,
+    unreachable, or the proxy's `EGRESS_BLOCKED` - carries an ISO date, or is
+    refused.
+
+    Read wherever the tree writes prose a later session takes for the present:
+    every Markdown file but the records `DATED_RECORDS` names, a Python file's
+    docstrings and comments, the `#` comments of the formats
+    `HASH_COMMENTED_SUFFIXES` and `HASH_COMMENTED_NAMES` name, and a JSON file's
+    strings, where a data file keeps its provenance notes. Whether a sentence is
+    about a host at all is judgment, so what counts is narrow and written down:
+    a host is what `HOST_RE` reads, and a name some file in the tree carries is
+    that file.
+    """
+    paths = list(_walk(root))
+    files_named = frozenset(path.name for path in paths)
+    for path in paths:
+        relative = path.relative_to(root)
+        for row, text in _host_claim_texts(path, relative, report):
+            for line, hosts in _undated_host_claims(text, files_named):
+                named = ", ".join(f"`{host}`" for host in hosts)
+                report.errors.append(
+                    f"{relative}:{row + line} names {named} beside a refusal in a sentence "
+                    "that carries no date: whether a host answers through the egress proxy "
+                    "is a probe on a day, so write the date it was probed in the same "
+                    "sentence (`PL-CLW5`)"
+                )
+
+
 def analyze(root: Path) -> Report:
     """Run every mechanical documentation check over a checkout."""
     report = Report()
@@ -6870,6 +7126,7 @@ def analyze(root: Path) -> Report:
     check_ruff_cache(root, report)
     check_gate_parity(root, report)
     check_math_delimiters(root, report)
+    check_host_claims(root, report)
     check_resident_instructions(root, report)
     check_on_demand_instructions(root, report)
     _check_reference_files_exist(root, report)
