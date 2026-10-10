@@ -1,9 +1,16 @@
 ---
 id: PL-WX79
 title: doc_check reads a rule's or skill's YAML front matter as Markdown in four readers - check_citations and check_quoted_sources read it as one setext heading so a backtick or quotation one key leaves open pairs with the next key's, _host_claim_texts lets the next key date a key's host claim and a fence-shaped block-scalar line hide the body's claims, _without_code pairs that fence with the body's first, and _removed_headings reads the front matter as a heading - so a front matter's citations and claims are misread and a body's can go unread; live in form
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, subprojects/docket/src/docket/frontmatter.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-10
+payoff: a rule's or skill's front matter is read key by key and its body as Markdown, so neither misreads the other's citations, claims or code
+verify: grep -qF '"citations, a stray backtick in one front-matter key pairs with nothing in the next"' tests/unit/test_doc_check.py && grep -qF '"host claims, a front matter key is dated by no other key"' tests/unit/test_doc_check.py && grep -qF '"math, a fence-shaped line in a front matter opens no fence"' tests/unit/test_doc_check.py && grep -qF '"removed headings, a front matter is no heading"' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check reads a rule's or skill's YAML front matter as Markdown in four readers - check_citations and check_quoted_sources read it as one setext heading so a backtick or quotation one key leaves open pairs with the next key's, _host_claim_texts lets the next key date a key's host claim and a fence-shaped block-scalar line hide the body's claims, _without_code pairs that fence with the body's first, and _removed_headings reads the front matter as a heading - so a front matter's citations and claims are misread and a body's can go unread; live in form
@@ -67,6 +74,13 @@ Live in form: `.claude/skills/docket/SKILL.md` and
 `_removed_headings`, so any edit to either front matter adds a term the
 candidates list was not asked for. No front matter in the tree holds a stray
 backtick, a host claim or a fence-shaped line.
+
+**Why it matters.** Rules and skills are the documents a session reads
+as instructions, so a path one cites that the tree no longer holds misdirects
+the session that follows it, and these readers either miss the citation or
+misread the next key's text as part of it. And `_removed_headings` hands the
+close-out sweep a skill's whole front matter as a term whenever one of its keys
+changes, a search no document can answer.
 
 **Generator check.** A member of `PL-R417`: the reader takes a physical line
 for a statement its format continues, the fact that head names. It is the gap

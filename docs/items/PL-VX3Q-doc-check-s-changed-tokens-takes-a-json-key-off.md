@@ -1,9 +1,16 @@
 ---
 id: PL-VX3Q
 title: doc_check's changed_tokens takes a JSON key off the one diff line it reads, so a changed value continued past its key's line - an array entry, or a key whose colon sits on the next line - seeds no key term, and documents naming that key are left off the candidates list; live in form
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-10
+payoff: a value changed inside an array, or under a key written on another line, seeds its key, so the documents naming it reach the close-out sweep
+verify: grep -qF '"json keys, a value changed inside an array seeds its key"' tests/unit/test_doc_check.py && grep -qF '"json keys, a key whose colon stands on the next line"' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's changed_tokens takes a JSON key off the one diff line it reads, so a changed value continued past its key's line - an array entry, or a key whose colon sits on the next line - seeds no key term, and documents naming that key are left off the candidates list; live in form
@@ -36,6 +43,13 @@ one line gives the key too. Live in form: 27 value lines in the eight tracked
 editing any of them seeds no key term; nothing on the list was wrong today.
 A parameter file's value changed inside an array is the case this list exists
 to catch, since the documents that state the value are the ones to re-read.
+
+**Why it matters.** The candidates list is how the close-out sweep finds
+the documents that state a changed value. A data file's values sit in arrays
+and in objects whose keys stand lines above them, so a value changed there seeds
+no key term, and the documents quoting the parameter are left off the list the
+sweep reads: the stale statement of a value the safety-critical standard counts
+as a defect.
 
 **Generator check.** A member of `PL-R417`: the reader takes a physical line
 for a statement its format continues, the fact that head names. It is the JSON

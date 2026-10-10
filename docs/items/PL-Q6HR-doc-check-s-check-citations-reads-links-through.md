@@ -1,9 +1,16 @@
 ---
 id: PL-Q6HR
 title: doc_check's check_citations reads links through _statement_matches over _without_spans' blanked text, so statement_lines re-reads a document whose code spans are now spaces: a wrapped line holding only a code span becomes a blank line that ends the paragraph, and a paragraph opening with one becomes an indented code block that is skipped, and a link around or after either is never read; live in form
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-10
+payoff: a link sharing its paragraph with a code span is read, so a target it names that is gone fails the check
+verify: grep -qF '"links, a line holding only a code span inside link text"' tests/unit/test_doc_check.py && grep -qF '"links, after a code span opening its paragraph"' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's check_citations reads links through _statement_matches over _without_spans' blanked text, so statement_lines re-reads a document whose code spans are now spaces: a wrapped line holding only a code span becomes a blank line that ends the paragraph, and a paragraph opening with one becomes an indented code block that is skipped, and a link around or after either is never read; live in form
@@ -36,6 +43,12 @@ the second the block reads as code and the link error disappears.
 Live in form: in 31 documents the prose statements are cut differently once
 spans are blanked (`ROADMAP.md`, `CLAUDE.md` and `docs/MODEL.md` among them);
 read with the original text's statement bounds, no link reading differs today.
+
+**Why it matters.** A link whose target is gone is the drift
+`check_citations` exists to catch. In either form the link is never read, so
+its target can be deleted or renamed with `make check` green, and the form is
+ordinary prose: a code span on a line of its own inside a wrapped paragraph, or
+one opening a paragraph.
 
 **Generator check.** A member of `PL-R417`: the reader takes a physical line
 for a statement its format continues, the fact that head names. The code is new
