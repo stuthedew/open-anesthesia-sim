@@ -3,12 +3,14 @@ id: PL-CK3F
 title: tools/required_checks_check.py's _jobs walks every physical line under jobs: and takes a tab after a line's leading spaces for indentation, so a run: | body or a multi-line quoted scalar holding one - the tab-led line of a here-document that strips tabs - is refused as a tab indenting the line and the check exits 1 on a workflow YAML reads whole, where steps and triggers read the same file; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/required_checks_check.py, tests/unit, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1389
 payoff: a workflow whose block or quoted scalar holds a tab-led line is read as GitHub reads it, so the required-checks check stops refusing a sound workflow and failing make check and CI
 verify: grep -qF '"required checks, a tab-led line in a block scalar' tests/unit/test_doc_check.py && grep -qF '"required checks, a tab-led line in a quoted scalar' tests/unit/test_doc_check.py
 ---
@@ -67,3 +69,17 @@ inflow; its tests pin only a column-0 tab.
 `_keys` and `_passed_over` walk `steps` already uses, so only structural lines
 reach the tab guard, pinned by a `required checks, ` case in `PL-R417`'s guard
 for each of the two files above, failing on today's reader.
+
+**Built 2026-10-10 (`#1389`).** `_jobs` reads the jobs, and each job's keys,
+through `_keys`, which passes each value over by its indentation as `steps`
+reads them, so only a structural line meets `_next`'s tab guard and a tab-led
+line inside a block or quoted scalar is the value's. `_job_name` takes the
+key's value from that walk, and `_not_required` reads the comment lines above a
+job's key by the rule the line walk kept. Read through `_keys`, a job written
+twice, a list under a job and a line indented between a job and its keys are
+refused by name where the line walk passed over them, and a line between
+`jobs:` and its jobs is still refused; one test pins the four. Two `required
+checks, ` cases in the guard, each failing on main's reader; every job of the
+six workflows reads the same before and after. A quoted job key or `name:` key
+now reads without its quotes, through `_entry_key`, which is `PL-1D89`'s form;
+that item is left to its own triage.

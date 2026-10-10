@@ -8028,6 +8028,27 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: _job_names("    name: quality gate", "      # why"),
         ["quality gate"],
     ),
+    # `PL-CK3F`: a job's values are passed over by indentation, so a tab-led
+    # line inside a block or quoted scalar is content, and only a structural
+    # line meets the tab guard.
+    "required checks, a tab-led line in a block scalar is the value's": (
+        lambda _: _refused(
+            lambda: _job_names(
+                "    steps:",
+                "      - run: |",
+                "          cat <<-EOF",
+                "          \thello",
+                "          EOF",
+            )
+        ),
+        ["checks"],
+    ),
+    "required checks, a tab-led line in a quoted scalar is the value's": (
+        lambda _: _refused(
+            lambda: _job_names("    env:", '      GREETING: "hello', '        \tworld"')
+        ),
+        ["checks"],
+    ),
     # Markdown's paragraph, read by the soft break every `GAP` reader takes:
     # neither a placeholder nor a code span opens a block that ends it.
     "soft break, a line opening with a placeholder": (

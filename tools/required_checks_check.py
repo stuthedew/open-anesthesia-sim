@@ -919,24 +919,12 @@ def reports_on(found: Mapping[str, Trigger], events: Iterable[str], branch: str 
     return False
 
 
-def _key_at(line: str, indent: int) -> str | None:
-    """Return the mapping key this line opens at `indent`, or None."""
-    if len(line) - len(line.lstrip(" ")) != indent:
-        return None
-    stripped = line.strip()
-    if not stripped or stripped.startswith("#") or stripped.startswith("-"):
-        return None
-    if ":" not in stripped:
-        return None
-    key = stripped.split(":", 1)[0].strip()
-    return key or None
+def _job_name(job: str, inline: str, below: Sequence[str]) -> str | None:
+    """The check name a job's `name:` key gives, as YAML reads it.
 
-
-def _job_name(lines: list[str], index: int, job: str, keys: int) -> str | None:
-    """The check name a job's `name:` key at `lines[index]` gives, as YAML reads it.
-
-    `keys` is the indentation of the job's keys, so a line indented past it is
-    the value's (`PL-GWQ7`).
+    `inline` is what follows the key's `:` on its line, its comment gone, and
+    `below` the lines of its value after that one holding more than a comment:
+    the lines `_keys` passes over by indentation (`PL-GWQ7`, `PL-CK3F`).
 
     Two forms are read, the ones a workflow writes: a plain scalar on the key's
     line, which a comment ends (YAML 1.2.2 § 6.6), and a quoted scalar that
@@ -954,25 +942,12 @@ def _job_name(lines: list[str], index: int, job: str, keys: int) -> str | None:
     folded, as `doc_check._run_script` refuses them in a `run:` value
     (`PL-R417`).
     """
-    inline = lines[index].split(":", 1)[1].strip()
-    if inline.startswith("#"):
-        # A comment, so the value is whatever the lines after the key hold.
-        inline = ""
-    after = []
-    for following in lines[index + 1 :]:
-        if not following.strip():
-            continue
-        if len(following) - len(following.lstrip(" ")) <= keys:
-            break
-        if not following.lstrip().startswith("#"):
-            after.append(following)
-
     form = None
     if inline[:1] in ("|", ">"):
         form = f"a block scalar (`{inline[0]}`)"
     elif inline[:1] in ('"', "'"):
         end = inline.find(inline[0], 1)
-        if end < 0 or after:
+        if end < 0 or below:
             form = "a quoted scalar carried past the key's line"
         elif inline[end + 1 : end + 2] == "'" or (inline[0] == '"' and "\\" in inline[1:end]):
             form = "a quoted scalar holding an escape"
@@ -980,14 +955,32 @@ def _job_name(lines: list[str], index: int, job: str, keys: int) -> str | None:
             return inline[1:end]
     elif inline[:1] in NODE_INDICATORS:
         form = f"a YAML node opening `{inline[0]}`"
-    elif after:
+    elif below:
         form = f"a plain scalar {'carried onto' if inline else 'opening on'} the line after it"
     if form is not None:
         raise Undecidable(
             f"job `{job}` writes its `name:` as {form}, which YAML resolves into the check "
             "name GitHub reports and this parser does not - write the name on the key's line"
         )
-    return TRAILING_COMMENT.sub("", inline) or None
+    return inline or None
+
+
+def _not_required(lines: Sequence[str], job: _Line) -> str | None:
+    """The reason a `# not-required:` comment gives the job whose key opens `job`, or `None`.
+
+    Read from the comment lines directly above the key, at its indentation; a
+    comment at another passes through, and a blank line or a line holding more
+    than a comment ends them, since adjacency is the whole claim to being this
+    job's exemption. Where two give one, the nearer the key holds.
+    """
+    for index in range(job.index - 1, -1, -1):
+        body = lines[index].lstrip()
+        if not body.startswith("#"):
+            return None
+        if len(lines[index]) - len(lines[index].lstrip(" ")) == job.indent:
+            if found := NOT_REQUIRED.search(body.rstrip()):
+                return found.group("reason")
+    return None
 
 
 def _first_job(lines: Sequence[str]) -> tuple[int, _Line | None] | None:
@@ -1022,94 +1015,86 @@ def _first_job(lines: Sequence[str]) -> tuple[int, _Line | None] | None:
 def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
     """Return every job in the workflow, with the check name it would report.
 
-    The jobs sit at the indentation the first one sets, and each job's keys at
-    the one the first line under it sets, since YAML allows any (§ 6.1, § 8.2.2):
-    a workflow indented four spaces reads as its two-space twin (`PL-GWQ7`).
-    `jobs:` written as a flow mapping, on its key's line or the next, and a job
-    written on its own key's line, raise `Undecidable` naming the form
+    The jobs are the keys of the block mapping under `jobs:`, and each job's
+    keys those of the mapping under it, read through `_keys`, which passes each
+    value over by its indentation, as `steps` reads them (`PL-CK3F`). So a line
+    of a value - a `run: |` body, a quoted scalar carried across lines - is
+    never read as a key, and only a structural line meets the tab guard: read a
+    physical line at a time, a here-document's tab-led line was refused as a
+    tab indenting it. YAML allows any indentation (§ 6.1, § 8.2.2), so a
+    workflow indented four spaces reads as its two-space twin (`PL-GWQ7`).
+    `jobs:` written as a flow mapping, on its key's line or the next, a job
+    written on its own key's line or holding a list, and a line indented
+    between a mapping's key and its keys, raise `Undecidable` naming the form
     (`PL-4T49`): read a line at a time, `{lint:` was a job, and a carried
     `runs-on:` another.
     """
     opened = _first_job(lines)
     if opened is None:
         raise Undecidable("no `jobs:` block at the top level")
-    start, first = opened
+    _, first = opened
     if first is None:
         return []
 
     jobs: list[ReportingJob] = []
-    comment_block: list[str] = []
-    current: str | None = None
-    keys = 0
-    display_name: str | None = None
-    not_required: str | None = None
-
-    def close() -> None:
-        if current is None:
-            return
+    after = first.index
+    for job, inline, at, end in _keys(lines, first, "`jobs:`"):
+        after = end
+        if inline:
+            raise Undecidable(
+                f"job `{job}` is written on its key's line, which this parser does not read "
+                "- write its keys as a block mapping under it",
+                at.index + 1,
+            )
+        display_name: str | None = None
+        body = _next(lines, at.index + 1)
+        if body is not None and body.index < end:
+            if body.text[:1] in "[{" or _item(body.text):
+                raise Undecidable(
+                    f"job `{job}` holds a flow collection or a list, which this parser does not "
+                    "read - write its keys as a block mapping",
+                    body.index + 1,
+                )
+            inner = body.index
+            for key, held, key_line, value_end in _keys(lines, body, f"job `{job}`"):
+                inner = value_end
+                if key == "name":
+                    below = [
+                        line
+                        for line in lines[key_line.index + 1 : value_end]
+                        if _uncommented(line.lstrip(" ")).strip()
+                    ]
+                    display_name = _job_name(job, held, below)
+                elif key == "strategy":
+                    raise Undecidable(
+                        f"job `{job}` declares `strategy:` - a matrix expands into one check "
+                        "per combination, and this parser will not guess those names"
+                    )
+                elif key == "uses":
+                    raise Undecidable(
+                        f"job `{job}` calls a reusable workflow - its checks report as "
+                        "`<caller> / <called>`, which this parser will not guess"
+                    )
+            stray = _next(lines, inner)
+            if stray is not None and stray.index < end:
+                raise Undecidable(
+                    f"a line indented between job `{job}` and its keys, which YAML does not allow",
+                    stray.index + 1,
+                )
         jobs.append(
             ReportingJob(
                 workflow=workflow,
-                job_id=current,
-                check_name=display_name or current,
-                not_required=not_required,
+                job_id=job,
+                check_name=display_name or job,
+                not_required=_not_required(lines, at),
             )
         )
-
-    for index, line in enumerate(lines[start + 1 :], start + 1):
-        indent = len(line) - len(line.lstrip(" "))
-        if not line.strip():
-            comment_block = []
-            continue
-        if line.lstrip().startswith("#"):
-            if indent == first.indent:
-                comment_block.append(line.strip())
-            continue
-        if line[indent : indent + 1] == "\t":
-            # Counted as no indent, it ended `jobs:` there and dropped every job after it.
-            raise Undecidable("a tab indents this line, where YAML takes only spaces", index + 1)
-        if indent == 0:
-            break
-        if indent < first.indent:
-            raise Undecidable(
-                "a line indented between `jobs:` and the jobs under it, which YAML does not allow",
-                index + 1,
-            )
-        key = _key_at(line, first.indent)
-        if key is not None:
-            close()
-            if _uncommented(line.split(":", 1)[1]).strip():
-                raise Undecidable(
-                    f"job `{key}` is written on its key's line, which this parser does not read "
-                    "- write its keys as a block mapping under it",
-                    index + 1,
-                )
-            current, display_name, keys = key, None, 0
-            not_required = None
-            for comment in comment_block:
-                match = NOT_REQUIRED.search(comment)
-                if match:
-                    not_required = match.group("reason")
-            comment_block = []
-            continue
-        comment_block = []
-        if current is None or indent == first.indent:
-            continue
-        keys = keys or indent
-        inner = _key_at(line, keys)
-        if inner == "name":
-            display_name = _job_name(lines, index, current, keys)
-        elif inner == "strategy":
-            raise Undecidable(
-                f"job `{current}` declares `strategy:` - a matrix expands into one check "
-                "per combination, and this parser will not guess those names"
-            )
-        elif inner == "uses":
-            raise Undecidable(
-                f"job `{current}` calls a reusable workflow - its checks report as "
-                "`<caller> / <called>`, which this parser will not guess"
-            )
-    close()
+    stray = _next(lines, after)
+    if stray is not None and stray.indent > 0:
+        raise Undecidable(
+            "a line indented between `jobs:` and the jobs under it, which YAML does not allow",
+            stray.index + 1,
+        )
     return jobs
 
 
