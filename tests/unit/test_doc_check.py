@@ -7330,6 +7330,10 @@ UNCLOSED = (
 #: line cut: what is left is a rule the base never stated.
 RULE = "**Decision.** Run the full suite\nbefore every commit,\nexcept one touching only docs.\n"
 NARROWED = RULE.replace("before every commit,\n", "")
+#: Two one-row tables, and the same with the lines between them cut, which GFM
+#: 0.29 § 4.10 reads as one table holding both rows (`PL-NGKW`).
+TWO_TABLES = "| allowed |\n| --- |\n| a |\n\n| refused |\n| --- |\n| b |\n"
+TWO_TABLES_JOINED = "| allowed |\n| --- |\n| a |\n| b |\n"
 
 
 #: The Symbols table's header and delimiter rows, and one row under them.
@@ -9149,6 +9153,42 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "standing, a whole paragraph cut": (
         lambda _: docket_vcs._standing(_item_copy("One.\n\nTwo.\n"), _item_copy("One.\n")),
         "behind",
+    ),
+    # `PL-NGKW`: a Markdown statement is a whole leaf block, tagged with its
+    # kind, so a ref that cuts the lines between two tables or two code runs
+    # holds a block the base never held, where read a row or a run at a time
+    # it read as holding nothing more.
+    "superseded, two tables joined into one": (
+        lambda tmp_path: _superseded_copy(tmp_path, "notes.md", TWO_TABLES, TWO_TABLES_JOINED),
+        set(),
+    ),
+    "superseded, a paragraph line made a table row": (
+        lambda tmp_path: _superseded_copy(
+            tmp_path,
+            "notes.md",
+            "| allowed |\n| --- |\n| a |\n\n| b |\n",
+            "| allowed |\n| --- |\n| a |\n| b |\n",
+        ),
+        set(),
+    ),
+    "superseded, two code runs joined into one": (
+        lambda tmp_path: _superseded_copy(
+            tmp_path,
+            "notes.md",
+            "    run one\n\nBetween.\n\n    run two\n",
+            "    run one\n\n    run two\n",
+        ),
+        set(),
+    ),
+    "superseded, a whole table cut": (
+        lambda tmp_path: _superseded_copy(
+            tmp_path, "notes.md", TWO_TABLES, "| allowed |\n| --- |\n| a |\n"
+        ),
+        {"notes.md"},
+    ),
+    "standing, two tables joined into one": (
+        lambda _: docket_vcs._standing(_item_copy(TWO_TABLES), _item_copy(TWO_TABLES_JOINED)),
+        "ahead",
     ),
     # `tools/pr_body_check.py` (`PL-4ZVH`): a recovered record's front matter
     # is the item convention's, and git folds a trailer as RFC 822 does.

@@ -1299,9 +1299,10 @@ def _pathspec_chunks(paths: tuple[str, ...]) -> Iterator[tuple[str, ...]]:
         yield tuple(held)
 
 
-#: One statement of a file, as `_statements` reads it: a tag naming the reading,
-#: then, for a statement something holds, how many of what follows say where it
-#: sits, and those, then what it holds.
+#: One statement of a file, as `_statements` reads it: a tag naming the reading
+#: - a front-matter `field`, a Markdown block's kind, or `python` - then, for a
+#: statement something holds, how many of what follows say where it sits, and
+#: those, then what it holds.
 Statement = tuple[str, ...]
 
 #: What the parser raises where this interpreter cannot read a file, as
@@ -1313,12 +1314,19 @@ def _markdown_statements(text: str) -> frozenset[Statement] | None:
     """A Markdown file's statements: each front-matter field, and each of its body's in its place.
 
     A field is the value `docket.model` folds from its own line and the
-    indented ones under it. A body statement is a span
-    `markdown.statement_lines` reads - a paragraph with every line CommonMark
-    carries it onto, a heading, a table row - or a fence, whole: that reader
-    passes a fence over as a literal, and a literal is content all the same.
-    Each is read under the marker line of every list item holding it, because
-    an item holds its blocks (CommonMark 0.31.2 § 5.2): a sub-item whose
+    indented ones under it. A body statement is a leaf block `markdown.read`
+    reads, whole and tagged with its kind: a paragraph with every line
+    CommonMark carries it onto, a heading, a table with all its rows, an
+    indented code block with the blank lines inside it, an HTML block, a
+    thematic break, or a fence, a literal being content all the same. Read a
+    row or a run at a time, outside the block holding it, a table row and a
+    paragraph of the same text were one statement, and a ref that cut the
+    lines between two tables, or between two code runs, joined them into a
+    block the base never held while reading as holding nothing more
+    (`PL-NGKW`): a table is one block across its rows (GFM 0.29 § 4.10) and
+    the blank lines between an indented code block's chunks belong to it
+    (CommonMark 0.31.2 § 4.4). Each is read under the marker line of every list
+    item holding it, because an item holds its blocks (§ 5.2): a sub-item whose
     parent's line was cut sits somewhere the base never put it.
     `None` where the fold declines a line - one no field reads, a block list or
     a block scalar - since a value it declines is one nobody can say is whole.
@@ -1333,11 +1341,10 @@ def _markdown_statements(text: str) -> frozenset[Statement] | None:
         statements |= {("field", key, value) for key, value in pairs}
     lines = split_lines(body)
     document = markdown.read(lines)
-    spans = list(markdown.statement_lines(lines))
-    spans += [(block.start, block.end) for block in document.blocks if block.kind == markdown.FENCE]
-    for start, end in spans:
+    for block in document.blocks:
+        start, end = block.start, block.end
         place = [lines[item.start] for item in document.items if item.start <= start < item.end]
-        statements.add(("block", str(len(place)), *place, *lines[start:end]))
+        statements.add((block.kind, str(len(place)), *place, *lines[start:end]))
     return frozenset(statements)
 
 
