@@ -622,8 +622,9 @@ brief of 2026-10-04 set, `generator:` rewritten `spent` only when a sweep finds
 nothing, and the owner has since replaced that rule (below). One batch is left,
 link 24: the seven members live in form, `PL-BCZQ`, `PL-Q6HR`, `PL-WX79`,
 `PL-P6D5`, `PL-VX3Q`, `PL-YQ9G` and `PL-NGKW`, built as the earlier links were
-and each pinned by a test. The same batch rewrites `generator:` `spent` and
-closes the head, with no sweep before it. The head closes without waiting for
+and each pinned by a test, with the parsing review's two differential tests in
+CI (below), each named in `verify:`. The same batch rewrites `generator:`
+`spent` and closes the head, with no sweep before it. The head closes without waiting for
 `PL-RR1N`, naming it in the reason as Done-when says (project owner,
 2026-10-04, ratified, over waiting for it).
 
@@ -682,12 +683,21 @@ claims sit there), a re-wrap test and bash as the shell reader's oracle follow
 as ordinary items, and vendoring stays in reserve. Put to the owner on
 2026-10-10, since it adds to the answer above.
 
+**Answered:** add the tests (project owner, 2026-10-10, ratified, over closing
+as first answered and over vendoring markdown-it-py and ruamel.yaml behind the
+shared readers). The four follow-ups are ordinary items, `feature:
+reader-checks`: `PL-JTP1` (declines in the result type), `PL-PBNK` (host
+claims read only where one is written), `PL-J8Q9` (a re-wrap test) and
+`PL-C4XY` (bash as the shell reader's oracle).
+
 **Done when.** Every reader the table and the sweeps name reads its format's
 statement whole or declines it by name, each pinned by a test, except `PL-RR1N`
 and link 23's twenty-one latent members, which stay open as ordinary items; the
 guard test fails a reader that takes a physical line for a continued statement;
-and `generator:` is rewritten `spent` with the reason, naming those still open,
-with no sweep before it, as the owner answered above.
+CI holds `doc_check`'s inline Markdown to markdown-it-py over the CommonMark and
+GFM spec examples and every tracked file, and generated front matters to
+PyYAML; and `generator:` is rewritten `spent` with the reason, naming those
+still open, with no sweep before it, as the owner answered above.
 
 **Generator check.** The head: one fact misread by six items, which no head's
 `misread:` stated on 2026-10-04 (`PL-JCS3`).
