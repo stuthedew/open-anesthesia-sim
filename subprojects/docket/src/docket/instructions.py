@@ -54,7 +54,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from .frontmatter import Unread, closing, keys
+from .frontmatter import closing, statements
 from .lines import split_lines
 from .markdown import statement_lines
 from .roadmap import SENTENCE_BREAK
@@ -151,7 +151,7 @@ def parse(name: str, text: str) -> list[Assertion]:
     assertions: list[Assertion] = []
     fence = closing(lines)
     body = 0 if fence is None else fence + 1
-    spans = [] if fence is None else [(1 + a, 1 + b) for a, b in _front_matter(lines[1:fence])]
+    spans = [] if fence is None else [(1 + a, 1 + b) for a, b in statements(lines[1:fence])]
     spans += statement_lines([""] * body + lines[body:])
     for first, end in spans:
         statement = "\n".join(lines[first:end])
@@ -164,24 +164,6 @@ def parse(name: str, text: str) -> list[Assertion]:
             words = " ".join(statement[start:stop].split())
             assertions.append(Assertion(file=name, line=line, when=when, text=words))
     return assertions
-
-
-def _front_matter(block: Sequence[str]) -> list[tuple[int, int]]:
-    """Each statement of a front matter's lines: a key's value whole, and every other line alone.
-
-    A key ends where `frontmatter.keys` ends it, the one reading of a front
-    matter's keys (`PL-R417`). The other lines are the comments between keys,
-    and every line of a block that reader cannot split, read alone so that none
-    of their dates hides behind another's: a record wrapped across two of them
-    reports its first line until the block is mended.
-    """
-    try:
-        spans = [(key.line, key.end) for key in keys(block)]
-    except Unread:
-        spans = []
-    held = {index for first, end in spans for index in range(first, end)}
-    alone = [(index, index + 1) for index, line in enumerate(block) if line.strip()]
-    return sorted(spans + [span for span in alone if span[0] not in held])
 
 
 def _markdown_under(root: Path, paths: Sequence[str]) -> list[str]:

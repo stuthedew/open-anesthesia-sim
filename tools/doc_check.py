@@ -141,18 +141,21 @@ try:
     # tool held three spellings of its own beside docket's two, and one read a
     # triple-backtick code span wrapped to a line's start as a fence nothing
     # closed, so the rest of that brief was never read for line citations.
-    # `without_fences` is re-exported, as `tools/possessive_section_check.py`
-    # reads it from here.
+    # `without_fences` below reads it in a document's body alone, and is what
+    # `tools/possessive_section_check.py` reads from here.
     from docket.fences import blocks, fenced_lines
-    from docket.fences import without_fences as without_fences
+    from docket.fences import without_fences as blank_fences
 
     # `frontmatter` is the one reading of a rule's or a skill's YAML front
     # matter (`PL-R417`): where it closes, and where each key's value ends, so a
     # line opening `paths:` inside another key's quoted value is no key
-    # (`PL-BM8T`). `tools/rules_paths_check.py` reads `paths:` through it too.
+    # (`PL-BM8T`), and each key's value is a statement of its own to every
+    # reader of prose here (`PL-WX79`). `tools/rules_paths_check.py` reads
+    # `paths:` through it too.
     from docket.frontmatter import Unread as UnreadFrontMatter
     from docket.frontmatter import closing as frontmatter_closing
     from docket.frontmatter import keys as frontmatter_keys
+    from docket.frontmatter import statements as frontmatter_statements
 
     # `instructions` is the one reading of a dated sentence: `_sentences` cuts a
     # statement where `docket.roadmap.SENTENCE_BREAK` does, and `ISO_DATE_RE` is
@@ -1899,7 +1902,7 @@ def check_prose_provenance(root: Path, report: Report) -> None:
 
     text = path.read_text(encoding="utf-8")
     lines = split_lines(text)
-    fenced = fenced_lines(text)
+    fenced = _fenced_lines(text)
     split = {index: kind for index, kind in _split_markers(lines).items() if kind != "absent"}
     markers = 0
     for index, line in enumerate(lines):
@@ -4419,12 +4422,8 @@ def _hash_headings(text: str) -> list[str]:
     (`PL-T1X0`). A frontmatter block is read as nothing, as GitHub renders it
     as a table where CommonMark reads its closing `---` as a setext underline.
     """
-    lines = split_lines(text)
-    skipped = _frontmatter_end(text)
     return [
-        heading.title
-        for heading in read_headings([""] * skipped + lines[skipped:])
-        if heading.title
+        heading.title for heading in read_headings(_body_lines(split_lines(text))) if heading.title
     ]
 
 
@@ -4464,7 +4463,7 @@ def _code_spans(text: str) -> list[re.Match[str]]:
     `PL-9L39`. Offsets are the document's either way.
     """
     spans = list(_statement_spans(text))
-    fenced = fenced_lines(text)
+    fenced = _fenced_lines(text)
     offset = 0
     for index, line in enumerate(split_lines(text, keepends=True)):
         if index in fenced:
@@ -4502,29 +4501,31 @@ def _links(text: str) -> tuple[Link, ...]:
 def _inline(text: str) -> tuple[tuple[re.Match[str], ...], tuple[Link, ...]]:
     """The code spans, links and images of a document's prose, a statement at a time.
 
-    Each statement is `statement_lines`' (`PL-R417`), read by `_InlineReader`
-    from the document with its containers' markers blanked (`_unmarked`), so a
-    line a soft break carries a destination or a span onto opens with
-    whitespace alone. A table row is read a cell at a time, split where GitHub
-    Flavored Markdown 0.29 § 4.10 splits it before reading any inline - at each
-    pipe no backslash escapes, a pipe inside a code span included - and a cell
-    past the header's last is dropped, as GFM drops it. Offsets are `text`'s,
-    and each span's groups are the blanked text's.
+    Each statement is `_statements`' (`PL-R417`): a front matter's key, read as
+    written, or a statement of the body, read by `_InlineReader` with its
+    containers' markers blanked (`_unmarked`), so a line a soft break carries a
+    destination or a span onto opens with whitespace alone. A table row is read
+    a cell at a time, split where GitHub Flavored Markdown 0.29 § 4.10 splits it
+    before reading any inline - at each pipe no backslash escapes, a pipe inside
+    a code span included - and a cell past the header's last is dropped, as GFM
+    drops it. Offsets are `text`'s, and each span's groups are the blanked
+    text's.
     """
     lines = split_lines(text)
-    blanked = _unmarked(text, lines)
+    body = _body_lines(lines)
+    blanked = _unmarked(text, body)
     starts = [0]
     for line in split_lines(text, keepends=True):
         starts.append(starts[-1] + len(line))
     holder = {
         index: block
-        for block in read_blocks(lines).blocks
+        for block in read_blocks(body).blocks
         for index in range(block.start, block.end)
     }
     reader = _InlineReader(blanked)
-    for first, end in statement_lines(lines, PROSE):
-        block = holder[first]
-        if block.kind != TABLE:
+    for first, end in _statements(lines, PROSE):
+        block = holder.get(first)
+        if block is None or block.kind != TABLE:
             reader.read(starts[first], starts[end])
             continue
         header = len(_cells(blanked, starts[block.start], starts[block.start + 1]))
@@ -4568,12 +4569,61 @@ def _cells(text: str, start: int, end: int) -> list[tuple[int, int]]:
 def _statement_offsets(
     text: str, kinds: Collection[str] | None = None
 ) -> Iterator[tuple[int, int]]:
-    """Each statement `markdown.statement_lines` cuts `text` into, as offsets into it."""
+    """Each statement `_statements` cuts `text` into, as offsets into it."""
     starts = [0]
     for line in split_lines(text, keepends=True):
         starts.append(starts[-1] + len(line))
-    for first, end in statement_lines(split_lines(text), kinds):
+    for first, end in _statements(split_lines(text), kinds):
         yield starts[first], starts[end]
+
+
+def _statements(
+    lines: Sequence[str], kinds: Collection[str] | None = None
+) -> list[tuple[int, int]]:
+    """Each statement of a document, as its span of `lines`: its front matter's, then its body's.
+
+    A YAML front matter is no Markdown (`PL-WX79`). Read as Markdown, its keys
+    were one paragraph its closing `---` underlines as a setext heading
+    (CommonMark 0.31.2 § 4.3), so a backtick or a quotation one key left open
+    paired with the next key's and a date in one key dated another's sentence.
+    Each key's value is one statement, where `docket.frontmatter.statements`
+    ends it, as `docket.instructions` reads one (`PL-2MLT`), and the body is
+    `markdown.statement_lines`' from the line after the front matter closes,
+    every line in its place. A front matter's statements are prose, so `kinds`
+    naming none of `PROSE` reads none of them.
+    """
+    fence = frontmatter_closing(lines)
+    body = statement_lines(_body_lines(lines), kinds)
+    if fence is None or (kinds is not None and not PROSE & frozenset(kinds)):
+        return list(body)
+    return [*((1 + a, 1 + b) for a, b in frontmatter_statements(lines[1:fence])), *body]
+
+
+def _body_lines(lines: Sequence[str]) -> list[str]:
+    """`lines` with a YAML front matter blanked, both its `---` lines included.
+
+    What a reader of a document's Markdown reads, every line in its place: a
+    fence-shaped line in a block scalar opened a fence there (CommonMark 0.31.2
+    § 4.5) that ran on into the body and hid its prose (`PL-WX79`).
+    """
+    fence = frontmatter_closing(lines)
+    return list(lines) if fence is None else [""] * (fence + 1) + list(lines[fence + 1 :])
+
+
+def _fenced_lines(text: str) -> frozenset[int]:
+    """The index of every line of a closed fence in a document, read in its body alone."""
+    return fenced_lines("\n".join(_body_lines(split_lines(text))))
+
+
+def without_fences(text: str) -> str:
+    """`text` with every line of a closed fence blanked, a fence read in its body alone.
+
+    `docket.fences.without_fences`, but a YAML front matter is kept as written,
+    since a fence-shaped line in a block scalar is none (`PL-WX79`). Offsets and
+    line breaks are kept.
+    """
+    start = sum(len(line) for line in split_lines(text, keepends=True)[: _frontmatter_end(text)])
+    return text[:start] + blank_fences(text[start:])
 
 
 def _statement_matches(
@@ -6407,7 +6457,10 @@ def _without_code(text: str) -> list[str]:
 
     A fenced block is where `docket.fences` finds one, blanked from its opening
     line through its closing one, so an opener nothing closes blanks nothing
-    and the prose below it is still read (`PL-92MY`).
+    and the prose below it is still read (`PL-92MY`). It is found in the body
+    alone, and a YAML front matter's statements are its keys (`_statements`),
+    so a fence-shaped line in a block scalar pairs with none of the body's
+    fences and a backtick one key leaves open pairs with nothing (`PL-WX79`).
 
     **A code span is read from its statement whole, not a line at a time**
     (`PL-Z8RS`). CommonMark lets a span continue across a line ending (0.31.2
@@ -6422,7 +6475,7 @@ def _without_code(text: str) -> list[str]:
     neither half read as a span.
     """
     source = split_lines(text)
-    code = fenced_lines(text) | block_lines(source, (CODE,))
+    code = _fenced_lines(text) | block_lines(_body_lines(source), (CODE,))
     lines = [
         "" if index in code or not raw.strip() else MATH_SPAN_RE.sub(_spaces, raw.expandtabs(4))
         for index, raw in enumerate(source)
@@ -6431,7 +6484,7 @@ def _without_code(text: str) -> list[str]:
     # quotation of the broken syntax rather than a use of it, and a shell
     # snippet like `"$upstream..HEAD"` is not an unclosed expression. Each is
     # read within its statement, as `_statement_spans` reads one (`PL-FP7J`).
-    for first, end in statement_lines(split_lines(text)):
+    for first, end in _statements(source):
         prose = "\n".join(lines[first:end])
         blanked = CODE_SPAN_RE.sub(partial(_blanked_span, prose), prose)
         lines[first:end] = blanked.split("\n")
@@ -7375,12 +7428,15 @@ def _undated_host_claims(
     As the index of the line its first host stands on, and the hosts it names.
     `text` is read as Markdown, which is what a document is and what this tree
     writes a docstring and a comment in: a fence is a literal and is passed
-    over, and a sentence goes on across a soft break. A name that a file in the
-    tree carries is that file, so a hook's `.sh` is never a host.
+    over, and a sentence goes on across a soft break. A YAML front matter is
+    read a key at a time (`_statements`), so a date in the next key dates no
+    claim, and no line of it opens a fence that hides the body's (`PL-WX79`). A
+    name that a file in the tree carries is that file, so a hook's `.sh` is
+    never a host.
     """
     lines = split_lines(text)
     unlinked = split_lines(_without_destinations(text))
-    for first, end in statement_lines(lines, PROSE):
+    for first, end in _statements(lines, PROSE):
         statement = "\n".join(unlinked[first:end])
         for start, stop in _sentences(statement):
             sentence = statement[start:stop]
@@ -7878,9 +7934,11 @@ def _removed_headings(root: Path, base: str, relative: str, patch: str) -> set[s
     reads Python through statements, rather than from each removed line of the
     diff (`PL-B47B`): a setext heading spans its text and its underline
     (CommonMark 0.31.2 § 4.3), so a removed one left no `#` line, and a removed
-    `# comment` inside a fence is code (§ 4.5) and was taken for one. A title
-    the working tree's copy still has as a heading - one moved, or a line
-    reflowed - is not removed.
+    `# comment` inside a fence is code (§ 4.5) and was taken for one. A YAML
+    front matter is no heading, though its closing `---` underlines its keys as
+    one, and read whole it was reported removed whenever a key changed
+    (`PL-WX79`). A title the working tree's copy still has as a heading - one
+    moved, or a line reflowed - is not removed.
     """
     removed: set[int] = set()
     for hunk in HUNK_RE.finditer(patch):
@@ -7890,10 +7948,10 @@ def _removed_headings(root: Path, base: str, relative: str, patch: str) -> set[s
         return set()
     before = split_lines(_git_output(root, "show", f"{base}:{relative}").removeprefix("\ufeff"))
     after = (root / relative).read_bytes().decode("utf-8-sig")
-    kept = {heading.title for heading in read_headings(split_lines(after))}
+    kept = {heading.title for heading in read_headings(_body_lines(split_lines(after)))}
     return {
         heading.title
-        for heading in read_headings(before)
+        for heading in read_headings(_body_lines(before))
         if heading.title not in kept
         and any(row in removed for row in range(heading.line + 1, heading.end + 1))
     }

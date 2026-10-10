@@ -3,8 +3,9 @@
 The front matter Claude Code reads on a rule or a skill: a first line of `---`,
 then YAML, then a closing `---`. This is the one reading of it (`PL-R417`):
 `tools/rules_paths_check.py` reads a rule's `paths:` through it,
-`tools/doc_check.py` whether a rule declares one, `docket.instructions` each
-key's dated sentences, and `docket.notes` where a notes file's Markdown begins.
+`tools/doc_check.py` whether a rule declares one and each key's value as a
+statement of its own, `docket.instructions` each key's dated sentences, and
+`docket.notes` where a notes file's Markdown begins.
 Each of those read the block its own way, a physical line at a time or as
 Markdown, where YAML 1.2.2 carries a value across lines: a quoted scalar to its
 closing quote (§ 7.3.1, § 7.3.2), a flow collection to its closing bracket
@@ -128,6 +129,26 @@ def keys(block: Sequence[str]) -> tuple[Key, ...]:
         found.append(Key(name, block[index][at:], index, end))
         index = end
     return tuple(found)
+
+
+def statements(block: Sequence[str]) -> list[tuple[int, int]]:
+    """Each statement of `block`, a front matter's lines between its fences, in order.
+
+    A key's value is one, ending where `keys` ends it, so what one key leaves
+    open - a backtick, a quotation - pairs with nothing in the next, and a date
+    in one dates no other (`PL-2MLT`, `PL-WX79`). Every other line is one
+    alone: a comment between keys, and each line of a block `keys` cannot split,
+    so that none of their text is read with another's, and a record wrapped
+    across two of them is read from its first line until the block is mended.
+    Each is the index of its first line and one past its last.
+    """
+    try:
+        spans = [(key.line, key.end) for key in keys(block)]
+    except Unread:
+        spans = []
+    held = {index for first, end in spans for index in range(first, end)}
+    alone = [(index, index + 1) for index, line in enumerate(block) if line.strip()]
+    return sorted(spans + [span for span in alone if span[0] not in held])
 
 
 def _value_end(block: Sequence[str], index: int, at: int) -> int:

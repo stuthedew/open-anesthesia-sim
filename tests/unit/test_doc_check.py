@@ -7232,6 +7232,12 @@ def _front_matter_keys(*block: str) -> list[tuple[str, int, int]]:
     return [(key.name, key.line, key.end) for key in front_matter_keys(block)]
 
 
+def _missing_path_citations(tmp_path: Path, readme: str) -> list[str]:
+    """Each path `readme` cites that resolves to nothing: where the check names it, and the path."""
+    report = doc_check.analyze(_repo(tmp_path, readme=readme))
+    return [error.split(", ", 1)[0] for error in report.errors if ": cites `" in error]
+
+
 def _absent_findings(tmp_path: Path, readme: str) -> list[str]:
     """What the citation checks say of `readme`'s `absent:` markers."""
     report = doc_check.analyze(_repo(tmp_path, readme=readme))
@@ -8147,6 +8153,69 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             '  - "/src/**"',
         ),
         [("description", 0, 3), ("paths", 3, 5)],
+    ),
+    # `PL-WX79`: a YAML front matter is no Markdown. Each key's value is a
+    # statement of its own and the body is read from the line after the front
+    # matter closes, where read as Markdown the keys were one setext heading and
+    # a fence-shaped line in a block scalar opened a fence into the body.
+    "citations, a stray backtick in one front-matter key pairs with nothing in the next": (
+        lambda tmp_path: _missing_path_citations(
+            tmp_path,
+            "---\nname: demo\n"
+            "description: Run the demo whenever the owner asks; a ` alone marks nothing\n"
+            "when: the owner names `docs/gone.md` as the reason\n---\n\n# Demo\n",
+        ),
+        ["README.md:4: cites `docs/gone.md`"],
+    ),
+    "quoted sources, a quotation one front-matter key leaves open is refused there": (
+        lambda tmp_path: _citation_findings(
+            tmp_path,
+            '---\nname: demo\ndescription: It is `docs/MODEL.md` § "A thread that was deleted\n'
+            'when: it is `docs/MODEL.md` § "Gone section" too\n---\n\n# Demo\n',
+        ),
+        [
+            UNCLOSED.format(
+                "README.md:3", "this citation of docs/MODEL.md", "whether the file holds the words"
+            ),
+            'README.md:4: quotes docs/MODEL.md as "Gone section", which is not in that file',
+        ],
+    ),
+    "host claims, a front matter key is dated by no other key": (
+        lambda tmp_path: _host_claim_errors(
+            tmp_path,
+            {
+                "docs/NOTE.md": (
+                    "---\ndescription: `doi.org` is blocked by the proxy\n"
+                    "when: probed on 2026-10-06\n---\n\nBody.\n"
+                )
+            },
+        ),
+        [
+            "docs/NOTE.md:2 names `doi.org` beside a refusal in a sentence that carries no "
+            "date: whether a host answers through the egress proxy is a probe on a day, so "
+            "write the date it was probed in the same sentence (`PL-CLW5`)"
+        ],
+    ),
+    "math, a fence-shaped line in a front matter opens no fence": (
+        lambda root: _math_errors(
+            root / "repo",
+            "docs/NOTE.md",
+            "---\ndescription: |\n  ```\n  quoted\n---\n\nBody writes \\(x\\) here.\n\n"
+            "```\ncode\n```\n",
+        ),
+        [
+            f"docs/NOTE.md:7 writes math as `{delimiter}`, which GitHub does not render; use "
+            "`$`...`$` inline or a `$$` fence for a block"
+            for delimiter in ("\\(", "\\)")
+        ],
+    ),
+    "removed headings, a front matter is no heading": (
+        lambda tmp_path: _removed_heading_terms(
+            tmp_path,
+            "---\ndescription: The old one\n---\n\n# Demo\n",
+            "---\ndescription: The new one\n---\n\n# Demo\n",
+        ),
+        [],
     ),
     "required checks, a flow collection carried past its line is refused by name": (
         lambda _: _refused(lambda: rcc.triggers(["on: [push,", "  pull_request]", "jobs:"])),
