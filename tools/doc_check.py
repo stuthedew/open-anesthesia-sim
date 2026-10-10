@@ -169,7 +169,11 @@ try:
     from docket.markdown import headings as read_headings
     from docket.markdown import read as read_blocks
     from docket.markdown import tables as read_tables
-    from docket.model import CLOSED_STATUSES, SEMVER_PATTERN, Item
+
+    # `front_matter_spans` is the item grammar's reading of where each field of
+    # a brief's front matter ends, so a brief's readers take one at a time
+    # (`PL-CZ28`).
+    from docket.model import CLOSED_STATUSES, SEMVER_PATTERN, Item, front_matter_spans
 
     # `python` is the one reading of where a Python statement ends (`PL-R417`):
     # a test is defined by a `def` statement rather than by a line opening one,
@@ -4437,11 +4441,15 @@ def _check_brief_paths(root: Path, basenames: frozenset[str], report: Report) ->
     for path, raw in _live_item_briefs(root):
         text = without_fences(raw)
         absent = _absent_paths(root, basenames, path, text, report)
-        for match in _statement_spans(raw):
-            token = match["content"]
+        # A front-matter field at a time, and the body after them (`PL-CZ28`).
+        spans = (
+            (first + _line_of(piece, match.start()) - 1, match["content"])
+            for first, piece in _brief_pieces(raw)
+            for match in _statement_spans(piece)
+        )
+        for line, token in spans:
             if not _is_path_citation(token) or _resolves(root, basenames, token):
                 continue
-            line = _line_of(text, match.start())
             if token in absent.get(line, ()):
                 continue
             if not asked:
@@ -4644,6 +4652,30 @@ def _live_item_briefs(root: Path) -> Iterator[tuple[Path, str]]:
         yield path.relative_to(root), path.read_text(encoding="utf-8", errors="replace")
 
 
+def _brief_pieces(text: str) -> list[tuple[int, str]]:
+    """A brief as the pieces its readers read apart, each with the line it starts on.
+
+    Each front-matter field is one, ending where `docket.model` ends it, and so
+    is the body after the closing `---`. Read from the file's first line as one
+    Markdown paragraph, a backtick one field left open paired with the next
+    field's, hiding the path a later field cited, and a quotation ran on into
+    the next field (`PL-CZ28`). Every other line of the front matter - a
+    comment, or one no field reads - is read alone. A brief with no front
+    matter is one piece.
+    """
+    layout = front_matter_spans(text)
+    if layout is None:
+        return [(1, text)]
+    spans, body = layout
+    lines = split_lines(text, keepends=True)
+    held = {index for first, end in spans for index in range(first, end)}
+    alone = [(index, index + 1) for index in range(1, body - 1) if index not in held]
+    pieces = sorted([*spans, *(span for span in alone if lines[span[0]].strip())])
+    return [(first + 1, "".join(lines[first:end])) for first, end in pieces] + [
+        (body + 1, "".join(lines[body:]))
+    ]
+
+
 def _cited_file(root: Path, basenames: Mapping[str, list[Path]], token: str) -> Path | None:
     """The one file `token` names, or `None` where it names no single file.
 
@@ -4700,8 +4732,14 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
     for path in _walk(root):
         basenames.setdefault(path.name, []).append(path)
 
-    sources = list(documents.items()) + list(_live_item_briefs(root))
-    for path, raw in sources:
+    # A live brief a front-matter field at a time, and its body after them
+    # (`PL-CZ28`), each piece with the line it starts on.
+    sources = [(path, 1, raw) for path, raw in documents.items()] + [
+        (path, first, piece)
+        for path, brief in _live_item_briefs(root)
+        for first, piece in _brief_pieces(brief)
+    ]
+    for path, offset, raw in sources:
         # A fence holds a literal, and read as a claim it made an item that
         # documents a stale citation an error for quoting the one it reports.
         for match in LINE_CITATION_RE.finditer(without_fences(raw)):
@@ -4715,7 +4753,7 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
             count = len(split_lines(target.read_text(encoding="utf-8", errors="replace")))
             if highest > count:
                 report.errors.append(
-                    f"{path}:{_line_of(raw, match.start())}: cites `{token}:"
+                    f"{path}:{offset + _line_of(raw, match.start()) - 1}: cites `{token}:"
                     f"{match.group(2)}{'-' + last if last else ''}`, but that file has "
                     f"{count} lines. Anchor the citation to a symbol rather than "
                     f"re-pointing it at a line number, which drifts again."
@@ -4770,7 +4808,10 @@ def _quoting_sources(
     which wants them.
 
     **The queue half is the *live* briefs only**, which is `_live_item_briefs`
-    and the same line `check_line_citations` draws. A closed brief is a record
+    and the same line `check_line_citations` draws. Each comes as its
+    `_brief_pieces`, a front-matter field at a time and then its body, so a
+    quotation one field leaves open is refused there rather than read on into
+    the next field (`PL-CZ28`). A closed brief is a record
     of what was true when the work was done, so its drift is not a finding -
     `.claude/rules/citation-drift.md` is the ratified decision, and this
     function read every brief instead, which made the two checks disagree
@@ -4797,7 +4838,7 @@ def _quoting_sources(
     for path, text in documents.items():
         yield path, 1, text
     for path, text in _live_item_briefs(root):
-        yield path, 1, text
+        yield from ((path, first, piece) for first, piece in _brief_pieces(text))
     for path in sorted(_walk(root)):
         if path.suffix != ".py":
             continue

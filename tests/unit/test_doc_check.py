@@ -6865,6 +6865,37 @@ def _citation_findings(tmp_path: Path, readme: str, brief: str = "") -> list[str
     ]
 
 
+def _live_brief_findings(tmp_path: Path, item: str) -> list[str]:
+    """What the citation checks say of `item`, written whole as `PL-T3ST`'s live file."""
+    root = _repo(tmp_path)
+    _item(root, "PL-T3ST-demo", item)
+    report = doc_check.analyze(root)
+    said = ("cites section", "names a section", "quotes ", "opens a quotation")
+    return [
+        finding for finding in report.errors + report.advisories if any(s in finding for s in said)
+    ]
+
+
+def _brief_path_sites(tmp_path: Path, removed: str, item: str) -> list[str]:
+    """Where the brief path check says `item`, `PL-T3ST`'s live file, cites `removed`, deleted."""
+    root = _removed(tmp_path, removed)
+    _item(root, "PL-T3ST-demo", item)
+    return [error.partition(": cites")[0] for error in _brief_path_report(root).errors]
+
+
+#: A live brief whose title leaves a backtick open and whose payoff cites a
+#: path git history shows deleted (`PL-CZ28`).
+STRAY_BACKTICK_BRIEF = (
+    "---\nid: PL-T3ST\nstatus: ready\ntitle: The reader counts a stray ` backtick\n"
+    "payoff: no brief cites `tools/gone.py` once it is gone\n---\n\n**Problem.** x\n"
+)
+#: A live brief whose title opens a quotation that a later field closes.
+SPLIT_QUOTATION_BRIEF = (
+    '---\nid: PL-T3ST\nstatus: ready\ntitle: It holds `docs/MODEL.md` § "Known\n'
+    'priority: P3\nsummary: limitations" to that file\n---\n\n**Problem.** x\n'
+)
+
+
 def _possessive_sites(tmp_path: Path, readme: str) -> list[str]:
     return possessive_section_check.sites(_repo(tmp_path, readme=readme), [])
 
@@ -8411,6 +8442,23 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
                 "README.md:3", "this citation of docs/MODEL.md", "whether the file holds the words"
             )
         ],
+    ),
+    # `PL-CZ28`: a live brief is read a front-matter field at a time, so a
+    # quotation one field leaves open is refused there rather than read on into
+    # the next field, and a backtick one leaves open hides nothing in the next.
+    "quoted sources, a quotation one front-matter field leaves open is refused there": (
+        lambda tmp_path: _live_brief_findings(tmp_path, SPLIT_QUOTATION_BRIEF),
+        [
+            UNCLOSED.format(
+                "docs/items/PL-T3ST-demo.md:4",
+                "this citation of docs/MODEL.md",
+                "whether the file holds the words",
+            )
+        ],
+    ),
+    "brief paths, a stray backtick in one front-matter field hides no path the next cites": (
+        lambda tmp_path: _brief_path_sites(tmp_path, "tools/gone.py", STRAY_BACKTICK_BRIEF),
+        ["docs/items/PL-T3ST-demo.md:5"],
     ),
     "quoted sources, a quotation never closed after a comma is an advisory": (
         lambda tmp_path: _advisories(

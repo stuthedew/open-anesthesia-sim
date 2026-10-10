@@ -3,12 +3,14 @@ id: PL-CZ28
 title: doc_check reads a live item's front matter as one Markdown paragraph in _check_brief_paths, check_quoted_sources and check_line_citations, so a backtick or a quotation one field leaves open pairs with the next field's, hiding a deleted path a later field cites or quoting a source across two fields; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, subprojects/docket/src/docket/model.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1389
 payoff: a live brief's front-matter fields are each read on their own, so a stray backtick or quotation in one field cannot hide a deleted path a later field cites or join two fields into one quotation
 verify: grep -qF '"brief paths, a stray backtick in one front-matter field' tests/unit/test_doc_check.py && grep -qF '"quoted sources, a quotation one front-matter field leaves open' tests/unit/test_doc_check.py
 ---
@@ -60,3 +62,16 @@ start at line 1.
 through `parse_front_matter`, and the brief from `_frontmatter_end` on, pinned
 by a `brief paths, ` and a `quoted sources, ` case in `PL-R417`'s guard that
 fail on today's reader.
+
+**Built 2026-10-10 (`#1389`).** `docket.model.front_matter_spans` gives the
+lines each front-matter field takes, as `_fold` reads them for
+`parse_front_matter`, and where the body starts: the readers need each field's
+lines rather than its folded value, to name the line a match is on.
+`doc_check._brief_pieces` cuts a live brief into those pieces - each field,
+every other front-matter line alone, and the body - and `_check_brief_paths`,
+`check_line_citations` and `_quoting_sources` read a brief a piece at a time,
+each match's line counted from its piece's first. `possessive_section_check`
+takes `_quoting_sources`, so it reads the same way. A `brief paths, ` and a
+`quoted sources, ` case in the guard, each failing on main's readers;
+`doc_check` and `possessive_section_check` report the same over the tree before
+and after.

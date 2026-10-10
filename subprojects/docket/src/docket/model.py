@@ -378,6 +378,31 @@ def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
     return dict(pairs), body
 
 
+def front_matter_spans(text: str) -> tuple[tuple[tuple[int, int], ...], int] | None:
+    """Where each front-matter field lies, and where the body starts, in `text`'s lines.
+
+    Each field is the index of its own line and one past the last line `_fold`
+    folds into it, the extent every reader of a value here takes. The body
+    starts on the line after the closing `---`. Indices count from the opening
+    `---`, as `text.split("\n")` does, so a reader holding a match inside one
+    field can name the line it is on. A line no field holds - blank, a comment,
+    or one `_fold` reads as no field's - is in no span. `None` where `text` has
+    no front matter.
+
+    For a reader that matches within one field at a time, since a code span or
+    a quotation in one never pairs with the next field's: read as one Markdown
+    paragraph, a backtick or a quotation one field left open paired with the
+    next one's (`PL-CZ28`).
+    """
+    match = FRONT_MATTER_RE.match(text)
+    if match is None:
+        return None
+    lines = match.group(1).split("\n")
+    fields, _unread = _fold(lines)
+    spans = tuple((1 + index, 2 + max([index, *folded])) for _key, _head, index, folded in fields)
+    return spans, len(lines) + 2
+
+
 def repeated_front_matter_keys(text: str) -> tuple[str, ...]:
     """Front-matter keys the file spells more than once, sorted.
 
