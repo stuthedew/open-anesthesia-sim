@@ -31,6 +31,7 @@ SOURCES = sorted((PACKAGE_ROOT / "src" / "docket").glob("*.py"))
 ALLOWED_IMPORTS = {
     "argparse",
     "ast",
+    "bisect",
     "collections",
     "collections.abc",
     "concurrent",
