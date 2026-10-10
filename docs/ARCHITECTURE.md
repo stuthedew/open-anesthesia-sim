@@ -1265,7 +1265,8 @@ ends (`PL-PVW2`). The reading itself is docket's `subprojects/docket/src/docket/
 which `shell_split.py` finds from its own place, the one lexer docket and the
 guards share (`PL-JNYL`). So the code that decides what the guards refuse lies
 outside the protected directory, and an edit to it is approved as any other
-edit is.
+edit is; a pull request changing it waits on the owner's read, as one
+changing `.claude/hooks/` does (`arming.LEXER`).
 
 `.claude/hooks/stop_hook_patch.py` is the one hook here that is not a check and
 does not run under `make check`. It is wired as a SessionStart hook, and it

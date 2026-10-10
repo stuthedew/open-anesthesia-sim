@@ -90,6 +90,10 @@ has already merged; what went unread is said beside it.
   and `.claude/hooks/` joined the list the same day, since they decide merges
   and tags as this module does (project owner, 2026-10-03, ratified, over
   leaving them armed on green; `PL-KKHD` records both answers);
+- docket's lexer, `LEXER`, joined the list when `PL-JNYL` made it the reader
+  every guard hook reads a Bash call through, so that a change to what the
+  guards refuse still waits on a read once it lies outside `.claude/hooks/`
+  (2026-10-10; `PL-JNYL` records the owner's answer);
 - a test of the tooling under `tests/` - a file pytest collects that imports
   no `anesthesia_sim` on either side of the change - arms on green, as
   `subprojects/docket/tests/` does, and the rest of `tests/` stays on the list
@@ -199,6 +203,14 @@ RECORDS = "docs/pr-bodies/"
 #: naming a file nothing reads.
 GATE = TOOLING + "src/docket/arming.py"
 
+#: Docket's shell lexer, which every guard hook under `.claude/hooks/` reads a
+#: Bash call through since `PL-JNYL` merged the hooks' reader into it: a change
+#: to it changes what they refuse, as a change to them does, so it waits on a
+#: read beside them (`PL-JNYL` records the owner's answer). `test_cli` pins it
+#: to `docket.shell`'s own path, so a move cannot leave it naming a file
+#: nothing reads.
+LEXER = TOOLING + "src/docket/shell.py"
+
 #: The simulator's tests, at the root: `subprojects/docket/tests/` starts with
 #: `subprojects/`, so the prefix leaves it to the tooling.
 TESTS = "tests/"
@@ -226,7 +238,7 @@ TEST_FILE_PATTERNS = ("test_*.py", "*_test.py")
 #: 2026-10-05. `src/anesthesia_sim/data/` lies under `src/` and is kept for
 #: the reader who looks for it by name. `.github/workflows/` and
 #: `.claude/hooks/` decide merges and tags as this module does, and joined on
-#: the owner's answer of 2026-10-03.
+#: the owner's answer of 2026-10-03; `LEXER` joined them with `PL-JNYL`.
 READ_PATHS = (
     "src/",
     TESTS,
@@ -235,12 +247,14 @@ READ_PATHS = (
     "README.md",
     ".github/workflows/",
     ".claude/hooks/",
+    LEXER,
 )
 
 #: The list as the answers name it, the gate included.
 READ_LIST = (
     f"src/, {TESTS} but a test importing no {PRODUCT_PACKAGE}, docs/MODEL.md, "
-    "src/anesthesia_sim/data/, README.md, .github/workflows/, .claude/hooks/ and arming.py"
+    "src/anesthesia_sim/data/, README.md, .github/workflows/, .claude/hooks/, "
+    "docket's shell.py and arming.py"
 )
 
 
