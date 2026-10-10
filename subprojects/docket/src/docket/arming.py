@@ -93,7 +93,8 @@ has already merged; what went unread is said beside it.
 - docket's lexer, `LEXER`, joined the list when `PL-JNYL` made it the reader
   every guard hook reads a Bash call through, so that a change to what the
   guards refuse still waits on a read once it lies outside `.claude/hooks/`
-  (2026-10-10; `PL-JNYL` records the owner's answer);
+  (project owner, 2026-10-10, ratified, over arming lexer changes on green;
+  `PL-JNYL` records the answer);
 - a test of the tooling under `tests/` - a file pytest collects that imports
   no `anesthesia_sim` on either side of the change - arms on green, as
   `subprojects/docket/tests/` does, and the rest of `tests/` stays on the list

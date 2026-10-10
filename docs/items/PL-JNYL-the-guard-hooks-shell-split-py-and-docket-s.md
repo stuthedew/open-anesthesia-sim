@@ -225,7 +225,16 @@ reader's known-gaps paragraph, which now name the guards without a number.
 Bash guards refuse is decided outside `.claude/hooks/`, which has waited on the
 owner's read since 2026-10-03, so a change to it would have armed on green.
 `arming.LEXER` holds `subprojects/docket/src/docket/shell.py` beside the hooks,
-and `CLAUDE.md`, `docs/maintainer.md` and `docs/ARCHITECTURE.md` name it. Put
-to the owner on 2026-10-10 as the recommendation, over arming lexer changes on
-green; the answer is recorded here when it comes, and the commit carrying the
-hold drops whole if the answer is to arm them.
+and `CLAUDE.md`, `docs/maintainer.md` and `docs/ARCHITECTURE.md` name it
+(project owner, 2026-10-10, ratified, over arming lexer changes on green). The
+answer was Stuart's "Agree with recs and merge" in the project chat at 18:38Z,
+to the coordinator's summary of `#1390`, which put the hold as its first
+recommendation.
+
+**A guard that cannot load the lexer still fails open.** The four Bash guards
+now reach into `subprojects/docket/src/` for their reader, so a broken import
+there lets every command through unseen, as any error in a guard always has.
+The same answer kept it so (project owner, 2026-10-10, ratified, over changing
+what a guard does when the reader cannot load): the summary's second
+recommendation was no change, since `tests/unit/test_shell_reader.py` and each
+guard suite's pinned refusals fail in CI on such an import.
