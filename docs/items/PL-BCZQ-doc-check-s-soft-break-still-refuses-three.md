@@ -3,12 +3,14 @@ id: PL-BCZQ
 title: doc_check's SOFT_BREAK still refuses three kinds of line that continue a paragraph - an ordered list marker other than 1, a pipe line with no delimiter row under it, and a block opener indented four or more columns - and LINK_TITLE cannot cross a line ending after a backslash in a link title, so every pattern read through _statement_matches stops inside a statement statement_lines continues: a closed quotation is refused as unclosed, a link's missing target and a wrapped bold title go unread; live in form
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-10
+closed: 2026-10-10
+pr: 1392
 payoff: a citation, quotation, link or bold title wrapped onto a line opening with a number, a pipe or deep indentation is read whole, as every renderer reads it, so its target is held to the tree
 verify: grep -qF '"soft break, a line opening with an ordered marker past 1 continues its quotation"' tests/unit/test_doc_check.py && grep -qF '"soft break, a pipe line continues its quotation"' tests/unit/test_doc_check.py && grep -qF '"links, a title continued after a backslash"' tests/unit/test_doc_check.py
 ---
@@ -80,3 +82,16 @@ left, and `LINK_TITLE` the gap `PL-KT0H`'s left.
 on `SOFT_BREAK`, `GAP` and `QUOTATION_CHAR` crosses each line ending the
 statement continues across, and `LINK_TITLE` crosses one after a backslash;
 each form above is a `CONTINUED_STATEMENTS` case that fails on today's readers.
+
+
+**Built 2026-10-10 (`#1392`).** `SOFT_BREAK` reads the gap alone - trailing
+spaces or tabs, the line ending, and the next line's indent and block quote
+markers - and refuses no line, since every reader built on it matches within
+one statement `statement_lines` cuts, which decides where the paragraph ends. A
+link title is read by `_title_end`, which steps over a backslash and the
+character after it, a line ending included. `roadmap.CONTINUED_LINE`, which held
+the refusals, had no reader left and was removed. Six cases in `PL-R417`'s
+guard, the three this brief names and the indented opener, the wrapped link and
+the bold title above, each failing on main's readers; and
+`tests/unit/test_inline_reference.py` holds the soft break to markdown-it-py
+over the specification examples and every tracked document.

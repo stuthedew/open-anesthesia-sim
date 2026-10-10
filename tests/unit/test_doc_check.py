@@ -7216,6 +7216,16 @@ def _left_status_names(status: str, body: str) -> list[str]:
     return [message.split("says it is at `", 1)[1].split("`", 1)[0] for _, message in found]
 
 
+def _reference_file_errors(tmp_path: Path, index: str) -> list[str]:
+    """What the reference check says of `index`, written as the reference index."""
+    references = tmp_path / "docs" / "references"
+    references.mkdir(parents=True)
+    (references / "README.md").write_text(index, encoding="utf-8")
+    report = doc_check.Report()
+    doc_check._check_reference_files_exist(tmp_path, report)
+    return report.errors
+
+
 def _absent_findings(tmp_path: Path, readme: str) -> list[str]:
     """What the citation checks say of `readme`'s `absent:` markers."""
     report = doc_check.analyze(_repo(tmp_path, readme=readme))
@@ -7484,30 +7494,28 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         ),
     ),
     "links, wrapped link text": (
-        lambda _: [link["target"] for link in doc_check.LINK_RE.finditer("[the\nnotes](x.md)")],
+        lambda _: [link.destination for link in doc_check._links("[the\nnotes](x.md)")],
         ["x.md"],
     ),
     # A destination as CommonMark 0.31.2 § 6.3 reads one (`PL-KT0H`).
     "links, a destination with a title": (
-        lambda _: [link["target"] for link in doc_check.LINK_RE.finditer('[a](x.md "T")')],
+        lambda _: [link.destination for link in doc_check._links('[a](x.md "T")')],
         ["x.md"],
     ),
     "links, a destination whose ) or title follows on the next line": (
-        lambda _: [
-            link["target"] for link in doc_check.LINK_RE.finditer('[a](x.md\n)\n[b](y.md\n"T")')
-        ],
+        lambda _: [link.destination for link in doc_check._links('[a](x.md\n)\n[b](y.md\n"T")')],
         ["x.md", "y.md"],
     ),
     "links, a destination two line endings from its ) is no link": (
-        lambda _: [link["target"] for link in doc_check.LINK_RE.finditer("[a](x.md\n\n)")],
+        lambda _: [link.destination for link in doc_check._links("[a](x.md\n\n)")],
         [],
     ),
     "links, a destination holding a pair of parentheses": (
-        lambda _: [link["target"] for link in doc_check.LINK_RE.finditer("[a](x(1).md)")],
+        lambda _: [link.destination for link in doc_check._links("[a](x(1).md)")],
         ["x(1).md"],
     ),
     "links, an angle-bracket destination": (
-        lambda _: [link["bracketed"] for link in doc_check.LINK_RE.finditer("[a](<my x.md>)")],
+        lambda _: [link.destination for link in doc_check._links("[a](<my x.md>)")],
         ["my x.md"],
     ),
     "links, an angle-bracket destination that is missing is reported": (
@@ -9226,6 +9234,80 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             tmp_path, '# Demo\n\n## Read § "Known limitations"\nabove all, it omits x.\n'
         ),
         [],
+    ),
+    # A line only an ordered list starting at 1 could interrupt, a pipe line no
+    # delimiter row follows, and a block opener four columns in each carry the
+    # paragraph on (CommonMark 0.31.2 § 4.8, § 5.3; GFM 0.29 § 4.10), and a
+    # backslash carries a link's title over a line ending (§ 6.3) (`PL-BCZQ`).
+    "soft break, a line opening with an ordered marker past 1 continues its quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path,
+            "# Demo\n\n## Released in October 2026. Notes follow\n\n"
+            'The rule is in § "Released in October\n2026. Notes follow", which holds it.\n',
+        ),
+        [],
+    ),
+    "soft break, a pipe line continues its quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path,
+            '# Demo\n\n## A heading with a | pipe\n\nSee § "A heading with a\n| pipe" now.\n',
+        ),
+        [],
+    ),
+    "soft break, a block opener indented four columns continues its quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\n## Steps - in order\n\nSee § "Steps\n    - in order" for them.\n'
+        ),
+        [],
+    ),
+    "links, link text continued over an ordered marker past 1": (
+        lambda tmp_path: _link_errors(
+            tmp_path, README + "\nSee [the notes of\n2026. Here](missing-file.md) for more.\n"
+        ),
+        ["README.md:6: links to missing-file.md, which does not exist"],
+    ),
+    "links, a title continued after a backslash": (
+        lambda tmp_path: _link_errors(
+            tmp_path,
+            README + '\nSee [the notes](missing.md "a title ending in a backslash\\\n'
+            'and going on") here.\n',
+        ),
+        ["README.md:6: links to missing.md, which does not exist"],
+    ),
+    "section titles, a bold title continued over an ordered marker past 1": (
+        lambda _: (
+            "The heading decided in October 2026. Applies"
+            in doc_check._headings("**The heading decided in October\n2026. Applies.** Text.\n")
+        ),
+        True,
+    ),
+    # A link's statement is the document's, read before any code span is
+    # blanked: blanked first, a line holding only a span was a blank line and a
+    # span opening a paragraph made it indented code (`PL-Q6HR`).
+    "links, a line holding only a code span inside link text": (
+        lambda tmp_path: _link_errors(
+            tmp_path,
+            README + "\nSee [the notes of\n`docket check`\nfor the rule](missing-file.md) here.\n",
+        ),
+        ["README.md:6: links to missing-file.md, which does not exist"],
+    ),
+    "links, after a code span opening its paragraph": (
+        lambda tmp_path: _link_errors(
+            tmp_path, README + "\n`docs/MODEL.md` is the spec; see [the notes](missing-file.md).\n"
+        ),
+        ["README.md:6: links to missing-file.md, which does not exist"],
+    ),
+    # The reference index's filenames are code spans read a statement at a
+    # time, so one carried across a line ending is one span (`PL-P6D5`).
+    "reference files, a code span carried across a line ending": (
+        lambda tmp_path: _reference_file_errors(
+            tmp_path, "# Refs\n\nA `wrapped\nspan`x.pdf` tail.\n\nThe paper, `y.pdf`.\n"
+        ),
+        [
+            "docs/references/README.md:6 names y.pdf, which is not in docs/references/; drop "
+            "the filename and keep the citation if the text was deliberately removed, since "
+            "citing a work is not redistributing it"
+        ],
     ),
 }
 

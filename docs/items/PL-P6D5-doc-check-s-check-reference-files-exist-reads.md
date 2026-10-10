@@ -3,12 +3,14 @@ id: PL-P6D5
 title: doc_check's _check_reference_files_exist reads REFERENCE_FILE_RE's code spans in docs/references/README.md a line at a time, so a code span carried across a line ending is read as two, and a filename CommonMark renders as prose is held to the reference folder; live in form
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-10
+closed: 2026-10-10
+pr: 1392
 payoff: the reference index is read for the filenames a renderer shows in code spans, wrapped across a line or not
 verify: grep -qF '"reference files, a code span carried across a line ending"' tests/unit/test_doc_check.py
 ---
@@ -50,3 +52,10 @@ older than the head; no member's fix reached it.
 
 **Done when.** The index's filenames are read from the code spans
 `_code_spans` gives a statement at a time, with a test on the form above.
+
+
+**Built 2026-10-10 (`#1392`).** `_check_reference_files_exist` reads each code
+span `_code_spans` gives, a statement at a time, and holds one to the folder
+when its whole content is a filename, so the wrapped span above is one span and
+`x.pdf` stays prose. One `reference files, ` case in `PL-R417`'s guard,
+failing on main's reader.

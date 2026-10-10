@@ -98,6 +98,7 @@ from __future__ import annotations
 import argparse
 import ast
 import bisect
+import html
 import io
 import json
 import os
@@ -110,7 +111,7 @@ import textwrap
 import tokenize
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
-from functools import partial
+from functools import lru_cache, partial
 from pathlib import Path, PurePosixPath
 
 # `ROADMAP.md`'s release-train grammar lives in `docket`, which reasons about
@@ -165,7 +166,7 @@ try:
     # each statement ends, so a code span or a bold run is read within its own
     # (`PL-FP7J`, `PL-VQBY`), where an HTML block runs (`PL-GT0J`), and which
     # lines are a heading, so a `#` line inside a fence is none (`PL-T1X0`).
-    from docket.markdown import CODE, HTML, PROSE, block_lines, statement_lines
+    from docket.markdown import CODE, HTML, PROSE, TABLE, block_lines, statement_lines, unmarked
     from docket.markdown import headings as read_headings
     from docket.markdown import read as read_blocks
     from docket.markdown import tables as read_tables
@@ -201,7 +202,6 @@ try:
     # `markdown` reads one, never a `#` line inside a fence (`PL-0Y7J`).
     from docket.roadmap import (
         BASELINE_MARK,
-        CONTINUED_LINE,
         DECLARATION_RE,
         EXCLUDED_SUBSECTION,
         SCOPE_SUBSECTION,
@@ -431,21 +431,27 @@ NON_PARAMETER_KEYS = frozenset({"schema_version", "sources", "provenance_gap"})
 SOURCE_TIERS = ("primary", "secondary", "reference-implementation")
 
 TREE_ROOT_RE = re.compile(r"^(?P<path>[\w./-]+/)$")
-#: A source file named in the reference index, as inline code: `name.pdf`.
-REFERENCE_FILE_RE = re.compile(r"`(?P<name>[\w][\w.-]*\.(?:pdf|txt|csv|json))`")
+#: A source file's name as the reference index writes one, the whole of a code
+#: span: `name.pdf`.
+REFERENCE_FILE_RE = re.compile(r"[\w][\w.-]*\.(?:pdf|txt|csv|json)")
 TREE_ENTRY_RE = re.compile(r"^(?P<indent>(?:(?:│   )|(?:    ))*)(?:├──|└──) (?P<name>\S+)")
 
-#: A soft break (CommonMark 0.31.2 § 6.8): a line ending inside a paragraph, and
-#: the opening of the line it carries on to. Where a paragraph goes on is
-#: `CONTINUED_LINE`, which docket exports so that the rule is written once
-#: (`PL-R417`, `PL-MFVV`); every reader of a phrase the documents may wrap takes
-#: its whitespace from here, rather than each meeting the wrap one capture at a
-#: time. It reads the gap and not where a statement ends: `CONTINUED_LINE` asks
-#: nothing of the line above, so it carried a heading's line on, and a paragraph
-#: past the block quote, setext underline or table opening under it. So every
-#: reader built on it matches within one statement of `statement_lines`
-#: (`_statement_matches`), which decides the end (`PL-Z1R7`).
-SOFT_BREAK = rf"[ \t]*+\n{CONTINUED_LINE}"
+#: A soft break (CommonMark 0.31.2 § 6.8): a line ending inside a statement,
+#: and the indent and block quote markers that open the line it carries on to.
+#: Every reader of a phrase the documents may wrap takes its whitespace from
+#: here, rather than each meeting the wrap one capture at a time (`PL-R417`).
+#: It reads the gap and never where a statement ends, so it refuses no line:
+#: every reader built on it matches within one statement of `statement_lines`
+#: (`_statement_matches`), which decides the end (`PL-Z1R7`). It once refused
+#: each line that might open a block, and an ordered marker past 1, a pipe line
+#: and a block's opening indented four columns or more each carry a paragraph
+#: on wherever `statement_lines` reads one going on, so a closed quotation
+#: wrapped onto `2026. Notes follow` was refused as unclosed and a link wrapped
+#: onto it was never read (`PL-BCZQ`). The one line it misreads opens with a
+#: `>` four or more columns in, which CommonMark reads as text and this as a
+#: block quote's marker, and `tests/unit/test_inline_reference.py` fails on any
+#: tracked document that writes one.
+SOFT_BREAK = r"[ \t]*+\n[ \t]*+(?:>[ \t]*+)*+"
 #: The space between two words of a Markdown phrase: spaces or tabs, or a soft
 #: break.
 GAP = rf"(?:[ \t]++|{SOFT_BREAK})"
@@ -464,35 +470,278 @@ QUOTATION_CHAR = rf'(?:[^"\n]|{SOFT_BREAK})'
 UNCLOSED_QUOTATION = rf'(?P<unclosed>{QUOTATION_CHAR}*+)(?!")'
 
 
-def _balanced(depth: int) -> str:
-    """A character of a bare link destination, a pair of parentheses `depth` deep taken whole."""
-    unit = r"[^\s()]"
-    for _ in range(depth):
-        unit = rf"(?:[^\s()]|\({unit}*\))"
-    return unit
+#: A code span (CommonMark 0.31.2 § 6.1) opening at the backtick run the inline
+#: reader stands on, closed by the first run of exactly as many backticks.
+#: Where one may open is the reader's to say: an escaped backtick opens none,
+#: and one inside an autolink or raw HTML is that construct's, which
+#: `CODE_SPAN_RE`, finding a span wherever its pattern does, cannot know.
+SPAN_AT = re.compile(r"(?P<run>`+)(?!`)(?P<content>[\s\S]+?)(?<!`)(?P=run)(?!`)")
+#: An autolink (§ 6.5): a URI, or an email address, in angle brackets.
+AUTOLINK_RE = re.compile(
+    r"<(?:[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\x00-\x20]*"
+    r"|[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+    r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*)>"
+)
+#: An attribute of an HTML tag (§ 6.6): its name, and a value where one is given.
+HTML_ATTRIBUTE = (
+    r"(?:\s+[A-Za-z_:][A-Za-z0-9_.:-]*"
+    r"""(?:\s*=\s*(?:[^"'=<>`\x00-\x20]+|'[^']*'|"[^"]*"))?)"""
+)
+#: Raw HTML (§ 6.6): an open or a closing tag, a comment, a processing
+#: instruction, a declaration or a CDATA section.
+RAW_HTML_RE = re.compile(
+    rf"<[A-Za-z][A-Za-z0-9-]*{HTML_ATTRIBUTE}*\s*/?>"
+    r"|</[A-Za-z][A-Za-z0-9-]*\s*>"
+    r"|<!---?>|<!--(?:[^-]|-[^-]|--[^>])*-->"
+    r"|<\?[\s\S]*?\?>"
+    r"|<![A-Za-z][^>]*>"
+    r"|<!\[CDATA\[[\s\S]*?\]\]>"
+)
+#: A backslash escape (§ 2.4) or a character reference (§ 2.5), as a link's
+#: destination decodes them.
+ESCAPE_OR_REFERENCE_RE = re.compile(
+    r"\\(?P<escaped>[!-/:-@\[-`{-~])"
+    r"|(?P<reference>&(?:#[0-9]{1,7}|#[Xx][0-9A-Fa-f]{1,6}|[A-Za-z][A-Za-z0-9]{0,31});)"
+)
+#: How deep links, images and the text inside them are followed before the
+#: rest of a statement is read as text, as markdown-it-py's `maxNesting` bounds
+#: its reading of them.
+INLINE_NESTING = 20
 
 
-#: A link title (CommonMark 0.31.2 § 6.3): in double quotes, single quotes or
-#: parentheses, and wrapped over lines as a paragraph is, never past a blank one.
-LINK_TITLE = (
-    rf"(?:\"(?:[^\"\\\n]|\\.|{SOFT_BREAK})*\""
-    rf"|'(?:[^'\\\n]|\\.|{SOFT_BREAK})*'"
-    rf"|\((?:[^()\\\n]|\\.|{SOFT_BREAK})*\))"
-)
-#: An inline link, read as CommonMark 0.31.2 § 6.3 reads one (`PL-KT0H`): its
-#: text, `(`, a destination, an optional title and `)`, with spaces, tabs and at
-#: most one line ending between each. A destination is `bracketed` - in angle
-#: brackets, which may hold a space - or a bare `target`, whose parentheses
-#: come in pairs nested to the three levels the specification asks an
-#: implementation to read; a backslash escape in it is not decoded. Each form
-#: this left out was a link read as nothing, so its target went unchecked: one
-#: whose text a wrap split, and one with a title, a bracketed destination, or
-#: its `)` on the next line.
-LINK_RE = re.compile(
-    rf"\[(?:[^\]\n]|{SOFT_BREAK})*\]\({GAP}?"
-    rf"(?:<(?P<bracketed>[^<>\n]*)>|(?P<target>(?!<){_balanced(3)}+))"
-    rf"(?:{GAP}{LINK_TITLE})?{GAP}?\)"
-)
+@dataclass(frozen=True)
+class Link:
+    """An inline link or image (CommonMark 0.31.2 § 6.3, § 6.4), as written.
+
+    `start` is its `[`, or an image's `!`, and `end` is past its `)`.
+    `destination` is what it links to as the text writes it, inside any angle
+    brackets, and `at` is where that stands; an empty one, `[a]()`, stands
+    where one would have. Offsets are the text's that was read.
+    """
+
+    start: int
+    end: int
+    destination: str
+    at: tuple[int, int]
+    image: bool
+
+    @property
+    def target(self) -> str:
+        """The destination a renderer follows: each escape and character reference decoded."""
+        return ESCAPE_OR_REFERENCE_RE.sub(_decoded, self.destination)
+
+
+def _decoded(match: re.Match[str]) -> str:
+    """The character an escape or a character reference stands for."""
+    escaped = match["escaped"]
+    return escaped if escaped is not None else html.unescape(match["reference"])
+
+
+class _InlineReader:
+    """Inline content, read left to right as CommonMark 0.31.2 § 6 reads it (`PL-R417`).
+
+    The reading markdown-it-py gives, which `tests/unit/test_inline_reference.py`
+    holds this one to over the CommonMark and GitHub Flavored Markdown
+    specifications' examples and every tracked document. At each position an
+    escape, a code span, a link or image, an autolink and raw HTML are tried in
+    turn, and a link's text is found by stepping over each of those whole: a
+    `]` inside a code span or an autolink closes no link, text holding a link
+    of its own is no link (§ 6.3), and an escaped backtick or bracket opens
+    nothing. An image's description is its text, so nothing in one is read.
+    Each regex this replaced matched wherever it could, and met each of those
+    rules one capture at a time.
+    """
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self.spans: list[re.Match[str]] = []
+        self.links: list[Link] = []
+        self._ends: dict[tuple[int, int], int] = {}
+
+    def read(self, start: int, end: int, depth: int = 0) -> None:
+        """Record every code span, link and image from `start` to `end`, in order."""
+        text = self.text
+        position = start
+        while position < end:
+            character = text[position]
+            if character == "`":
+                span = SPAN_AT.match(text, position, end)
+                if span is None:
+                    position = _run_end(text, position, end)
+                    continue
+                self.spans.append(span)
+                position = span.end()
+            elif character == "[" or (character == "!" and text.startswith("[", position + 1)):
+                found = self._link(position, end, depth)
+                if found is None:
+                    position += 1
+                    continue
+                link, label = found
+                self.links.append(link)
+                if not link.image:
+                    self.read(position + 1, label, depth + 1)
+                position = link.end
+            else:
+                position = _past_other(text, position, end)
+
+    def _past(self, position: int, end: int, depth: int) -> int:
+        """Past whatever opens at `position`, read whole, or past its one character."""
+        key = (position, end)
+        if key not in self._ends:
+            text = self.text
+            character = text[position]
+            if depth >= INLINE_NESTING:
+                found = end
+            elif character == "`":
+                span = SPAN_AT.match(text, position, end)
+                found = _run_end(text, position, end) if span is None else span.end()
+            elif character == "[" or (character == "!" and text.startswith("[", position + 1)):
+                link = self._link(position, end, depth + 1)
+                found = position + 1 if link is None else link[0].end
+            else:
+                found = _past_other(text, position, end)
+            self._ends[key] = found
+        return self._ends[key]
+
+    def _label_end(self, opener: int, end: int, nested: bool, depth: int) -> int:
+        """Where the `]` closing the text a `[` at `opener` opens stands, or -1.
+
+        A bracket opening nothing nests, and the next `]` is its own. Unless
+        `nested`, a link opening inside the text ends the reading, since a link
+        holds no link (§ 6.3); an image's description may hold one.
+        """
+        text = self.text
+        level = 1
+        position = opener + 1
+        while position < end:
+            if text[position] == "]":
+                level -= 1
+                if level == 0:
+                    return position
+            before = position
+            position = self._past(position, end, depth)
+            if text[before] == "[":
+                if position == before + 1:
+                    level += 1
+                elif not nested:
+                    return -1
+        return -1
+
+    def _link(self, position: int, end: int, depth: int) -> tuple[Link, int] | None:
+        """The link or image opening at `position`, and where its text ends; `None` for none.
+
+        Its text, `(`, an optional destination and title, and `)`, with spaces,
+        tabs and line endings between them (§ 6.3). A destination that cannot
+        be read leaves the link only where `)` comes next, as `[a]()` does.
+        """
+        text = self.text
+        image = text[position] == "!"
+        label = self._label_end(position + 1 if image else position, end, image, depth)
+        if label < 0 or not text.startswith("(", label + 1):
+            return None
+        cursor = _past_space(text, label + 2, end)
+        if cursor >= end:
+            return None
+        at = (cursor, cursor)
+        destination = _destination(text, cursor, end)
+        if destination is not None:
+            at, cursor = destination
+            gap = _past_space(text, cursor, end)
+            title = _title_end(text, gap, end) if gap > cursor else None
+            cursor = gap if title is None else _past_space(text, title, end)
+        if cursor >= end or text[cursor] != ")":
+            return None
+        return Link(position, cursor + 1, text[at[0] : at[1]], at, image), label
+
+
+def _run_end(text: str, position: int, end: int) -> int:
+    """Past the backtick run at `position`, which a run no closer matches is, whole (§ 6.1)."""
+    while position < end and text[position] == "`":
+        position += 1
+    return position
+
+
+def _past_other(text: str, position: int, end: int) -> int:
+    """Past an escape, an autolink or raw HTML at `position`, or past its one character."""
+    character = text[position]
+    if character == "\\" and position + 1 < end:
+        return position + 2
+    if character == "<":
+        found = AUTOLINK_RE.match(text, position, end) or RAW_HTML_RE.match(text, position, end)
+        if found is not None:
+            return found.end()
+    return position + 1
+
+
+def _past_space(text: str, position: int, end: int) -> int:
+    """Past the spaces, tabs and line endings at `position`."""
+    while position < end and text[position] in " \t\n":
+        position += 1
+    return position
+
+
+def _destination(text: str, position: int, end: int) -> tuple[tuple[int, int], int] | None:
+    """The link destination at `position` (§ 6.3): where it stands and where it ends, or `None`.
+
+    In angle brackets it may hold a space but no line ending and no unescaped
+    `<`; bare, it runs to a space, a control character or a `)` no `(` opened,
+    its parentheses nested at most 32 deep, and is never empty.
+    """
+    if text.startswith("<", position):
+        cursor = position + 1
+        while cursor < end:
+            character = text[cursor]
+            if character in "\n<":
+                return None
+            if character == ">":
+                return (position + 1, cursor), cursor + 1
+            cursor += 2 if character == "\\" and cursor + 1 < end else 1
+        return None
+    cursor = position
+    level = 0
+    while cursor < end:
+        character = text[cursor]
+        if character <= " " or character == "\x7f":
+            break
+        if character == "\\" and cursor + 1 < end:
+            if text[cursor + 1] == " ":
+                break
+            cursor += 2
+            continue
+        if character == "(":
+            level += 1
+            if level > 32:
+                return None
+        elif character == ")":
+            if not level:
+                break
+            level -= 1
+        cursor += 1
+    if cursor == position or level:
+        return None
+    return (position, cursor), cursor
+
+
+def _title_end(text: str, position: int, end: int) -> int | None:
+    """Past the link title at `position` (§ 6.3), quoted or in parentheses, or `None`.
+
+    A backslash escapes the character after it, a line ending included, so a
+    title wrapped after one goes on (`PL-BCZQ`).
+    """
+    if position >= end or text[position] not in "\"'(":
+        return None
+    closing = ")" if text[position] == "(" else text[position]
+    cursor = position + 1
+    while cursor < end:
+        character = text[cursor]
+        if character == closing:
+            return cursor + 1
+        if character == "(" and closing == ")":
+            return None
+        cursor += 2 if character == "\\" and cursor + 1 < end else 1
+    return None
+
+
 NUMBER_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
 
 # A prose value that restates a data-file constant declares which one, so it
@@ -4232,20 +4481,88 @@ def _statement_spans(text: str) -> Iterator[re.Match[str]]:
     item's, a block quote's, a heading's or an HTML block's start as well as at
     a blank line, which `CODE_SPAN_RE` alone reads only the last of. Read
     across them, a stray backtick paired with the next statement's first span
-    and blanked the prose between them (`PL-FP7J`). Offsets are the document's.
+    and blanked the prose between them (`PL-FP7J`). A prose statement's spans
+    are `_inline`'s, so an escaped backtick opens none and a backtick inside an
+    autolink or raw HTML is that construct's (`PL-R417`); an indented code
+    block's and an HTML block's, which CommonMark reads none in, are read with
+    `CODE_SPAN_RE`, as a fence's lines are. Offsets are the document's.
     """
-    for start, end in _statement_offsets(text):
-        yield from CODE_SPAN_RE.finditer(text, start, end)
+    spans = list(_inline(text)[0])
+    for start, end in _statement_offsets(text, (CODE, HTML)):
+        spans.extend(CODE_SPAN_RE.finditer(text, start, end))
+    yield from sorted(spans, key=lambda span: span.start())
 
 
-def _without_spans(text: str) -> str:
-    """`text` with each code span `_statement_spans` reads blanked, its offsets kept."""
-    pieces: list[str] = []
-    last = 0
-    for span in _statement_spans(text):
-        pieces += (text[last : span.start()], re.sub(r"[^\n]", " ", span.group(0)))
-        last = span.end()
-    return "".join(pieces) + text[last:]
+def _links(text: str) -> tuple[Link, ...]:
+    """Every inline link and image in a document's prose, as `_inline` reads them, in order."""
+    return _inline(text)[1]
+
+
+@lru_cache(maxsize=8)
+def _inline(text: str) -> tuple[tuple[re.Match[str], ...], tuple[Link, ...]]:
+    """The code spans, links and images of a document's prose, a statement at a time.
+
+    Each statement is `statement_lines`' (`PL-R417`), read by `_InlineReader`
+    from the document with its containers' markers blanked (`_unmarked`), so a
+    line a soft break carries a destination or a span onto opens with
+    whitespace alone. A table row is read a cell at a time, split where GitHub
+    Flavored Markdown 0.29 § 4.10 splits it before reading any inline - at each
+    pipe no backslash escapes, a pipe inside a code span included - and a cell
+    past the header's last is dropped, as GFM drops it. Offsets are `text`'s,
+    and each span's groups are the blanked text's.
+    """
+    lines = split_lines(text)
+    blanked = _unmarked(text, lines)
+    starts = [0]
+    for line in split_lines(text, keepends=True):
+        starts.append(starts[-1] + len(line))
+    holder = {
+        index: block
+        for block in read_blocks(lines).blocks
+        for index in range(block.start, block.end)
+    }
+    reader = _InlineReader(blanked)
+    for first, end in statement_lines(lines, PROSE):
+        block = holder[first]
+        if block.kind != TABLE:
+            reader.read(starts[first], starts[end])
+            continue
+        header = len(_cells(blanked, starts[block.start], starts[block.start + 1]))
+        for start, stop in _cells(blanked, starts[first], starts[end])[:header]:
+            reader.read(start, stop)
+    return tuple(reader.spans), tuple(reader.links)
+
+
+def _unmarked(text: str, lines: Sequence[str]) -> str:
+    """`text` with each line's container markers blanked, as `markdown.unmarked` blanks them.
+
+    Offsets are kept, so an offset into it is one into `text`; a line the
+    blanking would hand back at another length is kept as written.
+    """
+    pieces = []
+    for raw, blanked in zip(split_lines(text, keepends=True), unmarked(lines), strict=True):
+        body = raw.removesuffix("\n")
+        pieces.append(blanked + raw[len(body) :] if len(blanked) == len(body) else raw)
+    return "".join(pieces)
+
+
+#: A pipe that ends a table cell: one no backslash escapes (GFM 0.29 § 4.10),
+#: where `markdown.cells` and markdown-it-py split a row.
+CELL_BREAK_RE = re.compile(r"(?<!\\)\|")
+
+
+def _cells(text: str, start: int, end: int) -> list[tuple[int, int]]:
+    """The cells of the table row from `start` to `end`, as offsets, its outer pipes dropped."""
+    row = text[start:end].removesuffix("\n")
+    left = start + len(row) - len(row.lstrip())
+    right = start + len(row.rstrip())
+    edges = [left - 1, *(pipe.start() for pipe in CELL_BREAK_RE.finditer(text, left, right))]
+    cells = list(zip((edge + 1 for edge in edges), [*edges[1:], right], strict=True))
+    if cells and cells[0][0] == cells[0][1]:
+        cells.pop(0)
+    if cells and cells[-1][0] == cells[-1][1]:
+        cells.pop()
+    return cells
 
 
 def _statement_offsets(
@@ -4268,7 +4585,7 @@ def _statement_matches(
     `QUOTATION_CHAR` read across a soft break stops where CommonMark 0.31.2 ends
     the paragraph, heading or table row holding it - at a block quote, a setext
     underline or a table opening under it, and on an ATX heading's own line -
-    rather than wherever `CONTINUED_LINE` takes the next line for one going on
+    rather than wherever the next line's opening allows one to go on
     (`PL-Z1R7`). A fence is no statement, so none is read in one. Each match
     keeps its bounds as `pos` and `endpos`, so a reader looking before or after
     it - a mark, a direction - looks no further than its statement. Offsets are
@@ -4325,16 +4642,17 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
             report.errors.append(f"{path}:{line}: cites `{token}`, {_unresolved(token)}")
 
         # A link is inline content of a paragraph, a heading or a table cell
-        # (CommonMark 0.31.2 § 6.3), so it is read from the prose alone, with its
-        # code spans blanked: a link-shaped line in a fence, an HTML block or a
-        # code span is a literal, and was held to the tree as a link (`PL-M2J4`).
-        unspanned = _without_spans(text)
-        for match in _statement_matches(LINK_RE, unspanned, PROSE):
-            target = match["target"] if match["target"] is not None else match["bracketed"]
+        # (CommonMark 0.31.2 § 6.3), so it is read from the prose alone: a
+        # link-shaped line in a fence, an HTML block or a code span is a literal,
+        # and was held to the tree as a link (`PL-M2J4`). Each statement is the
+        # document's, so a code span on a line of its own ends no paragraph a
+        # link stands in (`PL-Q6HR`).
+        for link in _links(text):
+            target = link.target
             if target.startswith(("http://", "https://", "mailto:", "#")):
                 continue
             relative, _, anchor = target.partition("#")
-            line = _line_of(text, match.start())
+            line = _line_of(text, link.start)
             resolved = (root / path).parent / relative if relative else root / path
             if not resolved.exists():
                 report.errors.append(f"{path}:{line}: links to {target}, which does not exist")
@@ -6968,23 +7286,26 @@ def _check_reference_files_exist(root: Path, report: Report) -> None:
 
     An entry that names no file is correct and passes - that is the shape a
     citation-only entry takes.
+
+    A name is a code span's whole content, read from the spans `_code_spans`
+    gives a statement at a time: a span carried across a line ending is one
+    span, and a filename its backticks leave as prose is no file (`PL-P6D5`).
     """
     path = root / REFERENCES
     try:
         text = path.read_text(encoding="utf-8")
     except UNREADABLE:
         return
-    for number, line in enumerate(split_lines(text), 1):
-        for match in REFERENCE_FILE_RE.finditer(line):
-            name = match.group("name")
-            if (path.parent / name).exists():
-                continue
-            report.errors.append(
-                f"{REFERENCES}:{number} names {name}, which is not in "
-                f"{REFERENCES.parent}/; drop the filename and keep the citation if the "
-                "text was deliberately removed, since citing a work is not "
-                "redistributing it"
-            )
+    for span in _code_spans(text):
+        name = span["content"]
+        if REFERENCE_FILE_RE.fullmatch(name) is None or (path.parent / name).exists():
+            continue
+        report.errors.append(
+            f"{REFERENCES}:{_line_of(text, span.start())} names {name}, which is not "
+            f"in {REFERENCES.parent}/; drop the filename and keep the citation if the "
+            "text was deliberately removed, since citing a work is not "
+            "redistributing it"
+        )
 
 
 #: A host as prose names one: dotted labels ending in a top-level domain, bare
@@ -7029,16 +7350,21 @@ COMMENT_MARK_RE = re.compile(r"^#+:?[ \t]?")
 JSON_STRING_RE = re.compile(r'"(?:[^"\\\n]|\\.)*"')
 
 
-def _without_destination(link: re.Match[str]) -> str:
-    """An inline link with its destination blanked, its text and its length kept.
+def _without_destinations(text: str) -> str:
+    """`text` with each inline link's destination blanked, its length kept.
 
-    Where a citation points is not what the sentence says, so `GitHub refuses
-    it ([issue](https://github.com/o/r/issues/1))` calls no host refused.
+    Where a citation points is not what its sentence says, so a sentence
+    linking to a page on a host it calls refused names no host by the link.
+    The links are `_links`', so one written inside a code span is the span's
+    text, and keeps its destination.
     """
-    group = "bracketed" if link["bracketed"] is not None else "target"
-    start, end = (offset - link.start() for offset in link.span(group))
-    whole = link.group(0)
-    return whole[:start] + " " * (end - start) + whole[end:]
+    pieces: list[str] = []
+    last = 0
+    for link in sorted(_links(text), key=lambda link: link.at):
+        start, end = link.at
+        pieces += (text[last:start], re.sub(r"[^\n]", " ", text[start:end]))
+        last = end
+    return "".join(pieces) + text[last:]
 
 
 def _undated_host_claims(
@@ -7053,8 +7379,9 @@ def _undated_host_claims(
     tree carries is that file, so a hook's `.sh` is never a host.
     """
     lines = split_lines(text)
+    unlinked = split_lines(_without_destinations(text))
     for first, end in statement_lines(lines, PROSE):
-        statement = LINK_RE.sub(_without_destination, "\n".join(lines[first:end]))
+        statement = "\n".join(unlinked[first:end])
         for start, stop in _sentences(statement):
             sentence = statement[start:stop]
             hosts = [

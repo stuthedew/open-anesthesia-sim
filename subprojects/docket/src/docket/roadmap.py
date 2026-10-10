@@ -20,14 +20,11 @@ the table to it. Both are standard-library only and both must run in a bare
 checkout with no virtualenv, so the constraint that shaped the parser is
 identical on either side.
 
-`CONTINUED_LINE`, among the markdown primitives at the top, is exported for
-the same reason: `doc_check` builds its phrase readers on it, and a second
-implementation of "where a paragraph goes on" is a second thing to keep true.
-Where a heading, a table or a list entry is, the walkers below and `doc_check`
-alike read from `markdown`, the one reading of a document's blocks
-(`PL-R417`). The heading and table-row patterns once exported beside it matched
-a line at a time, a `#` or `|` line inside a fence included, and went with
-their last reader (`PL-0Y7J`).
+Where a heading, a table, a list entry or a paragraph's end is, the walkers
+below and `doc_check` alike read from `markdown`, the one reading of a
+document's blocks (`PL-R417`). The patterns once exported here for each - a
+heading, a table row, and the line a paragraph goes on to - matched a line at a
+time, and went with their last reader (`PL-0Y7J`, `PL-BCZQ`).
 """
 
 from __future__ import annotations
@@ -46,41 +43,6 @@ from .vcs import leading_ids
 
 # --- markdown primitives ----------------------------------------------------
 
-#: Where a Markdown statement goes on past the end of a physical line
-#: (`PL-R417`): a line ending inside a paragraph, which CommonMark reads as a
-#: soft break (0.31.2 § 6.7), with the indent and blockquote markers that open
-#: the continued line. Not a blank line, which ends the paragraph (§ 4.8), nor a
-#: line opening a block of its own - a list item, an ATX heading, a fence, a
-#: table row, an HTML block or a thematic break - which interrupts it (§ 4.1;
-#: under a paragraph `---` is a setext underline, § 4.3, and ends it all the
-#: same). Possessive, so backtracking cannot hand a list marker to whatever
-#: follows as the continued text. Every reader of a phrase the documents may
-#: wrap takes its whitespace from here, rather than each meeting the wrap one
-#: capture at a time: `tools/doc_check.py` builds its phrase readers on it.
-#:
-#: A fence and an HTML block are refused only where they would open: a backtick
-#: run with a backtick after it on its line is a code span, since a backtick
-#: fence's info string holds none (§ 4.5), and only the HTML blocks of § 4.6's
-#: kinds 1 to 6 interrupt a paragraph, so `<id>`, `<https://...>` and every
-#: other tag carry it on. Refusing every `<` and every backtick run split 33
-#: paragraphs of the tracked documents, 32 at a placeholder or an autolink and
-#: one at a wrapped code span, measured against markdown-it-py 4.2.0 on
-#: 2026-10-04 (`PL-2S1G`). Every ordered marker, every pipe line and every
-#: block's opening indented four columns or more is still refused, though each
-#: can carry a paragraph on: whether one does turns on the paragraph's list
-#: item or the line under it, which a pattern cannot see and `markdown` reads.
-CONTINUED_LINE = (
-    r"[ \t]*+(?:>[ \t]*+)*+"
-    r"(?!\n|\Z|[-*+][ \t]|\d{1,9}[.)][ \t]|#{1,6}(?:[ \t\n]|\Z)"
-    r"|`{3,}+[^`\n]*+(?:\n|\Z)|~~~|\|"
-    r"|<(?:(?i:pre|script|style|textarea)(?=[ \t>\n]|\Z)|!--|\?|![A-Za-z]|!\[CDATA\["
-    r"|/?(?i:address|article|aside|basefont|base|blockquote|body|caption|center|colgroup|col"
-    r"|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frameset"
-    r"|frame|h[1-6]|head|header|hr|html|iframe|legend|link|li|main|menuitem|menu|nav"
-    r"|noframes|ol|optgroup|option|param|p|search|section|summary|table|tbody|td|tfoot|th"
-    r"|thead|title|track|tr|ul)(?=[ \t\n]|/?>|\Z))"
-    r"|(?:-[ \t]*+){3,}(?:\n|\Z)|(?:\*[ \t]*+){3,}(?:\n|\Z)|(?:_[ \t]*+){3,}(?:\n|\Z))"
-)
 #: Why the walker declines an entry a lazy line carries on, in the words every
 #: reader of it passes on.
 LAZY_ENTRY = (

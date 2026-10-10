@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: one-answer
-touches: tools/doc_check.py, tools/required_checks_check.py, tools/rules_paths_check.py, .claude/hooks/shell_split.py, tests/unit, docs/items
+touches: tools/doc_check.py, tools/required_checks_check.py, tools/rules_paths_check.py, .claude/hooks/shell_split.py, tests/unit, docs/items, subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/frontmatter.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/tests, docket.toml, docs/ARCHITECTURE.md, ROADMAP.md, pyproject.toml, uv.lock
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head by PL-JCS3
 added: 2026-10-04
 payoff: a statement a shell script, Makefile, workflow or Markdown document continues across lines is read as the one statement its format makes it, or refused by name, so the close-out sweep and the checks stop answering from fragments

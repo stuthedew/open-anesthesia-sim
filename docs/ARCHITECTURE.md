@@ -1347,6 +1347,20 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   about a duration: a threshold here would measure the runner rather than the
   code.
 
+**Third-party text under `tests/unit/markdown-specs/`.** The CommonMark 0.31.2
+specification and cmark-gfm's GitHub Flavored Markdown 0.29 specification are
+vendored unmodified, each named for the release tag it was fetched at, because
+`tests/unit/test_inline_reference.py` reads their examples as the corpus
+`tools/doc_check.py`'s inline Markdown is held to markdown-it-py over, and
+holds each to the SHA-256 of what that tag published (`PL-R417`). Both are
+licensed CC-BY-SA 4.0, as each file's front matter states with the licence's
+address. The licence lets a copy be shared whole, unmodified, with its notices
+kept (§ 2(a)(1), § 3(a)(1)), and attaches its ShareAlike condition only to an
+adaptation (§ 3(b)), which these are not, so the repository's Apache-2.0 does
+not reach them and they do not reach it
+(https://creativecommons.org/licenses/by-sa/4.0/legalcode.en, read
+2026-10-10).
+
 ## Where new code belongs
 
 - A new physiological compartment or coupling → `core/`, with its equations
