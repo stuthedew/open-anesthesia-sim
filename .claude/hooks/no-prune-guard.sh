@@ -83,7 +83,9 @@ if not isinstance(command, str):
 # bodies and comments are gone, which is what lets this repository write prose
 # *about* pruning - `CLAUDE.md`, this hook, the ledger - without the guard
 # eating its own documentation; a prune after the terminator of a heredoc is
-# read like any other line (`PL-39LD`).
+# read like any other line (`PL-39LD`), and so is one in a `$( )` or a
+# backquote in the body of a delimiter with no quoted part, which bash runs
+# (`PL-P95F`).
 #
 # **What prunes is read from git 2.43 itself** (`PL-R17X`): its usage lines,
 # `git -h`, `git fetch -h`, `git pull -h`, `git remote -h` and `git config -h`,

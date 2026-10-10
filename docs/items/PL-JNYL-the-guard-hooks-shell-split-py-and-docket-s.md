@@ -93,8 +93,10 @@ the hooks' views over its reading.
    a guard's import of `shell_split` loads, so one that brings back
    `dataclasses`, `inspect`, `pathlib` or `typing` fails rather than slowing
    every Bash call unnoticed. A timing would be the direct measure, and a
-   flaky one; the module set is the deterministic half of it. The
-   before-and-after medians are recorded here when built.
+   flaky one; the module set is the deterministic half of it. Built, the
+   same measure gives 1.3 ms under 3.11.17 and 2.0 ms under 3.13.16 for
+   `shell_split` with docket's lexer, against the 5.3 and 5.5 ms it cost
+   with its own.
 3. **The lexer lives in docket, and the hooks reach it by path.** `bin/docket`
    runs docket from a bare checkout with its own `src` alone on the path, so
    docket cannot import from `.claude/hooks/`; the hooks are this repository's,
@@ -130,9 +132,28 @@ the hooks' views over its reading.
 
 The merged reader also reads `$'...'` once, as the hooks and bash do (Bash
 Reference Manual § 3.1.2.4), so docket's `script_lines` stops cutting at one.
-That is `PL-C45K`'s defect, which the Order leaves out; whether it closes here
-is the owner's to say. `PL-P72R` closes here, as the paragraph below says,
+That is `PL-C45K`'s defect, and it closes here (project owner, 2026-10-10,
+ratified, over leaving it out of the batch as the Order did). `PL-P72R` closes here, as the paragraph below says,
 since one `OPERATORS` table is left.
+
+**A library in place of the lexer was weighed, 2026-10-10**, when the owner
+asked whether one does all this. Four exist; none reads what the two views
+need as bash reads it. bashlex is a port of bash's own parser, but GPL-3.0
+where this repository is Apache-2.0, and its README says it has no support for
+`$((..))`. tree-sitter-bash is a compiled extension the guards' bare python3
+cannot import, and it parses for editors, recovering from errors rather than
+saying bash refuses a command. `shfmt --to-json` prints mvdan/sh's syntax tree,
+from a Go binary every environment would need, and its README lists where its
+parse departs from bash's. Parable (MIT, one file, no imports, validated
+against bash 5.3's own parse tree) came closest, run from its `main` source at
+`src/parable.py`, since its v0.1.0 Python release fails to import with a
+`SyntaxError` under 3.12.3 and 3.13.16. Over this batch's cases it read
+`PL-QSN5`'s first form with the command after the substitution as the
+here-document's text, where bash 5.2.21 runs that command, and it read the
+carried here-document in the other order; it left a `$( )` inside an unquoted
+body as text (`PL-P95F`); and its words carry no source position and keep
+their quotes as written, so the spans and the quoting half of this lexer would
+stay around it. Swapping one in later touches this one module.
 
 **`PL-P72R` closes with this item** if one `OPERATORS` table is left. It stays
 the cheaper fix, a test holding the two tables equal, if this item closes

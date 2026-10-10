@@ -7871,6 +7871,22 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: script_lines("[[\n a == a ]]\necho after\n"),
         (("[[\n a == a ]]", 0), ("echo after", 14)),
     ),
+    # A process substitution nests as a `$( )` does, and an array assignment's
+    # `(` holds its line open to the `)` (`PL-VJPH`).
+    "shell lines, a process substitution carried across lines": (
+        lambda _: script_lines("echo <(echo a\n) tools/doc_check.py\necho after\n"),
+        (("echo <(echo a\n) tools/doc_check.py", 0), ("echo after", 35)),
+    ),
+    "shell lines, an output process substitution carried across lines": (
+        lambda _: script_lines("tee >(cat\n) < /dev/null tools/doc_check.py\necho after\n"),
+        (("tee >(cat\n) < /dev/null tools/doc_check.py", 0), ("echo after", 43)),
+    ),
+    "shell lines, an array assignment carried across lines": (
+        lambda _: script_lines(
+            'files=(\n  tools/doc_check.py\n  tools/dead_ends.py\n)\necho "${files[@]}"\n'
+        ),
+        (("files=(\n  tools/doc_check.py\n  tools/dead_ends.py\n)", 0), ('echo "${files[@]}"', 52)),
+    ),
     "fixture ids, an id a backslash-newline joins": (
         _joined_fixture_ids,
         [(3, "PL-K7QXZ")],  # not-an-id

@@ -449,7 +449,11 @@ def test_only_a_heredoc_body_is_removed() -> None:
 # Each runs the floor parse in bash 5.2.21 and was read as hiding it
 # (`PL-97CF`): a continuation inside `<<-` or `<<<`, a delimiter one joins, a
 # `<<` inside a `${...}` carried across lines, a quote inside a `${...}` in
-# double quotes, and a `$'...'` its `$` reaches past a continuation.
+# double quotes, and a `$'...'` its `$` reaches past a continuation. Then a
+# here-document beside a substitution carried across lines (`PL-QSN5`): a
+# body pending at a newline inside a `$( )` or a `<( )`, one a double-quoted
+# `$( )` opens and leaves pending, and one whose delimiter line goes on with
+# the substitution's `)`.
 RESHAPED = (
     "cat <<\\\n-EOF\n\thello\n\tEOF\nPARSE",
     "cat <<\\\n< word\nPARSE",
@@ -457,6 +461,10 @@ RESHAPED = (
     "echo ${x:-<<EOF\n}\nPARSE\nEOF\n",
     'echo "${x:-"\'"}"; PARSE; echo \'#\'',
     "echo $\\\n'\\''; PARSE #'",
+    "cat <<EOF; x=$(echo a\necho b); PARSE\nbody\nEOF\n",
+    "cat <<EOF; x=<(echo a\necho b); PARSE\nbody\nEOF\n",
+    'x="$(cat <<EOF)"; PARSE\nit\'s\nEOF\n',
+    "git commit -m \"$(cat <<'EOF'\nPL-K7QX: a message\nEOF)\" && PARSE",
 )
 
 

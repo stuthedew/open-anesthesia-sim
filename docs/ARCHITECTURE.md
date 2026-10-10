@@ -1261,8 +1261,11 @@ that rewrites another hook, editable without review. `docket-digest.sh`,
 `direct-merge-guard.sh` and `webfetch-quote-note.sh` are documented where their
 behavior is, in their own headers. `shell_split.py`
 is the one file there that nothing wires: the four Bash guards import it for where one shell command
-ends (`PL-PVW2`), and it sits in the protected directory for the hooks' own
-reason, because its answer decides what they refuse.
+ends (`PL-PVW2`). The reading itself is docket's `subprojects/docket/src/docket/shell.py`,
+which `shell_split.py` finds from its own place, the one lexer docket and the
+guards share (`PL-JNYL`). So the code that decides what the guards refuse lies
+outside the protected directory, and an edit to it is approved as any other
+edit is.
 
 `.claude/hooks/stop_hook_patch.py` is the one hook here that is not a check and
 does not run under `make check`. It is wired as a SessionStart hook, and it

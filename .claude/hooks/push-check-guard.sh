@@ -22,8 +22,9 @@
 # **What counts as a push**: a git call whose command, after git's own options,
 # is `push`, read through `shell_split.commands` as the three sibling guards
 # read theirs, so a push in a subshell, after `&&` or behind `timeout` counts
-# and one in a heredoc, a comment or a quoted message does not. A push that
-# sends nothing is skipped: `--delete`, `-d`, a `:<branch>` refspec,
+# and one in a heredoc's text, a comment or a quoted message does not - though
+# one in a `$( )` in an unquoted heredoc's body runs, and counts (`PL-P95F`). A
+# push that sends nothing is skipped: `--delete`, `-d`, a `:<branch>` refspec,
 # `--dry-run` and `-n`. `--no-verify` is the one exemption, which the refusal
 # offers for a work-in-progress push to a branch with no pull request open,
 # since `quality.yml` runs no CI on one.

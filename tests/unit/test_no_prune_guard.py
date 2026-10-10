@@ -364,6 +364,33 @@ def test_a_continuation_or_an_expansion_hides_no_prune(shape: str) -> None:
     assert _decision(command) is not None, f"{command!r} was allowed"
 
 
+def test_a_here_document_beside_a_substitution_carried_across_lines_hides_no_prune() -> None:
+    """A body waits for the end of the line its substitution closes on (`PL-QSN5`).
+
+    POSIX XCU § 2.7.4 starts a here-document's body after the next newline,
+    and a newline inside a `$( )` or a `<( )` is not one: bash 5.2.21 prints
+    `body` and runs the prune, which the reader took for the body's text.
+    """
+    for opening in ("$(", "<("):
+        command = f"cat <<EOF; x={opening}echo a\necho b); git fetch --prune\nbody\nEOF\n"
+        assert _decision(command) is not None, f"{command!r} was allowed"
+
+
+def test_a_prune_in_an_unquoted_heredoc_substitution_is_refused() -> None:
+    """Bash expands the body of a delimiter with no quoted part, so a `$( )` in it runs (`PL-P95F`).
+
+    POSIX XCU § 2.7.4. A quoted delimiter's body stays text, as
+    `test_only_a_heredoc_body_is_removed` holds, and so does the rest of an
+    unquoted one.
+    """
+    for heredoc in (
+        "cat <<EOF\n$(git fetch --prune)\nEOF\n",
+        "cat <<-EOF\n\t$(git fetch --prune)\n\tEOF\n",
+    ):
+        assert _decision(heredoc) is not None, f"{heredoc!r} was allowed"
+    assert _decision("cat <<EOF\nNever run git fetch --prune here.\nEOF\n") is None
+
+
 def test_a_body_line_a_continuation_carries_onto_the_delimiter_ends_nothing() -> None:
     """Bash joins `abc\\` to the `EOF` under it, so the prune after is body (`PL-97CF`)."""
     assert _decision("cat <<EOF\nabc\\\nEOF\ngit fetch --prune\nEOF\n") is None

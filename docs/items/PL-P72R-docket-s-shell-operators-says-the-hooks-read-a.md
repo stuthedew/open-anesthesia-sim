@@ -6,10 +6,10 @@ effort: S
 status: ready
 classes: test
 feature: one-answer
-touches: subprojects/docket/src/docket/shell.py, .claude/hooks/shell_split.py, subprojects/docket/tests/test_shell.py
+touches: subprojects/docket/src/docket/shell.py, .claude/hooks/shell_split.py, tests/unit/test_shell_reader.py
 added: 2026-10-03
 payoff: the hooks and docket cannot drift apart on how a command splits without a test failing
-verify: grep -q 'def test_operators_match_the_hooks_table' subprojects/docket/tests/test_shell.py
+verify: grep -q 'def test_the_hooks_read_the_one_operators_table' tests/unit/test_shell_reader.py
 ---
 
 **Problem.** docket's shell.OPERATORS says the hooks read a command by the same table as .claude/hooks/shell_split.py's, and nothing checks it: the two differed by \<\<- until PL-Q9LK
