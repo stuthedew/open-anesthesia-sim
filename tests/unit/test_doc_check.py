@@ -37,6 +37,7 @@ from docket import picks as docket_picks
 from docket import vcs as docket_vcs
 from docket import verify as docket_verify
 from docket.fences import blocks as fence_blocks
+from docket.frontmatter import keys as front_matter_keys
 from docket.instructions import parse as dated_assertions
 from docket.model import parse_item, with_front_matter_field
 from docket.notes import read as read_threads
@@ -7226,6 +7227,11 @@ def _reference_file_errors(tmp_path: Path, index: str) -> list[str]:
     return report.errors
 
 
+def _front_matter_keys(*block: str) -> list[tuple[str, int, int]]:
+    """Each key `docket.frontmatter.keys` reads in `block`: its name, its line, and its end."""
+    return [(key.name, key.line, key.end) for key in front_matter_keys(block)]
+
+
 def _absent_findings(tmp_path: Path, readme: str) -> list[str]:
     """What the citation checks say of `readme`'s `absent:` markers."""
     report = doc_check.analyze(_repo(tmp_path, readme=readme))
@@ -8103,6 +8109,44 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "rules paths, is_path_scoped reads no key inside another key's quoted value": (
         lambda _: doc_check.is_path_scoped(QUOTED_PATHS_RULE),
         False,
+    ),
+    # `PL-YQ9G`: a quoted scalar or a flow collection opened on the line below
+    # its key, or after a list item's `- ` there, runs to its own close, as
+    # PyYAML 6.0.3 reads each of these, so a first-column line inside it is no
+    # key. Followed by indentation alone, each was read as a `paths:` key.
+    "front matter, a double-quoted value opened below its key": (
+        lambda _: _front_matter_keys(
+            "description:", '  "Loads at launch, since no', 'paths: key defers it"', "name: x"
+        ),
+        [("description", 0, 3), ("name", 3, 4)],
+    ),
+    "front matter, a single-quoted value opened below its key": (
+        lambda _: _front_matter_keys(
+            "description:", "  'Loads at launch, since no", "paths: key defers it'", "name: x"
+        ),
+        [("description", 0, 3), ("name", 3, 4)],
+    ),
+    "front matter, a flow mapping opened below its key": (
+        lambda _: _front_matter_keys(
+            "description:", "  {why: loads at launch,", "paths: no key}", "name: x"
+        ),
+        [("description", 0, 3), ("name", 3, 4)],
+    ),
+    "front matter, a flow sequence opened below its key": (
+        lambda _: _front_matter_keys(
+            "description:", "  [loads at launch,", "paths: no key]", "name: x"
+        ),
+        [("description", 0, 3), ("name", 3, 4)],
+    ),
+    "front matter, a quoted list item under its key": (
+        lambda _: _front_matter_keys(
+            "description:",
+            '  - "Loads at launch, since no',
+            'paths: key defers it"',
+            "paths:",
+            '  - "/src/**"',
+        ),
+        [("description", 0, 3), ("paths", 3, 5)],
     ),
     "required checks, a flow collection carried past its line is refused by name": (
         lambda _: _refused(lambda: rcc.triggers(["on: [push,", "  pull_request]", "jobs:"])),

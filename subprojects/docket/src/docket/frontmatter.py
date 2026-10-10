@@ -17,17 +17,22 @@ which dated every key by the newest date in any of them (`PL-2MLT`).
 **Where each top-level key's value ends is what this reads, and no value.** A
 value runs over the lines indented under its key, and where its key holds
 nothing on its own line, over `- ` items at the key's column too (§ 8.2.1). A
-quoted scalar or a flow collection the key's own line opens runs to its close
-however the lines below it are indented: PyYAML 6.0 reads a continuation at the
-first column that way where a strict YAML 1.2.2 reader refuses the file (§ 6.3),
-and either way the key such a line looks like is no key. A node opening below
-the key's line is followed by indentation alone, which is where YAML 1.2.2 puts
-every line of it. Nothing inside a value is checked, so a value YAML refuses can
-still be passed over here: what a value holds is its reader's to decide, and
+quoted scalar or a flow collection runs to its close however the lines below it
+are indented: PyYAML 6.0 reads a continuation at the first column that way where
+a strict YAML 1.2.2 reader refuses the file (§ 6.3), and either way the key such
+a line looks like is no key. That holds wherever one opens, on the key's own
+line or below it - alone on the line under a key or list entry holding nothing,
+after a list entry's `- `, or after a nested key's `:` (§ 8.2.1, § 8.2.2). Below
+the key's line it was once followed by indentation alone, so a first-column
+line inside it read as a key (`PL-YQ9G`). A block scalar's lines and a plain
+scalar's continuation lines are text, so a quote opening one of them opens
+nothing. Nothing inside a value is checked, so a value YAML refuses can still be
+passed over here: what a value holds is its reader's to decide, and
 `rules_paths_check.entries` decides `paths:`'s. A line at the first column that
 opens no key raises `Unread` naming it, as does an indented line above the first
 key, since no value holds either and a reader passing over one would hand on the
-key above it short.
+key above it short. Where each value ends is held to PyYAML's reading over a
+generated corpus by `subprojects/docket/tests/test_frontmatter_reference.py`.
 
 Not docket's own item front matter, which is not YAML: its grammar is
 `docket.model`'s. Standard library only, as the rest of the package is.
@@ -45,6 +50,10 @@ FENCE = "---"
 #: opening with one opens no plain key: `-`, `?` and `:` only where white space
 #: or the line's end follows them.
 INDICATORS = frozenset("-?:,[]{}#&*!|>'\"%@`")
+#: What opens a node that runs to a close of its own rather than over the lines
+#: indented under it: a quoted scalar (§ 7.3.1, § 7.3.2) or a flow collection
+#: (§ 7.4).
+CLOSED_NODES = frozenset("'\"[{")
 
 
 class Unread(ValueError):
@@ -58,9 +67,10 @@ class Key:
     `line` is the index of the key's own line in the block and `end` the index
     past the last line of its value. Every indented line under the key is its
     value's, a `#`-led one included, since a quoted or block scalar holds a `#`
-    as content; blank lines and first-column comments after it are no part of
-    it. `inline` is the rest of the key's line after the `:`, as written,
-    comment and all.
+    as content, and so is a first-column line inside a quoted scalar or a flow
+    collection the value opens; blank lines and first-column comments after it
+    are no part of it. `inline` is the rest of the key's line after the `:`, as
+    written, comment and all.
     """
 
     name: str
@@ -99,8 +109,7 @@ def keys(block: Sequence[str]) -> tuple[Key, ...]:
     A key written twice comes back twice, since which one counts is its
     reader's to decide, or to refuse. Raises `Unread` naming a first-column
     line that opens no key, an indented line above the first key, and a quoted
-    scalar or flow collection a key's line opens that nothing in the block
-    closes.
+    scalar or flow collection that nothing in the block closes.
     """
     found: list[Key] = []
     index = 0
@@ -115,23 +124,85 @@ def keys(block: Sequence[str]) -> tuple[Key, ...]:
         if opened is None:
             raise Unread(f"`{text}` sits at the first column and opens no key")
         name, at = opened
-        inline = block[index][at:]
-        start = index
-        last = _past(block, index, at) - 1
-        # A key holding nothing on its own line may hold a list at its column.
-        bare = not uncommented(inline).strip()
-        index = last + 1
-        while index < len(block):
-            line = block[index]
-            text = line.strip()
-            if (line[:1] in (" ", "\t") and text) or (bare and is_item(line)):
-                last = index
-            elif text and not text.startswith("#"):
-                break
-            index += 1
-        found.append(Key(name, inline, start, last + 1))
-        index = last + 1
+        end = _value_end(block, index, at)
+        found.append(Key(name, block[index][at:], index, end))
+        index = end
     return tuple(found)
+
+
+def _value_end(block: Sequence[str], index: int, at: int) -> int:
+    """The index past the last line of the value of the key `block[index]` opens at column 0.
+
+    The value is every line indented under the key, and every `- ` item at its
+    column where the key holds nothing on its own line. Its lines are read for
+    where a node opens - after a `- ` or a nested key's `:`, or alone on the
+    line under a key or entry holding nothing - so a quoted scalar or a flow
+    collection opening there is followed to its close, a first-column line
+    included. A block scalar's lines and a plain scalar's continuation lines,
+    indented past the entry that opens it (§ 8.1.1, § 7.3.3), are text, and
+    are read for nothing.
+    """
+    node = _node(block[index], at)
+    bare = not node
+    # Lines indented past `literal` are a scalar's text; None while none is open.
+    literal = None if bare or node[0] in CLOSED_NODES else 0
+    # The column of the entry holding nothing on its line, whose node opens below it.
+    holder = 0
+    line = _past(block, index, at)
+    last = line - 1
+    while line < len(block):
+        text = block[line]
+        content = text.strip()
+        indent = len(text) - len(text.lstrip(" \t"))
+        if not content or (indent == 0 and content.startswith("#")):
+            line += 1
+            continue
+        if indent == 0 and not (bare and is_item(text)):
+            break
+        last = line
+        line += 1
+        if content.startswith("#") or (literal is not None and indent > literal):
+            continue
+        literal = None
+        entry, position = holder, indent
+        while is_item(text[position:]):
+            entry = position
+            position = _skip_blanks(text, position + 1)
+        nested = _key(text[position:])
+        if nested is not None:
+            entry = position
+            position = _skip_blanks(text, position + nested[1])
+        opened = _node(text, position)
+        if opened[:1] in CLOSED_NODES:
+            last = _past(block, last, position) - 1
+            line = last + 1
+        elif opened:
+            literal = entry
+        else:
+            holder = entry
+    return last + 1
+
+
+def _skip_blanks(text: str, position: int) -> int:
+    """Past the spaces and tabs at `position`."""
+    while position < len(text) and text[position] in " \t":
+        position += 1
+    return position
+
+
+def _node_start(text: str, at: int) -> int:
+    """Where the node opening at `text[at:]` starts, past white space, anchors and tags (§ 6.9)."""
+    while True:
+        at = _skip_blanks(text, at)
+        if text[at : at + 1] not in ("&", "!"):
+            return at
+        while at < len(text) and text[at] not in " \t":
+            at += 1
+
+
+def _node(text: str, at: int) -> str:
+    """The node at `text[at:]`, past anchors and tags, without its comment or white space."""
+    return uncommented(text[_node_start(text, at) :]).strip()
 
 
 def is_item(text: str) -> bool:
@@ -238,13 +309,7 @@ def _past(block: Sequence[str], index: int, at: int) -> int:
     (§ 6.9).
     """
     text = block[index]
-    while True:
-        while at < len(text) and text[at] in " \t":
-            at += 1
-        if text[at : at + 1] not in ("&", "!"):
-            break
-        while at < len(text) and text[at] not in " \t":
-            at += 1
+    at = _node_start(text, at)
     if text[at : at + 1] in ("'", '"'):
         return _quote_end(block, index, at)[0] + 1
     if text[at : at + 1] in ("[", "{"):

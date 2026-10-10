@@ -1,0 +1,259 @@
+"""`docket.frontmatter.keys` ends each key where PyYAML does, over generated front matters.
+
+`keys` reads where each top-level key of a rule's or skill's front matter ends,
+by hand, because docket runs on the standard library alone (`PL-R417`). Its one
+measured miss was `PL-YQ9G`: a quoted scalar or a flow collection opened on the
+line below its key, the value itself or a list entry, was followed by
+indentation alone, so a first-column line inside it read as a key. A corpus
+like this one found it, run once in the parsing review of 2026-10-10 (C1); this
+runs one on every pull request, held to PyYAML 6.0, a dev dependency, as
+`test_markdown_reference.py` holds `docket.markdown` to markdown-it-py.
+
+Hypothesis draws the front matters, derandomized, so a red run reproduces
+exactly and the suite stays deterministic. Each is YAML PyYAML composes into
+one mapping, built from the forms a front matter here writes and the ones that
+broke a reader: plain, quoted, flow and block scalar values, lists at the key's
+column and under it, nested mappings and a mapping in a list entry, comments,
+anchors and tags, and every node that runs to a close of its own opened on the
+key's line, alone on the line under a key or entry, after a list entry's `- `
+and after a nested key's `:`, its later lines carried on at any indent, the
+first column included, and shaped like a key or a list entry there. A block
+scalar's lines and a plain scalar's continuation lines are drawn in the same
+shapes, since a reader that took them for structure would read a key out of
+them. The helpers take the one `draw` and build no strategy of their own, which
+keeps the corpus to a few seconds.
+
+For each, the keys `keys` reads, by name and line, must be PyYAML's top-level
+keys, and each value must end on the line PyYAML's node ends on, past only
+blank lines and `#`-led ones, which PyYAML reads as nothing and `keys` hands to
+the value above them.
+"""
+
+from __future__ import annotations
+
+import itertools
+import operator
+import re
+
+import yaml
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+from docket.frontmatter import keys
+
+LETTERS = "abcdefghijklmnopqrstuvwxyz"
+#: A word of a plain scalar in a block, which may hold no `: ` and no ` #`.
+WORD = st.builds(
+    operator.add, st.sampled_from(LETTERS), st.text(LETTERS + "0123456789./()*_", max_size=5)
+)
+WORDS = st.lists(WORD, min_size=1, max_size=4).map(" ".join)
+NAME = st.builds(
+    operator.add, st.sampled_from(LETTERS), st.text(LETTERS + "0123456789_", max_size=7)
+)
+#: Text that opens like structure: a key, a list entry, a comment, a collection.
+SHAPES = st.sampled_from(
+    ("name: value", "paths: x", "- item", "-", "key:", "# hash", "[open", "{open", "? q")
+)
+#: A quoted scalar's lines, and a block scalar's.
+QUOTED_TEXT = st.lists(st.one_of(WORDS, SHAPES), min_size=1, max_size=4)
+BLOCK_TEXT = st.one_of(WORDS, SHAPES, st.sampled_from(('"open', "'open")))
+#: An entry of a flow collection: a plain scalar, which may hold no indicator, or a quoted one.
+FLOW_ITEM = st.one_of(
+    st.text(LETTERS + "0123456789", min_size=1, max_size=6),
+    st.sampled_from(('"a, ]b"', "'c} d'", '"e: #f"')),
+)
+#: What a plain scalar's continuation line may open with.
+CONTINUED = st.one_of(
+    WORDS, st.sampled_from(('"open', "'open", "- item", "[open", "{open", "| bar"))
+)
+#: How far a quoted scalar's or a flow collection's later line is indented.
+CARRIED = st.sampled_from((0, 0, 1, 2, 4))
+#: What may follow a node's close on its line.
+AFTER = st.sampled_from(("", " # after"))
+#: An anchor or a tag before a node, which names it and changes nothing in it.
+PREFIX = st.sampled_from(("", "", "", "&anchor ", "!!str "))
+QUOTE = st.sampled_from(("'", '"'))
+HEADER = st.sampled_from(("|", ">", "|-", ">+", "| # why"))
+DEEPER = st.sampled_from((0, 0, 2))
+NODE = st.sampled_from(("plain", "quoted", "flow", "block"))
+BELOW = st.sampled_from(("plain", "quoted", "flow"))
+BELOW_COLUMN = st.sampled_from((1, 2, 4))
+#: How a list entry or a nested key holds its node; one at the top level may hold a collection.
+ENTRY = st.sampled_from(("same", "same", "below", "empty"))
+TOP_ITEM = st.sampled_from(("same", "same", "below", "empty", "mapping"))
+TOP_KEY = st.sampled_from(("same", "same", "below", "empty", "list"))
+VALUE = st.sampled_from(("inline", "inline", "below", "list", "mapping", "empty"))
+LIST_COLUMN = st.sampled_from((0, 2))
+MAPPING_COLUMN = st.sampled_from((2, 4))
+BETWEEN = st.sampled_from(("", "# between keys"))
+
+
+def _quoted(draw: st.DrawFn, column: int) -> list[str]:
+    """A quoted scalar opening at `column`, its later lines carried on at any indent."""
+    quote = draw(QUOTE)
+    pieces = draw(QUOTED_TEXT)
+    if quote == "'" and draw(st.booleans()):
+        pieces[0] += " it''s"
+    lines = [" " * column + quote + pieces[0]]
+    lines.extend(" " * draw(CARRIED) + piece for piece in pieces[1:])
+    lines[-1] += quote + draw(AFTER)
+    return lines
+
+
+def _flow(draw: st.DrawFn, column: int) -> list[str]:
+    """A flow sequence or mapping opening at `column`, its later lines carried on at any indent."""
+    entries = draw(st.lists(FLOW_ITEM, min_size=1, max_size=4))
+    mapping = draw(st.booleans())
+    if mapping:
+        names = draw(st.lists(NAME, min_size=len(entries), max_size=len(entries), unique=True))
+        entries = [f"{name}: {entry}" for name, entry in zip(names, entries, strict=True)]
+    lines = [" " * column + ("{" if mapping else "[")]
+    for index, entry in enumerate(entries):
+        if index and draw(st.booleans()):
+            lines.append(" " * draw(CARRIED))
+        lines[-1] += entry + ("," if index < len(entries) - 1 else "")
+    lines[-1] += ("}" if mapping else "]") + draw(AFTER)
+    return lines
+
+
+def _plain(draw: st.DrawFn, column: int, holder: int) -> list[str]:
+    """A plain scalar at `column`, carried on over lines indented past `holder`."""
+    lines = [" " * column + draw(WORDS)]
+    for _ in range(draw(st.integers(0, 2))):
+        lines.append(" " * (holder + draw(st.integers(1, 3))) + draw(CONTINUED))
+    if len(lines) == 1:
+        lines[0] += draw(AFTER)
+    return lines
+
+
+def _block_scalar(draw: st.DrawFn, holder: int) -> list[str]:
+    """A block scalar's header, and its lines indented past `holder`, the first least."""
+    lines = [draw(HEADER)]
+    indent = holder + draw(st.integers(1, 3))
+    for index in range(draw(st.integers(1, 3))):
+        deeper = draw(DEEPER) if index else 0
+        lines.append(" " * (indent + deeper) + draw(BLOCK_TEXT))
+        if draw(st.integers(0, 4)) == 0:
+            lines.append("")
+    return lines
+
+
+def _node(draw: st.DrawFn, holder: int) -> list[str]:
+    """A node opening on its entry's own line, the entry at column `holder`.
+
+    Its first line is the text after the entry's `:` or `- `, and the rest are
+    the lines under it.
+    """
+    kind = draw(NODE)
+    if kind == "plain":
+        lines = _plain(draw, 0, holder)
+    elif kind == "quoted":
+        lines = _quoted(draw, 0)
+    elif kind == "flow":
+        lines = _flow(draw, 0)
+    else:
+        lines = _block_scalar(draw, holder)
+    return [draw(PREFIX) + lines[0], *lines[1:]]
+
+
+def _below(draw: st.DrawFn, column: int, holder: int) -> list[str]:
+    """A node alone on the line under an entry at `holder`, opening at `column`."""
+    kind = draw(BELOW)
+    if kind == "plain":
+        return _plain(draw, column, holder)
+    return _quoted(draw, column) if kind == "quoted" else _flow(draw, column)
+
+
+def _entry(draw: st.DrawFn, column: int, indicator: str, nested: bool = True) -> list[str]:
+    """A list entry (`-`) or a nested key (`name:`) at `column`, and its node.
+
+    A `nested` one may hold a collection of its own: a mapping in a list entry,
+    or a list under a nested key, whose entries hold none.
+    """
+    lead = " " * column + indicator
+    form = draw((TOP_ITEM if indicator == "-" else TOP_KEY) if nested else ENTRY)
+    if form == "empty":
+        return [lead]
+    if form == "below":
+        return [lead, *_below(draw, column + draw(st.integers(1, 3)), column)]
+    if form == "mapping":
+        names = draw(st.lists(NAME, min_size=1, max_size=3, unique=True))
+        first = _entry(draw, column + 2, f"{names[0]}:", nested=False)
+        lines = [lead + " " + first[0].lstrip(" "), *first[1:]]
+        for name in names[1:]:
+            lines.extend(_entry(draw, column + 2, f"{name}:", nested=False))
+        return lines
+    if form == "list":
+        inner = column + draw(LIST_COLUMN)
+        lines = [lead]
+        for _ in range(draw(st.integers(1, 3))):
+            lines.extend(_entry(draw, inner, "-", nested=False))
+        return lines
+    first, *under = _node(draw, column)
+    return [f"{lead} {first}", *under]
+
+
+def _value(draw: st.DrawFn) -> list[str]:
+    """A top-level key's value: the rest of the key's line, then the lines under it."""
+    form = draw(VALUE)
+    if form == "empty":
+        return [""]
+    if form == "inline":
+        first, *under = _node(draw, 0)
+        return [f" {first}", *under]
+    if form == "below":
+        return ["", *_below(draw, draw(BELOW_COLUMN), 0)]
+    lines = [""]
+    if form == "list":
+        column = draw(LIST_COLUMN)
+        for _ in range(draw(st.integers(1, 3))):
+            lines.extend(_entry(draw, column, "-"))
+            if draw(st.integers(0, 5)) == 0:
+                lines.append(" " * max(column, 1) + "# between")
+        return lines
+    column = draw(MAPPING_COLUMN)
+    for name in draw(st.lists(NAME, min_size=1, max_size=3, unique=True)):
+        lines.extend(_entry(draw, column, f"{name}:"))
+    return lines
+
+
+@st.composite
+def front_matters(draw: st.DrawFn) -> list[str]:
+    """A front matter's lines between its fences, each anchor in it named once."""
+    block: list[str] = []
+    for name in draw(st.lists(NAME, min_size=1, max_size=4, unique=True)):
+        if block and draw(st.integers(0, 4)) == 0:
+            block.append(draw(BETWEEN))
+        first, *under = _value(draw)
+        block.extend([f"{name}:{first}", *under])
+    numbers = itertools.count()
+    return [re.sub("&anchor", lambda _: f"&a{next(numbers)}", line) for line in block]
+
+
+def _core(block: list[str], last: int) -> int:
+    """The last line at or before `last` holding something other than white space or a comment."""
+    while last >= 0 and (not block[last].strip() or block[last].lstrip().startswith("#")):
+        last -= 1
+    return last
+
+
+def _pyyaml_reading(block: list[str]) -> list[tuple[str, int, int]]:
+    """Each top-level key PyYAML composes: its name, its line, and its value's last line."""
+    document = yaml.compose("\n".join(block) + "\n", Loader=yaml.SafeLoader)
+    assert isinstance(document, yaml.MappingNode), "the strategy drew no mapping"
+    found = []
+    for key, value in document.value:
+        mark = value.end_mark
+        end = mark.line if mark.column else mark.line - 1
+        found.append((key.value, key.start_mark.line, _core(block, max(end, key.start_mark.line))))
+    return found
+
+
+@settings(derandomize=True, database=None, deadline=None, max_examples=2000)
+@given(front_matters())
+def test_keys_end_each_value_where_pyyaml_does(block: list[str]) -> None:
+    expected = _pyyaml_reading(block)
+
+    found = [(key.name, key.line, _core(block, key.end - 1)) for key in keys(block)]
+
+    assert found == expected, "\n".join(block)
