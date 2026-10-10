@@ -145,6 +145,14 @@ try:
     from docket.fences import blocks, fenced_lines
     from docket.fences import without_fences as without_fences
 
+    # `frontmatter` is the one reading of a rule's or a skill's YAML front
+    # matter (`PL-R417`): where it closes, and where each key's value ends, so a
+    # line opening `paths:` inside another key's quoted value is no key
+    # (`PL-BM8T`). `tools/rules_paths_check.py` reads `paths:` through it too.
+    from docket.frontmatter import Unread as UnreadFrontMatter
+    from docket.frontmatter import closing as frontmatter_closing
+    from docket.frontmatter import keys as frontmatter_keys
+
     # `instructions` is the one reading of a dated sentence: `_sentences` cuts a
     # statement where `docket.roadmap.SENTENCE_BREAK` does, and `ISO_DATE_RE` is
     # what counts as a date in one. `check_host_claims` asks whether a sentence
@@ -327,11 +335,6 @@ DIGEST_HOOK = ".claude/hooks/docket-digest.sh"
 # hook bounds its own `--unshallow` at 60 s, so anything past this is a
 # failure rather than a slow container, and the measurement declines.
 DIGEST_TIMEOUT = 120
-
-# A top-level `paths` key inside the YAML frontmatter block. Read this way
-# rather than with a YAML parser because this tool is standard library only,
-# and because the question is only ever "is the key there".
-PATHS_KEY_RE = re.compile(r"paths\s*:")
 
 # Below this many characters, a change to a resident file is a wording fix
 # rather than a rule arriving or leaving, and the advisories below stay quiet
@@ -6445,17 +6448,13 @@ def _frontmatter_end(text: str) -> int:
 def _frontmatter(text: str) -> list[str] | None:
     """The YAML frontmatter block's lines, or `None` if the file has none.
 
-    It closes on a `---` that opens its line. An indented one is a line of the
-    value above it, such as a literal block's, which YAML carries on past it
-    (`PL-R417`); read as the close, it cut the block short.
+    It closes where `docket.frontmatter.closing` says: on a `---` that opens its
+    line, never an indented one, which is a line of the value above it, such as
+    a literal block's (`PL-R417`); read as the close, it cut the block short.
     """
     lines = split_lines(text)
-    if not lines or lines[0].strip() != "---":
-        return None
-    for index, line in enumerate(lines[1:], start=1):
-        if line.rstrip() == "---":
-            return lines[1:index]
-    return None
+    end = frontmatter_closing(lines)
+    return None if end is None else lines[1:end]
 
 
 def is_path_scoped(text: str) -> bool:
@@ -6465,9 +6464,22 @@ def is_path_scoped(text: str) -> bool:
     file; one without it loads at launch with the same priority as
     `.claude/CLAUDE.md`. That distinction is the whole content of the resident
     total, so it is read here exactly as Claude Code documents it.
+
+    A key is one `docket.frontmatter.keys` reads, so a line opening `paths:`
+    inside another key's quoted value is none, where matched a line at a time it
+    took a resident rule out of the total (`PL-BM8T`). A block that reader
+    cannot split counts as declaring no scope, the direction that overstates
+    the resident total rather than hiding a rule from it, and
+    `tools/rules_paths_check.py` refuses the same block by name in the same
+    `make check`.
     """
     block = _frontmatter(text)
-    return block is not None and any(PATHS_KEY_RE.match(line) for line in block)
+    if block is None:
+        return False
+    try:
+        return any(key.name == "paths" for key in frontmatter_keys(block))
+    except UnreadFrontMatter:
+        return False
 
 
 def _skill_description(name: str, text: str) -> ResidentFile | None:

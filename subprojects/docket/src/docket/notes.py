@@ -37,6 +37,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import markdown
+from .frontmatter import closing
 from .lines import split_lines
 from .store import ID_PATTERN
 
@@ -117,9 +118,15 @@ def read(path: Path) -> tuple[Thread, ...]:
 
     # `markdown`'s headings, so a `##` line inside a fence or a comment opens no
     # thread and a setext one opens its own (`PL-HKHP`). A thread's body is
-    # every line after its heading up to the next thread's.
+    # every line after its heading up to the next thread's. A YAML front matter
+    # is no Markdown and is read as blank lines, keeping every heading's line:
+    # read as Markdown, its keys were one paragraph its closing `---` underlines,
+    # a heading naming whatever item a key names (`PL-2MLT`).
     lines = split_lines(text)
-    found = [h for h in markdown.headings(lines) if h.level == THREAD_HEADING_LEVEL]
+    fence = closing(lines)
+    opening = 0 if fence is None else fence + 1
+    headings = markdown.headings([""] * opening + lines[opening:])
+    found = [h for h in headings if h.level == THREAD_HEADING_LEVEL]
     threads: list[Thread] = []
     for position, heading in enumerate(found):
         end = found[position + 1].line if position + 1 < len(found) else len(lines)

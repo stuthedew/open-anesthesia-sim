@@ -57,6 +57,11 @@ from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 
+sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
+
+from docket.frontmatter import Unread, closing, closing_quote, keys, uncommented  # noqa: E402
+from docket.lines import split_lines  # noqa: E402
+
 RULES_DIR = Path(".claude") / "rules"
 
 #: The spelling that matches nothing, called out separately in the failure
@@ -84,16 +89,11 @@ def frontmatter(text: str) -> list[str] | None:
     An *unterminated* block is a third case and is returned as None too, which
     the caller reports rather than skips - the file declares scope that cannot
     be read, and passing it silently is the failure this check exists to stop.
+    Where it closes is `docket.frontmatter.closing`'s to say (`PL-R417`).
     """
-    lines = text.split("\n")
-    if lines[0].strip() != "---":
-        return None
-    for index, line in enumerate(lines[1:], start=1):
-        # A `---` that opens its line, never an indented one: that is a line of
-        # the value above it, which YAML carries on past it (`PL-R417`).
-        if line.rstrip() == "---":
-            return lines[1:index]
-    return None
+    lines = split_lines(text)
+    end = closing(lines)
+    return None if end is None else lines[1:end]
 
 
 class Unreadable(Exception):
@@ -104,15 +104,21 @@ def entries(block: list[str]) -> list[str]:
     """Every `paths:` glob in one frontmatter block, in source order.
 
     Both shapes the harness accepts: a single glob inline after the key, and a
-    YAML list beneath it. The list ends at the first line that is neither an
-    item, a comment nor blank, so a later key cannot be read as one, and a
-    comment between two items does not end it, as YAML's does not (`PL-R417`).
+    YAML list beneath it. Where the value ends is `docket.frontmatter.keys`'s to
+    say, the one reading of a front matter's keys (`PL-R417`), so a later key is
+    never read as an item, a comment between two items does not end the list,
+    and a line opening `paths:` inside another key's quoted value is no key
+    (`PL-BM8T`). A block that reader cannot split raises `Unreadable` naming
+    the line, since it may hold a `paths:` key nobody can find.
 
     A value YAML carries past its line in any other way raises `Unreadable`
     naming it, rather than being read from its first line (`PL-R417`): a flow
-    collection, a glob on the line after the key, or a line carrying a glob on,
-    each of which YAML joins into the value. None is written here, and a glob
-    read from a fragment would be checked as the rule's scope when it is not.
+    collection, a block scalar, a quoted glob its own line does not close, a
+    glob on the line after the key, or a line carrying a glob on, each of which
+    YAML joins into the value or reads as something else. None is written here,
+    and a glob read from a fragment would be checked as the rule's scope when it
+    is not. So does `paths:` written twice, which YAML refuses (§ 3.2.1.3) and a
+    lenient parser settles by keeping one of the two.
 
     So does a `- ` line at another indentation than the list's first item
     (`PL-PPNV`), which YAML reads as no item of the list: deeper, it is a line
@@ -120,60 +126,85 @@ def entries(block: list[str]) -> list[str]:
     `- /tests/**` is the one glob `/src/** - /tests/**`; shallower, or after a
     tab, YAML refuses it.
     """
+    try:
+        declared = [key for key in keys(block) if key.name == "paths"]
+    except Unread as unread:
+        raise Unreadable(str(unread)) from None
+    if not declared:
+        return []
+    if len(declared) > 1:
+        raise Unreadable(
+            "`paths:` is written twice, which YAML refuses; write every glob under one key"
+        )
+    key = declared[0]
+    below = block[key.line + 1 : key.end]
+    if uncommented(key.inline).strip():
+        glob = _glob(key.inline, "`paths:`")
+        if any(line.strip() and not line.lstrip().startswith("#") for line in below):
+            raise Unreadable(
+                "`paths:` carries its glob onto the line after it, which YAML "
+                "joins into the glob; write it on the key's line"
+            )
+        return [glob]
     found: list[str] = []
-    in_paths = False
     # The indentation of the list's first `- `, where every item of it sits.
     column: int | None = None
-    for index, line in enumerate(block):
+    for line in below:
         stripped = line.strip()
-        if not line.startswith((" ", "\t")) and stripped.startswith("paths:"):
-            inline = stripped[len("paths:") :].strip()
-            if inline.startswith(("[", "{")):
-                raise Unreadable(
-                    "`paths:` is a flow collection, which this reader does not take; "
-                    "write each glob as a `- ` item beneath the key"
-                )
-            if inline and not inline.startswith("#"):
-                carried = next((later for later in block[index + 1 :] if later.strip()), "")
-                if carried.startswith((" ", "\t")) and not carried.lstrip().startswith("#"):
-                    raise Unreadable(
-                        "`paths:` carries its glob onto the line after it, which YAML "
-                        "joins into the glob; write it on the key's line"
-                    )
-                found.append(_unquote(inline))
-                in_paths = False
-            else:
-                in_paths, column = True, None
-            continue
-        if not in_paths:
-            continue
         if not stripped or stripped.startswith("#"):
             continue
-        if stripped.startswith("- "):
-            indent = len(line) - len(line.lstrip(" "))
-            column = indent if column is None else column
-            if line[indent] != "-" or indent < column:
-                raise Unreadable(
-                    f"`{stripped}` under `paths:` is not at the list's indentation, or a tab "
-                    "indents it, which YAML refuses; write each glob as a `- ` item at the "
-                    "list's indentation"
-                )
-            if indent > column:
-                raise Unreadable(
-                    f"`{stripped}` under `paths:` is indented past the list's first `- `, so "
-                    "YAML joins it into the glob above it, or refuses the file, rather than "
-                    "reading a glob of its own; write each glob as a `- ` item at the list's "
-                    "indentation"
-                )
-            found.append(_unquote(stripped[2:]))
-            continue
-        if line.startswith((" ", "\t")):
+        if not stripped.startswith("- "):
             raise Unreadable(
                 f"`{stripped}` under `paths:` is no `- ` item, so YAML joins it into the "
                 "value above it; write each glob on one line, as a `- ` item"
             )
-        in_paths = False
+        indent = len(line) - len(line.lstrip(" "))
+        column = indent if column is None else column
+        if line[indent] != "-" or indent < column:
+            raise Unreadable(
+                f"`{stripped}` under `paths:` is not at the list's indentation, or a tab "
+                "indents it, which YAML refuses; write each glob as a `- ` item at the "
+                "list's indentation"
+            )
+        if indent > column:
+            raise Unreadable(
+                f"`{stripped}` under `paths:` is indented past the list's first `- `, so "
+                "YAML joins it into the glob above it, or refuses the file, rather than "
+                "reading a glob of its own; write each glob as a `- ` item at the list's "
+                "indentation"
+            )
+        found.append(_glob(stripped[2:], f"`{stripped}` under `paths:`"))
     return found
+
+
+def _glob(node: str, where: str) -> str:
+    """The glob one line's node holds, without its comment or its quotes (YAML 1.2.2 § 6.6).
+
+    A plain scalar, or a quoted one its own line closes. Any other node raises
+    `Unreadable` with `where` naming it: a flow collection or a block scalar,
+    which this reader does not take, a quoted glob its line leaves open, which
+    YAML carries onto the lines below even where they open with `#`, and an item
+    holding nothing (`PL-BM8T`).
+    """
+    value = uncommented(node).strip()
+    if value[:1] in ("[", "{"):
+        raise Unreadable(
+            f"{where} is a flow collection, which this reader does not take; "
+            "write each glob as a `- ` item beneath the key"
+        )
+    if value[:1] in ("|", ">"):
+        raise Unreadable(
+            f"{where} is a block scalar, which this reader does not take; "
+            "write each glob on one line, as a `- ` item"
+        )
+    if value[:1] in ("'", '"') and closing_quote(value) < 0:
+        raise Unreadable(
+            f"{where} opens a quoted glob its line does not close, so YAML carries "
+            "it onto the lines below; close the quote on the glob's line"
+        )
+    if not value:
+        raise Unreadable(f"{where} holds no glob; write one after the `- `, or drop the item")
+    return _unquote(value)
 
 
 def anchored(entry: str) -> str:

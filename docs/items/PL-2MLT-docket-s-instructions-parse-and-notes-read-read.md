@@ -3,12 +3,14 @@ id: PL-2MLT
 title: docket's instructions.parse and notes.read read a file's YAML front matter as Markdown, where its keys are one setext heading, so a dated key is dated by the next key's newer date and a key naming an item opens a notes thread about it; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/notes.py, subprojects/docket/src/docket/frontmatter.py, subprojects/docket/tests, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06
+closed: 2026-10-10
+pr: 1389
 payoff: each dated front-matter key in the instruction set is dated by its own newest date, and a notes file's front matter opens no thread, so an old record is not hidden behind a newer key's date
 verify: grep -qF '"instruction audit, a front matter' tests/unit/test_doc_check.py && grep -qF '"notes, a front matter' tests/unit/test_doc_check.py
 ---
@@ -71,3 +73,13 @@ today's readers.
 `rules_paths_check.entries` and `instructions.parse` both take, in
 `PL-R417`'s YAML batch (project owner, 2026-10-06, ratified, over patching
 each reader in place).
+
+**Built 2026-10-10 (`#1389`).** Both readers find the front matter through
+`docket.frontmatter.closing` and read the body as Markdown from the line after
+its fence, every line in its place. `instructions.parse` reads each key as one
+statement, ended where `docket.frontmatter.keys` ends it, and every other line
+of the block alone, so no date hides behind another key's: the comments
+between keys, and every line of a block that reader cannot split.
+`notes.read` reads the block as blank lines. An `instruction audit, ` and a
+`notes, ` case in the guard, each failing on main's readers; the audit and the
+notes threads read the same over the tree before and after.

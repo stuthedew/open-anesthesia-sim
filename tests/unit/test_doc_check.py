@@ -6822,6 +6822,16 @@ def _job_names(*name: str) -> list[str]:
 
 #: A rule's front matter whose description is a literal block holding `---`.
 INDENTED_RULE = '---\ndescription: |\n  ---\n  more\npaths:\n  - "/src/**"\n---\nbody\n'
+#: A rule whose quoted description carries a line opening `paths:`, which
+#: PyYAML reads as the description's and no key (`PL-BM8T`).
+QUOTED_PATHS_RULE = (
+    '---\ndescription: "Loads at launch, since no\npaths: key defers it"\n---\nbody\n'
+)
+#: A front matter whose keys carry two dates, each its own record (`PL-2MLT`).
+DATED_FRONT_MATTER = (
+    "---\nname: example\ndescription: Decided by the project owner on 2026-06-01\n"
+    "paths: src/**, re-checked 2026-10-04\n---\n\nBody.\n"
+)
 
 
 TEX_ERROR = (
@@ -7893,6 +7903,48 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         ),
         "declined: `- /tests/**` under `paths:` is indented past the list's first `- `",
     ),
+    # `PL-BM8T`: a quoted glob its own line leaves open is refused by name, where
+    # a `#`-led line YAML carries it onto was read as a comment, and the glob
+    # from its first line; so is a block scalar, and a continuation at the first
+    # column or at the item's own column, which a lenient parser reads too.
+    "rules paths, a hash-led line inside a quoted value is refused by name": (
+        lambda _: _refused(lambda: rules_paths_check.entries(['paths: "/src/**', '  #x"'])),
+        "declined: `paths:` opens a quoted glob its line does not close",
+    ),
+    "rules paths, a hash-led line inside a quoted list item is refused by name": (
+        lambda _: _refused(
+            lambda: rules_paths_check.entries(["paths:", '  - "/src/**', '    #x"'])
+        ),
+        'declined: `- "/src/**` under `paths:` opens a quoted glob its line does not close',
+    ),
+    "rules paths, a hash-led line inside a single-quoted list item is refused by name": (
+        lambda _: _refused(
+            lambda: rules_paths_check.entries(["paths:", "  - '/docs", "    #/x'", "  - /tools/**"])
+        ),
+        "declined: `- '/docs` under `paths:` opens a quoted glob its line does not close",
+    ),
+    "rules paths, a block scalar is refused by name": (
+        lambda _: _refused(lambda: rules_paths_check.entries(["paths: >-", "  #/src/**"])),
+        "declined: `paths:` is a block scalar",
+    ),
+    "rules paths, a quoted glob continued at the first column is refused by name": (
+        lambda _: _refused(lambda: rules_paths_check.entries(['paths: "/src/**', '/x"'])),
+        "declined: `paths:` opens a quoted glob its line does not close",
+    ),
+    "rules paths, a quoted item continued at the item's column is refused by name": (
+        lambda _: _refused(
+            lambda: rules_paths_check.entries(["paths:", '  - "/src/**', '  - /tests/**"'])
+        ),
+        'declined: `- "/src/**` under `paths:` opens a quoted glob its line does not close',
+    ),
+    "rules paths, a paths line inside another key's quoted value is no key": (
+        lambda _: rules_paths_check.entries(rules_paths_check.frontmatter(QUOTED_PATHS_RULE) or []),
+        [],
+    ),
+    "rules paths, is_path_scoped reads no key inside another key's quoted value": (
+        lambda _: doc_check.is_path_scoped(QUOTED_PATHS_RULE),
+        False,
+    ),
     "required checks, a flow collection carried past its line is refused by name": (
         lambda _: _refused(lambda: rcc.triggers(["on: [push,", "  pull_request]", "jobs:"])),
         "declined: `on:` holds a flow collection carried past its line",
@@ -7971,6 +8023,23 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             )
         ],
         [(2, "2026-10-04")],
+    ),
+    # `PL-2MLT`: a front matter is no Markdown, so its keys are no paragraph its
+    # closing `---` underlines as a heading. Each key is one statement, dated by
+    # its own newest date, and none opens a notes thread.
+    "instruction audit, a front matter's keys are statements of their own": (
+        lambda _: [
+            (dated.line, str(dated.when))
+            for dated in dated_assertions(".claude/rules/demo.md", DATED_FRONT_MATTER)
+        ],
+        [(3, "2026-06-01"), (4, "2026-10-04")],
+    ),
+    "notes, a front matter opens no thread": (
+        lambda tmp_path: _threads(
+            tmp_path,
+            "---\ntitle: Working notes\nsee: PL-BBBB\n---\n\n## Open thread: PL-CCCC\n\nBody.\n",
+        ),
+        [("Open thread: PL-CCCC", 6)],
     ),
     # The passage a superseded marker covers (`PL-XYJF`): only an item numbered
     # 1 interrupts a paragraph, and a pipe line opens a table only over a
