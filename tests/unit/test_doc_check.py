@@ -6808,6 +6808,14 @@ def _run_step(step: str) -> tuple[list[tuple[str, int]], list[tuple[int, str]]]:
     ]
 
 
+def _step_runs(step: str) -> list[tuple[str, ...]]:
+    """The simple commands `workflow_runs` reads from `step` under `STEP_JOB`, as the gate does."""
+    report, unread = doc_check.Report(), []
+    runs = list(doc_check.workflow_runs(STEP_JOB + step, "ci.yml", report, "unread", unread))
+    assert not report.declined and not unread
+    return runs
+
+
 def _refused(read: Callable[[], object]) -> object:
     """A reader's answer, or the form it names in declining to give one."""
     try:
@@ -7755,6 +7763,19 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: list(doc_check._recipe_commands("SRC = a.c\n$(SRC:.c=.o):\n\t@echo built\n")),
         [("@echo built", 3)],
     ),
+    # Under `.ONESHELL` a recipe is one script, which no reader of recipe
+    # lines reads, so the Makefile is declined by name (`PL-X43T`).
+    "recipe commands, a .ONESHELL recipe is refused by name": (
+        lambda _: _refused(
+            lambda: list(
+                doc_check._recipe_commands(
+                    ".ONESHELL:\ncheck:\n\tcat <<'EOF' > notes.txt\n\truff check src\n\tEOF\n"
+                    "\tuv run ruff check --no-cache src\n"
+                )
+            )
+        ),
+        "declined: line 1: this Makefile names `.ONESHELL`",
+    ),
     "make lines, a tab-led line where no rule is open": (
         lambda _: _make_lines_refusal("\t@echo hi\nall:\n\t@echo all\n"),
         (1, NO_RULE_OPEN),
@@ -7939,6 +7960,15 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             "      - {name: x,\n         run: python3 tools/real_step.py}\n      - run: bin/next\n"
         ),
         ([("bin/next", 3)], [(1, "this step is written as a flow collection (`{`)")]),
+    ),
+    # A step's script read whole, as the merge gate reads the scripts it runs
+    # (`PL-M3M4`): a `case` construct's word, patterns and `esac` are no commands.
+    "workflow commands, a case construct runs only the commands in its arms": (
+        lambda _: _step_runs(
+            '      - run: |\n          case "$1" in\n            check) make check ;;\n'
+            "            *) exit 1 ;;\n          esac\n"
+        ),
+        [("make", "check"), ("exit", "1")],
     ),
     "pull request trigger, a flow collection carried past its line is refused by name": (
         lambda _: _refused(lambda: doc_check._gates_pull_requests("on: [push,\n  pull_request]\n")),

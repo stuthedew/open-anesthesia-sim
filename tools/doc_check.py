@@ -5517,6 +5517,48 @@ def workflow_commands(
     on to the next, and is raised where none is passed, so no reading of it is
     silent.
     """
+    for body, script in _step_scripts(text, unread):
+        for command, offset in script_lines(body):
+            if command.strip():
+                yield command.strip(), script[body.count("\n", 0, offset)][1]
+
+
+def workflow_runs(
+    text: str, where: Path | str, report: Report, unread: str, steps: list[UnreadStatement]
+) -> Iterator[tuple[str, ...]]:
+    """Every simple command a workflow's `run:` steps execute, each as its words.
+
+    Each step's script is read in one pass of docket's `shell.shell_words`,
+    which reads a compound command whole, so a `case` construct's word, its
+    patterns and its `esac` are no commands and the commands in its arms are
+    (`PL-M3M4`). Taken from `workflow_commands`' lines, each read on its own,
+    the arm `check) make check ;;` read as `check` and `make check`, a script
+    the merge gate never runs. A script that pass cannot read to its end is
+    read a line at a time as `workflow_commands` cuts it, each line it cannot
+    read declined at its own line through `_shell_reading`, naming `unread`.
+
+    A step `workflow_commands` declines goes on `steps`, as it would there.
+    """
+    for body, script in _step_scripts(text, steps):
+        reading = shell_words(body)
+        if reading.clauses:
+            yield from _simple_commands(reading)
+            continue
+        for command, offset in script_lines(body):
+            if command.strip():
+                line = script[body.count("\n", 0, offset)][1]
+                yield from _shell_commands(f"{where}:{line}", command.strip(), report, unread)
+
+
+def _step_scripts(
+    text: str, unread: list[UnreadStatement] | None
+) -> Iterator[tuple[str, list[tuple[str, int]]]]:
+    """Each `run:` step's script, whole and a line at a time, as `workflow_commands` reads it.
+
+    The script whole is the text bash is handed, each line ending in a
+    newline; the lines carry the workflow line each sits on. A step that
+    `_step_script` declines goes on `unread`, or raises where none is passed.
+    """
     lines = split_lines(text)
     try:
         steps = required_checks_check.steps(lines)
@@ -5530,10 +5572,7 @@ def workflow_commands(
                 raise
             unread.append(declined)
             continue
-        body = "".join(f"{line}\n" for line, _ in script)
-        for command, offset in script_lines(body):
-            if command.strip():
-                yield command.strip(), script[body.count("\n", 0, offset)][1]
+        yield "".join(f"{line}\n" for line, _ in script), script
 
 
 def _step_script(step: required_checks_check.Step, lines: list[str]) -> list[tuple[str, int]]:
@@ -5702,7 +5741,12 @@ def _shell_commands(
 
 
 def _simple_commands(reading: Reading) -> tuple[tuple[str, ...], ...]:
-    """The simple commands a reading runs, each as its words, cut where `_shell_commands` says."""
+    """The simple commands a reading runs, each as its words, cut where `_shell_commands` says.
+
+    A word of a `case` construct's own syntax - the word it matches, `in`, a
+    pattern, `esac` - is no word of a command; docket's reading marks each
+    (`PL-M3M4`).
+    """
     commands: list[tuple[str, ...]] = []
     for clause in reading.every_clause():
         words: list[str] = []
@@ -5710,10 +5754,10 @@ def _simple_commands(reading: Reading) -> tuple[tuple[str, ...], ...]:
         previous = -1
         for token, (start, end) in zip(clause.tokens, clause.spans, strict=True):
             if isinstance(token, Word):
-                if not target:
+                if not (target or token.case_syntax):
                     words.append(token.text)
                 digits = token.text.isascii() and token.text.isdecimal()
-                descriptor = digits and not (target or token.quoted)
+                descriptor = digits and not (target or token.quoted or token.case_syntax)
                 target = False
             elif token in REDIRECTIONS:
                 if descriptor and start == previous and token[0] in "<>":
@@ -5826,11 +5870,40 @@ def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
     command a backslash continues is one, spelled as make hands it over; read a
     physical line at a time it was two, the first ending in the backslash
     (`PL-G2FY`). A line in a `define` body is a variable's value and no command
-    (`PL-4MLK`). Raises `UnreadStatement` where `_make_lines` does.
+    (`PL-4MLK`). Raises `UnreadStatement` where `_recipe_statements` does.
     """
-    for line, number in _make_lines(text):
+    for line, number in _recipe_statements(text):
         if line.startswith("\t") and line.strip():
             yield line.strip(), number
+
+
+def _recipe_statements(text: str) -> list[tuple[str, int]]:
+    """`_make_lines`' statements, for a reader that takes each recipe line for a command.
+
+    That is how GNU make 4.3 hands a recipe to the shell by default, a line to
+    a shell. A Makefile naming the special target `.ONESHELL` anywhere hands
+    each whole recipe to one shell instead (GNU make manual, "Using One
+    Shell"), so a here-document's body runs on across recipe lines and a line
+    is no command of its own; run through make 4.3 on 2026-10-10, it took
+    effect named after the rule it changed and named beside another target.
+    No Makefile here names it, so one that does is declined by name rather
+    than read as one script, the cheaper of `PL-X43T`'s two endings. Read a
+    line at a time, a `ruff check` in a here-document's body was a command the
+    ruff cache check refused. Raises `UnreadStatement` at the line naming it,
+    and where `_make_lines` does.
+    """
+    statements = list(_make_lines(text))
+    for statement, line in statements:
+        if statement.startswith("\t"):
+            continue
+        if ".ONESHELL" in (_make_rule(statement) or NO_TARGETS).targets:
+            raise UnreadStatement(
+                line,
+                "this Makefile names `.ONESHELL`, under which make hands each recipe to one "
+                "shell as a script, and this reader reads each recipe line as a command of "
+                "its own",
+            )
+    return statements
 
 
 def check_coverage_gate(root: Path, report: Report) -> None:
@@ -6174,12 +6247,13 @@ def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str
     prerequisites, which make gathers across every rule line naming a target,
     though not in the order make runs them (`PL-HR4V`); a recipe after a `;`
     on the rule's own line is its first command (`PL-GZXY`). Raises
-    `UnreadStatement` where `_make_lines` does.
+    `UnreadStatement` where `_recipe_statements` does, a Makefile naming
+    `.ONESHELL` included (`PL-X43T`).
     """
     recipes: dict[str, list[str]] = {}
     prerequisites: dict[str, list[str]] = {}
     current: tuple[str, ...] = ()
-    for line, _ in _make_lines(text):
+    for line, _ in _recipe_statements(text):
         if line.startswith("\t"):
             for target in current if line.strip() else ():
                 recipes[target].append(line.strip())
@@ -6376,13 +6450,7 @@ def check_gate_parity(root: Path, report: Report) -> None:
         if not gates:
             continue
         declined: list[UnreadStatement] = []
-        merge |= {
-            invocation
-            for command, line in workflow_commands(text, declined)
-            for invocation in _gate_invocations(
-                root, _shell_commands(f"{where}:{line}", command, report, unread)
-            )
-        }
+        merge |= set(_gate_invocations(root, workflow_runs(text, where, report, unread, declined)))
         _decline_steps(report, where, declined, unread)
         steps += declined
     # A workflow or step left unread may hold a script either side runs, so a
