@@ -755,10 +755,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"read across {report.modules} module(s) under {APP.as_posix()}/, "
             f"{report.identity_disabled_writes} of them on identity controls and each "
             f"paired with its hide; none rendered disabled. Rule 2 read "
-            f"{report.constructed_colorings} {CONSTRUCTED}, "
-            f"{report.property_colorings} {PROPERTY_WRITE} and "
-            f"{report.call_colorings} {CALLED} agent colouring(s) outside the writer, "
-            f"every one on an identity control"
+            f"{report.constructed_colorings} {CONSTRUCTED} and "
+            f"{report.call_colorings} {CALLED} agent colouring(s) outside the writer, and "
+            f"{report.property_colorings} {PROPERTY_WRITE} one(s), every one on an "
+            f"identity control"
         )
         return 0
 

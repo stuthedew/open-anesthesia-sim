@@ -398,7 +398,8 @@ def test_the_success_line_states_what_it_measured(
     assert "2 disabled-state write(s) read across 2 module(s)" in out
     assert "1 of them on identity controls" in out
     # The dropdown built from `colors` in `__init__`; nothing coloured by a call.
-    assert "1 construction-time, 0 property-write and 0 call-time agent colouring(s)" in out
+    assert "1 construction-time and 0 call-time agent colouring(s)" in out
+    assert "and 0 property-write one(s)" in out
 
 
 # --- the setter spelling (PL-25KS) -------------------------------------------
@@ -522,7 +523,8 @@ def test_the_success_line_counts_setter_spelled_writes(
     # The Qt fixture colours nothing outside the writer, and the line says so
     # rather than leaving an empty rule-2 measurement indistinguishable from
     # one earned.
-    assert "0 construction-time, 0 property-write and 0 call-time agent colouring(s)" in out
+    assert "0 construction-time and 0 call-time agent colouring(s)" in out
+    assert "and 0 property-write one(s)" in out
 
 
 # --- rule 2 in the setter spelling (PL-25KS port review) ----------------------
