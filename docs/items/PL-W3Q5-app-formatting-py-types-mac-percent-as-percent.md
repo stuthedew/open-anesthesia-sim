@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect
 feature: presentation-safety
-touches: src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py
+touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_formatting.py
 added: 2026-09-14
 verify: ! grep -q 'mac_percent: float' src/anesthesia_sim/app/formatting.py && uv run pytest tests/unit/test_formatting.py
 ---
@@ -14,11 +14,11 @@ verify: ! grep -q 'mac_percent: float' src/anesthesia_sim/app/formatting.py && u
 **Problem.** app/formatting.py types mac_percent as Percent in two signatures and as a bare float in five others, so one parameter carries two types in one module
 
 **Measured 2026-09-14.** `app/formatting.py` types `mac_percent` as `Percent` in
-**two** signatures - `mac_multiple` (`:248`) and `format_mac_multiple`
-(`:294`) - and as a bare `float` in **six**: `format_mac_reference` (`:336`),
-`:366`, `:439`, `chart_axis_top_percent` (`:485`),
-`chart_grid_interval_percent` (`:513`) and `mac_axis_ticks` (`:538`). The brief
-above says five; six is what the file holds today.
+**two** signatures - `mac_multiple` and `format_mac_multiple` - and as a bare
+`float` in **six**: `format_mac_reference`, `mac_awake_band_percent`,
+`format_mac_awake_reference`, `chart_axis_top_percent`,
+`chart_grid_interval_percent` and `mac_axis_ticks`. The brief above says five;
+six is what the file holds today.
 
 **Why it matters.** This is the module every displayed concentration passes
 through, and `Percent` is not decoration: `PL-BQ46` and `PL-KL2Q` exist because
@@ -32,6 +32,19 @@ safeguards on exactly these paths.
 **Why not `safety`.** No displayed value is currently wrong; every caller passes
 the right quantity. What is missing is the guard that would catch it if one
 stopped - a latent hole rather than a live defect.
+
+**Re-confirmed 2026-10-11, at `1ee4e78e`.** Still true, by symbol: the same two
+signatures say `Percent` and the same six say `float`. What changed is how far
+the fix reaches. `ChartFrame.mac_percent` and `RunFrame.mac_percent` in
+`app/chart_frame.py` are typed `float`, though both are built from
+`SimulationSnapshot.agent_mac_percent`, a `Percent`. So retyping the six leaves
+`mypy` one error, at `dashboard_frame.mac_reference_caption`, which hands
+`ChartFrame.mac_percent` to `format_mac_reference`; and the same erasure is why
+`chart_frame._hover_value` and `dashboard_frame.off_scale_notice` each rebuild a
+`Percent` from the field. Typing the two fields `Percent` clears the error and
+both rebuilds, where wrapping the caption's argument would have added a third
+(`.claude/rules/core-domain.md` § "A quantity with a check of its own is a
+type, checked once"). `touches` widened to the two files.
 
 **Done when.** Every `mac_percent` parameter in `app/formatting.py` is typed
 `Percent`, `mypy` passes, and no bare `float` remains on that name in the file.
