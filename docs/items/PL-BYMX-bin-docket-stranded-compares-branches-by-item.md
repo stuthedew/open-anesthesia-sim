@@ -140,8 +140,9 @@ the base lacks". The sweep then archives it.
 
 **Measured, that assertion would have fired once, on a superseded draft.** The
 sweep's 16 runs, 2026-09-26 to 2026-10-11, read 28 distinct `claude/`
-branches. 27 were held at every reading by an open pull request or a claim, so
-whatever they carried outside the queue was work being written. The 28th,
+branches. 27 were held at every reading by an open pull request or by
+unfinished work in the claim record, so whatever they carried outside the queue
+was work being written. The 28th,
 `claude/gifted-pasteur-iwimhy`, was held by the grace alone for three runs and
 archived on 2026-10-04 as
 `refs/archive/claude/gifted-pasteur-iwimhy/f7978f9ecfdbdd813118984e19fd318b04d63999`,
@@ -155,22 +156,34 @@ could have cleared it, and a reader would have had to compare it with `#1250` by
 hand. A line naming it would have stood in every reply's refresh
 (`.claude/rules/instruction-writing.md` rule 14 runs `bin/docket stranded`
 before every closing block) for nine hours with the age threshold, and for
-three and a half days without it.
+three days and nine hours without it.
 
-**`PL-B78T`'s shape, a pull request closed unmerged, carried no loss in this
-project's history.** 10 of the 1,306 pull requests with a head ref closed
-unmerged (the list in `PL-99YZ`'s count, from GitHub on 2026-10-11). `#59`,
-`#60` and `#149` predate the history rewrite and their heads carry pre-rewrite
-`main`, so they cannot be read against today's. Of the other seven, four
-(`#587`, `#1045`, `#1092`, `#1101`) wrote only the queue, which the item-keyed
-reading covers. Three carry a commit outside the queue that `vcs.change_landed`
-says never landed, and none is lost work: `#791`'s near-duplicate print for
-`PL-TZ7T` shipped through `#793`; `#1127`'s gate-status-guard change belongs to
-`PL-QMN0`, which `#1138` dropped; and `#392` is the project owner's own README
-change, from `stuthedew-patch-1` rather than a `claude/` branch, closed 35
-seconds after it opened. The paragraph this item was filed on survived too:
-`ROADMAP.md` holds it, under "`PL-ZM48`, added 2026-09-20, after the freeze and
-declined with it."
+**`PL-B78T`'s shape, a pull request closed unmerged, has cost this project
+nothing outside the queue, and one paragraph inside it.** 10 of the 1,306 pull
+requests with a head ref closed unmerged (the list in `PL-99YZ`'s count, from
+GitHub on 2026-10-11). `#59`, `#60` and `#149` predate the history rewrite and
+their heads carry pre-rewrite `main`, so they cannot be read against today's.
+Of the other seven, four (`#587`, `#1045`, `#1092`, `#1101`) wrote only queue
+records, which are the item-keyed reading's to judge: item files, and for
+`#1092` and `#1101` the `docs/pr-bodies/` record of their own body, which a pull
+request that never merged leaves nothing on `main` to describe. Every line they
+add to an item is on `main`, is said there in other words (`#586` landed
+`#587`'s drop of `PL-0QLX`), or is a field `main`'s later copy has moved past,
+except one paragraph: the measurement `#1092` appended to `PL-X3NY`, still
+`ready`, which `#1110` did not carry when it landed `PL-P99G`'s record. Its
+branch, `claude/cleanup-unused-branches-bcecxv`, was already gone when the sweep
+first ran (2026-09-26 20:21 UTC, ten `claude/` branches read), so it was deleted
+by hand (inferred), and `refs/pull/1092/head` held the only copy. The sweep
+could not have taken it, since it keeps a branch for "an edit to" an open item
+"that main lacks" (its first run's own wording). This round restores the
+paragraph to `PL-X3NY`. Three carry a commit outside the queue that
+`vcs.change_landed` says never landed, and none is lost work: `#791`'s
+near-duplicate print for `PL-TZ7T` shipped through `#793`; `#1127`'s
+gate-status-guard change belongs to `PL-QMN0`, which `#1138` dropped; and `#392`
+is the project owner's own README change, from `stuthedew-patch-1` rather than a
+`claude/` branch, closed 35 seconds after it opened. The paragraph this item was
+filed on survived too: `ROADMAP.md` holds it, under "`PL-ZM48`, added
+2026-09-20, after the freeze and declined with it."
 
 **Why the item-keyed reading is the only one this check can trust.** An item id
 names a unit the store writes, so "the base holds no file for this id" is a

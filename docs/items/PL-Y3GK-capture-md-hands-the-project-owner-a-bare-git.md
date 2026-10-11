@@ -45,3 +45,13 @@ only when its own pull request merges, where this branch's one pull request,
 the queue was `PL-QMN0`'s fix, which `#1138` dropped and recorded as kept at
 `59ea9d1c`, `#1127`'s head, so nothing known was lost. Whatever it carried past
 that head is no longer readable from here.
+
+**Before the sweep, a hand deletion cost a queue record too**, so what this path
+loses is not only the files outside the queue: once the ref is gone,
+`stranded`'s item half has nothing to read either. `#1092` closed unmerged on
+2026-09-26 carrying a measurement appended to `PL-X3NY`, and its branch,
+`claude/cleanup-unused-branches-bcecxv`, was gone before the sweep's first run
+that evening (20:21 UTC, ten `claude/` branches read). The sweep keeps a branch
+for an edit to an open item that `main` lacks, so only a hand deletion could
+have taken it. `refs/pull/1092/head` kept the paragraph, and `PL-BYMX`'s design
+round restored it to `PL-X3NY` on 2026-10-11.
