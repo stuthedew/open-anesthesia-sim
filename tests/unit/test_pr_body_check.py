@@ -146,6 +146,37 @@ def test_recover_records_the_body_verbatim(monkeypatch: pytest.MonkeyPatch, tmp_
     assert "commit: abc1234" in written
 
 
+def test_recovery_header_says_the_record_is_historical(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """`PL-TDBT`: a reader who opens a record meets what it is before its body.
+
+    A body is kept verbatim and nobody maintains it, so a path it names that a
+    later change deleted is its history rather than a defect, and nothing on
+    the page said so. The statement is a header field, second after the
+    number, so the body still survives the round trip character for character;
+    it carries no colon, so the line parses as YAML wherever the rest of a
+    header does.
+    """
+    recovery = tmp_path / "pr-bodies"
+    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
+    body = "Cites `tools/gone.py`, which a later change deleted.\n"
+
+    path = pr_body_check.write_recovery(
+        "a" * 40, 768, "PL-8PS6: a title (#768)", body, "2026-09-20", {}, "empty", "2026-10-11"
+    )
+
+    text = path.read_text(encoding="utf-8")
+    assert text.splitlines()[:3] == ["---", "pr: 768", f"note: {pr_body_check.NOTE}"]
+    assert pr_body_check.NOTE.startswith("historical record")
+    assert "docs/pr-bodies/README.md" in pr_body_check.NOTE
+    assert ":" not in pr_body_check.NOTE
+    parsed = pr_body_check.parse_record(text)
+    assert parsed is not None
+    assert parsed[0]["note"] == pr_body_check.NOTE
+    assert parsed[1] == body
+
+
 def test_a_body_unreadable_from_the_api_is_left_for_a_later_run(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
@@ -698,6 +729,27 @@ def test_anchors_name_a_record_whose_commit_they_cannot_read(
         "pr-body: docs/pr-bodies/769.md: anchor not checked: its `commit:` holds no value.",
     ]
     assert printed.err == ""
+
+
+def test_anchors_pass_over_the_readme_beside_the_records(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-TDBT`: the directory's README is not a record, so `make check` says nothing of it.
+
+    Read as one it holds no front matter, and `--anchors` would name it as an
+    anchor not checked on every run: a line nobody can act on, in the region
+    where a real one appears.
+    """
+    recovery = tmp_path / "pr-bodies"
+    recovery.mkdir()
+    (recovery / "README.md").write_text("# Recovered pull request bodies\n")
+    (recovery / "768.md").write_text(f"---\npr: 768\ncommit: {'a' * 40}\n---\n\nBody.\n")
+    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
+    _git_serving(monkeypatch, [("a" * 40, "PL-8PS6: a title (#768)", "")])
+
+    assert pr_body_check.anchors("origin/main") == 0
+    assert capsys.readouterr() == ("", "")
+    assert pr_body_check.recovered() == {768}
 
 
 def test_anchors_on_a_shallow_clone_say_nothing_was_checked(
