@@ -3,11 +3,13 @@ id: PL-7B3G
 title: bin/docket concurrent ranks its batch by priority alone, so a session clearing the gate cannot ask it for N startable gate entries that do not collide
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: parallel-sessions
 touches: subprojects/docket, .claude/skills/docket/modes/picking.md
 added: 2026-09-07
+closed: 2026-10-11
+pr: 1399
 verify: grep -q 'def test_concurrent_can_draw_the_batch_from_the_current_step_alone' subprojects/docket/tests/test_cli.py
 ---
 
@@ -67,3 +69,20 @@ population, and the decisions and in-flight lines beneath are unchanged. Where
 no plan or scope can be read, the flag says so and offers nothing rather than
 the whole queue. A test in `subprojects/docket/tests/test_cli.py` pins a
 startable in-scope item present and a startable out-of-scope item absent.
+
+## Built 2026-10-11
+
+Re-confirmed before building: still true on `origin/main` b6065851, with
+`concurrent --help` offering `item` and `--limit` alone. The flag is
+`--in-scope`, named for the `IN_SCOPE` answer of `Scope.placement` it filters
+on, rather than `--gate`, which would misname the batch once the gate is clear
+and the scope is the milestone's own. The header names the scope it was drawn
+from in `placement_line`'s words, through `plan.step_scope`, so the two cannot
+describe the step differently. Three calls the brief left open: the `<id>` form
+refuses the flag, since an item's collisions include work outside the step and
+narrowing them would hide one; a plan with no milestone for its beat refuses as
+an unreadable one does, where reading it would print an empty batch as if the
+step held nothing startable; and a plan list not read whole is named and exits
+non-zero beneath the batch, as `picks` does (`PL-GMR6`). On the live store the
+batch was 12 startable Gate 2 entries with no declared overlap, and 13 more
+sharing a file, of the 25 in-scope startable ones.

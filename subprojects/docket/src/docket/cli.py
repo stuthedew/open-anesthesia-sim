@@ -100,6 +100,7 @@ from .plan import (
     recommend,
     recurring,
     set_aside,
+    step_scope,
     tier_standings,
     unranked_generators,
     unsound_generator_claims,
@@ -133,7 +134,7 @@ from .release import (
     unrecorded_milestones,
     unreferenced_by_version,
 )
-from .roadmap import MilestoneStates, Scope, Wave, milestone_states, wave
+from .roadmap import IN_SCOPE, MilestoneStates, Scope, Wave, milestone_states, wave
 from .store import (
     ID_PREFIX,
     find_item,
@@ -2598,6 +2599,17 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
     line, as under `next`: its own `blocked-by` names its next step. The `<id>`
     form keeps its `[IN FLIGHT]` flag, because there a free item somebody is
     already working is part of the answer rather than an offer.
+
+    **`--in-scope` narrows that batch to the current step's scope** - what
+    `Scope.placement` puts there, the gate's entries while a gate is being
+    cleared - after `offerable`, so the startable rule is not rebuilt, and
+    `--limit` fills out from the narrowed population. A session clearing the
+    gate can then ask for N startable entries that do not collide, which took a
+    throwaway script over every entry's front matter before (`PL-7B3G`). Where
+    no step scope can be read it offers nothing rather than the whole queue,
+    and a plan list not read whole is named as `picks` names it. It narrows the
+    bare batch alone: an item's collisions include work outside the step, so
+    the `<id>` form refuses the flag rather than hide them.
     """
     _, items, config = _load(args)
     today = args.today or date.today()
@@ -2606,6 +2618,14 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
     candidates = sorted(report.open_items, key=lambda i: i.sort_key())
 
     if args.item:
+        if args.in_scope:
+            print(
+                "`--in-scope` narrows the bare batch only: an item's collisions include work "
+                "outside the step's scope, so it is not applied to one. "
+                f"`docket concurrent --in-scope` gives the batch, `docket concurrent {args.item}` "
+                "the collisions."
+            )
+            return 1
         item = find_item(items, args.item)
         if item is None:
             print(f"no item matching '{args.item}'")
@@ -2653,8 +2673,20 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
 
     # `--limit` fills out from the same population, so it cannot reach past it.
     startable = offerable(candidates, flight.ids)
+    drawn = ""
+    plan: Wave | None = None
+    if args.in_scope:
+        root = _invocation(args).root
+        plan = _plan(root, items, config)
+        refusal = _unscoped(root, config, plan)
+        if refusal or plan is None:
+            print(refusal)
+            _say_unread(args, flight)
+            return 1
+        startable = [i for i in startable if plan.scope.placement(i.identifier) == IN_SCOPE]
+        drawn = f", drawn only from work {step_scope(plan.scope)}"
     batch = parallel_batch(startable, args.limit)
-    print(f"A batch that can be worked at once ({len(batch)} items, best-first):")
+    print(f"A batch that can be worked at once ({len(batch)} items, best-first){drawn}:")
     ordered = False
     for position, item in enumerate(batch):
         print(f"  {item.priority} {item.identifier} {item.title}")
@@ -2679,7 +2711,8 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
         print()
         print(f"Outside the batch is not refused: {count} more items share a file with")
         print("something above, which orders the work rather than forbidding it.")
-        print("`docket concurrent --limit N` fills the batch out with them.")
+        scoped = " --in-scope" if args.in_scope else ""
+        print(f"`docket concurrent{scoped} --limit N` fills the batch out with them.")
     pending = awaiting_decision(items, flight.ids)
     if pending or flight.ids:
         print()
@@ -2687,8 +2720,37 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
     _say_decisions(pending, today, limit, NAMED_NOT_OFFERED)
     if flight.ids:
         print(render.format_excluded(flight.ids, _holdings(args)))
+    # A gate entry carried on past its line is read short, and the scope with
+    # it, so a batch drawn from that scope may be missing work (`PL-GMR6`).
+    unread = render.plan_unread_lines(plan.unread) if plan is not None else []
+    for line in unread:
+        print(line)
     _say_unread(args, flight)
-    return 0
+    return 1 if unread else 0
+
+
+def _unscoped(root: Path, config: Config, plan: Wave | None) -> str:
+    """Why `concurrent --in-scope` has no step scope to draw from, or `""` where it has one.
+
+    Each answer offers nothing rather than the whole queue: a batch drawn from
+    everything under a flag that asked for the step's scope would hand a
+    fan-out work the step does not include, with nothing saying so. A plan with
+    no milestone for its beat - one waiting to be scoped - places nothing, which
+    `Scope.placement` would read as an empty batch rather than a missing scope.
+    """
+    if not (root / config.roadmap_file).is_file():
+        return f"no {config.roadmap_file} to read: there is no step for `--in-scope` to draw from"
+    if plan is None:
+        return (
+            f"{config.roadmap_file} could not be read as a plan, so `--in-scope` offers "
+            "nothing; `docket wave` says what is wrong"
+        )
+    if not plan.scope.anchor:
+        return (
+            "the plan names no milestone for the step the project is on, so `--in-scope` "
+            "has no scope to draw from and offers nothing; `docket wave` says which beat is due"
+        )
+    return ""
 
 
 def cmd_status(args: argparse.Namespace) -> int:
@@ -5550,6 +5612,14 @@ def build_parser() -> argparse.ArgumentParser:
     concurrent = add("concurrent", "what can be worked at once")
     concurrent.add_argument("item", nargs="?", help="check against this item")
     concurrent.add_argument("--limit", type=_at_least_one, default=None)
+    concurrent.add_argument(
+        "--in-scope",
+        action="store_true",
+        help=(
+            "draw the batch only from the current step's scope: the gate's entries "
+            "while a gate is being cleared"
+        ),
+    )
     concurrent.set_defaults(func=cmd_concurrent)
 
     release = add("release", "cut a release from everything finished and unshipped")

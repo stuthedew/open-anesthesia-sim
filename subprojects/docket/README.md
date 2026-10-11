@@ -32,6 +32,7 @@ docket triage                # what is untriaged, and the rules the answers must
 docket set PL-K7QX --priority P2 --effort S --classes defect   # write triage's answers; refused where check would fail them
 docket withdraw PL-K7QX PL-B2B2 --because PL-34BG   # disown a recorded filing whose match was wrong
 docket concurrent PL-K7QX    # what can be worked alongside it, and what a live branch is already changing
+docket concurrent --in-scope --limit 4   # four that can run at once from the step's scope: the gate's entries while one is open
 docket feature halted-step   # progress on one feature
 docket gate --feature x      # every open debt item, split by feature and lane: a freeze's first cut
 docket release v0.3.0        # verify, bump the version, write the notes
@@ -1734,6 +1735,17 @@ and with which item — when `--limit` asks for a batch of a given size.
 not `blocked`, not in flight, and not waiting on the project owner below `P0`
 — and names the decisions and the work in flight beneath it on the two lines
 `next` prints, so a fan-out can hand the batch out as it stands (`PL-4ZK8`).
+
+**`--in-scope` narrows that batch to the current step's scope**, read by the
+`Scope.placement` that `next` ranks by: the gate's entries while a gate is being
+cleared, and the milestone's own scope once it is clear. `--limit N` fills out
+from the same population, so a session clearing the gate can ask for N
+startable entries that do not collide, a question a throwaway script over every
+entry's front matter answered before (`PL-7B3G`). Where no step scope can be
+read it says so and offers nothing rather than the whole queue, and a plan list
+not read whole is named as `picks` names it. It narrows the batch alone: the
+`<id>` form refuses it, because an item's collisions include work outside the
+step.
 
 **The same-file tier is reported by path rather than by item, rarest group
 first** (`PL-PGZK`). Tiering stopped the false refusals; it left a list whose
