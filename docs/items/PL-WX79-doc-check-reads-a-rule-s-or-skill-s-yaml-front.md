@@ -103,3 +103,14 @@ closes. Its fences, code blocks and headings are read from the body alone
 matter as written). The four readers above go through that layer, as does every
 other reader of the same primitives. Five cases in `PL-R417`'s guard, one per
 reader and one for `check_quoted_sources`, each fail on main's readers.
+
+**Completed 2026-10-11, in the same pull request.** `_absent_paths`, which
+`check_citations` calls, still found its markers' paragraphs over the whole
+document, so a value opening `<!--` hid the body's paragraphs down to the next
+`-->`; it reads them from the body alone, and a sixth case fails on main's
+readers. The pull request's adversarial pass then found the layer reading any
+text that opened with `---` as a document: a run of comment between two `# ---`
+banners, a docstring or a brief's body was read as a front matter a line at a
+time, so a date on a claim's next line dated none of it. Only a whole file opens
+one now, and a passage cut from a file is read as `_as_passage` reads it; three
+cases hold the reading `main` gave each.

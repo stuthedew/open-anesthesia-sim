@@ -6894,17 +6894,25 @@ def _citation_findings(tmp_path: Path, readme: str, brief: str = "") -> list[str
     root = _repo(tmp_path, readme=readme)
     if brief:
         _item(root, "PL-T3ST-demo", _brief("done", brief))
-    report = doc_check.analyze(root)
-    said = ("cites section", "names a section", "quotes ", "opens a quotation")
-    return [
-        finding for finding in report.errors + report.advisories if any(s in finding for s in said)
-    ]
+    return _quotation_findings(root)
 
 
 def _live_brief_findings(tmp_path: Path, item: str) -> list[str]:
     """What the citation checks say of `item`, written whole as `PL-T3ST`'s live file."""
     root = _repo(tmp_path)
     _item(root, "PL-T3ST-demo", item)
+    return _quotation_findings(root)
+
+
+def _docstring_findings(tmp_path: Path, body: str) -> list[str]:
+    """What the citation checks say of `body`, written as a module's docstring."""
+    root = _repo(tmp_path)
+    _docstringed(root, body)
+    return _quotation_findings(root)
+
+
+def _quotation_findings(root: Path) -> list[str]:
+    """What the citation checks say of the sections and quotations `root` cites."""
     report = doc_check.analyze(root)
     said = ("cites section", "names a section", "quotes ", "opens a quotation")
     return [
@@ -6930,6 +6938,11 @@ SPLIT_QUOTATION_BRIEF = (
     '---\nid: PL-T3ST\nstatus: ready\ntitle: It holds `docs/MODEL.md` § "Known\n'
     'priority: P3\nsummary: limitations" to that file\n---\n\n**Problem.** x\n'
 )
+#: A section quoted across a soft break, between a thematic break and the `---`
+#: underlining its paragraph as a setext heading (CommonMark 0.31.2 §§ 4.1,
+#: 4.3), as a passage holds them; read as a document, the two lines were a
+#: front matter's fences (`PL-WX79`).
+RULED_QUOTATION = '---\nIt holds `docs/MODEL.md` § "Known\nlimitations" to that file.\n---\n'
 
 
 def _possessive_sites(tmp_path: Path, readme: str) -> list[str]:
@@ -7334,6 +7347,14 @@ NARROWED = RULE.replace("before every commit,\n", "")
 #: 0.29 § 4.10 reads as one table holding both rows (`PL-NGKW`).
 TWO_TABLES = "| allowed |\n| --- |\n| a |\n\n| refused |\n| --- |\n| b |\n"
 TWO_TABLES_JOINED = "| allowed |\n| --- |\n| a |\n| b |\n"
+#: A front matter whose folded value starts with `<!--`, which YAML reads as
+#: text and CommonMark 0.31.2 § 4.6 as an HTML block running to the next `-->`:
+#: the body's own `absent:` marker, past the paragraph it covers (`PL-WX79`).
+FRONT_MATTER_COMMENT = (
+    "---\nname: demo\ndescription: >\n  <!-- a note the description carries\n"
+    "when: the owner asks\n---\n\nThe demo once read `docs/gone.md`.\n"
+    "<!-- absent: docs/gone.md -->\n"
+)
 
 
 #: The Symbols table's header and delimiter rows, and one row under them.
@@ -8217,6 +8238,30 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             "write the date it was probed in the same sentence (`PL-CLW5`)"
         ],
     ),
+    # A comment, a docstring and a brief's body are passages of their file,
+    # where only a document opens a front matter (`_as_passage`).
+    "host claims, a comment between two `---` banners opens no front matter": (
+        lambda tmp_path: _host_claim_errors(
+            tmp_path,
+            {
+                "ci.yml": (
+                    "# ---\n# api.example.com is blocked by the egress proxy, probed\n"
+                    "# 2026-10-01.\n# ---\non: push\n"
+                )
+            },
+        ),
+        [],
+    ),
+    "quoted sources, a docstring between two `---` lines opens no front matter": (
+        lambda tmp_path: _docstring_findings(tmp_path, RULED_QUOTATION),
+        [],
+    ),
+    "quoted sources, a brief's body between two `---` lines opens no front matter": (
+        lambda tmp_path: _live_brief_findings(
+            tmp_path, "---\nid: PL-T3ST\nstatus: ready\ntitle: Demo\n---\n" + RULED_QUOTATION
+        ),
+        [],
+    ),
     "math, a fence-shaped line in a front matter opens no fence": (
         lambda root: _math_errors(
             root / "repo",
@@ -8269,11 +8314,51 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             "working tree",
         ],
     ),
+    # Read as RFC 8259 reads a copy, not as `json`'s defaults do (`_json_reading`).
+    "json keys, a name one object holds twice is declined by name": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path,
+            '{\n    "dose": 1,\n    "dose": 2\n}\n',
+            '{\n    "dose": 3,\n    "dose": 2\n}\n',
+        ),
+        [
+            "demo",
+            "demo.json",
+            "dose",
+            "src/anesthesia_sim/data/agents/demo.json: json cannot read its copy at HEAD",
+        ],
+    ),
+    "json keys, a NaN, which equals nothing, is declined by name": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path,
+            '{\n    "dose": NaN,\n    "rate": 1\n}\n',
+            '{\n    "dose": NaN,\n    "rate": 2\n}\n',
+        ),
+        [
+            "demo",
+            "demo.json",
+            "rate",
+            "src/anesthesia_sim/data/agents/demo.json: json cannot read its copy at HEAD",
+        ],
+    ),
+    "json keys, two numbers past a float's range still differ": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path, '{\n    "dose": 1e400\n}\n', '{\n    "dose": 2e400\n}\n'
+        ),
+        ["demo", "demo.json", "dose"],
+    ),
     "removed headings, a front matter is no heading": (
         lambda tmp_path: _removed_heading_terms(
             tmp_path,
             "---\ndescription: The old one\n---\n\n# Demo\n",
             "---\ndescription: The new one\n---\n\n# Demo\n",
+        ),
+        [],
+    ),
+    "absent markers, a comment a front-matter value opens hides no paragraph": (
+        lambda tmp_path: (
+            _absent_findings(tmp_path, FRONT_MATTER_COMMENT)
+            + _missing_path_citations(tmp_path, FRONT_MATTER_COMMENT)
         ),
         [],
     ),

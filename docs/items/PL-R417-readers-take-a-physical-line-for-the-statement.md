@@ -614,12 +614,18 @@ failed after two rounds, was not reached. On that corpus `main`'s `keys`
 agrees with PyYAML on 1,531, misreads 89 and declines 380. Nothing over the
 tree moved: `doc_check check` and `candidates`, `possessive_section_check`,
 `rules_paths_check` and `bin/docket check`, `stranded` and `flight` report the
-same over this tree under `main`'s readers and these. The guard gained
-twenty-eight cases, twenty-seven failing on `main`'s readers and one, a whole
-table cut, holding a reading `main` already gave; six existing `links, ` cases
-now read through `_links`. No sweep ran before `generator:` was rewritten
-`spent`, as the owner answered, and the head closes with `PL-RR1N` and link
-23's twenty-one latent members open as ordinary items.
+same over this tree under `main`'s readers and these. The pull request's
+adversarial pass found two of its own readers wrong on forms no tracked file
+holds, both fixed in it: the statement layer read a comment run, a docstring
+or a brief's body opening with `---` as a document with a front matter
+(`PL-WX79`), and the JSON reader read past a name written twice, a `NaN` and a
+number past a float's range (`PL-VX3Q`). The guard gained thirty-five cases,
+thirty failing on `main`'s readers and five holding a reading `main` already
+gave - a whole table cut, the three passages and the out-of-range numbers -
+and six existing `links, ` cases now read through `_links`. No sweep ran
+before `generator:` was rewritten `spent`, as the owner answered, and the head
+closes with `PL-RR1N` and link 23's twenty-one latent members open as ordinary
+items.
 
 **Next steps (recorded 2026-10-04, revised by links 8, 11 to 18 and 19 to 24,
 and on 2026-10-06, 2026-10-10 and 2026-10-11).** The members the table and the first sweeps named are

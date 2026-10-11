@@ -111,6 +111,7 @@ import textwrap
 import tokenize
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
+from decimal import Decimal
 from functools import lru_cache, partial
 from itertools import zip_longest
 from pathlib import Path, PurePosixPath
@@ -4627,6 +4628,30 @@ def without_fences(text: str) -> str:
     return text[:start] + blank_fences(text[start:])
 
 
+def _as_passage(text: str) -> str:
+    """`text`, a passage cut from a file, as a document that opens no front matter.
+
+    Only a whole file opens with one. A run of comment, a docstring or a
+    brief's body read as a document opened one wherever its first line was
+    `---` and a later line closed it, so the comment between two `# ---`
+    banners was read a line at a time and a date on its next line dated none
+    of its sentence (`PL-WX79`). That first line holds nothing a reader here
+    looks for - CommonMark 0.31.2 reads it as a thematic break (§ 4.1), or
+    indented four columns as a line of code - so it is blanked, its length
+    kept, and offsets and line numbers stay `text`'s.
+    """
+    lines = split_lines(text)
+    if frontmatter_closing(lines) is None:
+        return text
+    return " " * len(lines[0]) + text[len(lines[0]) :]
+
+
+def _as_passages(pieces: Iterable[tuple[int, str]]) -> Iterator[tuple[int, str]]:
+    """Each of `pieces`, a row and the text cut from a file there, as `_as_passage` reads it."""
+    for row, piece in pieces:
+        yield row, _as_passage(piece)
+
+
 def _statement_matches(
     pattern: re.Pattern[str], text: str, kinds: Collection[str] | None = None
 ) -> Iterator[re.Match[str]]:
@@ -4921,9 +4946,12 @@ def _absent_paths(
     paragraph, so a marker left behind by a reworded sentence fails rather than
     lingering. A path `.gitignore` covers is not held absent, since its
     presence differs between a working tree and CI. A marker shown in a fence
-    is the format being shown, and is not read.
+    is the format being shown, and is not read. Nor is one in a front matter,
+    whose blocks are read from the body alone: a front matter is YAML, where
+    `<!--` opens no comment, and read as Markdown one a value left open hid the
+    body's paragraphs down to the next `-->` (`PL-WX79`).
     """
-    lines = split_lines(without_fences(text))
+    lines = _body_lines(split_lines(without_fences(text)))
     split = _split_markers(lines)
     declared: dict[int, set[str]] = {}
     for index, line in enumerate(lines):
@@ -5030,7 +5058,8 @@ def _brief_pieces(text: str) -> list[tuple[int, str]]:
     field's, hiding the path a later field cited, and a quotation ran on into
     the next field (`PL-CZ28`). Every other line of the front matter - a
     comment, or one no field reads - is read alone. A brief with no front
-    matter is one piece.
+    matter is one piece. Each piece of one that has is a passage of it, so a
+    body opening with a thematic break opens no front matter (`_as_passage`).
     """
     layout = front_matter_spans(text)
     if layout is None:
@@ -5040,9 +5069,12 @@ def _brief_pieces(text: str) -> list[tuple[int, str]]:
     held = {index for first, end in spans for index in range(first, end)}
     alone = [(index, index + 1) for index in range(1, body - 1) if index not in held]
     pieces = sorted([*spans, *(span for span in alone if lines[span[0]].strip())])
-    return [(first + 1, "".join(lines[first:end])) for first, end in pieces] + [
-        (body + 1, "".join(lines[body:]))
-    ]
+    return list(
+        _as_passages(
+            [(first + 1, "".join(lines[first:end])) for first, end in pieces]
+            + [(body + 1, "".join(lines[body:]))]
+        )
+    )
 
 
 def _cited_file(root: Path, basenames: Mapping[str, list[Path]], token: str) -> Path | None:
@@ -5217,7 +5249,7 @@ def _quoting_sources(
         except (OSError, SyntaxError, ValueError) as error:
             declined.append(_unread_source(relative, error))
             continue
-        for line, docstring in _docstrings(tree):
+        for line, docstring in _as_passages(_docstrings(tree)):
             yield relative, line, docstring
 
 
@@ -7528,8 +7560,11 @@ def _json_strings(text: str) -> Iterator[tuple[int, str]]:
 def _host_claim_texts(path: Path, relative: Path, report: Report) -> Iterator[tuple[int, str]]:
     """The prose `path` holds, each piece as the row it opens on and its text.
 
-    Nothing for a file of another format or a dated record; a piece that could
-    not be read is named in `report.declined` rather than passed as read.
+    A Markdown file is one piece, a document; a run of comment, a docstring
+    and a JSON string are passages of their file, which open no front matter
+    (`_as_passage`). Nothing for a file of another format or a dated record; a
+    piece that could not be read is named in `report.declined` rather than
+    passed as read.
     """
     posix = relative.as_posix()
     if posix.startswith(DATED_RECORDS):
@@ -7551,9 +7586,9 @@ def _host_claim_texts(path: Path, relative: Path, report: Report) -> Iterator[tu
     if suffix == ".md":
         yield 1, text
     elif hashed:
-        yield from _hash_comments(text)
+        yield from _as_passages(_hash_comments(text))
     elif suffix == ".json":
-        yield from _json_strings(text)
+        yield from _as_passages(_json_strings(text))
     elif HOST_RE.search(text) and HOST_REFUSAL_STEM_RE.search(text):
         # Parsed as bytes, as `_quoting_sources` parses them, so a byte-order
         # mark or a coding cookie is honoured rather than declined.
@@ -7563,9 +7598,9 @@ def _host_claim_texts(path: Path, relative: Path, report: Report) -> Iterator[tu
             report.declined.append(_unread_source(relative, error, "host claim"))
         else:
             for row, docstring in _docstrings(tree):
-                yield row, _dedented(docstring)
+                yield row, _as_passage(_dedented(docstring))
         try:
-            yield from _python_comments(data)
+            yield from _as_passages(_python_comments(data))
         except UNTOKENIZABLE as error:
             report.declined.append(
                 f"{relative}: the tokenizer refused this file ({refusal(error)}), so no "
@@ -7945,11 +7980,12 @@ def _changed_json_keys(
     above it - an array's entries - and a key's colon on the line below it.
     Read off each changed line, such a change seeded no key, and the documents
     stating the value were left off the list (`PL-VX3Q`). So the base's copy
-    and the working tree's are each parsed, and the two readings compared by
-    `_json_keys_changed`, as `_changed_definitions` reads Python from both
-    copies' statements. A copy missing on one side holds nothing there. A copy
-    `json` refuses has the diff's lines read a line at a time, as every file's
-    were, and is appended to `unread`.
+    and the working tree's are each parsed, as RFC 8259 reads them
+    (`_json_reading`), and the two readings compared by `_json_keys_changed`,
+    as `_changed_definitions` reads Python from both copies' statements. A copy
+    missing on one side holds nothing there. A copy `_json_reading` refuses has
+    the diff's lines read a line at a time, as every file's were, and is
+    appended to `unread`.
     """
     readings: list[object] = []
     for copy in (base, ""):
@@ -7960,7 +7996,7 @@ def _changed_json_keys(
             else:
                 file = root / relative
                 text = file.read_bytes().decode("utf-8") if file.is_file() else None
-            readings.append(ABSENT if text is None else json.loads(text.removeprefix("\ufeff")))
+            readings.append(ABSENT if text is None else _json_reading(text.removeprefix("\ufeff")))
         except ValueError as error:
             unread.append(
                 f"{relative}: json cannot read its copy "
@@ -7969,6 +8005,41 @@ def _changed_json_keys(
             )
             return {match[1] for line in diff if (match := JSON_KEY_RE.match(line))}
     return _json_keys_changed(*readings) or set()
+
+
+def _json_reading(text: str) -> object:
+    """`text` as RFC 8259 reads it, refusing with `ValueError` what `json` reads past.
+
+    Three things `json`'s defaults read past, each misreading a comparison. A
+    name an object holds twice keeps its last value, so a change to the first
+    went unseen, and RFC 8259 § 4 calls such an object's reading unpredictable. A
+    `NaN` or an `Infinity`, which § 6 lets no number be, is read as a float,
+    and a `NaN` equals nothing, so an unchanged one read as changed. And a
+    number is rounded to a float, so two past its range or its precision read
+    as one. The first two are refused, as a copy `json` cannot parse is, and a
+    number is read as written, a `Decimal`.
+    """
+    return json.loads(
+        text,
+        parse_float=Decimal,
+        parse_constant=_refused_constant,
+        object_pairs_hook=_unique_members,
+    )
+
+
+def _refused_constant(name: str) -> object:
+    """Refuse `NaN`, `Infinity` or `-Infinity`, which RFC 8259 § 6 lets no JSON number be."""
+    raise ValueError(f"`{name}` is no JSON number")
+
+
+def _unique_members(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """An object's members, refusing a name it holds twice."""
+    members: dict[str, object] = {}
+    for name, value in pairs:
+        if name in members:
+            raise ValueError(f'two members are named "{name}"')
+        members[name] = value
+    return members
 
 
 def _json_keys_changed(before: object, after: object) -> set[str] | None:

@@ -72,3 +72,15 @@ line seeds that key, and a nested value seeds its parent keys as well. A copy
 missing on one side holds nothing there. A copy `json` refuses is named in
 `unread` and its changed lines are read a line at a time, as before. Four
 `json keys, ` cases in `PL-R417`'s guard, each failing on main's reader.
+
+**Completed 2026-10-11, in the same pull request.** Its adversarial pass found
+three inputs `json`'s defaults read past, each misreading the comparison: a
+name one object holds twice kept its last value, so a change to the first went
+unseen; a `NaN`, which equals nothing, read as changed while unchanged; and two
+numbers past a float's range read as one. A copy is now read as RFC 8259 reads
+it (`_json_reading`): the first two are refused by name, like a copy `json`
+cannot parse (§ 4 calls a repeated name's reading unpredictable, and § 6 lets
+no number be `NaN` or `Infinity`), and a number is read as written, a
+`Decimal`. Three more `json keys, ` cases: the first two fail on main's reader,
+which never named the copy it read a line at a time, and the third holds the
+reading main gave. No tracked `.json` file holds any of the three.
