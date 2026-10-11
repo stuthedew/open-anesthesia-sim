@@ -83,6 +83,29 @@ def test_the_refusal_answers_the_question_the_caller_had() -> None:
     assert "git checkout -B <branch> origin/main" in reason
 
 
+OWNER_DELETE = (
+    "git fetch origin <branch> && git push --atomic "
+    "--force-with-lease=refs/heads/<branch>:<tip> origin "
+    "<tip>:refs/archive/<branch>/<tip> :refs/heads/<branch>"
+)
+
+
+@pytest.mark.parametrize("command", ["git fetch --prune", "git push --mirror origin"])
+def test_the_deletion_handed_to_the_owner_keeps_an_archive_copy(command: str) -> None:
+    """A branch deleted by hand restores as a swept one does (`PL-Y3GK`).
+
+    The bare `git push origin --delete <branch>` both messages used to hand the
+    project owner copied nothing to `refs/archive/`, so the one deletion left to
+    a hand was the only one no restore could reach. The line is the one
+    `capture.md` gives, which asks the two to be kept in step.
+    """
+    reason = _decision(command)["permissionDecisionReason"]
+    assert OWNER_DELETE in reason
+    assert "git push origin --delete <branch>" not in reason
+    capture = REPO / ".claude" / "skills" / "docket" / "modes" / "capture.md"
+    assert OWNER_DELETE in capture.read_text(encoding="utf-8")
+
+
 ALLOWED = (
     # The fetch every session runs, and the one `docket branch` runs for it.
     "git fetch origin",
