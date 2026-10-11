@@ -1,8 +1,15 @@
 ---
 id: PL-LCBQ
 title: doc_check's _defined_tests and _changed_definitions take docket.python's reading of a file at face value on the 3.11 floor, where an f-string nesting its own quote around an unmatched bracket mis-tokenizes without an error and merges the statements after it, though python.py's docstring asks a caller to name such a file; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
+payoff: a test file the 3.11 floor mis-tokenizes is named as unread rather than read short, so a cited test is not reported missing and a changed definition not dropped without a word
+verify: grep -q 'def test_a_file_the_running_interpreter_cannot_parse_is_named_by_the_definition_readers' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's _defined_tests and _changed_definitions take docket.python's reading of a file at face value on the 3.11 floor, where an f-string nesting its own quote around an unmatched bracket mis-tokenizes without an error and merges the statements after it, though python.py's docstring asks a caller to name such a file; latent
@@ -28,6 +35,18 @@ error, so `test_ghost` is not a definition, where `ast.parse` refuses the file
 on 3.11 and 3.12 and later read three statements. Latent: all 226 tracked
 Python files read identically on 3.11 and 3.14, and CI runs `doc_check` under
 the project's 3.14 as well as at the floor.
+
+**Re-confirmed 2026-10-11** on main at `16a20a4f`: on python3.11 3.11.17
+`_defined_tests` returns no tests for the input above while `ast.parse`
+refuses it ("f-string: expecting '}'"); on 3.13.16 it returns `test_ghost`
+and `ast.parse` reads it.
+
+**Why it matters.** Under the floor, `check_named_tests` would tell a
+document citing `test_ghost` that the test does not exist, and the
+definitions a diff changed would lose `test_ghost`, each with no word that
+the reading was partial - the floor's violation, in a check CI runs at 3.11.
+`docket.python` already says which callers must name such a file; these two
+are the ones that do not.
 
 **Generator check.** Not a member of `PL-R417`: the cause is a construct the
 floor tokenizer does not support, as in `PL-C45K`, and the module already
