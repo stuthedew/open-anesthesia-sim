@@ -1,8 +1,16 @@
 ---
 id: PL-YPLM
 title: fixture_id_check reads three forms beside its joins wrongly - _front_matter_joins finds a front matter's edges itself so a closing marker with trailing space is no close and a document-end marker is one, _opens_a_node takes a comma or bracket ending a plain scalar's text for a node opener, and scan_text reads .claude/settings.json raw so a JSON-escaped line continuation is not decoded - and a malformed fixture id is misread; latent
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
+feature: one-answer
+touches: tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+payoff: fixture_id_check reads a front matter's edges, a quoted scalar's start and a settings.json hook command as their formats do, so a malformed id there is neither missed nor falsely reported
+verify: grep -q 'def test_the_front_matter_joins_find_its_edges_through_docket' tests/unit/test_fixture_id_check.py && grep -q 'def test_a_comma_ending_a_plain_scalar_opens_no_quoted_scalar' tests/unit/test_fixture_id_check.py && grep -q 'def test_a_settings_json_hook_command_is_read_decoded' tests/unit/test_fixture_id_check.py
 ---
 
 **Problem.** fixture_id_check reads three forms beside its joins wrongly - _front_matter_joins finds a front matter's edges itself so a closing marker with trailing space is no close and a document-end marker is one, _opens_a_node takes a comma or bracket ending a plain scalar's text for a node opener, and scan_text reads .claude/settings.json raw so a JSON-escaped line continuation is not decoded - and a malformed fixture id is misread; latent
@@ -33,9 +41,23 @@ description: one, "PL-K7QX\
 `.claude/` closes with trailing space or `...`, none ends a plain scalar this
 way, and no hook command holds the escape.
 
+**Re-confirmed 2026-10-11** on main at `16a20a4f`: a front matter closed by
+`--- ` or cut by `...` reports `PL-K7Q` where PyYAML reads `PL-K7QX`; the
+comma form reports `PL-K7QXZ` where PyYAML reads `PL-K7QX\ Z`; and a
+`settings.json` hook command holding `\\\n` before `Z` reports nothing where
+bash joins `PL-K7QXZ`. None of the three forms stands in `.claude/`.
+
+**Why it matters.** Each form either hides a malformed id from the check or
+reports a well-formed one as malformed, and the first keeps a second reading
+of a front matter's edges beside `docket.frontmatter`'s, free to drift from it.
+
 **Generator check.** Not members of `PL-R417`: an edge marker, a node
 indicator and a JSON escape are each read within one line. `PL-S4JL` holds the
-continued forms.
+continued forms. The first form, a front matter's edges
+found again beside `docket.frontmatter.opens` and `closing`, is an instance of
+`PL-KGYT`'s fact, which spelling of a repeated predicate is the answer, filed
+after that head closed (2026-10-01); `PL-74T0` holds that cluster's
+post-close count (2026-10-11 triage).
 
 **Done when.** The joins find the front matter through `docket.frontmatter`,
 place a double-quoted scalar only where YAML opens one, and read
