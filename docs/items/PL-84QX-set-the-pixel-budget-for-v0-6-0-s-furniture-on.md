@@ -31,8 +31,8 @@ the desktop comparison is 1920 by 1000.
 | title row (26 px title, version badge) and its spacing | 44 |
 | transport row and its spacing | 60 |
 | readout row (seven panels) and its spacing | 134 |
-| disclaimer line | 15 |
-| **region as it stands** | **285** |
+| disclaimer line and the spacing above it | 27 |
+| **region as it stands** | **297** |
 | parameter row and its handle | 90 |
 | concentration chart at its `CHART_HEIGHT` minimum | 360 |
 
@@ -51,15 +51,15 @@ from `run_view.py`'s per-run builders - the two-run measurement failed on a
 scripting error, `BranchedCase.fork_points_s` being a property, and is still to
 be re-run).
 
-**The arithmetic.** 700 - 285 - 62 = 353 px for the first Area's content with
-one run and nothing else on screen: 7 px short of the chart's minimum before
+**The arithmetic.** 700 - 297 - 62 = 341 px for the first Area's content with
+one run and nothing else on screen: 19 px short of the chart's minimum before
 the parameter View is placed anywhere. With the title row gone (`PL-J8K2` Q2):
-700 - 241 - 62 = 397 px, the chart fits with 37 px to spare, and the parameter
+700 - 253 - 62 = 385 px, the chart fits with 25 px to spare, and the parameter
 View - 86 px today as a row of four, roughly 350 to 380 px as a column - goes
-beside the chart in a right column at today's sidebar width, which the 370 px
+beside the chart in a right column at today's sidebar width, which the 385 px
 under that column's header holds only just; the accounting View is not in the
 shipped defaults (`PL-KXTL`), so the column carries nothing else. With two
-runs: 700 - 411 - 62 = 227 px, 133 px short with the furniture and 71 px short
+runs: 700 - 423 - 62 = 215 px, 145 px short with the furniture and 83 px short
 with none at all, so compare mode on this reference is past the chart's minimum
 today and is held up by the region, not by the furniture.
 
@@ -79,8 +79,8 @@ on a desktop, which makes the shipped default a laptop regression against
 v0.5.0's definition of done.
 
 **Q2. Compare mode.** **Recommendation: name it and hand it on, not solve it
-here.** Two runs are 71 px past the chart's minimum on this reference before
-any furniture, and the one-run arrangement leaves 37 px of slack, which no
+here.** Two runs are 83 px past the chart's minimum on this reference before
+any furniture, and the one-run arrangement leaves 25 px of slack, which no
 second row of controls fits. So the budget above holds for one run, and the
 per-substance tier's density for two - two values in one panel, or two runs in
 one row - is `PL-W54S`'s design, constrained by this number: compare mode on

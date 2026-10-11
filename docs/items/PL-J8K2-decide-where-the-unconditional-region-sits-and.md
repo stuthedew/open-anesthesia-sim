@@ -26,7 +26,7 @@ it goes.
 **What it costs today, measured 2026-10-11** (offscreen, Fusion, "Sans Serif
 9 pt" fallback, tree `1ee4e78e`, a 1366 by 700 client area, one run;
 indicative, not the owner's font): title row 32 px, transport row 48, readout
-row 122, disclaimer 15, page padding and spacing 68 - 285 px of the 700 before
+row 122, disclaimer 15, page padding and spacing 80 - 297 px of the 700 before
 any Area exists. The control-input record is a 320 px panel in today's sidebar.
 A second run adds its own transport and readout rows, about 170 px more
 (inferred from `run_view.py`'s per-run builders; the two-run measurement is
