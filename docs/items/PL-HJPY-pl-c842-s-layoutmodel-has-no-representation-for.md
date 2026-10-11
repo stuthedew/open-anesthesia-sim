@@ -9,6 +9,7 @@ feature: interface-areas
 touches: docs/ARCHITECTURE.md, ROADMAP.md, docs/items
 added: 2026-09-16
 closed: 2026-10-11
+pr: 1395
 verify: grep -qF 'Every recommendation above: ratified' docs/items/PL-HJPY-pl-c842-s-layoutmodel-has-no-representation-for.md
 ---
 

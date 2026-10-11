@@ -9,6 +9,7 @@ feature: interface-areas
 touches: ROADMAP.md, docs/items
 added: 2026-09-21
 closed: 2026-10-11
+pr: 1395
 payoff: v0.6.0 ships the surfaces it creates with a decided appearance and decided edge states, instead of toolkit defaults that planned-milestone item 33 would redo in the pass after it.
 verify: grep -qF 'has its appearance and its edge states decided here' ROADMAP.md
 ---
