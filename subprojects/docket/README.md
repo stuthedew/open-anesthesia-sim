@@ -2787,22 +2787,40 @@ name-pinning `grep` on an item whose work may already exist is checked against
 the code, not against the test names - and the close-out's to read, since it
 reads the command and the diff together.
 
+**A phrase its file wraps is the one fault read from the tree rather than
+from the status** (`PL-RR1N`). `grep` reads a line at a time, so a phrase a
+document carries across a line break - a paragraph's soft break, a comment
+continued on the next line - is on no line it reads: its `grep -q` fails
+whether or not the work is done, and its `! grep -q` passes while the phrase
+is still there. `grep.wrapped` finds it in the files the clause reads, as a
+phrase on none of their lines that one of them holds once each statement's
+lines are read as one. It reads only a fixed string, or a pattern whose only
+special character is `.`, so its answer is exact. Every consumer that runs
+the command asks it too and names the phrase and the lines it spans:
+the replay as an error whatever the command exited with, `verify_item` on
+its command check, where the negated case's exit 0 is a `REJECT`. The fault
+is the command's, so the repair is a phrase one line holds rather than a
+reflow the next edit undoes.
+
 **Who may conclude what.**
 
 - **The replay** - `already_passing`, reported by `_check_landed`,
   `_check_selects_nothing` and `_note_cost` - is one-directional. It
   reads exit 0 as its finding, the three never-evaluated statuses as refusals
   (reported per item as not checked, or for the whole run where nothing ran
-  to completion), and nothing from any other non-zero exit. It never reads a
+  to completion), and nothing from any other non-zero exit but the wrapped
+  phrase above, which it reads from the tree. It never reads a
   failure as "the item is legitimately open", because it cannot know that. It
   may decline, and a declined run says so; an empty result is never a clean
   one. Where the command reads past the tree its exit 0 is a fact about
   the world rather than about the commit, so the finding is reported as an
   advisory rather than an error (`PL-205P`).
 - **The delegated audit and the close-out** - `verify_item` - read exit 0 as
-  the commission's assertion holding and every other status as `REJECT`, with
+  the commission's assertion holding, unless a `! grep`'s phrase is still in
+  its file across a line break, and every other status as `REJECT`, with
   the reason on the line where the run can name it: re-entered `docket
-  verify`, selected no test, killed at the limit. They may not decline. The
+  verify`, selected no test, killed at the limit, a phrase its file wraps.
+  They may not decline. The
   command is the thing being asked about, so "could not run it" rejects the
   work rather than abstaining. What they may not conclude from exit 0 is that
   the work is right; the project's own check and the reviewer's reading of
@@ -2938,15 +2956,17 @@ it found. A new shape joins the list there, with its argument beside it,
 instead of failing first.
 
 **`! grep` is admitted because of the direction it fails in.** A `grep -q` for
-what the work adds fails quietly when it is wrong - a typo, a phrase the
-document wraps (`PL-RR1N`), a file that moved (`PL-CWD4`) - because "never
-passes" reads as work not started. A `! grep -q` passes when it is wrong: a
-typo, a line another branch reworded, a file another branch deleted, whose
-`grep` exit 2 the `!` turns into 0. A passing open command is already an error,
-and the scoped replay runs every command reading a file on the branch that
-edits it, so each way the absence shape goes wrong is reported loudly on the
-branch that caused it. It is also the one shape for the commonest removal, a
-stale sentence a fix deletes, that does not dictate the fix's wording.
+what the work adds fails quietly when it is wrong - a typo, a file that moved
+(`PL-CWD4`) - because "never passes" reads as work not started. A `! grep -q`
+passes when it is wrong: a typo, a line another branch reworded, a file
+another branch deleted, whose `grep` exit 2 the `!` turns into 0. A passing
+open command is already an error, and the scoped replay runs every command
+reading a file on the branch that edits it, so each way the absence shape goes
+wrong is reported loudly on the branch that caused it. It is also the one
+shape for the commonest removal, a stale sentence a fix deletes, that does not
+dictate the fix's wording. A phrase the document wraps goes wrong in both
+directions, and is the one such fault the tree decides, so it is named rather
+than left to read as either (`PL-RR1N`, above).
 
 **Two anchors, because the capture date cannot say when a command was
 written.** An item captured on or after the date is held to the list wherever
