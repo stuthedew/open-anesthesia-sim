@@ -81,7 +81,7 @@ ask `require_not_another_quantity` next, and refuse a value nobody built
 through `shown`, in the form `require_case_instant` and `require_step_count`
 use: `simulation_step_s of 0.1 was built as CaseInstant, which is not
 SimulationStep: it is another quantity, so build SimulationStep from the value
-simulation_step_s should hold`, and `fresh_gas_flow_l_min of 5 was built as
+that simulation_step_s should hold, not from this one (core/checked_number.py)`, and `fresh_gas_flow_l_min of 5 was built as
 StepCount, which is not FreshGasFlow: ...` (the brief's four probes, re-run
 after the change). The step's bare-value refusal changed shape with it, from
 `is a float, not a SimulationStep: build the run's step as SimulationStep(0.1)`

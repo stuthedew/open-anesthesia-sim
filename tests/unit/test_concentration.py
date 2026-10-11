@@ -290,12 +290,14 @@ def test_another_quantity_handed_in_as_a_concentration_is_refused_as_a_swapped_a
     assert str(as_a_fraction.value) == (
         f"alveolar partial_pressure_fraction of {other!r} was built as "
         f"{type(other).__name__}, which is not Fraction: it is another quantity, so build "
-        "Fraction from the value alveolar partial_pressure_fraction should hold"
+        "Fraction from the value that alveolar partial_pressure_fraction should hold, not "
+        "from this one (core/checked_number.py)"
     )
     assert str(as_a_percent.value) == (
         f"delivered_concentration_percent of {other!r} was built as {type(other).__name__}, "
-        "which is not Percent: it is another quantity, so build Percent from the value "
-        "delivered_concentration_percent should hold"
+        "which is not Percent: it is another quantity, so build Percent from the value that "
+        "delivered_concentration_percent should hold, not from this one "
+        "(core/checked_number.py)"
     )
 
 
@@ -484,11 +486,23 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
     vector_before = system.state_vector()
     step = SimulationStep(0.1)
 
-    with pytest.raises(TypeError, match="^inspired_partial_pressure_fraction of 0.0 was not built"):
+    with pytest.raises(TypeError) as as_a_fraction:
         system.circuit.set_inspired_partial_pressure_fraction(0.0)  # type: ignore[arg-type]
 
-    with pytest.raises(TypeError, match="^delivered_concentration_percent of 2.0 was not built"):
+    assert str(as_a_fraction.value) == (
+        "inspired_partial_pressure_fraction of 0.0 was not built as Fraction, it is float: "
+        "build it as Fraction(...) where it is computed, which checks it against 0 to 1 once "
+        '(docs/MODEL.md, "Concentrations")'
+    )
+
+    with pytest.raises(TypeError) as as_a_percent:
         system.circuit.set_delivered_concentration_percent(2.0)  # type: ignore[arg-type]
+
+    assert str(as_a_percent.value) == (
+        "delivered_concentration_percent of 2.0 was not built as Percent, it is float: build "
+        "it as Percent(...) where it is set, which checks it against 0 to 100 once "
+        '(docs/MODEL.md, "Concentrations")'
+    )
 
     with pytest.raises(TypeError, match="^alveolar partial_pressure_fraction of 0.0 was not built"):
         system.alveoli.set_partial_pressure_fraction(0.0)  # type: ignore[arg-type]

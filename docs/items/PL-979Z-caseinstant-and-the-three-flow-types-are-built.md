@@ -79,3 +79,24 @@ and `_require_built` under `PL-848D`, and `require_fraction` and
 dropped on its own. Swept 2026-10-11: `docs/MODEL.md` § "Concentrations",
 § "Supported input ranges" and § "Supported run length", and
 `docs/ARCHITECTURE.md`'s package map and its exceptions paragraph.
+
+**Reviewed 2026-10-11, three adversarial passes, and what changed.** The
+refusal's advice read as the rebuild it forbids - `build CaseInstant from the
+value instant_s should hold` parsed as the value just named - so it now says
+`from the value that instant_s should hold, not from this one
+(core/checked_number.py)`, with the pointer every other refusal here carries.
+This module's history sentence had `_require_built` naming no swapped flow and
+`core/concentration.py` in an import cycle it was never in; both corrected.
+The pair test's docstring claimed `mypy --strict` passes every pair, which the
+seven building `StepCount` from a float type fail, and `INSIDE_EVERY_RANGE`
+claimed every number inside every range, which a count of one step is not for
+the step; both say so now. Mutation runs showed the base order
+`(float, CheckedQuantity)` pinned by nothing but `mypy` on one interface
+variable, so `test_the_number_comes_before_the_base_in_every_checked_type`
+holds it, and the bare-value `build it as X(...)` advice of the step, the
+flows and the concentrations pinned by no test, so one site of each asserts it
+whole. Found and left: the two crossings, `fraction_from_percent` and
+`percent_from_fraction`, admit every other checked quantity because their
+arithmetic runs before the constructor, which is `PL-SWD1`'s ground and is
+recorded there; a subclass of a checked type would refuse its own parent, and
+none exists; pickle protocols 0 and 1 bypass `__new__` as before (`PL-5D1Z`).

@@ -158,8 +158,14 @@ def test_a_bare_float_step_is_refused_at_each_run_entry() -> None:
 
     bare_step_s = 0.1
 
-    with pytest.raises(TypeError, match="was not built as SimulationStep"):
+    with pytest.raises(TypeError) as raised:
         SimulationState(step_count=StepCount(0), simulation_step_s=bare_step_s)  # type: ignore[arg-type]
+
+    assert str(raised.value) == (
+        "simulation_step_s of 0.1 was not built as SimulationStep, it is float: build it as "
+        "SimulationStep(...) where the step is chosen, which checks it against the supported "
+        'range once (docs/MODEL.md, "Supported simulation step")'
+    )
 
     state = SimulationState()
     vector_before = state.uptake_system.state_vector()
@@ -218,6 +224,6 @@ def test_another_quantity_handed_in_as_the_step_is_refused_as_a_swapped_argument
 
     assert str(raised.value) == (
         f"simulation_step_s of {other!r} was built as {type(other).__name__}, which is not "
-        "SimulationStep: it is another quantity, so build SimulationStep from the value "
-        "simulation_step_s should hold"
+        "SimulationStep: it is another quantity, so build SimulationStep from the value that "
+        "simulation_step_s should hold, not from this one (core/checked_number.py)"
     )

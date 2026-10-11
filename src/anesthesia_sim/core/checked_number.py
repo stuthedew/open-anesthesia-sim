@@ -55,10 +55,12 @@ wrong quantity under the right type, measured 2026-10-05 on `main` at
 a flow of 5 L/min, `SimulationStep(Fraction(0.05))` a step of 0.05 s and
 `Percent(FreshGasFlow(2.0))` a dial at 2%, and `mypy --strict` passed each
 call, a checked `float` being a `float`. Only `Fraction` and `Percent` refused
-each other, and only `require_case_instant` and `require_step_count` named a
-swapped quantity where one was stored, reading a tuple of six types that
-`core/supported_ranges.py` kept and that the constructors in the two modules
-it imports from could not read without an import cycle. So every checked type
+each other. Where one was stored, `require_case_instant` and
+`require_step_count` named a value built as any of six types, reading a tuple
+`core/supported_ranges.py` kept, the flows' `_require_built` named the other
+two flows alone, and the step's check named none; `core/simulation_step.py`
+could not import that tuple back without a cycle, and the two concentrations
+were not in it. So every checked type
 is now a `CheckedQuantity`, and `require_not_another_quantity` is the first
 question each constructor asks of what it is handed, and each stored-value
 check of what is not already its own type: a value that is a `CheckedQuantity`
@@ -162,7 +164,8 @@ def require_not_another_quantity(name: str, value: object, building: type[Checke
     The refusal names the parameter, the value, the type it was built as and
     the type in hand, and prescribes no rebuild from the value, since that
     rebuild is the error being refused: what it asks for is the value the
-    parameter should hold.
+    parameter should hold, and it says in as many words not to build from
+    this one.
 
     Args:
         name: What the value is where it is handed in, for the message, as
@@ -182,7 +185,7 @@ def require_not_another_quantity(name: str, value: object, building: type[Checke
         raise TypeError(
             f"{name} of {shown(value)} was built as {type(value).__name__}, which is not "
             f"{building.__name__}: it is another quantity, so build {building.__name__} from "
-            f"the value {name} should hold"
+            f"the value that {name} should hold, not from this one (core/checked_number.py)"
         )
 
 

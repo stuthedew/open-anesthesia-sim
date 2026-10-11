@@ -281,8 +281,14 @@ def test_a_bare_float_is_refused_wherever_a_flow_is_stored(control: Control) -> 
 
     assert type(held) is control.flow_type
 
-    with pytest.raises(TypeError, match=refused):
+    with pytest.raises(TypeError) as raised:
         getattr(compartment, setter)(bare)
+
+    assert str(raised.value) == (
+        f"{control.name} of {bare!r} was not built as {control.flow_type.__name__}, it is "
+        f"float: build it as {control.flow_type.__name__}(...) where it is set, which checks "
+        'it against the supported range once (docs/MODEL.md, "Supported input ranges")'
+    )
 
     with pytest.raises(TypeError, match=refused):
         getattr(system, setter)(bare)
@@ -353,7 +359,8 @@ def test_a_step_a_count_or_an_instant_handed_in_as_a_flow_is_refused_as_a_swappe
     assert str(raised.value) == (
         f"{control.name} of {other!r} was built as {type(other).__name__}, which is not "
         f"{control.flow_type.__name__}: it is another quantity, so build "
-        f"{control.flow_type.__name__} from the value {control.name} should hold"
+        f"{control.flow_type.__name__} from the value that {control.name} should hold, not "
+        "from this one (core/checked_number.py)"
     )
     assert getattr(compartment, control.name) is held
 
@@ -833,8 +840,8 @@ def test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one() -> No
     Each prints what it was handed, so without `shown` a bare count past
     `sys.get_int_max_str_digits` digits would raise `ValueError` while the
     `TypeError` was being written, which is the escape `PL-5F76` closed for
-    the count and the instant, and `PL-848D` for the step and the three
-    flows, which printed with `repr` until then.
+    the count, `PL-CN5S` never opened for the instant, and `PL-848D` closed
+    for the step and the three flows, which printed with `repr` until then.
     """
 
     too_long = 10**5000

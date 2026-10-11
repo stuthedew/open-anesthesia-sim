@@ -59,14 +59,17 @@ INSIDE_EVERY_RANGE: dict[type[Any], float] = {
     Percent: 0.05,
     StepCount: 1,
 }
-"""A number to build each checked type from that every other type's range admits.
+"""A number to build each checked type from that every other type's range admits, bar one.
 
 0.05 is a supported step, a flow of 0.05 L/min, an instant of 0.05 s, a
 fraction of 0.05 and a dial at 0.05%, and a count of one step is an instant of
-1 s, a flow of 1 L/min, a fraction of 1.0 and a dial at 1%; only a step refuses
-the count on its range, 1 s being longer than the longest step. So whatever
-refuses one of these built as another type refuses the type, not the number.
-The values are built inside each test rather than here, as `_AFloat` says.
+1 s, a flow of 1 L/min, a fraction of 1.0 and a dial at 1%. So whatever
+refuses one of these built as another type refuses the type, not the number -
+except the step built from the count, since no whole number of seconds is a
+supported step: there the range would refuse 1 s too, as a
+`SimulationConfigurationError`, and the `TypeError` the pair test asserts is
+what proves the type was read first. The values are built inside each test
+rather than here, as `_AFloat` says.
 """
 
 NAMED_AS: dict[type[Any], str] = {
@@ -79,7 +82,8 @@ NAMED_AS: dict[type[Any], str] = {
     Percent: "percent",
     StepCount: "step_count",
 }
-"""What each constructor calls its value in a refusal: its parameter, or a
+"""What each constructor calls its value in a refusal: its parameter, the run's
+`simulation_step_s` for the step, whose parameter is `seconds`, or a
 concentration's default `name`."""
 
 ORDERED_PAIRS = [
@@ -226,7 +230,8 @@ def test_a_value_built_as_another_quantity_is_refused_by_name_and_anything_else_
     assert not isinstance(raised.value, AnesthesiaSimulationError)
     assert str(raised.value) == (
         "opening_s of 600 was built as StepCount, which is not CaseInstant: it is another "
-        "quantity, so build CaseInstant from the value opening_s should hold"
+        "quantity, so build CaseInstant from the value that opening_s should hold, not from "
+        "this one (core/checked_number.py)"
     )
 
     with pytest.raises(TypeError) as too_long:
@@ -247,19 +252,20 @@ def test_no_checked_type_is_built_from_another_checked_quantity(
 ) -> None:
     """Every ordered pair of checked types refuses, before any comparison reads the number.
 
-    `mypy --strict` passes each of these calls, a checked `float` being a
-    `float` and an `int` admitted where a `float` is annotated, so the
-    constructor is the one check a slip of this shape meets, and until
-    `PL-979Z` it checked the number against its own range and held a count of
-    600 steps as an instant of 600 s. The number is inside the range of the
-    type being built (`INSIDE_EVERY_RANGE`), so what refuses it is the type,
-    and the refusal names the parameter, the value, the type it was built as
-    and the type asked for, and prescribes no rebuild. `Fraction` and
-    `Percent` keep their own refusal of each other, which says to convert,
-    since that pair is a missed conversion rather than a swapped argument. A
-    `TypeError` outside the simulator's hierarchy, since the caller's code is
-    what is wrong; a `SimulationConfigurationError` here would mean the range
-    read the number first.
+    `mypy --strict` passes each of these calls but the seven that build
+    `StepCount` from a float type, a checked `float` being a `float` and an
+    `int` admitted where a `float` is annotated, so the constructor is the one
+    check a slip of this shape meets, and until `PL-979Z` it checked the
+    number against its own range and held a count of 600 steps as an instant
+    of 600 s. The number is inside the range of the type being built
+    (`INSIDE_EVERY_RANGE`, which names the one pair where it is not), so what
+    refuses it is the type, and the refusal names the parameter, the value,
+    the type it was built as and the type asked for, and prescribes no
+    rebuild. `Fraction` and `Percent` keep their own refusal of each other,
+    which says to convert, since that pair is a missed conversion rather than
+    a swapped argument. A `TypeError` outside the simulator's hierarchy, since
+    the caller's code is what is wrong; a `SimulationConfigurationError` here
+    would mean the range read the number first.
     """
 
     value = built_as(INSIDE_EVERY_RANGE[built_as])
@@ -278,7 +284,8 @@ def test_no_checked_type_is_built_from_another_checked_quantity(
         assert str(raised.value) == (
             f"{NAMED_AS[building]} of {value!r} was built as {built_as.__name__}, which is not "
             f"{building.__name__}: it is another quantity, so build {building.__name__} from "
-            f"the value {NAMED_AS[building]} should hold"
+            f"the value that {NAMED_AS[building]} should hold, not from this one "
+            "(core/checked_number.py)"
         )
 
 
@@ -294,6 +301,24 @@ def test_a_checked_type_is_rebuilt_from_its_own_kind(checked: type[Any]) -> None
 
     assert type(rebuilt) is checked
     assert rebuilt == built
+
+
+@pytest.mark.parametrize("checked", list(INSIDE_EVERY_RANGE), ids=lambda checked: checked.__name__)
+def test_the_number_comes_before_the_base_in_every_checked_type(checked: type[Any]) -> None:
+    """`float` or `int` first and `CheckedQuantity` after, as `CheckedQuantity` says.
+
+    `mypy` takes the nearest common base of two checked types as the type of
+    a container holding both; with the base first that is `CheckedQuantity`
+    rather than `float`, which refused a `float` variable in the interface
+    (`app/dashboard_frame.py`). `mypy` catches it there today, and this holds
+    the order where it is decided, so a refactor of that one variable cannot
+    lose the guard.
+    """
+
+    mro = checked.__mro__
+    number = int if issubclass(checked, int) else float
+
+    assert mro.index(number) < mro.index(CheckedQuantity)
 
 
 def test_every_checked_type_in_core_is_one_the_pairs_above_run() -> None:
