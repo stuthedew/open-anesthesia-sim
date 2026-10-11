@@ -80,10 +80,12 @@ five commits on 2026-09-16 carried no feature at all (`PL-N638`).
 **Pitch the name at what completes.** A feature here is a group with a "done
 when" the owner would notice closing: `session-start-cost` at 5 items,
 `doc-consistency-checks` at 4, `core-boundaries` closed at 6. Not a standing
-theme - `dev-tooling` is 134/212 and answers no question about whether
-anything finished. The big end already has a home: anything release-sized is
-a `ROADMAP.md` milestone, so the gap this closes is at the small end, where a
-two-to-five item fix would otherwise scatter.
+theme - `dev-tooling` reached 220 items without ever answering whether anything
+finished, so `docket.toml`'s `retired_features` now lists it with
+`parallel-sessions` and `queue-hygiene`, and `bin/docket check` refuses an open
+item carrying one (`PL-S0MB`). The big end already has a home: anything
+release-sized is a `ROADMAP.md` milestone, so the gap this closes is at the
+small end, where a two-to-five item fix would otherwise scatter.
 
 **Two consequences to know before using it.** A small feature outranks a
 large one inside its band, because `recommend` orders by open items
