@@ -3,11 +3,13 @@ id: PL-SWD1
 title: fraction_from_percent and percent_from_fraction take the other type silently - percent_from_fraction(Percent(0.5)) is a Percent of 50.0 and fraction_from_percent(Fraction(0.5)) a Fraction of 0.005 - because the arithmetic runs first and the constructor's swapped-type check sees a plain float; refuse a Percent where a Fraction is handed in and the reverse, as the constructors do, before converting (found reviewing PL-LLMN)
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/concentration.py, tests/unit/test_concentration.py
+touches: src/anesthesia_sim/core/concentration.py, tests/unit/test_concentration.py, docs/MODEL.md
 added: 2026-10-05
+closed: 2026-10-11
+pr: 1405
 payoff: a concentration handed to the wrong conversion is refused, never returned as a plausible value a hundred times too large or too small under the type meant to prove it was checked
 verify: grep -q 'def test_neither_conversion_takes_the_form_it_converts_to' tests/unit/test_concentration.py
 ---
@@ -58,3 +60,36 @@ already in the form the crossing converts to, named as that - one
 every other checked quantity in the words the constructors and the stored-value
 checks use. No caller in `src/` reaches either crossing with anything but the
 form it asks for; `PL-979Z`'s review traced each one.
+
+**Built 2026-10-11.** Each crossing asks, before its arithmetic and in the
+order the constructors ask, whether the value is already the form it returns,
+then `require_not_another_quantity` with the form it takes, then
+`require_a_number`; the division or multiplication runs on what passes. The
+same-form refusal words its own advice rather than reusing
+`_fraction_where_a_percent_belongs` and its mirror, since those say to
+convert, which here is the error: `percent of 0.5 is already a Fraction, not a
+Percent to convert: dividing it by a hundred would hold a concentration a
+hundred times too small, so use it as the Fraction it is
+(core/concentration.py)`, and the mirror for a `Percent` handed to
+`percent_from_fraction`, each raised inline, the module's shape for a message
+with one site. A value built as any other checked quantity is refused in
+`core/checked_number.py`'s words, as `PL-979Z`'s review proposed. A bare
+`float` is still taken as given, and the module docstring now says so and
+why; `PL-1DP1` records the open question, since every place a concentration is
+held refuses one and the crossings do not.
+`test_neither_conversion_takes_the_form_it_converts_to` asserts both messages
+whole, `format_percent(Percent(0.5))` refusing through the display crossing
+rather than printing `50.00%`, and both own-form conversions unchanged; the
+swapped-argument test over the six other checked types reaches both crossings
+too. Against `main`'s module, read through `PYTHONPATH`, all seven new
+assertions fail with `DID NOT RAISE TypeError`; here the file's 56 tests pass.
+`mypy --strict` still refuses each wrong-form call, which `tools/ignore_check.py`
+holds (72 directives, 0 inert). Swept 2026-10-11: the module docstring's
+sentence that the conversions take what they are given, both crossings'
+docstrings and the two tests' that named this item as outstanding,
+`docs/MODEL.md` § "Concentrations", where the run-time refusal now stands at
+the conversion too, and, read and left as still true, `docs/ARCHITECTURE.md`'s
+package map and exceptions paragraph, `.claude/rules/core-domain.md` and
+`ROADMAP.md`'s mentions of the module. Nothing on screen changes for any path
+the application reaches: every caller in `src/` builds the form a crossing
+takes before calling it.

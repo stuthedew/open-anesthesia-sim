@@ -570,7 +570,8 @@ $$
 is written, in both directions, and the two forms are distinct types there so
 that a type checker refuses a percent where a fraction is wanted, and since
 `PL-4R3W` so does the code at run time wherever a concentration is held
-(below). It is used
+(below), and since `PL-SWD1` at the conversion itself, which refuses a value
+already in the form it returns rather than converting it again. It is used
 in two places and no others: the circuit and the recorded settings derive
 $`F_D`$ from the dial's percent where the governing equations read it, and the
 interface converts for display. Before `PL-WVSK` the factor was written
