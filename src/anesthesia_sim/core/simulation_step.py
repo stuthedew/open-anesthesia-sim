@@ -150,9 +150,22 @@ def require_supported_simulation_step(simulation_step_s: float) -> None:
     stepped at a run's step only by `AgentUptakeSystem.advance()`, which takes
     a `SimulationStep` and so a step this has already checked.
 
+    The step is required to be a number first, through
+    `require_positive_finite` (`core/validation.py`), which refuses a `bool`,
+    a `Decimal` or a string with `require_a_number`'s `TypeError` and an
+    `int` past the float range by name (`PL-3800`): until then
+    `SimulationStep(True)` was refused as a step of 1 s, `Decimal('0.05')`
+    was converted and held as a step, and `SimulationStep(10**400)` escaped as
+    `OverflowError` from `math.isfinite`, outside the simulator's own
+    exceptions (`PL-21V4`).
+
     Raises:
+        TypeError: the step is not an `int` or a `float`, or is a `bool`. A
+            programming error in the caller rather than a refused step, as
+            `require_a_number` says.
         SimulationConfigurationError: the step is not positive and finite, is
-            shorter than `MINIMUM_SIMULATION_STEP_S`, or exceeds
+            an `int` outside the range a `float` holds, is shorter than
+            `MINIMUM_SIMULATION_STEP_S`, or exceeds
             `MAXIMUM_SIMULATION_STEP_S`. Nothing is calculated in any of these
             cases, so a caller can retry inside the supported range with the
             run it already has.
@@ -184,8 +197,11 @@ class SimulationStep(float):
     reaches is not itself a step, and is not presented as a checked one.
 
     Raises:
+        TypeError: `seconds` is not an `int` or a `float`, or is a `bool`, as
+            `require_supported_simulation_step` states.
         SimulationConfigurationError: the step is not positive and finite, is
-            shorter than `MINIMUM_SIMULATION_STEP_S`, or exceeds
+            an `int` outside the range a `float` holds, is shorter than
+            `MINIMUM_SIMULATION_STEP_S`, or exceeds
             `MAXIMUM_SIMULATION_STEP_S`, as `require_supported_simulation_step`
             states.
     """

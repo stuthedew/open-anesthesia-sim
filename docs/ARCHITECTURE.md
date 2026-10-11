@@ -48,8 +48,8 @@ executable code.
 src/anesthesia_sim/
 ├── app_metadata.py      # app name, bundle id, and the version the header shows: the installed distribution's version, plus the commit where the running code is not a clean checkout of the released tag, because between two releases every build otherwise displays the same string and a fix confirmed by eye cannot be told from the code it replaced
 ├── core/                # scientific simulation — no toolkit dependency
-│   ├── validation.py              # shared input-validation guards (raise SimulationConfigurationError)
-│   ├── checked_number.py          # what a checked type is built from, the six on it so far: an int or a float and nothing else, with minus zero held as zero; and how a refusal names a value
+│   ├── validation.py              # shared input-validation guards (raise SimulationConfigurationError; a value that is not a number at all is a TypeError, as for every checked type)
+│   ├── checked_number.py          # what a checked type, and the two sign-and-finiteness guards in validation.py, are built from: an int or a float and nothing else, with minus zero held as zero; and how a refusal names a value
 │   ├── concentration.py           # fraction vs percent: the two forms, and the only crossing
 │   ├── units.py                   # seconds, minutes, hours, milliseconds: the factors between them, each written once
 │   ├── supported_ranges.py        # the declared domain: FreshGasFlow, AlveolarVentilation and CardiacOutput, which cannot hold a flow outside it, CaseInstant, which cannot hold an instant outside the run length, StepCount, a whole nonnegative count, and the guards that refuse a run outside it
@@ -274,7 +274,10 @@ different treatment:
   rather than a refused setting; so does a checked type built from what it is
   not built from - a `bool`, a `Decimal` or a string for any of them, a
   `float` for `StepCount`, which is built from an `int` alone - before its
-  range is read (`core/checked_number.py`). A
+  range is read (`core/checked_number.py`), and so do the two
+  sign-and-finiteness guards in `core/validation.py`, which also refuse an
+  `int` past the float range by name rather than letting `math.isfinite`
+  raise `OverflowError` converting it (`PL-3800`). A
   concentration the display builds is not a setting, and one refused there
   halts the run; no supported setting makes one refuse (`PL-7DJK`).
 - `SimulationExecutionError` (and its `SimulationNumericalError` /

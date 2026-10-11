@@ -11,8 +11,8 @@ value entered, until `PL-4R3W` made `Fraction` and `Percent` types built only
 through those checks (`core/concentration.py`), so what is left here is the
 sign and finiteness every other quantity shares and the one relation.
 
-Every guard raises `SimulationConfigurationError`: a value was rejected
-before it changed anything. A refusal reached partway through a step means
+Every guard raises `SimulationConfigurationError` for a value it refuses: it
+was rejected before it changed anything. A refusal reached partway through a step means
 something different — the numerics broke down rather than the caller
 passing a bad value — and `AgentUptakeSystem.advance()` is what turns it
 into `SimulationNumericalError`, because it is the only frame that knows a
@@ -23,6 +23,13 @@ Since `PL-4R3W` that refusal is a computed fraction refused where it is built
 as a `Fraction`, which raises the same exception for the same reason. See
 `core/exceptions.py` for why the hierarchy is kept separate from
 `ValueError`.
+
+What is not a number at all - a `bool`, a `Decimal`, a string - is refused
+before any of that, with the `TypeError` `require_a_number` raises
+(`core/checked_number.py`, `PL-3800`): a programming error in the caller
+rather than a refused value, so not an `AnesthesiaSimulationError`.
+`require_within_vaporizer_maximum` takes two `Percent`s, each already built
+through it.
 
 **What `name` has to carry.** Each guard raises `f"{name} ..."` and nothing
 else, so `name` is the whole of what a reader is told about *which* value was
@@ -43,24 +50,94 @@ raises it, and `Fraction`'s `name` carries the same convention where a fraction
 is built (`core/concentration.py`).
 """
 
+import sys
 from math import isfinite
 
+from anesthesia_sim.core.checked_number import require_a_number, shown
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 
 def require_positive_finite(name: str, value: float) -> None:
-    """Require a finite numeric value greater than zero."""
+    """Require a finite numeric value greater than zero.
+
+    The value is required to be a number first, by `require_a_number`
+    (`core/checked_number.py`), as every checked type requires of what it is
+    built from: until `PL-3800` `True` passed as the 1 it is to Python, so
+    `BreathingCircuit(circuit_volume_l=True)` held a 1 L circuit, a `Decimal`
+    was held as given and entered the arithmetic as one, and a `str` was
+    refused in `math.isfinite`'s words, naming neither the field nor its
+    constraint. Then an `int` outside the range a `float` holds is refused by
+    name (`_require_within_the_float_range`), where `isfinite` raised
+    `OverflowError` converting it. What is left is the test this guard has
+    always made, on a value it can now read.
+
+    Raises:
+        TypeError: `value` is not an `int` or a `float`, or is a `bool`. A
+            programming error in the caller rather than a refused setting, as
+            `require_a_number` says.
+        SimulationConfigurationError: `value` is an `int` outside the range a
+            `float` holds, named with the value, or is zero, negative, a NaN
+            or an infinity, named by the property it failed; naming the value
+            in that sentence too is `PL-T137`'s.
+    """
+
+    require_a_number(name, value)
+    _require_within_the_float_range(name, value)
 
     if not isfinite(value) or value <= 0.0:
         raise SimulationConfigurationError(f"{name} must be positive and finite")
 
 
 def require_nonnegative_finite(name: str, value: float) -> None:
-    """Require a finite numeric value greater than or equal to zero."""
+    """Require a finite numeric value greater than or equal to zero.
+
+    Built as `require_positive_finite` is, and for the same reasons: a number
+    first, an `int` outside the float range refused by name, then the test on
+    the value itself. Zero is admitted, as the supported zero it is - the
+    fresh gas turned off, an unperfused tissue, no agent yet - and so is minus
+    zero, which equals it.
+
+    Raises:
+        TypeError: `value` is not an `int` or a `float`, or is a `bool`, as
+            `require_a_number` says.
+        SimulationConfigurationError: `value` is an `int` outside the range a
+            `float` holds, or is negative, a NaN or an infinity.
+    """
+
+    require_a_number(name, value)
+    _require_within_the_float_range(name, value)
 
     if not isfinite(value) or value < 0.0:
         raise SimulationConfigurationError(f"{name} must be nonnegative and finite")
+
+
+def _require_within_the_float_range(name: str, value: float) -> None:
+    """Refuse an `int` outside the closed range a `float` holds, naming it.
+
+    `math.isfinite` converts an `int` to a `float` before it answers, and
+    raises `OverflowError` for one it cannot, so an `int` past the float range
+    escaped both guards above as Python's own exception, naming neither the
+    field nor the bound, and `SimulationStep(10**400)` was refused that way
+    rather than as a step (`PL-3800`, folding `PL-21V4`'s step half). The
+    other guards in `core/` have a supported range to refuse such an `int`
+    against (`core/supported_ranges.py`); these two have only the sign, so
+    the bound is the `float`'s own, `sys.float_info.max` either side of zero.
+
+    Python compares an `int` against a `float` exactly, so the interval here
+    converts nothing. A `float` is inside it or is an infinity or a NaN, which
+    the guard's own test refuses, so it passes through unread; an `int` at or
+    inside the bound passes as it always did. The few `int`s just above the
+    bound that `float` would round down to it were admitted by `isfinite` and
+    are refused here with the rest, as the `int`s past the largest float they
+    are: the rule is the closed interval, with no rounding in it.
+    """
+
+    if isinstance(value, int) and not -sys.float_info.max <= value <= sys.float_info.max:
+        raise SimulationConfigurationError(
+            f"{name} of {shown(value)} is outside the range a float holds, "
+            f"-{sys.float_info.max!r} to {sys.float_info.max!r}"
+        )
 
 
 def require_within_vaporizer_maximum(

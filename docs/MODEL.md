@@ -5265,9 +5265,14 @@ setting's own words, where `isfinite` raised `OverflowError`. `StepCount`
 refuses what is not an `int` the same way, as a `TypeError`. Until `PL-7N8P`
 `CaseInstant` kept its own guard, which built an instant of 1 s from `True`,
 held a `Decimal`, and let an `int` past the float range escape as
-`OverflowError` instead of refusing it against the run length;
-`SimulationStep`, and the `require_positive_finite` and
-`require_nonnegative_finite` guards in `core/validation.py`, are `PL-3800`'s.
+`OverflowError` instead of refusing it against the run length; until
+`PL-3800` the `require_positive_finite` and `require_nonnegative_finite`
+guards in `core/validation.py`, and `SimulationStep` through the first, had
+the same holes for every volume, coefficient, amount and step they guard.
+Those two have no supported range to refuse an `int` past the float range
+against, so they refuse it by name, as outside the range a `float` holds,
+before `isfinite` reads the value; what they admit, and the words they refuse
+a sign, a NaN or an infinity in, are unchanged.
 
 **The dial's bound is enforced in both records that hold the pair, through one
 guard** (`PL-BBMG`). The delivered concentration has the same four ways in as a
