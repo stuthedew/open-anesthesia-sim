@@ -858,7 +858,12 @@ def removed_assertions(
     the base's copy of the file holds it, and only as many copies as are gone
     after the item's commits: an assertion a sibling commit added on the same
     branch was never an existing one, however the commits naming this id
-    treat it (`PL-2DTK`).
+    treat it (`PL-2DTK`). Nor is one the branch's tip still holds in the same
+    file, which a later commit naming another item put back - the response
+    this check asks for, which a session cannot always lead with this id
+    (`PL-087W`). The tip is read per file, so an assertion restored into
+    another file excuses nothing, and it is one copy, so no commit order
+    changes the answer.
 
     **A file some version of which this interpreter cannot parse is read
     through the tokenizer** (`read_assertion_statements`, `PL-TC2D`), every
@@ -878,17 +883,25 @@ def removed_assertions(
             unread=f"{base} does not name a commit to read the base's copies from"
         )
     order = list(dict.fromkeys(step.key for step in steps))
+    # Where each file stands after the item's last change to it - the path it
+    # was renamed to, or the one a deletion left - which is where the tip is
+    # read: a later rename elsewhere reads as no copy, and charges as before.
+    tip: dict[str, str] = {}
+    for step in steps:
+        path = (step.after or next((spec for spec in step.before if spec), "")).partition(":")[2]
+        tip[step.key] = f"HEAD:{path}" if path else ""
     blobs = _blobs(
         root,
         {spec for step in steps for spec in (*step.before, step.after) if spec}
-        | {f"{base}:{key}" for key in order},
+        | {f"{base}:{key}" for key in order}
+        | {spec for spec in tip.values() if spec},
     )
     if blobs is None:
         return AssertionAudit(unread="git could not be asked for the files' contents")
 
     versions = _versions(order, steps)
     for key in order:
-        versions[key].append(f"{base}:{key}")
+        versions[key] += [f"{base}:{key}", tip[key]]
     parsed: dict[str, AssertionReading] = {}  # by object id: one version, one read
     read_so: dict[str, AssertionReading] = {}  # the same, through the tokenizer
     tokenized: dict[str, str] = {}
@@ -928,7 +941,8 @@ def removed_assertions(
         before, after = reading(key, f"{base}:{key}"), reading(key, last[key])
         if key in unparsed:
             continue
-        held, kept, net = before.forms(), after.forms(), removed[key] - added[key]
+        held, net = before.forms(), removed[key] - added[key]
+        kept = after.forms() | reading(key, tip[key]).forms()  # the larger count of each
         charged = tuple(
             (form, min(net[form], held[form] - kept[form]))
             for form in dict.fromkeys(a.form for a in before.assertions)

@@ -1,14 +1,16 @@
 ---
 id: PL-VV6N
 title: Decide a retention rule for items captured but never worked
-status: needs-decision
-added: 2026-09-13
 priority: P3
 effort: S
+status: dropped
 classes: infra
 feature: planning-cadence
-blocked-by: PL-YVV4
 touches: docs/items
+blocked-by: PL-YVV4
+added: 2026-09-13
+closed: 2026-10-11
+reason: PL-YVV4's count (2026-10-11): 135 of 144 open P3 items still real (94%), 92-100% in every slice a rule could target, against a break-even of 50% at most; capture stays deliberately unbounded, the item's own second ending
 ---
 
 **Problem.** The capture rule files every finding, and nothing ever expires.
@@ -103,3 +105,15 @@ and then counting it. `PL-LKGL` and `PL-27S8` record the last time that ran: an
 apparatus capture-bar proposal died because 67% of what it would have suppressed
 were still-real findings. This item is the same proposal shape and no such count
 has been run. See the count item filed alongside this update.
+
+## Dropped 2026-10-11, on `PL-YVV4`'s count
+
+This was a session's call, not the owner's. `PL-YVV4` § "The count" holds the
+numbers: 135 of 144 open `P3` items were still real, and no slice a rule could
+target was under 92%, against a break-even of 50% at most. Of the two endings
+above, only declaring capture deliberately unbounded survives that, so it was
+taken under `.claude/rules/instruction-writing.md` rule 14's clause for a choice
+with one clearly correct option. Reopen this item on a count that moves.
+
+The open question above has mostly answered itself. With this item closed, 14
+items are `needs-decision` (6 `P2`, 8 `P3`), against 64 on 2026-09-13.

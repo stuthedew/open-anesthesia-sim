@@ -3,13 +3,15 @@ id: PL-087W
 title: bin/docket verify unions removed assertions per commit and never nets them against a later restore, so a line a session puts back on the check's own advice keeps refusing the branch
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: verify-assertion-evidence
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20
+closed: 2026-10-11
+pr: 1409
 payoff: putting a flagged assertion back clears the check, so the response the check asks for is one a session can actually complete
-verify: grep -q 'def test_an_assertion_restored_in_a_later_commit_is_not_counted' subprojects/docket/tests/test_verify.py
+verify: grep -q 'def test_an_assertion_restored_in_a_later_commit_is_not_counted' subprojects/docket/tests/test_verify.py && grep -q 'def test_an_assertion_restored_into_another_file_is_still_charged' subprojects/docket/tests/test_verify.py
 recurrences: 2026-10-04 PL-P66B withdrawn 2026-10-04 PL-P66B
 ---
 
@@ -94,3 +96,26 @@ sweep confirmed still reproduces.
 
 So this item is either a duplicate of `PL-2DTK` or a thin wrapper on it. Decide
 which before working it; do not rebuild the netting, which is correct.
+
+## Built 2026-10-11
+
+**Neither a duplicate of `PL-2DTK` nor a wrapper on it: its mirror.**
+`PL-4W2L` retired `PL-2DTK`'s case by comparing parsed statements against the
+base, so a line a sibling commit *added* and the item's commits removed was
+never an existing assertion. This case is the other way round. The base holds
+the line, the item's commit cuts it, and a later commit naming another item puts
+it back. The base comparison sees a line the base holds and the item's last
+version lacks, and nothing after the item's last commit was read, so the restore
+could not count. A scratch-repository test reproduced it on `main` at
+`839697e0`: one assertion charged where the tip holds the line.
+
+**Built in `removed_assertions`, without touching the netting.** The branch
+tip's copy of each file the item changed is read beside the item's own last
+version, at the path the item left the file under, and the count of each form
+kept is the larger of the two. That takes the restore into account whichever
+id leads it. It honours the caution above. The tip is read per file, so an
+assertion restored into another file excuses nothing, and it is a single copy,
+so no commit order changes the answer. Pinned in
+`subprojects/docket/tests/test_verify.py` by
+`test_an_assertion_restored_in_a_later_commit_is_not_counted` (red on the
+unfixed `verify.py`) and `test_an_assertion_restored_into_another_file_is_still_charged`.

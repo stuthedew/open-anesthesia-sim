@@ -3,12 +3,14 @@ id: PL-HRTH
 title: core_vocabulary_check splits docs/MODEL.md's Symbols table on every pipe, so a GFM-escaped \| inside a Symbol cell shifts every later column
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: defect
 feature: exact-gates
 touches: tools/core_vocabulary_check.py, tests/unit/test_core_vocabulary_check.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
+closed: 2026-10-11
+reason: dead on PL-YVV4's count (2026-10-11): symbol_cells reads the Symbols table through roadmap.section_table and markdown.tables, which keep an escaped pipe inside its cell, since f84e31f9 (#1358)
 payoff: a Symbols row whose symbol needs a literal pipe, such as an absolute value, is checked against its own Code cell instead of being refused or read from the wrong column
 verify: grep -q 'def test_an_escaped_pipe_stays_inside_its_cell' tests/unit/test_core_vocabulary_check.py
 recurrences: 2026-10-04 PL-FBWD withdrawn 2026-10-04 PL-R417
