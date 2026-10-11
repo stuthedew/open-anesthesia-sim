@@ -1,8 +1,10 @@
 ---
 id: PL-1D89
 title: required_checks_check's _key_at reads a workflow key by splitting at its first colon without unquoting it, so a job key written in quotes reports its check name quotes and all, and a quoted name key is not read, leaving the job id as the check name; latent
-status: untriaged
+status: dropped
 added: 2026-10-06
+closed: 2026-10-11
+reason: Already fixed: PL-CK3F (#1389, fe2e5132) routed required_checks_check._jobs through _keys and _entry_key, which unquote, and _key_at no longer exists; on main at 16a20a4f the brief's input reports lint and Unit tests as PyYAML and GitHub read them. No test pins a quoted job key.
 ---
 
 **Problem.** required_checks_check's _key_at reads a workflow key by splitting at its first colon without unquoting it, so a job key written in quotes reports its check name quotes and all, and a quoted name key is not read, leaving the job id as the check name; latent
@@ -37,6 +39,12 @@ no tracked workflow quotes a key.
 whole. The tab guard in `_jobs`, filed by the same sweep as a member, is a
 different fault in the same walker; routing `_jobs` through `_keys` and
 `_entry_key`, as `steps` reads, would fix both.
+
+**Re-checked 2026-10-11** on main at `16a20a4f`: the input above now gives the
+job ids `lint` and `test` and the check names `lint` and `Unit tests`, as
+PyYAML and GitHub read them. `PL-CK3F` (#1389, `fe2e5132`) routed `_jobs`
+through `_keys` and `_entry_key`, the route the Generator check names, and
+`_key_at` is gone. Dropped as already fixed. No test pins a quoted job key.
 
 **Done when.** `_jobs` reads a quoted job key and a quoted `name:` key as
 PyYAML does, pinned by a test with the input above.

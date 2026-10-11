@@ -83,3 +83,34 @@ joins the list with its argument beside it in `checks.py`; the second, a
 write-time warning, reads the parsed clause - pattern and paths - rather than a
 shell line. Either way the fix is a new admitted shape or a check on the
 admitted one, written beside `checks.verify_shape_refusal`.
+
+## Next steps (2026-10-11, handed on unstarted)
+
+Re-confirmed 2026-10-11 against the tree: the defect still holds - a literal
+`grep` phrase that a document wraps across two lines is on no single line, so
+the command reads as work not done. Claimed by the gate batch in `#1410`, which
+stopped for length before starting it and yielded the claim; nothing is built.
+The design worked out before the stop, for whoever picks it up:
+
+- **Where.** Beside `checks.verify_shape_refusal` and `_grep_refusal`, as
+  `PL-R417`'s spent decision names ("a check on the admitted grep shape,
+  written beside checks.verify_shape_refusal"). `checks.py` is pure and imports
+  `verify.py`, so the detector lives in `checks.py` and its inputs are gathered
+  in `cli._analysis()`.
+- **What it detects.** A literal grep clause - `-F`, or a pattern with no
+  regex metacharacters - with `-i` folded and the path globs expanded, whose
+  phrase is absent from every single line of the target but present once the
+  lines are joined. Markdown joins through `docket.markdown.statement_lines`
+  and `unmarked`, so list markers and quote prefixes do not break the join;
+  other files join on whitespace with a shared `#`, `>` or `//` marker
+  stripped. Negated clauses (`! grep -q`) count too, since a wrapped phrase
+  makes them pass vacuously.
+- **Wiring.** Through the verify replay (`LandedReport` and `already_passing`),
+  so it reaches `check --verify` and `set --verify`'s replay, plus a diagnosis
+  on `verify`'s failing command check naming the phrase and the line pair it
+  straddles. An error, since the reading is exact.
+- **First, measure.** Run the detector over the open items' `verify:` commands
+  against the tree and repair any phrase already wrapped, declaring those item
+  files in this item's `touches`.
+- **Test.** `test_a_verify_phrase_split_by_line_wrapping...`, the name this
+  item's own `verify:` greps for.

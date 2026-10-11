@@ -79,15 +79,17 @@ this check, as they are to the toolkit.
    `_apply_agent_color_scheme` is outside rule 1 entirely. It is also a bug in
    its own right: a control that keeps the colour it was first given shows the
    previous agent's identity over the current agent's numbers, which is the
-   correct number under the wrong label. Two spellings here too. The Flet build
+   correct number under the wrong label. Three spellings here. The Flet build
    coloured a control where it was *constructed* - `self.X = Dropdown(
-   color=colors.foreground)` - and the Qt build colours one by a *call
-   statement* after construction - `self.X.setStyleSheet(...)`,
-   `self.X.setItemData(index, QColor(scheme.fill), ...)`. Rule 2 reads both: a
-   `self.X = ...` assignment whose value reaches a colour table, and a
-   `self.X.method(...)` statement any of whose arguments does, in every method
-   of every class except the writer, whose body *is* the identity set and is
-   read once by `identity_controls`. Reaching a table means naming one of
+   color=colors.foreground)` - or by a *property write* afterwards -
+   `self.X.color = scheme.foreground`, the spelling its writer used - and the
+   Qt build colours one by a *call statement* after construction -
+   `self.X.setStyleSheet(...)`, `self.X.setItemData(index, QColor(scheme.fill),
+   ...)`. Rule 2 reads all three: a `self.X = ...` or `self.X.<prop> = ...`
+   assignment whose value reaches a colour table, and a `self.X.method(...)`
+   statement any of whose arguments does, in every method of every class
+   except the writer, whose body *is* the identity set and is read once by
+   `identity_controls`. Reaching a table means naming one of
    `COLOR_TABLES` outright or a local bound from a subscript of one, and a
    local handed whole to a helper - `setStyleSheet(_text_stylesheet(scheme))`
    - counts, since what the helper returns is the colour the local carries.
@@ -95,8 +97,15 @@ this check, as they are to the toolkit.
    own class's attributes, so an agent-coloured control anywhere else is by
    construction outside the set. Until `PL-25KS`'s port review, rule 2 read
    assignments alone, so on a Qt tree it measured nothing while this docstring
-   said it made rule 1's claim true; the success line now states how many
+   said it made rule 1's claim true; until `PL-Y5ZB` it read the construction
+   assignment and not the property one, so a method other than the writer
+   writing `self.X.color = AGENT_COLOR_SCHEMES[...].fill` was a second writer of
+   agent colour that neither rule saw. The success line states how many
    colourings it read in each spelling, so an empty measurement is visible.
+   A property write is judged as the other two spellings are, by whether its
+   control is in the set: one on an identity control in the writer's own class
+   is counted and passes, since the writer re-writes that control on every
+   agent change.
 
 **Every module under `app/` is read, and none is named by path (PL-V53R).**
 Until then the tool parsed `app/simulation_view.py` alone, and `PL-B9PY` kept
@@ -189,6 +198,13 @@ SET_ENABLED = "setEnabled"
 SET_HIDDEN = "setHidden"
 SET_VISIBLE = "setVisible"
 
+#: The three spellings rule 2 reads an agent colouring in - `self.X = ...`,
+#: `self.X.<prop> = ...` and `self.X.method(...)` - as `AgentColoring.spelling`
+#: carries them and the success line counts them.
+CONSTRUCTED = "construction-time"
+PROPERTY_WRITE = "property-write"
+CALLED = "call-time"
+
 
 @dataclass(frozen=True)
 class Module:
@@ -247,8 +263,10 @@ class Report:
     #: Of those, the ones on identity controls - the writes rule 1 judged.
     identity_disabled_writes: int
     #: Agent colourings read outside the writer - what rule 2 judged - as
-    #: `self.X = ...` assignments and as call statements on `self.X`.
+    #: `self.X = ...` assignments, as `self.X.<prop> = ...` property writes and
+    #: as call statements on `self.X`.
     constructed_colorings: int = 0
+    property_colorings: int = 0
     call_colorings: int = 0
 
 
@@ -373,16 +391,17 @@ def _carries_agent_color(value: ast.expr, tracked: set[str]) -> bool:
 
 @dataclass(frozen=True)
 class AgentColoring:
-    """One write of an agent colour to a control outside the writer, in either spelling."""
+    """One write of an agent colour to a control outside the writer, in any of three spellings."""
 
     control: str
     #: The method the write was read in.
     method: str
     lineno: int
-    #: The shape of the write, e.g. `self._swatch = ...` or `self._swatch.setStyleSheet(...)`.
+    #: The shape of the write, e.g. `self._swatch = ...`, `self._swatch.color = ...`
+    #: or `self._swatch.setStyleSheet(...)`.
     written: str
-    #: True for the assignment spelling, False for the call-statement spelling.
-    constructed: bool
+    #: `CONSTRUCTED`, `PROPERTY_WRITE` or `CALLED`.
+    spelling: str
 
 
 def agent_colorings(
@@ -390,11 +409,14 @@ def agent_colorings(
 ) -> tuple[AgentColoring, ...]:
     """Every agent colouring of a `self.X` one class performs, in source order.
 
-    Both spellings: `self.X = ...` where the value reaches an agent colour,
-    and a call statement `self.X.method(...)` where any argument does.
-    `excluding` is the writer, whose body is the identity set and is read by
-    `identity_controls` instead - read here as well, it would only be
-    compared against itself.
+    All three spellings: `self.X = ...` and `self.X.<prop> = ...` where the
+    value reaches an agent colour, and a call statement `self.X.method(...)`
+    where any argument does. The property write is the shape
+    `identity_controls` reads inside the writer, one attribute deep, so the
+    same statement makes a control an identity control in the writer and a
+    rule-2 colouring anywhere else (`PL-Y5ZB`). `excluding` is the writer,
+    whose body is the identity set and is read by `identity_controls` instead
+    - read here as well, it would only be compared against itself.
 
     Two passes per function, not one, because the locals that carry a colour
     are bound in the same scope that uses them and `ast.walk` does not promise
@@ -420,15 +442,21 @@ def agent_colorings(
             if isinstance(target, ast.Name)
         }
         for statement in assignments:
+            if not _carries_agent_color(statement.value, tracked):
+                continue
             for target in statement.targets:
-                control = self_attribute(target)
-                if control is None or not _carries_agent_color(statement.value, tracked):
+                if (control := self_attribute(target)) is not None:
+                    written, spelling = f"self.{control} = ...", CONSTRUCTED
+                elif (
+                    isinstance(target, ast.Attribute)
+                    and (control := written_control(target)) is not None
+                ):
+                    written, spelling = f"self.{control}.{target.attr} = ...", PROPERTY_WRITE
+                else:
                     continue
                 found.setdefault(
                     (statement.lineno, control),
-                    AgentColoring(
-                        control, node.name, statement.lineno, f"self.{control} = ...", True
-                    ),
+                    AgentColoring(control, node.name, statement.lineno, written, spelling),
                 )
         for control, method, call in control_calls(node):
             arguments = [*call.args, *(keyword.value for keyword in call.keywords)]
@@ -437,7 +465,7 @@ def agent_colorings(
             found.setdefault(
                 (call.lineno, control),
                 AgentColoring(
-                    control, node.name, call.lineno, f"self.{control}.{method}(...)", False
+                    control, node.name, call.lineno, f"self.{control}.{method}(...)", CALLED
                 ),
             )
     return tuple(found[key] for key in sorted(found))
@@ -676,16 +704,12 @@ def analyze(root: Path) -> Report:
     # writer can only write its own class's attributes, so an agent-coloured
     # control anywhere else is outside the set by construction. One finding
     # per control, at its first colouring; every colouring is counted.
-    constructed = 0
-    called = 0
+    counted = dict.fromkeys((CONSTRUCTED, PROPERTY_WRITE, CALLED), 0)
     for module in modules:
         for owner in classes(module.tree):
             reported: set[str] = set()
             for coloring in agent_colorings(owner, excluding=writer.method):
-                if coloring.constructed:
-                    constructed += 1
-                else:
-                    called += 1
+                counted[coloring.spelling] += 1
                 if owner is writer.owner and coloring.control in controls:
                     continue
                 if coloring.control in reported:
@@ -707,8 +731,9 @@ def analyze(root: Path) -> Report:
         len(modules),
         read,
         identity_read,
-        constructed,
-        called,
+        constructed_colorings=counted[CONSTRUCTED],
+        property_colorings=counted[PROPERTY_WRITE],
+        call_colorings=counted[CALLED],
     )
 
 
@@ -730,9 +755,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"read across {report.modules} module(s) under {APP.as_posix()}/, "
             f"{report.identity_disabled_writes} of them on identity controls and each "
             f"paired with its hide; none rendered disabled. Rule 2 read "
-            f"{report.constructed_colorings} construction-time and "
-            f"{report.call_colorings} call-time agent colouring(s) outside the writer, "
-            f"every one on an identity control"
+            f"{report.constructed_colorings} {CONSTRUCTED} and "
+            f"{report.call_colorings} {CALLED} agent colouring(s) outside the writer, and "
+            f"{report.property_colorings} {PROPERTY_WRITE} one(s), every one on an "
+            f"identity control"
         )
         return 0
 

@@ -3780,6 +3780,13 @@ assertion removed, the item's own command passes, the project's own checks pass.
 A session may re-scope its own commission; it may not weaken what measures it,
 and it may not skip the test (`PL-69JZ`, `PL-B5YN`, `PL-4LT9`).
 
+A bare run says so when it was asked the wrong question. Where `--self` is
+absent, a commission check refused, and the item's live claim carries this
+session's token on the branch checked out, `verify` prints one line above that
+item's report naming `bin/docket verify --self` for it. Whose claim it is
+decides, not which checks failed, so a reviewer (whose session differs), a claim
+made with no token and a clean run all print nothing (`PL-PFK1`).
+
 What counts as an *added suppression* is narrowed by file rather than by shape,
 and to a wider set of files than the assertion check below. An assertion is a
 statement, so only a file Python executes holds one; a suppression is also
@@ -4132,6 +4139,8 @@ payoff_required_from = 2026-09-20  # omit to leave the `payoff:` rule off
 recommendation_required_from = 2026-09-21   # a `needs-decision` brief
                                    # marks a recommendation; omit for off
 minor_classes = ["feature"]
+retired_features = []              # feature names `check` refuses on an open
+                                   # item; closed items keep theirs
 protected_paths = []
 gate_paths = ["Makefile", "pyproject.toml", ".github", ".claude", "docket.toml"]
 code_paths = ["src", "tests"]      # what `docket trend` counts as code

@@ -46,6 +46,16 @@ def test_protected_paths_are_read_from_the_config(tmp_path: Path) -> None:
     assert load(tmp_path).protected_paths == ("src/core", "docs/MODEL.md")
 
 
+def test_retired_features_are_read_from_the_config(tmp_path: Path) -> None:
+    """`PL-S0MB`: empty retires nothing, and a listed name reaches `check`."""
+    assert load(tmp_path).retired_features == ()
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\nretired_features = ["dev-tooling", "queue-hygiene"]\n', encoding="utf-8"
+    )
+
+    assert load(tmp_path).retired_features == ("dev-tooling", "queue-hygiene")
+
+
 def test_protected_paths_default_to_empty_which_disables_delegation(tmp_path: Path) -> None:
     """Fail closed: a project that never configured the partition gets no lane."""
     assert load(tmp_path).protected_paths == ()

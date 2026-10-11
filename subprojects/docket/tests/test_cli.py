@@ -998,6 +998,73 @@ def test_verify_refuses_a_base_no_candidate_resolved(
     assert "ambiguous argument" not in out
 
 
+def test_verify_names_self_when_the_claim_is_this_sessions_own(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-PFK1`: a bare run refused on a commission check says `--self` asks the question.
+
+    The close-out sets the item's own `status:` and `closed:`, which a delegated
+    review refuses, so a session that reached `verify` by any route but the
+    skill's close-out met a `REJECT` on correct work and nothing naming the
+    flag. Whose branch it is is the claim's session token: a reviewer's
+    differs, and the run the line points at has nothing to point at, so
+    neither hears it.
+    """
+    root = tmp_path / "repo"
+    store = root / "docs" / "items"
+    store.mkdir(parents=True)
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    git("-c", "init.defaultBranch=main", "init", "-q")
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "T")
+    (root / "docket.toml").write_text('[docket]\ncheck_command = "true"\n', encoding="utf-8")
+    item = store / "PL-K7QX-do-the-thing.md"
+    ready = READY.replace("PL-B1B1", "PL-K7QX").replace("added:", "verify: true\nadded:")
+    item.write_text(ready, encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    git("checkout", "-q", "-b", "claude/work")
+    git(
+        "commit",
+        "-q",
+        "--allow-empty",
+        "-m",
+        "PL-K7QX: start\n\nClaim: PL-K7QX claude/work cse_ours",
+    )
+    (root / "a.py").write_text("VALUE = 1\n", encoding="utf-8")
+    item.write_text(
+        ready.replace("status: ready", "status: done").replace(
+            "added:", "closed: 2026-08-24\nadded:"
+        ),
+        encoding="utf-8",
+    )
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: do the thing and close it")
+    ran = ["verify", "PL-K7QX", "--items", str(store), "--base", "main", "--today", "2026-08-24"]
+    said = (
+        "This branch's claim on PL-K7QX is this session's own, so this is a self-audit run as a "
+        "delegated review: `bin/docket verify --self PL-K7QX` reports the commission checks that "
+        "refuse below instead of refusing on them.\nPL-K7QX A ready item\n"
+    )
+
+    monkeypatch.setenv(SESSION_VARIABLE, "cse_ours")
+    assert main(ran) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(said), out
+    assert "FAIL  item front matter unchanged - closed, status" in out
+
+    monkeypatch.setenv(SESSION_VARIABLE, "cse_reviewer")
+    assert main(ran) == 1
+    assert "this session's own" not in capsys.readouterr().out
+
+    monkeypatch.setenv(SESSION_VARIABLE, "cse_ours")
+    assert main([*ran, "--self"]) == 0
+    assert "this session's own" not in capsys.readouterr().out
+
+
 #: An item whose command reads a file, so that editing the file - and nothing
 #: else - can change what the command returns. `touch` runs first so the marker
 #: says the command was executed at all, which is the question the scope is

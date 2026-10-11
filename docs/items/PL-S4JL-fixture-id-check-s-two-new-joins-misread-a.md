@@ -1,9 +1,16 @@
 ---
 id: PL-S4JL
 title: fixture_id_check's two new joins misread a continued form each - _fence_joins drops the last line of a shell fence its list item or block quote closes, and _front_matter_joins reads a quote opening a plain or block scalar's continuation line as a double-quoted scalar and joins its backslash-newline - so a malformed fixture id is missed; latent
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+payoff: a malformed id carried across a container-closed shell fence or a quote-led scalar continuation line is reported rather than missed
+verify: grep -q 'def test_a_fence_its_container_closes_is_joined_to_its_last_line' tests/unit/test_fixture_id_check.py && grep -q 'def test_a_quote_opening_a_continuation_line_joins_nothing' tests/unit/test_fixture_id_check.py
 ---
 
 **Problem.** fixture_id_check's two new joins misread a continued form each - _fence_joins drops the last line of a shell fence its list item or block quote closes, and _front_matter_joins reads a quote opening a plain or block scalar's continuation line as a double-quoted scalar and joins its backslash-newline - so a malformed fixture id is missed; latent
@@ -51,7 +58,18 @@ reads the same. Latent: `.claude/` holds 17 shell fences, none closed by its
 container, and 12 front matters, none with an indented line opening with a
 quote.
 
-**Generator check.** A member of `PL-R417`: the reader takes a physical line for a statement its format continues, the fact that head names. The code is new in `#1390`: the gap closed `PL-HKR5`'s fix left.
+**Re-confirmed 2026-10-11** on main at `16a20a4f`: `scan_text` reports nothing
+for the container-closed fence and `PL-K7QXZ` for the same fence closed by its
+own marker, and nothing for the plain-continuation and `description: >`
+front matters, where PyYAML 6.0 keeps the backslash. `.claude/` still holds 17
+shell fences, none container-closed, and 12 front matters, none with a
+quote-led indented line.
+
+**Why it matters.** fixture_id_check is what keeps a malformed id out of the
+documents sessions read and copy from, and each form here hides one from it
+while the check passes.
+
+**Generator check.** A member of `PL-R417`: the reader takes a physical line for a statement its format continues, the fact that head names. The code is new in `#1390`: the gap closed `PL-HKR5`'s fix left. Latent, so an ordinary item under that head's `spent` verdict: found live in a tracked file, it reopens `PL-R417` (2026-10-11 triage).
 
 **Done when.** A container-closed fence's last line is joined, and a front
 matter's backslash-newline is removed only inside a double-quoted scalar

@@ -43,3 +43,16 @@ a conditional as running only in its branch, so a target carries a recipe only
 where every branch gives it one and a script counts as run by `make check` only
 where no branch leaves it out, or decline by name a target whose recipe a
 conditional splits; a test pins each.
+
+**Generator question, open at the 2026-10-11 triage pass; left untriaged for it.**
+This item's own brief calls it the Makefile side of `PL-ZXM1`'s fact, and
+`PL-ZXM1` records itself as the second post-close instance of `PL-0HPV`'s fact
+(the checks the local gate and the merge gate each run, and where the two sets
+differ), after `PL-RW3T`, "one short of the three that would record PL-0HPV's
+fix as not holding". This would be the third (filed 2026-10-06), `PL-5M36`'s
+first bullet a fourth (2026-10-10), and `PL-GSJ6` possibly a fifth. Unlike the
+`PL-KR6M` and `PL-JTCQ` questions, the instances keep arriving from ordinary work
+rather than a sweep, so the reading is **`live`**, which is `P1` by rule and
+restarts `CLAUDE.md`'s pause on new workflow mechanisms. **Leaning: record a live
+head**, after re-reading `PL-0HPV`'s and `PL-ZXM1`'s briefs; settle it before
+triaging this item.
