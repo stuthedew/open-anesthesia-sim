@@ -324,8 +324,8 @@ next step would be refused identically. Neither can be resumed, only cleared
 by `reset()` or by starting a fresh run with `set_agent()` - and `reset()`
 can itself refuse, for a settings record the definition cannot open on, which
 it does before it clears anything; `RunView._handle_reset` halts the run on
-that refusal through the same path, the banner naming a new case as the way
-out, since Reset is the door it names otherwise (`PL-M4M0`). Neither timer
+that refusal through the same path, the banner naming the setting to change
+as the way out, since Reset is the door it names otherwise (`PL-M4M0`). Neither timer
 stops on either halt — both are started once, when the window opens, and a
 halted run leaves them firing and finding nothing to do — so a run reset and
 started again is stepped without anything having to be restarted.

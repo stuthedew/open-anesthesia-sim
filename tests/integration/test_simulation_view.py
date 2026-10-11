@@ -69,7 +69,6 @@ from anesthesia_sim.app.dashboard_frame import (
     BRANCH_AGENT_LOCK_TEXT,
     BRANCH_RUN_INDEX,
     COMPARING_AGENT_LOCK_TEXT,
-    COMPARISON_WAY_OUT_TEMPLATE,
     CONTROL_TIMELINE_HEADING,
     FORK_NOTHING_SELECTED_TEXT,
     HALT_FORK_LABEL_TEMPLATE,
@@ -81,11 +80,11 @@ from anesthesia_sim.app.dashboard_frame import (
     MAX_DISPLAYED_RUNS,
     NEW_CASE_CARRYOVER_TEMPLATE,
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
-    NEW_CASE_WAY_OUT_TEXT,
     NO_MAC_TARGETS_TEXT,
     NO_TIME_BOOKMARKS_TEXT,
     NO_TRACES_SHOWN_TEXT,
     READOUT_PANELS,
+    REFUSED_RESET_REPAIR_TEXT,
     REMOVE_NOTHING_SELECTED_TEXT,
     RESET_EXIT_TEXT,
     RESET_LABEL,
@@ -1648,9 +1647,9 @@ def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplicatio
     the screen reading "Running" and Pause offered. The core now refuses
     before it clears anything, and the view halts the run on the refusal:
     recorded as the failure, said by the status word, the transport and the
-    banner, whose way out names a new case rather than the Reset just
-    refused. Nothing moved, so the frame that follows draws the run where it
-    stood.
+    banner, whose way out names the setting to change rather than the Reset
+    just refused. Nothing moved, so the frame that follows draws the run
+    where it stood.
     """
 
     controller = SimulationController()
@@ -1690,9 +1689,36 @@ def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplicatio
     assert notice is not None
     assert notice == (
         f"Simulation stopped — {reason}. The values shown are the last completed step. "
-        f"Reset was refused for this reason. {NEW_CASE_WAY_OUT_TEXT}"
+        f"Reset was refused for this reason. {REFUSED_RESET_REPAIR_TEXT}"
     )
     assert RESET_EXIT_TEXT not in notice
+
+
+def test_a_second_refused_reset_states_the_refusal_once(application: QApplication) -> None:
+    """Pressing the refused Reset again leaves the banner as it was: one reason, not two.
+
+    The first press records the refusal as the failure, so on the second the
+    run has a recorded reason - but it is this same refusal, and the exit
+    that carries the refusal itself is for a run that failed for something
+    else. Stated twice, the one refusal read as two faults (`PL-M4M0`).
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    run._start_button.click()
+    _steps(run, 5)
+    _with_stale_tissue_flows(controller, 6.0)
+    run._reset_button.click()
+    first = run._notice_text.notice()
+    assert first is not None
+
+    run._reset_button.click()
+
+    notice = run._notice_text.notice()
+    assert notice == first
+    assert notice.count("perfused at") == 1
+    assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_REPAIR_TEXT}")
 
 
 def test_a_reset_refused_on_a_failed_run_keeps_the_failure_and_states_the_refusal(
@@ -1724,9 +1750,9 @@ def test_a_reset_refused_on_a_failed_run_keeps_the_failure_and_states_the_refusa
     assert notice is not None
     assert notice.startswith(f"Simulation stopped — {failure}.")
     assert notice.endswith(
-        "Reset was refused — the tissue groups are perfused at 5.0 L/min in total but cardiac "
-        "output is 6.0 L/min; the venous balance returns what the tissues receive, so the two "
-        f"must agree. {NEW_CASE_WAY_OUT_TEXT}"
+        "Reset was refused — SimulationConfigurationError: the tissue groups are perfused at "
+        "5.0 L/min in total but cardiac output is 6.0 L/min; the venous balance returns what "
+        f"the tissues receive, so the two must agree. {REFUSED_RESET_REPAIR_TEXT}"
     )
 
 
@@ -1737,7 +1763,8 @@ def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
 
     The accepted setting also takes the refused-Reset exit off the banner at
     once, so the reader is sent to a Reset that will take rather than to a
-    new case they no longer need (`PL-M4M0`).
+    setting already changed; a setting the stale record refuses, which every
+    other dial's is, leaves the exit standing (`PL-M4M0`).
     """
 
     controller = SimulationController()
@@ -1750,6 +1777,12 @@ def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
     _with_stale_tissue_flows(controller, 6.0)
     run._reset_button.click()
     assert controller.has_failed is True
+
+    run._handle_fresh_gas_flow_change(3.0)
+
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert notice.endswith(REFUSED_RESET_REPAIR_TEXT)
 
     run._handle_cardiac_output_change(6.0)
 
@@ -1769,15 +1802,16 @@ def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
     assert run._notice_text.isHidden() is True
 
 
-def test_a_refused_branch_reset_names_the_trunk_s_reset_as_the_way_out(
+def test_a_refused_branch_reset_halts_the_branch_and_names_the_same_repair(
     application: QApplication,
 ) -> None:
-    """A branch cannot start a case of its own, so its banner sends the reader to the trunk's Reset.
+    """The same halt on a branch's own run, naming the same door: the branch's own dial.
 
-    The same halt as the trunk's, on the branch's own run: `_open_at` records
-    the settings in force at the fork, and `reset()` reads them before the
-    branch is stood back there (`PL-M4M0`). The comparison stands, with the
-    trunk untouched.
+    `_open_at` records the settings in force at the fork, and `reset()` reads
+    them before the branch is stood back there (`PL-M4M0`). The comparison
+    stands, with the trunk untouched, and the way out is the one every run
+    has: a branch cannot start a case of its own (`PL-TFX5`), and the trunk's
+    Reset the fork panel already names.
     """
 
     case = _branched_case()
@@ -1799,11 +1833,48 @@ def test_a_refused_branch_reset_names_the_trunk_s_reset_as_the_way_out(
     assert branch._status_text.text() == "Stopped — simulation error"
     notice = branch._notice_text.notice()
     assert notice is not None
-    assert notice.endswith(
-        "Reset was refused for this reason. "
-        + COMPARISON_WAY_OUT_TEMPLATE.format(trunk=run_label(TRUNK_RUN_INDEX), reset=RESET_LABEL)
-    )
+    assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_REPAIR_TEXT}")
     assert view.runs[TRUNK_RUN_INDEX].controller.has_failed is False
+
+
+def test_a_refused_trunk_reset_while_comparing_names_the_one_door_open(
+    application: QApplication,
+) -> None:
+    """Beside a branch the selector is locked, so the repair is the only door, and it is named.
+
+    A comparison replaces the trunk's agent selector with the
+    `COMPARING_AGENT_LOCK_TEXT` chip, and the branch's Reset leaves the
+    comparison standing, so a banner naming a new case named a control the
+    screen had hidden, with the trunk's Reset - the one just refused - the
+    only control left enabled. The exit names the dial's repair instead,
+    after which the trunk's Reset takes and ends the comparison as the fork
+    panel says it does (`PL-M4M0`).
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _take_fork(view, 60.0)
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    _with_stale_tissue_flows(trunk.controller, 6.0)
+
+    trunk._reset_button.click()
+    _settle(application)
+
+    assert len(view.runs) == 2
+    assert trunk.controller.has_failed is True
+    assert trunk._agent_dropdown.isHidden() is True
+    assert trunk._running_agent_lock_text.text() == COMPARING_AGENT_LOCK_TEXT
+    notice = trunk._notice_text.notice()
+    assert notice is not None
+    assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_REPAIR_TEXT}")
+
+    trunk._handle_cardiac_output_change(6.0)
+    trunk._reset_button.click()
+    _settle(application)
+
+    assert trunk.controller.has_failed is False
+    assert trunk.snapshot().elapsed_s == 0.0
+    assert len(view.runs) == 1
 
 
 def _refusing_a_drawn_column(

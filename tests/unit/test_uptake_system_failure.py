@@ -662,15 +662,17 @@ def test_a_stale_record_met_at_step_time_is_a_failed_step_stated_in_litres_per_m
     `advance()` would promise a run still worth continuing
     (`core/exceptions.py`) and this run is refused on every step after, and
     at Reset; the step is rolled back like any other; and the two flows are
-    named in L/min, which is what every readout shows (`PL-M4M0`).
+    named in L/min, which is what every readout shows, as they were set: the
+    flows at an output set to 6.0 sum to 6.000000000000001, and the message
+    says 6.0 (`PL-M4M0`).
     """
 
     system = _sevoflurane_at_one_mac()
+    system.patient.set_cardiac_output(CardiacOutput(6.0))
     system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
     before = system.capture_state()
-    tissue_blood_flow_l_min = sum(tissue.blood_flow_l_min for tissue in system.patient.tissues)
 
-    system.patient.cardiac_output_l_min = CardiacOutput(6.0)
+    system.patient.cardiac_output_l_min = CardiacOutput(5.0)
 
     with pytest.raises(SimulationNumericalError) as raised:
         system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
@@ -679,8 +681,7 @@ def test_a_stale_record_met_at_step_time_is_a_failed_step_stated_in_litres_per_m
 
     assert isinstance(raised.value.__cause__, SimulationConfigurationError)
     assert "rolled back" in message
-    assert f"perfused at {tissue_blood_flow_l_min} L/min in total" in message
-    assert "cardiac output is 6.0 L/min" in message
+    assert "perfused at 6.0 L/min in total but cardiac output is 5.0 L/min" in message
     assert "L/s" not in message
     assert system.capture_state() == before
 

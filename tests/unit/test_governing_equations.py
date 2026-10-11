@@ -583,27 +583,45 @@ def test_rejects_tissue_flows_that_do_not_sum_to_cardiac_output() -> None:
 
 
 def test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute() -> None:
-    """The refusal names both flows in the unit every dial and readout shows.
+    """The refusal names both flows in the unit every dial and readout shows, as they were set.
 
     The comparison is made in the litres per second the balances are written
     in, and the message used to name the flows in that unit - 0.13 L/s against
     0.156 L/s here - where every setting, readout and other refusal names a
     flow in L/min. The message reaches a reader through the stopped-run
     banner, since the record is refused at the next step and at Reset
-    (`PL-M4M0`), so it named values the screen never shows.
+    (`PL-M4M0`), so it named values the screen never shows. The figures are
+    literal rather than summed the way the code sums them, because the
+    stored flows summed carry the float's noise in their last digits -
+    0.7000000000000001 for the three below - and a banner may not claim a
+    precision no dial set.
     """
 
-    cardiac_output_l_min = CardiacOutput(CARDIAC_OUTPUT_L_MIN * 1.2)
-
     with pytest.raises(SimulationConfigurationError) as raised:
-        _settings(cardiac_output_l_min=cardiac_output_l_min)
+        _settings(cardiac_output_l_min=CardiacOutput(CARDIAC_OUTPUT_L_MIN * 1.2))
 
     message = str(raised.value)
-    tissue_blood_flow_l_min = sum(blood_flow_l_min for _, _, blood_flow_l_min, _ in TISSUES)
 
-    assert f"perfused at {tissue_blood_flow_l_min} L/min in total" in message
-    assert f"cardiac output is {cardiac_output_l_min} L/min" in message
+    assert "perfused at 7.8 L/min in total but cardiac output is 9.36 L/min" in message
     assert "L/s" not in message
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        _settings(
+            cardiac_output_l_min=CardiacOutput(1.0),
+            tissues=tuple(
+                TissueGroupEquationSettings(
+                    name=name,
+                    volume_l=volume_l,
+                    blood_flow_l_min=blood_flow_l_min,
+                    tissue_blood_partition_coefficient=tissue_blood,
+                )
+                for (name, volume_l, _, tissue_blood), blood_flow_l_min in zip(
+                    TISSUES, (0.1, 0.2, 0.4), strict=True
+                )
+            ),
+        )
+
+    assert "perfused at 0.7 L/min in total but cardiac output is 1.0 L/min" in str(raised.value)
 
 
 def test_rejects_a_tissue_group_count_the_model_does_not_have() -> None:

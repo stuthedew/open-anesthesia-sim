@@ -164,6 +164,16 @@ usually supplies it. The absolute floor is what lets a zero cardiac output
 pass, which `docs/MODEL.md` § "Supported input ranges" requires.
 """
 
+TISSUE_BLOOD_FLOW_STATED_DECIMALS = 6
+"""Decimal places the tissue-flow refusal states the summed flows to, in L/min.
+
+The stored flows summed carry the float's noise in their last digits -
+6.000000000000001 L/min at an output set to 6.0 - which is precision no dial
+set and a banner must not claim. The comparison above is untouched by it:
+only the figure the message prints is rounded, to a microlitre per minute,
+three orders below any dial step and nine above the noise (`PL-M4M0`).
+"""
+
 
 def require_canonical_state(state: object) -> None:
     """Refuse a state vector the equations could not be read against.
@@ -402,8 +412,13 @@ class UptakeEquationSettings:
             # what every dial, readout and other refusal shows a clinician;
             # the comparison stays in the litres per second the balances are
             # written in. Reaching a reader through the stopped-run banner,
-            # the L/s figures named values the screen never shows (`PL-M4M0`).
-            tissue_blood_flow_l_min = sum(tissue.blood_flow_l_min for tissue in self.tissues)
+            # the L/s figures named values the screen never shows, and the
+            # sum is rounded for the message alone, as
+            # `TISSUE_BLOOD_FLOW_STATED_DECIMALS` says why (`PL-M4M0`).
+            tissue_blood_flow_l_min = round(
+                sum(tissue.blood_flow_l_min for tissue in self.tissues),
+                TISSUE_BLOOD_FLOW_STATED_DECIMALS,
+            )
 
             raise SimulationConfigurationError(
                 f"the tissue groups are perfused at {tissue_blood_flow_l_min} L/min in total "

@@ -213,20 +213,23 @@ REFUSED_SETTING_NOTICE_TEMPLATE: Final = (
     "{refused}. The simulation is unchanged and still running its previous setting."
 )
 
-# The way out when Reset is what was refused, in `refused_reset_exit`'s three
-# wordings. On a run that had not failed, the failure the halt records *is*
-# the refusal, so the exit points at the banner's own reason; on one that
-# had, the controller keeps the earlier failure as the reason
-# (`SimulationController.fail`), so the exit carries the refusal itself. The
-# door named is a new case on a trunk, and on a branch - which cannot start
-# a case of its own (`PL-TFX5`) - the trunk's Reset, which ends the
-# comparison as `COMPARING_FORK_LOCK_TEMPLATE` says it does (`PL-M4M0`).
-REFUSED_RESET_EXIT_TEMPLATE: Final = "Reset was refused for this reason. {way_out}"
-REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE: Final = "Reset was refused — {error}. {way_out}"
-NEW_CASE_WAY_OUT_TEXT: Final = "Start a new case to continue."
-COMPARISON_WAY_OUT_TEMPLATE: Final = (
-    "{trunk}'s {reset} ends the comparison and starts the case over."
-)
+# The way out when Reset is what was refused, in `refused_reset_exit`'s two
+# wordings. The door named is the repair: the record Reset is refused on
+# names the setting it cannot hold - the cardiac output the tissue flows no
+# longer sum to - and that setting's dial rebuilds the record, after which
+# the same Reset takes. It is the one door open on every run. A new case was
+# named first and withdrawn in review: it is the agent selector, which a
+# comparison replaces with `COMPARING_AGENT_LOCK_TEXT`, which does nothing
+# for the agent already running, and which a branch has not got (`PL-TFX5`).
+# Which wording states the refusal turns on what the banner's reason is: on
+# a run that had not failed, or whose recorded failure is this same refusal,
+# the halt's reason *is* the refusal, so the exit points at it; on one that
+# had failed for something else, the controller keeps that earlier reason
+# (`SimulationController.fail`), so the exit carries the refusal itself, in
+# the form the failure line gives a reason (`PL-M4M0`).
+REFUSED_RESET_EXIT_TEMPLATE: Final = "Reset was refused for this reason. {repair}"
+REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE: Final = "Reset was refused — {reason}. {repair}"
+REFUSED_RESET_REPAIR_TEXT: Final = "Change the setting it names, then Reset."
 
 # What the chart says when a reader has unchecked every compartment. A plot
 # missing all six is a blank panel, and a blank panel reads as a display that
@@ -1205,45 +1208,41 @@ def refused_setting_notice(error: SimulationConfigurationError) -> str:
     return REFUSED_SETTING_TEMPLATE.format(error=error)
 
 
-def refused_reset_exit(
-    error: BaseException, *, reason_already_recorded: bool, is_branch: bool
-) -> str:
+def refused_reset_exit(error: BaseException, *, recorded_failure_reason: str | None) -> str:
     """The way out a stopped-run banner names when Reset is what the core refused.
 
     Every failure wording ends by naming Reset, the one door out of a
     stopped run; when Reset is the control that was just refused, that line
     would send the reader back to it. So the exit says Reset was refused and
-    names the other door: a new case on a trunk, and on a branch the trunk's
-    Reset, since a branch cannot start a case of its own (`PL-TFX5`) and the
-    trunk's Reset ends the comparison (`COMPARING_FORK_LOCK_TEMPLATE`). How it
-    says Reset was refused depends on what the banner's reason already is: a
-    controller keeps the first failure it was given
-    (`SimulationController.fail`), so on a run that had not failed the
-    recorded reason is the refusal and the exit points at it, and on one
-    that had, the reason stays the earlier failure's and the exit carries
-    the refusal itself (`PL-M4M0`).
+    names the repair instead: the setting the refusal names, whose dial
+    rebuilds the record Reset was refused on, after which Reset takes
+    (`REFUSED_RESET_REPAIR_TEXT`). How it says Reset was refused depends on
+    what the banner's reason already is: a controller keeps the first
+    failure it was given (`SimulationController.fail`), so on a run that had
+    not failed, or that this same refusal already stopped, the recorded
+    reason is the refusal and the exit points at it, and on one that had
+    failed for something else the reason stays that failure's and the exit
+    carries the refusal itself (`PL-M4M0`).
 
     Args:
         error: The refusal `SimulationController.reset()` raised.
-        reason_already_recorded: Whether the run had already failed when
-            Reset was refused, so the banner's reason is that failure's.
-        is_branch: Whether the run is a branch, whose way out is the trunk's
-            Reset rather than a new case.
+        recorded_failure_reason: The run's failure reason as it stood when
+            Reset was refused, or None if it had not failed. Compared with
+            the reason this refusal records (`halt_disposition`), since a
+            Reset pressed twice on one refusal is one reason, not two.
 
     Returns:
         The banner's closing sentence, for `notice` and `halt_notice`.
     """
 
-    way_out = (
-        COMPARISON_WAY_OUT_TEMPLATE.format(trunk=run_label(TRUNK_RUN_INDEX), reset=RESET_LABEL)
-        if is_branch
-        else NEW_CASE_WAY_OUT_TEXT
+    _, reason = halt_disposition(error)
+
+    if recorded_failure_reason is None or recorded_failure_reason == reason:
+        return REFUSED_RESET_EXIT_TEMPLATE.format(repair=REFUSED_RESET_REPAIR_TEXT)
+
+    return REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE.format(
+        reason=reason, repair=REFUSED_RESET_REPAIR_TEXT
     )
-
-    if reason_already_recorded:
-        return REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE.format(error=error, way_out=way_out)
-
-    return REFUSED_RESET_EXIT_TEMPLATE.format(way_out=way_out)
 
 
 def notice(

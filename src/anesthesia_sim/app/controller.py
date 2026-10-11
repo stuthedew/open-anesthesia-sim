@@ -1637,8 +1637,8 @@ class SimulationController:
         Settings are preserved, and so are the bookmarks, which are the
         learner's questions rather than the run's product: a reset is for
         taking the same case again, and it is the same case they were asking
-        about. This is the only way out of a failed
-        session, and out of one standing at the supported run length: every
+        about. This and `set_agent` are the ways out of a failed
+        session, and of one standing at the supported run length: every
         compartment goes back to its initial state and the step count goes
         back to zero, so nothing carries over from the run that could not
         continue.
@@ -1670,12 +1670,9 @@ class SimulationController:
         """
 
         # Read before anything is cleared, because building this record is
-        # the one thing here the core can refuse (above). Read after
-        # `_state.reset()` had run, the refusal left the run half reset:
-        # state cleared, the old definition and timeline kept, nothing
-        # recorded, and the screen reading "Running" with Pause offered
-        # (`PL-M4M0`). The record holds no dynamic value, so the one read
-        # here is the one the cleared system would give after.
+        # the one thing here the core can refuse (above), and it holds no
+        # dynamic value, so the one read here is the one the cleared system
+        # would give after (`PL-M4M0`).
         settings = self._state.uptake_system.equation_settings()
 
         self.pause()

@@ -109,10 +109,9 @@ class PatientCompartments:
             output, which is the relation `set_cardiac_output` keeps and
             `UptakeEquationSettings` refuses at the next step, as the
             `SimulationNumericalError` `advance()` restates every guard reached
-            inside a step as, and at Reset, which `SimulationController.reset()`
-            refuses before it clears anything and the interface halts the run
-            on (`PL-M4M0`). A
-            copy `dataclasses.replace` makes at another output is refused by
+            inside a step as, and wherever else the record is built, a Reset
+            included, which is refused before anything is cleared (`PL-M4M0`).
+            A copy `dataclasses.replace` makes at another output is refused by
             `__post_init__` before anything is written; one made at the same
             output shares the original's compartments, so moving its output
             moves the original's flows with it (`PL-Z0T3`).

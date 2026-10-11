@@ -285,11 +285,10 @@ class AgentUptakeSystem:
         `SimulationConfigurationError`, because that type promises the caller
         a run still worth continuing (`core/exceptions.py`), and a run whose
         record cannot be built is not one: the same record is refused on
-        every step after, and at Reset, which `SimulationController.reset()`
-        refuses before it clears anything. Restated as a step that could not
-        be completed, the interface stops the run through the failed-step
-        path, with the two flows named in the litres per minute every readout
-        shows (`PL-M4M0`).
+        every step after, and by anything else that builds it, a Reset
+        included. Restated as a step that could not be completed, it reaches
+        the caller as the halt it is, with the two flows named in the litres
+        per minute they were set in (`PL-M4M0`).
 
         Raises:
             TypeError: `simulation_step_s` is not a `SimulationStep`, so

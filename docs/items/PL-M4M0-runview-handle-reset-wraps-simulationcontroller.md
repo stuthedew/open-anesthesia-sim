@@ -130,3 +130,44 @@ half-reset run, and the settings test on the L/s message above.
 `test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it` failed in this
 container on the same run - a font-metrics assertion, `23 >= 2 * 15`, which is
 the container's Qt font rendering (`PL-K9Z5`) and not this item's.
+
+**Revised in the close-out review, 2026-10-11.** Three adversarial passes over
+the diff, each attacked by re-running its claims before anything changed,
+agreed on the banner's door and were right. "Start a new case to continue."
+named no control: a new case is the agent selector, which a comparison
+replaces with "Locked while comparing" and which does nothing for the agent
+already running, so on a trunk drawn beside a branch the banner named a hidden
+control while the trunk's Reset, the one just refused, was the only control
+left enabled - and the door open on every run, the cardiac output dial that
+rebuilds the record, was named nowhere. The exit now names that repair in one
+wording, "Change the setting it names, then Reset.", on trunk and branch
+alike; the branch wording and `COMPARISON_WAY_OUT_TEMPLATE` went with it,
+since the fork panel already names the trunk's Reset
+(`test_a_refused_trunk_reset_while_comparing_names_the_one_door_open`,
+`test_a_refused_branch_reset_halts_the_branch_and_names_the_same_repair`).
+Second, a second press of a still-refused Reset flipped to the after-failure
+wording, because the first press had recorded a reason, and stated the one
+refusal twice; `refused_reset_exit` now compares the recorded reason with the
+one this refusal records and keeps the one-reason wording when they agree,
+and the after-failure wording carries the reason in the form the failure line
+gives it (`test_a_second_refused_reset_states_the_refusal_once`). Third, the
+L/min sum printed the float's noise at three of the hundred and one dial
+positions - `6.000000000000001` at an output set to 6.0 - so the message
+rounds the sum to the microlitre per minute, and the two tests that pinned it
+assert literal figures rather than a sum built the way the code builds it.
+Smaller: `_handle_reset`'s docstring said nothing was emitted, where the
+frame is asked for as after any halt; the core docstrings no longer narrate
+the interface; `reset()`'s said it was the only way out of a failed session,
+where `fail()` names `set_agent` too.
+
+Two findings outside this item's work were filed under
+`cardiac-output-write-consistency`: `PL-VCP4`, `_record_control_change`
+building the record after a setter has written, so a non-cardiac-output
+setting on a stale record is half applied under a banner saying the run is
+unchanged; and `PL-J39J`, the cardiac output readout showing the written
+output beside values computed at the old flows on every halt the stale record
+causes. With this item they are three readers of one write, so `PL-KFNP`
+records the root - the type-only write guard `PL-LBQY` chose, which admits
+the write and keeps no relation - as `root-cause-of:` the three, marked spent
+because every reader of the output has now been walked and no control makes
+the write.

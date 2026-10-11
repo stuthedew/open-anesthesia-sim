@@ -879,11 +879,12 @@ class RunView(QWidget):
         for a settings record the next step would be refused on too, so the
         run is left exactly as it was and is stopped through the failed-step
         path - the refusal recorded, the status word, the transport and the
-        banner stating it - with the banner's way out naming the one door
-        left, since Reset is the one it names otherwise. Every raise halts,
-        as a step's does: a `SimulationConfigurationError` here is not a
-        refused setting, because the run it leaves is one that cannot be
-        cleared (`PL-M4M0`). Nothing is emitted, since no case restarted.
+        banner stating it - with the banner's way out naming the setting to
+        change, since Reset is the door it names otherwise. Every raise
+        halts, as a step's does: a `SimulationConfigurationError` here is
+        not a refused setting, because the run it leaves is one that cannot
+        be cleared (`PL-M4M0`). `case_restarted` is not emitted, since no
+        case restarted; the frame is asked for, as after any halt.
         """
 
         try:
@@ -898,22 +899,22 @@ class RunView(QWidget):
         self.presentation_requested.emit(False)
 
     def _halt_refused_reset(self, error: BaseException) -> None:
-        """Halt the run for a Reset the core refused, with the banner naming the other way out.
+        """Halt the run for a Reset the core refused, with the banner naming the repair.
 
         The exit is settled before the halt records the refusal, because
-        which wording it takes depends on whether a failure already stands: a
-        controller keeps the first reason it was given, so on an
-        already-failed run the banner's reason stays that failure's and the
-        refusal has to be stated by the exit itself (`PL-M4M0`).
+        which wording it takes depends on what the banner's reason will be:
+        a controller keeps the first reason it was given, so on a run that
+        had already failed for something else the banner's reason stays that
+        failure's and the refusal has to be stated by the exit itself, and
+        `refused_reset_exit` tells that run from one this same refusal
+        stopped on an earlier press (`PL-M4M0`).
 
         Args:
             error: What `SimulationController.reset()` raised.
         """
 
         self._refused_reset_notice = refused_reset_exit(
-            error,
-            reason_already_recorded=self.controller.status().failure_reason is not None,
-            is_branch=self.controller.opened_from is not None,
+            error, recorded_failure_reason=self.controller.status().failure_reason
         )
         self._halt_run(error)
 
