@@ -28,6 +28,14 @@ omits the comment: `_named_tests` returns both test names, so
 citation. `_undated_host_claims` reads no `<details>` block GitHub does
 render, the other direction. Latent: none in the documents today.
 
+**Re-confirmed 2026-10-11** on `main` at `16a20a4f`: `_named_tests` returns
+both test names, and `check_citations` refuses `docs/gone.md` in the indented
+block and in the comment - and in a fenced copy too, which `_code_spans` reads
+on purpose so a package map's comments are held to the tree.
+`_statement_spans`' docstring states the same choice for an indented code
+block and an HTML block, read "as a fence's lines are", so the span half of
+this item reverses a documented design rather than repairing an oversight.
+
 **Generator check.** Not a member of `PL-R417`: the wrong kind of block, read
 at the right extent. `PL-KR6M`, untriaged, names three section-mark readers
 that read an indented code block as prose; this is the same fault in the span,
