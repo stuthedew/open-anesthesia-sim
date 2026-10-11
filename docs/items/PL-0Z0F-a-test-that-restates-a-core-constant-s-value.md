@@ -3,7 +3,7 @@ id: PL-0Z0F
 title: A test that restates a core constant's value passes while the constant moves, and PL-T5J5 found eight by hand at 48 h: perturb each supported_ranges constant on a schedule and fail a test that breaks without importing it
 priority: P3
 effort: M
-status: blocked
+status: ready
 classes: test
 feature: one-home-for-constants
 touches: tools, .github/workflows/drift.yml, tests
@@ -29,3 +29,5 @@ verify: grep -q '^  restated-constants:' .github/workflows/drift.yml && grep -q 
 **Decided 2026-10-03: waits for PL-40SJ** (project owner, 2026-10-03, ratified, over lifting the apparatus pause for this item and PL-NH53 while PL-40SJ carries `generator: live`). A new check, so it is built once PL-40SJ, the head of its cluster, has closed and its tool's baseline exists to shape this against; `blocked-by:` records it.
 
 **Held by the generator pause** (triage, 2026-10-04). PL-40SJ's tool and baseline are on `main`, so that half of the wait is over. The pause is not: on `main` at `4ab001b8`, `bin/docket generators` marks `PL-R417` (readers that take one physical line for a whole statement) still generating, and its build is open in #1332. The owner asked for this item's promotion on the two steps the offer named, a `verify:` command and no other live head; the first is done above and the second failed, so `blocked-by:` now names `PL-R417`, keeping the decision above to wait out the pause rather than lift it. Before promoting, check that `bin/docket generators` marks no head "still generating", rather than this list; building it sooner is the owner's call, made by asking (`PL-6Q9L`).
+
+**Unblocked 2026-10-11, when `PL-R417` closed in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. PL-40SJ's tool and baseline are on `main`, as above, and read against the tree nothing else holds it.

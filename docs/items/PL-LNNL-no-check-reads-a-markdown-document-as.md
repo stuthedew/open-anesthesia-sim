@@ -55,3 +55,5 @@ writers. Its three instances, `PL-DSMK`, `PL-N7LK` and `PL-T4FK`, are recorded
 as that head's in `PL-N7LK`'s brief. `PL-R417`'s own fix makes readers read a
 continued statement whole, and reaches no writer, so this check is what would
 stop the next instance.
+
+**The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it: `#1392`'s inline test holds `doc_check`'s reading to markdown-it-py, and no check refuses a wrapped clause that renders as a list item. It stays `blocked` only because `ready` needs a `verify:` command, which `bin/docket set` refuses `ready` without and triage writes beside the work; `bin/docket check` names it ready to promote meanwhile.

@@ -59,3 +59,5 @@ fixed it by ordering; this is the same fact at the merge button, which no
 ordering in prose reaches. No head's `misread:` states it, and one more
 instance makes three. Not `PL-WNCT`'s fact, whether pushed work has a pull
 request to carry it: the answering session saw the merge and opened #1335.
+
+**The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it. It stays `blocked` only because `ready` needs a `verify:` command, which `bin/docket set` refuses `ready` without, and that command waits on which of the two shapes is built, the building session's choice, recorded here as Done-when asks. `bin/docket check` names it ready to promote meanwhile.
