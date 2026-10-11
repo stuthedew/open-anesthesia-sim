@@ -1,8 +1,14 @@
 ---
 id: PL-S0D4
 title: GitHub's file view shows an Error in user YAML box on 656 of 2,124 item files, since their front matter is deliberately not YAML, and docket's README does not say so
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+touches: subprojects/docket/README.md
 added: 2026-10-10
+payoff: a reader who meets GitHub's Error in user YAML box on an item finds the README saying it is expected and that docket reads the file as written
+verify: grep -qF 'Error in user YAML' subprojects/docket/README.md
 ---
 
 **Problem.** GitHub's file view reads an item's front matter as YAML, and on
@@ -25,6 +31,14 @@ because the value does not open with the quote.
 on each item's front matter fails on 656 of 2,124, `PL-R417`'s at line 12,
 column 357, with "mapping values are not allowed here", the place and the error
 GitHub's view reports.
+
+**Re-confirmed 2026-10-11** on main at `16a20a4f`: `safe_load` refuses 681 of
+the 2,188 item front matters, and `subprojects/docket/README.md` § "What the
+front matter is, exactly" still says nothing of GitHub's view.
+
+**Why it matters.** Everyone who opens an item on GitHub meets an error box on
+about a third of the store with nothing saying it is expected, and the natural
+reading is that the file is broken; the owner asked about it on `PL-R417`.
 
 **Generator check.** Not a member of `PL-R417`: GitHub reads the block as
 another format altogether, not a statement of docket's format across lines, and

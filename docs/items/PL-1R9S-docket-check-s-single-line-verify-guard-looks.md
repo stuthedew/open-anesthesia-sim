@@ -1,9 +1,16 @@
 ---
 id: PL-1R9S
 title: docket check's single-line verify: guard looks for a newline that docket.model's fold never leaves, so a verify: continued on an indented line is never refused though the README calls the field a single-line command, and one continued with a shell backslash runs with an escaped space, where a ! grep -q then passes on grep's exit 2; latent
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: front-matter-round-trip
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/model.py, subprojects/docket/README.md, subprojects/docket/tests/test_checks.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
+payoff: a verify: continued across lines is refused by name, so a backslash continuation can no longer turn a failing ! grep into a pass the single-line guard never sees
+verify: grep -q 'def test_a_verify_continued_with_a_backslash_is_refused_through_the_parser' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** docket check's single-line verify: guard looks for a newline that docket.model's fold never leaves, so a verify: continued on an indented line is never refused though the README calls the field a single-line command, and one continued with a shell backslash runs with an escaped space, where a ! grep -q then passes on grep's exit 2; latent
@@ -36,6 +43,12 @@ failure. `verify` runs the same folded value for `_check_item`,
 `already_passing` and a commission's command. Latent: no tracked item's
 `verify:` continues onto a second line or ends in a backslash.
 
+**Re-confirmed 2026-10-11** on main at `16a20a4f`: `parse_front_matter` folds the
+two lines above to `! grep -q 'old sentence' docs/a.md \ docs/b.md`, holding
+no newline, so the guard's `"\n" in item.verify` in `checks.py` cannot fire,
+and bash runs the folded value to exit 0 (grep exit 2 on ` docs/b.md`) where
+the two lines as written exit 1.
+
 **Why it matters.** A guard that cannot fire reads as protection, and the one
 spelling it was meant to refuse turns a failing check into a pass.
 
@@ -43,7 +56,10 @@ spelling it was meant to refuse turns a failing check into a pass.
 value grammar, `PL-HXJY`'s fact: a check stating the grammar (a single-line
 `verify`) apart from its one reader. `PL-HXJY` is closed, with a `spent`
 verdict about the writers; this guard was written before the fold existed, so
-it is stock that head's sweep did not reach rather than new inflow.
+it is stock that head's sweep did not reach rather than new inflow. Filed
+2026-10-06, the day after `PL-HXJY` closed (2026-10-05), it is still a
+post-close instance of that head's fact, one of two with `PL-B53Y`; a third
+would read as a fix that did not hold (2026-10-11 triage).
 
 **Done when.** Either `docket.model` records which fields it folded, as it
 records block-list and block-scalar keys, and `docket check` refuses a folded

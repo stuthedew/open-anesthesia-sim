@@ -1,9 +1,16 @@
 ---
 id: PL-63Y5
 title: docket's vcs._standing reads a ref copy's front matter through parse_front_matter in its closure arm, where a block list or block scalar arrives empty, and never asks block_list_keys, so a ref that reopened an item and wrote a field as a block answers behind - nothing stranded - while the removal arm declines the same copy; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+payoff: stranded reports a ref that reopened a closed item with a block-written field, instead of calling it behind and hiding the edit
+verify: grep -q 'def test_a_ref_reopening_a_closed_item_with_a_block_field_is_ahead' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** docket's vcs._standing reads a ref copy's front matter through parse_front_matter in its closure arm, where a block list or block scalar arrives empty, and never asks block_list_keys, so a ref that reopened an item and wrote a field as a block answers behind - nothing stranded - while the removal arm declines the same copy; latent
@@ -34,9 +41,20 @@ block scalar gives the same, while the same copies with equal status answer
 `ahead`. Latent: no item file carries a block list, block scalar or unread
 line, but a ref's copy is exactly a copy that has not passed `docket check`.
 
+**Re-confirmed 2026-10-11** on main at `16a20a4f`: `_standing` answers `behind`
+for the block-list copy above against the `done` base and for a `reason: |`
+copy, and `ahead` for the same block-list copy against a `ready` base.
+
+**Why it matters.** `stranded` is how a session finds work a branch holds and
+`main` does not, and `behind` is its word for nothing to recover. A ref that
+reopened a closed item and wrote a field as a block is exactly such work, and
+this answer hides it.
+
 **Generator check.** A member of `PL-R417`: a surface that drops a shared
 reader's named decline and answers from the partial reading, the shape
-`PL-GMR6` recorded. It is the gap closed `PL-F7Z6`'s fix left.
+`PL-GMR6` recorded. It is the gap closed `PL-F7Z6`'s fix left. Latent, so an ordinary item under that head's `spent` verdict: found live in a tracked file, it reopens `PL-R417` (2026-10-11 triage).
+`PL-JTP1` (untriaged) groups it with five other callers that drop a shared
+reader's decline, and proposes the type-level fix that would close them together.
 
 **Done when.** The closure arm declines a copy `_front_matter_pairs` declines
 and answers `ahead`, as the removal arm does; a test pins both forms above.

@@ -1,9 +1,16 @@
 ---
 id: PL-4J5H
 title: doc_check's _brief_pieces hands each item front-matter field to Markdown readers whole, so a field that docket.model's fold and YAML read as one value is cut where Markdown would end a paragraph - an interior blank or comment line, or a continuation line opening a list item, a block quote, a fence, an HTML tag or a thematic break - and a quotation, citation or code span carried across the cut goes unread or is refused as unclosed; latent
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, subprojects/docket/src/docket/model.py, tests/unit/test_doc_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+payoff: a front-matter field's quotation, citation or code span is checked as the one value docket reads, not refused or missed at a Markdown paragraph cut
+verify: grep -q 'def test_a_front_matter_field_reaches_the_markdown_readers_as_one_statement' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's _brief_pieces hands each item front-matter field to Markdown readers whole, so a field that docket.model's fold and YAML read as one value is cut where Markdown would end a paragraph - an interior blank or comment line, or a continuation line opening a list item, a block quote, a fence, an HTML tag or a thematic break - and a quotation, citation or code span carried across the cut goes unread or is refused as unclosed; latent
@@ -41,9 +48,20 @@ and the same field with a comment line in place of the blank, gives no match.
 Latent: 13 fields across all items continue onto another line, and none is
 split by a Markdown block start or holds an interior blank or comment line.
 
+**Re-confirmed 2026-10-11** on main at `16a20a4f`: `docket.model` reads each form
+above as one value with its quotation closed, and `_brief_pieces` hands
+`QUOTED_SOURCE_RE` a piece in which all three, the list-item line, the blank
+line and a comment line in its place, match as a quotation left `unclosed` at
+the cut. Still 13 continued fields across the store, none of these shapes.
+
+**Why it matters.** The quoted-source and citation checks are what hold a
+brief's quotation to its source. Read at a Markdown cut, a correct quotation
+is refused as unclosed or a stale one goes unchecked, so the check's answer on
+such a field means nothing.
+
 **Generator check.** A member of `PL-R417`: the reader takes a physical line
 for a statement its format continues, the fact that head names. The code is new
-in `#1389`: the gap closed `PL-CZ28`'s fix left.
+in `#1389`: the gap closed `PL-CZ28`'s fix left. Latent, so an ordinary item under that head's `spent` verdict: found live in a tracked file, it reopens `PL-R417` (2026-10-11 triage).
 
 **Done when.** Each field reaches the Markdown readers as `_fold` reads it -
 one statement, its continuation lines joined - or is declined by name, with a

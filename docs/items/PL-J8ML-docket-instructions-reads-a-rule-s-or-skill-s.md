@@ -1,9 +1,16 @@
 ---
 id: PL-J8ML
 title: docket.instructions reads a rule's or skill's front matter a line at a time, silently, wherever docket.frontmatter.keys declines any line of the block, so a key whose continued value keys could have delimited is cut into dated fragments; and it reads a sentence across the blank line inside a block-scalar value, so an older dated record is hidden behind a newer one; latent
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/frontmatter.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_instructions.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+payoff: the instructions audit names a front matter it cannot read and dates a block-scalar record by its own sentence, so an old dated claim is neither split nor hidden behind a newer one
+verify: grep -q 'def test_a_front_matter_keys_cannot_read_is_reported_by_name' subprojects/docket/tests/test_instructions.py && grep -q 'def test_a_blank_line_inside_a_block_scalar_ends_a_sentence' subprojects/docket/tests/test_instructions.py
 ---
 
 **Problem.** docket.instructions reads a rule's or skill's front matter a line at a time, silently, wherever docket.frontmatter.keys declines any line of the block, so a key whose continued value keys could have delimited is cut into dated fragments; and it reads a sentence across the blank line inside a block-scalar value, so an older dated record is hidden behind a newer one; latent
@@ -50,9 +57,24 @@ break where the blank line was.
 Latent: `docket.frontmatter.keys` raises `Unread` on none of the 12 front
 matters in the 24 instruction files, and none holds a block scalar.
 
+**Re-confirmed 2026-10-11** on main at `16a20a4f`: `instructions._front_matter`
+is gone, moved by `#1392` into `docket.frontmatter.statements`, which keeps the
+line-at-a-time fallback on `Unread` and now says so in its docstring.
+`instructions.parse` still gives the first form two assertions, dated
+2026-01-01 and 2026-10-04, against one dated 2026-10-04 without the stray
+line, and the second form one assertion dated 2026-10-04 where the same text
+in the body gives two.
+
+**Why it matters.** The instructions audit exists to surface dated claims that
+have gone old. A record cut into fragments is reported stale after it was
+re-verified, a record hidden behind a newer sentence never reaches the report,
+and in neither case does the audit say it could not read the block.
+
 **Generator check.** A member of `PL-R417`: the reader takes a physical line
 for a statement its format continues, the fact that head names. The code is new
-in `#1389`.
+in `#1389`. Latent, so an ordinary item under that head's `spent` verdict: found live in a tracked file, it reopens `PL-R417` (2026-10-11 triage).
+`PL-JTP1` (untriaged) groups it with five other callers that lose a shared
+reader's decline, and proposes the type-level fix that would close them together.
 
 **Done when.** A front matter `keys` cannot read whole is reported by name in
 the instructions report rather than read a line at a time, and a blank line

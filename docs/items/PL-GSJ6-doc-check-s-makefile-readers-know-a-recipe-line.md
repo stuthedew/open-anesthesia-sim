@@ -1,9 +1,15 @@
 ---
 id: PL-GSJ6
 title: doc_check's Makefile readers know a recipe line only by its tab, where make 4.3 reads one by .RECIPEPREFIX once a Makefile sets it, so every recipe in such a Makefile reads as missing and a documented target as exiting 0 without running; latent
-status: untriaged
-touches: docs/items/PL-GZXY-doc-check-s-make-readers-read-only-the-first.md
+priority: P3
+effort: S
+status: ready
+classes: defect
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
+payoff: a Makefile that sets .RECIPEPREFIX stops reading as having no recipes, so a documented target is not reported as exiting 0 without running
+verify: grep -q 'def test_a_makefile_that_sets_recipeprefix' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's Makefile readers know a recipe line only by its tab, where make 4.3 reads one by .RECIPEPREFIX once a Makefile sets it, so every recipe in such a Makefile reads as missing and a documented target as exiting 0 without running; latent
@@ -17,6 +23,12 @@ against `cmd_prefix`: a tab until a Makefile assigns `.RECIPEPREFIX`.
 `.RECIPEPREFIX = >`, `check:` and `>@echo ran` gives `make_targets` `check`
 with no recipe and `_recipe_commands` no command, where GNU Make 4.3 runs
 `make check` and prints `ran`.
+
+**Re-confirmed 2026-10-11** on main at `16a20a4f`, under python3 3.13.16 and
+GNU Make 4.3: the same Makefile gives `make_targets` `check` with no recipe
+and `_recipe_commands` nothing, and `make -f` on it prints `ran` and exits 0.
+`check_gate_parity` then reads an empty `check` recipe and returns without a
+decline, so the parity check is silent rather than wrong there.
 
 **Why it matters.** In a Makefile that sets the prefix every recipe reads as
 missing, so `check_make_targets` tells a document naming any target that it
