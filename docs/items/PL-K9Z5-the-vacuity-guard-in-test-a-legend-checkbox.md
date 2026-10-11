@@ -3,12 +3,14 @@ id: PL-K9Z5
 title: The vacuity guard in test_a_legend_checkbox_draws_its_indicator_in_the_theme fails on macOS - a bare checkbox under the dark host draws the theme's #FFFFFF panel colour there too - so the test cannot show PL-7W9N's fix holds on that platform
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: platform-palette
 touches: tests/integration/test_dark_appearance.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-09-27
+closed: 2026-10-11
+pr: 1417
 payoff: the dark-appearance test proves the legend's checkbox is themed on macOS as well as Linux, instead of failing there undiagnosed
 not-delegable: diagnosing it needs a macOS host: the test passes on Linux and in CI and fails only on the owner's Mac
 ---
@@ -47,4 +49,30 @@ The first step is to dump the bare box's palette roles, and the pixels where
 
 **Done when.** The diagnosis is recorded here - which role or path paints `#FFFFFF` on a bare box on macOS - and either the guard uses a colour that platform cannot supply or the legend's indicator is themed there too, with the test passing on macOS.
 
-**Not reproducible here.** Cloud sessions run Linux, where the test passes.
+**Reproducible in the cloud container since its image changed** (`PL-VCF0`,
+2026-10-06): both cases fail there, on Linux, as they do on macOS.
+
+**Diagnosed 2026-10-11, in that container: the white is the bare box's label,
+not its indicator.** `_HOST_DARK` sets `WindowText` to `#FFFFFF`, which is
+PANEL's value, and Fusion draws the box's label `bare` in `WindowText`. Wherever
+a glyph covers a whole pixel, that pixel is exactly PANEL. Counted over the
+grabbed box, offscreen, against `SE_CheckBoxIndicator`'s rect:
+
+| sans-serif | `#FFFFFF` pixels | In the label | In the indicator |
+| --- | --- | --- | --- |
+| Inter | 29 | 29 | 0 |
+| DejaVu Sans | 1 | 1 | 0 |
+
+So the first of the two readings above holds: the product is fine, and the guard
+caught a colour the host's text role supplies through the box's label. Whether
+any pixel hits it is a property of the font's rasterisation, which is why it
+passed in CI and on the 2026-09-27 container and failed on macOS and here. The
+test now samples the indicator's rect alone, on both boxes, so the label is
+outside what it reads. A box whose `TraceLegend` declaration is removed still
+fails it, in both states.
+
+**macOS is inferred, not run.** The sampled colours the 2026-09-28 run printed
+start `#323232`, the host `Window`, which is the same Fusion-under-offscreen
+rendering seen here; the label mechanism needs nothing platform-specific. The
+test passing on the project owner's Mac is the confirmation this item's
+**Done when** asks for, and it has not been seen from a cloud session.
