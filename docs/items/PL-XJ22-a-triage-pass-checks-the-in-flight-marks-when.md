@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: claim-record
+milestone: v0.5.23
 touches: .claude/skills/docket/modes/triage.md
 added: 2026-10-11
 closed: 2026-10-11
