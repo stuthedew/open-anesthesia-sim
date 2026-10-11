@@ -3,11 +3,12 @@ id: PL-8D1M
 title: Promote PL-5XG1 and PL-ZYHX to ready: every recorded blocker has closed and both verify commands still fail
 priority: P3
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: blocked-means-blocked
 touches: docs/items/PL-5XG1-roadmap-md-s-development-pathway-still-says.md, docs/items/PL-ZYHX-the-resident-instruction-set-is-75-kb-72.md
 added: 2026-10-11
+closed: 2026-10-11
 payoff: the two items reach bin/docket next instead of sitting behind blockers that closed 15 and 8 days ago
 verify: grep -q '^status: ready' docs/items/PL-5XG1-roadmap-md-s-development-pathway-still-says.md && grep -q '^status: ready' docs/items/PL-ZYHX-the-resident-instruction-set-is-75-kb-72.md
 ---
