@@ -3881,21 +3881,22 @@ its test and over patching the line matcher).
 Three details keep that fact about the item. Its commits are folded per file,
 so an assertion cut in one and restored in the next is no change, and a form is
 charged only where the base holds it, so an assertion a sibling commit added on
-the same branch is never this item's to lose (`PL-2DTK`). A renamed file is
-followed as `git show` follows it, and a merge commit is read against every
-parent, as git reads one. And a file the running interpreter cannot parse -
-`bin/docket` runs on the bare `python3`, which can be older than the project's
-own - is read through the tokenizer instead, every version of it alike, so a
-docstring is one string and a bracketed `assert` one statement, and named on the
-page as read that way (project owner, 2026-10-04, ratified, over keeping the
-line predicate for it, `PL-TC2D`). Every syntax the project has adopted past
-3.11 adds grammar rather than tokens: on 2026-10-05 the tokenizers of 3.11,
-3.12, 3.13 and 3.14 split all 225 tracked Python files into the same 67,740
-logical lines.
-Only a file the tokenizer refuses as well is read line by line with the
-predicate the parser replaced, and named with both refusals. Not decided, as
-before: whether a new test asserts the right value, an assertion moved to
-another file, which stays two facts, and anything outside `.py`.
+the same branch is never this item's to lose (`PL-2DTK`). Nor is one the
+branch's tip still holds in the same file, which a later commit naming another
+item put back, since that is the response the check asks for (`PL-087W`). A
+renamed file is followed as `git show` follows it, and a merge commit is read
+against every parent, as git reads one. And a file the running interpreter
+cannot parse - `bin/docket` runs on the bare `python3`, which can be older than
+the project's own - is read through the tokenizer instead, every version of it
+alike, so a docstring is one string and a bracketed `assert` one statement, and
+named on the page as read that way (project owner, 2026-10-04, ratified, over
+keeping the line predicate for it, `PL-TC2D`). Every syntax the project has
+adopted past 3.11 adds grammar rather than tokens: on 2026-10-05 the tokenizers
+of 3.11, 3.12, 3.13 and 3.14 split all 225 tracked Python files into the same
+67,740 logical lines. Only a file the tokenizer refuses as well is read line by
+line with the predicate the parser replaced, and named with both refusals. Not
+decided, as before: whether a new test asserts the right value, an assertion
+moved to another file, which stays two facts, and anything outside `.py`.
 
 Two of the four take a **declared** exemption, which is what lets them stay
 absolute rather than a softening of them. Both were checks a correct close-out

@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: verify-assertion-evidence
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20
 closed: 2026-10-11
 payoff: putting a flagged assertion back clears the check, so the response the check asks for is one a session can actually complete
