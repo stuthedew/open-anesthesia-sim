@@ -190,16 +190,22 @@ command discards whatever the base has recorded on it since — which is exactly
 what `PL-XLQ5` was dealt, and what `PL-THPB` was offered when a branch's
 `untriaged` copy was reported against the `done` one the base had closed.
 
-**The direction is decided from content alone** — no date, no commit count, no
-ancestry, because this runs against refs a shallow clone holds no history for
-and because `closed:` is a field a branch can be holding a stale answer to. The
-ref's copy is behind when it adds nothing the base's lacks, and when the base
-has closed the item while the ref has not and every field the ref spells
-differently is one the base spells too. A copy whose blob the base's history
-has held is behind for the plainer reason that the base has been there and
-moved on. Everything else is ahead, including two copies that each carry
-something the other lacks: the reader is handed a diff either way, and calling
-that ahead reports it rather than hiding it.
+**The direction is decided from content and the ref's own history** — no date
+and no commit count, because `closed:` is a field a branch can be holding a
+stale answer to, and the history only where the checkout holds the ref's fork.
+The ref's copy is behind when it adds nothing the base's lacks, and when the
+base has closed the item while the ref has not and every field the ref spells
+differently is one the base spells too. A copy the ref never wrote since its
+fork is the fork's own, and one the base itself wrote since the fork is one it
+has been past, so neither is listed however far the base has moved
+(`PL-WVSX`). A copy the text still calls ahead is asked by its changes: where
+the base took every commit the ref wrote the item in, by `vcs.change_landed`,
+it is not listed either. That is the copy a squash merged with another edit and
+the base then reworded, which the text alone reported for as long as the ref
+stood (`PL-NPWP`). Where the checkout cannot name the fork, as in a shallow
+clone, the copy is read by its text alone. Everything else is ahead, including
+two copies that each carry something the other lacks: the reader is handed a
+diff either way, and calling that ahead reports it rather than hiding it.
 
 Two suppressions keep the list to something a reader acts on. A copy whose blob
 `HEAD` also holds is one this session can already see, which is the same rule
