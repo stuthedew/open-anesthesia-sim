@@ -3,11 +3,13 @@ id: PL-7DJK
 title: A Fraction the display builds can now refuse, and the halt that follows is shown as a failed step, half-drawn, unnamed, or not at all, though no supported setting reaches it
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/patient.py, tests/integration/test_simulation_view.py, tests/unit/test_chart_frame.py, tests/unit/test_dashboard_frame.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_series.py, src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/patient.py, tests/integration/test_simulation_view.py, tests/integration/test_controller.py, tests/unit/test_chart_frame.py, tests/unit/test_dashboard_frame.py, docs/ARCHITECTURE.md, docs/MODEL.md
 added: 2026-10-05
+closed: 2026-10-11
+pr: 1408
 payoff: when a value the display builds is refused, the screen says the run has stopped and why, instead of reading Running over a frozen, half-drawn chart
 verify: grep -q 'def test_a_halt_is_shown_when_the_snapshot_itself_is_refused' tests/integration/test_simulation_view.py
 ---
@@ -76,6 +78,80 @@ cannot fail - `status_word`, `transport` and `notice` read only `is_running`,
 `failure_reason` and `supported_limit_reason` - rather than from a fresh
 snapshot; build every value a frame draws before drawing any; name each
 construction by the quantity it is; and word a refused displayed value as one.
+
+**Settled before building (2026-10-11): the check stays, at the four places a
+derived `float` becomes a typed field, because no held proof exists for the
+display to reuse.** `.claude/rules/core-domain.md` re-checks no held proof,
+and nothing the display builds from holds one: each compartment stores
+`agent_amount_l`, and its `partial_pressure_fraction` is the quotient
+`agent_amount_l / gas_volume_l` (`core/alveolar.py`, `core/tissue.py`,
+`core/blood.py`) - a bare `float` carrying no proof, under the rule's own
+second fact about Python. A step builds the `Fraction` once, in
+`AgentUptakeSystem._write_state_vector`, and the setter it hands it to stores
+the amount, so the proof is spent the moment the value is held;
+`state_vector()` reads the quotients back as floats, and a drawn column is
+`RunDefinition`'s closed form evaluated at an instant no compartment ever
+held. Moving the proof into the compartments - storing the `Fraction`, or
+refusing an amount past the capacity where it is written - is a change to
+`core/`'s records this brief does not scope, and it would still leave the
+drawn columns unproved; the unguarded amount write, which is how case 1 was
+reproduced, is captured as its own item. What arrives already proved passes
+through unbuilt: the circuit's `inspired_partial_pressure_fraction`, held as
+a `Fraction` (`core/circuit.py`), the settings' `Percent`s and flows, and the
+agent's MAC and MAC-awake. So the four sites build the type, each naming its
+quantity: `snapshot()`'s five quotients and `_compartment_mac_multiples`'s six
+state entries (`app/controller.py`), every drawn column at frame assembly
+(`app/chart_frame.py`'s `_run_frame`), and the axis top
+(`assemble_chart_frame`); `RunFrame.percents`, the hover and the cursor
+readouts then read a built `Fraction` and build nothing. The owner's ratified
+answer above - a refusal on this path halts the run - is unchanged; what this
+settles is that the refusal is raised where the value is first typed, which
+is before any frame exists, and that the halt is stated from the controller's
+run state, which no compartment value is built for.
+
+**Built (2026-10-11, #1408).** `SimulationController.status()` returns a
+`RunStatus` - `is_running`, `supported_limit_reason`, `failure_reason` -
+built from the controller's own run-state fields and the run-length guard,
+and `SimulationSnapshot` extends it, so `status_word`, `transport` and
+`notice` take either and every caller passing a snapshot is unchanged;
+`RunView.present_halt` and `set_comparing` read `controller.status()` and
+never `snapshot()`. `present_halt` writes `dashboard_frame.halt_notice`,
+whose failure wording says no frame of the stopped run could be drawn and
+that the chart and the readouts show the frame drawn before the stop;
+`refresh` replaces it with `notice`'s on the first frame that draws, so
+which banner stands is decided by whether a frame drew rather than guessed
+from the reason. `FAILURE_NOTICE_TEMPLATE` no longer claims "the step that
+failed was rolled back and changed nothing", which was true only of a step
+failure - whose `SimulationNumericalError` already says so - and false of a
+setting that raised (`PL-YK2V`) and of a refused displayed value.
+`RunFrame.fractions` holds `Fraction`s built in `_run_frame` and
+`ChartFrame.axis_top_percent` a `Percent` built in `assemble_chart_frame`,
+so the refusal comes before a frame exists and `ConcentrationChart.draw` is
+never handed one to half-draw; `percents`, the hover, the cursor readouts
+and `off_scale_notice` build nothing. `run_series.COMPARTMENT_FRACTION_NAMES`
+carries the six names `_write_state_vector` uses, and the snapshot, the MAC
+multiples and the frame name from it.
+
+Tests: `test_a_halt_is_shown_when_the_snapshot_itself_is_refused` and
+`test_a_frame_that_refuses_a_drawn_value_moves_no_trace`
+(`tests/integration/test_simulation_view.py`; both red on `main` at
+103b07d6, the first with the unnamed refusal escaping `render_tick`);
+`test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step`
+and `test_a_halt_is_stated_from_the_run_status_alone`
+(`tests/unit/test_dashboard_frame.py`);
+`test_a_drawn_fraction_past_one_atmosphere_is_refused_before_any_frame_exists`,
+`test_a_refused_drawn_value_names_its_compartment_as_a_step_would`,
+`test_a_frame_holds_built_fractions_so_nothing_drawn_from_it_builds_one` and
+`test_an_axis_top_past_one_atmosphere_is_refused_when_the_frame_is_assembled`
+(`tests/unit/test_chart_frame.py`); and
+`test_a_snapshot_whose_quotient_is_refused_names_the_compartment_and_the_status_answers`
+(`tests/integration/test_controller.py`). The pinned failure banner in
+`test_refresh_view_reports_a_failed_run_as_stopped_not_paused` is rewritten
+for the shorter wording. Two findings filed: `PL-544D`, the unguarded amount
+write the reproduction and two of the tests rely on, and `PL-V2HC`, a halted
+run whose snapshot refuses cannot change agent, with a coalesced slider
+change's `_refresh_against_last_frame` reading the snapshot outside the
+gate too.
 
 **Why it matters.** A halt that is not shown is the worst of the four: a
 screen reading "Running" with Pause enabled over a failed controller is the

@@ -34,7 +34,12 @@ from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange
 # through the wrong divisor as a safety failure rather than a rounding one.
 # Nothing else about `app/formatting.py` is reached: no string is built here.
 from anesthesia_sim.app.formatting import mac_multiple
-from anesthesia_sim.app.run_series import COMPARTMENT_STATE_INDEX, DrawnWindow, RecordedQuantity
+from anesthesia_sim.app.run_series import (
+    COMPARTMENT_FRACTION_NAMES,
+    COMPARTMENT_STATE_INDEX,
+    DrawnWindow,
+    RecordedQuantity,
+)
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
@@ -62,10 +67,65 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
 @dataclass(frozen=True, slots=True)
-class SimulationSnapshot:
-    """Read-only simulation data exposed to the user interface."""
+class RunStatus:
+    """Whether the run is going, and why it is not: the three facts a halt is stated from.
+
+    `SimulationController.status()` builds one from the controller's own
+    run-state fields and the run-length guard, and builds no compartment
+    value for it, so it can be read of a run whose `snapshot()` refuses -
+    which is what `RunView.present_halt` needs, since the snapshot's own
+    `Fraction`s are among the values a halt can be for (`PL-7DJK`).
+    `SimulationSnapshot` extends it, so `dashboard_frame.status_word`,
+    `transport` and `notice` take either, and a frame that drew reads the
+    three off the snapshot it drew from.
+    """
 
     is_running: bool
+    """Whether the run is advancing. `False` for a pause and for both halts."""
+    supported_limit_reason: str | None
+    """Why the run stands at a declared limit of the model's domain, or
+    `None` if it does not.
+
+    A non-`None` value means the run stands at the supported run length,
+    where the core would refuse the next step - whether it stepped there,
+    was forked there, or was reset to a fork there (`PL-5291`). `is_running`
+    is `False`, and this is neither a pause nor a failure: nothing was
+    miscalculated, no step was rolled back, and every value in the snapshot
+    is a completed step's at a simulated time inside the supported span.
+    What ended is the claim that a further step would stand for a patient.
+
+    It is separate from `failure_reason` because the interface must not
+    present the two alike. Telling a reader the simulator broke, when it
+    stopped exactly where `docs/MODEL.md` says it should, misrepresents a
+    correct model as a defective one - and the reverse would be worse.
+    Both are `None` for a run that is merely paused.
+    """
+    failure_reason: str | None
+    """Why the run stopped abnormally, or `None` if it did not.
+
+    A non-`None` value means a step, a setting or a value the interface
+    built raised and the session is halted: `is_running` is `False`, but
+    this is not the same state as a user pause, and the interface must not
+    present it as one.
+
+    Every other field in the snapshot is nonetheless a completed step's.
+    `AgentUptakeSystem.advance()` rolls a failed step back, and elapsed
+    time advances only after it returns, so a halted session reports the
+    last step that finished — at the simulation time it finished at —
+    rather than one abandoned partway through.
+    """
+
+
+@dataclass(frozen=True, slots=True)
+class SimulationSnapshot(RunStatus):
+    """Read-only simulation data exposed to the user interface.
+
+    A `RunStatus` with everything else the interface draws: the three
+    run-state fields come first, inherited, and the rest follows. Built by
+    keyword in `SimulationController.snapshot()` and nowhere else in `src/`,
+    so the field order is nothing a caller relies on.
+    """
+
     elapsed_s: CaseInstant
     began_at_s: CaseInstant
     """The case instant this run itself began at: zero on a trunk, its fork on a branch.
@@ -195,37 +255,6 @@ class SimulationSnapshot:
     them tells a learner to wait for something that cannot arrive —
     `bookmarks.MarkStanding` carries the argument for each, and the reason a
     marked instant and a marked height are answered in different words.
-    """
-    supported_limit_reason: str | None
-    """Why the run stands at a declared limit of the model's domain, or
-    `None` if it does not.
-
-    A non-`None` value means the run stands at the supported run length,
-    where the core would refuse the next step - whether it stepped there,
-    was forked there, or was reset to a fork there (`PL-5291`). `is_running`
-    is `False`, and this is neither a pause nor a failure: nothing was
-    miscalculated, no step was rolled back, and every value in this snapshot
-    is a completed step's at a simulated time inside the supported span.
-    What ended is the claim that a further step would stand for a patient.
-
-    It is separate from `failure_reason` because the interface must not
-    present the two alike. Telling a reader the simulator broke, when it
-    stopped exactly where `docs/MODEL.md` says it should, misrepresents a
-    correct model as a defective one - and the reverse would be worse.
-    Both are `None` for a run that is merely paused.
-    """
-    failure_reason: str | None
-    """Why the run stopped abnormally, or `None` if it did not.
-
-    A non-`None` value means a step or a setting raised and the session is
-    halted: `is_running` is `False`, but this is not the same state as a
-    user pause, and the interface must not present it as one.
-
-    Every other field in this snapshot is nonetheless a completed step's.
-    `AgentUptakeSystem.advance()` rolls a failed step back, and elapsed
-    time advances only after it returns, so a halted session reports the
-    last step that finished — at the simulation time it finished at —
-    rather than one abandoned partway through.
     """
 
     @property
@@ -669,8 +698,38 @@ class SimulationController:
             cardiac_output_l_min=current.cardiac_output_l_min,
         )
 
+    def status(self) -> RunStatus:
+        """Whether this run is going and why it is not, built from nothing a compartment holds.
+
+        Read where a halt is presented (`RunView.present_halt`), because
+        `snapshot()` builds every compartment's fraction and a refusal of one
+        of those is among the halts to present: a halt stated from a fresh
+        snapshot was not stated at all when the snapshot was what refused
+        (`PL-7DJK`). The three fields are the controller's own run state and
+        the run-length guard, which reads the step count and the step - both
+        checked types the state holds - and builds no `Fraction`.
+        """
+
+        return RunStatus(
+            is_running=self._is_running,
+            supported_limit_reason=self.supported_limit_reason,
+            failure_reason=self._failure_reason,
+        )
+
     def snapshot(self) -> SimulationSnapshot:
-        """Build a fresh, read-only view of current simulation state."""
+        """Build a fresh, read-only view of current simulation state.
+
+        Raises:
+            SimulationConfigurationError: If a compartment's partial-pressure
+                quotient is outside 0 to 1. Each is built as a `Fraction`
+                here, under the compartment's name
+                (`run_series.COMPARTMENT_FRACTION_NAMES`), because the
+                compartment holds an amount and the quotient read from it
+                carries no proof; the interface halts the run on the refusal
+                and states the halt from `status()`, which cannot raise it
+                (`PL-7DJK`). No supported setting reaches it
+                (`core/concentration.py`).
+        """
 
         system = self._state.uptake_system
         circuit = system.circuit
@@ -693,15 +752,26 @@ class SimulationController:
             alveolar_ventilation_l_min=alveoli.alveolar_ventilation_l_min,
             cardiac_output_l_min=patient.cardiac_output_l_min,
             inspired_partial_pressure_fraction=circuit.inspired_partial_pressure_fraction,
-            alveolar_partial_pressure_fraction=(Fraction(alveoli.partial_pressure_fraction)),
-            mixed_venous_partial_pressure_fraction=(
-                Fraction(patient.mixed_venous_partial_pressure_fraction)
+            alveolar_partial_pressure_fraction=Fraction(
+                alveoli.partial_pressure_fraction,
+                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.ALVEOLAR],
             ),
-            vessel_rich_partial_pressure_fraction=(
-                Fraction(patient.vessel_rich.partial_pressure_fraction)
+            mixed_venous_partial_pressure_fraction=Fraction(
+                patient.mixed_venous_partial_pressure_fraction,
+                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.MIXED_VENOUS],
             ),
-            muscle_partial_pressure_fraction=(Fraction(patient.muscle.partial_pressure_fraction)),
-            fat_partial_pressure_fraction=(Fraction(patient.fat.partial_pressure_fraction)),
+            vessel_rich_partial_pressure_fraction=Fraction(
+                patient.vessel_rich.partial_pressure_fraction,
+                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.VESSEL_RICH],
+            ),
+            muscle_partial_pressure_fraction=Fraction(
+                patient.muscle.partial_pressure_fraction,
+                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.MUSCLE],
+            ),
+            fat_partial_pressure_fraction=Fraction(
+                patient.fat.partial_pressure_fraction,
+                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.FAT],
+            ),
             delivered_agent_l=accounting.delivered_agent_l,
             exhausted_agent_l=accounting.exhausted_agent_l,
             stored_agent_l=accounting.currently_stored_agent_l,
@@ -1787,13 +1857,22 @@ class SimulationController:
         position, rather than a second list written here: it is already the
         one place a trace could come to carry another compartment's values,
         and a crossing tested against the wrong compartment is the same defect
-        as a trace drawn from one.
+        as a trace drawn from one. Each entry is built as a `Fraction` under
+        the compartment's name, since the vector reads back the quotients the
+        compartments derive from the amounts they hold (`PL-7DJK`).
+
+        Raises:
+            SimulationConfigurationError: If a compartment's quotient is
+                outside 0 to 1, naming the compartment.
         """
 
         state = self._state.uptake_system.state_vector()
 
         return {
-            quantity: mac_multiple(Fraction(state[index]), self._agent_mac_percent)
+            quantity: mac_multiple(
+                Fraction(state[index], name=COMPARTMENT_FRACTION_NAMES[quantity]),
+                self._agent_mac_percent,
+            )
             for quantity, index in COMPARTMENT_STATE_INDEX.items()
         }
 

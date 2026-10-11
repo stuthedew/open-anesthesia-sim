@@ -43,6 +43,7 @@ from anesthesia_sim.core.governing_equations import (
 from anesthesia_sim.core.run_definition import DisplayState
 
 __all__ = [
+    "COMPARTMENT_FRACTION_NAMES",
     "COMPARTMENT_QUANTITIES",
     "COMPARTMENT_STATE_INDEX",
     "DrawnWindow",
@@ -124,6 +125,27 @@ COMPARTMENT_STATE_INDEX: Final[Mapping[RecordedQuantity, int]] = MappingProxyTyp
         RecordedQuantity.VESSEL_RICH: FIRST_TISSUE_FRACTION,
         RecordedQuantity.MUSCLE: FIRST_TISSUE_FRACTION + 1,
         RecordedQuantity.FAT: FIRST_TISSUE_FRACTION + 2,
+    }
+)
+
+#: What a refusal calls each compartment's fraction where the interface builds
+#: one (`PL-7DJK`).
+#:
+#: The names `AgentUptakeSystem._write_state_vector` gives the same six
+#: quantities as a step writes them (`PL-SPN6`), so a value refused where the
+#: interface types it - the snapshot's quotients, the MAC multiples, a drawn
+#: column - is named as the step that computed it would have named it, and a
+#: reader of the halted-run notice learns which compartment from either.
+#: `WASH_IN_RATIO` is absent for the reason it is absent above: it is a
+#: quotient of two of these, and the interface builds no `Fraction` of it.
+COMPARTMENT_FRACTION_NAMES: Final[Mapping[RecordedQuantity, str]] = MappingProxyType(
+    {
+        RecordedQuantity.CIRCUIT: "inspired_partial_pressure_fraction",
+        RecordedQuantity.ALVEOLAR: "alveolar partial_pressure_fraction",
+        RecordedQuantity.MIXED_VENOUS: "venous partial_pressure_fraction",
+        RecordedQuantity.VESSEL_RICH: "vessel_rich partial_pressure_fraction",
+        RecordedQuantity.MUSCLE: "muscle partial_pressure_fraction",
+        RecordedQuantity.FAT: "fat partial_pressure_fraction",
     }
 )
 

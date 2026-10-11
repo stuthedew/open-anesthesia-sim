@@ -5,7 +5,7 @@ import pytest
 from anesthesia_sim.app.bookmarks import MacTarget, MarkStanding, TimeBookmark
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
-from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.controller import BranchedCase, RunStatus, SimulationController
 from anesthesia_sim.app.dashboard_frame import SUPPORTED_LIMIT_NOTICE_TEMPLATE, notice, transport
 from anesthesia_sim.app.formatting import format_supported_run_length
 from anesthesia_sim.app.run_series import (
@@ -1478,6 +1478,50 @@ def test_a_drawn_window_refuses_the_derived_ratio_as_a_compartment() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="not a compartment state"):
         window.compartment_fractions(RecordedSeries(agent_id, RecordedQuantity.WASH_IN_RATIO))
+
+
+def test_a_snapshot_whose_quotient_is_refused_names_the_compartment_and_the_status_answers() -> (
+    None
+):
+    """`snapshot()` builds each compartment's fraction under its name; `status()` builds none.
+
+    The compartments hold amounts, and the quotient read from one carries no
+    proof, so the snapshot builds the `Fraction` and refuses a quotient past
+    1 - reached here, as no supported setting reaches it
+    (`core/concentration.py`), by writing the alveolar amount past the
+    compartment's capacity. The refusal names the compartment as a step
+    would (`run_series.COMPARTMENT_FRACTION_NAMES`), and `status()`, which
+    the interface states the halt from, still answers for the same run; a
+    snapshot is a `RunStatus` too, so what reads one reads either
+    (`PL-7DJK`).
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=5.0)
+
+    assert isinstance(controller.snapshot(), RunStatus)
+
+    alveoli = controller._state.uptake_system.alveoli
+    alveoli.agent_amount_l = alveoli.gas_volume_l * 1.0000001
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^alveolar partial_pressure_fraction of 1\.0000001 is outside 0 to 1",
+    ):
+        controller.snapshot()
+
+    assert controller.status() == RunStatus(
+        is_running=True, supported_limit_reason=None, failure_reason=None
+    )
+
+    controller.fail("SimulationConfigurationError: alveolar partial_pressure_fraction refused")
+
+    assert controller.status() == RunStatus(
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason="SimulationConfigurationError: alveolar partial_pressure_fraction refused",
+    )
 
 
 def test_wash_in_is_formed_per_drawn_column() -> None:
