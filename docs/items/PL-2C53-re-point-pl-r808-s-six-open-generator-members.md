@@ -9,7 +9,7 @@ feature: parallel-sessions
 touches: docs/items
 added: 2026-09-23
 payoff: no session spends an item building another vcs.py heuristic for a member the exact check already answers: each of the six either closes on it or says what it still owns
-verify: test "$(grep -l 'left_behind_check.py' docs/items/PL-X5PK-*.md docs/items/PL-CZR6-*.md docs/items/PL-NPWP-*.md docs/items/PL-BYMX-*.md docs/items/PL-B78T-*.md docs/items/PL-1X2C-*.md | wc -l)" -eq 6
+verify: grep -qF 'left_behind_check.py' docs/items/PL-X5PK-*.md && grep -qF 'left_behind_check.py' docs/items/PL-CZR6-*.md && grep -qF 'left_behind_check.py' docs/items/PL-NPWP-*.md && grep -qF 'left_behind_check.py' docs/items/PL-BYMX-*.md && grep -qF 'left_behind_check.py' docs/items/PL-B78T-*.md
 ---
 
 **Problem.** Re-point PL-R808's six open generator members at tools/left_behind_check.py, closing each whose question the exact left-behind check now answers
@@ -29,12 +29,25 @@ request squash-merged.
 **What the check reaches, for the pass to weigh member by member.** It runs in
 the session-start digest, not inside any `docket` command, because `PL-SK88`
 keeps the harness out of `docket`. It needs a token and the network. It
-answers only for a branch whose newest pull request merged. A branch with no
-pull request, and every decline, stays with `vcs.orphaned` (`PL-BHVM`). So a
+answers only for a branch whose newest pull request merged. Every decline stays
+with `vcs.orphaned` (`PL-BHVM`). So a
 member whose defect is in what `docket stranded`, `flight` or `show` prints is
 not answered just because the digest now prints a line. That member keeps its
 place, and its brief says what the exact check now covers and what is still
 left to it.
+
+**Re-confirmed 2026-10-11, with five members rather than six.** `PL-1X2C`
+closed on 2026-09-26 in `#1046` on its own fix: `bin/docket show` now names
+every other branch editing an item and leaves out the reader's own. That is a
+question about carriers, which reads no landing and nothing the exact check
+reports, so it leaves this pass and the `verify:` names the other five. Two
+corrections to the paragraph above, both read from the tree. It said a branch
+with no pull request stays with `vcs.orphaned`; it is read by neither check.
+`left_behind_check.py` clears it ("no pull request was opened from it"), and
+`vcs.orphaned` reports a branch only where part of its work has landed, so only
+`stranded`'s item reading sees one. And the check has a second reader since
+filing: `tools/branch_sweep.py` (`PL-X8SV`) keeps a branch the check reports or
+cannot read, so the daily sweep never archives a commit it names.
 
 **Generator check.** Bookkeeping. The head's own members were left to re-point,
 and this item was filed in the commit that closed `PL-R808` (`#932`). That is
