@@ -3,11 +3,13 @@ id: PL-2C53
 title: Re-point PL-R808's six open generator members at tools/left_behind_check.py, closing each whose question the exact left-behind check now answers
 priority: P2
 effort: M
-status: ready
+status: done
 classes: housekeeping
 feature: parallel-sessions
 touches: docs/items
 added: 2026-09-23
+closed: 2026-10-11
+pr: 1396
 payoff: no session spends an item building another vcs.py heuristic for a member the exact check already answers: each of the six either closes on it or says what it still owns
 verify: grep -qF 'left_behind_check.py' docs/items/PL-X5PK-*.md && grep -qF 'left_behind_check.py' docs/items/PL-CZR6-*.md && grep -qF 'left_behind_check.py' docs/items/PL-NPWP-*.md && grep -qF 'left_behind_check.py' docs/items/PL-BYMX-*.md && grep -qF 'left_behind_check.py' docs/items/PL-B78T-*.md
 ---
@@ -53,3 +55,34 @@ cannot read, so the daily sweep never archives a commit it names.
 and this item was filed in the commit that closed `PL-R808` (`#932`). That is
 the shape `PL-04KR` records for every attributed child to date. The store holds
 no other re-point item, so there is no cluster to name.
+
+**Done 2026-10-11.** Each of the five was weighed against the check, and against
+the tree where the tree had moved, and two shapes were reproduced on scratch
+repositories with real git:
+
+- `PL-CZR6` keeps its place, re-scoped. Its question is the check's own: the
+  check names such a commit at every session start and keeps its branch from
+  the sweep, so no further content reading in `vcs.py` is owed. What is left is
+  the line `bin/docket stranded` prints. Reproduced: after a squash against a
+  moved base and a push afterwards, `stranded` says "No branch carries work its
+  own pull request left behind" while the check names the commit. It is now `S`
+  and touches `render.py` and `test_cli.py`.
+- `PL-NPWP` keeps its place, re-scoped. The check opens no item copy. The
+  untouched copy its brief names was fixed by `PL-WVSX` in `#1160`, which the
+  reproduction confirms. What is left, also reproduced, is a copy a squash
+  merged with another edit and the base then reworded, which
+  `vcs.change_landed` already answers.
+- `PL-B78T` is dropped as `PL-BYMX`'s duplicate. Its two instances were settled
+  elsewhere, one of them by the check's first live finding (`PL-SRBR`), and its
+  Done-when is `PL-BYMX`'s question.
+- `PL-BYMX` keeps its whole design question, since the check clears a branch
+  with no pull request before comparing anything. It takes `PL-B78T`'s
+  closed-unmerged shape, its place in `stranded-report-fidelity`, and the
+  sweep's archive, which changes what its "nothing at all" answer costs.
+- `PL-X5PK` is about `flight`, which the check does not read. Its brief now
+  records that the reader it quotes was replaced and that the digest deepens a
+  shallow checkout.
+
+So one member closes, and one keeps only what `stranded` prints. The other three
+share `PL-R808`'s misread but were never answerable by its check, so a session
+starting one is not building a heuristic the check made redundant.
