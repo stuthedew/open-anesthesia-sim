@@ -213,6 +213,13 @@ class Config:
     #: using descriptive classes beyond the five lists declares the whole
     #: vocabulary here; declaring some does not extend the derived set.
     known_classes: tuple[str, ...] = ()
+    #: Feature names a project has taken out of use. A feature name is there
+    #: so `docket feature <name>` can answer "is that dealt with?", and a name
+    #: for an area rather than for what completes never can, since something
+    #: is filed against it every week. `docket check` errors on an open item
+    #: carrying one; a closed item keeps its own, so the history stays readable
+    #: and the name reports as finished. Empty retires nothing (`PL-S0MB`).
+    retired_features: tuple[str, ...] = ()
     #: Paths holding the checks themselves. A delegated diff that edits one
     #: has changed the thing measuring it, so the measurement means nothing.
     gate_paths: tuple[str, ...] = (
@@ -448,6 +455,7 @@ def load(root: Path) -> Config:
         ),
         minor_classes=_tuple(section.get("minor_classes"), defaults.minor_classes),
         known_classes=_tuple(section.get("known_classes"), defaults.known_classes),
+        retired_features=_tuple(section.get("retired_features"), defaults.retired_features),
         protected_paths=_tuple(section.get("protected_paths"), defaults.protected_paths),
         workflow_paths=_tuple(section.get("workflow_paths"), defaults.workflow_paths),
         generator_paths=_tuple(section.get("generator_paths"), defaults.generator_paths),

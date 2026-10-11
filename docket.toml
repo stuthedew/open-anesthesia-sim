@@ -318,6 +318,16 @@ known_classes = [
   "ux",
 ]
 
+# Feature names taken out of use, because each names an area rather than what
+# completes, so `bin/docket feature <name>` could never answer "is that dealt
+# with?" - something was filed against them every week. `bin/docket check`
+# errors on an open item carrying one; closed items keep theirs, so the history
+# reads and the names report as finished. `CLAUDE.md` had said since 2026-09-16
+# to name a group for what completes, and twelve captures in the week to
+# 2026-10-03 named one of these three anyway, which is why a check holds it now
+# (`PL-S0MB`). Not a package default - it is empty there.
+retired_features = ["dev-tooling", "parallel-sessions", "queue-hygiene"]
+
 # The boundary CLAUDE.md's "two standards, deliberately unequal" already draws,
 # written down so `docket next workflow` and `docket next product` can act on
 # it. An item's `touches` decides its side: all inside means workflow, none

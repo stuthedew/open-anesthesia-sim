@@ -4139,6 +4139,8 @@ payoff_required_from = 2026-09-20  # omit to leave the `payoff:` rule off
 recommendation_required_from = 2026-09-21   # a `needs-decision` brief
                                    # marks a recommendation; omit for off
 minor_classes = ["feature"]
+retired_features = []              # feature names `check` refuses on an open
+                                   # item; closed items keep theirs
 protected_paths = []
 gate_paths = ["Makefile", "pyproject.toml", ".github", ".claude", "docket.toml"]
 code_paths = ["src", "tests"]      # what `docket trend` counts as code

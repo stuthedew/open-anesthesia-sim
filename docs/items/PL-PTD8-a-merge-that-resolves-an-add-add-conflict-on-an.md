@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: needs-decision
 classes: defect
-feature: queue-hygiene
+feature: merge-skew
 touches: subprojects/docket/src/docket, subprojects/docket/tests
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-09-30
