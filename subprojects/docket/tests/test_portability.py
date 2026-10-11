@@ -39,6 +39,7 @@ ALLOWED_IMPORTS = {
     "datetime",
     "fnmatch",
     "functools",
+    "glob",
     "io",
     "locale",
     "os",
