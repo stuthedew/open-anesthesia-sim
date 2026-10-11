@@ -57,6 +57,19 @@ def _advance_for(controller: SimulationController, duration_s: float) -> None:
         controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
 
+def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
+    """Write a checked cardiac output onto the patient past `set_cardiac_output`.
+
+    The one write the type-only guard admits (`PL-LBQY`), and nothing in the
+    application makes it: the setter recomputes the tissue flows, and this
+    leaves them at the old output, which the settings record a run's
+    definition opens on refuses - at the next step, and at Reset (`PL-M4M0`).
+    """
+
+    patient = controller._state.uptake_system.patient
+    patient.cardiac_output_l_min = CardiacOutput(cardiac_output_l_min)
+
+
 def test_default_controller_starts_with_sevoflurane() -> None:
     controller = SimulationController()
 
@@ -1382,6 +1395,45 @@ def test_resetting_starts_the_run_definition_over() -> None:
     assert controller.drawn_window(0.0, 60.0, 150).times_s == (0.0,)
 
 
+def test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was() -> None:
+    """`reset()` refuses before it clears anything, so a refused Reset is not a half reset.
+
+    The settings record a run's definition opens on is built from the
+    compartments, and it refuses tissue flows that no longer sum to the
+    cardiac output. Read after the state had been cleared, as it was before
+    `PL-M4M0`, the refusal left the run half reset: compartments and clock
+    at zero, the old definition and timeline kept, no failure recorded and
+    the run still marked running. Read first, the refusal leaves everything
+    as it was - the run still going, on its own state and definition - and
+    what the refusal means is the interface's to decide
+    (`RunView._handle_reset`).
+    """
+
+    controller = SimulationController()
+    _run_with_two_changes(controller)
+    before = controller.snapshot()
+    segments = controller.run_segments
+    _with_stale_tissue_flows(controller, 6.0)
+
+    with pytest.raises(
+        SimulationConfigurationError, match="the venous balance returns what the tissues receive"
+    ):
+        controller.reset()
+
+    after = controller.snapshot()
+
+    assert before.is_running is True
+    assert after.is_running is True
+    assert controller.has_failed is False
+    assert after.elapsed_s == before.elapsed_s > 0.0
+    assert after.control_timeline == before.control_timeline
+    assert len(after.control_timeline) == 2
+    assert controller.run_segments == segments
+    assert len(segments) == 3
+    for field in COMPARTMENT_SNAPSHOT_FIELDS:
+        assert getattr(after, field) == getattr(before, field)
+
+
 def test_changing_agent_starts_the_run_definition_over() -> None:
     """`set_agent` begins a new run, and a run definition is of one run only."""
 
@@ -2270,6 +2322,43 @@ def test_resetting_a_branch_returns_it_to_its_fork_rather_than_to_zero() -> None
 
     for field in COMPARTMENT_SNAPSHOT_FIELDS:
         assert getattr(after, field) == getattr(at_fork, field)
+
+
+def test_a_branch_reset_the_core_refuses_leaves_the_branch_exactly_as_it_was() -> None:
+    """A branch's reset reads the same record first, so a refused one stands where it did.
+
+    The branch's route back to its fork, `_open_at`, records the settings in
+    force at the fork; before `PL-M4M0` it read them there, after the state
+    had been stood back at the fork, so a refusal left the branch at the
+    fork under its old definition with nothing recorded. `reset()` now reads
+    the record before anything moves and hands it in.
+    """
+
+    trunk = _trunk_with_two_changes()
+    fork_s = trunk.run_segments[-1].opening.instant_s
+    branch = trunk.resumed_at(fork_s)
+    branch.start()
+    _advance_for(branch, duration_s=10.0)
+    branch.set_fresh_gas_flow(FreshGasFlow(1.0))
+    before = branch.snapshot()
+    segments = branch.run_segments
+    _with_stale_tissue_flows(branch, 6.0)
+
+    with pytest.raises(
+        SimulationConfigurationError, match="the venous balance returns what the tissues receive"
+    ):
+        branch.reset()
+
+    after = branch.snapshot()
+
+    assert after.is_running is True
+    assert branch.has_failed is False
+    assert after.elapsed_s == before.elapsed_s > fork_s
+    assert after.control_timeline == before.control_timeline
+    assert len(after.control_timeline) == 1
+    assert branch.run_segments == segments
+    for field in COMPARTMENT_SNAPSHOT_FIELDS:
+        assert getattr(after, field) == getattr(before, field)
 
 
 def test_a_branch_is_the_agent_and_patient_its_parent_was() -> None:

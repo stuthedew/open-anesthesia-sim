@@ -275,6 +275,21 @@ class AgentUptakeSystem:
         state it could not step from, so the same step would fail again.
         The caller must stop.
 
+        **A settings record the step cannot build is met here too, and
+        restated with the rest.** `_advance_step` builds the record through
+        `_propagator_for` when a setting has moved since the last step, and
+        the record refuses tissue flows that no longer sum to the cardiac
+        output - what a checked output written onto the patient past
+        `set_cardiac_output` leaves, the one write the type-only guard admits
+        (`PL-LBQY`). It is not refused before the step as a
+        `SimulationConfigurationError`, because that type promises the caller
+        a run still worth continuing (`core/exceptions.py`), and a run whose
+        record cannot be built is not one: the same record is refused on
+        every step after, and by anything else that builds it, a Reset
+        included. Restated as a step that could not be completed, it reaches
+        the caller as the halt it is, with the two flows named in the litres
+        per minute they were set in (`PL-M4M0`).
+
         Raises:
             TypeError: `simulation_step_s` is not a `SimulationStep`, so
                 nothing has checked it against the supported range
@@ -291,9 +306,10 @@ class AgentUptakeSystem:
                 needs a 100% dial no supported setting reaches
                 (`core/concentration.py`). Otherwise this is cover for a
                 model extension whose matrix is not a pure transfer system.
-                The step has been rolled back, so what the system holds is the
-                last completed step; the run must stop rather than continue
-                from it.
+                Or the settings record the step builds its propagator from
+                could not be built, as above. The step has been rolled back,
+                so what the system holds is the last completed step; the run
+                must stop rather than continue from it.
         """
 
         require_simulation_step(simulation_step_s)
