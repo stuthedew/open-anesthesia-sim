@@ -12,6 +12,7 @@ from pathlib import Path
 
 from docket.checks import Report, analyze
 from docket.config import Config
+from docket.grep import Wrap
 from docket.instructions import Assertion
 from docket.instructions import read as read_instructions
 from docket.model import Item, parse_item, render_item
@@ -2416,6 +2417,30 @@ def test_a_blocked_item_is_not_also_counted_in_the_two_reading_finding() -> None
     assert _has(messages, "Either the work landed")
     assert len([m for m in messages if "PL-B1C2" in m and "Either the work landed" in m]) == 0
     assert _has(messages, "1 of 4 checked")
+
+
+def test_a_wrapped_phrase_is_named_with_its_lines_and_the_command_as_the_fault() -> None:
+    """`PL-RR1N`: the sentence a `! grep` was to see removed is still there, so "close
+    it" is wrong, and "does not discriminate" is true without saying why."""
+    wrap = Wrap("has no planned-milestone line of its", True, "ROADMAP.md", 3288, 3289)
+    messages = _landed_errors(_landed(wrapped=(("PL-K7QX", (wrap,)),)))
+
+    assert messages == [
+        "PL-K7QX's `verify:` greps for a phrase its file holds only across a line break, "
+        "and `grep` reads one line at a time: `has no planned-milestone line of its` is "
+        "still in ROADMAP.md, across lines 3288-3289, so its `! grep` passes while the "
+        "phrase is there. Rewrite the command to a phrase one line holds, rather than the "
+        "document to suit the command"
+    ]
+
+
+def test_a_failing_command_whose_phrase_is_wrapped_is_named_too() -> None:
+    # A verdict read from the tree, so it does not wait on the run: the failure
+    # is the case that otherwise reads as work not done.
+    wrap = Wrap("two rates and one volume", False, "docs/MODEL.md", 7, 8)
+    messages = _landed_errors(_landed(passing=(), wrapped=(("PL-K7QX", (wrap,)),)))
+
+    assert _has(messages, "is in docs/MODEL.md only across lines 7-8, so its `grep` fails")
 
 
 def test_nothing_is_said_when_no_open_item_has_landed() -> None:
