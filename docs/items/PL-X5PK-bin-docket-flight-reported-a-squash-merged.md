@@ -3,10 +3,12 @@ id: PL-X5PK
 title: bin/docket flight reported a squash-merged branch whose every change was already on the base, and _work_already_on_base is documented to have excluded it
 priority: P3
 effort: M
-status: ready
+status: dropped
 feature: carrier-detection
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-21
+closed: 2026-10-11
+reason: dead on PL-YVV4's count (2026-10-11): overtaken by PL-MT3R (#1116) - flight drops a tracking ref whose branch the remote no longer lists, which was this case's whole geometry
 payoff: it is settled whether every session in this harness gets a degraded flight read that none of them can detect
 not-delegable: An investigation whose two readings demand opposite work and whose honest outcome may be a drop, so no command can be written that passes only when it is done. The measurement it needs - whether an unread guard fires on a shallow clone - cannot be run against a full checkout, which is where a worker would run it.
 ---

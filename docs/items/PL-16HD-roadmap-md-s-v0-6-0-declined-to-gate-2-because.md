@@ -3,11 +3,13 @@ id: PL-16HD
 title: ROADMAP.md's v0.6.0 'Declined to Gate 2, because every one was captured after this list was frozen' subsection holds six entries and says 'All six' twice, but one paragraph says 'these seven were not yet filed', so a reader reconciling the count against the list finds one entry missing that was never there
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: docs
 feature: gate-list-integrity
 touches: ROADMAP.md
 added: 2026-09-22
+closed: 2026-10-11
+reason: dead on PL-YVV4's count (2026-10-11): the subsection it miscounts is gone from ROADMAP.md, removed by 1d5b23b0 (#970) when gate dispositions moved onto deferred-from:
 payoff: a reader reconciling v0.6.0's post-freeze deferral list against its own prose stops looking for a seventh entry that never existed
 verify: grep -qF 'these six were not yet filed' ROADMAP.md
 ---

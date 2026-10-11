@@ -3,11 +3,13 @@ id: PL-YZKK
 title: PL-PGZF was triaged apart from PL-CNCF on 'different functions, different modules', but assemble_chart_frame reaches PL-CNCF's cost through drawn_window, so the two tables are one curve and nothing in either item says so
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: docs
 feature: queue-hygiene
 touches: docs/items
 added: 2026-09-16
+closed: 2026-10-11
+reason: dead on PL-YVV4's count (2026-10-11): PL-CNCF closed by 8a863677 (#1359), which wrote the tie into its own brief - 'PL-PGZF is this item's cost measured one level up'
 verify: grep -qF 'the same cost one call level up' docs/items/PL-PGZF-pl-gs3r-made-the-chart-s-column-budget-follow.md && bin/docket check
 ---
 
