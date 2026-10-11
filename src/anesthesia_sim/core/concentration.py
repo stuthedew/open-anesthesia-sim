@@ -52,9 +52,14 @@ does:
   to convert it rather than rebuild it. Rebuilding it is refused as well:
   `mypy` passes `Percent(fraction)`, a `Fraction` being a `float`, so each
   constructor refuses a value of the other type with `TypeError` and the same
-  advice. A percent built from a fraction's *value* - a bare `float` that held
-  one - is not caught by anything: every fraction is also a valid percent,
-  under 1% and so below every agent's vaporizer maximum, and
+  advice. A value built as any other checked quantity - a step, a flow, an
+  instant or a count - is refused by each constructor as well, as the swapped
+  argument it is rather than as a missed conversion, through the one record of
+  the checked types every constructor reads (`core/checked_number.py`,
+  `PL-979Z`), and by `require_fraction` and `require_percent` where one is
+  held (`PL-CX2C`). A percent built from a fraction's *value* - a bare
+  `float` that held one - is not caught by anything: every fraction is also
+  a valid percent, under 1% and so below every agent's vaporizer maximum, and
   `require_within_vaporizer_maximum` passes it. That is why the dial's writers
   are few and each one passes a value already in percent. `PL-WVSK` measured
   the band when the dial was held as a fraction, before `PL-NJPB`. And the
@@ -92,7 +97,13 @@ from __future__ import annotations
 
 from typing import Final, NewType
 
-from anesthesia_sim.core.checked_number import negative_zero_as_zero, require_a_number, shown
+from anesthesia_sim.core.checked_number import (
+    CheckedQuantity,
+    negative_zero_as_zero,
+    require_a_number,
+    require_not_another_quantity,
+    shown,
+)
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 PERCENT_PER_UNIT_FRACTION: Final = 100.0
@@ -103,7 +114,7 @@ definition rather than a measured constant and carries no provenance note.
 """
 
 
-class Fraction(float):
+class Fraction(float, CheckedQuantity):
     """A dimensionless partial-pressure-equivalent fraction from 0 through 1,
     checked against that range when built.
 
@@ -130,8 +141,11 @@ class Fraction(float):
     Raises:
         TypeError: the value is a `Percent`, which is a conversion missed
             rather than a value refused, so it is told to convert, as
-            `require_fraction` tells it; or it is not an `int` or a `float`,
-            or is a `bool`, which is a programming error in the caller.
+            `require_fraction` tells it; or it was built as any other checked
+            quantity - a step, a flow, an instant, a count - which is a
+            swapped argument (`core/checked_number.py`, `PL-979Z`); or it is
+            not an `int` or a `float`, or is a `bool`, which is a programming
+            error in the caller.
         SimulationConfigurationError: the value is not finite, or is outside
             0 to 1. The message gives the value under `name`.
     """
@@ -142,6 +156,7 @@ class Fraction(float):
         if isinstance(fraction, Percent):
             raise _percent_where_a_fraction_belongs(name, fraction)
 
+        require_not_another_quantity(name, fraction, cls)
         require_a_number(name, fraction)
 
         if not 0.0 <= fraction <= 1.0:
@@ -153,7 +168,7 @@ class Fraction(float):
         return super().__new__(cls, negative_zero_as_zero(fraction))
 
 
-class Percent(float):
+class Percent(float, CheckedQuantity):
     """The same quantity as a percent of one atmosphere, from 0 through 100,
     checked against that range when built.
 
@@ -179,8 +194,9 @@ class Percent(float):
 
     Raises:
         TypeError: the value is a `Fraction`, for the reason `Fraction` gives
-            about a `Percent`; or it is not an `int` or a `float`, or is a
-            `bool`.
+            about a `Percent`; or it was built as any other checked quantity,
+            a swapped argument, as `Fraction` says; or it is not an `int` or a
+            `float`, or is a `bool`.
         SimulationConfigurationError: the value is not finite, or is outside
             0 to 100. The message gives the value under `name`.
     """
@@ -191,6 +207,7 @@ class Percent(float):
         if isinstance(percent, Fraction):
             raise _fraction_where_a_percent_belongs(name, percent)
 
+        require_not_another_quantity(name, percent, cls)
         require_a_number(name, percent)
 
         if not 0.0 <= percent <= PERCENT_PER_UNIT_FRACTION:
@@ -271,7 +288,15 @@ def require_fraction(name: str, fraction: object) -> None:
     A `Percent` is named as one and told to convert rather than to rebuild: a
     `Fraction` built from a percent's value holds a concentration a hundred
     times too large, which is the missing conversion this module's types exist
-    to refuse, and `Fraction` refuses the rebuild with the same message.
+    to refuse, and `Fraction` refuses the rebuild with the same message. A
+    value built as any other checked quantity - a step, a flow, an instant, a
+    count - is named as that and told nothing, by
+    `require_not_another_quantity`, which `Fraction` asks as well
+    (`core/checked_number.py`): until `PL-CX2C` a `SimulationStep(0.05)`
+    handed in as a fraction was told to build `Fraction(...)` from it, the
+    rebuild that would hold a step's value as a concentration. The value
+    prints through `shown`, so a bare `int` too long for `repr` is named by
+    its length rather than escaping as `ValueError`.
 
     Args:
         name: What the value is where it is handed in, for the message. A
@@ -292,10 +317,12 @@ def require_fraction(name: str, fraction: object) -> None:
     if isinstance(fraction, Percent):
         raise _percent_where_a_fraction_belongs(name, fraction)
 
+    require_not_another_quantity(name, fraction, Fraction)
+
     raise TypeError(
-        f"{name} of {fraction!r} was not built as Fraction, it is {type(fraction).__name__}: "
-        "build it as Fraction(...) where it is computed, which checks it against 0 to 1 once "
-        '(docs/MODEL.md, "Concentrations")'
+        f"{name} of {shown(fraction)} was not built as Fraction, it is "
+        f"{type(fraction).__name__}: build it as Fraction(...) where it is computed, which "
+        'checks it against 0 to 1 once (docs/MODEL.md, "Concentrations")'
     )
 
 
@@ -312,7 +339,10 @@ def require_percent(name: str, percent: object) -> None:
     `Percent` built from a fraction's value holds a concentration a hundred
     times too small, and is under every agent's vaporizer maximum, so nothing
     after this would refuse it. `Percent` refuses the rebuild with the same
-    message.
+    message. Any other checked quantity is named as the swapped argument it
+    is, as `require_fraction` says, since `PL-CX2C`: a `FreshGasFlow(2.0)`
+    handed in as the dial was told to build `Percent(...)` from it until
+    then.
 
     Args:
         name: What the value is where it is handed in - the dial, or its
@@ -330,10 +360,12 @@ def require_percent(name: str, percent: object) -> None:
     if isinstance(percent, Fraction):
         raise _fraction_where_a_percent_belongs(name, percent)
 
+    require_not_another_quantity(name, percent, Percent)
+
     raise TypeError(
-        f"{name} of {percent!r} was not built as Percent, it is {type(percent).__name__}: "
-        "build it as Percent(...) where it is set, which checks it against 0 to 100 once "
-        '(docs/MODEL.md, "Concentrations")'
+        f"{name} of {shown(percent)} was not built as Percent, it is "
+        f"{type(percent).__name__}: build it as Percent(...) where it is set, which checks "
+        'it against 0 to 100 once (docs/MODEL.md, "Concentrations")'
     )
 
 

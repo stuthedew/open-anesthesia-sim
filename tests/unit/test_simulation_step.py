@@ -17,15 +17,23 @@ import numpy
 import pytest
 
 from anesthesia_sim.app.playback import PlaybackRate
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import (
     MAXIMUM_SIMULATION_STEP_S,
     MINIMUM_SIMULATION_STEP_S,
     SimulationStep,
+    require_simulation_step,
     require_supported_simulation_step,
 )
-from anesthesia_sim.core.supported_ranges import StepCount
+from anesthesia_sim.core.supported_ranges import (
+    AlveolarVentilation,
+    CardiacOutput,
+    CaseInstant,
+    FreshGasFlow,
+    StepCount,
+)
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
@@ -150,13 +158,19 @@ def test_a_bare_float_step_is_refused_at_each_run_entry() -> None:
 
     bare_step_s = 0.1
 
-    with pytest.raises(TypeError, match="not a SimulationStep"):
+    with pytest.raises(TypeError) as raised:
         SimulationState(step_count=StepCount(0), simulation_step_s=bare_step_s)  # type: ignore[arg-type]
+
+    assert str(raised.value) == (
+        "simulation_step_s of 0.1 was not built as SimulationStep, it is float: build it as "
+        "SimulationStep(...) where the step is chosen, which checks it against the supported "
+        'range once (docs/MODEL.md, "Supported simulation step")'
+    )
 
     state = SimulationState()
     vector_before = state.uptake_system.state_vector()
 
-    with pytest.raises(TypeError, match="not a SimulationStep"):
+    with pytest.raises(TypeError, match="was not built as SimulationStep"):
         state.advance(bare_step_s)  # type: ignore[arg-type]
 
     assert state.step_count == 0
@@ -166,13 +180,50 @@ def test_a_bare_float_step_is_refused_at_each_run_entry() -> None:
     system = AgentUptakeSystem.default()
     vector_before = system.state_vector()
 
-    with pytest.raises(TypeError, match="not a SimulationStep"):
+    with pytest.raises(TypeError, match="was not built as SimulationStep"):
         system.advance(bare_step_s)  # type: ignore[arg-type]
 
     assert system.state_vector() == vector_before
 
-    with pytest.raises(TypeError, match="not a SimulationStep"):
+    with pytest.raises(TypeError, match="was not built as SimulationStep"):
         PlaybackRate(1).steps_per_tick(
             tick_interval_s=0.1,
             simulation_step_s=bare_step_s,  # type: ignore[arg-type]
         )
+
+
+@pytest.mark.parametrize(
+    "other",
+    [
+        CaseInstant(0.1),
+        StepCount(600),
+        FreshGasFlow(4.0),
+        AlveolarVentilation(4.0),
+        CardiacOutput(5.0),
+        Fraction(0.5),
+        Percent(2.0),
+    ],
+    ids=lambda other: type(other).__name__,
+)
+def test_another_quantity_handed_in_as_the_step_is_refused_as_a_swapped_argument(
+    other: object,
+) -> None:
+    """Named as the quantity it was built as, and not told to rebuild as the step.
+
+    A `CaseInstant(0.1)` arriving where the step belongs is a swapped
+    argument. Until `PL-848D` the refusal prescribed `SimulationStep(0.1)`,
+    which would have the caller build a 0.1 s step from an instant, passing
+    every check and holding the wrong quantity, so the message names the type
+    the value was built as and prescribes nothing. Every checked quantity is
+    one record (`core/checked_number.py`), so a count, a flow and both forms
+    of a concentration are refused in the same words.
+    """
+
+    with pytest.raises(TypeError) as raised:
+        require_simulation_step(other)
+
+    assert str(raised.value) == (
+        f"simulation_step_s of {other!r} was built as {type(other).__name__}, which is not "
+        "SimulationStep: it is another quantity, so build SimulationStep from the value that "
+        "simulation_step_s should hold, not from this one (core/checked_number.py)"
+    )

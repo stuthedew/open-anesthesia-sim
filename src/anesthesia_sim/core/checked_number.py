@@ -1,13 +1,16 @@
 """What a checked type is built from, how it holds a zero, and how a refusal names a value.
 
-`Fraction` and `Percent` (`core/concentration.py`), the three flows,
-`FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`, and the case
-instant, `CaseInstant` (`core/supported_ranges.py`), are each a `float`
-subclass checked against its own range when it is built, so that holding one
-is the proof the check ran (`.claude/rules/core-domain.md` § "A quantity with
-a check of its own is a type, checked once"). Before a range can be read, the
-value handed in has to be a number at all, and this module decides that once,
-for all of them, together with the one thing a held zero needs.
+`Fraction` and `Percent` (`core/concentration.py`), the run's step,
+`SimulationStep` (`core/simulation_step.py`), the three flows,
+`FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`, the case instant,
+`CaseInstant`, and the completed-step count, `StepCount`
+(`core/supported_ranges.py`), are each a `float` or an `int` subclass checked
+against its own range when it is built, so that holding one is the proof the
+check ran (`.claude/rules/core-domain.md` § "A quantity with a check of its
+own is a type, checked once"). Before a range can be read, the value handed in
+has to be a number at all, and not one already checked as another quantity,
+and this module decides both once, for all of them, together with the one
+thing a held zero needs.
 
 **A number is an `int` or a `float`, and nothing else** (`PL-LLMN`). Until
 that item each constructor read its value straight into `math.isfinite` and a
@@ -42,6 +45,39 @@ Every other NumPy scalar - `numpy.float32`, `numpy.int64` - is refused, and
 its caller converts it, so that a value rounded in a narrower format never
 reads as the number it was.
 
+**One checked quantity is never built from another** (`PL-979Z`). A checked
+type is a subclass of `float` or `int`, so `require_a_number` admits a value
+already built as one, and until that item each constructor then checked its
+number against a second range and, wherever the two ranges overlap, held the
+wrong quantity under the right type, measured 2026-10-05 on `main` at
+`b67dace8`: `CaseInstant(StepCount(600))` was an instant of 600 s,
+`CaseInstant(FreshGasFlow(5.0))` one of 5 s, `FreshGasFlow(CaseInstant(5.0))`
+a flow of 5 L/min, `SimulationStep(Fraction(0.05))` a step of 0.05 s and
+`Percent(FreshGasFlow(2.0))` a dial at 2%, and `mypy --strict` passed each
+call, a checked `float` being a `float`. Only `Fraction` and `Percent` refused
+each other. Where one was stored, `require_case_instant` and
+`require_step_count` named a value built as any of six types, reading a tuple
+`core/supported_ranges.py` kept, the flows' `_require_built` named the other
+two flows alone, and the step's check named none; `core/simulation_step.py`
+could not import that tuple back without a cycle, and the two concentrations
+were not in it. So every checked type
+is now a `CheckedQuantity`, and `require_not_another_quantity` is the first
+question each constructor asks of what it is handed, and each stored-value
+check of what is not already its own type: a value that is a `CheckedQuantity`
+but not the type in hand was built as another quantity, and is refused by
+name before any comparison reads its number. The record of which types are
+checked is the class hierarchy itself, read with one `isinstance` - a type is
+a checked quantity because it says so where it is defined, with no list to
+keep in step and no import between the three modules - so a checked type
+added later refuses, and is refused, from the day it is written. The same
+type is admitted, so an instant is rebuilt from an instant as before; and
+`Fraction` and `Percent` keep their own refusal of each other, which says to
+convert rather than to rebuild, since that pair is a missed conversion and
+not a swapped argument. The stored-value checks - `require_case_instant`,
+`require_step_count`, `require_simulation_step`, the flows' `require_*`, and
+`require_fraction` and `require_percent` - read the same record and refuse in
+the same words (`PL-848D`, `PL-CX2C`).
+
 **Minus zero is held as zero** (`PL-LLMN`). `-0.0` equals zero and is inside
 every closed interval here, so refusing it would refuse the supported zero -
 the fresh gas turned off, apnoea, circulatory arrest - which arithmetic reaches
@@ -56,16 +92,38 @@ same holes in it, and `StepCount`, built from an `int` alone, refuses what is
 not one in the same form since `PL-LLMN`. The sign-and-finiteness guards in
 `core/validation.py`, `require_positive_finite` and
 `require_nonnegative_finite`, with `SimulationStep` built on the first, had
-the same holes and were brought here by `PL-3800`, the last this module had
-named as outstanding. Having no supported range to refuse an `int` past the
-float range against, they refuse it by name as outside the range a `float`
-holds, where `math.isfinite` raised `OverflowError` converting it
-(`core/validation.py`).
+the same holes and were brought here by `PL-3800`. Having no supported range
+to refuse an `int` past the float range against, they refuse it by name as
+outside the range a `float` holds, where `math.isfinite` raised
+`OverflowError` converting it (`core/validation.py`). Neither guard builds a
+type, so neither asks whether its value was built as another quantity: a
+checked flow handed in as a circuit volume is a swapped argument no range can
+tell from a number, and is outside what this module decides.
 """
 
 from __future__ import annotations
 
 import sys
+
+
+class CheckedQuantity:
+    """A quantity built only through its own check, so that holding one is the proof the check ran.
+
+    The base of every checked type, and nothing more: it adds no slot, no
+    `__new__` and no arithmetic, so `FreshGasFlow` is the `float` it was and
+    `StepCount` the `int`, with this class after the number in each one's
+    bases. After, not before: `mypy` takes the nearest common base of two
+    checked types as the type of a container or a branch holding both, and
+    with this class first that base was this class rather than `float`, which
+    refused a `float` variable assigned a flow read from a dictionary of the
+    three (`app/dashboard_frame.py`'s `value`, measured building `PL-979Z`).
+    What it records is which types are checked, at the type's own definition,
+    so that `require_not_another_quantity` tells a value built as another
+    checked quantity from one nobody built with one `isinstance` and no list
+    of types kept anywhere else (`PL-979Z`).
+    """
+
+    __slots__ = ()
 
 
 def shown(value: object) -> str:
@@ -90,15 +148,59 @@ def shown(value: object) -> str:
     return repr(value)
 
 
+def require_not_another_quantity(name: str, value: object, building: type[CheckedQuantity]) -> None:
+    """Refuse a value built as a checked quantity other than `building`, before its number is read.
+
+    The first question a checked type's constructor asks of what it is handed,
+    and the first a stored-value check asks of what is not already its type:
+    a value that is a `CheckedQuantity` but not `building` was checked as
+    another quantity, and building `building` from it would check its number
+    against a second range and, wherever the two overlap, hold the wrong
+    quantity under the right type - a count of 600 steps as an instant of
+    600 s. A value of `building` itself passes, so a type is rebuilt from its
+    own kind; a value built as no checked type passes too, to whatever reads
+    its number next, `require_a_number` or the stored-value refusal.
+
+    The refusal names the parameter, the value, the type it was built as and
+    the type in hand, and prescribes no rebuild from the value, since that
+    rebuild is the error being refused: what it asks for is the value the
+    parameter should hold, and it says in as many words not to build from
+    this one.
+
+    Args:
+        name: What the value is where it is handed in, for the message, as
+            `require_a_number` takes it.
+        value: What was handed in.
+        building: The checked type being built, or required where a value
+            of it is stored.
+
+    Raises:
+        TypeError: `value` was built as a checked quantity other than
+            `building`. A programming error in the caller rather than a
+            refused setting, so not an `AnesthesiaSimulationError`
+            (`core/exceptions.py`).
+    """
+
+    if isinstance(value, CheckedQuantity) and not isinstance(value, building):
+        raise TypeError(
+            f"{name} of {shown(value)} was built as {type(value).__name__}, which is not "
+            f"{building.__name__}: it is another quantity, so build {building.__name__} from "
+            f"the value that {name} should hold, not from this one (core/checked_number.py)"
+        )
+
+
 def require_a_number(name: str, value: object) -> None:
     """Require an `int` or a `float`, before any comparison reads the value.
 
     Admits those two types and their subclasses, so a `numpy.float64`, an
     `IntEnum` member or a value already built as a checked type passes, and a
-    `bool`, a `numpy.bool_`, a `Decimal` and a `str` do not. A `bool` is an
-    `int` to Python and is refused all the same: `True` is not a setting. An
-    `IntEnum` member is an `int` its caller chose to name, and is admitted as
-    the `int` it is; `src/` defines no such enum.
+    `bool`, a `numpy.bool_`, a `Decimal` and a `str` do not. Whether a checked
+    value is the type in hand or another quantity is
+    `require_not_another_quantity`'s question, which each constructor asks
+    before this one. A `bool` is an `int` to Python and is refused all the
+    same: `True` is not a setting. An `IntEnum` member is an `int` its caller
+    chose to name, and is admitted as the `int` it is; `src/` defines no such
+    enum.
 
     Args:
         name: What the value is where it is handed in, for the message - the

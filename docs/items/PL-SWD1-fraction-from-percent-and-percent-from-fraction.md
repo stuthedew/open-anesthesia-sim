@@ -44,3 +44,17 @@ which is the wrong remedy for a value already in the form asked for. A `Percent`
 and a `Fraction` of their own kind convert as today, and the two docstrings stop
 naming this item as outstanding. A test in `tests/unit/test_concentration.py`
 named `test_neither_conversion_takes_the_form_it_converts_to` pins both.
+
+**Found by `PL-979Z`'s close-out review, 2026-10-11.** The same erasure admits
+every other checked quantity, not only the other concentration:
+`fraction_from_percent(FreshGasFlow(2.0))` is a `Fraction` of 0.02 and
+`percent_from_fraction(CaseInstant(0.5))` a `Percent` of 50.0, silently, since
+the arithmetic runs on the number and the constructor sees a plain `float`.
+Since `PL-979Z` every checked type is a `CheckedQuantity`
+(`core/checked_number.py`), so after the refusal this brief asks for - a value
+already in the form the crossing converts to, named as that - one
+`require_not_another_quantity(name, value, Percent)` before the arithmetic in
+`fraction_from_percent`, and its mirror in `percent_from_fraction`, refuses
+every other checked quantity in the words the constructors and the stored-value
+checks use. No caller in `src/` reaches either crossing with anything but the
+form it asks for; `PL-979Z`'s review traced each one.

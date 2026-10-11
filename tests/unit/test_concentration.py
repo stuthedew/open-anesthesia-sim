@@ -38,10 +38,19 @@ from anesthesia_sim.core.concentration import (
     Percent,
     fraction_from_percent,
     percent_from_fraction,
+    require_fraction,
+    require_percent,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import load_sevoflurane_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.supported_ranges import (
+    AlveolarVentilation,
+    CardiacOutput,
+    CaseInstant,
+    FreshGasFlow,
+    StepCount,
+)
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # Sevoflurane's vaporizer maximum, in the percent its dial reads. Since
@@ -244,6 +253,74 @@ def test_neither_type_can_be_built_from_the_other() -> None:
         Fraction(Percent(0.5))
 
 
+@pytest.mark.parametrize(
+    "other",
+    [
+        SimulationStep(0.05),
+        StepCount(1),
+        CaseInstant(0.5),
+        FreshGasFlow(2.0),
+        AlveolarVentilation(4.0),
+        CardiacOutput(5.0),
+    ],
+    ids=lambda other: type(other).__name__,
+)
+def test_another_quantity_handed_in_as_a_concentration_is_refused_as_a_swapped_argument(
+    other: object,
+) -> None:
+    """Named as the quantity it was built as, and not told to rebuild or to convert.
+
+    A `SimulationStep(0.05)` arriving where a fraction belongs, or a
+    `FreshGasFlow(2.0)` where the dial does, is a swapped argument and not the
+    missed conversion the two types refuse in each other. Until `PL-CX2C`
+    `require_fraction` and `require_percent` knew only each other, so each
+    told the caller to build the type from the value - a concentration of
+    0.05 from a step, a dial at 2% from a flow - which every later check
+    admits. Every checked quantity is one record (`core/checked_number.py`),
+    so the refusal names the type the value was built as and prescribes
+    nothing, where a concentration is held and at the constructor alike.
+    """
+
+    with pytest.raises(TypeError) as as_a_fraction:
+        require_fraction("alveolar partial_pressure_fraction", other)
+
+    with pytest.raises(TypeError) as as_a_percent:
+        require_percent("delivered_concentration_percent", other)
+
+    assert str(as_a_fraction.value) == (
+        f"alveolar partial_pressure_fraction of {other!r} was built as "
+        f"{type(other).__name__}, which is not Fraction: it is another quantity, so build "
+        "Fraction from the value that alveolar partial_pressure_fraction should hold, not "
+        "from this one (core/checked_number.py)"
+    )
+    assert str(as_a_percent.value) == (
+        f"delivered_concentration_percent of {other!r} was built as {type(other).__name__}, "
+        "which is not Percent: it is another quantity, so build Percent from the value that "
+        "delivered_concentration_percent should hold, not from this one "
+        "(core/checked_number.py)"
+    )
+
+
+def test_a_count_too_long_to_print_is_named_where_a_concentration_is_held() -> None:
+    """`require_fraction` and `require_percent` print through `shown`, as the constructors do.
+
+    Until `PL-CX2C` each printed with `repr`, so a bare `int` past the digits
+    CPython prints raised `ValueError` while the `TypeError` was being
+    written, the escape `PL-5F76` closed for the count.
+    """
+
+    named = f"<more than {sys.get_int_max_str_digits():,} digits>"
+
+    with pytest.raises(TypeError) as as_a_fraction:
+        require_fraction("fraction", 10**5000)
+
+    with pytest.raises(TypeError) as as_a_percent:
+        require_percent("percent", 10**5000)
+
+    assert str(as_a_fraction.value).startswith(f"fraction of {named} was not built as Fraction")
+    assert str(as_a_percent.value).startswith(f"percent of {named} was not built as Percent")
+
+
 def test_neither_conversion_can_refuse_a_value_of_its_own_type() -> None:
     """Each crossing builds the checked type, and no value of the other refuses it.
 
@@ -409,11 +486,23 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
     vector_before = system.state_vector()
     step = SimulationStep(0.1)
 
-    with pytest.raises(TypeError, match="^inspired_partial_pressure_fraction of 0.0 was not built"):
+    with pytest.raises(TypeError) as as_a_fraction:
         system.circuit.set_inspired_partial_pressure_fraction(0.0)  # type: ignore[arg-type]
 
-    with pytest.raises(TypeError, match="^delivered_concentration_percent of 2.0 was not built"):
+    assert str(as_a_fraction.value) == (
+        "inspired_partial_pressure_fraction of 0.0 was not built as Fraction, it is float: "
+        "build it as Fraction(...) where it is computed, which checks it against 0 to 1 once "
+        '(docs/MODEL.md, "Concentrations")'
+    )
+
+    with pytest.raises(TypeError) as as_a_percent:
         system.circuit.set_delivered_concentration_percent(2.0)  # type: ignore[arg-type]
+
+    assert str(as_a_percent.value) == (
+        "delivered_concentration_percent of 2.0 was not built as Percent, it is float: build "
+        "it as Percent(...) where it is set, which checks it against 0 to 100 once "
+        '(docs/MODEL.md, "Concentrations")'
+    )
 
     with pytest.raises(TypeError, match="^alveolar partial_pressure_fraction of 0.0 was not built"):
         system.alveoli.set_partial_pressure_fraction(0.0)  # type: ignore[arg-type]

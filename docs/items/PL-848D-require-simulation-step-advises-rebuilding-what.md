@@ -3,12 +3,14 @@ id: PL-848D
 title: require_simulation_step advises rebuilding what it refuses from the same value - SimulationStep(0.1) for a CaseInstant(0.1) handed in as the step, which would build a 0.1 s step from an instant - and _require_built names only the three flows as swapped arguments; both print with repr, so an int past 4,300 digits raises ValueError instead of TypeError (measured 2026-10-04); bring both to the refusal require_case_instant and require_step_count use, _CHECKED_QUANTITIES and _shown (found folding #1354's review)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: parse-dont-validate
 touches: src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_simulation_step.py, tests/unit/test_supported_ranges.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-11
+pr: 1404
 payoff: a quantity handed in where the step or a flow belongs is named as the swapped argument it is, never prescribed a rebuild that stores the wrong quantity under the right type, and no refusal of either check can itself raise
 verify: grep -q 'def test_another_quantity_handed_in_as_the_step_is_refused_as_a_swapped_argument' tests/unit/test_simulation_step.py && grep -q 'def test_a_step_a_count_or_an_instant_handed_in_as_a_flow_is_refused_as_a_swapped_argument' tests/unit/test_supported_ranges.py
 recurrences: 2026-10-05 PL-979Z
@@ -67,3 +69,31 @@ extended to the step's check and the three flows'.
 `Percent` print through it, so a bare `int` too long to print is refused
 against each range in the simulator's words; `require_simulation_step` and
 `_require_built` still do not, which is the escape above.
+
+**Built 2026-10-11, in `PL-979Z`'s branch, with `PL-CX2C`.** The list the
+brief names, `_CHECKED_QUANTITIES`, is gone: `PL-979Z` made every checked type
+a `CheckedQuantity` (`core/checked_number.py`) and the class hierarchy the one
+record, read by `require_not_another_quantity` with one `isinstance`, so the
+step's check and `_require_built` read it from `core/checked_number.py`, which
+both modules already import, and the cycle the brief found never arises.
+`require_simulation_step` and `_require_built` now return on their own type,
+ask `require_not_another_quantity` next, and refuse a value nobody built
+through `shown`, in the form `require_case_instant` and `require_step_count`
+use: `simulation_step_s of 0.1 was built as CaseInstant, which is not
+SimulationStep: it is another quantity, so build SimulationStep from the value
+that simulation_step_s should hold, not from this one (core/checked_number.py)`, and `fresh_gas_flow_l_min of 5 was built as
+StepCount, which is not FreshGasFlow: ...` (the brief's four probes, re-run
+after the change). The step's bare-value refusal changed shape with it, from
+`is a float, not a SimulationStep: build the run's step as SimulationStep(0.1)`
+to `was not built as SimulationStep, it is float: build it as
+SimulationStep(...) where the step is chosen`, so the four
+`match="not a SimulationStep"` assertions in
+`tests/unit/test_simulation_step.py` now match `was not built as
+SimulationStep` - a changed assertion `bin/docket verify --self` is expected to
+REJECT on, and the reply says so. The two tests the `verify:` names are in
+place; the step's runs over all seven other types and the flows' over the
+step, a count, an instant and both concentrations, since the record already
+holds them (`PL-CX2C` adds the concentrations' own side).
+`test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one` now
+covers the step and the three flows, where `10**5000` raised `ValueError`
+until this.
