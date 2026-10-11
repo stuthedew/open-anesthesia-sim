@@ -3,13 +3,16 @@ id: PL-0FJ8
 title: A MAC divisor's positivity is checked in five app/formatting.py functions and by nothing that holds it: AgentParameters admits Percent(0.0) built directly, only the loader's PositivePercent refuses one, and format_mac_reference checks nothing, directly or through another
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
 feature: parse-dont-validate
 touches: src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py
 added: 2026-10-11
+closed: 2026-10-11
+pr: 1424
 payoff: a zero or negative MAC is refused when the agent record is built, so no screen can print 1 MAC = 0.0% or divide by it
 verify: grep -q 'def test_an_agent_with_a_non_positive_mac_is_refused' tests/unit/test_parameters.py
+recurrences: 2026-10-11 PL-HPKK
 ---
 
 **Problem.** A MAC divisor's positivity is checked in five app/formatting.py functions and by nothing that holds it: AgentParameters admits Percent(0.0) built directly, only the loader's PositivePercent refuses one, and format_mac_reference checks nothing, directly or through another
