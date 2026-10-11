@@ -3,11 +3,13 @@ id: PL-NPWP
 title: bin/docket stranded's ahead list keys on textual difference between the base's copy and a branch's, so a branch holding a stale copy is reported forever and no amount of recovery can empty the list - which is the completion test PL-DZM1 was written against
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: stranded-report-fidelity
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-21
+closed: 2026-10-11
+pr: 1402
 payoff: stranded's list can reach empty again, so a row in it means somebody has work to recover rather than that a fork is old
 verify: grep -q 'def test_a_copy_a_squash_took_and_the_base_reworded_is_not_reported' subprojects/docket/tests/test_vcs.py
 ---
@@ -79,3 +81,39 @@ reported as ahead, so the list holds only copies carrying something the base
 never took. A test in `subprojects/docket/tests/test_vcs.py` drives a squash that
 merged the branch's edit with another one and a base that reworded it afterwards,
 and the two fork tests above still pass.
+
+**Done 2026-10-11 (`#1402`).** Re-confirmed first, on real git at `1422c404`:
+the brief's shape reproduced as written, and so did the same shape without the
+rewording, since a `status:` the base moved to `ready` is not a closure and
+`_standing` calls the branch's copy ahead on that field alone. `stranded` now
+asks `vcs.change_landed` of every commit a ref wrote the item in, for a copy
+the text calls ahead and only where the split was read, and a copy whose every
+commit the base took is not reported (`vcs._ItemChanges`).
+`test_a_copy_a_squash_took_and_the_base_reworded_is_not_reported` drives the
+shape, with a commit pushed after the merge still reported beside it, and the
+two fork tests pass unchanged.
+
+The commits are the ref's non-merge commits the base does not hold that wrote a
+file of the item under either name a retitle gave it (`vcs._item_edits`).
+Asked of the newest commit, or of the item's current name alone, a retitle the
+base cherry-picked would have cleared a note written under the old name that
+nothing took: `test_a_retitle_the_base_took_leaves_a_note_written_under_the_old_name_reported`.
+A listing git did not answer, and a git older than 2.40, keep the copy and mark
+the read partial (`test_a_change_git_would_not_place_leaves_the_copy_reported`).
+A mutation of each guard fails one of the three tests.
+
+Measured on 2026-10-11, against refs fetched into a scratch clone: on 299 merged
+pull-request heads (`#1100`-`#1401`) and on the commit before the base merge 192
+of them end with, no copy reached the new test, before or after. Each of 151 of
+those heads given one commit pushed after its merge was reported before and
+after, and the read went from 8.7 s to 19.0 s, about 70 ms a reported copy. On
+this checkout `PL-3800`'s live edit (`#1397`) is still the one row.
+
+What it still reports, and why nothing was filed: a branch that wrote an item in
+two commits whose lines sit next to each other, a closure and then the `pr:`
+recorded under its `closed:`, leaves a squash holding both, and the first
+commit replayed alone conflicts with it. That is `change_landed`'s documented
+recall cost, it errs toward reporting, as every row did before this, and no
+population above produced one. `_ItemChanges` names it where a reader of such a
+row would look. The docket README's paragraph on how a direction is decided
+still described the rule `PL-WVSX` replaced, and now describes both changes.

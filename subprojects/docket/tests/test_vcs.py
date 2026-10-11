@@ -4137,6 +4137,117 @@ def test_a_later_merge_touching_the_file_is_not_work_left_behind(tmp_path: Path)
     assert [commit.commit for commit in unreplayed.commits] == [fix]
 
 
+# --- `stranded` reads the change as well as the copy (`PL-NPWP`) --------------
+#
+# A squash that merges a branch's edit to an item with another edit writes a
+# copy the branch never held, so the split leaves the branch's copy outstanding
+# however long ago it landed, and a base that rewords it since makes the text
+# call it ahead. `change_landed` reads the change itself.
+
+FINDING = "\n**Found again 2026-09-20.** A fourth instance, and the count it implies.\n"
+RETITLED = "docs/items/PL-0001-sharper.md"
+
+
+def _squashed_then_reworded(tmp_path: Path) -> tuple[_Repo, str]:
+    """`PL-NPWP`'s shape, with the branch's one commit.
+
+    The branch appends a finding to an item. Another pull request moves the
+    item's `status:` first, so the squash writes a copy the branch never held,
+    and the base then rewords the finding.
+    """
+    repo = _Repo(tmp_path / "repo")
+    first = _document("PL-0001", "On main")
+    _write(repo, "seed", {ITEM: first})
+    repo.git("switch", "-qc", "claude/finding")
+    finding = _write(repo, "PL-0001: a finding", {ITEM: first + FINDING})
+    repo.git("switch", "-q", "main")
+    ready = first.replace("status: untriaged", "status: ready")
+    _write(repo, "PL-0002: triage it (#1)", {ITEM: ready})
+    repo.git("merge", "-q", "--squash", "claude/finding")
+    repo.git("commit", "-qm", "PL-0001: a finding (#2)")
+    reworded = ready + FINDING.replace("fourth", "fifth")
+    _write(repo, "PL-0003: reword the finding (#3)", {ITEM: reworded})
+    return repo, finding
+
+
+def test_a_copy_a_squash_took_and_the_base_reworded_is_not_reported(tmp_path: Path) -> None:
+    """`PL-NPWP`: every commit the branch wrote the item in is one the base took.
+
+    The text alone calls the branch's copy ahead, since it holds the finding as
+    first worded, and the item was reported for as long as the ref stood.
+    `change_landed` names the squash. A commit pushed to the branch after the
+    merge is one nothing took, so that copy is still reported.
+    """
+    repo, finding = _squashed_then_reworded(tmp_path)
+    repo.git("switch", "-qc", "claude/pushed-after", "claude/finding")
+    _write(repo, "PL-0001: pushed after the merge", {ITEM: repo.read(ITEM) + "\n**And.** y\n"})
+    repo.git("switch", "-q", "main")
+    on_main = _run_git(["show", f"main:{ITEM}"], repo.root)
+    on_branch = _run_git(["show", f"claude/finding:{ITEM}"], repo.root)
+    landing = change_landed(finding, "main", repo.root)
+
+    report = stranded(repo.root, set(), runner=_run_git)
+
+    assert _standing(on_main, on_branch) == "ahead"
+    assert landing is not None and landing.pull_request == 2
+    assert report.known, report.declined
+    assert [(edit.identifier, edit.branches) for edit in report.edits] == [
+        ("PL-0001", ("claude/pushed-after",))
+    ]
+
+
+def test_a_retitle_the_base_took_leaves_a_note_written_under_the_old_name_reported(
+    tmp_path: Path,
+) -> None:
+    """Every commit that wrote the item counts, under either name a retitle gave it.
+
+    The branch adds a note under the item's first name, then retitles it, and
+    the base cherry-picks the retitle alone. Asked only of the commits that
+    wrote the item's current name, the retitle would have cleared the copy and
+    the note would be lost with the branch. The brief is long beside the note,
+    so that git pairs the file's two names as a rename on both sides.
+    """
+    repo = _Repo(tmp_path / "repo")
+    steps = "".join(f"\n**Step {n}.** As the brief first wrote it.\n" for n in range(1, 9))
+    first = _document("PL-0001", "On main") + steps
+    _write(repo, "seed", {ITEM: first})
+    repo.git("switch", "-qc", "claude/retitle")
+    note = _write(repo, "PL-0001: a note", {ITEM: first + "\n**Note.** y\n"})
+    repo.git("mv", ITEM, RETITLED)
+    sharper = repo.read(RETITLED).replace("title: On main", "title: Sharper")
+    retitle = _write(repo, "PL-0001: retitle it", {RETITLED: sharper})
+    repo.git("switch", "-q", "main")
+    repo.git("cherry-pick", retitle)
+
+    report = stranded(repo.root, set(), runner=_run_git)
+
+    assert change_landed(retitle, "main", repo.root) is not None
+    assert change_landed(note, "main", repo.root) is None
+    assert [(edit.identifier, edit.path) for edit in report.edits] == [("PL-0001", RETITLED)]
+
+
+def test_a_change_git_would_not_place_leaves_the_copy_reported(tmp_path: Path) -> None:
+    """A silence keeps the copy, the direction every other one in `stranded` takes.
+
+    A listing git did not answer names no commit, which must not read as every
+    commit taken, and a git older than 2.40 has no `--merge-base`, so
+    `change_landed` places nothing. Either way the copy is reported, and the
+    read says it was partial.
+    """
+    repo, _ = _squashed_then_reworded(tmp_path)
+
+    def unlisted(args: list[str], root: Path) -> str:
+        return SILENT if args[0] == "log" and "--no-merges" in args else _run_git(args, root)
+
+    def old_git(args: list[str], root: Path) -> str:
+        return SILENT if args[0] == "merge-tree" else _run_git(args, root)
+
+    for runner in (unlisted, old_git):
+        report = stranded(repo.root, set(), runner=runner)
+        assert [edit.identifier for edit in report.edits] == ["PL-0001"], runner.__name__
+        assert report.declined, runner.__name__
+
+
 # --- the forge's word on a merged pull request (`PL-8BR0`) --------------------
 #
 # A squash lands none of a branch's commits by hash, and a commit that only
