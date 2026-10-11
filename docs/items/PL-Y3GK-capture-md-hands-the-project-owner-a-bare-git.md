@@ -32,6 +32,16 @@ the branch, no pull-request ref keeps its commits either.
 which copies and deletes in one transaction, leased on the tip it was judged at,
 so that every deletion of a `claude/` branch, by the sweep or by hand, keeps an
 archive copy, and the restore `docs/maintainer.md` § "Sweep branches now, or
-restore one the sweep deleted" already gives covers both. How often a session
-has handed the owner this command since the sweep started on 2026-09-26 was not
-measured.
+restore one the sweep deleted" already gives covers both.
+
+**The path has run once since the sweep started, and kept nothing**, read from
+the sweep's 16 run logs (2026-09-26 to 2026-10-11) and `origin`'s refs on
+2026-10-11. `claude/project-thread-qt3onr` was kept by every run from
+2026-09-26 to 2026-10-03 on "unfinished work on PL-QMN0", and was gone before
+the 2026-10-04 run with no `refs/archive/` copy. The sweep archived only
+`claude/gifted-pasteur-iwimhy` in those runs, and GitHub deletes a head branch
+only when its own pull request merges, where this branch's one pull request,
+`#1127`, closed unmerged; so it was deleted by hand (inferred). Its work outside
+the queue was `PL-QMN0`'s fix, which `#1138` dropped and recorded as kept at
+`59ea9d1c`, `#1127`'s head, so nothing known was lost. Whatever it carried past
+that head is no longer readable from here.
