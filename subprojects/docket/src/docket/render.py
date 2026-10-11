@@ -3888,7 +3888,7 @@ def format_trend(report: Trend) -> str:
     return "\n".join(lines)
 
 
-_FILED, _PER_DAY, _HEAD, _BAND, _NEW, _PER_ITEM = 7, 6, 7, 5, 11, 7
+_FILED, _PER_DAY, _REENTRY, _HEAD, _BAND, _NEW, _PER_ITEM = 7, 6, 10, 7, 5, 11, 7
 
 
 def format_inflow(report: Inflow) -> str:
@@ -3903,7 +3903,8 @@ def format_inflow(report: Inflow) -> str:
 
     bands = (*PRIORITIES, UNBANDED)
     lines = [
-        f"{'period':<{_LABEL}}{'filed':>{_FILED}}{'/day':>{_PER_DAY}}{'+head':>{_HEAD}}"
+        f"{'period':<{_LABEL}}{'filed':>{_FILED}}{'/day':>{_PER_DAY}}"
+        f"{'re-entry':>{_REENTRY}}{'+head':>{_HEAD}}"
         + "".join(f"{band:>{_BAND}}" for band in bands)
         + f"{'new paths':>{_NEW}}{'/item':>{_PER_ITEM}}"
     ]
@@ -3911,7 +3912,7 @@ def format_inflow(report: Inflow) -> str:
         per_item = period.new_paths_per_item
         lines.append(
             f"{period.label:<{_LABEL}}{period.filed:>{_FILED}}{period.per_day:>{_PER_DAY}.1f}"
-            f"{period.by_head:>{_HEAD}}"
+            f"{period.reentries:>{_REENTRY}}{period.by_head:>{_HEAD}}"
             + "".join(f"{period.priorities.get(band, 0):>{_BAND}}" for band in bands)
             + f"{period.new_paths:>{_NEW}}"
             + f"{'-' if per_item is None else f'{per_item:.2f}':>{_PER_ITEM}}"
@@ -3926,6 +3927,8 @@ def format_inflow(report: Inflow) -> str:
         f"Left out of that test, since every capture writes there: {left_out}.",
         "  filed      filings no head explained when they arrived. /day divides by the",
         "             days the period has, so a short final period compares with the rest.",
+        "  re-entry   of filed, those whose reenters: names a closed item whose fix should",
+        "             have covered them, as triage's generator check judged it.",
         "  +head      filed while a head whose root-cause-of names them was open: a sweep's",
         "             own filings, or new instances of a cause already found. Kept apart so",
         "             a deliberate sweep does not read as regression.",
@@ -3936,6 +3939,11 @@ def format_inflow(report: Inflow) -> str:
         "Each column counts one thing and none is a score: whether a row is the one",
         "expected is the reader's call.",
     ]
+    if report.reentered:
+        lines += ["", "Re-entered by three or more filings, a generator whose fix did not hold:"]
+        lines += [
+            f"  {closed}  by {', '.join(filed)}" for closed, filed in report.reentered.items()
+        ]
     return "\n".join(lines)
 
 

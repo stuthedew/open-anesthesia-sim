@@ -49,6 +49,7 @@ from .model import (
     ranks_as_generator,
     ranks_as_generator_defect,
     recurrence_faults,
+    reentry_faults,
     root_cause_faults,
     split_deferred_from,
     split_generator_verdict,
@@ -2216,6 +2217,7 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
     _check_generator_verdicts(report, known)
     _check_misread(report, known)
     _check_recurrences(report, known)
+    _check_reentries(report)
     _check_spent_verdicts(report, known)
 
     known_items = {i.identifier: i for i in report.items}
@@ -2476,6 +2478,20 @@ def _check_recurrences(report: Report, known: set[str]) -> None:
             f"surfaces this item as a generator-tier candidate, so an entry nothing can "
             f"read is a filing the store will not show you"
         )
+
+
+def _check_reentries(report: Report) -> None:
+    """Hold a `reenters:` id to a fix that had shipped when the item was filed.
+
+    `docket inflow` counts these as fixes that did not hold, so an id naming an
+    open item, a dropped one or one closed after the filing is a re-entry the
+    report would print and nothing ever happened (`PL-WXKD`).
+    """
+    by_id = {item.identifier: item for item in report.items if item.identifier}
+    for item in report.items:
+        faults = reentry_faults(item, by_id)
+        if faults:
+            report.errors.append(f"{_where(item)}: `reenters:` {'; '.join(faults)}")
 
 
 def _check_spent_verdicts(report: Report, known: set[str]) -> None:

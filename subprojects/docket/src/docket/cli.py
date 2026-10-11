@@ -54,6 +54,7 @@ from .config import CONFIG_NAME, Config
 from .config import load as load_config
 from .duplicates import anchor, near_duplicates
 from .inflow import analyze as analyze_inflow
+from .inflow import missed as missed_inflow
 from .lines import split_lines
 from .model import (
     CLOSED_STATUSES,
@@ -1881,6 +1882,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("generator", "generator"),
     ("misread", "misread"),
     ("impairs-generators", "impairs_generators"),
+    ("reenters", "reenters"),
 )
 
 
@@ -3896,6 +3898,9 @@ def cmd_release(args: argparse.Namespace) -> int:
         print(f"Partially advances: {', '.join(ready.partial_features)}")
     print(f"{current} -> {version}\n")
     print(notes)
+    missed = _missed_expectations(items, config, args.today or date.today())
+    if missed:
+        print(missed)
 
     if args.dry_run:
         print("Dry run: nothing was changed.")
@@ -4711,6 +4716,27 @@ def cmd_inflow(args: argparse.Namespace) -> int:
     report = analyze_inflow(items, config, by=args.by, today=args.today or date.today())
     print(render.format_inflow(report))
     return 0
+
+
+def _missed_expectations(items: Sequence[Item], config: Config, today: date) -> str:
+    """What a cut says about apparatus inflow: the predictions it broke, or nothing.
+
+    Silent when every prediction holds, which is the report the owner asked
+    for - one that speaks when the trend is not the expected one (`PL-WXKD`).
+    A project declaring no `workflow_paths` has no apparatus to report on.
+    """
+    if not config.workflow_paths:
+        return ""
+    lines = missed_inflow(analyze_inflow(items, config, today=today), today)
+    if not lines:
+        return ""
+    return "\n".join(
+        [
+            "\nApparatus inflow missed a prediction pre-registered in PL-04KR; "
+            "`bin/docket inflow` has the table:",
+            *(f"  {line}" for line in lines),
+        ]
+    )
 
 
 def cmd_stranded(args: argparse.Namespace) -> int:
@@ -5623,6 +5649,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("--touches", "A.PY,B.PY"),
         ("--blocked-by", "PL-XXXX,vX.Y.Z"),
         ("--root-cause-of", "PL-XXXX,PL-YYYY,PL-ZZZZ"),
+        ("--reenters", "PL-XXXX"),
     ):
         setter.add_argument(
             flag, action="append", metavar=metavar, help="comma-separated; may be repeated"

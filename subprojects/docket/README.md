@@ -1649,7 +1649,17 @@ rather than of the backlog, and how many apparatus paths no earlier filing
 named, which falls towards zero as the surface is covered. Path recurrence is
 not reported: nearly every filing names a path something closed within the
 month before it, so the column would read the same every week (`PL-WXKD`).
-Like `trend`, it decides nothing and prints no score.
+Re-entry is read from its record instead: `re-entry` counts the filings whose
+`reenters:` names a `done` item, closed by the filing's `added:` date, whose fix
+should have covered them, as triage's generator check judged it, and any closed
+item three filings re-enter is named under the table as a generator whose fix
+did not hold. Like `trend`, it decides nothing and prints no score.
+
+`docket release` prints the one verdict, and only when it is unwelcome: when
+the last complete week broke one of `PL-04KR`'s pre-registered predictions -
+more than 0.13 new apparatus paths a filing, a `P0` or `P1` apparatus filing
+outside the generator tier, or more re-entries than the week before - the cut
+names it, and otherwise says nothing about inflow at all.
 
 ### The digest and the ranking cannot disagree
 
@@ -2702,6 +2712,17 @@ doing it declares the file in its `touches` like any other work, and `withdraw`
 says so where it has not. Withdrawing the last recorded entry appends to that
 line exactly as a new filing does, which is why the append rule requires what
 it gained to start a new entry rather than extend the last one.
+
+`reenters` records the other half of a fix not holding, and is written the
+opposite way round. It goes on the *new* filing, by triage's generator check
+through `docket set --reenters`, and names the `done` item - closed by the
+filing's `added:` date, which `docket check` holds it to - whose fix should have
+covered it: a different defect from the mechanism the closed item removed,
+where a recurrence is the same defect filed again. Neither `recurrences` nor
+`root-cause-of:` could carry it: the first is a title match against an item
+that may still be open, and the second records members filed while their head
+was open, two in the whole store after it closed. `docket inflow` counts it
+per period and names any closed item three filings re-enter (`PL-WXKD`).
 
 An item at `ready` must carry one of them: the command that would prove it
 done, or a recorded reason why no command can. The gate sits at `ready` rather
