@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: ready
 classes: planning
-touches: ROADMAP.md, .claude/skills/docket/SKILL.md
+touches: ROADMAP.md, .claude/skills/docket/modes/release.md
 added: 2026-09-16
 verify: grep -q 'freezes on the later of two days' ROADMAP.md && grep -q 'freezes on the later of two days' .claude/skills/docket/modes/release.md && ! grep -q 'Scoping is the act that freezes the list' ROADMAP.md
 ---
@@ -55,3 +55,24 @@ The alternative the brief names, keeping "scoping freezes the list" with excepti
 The list freezes on the later of two days, the milestone's scoping and the preceding milestone's ship, and the 2026-09-16 exception folds into the rule as its first instance (project owner, 2026-10-03, ratified, over keeping "scoping freezes the list" with exceptions recorded against it). This reopens the 2026-09-16 ratified decision on the ordinary evidence above. The build is the prose change in `ROADMAP.md` § "The cadence" and `.claude/skills/docket/modes/release.md`; status moved to `ready` with this answer.
 
 The `verify:` asks both files to carry the trigger sentence with the phrase `freezes on the later of two days` on one line, so the build writes it that way.
+
+## Built 2026-10-11
+
+`ROADMAP.md` § "The cadence": beat 1 keeps the scoping and gains the empty gate
+heading, beat 2 carries the trigger sentence, the two paragraphs headed "The
+exception" and "Twice in a row now" became one dated paragraph, "Why the later
+of the two days", and the unscoped-milestone sentence now says a scoped
+milestone carries its gate heading from the day it is scoped. Five other
+passages in `ROADMAP.md` stated the old trigger or called the Gate 2 freeze an
+exception, and now state the rule: the freeze sentence in
+§ "The gate is a snapshot, not a moving target", the closing sentence of
+§ "Why the gates are on this list and not behind it", the row 7 paragraph,
+timeline row 6, and v0.6.0's own frozen-list header.
+
+`.claude/skills/docket/modes/release.md`'s freeze mode states the trigger in
+one sentence, which also removes the example `PL-CPLX` filed, so that item
+closes here too. `touches:` is re-pointed from the skill's front page to the
+mode file the rule lives in. `bin/docket wave` needed nothing: its scope beat,
+"scope X here, which freezes its gate", is printed only for the first unscoped
+milestone past the last one shipped, and for that milestone scoping is the
+later of the two days.
