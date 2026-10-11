@@ -1150,7 +1150,7 @@ class SimulationController:
         # the rest of the reached / not-reached outcome set.
         branch._bookmarks = self._bookmarks
 
-        branch._open_at(resume_point)
+        branch._open_at(resume_point, branch._state.uptake_system.equation_settings())
 
         return branch
 
@@ -1221,7 +1221,7 @@ class SimulationController:
             if in_run != on_branch
         )
 
-    def _open_at(self, resume_point: ResumePoint) -> None:
+    def _open_at(self, resume_point: ResumePoint, settings: UptakeEquationSettings) -> None:
         """Stand this run at `resume_point`'s state, on its clock and its accounting.
 
         Split out because `reset()` needs exactly this too: returning a branch
@@ -1234,7 +1234,11 @@ class SimulationController:
         new settings - the same thing a reset trunk does with its own initial
         state. `_branch_from` is where the replayed settings are checked
         against the segment, because that check is about the *replay* and
-        there is no replay here.
+        there is no replay here. The settings in force are handed in rather
+        than read here, because reading them is the one thing a reset can be
+        refused on, and `reset()` reads them before it clears anything
+        (`PL-M4M0`); `_branch_from` reads them off the branch it just built,
+        which nothing has written past a setter.
 
         **The definition always opens at the parent's stretch, under the
         parent's settings** (`PL-B8MK`), and whatever the learner has dialled
@@ -1297,7 +1301,7 @@ class SimulationController:
         # parent's: the keyframe this lays carries `_canonical_state_at(fork)`,
         # which is the identical expression `resume_point.fork.state` came
         # from.
-        self._run_definition.record_change(system.equation_settings())
+        self._run_definition.record_change(settings)
         self._opened_from = resume_point
         self._clear_control_timeline()
         self._stand_on(resume_point.crossing)
@@ -1650,7 +1654,29 @@ class SimulationController:
         forked on the limit itself has none left to spend, so a reset leaves
         it standing there, stopped, rather than offering a Start the core
         would refuse (`PL-5291`).
+
+        Raises:
+            SimulationConfigurationError: If the settings record the run's
+                definition opens on cannot be built from what the
+                compartments hold - tissue flows that no longer sum to the
+                cardiac output, which a checked output written onto the
+                patient past `set_cardiac_output` leaves, the one write the
+                type-only guard admits (`PL-LBQY`). Raised before anything is
+                cleared, so the run is exactly as it was: still running if it
+                was, its state, definition, timeline and any recorded failure
+                untouched. The interface halts the run on it
+                (`RunView._handle_reset`), since the record refused here is
+                the one the next step would be refused on (`PL-M4M0`).
         """
+
+        # Read before anything is cleared, because building this record is
+        # the one thing here the core can refuse (above). Read after
+        # `_state.reset()` had run, the refusal left the run half reset:
+        # state cleared, the old definition and timeline kept, nothing
+        # recorded, and the screen reading "Running" with Pause offered
+        # (`PL-M4M0`). The record holds no dynamic value, so the one read
+        # here is the one the cleared system would give after.
+        settings = self._state.uptake_system.equation_settings()
 
         self.pause()
         self._failure_reason = None
@@ -1665,13 +1691,11 @@ class SimulationController:
             # to a cleared system would put the patient at zero agent at a case
             # time the model says they are loaded, which is a plausible state
             # that never happened rather than the start of anything.
-            self._open_at(self._opened_from)
+            self._open_at(self._opened_from, settings)
             return
 
         self._run_definition = RunDefinition(
-            uptake_system.equation_settings(),
-            uptake_system.state_vector(),
-            opened_at_s=CaseInstant(0.0),
+            settings, uptake_system.state_vector(), opened_at_s=CaseInstant(0.0)
         )
         self._clear_control_timeline()
 

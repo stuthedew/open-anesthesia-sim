@@ -177,9 +177,17 @@ STATUS_SUPPORTED_LIMIT_TEXT: Final = "Stopped — supported run length reached"
 # broken one is the safety defect `CLAUDE.md` names (`PL-Y5WR`). It says why
 # the limit exists, because a boundary with no reason reads as an arbitrary
 # restriction.
+#
+# Both failure wordings end with `{exit}`, the way out: `RESET_EXIT_TEXT`,
+# since Reset is the one door out of a stopped run - unless Reset is what was
+# refused, when `refused_reset_exit` names the other door, because sending a
+# reader back to the control that was just refused is an instruction the
+# screen already knows cannot be followed (`PL-M4M0`). The run-length wording
+# keeps its own Reset line: a refused Reset halts the run as a failure, which
+# outranks the limit, so that banner never carries another exit.
+RESET_EXIT_TEXT: Final = "Reset to start a new run."
 FAILURE_NOTICE_TEMPLATE: Final = (
-    "Simulation stopped — {failure_reason}. The values shown are the last completed "
-    "step. Reset to start a new run."
+    "Simulation stopped — {failure_reason}. The values shown are the last completed step. {exit}"
 )
 # The failure banner as `RunView.present_halt` writes it, before any frame of
 # the stopped run has been drawn: the chart and the readouts still show the
@@ -192,7 +200,7 @@ FAILURE_NOTICE_TEMPLATE: Final = (
 UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. No frame of the stopped run could be drawn: "
     "the chart and the readouts show the last frame drawn before it stopped, and the "
-    "run itself stands at its last completed step. Reset to start a new run."
+    "run itself stands at its last completed step. {exit}"
 )
 SUPPORTED_LIMIT_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — this run reached the supported run length of {run_length}. "
@@ -203,6 +211,21 @@ SUPPORTED_LIMIT_NOTICE_TEMPLATE: Final = (
 REFUSED_SETTING_TEMPLATE: Final = "Setting refused — {error}"
 REFUSED_SETTING_NOTICE_TEMPLATE: Final = (
     "{refused}. The simulation is unchanged and still running its previous setting."
+)
+
+# The way out when Reset is what was refused, in `refused_reset_exit`'s three
+# wordings. On a run that had not failed, the failure the halt records *is*
+# the refusal, so the exit points at the banner's own reason; on one that
+# had, the controller keeps the earlier failure as the reason
+# (`SimulationController.fail`), so the exit carries the refusal itself. The
+# door named is a new case on a trunk, and on a branch - which cannot start
+# a case of its own (`PL-TFX5`) - the trunk's Reset, which ends the
+# comparison as `COMPARING_FORK_LOCK_TEMPLATE` says it does (`PL-M4M0`).
+REFUSED_RESET_EXIT_TEMPLATE: Final = "Reset was refused for this reason. {way_out}"
+REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE: Final = "Reset was refused — {error}. {way_out}"
+NEW_CASE_WAY_OUT_TEXT: Final = "Start a new case to continue."
+COMPARISON_WAY_OUT_TEMPLATE: Final = (
+    "{trunk}'s {reset} ends the comparison and starts the case over."
 )
 
 # What the chart says when a reader has unchecked every compartment. A plot
@@ -1182,7 +1205,50 @@ def refused_setting_notice(error: SimulationConfigurationError) -> str:
     return REFUSED_SETTING_TEMPLATE.format(error=error)
 
 
-def notice(status: RunStatus, rejected_setting_notice: str | None) -> str | None:
+def refused_reset_exit(
+    error: BaseException, *, reason_already_recorded: bool, is_branch: bool
+) -> str:
+    """The way out a stopped-run banner names when Reset is what the core refused.
+
+    Every failure wording ends by naming Reset, the one door out of a
+    stopped run; when Reset is the control that was just refused, that line
+    would send the reader back to it. So the exit says Reset was refused and
+    names the other door: a new case on a trunk, and on a branch the trunk's
+    Reset, since a branch cannot start a case of its own (`PL-TFX5`) and the
+    trunk's Reset ends the comparison (`COMPARING_FORK_LOCK_TEMPLATE`). How it
+    says Reset was refused depends on what the banner's reason already is: a
+    controller keeps the first failure it was given
+    (`SimulationController.fail`), so on a run that had not failed the
+    recorded reason is the refusal and the exit points at it, and on one
+    that had, the reason stays the earlier failure's and the exit carries
+    the refusal itself (`PL-M4M0`).
+
+    Args:
+        error: The refusal `SimulationController.reset()` raised.
+        reason_already_recorded: Whether the run had already failed when
+            Reset was refused, so the banner's reason is that failure's.
+        is_branch: Whether the run is a branch, whose way out is the trunk's
+            Reset rather than a new case.
+
+    Returns:
+        The banner's closing sentence, for `notice` and `halt_notice`.
+    """
+
+    way_out = (
+        COMPARISON_WAY_OUT_TEMPLATE.format(trunk=run_label(TRUNK_RUN_INDEX), reset=RESET_LABEL)
+        if is_branch
+        else NEW_CASE_WAY_OUT_TEXT
+    )
+
+    if reason_already_recorded:
+        return REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE.format(error=error, way_out=way_out)
+
+    return REFUSED_RESET_EXIT_TEMPLATE.format(way_out=way_out)
+
+
+def notice(
+    status: RunStatus, rejected_setting_notice: str | None, *, refused_reset: str | None = None
+) -> str | None:
     """The banner for a frame that drew: a stopped run, or a refused setting, or nothing.
 
     A stopped run outranks a refused setting because it describes the state
@@ -1201,13 +1267,19 @@ def notice(status: RunStatus, rejected_setting_notice: str | None) -> str | None
             last refused setting, or None if the last setting took. Held by
             the run's view rather than the controller because a refused
             setting changes nothing about the simulation.
+        refused_reset: `refused_reset_exit`'s sentence while Reset is what
+            was refused, standing where the failure wording otherwise names
+            Reset as the way out; None while Reset is the way out. Held by
+            the run's view for the same reason as the refused setting.
 
     Returns:
         The banner text, or None when there is nothing to say.
     """
 
     if status.failure_reason is not None:
-        return FAILURE_NOTICE_TEMPLATE.format(failure_reason=status.failure_reason)
+        return FAILURE_NOTICE_TEMPLATE.format(
+            failure_reason=status.failure_reason, exit=refused_reset or RESET_EXIT_TEXT
+        )
 
     if status.supported_limit_reason is not None:
         return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(run_length=format_supported_run_length())
@@ -1218,7 +1290,7 @@ def notice(status: RunStatus, rejected_setting_notice: str | None) -> str | None
     return None
 
 
-def halt_notice(status: RunStatus) -> str | None:
+def halt_notice(status: RunStatus, *, refused_reset: str | None = None) -> str | None:
     """The banner for a halt no frame has yet been drawn for: a stopped run, or nothing.
 
     What `RunView.present_halt` writes, from the run's status alone, before
@@ -1237,13 +1309,17 @@ def halt_notice(status: RunStatus) -> str | None:
         status: The run's status, as `SimulationController.status()` gives
             it - read without building any compartment value, which is the
             whole reason this takes a status rather than a snapshot.
+        refused_reset: As `notice` takes it: the way out while Reset is
+            what was refused, or None while Reset is the way out.
 
     Returns:
         The banner text, or None when the run is not halted.
     """
 
     if status.failure_reason is not None:
-        return UNDRAWN_FAILURE_NOTICE_TEMPLATE.format(failure_reason=status.failure_reason)
+        return UNDRAWN_FAILURE_NOTICE_TEMPLATE.format(
+            failure_reason=status.failure_reason, exit=refused_reset or RESET_EXIT_TEXT
+        )
 
     if status.supported_limit_reason is not None:
         return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(run_length=format_supported_run_length())

@@ -398,9 +398,16 @@ class UptakeEquationSettings:
             CARDIAC_OUTPUT_TOLERANCE_L_S
             + CARDIAC_OUTPUT_RELATIVE_TOLERANCE * self.cardiac_output_l_s
         ):
+            # Stated in the litres per minute the flows were set in, which is
+            # what every dial, readout and other refusal shows a clinician;
+            # the comparison stays in the litres per second the balances are
+            # written in. Reaching a reader through the stopped-run banner,
+            # the L/s figures named values the screen never shows (`PL-M4M0`).
+            tissue_blood_flow_l_min = sum(tissue.blood_flow_l_min for tissue in self.tissues)
+
             raise SimulationConfigurationError(
-                f"the tissue groups are perfused at {tissue_blood_flow_l_s} L/s in total "
-                f"but cardiac output is {self.cardiac_output_l_s} L/s; the venous balance "
+                f"the tissue groups are perfused at {tissue_blood_flow_l_min} L/min in total "
+                f"but cardiac output is {self.cardiac_output_l_min} L/min; the venous balance "
                 "returns what the tissues receive, so the two must agree"
             )
 

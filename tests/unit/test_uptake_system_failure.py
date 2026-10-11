@@ -650,6 +650,41 @@ def test_a_failed_step_says_it_was_rolled_back_and_names_the_invariant() -> None
     assert FAT_REFUSAL_TEXT in message
 
 
+def test_a_stale_record_met_at_step_time_is_a_failed_step_stated_in_litres_per_minute() -> None:
+    """A record the step cannot build is a failed step, in the unit the flows were set in.
+
+    `_propagator_for` builds the settings record when a setting has moved
+    since the last step, and the record refuses tissue flows that no longer
+    sum to the cardiac output - what a checked output written onto the
+    patient past `set_cardiac_output` leaves, the one write the type-only
+    guard admits (`PL-LBQY`). It is restated like every other guard reached
+    inside a step, because a `SimulationConfigurationError` out of
+    `advance()` would promise a run still worth continuing
+    (`core/exceptions.py`) and this run is refused on every step after, and
+    at Reset; the step is rolled back like any other; and the two flows are
+    named in L/min, which is what every readout shows (`PL-M4M0`).
+    """
+
+    system = _sevoflurane_at_one_mac()
+    system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    before = system.capture_state()
+    tissue_blood_flow_l_min = sum(tissue.blood_flow_l_min for tissue in system.patient.tissues)
+
+    system.patient.cardiac_output_l_min = CardiacOutput(6.0)
+
+    with pytest.raises(SimulationNumericalError) as raised:
+        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+
+    message = str(raised.value)
+
+    assert isinstance(raised.value.__cause__, SimulationConfigurationError)
+    assert "rolled back" in message
+    assert f"perfused at {tissue_blood_flow_l_min} L/min in total" in message
+    assert "cardiac output is 6.0 L/min" in message
+    assert "L/s" not in message
+    assert system.capture_state() == before
+
+
 def test_simulation_time_does_not_advance_through_a_failed_step() -> None:
     """Elapsed time is part of the same transaction, by ordering.
 

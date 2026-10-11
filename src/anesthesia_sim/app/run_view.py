@@ -94,6 +94,7 @@ from anesthesia_sim.app.dashboard_frame import (
     notice,
     off_scale_notice,
     readouts,
+    refused_reset_exit,
     refused_setting_notice,
     setting_readouts,
     status_word,
@@ -298,6 +299,11 @@ class RunView(QWidget):
         # changes nothing about the simulation, so there is no core state
         # for it to belong to.
         self._rejected_setting_notice: str | None = None
+        # The way out the banner names while Reset is what the core refused,
+        # or None while Reset is the way out. Held beside the refused setting
+        # for the same reason: the refusal changed nothing in the simulation,
+        # so there is no core state for it to belong to (`PL-M4M0`).
+        self._refused_reset_notice: str | None = None
         self._playback_rate: PlaybackRate = DEFAULT_PLAYBACK_RATE
         self._adjustment_grouping = AdjustmentGrouping()
         # The agent a reader has asked for and not yet confirmed, and the
@@ -611,7 +617,11 @@ class RunView(QWidget):
         self._control_timeline_overflow_text.setText(timeline.overflow)
         self._control_timeline_overflow_text.setHidden(not timeline.overflow)
 
-        self._write_notice(notice(snapshot, self._rejected_setting_notice))
+        self._write_notice(
+            notice(
+                snapshot, self._rejected_setting_notice, refused_reset=self._refused_reset_notice
+            )
+        )
 
     def _write_notice(self, banner: str | None) -> None:
         """Write the banner for this run, named while a second run is drawn.
@@ -669,7 +679,7 @@ class RunView(QWidget):
         status = self.controller.status()
         _emphasised(self._status_text, status_word(status))
         self._write_transport(self._transport_lock(status))
-        self._write_notice(halt_notice(status))
+        self._write_notice(halt_notice(status, refused_reset=self._refused_reset_notice))
 
     def _transport_lock(self, status: RunStatus) -> Transport:
         """This run's transport enablement, with both facts `dashboard_frame` cannot read.
@@ -767,7 +777,10 @@ class RunView(QWidget):
         which setting was refused. Any other exception halts the run through
         `_halt_run`; a raise from outside the project's hierarchy is still a
         run that cannot continue (`PL-YK2V`). An accepted setting clears a
-        standing refusal.
+        standing refusal, and the way out a refused Reset left on the banner:
+        the setting may be the repair that Reset needed - `set_cardiac_output`
+        recomputes the tissue flows - and the next Reset is refused or not on
+        the record as it then stands (`PL-M4M0`).
 
         The frame is left to the render tick only when `coalesce` is set
         and no refusal was standing before or is standing after: a refusal,
@@ -793,6 +806,7 @@ class RunView(QWidget):
             return
         else:
             self._rejected_setting_notice = None
+            self._refused_reset_notice = None
 
         deferred = coalesce and settled_notice is None and self._rejected_setting_notice is None
 
@@ -859,12 +873,49 @@ class RunView(QWidget):
         by the time the frame is assembled - a branch drawn beside a trunk
         standing back at induction would be two curves asserting one case
         while no longer being one.
+
+        **A Reset the core refuses halts the run instead.**
+        `SimulationController.reset()` refuses before it clears anything,
+        for a settings record the next step would be refused on too, so the
+        run is left exactly as it was and is stopped through the failed-step
+        path - the refusal recorded, the status word, the transport and the
+        banner stating it - with the banner's way out naming the one door
+        left, since Reset is the one it names otherwise. Every raise halts,
+        as a step's does: a `SimulationConfigurationError` here is not a
+        refused setting, because the run it leaves is one that cannot be
+        cleared (`PL-M4M0`). Nothing is emitted, since no case restarted.
         """
 
-        self.controller.reset()
+        try:
+            self.controller.reset()
+        except Exception as error:
+            self._halt_refused_reset(error)
+            return
+
         self._rejected_setting_notice = None
+        self._refused_reset_notice = None
         self.case_restarted.emit()
         self.presentation_requested.emit(False)
+
+    def _halt_refused_reset(self, error: BaseException) -> None:
+        """Halt the run for a Reset the core refused, with the banner naming the other way out.
+
+        The exit is settled before the halt records the refusal, because
+        which wording it takes depends on whether a failure already stands: a
+        controller keeps the first reason it was given, so on an
+        already-failed run the banner's reason stays that failure's and the
+        refusal has to be stated by the exit itself (`PL-M4M0`).
+
+        Args:
+            error: What `SimulationController.reset()` raised.
+        """
+
+        self._refused_reset_notice = refused_reset_exit(
+            error,
+            reason_already_recorded=self.controller.status().failure_reason is not None,
+            is_branch=self.controller.opened_from is not None,
+        )
+        self._halt_run(error)
 
     def _handle_playback_rate_change(self, index: int) -> None:
         """Take the rate the reader chose; the next tick reads it.

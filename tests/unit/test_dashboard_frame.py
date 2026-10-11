@@ -56,6 +56,7 @@ from anesthesia_sim.app.dashboard_frame import (
     BRANCH_AGENT_LOCK_TEXT,
     BRANCH_RUN_INDEX,
     COMPARING_AGENT_LOCK_TEXT,
+    COMPARISON_WAY_OUT_TEMPLATE,
     CONTROL_MARK_LEGEND_LABEL,
     CONTROL_TIMELINE_CAPTION,
     CONTROL_TIMELINE_HEADING,
@@ -72,11 +73,15 @@ from anesthesia_sim.app.dashboard_frame import (
     MAX_LISTED_ADJUSTMENTS,
     NEW_CASE_CARRYOVER_TEMPLATE,
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
+    NEW_CASE_WAY_OUT_TEXT,
     NO_CONTROL_CHANGES_TEXT,
     READOUT_PANELS,
     READOUT_RESERVATIONS,
     READOUT_ROW_LADDER,
+    REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE,
+    REFUSED_RESET_EXIT_TEMPLATE,
     RENDER_INTERVAL_S,
+    RESET_EXIT_TEXT,
     RESET_LABEL,
     RUNNING_AGENT_LOCK_TEXT,
     SIMULATION_STEP_S,
@@ -115,6 +120,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readout_columns,
     readout_row_width,
     readouts,
+    refused_reset_exit,
     refused_setting_notice,
     run_label,
     setting_readouts,
@@ -714,6 +720,74 @@ def test_a_halt_is_stated_from_the_run_status_alone() -> None:
     assert halt_notice(at_limit) == notice(at_limit, None)
     assert halt_notice(paused) is None
     assert halt_notice(running) is None
+
+
+def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
+    """Reset is the door every failure wording names; a refused Reset's banner names the other.
+
+    `SimulationController.reset()` can refuse, before it clears anything, and
+    the view halts the run on it through the failed-step path (`PL-M4M0`).
+    The failure wording would then end by sending the reader to the control
+    that was just refused, so the exit says Reset was refused and names the
+    door left: a new case on a trunk, and on a branch the trunk's Reset,
+    since a branch cannot start a case of its own. Which of two wordings
+    states the refusal turns on whether the banner's reason already is it:
+    a controller keeps the first failure it was given, so on an
+    already-failed run the exit has to carry the refusal itself.
+    """
+
+    error = SimulationConfigurationError(
+        "the tissue groups are perfused at 5.0 L/min in total but cardiac output is 6.0 L/min; "
+        "the venous balance returns what the tissues receive, so the two must agree"
+    )
+    refusal = RunStatus(
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason=f"SimulationConfigurationError: {error}",
+    )
+    earlier = RunStatus(
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason="SimulationNumericalError: boom",
+    )
+    running = RunStatus(is_running=True, supported_limit_reason=None, failure_reason=None)
+
+    first = refused_reset_exit(error, reason_already_recorded=False, is_branch=False)
+    after_failure = refused_reset_exit(error, reason_already_recorded=True, is_branch=False)
+    on_branch = refused_reset_exit(error, reason_already_recorded=False, is_branch=True)
+
+    assert first == "Reset was refused for this reason. Start a new case to continue."
+    assert first == REFUSED_RESET_EXIT_TEMPLATE.format(way_out=NEW_CASE_WAY_OUT_TEXT)
+    assert after_failure == f"Reset was refused — {error}. Start a new case to continue."
+    assert after_failure == REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE.format(
+        error=error, way_out=NEW_CASE_WAY_OUT_TEXT
+    )
+    assert on_branch == (
+        f"Reset was refused for this reason. {run_label(TRUNK_RUN_INDEX)}'s Reset ends the "
+        "comparison and starts the case over."
+    )
+    assert on_branch.endswith(
+        COMPARISON_WAY_OUT_TEMPLATE.format(trunk=run_label(TRUNK_RUN_INDEX), reset=RESET_LABEL)
+    )
+
+    drawn = notice(refusal, None, refused_reset=first)
+    undrawn = halt_notice(refusal, refused_reset=first)
+    kept = notice(earlier, None, refused_reset=after_failure)
+
+    assert drawn is not None and drawn.endswith(first)
+    assert drawn.startswith(f"Simulation stopped — {refusal.failure_reason}. The values shown are")
+    assert undrawn is not None and undrawn.endswith(first)
+    assert "No frame of the stopped run could be drawn" in undrawn
+    assert kept is not None and kept.endswith(after_failure)
+    assert kept.startswith("Simulation stopped — SimulationNumericalError: boom. ")
+    for banner in (drawn, undrawn, kept):
+        assert RESET_EXIT_TEXT not in banner
+    # Reset is the way out whenever it was not what was refused.
+    assert (notice(refusal, None) or "").endswith(RESET_EXIT_TEXT)
+    assert (halt_notice(refusal) or "").endswith(RESET_EXIT_TEXT)
+    # And a run that is not stopped has no banner for an exit to end.
+    assert notice(running, None, refused_reset=first) is None
+    assert halt_notice(running, refused_reset=first) is None
 
 
 def test_refresh_view_shows_no_notice_for_an_ordinary_run() -> None:
