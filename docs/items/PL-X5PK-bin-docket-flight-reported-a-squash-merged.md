@@ -83,3 +83,17 @@ is invisible in the full clone where anyone would go looking - which is
 `CLAUDE.md`'s first compounding-friction test, a check passing while the
 guarantee it stands for is void. The container clones shallow, so the expensive
 reading is also the likelier one.
+
+**Re-pointed at `tools/left_behind_check.py`, 2026-10-11 (`PL-2C53`): that
+check answers none of this.** `flight` asks who holds an item, and the check
+asks whether a merged pull request left commits on its branch. It also reads
+branch tips with `ls-remote`, so it never sees an unpruned tracking pointer like
+the `0d0e9ef8` these rows came from. Two facts the brief rests on have moved
+since filing, for whoever starts it to read against. The `branches_in_flight`
+docstring it quotes is gone: `flight` now answers from the claim record
+(`claims.holdings`, `PL-MB2W`), whose landed test is `vcs._Landings.taken_whole`
+(`PL-927J`). And the session-start digest has deepened a shallow checkout once
+per container since `#214` (`PL-K2ZK`, 2026-09-02), before this was filed, so
+the depth reading the brief calls likelier needs that fetch to have failed. This
+thread's checkout read full on 2026-10-11: `git rev-parse
+--is-shallow-repository` printed `false`.

@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: ready
 classes: defect
+feature: stranded-report-fidelity
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-20
 payoff: stops a branch deletion being decided on a check that reports nothing about the files that are not queue items
@@ -77,3 +78,31 @@ available.** `origin/claude/practical-brown-wr7u6i` was deleted on 2026-09-20,
 correctly, and `PL-QNQJ`, `PL-T2YR` and `PL-66Z5` are all `done`. So a fix is
 designed against the shape rather than reproduced against the ref, and the
 reproduction in the paragraphs above is the record of it.
+
+**Re-pointed at `tools/left_behind_check.py`, 2026-10-11 (`PL-2C53`): that
+check answers none of this.** It reads every branch on `origin`, but before
+comparing anything it clears one with no pull request ("no pull request was
+opened from it"), one whose pull request is open, and one whose pull request
+closed unmerged. It answers only for a branch whose newest pull request merged.
+`claude/practical-brown-wr7u6i` never had a pull request, so the design
+question above stands whole.
+
+**`PL-B78T` was dropped into this item the same day**, as a later filing of the
+same hole. It asked for a branch "with no pull request open on it and none
+merged from it", holding content the default branch lacks, to be named by
+`stranded` with the command that would recover it. Its two instances were
+settled elsewhere, so what it adds here is one shape: a pull request closed
+unmerged leaves its branch in this hole as surely as none does. If the design
+extends `stranded`, a recovery command beside each name comes with it.
+
+**What changed the stakes since filing.** `tools/branch_sweep.py` (`PL-X8SV`)
+now deletes finished `claude/` branches daily, and copies each tip to
+`refs/archive/<branch>/<tip>` in the same push. It keeps a branch while a pull
+request is open on it, a claim holds unfinished work on it, `stranded`,
+`orphaned` or the exact check reports it, or its last commit is under 72 hours
+old. This item's shape, once those 72 hours pass, holds none of them, so it is
+archived with nothing having named the file. The work is no longer lost when
+the ref goes. It moves to a ref no default fetch reads, named only in the
+sweep's run log. The design question above should weigh that: answering
+"nothing at all" now costs a restore from an archive nobody is told about, not
+the work itself.
