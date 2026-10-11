@@ -3,7 +3,7 @@ id: PL-LNFG
 title: tools/doc_check.py checks no citation inside a data file's sources note, so a provenance note under src/anesthesia_sim/data/ can name a test file or a docs/MODEL.md section that does not exist and make check still passes; desflurane.json named a missing tests/reference/test_published_wash_in.py until PL-DBGT repaired it, and the notes cite as bare paths and as docs/MODEL.md, 'Section', a form check_citations does not read (split from PL-DBGT's 2026-09-19 re-scope)
 priority: P3
 effort: M
-status: blocked
+status: ready
 classes: test
 feature: provenance
 touches: tools/doc_check.py, tests/unit
@@ -76,3 +76,5 @@ nothing here is a statement read across lines.
 and key path, and declining by name a note whose citation it cannot read; a
 test in `tests/unit/test_doc_check.py` holds a note naming a missing test file
 and one naming a missing section to an error each, and today's notes pass.
+
+**Unblocked 2026-10-11, when `PL-R417` closed in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Read against the tree, nothing else holds it: no `note` string under `src/anesthesia_sim/data/` is read for citations yet.

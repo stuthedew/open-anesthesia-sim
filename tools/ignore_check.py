@@ -58,18 +58,21 @@ from pathlib import Path
 TREES = ("tests", "subprojects/docket/tests")
 
 #: Not optional, and not a convenience: without the first three, six live
-#: directives report as unused. See the module docstring. The last two hold
+#: directives report as unused. See the module docstring. The next two hold
 #: tests that import a sibling module by bare name, which pytest resolves by
 #: putting the test's own directory on `sys.path` and `--explicit-package-bases`
 #: does not, so without them those imports go unresolved and the check declines
 #: (`PL-CR36`). A bare sibling import in another directory declines the same way,
-#: and the remedy is that directory here.
+#: and the remedy is that directory here. The last is one:
+#: `tests/unit/test_inline_reference.py` puts it on `sys.path` itself to import
+#: `test_markdown_reference`'s reference reader (`PL-R417`).
 MYPY_PATH = (
     "subprojects/docket/src",
     "tools",
     ".claude/hooks",
     "tests/benchmarks",
     "tests/reference",
+    "subprojects/docket/tests",
 )
 
 #: The one finding this check exists to raise.

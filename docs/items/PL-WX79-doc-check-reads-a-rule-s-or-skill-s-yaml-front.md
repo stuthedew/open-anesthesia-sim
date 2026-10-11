@@ -1,9 +1,18 @@
 ---
 id: PL-WX79
 title: doc_check reads a rule's or skill's YAML front matter as Markdown in four readers - check_citations and check_quoted_sources read it as one setext heading so a backtick or quotation one key leaves open pairs with the next key's, _host_claim_texts lets the next key date a key's host claim and a fence-shaped block-scalar line hide the body's claims, _without_code pairs that fence with the body's first, and _removed_headings reads the front matter as a heading - so a front matter's citations and claims are misread and a body's can go unread; live in form
-status: untriaged
+priority: P3
+effort: M
+status: done
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, subprojects/docket/src/docket/frontmatter.py, subprojects/docket/src/docket/instructions.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-10
+closed: 2026-10-10
+pr: 1392
+payoff: a rule's or skill's front matter is read key by key and its body as Markdown, so neither misreads the other's citations, claims or code
+verify: grep -qF '"citations, a stray backtick in one front-matter key pairs with nothing in the next"' tests/unit/test_doc_check.py && grep -qF '"host claims, a front matter key is dated by no other key"' tests/unit/test_doc_check.py && grep -qF '"math, a fence-shaped line in a front matter opens no fence"' tests/unit/test_doc_check.py && grep -qF '"removed headings, a front matter is no heading"' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check reads a rule's or skill's YAML front matter as Markdown in four readers - check_citations and check_quoted_sources read it as one setext heading so a backtick or quotation one key leaves open pairs with the next key's, _host_claim_texts lets the next key date a key's host claim and a fence-shaped block-scalar line hide the body's claims, _without_code pairs that fence with the body's first, and _removed_headings reads the front matter as a heading - so a front matter's citations and claims are misread and a body's can go unread; live in form
@@ -68,6 +77,13 @@ Live in form: `.claude/skills/docket/SKILL.md` and
 candidates list was not asked for. No front matter in the tree holds a stray
 backtick, a host claim or a fence-shaped line.
 
+**Why it matters.** Rules and skills are the documents a session reads
+as instructions, so a path one cites that the tree no longer holds misdirects
+the session that follows it, and these readers either miss the citation or
+misread the next key's text as part of it. And `_removed_headings` hands the
+close-out sweep a skill's whole front matter as a term whenever one of its keys
+changes, a search no document can answer.
+
 **Generator check.** A member of `PL-R417`: the reader takes a physical line
 for a statement its format continues, the fact that head names. It is the gap
 closed `PL-CZ28`'s and `PL-2MLT`'s fixes left, in readers those fixes did not
@@ -77,3 +93,24 @@ reach.
 `docket.frontmatter` (each key's value its own statement) and its Markdown body
 from the line after the front matter closes, with a test per reader on a form
 above.
+
+**Built 2026-10-10 (`#1392`).** `tools/doc_check.py` cuts a document's
+statements in one place, `_statements`: a YAML front matter's a key at a time,
+through `docket.frontmatter.statements` (moved there from `docket.instructions`,
+which reads it too), then the body's from the line after the front matter
+closes. Its fences, code blocks and headings are read from the body alone
+(`_body_lines`, `_fenced_lines`, and a `without_fences` that keeps the front
+matter as written). The four readers above go through that layer, as does every
+other reader of the same primitives. Five cases in `PL-R417`'s guard, one per
+reader and one for `check_quoted_sources`, each fail on main's readers.
+
+**Completed 2026-10-11, in the same pull request.** `_absent_paths`, which
+`check_citations` calls, still found its markers' paragraphs over the whole
+document, so a value opening `<!--` hid the body's paragraphs down to the next
+`-->`; it reads them from the body alone, and a sixth case fails on main's
+readers. The pull request's adversarial pass then found the layer reading any
+text that opened with `---` as a document: a run of comment between two `# ---`
+banners, a docstring or a brief's body was read as a front matter a line at a
+time, so a date on a claim's next line dated none of it. Only a whole file opens
+one now, and a passage cut from a file is read as `_as_passage` reads it; three
+cases hold the reading `main` gave each.

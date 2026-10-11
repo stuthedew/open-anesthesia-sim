@@ -37,6 +37,7 @@ from docket import picks as docket_picks
 from docket import vcs as docket_vcs
 from docket import verify as docket_verify
 from docket.fences import blocks as fence_blocks
+from docket.frontmatter import keys as front_matter_keys
 from docket.instructions import parse as dated_assertions
 from docket.model import parse_item, with_front_matter_field
 from docket.notes import read as read_threads
@@ -6893,17 +6894,25 @@ def _citation_findings(tmp_path: Path, readme: str, brief: str = "") -> list[str
     root = _repo(tmp_path, readme=readme)
     if brief:
         _item(root, "PL-T3ST-demo", _brief("done", brief))
-    report = doc_check.analyze(root)
-    said = ("cites section", "names a section", "quotes ", "opens a quotation")
-    return [
-        finding for finding in report.errors + report.advisories if any(s in finding for s in said)
-    ]
+    return _quotation_findings(root)
 
 
 def _live_brief_findings(tmp_path: Path, item: str) -> list[str]:
     """What the citation checks say of `item`, written whole as `PL-T3ST`'s live file."""
     root = _repo(tmp_path)
     _item(root, "PL-T3ST-demo", item)
+    return _quotation_findings(root)
+
+
+def _docstring_findings(tmp_path: Path, body: str) -> list[str]:
+    """What the citation checks say of `body`, written as a module's docstring."""
+    root = _repo(tmp_path)
+    _docstringed(root, body)
+    return _quotation_findings(root)
+
+
+def _quotation_findings(root: Path) -> list[str]:
+    """What the citation checks say of the sections and quotations `root` cites."""
     report = doc_check.analyze(root)
     said = ("cites section", "names a section", "quotes ", "opens a quotation")
     return [
@@ -6929,6 +6938,11 @@ SPLIT_QUOTATION_BRIEF = (
     '---\nid: PL-T3ST\nstatus: ready\ntitle: It holds `docs/MODEL.md` § "Known\n'
     'priority: P3\nsummary: limitations" to that file\n---\n\n**Problem.** x\n'
 )
+#: A section quoted across a soft break, between a thematic break and the `---`
+#: underlining its paragraph as a setext heading (CommonMark 0.31.2 §§ 4.1,
+#: 4.3), as a passage holds them; read as a document, the two lines were a
+#: front matter's fences (`PL-WX79`).
+RULED_QUOTATION = '---\nIt holds `docs/MODEL.md` § "Known\nlimitations" to that file.\n---\n'
 
 
 def _possessive_sites(tmp_path: Path, readme: str) -> list[str]:
@@ -7216,6 +7230,44 @@ def _left_status_names(status: str, body: str) -> list[str]:
     return [message.split("says it is at `", 1)[1].split("`", 1)[0] for _, message in found]
 
 
+def _reference_file_errors(tmp_path: Path, index: str) -> list[str]:
+    """What the reference check says of `index`, written as the reference index."""
+    references = tmp_path / "docs" / "references"
+    references.mkdir(parents=True)
+    (references / "README.md").write_text(index, encoding="utf-8")
+    report = doc_check.Report()
+    doc_check._check_reference_files_exist(tmp_path, report)
+    return report.errors
+
+
+def _front_matter_keys(*block: str) -> list[tuple[str, int, int]]:
+    """Each key `docket.frontmatter.keys` reads in `block`: its name, its line, and its end."""
+    return [(key.name, key.line, key.end) for key in front_matter_keys(block)]
+
+
+def _missing_path_citations(tmp_path: Path, readme: str) -> list[str]:
+    """Each path `readme` cites that resolves to nothing: where the check names it, and the path."""
+    report = doc_check.analyze(_repo(tmp_path, readme=readme))
+    return [error.split(", ", 1)[0] for error in report.errors if ": cites `" in error]
+
+
+def _json_key_terms(tmp_path: Path, before: str, after: str) -> list[str]:
+    """The terms the close-out sweep takes from a data file rewritten from `before` to `after`.
+
+    Each copy the sweep could not read as `json` follows them, as far as the
+    error `json` gave, whose wording moves between Python versions.
+    """
+    root = _repo(tmp_path)
+    data = root / "src" / "anesthesia_sim" / "data" / "agents" / "demo.json"
+    data.write_text(before, encoding="utf-8")
+    _git_init(root)
+    data.write_text(after, encoding="utf-8")
+    unread: list[str] = []
+    terms = doc_check.changed_tokens(root, "HEAD", doc_check.read_docs(root), unread)
+    said = [line.split(" (", 1)[0] for line in unread]
+    return sorted(terms["src/anesthesia_sim/data/agents/demo.json"]) + said
+
+
 def _absent_findings(tmp_path: Path, readme: str) -> list[str]:
     """What the citation checks say of `readme`'s `absent:` markers."""
     report = doc_check.analyze(_repo(tmp_path, readme=readme))
@@ -7291,6 +7343,18 @@ UNCLOSED = (
 #: line cut: what is left is a rule the base never stated.
 RULE = "**Decision.** Run the full suite\nbefore every commit,\nexcept one touching only docs.\n"
 NARROWED = RULE.replace("before every commit,\n", "")
+#: Two one-row tables, and the same with the lines between them cut, which GFM
+#: 0.29 § 4.10 reads as one table holding both rows (`PL-NGKW`).
+TWO_TABLES = "| allowed |\n| --- |\n| a |\n\n| refused |\n| --- |\n| b |\n"
+TWO_TABLES_JOINED = "| allowed |\n| --- |\n| a |\n| b |\n"
+#: A front matter whose folded value starts with `<!--`, which YAML reads as
+#: text and CommonMark 0.31.2 § 4.6 as an HTML block running to the next `-->`:
+#: the body's own `absent:` marker, past the paragraph it covers (`PL-WX79`).
+FRONT_MATTER_COMMENT = (
+    "---\nname: demo\ndescription: >\n  <!-- a note the description carries\n"
+    "when: the owner asks\n---\n\nThe demo once read `docs/gone.md`.\n"
+    "<!-- absent: docs/gone.md -->\n"
+)
 
 
 #: The Symbols table's header and delimiter rows, and one row under them.
@@ -7484,30 +7548,28 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         ),
     ),
     "links, wrapped link text": (
-        lambda _: [link["target"] for link in doc_check.LINK_RE.finditer("[the\nnotes](x.md)")],
+        lambda _: [link.destination for link in doc_check._links("[the\nnotes](x.md)")],
         ["x.md"],
     ),
     # A destination as CommonMark 0.31.2 § 6.3 reads one (`PL-KT0H`).
     "links, a destination with a title": (
-        lambda _: [link["target"] for link in doc_check.LINK_RE.finditer('[a](x.md "T")')],
+        lambda _: [link.destination for link in doc_check._links('[a](x.md "T")')],
         ["x.md"],
     ),
     "links, a destination whose ) or title follows on the next line": (
-        lambda _: [
-            link["target"] for link in doc_check.LINK_RE.finditer('[a](x.md\n)\n[b](y.md\n"T")')
-        ],
+        lambda _: [link.destination for link in doc_check._links('[a](x.md\n)\n[b](y.md\n"T")')],
         ["x.md", "y.md"],
     ),
     "links, a destination two line endings from its ) is no link": (
-        lambda _: [link["target"] for link in doc_check.LINK_RE.finditer("[a](x.md\n\n)")],
+        lambda _: [link.destination for link in doc_check._links("[a](x.md\n\n)")],
         [],
     ),
     "links, a destination holding a pair of parentheses": (
-        lambda _: [link["target"] for link in doc_check.LINK_RE.finditer("[a](x(1).md)")],
+        lambda _: [link.destination for link in doc_check._links("[a](x(1).md)")],
         ["x(1).md"],
     ),
     "links, an angle-bracket destination": (
-        lambda _: [link["bracketed"] for link in doc_check.LINK_RE.finditer("[a](<my x.md>)")],
+        lambda _: [link.destination for link in doc_check._links("[a](<my x.md>)")],
         ["my x.md"],
     ),
     "links, an angle-bracket destination that is missing is reported": (
@@ -8095,6 +8157,210 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "rules paths, is_path_scoped reads no key inside another key's quoted value": (
         lambda _: doc_check.is_path_scoped(QUOTED_PATHS_RULE),
         False,
+    ),
+    # `PL-YQ9G`: a quoted scalar or a flow collection opened on the line below
+    # its key, or after a list item's `- ` there, runs to its own close, as
+    # PyYAML 6.0.3 reads each of these, so a first-column line inside it is no
+    # key. Followed by indentation alone, each was read as a `paths:` key.
+    "front matter, a double-quoted value opened below its key": (
+        lambda _: _front_matter_keys(
+            "description:", '  "Loads at launch, since no', 'paths: key defers it"', "name: x"
+        ),
+        [("description", 0, 3), ("name", 3, 4)],
+    ),
+    "front matter, a single-quoted value opened below its key": (
+        lambda _: _front_matter_keys(
+            "description:", "  'Loads at launch, since no", "paths: key defers it'", "name: x"
+        ),
+        [("description", 0, 3), ("name", 3, 4)],
+    ),
+    "front matter, a flow mapping opened below its key": (
+        lambda _: _front_matter_keys(
+            "description:", "  {why: loads at launch,", "paths: no key}", "name: x"
+        ),
+        [("description", 0, 3), ("name", 3, 4)],
+    ),
+    "front matter, a flow sequence opened below its key": (
+        lambda _: _front_matter_keys(
+            "description:", "  [loads at launch,", "paths: no key]", "name: x"
+        ),
+        [("description", 0, 3), ("name", 3, 4)],
+    ),
+    "front matter, a quoted list item under its key": (
+        lambda _: _front_matter_keys(
+            "description:",
+            '  - "Loads at launch, since no',
+            'paths: key defers it"',
+            "paths:",
+            '  - "/src/**"',
+        ),
+        [("description", 0, 3), ("paths", 3, 5)],
+    ),
+    # `PL-WX79`: a YAML front matter is no Markdown. Each key's value is a
+    # statement of its own and the body is read from the line after the front
+    # matter closes, where read as Markdown the keys were one setext heading and
+    # a fence-shaped line in a block scalar opened a fence into the body.
+    "citations, a stray backtick in one front-matter key pairs with nothing in the next": (
+        lambda tmp_path: _missing_path_citations(
+            tmp_path,
+            "---\nname: demo\n"
+            "description: Run the demo whenever the owner asks; a ` alone marks nothing\n"
+            "when: the owner names `docs/gone.md` as the reason\n---\n\n# Demo\n",
+        ),
+        ["README.md:4: cites `docs/gone.md`"],
+    ),
+    "quoted sources, a quotation one front-matter key leaves open is refused there": (
+        lambda tmp_path: _citation_findings(
+            tmp_path,
+            '---\nname: demo\ndescription: It is `docs/MODEL.md` § "A thread that was deleted\n'
+            'when: it is `docs/MODEL.md` § "Gone section" too\n---\n\n# Demo\n',
+        ),
+        [
+            UNCLOSED.format(
+                "README.md:3", "this citation of docs/MODEL.md", "whether the file holds the words"
+            ),
+            'README.md:4: quotes docs/MODEL.md as "Gone section", which is not in that file',
+        ],
+    ),
+    "host claims, a front matter key is dated by no other key": (
+        lambda tmp_path: _host_claim_errors(
+            tmp_path,
+            {
+                "docs/NOTE.md": (
+                    "---\ndescription: `doi.org` is blocked by the proxy\n"
+                    "when: probed on 2026-10-06\n---\n\nBody.\n"
+                )
+            },
+        ),
+        [
+            "docs/NOTE.md:2 names `doi.org` beside a refusal in a sentence that carries no "
+            "date: whether a host answers through the egress proxy is a probe on a day, so "
+            "write the date it was probed in the same sentence (`PL-CLW5`)"
+        ],
+    ),
+    # A comment, a docstring and a brief's body are passages of their file,
+    # where only a document opens a front matter (`_as_passage`).
+    "host claims, a comment between two `---` banners opens no front matter": (
+        lambda tmp_path: _host_claim_errors(
+            tmp_path,
+            {
+                "ci.yml": (
+                    "# ---\n# api.example.com is blocked by the egress proxy, probed\n"
+                    "# 2026-10-01.\n# ---\non: push\n"
+                )
+            },
+        ),
+        [],
+    ),
+    "quoted sources, a docstring between two `---` lines opens no front matter": (
+        lambda tmp_path: _docstring_findings(tmp_path, RULED_QUOTATION),
+        [],
+    ),
+    "quoted sources, a brief's body between two `---` lines opens no front matter": (
+        lambda tmp_path: _live_brief_findings(
+            tmp_path, "---\nid: PL-T3ST\nstatus: ready\ntitle: Demo\n---\n" + RULED_QUOTATION
+        ),
+        [],
+    ),
+    "math, a fence-shaped line in a front matter opens no fence": (
+        lambda root: _math_errors(
+            root / "repo",
+            "docs/NOTE.md",
+            "---\ndescription: |\n  ```\n  quoted\n---\n\nBody writes \\(x\\) here.\n\n"
+            "```\ncode\n```\n",
+        ),
+        [
+            f"docs/NOTE.md:7 writes math as `{delimiter}`, which GitHub does not render; use "
+            "`$`...`$` inline or a `$$` fence for a block"
+            for delimiter in ("\\(", "\\)")
+        ],
+    ),
+    # `PL-VX3Q`: a changed JSON file's keys are read from both copies' `json`
+    # parse, where read off each changed line a value under a key that stands
+    # on another line seeded no key.
+    "json keys, a value changed inside an array seeds its key": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path,
+            '{\n    "blood_gas_partition": [\n        0.65,\n        0.69\n    ]\n}\n',
+            '{\n    "blood_gas_partition": [\n        0.65,\n        0.70\n    ]\n}\n',
+        ),
+        ["blood_gas_partition", "demo", "demo.json"],
+    ),
+    "json keys, a key whose colon stands on the next line": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path,
+            '{\n    "renamed_key"\n        : 2\n}\n',
+            '{\n    "renamed_key"\n        : 3\n}\n',
+        ),
+        ["demo", "demo.json", "renamed_key"],
+    ),
+    "json keys, a value changed under a nested key seeds every key above it": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path,
+            '{\n    "mac_awake": {\n        "fraction_of_mac": 0.36\n    }\n}\n',
+            '{\n    "mac_awake": {\n        "fraction_of_mac": 0.34\n    }\n}\n',
+        ),
+        ["demo", "demo.json", "fraction_of_mac", "mac_awake"],
+    ),
+    "json keys, a copy json cannot read is declined by name": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path, '{\n    "dose": 1\n}\n', '{\n    "dose": 2,\n}\n'
+        ),
+        [
+            "demo",
+            "demo.json",
+            "dose",
+            "src/anesthesia_sim/data/agents/demo.json: json cannot read its copy in the "
+            "working tree",
+        ],
+    ),
+    # Read as RFC 8259 reads a copy, not as `json`'s defaults do (`_json_reading`).
+    "json keys, a name one object holds twice is declined by name": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path,
+            '{\n    "dose": 1,\n    "dose": 2\n}\n',
+            '{\n    "dose": 3,\n    "dose": 2\n}\n',
+        ),
+        [
+            "demo",
+            "demo.json",
+            "dose",
+            "src/anesthesia_sim/data/agents/demo.json: json cannot read its copy at HEAD",
+        ],
+    ),
+    "json keys, a NaN, which equals nothing, is declined by name": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path,
+            '{\n    "dose": NaN,\n    "rate": 1\n}\n',
+            '{\n    "dose": NaN,\n    "rate": 2\n}\n',
+        ),
+        [
+            "demo",
+            "demo.json",
+            "rate",
+            "src/anesthesia_sim/data/agents/demo.json: json cannot read its copy at HEAD",
+        ],
+    ),
+    "json keys, two numbers past a float's range still differ": (
+        lambda tmp_path: _json_key_terms(
+            tmp_path, '{\n    "dose": 1e400\n}\n', '{\n    "dose": 2e400\n}\n'
+        ),
+        ["demo", "demo.json", "dose"],
+    ),
+    "removed headings, a front matter is no heading": (
+        lambda tmp_path: _removed_heading_terms(
+            tmp_path,
+            "---\ndescription: The old one\n---\n\n# Demo\n",
+            "---\ndescription: The new one\n---\n\n# Demo\n",
+        ),
+        [],
+    ),
+    "absent markers, a comment a front-matter value opens hides no paragraph": (
+        lambda tmp_path: (
+            _absent_findings(tmp_path, FRONT_MATTER_COMMENT)
+            + _missing_path_citations(tmp_path, FRONT_MATTER_COMMENT)
+        ),
+        [],
     ),
     "required checks, a flow collection carried past its line is refused by name": (
         lambda _: _refused(lambda: rcc.triggers(["on: [push,", "  pull_request]", "jobs:"])),
@@ -8973,6 +9239,42 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: docket_vcs._standing(_item_copy("One.\n\nTwo.\n"), _item_copy("One.\n")),
         "behind",
     ),
+    # `PL-NGKW`: a Markdown statement is a whole leaf block, tagged with its
+    # kind, so a ref that cuts the lines between two tables or two code runs
+    # holds a block the base never held, where read a row or a run at a time
+    # it read as holding nothing more.
+    "superseded, two tables joined into one": (
+        lambda tmp_path: _superseded_copy(tmp_path, "notes.md", TWO_TABLES, TWO_TABLES_JOINED),
+        set(),
+    ),
+    "superseded, a paragraph line made a table row": (
+        lambda tmp_path: _superseded_copy(
+            tmp_path,
+            "notes.md",
+            "| allowed |\n| --- |\n| a |\n\n| b |\n",
+            "| allowed |\n| --- |\n| a |\n| b |\n",
+        ),
+        set(),
+    ),
+    "superseded, two code runs joined into one": (
+        lambda tmp_path: _superseded_copy(
+            tmp_path,
+            "notes.md",
+            "    run one\n\nBetween.\n\n    run two\n",
+            "    run one\n\n    run two\n",
+        ),
+        set(),
+    ),
+    "superseded, a whole table cut": (
+        lambda tmp_path: _superseded_copy(
+            tmp_path, "notes.md", TWO_TABLES, "| allowed |\n| --- |\n| a |\n"
+        ),
+        {"notes.md"},
+    ),
+    "standing, two tables joined into one": (
+        lambda _: docket_vcs._standing(_item_copy(TWO_TABLES), _item_copy(TWO_TABLES_JOINED)),
+        "ahead",
+    ),
     # `tools/pr_body_check.py` (`PL-4ZVH`): a recovered record's front matter
     # is the item convention's, and git folds a trailer as RFC 822 does.
     "recovered records, a commit continued on an indented line": (
@@ -9226,6 +9528,80 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             tmp_path, '# Demo\n\n## Read § "Known limitations"\nabove all, it omits x.\n'
         ),
         [],
+    ),
+    # A line only an ordered list starting at 1 could interrupt, a pipe line no
+    # delimiter row follows, and a block opener four columns in each carry the
+    # paragraph on (CommonMark 0.31.2 § 4.8, § 5.3; GFM 0.29 § 4.10), and a
+    # backslash carries a link's title over a line ending (§ 6.3) (`PL-BCZQ`).
+    "soft break, a line opening with an ordered marker past 1 continues its quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path,
+            "# Demo\n\n## Released in October 2026. Notes follow\n\n"
+            'The rule is in § "Released in October\n2026. Notes follow", which holds it.\n',
+        ),
+        [],
+    ),
+    "soft break, a pipe line continues its quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path,
+            '# Demo\n\n## A heading with a | pipe\n\nSee § "A heading with a\n| pipe" now.\n',
+        ),
+        [],
+    ),
+    "soft break, a block opener indented four columns continues its quotation": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\n## Steps - in order\n\nSee § "Steps\n    - in order" for them.\n'
+        ),
+        [],
+    ),
+    "links, link text continued over an ordered marker past 1": (
+        lambda tmp_path: _link_errors(
+            tmp_path, README + "\nSee [the notes of\n2026. Here](missing-file.md) for more.\n"
+        ),
+        ["README.md:6: links to missing-file.md, which does not exist"],
+    ),
+    "links, a title continued after a backslash": (
+        lambda tmp_path: _link_errors(
+            tmp_path,
+            README + '\nSee [the notes](missing.md "a title ending in a backslash\\\n'
+            'and going on") here.\n',
+        ),
+        ["README.md:6: links to missing.md, which does not exist"],
+    ),
+    "section titles, a bold title continued over an ordered marker past 1": (
+        lambda _: (
+            "The heading decided in October 2026. Applies"
+            in doc_check._headings("**The heading decided in October\n2026. Applies.** Text.\n")
+        ),
+        True,
+    ),
+    # A link's statement is the document's, read before any code span is
+    # blanked: blanked first, a line holding only a span was a blank line and a
+    # span opening a paragraph made it indented code (`PL-Q6HR`).
+    "links, a line holding only a code span inside link text": (
+        lambda tmp_path: _link_errors(
+            tmp_path,
+            README + "\nSee [the notes of\n`docket check`\nfor the rule](missing-file.md) here.\n",
+        ),
+        ["README.md:6: links to missing-file.md, which does not exist"],
+    ),
+    "links, after a code span opening its paragraph": (
+        lambda tmp_path: _link_errors(
+            tmp_path, README + "\n`docs/MODEL.md` is the spec; see [the notes](missing-file.md).\n"
+        ),
+        ["README.md:6: links to missing-file.md, which does not exist"],
+    ),
+    # The reference index's filenames are code spans read a statement at a
+    # time, so one carried across a line ending is one span (`PL-P6D5`).
+    "reference files, a code span carried across a line ending": (
+        lambda tmp_path: _reference_file_errors(
+            tmp_path, "# Refs\n\nA `wrapped\nspan`x.pdf` tail.\n\nThe paper, `y.pdf`.\n"
+        ),
+        [
+            "docs/references/README.md:6 names y.pdf, which is not in docs/references/; drop "
+            "the filename and keep the citation if the text was deliberately removed, since "
+            "citing a work is not redistributing it"
+        ],
     ),
 }
 

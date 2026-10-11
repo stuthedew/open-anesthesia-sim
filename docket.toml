@@ -471,6 +471,8 @@ workflow_paths = [
   "tests/unit/test_source_tier_counts.py",
   "tests/unit/test_bytecode_guard.py",
   "tests/unit/test_shell_reader.py",
+  "tests/unit/test_inline_reference.py",
+  "tests/unit/markdown-specs",
   "tools",
 ]
 

@@ -1,9 +1,18 @@
 ---
 id: PL-VX3Q
 title: doc_check's changed_tokens takes a JSON key off the one diff line it reads, so a changed value continued past its key's line - an array entry, or a key whose colon sits on the next line - seeds no key term, and documents naming that key are left off the candidates list; live in form
-status: untriaged
+priority: P3
+effort: M
+status: done
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, tests/unit
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-10
+closed: 2026-10-10
+pr: 1392
+payoff: a value changed inside an array, or under a key written on another line, seeds its key, so the documents naming it reach the close-out sweep
+verify: grep -qF '"json keys, a value changed inside an array seeds its key"' tests/unit/test_doc_check.py && grep -qF '"json keys, a key whose colon stands on the next line"' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's changed_tokens takes a JSON key off the one diff line it reads, so a changed value continued past its key's line - an array entry, or a key whose colon sits on the next line - seeds no key term, and documents naming that key are left off the candidates list; live in form
@@ -37,6 +46,13 @@ editing any of them seeds no key term; nothing on the list was wrong today.
 A parameter file's value changed inside an array is the case this list exists
 to catch, since the documents that state the value are the ones to re-read.
 
+**Why it matters.** The candidates list is how the close-out sweep finds
+the documents that state a changed value. A data file's values sit in arrays
+and in objects whose keys stand lines above them, so a value changed there seeds
+no key term, and the documents quoting the parameter are left off the list the
+sweep reads: the stale statement of a value the safety-critical standard counts
+as a defect.
+
 **Generator check.** A member of `PL-R417`: the reader takes a physical line
 for a statement its format continues, the fact that head names. It is the JSON
 twin of closed `PL-V2HK`'s Python fix.
@@ -44,3 +60,27 @@ twin of closed `PL-V2HK`'s Python fix.
 **Done when.** A changed JSON line seeds the key path `json` gives the value
 it sits in (both files parsed, the changed values located), or the file is
 declined by name; a test pins both forms above.
+
+**Built 2026-10-10 (`#1392`).** `changed_tokens` reads a changed `.json` file's
+keys from both copies, the base's and the working tree's, each parsed by `json`
+(`_changed_json_keys`), and compares the two readings (`_json_keys_changed`):
+every member whose value differs seeds its key and every key below it on the way
+to the difference, and a member only one side holds, or a value whose type
+changed, seeds every key inside it too. So a value changed inside an array seeds
+the key the array sits under, a value under a key whose colon stands on the next
+line seeds that key, and a nested value seeds its parent keys as well. A copy
+missing on one side holds nothing there. A copy `json` refuses is named in
+`unread` and its changed lines are read a line at a time, as before. Four
+`json keys, ` cases in `PL-R417`'s guard, each failing on main's reader.
+
+**Completed 2026-10-11, in the same pull request.** Its adversarial pass found
+three inputs `json`'s defaults read past, each misreading the comparison: a
+name one object holds twice kept its last value, so a change to the first went
+unseen; a `NaN`, which equals nothing, read as changed while unchanged; and two
+numbers past a float's range read as one. A copy is now read as RFC 8259 reads
+it (`_json_reading`): the first two are refused by name, like a copy `json`
+cannot parse (§ 4 calls a repeated name's reading unpredictable, and § 6 lets
+no number be `NaN` or `Infinity`), and a number is read as written, a
+`Decimal`. Three more `json keys, ` cases: the first two fail on main's reader,
+which never named the copy it read a line at a time, and the third holds the
+reading main gave. No tracked `.json` file holds any of the three.

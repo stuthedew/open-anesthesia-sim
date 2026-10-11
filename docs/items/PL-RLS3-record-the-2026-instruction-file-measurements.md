@@ -76,3 +76,5 @@ generating"; recording it sooner is the owner's call, made by asking
 `docs/resident-instructions.md` records for `PL-H253` still holds, and this
 adds the sources published since that carry it. No head's `misread:` states a
 fact it touches.
+
+**The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it. It stays `blocked` only because `ready` needs a `verify:` command, which `bin/docket set` refuses `ready` without and triage writes beside the work; `bin/docket check` names it ready to promote meanwhile.
