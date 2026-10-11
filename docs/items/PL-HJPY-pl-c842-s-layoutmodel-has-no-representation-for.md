@@ -3,12 +3,14 @@ id: PL-HJPY
 title: PL-C842's LayoutModel has no representation for more than one window, which item 34's break-out requires and which PL-C842 itself recorded as the part most likely to change shape
 priority: P2
 effort: M
-status: blocked
+status: done
 classes: planning
 feature: interface-areas
-blocked-by: PL-1FT6
-touches: docs/ARCHITECTURE.md, ROADMAP.md
+touches: docs/ARCHITECTURE.md, ROADMAP.md, docs/items
 added: 2026-09-16
+closed: 2026-10-11
+pr: 1395
+verify: grep -qF 'Every recommendation above: ratified' docs/items/PL-HJPY-pl-c842-s-layoutmodel-has-no-representation-for.md
 ---
 
 **Problem.** PL-C842's LayoutModel has no representation for more than one window, which item 34's break-out requires and which PL-C842 itself recorded as the part most likely to change shape
@@ -145,3 +147,14 @@ ratified, over the alternative each names). The one decision the owner
 specified otherwise is `PL-WV9K` Q4: layouts are saved by an explicit "Save
 as default" action in the layout menu, not automatically; `PL-WV9K`
 § "Answers 2026-09-27" carries that design.
+
+## Closed 2026-10-11 on its record
+
+Done on its record, in `PL-M3X6`'s round. What this item owed v0.6.0 was the
+serialized shape, decided above on 2026-09-27 and ratified; `PL-1FT6`'s brief
+already requires the root to carry a window set at version 1, so the build has
+a home and this item has no work left. Its `blocked-by: PL-1FT6` read
+backwards: it recorded this item as waiting on the build when the build was
+waiting on this design, and the design is in. Folding it into `PL-1FT6` as
+`dropped` was the alternative, refused because the work - the design - was
+done, and `dropped` would say it was not.
