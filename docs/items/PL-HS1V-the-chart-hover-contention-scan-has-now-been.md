@@ -3,11 +3,13 @@ id: PL-HS1V
 title: The chart-hover contention scan has now been rebuilt from scratch three times - PL-MN4J, PL-JVHL and PL-0RZ0 - and PL-QYBW's axis decision will want it a fourth
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: infra, test
 feature: compartment-trace-legibility
-touches: tests, tools
+touches: docs/items/PL-1K9G-which-grid-column-a-trace-answers-a-hover-at-is.md
 added: 2026-09-20
+closed: 2026-10-11
+reason: Re-confirmed 2026-10-11 against 16a20a4f: every consumer the brief names is closed (PL-QYBW decided its axis without a scan), no item has needed the scan in the 19 days since PL-1K9G kept it in this brief, and nothing open or in v0.6.0 or v0.7.0 changes which trace the hover answers for, the radius or the percent axis. The kept scripts, updated for three unrelated interface changes, run and agree with nearest_trace_point and nearest_wash_in_point with no mismatch. Reopen when an item changes which trace answers, the radius or what the percent axis draws - PL-5B1N and v0.8.0's multi-substance traces are the two on the roadmap.
 payoff: the next hover design round scores its answer against a scan that already exists, instead of a fourth session rebuilding the same 324,000-position replica from scratch
 verify: grep -rq 'hover_contention' tests tools
 recurrences: 2026-09-22 PL-1N5B
@@ -65,13 +67,73 @@ file, with the standard-library constraint on `tools/` settled rather than
 assumed, and a test holding its agreement with `nearest_trace_point` itself.
 
 
+## Re-confirmed 2026-10-11: dropped, with the scan below kept runnable
+
+**Dropped, because nothing is left to run it and the rebuild it was filed to stop
+no longer happens.** Counted against the tree at `16a20a4f`:
+
+- **Every consumer the brief names is closed.** `PL-MN4J`, `PL-JVHL`, `PL-0RZ0`
+  and `PL-1K9G` are done, and `PL-QYBW` (the percent-axis decision the title
+  expected a fourth scan for) closed on 2026-09-23 without one: its file names
+  no scan, and the axis stayed linear with the slow-compartment lesson moved to
+  the schematic, planned-milestone item 27.
+- **No item has needed it in the 19 days since `PL-1K9G`.** The two hover
+  items closed since, `PL-TCR5` and `PL-LTKL`, were event-handling defects -
+  the pointer's previous position, a pointer that has left the plot - which no
+  contention scan measures.
+- **Nothing open and unblocked, and nothing planned before v0.8.0, would run
+  it.** No open item, and nothing in v0.6.0 or v0.7.0, changes which trace the
+  hover answers for, the hover radius, or what is drawn on the percent axis.
+  v0.6.0's tiled layout may change the plot's size, which moves how much the
+  traces contend but not the rule choosing among them. The two that could are
+  `PL-5B1N` (dotted predicted-future traces, `blocked-by: v0.7.0`) and
+  v0.8.0's multi-substance traces, and both change the frame the scan reads,
+  so a tool built against today's `ChartFrame` would be reworked at its next
+  use.
+- **The from-scratch rebuild is already gone.** `PL-1K9G` kept both scripts
+  here, so the next use is a copy and a patch rather than a fifth replica.
+  Measured on that: in 19 days three interface changes, none of them to the
+  hover, stopped the kept scripts running - `PL-NJPB` replaced the fraction dial
+  setter with `set_delivered_concentration_percent`, taking a `Percent`
+  (2026-10-01);
+  `PL-0GJC` made the step a `SimulationStep` (2026-10-03); and `PL-CN5S` made
+  `fork_at` take a `CaseInstant` (2026-10-04). The step and the setter stopped
+  the script at once, with a TypeError and an AttributeError, and the fork was
+  patched on sight from its signature; one line each restored them. Updated, both scripts
+  ran at all four sub-pixel phases and agreed with the shipped functions with
+  no mismatch: 400 random positions against `nearest_trace_point` in each of
+  the twelve cases, and 300 against `nearest_wash_in_point` in each of the nine
+  runs. The single-run chart's figures reproduce `PL-1K9G`'s table exactly
+  (31.7% of hoverable positions hold two or more of one run's readings, 70.1%
+  of those at mixed instants under the retired rule).
+
+**What would make dropping it wrong:** a hover design round arriving before
+v0.8.0 restructures the frame - one changing which trace answers, the radius, or
+what the percent axis draws - and none is filed. A test-held tool would have
+kept the scripts from rotting, at the price of repairing it inside each of
+those three unrelated changes, for no use in between: one session patching
+three lines at its next use costs less.
+
+**Reopen it, or file its successor, when an item changes which trace the hover
+answers for, the hover radius, or what is drawn on the percent axis** - `PL-5B1N`
+and v0.8.0's multi-substance traces are the two on the roadmap. A question
+about contention at another plot size, which v0.6.0's layout may raise, needs no
+tool: change the scan's `WIDTH_PX` and `HEIGHT_PX`. Start from the
+scripts below, run from the repository root with `uv run python` and
+`--check-new`, which holds the shipped time rule against the shipped functions;
+without it the retired two-dimensional rule is held against them, and its
+mismatches are expected rather than a fault. Settle the
+`tools/`-or-`tests/` question then, against the frame as it stands, since both
+need numpy and so cannot go into `tools/` as written.
+
 ## Rebuilt a fourth time, 2026-09-22, by `PL-1K9G` - kept here this time
 
 `PL-1K9G` (which instant a hover labels a value with) needed the same scan to
 decide whether a trace's column should be chosen by time alone, and rebuilt it
 from scratch exactly as this brief predicted. Rather than lose it with the
 container again, both scripts are below as they ran, with `PL-1K9G`'s numbers
-reproducible from them. What they add over the first three, and what a tool
+reproducible from them - and with three one-line updates made on 2026-10-11 for
+the interface changes since, named in the section above. What they add over the first three, and what a tool
 built from them would still owe:
 
 - **Both rules side by side** - the retired two-dimensional nearest point and
@@ -127,9 +189,11 @@ from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.run_series import RecordedQuantity as Q
-from anesthesia_sim.core.concentration import Fraction
+from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.supported_ranges import CaseInstant
 
-STEP_S = 0.1
+STEP_S = SimulationStep(0.1)
 WIDTH_PX = 900
 HEIGHT_PX = 360
 RADIUS = 12.0
@@ -147,7 +211,7 @@ def advance(controller: SimulationController, seconds: float) -> None:
 
 def dial(controller: SimulationController, delivered: float) -> None:
     controller.begin_control_adjustment()
-    controller.set_delivered_partial_pressure_fraction(Fraction(delivered))
+    controller.set_delivered_concentration_percent(Percent(100.0 * delivered))
 
 
 def frame_of(controllers, shown, span_s):
@@ -177,7 +241,7 @@ def build_cases():
     branches = {}
 
     for name, delivered in (("2 MAC", 0.04), ("1.25 MAC", 0.025), ("vaporizer off", 0.0)):
-        branch = case.fork_at(600.0)
+        branch = case.fork_at(CaseInstant(600.0))
         branch.start()
         dial(branch, delivered)
         advance(branch, 600.0)
