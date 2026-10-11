@@ -321,7 +321,11 @@ supported-limit halt is a fourth, distinct from the failure —
 in place of the failure word — because there nothing went wrong: the run
 stands on a completed step at a time the model claims to represent, and the
 next step would be refused identically. Neither can be resumed, only cleared
-by `reset()` or by starting a fresh run with `set_agent()`. Neither timer
+by `reset()` or by starting a fresh run with `set_agent()` - and `reset()`
+can itself refuse, for a settings record the definition cannot open on, which
+it does before it clears anything; `RunView._handle_reset` halts the run on
+that refusal through the same path, the banner naming the setting to change
+as the way out, since Reset is the door it names otherwise (`PL-M4M0`). Neither timer
 stops on either halt — both are started once, when the window opens, and a
 halted run leaves them firing and finding nothing to do — so a run reset and
 started again is stepped without anything having to be restarted.
