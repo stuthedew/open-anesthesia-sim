@@ -3,11 +3,12 @@ id: PL-99YZ
 title: Three sessions opened three pull requests for the same red-main fix within four minutes, each having correctly filed its own item first, because every in-flight guard matches an existing PL- id and none of them can see an item that did not exist when the other sessions looked
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
 touches: docs/items
 added: 2026-09-15
+closed: 2026-10-11
 not-delegable: the deliverable is a count over the store's own history - how many same-subject, different-id collisions it contains - and then a recorded decision about whether anything deterministic is worth building for them. No command can run before that count exists, and per the item's own **Done when.** a recorded 'no, the digest line is enough' closes it as legitimately as a check would
 ---
 
@@ -161,3 +162,123 @@ carried a different one. All three edited one line of
 `subprojects/docket/tests/test_cli.py`. Whether `795ebbf6` had been pushed by
 01:29 is not recorded, so it is unknown whether a file-level read such as
 `bin/docket concurrent` could have seen it.
+
+**Re-confirmed 2026-10-11: still true, at a different price.** Every guard
+still matches an id, and `bin/docket new`'s near-duplicate search
+(`duplicates.near_duplicates`) reads only the store in the session's own
+checkout, so an item filed on another unmerged branch is invisible to it. Three
+things have changed the price since this was filed. A claim is pushed when an
+item starts (#987, 2026-09-24), so a branch's work is readable from its first
+minutes rather than from its pull request. `bin/docket show` names every other
+branch already editing an item's file (`PL-1X2C`, #1046). And `CLAUDE.md` now
+stops a session on a `main` red for a reason outside its item until it has told
+the owner (2026-09-25, `PL-NZC0`), which is the case this item was filed on.
+
+**Counted 2026-10-11, over the whole history.** Against `origin/main` at
+`7f970bbe`, with every pull request head fetched (`git fetch origin
+'+refs/pull/*/head:refs/prs/*'`, 1,306 refs) and the store read through
+`docket.store.read_items` (2,182 items). An item's capture time is the earliest
+author date of any commit, on `main` or on a pull request head, that adds its
+file. A duplicate pair is a dropped item whose `reason:` calls it a duplicate
+or superseded, paired with the item the reason points at (94) or else the first
+other item it names (14), plus 7 drops read by hand whose reasons use neither
+word, `PL-7VSK`'s "the same repair" among them. Each later capture is placed by
+what the tree its capture commit was made on held of the earlier item. The
+scripts and their data are in the Projects trial's shared folder,
+`v0.6.0/pl-99yz-count/`, with a note on re-running them.
+
+| Later capture | Pairs | Earlier item in its checkout | On `main`, not in its checkout | Only on another branch | On its own branch | No branch history |
+| --- | --- | --- | --- | --- | --- | --- |
+| before #793 (2026-09-20) | 89 | 57 | 5 | 9 | 2 | 16 |
+| #793 to #987 (2026-09-24) | 18 | 17 | 0 | 1 | 0 | 0 |
+| since #987 | 8 | 5 | 0 | 3 | 0 | 0 |
+| **Total** | **115** | **79** | **5** | **13** | **2** | **16** |
+
+#793 is `PL-TZ7T`'s near-duplicate search and #987 the pushed claim. The shape
+this item names, an original visible only on another branch, is 13 of 115. The
+common shape is a capture filed with its original already in its own checkout,
+79 of 115, which is a search question rather than a visibility one and is what
+#793 answers. Since claims there have been three branch-only pairs, the last
+`PL-927J` and `PL-P813` on 2026-09-27, and none in the fourteen days since.
+
+**Work done twice**, read four ways, because a duplicate capture costs a drop
+and duplicated work is the cost this item is about: the drop reasons; the 10
+pull requests closed unmerged; every pair of pull requests open at once whose
+own commits edited one existing item file (365 pairs; the 36 since claims read
+by hand, and the 7 of those that rewrote one front-matter field read again);
+and every such pair adding an identical line to one shared file outside the
+store (89 pairs, nearly all boilerplate).
+
+| When | Done twice | Shape | What answers it now |
+| --- | --- | --- | --- |
+| 2026-09-03 | The title check's missing `edited` trigger, fixed in #256 (`PL-3V8K`) and again on `PL-0ZP8`'s branch | one fix, two ids | `CLAUDE.md`'s stop on the same check failing twice (inferred) |
+| 2026-09-04 | v0.3.7, cut by two sessions (`PL-66FP`) | one cut, no id | the release refusal (#323) and the claimed release train (#995) |
+| 2026-09-06 | `PL-X35V` and `PL-ZVS7`, triaged by two passes (`PL-N1JK`) | one item, two answers | triage skips `Its file is already edited on` another branch |
+| 2026-09-15 | The red-`main` fix this item was filed on, #598-#600 | one fix, three ids | the stop on red `main` |
+| 2026-09-16 | `PL-2M4X` and `PL-SYG4`, triaged by two passes (`PL-Q0J1`, the fourth instance) | one item, two answers | the same skip once either pass has pushed; `PL-XJ22` for the window before |
+| 2026-09-23 | The red-`main` fix of the fifth instance | one fix, three ids | the stop on red `main` |
+| 2026-09-26 | `PL-QMN0`, triaged by the branch working it and by #1124's pass three minutes later | one item, two answers | nothing yet: `PL-XJ22` |
+
+**This item's shape, one change under different ids or under none, came four
+times, all before 2026-09-24, and not once in the 409 pull requests and 550
+captures since.** The rows before claims come from drop reasons and the items'
+own accounts, so they are a lower bound; only the claim era was read pair by
+pair. The one-item rows are a different question: one item's file answered
+twice, which the triage skip reads by that item's own id. The 2026-09-26 pass
+did read the marks, before the claim reached `origin` (inferred; `PL-XJ22` has
+the times), so that window is filed as `PL-XJ22` rather than answered here,
+with the near miss of 2026-10-01 (#1278 handed `PL-DHGC` and `PL-W560` back two
+minutes after answering them, `a938142c`).
+
+**Red `main`.** 806 `quality.yml` push runs on `main` from 2026-09-15 hold 42
+failures in 10 streaks. Nine fell between 2026-09-15 and 09-23, and two of
+those produced the duplicate fixes above. One has fallen since claims, on
+2026-10-05 (run 4805 on `b67dace8`), and it was a job GitHub never gave a
+runner (`PL-7WNJ`), not red code. So most of the quiet since claims is that
+`main` has stayed green, and the stop rule is not proven by it.
+
+**What each candidate would have cost**, replayed at every capture with branch
+history (1,816, of them 550 since claims) against the pull requests open at
+that moment, commit times standing in for push times:
+
+| Key at `bin/docket new` | Fires since claims | Fires, whole history | Branch-only pairs it reaches |
+| --- | --- | --- | --- |
+| Shares any changed file with another open branch | 89 (16.2%) | 474 (26.1%) | 7 of 13 |
+| Shares a file outside `docs/items/` and ten hub files (`ROADMAP.md`, `CLAUDE.md`, `docs/WORKING_NOTES.md`, `uv.lock` and the like) | 55 (10.0%) | 131 (7.2%) | 1 of 13 |
+| Shares an existing item file neither branch created | 21 (3.8%) | 260 (14.3%) | 4 of 13 |
+| `docket new`'s own key, shared path then title above `DISPLAY_FLOOR`, run against other open branches' new items | 1 (0.2%) | 10 (0.6%); 6 of its 12 candidates real | 6 of 13 |
+
+The last key's one firing since claims is `PL-P813` against `PL-927J`, a real
+duplicate, which `bin/docket stranded` found after it was filed (its drop
+reason).
+
+**Decided 2026-10-11, by this session: build nothing.** Apparatus-internal and
+with one clearly correct option, so it is decided rather than put to the owner.
+
+- The path keys fail on firing rate. The narrowest still fires on 21 of 550
+  captures since claims, and there was no collision of this item's shape in
+  that period for any of them to catch. A check that fires without changing a
+  decision is a defect in the check (`CLAUDE.md` § "Prefer deterministic
+  tooling over repeated model work").
+- The cross-branch `docket new` key is precise and buys nothing: one hit in 550
+  captures, which `stranded` found anyway, and it reaches only 6 of the 13
+  branch-only pairs, because the rest were filed on fresh capture branches that
+  had changed nothing yet. It would put a read of every other branch's new items
+  into `docket new`, which has to cost a session nothing it can notice for the
+  capture rule to stay unconditional.
+- `PL-85NT`'s route 2, the digest naming items that cite a red streak, is not
+  needed: since claims no session has repaired a red `main` it did not cause,
+  and `main` has gone red once, for a runner that never came. The digest already
+  has its red-`main` line, `tools/main_ci_status.py`'s `advisory()`.
+
+**What would reopen it.** A collision of this item's shape since claims: two
+branches writing one change under different ids, or under no id at all, as a
+release cut once was. Or branch-only capture duplicates past about one a week
+that triage and `bin/docket stranded` leave to be found after a merge. Either
+is filed with `bin/docket new`, naming this item.
+
+**`PL-S0MB`'s row moving this item to `open-item-overlap-detection` lapses.**
+That build retires `parallel-sessions` for open items only, and this one closes
+first, so it keeps the name with the rest of the closed history.
+
+**Done when** is met by the count and the decision above.
