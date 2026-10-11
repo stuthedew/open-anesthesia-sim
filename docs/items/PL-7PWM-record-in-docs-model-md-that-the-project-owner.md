@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: housekeeping
+milestone: v0.5.23
 touches: docs/MODEL.md, docs/items/PL-6QYJ-rundefinition-evaluate-and-evaluate-anchored.md
 added: 2026-10-03
 closed: 2026-10-03

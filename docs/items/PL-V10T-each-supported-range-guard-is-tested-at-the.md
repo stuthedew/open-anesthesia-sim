@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: test
 feature: numerical-domain
+milestone: v0.5.23
 touches: pyproject.toml, uv.lock, tests/unit/test_supported_range_edges.py
 added: 2026-10-03
 closed: 2026-10-04

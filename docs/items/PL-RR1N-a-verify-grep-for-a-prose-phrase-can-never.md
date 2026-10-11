@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect
+milestone: v0.5.23
 touches: subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md
 added: 2026-09-20
 closed: 2026-10-11

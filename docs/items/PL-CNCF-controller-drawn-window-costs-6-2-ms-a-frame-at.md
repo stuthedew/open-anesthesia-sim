@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: perf
 feature: chart-readout
+milestone: v0.5.23
 touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py, tests/reference/test_canonical_evaluation.py, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/run-is-its-definition.md, docs/items/PL-PGZF-pl-gs3r-made-the-chart-s-column-budget-follow.md, docs/items/PL-HWNG-tests-unit-test-run-definition-py-s-two-change.md
 added: 2026-09-08
 closed: 2026-10-04

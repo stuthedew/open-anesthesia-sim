@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: feature, infra
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/picks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_picks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/picking.md, docs/items/PL-QWF8-a-report-on-a-frozen-gate-cannot-read-every.md
 added: 2026-10-04
 closed: 2026-10-04

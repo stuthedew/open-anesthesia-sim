@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.5.23
 touches: .github/workflows/quality.yml, tests/unit/test_ci_concurrency.py
 added: 2026-10-05
 closed: 2026-10-06

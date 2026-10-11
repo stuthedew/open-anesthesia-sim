@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, defect
 feature: parse-dont-validate
+milestone: v0.5.23
 touches: src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/checked_number.py, tests/unit/test_validation.py, tests/unit/test_simulation_step.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-10-05
 closed: 2026-10-11

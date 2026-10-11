@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.5.23
 touches: .claude/skills/docket/modes/release.md
 added: 2026-09-17
 closed: 2026-10-11

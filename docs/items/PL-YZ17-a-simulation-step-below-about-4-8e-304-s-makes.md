@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, science
 feature: numerical-domain
+milestone: v0.5.23
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, tests/unit/test_uptake_system_failure.py, tests/unit/test_simulation.py, tests/reference/test_sevo_patient.py, tests/unit/test_dashboard_frame.py, tests/unit/test_supported_ranges.py
 added: 2026-10-03
 closed: 2026-10-03

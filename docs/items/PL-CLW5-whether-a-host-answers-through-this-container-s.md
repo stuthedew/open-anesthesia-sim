@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: host-reachability
+milestone: v0.5.23
 touches: .claude/rules/citing-sources.md, .github/workflows/quality.yml, ROADMAP.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/machine-survey.md, docs/references/README.md, docs/resident-instructions.md, docs/worker.md, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/data/patients/reference_adult.json, subprojects/docket/src/docket/checks.py, tests/unit, tools/contrast_check.py, tools/doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05

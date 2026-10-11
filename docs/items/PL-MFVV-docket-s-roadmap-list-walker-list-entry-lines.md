@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests, subprojects/docket/README.md, tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04

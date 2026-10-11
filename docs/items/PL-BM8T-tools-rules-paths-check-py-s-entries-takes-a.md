@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/frontmatter.py, tools/rules_paths_check.py, tools/doc_check.py, subprojects/docket/tests, tests/unit, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-10 triage pass
 added: 2026-10-06

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: required-check-trigger-reading
+milestone: v0.5.23
 touches: tools/required_checks_check.py, tools/doc_check.py, tests/unit, docs/items/PL-S3XS-doc-check-s-workflow-readers-take-any-line.md, docs/items/PL-R417-readers-take-a-physical-line-for-the-statement.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01

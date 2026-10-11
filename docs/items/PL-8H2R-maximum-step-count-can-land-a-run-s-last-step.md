@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: numerical-domain
+milestone: v0.5.23
 touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_supported_ranges.py, tests/unit/test_run_definition.py, tests/unit/test_simulation.py, docs/MODEL.md
 added: 2026-10-03
 closed: 2026-10-03

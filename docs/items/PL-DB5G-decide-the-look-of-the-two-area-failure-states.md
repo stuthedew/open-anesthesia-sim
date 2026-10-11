@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, ux, planning
 feature: interface-areas
+milestone: v0.5.23
 touches: src/anesthesia_sim/app/, docs/items
 added: 2026-10-11
 closed: 2026-10-11

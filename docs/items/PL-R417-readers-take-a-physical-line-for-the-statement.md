@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.23
 touches: tools/doc_check.py, tools/required_checks_check.py, tools/rules_paths_check.py, .claude/hooks/shell_split.py, tests/unit, docs/items, subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/frontmatter.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/tests, docket.toml, docs/ARCHITECTURE.md, ROADMAP.md, pyproject.toml, uv.lock, tools/ignore_check.py, subprojects/docket/src/docket/instructions.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head by PL-JCS3
 added: 2026-10-04
