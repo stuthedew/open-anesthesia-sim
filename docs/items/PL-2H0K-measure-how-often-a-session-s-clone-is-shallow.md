@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: docs
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, .claude/hooks/stop_hook_patch.py, docs/ARCHITECTURE.md, tools/doc_check.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, .claude/hooks/stop_hook_patch.py, docs/apparatus.md, tools/doc_check.py
 added: 2026-09-23
 payoff: a reader designing a git fallback is told which clone a session actually has
 verify: ! grep -qF 'is normally shallow' subprojects/docket/src/docket/vcs.py
@@ -35,8 +35,10 @@ container "is normally shallow, so that is the common case", and five more
 sites in `vcs.py` and `checks.py` reason from it. Other places are wrong in the
 same way:
 
-- `.claude/hooks/stop_hook_patch.py` and `docs/ARCHITECTURE.md` say the
-  harness clones with `git clone --depth 1`, where 50 was observed. `cli.py`
+- `.claude/hooks/stop_hook_patch.py` and `docs/apparatus.md` say the
+  harness clones with `git clone --depth 1`, where 50 was observed; the
+  second sentence was `docs/ARCHITECTURE.md`'s until `PL-KRGY` moved the
+  hooks section on 2026-10-11, and `touches` follows it. `cli.py`
   said `--depth 1` too, until #1056 removed it on 2026-09-25.
 - `tools/doc_check.py` says `actions/checkout` clones shallow, but every
   workflow here sets `fetch-depth: 0`.

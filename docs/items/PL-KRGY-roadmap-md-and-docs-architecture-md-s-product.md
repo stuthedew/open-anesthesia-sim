@@ -3,12 +3,14 @@ id: PL-KRGY
 title: ROADMAP.md and docs/ARCHITECTURE.md's product placement in workflow_paths sets aside 90 and 40 items that pair them only with apparatus paths - 14 open - because both documents also carry apparatus facts, so the deliberate absence written when it cost four items now costs the crossing set most of its members
 priority: P3
 effort: M
-status: ready
+status: done
 classes: docs, infra
 feature: parallel-sessions
-touches: docket.toml, docs/ARCHITECTURE.md, docs/apparatus.md, tools/doc_check.py, tests/unit/test_doc_check.py, docs/items
+touches: docket.toml, docs/ARCHITECTURE.md, docs/apparatus.md, tools/doc_check.py, tests/unit/test_doc_check.py, tests/unit/test_inline_reference.py, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-28 triage pass
 added: 2026-09-27
+closed: 2026-10-11
+pr: 1400
 payoff: the simulator's map stops carrying 625 lines of apparatus, which gets a map of its own on the workflow side, and the eight open apparatus items reaching it stop reading as both lanes' work
 verify: grep -qF '"docs/apparatus.md"' docket.toml && grep -q '^## Developer tooling' docs/apparatus.md && ! grep -q '^## Developer tooling' docs/ARCHITECTURE.md
 ---
@@ -215,3 +217,37 @@ build and recorded here, with any that differ.
 **Generator check.** `PL-8ZGY`'s fact (which lane each tracked path is in),
 filed in the commit that closed `PL-8ZGY` as the question its table deferred
 here; not a post-close instance.
+
+**Built 2026-10-11, `#1400`.** `docs/apparatus.md` holds
+§ "Developer tooling (`tools/`)" and § "Wired hooks (`.claude/hooks/`)", and the
+vendored specifications' paragraph as
+§ "Third-party text (`tests/unit/markdown-specs/`)";
+`docs/ARCHITECTURE.md` keeps § "The workflow apparatus", one paragraph pointing
+at it where the two stood. The text moved as it stood but for three references
+the move made wrong, each now naming `docs/ARCHITECTURE.md`: the `doc_check.py`
+tree entry's "this map", the paragraph saying the trees "above" are checked,
+and a § "Layering" "above". `tools/doc_check.py`'s `check_package_maps` reads
+both documents through `PACKAGE_MAPS`, each held to the disk both ways and each
+refusing a missing file or a lost tree on its own;
+`test_the_apparatus_map_is_held_to_the_tree_too` and
+`test_each_map_document_answers_for_its_own_tree` pin the second document.
+
+Lanes read through `Item.lane` on the branch, against `origin/main` before it:
+
+| Item | Before | After |
+| --- | --- | --- |
+| `PL-124X`, `PL-2H0K`, `PL-5N7T`, `PL-B5LB`, `PL-S5YM` | crossing | workflow |
+| `PL-GTSL`, `PL-MXLV`, `PL-WQT0` | product | workflow |
+| `PL-TPS7`, `PL-ZBBP` | crossing | crossing |
+| `PL-KRGY` | crossing | crossing |
+
+None differs from what this round expected. Five of the re-pointed items'
+`verify:` commands grepped `docs/ARCHITECTURE.md` for text that moved, and
+`PL-MXLV`'s, a `! grep`, would have passed on the moved tree with none of its
+work done; each now greps `docs/apparatus.md`, and all five were run on the
+branch and fail, as an open item's must. Two lost a clause in the move,
+`PL-GTSL`'s `python3 tools/doc_check.py check` and `PL-S5YM`'s
+`uv run pytest tests/unit/test_doc_check.py`, which `bin/docket set` refuses
+beside a grep in a command written since 2026-09-24; each brief says so.
+`tests/unit/test_inline_reference.py` joined `touches` for its docstring, which
+cited the licence paragraph's old place.

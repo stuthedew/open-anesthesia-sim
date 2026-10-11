@@ -79,6 +79,10 @@ src/anesthesia_sim/
 └── data/
     └── agents/demo.json
 ```
+"""
+
+#: The apparatus's map, a document of its own since `PL-KRGY`.
+APPARATUS = """# Apparatus map
 
 ## Developer tooling
 
@@ -221,6 +225,7 @@ def _repo(
     tmp_path: Path,
     *,
     architecture: str = ARCHITECTURE,
+    apparatus: str = APPARATUS,
     model: str = MODEL,
     readme: str = README,
     roadmap: str = ROADMAP,
@@ -252,6 +257,7 @@ def _repo(
     (agents / "demo.json").write_text(json.dumps(payload, indent=4), encoding="utf-8")
 
     (root / "docs" / "ARCHITECTURE.md").write_text(architecture, encoding="utf-8")
+    (root / "docs" / "apparatus.md").write_text(apparatus, encoding="utf-8")
     (root / "docs" / "MODEL.md").write_text(model, encoding="utf-8")
     (root / "README.md").write_text(readme, encoding="utf-8")
     (root / "ROADMAP.md").write_text(roadmap, encoding="utf-8")
@@ -315,6 +321,39 @@ def test_init_files_are_not_required_in_the_map(tmp_path: Path) -> None:
 def test_a_file_with_no_tree_at_all_fails_rather_than_passing_silently(tmp_path: Path) -> None:
     root = _repo(tmp_path, architecture="# Architecture overview\n\nNo trees here.\n")
     assert any("no package-map tree found" in e for e in _errors(root))
+
+
+def test_the_apparatus_map_is_held_to_the_tree_too(tmp_path: Path) -> None:
+    """`tools/` is mapped in `docs/apparatus.md`, which is read beside `docs/ARCHITECTURE.md`.
+
+    Read from the simulator's map alone, as the check was until `PL-KRGY` moved
+    the apparatus's out of it, a tool added without a line would pass.
+    """
+    root = _repo(tmp_path)
+    (root / "tools" / "undocumented.py").write_text("", encoding="utf-8")
+    assert any(
+        error.startswith("docs/apparatus.md (package map at line ")
+        and error.endswith("does not list tools/undocumented.py")
+        for error in _errors(root)
+    )
+
+
+@pytest.mark.parametrize(
+    ("apparatus", "expected"),
+    [
+        (None, "docs/apparatus.md: missing; the package map cannot be checked"),
+        ("# Apparatus map\n\nNo trees here.\n", "docs/apparatus.md: no package-map tree found"),
+    ],
+    ids=["missing", "treeless"],
+)
+def test_each_map_document_answers_for_its_own_tree(
+    tmp_path: Path, apparatus: str | None, expected: str
+) -> None:
+    """The simulator's map drawing its tree does not excuse the apparatus's losing one."""
+    root = _repo(tmp_path, apparatus=apparatus or "")
+    if apparatus is None:
+        (root / "docs" / "apparatus.md").unlink()
+    assert any(error.startswith(expected) for error in _errors(root))
 
 
 # --- provenance table -------------------------------------------------------
@@ -2855,7 +2894,7 @@ def test_a_tag_whose_tree_yields_no_version_is_declined_rather_than_refused(tmp_
 
 # PL-W5LG: a workflow step names repository scripts by path exactly as the
 # documentation does, and nothing held it to them until this check. The
-# scripts live under `tools/harness/`, which the fixture's package map draws
+# scripts live under `tools/harness/`, which the fixture's apparatus map draws
 # as a covered directory, so adding one does not trip the map check as well.
 
 WORKFLOW = """\

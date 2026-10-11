@@ -100,3 +100,11 @@ None is named by `CLAUDE.md`'s enumeration, `expert-review.md`'s copy of it, or
 same test `PL-1KTV` applied. `docs/resident-instructions.md` is the one with
 teeth, as `docs/maintainer.md` was: a session editing the ledger of the resident
 set loads no apparatus rule at all.
+
+**One more row, 2026-10-11, from `PL-KRGY`.** `workflow_paths` now lists
+`docs/apparatus.md`, the apparatus's own map, which `PL-KRGY` moved out of
+`docs/ARCHITECTURE.md`: the `tools/` inventory, the wired hooks and the
+vendored Markdown specifications. None of the three enumerations names it. It
+has teeth for the reason `docs/maintainer.md` does: a session editing it loads
+no apparatus rule at all, though its opening paragraph names
+`.claude/rules/apparatus-standard.md` as its standard.

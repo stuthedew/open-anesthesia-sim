@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: docs
 feature: project-introduction
-touches: docs/ARCHITECTURE.md, tools/doc_check.py, tests/unit/test_doc_check.py
+touches: docs/apparatus.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
 verify: grep -q 'def test_a_marked_enumeration_missing_a_run_step_fails' tests/unit/test_doc_check.py && uv run pytest tests/unit/test_doc_check.py
 ---
@@ -76,7 +76,7 @@ enumeration will change again in the other direction. A check would catch that
 removal too; a reader would not.
 <!-- absent: readme_hold_check.py -->
 
-**Where, now.** `docs/ARCHITECTURE.md` (the paragraph beginning "The floor
+**Where, now.** `docs/apparatus.md` § "Developer tooling (`tools/`)" (the paragraph beginning "The floor
 section of `.github/workflows/quality.yml`'s `checks` job performs the run they
 stand in for"), corrected under `PL-WB5K` but still unheld by anything;
 `tools/doc_check.py` for the check; `tests/unit/test_doc_check.py`.
@@ -87,7 +87,7 @@ of `checks`**, not a job. The marker and the failure message should say so, or
 the check ships describing a job that does not exist.
 
 **Done when.** `make check` fails when the marked prose enumeration in
-`docs/ARCHITECTURE.md` disagrees with the run steps of `quality.yml`'s
+`docs/apparatus.md` disagrees with the run steps of `quality.yml`'s
 bare-interpreter section, and the two agree.
 
 **A third drift, in the other direction, the same day.** `PL-L17Q` *removed*
@@ -113,11 +113,12 @@ a marked enumeration is a bound family, and this one joins `BOUND_FAMILIES` in
 
 **Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Still real, and the drift it
 predicts is live in the tree right now - a fourth recurrence, unrepaired.**
-`docs/ARCHITECTURE.md:970-971` lists four bare-interpreter commands
-(`doc_check.py check`, `branch_id_check.py`, `rules_paths_check.py`,
-`bin/docket check`), `.github/workflows/quality.yml:189-199` runs those same
-four, and `docs/ARCHITECTURE.md:979` nine lines below the list says "reach what
-those **five** commands never do". `python3 tools/doc_check.py check` exits 0
+`docs/ARCHITECTURE.md` listed four bare-interpreter commands at its lines
+970-971 that day (`doc_check.py check`, `branch_id_check.py`,
+`rules_paths_check.py`, `bin/docket check`),
+`.github/workflows/quality.yml:189-199` ran those same four, and its line
+979, nine lines below the list, said "reach what those **five** commands
+never do". `python3 tools/doc_check.py check` exits 0
 over that contradiction, which is the whole argument of this item standing in
 one file.
 
@@ -127,3 +128,13 @@ expected to be there; and `README.md` exists again after `PL-WB5K` deleted it,
 but carries none of these commands, so this item's `docs/ARCHITECTURE.md`-only
 scope is still right.
 <!-- absent: tools/readme_hold_check.py -->
+
+**Re-pointed 2026-10-11 (`PL-KRGY`).** The enumeration this item would mark
+moved with the rest of the `tools/` section to `docs/apparatus.md` § "Developer tooling (`tools/`)",
+so `touches`, the Where and the Done-when name that file, and the dated
+paragraphs above describe `docs/ARCHITECTURE.md` before the move, their line
+numbers included. Read that day, the list names six commands and the sentence
+after it says six, while the bare-interpreter section of
+`.github/workflows/quality.yml` runs seven: the list omits
+`python3 tools/pr_body_check.py --anchors`. That is a fifth recurrence of the
+drift this item predicts, recorded here rather than repaired in the move.
