@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/suppo
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
 closed: 2026-10-11
+pr: 1404
 payoff: a concentration handed where another quantity belongs, or another quantity where a concentration belongs, is named as the swapped argument it is, never told to rebuild into the wrong quantity under the right type
 verify: grep -q 'def test_another_quantity_handed_in_as_a_concentration_is_refused_as_a_swapped_argument' tests/unit/test_concentration.py
 ---

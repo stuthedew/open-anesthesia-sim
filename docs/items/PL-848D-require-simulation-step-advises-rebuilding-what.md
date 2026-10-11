@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/sup
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
 closed: 2026-10-11
+pr: 1404
 payoff: a quantity handed in where the step or a flow belongs is named as the swapped argument it is, never prescribed a rebuild that stores the wrong quantity under the right type, and no refusal of either check can itself raise
 verify: grep -q 'def test_another_quantity_handed_in_as_the_step_is_refused_as_a_swapped_argument' tests/unit/test_simulation_step.py && grep -q 'def test_a_step_a_count_or_an_instant_handed_in_as_a_flow_is_refused_as_a_swapped_argument' tests/unit/test_supported_ranges.py
 recurrences: 2026-10-05 PL-979Z

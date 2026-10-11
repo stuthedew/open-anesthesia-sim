@@ -9,6 +9,7 @@ feature: parse-dont-validate
 touches: src/anesthesia_sim/core/checked_number.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/concentration.py, tests/unit/test_checked_number.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-10-05
 closed: 2026-10-11
+pr: 1404
 payoff: a count, a flow, a step or a concentration handed where another quantity belongs is refused at construction, never held as a plausible instant, flow, step or concentration under the type meant to prove it was checked
 verify: grep -q 'def test_no_checked_type_is_built_from_another_checked_quantity' tests/unit/test_checked_number.py
 ---
