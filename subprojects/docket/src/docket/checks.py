@@ -28,6 +28,7 @@ from pathlib import Path
 
 from . import fences, markdown
 from .config import Config
+from .grep import read_grep
 from .instructions import Assertion
 from .lines import split_lines
 from .markdown import statement_lines
@@ -1335,16 +1336,9 @@ def _verify_prerequisite_refused(item: Item, config: Config) -> bool:
 # shapes whose exit status is known to mean what the field needs, or it is
 # refused when it is written (project owner, 2026-09-23, ratified, over a
 # structured `verify:` field). A shape joins the list by an argument recorded
-# beside it, not by failing first.
-
-#: The `grep` options an admitted clause may carry. Each changes only *what*
-#: matches - a fixed string, an extended pattern, a whole tree, either case -
-#: and `q` is required, so the clause answers with its exit status and prints
-#: nothing into the replay. The rest change what the status means: `-v` passes
-#: on nearly any file, `-c`, `-l`, `-L` and `-o` report something other than
-#: whether the line is there, and `-e` and `-f` put the pattern where this does
-#: not read it.
-_GREP_FLAGS = frozenset("qFEri")
+# beside it, not by failing first. A `grep` clause's words are read by
+# `grep.read_grep`, which `grep.wrapped` reads them through too, and the options
+# a clause may carry are `grep.GREP_FLAGS`, with the reason beside them.
 
 _DOTTED_MODULE_RE = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
 _PERCENT_RE = re.compile(r"(?:100|[1-9]?[0-9])(?:\.[0-9]+)?")
@@ -1396,66 +1390,23 @@ def _grep_refusal(words: Sequence[Word]) -> str | None:
 
     `! grep` is admitted, and the reason is the direction it fails in. A
     `grep -q` for what the work adds fails quietly when it is wrong - a typo,
-    a phrase the document wraps (`PL-RR1N`), a file that moved (`PL-CWD4`) -
-    because "never passes" reads as work not started. A `! grep -q` for what
-    the work removes passes when it is wrong: a typo, a line another branch
-    reworded, a file another branch deleted (grep's 2 negated to 0). A passing
-    open command is already an error, and the changed-path replay runs on the
-    branch that edits the file it reads - so every way `! grep` goes wrong is
-    reported loudly, on the branch that caused it. 25 open commands asserted an
-    absence on 2026-09-23, most of them a stale sentence a fix removes, and a
-    `grep` for its replacement would dictate the fix's wording.
+    a file that moved (`PL-CWD4`) - because "never passes" reads as work not
+    started. A `! grep -q` for what the work removes passes when it is wrong: a
+    typo, a line another branch reworded, a file another branch deleted (grep's
+    2 negated to 0). A passing open command is already an error, and the
+    changed-path replay runs on the branch that edits the file it reads - so
+    every way `! grep` goes wrong is reported loudly, on the branch that caused
+    it. 25 open commands asserted an absence on 2026-09-23, most of them a
+    stale sentence a fix removes, and a `grep` for its replacement would
+    dictate the fix's wording.
+
+    A phrase the document wraps across a line break is the one such fault the
+    tree decides, in both directions - `grep` fails on it, and `! grep` passes
+    while it is there - so the replay and `docket verify` name it from
+    `grep.wrapped` rather than leaving it to read as either (`PL-RR1N`).
     """
-    clause = " ".join(word.text for word in words)
-    if words[0].bang:
-        if words[0].text != "!" or words[0].quoted or len(words) < 2:
-            return f"carries `!` in `{clause}`, where only `! grep` admits one"
-        words = words[1:]
-    if any(word.bang for word in words):
-        return f"carries `!` in `{clause}`, where only `! grep` admits one"
-    if words[0].text != "grep":
-        return f"runs `{clause}`, which is neither a `grep` clause nor the whole-suite coverage run"
-    letters: set[str] = set()
-    recursive_only = False
-    index = 1
-    while index < len(words) and words[index].text.startswith("-"):
-        option = words[index].text
-        if words[index].quoted and not option.startswith(("--include=", "--exclude=")):
-            return f"gives a pattern grep reads as an option: `{option}` wants `--` ahead of it"
-        index += 1
-        if option == "--":
-            break
-        if option.startswith(("--include=", "--exclude=")) and option.split("=", 1)[1]:
-            recursive_only = True
-            continue
-        refused = (
-            option
-            if option.startswith("--")
-            else next((f"-{letter}" for letter in option[1:] if letter not in _GREP_FLAGS), "")
-        )
-        if refused or option == "-":
-            return f"gives `grep` the option `{refused or option}`, which no admitted shape uses"
-        letters.update(option[1:])
-    if "q" not in letters:
-        return f"runs `{clause}` without `-q`, so it answers in output as well as status"
-    if {"F", "E"} <= letters:
-        return "gives `grep` both `-F` and `-E`, which it refuses with exit 2"
-    if recursive_only and "r" not in letters:
-        return "gives `--include` or `--exclude` to a `grep` that does not recurse"
-    operands = words[index:]
-    if len(operands) < 2:
-        return f"runs `{clause}`, which names no file to read"
-    pattern, paths = operands[0], operands[1:]
-    if pattern.globbed:
-        return f"leaves the pattern in `{clause}` unquoted, where the shell may expand it"
-    if not pattern.text:
-        return "gives `grep` an empty pattern, which matches every line"
-    for path in paths:
-        if path.text.startswith("-"):
-            return f"puts `{path.text}` after the pattern, where grep reads it as an option"
-        if path.text.startswith("/") or ".." in path.text.split("/"):
-            return f"reads `{path.text}`, which is outside the repository"
-    return None
+    clause = read_grep(words)
+    return clause if isinstance(clause, str) else None
 
 
 def verify_shape_refusal(command: str) -> str | None:
@@ -1922,6 +1873,13 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
     `make check` red on every release branch" - and this is that window seen
     from the far side.
 
+    A `grep` clause whose phrase its file holds only across a line break is
+    the one verdict here read from the tree rather than from the run
+    (`PL-RR1N`), so it is an error whatever the command exited with. `grep`
+    reads a line at a time, so such a clause fails however the work stands,
+    or under `!` passes, and neither reading above applies: the failure is
+    the case that otherwise reads as work not done.
+
     This is the replay's clause of the `verify:` contract (`PL-6TP8`,
     `subprojects/docket/README.md` § "What a `verify:` exit status proves, and to whom"): exit 0
     is the finding, the never-evaluated statuses are refusals, and a plain
@@ -1999,10 +1957,26 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
             "creates, and run it and see it fail before recording it"
         )
 
-    # Everything below is the two-reading finding, so the blocked ids are taken
-    # out of it rather than reported twice under a question one of them has
-    # already answered.
-    named = set(landed.blocked) | set(landed.external)
+    # A verdict read from the tree rather than from the run (`PL-RR1N`), so it is
+    # reported whatever the command exited with. Neither reading below is why
+    # such a command passes, and "close it" would send a session at the wrong
+    # repair: the sentence a `! grep` was to see gone is still there.
+    for identifier, wraps in landed.wrapped:
+        report.errors.append(
+            f"{identifier}'s `verify:` greps for a phrase its file holds only across a "
+            f"line break, and `grep` reads one line at a time: "
+            f"{'; '.join(wrap.describe() for wrap in wraps)}. Rewrite the command to a "
+            "phrase one line holds, rather than the document to suit the command"
+        )
+
+    # Everything below is the two-reading finding, so the blocked, external and
+    # wrapped ids are taken out of it rather than reported twice under a
+    # question one of them has already answered.
+    named = (
+        set(landed.blocked)
+        | set(landed.external)
+        | {identifier for identifier, _ in landed.wrapped}
+    )
     startable = tuple(identifier for identifier in landed.passing if identifier not in named)
     if not startable:
         return
