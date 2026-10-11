@@ -22,6 +22,7 @@ import pytest
 
 import docket.verify as verify_module
 from docket.config import Config
+from docket.grep import Wrap
 from docket.model import Item, parse_item
 from docket.store import insert_field, replace_field
 from docket.verify import (
@@ -1952,6 +1953,73 @@ def test_a_verify_report_of_a_real_failure_makes_no_such_claim(tmp_path: Path) -
     command = next(c for c in report.checks if "`verify:` command" in c.name)
     assert not command.passed
     assert not any("selects no test" in line for line in command.lines)
+
+
+# --- a phrase its file holds only across a line break (`PL-RR1N`) -----------
+#
+# Read from the tree rather than from the exit status, which cannot carry it:
+# a `grep` for such a phrase fails whether or not the work is done, and a
+# `! grep` passes while the sentence it was to see removed is still there.
+# `test_grep.py` has the reading; these are the two places its answer goes.
+
+WRAPPED = "The fresh-gas inlet contributes exactly two rates and\none volume to the circuit.\n"
+PHRASE = "contributes exactly two rates and one volume"
+
+
+def test_the_replay_names_a_command_whose_phrase_its_file_wraps(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    (root / "docs" / "MODEL.md").write_text(WRAPPED)
+    report = already_passing(root, [_item(verify=f"grep -qF '{PHRASE}' docs/MODEL.md")])
+
+    assert report.passing == ()
+    assert report.wrapped == (("PL-K7QX", (Wrap(PHRASE, False, "docs/MODEL.md", 1, 2),)),)
+
+
+def test_a_wrapped_removal_is_named_as_wrapped_and_not_as_blocked(tmp_path: Path) -> None:
+    # It passes, so without the reading it is the blocked finding, which says
+    # the command does not discriminate - true, but not why, and the sentence
+    # the command was written to see removed is still there.
+    root = _repo(tmp_path)
+    (root / "docs" / "MODEL.md").write_text(WRAPPED)
+    item = _item(status="blocked", verify=f"! grep -qF '{PHRASE}' docs/MODEL.md")
+    report = already_passing(root, [item], scoped_to={"PL-K7QX"})
+
+    assert report.passing == ("PL-K7QX",)
+    assert report.blocked == ()
+    assert report.wrapped == (("PL-K7QX", (Wrap(PHRASE, True, "docs/MODEL.md", 1, 2),)),)
+
+
+def test_a_verify_report_says_a_phrase_is_wrapped_rather_than_missing(tmp_path: Path) -> None:
+    # `PL-FG9D`'s close-out: the sentence was written, and its command could not see it.
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX write the sentence", "docs/MODEL.md", WRAPPED)
+    item = _item(touches=("docs/MODEL.md",), verify=f"grep -qF '{PHRASE}' docs/MODEL.md")
+    report = verify(root, item, _config(), "HEAD~1")
+
+    command = _check(report, "`verify:` command passes")
+    assert command.blocks
+    assert (
+        f"`{PHRASE}` is in docs/MODEL.md only across lines 1-2, so its `grep` fails "
+        "whether or not the work is done: `grep` reads one line at a time, so rewrite "
+        "the command to a phrase one line holds"
+    ) in command.lines
+
+
+def test_a_wrapped_removal_is_refused_although_its_command_exits_zero(tmp_path: Path) -> None:
+    # `PL-Z4WL`'s close-out, which passed: its fix quoted the sentence it removed
+    # across two lines, so the command written to see it gone could not see it.
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX quote the sentence", "docs/MODEL.md", WRAPPED)
+    item = _item(touches=("docs/MODEL.md",), verify=f"! grep -qF '{PHRASE}' docs/MODEL.md")
+    report = verify(root, item, _config(), "HEAD~1")
+
+    command = _check(report, "`verify:` command passes")
+    assert subprocess.run(item.verify, shell=True, cwd=root, check=False).returncode == 0
+    assert command.blocks
+    assert any(
+        line.startswith(f"`{PHRASE}` is still in docs/MODEL.md, across lines 1-2, so its `! grep`")
+        for line in command.lines
+    )
 
 
 # Scoping the replay to what a branch changed (`PL-SDHR`). The sweep answers a

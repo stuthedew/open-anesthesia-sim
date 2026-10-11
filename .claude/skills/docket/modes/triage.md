@@ -322,9 +322,13 @@ and refuses one the replay would report as already passing; a line written
 by hand is an error at the next `make check`, which replays the items the
 branch has edited (`PL-0HPV`, `PL-71P4`). What neither reads is an ordinary
 failure's cause: a pattern misspelt so that it never matches exits 1 exactly
-as an unstarted item does, and goes on exiting 1 after the work. So the step
-is still to see the command fail first, and to see that it fails for the
-reason you meant.
+as an unstarted item does, and goes on exiting 1 after the work. The one cause
+they do read is a phrase its file holds only across a line break, which is on
+no line for `grep` to find: `set --verify` names it where the phrase is already
+there, and `docket verify` once the work has written it (`PL-RR1N`). Where the
+work's text will wrap is not known yet, so grep for a few words rather than a
+sentence. So the step is still to see the command fail first, and to see that
+it fails for the reason you meant.
 
 **Then reproduce the fault, because the command cannot.** Watching the
 `verify:` fail proves the *fix* is absent. It does not prove the *fault* is

@@ -42,6 +42,7 @@ from typing import TypeVar
 from . import vcs
 from .arming import RECORDS
 from .config import Config
+from .grep import Cache, Wrap, wrapped
 from .lines import file_text, record_text, split_lines
 from .model import (
     CLOSED_STATUSES,
@@ -3188,6 +3189,19 @@ def _check_item(
             "this command selects no test (pytest exit 5, nothing collected), so it "
             "proves neither that the work is done nor that it is missing",
         ) + lines
+    # A phrase its file wraps across a line break is read from the tree, and
+    # it is the command at fault, not the work: the line says so, and a pass
+    # that rests on one is no pass, since a `! grep` cannot see the sentence
+    # the work was to remove (`PL-RR1N`).
+    wraps = wrapped(root, item.verify)
+    lines = (
+        *(
+            f"{wrap.describe()}: `grep` reads one line at a time, so rewrite the command "
+            "to a phrase one line holds"
+            for wrap in wraps
+        ),
+        *lines,
+    )
     # `verify:` is a *prediction*, and the branch's copy is its correction: it
     # is the command that decides this check, since a commissioned test can be
     # reworded, moved or never have existed under that name - 163 of 1,437
@@ -3206,7 +3220,8 @@ def _check_item(
         detail += f" - this branch's own, since {base} commissions none"
     elif commission.verify != item.verify:
         lines = (commissioned_result(root, base, commission, item.verify), *lines)
-    report.checks.append(Check("`verify:` command passes", status == 0, detail, lines))
+    passed = status == 0 and not any(wrap.negated for wrap in wraps)
+    report.checks.append(Check("`verify:` command passes", passed, detail, lines))
     return report
 
 
@@ -3473,6 +3488,13 @@ class LandedReport:
     #: `passing` this is a verdict rather than a candidate: `selects_no_test`
     #: only says so where pytest's own exit code says so.
     vacuous: tuple[str, ...] = ()
+    #: Open items whose command greps for a phrase its file holds only across a
+    #: line break, each with the clauses that do (`PL-RR1N`). A verdict, as
+    #: `vacuous` is, and read from the tree rather than from the run: such a
+    #: clause fails, or under `!` passes, however the work stands, so the
+    #: command proves the item neither done nor undone. Its ids are taken out
+    #: of `blocked` and `external`, whose readings do not apply to it.
+    wrapped: tuple[tuple[str, tuple[Wrap, ...]], ...] = ()
     #: Open items whose command was killed at `limit` before it could answer.
     timed_out: tuple[str, ...] = ()
     #: Open items whose command the shell could not find, where others could be
@@ -3780,14 +3802,27 @@ def already_passing(
     # work not having landed - which a command reading the remote can no longer
     # establish, since the world may simply have moved (`PL-205P`).
     recorded = {item.identifier: item.verify for item in candidates}
+    # Read from the tree rather than from the run, so every candidate is asked
+    # whatever its command exited with: a phrase its file wraps makes the
+    # clause fail, or under `!` pass, however the work stands (`PL-RR1N`). One
+    # cache for the run, so a file several commands read is read once.
+    files: Cache = {}
+    wraps = tuple(
+        (item.identifier, found)
+        for item in candidates
+        if (found := wrapped(root, item.verify, files))
+    )
+    split = {identifier for identifier, _ in wraps}
     external = tuple(
-        identifier for identifier in passing if reaches_outside_tree(recorded.get(identifier) or "")
+        identifier
+        for identifier in passing
+        if reaches_outside_tree(recorded.get(identifier) or "") and identifier not in split
     )
     outside = set(external)
     blocked = tuple(
         identifier
         for identifier in passing
-        if identifier in scoped_only and identifier not in outside
+        if identifier in scoped_only and identifier not in outside and identifier not in split
     )
 
     return LandedReport(
@@ -3795,6 +3830,7 @@ def already_passing(
         blocked=blocked,
         external=external,
         vacuous=tuple(vacuous),
+        wrapped=wraps,
         timed_out=tuple(timed_out),
         unavailable=tuple(unavailable),
         considered=checked,

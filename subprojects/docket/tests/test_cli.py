@@ -8471,6 +8471,33 @@ def test_set_refuses_a_verify_that_already_passes(
     assert f"verify: {work}\n" in _item_text(store)
 
 
+def test_set_refuses_a_verify_whose_phrase_its_file_wraps(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-RR1N`: the replay's reading of the tree, at the moment of writing.
+
+    A `grep` for a phrase the document already holds across a line break fails
+    whatever the work does, so it was written at exit 0; its `! grep` passes
+    and was refused as work already landed. Both are refused naming the lines.
+    """
+    store = _store(tmp_path, OPEN_ITEM)
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "MODEL.md").write_text("It feeds two rates and\none volume.\n")
+    write = ("set", "PL-K7QX", "--overwrite", "--items", str(store), "--verify")
+
+    for command in (
+        "grep -qF 'two rates and one volume' docs/MODEL.md",
+        "! grep -qF 'two rates and one volume' docs/MODEL.md",
+    ):
+        assert _run(*write, command) == 1
+        out = capsys.readouterr().out
+        assert "nothing was written" in out
+        assert "PL-K7QX's `verify:` greps for a phrase its file holds only across a line" in out
+        assert "in docs/MODEL.md" in out and "across lines 1-2" in out
+        assert "already passes" not in out
+        assert _item_text(store) == OPEN_ITEM
+
+
 def test_set_refuses_a_file_it_could_not_rewrite_faithfully(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
