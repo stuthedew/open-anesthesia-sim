@@ -8,7 +8,7 @@ classes: infra
 feature: convergence-visibility
 touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/trend.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docs/items
 added: 2026-09-17
-verify: grep -q 'def test_a_reentry_is_counted_in_the_period_it_was_filed' subprojects/docket/tests/test_inflow.py && grep -q 'reenters' subprojects/docket/src/docket/model.py
+verify: grep -q 'def test_a_reentry_is_counted_in_the_period_it_was_filed' subprojects/docket/tests/test_inflow.py && grep -rqE '^reenters: PL-' docs/items
 ---
 
 **Problem.** No command answers whether the workflow lane is converging: docket trend reports the workflow/product balance, so a session asked whether accumulation is slowing re-derives filed-per-closed, surface saturation and severity mix by hand at full context
