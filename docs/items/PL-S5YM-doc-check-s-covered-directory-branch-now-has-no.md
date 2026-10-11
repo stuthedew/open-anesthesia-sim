@@ -6,9 +6,9 @@ effort: S
 status: ready
 classes: test, infra
 feature: dev-tooling
-touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/apparatus.md
 added: 2026-08-30
-verify: grep -q 'covered_dirs' tests/unit/test_doc_check.py && ! grep -q 'no tree draws one today' docs/ARCHITECTURE.md && uv run pytest tests/unit/test_doc_check.py
+verify: grep -q 'covered_dirs' tests/unit/test_doc_check.py && ! grep -q 'no tree draws one today' docs/apparatus.md
 ---
 
 **Problem.** `TreeMap.covered_dirs` in `tools/doc_check.py` handles a directory
@@ -30,7 +30,7 @@ CI, and this branch decides whether a file counts as mapped. Untested and with
 no live instance, it is the shape that quietly stops working: the next session
 to draw a bare directory would find out from a false failure, or worse from a
 false pass that lets an unmapped module through. It is also the case
-`docs/ARCHITECTURE.md` still documents in prose, so the tree says the feature
+`docs/apparatus.md` still documents in prose, so the tree says the feature
 exists while nothing demonstrates that it does.
 
 Low urgency — no clinical value is reached by any of it, and `make check` is
@@ -56,7 +56,7 @@ found.
 
 **Where.** `tools/doc_check.py:196-212` (`TreeMap`), `:312` (construction),
 `:356` (the parent walk); `tests/unit/test_doc_check.py`;
-`docs/ARCHITECTURE.md` § "Developer tooling (`tools/`)" section, which
+`docs/apparatus.md` § "Developer tooling (`tools/`)" section, which
 currently says "no tree draws one today".
 
 **Approach — test it rather than delete it.** The mechanism is right: a
@@ -69,7 +69,7 @@ the wrong one, since the prose would have to go with it and the capability
 would be rebuilt the next time a subtree needs it.
 
 **Done when.** `tests/unit/test_doc_check.py` covers the covered-directory
-branch in both directions, and `docs/ARCHITECTURE.md`'s claim about it names
+branch in both directions, and `docs/apparatus.md`'s claim about it names
 the test rather than noting that no tree uses it.
 
 **Corrected 2026-09-15 (`PL-Y1W6`, after `PL-B5VM`).** Two findings about this
@@ -107,3 +107,14 @@ this item ("untested" and "unused") were false. Re-checked by replaying
 So the title is stale and the body is not; the 2026-09-15 `PL-Y1W6` correction
 already records the tested half. Line drift in "Where": the three paths are
 `tools/doc_check.py:598`, `:702` and `:746`, and the cited test is now `:235`.
+
+**Re-pointed 2026-10-11 (`PL-KRGY`).** The prose this item replaces moved with
+the `tools/` tree to `docs/apparatus.md` § "Developer tooling (`tools/`)", so `touches`,
+`verify:`, the Where, the Done-when and the paragraph on why it matters name
+that file, and the dated paragraphs above describe `docs/ARCHITECTURE.md`
+before the move. The `src/anesthesia_sim` tree and its covered `data/` stayed in
+`docs/ARCHITECTURE.md`, and `tools/doc_check.py` now reads both documents'
+trees, so the covered-directory branch serves both. `verify:` lost its
+`uv run pytest tests/unit/test_doc_check.py` clause, which is not a shape a
+command written since 2026-09-24 may take; `bin/docket verify` runs
+`make check`, which runs that file, so nothing the clause proved is lost.

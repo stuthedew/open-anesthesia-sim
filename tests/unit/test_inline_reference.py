@@ -38,8 +38,8 @@ holds, and then on what is in each:
   matched from the end of the line's text, leaves the next line: where
   markdown-it-py's content line begins.
 
-The specifications' licence, CC-BY-SA 4.0, is recorded in `docs/ARCHITECTURE.md`
-§ "Tests (`tests/`)".
+The specifications' licence, CC-BY-SA 4.0, is recorded in `docs/apparatus.md`
+§ "Third-party text (`tests/unit/markdown-specs/`)".
 """
 
 from __future__ import annotations

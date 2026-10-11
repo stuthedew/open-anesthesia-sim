@@ -5,10 +5,10 @@ priority: P3
 effort: S
 status: ready
 classes: docs
-touches: docs/ARCHITECTURE.md
+touches: docs/apparatus.md
 added: 2026-09-19
 payoff: stops the architecture doc telling a session CI runs five floor commands where it runs four
-verify: grep -qF 'four commands' docs/ARCHITECTURE.md
+verify: grep -qF 'four commands' docs/apparatus.md
 ---
 
 **Problem.** docs/ARCHITECTURE.md:979 says 'those five commands' where the list nine lines above names four and quality.yml runs four, and doc_check passes over the contradiction
@@ -26,5 +26,15 @@ rather than a path, a section or a line citation, and none of its checks reads
 an English numeral against the length of a list above it. Verified against the
 tree 2026-09-20.
 
-**Done when.** `docs/ARCHITECTURE.md`'s sentence names the same number of
+**Done when.** `docs/apparatus.md`'s sentence names the same number of
 commands the list above it does.
+
+**Re-pointed 2026-10-11 (`PL-KRGY`).** The paragraph moved with the rest of
+the `tools/` section to `docs/apparatus.md` § "Developer tooling (`tools/`)",
+so `touches`, `verify:` and the Done-when name that file; the title's line
+number describes `docs/ARCHITECTURE.md` before the move. Read that day, the
+contradiction the title names is gone: the list names six commands and the
+sentence after it says "those six commands". The list itself is stale instead,
+since the bare-interpreter section of `.github/workflows/quality.yml` runs
+seven, adding `python3 tools/pr_body_check.py --anchors`, which is `PL-5N7T`'s
+drift. A session starting this re-confirms it first.

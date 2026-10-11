@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: docs
 feature: prose-quality
-touches: docs/ARCHITECTURE.md, docs/maintainer.md
+touches: docs/ARCHITECTURE.md, docs/apparatus.md, docs/maintainer.md
 added: 2026-09-05
 not-delegable: readability is judged by a person, and no command separates trimmed prose from padded prose. A line-count ceiling would be met by deleting a statement to reach a number, and `doc_check.py check` passes today
 ---
@@ -40,3 +40,10 @@ own instruction to re-measure is why the numbers are given rather than kept:
 the two files were **576** and **49** lines at the filing commit `8250816`, and
 are **1155** and **83** today. Both have roughly doubled, so the premise moved
 in the direction that makes this item larger rather than smaller.
+
+**Split 2026-10-11 (`PL-KRGY`).** The `tools/` inventory and the hooks section,
+625 of `docs/ARCHITECTURE.md`'s 1,465 lines, moved to `docs/apparatus.md`,
+which `touches` now names beside the two files; `docs/ARCHITECTURE.md` is 837
+lines after the move. The move was the first half of this cut and cut nothing:
+the text moved as it stood, but for the three references the move itself made
+wrong.

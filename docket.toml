@@ -405,6 +405,11 @@ known_classes = [
 # `PL-GVNS`, which left `PL-90CJ` - whose only deliverable is a line in the
 # owner's own notes - ranked in the product lane, offered to a simulator session
 # and hidden from the apparatus one.
+#
+# `docs/apparatus.md` is the apparatus's own map: the `tools/` inventory, the
+# wired hooks and the vendored text the tooling's tests read, moved out of
+# `docs/ARCHITECTURE.md` by `PL-KRGY` so that the simulator's map stopped
+# carrying them and the items working on them stopped reading `crossing`.
 workflow_paths = [
   ".claude",
   ".gitattributes",
@@ -418,6 +423,7 @@ workflow_paths = [
   "conftest.py",
   "docket.toml",
   "docs/WORKING_NOTES.md",
+  "docs/apparatus.md",
   "docs/dead-ends.md",
   "docs/items",
   "docs/maintainer.md",
@@ -514,11 +520,16 @@ workflow_paths = [
 #   next release is doing product work even though no `src/` file moves.
 #   Changing how the release train is *written* and changing what it *says*
 #   are two jobs, so an item reaching both a tool and the roadmap is set aside
-#   as `crossing`. Ninety have been, which `PL-KRGY` weighs; the placement
-#   stands until that is decided.
+#   as `crossing`. Ninety-six had been by 2026-10-11, eight of them open, and
+#   `PL-KRGY` decided the placement stands: moving the roadmap would hand two
+#   product decisions to an apparatus session and send eleven roadmap-only
+#   items, product direction among them, to the workflow side, and its gate
+#   sections are where the roadmap meets the queue by design.
 # - `docs/ARCHITECTURE.md` is written for a reader of the simulator, which
-#   CLAUDE.md holds to the specialist standard, and documents the apparatus
-#   tree as well: 40 items pair it only with apparatus paths, `PL-KRGY` again.
+#   CLAUDE.md holds to the specialist standard. It documented the apparatus
+#   tree as well until `PL-KRGY` moved that half to `docs/apparatus.md`, on
+#   the workflow side: 59 items had paired it only with apparatus paths, eight
+#   of them open, most of them through the `tools/` inventory.
 # - `docs/references` is the register of source documents behind
 #   `docs/MODEL.md`'s provenance, which `.claude/rules/citing-sources.md`
 #   scopes with it (4 against 8).
