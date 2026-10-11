@@ -337,6 +337,17 @@ coverage. Each of the three narrowings was bought with an observed false
 positive, and each false positive led a reader to a ref deletion rather than to
 a copy.
 
+**So every answer here says what it was judged by** (`PL-CZR6`). The second
+silence is the shape a squash against a moved base leaves, and `docket stranded`
+used to close on "No branch carries work its own pull request left behind" as a
+clean result while `tools/left_behind_check.py` named the commit. The line now
+says it was judged by file content and names
+`python3 tools/left_behind_check.py --all` as the exact answer. The list carries
+the same sentence, since the content reading can also name a commit whose change
+landed. That check reads each branch on the remote against the head its merged
+pull request froze, needs GitHub where this reading needs only the checkout, and
+wins where the two disagree.
+
 ### The other loss: a merge that deletes an item nothing deleted
 
 `stranded` answers for a branch that never merged. The opposite case is a
