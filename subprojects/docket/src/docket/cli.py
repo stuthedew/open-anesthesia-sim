@@ -208,6 +208,7 @@ from .vcs import (
 from .verify import (
     GitUnanswered,
     LandedReport,
+    Verification,
     already_passing,
     changed_paths,
     items_reading,
@@ -4485,7 +4486,18 @@ def cmd_verify(args: argparse.Namespace) -> int:
         print(_guessed_base_refusal())
         return 1
     reports = verify_batch(root, wanted, config, base, self_audit=args.self_audit)
-    print("\n\n".join(report.describe() for report in reports))
+    own = frozenset() if args.self_audit else _own_branch_refused(args, reports)
+    print(
+        "\n\n".join(
+            (
+                _ASKED_AS_REVIEW.format(id=report.item.identifier) + "\n"
+                if report.item.identifier in own
+                else ""
+            )
+            + report.describe()
+            for report in reports
+        )
+    )
     if len(reports) > 1:
         print(f"\n{config.check_command} ran once for the batch; it proves the tree, not an item.")
     if args.self_audit:
@@ -4494,6 +4506,52 @@ def cmd_verify(args: argparse.Namespace) -> int:
             "A delegated review runs without `--self` and refuses on any of them."
         )
     return 0 if all(report.passed for report in reports) else 1
+
+
+#: Printed above an item's report when a bare run refused it on a commission
+#: check while the claim on this branch is this session's own (`PL-PFK1`).
+_ASKED_AS_REVIEW = (
+    "This branch's claim on {id} is this session's own, so this is a self-audit run as a "
+    "delegated review: `bin/docket verify --self {id}` reports the commission checks that "
+    "refuse below instead of refusing on them."
+)
+
+
+def _own_branch_refused(
+    args: argparse.Namespace, reports: Sequence[Verification]
+) -> frozenset[str]:
+    """The items a bare run refused on a commission check, on a branch this session claimed them on.
+
+    `PL-PFK1`: a session auditing its own branch without `--self` meets four
+    guards that fire by construction on the close-out it was told to make, and
+    nothing in the `REJECT` says the flag exists. Who made the claim is a
+    record, the claim's session token, so the line rests on it rather than on
+    which checks happened to fail: silent for a reviewer, whose token differs;
+    silent where the claim carries no token or no session is running, since
+    `Hold.mine` then falls back to whichever branch is checked out, which a
+    reviewer reading the worker's branch is on too; and silent on a run no
+    commission check refused, where the flag would change nothing.
+
+    Read from this checkout's own branches alone and never fetched: the claim
+    in question is on the branch `HEAD` is on, and `verify` asks the remote
+    nothing.
+    """
+    refused = {
+        report.item.identifier
+        for report in reports
+        if any(check.commission and not check.passed for check in report.checks)
+    }
+    if not refused:
+        return frozenset()
+    inv = _invocation(args)
+    read = holdings(
+        inv.root, now=_now(args), items_dir=inv.tracked, include_remote=False, runner=inv.git
+    )
+    return frozenset(
+        hold.key
+        for hold in read.holds
+        if hold.key in refused and hold.mine and hold.session and hold.ref == read.head
+    )
 
 
 def cmd_wave(args: argparse.Namespace) -> int:

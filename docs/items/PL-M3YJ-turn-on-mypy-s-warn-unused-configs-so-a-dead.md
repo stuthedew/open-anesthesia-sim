@@ -5,7 +5,6 @@ priority: P3
 effort: S
 status: ready
 classes: infra
-feature: dev-tooling
 touches: pyproject.toml
 added: 2026-09-16
 verify: uv run mypy && grep -q '^warn_unused_configs = true$' pyproject.toml

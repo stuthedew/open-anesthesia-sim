@@ -399,6 +399,7 @@ def test_the_success_line_states_what_it_measured(
     assert "1 of them on identity controls" in out
     # The dropdown built from `colors` in `__init__`; nothing coloured by a call.
     assert "1 construction-time and 0 call-time agent colouring(s)" in out
+    assert "and 0 property-write one(s)" in out
 
 
 # --- the setter spelling (PL-25KS) -------------------------------------------
@@ -523,6 +524,7 @@ def test_the_success_line_counts_setter_spelled_writes(
     # rather than leaving an empty rule-2 measurement indistinguishable from
     # one earned.
     assert "0 construction-time and 0 call-time agent colouring(s)" in out
+    assert "and 0 property-write one(s)" in out
 
 
 # --- rule 2 in the setter spelling (PL-25KS port review) ----------------------
@@ -626,6 +628,82 @@ def test_the_writers_own_calls_are_the_identity_set_and_not_a_rule_two_finding(
     assert report.problems == ()
     assert report.call_colorings == 0
     assert set(report.controls) == {"_agent_dropdown", "_running_agent_display"}
+
+
+# --- rule 2 in the property spelling (PL-Y5ZB) --------------------------------
+
+
+def test_a_property_write_in_another_method_is_a_second_writer(tmp_path: Path) -> None:
+    """`self.X.color = AGENT_COLOR_SCHEMES[...]` outside the writer, on a control it never writes.
+
+    The route `PL-Y5ZB` was filed for: rule 2 read `self.X = ...` and call
+    statements, and `self_attribute` answers None for `self.X.color`, so a
+    method under another name could write agent colour onto a property and
+    nothing went red. It is the writer's own spelling in the Flet build, so a
+    colour write moved out of the writer arrives in exactly this shape.
+    """
+
+    source = PAIRED_SOURCE.replace(
+        "    def _apply_agent_color_scheme(self, agent_id):\n",
+        "    def _highlight(self, agent_id):\n"
+        "        self._swatch.bgcolor = AGENT_COLOR_SCHEMES[agent_id].fill\n"
+        "\n"
+        "    def _apply_agent_color_scheme(self, agent_id):\n",
+    )
+
+    found = agent_identity_check.problems(_view(tmp_path, source))
+
+    assert len(found) == 1
+    assert "simulation_view.py:SimulationView._swatch" in found[0]
+    assert "self._swatch.bgcolor = ..." in found[0]
+    assert "SimulationView._highlight" in found[0]
+    assert agent_identity_check.IDENTITY_WRITER in found[0]
+
+
+def test_a_property_write_in_another_module_is_a_second_writer(tmp_path: Path) -> None:
+    """The same write in a class the writer cannot reach, through a local bound from the table."""
+
+    root = _module(tmp_path, "run_view.py", PAIRED_SOURCE)
+    _module(
+        root,
+        "chart_panel.py",
+        PLAIN_PANEL_SOURCE.replace(
+            "        self._legend.disabled = snapshot.is_running\n",
+            "        self._legend.disabled = snapshot.is_running\n"
+            "        scheme = AGENT_COLOR_SCHEMES[snapshot.agent_id]\n"
+            "        self._legend.color = scheme.foreground\n",
+        ),
+    )
+
+    report = agent_identity_check.analyze(root)
+
+    assert len(report.problems) == 1
+    assert "chart_panel.py:ChartPanel._legend" in report.problems[0]
+    assert "self._legend.color = ..." in report.problems[0]
+    assert report.property_colorings == 1
+
+
+def test_a_property_write_on_an_identity_control_outside_the_writer_is_quiet(
+    tmp_path: Path,
+) -> None:
+    """Judged as the other two spellings are: a control the writer writes is counted and passes.
+
+    The writer re-writes it on every agent change, so it follows the agent and
+    rule 1 already holds its disabled state to the pairing. Reporting it would
+    make the property spelling stricter than construction and call for the
+    same control.
+    """
+
+    source = PAIRED_SOURCE.replace(
+        "        self._agent_dropdown.visible = not snapshot.is_running\n",
+        "        self._agent_dropdown.visible = not snapshot.is_running\n"
+        "        self._agent_dropdown.bgcolor = AGENT_COLOR_SCHEMES[snapshot.agent_id].fill\n",
+    )
+
+    report = agent_identity_check.analyze(_view(tmp_path, source))
+
+    assert report.problems == ()
+    assert report.property_colorings == 1
 
 
 def test_a_keyword_argument_setter_is_read_by_rule_one(tmp_path: Path) -> None:

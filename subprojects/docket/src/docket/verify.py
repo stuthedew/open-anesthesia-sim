@@ -1743,6 +1743,13 @@ class Check:
     #: reason it is not refusing, because a guard that quietly stops applying
     #: is worse than one that fires wrongly.
     advisory: bool = False
+    #: Whether this is one of the four checks about the *commission* - the
+    #: diff's scope, a protected path, a gate path, the item's own front
+    #: matter - rather than about the work's integrity. `advisory` says whether
+    #: a failure refuses; this says which kind of check failed, which is how a
+    #: bare run on a session's own branch can say that `--self` was the
+    #: question it meant to ask (`PL-PFK1`).
+    commission: bool = False
 
     @property
     def blocks(self) -> bool:
@@ -2630,12 +2637,17 @@ def front_matter_check(
             False,
             "the item names no file, so there was nothing to compare",
             advisory=advisory,
+            commission=True,
         )
     try:
         after = (root / items_dir / item.path).read_text(encoding="utf-8")
     except OSError:
         return Check(
-            name, False, f"no item file to read at {items_dir}/{item.path}", advisory=advisory
+            name,
+            False,
+            f"no item file to read at {items_dir}/{item.path}",
+            advisory=advisory,
+            commission=True,
         )
     held = _store_at(root, base, items_dir)
     if held is None:
@@ -2644,20 +2656,29 @@ def front_matter_check(
             False,
             f"no item store at {base}:{items_dir} to compare against",
             advisory=advisory,
+            commission=True,
         )
     was = _base_copy(held, item.identifier)
     if not was:
-        return Check(name, True, f"a new item file - {base} holds no copy to differ from")
+        return Check(
+            name, True, f"a new item file - {base} holds no copy to differ from", commission=True
+        )
     status, before = _run(["git", "show", f"{base}:{items_dir}/{was}"], root)
     if status != 0:
-        return Check(name, False, f"{base}:{items_dir}/{was} could not be read", advisory=advisory)
+        return Check(
+            name,
+            False,
+            f"{base}:{items_dir}/{was} could not be read",
+            advisory=advisory,
+            commission=True,
+        )
     old, _ = parse_front_matter(before)
     new, _ = parse_front_matter(after)
     changed = tuple(sorted(k for k in set(old) | set(new) if old.get(k) != new.get(k)))
     detail = ", ".join(changed) if changed else "unchanged"
     if changed and advisory:
         detail += COMMISSION_NOTE
-    return Check(name, not changed, detail, advisory=advisory)
+    return Check(name, not changed, detail, advisory=advisory, commission=True)
 
 
 def base_warning(root: Path, base: str) -> str:
@@ -2997,6 +3018,7 @@ def _check_item(
             )
             + tuple(f"{path} - {kind}, not counted" for path, kind in sanctioned.items()),
             advisory=self_audit,
+            commission=True,
         )
     )
 
@@ -3024,6 +3046,7 @@ def _check_item(
             if protected and self_audit
             else (", ".join(protected) if protected else "none touched"),
             advisory=self_audit,
+            commission=True,
         )
     )
 
@@ -3036,6 +3059,7 @@ def _check_item(
             if gates and self_audit
             else (", ".join(gates) if gates else "none touched"),
             advisory=self_audit,
+            commission=True,
         )
     )
 

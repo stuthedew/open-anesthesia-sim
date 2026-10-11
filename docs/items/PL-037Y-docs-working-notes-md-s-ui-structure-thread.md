@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: docs
-feature: queue-hygiene
+feature: closed-item-claims
 touches: docs/WORKING_NOTES.md
 added: 2026-09-14
 verify: ! grep -q '`PL-NGF7` decides the theme object' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
