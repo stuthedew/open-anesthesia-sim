@@ -47,8 +47,8 @@ product" stays refused. "Apparatus inflow should be declining now that the
 functionality is settled, and if it is not, something is generating work we
 should go and find" was never asked, is live, and is a diagnostic expectation
 rather than a ratio — no ratio is tracked or enforced. `PL-04KR` (the
-pre-registered apparatus-convergence baseline) holds its numbers and the two
-signals that test it.
+pre-registered apparatus-convergence baseline) holds its numbers and
+predictions; `bin/docket release` names any that break (`PL-WXKD`).
 
 **While any open item carries `generator: live`, no new workflow mechanism is
 built** (project owner, 2026-09-22, ratified, over adding them under standing

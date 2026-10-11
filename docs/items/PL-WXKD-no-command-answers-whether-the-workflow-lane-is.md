@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: infra
 feature: convergence-visibility
-touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/trend.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docs/items
+touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/trend.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docs/items, CLAUDE.md
 added: 2026-09-17
 verify: grep -q 'def test_a_reentry_is_counted_in_the_period_it_was_filed' subprojects/docket/tests/test_inflow.py && grep -rqE '^reenters: PL-' docs/items
 ---
@@ -235,3 +235,55 @@ pre-registered expectations fails (new paths per filing above 0.13, a P1
 apparatus filing, re-entry rising); and a test under
 `subprojects/docket/tests/test_inflow.py` pins the re-entry count and the
 three-re-entry naming.
+
+### Built after the answer, 2026-10-11
+
+`reenters:` is a list field (`model.py`, written by `bin/docket set
+--reenters`), and `reentry_faults` holds each id to a `done` item closed on or
+before the filing's `added:`. **`done`, not merely closed:** a `dropped` item
+shipped no fix, so it cannot be a fix that did not hold. Triage's generator
+check (`.claude/skills/docket/modes/triage.md`) now asks for the field on both
+of its fix-did-not-hold outcomes, the post-close head instance and the
+re-entry. `inflow`'s `re-entry` column counts it over `filed` only, the filings
+no head explained, so a sweep's members cannot read as fixes failing; the
+three-re-entry naming counts the same population.
+
+The release-time report sits in `docket release` itself, printed under the
+notes in a dry run and a cut alike, not as a step in `release.md`: in code it
+cannot be skipped. It reads the last complete week (the last one that ended
+before today, since the week still being filed into reads low) and prints only
+the predictions that week broke. Three calls made while building it, each with
+one clearly correct option:
+
+- **The band test leaves out the generator tier.** Since 2026-09-21 a head
+  recording `generator: live` is raised to `P1` by rule and keeps it once spent,
+  and an `impairs-generators:` item ranks with it. `PL-04KR`'s baseline (0, 2,
+  1, 0 `P1` filings a week) predates that. From 09-28 to 10-11, heads and such
+  items were 8 of the 9 `P1` apparatus filings, so counting them would have
+  every cut report a generator that has already been found and ranked. `P0`
+  counts with `P1`.
+- **`P1` only, not `PL-04KR`'s "P1/P2 ... staying at zero".** `P2` apparatus
+  filings were never zero: 3 to 185 a week in the table above. Read literally,
+  that prediction had already failed when it was written.
+- **Rising means more re-entries in the last complete week than the week
+  before**, by count; the weeks compared are both seven days long.
+
+What a cut would print on 2026-10-11 is one line: the week of 09-28 had one
+`P1` apparatus filing outside the generator tier. That filing is `PL-0YYV`, a
+`safety`-classed simulator refactor whose only apparatus path is
+`.claude/rules/core-domain.md`. It counts under `PL-4NZ7`'s population (any
+filing naming an apparatus path, whatever its lane) and is reported as that
+population defines it. The line stops appearing once the week of 10-05 becomes
+the last complete week.
+
+**`recurrences:` is a different fact and stays separate.** It is written by
+`bin/docket new` on the *matched* item when a title match finds the same
+defect filed again, and the matched item may still be open. `reenters:` is
+triage's judgment, written on the new item, that a shipped fix failed to reach
+it.
+
+`PL-04KR`: its two path and cluster signals and the 30-day-bound sentence are
+marked superseded, with this item as the reason. Its Done-when keeps its last
+two sentences, the three release checks recorded in its file, and its
+`verify:` now names the third of those checks instead of `test_trend.py`'s
+`test_the_re_entry_rate`, which this design will never write.
