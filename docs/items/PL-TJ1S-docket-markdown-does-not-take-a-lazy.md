@@ -1,9 +1,16 @@
 ---
 id: PL-TJ1S
 title: docket.markdown does not take a lazy continuation line for a table's header row where the delimiter row under it sits inside the list item or block quote, so a table cmark-gfm renders inside the container is read as the paragraph above it going on; latent
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/markdown.py, subprojects/docket/tests/test_markdown_reference.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+payoff: docket.markdown reads a table under a lazy header row as cmark-gfm does, or says plainly where it does not.
+verify: grep -q 'def test_a_lazy_header_row_over_a_delimiter_row_inside_a_container' subprojects/docket/tests/test_markdown_reference.py
 ---
 
 **Problem.** docket.markdown does not take a lazy continuation line for a table's header row where the delimiter row under it sits inside the list item or block quote, so a table cmark-gfm renders inside the container is read as the paragraph above it going on; latent
@@ -33,10 +40,25 @@ ends the list, and pandoc's commonmark-hs reads as docket does. GitHub renders
 with cmark-gfm. Latent: table counts agree with cmark-gfm across all 2,508
 tracked Markdown files.
 
+**Re-confirmed 2026-10-11** on `main` at `16a20a4f`, under python3 3.13.16:
+`markdown.read` gives one paragraph over all four lines for the list form and
+the block-quote form alike; cmark-gfm (cmarkgfm 2025.10.22) renders each as a
+paragraph and then a table with rows `a | b` and `c | d` inside the container.
+The module docstring states the rule docket keeps - its header row "is a
+paragraph line, not a lazy one" - as cmark-gfm's reading, which this form shows
+it is not.
+
 **Generator check.** A member of `PL-R417`: the reader takes a physical line
 for a statement its format continues, the fact that head names. It is a shared
-reader's own gap: the paragraph is read past the point
-where cmark-gfm ends it.
+reader's own gap: the paragraph is read past the point where cmark-gfm ends it.
+Latent, so an ordinary item under the head's spent ruling (re-checked
+2026-10-11).
+
+**Why it matters.** Every block reader here takes `docket.markdown`'s reading,
+and the module promises cmark-gfm's for tables, so a docstring stating as
+GitHub's a rule GitHub does not follow is a confident answer that is wrong. A
+table read as a paragraph going on has its rows judged as prose by the readers
+that skip tables. Latent, so today's cost is the docstring's claim.
 
 **Done when.** `docket.markdown` reads the form above as cmark-gfm does, or the
 module's docstring and its markdown-it test name it as a departure; a test
