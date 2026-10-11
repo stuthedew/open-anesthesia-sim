@@ -398,7 +398,7 @@ def render_mac_multiple(multiple: MacMultiple) -> str:
     return f"{rendered}{MAC_UNIT_SUFFIX}"
 
 
-def format_mac_reference(agent_display_name: str, mac_percent: float) -> str:
+def format_mac_reference(agent_display_name: str, mac_percent: Percent) -> str:
     """State the divisor every MAC multiple on screen was produced with.
 
     `CLAUDE.md` requires a clinically meaningful displayed value to be
@@ -428,7 +428,7 @@ def mac_awake_band_percent(
     *,
     fraction_of_mac: MacMultiple,
     standard_deviation_fraction_of_mac: MacMultiple,
-    mac_percent: float,
+    mac_percent: Percent,
 ) -> tuple[float, float]:
     """Place the MAC-awake band on the chart's percent axis, as (lower, upper).
 
@@ -501,7 +501,7 @@ def format_mac_awake_reference(
     *,
     fraction_of_mac: MacMultiple,
     standard_deviation_fraction_of_mac: MacMultiple,
-    mac_percent: float,
+    mac_percent: Percent,
 ) -> str:
     """State what the MAC-awake band was drawn from, in one line.
 
@@ -547,7 +547,7 @@ def format_mac_awake_reference(
     )
 
 
-def chart_axis_top_percent(mac_percent: float) -> float:
+def chart_axis_top_percent(mac_percent: Percent) -> float:
     """Give the compartment chart's axis top, in percent, for one agent.
 
     The chart plots percent, so the ceiling has to be handed over in
@@ -575,7 +575,7 @@ def chart_axis_top_percent(mac_percent: float) -> float:
     return CHART_AXIS_TOP_MAC * mac_percent
 
 
-def chart_grid_interval_percent(mac_percent: float) -> float:
+def chart_grid_interval_percent(mac_percent: Percent) -> float:
     """Give the compartment chart's horizontal rule spacing, in percent.
 
     The same conversion `chart_axis_top_percent` makes, for the same
@@ -600,7 +600,7 @@ def chart_grid_interval_percent(mac_percent: float) -> float:
     return CHART_GRID_INTERVAL_MAC * mac_percent
 
 
-def mac_axis_ticks(max_percent: float, mac_percent: float) -> tuple[tuple[float, str], ...]:
+def mac_axis_ticks(max_percent: float, mac_percent: Percent) -> tuple[tuple[float, str], ...]:
     """Place the chart's MAC axis labels against a percent-valued axis.
 
     The chart plots percent and always has: a MAC axis is the same
