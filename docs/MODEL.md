@@ -174,6 +174,7 @@ stays a reviewer's question.
 | --- | --- | --- |
 | reading a correct concentration as belonging to a different agent | agent colour is a redundant cue, never the sole identifier: the agent name is always visible - carried by the invariant tier every top-level window shows, subject to the observability limit stated there (§ "Minimum displayed outputs" -> "What this list requires once the layout is the reader's") - and the ISO 5360 colours and their accessible foregrounds are audited as one unit in `src/anesthesia_sim/app/theme.py` by `tools/agent_identity_check.py` | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
 | reading a run halted by a failure as one the user paused | a halt gets its own status words rather than falling back to "Paused", and the two failure modes are distinguished from each other as well; the status word, the transport and the banner are stated from the run's status alone - three facts no compartment value is built for - so a run whose own snapshot refuses a value still reads as stopped rather than as running with Pause offered, and the banner written before any frame of the stopped run has drawn says so instead of claiming a step was rolled back (`PL-7DJK`) | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`, `test_a_halt_is_shown_when_the_snapshot_itself_is_refused`, `test_a_halt_is_stated_from_the_run_status_alone`, `test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step` |
+| reading a run whose Reset the core refused as one still running, or as one that was reset | `SimulationController.reset()` builds the settings record the fresh run definition opens on before it clears anything, so a refusal - tissue flows that no longer sum to the cardiac output, which a checked output written onto the patient past the setter leaves - leaves the run exactly as it was rather than half cleared, and the interface halts it through the failed-step path: the refusal recorded as the failure (on a run that had already failed for something else, that failure stays the reason and the banner's exit states the refusal), the status word, the transport and the banner stating it, with the banner's way out naming the setting to change rather than the Reset just refused, and the two flows named in L/min, the unit every readout shows, as they were set (`PL-M4M0`) | `test_a_reset_the_core_refuses_halts_the_run_visibly`, `test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was`, `test_a_refused_reset_names_the_way_out_in_the_banner`, `test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute` |
 | believing a setting above the vaporizer maximum was simulated | such a setting is **rejected, not clamped**, so no run proceeds on a value the user did not choose; the boundary itself is accepted - by the circuit, and by the settings record a run is built from, which carries the maximum beside the dial (`PL-BBMG`) | `test_rejects_delivered_concentration_above_the_vaporizer_maximum`, `test_explicit_delivered_concentration_above_the_agent_max_is_rejected`, `test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum`, `test_rejects_a_dial_above_the_vaporizer_maximum`, `test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum` |
 | reading a displayed value as resolved to its last digit | displayed precision is a recorded choice within a justified band, and the model retains precision the display discards rather than rounding its own state | `test_the_model_keeps_precision_the_display_throws_away`, `test_concentration_decimals_are_a_choice_within_a_recorded_band` |
 | reading a control mark on the timeline as a measurement | the timeline labels its marks "Settings only — not a measurement." | `test_the_interface_says_a_control_mark_is_an_input_not_a_measurement` |
@@ -5240,8 +5241,10 @@ the machine's range before the write, and the patient's still recomputes the
 tissue flows after it, so a checked cardiac output written past the setter
 leaves the tissue flows stale, which `UptakeEquationSettings` refuses at the
 next step, as the `SimulationNumericalError` that `advance()` restates every
-guard reached inside a step as, and at Reset, where the view handles no
-refusal (`PL-M4M0`). A copy `dataclasses.replace` makes at another cardiac
+guard reached inside a step as, and at Reset, which
+`SimulationController.reset()` refuses before it clears anything, the
+interface halting the run on it (`PL-M4M0`). A copy `dataclasses.replace`
+makes at another cardiac
 output does not reach it: the patient's constructor checks each compartment's
 flow against its own output and writes none, so the copy is refused and the
 original is left as it was. One made at the same output shares the original's
@@ -5914,6 +5917,20 @@ Reset must:
 - clear any recorded failure state, so a session halted by a failed step
   becomes startable again from a clean state; and
 - preserve the user’s selected settings.
+
+A Reset the core refuses does none of this. The settings record the fresh run
+definition opens on is built from the compartments, and it refuses tissue
+flows that no longer sum to the cardiac output - what a checked cardiac output
+written onto the patient past `set_cardiac_output` leaves, the one write the
+type-only guard admits (`PL-LBQY`). `SimulationController.reset()` builds that
+record before anything above is done, so a refused Reset leaves the run
+exactly as it was rather than half cleared, and the interface halts the run on
+the refusal through the failed-step path, the banner naming the setting the
+refusal names as the way out - its dial rebuilds the record, after which Reset
+takes - since Reset is the door it names otherwise (`PL-M4M0`). The same
+record is refused at the next step, where `AgentUptakeSystem.advance()`
+restates it as a failed step rather than as a refused setting, because a
+run whose record cannot be built is not one still worth continuing.
 
 ## Agent-change behavior
 

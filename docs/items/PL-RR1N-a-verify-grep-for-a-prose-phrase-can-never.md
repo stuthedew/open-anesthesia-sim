@@ -3,10 +3,12 @@ id: PL-RR1N
 title: A verify: grep for a prose phrase can never match once the document's own line-wrapping splits it, and exit 1 reads as work-not-done
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
-touches: subprojects/docket/src/docket, subprojects/docket/tests
+touches: subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md
 added: 2026-09-20
+closed: 2026-10-11
+pr: 1415
 payoff: stops a finished item's own verify: reporting the work as absent because the document wrapped the phrase it greps for
 verify: grep -rq 'def test_a_verify_phrase_split_by_line_wrapping' subprojects/docket/tests tests/unit
 ---
@@ -86,7 +88,7 @@ admitted one, written beside `checks.verify_shape_refusal`.
 
 ## Next steps (2026-10-11, handed on unstarted)
 
-Re-confirmed 2026-10-11 against the tree: the defect still holds - a literal
+[superseded 2026-10-11] Re-confirmed 2026-10-11 against the tree: the defect still holds - a literal
 `grep` phrase that a document wraps across two lines is on no single line, so
 the command reads as work not done. Claimed by the gate batch in `#1410`, which
 stopped for length before starting it and yielded the claim; nothing is built.
@@ -114,3 +116,48 @@ The design worked out before the stop, for whoever picks it up:
   files in this item's `touches`.
 - **Test.** `test_a_verify_phrase_split_by_line_wrapping...`, the name this
   item's own `verify:` greps for.
+
+## Built 2026-10-11 (#1415)
+
+Re-confirmed first, against the tree: the fault still held, and this item's own
+fixture reproduces it - `test_grep.py`'s first case runs the real `grep`, which
+exits 1 against a file holding the phrase across a soft break.
+
+- **The reading.** `subprojects/docket/src/docket/grep.py`'s `wrapped` finds a
+  `grep` clause whose phrase is on no line of the files the clause reads but
+  is in one of them once each statement's lines are read as one: a Markdown
+  paragraph through `markdown.statement_lines` and `markdown.unmarked`, and
+  outside Markdown a run of lines sharing a `#`, `#:`, `//` or `>` marker, or
+  carrying none. It reads a fixed string, or a pattern whose only special
+  character is `.`, with `-i` folded. Globs expand as bash expands them, and
+  `-r` walks as GNU grep 3.11 walks - the last `--include` or `--exclude` to
+  match decides, and a symbolic link below the command line is skipped, both
+  probed against the binary.
+- **Where, and why not where the design above put it.** A module of its own
+  rather than `checks.py`: `verify_item` needs it too, `checks.py` imports
+  `verify.py`, so `verify.py` could not import it back, and `cli._analysis()`
+  does not exist. `grep.read_grep` is now the one reading of a clause's words,
+  and `checks._grep_refusal` takes its verdict from it, so the shape check and
+  the wrap reading cannot disagree about which word is the pattern.
+- **Wiring, as designed.** `already_passing` asks it of every candidate and
+  carries the answer as `LandedReport.wrapped`, taking those ids out of
+  `blocked` and `external`; `_check_landed` reports each as an error whatever
+  the command exited with, so `check --verify`, `set --verify`'s replay and
+  the push guard name it. `verify_item` puts the phrase and its lines on the
+  command check.
+- **Decided in the work: a negated wrap is a `REJECT` at exit 0.** A `! grep`
+  whose phrase is still in its file across a line break passed only because
+  `grep` could not see the phrase, so the pass proves nothing, and accepting
+  it is the vacuous pass the replay already refuses on an open item. One
+  clearly correct option, so taken rather than offered.
+- **Measured, so nothing was repaired.** 244 open commands read in 0.37 s and
+  none holds a wrapped phrase today, so no item file needed a repair. Of 1,531
+  closed commands one does, `PL-Z4WL`'s, and it was already wrapped at its
+  close: at `0f37417b` (`#604`, 2026-09-15) its
+  `! grep -q 'has no planned-milestone line of its' ROADMAP.md` exited 0 while
+  lines 2659-2660 held the phrase, quoted by the correction it made. It is
+  closed, so its command is a record and stays as it is.
+- **Docs.** `subprojects/docket/README.md` § "What a `verify:` exit status
+  proves, and to whom" carries the reading and each consumer's clause of it,
+  and `.claude/skills/docket/modes/triage.md` tells a command's author what is
+  caught and to grep for a few words rather than a sentence.
