@@ -130,9 +130,10 @@ exhausted less the change in what the circuit holds, in exact rationals.
 The rebuilt walk finds 2 negatives where the brief's found 11, since its
 flows are not the brief's, which were not recorded.
 
-**"Closes no worse than today" is read in roundings, decided here.** It is
-the only reading under which the two forms can be compared across amounts
-three hundred orders apart. In litres the worst case grows, at the largest
+**"Closes no worse than today" is read in roundings** (project owner,
+2026-10-11, ratified, over reading it in absolute litres). It is the only
+reading under which the two forms can be compared across amounts three
+hundred orders apart. In litres the worst case grows, at the largest
 steps, from one rounding of a litre-sized amount to a few: the old exhaust
 was defined from the balance, which closed it tightly there and gave it the
 rounding's sign at small flows, and an exhaust whose sign is structural is
