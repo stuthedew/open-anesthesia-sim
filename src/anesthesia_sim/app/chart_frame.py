@@ -569,7 +569,7 @@ class RunFrame:
     branch_point_s: CaseInstant | None
     agent_id: str
     agent_display_name: str
-    mac_percent: float
+    mac_percent: Percent
     elapsed_s: CaseInstant
     times_s: tuple[float, ...]
     fractions: Mapping[RecordedQuantity, tuple[float, ...]]
@@ -645,7 +645,7 @@ class ChartFrame:
     tick_times_s: tuple[float, ...]
     columns: int
     plot_width_px: float
-    mac_percent: float
+    mac_percent: Percent
     axis_top_percent: float
     grid_interval_percent: float
     percent_ticks: tuple[tuple[float, str], ...]
@@ -1339,7 +1339,7 @@ def _hover_value(run: RunFrame, quantity: RecordedQuantity, index: int) -> str:
 
     fraction = Fraction(run.fractions[quantity][index])
 
-    return f"{format_percent(fraction)}   {format_mac_multiple(fraction, Percent(run.mac_percent))}"
+    return f"{format_percent(fraction)}   {format_mac_multiple(fraction, run.mac_percent)}"
 
 
 def _hover_compared_value(run: RunFrame, time_s: float, value: str) -> str:
