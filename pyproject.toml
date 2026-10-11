@@ -133,6 +133,10 @@ dev = [
     # nothing docket, the tools or the hooks import reaches it.
     "pyyaml>=6.0.3",
     "ruff>=0.16.4",
+    # PyYAML ships no types, so without its typeshed stubs the import above is
+    # unresolved to `tools/ignore_check.py`, which then declines to judge any
+    # `type: ignore` in the test trees (`PL-R417`).
+    "types-pyyaml>=6.0.12.20260906",
 ]
 
 # uv resolves `.python-version` against the interpreter list baked into the
