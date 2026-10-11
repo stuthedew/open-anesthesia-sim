@@ -2312,3 +2312,70 @@ fix is a new record, which the pause captures and does not build. `PL-JLBD` is
 ready at `P3`, decided as a `docket check` refusal of `generator: live` on a
 closed item. The sweep for other readers that closes the head is its own work,
 recorded in its brief under `**Swept <date>.**`, which its `verify:` names.
+
+## Open thread: PL-ZGYX's sweep, waiting on #1419 to bring the head to `main` - PL-ZGYX, PL-19Y0, PL-9DF9, PL-7694
+
+The head's only copy is on `claude/serene-sagan-bww0ko` (pull request #1419,
+`PL-74T0`), and `bin/docket claim PL-ZGYX` refuses until it merges. The sweep
+is done and its three finds are filed on `claude/youthful-edison-7an1ep`. Once
+#1419 merges: bring `origin/main` in, `claim` the head, paste the block below
+into its brief after **Generator check.**, add `PL-19Y0, PL-9DF9, PL-7694` to
+`root-cause-of:`, set `generator: spent - the sweep enumerated every remaining
+way in, and what still handed members was code written before the resident
+principle, which now covers new code`, close it, and delete this section.
+
+> **Swept 2026-10-11.** Three new members, from 113 hand checks read at 52
+> parameter and field names under `src/anesthesia_sim/` on `main` at
+> `d9340516`. The scratch scans were AST reads. One read listed every
+> `require*`/`_check*` call or `if ...: raise` naming a parameter annotated
+> `float` or `int`. One listed the same on a parameter annotated with a checked
+> type, which catches an extra domain on one. One compared each non-frozen
+> dataclass's `__post_init__` checks against its `__setattr__` guards. The last
+> was a name search for instants, flows, fractions and percents still typed
+> `float`.
+>
+> - **Filed:** `PL-19Y0`, where a direct write skips every compartment check
+>   but the three flows'. It covers the dial past its vaporizer maximum, the
+>   inspired fraction, the circuit volume and the venous agent amount, and
+>   `PL-544D` holds the alveolar and tissue amount. `PL-9DF9`, where the chart
+>   time base re-checks a case instant by hand. `PL-7694`, where the compared
+>   run count and index are checked by hand in seven functions and indexed
+>   unchecked in `off_scale_notice`.
+> - **Re-found, already members:** `PL-0FJ8`, the MAC divisor's positivity in
+>   five formatters. Its strictly positive percent also covers
+>   `percent_axis_ticks`' two checks on the axis top and interval derived from
+>   the MAC. Also `PL-WP52`, where a compartment's `advance` takes a
+>   `float` step. Also `PL-1DP1`, the crossings, with `wash_in.py`'s bare
+>   fraction among its call sites. Also `PL-RCYZ`, the control record's
+>   instants.
+> - **Not counted, each by a recorded rule:**
+>   - **The guards and constructors themselves.**
+>   - **A record's own sign and finiteness**, covering volumes, partition
+>     coefficients, blood flows, the accounting totals, the deliverable flow
+>     range and the playback multiplier. The reason is
+>     `.claude/rules/core-domain.md` § "Where it stops".
+>   - **Relations a record or query holds:** an instant within the run, a
+>     window's order, a clock against its opening, flow against machine, dial
+>     against maximum, amount against capacity, steps against run length and
+>     perfusion against output.
+>   - **A value checked once at its one way in:** the tick interval, column
+>     spacing, propagation interval, plot width, a duration's components, the
+>     window-geometry fraction, grid columns (two minimums for two
+>     quantities) and the schema versions.
+>   - **`perfusion_fraction`**, which stays a bare `float` by
+>     `core/parameters.py`'s "a type per parameter rather than a type per
+>     boundary".
+>   - **`MacMultiple`**, a `NewType` with no range to prove, by
+>     `core/concentration.py`'s rationale.
+>   - **The default flows**, each built into its checked type at its one use
+>     in `core/uptake_system.py`.
+>   - **The canonical state vector**, one shared guard at each sink and a
+>     structure rather than a quantity.
+>
+> **No check for it.** Most of the `raise`s on a `float` parameter under
+> `core/` are correct code: guards, a record's own sign, relations. A check
+> keyed on that would fire every run without changing a decision. The exact
+> part, a mutable record's checked field with no write guard, is `PL-19Y0`'s.
+> Five records hold every such field, and new code is held by the resident
+> principle, so the members came from code that predates it, which this sweep
+> has now enumerated.
