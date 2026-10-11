@@ -120,3 +120,21 @@ workspace/area/View system itself (project owner, 2026-09-21). A session that
 reads entries 1-19 builds it correctly and it looks like an unstyled toolkit
 demo, which is not the release this milestone is for.
 
+
+## Next steps for the round, written 2026-10-11 before the wait
+
+Pull request #1395 is a draft holding this item's claim; the eight members
+(`PL-QW1Z`, `PL-MS34`, `PL-RQT1`, `PL-30L5`, `PL-RBXL`, `PL-DB5G`, `PL-J8K2`,
+`PL-84QX`) sit at `needs-decision` with the questions put to the owner in the
+thread and in `/mnt/project-files/v0.6.0/interface-look-design-round.md`. On
+the answer, whichever thread records it: write `## Answers DATE` under each
+item's design round with the kind and date, mark any passage the answer ended
+`[superseded DATE: ...]`, close each on its record (`bin/docket set ID --status
+done --closed DATE --verify "grep -qF '<its Answers line>' docs/items/ID-...md"`,
+`touches` already names `docs/items`), add the decided budget sentence to
+`ROADMAP.md` entry 20, re-run the two-run measurement `PL-84QX` owes
+(`BranchedCase.fork_points_s` is a property, not a method), run `make docket`
+and `python3 tools/doc_check.py check`, commit under the eight ids, then
+`bin/docket yield PL-M3X6` with the two `--trailer` lines, push as it prints,
+and `bin/docket arm` (`behind N`: merge `origin/main` once and ask again; `arm`:
+undraft and squash auto-merge).
