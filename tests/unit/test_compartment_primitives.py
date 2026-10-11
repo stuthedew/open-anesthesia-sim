@@ -19,6 +19,7 @@ exact wherever `i` and `d` are within a factor of two of each other. It is the
 it - which is why `LOADED_FRACTION` is small.
 """
 
+import fractions
 from collections.abc import Callable
 from dataclasses import dataclass
 from math import inf, isfinite, ulp
@@ -27,7 +28,7 @@ from typing import Any
 import pytest
 
 from anesthesia_sim.core.blood import VenousBloodCompartment
-from anesthesia_sim.core.circuit import BreathingCircuit
+from anesthesia_sim.core.circuit import BreathingCircuit, FreshGasExchange
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
@@ -37,10 +38,12 @@ from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 # driven with: a compartment at the very start of a wash-in.
 #
 # Small against the driving fraction rather than comparable to it, and that is
-# load-bearing. `d + (i - d) * 1.0` is what the closed form reduces to at zero
-# flow, and it returns `i` bit for bit only while the two are within a factor
-# of two. At these values the unguarded path lands one rounding away instead,
-# which is what makes the no-op test below able to fail.
+# load-bearing. `d + (i - d) * 1.0` is what a patient compartment's closed form
+# reduces to at zero flow, and it returns `i` bit for bit only while the two
+# are within a factor of two. At these values the unguarded path lands one
+# rounding away instead, which is what makes the no-op test below able to
+# fail. The circuit's reduces to `i + (d - i) * 0.0` since `PL-YT8N`, which is
+# `i` at any values, and the same test fails if it is ever written back.
 #
 # Unequal for a second reason: a step that did nothing and a step that drove
 # the compartment all the way to its input are the same measurement when the
@@ -72,20 +75,44 @@ NEARLY_ZERO_FLOWS_L_MIN = (5e-324, 1e-300, 1e-30)
 # bound is one a wrong exhaust could break by being too large.
 OVERFLOWING_FLOWS_L_MIN = (5e-324, 1.1125369292536007e-308)
 
-# The floor every comparison near zero flow sits on, as a fraction. The
-# zero-flow closed form reduces to `d + (i - d)`, and that expression's
-# rounding is set by the scale of the driving fraction rather than by the
-# compartment's own - so it is relatively large for a compartment far below
-# the input driving it, and it is what the exact branch exists to avoid. In
-# litres it is a compartment's capacity times this.
+# The floor every comparison near zero flow sits on, as a fraction. A patient
+# compartment's zero-flow closed form reduces to `d + (i - d)`, and that
+# expression's rounding is set by the scale of the driving fraction rather
+# than by the compartment's own - so it is relatively large for a compartment
+# far below the input driving it, and it is what the exact branch exists to
+# avoid. The circuit's lands no distance from its zero-flow result, so for it
+# this is a bound rather than the distance. In litres it is a compartment's
+# capacity times this.
 ZERO_FLOW_ROUNDING_FRACTION = ulp(DRIVING_FRACTION)
 
 # The first magnitude at which flow moves more agent than that rounding does.
 # Measured 2026-09-13 across all three primitives: from 5e-324 up through
 # 1e-15 L/min the difference from the zero-flow branch does not change at all,
 # and here it does. Twelve orders below the smallest flow the model supports,
-# so an epsilon anywhere a reader might reach for would freeze it.
+# so an epsilon anywhere a reader might reach for would freeze it. Since
+# `PL-YT8N` the circuit's closed form rounds at the scale of its own fraction
+# rather than the dial's, so its difference moves from 1e-18 L/min up, but it
+# first exceeds this rounding here too (measured 2026-10-11).
 FIRST_DIVERGING_FLOW_L_MIN = 1e-12
+
+# The flows across which the circuit's exhaust came out below zero, by as
+# much as 3.3e-16 L, while it was written as what was delivered less what the
+# circuit kept: 1e-15 to 1e-6 L/min, walked here by decade (`PL-YT8N`).
+CANCELLING_FLOWS_L_MIN = tuple(10.0**-exponent for exponent in range(15, 5, -1))
+
+# The circuit states that walk is taken from. `washing-in` is the state the
+# negative exhaust was found in. The two empty ones are what tell a fix by
+# sign from a fix by digits: with `1 - exp(-dt/tau)` taken by `expm1`
+# throughout and the exhaust still written as delivered less kept, a circuit
+# filling from empty kept nearly all it was given and still exhausted
+# -1.9e-34 L at 1e-15 L/min under a 100% dial and -3.9e-34 L at 1e-13 L/min
+# under a 2% one, each over 0.1 s (measured 2026-10-11).
+CIRCUIT_STATES = (
+    pytest.param(DRIVING_PERCENT, LOADED_FRACTION, id="washing-in"),
+    pytest.param(DRIVING_PERCENT, Fraction(0.0), id="empty"),
+    pytest.param(Percent(2.0), Fraction(0.0), id="empty-at-2%"),
+    pytest.param(Percent(0.0), Fraction(0.02), id="washing-out"),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,12 +251,14 @@ def test_zero_flow_is_an_exact_no_op(primitive: CompartmentPrimitive) -> None:
     """`docs/MODEL.md` states the no-flow case as an equality, so it is one.
 
     Exactly the loaded amount and exactly zero agent moved, not within a
-    tolerance of either. Removing a compartment's zero-flow branch fails it:
-    the two patient compartments come back one unit in the last place away
-    from where they started, and the circuit holds 6.000000000172534e-06 L
-    where it held 6e-06 (measured 2026-10-05), its fraction one rounding of
-    `d + (i - d)` away. The circuit's exchange stays zero without the branch
-    since `PL-B26Y`; before it, the exhausted-agent integral became `nan`.
+    tolerance of either. Removing a patient compartment's zero-flow branch
+    fails it: each comes back one unit in the last place away from where it
+    started. The circuit has had no branch since `PL-YT8N`, because its
+    closed form is exact at zero flow on its own. Written back as
+    `d + (i - d) * exp(-dt/tau)`, it fails here, holding
+    6.000000000172534e-06 L where it held 6e-06 (measured 2026-10-05), its
+    fraction one rounding of `d + (i - d)` away. Before `PL-B26Y` its
+    exhausted-agent integral became `nan`.
     """
 
     compartment = primitive.build(0.0)
@@ -265,6 +294,9 @@ def test_the_zero_flow_branch_agrees_with_the_limit_from_above(
     circuit's external exchange included. Until `PL-B26Y` the walk compared
     only what each compartment stored and discarded what the step returned,
     so the circuit's `nan` exhaust at the smallest of these flows passed it.
+
+    The circuit's zero-flow result is its closed form's own since `PL-YT8N`,
+    not a branch's, and at these flows it lands no distance from it.
     """
 
     at_zero_flow = primitive.build(0.0)
@@ -329,7 +361,8 @@ def test_the_circuit_exhaust_is_finite_where_its_time_constant_overflows(
     dial, so the exhaust lies between zero and the flow times the step times
     the larger of the two. The closed form used to carry the time constant as
     a factor, `tau * (1 - exp(-dt/tau))`, which at these flows is
-    `inf * 0.0`, and the exhaust came back `nan` from either state.
+    `inf * 0.0`, and the exhaust came back `nan` from either state. It forms
+    no time constant at all since `PL-YT8N`.
     """
 
     circuit = _build_circuit(fresh_gas_flow_l_min)
@@ -337,10 +370,101 @@ def test_the_circuit_exhaust_is_finite_where_its_time_constant_overflows(
     larger_fraction = max(inspired_partial_pressure_fraction, DRIVING_FRACTION)
     # Associated as the closed form associates the agent it delivers, so the
     # bound is exact rather than one rounding either side of what it bounds.
-    exhaust_bound_l = fresh_gas_flow_l_min / SECONDS_PER_MINUTE * larger_fraction * FINE_STEP_S
+    exhaust_bound_l = larger_fraction * (fresh_gas_flow_l_min / SECONDS_PER_MINUTE * FINE_STEP_S)
 
     exchange = circuit.advance_fresh_gas(FINE_STEP_S)
 
     assert circuit.time_constant_s == inf
     assert isfinite(exchange.exhausted_agent_l)
     assert 0.0 <= exchange.exhausted_agent_l <= exhaust_bound_l
+
+
+def _advance_circuit_in_state(
+    fresh_gas_flow_l_min: float,
+    delivered_concentration_percent: Percent,
+    inspired_partial_pressure_fraction: Fraction,
+    simulation_step_s: float,
+) -> tuple[BreathingCircuit, Fraction, FreshGasExchange]:
+    """Step a 6 L circuit once from a state; return it, its starting fraction and the exchange."""
+
+    circuit = _build_circuit(fresh_gas_flow_l_min)
+    circuit.set_delivered_concentration_percent(delivered_concentration_percent)
+    circuit.set_inspired_partial_pressure_fraction(inspired_partial_pressure_fraction)
+
+    return circuit, inspired_partial_pressure_fraction, circuit.advance_fresh_gas(simulation_step_s)
+
+
+@pytest.mark.parametrize("fresh_gas_flow_l_min", CANCELLING_FLOWS_L_MIN)
+@pytest.mark.parametrize("simulation_step_s", (FINE_STEP_S, 1.0, COARSE_STEP_S))
+@pytest.mark.parametrize(
+    ("delivered_concentration_percent", "inspired_partial_pressure_fraction"), CIRCUIT_STATES
+)
+def test_the_circuit_exhaust_is_never_negative_at_an_admitted_flow(
+    fresh_gas_flow_l_min: float,
+    simulation_step_s: float,
+    delivered_concentration_percent: Percent,
+    inspired_partial_pressure_fraction: Fraction,
+) -> None:
+    """An exhaust is agent leaving the circuit, so it is never negative (`PL-YT8N`).
+
+    Written as what was delivered less what the circuit kept, it was the
+    difference of two amounts agreeing to more digits than a double holds
+    wherever the circuit kept nearly all it was given, and it took the
+    rounding's sign: -3.3e-16 L at 1e-12 L/min over 0.1 s in the `washing-in`
+    state, beside 1.7e-15 L delivered. Built from terms that are each
+    nonnegative, it cannot.
+    """
+
+    _, _, exchange = _advance_circuit_in_state(
+        fresh_gas_flow_l_min,
+        delivered_concentration_percent,
+        inspired_partial_pressure_fraction,
+        simulation_step_s,
+    )
+
+    assert exchange.exhausted_agent_l >= 0.0
+
+
+@pytest.mark.parametrize("fresh_gas_flow_l_min", CANCELLING_FLOWS_L_MIN)
+@pytest.mark.parametrize("simulation_step_s", (FINE_STEP_S, 1.0, COARSE_STEP_S))
+@pytest.mark.parametrize(
+    ("delivered_concentration_percent", "inspired_partial_pressure_fraction"), CIRCUIT_STATES
+)
+def test_the_circuit_balance_closes_within_the_rounding_of_what_the_step_moves(
+    fresh_gas_flow_l_min: float,
+    simulation_step_s: float,
+    delivered_concentration_percent: Percent,
+    inspired_partial_pressure_fraction: Fraction,
+) -> None:
+    """What was delivered less what was exhausted is what the circuit gained.
+
+    The half of `PL-YT8N` a fix of the sign alone could lose. Measured in
+    exact rationals, so the measurement rounds nothing, against four roundings
+    of the largest amount the step involves - delivered, exhausted or held -
+    which every case here closes within. `-expm1(-dt/tau)` in the exhaust
+    alone, with the fraction still updated by `exp(-dt/tau)`, misses it by up
+    to 5.1e-16 L in the `washing-in` state, where the circuit holds 6e-6 L:
+    six hundred thousand of those roundings (measured 2026-10-11).
+    """
+
+    circuit, held_fraction_before, exchange = _advance_circuit_in_state(
+        fresh_gas_flow_l_min,
+        delivered_concentration_percent,
+        inspired_partial_pressure_fraction,
+        simulation_step_s,
+    )
+    held_fraction_after = circuit.inspired_partial_pressure_fraction
+
+    residual_l = abs(
+        fractions.Fraction(exchange.delivered_agent_l)
+        - fractions.Fraction(exchange.exhausted_agent_l)
+        - fractions.Fraction(circuit.circuit_volume_l)
+        * (fractions.Fraction(held_fraction_after) - fractions.Fraction(held_fraction_before))
+    )
+    largest_amount_l = max(
+        exchange.delivered_agent_l,
+        exchange.exhausted_agent_l,
+        circuit.circuit_volume_l * max(held_fraction_before, held_fraction_after),
+    )
+
+    assert residual_l <= 4 * ulp(largest_amount_l)

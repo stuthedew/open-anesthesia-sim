@@ -32,7 +32,7 @@ below 0.5 L/min must not move the model's floor for every other machine.
 """
 
 from dataclasses import dataclass
-from math import exp, inf
+from math import expm1, inf
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.concentration import (
@@ -424,6 +424,8 @@ class BreathingCircuit:
 
         `circuit_volume_l / fresh_gas_flow_l_min`, so it is a time constant
         on common-gas-outlet flow rather than on a flowmeter setting.
+        `advance_fresh_gas()` does not read it: it forms the step in time
+        constants from the gas the step admits, which no flow overflows.
         """
 
         if self.fresh_gas_flow_l_min == 0.0:
@@ -548,8 +550,8 @@ class BreathingCircuit:
         run advances: a connected patient adds the ventilation term
         `docs/MODEL.md` § "Breathing circuit" carries beside this one, and the
         step that solves both is `AgentUptakeSystem.advance()`. The package
-        docstring in `core/__init__.py` states the distinction and the
-        zero-flow branch below.
+        docstring in `core/__init__.py` states the distinction, and why zero
+        flow needs no branch here.
 
         Raises:
             SimulationConfigurationError: `simulation_step_s` is not positive
@@ -558,35 +560,50 @@ class BreathingCircuit:
 
         require_positive_finite("simulation_step_s", simulation_step_s)
 
-        if self.fresh_gas_flow_l_min == 0.0:
-            return FreshGasExchange(delivered_agent_l=0.0, exhausted_agent_l=0.0)
-
         initial_fraction = self.inspired_partial_pressure_fraction
         delivered_fraction = self.delivered_partial_pressure_fraction
-        fraction_remaining = exp(-simulation_step_s / self.time_constant_s)
-
-        next_fraction = Fraction(
-            delivered_fraction + (initial_fraction - delivered_fraction) * fraction_remaining
-        )
-
         fresh_gas_flow_l_s = self.fresh_gas_flow_l_min / SECONDS_PER_MINUTE
 
-        delivered_agent_l = fresh_gas_flow_l_s * delivered_fraction * simulation_step_s
+        # The fresh gas admitted over the step, and as much circuit gas
+        # exhausted. In circuit volumes it is the step in time constants,
+        # dt/tau, formed without the time constant, which overflows to `inf`
+        # below about 2e-306 L/min in a 6 L circuit (`PL-B26Y`).
+        admitted_gas_l = fresh_gas_flow_l_s * simulation_step_s
+        time_constants_elapsed = admitted_gas_l / self.circuit_volume_l
 
-        # The exhaust is the flow times $`\int F_I \mathrm{d}t`$ over the step.
-        # The flow times the time constant is the circuit's volume, so that is
-        # what was delivered less what the circuit kept, and it is written
-        # that way rather than with the time constant: below about 2e-306
-        # L/min a 6 L circuit's time constant overflows to `inf`, and the
-        # integral's `tau * (1 - exp(-dt/tau))` is then `inf * 0.0`, a `nan`
-        # (`PL-B26Y`).
-        stored_agent_change_l = (
-            self.circuit_volume_l
-            * (delivered_fraction - initial_fraction)
-            * (1.0 - fraction_remaining)
+        # 1 - exp(-dt/tau): the share of the gas the circuit held at the start
+        # that fresh gas has replaced by the end. `-expm1` keeps its digits
+        # where dt/tau is small, where `1.0 - exp(...)` subtracted two numbers
+        # within an ulp of 1 and lost them (`PL-YT8N`), and keeps it between 0
+        # and dt/tau, as the exhaust below needs.
+        fraction_replaced = -expm1(-time_constants_elapsed)
+
+        next_fraction = Fraction(
+            initial_fraction + (delivered_fraction - initial_fraction) * fraction_replaced
         )
 
-        exhausted_agent_l = delivered_agent_l - stored_agent_change_l
+        delivered_agent_l = delivered_fraction * admitted_gas_l
+
+        # The exhaust is the flow times $`\int F_I \mathrm{d}t`$ over the step.
+        # Of the gas that leaves, `starting_gas_out_l` was in the circuit at
+        # the start and `fresh_gas_out_l` is fresh gas. The inspired fraction
+        # stays between the circuit's starting fraction and the dial's, so
+        # every litre carries at least the lower of the two, and the excess
+        # over it is carried by the gas that started above it: fresh gas in a
+        # wash-in, the circuit's own in a washout. No term can be negative.
+        # Written as what was delivered less what the circuit kept, the
+        # exhaust was the difference of two near-equal amounts wherever the
+        # circuit kept nearly all it was given, and took the rounding's sign
+        # (`PL-YT8N`).
+        starting_gas_out_l = self.circuit_volume_l * fraction_replaced
+        fresh_gas_out_l = self.circuit_volume_l * (time_constants_elapsed - fraction_replaced)
+        lower_fraction = min(initial_fraction, delivered_fraction)
+
+        exhausted_agent_l = (
+            lower_fraction * admitted_gas_l
+            + (delivered_fraction - lower_fraction) * fresh_gas_out_l
+            + (initial_fraction - lower_fraction) * starting_gas_out_l
+        )
 
         self.inspired_partial_pressure_fraction = next_fraction
 
