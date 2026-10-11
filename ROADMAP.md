@@ -6019,6 +6019,7 @@ removed, and this file's history before that change holds their text.
    install a 3D viewport silently, which `docs/interface-provenance.md`
    § "Diverged" refuses on this project's preference for an obvious failure over
    a plausible-looking wrong one.
+    What that failure looks like is entry 20's (`PL-DB5G`).
 
 5. **The View contract** (queue item `PL-TH35`), written *with* the area
    system and validated against two Views that already exist, carrying the
@@ -6049,6 +6050,8 @@ removed, and this file's history before that change holds their text.
    once, in a main window that cannot be closed while any other window is open.
    v0.6.0 opens one window, and building the region in that shape now is what
    stops break-out, item 34's unscheduled second half, rebuilding it.
+    Where the region sits and what it looks like is entry 20's (`PL-J8K2`),
+    within the budget `PL-84QX` sets.
 
 8. **An Area that cannot honour a size says so** (queue item `PL-K285`). The
    second of the three properties `docs/interface-provenance.md` records Blender
@@ -6056,6 +6059,7 @@ removed, and this file's history before that change holds their text.
    extent, and "a required value is never hidden to make room" is the
    divergence. Whether a declared minimum is a request or a constraint, and what
    a split or a border drag does when it cannot be met, are this entry's.
+    What the refusal looks like is entry 20's (`PL-DB5G`).
 
 9. **State a layout could duplicate or relocate** (queue items `PL-VN6M`,
    `PL-9LNF`, `PL-CNCF` and `PL-PGZF`). The compartment selection owned outside
@@ -6152,6 +6156,8 @@ removed, and this file's history before that change holds their text.
     as validated versioned JSON beside the other shipped parameter files, with
     the provenance line `docs/interface-provenance.md` asks of anything derived
     from Blender's own named task Workspaces.
+    The three are composed within the pixel budget entry 20 sets
+    (`PL-84QX`).
 
 14. **The operations a reader performs** (queue item `PL-2KXB`). Border drag
     moving the collinear chain the `borders()` query returns; corner drag to
@@ -6159,6 +6165,8 @@ removed, and this file's history before that change holds their text.
     from entry 11. The chain is the query that recovers the one behaviour the
     tree gives up against Blender's graph, and `PL-3J2P` measured it as
     differing exactly once across thirty-two shipped Blender Workspaces.
+    The look of the strip, the handle and the corner affordance is entry
+    20's (`PL-QW1Z`, `PL-RQT1`, `PL-30L5`); the Area header's is `PL-MS34`.
 
 15. **Every operation reachable without a drag** (queue item `PL-M352`), through
     a menu and the keyboard. This is not planned-milestone item 20's general
@@ -6173,6 +6181,7 @@ removed, and this file's history before that change holds their text.
     in every layout, and must not be removable from the application". That is the
     one required class whose guarantee cannot be structural presence, so it
     becomes an invariant of the registry and the chooser instead.
+    The chooser as a thing seen is entry 20's (`PL-RBXL`).
 
 17. **The visibility predicate** (queue item `PL-904Y`).
     `SimulationView.interface_strings` is this project's single definition of
@@ -6201,6 +6210,63 @@ removed, and this file's history before that change holds their text.
     And `README.md` gains the Blender attribution line, which
     `docs/interface-provenance.md` § "Attribution" has been holding until the
     release in which the shipped interface actually is the area/workspace model.
+
+20. **The look and the edge states of every surface this milestone creates**
+    (queue items `PL-QW1Z`, `PL-MS34`, `PL-RQT1`, `PL-30L5`, `PL-RBXL`,
+    `PL-DB5G`, `PL-J8K2` and `PL-84QX`; the entry itself was `PL-M3X6`).
+    Every surface this milestone brings into existence
+    has its appearance and its edge states decided here - not inherited from
+    the toolkit, not deferred to the visual pass. Entries 1-19 are mechanism:
+    entry 14 says what a border
+    drag *does* and entry 16 what the chooser *guarantees*, and no entry says
+    what any of it looks like, which as scoped left the surfaces this milestone
+    creates looking like whatever the toolkit's defaults produced, for
+    planned-milestone item 33 to redo one release later. The test for
+    membership is whether the surface exists in the application today - new
+    against inherited, not furniture against content - which is why the
+    unconditional region and the two failure states qualify beside the
+    furniture. The seven, each with a queue item behind it:
+
+    **The Workspace tab strip** (`PL-QW1Z`). Where it sits, active versus
+    inactive, how rename/duplicate/delete surface, and how a shipped default
+    is distinguished from one the learner saved.
+
+    **The Area header** (`PL-MS34`) - whether there is one at all. If yes:
+    height, contents, whether the View name and the chooser live in it. If
+    no: where the chooser goes instead. Named by item 33's own move argument;
+    specified by no entry.
+
+    **The splitter handle** (`PL-RQT1`), which v0.4.26 built inert and this
+    milestone turns live: width, rest, hover, cursor, drag feedback.
+
+    **The corner split/join affordance** (`PL-30L5`). Visible widget as in
+    Blender, or hot zone; whether a drag previews the split before it
+    commits. This is the most learnable-or-not interaction in the milestone -
+    an invisible affordance means most learners never discover the layout is
+    theirs.
+
+    **The View chooser** (`PL-RBXL`) as a thing seen, where entry 16
+    specifies only what it guarantees.
+
+    **The two failure states** (`PL-DB5G`), which are presentation-safety
+    rather than taste: an Area naming a View this build lacks (entry 4) and
+    an Area refused a size (entry 8). Both are deliberate divergences from
+    Blender, both are seen by a learner, and a failure state that looks
+    plausible is the hazard `CLAUDE.md`'s clinical-output standard names.
+
+    **Where the unconditional region sits** (`PL-J8K2`). Entry 7 guarantees
+    it is outside the layout container; nothing decides where it goes or
+    what it looks like, and it is on screen in every Workspace a learner ever
+    builds.
+
+    **The pixel budget is this entry's too** (`PL-84QX`), and is the one
+    question none of the seven carries alone. The tab strip, the headers and
+    the live handles all take screen from the chart, which is the teaching
+    payload; `PL-Z4K6` asked whether seven readout columns are wanted on a
+    1366 px laptop on a window carrying none of this furniture yet, and the
+    project needs the number before it adds three new consumers. The budget
+    is recorded here once decided, and entry 13's shipped Workspaces are
+    composed within it.
 
 ### Definition of done
 

@@ -3,11 +3,12 @@ id: PL-M3X6
 title: Add Required-scope entry 20 to v0.6.0: every surface this milestone brings into existence has its appearance and its edge states decided here, rather than inherited from Qt defaults or deferred to the visual pass, planned-milestone item 33
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning
 feature: interface-areas
-touches: ROADMAP.md
+touches: ROADMAP.md, docs/items
 added: 2026-09-21
+closed: 2026-10-11
 payoff: v0.6.0 ships the surfaces it creates with a decided appearance and decided edge states, instead of toolkit defaults that planned-milestone item 33 would redo in the pass after it.
 verify: grep -qF 'has its appearance and its edge states decided here' ROADMAP.md
 ---
