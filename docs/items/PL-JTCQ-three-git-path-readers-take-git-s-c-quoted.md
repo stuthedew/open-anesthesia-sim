@@ -28,11 +28,33 @@ with a double quote by its quoted spelling; no answer changes there, since
 `_is_path_citation` refuses those characters. Latent: no tracked path is one
 git quotes.
 
+**Re-confirmed 2026-10-11** on main at `16a20a4f`, in a scratch repository:
+`git log --name-only` and `git ls-tree -r --name-only` print
+`.claude/rules/naïve.md` as `".claude/rules/na\303\257ve.md"`, and
+`_resident_baseline` answers `('main', ())` for a tree holding it.
+
 **Generator check.** Not a member of `PL-R417`: one path per record, read whole
 in the wrong spelling. Not `PL-TFF9`, the deleted path `_landing_split` leaves
 unclassified, nor `PL-MR8Z`, verify's quoted diff header. `PL-PXT7`, open,
 holds the same omission in `contrast_check`'s file listing.
 
+**Why it matters.** `orphaned` feeds `stranded` and the digest's left-behind
+line, where a commit it never sees is work lost with no report, and the
+baseline is what the resident-size measurement compares against. Each answers
+from a partial reading without saying so, which the apparatus floor refuses.
+Latent until a tracked path holds a byte git quotes.
+
 **Done when.** The three readers ask git for `-z` output and split at NUL, as
 `listed_paths` does, pinned by a test with a non-ASCII path for each of the
 first two.
+
+**Generator question, open at the 2026-10-11 triage pass; left untriaged for it.**
+`PL-JTCQ`, `PL-MR8Z` and `PL-PXT7` misread one fact no head states: git prints an
+unusual path C-quoted unless `-z` is given. `PL-MR8Z`'s own Generator check named
+the fact at two items; this is the third. About 15 `--name-only` and `ls-tree`
+reads without `-z` remain across `vcs.py`, `claims.py`, `verify.py`,
+`pr_title_check.py` and `doc_check.py`, all latent, since no tracked path is one
+git quotes. It may instead be a post-close instance of `PL-PVW2`, which put `-z`
+into `changed_path_args`. **Leaning: a `spent` head**, on `PL-R417`'s reasoning,
+filed as its own item naming all three, since this item's fix covers only its own
+three readers; settle it before triaging this item. If ordinary: P3, M, `defect`.
