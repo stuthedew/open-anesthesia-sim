@@ -40,8 +40,9 @@ where the same expression also hides it, since it then draws nothing:
 identical on both lines. Otherwise carry the identity in a control with no
 disabled state, as `_running_agent_display` does. A control given an agent
 colour anywhere outside `_apply_agent_color_scheme` — where it is constructed,
-or by a later `setStyleSheet` or `setItemData` — must also be written by that
-method, which is what keeps the checked set complete.
+by a later property write such as `self.X.color = ...`, or by a later
+`setStyleSheet` or `setItemData` — must also be written by that method, which is
+what keeps the checked set complete.
 
 **A disabled colour is the platform's here, with exactly one declared
 exception, and adding a second is a decision rather than a style choice.** The
