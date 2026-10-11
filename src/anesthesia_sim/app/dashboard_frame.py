@@ -48,7 +48,7 @@ from anesthesia_sim.app.chart_frame import (
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, format_adjustment
-from anesthesia_sim.app.controller import SimulationSnapshot
+from anesthesia_sim.app.controller import RunStatus, SimulationSnapshot
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
@@ -72,7 +72,7 @@ from anesthesia_sim.app.formatting import (
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
-from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
+from anesthesia_sim.core.concentration import Fraction, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
@@ -168,15 +168,31 @@ STATUS_SUPPORTED_LIMIT_TEXT: Final = "Stopped — supported run length reached"
 
 # The three notice banners, in precedence order. The stopped-run wording says
 # what the values *are* rather than warning about them, which is what rolling
-# the failed step back bought (`PL-026`). The run-length wording does not
-# borrow the failure's: nothing failed and nothing was rolled back, and
-# describing a correct model as a broken one is the safety defect `CLAUDE.md`
-# names (`PL-Y5WR`). It says why the limit exists, because a boundary with no
-# reason reads as an arbitrary restriction.
+# the failed step back bought (`PL-026`). Whether a step was rolled back is the
+# failure's own to say - `SimulationNumericalError`'s message does - and the
+# banner no longer says it of every failure, since a setting that raised
+# (`PL-YK2V`) and a displayed value the interface refused (`PL-7DJK`) failed
+# no step. The run-length wording does not borrow the failure's: nothing
+# failed and nothing was rolled back, and describing a correct model as a
+# broken one is the safety defect `CLAUDE.md` names (`PL-Y5WR`). It says why
+# the limit exists, because a boundary with no reason reads as an arbitrary
+# restriction.
 FAILURE_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. The values shown are the last completed "
-    "step; the step that failed was rolled back and changed nothing. "
-    "Reset to start a new run."
+    "step. Reset to start a new run."
+)
+# The failure banner as `RunView.present_halt` writes it, before any frame of
+# the stopped run has been drawn: the chart and the readouts still show the
+# frame drawn before the stop, which is not the step the run stopped at, so
+# "the values shown are the last completed step" would be the stale-state
+# reading the hazard table names. `refresh` replaces it with
+# `FAILURE_NOTICE_TEMPLATE` on the first frame that draws, so which of the two
+# stands is decided by whether a frame drew rather than guessed from the
+# reason (`PL-7DJK`).
+UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
+    "Simulation stopped — {failure_reason}. No frame of the stopped run could be drawn: "
+    "the chart and the readouts show the last frame drawn before it stopped, and the "
+    "run itself stands at its last completed step. Reset to start a new run."
 )
 SUPPORTED_LIMIT_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — this run reached the supported run length of {run_length}. "
@@ -673,7 +689,7 @@ class StatusWord:
     emphasis: Emphasis
 
 
-def status_word(snapshot: SimulationSnapshot) -> StatusWord:
+def status_word(status: RunStatus) -> StatusWord:
     """The run's status word: failure, then supported limit, then running, then paused.
 
     A failure outranks the supported run length on the reasoning
@@ -681,19 +697,22 @@ def status_word(snapshot: SimulationSnapshot) -> StatusWord:
     failure is somehow recorded it is the more serious statement.
 
     Args:
-        snapshot: The run's state this tick.
+        status: The run's status this tick - a `RunStatus`, or the snapshot
+            carrying one. `RunView.present_halt` passes the former, read
+            without building any compartment value, so a halt is worded from
+            facts that cannot fail (`PL-7DJK`).
 
     Returns:
         The word and its emphasis.
     """
 
-    if snapshot.failure_reason is not None:
+    if status.failure_reason is not None:
         return StatusWord(STATUS_FAILED_TEXT, Emphasis.WARNING)
 
-    if snapshot.supported_limit_reason is not None:
+    if status.supported_limit_reason is not None:
         return StatusWord(STATUS_SUPPORTED_LIMIT_TEXT, Emphasis.MUTED)
 
-    if snapshot.is_running:
+    if status.is_running:
         return StatusWord(STATUS_RUNNING_TEXT, Emphasis.ACCENT)
 
     return StatusWord(STATUS_PAUSED_TEXT, Emphasis.MUTED)
@@ -1099,9 +1118,7 @@ class Transport:
     selector_lock_reason: str
 
 
-def transport(
-    snapshot: SimulationSnapshot, *, is_branch: bool = False, comparing: bool = False
-) -> Transport:
+def transport(status: RunStatus, *, is_branch: bool = False, comparing: bool = False) -> Transport:
     """The transport enablement for one snapshot, and why its selector is locked.
 
     The three locks are ranked by how long they last, longest first, because
@@ -1111,7 +1128,8 @@ def transport(
     hold would send a reader to Pause for a lock Pause cannot lift.
 
     Args:
-        snapshot: The run's state this tick.
+        status: The run's status this tick - a `RunStatus`, or the snapshot
+            carrying one, as `status_word` takes it.
         is_branch: Whether this run was opened from another
             (`SimulationController.opened_from`). A branch carries the agent
             of the case it continues, so `set_agent` refuses it outright and
@@ -1127,19 +1145,19 @@ def transport(
         is not one of them.
     """
 
-    stopped = snapshot.failure_reason is not None or snapshot.supported_limit_reason is not None
+    stopped = status.failure_reason is not None or status.supported_limit_reason is not None
     lock_reason = ""
 
     if is_branch:
         lock_reason = BRANCH_AGENT_LOCK_TEXT
     elif comparing:
         lock_reason = COMPARING_AGENT_LOCK_TEXT
-    elif snapshot.is_running:
+    elif status.is_running:
         lock_reason = RUNNING_AGENT_LOCK_TEXT
 
     return Transport(
-        start_enabled=not snapshot.is_running and not stopped,
-        pause_enabled=snapshot.is_running,
+        start_enabled=not status.is_running and not stopped,
+        pause_enabled=status.is_running,
         reset_enabled=True,
         selector_locked=bool(lock_reason),
         selector_lock_reason=lock_reason,
@@ -1164,15 +1182,21 @@ def refused_setting_notice(error: SimulationConfigurationError) -> str:
     return REFUSED_SETTING_TEMPLATE.format(error=error)
 
 
-def notice(snapshot: SimulationSnapshot, rejected_setting_notice: str | None) -> str | None:
-    """The banner: a stopped run, or a refused setting, or nothing.
+def notice(status: RunStatus, rejected_setting_notice: str | None) -> str | None:
+    """The banner for a frame that drew: a stopped run, or a refused setting, or nothing.
 
     A stopped run outranks a refused setting because it describes the state
     of everything else on screen, where a refusal describes only one
     control. A failure outranks the supported run length in turn.
 
+    Written by `RunView.refresh`, with the frame the status was read for on
+    screen, which is what lets the failure wording say the values shown are
+    the last completed step. `halt_notice` is the banner for a halt no frame
+    has been drawn for.
+
     Args:
-        snapshot: The run's state this tick.
+        status: The run's status this tick - the snapshot the frame drew
+            from, or a bare `RunStatus`, as `status_word` takes it.
         rejected_setting_notice: `refused_setting_notice`'s text for the
             last refused setting, or None if the last setting took. Held by
             the run's view rather than the controller because a refused
@@ -1182,14 +1206,47 @@ def notice(snapshot: SimulationSnapshot, rejected_setting_notice: str | None) ->
         The banner text, or None when there is nothing to say.
     """
 
-    if snapshot.failure_reason is not None:
-        return FAILURE_NOTICE_TEMPLATE.format(failure_reason=snapshot.failure_reason)
+    if status.failure_reason is not None:
+        return FAILURE_NOTICE_TEMPLATE.format(failure_reason=status.failure_reason)
 
-    if snapshot.supported_limit_reason is not None:
+    if status.supported_limit_reason is not None:
         return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(run_length=format_supported_run_length())
 
     if rejected_setting_notice is not None:
         return REFUSED_SETTING_NOTICE_TEMPLATE.format(refused=rejected_setting_notice)
+
+    return None
+
+
+def halt_notice(status: RunStatus) -> str | None:
+    """The banner for a halt no frame has yet been drawn for: a stopped run, or nothing.
+
+    What `RunView.present_halt` writes, from the run's status alone, before
+    any frame is attempted. A failure takes `UNDRAWN_FAILURE_NOTICE_TEMPLATE`
+    rather than `notice`'s wording, because with no frame drawn the values on
+    screen are not the step the run stopped at. `refresh` writes `notice`'s
+    on the first frame that draws, so a step failure's frame, which the
+    rollback leaves drawable, replaces this banner in the same turn, and a
+    refused displayed value's, which refuses again, does not: which banner
+    stands is decided by whether a frame drew, never guessed from the reason
+    (`PL-7DJK`). The supported run length keeps its one wording, since
+    nothing is wrong with the state it stops on and the frame that follows
+    draws. A refused setting is not a halt and has no line here.
+
+    Args:
+        status: The run's status, as `SimulationController.status()` gives
+            it - read without building any compartment value, which is the
+            whole reason this takes a status rather than a snapshot.
+
+    Returns:
+        The banner text, or None when the run is not halted.
+    """
+
+    if status.failure_reason is not None:
+        return UNDRAWN_FAILURE_NOTICE_TEMPLATE.format(failure_reason=status.failure_reason)
+
+    if status.supported_limit_reason is not None:
+        return SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(run_length=format_supported_run_length())
 
     return None
 
@@ -1900,7 +1957,10 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     there. A trace is off scale only once it clears the ceiling by more
     than the readouts resolve: isoflurane's ceiling is 3 x 1.2, which in
     binary floating point is 3.5999999999999996, and a comparison against
-    zero would report that noise as an excursion.
+    zero would report that noise as an excursion. Nothing here builds a
+    checked type: the percents and the axis top were built when the frame
+    was assembled, so this cannot refuse after the chart has drawn
+    (`PL-7DJK`).
 
     Args:
         frame: The frame drawn this tick.
@@ -1928,9 +1988,7 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
 
     return OFF_SCALE_NOTICE_TEMPLATE.format(
         compartments=", ".join(off_scale),
-        top=format_mac_multiple(
-            fraction_from_percent(Percent(frame.axis_top_percent)), frame.mac_percent
-        ),
+        top=format_mac_multiple(fraction_from_percent(frame.axis_top_percent), frame.mac_percent),
     )
 
 

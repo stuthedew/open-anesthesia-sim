@@ -51,7 +51,13 @@ from anesthesia_sim.app.formatting import (
     format_mac_multiple,
     format_percent,
 )
-from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
+from anesthesia_sim.app.run_series import (
+    COMPARTMENT_FRACTION_NAMES,
+    COMPARTMENT_QUANTITIES,
+    COMPARTMENT_STATE_INDEX,
+    DrawnWindow,
+    RecordedQuantity,
+)
 from anesthesia_sim.app.theme import COMPARED_RUN_WIDTH_STEP, ONE_MAC_LINE_DASH_PATTERN
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -432,8 +438,13 @@ def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> No
 
 
 def _run_frame(times_s: tuple[float, ...], **fractions_by_name: tuple[float, ...]) -> RunFrame:
+    # Built as `assemble_chart_frame` builds them: a frame holds `Fraction`s,
+    # each under its compartment's name, so nothing drawn from it can refuse.
     fractions = {
-        quantity: fractions_by_name.get(quantity.value, tuple(0.0 for _ in times_s))
+        quantity: tuple(
+            Fraction(fraction, name=COMPARTMENT_FRACTION_NAMES[quantity])
+            for fraction in fractions_by_name.get(quantity.value, tuple(0.0 for _ in times_s))
+        )
         for quantity in COMPARTMENT_QUANTITIES
     }
 
@@ -464,8 +475,8 @@ def _frame(
         tick_times_s=(0.0, 600.0),
         columns=CHART_COLUMN_BUDGET_PER_SERIES,
         plot_width_px=_PLOT_WIDTH_PX,
-        mac_percent=2.0,
-        axis_top_percent=6.0,
+        mac_percent=Percent(2.0),
+        axis_top_percent=Percent(6.0),
         grid_interval_percent=1.0,
         percent_ticks=percent_axis_ticks(6.0, 1.0),
         mac_ticks=(),
@@ -490,25 +501,115 @@ def test_the_hover_reads_as_the_specification_shows() -> None:
     )
 
 
-def test_a_drawn_fraction_past_one_atmosphere_is_refused_rather_than_drawn() -> None:
-    """The chart builds each value it draws as a `Fraction`, so an impossible one is refused.
+def _input_refusing_a_drawn_column(
+    controller: SimulationController, quantity: RecordedQuantity, value: float
+) -> RunInput:
+    """`_input(controller)`, whose drawn window carries `value` in `quantity`'s last column.
 
-    `core/concentration.py`'s fourth limit: a computed fraction a rounding
-    past 1, which only a 100% dial can make and no supported setting reaches,
-    is refused where the chart converts it rather than clamped to 100.00% or
-    drawn above the axis (`PL-4R3W`). How that refusal is shown is
-    `PL-7DJK`'s, so this pins only that it is one, in the conversion and in
-    the hover.
+    The one route to a drawn fraction outside 0 to 1, since no supported
+    setting computes one (`core/concentration.py`): a drawn window is the
+    closed form's evaluation, so the value is written into the window the
+    controller answers with rather than into any compartment.
     """
 
-    run = _run_frame((1208.0,), alveolar=(nextafter(1.0, inf),))
-    refusal = r"^fraction of 1\.0000000000000002 is outside 0 to 1"
+    real_drawn_window = controller.drawn_window
 
-    with pytest.raises(SimulationConfigurationError, match=refusal):
-        run.percents(RecordedQuantity.ALVEOLAR)
+    def drawn_window(start_s: float, stop_s: float, columns: int) -> DrawnWindow:
+        window = real_drawn_window(start_s, stop_s, columns)
+        states = list(window.states)
+        values = list(states[-1].values)
+        values[COMPARTMENT_STATE_INDEX[quantity]] = value
+        states[-1] = replace(states[-1], values=tuple(values))
 
-    with pytest.raises(SimulationConfigurationError, match=refusal):
-        format_trace_hover(run, RecordedQuantity.ALVEOLAR, 0, 1)
+        return DrawnWindow(window.substance_id, window.times_s, tuple(states))
+
+    controller.drawn_window = drawn_window  # type: ignore[method-assign]
+
+    return _input(controller)
+
+
+def test_a_drawn_fraction_past_one_atmosphere_is_refused_before_any_frame_exists() -> None:
+    """Every value a frame draws is built as a `Fraction` when the frame is assembled.
+
+    `core/concentration.py`'s fourth limit: a computed fraction rounded past
+    1, which only a 100% dial can make and no supported setting reaches, is
+    refused rather than clamped to 100.00% or drawn above the axis
+    (`PL-4R3W`). It is refused in `assemble_chart_frame`, before a
+    `ChartFrame` exists, so the toolkit is never handed a frame whose first
+    traces convert and whose last refuses - which is what left four traces
+    redrawn and two standing on the frame before (`PL-7DJK`). The value is
+    the one that reproduced it, in the muscle column.
+    """
+
+    run = _input_refusing_a_drawn_column(_run(60.0), RecordedQuantity.MUSCLE, 1.0000000000001568)
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^muscle partial_pressure_fraction of 1\.0000000000001568 is outside 0 to 1",
+    ):
+        assemble_chart_frame([run], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX)
+
+
+def test_a_refused_drawn_value_names_its_compartment_as_a_step_would() -> None:
+    """Each of the six constructions names its quantity, in the words `_write_state_vector` uses.
+
+    "fraction of 1.0000000000000002" said which value was refused and not
+    which compartment, against the convention `Fraction`'s docstring states
+    (`PL-SPN6`); `run_series.COMPARTMENT_FRACTION_NAMES` is the one table
+    the frame, the snapshot and the MAC multiples name from (`PL-7DJK`).
+    """
+
+    for quantity in COMPARTMENT_QUANTITIES:
+        run = _input_refusing_a_drawn_column(_run(60.0), quantity, nextafter(1.0, inf))
+
+        with pytest.raises(
+            SimulationConfigurationError,
+            match=rf"^{COMPARTMENT_FRACTION_NAMES[quantity]} of 1\.0000000000000002 is outside",
+        ):
+            assemble_chart_frame([run], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX)
+
+
+def test_a_frame_holds_built_fractions_so_nothing_drawn_from_it_builds_one() -> None:
+    """The conversion, the hover and the cursor readouts read a `Fraction` the frame built.
+
+    What `RunFrame.fractions` promises, checked at the type: every drawn
+    value is a `Fraction` and the axis top a `Percent`, so `percents`,
+    `format_trace_hover` and `nearest_trace_point` build nothing and cannot
+    be the first to refuse a value after a frame has started to draw
+    (`PL-7DJK`).
+    """
+
+    frame = assemble_chart_frame(
+        [_input(_run(60.0))], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
+
+    assert isinstance(frame.axis_top_percent, Percent)
+
+    for run in frame.runs:
+        for quantity in COMPARTMENT_QUANTITIES:
+            assert run.fractions[quantity]
+            assert all(isinstance(fraction, Fraction) for fraction in run.fractions[quantity])
+            assert all(isinstance(percent, Percent) for percent in run.percents(quantity))
+
+
+def test_an_axis_top_past_one_atmosphere_is_refused_when_the_frame_is_assembled() -> None:
+    """Three MACs of an agent whose MAC is above a third of an atmosphere is no percent.
+
+    No shipped agent reaches it (`Percent`'s docstring in
+    `core/concentration.py`), so the MAC is written onto the snapshot. Built
+    at assembly and named, the refusal comes before the chart draws rather
+    than from the off-scale notice after it (`PL-7DJK`).
+    """
+
+    controller = _run(60.0)
+    run = replace(
+        _input(controller), snapshot=replace(controller.snapshot(), agent_mac_percent=Percent(40.0))
+    )
+
+    with pytest.raises(
+        SimulationConfigurationError, match=r"^axis_top_percent of 120\.0 is outside 0 to 100"
+    ):
+        assemble_chart_frame([run], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX)
 
 
 def test_the_hover_names_the_run_only_while_more_than_one_is_drawn() -> None:

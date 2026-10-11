@@ -71,6 +71,7 @@ from anesthesia_sim.app.formatting import (
     mac_axis_ticks,
 )
 from anesthesia_sim.app.run_series import (
+    COMPARTMENT_FRACTION_NAMES,
     COMPARTMENT_QUANTITIES,
     DrawnWindow,
     RecordedQuantity,
@@ -552,7 +553,11 @@ class RunFrame:
             fraction of one atmosphere, keyed by the quantity the trace
             draws. Every compartment is present whether or not it is shown,
             because what a trace *draws* does not change with whether it is
-            currently on the chart.
+            currently on the chart. Each value was built as a `Fraction`
+            under its compartment's name when the frame was assembled
+            (`_run_frame`), so nothing reading it - the conversion to
+            percent, the hover, the cursor readouts - can refuse after a
+            frame exists (`PL-7DJK`).
         wash_in: The F_A/F_I stretches drawn, oldest first - the most recent
             that fit the pool.
         undrawn_wash_in_stretches: How many stretches inside the window the
@@ -572,7 +577,7 @@ class RunFrame:
     mac_percent: Percent
     elapsed_s: CaseInstant
     times_s: tuple[float, ...]
-    fractions: Mapping[RecordedQuantity, tuple[float, ...]]
+    fractions: Mapping[RecordedQuantity, tuple[Fraction, ...]]
     wash_in: tuple[WashInStretch, ...]
     undrawn_wash_in_stretches: int
     control_marks_s: tuple[float, ...]
@@ -583,7 +588,10 @@ class RunFrame:
 
         The one fraction-to-percent conversion the chart makes, here rather
         than in the toolkit layer, so a factor of a hundred can be wrong in
-        one place rather than in seven.
+        one place rather than in seven. It cannot refuse: every entry is a
+        `Fraction` the frame built, and `percent_from_fraction` refuses no
+        `Fraction`, so a toolkit that converts trace by trace cannot be left
+        with some traces redrawn and others not (`PL-7DJK`).
 
         Args:
             quantity: Which compartment.
@@ -592,9 +600,7 @@ class RunFrame:
             One percent per entry of `times_s`.
         """
 
-        return tuple(
-            percent_from_fraction(Fraction(fraction)) for fraction in self.fractions[quantity]
-        )
+        return tuple(percent_from_fraction(fraction) for fraction in self.fractions[quantity])
 
 
 @dataclass(frozen=True, slots=True)
@@ -620,7 +626,10 @@ class ChartFrame:
             which is what makes its chord width checkable after the fact.
         mac_percent: The agent's 1 MAC as a percent of one atmosphere, the
             divisor every MAC-denominated mark below is placed against.
-        axis_top_percent: Top of the compartment chart's percent axis.
+        axis_top_percent: Top of the compartment chart's percent axis, built
+            as a `Percent` when the frame is assembled so that the off-scale
+            notice, which converts it back, cannot refuse after the chart
+            has drawn (`PL-7DJK`).
         grid_interval_percent: Spacing of its horizontal rules.
         percent_ticks: Its left axis's labels, each at a gridline.
         mac_ticks: Its right axis's labels, as (percent position, MAC text).
@@ -646,7 +655,7 @@ class ChartFrame:
     columns: int
     plot_width_px: float
     mac_percent: Percent
-    axis_top_percent: float
+    axis_top_percent: Percent
     grid_interval_percent: float
     percent_ticks: tuple[tuple[float, str], ...]
     mac_ticks: tuple[tuple[float, str], ...]
@@ -721,6 +730,13 @@ def assemble_chart_frame(
             one run's traces read against the other's divisor - a correct
             number under the wrong label, which `CLAUDE.md`'s
             safety-critical standard treats as a failure of the value.
+        SimulationConfigurationError: If a drawn compartment value is outside
+            0 to 1, naming the compartment, or the axis top is past 100% of an
+            atmosphere - an agent whose MAC is above a third of one. Every
+            value the frame draws is built as its checked type here, before
+            the frame exists, so a refusal leaves nothing half-drawn and the
+            interface halts every run on it (`PL-7DJK`). No supported
+            setting reaches either (`core/concentration.py`).
     """
 
     if not runs:
@@ -755,7 +771,7 @@ def assemble_chart_frame(
     # its own (`.claude/rules/ui-areas.md`).
     drawn, capped = compared_compartments(shown, len(runs))
     mac_percent = reference.agent_mac_percent
-    top_percent = chart_axis_top_percent(mac_percent)
+    top_percent = Percent(chart_axis_top_percent(mac_percent), name="axis_top_percent")
     grid_percent = chart_grid_interval_percent(mac_percent)
     mac_awake = reference.agent_mac_awake
 
@@ -785,7 +801,16 @@ def assemble_chart_frame(
 
 
 def _run_frame(run: RunInput, start_s: float, stop_s: float, columns: int) -> RunFrame:
-    """Evaluate one run into the window every run shares."""
+    """Evaluate one run into the window every run shares.
+
+    Raises:
+        SimulationConfigurationError: If a drawn value is outside 0 to 1,
+            naming its compartment. The window evaluates the closed form at
+            instants no compartment ever held, so each value is built as a
+            `Fraction` here, under the name a step would give it
+            (`run_series.COMPARTMENT_FRACTION_NAMES`), and the refusal comes
+            before any `RunFrame` exists (`PL-7DJK`).
+    """
 
     snapshot = run.snapshot
     # Drawn under the agent this frame's readouts were formatted from, so a
@@ -795,7 +820,12 @@ def _run_frame(run: RunInput, start_s: float, stop_s: float, columns: int) -> Ru
     # run does hold.
     window = run.controller.drawn_window(start_s, stop_s, columns)
     fractions = {
-        quantity: tuple(window.compartment_fractions(RecordedSeries(snapshot.agent_id, quantity)))
+        quantity: tuple(
+            Fraction(fraction, name=COMPARTMENT_FRACTION_NAMES[quantity])
+            for fraction in window.compartment_fractions(
+                RecordedSeries(snapshot.agent_id, quantity)
+            )
+        )
         for quantity in COMPARTMENT_QUANTITIES
     }
     stretches = _drawn_wash_in(window, snapshot.agent_id)
@@ -1337,7 +1367,7 @@ def _hover_value(run: RunFrame, quantity: RecordedQuantity, index: int) -> str:
     `mac_percent`, exactly as the MAC axis and the readout row do.
     """
 
-    fraction = Fraction(run.fractions[quantity][index])
+    fraction = run.fractions[quantity][index]
 
     return f"{format_percent(fraction)}   {format_mac_multiple(fraction, run.mac_percent)}"
 
@@ -1547,7 +1577,7 @@ def nearest_trace_point(
                 time_s,
                 percent,
                 run.times_s[column],
-                percent_from_fraction(Fraction(run.fractions[quantity][column])),
+                percent_from_fraction(run.fractions[quantity][column]),
                 seconds_per_pixel,
                 percent_per_pixel,
             )
@@ -1567,7 +1597,7 @@ def nearest_trace_point(
                 run=run_index,
                 quantity=quantity,
                 time_s=run.times_s[column],
-                value=percent_from_fraction(Fraction(run.fractions[quantity][column])),
+                value=percent_from_fraction(run.fractions[quantity][column]),
             )
             for run_index, run, quantity, column in answering
         ),

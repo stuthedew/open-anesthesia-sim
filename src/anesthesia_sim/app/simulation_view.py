@@ -1209,12 +1209,13 @@ class SimulationView(QWidget):
         """Stop every run for a raise out of the shared render path, say so, then try to draw.
 
         A raise the render loop meets is attributable to no run, so every
-        run stops. Each run states its halt from its own snapshot before the
-        frame is attempted, because the frame is what just failed and may
-        fail again for the same cause - two runs that have come to be on
-        different agents, say - and a halt presented only through it would
-        never be seen (`PL-25KS`). A presentation that fails afterwards
-        cannot unwind the halt.
+        run stops. Each run states its halt from its controller's status,
+        which builds no compartment value, before the frame is attempted,
+        because the frame is what just failed and may fail again for the
+        same cause - two runs that have come to be on different agents, say,
+        or a snapshot whose own values refuse - and a halt presented only
+        through it would never be seen (`PL-25KS`, `PL-7DJK`). A
+        presentation that fails afterwards cannot unwind the halt.
         """
 
         for run in self._runs:

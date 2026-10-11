@@ -44,7 +44,12 @@ from anesthesia_sim.app.chart_frame import (
 from anesthesia_sim.app.chart_time_base import ChartTimeBase, time_base_for_span
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
-from anesthesia_sim.app.controller import ResumePoint, SimulationController, SimulationSnapshot
+from anesthesia_sim.app.controller import (
+    ResumePoint,
+    RunStatus,
+    SimulationController,
+    SimulationSnapshot,
+)
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     ACCOUNTING_UNIT_CAPTION,
@@ -100,6 +105,7 @@ from anesthesia_sim.app.dashboard_frame import (
     format_mac_target,
     format_time_bookmark,
     halt_disposition,
+    halt_notice,
     mac_awake_caption,
     mac_reference_caption,
     new_case_question,
@@ -620,12 +626,15 @@ def test_refresh_view_reports_a_failed_run_as_stopped_not_paused() -> None:
     # because the core rolls a failed step back. The reader has to be told
     # that much - a banner that only says something went wrong leaves them
     # to guess whether the values are a solution of the model or debris.
+    # Whether a step was rolled back is the failure's own message's to say
+    # (`SimulationNumericalError`'s does), not the banner's of every
+    # failure: a setting that raised and a displayed value the interface
+    # refused failed no step (`PL-7DJK`).
     assert "last completed step" in banner
-    assert "rolled back" in banner
+    assert "rolled back" not in banner
     assert banner == (
         "Simulation stopped — SimulationNumericalError: the step could not be completed. "
-        "The values shown are the last completed step; the step that failed was rolled "
-        "back and changed nothing. Reset to start a new run."
+        "The values shown are the last completed step. Reset to start a new run."
     )
 
 
@@ -634,6 +643,77 @@ def test_refresh_view_does_not_offer_to_resume_a_failed_run() -> None:
 
     assert enablement.start_enabled is False
     assert enablement.pause_enabled is False
+
+
+def test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step() -> None:
+    """`halt_notice` is the banner `present_halt` writes, with no frame on screen for it.
+
+    A displayed value the interface refused is the case that reaches a
+    reader this way: the frame refuses again on every attempt, so this
+    banner is the last one written. It says what is true of that screen -
+    the frame drawn before the stop, not the step the run stopped at - and
+    blames no step, where the drawn banner's old wording sent the reader to
+    a step that had been rolled back when none had failed (`PL-7DJK`).
+    """
+
+    reason = (
+        "SimulationConfigurationError: alveolar partial_pressure_fraction of 1.0000001 is "
+        "outside 0 to 1, the range a fraction of one atmosphere takes "
+        '(docs/MODEL.md, "Concentrations")'
+    )
+    status = RunStatus(is_running=False, supported_limit_reason=None, failure_reason=reason)
+
+    banner = halt_notice(status)
+
+    assert banner is not None
+    assert banner.startswith(f"Simulation stopped — {reason}.")
+    assert "No frame of the stopped run could be drawn" in banner
+    assert "the last frame drawn before it stopped" in banner
+    assert "rolled back" not in banner
+    assert "step that failed" not in banner
+    assert banner.endswith("Reset to start a new run.")
+
+    drawn = notice(status, None)
+
+    assert drawn is not None
+    assert drawn != banner
+    assert "rolled back" not in drawn
+    assert "The values shown are the last completed step" in drawn
+
+
+def test_a_halt_is_stated_from_the_run_status_alone() -> None:
+    """The three halt widgets are settled by a `RunStatus`, which no compartment value is built for.
+
+    `present_halt` reads `SimulationController.status()` rather than a
+    snapshot, because the snapshot's own `Fraction`s are among the values a
+    halt can be for (`PL-7DJK`). So `status_word`, `transport` and
+    `halt_notice` each answer a bare status - and a snapshot is one, which
+    is what keeps every frame-drawing caller unchanged.
+    """
+
+    limit = "this run has reached 86400 s of simulated time"
+    failed = RunStatus(
+        is_running=False, supported_limit_reason=None, failure_reason="TypeError: boom"
+    )
+    at_limit = RunStatus(is_running=False, supported_limit_reason=limit, failure_reason=None)
+    paused = RunStatus(is_running=False, supported_limit_reason=None, failure_reason=None)
+    running = RunStatus(is_running=True, supported_limit_reason=None, failure_reason=None)
+
+    assert isinstance(_snapshot(), RunStatus)
+    assert status_word(failed).text == "Stopped — simulation error"
+    assert status_word(at_limit).text == "Stopped — supported run length reached"
+    assert status_word(paused).text == "Paused"
+    assert status_word(running).text == "Running"
+    assert (transport(failed).start_enabled, transport(failed).pause_enabled) == (False, False)
+    assert (transport(at_limit).start_enabled, transport(at_limit).pause_enabled) == (False, False)
+    assert (transport(running).start_enabled, transport(running).pause_enabled) == (False, True)
+    assert halt_notice(failed) is not None
+    assert "TypeError: boom" in (halt_notice(failed) or "")
+    # Nothing is wrong with the state a run stops on at the supported run
+    # length, so the frame that follows draws and the one wording serves.
+    assert halt_notice(at_limit) == notice(at_limit, None)
+    assert halt_notice(paused) is None
+    assert halt_notice(running) is None
 
 
 def test_refresh_view_shows_no_notice_for_an_ordinary_run() -> None:

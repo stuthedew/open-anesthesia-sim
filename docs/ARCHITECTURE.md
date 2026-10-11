@@ -310,7 +310,13 @@ third run state, carried
 on the snapshot as `failure_reason` and rendered as "Stopped — simulation
 error" with a banner over the values: a halted run must never present as a
 pause, because a pause is a run that continues when asked and a halt is one
-that cannot. The supported-limit halt is a fourth, distinct from the failure —
+that cannot. Both halts are read off `SimulationController.status()` as a
+`RunStatus`, which the snapshot extends, so `RunView.present_halt` states a
+halt without building any compartment value - the snapshot's own `Fraction`s
+being among the values a halt can be for - and the banner it writes,
+`dashboard_frame.halt_notice`, says no frame of the stopped run has been drawn
+until `refresh` replaces it on the first frame that draws (`PL-7DJK`). The
+supported-limit halt is a fourth, distinct from the failure —
 `supported_limit_reason` on the snapshot, "Stopped — supported run length reached"
 in place of the failure word — because there nothing went wrong: the run
 stands on a completed step at a time the model claims to represent, and the
