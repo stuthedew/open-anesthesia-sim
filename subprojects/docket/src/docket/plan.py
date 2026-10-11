@@ -1098,9 +1098,7 @@ def placement_line(
 
     where = scope.placement(identifier)
     if where == IN_SCOPE:
-        if scope.clearing:
-            return f"on the debt gate recorded under {scope.anchor}"
-        return f"in scope for {scope.anchor}"
+        return step_scope(scope)
     if where == OUT_OF_SCOPE:
         placed_by = scope.milestone(identifier)
         # While a gate is being cleared, `later` also holds the anchor's own
@@ -1130,6 +1128,17 @@ def placement_line(
     if ranks_above_bands:
         return f"placed by no section of {scope.anchor} - it ranks above every band but P0"
     return f"placed by no section of {scope.anchor} - it ranks on its band alone"
+
+
+def step_scope(scope: Scope) -> str:
+    """The current step's scope, in the words `placement_line` gives an id inside it.
+
+    `docket concurrent --in-scope` names the population its batch is drawn
+    from in the same words, so the two cannot describe the step differently.
+    """
+    if scope.clearing:
+        return f"on the debt gate recorded under {scope.anchor}"
+    return f"in scope for {scope.anchor}"
 
 
 #: The tags `placement_mark` draws, with the clause that defines each one. The

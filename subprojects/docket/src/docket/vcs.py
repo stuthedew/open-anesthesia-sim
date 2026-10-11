@@ -4965,6 +4965,101 @@ def _title_at(ref: str, path: str, root: Path, run: Runner) -> str:
     return parse_item(text, path).title if text else ""
 
 
+def _item_edits(
+    ref: str, base: str, root: Path, items_dir: str, run: Runner
+) -> dict[str, tuple[str, ...]] | None:
+    """Each item the ref's own commits wrote, with those commits, or `None` where git did not say.
+
+    The ref's non-merge commits the base does not hold, newest first. A merge
+    is how the base arrives rather than the branch's own work, which is how
+    `claims.work_outside_queue` reads one too. `changed_path_args` lists a
+    rename as the deletion and the addition it is, so a commit that wrote an
+    item under the name it had before a retitle counts for it as well.
+    """
+    listing = run(
+        changed_path_args(
+            "log", "--no-merges", "--format=%x1e%H", "--name-only", f"^{base}", ref, "--", items_dir
+        ),
+        root,
+    )
+    if not answered(listing):
+        return None
+    edits: dict[str, dict[str, None]] = {}
+    for record in listing.split("\x1e"):
+        # The hash, then the commit's paths, each ended by NUL; git opens the
+        # paths with one `\n`, which belongs to none of them.
+        head, _, paths = record.partition("\0")
+        commit = head.strip()
+        for path in listed_paths(paths.removeprefix("\n")):
+            match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
+            if commit and match is not None:
+                edits.setdefault(match.group(1), {})[commit] = None
+    return {identifier: tuple(commits) for identifier, commits in edits.items()}
+
+
+class _ItemChanges:
+    """Whether the default branch took every change a ref made to one item, by `change_landed`.
+
+    **`stranded`'s last test, asked only of a copy the text calls ahead**
+    (`PL-NPWP`). The split reads blobs, and a squash that merged a branch's
+    edit to an item with another edit to the same file writes a copy the
+    branch never held, so the branch's own copy stays outstanding however long
+    ago it landed. Once the base rewords a line the branch wrote, `_standing`
+    calls that copy ahead as well, and the item was reported for as long as
+    the ref stood, while `change_landed` on the branch's commit named the
+    squash (reproduced on real git, 2026-10-11). It is the change-level test
+    `orphaned` and `tools/left_behind_check.py` already read (`PL-GHHW`), and
+    `stranded`'s item half was the reader of that fact left off it.
+
+    **Every commit that wrote the item, not the newest.** Each one
+    `_item_edits` names goes to `change_landed`, and one it cannot place keeps
+    the copy reported. A port the base took of a later commit - a retitle,
+    say - therefore never clears an earlier note nothing took.
+
+    **Every silence keeps the copy**, the direction the rest of `stranded`
+    takes: a listing git did not answer, a ref whose own commits never wrote
+    the item, since only a merge did, and every failure `change_landed` reads
+    as not landed, a git older than 2.40 among them. Both reads go through
+    `stranded`'s own runner, so a silence also marks the report partial.
+
+    **Its recall cost is `change_landed`'s, met across commits.** A later
+    commit writing next to an earlier one's line - a `pr:` recorded under the
+    `closed:` the closure wrote - leaves the squash holding both, and the
+    earlier commit replayed alone conflicts with it, so that copy is still
+    reported, as it was before (measured on real git, 2026-10-11).
+
+    **Asked last, and once.** A `change_landed` is a `merge-base`, a `log` and
+    a `merge-tree` for each candidate, so only a copy the text has already
+    called ahead pays for one, and each ref's listing and each commit's answer
+    are kept for the rest of the read. Measured 2026-10-11: no copy got that
+    far on 299 merged pull-request heads, nor on the commit before the base
+    merge 192 of those heads end with. Given one commit pushed after its merge,
+    every one of 151 of those heads was still reported, and the read took
+    19.0 s against 8.7 s without this, about 70 ms a copy.
+    """
+
+    def __init__(self, base: str, root: Path, items_dir: str, run: Runner) -> None:
+        self.base = base
+        self.root = root
+        self.items_dir = items_dir
+        self.run = run
+        self._edits: dict[str, dict[str, tuple[str, ...]] | None] = {}
+        self._taken: dict[str, bool] = {}
+
+    def all_taken(self, ref: str, identifier: str) -> bool:
+        """Whether `ref`'s own commits wrote the item, and the base took each of them."""
+        if ref not in self._edits:
+            self._edits[ref] = _item_edits(ref, self.base, self.root, self.items_dir, self.run)
+        commits = (self._edits[ref] or {}).get(identifier, ())
+        return bool(commits) and all(self._landed(commit) for commit in commits)
+
+    def _landed(self, commit: str) -> bool:
+        if commit not in self._taken:
+            landing = change_landed(commit, self.base, self.root, runner=self.run)
+            self._taken[commit] = landing is not None
+        return self._taken[commit]
+
+
 def stranded(
     root: Path, known_ids: set[str], *, items_dir: str = "docs/items", runner: Runner | None = None
 ) -> StrandedReport:
@@ -5024,6 +5119,13 @@ def stranded(
     1.30 s reading every blob the base's history holds, and the read alone
     13.4 s with no blob filter at all (2026-09-21).
 
+    **And one after the read, for a copy the text calls ahead** (`PL-NPWP`).
+    A copy the ref wrote, which a squash then merged with another edit, is
+    outstanding in the split however long ago it landed, and once the base
+    rewords it the text calls it ahead too. `_ItemChanges` asks `change_landed`
+    of each commit the ref wrote the item in, and a copy whose every commit the
+    base took is not reported.
+
     **An edit this session is itself holding is not reported back to it**,
     which is `known_ids` above applied to content rather than to ids: a copy
     whose blob `HEAD` also holds is one the session can see, whether it
@@ -5059,6 +5161,7 @@ def stranded(
 
     known = {identifier.upper() for identifier in known_ids}
     landings = _Landings(base, root, run)
+    changes = _ItemChanges(base, root, items_dir, run)
     splits: dict[str, tuple[tuple[str, ...], tuple[str, ...]] | None] = {}
     here = _item_blobs("HEAD", root, items_dir, run)
     elsewhere: dict[str, tuple[str, list[str]]] = {}
@@ -5101,8 +5204,15 @@ def stranded(
                     continue
             ref_text = run(["show", f"{ref}:{path}"], root)
             base_text = run(["show", f"{base}:{base_path}"], root)
-            if ref_text and base_text and _standing(base_text, ref_text) != _AHEAD:
-                continue
+            if ref_text and base_text:
+                if _standing(base_text, ref_text) != _AHEAD:
+                    continue
+                # Ahead by its text, so asked by its changes: a copy whose
+                # every commit the base took is one the base has been past,
+                # however the base worded its own copy since (`PL-NPWP`). Only
+                # where the split was read, since that read needs the fork too.
+                if split is not None and changes.all_taken(ref, identifier):
+                    continue
             # A copy neither side could be read for is reported rather than
             # dropped, the direction `_superseded` takes for the same reason:
             # an unread comparison must not come back as "the base has it".

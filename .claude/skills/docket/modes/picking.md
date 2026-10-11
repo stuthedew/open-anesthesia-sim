@@ -342,6 +342,7 @@ Triggered by "can we do these together", or by planning a batch.
 
 ```bash
 docket concurrent            # a batch that can run together
+docket concurrent --in-scope --limit 4   # four of them from the step's scope: the gate's entries while one is open
 docket concurrent PL-K7QX    # what can run alongside this one
 ```
 
@@ -360,7 +361,9 @@ declares `docs/MODEL.md`, so the whole of it read as unstartable at once.
 
 **The bare batch offers only startable work**, the population `docket next`
 ranks, and names the decisions and the work in flight beneath it, so it can be
-handed out as it stands (`PL-4ZK8`).
+handed out as it stands (`PL-4ZK8`). **A fan-out clearing the gate asks with
+`--in-scope`**, which draws the batch from the current step's scope alone and
+offers nothing where no plan says what that is (`PL-7B3G`).
 
 The `<id>` form adds what the branches in flight have **already changed**,
 read from the branches rather than from anybody's `touches`. That section is

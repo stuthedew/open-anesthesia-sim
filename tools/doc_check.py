@@ -10,9 +10,10 @@ and a judgment on every hit, run at the end of a session, by hand. It leaks:
 The failure modes the sweep looks for that need no judgment at all are
 checked here, and never left to a session to remember:
 
-- **Package map.** Every module under `src/anesthesia_sim/` (and `tools/`)
-  appears in the matching tree in `docs/ARCHITECTURE.md`, and every path
-  those trees name still exists.
+- **Package map.** Every module under `src/anesthesia_sim/` appears in the
+  matching tree in `docs/ARCHITECTURE.md`, every module under `tools/` in
+  the one in `docs/apparatus.md`, and every path those trees name still
+  exists.
 - **Provenance table.** Every scientific constant in a `data/**/*.json` file
   has exactly one row in `docs/MODEL.md`'s provenance table, and every row
   names a key that file actually holds, carrying the value the table states.
@@ -374,8 +375,12 @@ GIT_UNAVAILABLE = (OSError, subprocess.SubprocessError)
 # clause itself.
 UNREADABLE = (OSError, UnicodeDecodeError)
 
-# Where the package map lives, and where the provenance table lives.
+# Where the package maps live, and where the provenance table lives. The
+# simulator's map and the apparatus's are separate documents since `PL-KRGY`,
+# and each is held to the tree on its own, so neither can pass on the other's.
 ARCHITECTURE = Path("docs/ARCHITECTURE.md")
+APPARATUS = Path("docs/apparatus.md")
+PACKAGE_MAPS = (ARCHITECTURE, APPARATUS)
 MODEL = Path("docs/MODEL.md")
 
 # Where the release train lives. `ROADMAP.md` calls itself the authoritative
@@ -1275,7 +1280,7 @@ class ResidentInstructions:
 
 @dataclass(frozen=True)
 class TreeMap:
-    """One package-map tree, as drawn in `docs/ARCHITECTURE.md`."""
+    """One package-map tree, as drawn in `docs/ARCHITECTURE.md` or `docs/apparatus.md`."""
 
     root: PurePosixPath
     line: int
@@ -1393,10 +1398,22 @@ def _mapped_candidates(root: Path, tree_root: PurePosixPath) -> list[PurePosixPa
 
 
 def check_package_maps(root: Path, report: Report) -> None:
-    """Hold `docs/ARCHITECTURE.md`'s trees to the tree on disk, both ways."""
-    path = root / ARCHITECTURE
+    """Hold each `PACKAGE_MAPS` document's trees to the tree on disk, both ways.
+
+    Each document is read on its own and each must draw a tree, so one that
+    loses its map fails rather than passing on the other's. Read from
+    `docs/ARCHITECTURE.md` alone, as it was, the `tools/` tree would have gone
+    unchecked the moment `PL-KRGY` moved it to `docs/apparatus.md`.
+    """
+    for document in PACKAGE_MAPS:
+        _check_package_map(root, document, report)
+
+
+def _check_package_map(root: Path, document: Path, report: Report) -> None:
+    """Hold one document's trees to the tree on disk, both ways."""
+    path = root / document
     if not path.is_file():
-        report.errors.append(f"{ARCHITECTURE}: missing; the package map cannot be checked")
+        report.errors.append(f"{document}: missing; the package map cannot be checked")
         return
 
     text = path.read_text(encoding="utf-8")
@@ -1407,13 +1424,13 @@ def check_package_maps(root: Path, report: Report) -> None:
     ]
     if not trees:
         report.errors.append(
-            f"{ARCHITECTURE}: no package-map tree found; either the file lost its map or the "
+            f"{document}: no package-map tree found; either the file lost its map or the "
             "tree format changed and this check has gone blind"
         )
         return
 
     for tree in trees:
-        where = f"{ARCHITECTURE} (package map at line {tree.line})"
+        where = f"{document} (package map at line {tree.line})"
 
         for entry in sorted(tree.entries):
             if not (root / entry).exists():
@@ -4460,8 +4477,9 @@ def _code_spans(text: str) -> list[re.Match[str]]:
     wrapped across a line break is one span, a fence's own backticks open none,
     and a stray backtick pairs with nothing past its own statement. CommonMark
     reads no span inside a fence, but a package map's comments cite paths as
-    spans, and `docs/ARCHITECTURE.md`'s maps are held to the tree that way; so
-    each fenced line is then read on its own, as every line was read before
+    spans, and the maps in `docs/ARCHITECTURE.md` and `docs/apparatus.md` are
+    held to the tree that way; so each fenced line is then read on its own, as
+    every line was read before
     `PL-9L39`. Offsets are the document's either way.
     """
     spans = list(_statement_spans(text))

@@ -6,14 +6,15 @@ effort: S
 status: ready
 classes: docs
 feature: doc-consistency-checks
-touches: docs/ARCHITECTURE.md, CONTRIBUTING.md
+touches: docs/apparatus.md, CONTRIBUTING.md
 added: 2026-09-15
-verify: grep -q "the Makefile's own invocations" docs/ARCHITECTURE.md
+verify: grep -q "the Makefile's own invocations" docs/apparatus.md
 ---
 
 **Problem.** docs/ARCHITECTURE.md:447's doc_check.py inventory and CONTRIBUTING.md:52's summary both describe the tool as validating documentation, but check_coverage_gate and check_ruff_cache hold the Makefile's own invocations, so the authoritative description of what the tool does is narrower than the tool
 
-**Why it matters.** `docs/ARCHITECTURE.md:447` is the package map's own
+**Why it matters.** The `doc_check.py` entry in `docs/apparatus.md`'s
+`tools/` tree is the package map's own
 description of what `tools/doc_check.py` is for, and `tools/doc_check.py` is the
 tool that holds that map to the tree - so the one line nothing checks is the
 line describing the checker. Both statements now understate it: the tool also
@@ -45,3 +46,9 @@ two Makefile-invariant checks: `check_coverage_gate` at `tools/doc_check.py:3041
 `grep -n 'coverage_gate\|ruff cache\|--no-cache' docs/ARCHITECTURE.md` returns
 nothing. Both cited lines have drifted: `docs/ARCHITECTURE.md:447` is now
 `:505`, and `CONTRIBUTING.md:52` is now `:53`.
+
+**Re-pointed 2026-10-11 (`PL-KRGY`).** The `doc_check.py` entry moved with the
+rest of the `tools/` tree to `docs/apparatus.md` § "Developer tooling (`tools/`)", so
+`touches`, `verify:` and the paragraph on why it matters name that file, and
+the dated paragraphs describe `docs/ARCHITECTURE.md` before the move, its line
+numbers included.

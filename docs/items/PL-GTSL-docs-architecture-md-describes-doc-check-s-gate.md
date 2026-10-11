@@ -5,12 +5,12 @@ priority: P3
 effort: S
 status: ready
 classes: docs
-touches: docs/ARCHITECTURE.md
+touches: docs/apparatus.md
 added: 2026-09-05
-verify: grep -q 'check_resident_instructions' docs/ARCHITECTURE.md && python3 tools/doc_check.py check
+verify: grep -q 'check_resident_instructions' docs/apparatus.md
 ---
 
-**Problem.** `docs/ARCHITECTURE.md` describes `tools/doc_check.py`'s
+**Problem.** `docs/apparatus.md` describes `tools/doc_check.py`'s
 gate-count, version-table and release-tag checks, and never
 `check_resident_instructions` — the one whose output prints on every run.
 
@@ -23,10 +23,10 @@ is recorded. `PL-X925` is about to point that advisory at
 architecture document never mentions has to reconstruct the mechanism from the
 message alone.
 
-**Where.** `docs/ARCHITECTURE.md`, the `tools/doc_check.py` section, beside the
-three checks already described.
+**Where.** `docs/apparatus.md` § "Developer tooling (`tools/`)", the `tools/doc_check.py`
+part, beside the three checks already described.
 
-**Done when.** `docs/ARCHITECTURE.md` describes `check_resident_instructions` —
+**Done when.** `docs/apparatus.md` describes `check_resident_instructions` —
 what it measures, that it is an advisory rather than a gate, and what a session
 is expected to do with it — and `make doc-check` passes.
 
@@ -42,3 +42,12 @@ validates and does not mention `check_bound_families`, which landed that day.
 It is not repaired there, because this item owns that line and holding the
 inventory complete against `def check_*` catches it along with
 `check_resident_instructions` rather than one entry at a time.
+
+**Re-pointed 2026-10-11 (`PL-KRGY`).** The `tools/doc_check.py` part of the
+inventory moved with the rest of the `tools/` section to `docs/apparatus.md`,
+so `touches`, `verify:`, the Problem, the Where and the Done-when name that
+file, and the dated paragraph above describes `docs/ARCHITECTURE.md` before the
+move, its line number included. `verify:` lost its
+`python3 tools/doc_check.py check` clause, which is not a shape a command
+written since 2026-09-24 may take; `bin/docket verify` runs `make check`, which
+runs that check, so nothing the clause proved is lost.

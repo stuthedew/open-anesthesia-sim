@@ -5,7 +5,7 @@ priority: P3
 effort: M
 status: ready
 classes: docs
-touches: docs/ARCHITECTURE.md, docs/maintainer.md, docs/resident-instructions.md, .claude/skills/docket/SKILL.md, docs/items
+touches: docs/apparatus.md, docs/maintainer.md, docs/resident-instructions.md, .claude/skills/docket/SKILL.md, docs/items
 added: 2026-10-01
 payoff: the rules resting on Claude Code's documentation rest on what its pages say, not on a summarizing model's paraphrase
 verify: grep -qE '^\*\*Compared [0-9]{4}-[0-9]{2}-[0-9]{2}\.\*\*' docs/items/PL-124X*.md
@@ -20,3 +20,10 @@ verify: grep -qE '^\*\*Compared [0-9]{4}-[0-9]{2}-[0-9]{2}\.\*\*' docs/items/PL-
 **Reproduced 2026-10-01.** Four live files outside `docs/items` cite code.claude.com: `docs/ARCHITECTURE.md`, `docs/maintainer.md`, `docs/resident-instructions.md` and `.claude/skills/docket/SKILL.md` (`docs/pr-bodies/733.md` is a record and is left alone). The `.md` form answers from a cloud container: https://code.claude.com/docs/en/skills.md returned HTTP 200.
 
 **Generator check.** `PL-B1BW` (done) fixed how a quote is fetched, and this backfills what was fetched before it: bookkeeping. If the comparison finds two or more misquotes, WebFetch's summary is a fact misread by two or more items with no head, and is recorded as a generator then.
+
+**Re-pointed 2026-10-11 (`PL-KRGY`).** The one quotation `docs/ARCHITECTURE.md`
+carried, of Claude Code's protected paths, moved with the hooks section to
+`docs/apparatus.md` § "Wired hooks (`.claude/hooks/`)", so `touches` names that
+file in its place and the four live files are now it, `docs/maintainer.md`,
+`docs/resident-instructions.md` and `.claude/skills/docket/SKILL.md`.
+`docs/ARCHITECTURE.md` cites code.claude.com nowhere.

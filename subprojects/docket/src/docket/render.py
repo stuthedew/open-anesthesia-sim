@@ -911,6 +911,19 @@ def _edited_lines(report: StrandedReport) -> list[str]:
     return lines
 
 
+#: Where the exact answer to `format_orphaned`'s question is, said beside every
+#: answer this half gives from file content. `tools/left_behind_check.py` reads
+#: each branch on the remote against the head its merged pull request froze,
+#: and where the two disagree it wins (`PL-BHVM`). Named rather than run, the
+#: way `release.TAG_SCRIPT` is: it needs GitHub and a token where this half
+#: needs only the checkout, and the session-start digest already runs it
+#: (`PL-CZR6`).
+_EXACT_LEFT_BEHIND = (
+    "`python3 tools/left_behind_check.py --all` is the exact answer, comparing each branch on "
+    f"{REMOTE} with the head its merged pull request froze, and it wins where the two disagree."
+)
+
+
 def format_orphaned(report: OrphanedReport) -> str:
     """Work left on a branch after its pull request merged, and how to recover it.
 
@@ -923,6 +936,15 @@ def format_orphaned(report: OrphanedReport) -> str:
     a branch appears here because the default branch holds some of what it
     introduced and not the rest, and a reader who cannot see that count cannot
     tell this from an ordinary branch in flight.
+
+    **Every answer says it was judged by file content, and where the exact one
+    is** (`PL-CZR6`). `vcs.orphaned` is silent by design on shapes it cannot
+    tell from a merge, among them a commit pushed after a squash that re-merged
+    the branch's work against a base that had moved. Closing on "No branch
+    carries work its own pull request left behind" alone, it told every reader
+    of `stranded` that nothing was behind while `tools/left_behind_check.py`
+    named that commit. The list carries the same sentence, since the content
+    reading can also name a commit whose change landed.
     """
     if not report.known and not report.branches:
         return f"Work left on a merged branch not checked: {report.declined}."
@@ -934,8 +956,12 @@ def format_orphaned(report: OrphanedReport) -> str:
     # excluded before this read begins rather than examined and cleared.
     refs = _plural(report.refs_read, "unmerged branch ref", "unmerged branch refs")
     if not report.branches:
-        clear = f"No branch carries work its own pull request left behind, across the {refs} read."
-        return "\n".join([clear, *_rewritten_lines(report)]) if report.rewritten else clear
+        clear = [
+            "No branch carries work its own pull request left behind, judged by file content "
+            f"across the {refs} read.",
+            f"File content can miss a commit pushed after the merge: {_EXACT_LEFT_BEHIND}",
+        ]
+        return "\n".join([*clear, *_rewritten_lines(report)])
 
     lines = [
         *partial,
@@ -962,7 +988,11 @@ def format_orphaned(report: OrphanedReport) -> str:
         lines.append("")
     lines.append(
         "A pull request merges the head it was opened against; a commit pushed to the "
-        "branch afterwards is merged by nothing and reported by nothing else."
+        "branch afterwards is merged by nothing."
+    )
+    lines.append(
+        "These were judged by file content, which can miss such a commit or name one whose "
+        f"change landed: {_EXACT_LEFT_BEHIND}"
     )
     lines.extend(_rewritten_lines(report))
     return "\n".join(lines)
@@ -3240,7 +3270,7 @@ def format_picks(picks: Picks) -> str:
     if picks.folded:
         folded = ", ".join(f"{name} ({count})" for name, count in picks.folded)
         lines.append(f"Folded into their lane lines to keep to {MAX_PICK_LINES}: {folded}.")
-    lines += _unread_lines(picks.unread)
+    lines += plan_unread_lines(picks.unread)
     return "\n".join(lines)
 
 
@@ -3366,12 +3396,16 @@ def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
         lines.append("")
         lines.append("The plan and the project disagree, so the beat above rests on a stale plan:")
         lines.extend(f"  {statement}" for statement in plan.stale)
-    lines += _unread_lines(plan.unread)
+    lines += plan_unread_lines(plan.unread)
     return "\n".join(lines)
 
 
-def _unread_lines(unread: Sequence[str]) -> list[str]:
-    """Each list entry the plan was not read whole at, as `wave` and `picks` both name them."""
+def plan_unread_lines(unread: Sequence[str]) -> list[str]:
+    """Each list entry the plan was not read whole at, named the same way by every reader.
+
+    `wave`, `picks` and `concurrent --in-scope` print it, so a count each gives
+    from a list read short says so in the same words.
+    """
     if not unread:
         return []
     return [

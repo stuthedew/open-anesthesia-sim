@@ -5,15 +5,16 @@ priority: P3
 effort: S
 status: ready
 classes: docs
-touches: docs/ARCHITECTURE.md
+touches: docs/apparatus.md
 added: 2026-09-22
 payoff: the architecture page stops holding contrast_check.py to an interpreter floor it left, and stops contradicting itself about it
-verify: ! grep -qF 'these tools run under a bare' docs/ARCHITECTURE.md
+verify: ! grep -qF 'these tools run under a bare' docs/apparatus.md
 ---
 
 **Problem.** docs/ARCHITECTURE.md says contrast_check.py reads colours with ast because 'these tools run under a bare python3', which has not been true of it since PL-L17Q and which the same file contradicts at line 1158
 
-The paragraph at `docs/ARCHITECTURE.md:730` reads: "It reads the color constants
+The paragraph on `tools/contrast_check.py` in `docs/apparatus.md` reads: "It
+reads the color constants
 with `ast` rather than importing them, because the interface imports PySide6 and
 these tools run under a bare `python3`". Two claims, and the second is false of
 this tool: `PL-L17Q` moved `contrast_check.py` onto the `uv run python` lines in
@@ -36,7 +37,14 @@ line 739; `grep -nF 'these tools run under a bare' docs/ARCHITECTURE.md` finds
 that one hit. The correct statement is at line 1164, and the `Makefile` runs the
 tool as `uv run python tools/contrast_check.py` at line 280.
 
-**Why it matters.** `docs/ARCHITECTURE.md` is where a contributor learns which
+**Why it matters.** `docs/apparatus.md` is where a contributor learns which
 interpreter floor a tool is held to, and this sentence states a floor the tool
 left under `PL-L17Q`. The page contradicts itself about 425 lines later, so a
 reader believes whichever of the two statements they meet first.
+
+**Re-pointed 2026-10-11 (`PL-KRGY`).** The paragraph moved with the rest of
+the `tools/` section to `docs/apparatus.md` § "Developer tooling (`tools/`)",
+so `touches`, `verify:` and the live paragraphs above name that file, and the
+line numbers - in the Problem and the 2026-09-22 reproduction - describe
+`docs/ARCHITECTURE.md` before the move. The contradiction is intact: the false
+sentence and the correct one moved together and stay on one page.

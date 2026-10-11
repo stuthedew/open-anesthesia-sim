@@ -32,6 +32,7 @@ docket triage                # what is untriaged, and the rules the answers must
 docket set PL-K7QX --priority P2 --effort S --classes defect   # write triage's answers; refused where check would fail them
 docket withdraw PL-K7QX PL-B2B2 --because PL-34BG   # disown a recorded filing whose match was wrong
 docket concurrent PL-K7QX    # what can be worked alongside it, and what a live branch is already changing
+docket concurrent --in-scope --limit 4   # four that can run at once from the step's scope: the gate's entries while one is open
 docket feature halted-step   # progress on one feature
 docket gate --feature x      # every open debt item, split by feature and lane: a freeze's first cut
 docket release v0.3.0        # verify, bump the version, write the notes
@@ -189,16 +190,22 @@ command discards whatever the base has recorded on it since — which is exactly
 what `PL-XLQ5` was dealt, and what `PL-THPB` was offered when a branch's
 `untriaged` copy was reported against the `done` one the base had closed.
 
-**The direction is decided from content alone** — no date, no commit count, no
-ancestry, because this runs against refs a shallow clone holds no history for
-and because `closed:` is a field a branch can be holding a stale answer to. The
-ref's copy is behind when it adds nothing the base's lacks, and when the base
-has closed the item while the ref has not and every field the ref spells
-differently is one the base spells too. A copy whose blob the base's history
-has held is behind for the plainer reason that the base has been there and
-moved on. Everything else is ahead, including two copies that each carry
-something the other lacks: the reader is handed a diff either way, and calling
-that ahead reports it rather than hiding it.
+**The direction is decided from content and the ref's own history** — no date
+and no commit count, because `closed:` is a field a branch can be holding a
+stale answer to, and the history only where the checkout holds the ref's fork.
+The ref's copy is behind when it adds nothing the base's lacks, and when the
+base has closed the item while the ref has not and every field the ref spells
+differently is one the base spells too. A copy the ref never wrote since its
+fork is the fork's own, and one the base itself wrote since the fork is one it
+has been past, so neither is listed however far the base has moved
+(`PL-WVSX`). A copy the text still calls ahead is asked by its changes: where
+the base took every commit the ref wrote the item in, by `vcs.change_landed`,
+it is not listed either. That is the copy a squash merged with another edit and
+the base then reworded, which the text alone reported for as long as the ref
+stood (`PL-NPWP`). Where the checkout cannot name the fork, as in a shallow
+clone, the copy is read by its text alone. Everything else is ahead, including
+two copies that each carry something the other lacks: the reader is handed a
+diff either way, and calling that ahead reports it rather than hiding it.
 
 Two suppressions keep the list to something a reader acts on. A copy whose blob
 `HEAD` also holds is one this session can already see, which is the same rule
@@ -335,6 +342,17 @@ session's digest, which `CLAUDE.md` calls a defect in the check rather than
 coverage. Each of the three narrowings was bought with an observed false
 positive, and each false positive led a reader to a ref deletion rather than to
 a copy.
+
+**So every answer here says what it was judged by** (`PL-CZR6`). The second
+silence is the shape a squash against a moved base leaves, and `docket stranded`
+used to close on "No branch carries work its own pull request left behind" as a
+clean result while `tools/left_behind_check.py` named the commit. The line now
+says it was judged by file content and names
+`python3 tools/left_behind_check.py --all` as the exact answer. The list carries
+the same sentence, since the content reading can also name a commit whose change
+landed. That check reads each branch on the remote against the head its merged
+pull request froze, needs GitHub where this reading needs only the checkout, and
+wins where the two disagree.
 
 ### The other loss: a merge that deletes an item nothing deleted
 
@@ -1734,6 +1752,17 @@ and with which item — when `--limit` asks for a batch of a given size.
 not `blocked`, not in flight, and not waiting on the project owner below `P0`
 — and names the decisions and the work in flight beneath it on the two lines
 `next` prints, so a fan-out can hand the batch out as it stands (`PL-4ZK8`).
+
+**`--in-scope` narrows that batch to the current step's scope**, read by the
+`Scope.placement` that `next` ranks by: the gate's entries while a gate is being
+cleared, and the milestone's own scope once it is clear. `--limit N` fills out
+from the same population, so a session clearing the gate can ask for N
+startable entries that do not collide, a question a throwaway script over every
+entry's front matter answered before (`PL-7B3G`). Where no step scope can be
+read it says so and offers nothing rather than the whole queue, and a plan list
+not read whole is named as `picks` names it. It narrows the batch alone: the
+`<id>` form refuses it, because an item's collisions include work outside the
+step.
 
 **The same-file tier is reported by path rather than by item, rarest group
 first** (`PL-PGZK`). Tiering stopped the false refusals; it left a list whose

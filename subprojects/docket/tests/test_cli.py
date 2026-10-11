@@ -3450,6 +3450,12 @@ def test_stranded_reports_a_commit_pushed_after_its_pull_request_merged(
     assert "git checkout claude/pl-k7qx-do-the-thing" not in out
     # The commit the pull request did take is not offered for recovery.
     assert "work.py" not in out
+    # The list is judged by file content too, so it names the exact check rather
+    # than claiming nothing else reports such a commit (`PL-CZR6`).
+    assert (
+        "These were judged by file content, which can miss such a commit or name one whose "
+        "change landed: `python3 tools/left_behind_check.py --all` is the exact answer"
+    ) in out
 
 
 def test_stranded_is_silent_when_the_merge_took_the_commit_and_merged_it(
@@ -3522,6 +3528,69 @@ def test_stranded_leaves_a_branch_whose_work_is_all_unlanded_alone(
     assert main(["--items", str(root / "items"), "stranded"]) == 0
 
     assert "No branch carries work its own pull request left behind" in capsys.readouterr().out
+
+
+def test_the_left_behind_clear_line_names_the_exact_check(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-CZR6`: the all-clear says it was judged by file content, and where the exact answer is.
+
+    The geometry is one `vcs.orphaned` is silent on by design. The branch's
+    work squash-merges against a base that edited another line of the same
+    file, so the base never holds a whole commit of the branch; a commit pushed
+    afterwards is then merged by nothing and reported by nothing here. The
+    closing line used to state that as a clean result, while
+    `tools/left_behind_check.py`, reading the head the pull request froze,
+    names the commit.
+
+    Real git, because the silence is in what a squash against a moved base
+    writes, and an injected runner cannot produce that.
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    (root / "F.txt").write_text("one\ntwo\nthree\n")
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "base")
+
+    git("checkout", "-qb", "claude/pl-k7qx-do-the-thing")
+    (root / "F.txt").write_text("ONE\ntwo\nthree\n")
+    git("commit", "-qam", "PL-K7QX: the work the pull request took")
+
+    git("checkout", "-q", "main")
+    (root / "F.txt").write_text("one\ntwo\nTHREE\n")
+    git("commit", "-qam", "PL-0TH3: another line of the same file (#1)")
+    git("merge", "-q", "--squash", "claude/pl-k7qx-do-the-thing")
+    git("commit", "-qm", "PL-K7QX: the work the pull request took (#2)")
+
+    git("checkout", "-q", "claude/pl-k7qx-do-the-thing")
+    (root / "H.txt").write_text("the change pushed after the merge\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: pushed after the merge")
+    git("checkout", "-q", "main")
+
+    assert main(["--items", str(root / "items"), "stranded"]) == 0
+
+    out = capsys.readouterr().out
+    assert (
+        "No branch carries work its own pull request left behind, judged by file content "
+        "across the 1 unmerged branch ref read.\n"
+        "File content can miss a commit pushed after the merge: "
+        "`python3 tools/left_behind_check.py --all` is the exact answer, comparing each "
+        "branch on origin with the head its merged pull request froze, and it wins where "
+        "the two disagree.\n"
+    ) in out
 
 
 def _queue_repo(tmp_path: Path) -> tuple[Path, Callable[..., None]]:
@@ -6993,6 +7062,102 @@ def test_concurrent_names_the_decisions_and_in_flight_work_beneath_the_batch(
     assert "a session handed one as a pick could only read it and stop" in beneath
     assert "Excluded, already in flight: PL-0001 (live claim)" in beneath
     assert "    PL-0001 A ready item [IN FLIGHT]" in against_one
+
+
+def test_concurrent_can_draw_the_batch_from_the_current_step_alone(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`--in-scope` hands a fan-out clearing the gate its startable entries alone (`PL-7B3G`).
+
+    The gate entry is `P3` and the two the step does not include are `P1`, each
+    on a file of its own, so neither the band nor a shared file is what keeps
+    them out: one no section places, and one the gate's own milestone scopes,
+    which clearing the gate comes before. `--limit` cannot reach past the
+    narrowed population, and the bare batch still offers all three.
+    """
+    store = str(
+        _wave_project(
+            tmp_path,
+            READY.replace("priority: P1", "priority: P3"),
+            READY.replace("PL-B1B1", "PL-C2C2").replace("touches: a.py", "touches: c.py"),
+            READY.replace("PL-B1B1", "PL-D4D4").replace("touches: a.py", "touches: d.py"),
+        )
+    )
+    scoped_roadmap = WAVE_ROADMAP.replace(
+        "A displayed clinical unit.", "1. **A displayed clinical unit** (queue item `PL-D4D4`)."
+    )
+    (tmp_path / "ROADMAP.md").write_text(scoped_roadmap, encoding="utf-8")
+
+    assert _run("concurrent", "--in-scope", "--limit", "3", "--items", store) == 0
+    scoped = capsys.readouterr().out.split("\n\n")[0]
+    assert _run("concurrent", "--items", store) == 0
+    whole = capsys.readouterr().out.split("\n\n")[0]
+
+    assert scoped.splitlines() == [
+        "A batch that can be worked at once (1 items, best-first), drawn only from work "
+        "on the debt gate recorded under v0.4.0 — the teachable case:",
+        "  P3 PL-B1B1 A ready item",
+    ]
+    assert [line.split()[1] for line in whole.splitlines()[1:]] == ["PL-C2C2", "PL-D4D4", "PL-B1B1"]
+
+
+@pytest.mark.parametrize(
+    ("version", "named", "said"),
+    [
+        (None, (), "no ROADMAP.md to read: there is no step for `--in-scope` to draw from"),
+        ("0.4.0", (), "the plan names no milestone for the step the project is on"),
+        ("0.2.5", ("PL-B1B1",), "`--in-scope` narrows the bare batch only"),
+    ],
+    ids=["no roadmap", "no milestone for the step", "an item named"],
+)
+def test_concurrent_in_scope_offers_nothing_it_cannot_scope(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    version: str | None,
+    named: tuple[str, ...],
+    said: str,
+) -> None:
+    """Never the whole queue, and never one item's collisions narrowed (`PL-7B3G`).
+
+    A batch drawn from everything under a flag that asked for the step's scope
+    would hand a fan-out work the step does not include with nothing saying so,
+    and a collision with work outside the step is still a collision. Version
+    0.4.0 is past this roadmap's last row, so the beat is to scope a milestone
+    nobody has written, and no section is the step's.
+    """
+    if version is None:
+        store = _store(tmp_path, READY)
+    else:
+        store = _wave_project(tmp_path, READY)
+        (tmp_path / "pyproject.toml").write_text(f'version = "{version}"\n', encoding="utf-8")
+
+    assert _run("concurrent", *named, "--in-scope", "--items", str(store)) == 1
+
+    out = capsys.readouterr().out
+    assert said in out
+    assert "A batch" not in out
+    assert "A ready item" not in out
+
+
+def test_concurrent_in_scope_names_a_plan_list_it_could_not_read_whole(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A gate entry carried on from the margin is declined, so the scope may be short (`PL-MFVV`).
+
+    The batch is still given from what was read, and the command names the
+    entry and exits non-zero beneath it, as `wave` and `picks` do (`PL-GMR6`).
+    """
+    store = _wave_project(tmp_path, READY)
+    (tmp_path / "ROADMAP.md").write_text(
+        WAVE_ROADMAP.replace("The one entry on this gate", "The one entry\non this gate"),
+        encoding="utf-8",
+    )
+
+    assert _run("concurrent", "--in-scope", "--items", str(store)) == 1
+
+    out = capsys.readouterr().out
+    assert "  P1 PL-B1B1 A ready item" in out
+    assert "A list the plan is read from was not read whole, so a count above may be short:" in out
 
 
 def test_next_oldest_reads_what_counts_as_new_work_from_the_config(
