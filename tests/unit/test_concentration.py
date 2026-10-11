@@ -166,8 +166,9 @@ def test_a_crossing_refuses_what_is_not_a_number_before_converting_it(
     Each crossing does its arithmetic before a constructor sees the result, so
     a `bool` came through as a held value - `format_percent(True)` printed
     `100.00%` - and a `str` or a `Decimal` was refused as Python's unsupported
-    operand. Both now meet the constructors' own rule first, in its words. A
-    value of the other checked type handed in is `PL-SWD1`'s.
+    operand. Both now meet the constructors' own rule, in its words, after the
+    two form checks `PL-SWD1` put ahead of it, which admit a bare `bool` or
+    `str` to this one.
     """
 
     for value in (True, numpy.True_, Decimal("50"), "50"):
@@ -253,6 +254,45 @@ def test_neither_type_can_be_built_from_the_other() -> None:
         Fraction(Percent(0.5))
 
 
+def test_neither_conversion_takes_the_form_it_converts_to() -> None:
+    """A value already in the form a crossing returns is refused before the arithmetic runs.
+
+    `fraction_from_percent(Fraction(0.5))` was a `Fraction` of 0.005 and
+    `percent_from_fraction(Percent(0.5))` a `Percent` of 50.0 - a 0.5% dial
+    shown as 50% - because each crossing did its arithmetic first and the
+    constructor then saw a plain `float` inside its range (`PL-SWD1`). The
+    directives are `mypy`'s refusal of both calls; the `TypeError` is the
+    run-time one, and it says to use the value as it is rather than to convert
+    it, since the remedy the constructors give, convert, is the error here. A
+    value of each crossing's own form converts as before, and the display
+    formatter built on the display crossing refuses with it.
+    """
+
+    with pytest.raises(TypeError) as to_the_model_form:
+        fraction_from_percent(Fraction(0.5))  # type: ignore[arg-type]
+
+    assert str(to_the_model_form.value) == (
+        "percent of 0.5 is already a Fraction, not a Percent to convert: dividing it by a "
+        "hundred would hold a concentration a hundred times too small, so use it as the "
+        "Fraction it is (core/concentration.py)"
+    )
+
+    with pytest.raises(TypeError) as to_the_display_form:
+        percent_from_fraction(Percent(0.5))  # type: ignore[arg-type]
+
+    assert str(to_the_display_form.value) == (
+        "fraction of 0.5 is already a Percent, not a Fraction to convert: multiplying it by a "
+        "hundred would hold a concentration a hundred times too large, so use it as the "
+        "Percent it is (core/concentration.py)"
+    )
+
+    with pytest.raises(TypeError, match="^fraction of 0.5 is already a Percent, not a Fraction"):
+        format_percent(Percent(0.5))  # type: ignore[arg-type]
+
+    assert fraction_from_percent(Percent(0.5)) == Fraction(0.005)
+    assert percent_from_fraction(Fraction(0.5)) == Percent(50.0)
+
+
 @pytest.mark.parametrize(
     "other",
     [
@@ -278,7 +318,11 @@ def test_another_quantity_handed_in_as_a_concentration_is_refused_as_a_swapped_a
     0.05 from a step, a dial at 2% from a flow - which every later check
     admits. Every checked quantity is one record (`core/checked_number.py`),
     so the refusal names the type the value was built as and prescribes
-    nothing, where a concentration is held and at the constructor alike.
+    nothing, where a concentration is held, at the constructor and, since
+    `PL-SWD1`, at the two crossings alike: `fraction_from_percent(FreshGasFlow(2.0))`
+    was a `Fraction` of 0.02 and `percent_from_fraction(CaseInstant(0.5))` a
+    `Percent` of 50.0, the arithmetic having run on the number before the
+    constructor saw a plain `float`.
     """
 
     with pytest.raises(TypeError) as as_a_fraction:
@@ -286,6 +330,12 @@ def test_another_quantity_handed_in_as_a_concentration_is_refused_as_a_swapped_a
 
     with pytest.raises(TypeError) as as_a_percent:
         require_percent("delivered_concentration_percent", other)
+
+    with pytest.raises(TypeError) as to_the_model_form:
+        fraction_from_percent(other)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError) as to_the_display_form:
+        percent_from_fraction(other)  # type: ignore[arg-type]
 
     assert str(as_a_fraction.value) == (
         f"alveolar partial_pressure_fraction of {other!r} was built as "
@@ -298,6 +348,16 @@ def test_another_quantity_handed_in_as_a_concentration_is_refused_as_a_swapped_a
         "which is not Percent: it is another quantity, so build Percent from the value that "
         "delivered_concentration_percent should hold, not from this one "
         "(core/checked_number.py)"
+    )
+    assert str(to_the_model_form.value) == (
+        f"percent of {other!r} was built as {type(other).__name__}, which is not Percent: it is "
+        "another quantity, so build Percent from the value that percent should hold, not from "
+        "this one (core/checked_number.py)"
+    )
+    assert str(to_the_display_form.value) == (
+        f"fraction of {other!r} was built as {type(other).__name__}, which is not Fraction: it "
+        "is another quantity, so build Fraction from the value that fraction should hold, not "
+        "from this one (core/checked_number.py)"
     )
 
 

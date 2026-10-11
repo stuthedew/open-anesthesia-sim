@@ -62,11 +62,15 @@ does:
   a valid percent, under 1% and so below every agent's vaporizer maximum, and
   `require_within_vaporizer_maximum` passes it. That is why the dial's writers
   are few and each one passes a value already in percent. `PL-WVSK` measured
-  the band when the dial was held as a fraction, before `PL-NJPB`. And the
-  run-time refusal stands only where a concentration is held or built: the two
-  conversions below, and the formatters built on them, take what they are
-  given, so a `Percent` handed to `percent_from_fraction` is refused by `mypy`
-  alone.
+  the band when the dial was held as a fraction, before `PL-NJPB`. The
+  run-time refusal stands where a concentration is held or built and, since
+  `PL-SWD1`, at the two conversions below, which the formatters are built on:
+  each refuses a value already in the form it returns, before its arithmetic
+  runs, since converted again that value is a hundred times off under the type
+  meant to prove it was checked, and refuses a value built as any other checked
+  quantity as the constructors do. A bare `float` they take as given, because a
+  number nobody built carries no form to refuse it by; the number the
+  arithmetic makes is checked against its range where the result is built.
 - **A dial at 100% can carry a computed fraction just past 1, and the type
   refuses it.** Measured 2026-10-04 (`PL-4R3W`): no supported setting computes
   a fraction outside 0 to 1 on either path - the highest anywhere was
@@ -376,17 +380,34 @@ def fraction_from_percent(percent: Percent) -> Fraction:
     built, and the quotient is built as a `Fraction`, which cannot refuse it:
     division rounds monotonically and 100 divides to exactly 1, so a percent
     from 0 through 100 gives a fraction from 0 through 1 (`PL-4R3W` measured a
-    million of them). What is handed in is required to be a number first, as
-    the constructors require it, because the arithmetic runs before either
-    constructor sees the value: `True` divided by a hundred was a fraction of
-    0.01, and a `str` was refused as Python's unsupported operand (`PL-LLMN`).
-    A `Fraction` handed in as the percent is `PL-SWD1`'s.
+    million of them). What is handed in is refused before the arithmetic runs,
+    in the order the constructors ask, because `Fraction` then sees only the
+    plain `float` the division made and admits it: a `Fraction`, which is
+    already the form this returns, so dividing it would hold a concentration a
+    hundred times too small under the type meant to prove it was checked -
+    `fraction_from_percent(Fraction(0.5))` was a `Fraction` of 0.005
+    (`PL-SWD1`); a value built as any other checked quantity, a swapped
+    argument, refused as the constructors refuse it (`core/checked_number.py`,
+    `PL-979Z`); and what is not a number, as the constructors require one -
+    `True` divided by a hundred was a fraction of 0.01, and a `str` was refused
+    as Python's unsupported operand (`PL-LLMN`). A bare `float` is taken as
+    given, as the module docstring says.
 
     Raises:
-        TypeError: `percent` is not an `int` or a `float`, or is a `bool`
+        TypeError: `percent` is a `Fraction`, which is told to be used as the
+            fraction it is; or was built as another checked quantity; or is
+            not an `int` or a `float`, or is a `bool`
             (`core/checked_number.py`).
     """
 
+    if isinstance(percent, Fraction):
+        raise TypeError(
+            f"percent of {percent!r} is already a Fraction, not a Percent to convert: dividing "
+            "it by a hundred would hold a concentration a hundred times too small, so use it as "
+            "the Fraction it is (core/concentration.py)"
+        )
+
+    require_not_another_quantity("percent", percent, Percent)
     require_a_number("percent", percent)
 
     return Fraction(percent / PERCENT_PER_UNIT_FRACTION)
@@ -402,19 +423,32 @@ def percent_from_fraction(fraction: Fraction) -> Percent:
     `Fraction`: multiplication rounds monotonically and 1 gives exactly 100.
     Handed a value that was never a `Fraction` - an impossible negative, from a
     caller `mypy` does not read - it refuses that value here, before anything
-    can display it (`PL-4R3W`). What is handed in is required to be a number
-    first, as `fraction_from_percent` says: `True` times a hundred was a
-    percent of 100, inside the range, and `format_percent(True)` printed
-    `100.00%` (`PL-LLMN`). A `Percent` handed in as the fraction is
-    `PL-SWD1`'s.
+    can display it (`PL-4R3W`). What is handed in is refused before the
+    arithmetic runs, in the order `fraction_from_percent` gives: a `Percent`,
+    already the form this returns, so multiplying it would hold a concentration
+    a hundred times too large - `percent_from_fraction(Percent(0.5))` was a
+    `Percent` of 50.0, a 0.5% dial shown as 50% (`PL-SWD1`); a value built as
+    any other checked quantity (`PL-979Z`); and what is not a number - `True`
+    times a hundred was a percent of 100, inside the range, and
+    `format_percent(True)` printed `100.00%` (`PL-LLMN`).
 
     Raises:
-        TypeError: `fraction` is not an `int` or a `float`, or is a `bool`
+        TypeError: `fraction` is a `Percent`, which is told to be used as the
+            percent it is; or was built as another checked quantity; or is
+            not an `int` or a `float`, or is a `bool`
             (`core/checked_number.py`).
         SimulationConfigurationError: `fraction` times a hundred is outside 0
             to 100, which no `Fraction` can make.
     """
 
+    if isinstance(fraction, Percent):
+        raise TypeError(
+            f"fraction of {fraction!r} is already a Percent, not a Fraction to convert: "
+            "multiplying it by a hundred would hold a concentration a hundred times too large, "
+            "so use it as the Percent it is (core/concentration.py)"
+        )
+
+    require_not_another_quantity("fraction", fraction, Fraction)
     require_a_number("fraction", fraction)
 
     return Percent(fraction * PERCENT_PER_UNIT_FRACTION)
