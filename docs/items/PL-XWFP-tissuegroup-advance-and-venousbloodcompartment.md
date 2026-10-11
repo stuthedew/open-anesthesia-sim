@@ -1,0 +1,48 @@
+---
+id: PL-XWFP
+title: TissueGroup.advance and VenousBloodCompartment.advance report uptake as a return - a negative change, as low as -3.2e-18 L, while the driving fraction is above the compartment's - at admitted flows from 1e-30 to 3e-13 L/min, because d + (i - d) * exp(-dt/tau) rounds at the scale of the driving fraction; the circuit's closed form was rewritten for the same reason (found fixing PL-YT8N)
+status: untriaged
+feature: numerical-domain
+touches: src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/__init__.py, tests/unit/test_compartment_primitives.py
+added: 2026-10-11
+---
+
+**Problem.** TissueGroup.advance and VenousBloodCompartment.advance report uptake as a return - a negative change, as low as -3.2e-18 L, while the driving fraction is above the compartment's - at admitted flows from 1e-30 to 3e-13 L/min, because d + (i - d) * exp(-dt/tau) rounds at the scale of the driving fraction; the circuit's closed form was rewritten for the same reason (found fixing PL-YT8N)
+
+**Measured 2026-10-11, fixing `PL-YT8N`.** Flows from 1e-30 to 3 L/min at 1
+and 3 times each decade, steps of 0.1, 1 and 60 s, and five states - driving
+and compartment fractions of 1.0 and 1e-6, 0.02 and 0, 0.08 and 1e-9, 0 and
+0.02, and 1e-6 and 1.0. A 6 L vessel-rich `TissueGroup` (tissue:gas 1.0)
+returned a change of the sign opposite to its gradient in 100 of 900 cases,
+and a 1.222 L `VenousBloodCompartment` (blood:gas 0.65) in 94, all at flows
+from 1e-30 to 3e-13 L/min. The largest were -3.2e-18 L and -4.2e-19 L, at
+1e-30 L/min over 0.1 s with a driving fraction of 0.08 against a compartment
+at 1e-9.
+
+**Why.** Both write the fraction as `d + (i - d) * exp(-dt/tau)`. Where
+`dt/tau` is small that is `d + (i - d)` to within a rounding, and the
+rounding is half an ulp of `d`, the driving fraction - 6.9e-18 at 0.08 -
+rather than of the compartment's own `i`, so the stored fraction can land
+below where it started while the flow is moving agent in.
+
+**Reach.** Not a run's path: `AgentUptakeSystem.advance()` steps the
+governing equations, and these are each compartment's closed form against a
+held input, called by tests, notebooks and reference cases
+(`core/__init__.py`). Uptake reported as a return is physically impossible
+and looks like a number, the class `PL-YT8N` fixed in the circuit.
+
+**What a fix has to decide.** `PL-YT8N` wrote the circuit's update as
+`i + (d - i) * -expm1(-dt/tau)`, which rounds at the scale of the result and
+cannot fall below `i` while `d` is above it. These two store an amount, not a
+fraction, and return the stored amount's change, and the
+`capacity_l * (amount / capacity_l)` round trip `core/__init__.py` describes
+can move the amount by a rounding of its own. So measure first whether that
+form alone holds the sign, or whether the change has to be formed from the
+fraction difference, which would then disagree with the stored amount by a
+rounding. Their zero-flow branches stay required either way.
+
+**Done when.** Both report a change of their gradient's sign, or zero, at
+every admitted flow, step and state, the walk above included, and a test in
+`tests/unit/test_compartment_primitives.py` pins it beside
+`test_the_circuit_exhaust_is_never_negative_at_an_admitted_flow`.
+

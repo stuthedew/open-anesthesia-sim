@@ -84,7 +84,9 @@ from anesthesia_sim.app.dashboard_frame import (
     NO_TIME_BOOKMARKS_TEXT,
     NO_TRACES_SHOWN_TEXT,
     READOUT_PANELS,
+    REFUSED_RESET_REPAIR_TEXT,
     REMOVE_NOTHING_SELECTED_TEXT,
+    RESET_EXIT_TEXT,
     RESET_LABEL,
     RUNNING_AGENT_LOCK_TEXT,
     SIMULATION_STEP_S,
@@ -156,6 +158,7 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
     AlveolarVentilation,
+    CardiacOutput,
     CaseInstant,
     FreshGasFlow,
 )
@@ -645,6 +648,19 @@ class _StepFailingController(SimulationController):
             raise error
 
         super().advance(simulation_step_s)
+
+
+def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
+    """Write a checked cardiac output onto the patient past `set_cardiac_output`.
+
+    The one write the type-only guard admits (`PL-LBQY`), which no control
+    here makes: the setter recomputes the tissue flows, and this leaves them
+    at the old output, which the settings record a run's definition opens on
+    refuses - at the next step, and at Reset (`PL-M4M0`).
+    """
+
+    patient = controller._state.uptake_system.patient
+    patient.cardiac_output_l_min = CardiacOutput(cardiac_output_l_min)
 
 
 # ------------------------------------------------------- the constructor
@@ -1616,6 +1632,249 @@ def test_a_halt_is_shown_when_the_snapshot_itself_is_refused(application: QAppli
     assert "rolled back" not in notice
     assert run._pause_button.isEnabled() is False
     assert run._start_button.isEnabled() is False
+
+
+def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplication) -> None:
+    """A Reset the core refuses stops the run through the failed-step path, and clears nothing.
+
+    `SimulationController.reset()` refuses a settings record the run's
+    definition cannot open on - tissue flows that no longer sum to the
+    cardiac output, which a checked output written onto the patient past
+    `set_cardiac_output` leaves. Before `PL-M4M0` the refusal escaped the
+    Reset slot after `pause()` and the state had been cleared, so the run
+    stood half reset - compartments and clock at zero, the old definition and
+    timeline kept, no failure recorded, `case_restarted` never emitted - with
+    the screen reading "Running" and Pause offered. The core now refuses
+    before it clears anything, and the view halts the run on the refusal:
+    recorded as the failure, said by the status word, the transport and the
+    banner, whose way out names the setting to change rather than the Reset
+    just refused. Nothing moved, so the frame that follows draws the run
+    where it stood.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    restarts: list[None] = []
+    run.case_restarted.connect(lambda: restarts.append(None))
+    run._start_button.click()
+    _steps(run, 5)
+    before = controller.snapshot()
+    segments = controller.run_segments
+    presented = view.presented_frames
+    _with_stale_tissue_flows(controller, 6.0)
+
+    run._reset_button.click()
+
+    reason = (
+        "SimulationConfigurationError: the tissue groups are perfused at 5.0 L/min in total "
+        "but cardiac output is 6.0 L/min; the venous balance returns what the tissues "
+        "receive, so the two must agree"
+    )
+    status = controller.status()
+    after = controller.snapshot()
+
+    assert controller.is_running is False
+    assert controller.has_failed is True
+    assert status.failure_reason == reason
+    assert restarts == []
+    assert after.elapsed_s == before.elapsed_s > 0.0
+    assert controller.run_segments == segments
+    assert run._status_text.text() == "Stopped — simulation error"
+    assert run._start_button.isEnabled() is False
+    assert run._pause_button.isEnabled() is False
+    assert view.presented_frames == presented + 1
+    assert run._elapsed_time_text.text() != "0s"
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert notice == (
+        f"Simulation stopped — {reason}. The values shown are the last completed step. "
+        f"Reset was refused for this reason. {REFUSED_RESET_REPAIR_TEXT}"
+    )
+    assert RESET_EXIT_TEXT not in notice
+
+
+def test_a_second_refused_reset_states_the_refusal_once(application: QApplication) -> None:
+    """Pressing the refused Reset again leaves the banner as it was: one reason, not two.
+
+    The first press records the refusal as the failure, so on the second the
+    run has a recorded reason - but it is this same refusal, and the exit
+    that carries the refusal itself is for a run that failed for something
+    else. Stated twice, the one refusal read as two faults (`PL-M4M0`).
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    run._start_button.click()
+    _steps(run, 5)
+    _with_stale_tissue_flows(controller, 6.0)
+    run._reset_button.click()
+    first = run._notice_text.notice()
+    assert first is not None
+
+    run._reset_button.click()
+
+    notice = run._notice_text.notice()
+    assert notice == first
+    assert notice.count("perfused at") == 1
+    assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_REPAIR_TEXT}")
+
+
+def test_a_reset_refused_on_a_failed_run_keeps_the_failure_and_states_the_refusal(
+    application: QApplication,
+) -> None:
+    """The first failure stays the banner's reason, so the exit carries the refusal itself.
+
+    `SimulationController.fail` keeps the first reason it was given, which is
+    right - the failure that stopped the run is what the values on screen are
+    the last completed step of - so the refusal is stated where it can be:
+    in the way out, which says Reset was refused and why (`PL-M4M0`).
+    """
+
+    controller = _StepFailingController(_real_step_failure())
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    controller.start()
+    _steps(run, 3)
+    failure = controller.status().failure_reason
+    assert failure is not None and failure.startswith("SimulationNumericalError: ")
+    _with_stale_tissue_flows(controller, 6.0)
+
+    run._reset_button.click()
+
+    assert controller.status().failure_reason == failure
+    assert run._status_text.text() == "Stopped — simulation error"
+    assert run._start_button.isEnabled() is False
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert notice.startswith(f"Simulation stopped — {failure}.")
+    assert notice.endswith(
+        "Reset was refused — SimulationConfigurationError: the tissue groups are perfused at "
+        "5.0 L/min in total but cardiac output is 6.0 L/min; the venous balance returns what "
+        f"the tissues receive, so the two must agree. {REFUSED_RESET_REPAIR_TEXT}"
+    )
+
+
+def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
+    application: QApplication,
+) -> None:
+    """Setting the cardiac output recomputes the tissue flows, after which Reset clears the run.
+
+    The accepted setting also takes the refused-Reset exit off the banner at
+    once, so the reader is sent to a Reset that will take rather than to a
+    setting already changed; a setting the stale record refuses, which every
+    other dial's is, leaves the exit standing (`PL-M4M0`).
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    restarts: list[None] = []
+    run.case_restarted.connect(lambda: restarts.append(None))
+    run._start_button.click()
+    _steps(run, 5)
+    _with_stale_tissue_flows(controller, 6.0)
+    run._reset_button.click()
+    assert controller.has_failed is True
+
+    run._handle_fresh_gas_flow_change(3.0)
+
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert notice.endswith(REFUSED_RESET_REPAIR_TEXT)
+
+    run._handle_cardiac_output_change(6.0)
+
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert notice.startswith("Simulation stopped — SimulationConfigurationError: the tissue groups")
+    assert notice.endswith(RESET_EXIT_TEXT)
+
+    run._reset_button.click()
+
+    assert restarts == [None]
+    assert controller.has_failed is False
+    assert controller.is_running is False
+    assert controller.snapshot().elapsed_s == 0.0
+    assert run._status_text.text() == "Paused"
+    assert run._start_button.isEnabled() is True
+    assert run._notice_text.isHidden() is True
+
+
+def test_a_refused_branch_reset_halts_the_branch_and_names_the_same_repair(
+    application: QApplication,
+) -> None:
+    """The same halt on a branch's own run, naming the same door: the branch's own dial.
+
+    `_open_at` records the settings in force at the fork, and `reset()` reads
+    them before the branch is stood back there (`PL-M4M0`). The comparison
+    stands, with the trunk untouched, and the way out is the one every run
+    has: a branch cannot start a case of its own (`PL-TFX5`), and the trunk's
+    Reset the fork panel already names.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _take_fork(view, 60.0)
+    branch = view.runs[BRANCH_RUN_INDEX]
+    branch._start_button.click()
+    _steps(branch, 4)
+    before = branch.snapshot()
+    _with_stale_tissue_flows(branch.controller, 6.0)
+
+    branch._reset_button.click()
+    _settle(application)
+
+    assert len(view.runs) == 2
+    assert len(case.branches) == 1
+    assert branch.controller.has_failed is True
+    assert branch.snapshot().elapsed_s == before.elapsed_s > 60.0
+    assert branch._status_text.text() == "Stopped — simulation error"
+    notice = branch._notice_text.notice()
+    assert notice is not None
+    assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_REPAIR_TEXT}")
+    assert view.runs[TRUNK_RUN_INDEX].controller.has_failed is False
+
+
+def test_a_refused_trunk_reset_while_comparing_names_the_one_door_open(
+    application: QApplication,
+) -> None:
+    """Beside a branch the selector is locked, so the repair is the only door, and it is named.
+
+    A comparison replaces the trunk's agent selector with the
+    `COMPARING_AGENT_LOCK_TEXT` chip, and the branch's Reset leaves the
+    comparison standing, so a banner naming a new case named a control the
+    screen had hidden, with the trunk's Reset - the one just refused - the
+    only control left enabled. The exit names the dial's repair instead,
+    after which the trunk's Reset takes and ends the comparison as the fork
+    panel says it does (`PL-M4M0`).
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _take_fork(view, 60.0)
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    _with_stale_tissue_flows(trunk.controller, 6.0)
+
+    trunk._reset_button.click()
+    _settle(application)
+
+    assert len(view.runs) == 2
+    assert trunk.controller.has_failed is True
+    assert trunk._agent_dropdown.isHidden() is True
+    assert trunk._running_agent_lock_text.text() == COMPARING_AGENT_LOCK_TEXT
+    notice = trunk._notice_text.notice()
+    assert notice is not None
+    assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_REPAIR_TEXT}")
+
+    trunk._handle_cardiac_output_change(6.0)
+    trunk._reset_button.click()
+    _settle(application)
+
+    assert trunk.controller.has_failed is False
+    assert trunk.snapshot().elapsed_s == 0.0
+    assert len(view.runs) == 1
 
 
 def _refusing_a_drawn_column(

@@ -3,13 +3,16 @@ id: PL-YT8N
 title: BreathingCircuit.advance_fresh_gas reports a negative exhaust, as low as -3.3e-16 L, at admitted flows from 1e-15 to 1e-6 L/min, because 1 - exp(-dt/tau) loses its digits to cancellation when dt/tau is small; the exhaust it integrates cannot be negative (found fixing PL-B26Y)
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
 feature: numerical-domain
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/__init__.py, tests/unit/test_compartment_primitives.py
 added: 2026-10-05
+closed: 2026-10-11
+pr: 1413
 payoff: the circuit's closed form never reports agent flowing back in through the exhaust, so a balance summed from it holds only physically possible amounts at every admitted flow
 verify: grep -q 'def test_the_circuit_exhaust_is_never_negative_at_an_admitted_flow' tests/unit/test_compartment_primitives.py
+recurrences: 2026-10-11 PL-XWFP
 ---
 
 **Problem.** BreathingCircuit.advance_fresh_gas reports a negative exhaust, as low as -3.3e-16 L, at admitted flows from 1e-15 to 1e-6 L/min, because 1 - exp(-dt/tau) loses its digits to cancellation when dt/tau is small; the exhaust it integrates cannot be negative (found fixing PL-B26Y)
@@ -76,3 +79,77 @@ claim and its tests are brought along in the same change. A test in
 `tests/unit/test_compartment_primitives.py` named
 `test_the_circuit_exhaust_is_never_negative_at_an_admitted_flow` pins it at
 flows from 1e-15 to 1e-6 L/min.
+
+**Done 2026-10-11.** Re-confirmed first: the command above printed the same
+`-3.3173277925717057e-16` on `main` at `16a20a4f`.
+
+**Neither route the brief weighed meets "Done when", measured.** `-expm1` in
+the exhaust alone fixes the brief's own state and still exhausts
+-2.5e-32 L from a circuit filling from empty at 1e-14 L/min over 1 s, and its
+balance misses by up to 5.1e-16 L where the circuit holds 6e-6 L, the 3e-16 L
+the brief predicted. `-expm1` in the fraction update too closes the balance,
+but with the exhaust still written as delivered less kept it exhausts
+-1.9e-34 L from empty under a 100% dial at 1e-15 L/min, and -3.9e-34 L under a
+2% one at 1e-13 L/min, each over 0.1 s. Delivered less kept is a difference
+of near-equal amounts wherever the circuit keeps nearly all it is given,
+however many digits either carries, so its sign is the rounding's there in
+any form.
+
+**What was built.** The fraction is `i + (d - i) * g`, with
+`g = -expm1(-dt/tau)` and `dt/tau` formed as the gas the step admits over the
+circuit's volume, so no time constant is formed to overflow. The exhaust is
+the flow times the integral of the inspired fraction written as
+`lower * A + (d - lower) * F + (i - lower) * K`: `A` the gas admitted, `K = V g`
+the circuit's starting gas that left, `F = V (dt/tau - g)` the fresh gas that
+left, and `lower` the smaller of the two fractions. Every term is
+nonnegative because `0 <= g <= dt/tau`, which `expm1` keeps (no violation in
+400,004 samples from 5e-324 to 1e3). At the dial the exhaust is exactly what
+was delivered, and at zero flow every amount is a product with zero, so the
+zero-flow branch is gone; `core/__init__.py`'s zero-flow section and the
+test docstrings resting on it moved with it, as this brief asked. The
+patient compartments keep their `d + (i - d) * exp(-dt/tau)` form and their
+branches, which store an amount and so still need them.
+
+**The same split without `lower`, `i * K + d * F`,** is also nonnegative
+and reads more simply, but at the dial it misses what was delivered by up to
+a rounding in 685 of 2,280 equilibrium cases where the old form is exact, so
+the split stays.
+
+**Measured 2026-10-11, the new code bit for bit against the candidate in all
+28,676 cases below.** "Rounding" is one ulp of the largest amount the step
+involves - delivered, exhausted or held - and the residual is delivered less
+exhausted less the change in what the circuit holds, in exact rationals.
+
+| Walk | Negative exhausts, old to new | Worst residual, litres | Worst residual, roundings |
+| --- | --- | --- | --- |
+| The brief's walk, rebuilt: 14 flows from 5e-324 to 10 L/min, 0.1, 1 and 60 s, its three states | 2 to 0 | 3.9e-16 to 6.0e-16 | 3.6e5 to 0.79 |
+| 6,270 cases: 2, 6 and 8 L, 38 flows, 11 states, 1 ms to 1 h | 478 to 0 | 2.0e-14 to 3.0e-14 | 6e15 to 4 |
+| 20,000 random cases | 1,068 to 0 | 2.6e-14 to 3.0e-14 | 9e15 to 9 |
+| 2,280 at the dial | 0 to 0 | 0 to 0 | 0 to 0 |
+
+The rebuilt walk finds 2 negatives where the brief's found 11, since its
+flows are not the brief's, which were not recorded.
+
+**"Closes no worse than today" is read in roundings** (project owner,
+2026-10-11, ratified, over reading it in absolute litres). It is the only
+reading under which the two forms can be compared across amounts three
+hundred orders apart. In litres the worst case grows, at the largest
+steps, from one rounding of a litre-sized amount to a few: the old exhaust
+was defined from the balance, which closed it tightly there and gave it the
+rounding's sign at small flows, and an exhaust whose sign is structural is
+computed independently, so its balance carries both sides' rounding. The
+rebuilt walk's worst moves from a step delivering 1.7 mL, 3.6e5 roundings
+off, to one delivering 4 L, under one.
+
+**Tests.** `test_the_circuit_exhaust_is_never_negative_at_an_admitted_flow`
+and `test_the_circuit_balance_closes_within_the_rounding_of_what_the_step_moves`
+each walk ten decades from 1e-15 to 1e-6 L/min, three steps and four states,
+two of them a circuit filling from empty. Of their 120 cases each, the old
+code fails 35 and 45; `-expm1` in the exhaust alone 1 and 90; `-expm1`
+throughout with delivered less kept 2 and 0. The fraction written back as
+`d + (i - d) * exp(-dt/tau)` fails `test_zero_flow_is_an_exact_no_op` and 90
+balance cases.
+
+**Found and filed:** `PL-XWFP`, the patient compartments' closed forms
+reporting uptake as a return at flows below 3e-13 L/min.
+
