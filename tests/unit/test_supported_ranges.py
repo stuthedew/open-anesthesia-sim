@@ -40,13 +40,14 @@ import pytest
 
 from anesthesia_sim.app.formatting import format_flow
 from anesthesia_sim.core.circuit import BreathingCircuit, DeliverableFreshGasFlowRange
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
     SimulationExecutionError,
 )
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -62,7 +63,10 @@ from anesthesia_sim.core.supported_ranges import (
     StepCount,
     describe_count,
     maximum_step_count,
+    require_alveolar_ventilation,
+    require_cardiac_output,
     require_case_instant,
+    require_fresh_gas_flow,
     require_step_count,
     require_supported_alveolar_ventilation,
     require_supported_cardiac_output,
@@ -315,6 +319,42 @@ def test_another_flows_type_is_refused_as_a_swapped_argument(control: Control) -
 
     assert f"was built as {other.flow_type.__name__}" in message
     assert f"{control.flow_type.__name__}(" not in message
+    assert getattr(compartment, control.name) is held
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
+@pytest.mark.parametrize(
+    "other",
+    [SimulationStep(0.1), StepCount(600), CaseInstant(600.0), Fraction(0.5), Percent(2.0)],
+    ids=lambda other: type(other).__name__,
+)
+def test_a_step_a_count_or_an_instant_handed_in_as_a_flow_is_refused_as_a_swapped_argument(
+    control: Control, other: object
+) -> None:
+    """Named as the quantity it was built as, and not told to rebuild as this flow.
+
+    Until `PL-848D` `_require_built` named only the other two flows, so a
+    `StepCount(5)` handed in as a fresh gas flow was told to build
+    `FreshGasFlow(...)` from it, the rebuild the flows' own refusal of each
+    other exists to prevent. Every checked quantity is one record now
+    (`core/checked_number.py`), so the step, a count, an instant and both
+    forms of a concentration are refused in the words the other flows are,
+    and nothing is written.
+    """
+
+    system = AgentUptakeSystem.default()
+    compartment = getattr(system, control.stored_on)
+    setter = getattr(compartment, f"set_{control.name.removesuffix('_l_min')}")
+    held = getattr(compartment, control.name)
+
+    with pytest.raises(TypeError) as raised:
+        setter(other)
+
+    assert str(raised.value) == (
+        f"{control.name} of {other!r} was built as {type(other).__name__}, which is not "
+        f"{control.flow_type.__name__}: it is another quantity, so build "
+        f"{control.flow_type.__name__} from the value {control.name} should hold"
+    )
     assert getattr(compartment, control.name) is held
 
 
@@ -790,9 +830,11 @@ def test_a_step_count_too_long_to_print_is_refused() -> None:
 def test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one() -> None:
     """The type refusals name a bare count the way the range refusals do (`PL-CN5S`).
 
-    Each prints what it was handed, so without `describe_count` a bare count
-    past `sys.get_int_max_str_digits` digits would raise `ValueError` while
-    the `TypeError` was being written, which is the escape `PL-5F76` closed.
+    Each prints what it was handed, so without `shown` a bare count past
+    `sys.get_int_max_str_digits` digits would raise `ValueError` while the
+    `TypeError` was being written, which is the escape `PL-5F76` closed for
+    the count and the instant, and `PL-848D` for the step and the three
+    flows, which printed with `repr` until then.
     """
 
     too_long = 10**5000
@@ -804,10 +846,28 @@ def test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one() -> No
     with pytest.raises(TypeError) as as_an_instant:
         require_case_instant("instant_s", too_long)
 
+    with pytest.raises(TypeError) as as_a_step:
+        require_simulation_step(too_long)
+
     assert f"step_count of {named} was not built as StepCount, it is int" in str(as_a_count.value)
     assert f"instant_s of {named} was not built as CaseInstant, it is int" in str(
         as_an_instant.value
     )
+    assert f"simulation_step_s of {named} was not built as SimulationStep, it is int" in str(
+        as_a_step.value
+    )
+
+    for control, require_built in zip(
+        CONTROLS,
+        (require_fresh_gas_flow, require_alveolar_ventilation, require_cardiac_output),
+        strict=True,
+    ):
+        with pytest.raises(TypeError) as as_a_flow:
+            require_built(too_long)
+
+        expected = f"{control.name} of {named} was not built as {control.flow_type.__name__}"
+
+        assert expected in str(as_a_flow.value)
 
 
 @pytest.mark.parametrize("instant_s", [0.0, 3_600.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S])

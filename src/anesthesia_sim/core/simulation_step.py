@@ -32,12 +32,14 @@ still arrive at runtime. Each of the run's entry points - `SimulationState`
 when it is built and when it advances, `AgentUptakeSystem.advance()` and
 `PlaybackRate.steps_per_tick()` - calls `require_simulation_step` first, which
 refuses anything that is not a `SimulationStep` as the programming error it
-is. Every function behind them takes the step as checked.
+is, and names a value built as another checked quantity as the swapped
+argument it is rather than prescribing a rebuild from it (`PL-848D`). Every
+function behind them takes the step as checked.
 """
 
 from __future__ import annotations
 
-from anesthesia_sim.core.checked_number import CheckedQuantity, require_not_another_quantity
+from anesthesia_sim.core.checked_number import CheckedQuantity, require_not_another_quantity, shown
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import require_positive_finite
 
@@ -224,7 +226,15 @@ def require_simulation_step(simulation_step_s: object) -> None:
 
     The runtime half of the type, for the callers `mypy` does not read: a test,
     a notebook, or a value typed `Any`. It checks the type and not the range,
-    which the constructor has already checked.
+    which the constructor has already checked. A value built as another
+    checked quantity - an instant, a count, a flow, a concentration - is named
+    as that and not told to rebuild, by `require_not_another_quantity`, which
+    the constructor asks first as well (`core/checked_number.py`): until
+    `PL-848D` a `CaseInstant(0.1)` handed in as the step was told to build
+    `SimulationStep(0.1)` from it, which would hold a 0.1 s step built from
+    an instant, the swap this refusal exists to catch. The value prints
+    through `shown`, so a bare `int` too long for `repr` is named by its
+    length rather than escaping as `ValueError` while the refusal is written.
 
     Raises:
         TypeError: `simulation_step_s` is not a `SimulationStep` - a bare
@@ -233,11 +243,14 @@ def require_simulation_step(simulation_step_s: object) -> None:
             `AnesthesiaSimulationError` (`core/exceptions.py`).
     """
 
-    if not isinstance(simulation_step_s, SimulationStep):
-        raise TypeError(
-            f"simulation_step_s of {simulation_step_s!r} is a "
-            f"{type(simulation_step_s).__name__}, not a SimulationStep: build the run's "
-            f"step as SimulationStep({simulation_step_s!r}) where it is chosen, which "
-            'checks it against the supported range once (docs/MODEL.md, "Supported '
-            'simulation step")'
-        )
+    if isinstance(simulation_step_s, SimulationStep):
+        return
+
+    require_not_another_quantity("simulation_step_s", simulation_step_s, SimulationStep)
+
+    raise TypeError(
+        f"simulation_step_s of {shown(simulation_step_s)} was not built as SimulationStep, "
+        f"it is {type(simulation_step_s).__name__}: build it as SimulationStep(...) where "
+        "the step is chosen, which checks it against the supported range once "
+        '(docs/MODEL.md, "Supported simulation step")'
+    )

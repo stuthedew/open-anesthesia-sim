@@ -444,31 +444,33 @@ class CardiacOutput(float, CheckedQuantity):
         return super().__new__(cls, negative_zero_as_zero(cardiac_output_l_min))
 
 
-def _require_built(name: str, value: object, flow_type: type[float]) -> None:
+def _require_built(name: str, value: object, flow_type: type[CheckedQuantity]) -> None:
     """Refuse a flow that was not built as `flow_type`, naming what to do instead.
 
     One message for the three flows, as `_require_supported` is one message
     for their ranges: the refusal names the parameter, the value and the
     type it has, the type it should have been built as, and where the range
-    it would then be checked against is argued. A value built as one of the
-    other two flow types is named as that and not told to rebuild, because a
-    fresh gas flow arriving where a cardiac output belongs is a swapped
-    argument, and rebuilding it as a `CardiacOutput` would check and store
-    the wrong quantity under the right type.
+    it would then be checked against is argued. A value built as another
+    checked quantity - one of the other two flows, the step, a count, an
+    instant or a concentration - is named as that and not told to rebuild,
+    by `require_not_another_quantity`, which each flow's constructor asks
+    first as well (`core/checked_number.py`): a fresh gas flow arriving where
+    a cardiac output belongs is a swapped argument, and rebuilding it as a
+    `CardiacOutput` would check and store the wrong quantity under the right
+    type. Until `PL-848D` only the other two flows were named, and a
+    `StepCount` handed in as a flow was told to build the flow from it. The
+    value prints through `shown`, so a bare `int` too long for `repr` is
+    named by its length rather than escaping as `ValueError` while the
+    refusal is written.
     """
 
     if isinstance(value, flow_type):
         return
 
-    if isinstance(value, (FreshGasFlow, AlveolarVentilation, CardiacOutput)):
-        raise TypeError(
-            f"{name} of {value!r} was built as {type(value).__name__}, which is not "
-            f"{flow_type.__name__}: it was set from another flow, so build "
-            f"{flow_type.__name__} from this flow's own value where it is set"
-        )
+    require_not_another_quantity(name, value, flow_type)
 
     raise TypeError(
-        f"{name} of {value!r} was not built as {flow_type.__name__}, it is "
+        f"{name} of {shown(value)} was not built as {flow_type.__name__}, it is "
         f"{type(value).__name__}: build it as {flow_type.__name__}(...) where it is set, "
         'which checks it against the supported range once (docs/MODEL.md, "Supported input '
         'ranges")'
