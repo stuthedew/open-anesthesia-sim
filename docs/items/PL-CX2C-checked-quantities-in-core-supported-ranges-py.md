@@ -3,12 +3,13 @@ id: PL-CX2C
 title: _CHECKED_QUANTITIES in core/supported_ranges.py leaves out Fraction and Percent, so a concentration handed where an instant or a step count belongs, or a step handed where a fraction belongs, is told to rebuild it as the type asked for rather than named as the swapped argument it is
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: parse-dont-validate
 touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_concentration.py, tests/unit/test_supported_ranges.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
+closed: 2026-10-11
 payoff: a concentration handed where another quantity belongs, or another quantity where a concentration belongs, is named as the swapped argument it is, never told to rebuild into the wrong quantity under the right type
 verify: grep -q 'def test_another_quantity_handed_in_as_a_concentration_is_refused_as_a_swapped_argument' tests/unit/test_concentration.py
 ---
@@ -88,3 +89,23 @@ type. A test in `tests/unit/test_concentration.py` named
 pins the concentrations' side, and the instant's and the count's existing
 swapped-argument tests in `tests/unit/test_supported_ranges.py` gain a
 `Fraction` and a `Percent`.
+
+**Built 2026-10-11, in `PL-979Z`'s branch, with `PL-848D`.** The list this
+brief asked for is the `CheckedQuantity` base `PL-979Z` gave every checked
+type (`core/checked_number.py`): the class hierarchy is the record, read with
+one `isinstance` by `require_not_another_quantity`, which every constructor
+and every stored-value check asks, so `Fraction` and `Percent` are in it by
+subclassing it where they are defined, and no import between
+`core/concentration.py` and `core/supported_ranges.py` was needed - the
+design question the brief left open. `require_case_instant` and
+`require_step_count` therefore name a `Fraction` or a `Percent` with no
+change of their own since `PL-979Z`, and the instant's and the count's
+swapped-argument tests in `tests/unit/test_supported_ranges.py` gain the
+two. `require_fraction` and `require_percent` ask
+`require_not_another_quantity` after their own refusal of each other, which
+keeps the convert advice, and print a value nobody built through `shown`,
+where `repr` of `10**5000` raised `ValueError` until this - the escape
+`PL-5F76` closed for the count, found while building and pinned by
+`test_a_count_too_long_to_print_is_named_where_a_concentration_is_held`. The
+brief's five probes, re-run after the change, each name the type the value
+was built as and the type asked for, and prescribe no rebuild.

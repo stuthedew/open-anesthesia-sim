@@ -1148,6 +1148,8 @@ def test_a_value_not_built_as_the_type_is_refused_whatever_it_holds() -> None:
         FreshGasFlow(4.0),
         AlveolarVentilation(4.0),
         CardiacOutput(5.0),
+        Fraction(0.5),
+        Percent(2.0),
     ],
     ids=lambda other: type(other).__name__,
 )
@@ -1180,6 +1182,8 @@ def test_another_quantity_handed_in_as_an_instant_is_refused_as_a_swapped_argume
         FreshGasFlow(4.0),
         AlveolarVentilation(4.0),
         CardiacOutput(5.0),
+        Fraction(0.5),
+        Percent(2.0),
     ],
     ids=lambda other: type(other).__name__,
 )
