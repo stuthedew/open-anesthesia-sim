@@ -1929,7 +1929,7 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     return OFF_SCALE_NOTICE_TEMPLATE.format(
         compartments=", ".join(off_scale),
         top=format_mac_multiple(
-            fraction_from_percent(Percent(frame.axis_top_percent)), Percent(frame.mac_percent)
+            fraction_from_percent(Percent(frame.axis_top_percent)), frame.mac_percent
         ),
     )
 
