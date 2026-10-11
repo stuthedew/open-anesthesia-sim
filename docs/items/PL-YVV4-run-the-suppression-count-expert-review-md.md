@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items
 added: 2026-09-13
 closed: 2026-10-11
+pr: 1409
 verify: grep -q '^## The count' docs/items/PL-YVV4-run-the-suppression-count-expert-review-md.md && bin/docket check
 ---
 

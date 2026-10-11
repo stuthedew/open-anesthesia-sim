@@ -9,6 +9,7 @@ feature: verify-assertion-evidence
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20
 closed: 2026-10-11
+pr: 1409
 payoff: putting a flagged assertion back clears the check, so the response the check asks for is one a session can actually complete
 verify: grep -q 'def test_an_assertion_restored_in_a_later_commit_is_not_counted' subprojects/docket/tests/test_verify.py && grep -q 'def test_an_assertion_restored_into_another_file_is_still_charged' subprojects/docket/tests/test_verify.py
 recurrences: 2026-10-04 PL-P66B withdrawn 2026-10-04 PL-P66B

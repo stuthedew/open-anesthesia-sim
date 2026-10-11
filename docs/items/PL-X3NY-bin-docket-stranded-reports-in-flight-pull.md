@@ -8,6 +8,7 @@ classes: defect, infra
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-10-11
+pr: 1409
 verify: grep -q 'def test_stranded_hands_an_edit_a_pull_request_carries_the_pull_request_not_a_diff' subprojects/docket/tests/test_cli.py && grep -q 'def test_stranded_names_the_pull_request_carrying_a_commit_pushed_after_a_merge' subprojects/docket/tests/test_cli.py && grep -q 'def test_stranded_says_the_forge_went_unasked_above_the_checkout_it_qualifies' subprojects/docket/tests/test_cli.py
 ---
 
