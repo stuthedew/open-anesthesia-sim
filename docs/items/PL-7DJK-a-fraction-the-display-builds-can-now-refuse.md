@@ -77,6 +77,36 @@ cannot fail - `status_word`, `transport` and `notice` read only `is_running`,
 snapshot; build every value a frame draws before drawing any; name each
 construction by the quantity it is; and word a refused displayed value as one.
 
+**Settled before building (2026-10-11): the check stays, at the four places a
+derived `float` becomes a typed field, because no held proof exists for the
+display to reuse.** `.claude/rules/core-domain.md` re-checks no held proof,
+and nothing the display builds from holds one: each compartment stores
+`agent_amount_l`, and its `partial_pressure_fraction` is the quotient
+`agent_amount_l / gas_volume_l` (`core/alveolar.py`, `core/tissue.py`,
+`core/blood.py`) - a bare `float` carrying no proof, under the rule's own
+second fact about Python. A step builds the `Fraction` once, in
+`AgentUptakeSystem._write_state_vector`, and the setter it hands it to stores
+the amount, so the proof is spent the moment the value is held;
+`state_vector()` reads the quotients back as floats, and a drawn column is
+`RunDefinition`'s closed form evaluated at an instant no compartment ever
+held. Moving the proof into the compartments - storing the `Fraction`, or
+refusing an amount past the capacity where it is written - is a change to
+`core/`'s records this brief does not scope, and it would still leave the
+drawn columns unproved; the unguarded amount write, which is how case 1 was
+reproduced, is captured as its own item. What arrives already proved passes
+through unbuilt: the circuit's `inspired_partial_pressure_fraction`, held as
+a `Fraction` (`core/circuit.py`), the settings' `Percent`s and flows, and the
+agent's MAC and MAC-awake. So the four sites build the type, each naming its
+quantity: `snapshot()`'s five quotients and `_compartment_mac_multiples`'s six
+state entries (`app/controller.py`), every drawn column at frame assembly
+(`app/chart_frame.py`'s `_run_frame`), and the axis top
+(`assemble_chart_frame`); `RunFrame.percents`, the hover and the cursor
+readouts then read a built `Fraction` and build nothing. The owner's ratified
+answer above - a refusal on this path halts the run - is unchanged; what this
+settles is that the refusal is raised where the value is first typed, which
+is before any frame exists, and that the halt is stated from the controller's
+run state, which no compartment value is built for.
+
 **Why it matters.** A halt that is not shown is the worst of the four: a
 screen reading "Running" with Pause enabled over a failed controller is the
 stale-state display `CLAUDE.md`'s safety standard names, and it is the failure
