@@ -8,6 +8,7 @@ classes: housekeeping
 touches: docs/items
 added: 2026-10-03
 closed: 2026-10-11
+pr: 1419
 payoff: the day's three candidate root causes are each ranked as a generator or refused with a reason, so their next members are stopped at the source rather than fixed one at a time
 not-delegable: The deliverable is a judgment - whether each cluster's members misread one fact no head states - and a grep for the recorded fields would pass on a head recorded wrongly
 ---
