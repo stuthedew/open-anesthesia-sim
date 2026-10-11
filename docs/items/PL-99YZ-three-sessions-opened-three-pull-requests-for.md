@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: docs/items
 added: 2026-09-15
 closed: 2026-10-11
+pr: 1398
 not-delegable: the deliverable is a count over the store's own history - how many same-subject, different-id collisions it contains - and then a recorded decision about whether anything deterministic is worth building for them. No command can run before that count exists, and per the item's own **Done when.** a recorded 'no, the digest line is enough' closes it as legitimately as a check would
 ---
 
