@@ -37,6 +37,7 @@ is. Every function behind them takes the step as checked.
 
 from __future__ import annotations
 
+from anesthesia_sim.core.checked_number import CheckedQuantity, require_not_another_quantity
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import require_positive_finite
 
@@ -189,7 +190,7 @@ def require_supported_simulation_step(simulation_step_s: float) -> None:
         )
 
 
-class SimulationStep(float):
+class SimulationStep(float, CheckedQuantity):
     """A run's step in seconds, checked against the supported range when built.
 
     It compares and computes as the `float` it was built from. A product or
@@ -197,8 +198,11 @@ class SimulationStep(float):
     reaches is not itself a step, and is not presented as a checked one.
 
     Raises:
-        TypeError: `seconds` is not an `int` or a `float`, or is a `bool`, as
-            `require_supported_simulation_step` states.
+        TypeError: `seconds` was built as another checked quantity - an
+            instant, a flow, a fraction - which is a swapped argument and is
+            refused before the range is read (`core/checked_number.py`,
+            `PL-979Z`); or it is not an `int` or a `float`, or is a `bool`,
+            as `require_supported_simulation_step` states.
         SimulationConfigurationError: the step is not positive and finite, is
             an `int` outside the range a `float` holds, is shorter than
             `MINIMUM_SIMULATION_STEP_S`, or exceeds
@@ -209,6 +213,7 @@ class SimulationStep(float):
     __slots__ = ()
 
     def __new__(cls, seconds: float) -> SimulationStep:
+        require_not_another_quantity("simulation_step_s", seconds, cls)
         require_supported_simulation_step(seconds)
 
         return super().__new__(cls, seconds)

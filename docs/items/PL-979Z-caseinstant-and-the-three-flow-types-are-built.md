@@ -3,11 +3,12 @@ id: PL-979Z
 title: CaseInstant and the three flow types are built from another checked quantity silently - CaseInstant(StepCount(600)) is an instant of 600 s, CaseInstant(FreshGasFlow(5.0)) one of 5 s and FreshGasFlow(CaseInstant(5.0)) a flow of 5 L/min - because require_a_number admits every int and float subclass and only the stored-value checks (require_case_instant, _require_built) name a swapped quantity; refuse another checked quantity at the constructor, as Fraction refuses a Percent (found reviewing PL-7N8P)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/checked_number.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/concentration.py, tests/unit/test_checked_number.py
+touches: src/anesthesia_sim/core/checked_number.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/concentration.py, tests/unit/test_checked_number.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-10-05
+closed: 2026-10-11
 payoff: a count, a flow, a step or a concentration handed where another quantity belongs is refused at construction, never held as a plausible instant, flow, step or concentration under the type meant to prove it was checked
 verify: grep -q 'def test_no_checked_type_is_built_from_another_checked_quantity' tests/unit/test_checked_number.py
 ---
@@ -53,3 +54,27 @@ import cycle between `core/concentration.py`, `core/simulation_step.py` and
 best worked in one branch. A test in `tests/unit/test_checked_number.py` named
 `test_no_checked_type_is_built_from_another_checked_quantity`, parametrized
 over every ordered pair of checked types, pins it.
+
+**Built 2026-10-11, with `PL-848D` and `PL-CX2C` in the same branch.** The one
+list is a base class rather than a tuple: every checked type subclasses
+`CheckedQuantity` in `core/checked_number.py`, and `require_not_another_quantity`
+there reads the record with one `isinstance`, so there is no list to keep in
+step and no import between the three modules - a type is a checked quantity
+because it says so where it is defined. Each constructor asks it first,
+`StepCount` included, which refused a `CaseInstant` as not an `int` before and
+now names the swapped argument, so
+`test_no_checked_type_is_built_from_another_checked_quantity` runs over all 56
+ordered pairs of the eight types, from a number inside every range, and asserts
+the whole message; `test_every_checked_type_in_core_is_one_the_pairs_above_run`
+reads the record from every module under `core/`, so a ninth type cannot be
+added without joining the pairs. The base is listed after `float` or `int`
+because `mypy` takes the nearest common base of two checked types as the type
+of a container holding both, and with the base first that was `CheckedQuantity`
+rather than `float`, which refused `app/dashboard_frame.py`'s `value`. The
+stored-value checks read the same record in the same words:
+`require_case_instant` and `require_step_count` here, `require_simulation_step`
+and `_require_built` under `PL-848D`, and `require_fraction` and
+`require_percent` under `PL-CX2C`, each with its own commit so either can be
+dropped on its own. Swept 2026-10-11: `docs/MODEL.md` § "Concentrations",
+§ "Supported input ranges" and § "Supported run length", and
+`docs/ARCHITECTURE.md`'s package map and its exceptions paragraph.

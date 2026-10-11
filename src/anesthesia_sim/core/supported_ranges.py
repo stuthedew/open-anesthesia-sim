@@ -97,7 +97,9 @@ pair. A bare value is refused at run time, by `require_case_instant` where
 `Keyframe`, `TimeBookmark` or `BookmarkCrossing` keeps an instant or a run is
 opened at or moved to one, and by `require_step_count` where `SimulationState`
 keeps its count; what only carries either onward checks nothing. A value built
-as another checked quantity is refused as the swapped argument it is.
+as another checked quantity is refused as the swapped argument it is, at the
+constructor and at the stored-value check alike, through the one record of the
+checked types in `core/checked_number.py` (`PL-979Z`).
 
 **Fresh gas flow has a second bound of the same shape, and it is not here**
 (`PL-8PS6`). What a *machine* can deliver - its flowmeters, its minimum-flow
@@ -153,7 +155,13 @@ from __future__ import annotations
 
 from math import floor
 
-from anesthesia_sim.core.checked_number import negative_zero_as_zero, require_a_number, shown
+from anesthesia_sim.core.checked_number import (
+    CheckedQuantity,
+    negative_zero_as_zero,
+    require_a_number,
+    require_not_another_quantity,
+    shown,
+)
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.units import SECONDS_PER_HOUR
@@ -351,7 +359,7 @@ def require_supported_cardiac_output(cardiac_output_l_min: float) -> None:
     )
 
 
-class FreshGasFlow(float):
+class FreshGasFlow(float, CheckedQuantity):
     """A fresh gas flow in L/min, checked against the supported range when built.
 
     It compares and computes as the `float` it was built from, with one
@@ -364,9 +372,11 @@ class FreshGasFlow(float):
     model's; `BreathingCircuit` checks it where the flow is set (`PL-8PS6`).
 
     Raises:
-        TypeError: the flow is not an `int` or a `float`, or is a `bool`,
-            which is a programming error in the caller rather than a refused
-            setting (`core/checked_number.py`).
+        TypeError: the flow was built as another checked quantity - a cardiac
+            output, an instant, a step - which is a swapped argument and is
+            refused before the range is read; or it is not an `int` or a
+            `float`, or is a `bool`. Either is a programming error in the
+            caller rather than a refused setting (`core/checked_number.py`).
         SimulationConfigurationError: the flow is not finite, or is outside
             `MINIMUM_FRESH_GAS_FLOW_L_MIN` to `MAXIMUM_FRESH_GAS_FLOW_L_MIN`,
             the model's envelope (`docs/MODEL.md`, "Supported input ranges").
@@ -375,12 +385,13 @@ class FreshGasFlow(float):
     __slots__ = ()
 
     def __new__(cls, fresh_gas_flow_l_min: float) -> FreshGasFlow:
+        require_not_another_quantity("fresh_gas_flow_l_min", fresh_gas_flow_l_min, cls)
         require_supported_fresh_gas_flow(fresh_gas_flow_l_min)
 
         return super().__new__(cls, negative_zero_as_zero(fresh_gas_flow_l_min))
 
 
-class AlveolarVentilation(float):
+class AlveolarVentilation(float, CheckedQuantity):
     """An alveolar ventilation in L/min, checked against the supported range when built.
 
     It compares and computes as the `float` it was built from, holds minus
@@ -388,8 +399,9 @@ class AlveolarVentilation(float):
     `FreshGasFlow` says.
 
     Raises:
-        TypeError: the ventilation is not an `int` or a `float`, or is a
-            `bool`, as `FreshGasFlow` says.
+        TypeError: the ventilation was built as another checked quantity, or
+            is not an `int` or a `float`, or is a `bool`, as `FreshGasFlow`
+            says.
         SimulationConfigurationError: the ventilation is not finite, or is
             outside `MINIMUM_ALVEOLAR_VENTILATION_L_MIN` to
             `MAXIMUM_ALVEOLAR_VENTILATION_L_MIN`, the model's envelope
@@ -399,12 +411,13 @@ class AlveolarVentilation(float):
     __slots__ = ()
 
     def __new__(cls, alveolar_ventilation_l_min: float) -> AlveolarVentilation:
+        require_not_another_quantity("alveolar_ventilation_l_min", alveolar_ventilation_l_min, cls)
         require_supported_alveolar_ventilation(alveolar_ventilation_l_min)
 
         return super().__new__(cls, negative_zero_as_zero(alveolar_ventilation_l_min))
 
 
-class CardiacOutput(float):
+class CardiacOutput(float, CheckedQuantity):
     """A cardiac output in L/min, checked against the supported range when built.
 
     It compares and computes as the `float` it was built from, and holds
@@ -415,8 +428,8 @@ class CardiacOutput(float):
     `UptakeEquationSettings` holds the three to summing to it.
 
     Raises:
-        TypeError: the output is not an `int` or a `float`, or is a `bool`,
-            as `FreshGasFlow` says.
+        TypeError: the output was built as another checked quantity, or is
+            not an `int` or a `float`, or is a `bool`, as `FreshGasFlow` says.
         SimulationConfigurationError: the output is not finite, or is outside
             `MINIMUM_CARDIAC_OUTPUT_L_MIN` to `MAXIMUM_CARDIAC_OUTPUT_L_MIN`,
             the model's envelope (`docs/MODEL.md`, "Supported input ranges").
@@ -425,6 +438,7 @@ class CardiacOutput(float):
     __slots__ = ()
 
     def __new__(cls, cardiac_output_l_min: float) -> CardiacOutput:
+        require_not_another_quantity("cardiac_output_l_min", cardiac_output_l_min, cls)
         require_supported_cardiac_output(cardiac_output_l_min)
 
         return super().__new__(cls, negative_zero_as_zero(cardiac_output_l_min))
@@ -531,7 +545,7 @@ def describe_count(count: int) -> str:
     return shown(count)
 
 
-class StepCount(int):
+class StepCount(int, CheckedQuantity):
     """How many steps a run has completed, checked whole and nonnegative when built.
 
     That is what a count can be checked for on its own. How many steps a run
@@ -554,13 +568,19 @@ class StepCount(int):
     `bool` from the configuration error below to this).
 
     Raises:
-        TypeError: `step_count` is not an `int`, or is a `bool`.
+        TypeError: `step_count` is not an `int`, or is a `bool`. One built as
+            another checked quantity - every one of which is a `float` - is
+            named as the swapped argument it is rather than as not an `int`,
+            as every checked type names one (`core/checked_number.py`,
+            `PL-979Z`).
         SimulationConfigurationError: `step_count` is negative.
     """
 
     __slots__ = ()
 
     def __new__(cls, step_count: int) -> StepCount:
+        require_not_another_quantity("step_count", step_count, cls)
+
         if isinstance(step_count, bool) or not isinstance(step_count, int):
             raise TypeError(
                 f"step_count of {shown(step_count)} has type {type(step_count).__name__}, not "
@@ -582,9 +602,11 @@ def require_step_count(step_count: object) -> None:
     `require_fresh_gas_flow` explains. It runs where a count is stored, which
     is `SimulationState` when it is built; every count the state stores after
     that it builds as a `StepCount` itself. A value built as another checked
-    quantity is named as that and not told to rebuild, as `_require_built`
-    names a swapped flow: a step or an instant arriving where a count belongs
-    is a swapped argument, which no `StepCount` built from it would correct.
+    quantity is named as that and not told to rebuild, by
+    `require_not_another_quantity`, which the constructor asks first as well
+    (`core/checked_number.py`): a step or an instant arriving where a count
+    belongs is a swapped argument, which no `StepCount` built from it would
+    correct.
 
     Raises:
         TypeError: `step_count` is not a `StepCount` - a bare `int` included,
@@ -596,17 +618,10 @@ def require_step_count(step_count: object) -> None:
     if isinstance(step_count, StepCount):
         return
 
-    shown_count = shown(step_count)
-
-    if isinstance(step_count, _CHECKED_QUANTITIES):
-        raise TypeError(
-            f"step_count of {shown_count} was built as {type(step_count).__name__}, which is not "
-            "StepCount: it is another quantity, so build StepCount from the count's own value "
-            "where the count is taken"
-        )
+    require_not_another_quantity("step_count", step_count, StepCount)
 
     raise TypeError(
-        f"step_count of {shown_count} was not built as StepCount, it is "
+        f"step_count of {shown(step_count)} was not built as StepCount, it is "
         f"{type(step_count).__name__}: build it as StepCount(...) where the count is taken, "
         "which checks once that it is a whole, nonnegative number of steps"
     )
@@ -808,7 +823,7 @@ def require_supported_case_instant(instant_s: float) -> None:
         )
 
 
-class CaseInstant(float):
+class CaseInstant(float, CheckedQuantity):
     """An instant of the case in seconds, checked against the supported run length when built.
 
     Simulated time since induction, which is the axis a branch shares with
@@ -819,12 +834,16 @@ class CaseInstant(float):
     `CaseInstant` where something holds it as an instant
     (`SimulationState.elapsed_s`).
 
-    Built from an `int` or a `float` and nothing else, and holding minus zero
-    as zero, as each flow is (`core/checked_number.py`, `PL-7N8P`).
+    Built from an `int` or a `float` and nothing else, never from a value
+    built as another checked quantity, and holding minus zero as zero, as
+    each flow is (`core/checked_number.py`, `PL-7N8P`, `PL-979Z`).
 
     Raises:
-        TypeError: the instant is not an `int` or a `float`, or is a `bool`,
-            as `require_supported_case_instant` states.
+        TypeError: the instant was built as another checked quantity - a
+            count of steps, a flow, a step - which is a swapped argument and
+            is refused before the run length is read
+            (`core/checked_number.py`); or it is not an `int` or a `float`,
+            or is a `bool`, as `require_supported_case_instant` states.
         SimulationConfigurationError: the instant is not finite, or is
             outside 0 to `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, as
             `require_supported_case_instant` states.
@@ -833,22 +852,10 @@ class CaseInstant(float):
     __slots__ = ()
 
     def __new__(cls, instant_s: float) -> CaseInstant:
+        require_not_another_quantity("instant_s", instant_s, cls)
         require_supported_case_instant(instant_s)
 
         return super().__new__(cls, negative_zero_as_zero(instant_s))
-
-
-# Every quantity built only through its own check. One handed in where another
-# is required is a swapped argument, which `require_case_instant` and
-# `require_step_count` name as that rather than advising a rebuild.
-_CHECKED_QUANTITIES = (
-    FreshGasFlow,
-    AlveolarVentilation,
-    CardiacOutput,
-    SimulationStep,
-    StepCount,
-    CaseInstant,
-)
 
 
 def require_case_instant(name: str, instant_s: object) -> None:
@@ -861,9 +868,10 @@ def require_case_instant(name: str, instant_s: object) -> None:
     branch `SimulationController.resumed_at` takes. A function that only
     compares an instant, or forwards one, takes the type and checks nothing.
     A value built as another checked quantity is named as that and not told
-    to rebuild, as `_require_built` names a swapped flow: a count of 600
-    steps arriving where an instant belongs is a swapped argument, and a
-    `CaseInstant` built from it would hold an instant of 600 s.
+    to rebuild, by `require_not_another_quantity`, which the constructor asks
+    first as well (`core/checked_number.py`): a count of 600 steps arriving
+    where an instant belongs is a swapped argument, and a `CaseInstant` built
+    from it would hold an instant of 600 s.
 
     Args:
         name: The parameter the instant was handed in as, for the message. An
@@ -881,17 +889,10 @@ def require_case_instant(name: str, instant_s: object) -> None:
     if isinstance(instant_s, CaseInstant):
         return
 
-    shown_instant = shown(instant_s)
-
-    if isinstance(instant_s, _CHECKED_QUANTITIES):
-        raise TypeError(
-            f"{name} of {shown_instant} was built as {type(instant_s).__name__}, which is not "
-            "CaseInstant: it is another quantity, so build CaseInstant from the instant's own "
-            "value where the instant is chosen"
-        )
+    require_not_another_quantity(name, instant_s, CaseInstant)
 
     raise TypeError(
-        f"{name} of {shown_instant} was not built as CaseInstant, it is "
+        f"{name} of {shown(instant_s)} was not built as CaseInstant, it is "
         f"{type(instant_s).__name__}: "
         "build it as CaseInstant(...) where the instant is chosen, which checks it against "
         'the supported run length once (docs/MODEL.md, "Supported run length")'

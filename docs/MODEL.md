@@ -614,9 +614,10 @@ $$
 finite or lies outside 0 to 1, or 0 to 100, when one is built; refuse a value
 of the other type, which is a missed conversion rather than a concentration
 out of range; and refuse, as a `TypeError` before the range is read, whatever
-is not an `int` or a `float` - a `bool`, a `Decimal`, a string - and hold
+is not an `int` or a `float` - a `bool`, a `Decimal`, a string - or was built
+as any other checked quantity - a step, a flow, an instant, a count - and hold
 minus zero as zero, the rule `core/checked_number.py` states once for them and
-for the flows (`PL-LLMN`; § "Supported input ranges"). Every place that holds
+for the flows (`PL-LLMN`, `PL-979Z`; § "Supported input ranges"). Every place that holds
 a concentration takes the type: each compartment's setter, the driving fraction a compartment's own
 closed form takes, `BreathingCircuit` when it is built or set, the
 `BreathingCircuitState` a rollback restores it from, the
@@ -5257,7 +5258,10 @@ interval, was held with its sign and displayed as `-0.0 L/min`.
 and, since `PL-7N8P`, `CaseInstant` all build through it: an `int` or a
 `float`, subclasses included, so a NumPy double passes; a `bool`, a `Decimal`
 or a string is refused with a `TypeError` naming the value and its type before
-any comparison reads it; and minus zero is held as the zero it is. The range
+any comparison reads it, and so, since `PL-979Z`, is a value already built as
+another checked quantity - a `StepCount` or a `CaseInstant` handed to a flow's
+constructor - which is a swapped argument and not a number to check against a
+second range; and minus zero is held as the zero it is. The range
 check is the chained closed-interval comparison alone, with no `isfinite`
 before it: a NaN fails both halves and an infinity one, and an `int` too long
 for a `float` is compared exactly and refused against the range in the
@@ -5478,7 +5482,8 @@ reach it is advanced to, each `Keyframe`, a `TimeBookmark` and the
 `BookmarkCrossing` a run halts on, and the instant
 `SimulationController.resumed_at` branches at. A value built as another checked
 quantity, such as a `StepCount` handed in as an instant, is refused as the
-swapped argument it is, with no advice to rebuild it. What only carries one
+swapped argument it is, with no advice to rebuild it, where the instant is
+kept and, since `PL-979Z`, by `CaseInstant` itself. What only carries one
 onward - a snapshot, a chart frame, the instants a fork is offered at - is
 annotated with the type and checks nothing again. So a time bookmark past the
 span cannot be made at all; until `PL-CN5S` one could be built in code, though
