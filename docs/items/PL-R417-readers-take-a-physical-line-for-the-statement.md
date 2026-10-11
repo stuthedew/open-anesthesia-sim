@@ -3,16 +3,18 @@ id: PL-R417
 title: Readers take a physical line for the statement of a format that continues one across lines - a shell script, a Makefile recipe, a folded YAML block, a wrapped Markdown code span or phrase - so each format's continuation rule is met one capture at a time
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tools/required_checks_check.py, tools/rules_paths_check.py, .claude/hooks/shell_split.py, tests/unit, docs/items, subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/frontmatter.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/tests, docket.toml, docs/ARCHITECTURE.md, ROADMAP.md, pyproject.toml, uv.lock
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head by PL-JCS3
 added: 2026-10-04
+closed: 2026-10-11
+pr: 1392
 payoff: a statement a shell script, Makefile, workflow or Markdown document continues across lines is read as the one statement its format makes it, or refused by name, so the close-out sweep and the checks stop answering from fragments
-verify: grep -q 'def test_candidates_find_a_title_cited_across_a_line_wrap' tests/unit/test_doc_check.py && grep -q 'def test_each_reader_reads_its_formats_continued_statement_whole' tests/unit/test_doc_check.py && grep -q 'recipe commands, ' tests/unit/test_doc_check.py && grep -q 'workflow commands, ' tests/unit/test_doc_check.py && grep -q '^generator: spent' docs/items/PL-R417-readers-take-a-physical-line-for-the-statement.md
+verify: grep -q 'def test_candidates_find_a_title_cited_across_a_line_wrap' tests/unit/test_doc_check.py && grep -q 'def test_each_reader_reads_its_formats_continued_statement_whole' tests/unit/test_doc_check.py && grep -q 'recipe commands, ' tests/unit/test_doc_check.py && grep -q 'workflow commands, ' tests/unit/test_doc_check.py && grep -q 'def test_every_specification_example_reads_as_markdown_it_py_reads_it' tests/unit/test_inline_reference.py && grep -q 'def test_every_tracked_document_reads_as_markdown_it_py_reads_it' tests/unit/test_inline_reference.py && grep -q 'def test_keys_end_each_value_where_pyyaml_does' subprojects/docket/tests/test_frontmatter_reference.py && grep -q '^generator: spent' docs/items/PL-R417-readers-take-a-physical-line-for-the-statement.md
 root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G, PL-TY1Z, PL-YSMD, PL-HKHP, PL-5NC3, PL-WF35, PL-FP7J, PL-BLKJ, PL-J0C6, PL-GMR6, PL-VQBY, PL-4ZDZ, PL-GT0J, PL-KT0H, PL-FBWD, PL-F7Z6, PL-V2HK, PL-TC2D, PL-S3XS, PL-4T49, PL-PPNV, PL-97CF, PL-2JYP, PL-WG6S, PL-4MLK, PL-4ZVH, PL-T1X0, PL-BYJ5, PL-0Y7J, PL-T73L, PL-TDVJ, PL-BMZN, PL-P00H, PL-BM8T, PL-HKR5, PL-CK3F, PL-2MLT, PL-CZ28, PL-Z1R7, PL-V7CG, PL-JZNV, PL-B47B, PL-K77Q, PL-X43T, PL-M2J4, PL-5ZZT, PL-YCJJ, PL-24MT, PL-M890, PL-CXK6, PL-FCQP, PL-B83V, PL-2CDW, PL-VJPH, PL-VQ50, PL-M3M4, PL-QSN5, PL-BCZQ, PL-Q6HR, PL-7454, PL-WX79, PL-4J5H, PL-Q8LJ, PL-9TZH, PL-P6D5, PL-F6T5, PL-W9VC, PL-VX3Q, PL-7CQ5, PL-YQ9G, PL-J8ML, PL-0CJC, PL-GJKN, PL-TJ1S, PL-L4X3, PL-BVBB, PL-PNZB, PL-4DM0, PL-NGKW, PL-63Y5, PL-6KHQ, PL-703R, PL-DQ9C, PL-S4JL, PL-QLQF
-generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory until link 8, then PL-T1X0 and PL-BYJ5, which that day's triage pass put to it, PL-0Y7J and PL-T73L in link 11, PL-TDVJ in link 15, and PL-BMZN, filed beside it and re-read as one by that day's second triage pass; twenty-five more in the closing sweep of 2026-10-06, PL-P00H and PL-CK3F among them in code merged after the head was filed; and twenty-eight in the sweep of 2026-10-10, nineteen of them forms a closed member's fix left and eleven, some of the same, in code written or rewritten after 2026-10-06, nine of those in the head's own three batches
+generator: spent - closed on the owner's answer of 2026-10-10, with no sweep before it: link 24 (#1392) fixed the seven members live in form, PL-BCZQ, PL-Q6HR, PL-WX79, PL-P6D5, PL-VX3Q, PL-YQ9G and PL-NGKW, and CI now holds doc_check's inline Markdown to markdown-it-py over the specification examples and every tracked file, and front-matter keys to PyYAML over a generated corpus, so a misread either test reaches fails a pull request rather than waiting for a sweep; PL-RR1N stays open as an ordinary item, as do link 23's twenty-one latent members, untriaged, whose form stands in no tracked file: PL-7454, PL-4J5H, PL-Q8LJ, PL-9TZH, PL-F6T5, PL-W9VC, PL-7CQ5, PL-J8ML, PL-0CJC, PL-GJKN, PL-TJ1S, PL-L4X3, PL-BVBB, PL-PNZB, PL-4DM0, PL-63Y5, PL-6KHQ, PL-703R, PL-DQ9C, PL-S4JL and PL-QLQF; spent means further members are found only by sweeping for forms no tracked file holds, not that no reader can misread again, and one of these later found live reopens the head
 misread: Where one statement ends, in a format that lets a statement continue across physical lines
 ---
 
@@ -587,8 +589,40 @@ an unquoted here-document's body was found by probing, so it is left for a
 session to meet, as that guard's header asks, and `KNOWN_GAPS` is unchanged.
 `docket new` recorded no recurrence on an open item. `generator:` stays `live`.
 
-**Next steps (recorded 2026-10-04, revised by links 8, 11 to 18 and 19 to 23,
-and on 2026-10-06 and 2026-10-10).** The members the table and the first sweeps named are
+**Link 24, the seven live in form and two differential tests (`#1392`,
+2026-10-11).** Done: link 23's seven members live in form, `PL-BCZQ`,
+`PL-Q6HR`, `PL-WX79`, `PL-P6D5`, `PL-VX3Q`, `PL-YQ9G` and `PL-NGKW`, built as
+the earlier links were. `doc_check`'s `SOFT_BREAK` refuses no line and leaves
+where a paragraph ends to `statement_lines` (`PL-BCZQ`); `check_citations`
+reads links from `_links`, over the document itself rather than its blanked
+text (`PL-Q6HR`); `_check_reference_files_exist` reads each code span whole
+(`PL-P6D5`); `doc_check` cuts statements in one place, `_statements`, a front
+matter's a key at a time through `docket.frontmatter.statements` and the
+body's from the line after it closes (`PL-WX79`); `changed_tokens` reads a
+changed JSON file's keys from both copies' `json` parse (`PL-VX3Q`);
+`frontmatter.keys` follows a quoted scalar or a flow collection to its close
+wherever it opens (`PL-YQ9G`); and `vcs._markdown_statements` compares a leaf
+block whole, tagged with its kind (`PL-NGKW`). With them landed the parsing
+review's two differential tests: `tests/unit/test_inline_reference.py` holds
+`doc_check`'s code spans, links and soft breaks to markdown-it-py over every
+CommonMark 0.31.2 and GFM 0.29 specification example and every tracked
+Markdown file, and `subprojects/docket/tests/test_frontmatter_reference.py`
+holds `frontmatter.keys` to PyYAML 6.0.3, a new dev dependency, over 2,000
+front matters Hypothesis draws derandomized. Both pass on the first round of
+fixes, so the review's reserve, vendoring the inline layer if its test still
+failed after two rounds, was not reached. On that corpus `main`'s `keys`
+agrees with PyYAML on 1,531, misreads 89 and declines 380. Nothing over the
+tree moved: `doc_check check` and `candidates`, `possessive_section_check`,
+`rules_paths_check` and `bin/docket check`, `stranded` and `flight` report the
+same over this tree under `main`'s readers and these. The guard gained
+twenty-eight cases, twenty-seven failing on `main`'s readers and one, a whole
+table cut, holding a reading `main` already gave; six existing `links, ` cases
+now read through `_links`. No sweep ran before `generator:` was rewritten
+`spent`, as the owner answered, and the head closes with `PL-RR1N` and link
+23's twenty-one latent members open as ordinary items.
+
+**Next steps (recorded 2026-10-04, revised by links 8, 11 to 18 and 19 to 24,
+and on 2026-10-06, 2026-10-10 and 2026-10-11).** The members the table and the first sweeps named are
 built but `PL-RR1N`, and so are the closing sweep's twenty-five: the Markdown
 thirteen (link 20), the YAML and TOML six (link 21) and the shell six (link
 22). They were built as the earlier links were, a format per pull request, by
@@ -619,14 +653,14 @@ library reads both views as bash does, which `PL-JNYL` records for the four
 weighed on 2026-10-10. The one more sweep they left ran as link 23 and found
 twenty-eight more, so the head was not spent under the rule the coordinator's
 brief of 2026-10-04 set, `generator:` rewritten `spent` only when a sweep finds
-nothing, and the owner has since replaced that rule (below). One batch is left,
-link 24: the seven members live in form, `PL-BCZQ`, `PL-Q6HR`, `PL-WX79`,
+nothing, and the owner has since replaced that rule (below). The last batch
+was link 24: the seven members live in form, `PL-BCZQ`, `PL-Q6HR`, `PL-WX79`,
 `PL-P6D5`, `PL-VX3Q`, `PL-YQ9G` and `PL-NGKW`, built as the earlier links were
 and each pinned by a test, with the parsing review's two differential tests in
-CI (below), each named in `verify:`. The same batch rewrites `generator:`
-`spent` and closes the head, with no sweep before it. The head closes without waiting for
-`PL-RR1N`, naming it in the reason as Done-when says (project owner,
-2026-10-04, ratified, over waiting for it).
+CI (below), each named in `verify:`. The same batch rewrote `generator:`
+`spent` and closed the head, with no sweep before it. The head closed without
+waiting for `PL-RR1N`, naming it in the reason as Done-when says (project
+owner, 2026-10-04, ratified, over waiting for it).
 
 **How the head ends (put to the owner 2026-10-10).** The rule the coordinator's
 brief of 2026-10-04 set, `spent` only when a sweep finds nothing, has not been
