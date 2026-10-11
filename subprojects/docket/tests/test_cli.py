@@ -6995,6 +6995,102 @@ def test_concurrent_names_the_decisions_and_in_flight_work_beneath_the_batch(
     assert "    PL-0001 A ready item [IN FLIGHT]" in against_one
 
 
+def test_concurrent_can_draw_the_batch_from_the_current_step_alone(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`--in-scope` hands a fan-out clearing the gate its startable entries alone (`PL-7B3G`).
+
+    The gate entry is `P3` and the two the step does not include are `P1`, each
+    on a file of its own, so neither the band nor a shared file is what keeps
+    them out: one no section places, and one the gate's own milestone scopes,
+    which clearing the gate comes before. `--limit` cannot reach past the
+    narrowed population, and the bare batch still offers all three.
+    """
+    store = str(
+        _wave_project(
+            tmp_path,
+            READY.replace("priority: P1", "priority: P3"),
+            READY.replace("PL-B1B1", "PL-C2C2").replace("touches: a.py", "touches: c.py"),
+            READY.replace("PL-B1B1", "PL-D4D4").replace("touches: a.py", "touches: d.py"),
+        )
+    )
+    scoped_roadmap = WAVE_ROADMAP.replace(
+        "A displayed clinical unit.", "1. **A displayed clinical unit** (queue item `PL-D4D4`)."
+    )
+    (tmp_path / "ROADMAP.md").write_text(scoped_roadmap, encoding="utf-8")
+
+    assert _run("concurrent", "--in-scope", "--limit", "3", "--items", store) == 0
+    scoped = capsys.readouterr().out.split("\n\n")[0]
+    assert _run("concurrent", "--items", store) == 0
+    whole = capsys.readouterr().out.split("\n\n")[0]
+
+    assert scoped.splitlines() == [
+        "A batch that can be worked at once (1 items, best-first), drawn only from work "
+        "on the debt gate recorded under v0.4.0 — the teachable case:",
+        "  P3 PL-B1B1 A ready item",
+    ]
+    assert [line.split()[1] for line in whole.splitlines()[1:]] == ["PL-C2C2", "PL-D4D4", "PL-B1B1"]
+
+
+@pytest.mark.parametrize(
+    ("version", "named", "said"),
+    [
+        (None, (), "no ROADMAP.md to read: there is no step for `--in-scope` to draw from"),
+        ("0.4.0", (), "the plan names no milestone for the step the project is on"),
+        ("0.2.5", ("PL-B1B1",), "`--in-scope` narrows the bare batch only"),
+    ],
+    ids=["no roadmap", "no milestone for the step", "an item named"],
+)
+def test_concurrent_in_scope_offers_nothing_it_cannot_scope(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    version: str | None,
+    named: tuple[str, ...],
+    said: str,
+) -> None:
+    """Never the whole queue, and never one item's collisions narrowed (`PL-7B3G`).
+
+    A batch drawn from everything under a flag that asked for the step's scope
+    would hand a fan-out work the step does not include with nothing saying so,
+    and a collision with work outside the step is still a collision. Version
+    0.4.0 is past this roadmap's last row, so the beat is to scope a milestone
+    nobody has written, and no section is the step's.
+    """
+    if version is None:
+        store = _store(tmp_path, READY)
+    else:
+        store = _wave_project(tmp_path, READY)
+        (tmp_path / "pyproject.toml").write_text(f'version = "{version}"\n', encoding="utf-8")
+
+    assert _run("concurrent", *named, "--in-scope", "--items", str(store)) == 1
+
+    out = capsys.readouterr().out
+    assert said in out
+    assert "A batch" not in out
+    assert "A ready item" not in out
+
+
+def test_concurrent_in_scope_names_a_plan_list_it_could_not_read_whole(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A gate entry carried on from the margin is declined, so the scope may be short (`PL-MFVV`).
+
+    The batch is still given from what was read, and the command names the
+    entry and exits non-zero beneath it, as `wave` and `picks` do (`PL-GMR6`).
+    """
+    store = _wave_project(tmp_path, READY)
+    (tmp_path / "ROADMAP.md").write_text(
+        WAVE_ROADMAP.replace("The one entry on this gate", "The one entry\non this gate"),
+        encoding="utf-8",
+    )
+
+    assert _run("concurrent", "--in-scope", "--items", str(store)) == 1
+
+    out = capsys.readouterr().out
+    assert "  P1 PL-B1B1 A ready item" in out
+    assert "A list the plan is read from was not read whole, so a count above may be short:" in out
+
+
 def test_next_oldest_reads_what_counts_as_new_work_from_the_config(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
