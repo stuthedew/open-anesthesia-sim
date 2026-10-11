@@ -25,15 +25,18 @@ recovered), and none of the 39 after it. In its first day the record produced
 four items of its own (`PL-F6MM`, `PL-K9XQ`, `PL-7VWK`, `PL-X2XP`). The files
 it wrote stay, with their `recorded:` header.
 
-**What `--recover` writes** (`PL-PNJF`, `PL-73G8`): `pr:`, then `recovered:`,
-the date it was fetched, because the API serves the body as it stands that day
-rather than as it stood at the merge; then `commit:`, `merged:`, `items:`,
-`subject:`, and `squash: empty`, the one shape it recovers. No HTML comment
-sits above the body: this repository's bodies open with the harness's own
-`<!-- ccr-projects-attribution ... -->` marker, and a reader could not tell a
-tool's comment from the body's. The 201 files recovered before `PL-979D` keep
-their older header and comment, forward only; the commit that added each one
-dates its fetch.
+**What `--recover` writes** (`PL-PNJF`, `PL-73G8`): `pr:`, then `note:`,
+which says the file is a historical record nobody maintains (`PL-TDBT`), then
+`recovered:`, the date it was fetched, because the API serves the body as it
+stands that day rather than as it stood at the merge; then `commit:`,
+`merged:`, `items:`, `subject:`, and `squash: empty`, the one shape it
+recovers. No HTML comment sits above the body: this repository's bodies open
+with the harness's own `<!-- ccr-projects-attribution ... -->` marker, and a
+reader could not tell a tool's comment from the body's. The 201 files recovered
+before `PL-979D` keep their older header and comment, forward only; the commit
+that added each one dates its fetch. Every file carries `note:`, backfilled
+once across the records already written, and `docs/pr-bodies/README.md` says
+the rest of what a record is.
 
 **`--anchors` checks that every recovered file's `commit:` is a first-parent
 commit of the default branch** (`PL-73G8`). It is the one field tying a
@@ -254,6 +257,17 @@ ABBREVIATED_HASH_RE = re.compile(r"(?<!\.)\b(?=[0-9a-f]*[0-9])(?=[0-9a-f]*[a-f])
 #: of magnitude short of the bound.
 PER_PAGE = 100
 MAX_PAGES = 100
+
+#: The header line saying what a record is, second after `pr:` so a reader who
+#: opens one meets it before the body (`PL-TDBT`, project owner, 2026-10-03,
+#: ratified, over treating the records as current documentation and repairing
+#: their citations). A header field rather than a line of the body, so the body
+#: stays verbatim; plain text with no colon, so the line itself parses as YAML
+#: wherever the rest of a header does. The README holds the full statement.
+NOTE = (
+    "historical record - the body is kept verbatim and not maintained; its paths, "
+    "lines and hashes describe the tree at its merge (docs/pr-bodies/README.md)"
+)
 
 #: Written in place of a body where the pull request genuinely has none. The
 #: file has to exist so the advisory can clear - without it the check would
@@ -589,6 +603,7 @@ def write_recovery(
     ids = item_ids(subject, pr, backlinks)
     header = [
         f"pr: {pr}",
+        f"note: {NOTE}",
         f"recovered: {recovered_on}",
         f"commit: {sha}",
         f"merged: {merged}",
@@ -663,6 +678,11 @@ def anchors(ref: str | None) -> int:
         return 0
     stray: list[tuple[str, str, str]] = []
     for path in sorted(RECOVERY_DIR.glob("*.md")) if RECOVERY_DIR.is_dir() else []:
+        # Only a record is anchored, and only a record is named for its number,
+        # as `recovered()` reads them; the README beside them is the
+        # directory's statement of what a record is (`PL-TDBT`).
+        if not path.stem.isdigit():
+            continue
         parsed = parse_record(path.read_text(encoding="utf-8"))
         # A record with no `commit:` at all was `recorded:` before its merge
         # and has no anchor to check; one whose `commit:` reads as nothing has

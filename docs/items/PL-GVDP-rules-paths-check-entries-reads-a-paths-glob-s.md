@@ -3,12 +3,14 @@ id: PL-GVDP
 title: rules_paths_check.entries reads a paths: glob's trailing comment as part of the glob - '- "/src/**" # why' is reported unanchored with a garbled replacement, and '- /src/foo.md # was /scr/' as pointing at nothing, where YAML 1.2.2 6.6 strips the comment and reads /src/**; loud rather than silent, and latent since no rule writes one (found building PL-PPNV)
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: defect
 feature: one-answer
 touches: tools/rules_paths_check.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
+closed: 2026-10-11
+reason: dead on PL-YVV4's count (2026-10-11): rules_paths_check reads each paths: value through docket.frontmatter.uncommented since fe2e5132 (#1389), so a trailing comment is stripped
 payoff: a comment after a paths: glob no longer makes the rules check refuse a sound rule and offer a replacement glob that names nothing
 verify: grep -q 'def test_a_comment_after_a_glob_is_not_part_of_it' tests/unit/test_rules_paths_check.py
 recurrences: 2026-10-06 PL-BM8T withdrawn 2026-10-06 PL-R417

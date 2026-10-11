@@ -3,12 +3,14 @@ id: PL-LWMS
 title: Check the attribution trailers a pull request's commits carry, if stating PL-B11M's rule where sessions read it (PL-SL16) does not stop model-named co-authors
 priority: P3
 effort: M
-status: blocked
+status: dropped
 classes: infra
 feature: public-history
 touches: tools, tests/unit, Makefile, .github/workflows/pr-title.yml
 blocked-by: PL-XH1D, PL-SL16
 added: 2026-08-30
+closed: 2026-10-11
+reason: dead on PL-YVV4's count (2026-10-11): its condition never arose - since PL-SL16 closed on 2026-09-24 (#1001), origin/main carries 401 Co-authored-by trailers and every one is the plain Claude <noreply@anthropic.com>
 verify: uv run pytest tests/unit -k commit_msg
 ---
 

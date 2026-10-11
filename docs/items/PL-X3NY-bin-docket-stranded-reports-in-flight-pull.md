@@ -3,11 +3,13 @@ id: PL-X3NY
 title: bin/docket stranded reports in-flight pull-request work and abandoned-branch work identically because it reasons from refs alone, where the GitHub API can classify the two - so the reader re-derives every session what one API read would settle
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-19
-verify: grep -q 'def test_stranded_names_a_branch_with_a_pull_request_open_apart_from_one_behind' subprojects/docket/tests/test_cli.py && uv run pytest -q subprojects/docket/tests/test_cli.py -k stranded_names_a_branch_with_a_pull_request_open
+closed: 2026-10-11
+pr: 1409
+verify: grep -q 'def test_stranded_hands_an_edit_a_pull_request_carries_the_pull_request_not_a_diff' subprojects/docket/tests/test_cli.py && grep -q 'def test_stranded_names_the_pull_request_carrying_a_commit_pushed_after_a_merge' subprojects/docket/tests/test_cli.py && grep -q 'def test_stranded_says_the_forge_went_unasked_above_the_checkout_it_qualifies' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** `cmd_stranded` states its own limit deliberately, and the limit is
@@ -170,3 +172,38 @@ the base, so `stranded` does not list them.
 **Measured 2026-09-26 (`PL-P99G`): pull-request state alone would have misread 10 of 13 dead heads.** `PL-P99G` cleared 13 remote heads whose work `main` already held. Ten had never had a pull request, so **none open** above, and the original **behind** row, would have offered them as stranded. One had a merged pull request followed by a closed unmerged one (`#1041`, `#1045`). The other two had merged pull requests (`#810`, `#938`), but each carried a commit pushed after the merge. **landed** would have been right for those two only by luck, since their tip reached `main` through a later pull request and not the one that merged. The item record decided all 13. Every item a branch's commits touch is closed on `main` with `pr:` recorded. Every line those commits add is on `main`, apart from fields `main`'s later copy has since moved past (`status: untriaged`) and code checkpoints that a closed item's pull request superseded. The classification needs that input beside the pull request's state. `PL-P99G`'s table is the worked set.
 
 **Restored 2026-10-11 by `PL-BYMX`'s design round.** The paragraph above was written for `#1092`, which closed unmerged; `#1110` landed `PL-P99G`'s record without it, and `refs/pull/1092/head` held the only copy.
+
+## Built 2026-10-11
+
+**What was left, re-confirmed on `main` at `839697e0`.** `PL-MTHC` (`#1249`)
+built the decided route for the first list. `stranded` asks
+`open_pull_requests_command`, hands an item that an open pull request carries
+the pull request rather than a `git checkout`, and says when the forge went
+unasked. Three parts of this brief still stood:
+
+- The edits list, `PL-KSCW`'s items the base holds whose branch copy is ahead,
+  handed every edit a `git diff`, including one an open pull request was about
+  to merge. That was the live case today: `PL-7DJK`'s edit, which `#1408`
+  carries.
+- `orphaned`, the brief's `cmd_orphaned`, handed a `git cherry-pick` for
+  commits pushed after a merge, even where a second pull request was open on the
+  branch.
+- The unasked line sat beneath the list, after the recovery command it
+  qualifies.
+
+**Built.** One forge answer, asked once for every branch the command names,
+now splits all three lists. Work an open pull request carries is named with
+its number and handed no recovery command, and the unasked line sits above
+each list, where the unrefreshed-base caveat is. Where every edit is carried,
+the note explaining the diff goes too. `subprojects/docket/README.md` says
+the same.
+
+**Narrower than the brief's three rows, deliberately.** The landed row needs
+no category of its own, as decided on 2026-09-22. The behind row is not told
+apart from a branch with no pull request. The 2026-09-26 measurement above
+found that pull-request state alone misreads 10 of 13 dead heads, so deleting
+a branch stays with `tools/branch_sweep.py` and the item record. What
+`stranded` decides from the pull request is narrower and is decidable from it:
+whether to withhold a recovery command.
+
+`verify:` named a test nobody wrote. It now names the three this work added.

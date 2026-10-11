@@ -3329,6 +3329,38 @@ def test_a_removal_is_not_charged_to_an_id_whose_selection_excludes_the_addition
     assert not any("PL-STVW" in line for line in check.lines)
 
 
+def test_an_assertion_restored_in_a_later_commit_is_not_counted(tmp_path: Path) -> None:
+    """`PL-087W`: the response the check asks for clears it, whichever id leads the restore.
+
+    The item's commit cuts an assertion the base holds, and a later commit
+    naming another item puts it back - as a session does when the check flags
+    the cut after the commit that could have carried the fix. The branch's tip
+    holds the line, so nothing existing is gone. Read at the item's own last
+    commit alone, it was charged for good.
+    """
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX drop it", "tests/test_thing.py", "def test_a() -> None:\n    pass\n")
+    _work(root, "PL-B2B2 put test_a's check back", "tests/test_thing.py", KEPT)
+
+    check = _assertions(root, "HEAD~2")
+
+    assert check.passed
+    assert check.detail == "none"
+
+
+def test_an_assertion_restored_into_another_file_is_still_charged(tmp_path: Path) -> None:
+    """`PL-087W`'s caution: the tip is read per file, so the line put elsewhere excuses nothing."""
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX drop it", "tests/test_thing.py", "def test_a() -> None:\n    pass\n")
+    _work(root, "PL-B2B2 add the same check elsewhere", "tests/test_other.py", KEPT)
+
+    check = _assertions(root, "HEAD~2")
+
+    assert check.blocks
+    assert check.detail == "1 assertion(s)"
+    assert "    was  assert 1 == 1" in check.lines
+
+
 def test_a_renamed_test_module_is_compared_with_its_old_self(tmp_path: Path) -> None:
     """Followed as `git show` follows it, so only what changed is charged.
 

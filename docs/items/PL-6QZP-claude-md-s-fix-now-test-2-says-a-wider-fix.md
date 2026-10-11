@@ -3,11 +3,13 @@ id: PL-6QZP
 title: CLAUDE.md's fix-now test 2 says a wider fix fails the touches audit, but under verify --self that check reports and the branch still ACCEPTs, so the deterrent the rule describes does not fire on a session's own branch
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: worker-instructions
 touches: CLAUDE.md
 added: 2026-09-15
+closed: 2026-10-11
+pr: 1407
 payoff: CLAUDE.md's fix-now test 2 stops promising a refusal the self-audit does not make, so a session reads the real rule: reported by name, obeyed by the session, refused only at a delegated review
 verify: grep -qF 'names every file changed outside the item' CLAUDE.md
 ---
@@ -151,3 +153,12 @@ the 183-character clause in `CLAUDE.md`'s fix-now test 2 with the
 false claim exchanged for a true one. (c) stays recorded as the route if the
 deterrent is wanted back. Status moves to `ready` with this answer, as
 `docket check` requires of a recorded answer.
+
+## Built 2026-10-11
+
+The clause landed as the design round quoted it, in `CLAUDE.md`'s fix-now test
+2. Measured on the commit, it grew the resident set by 48 characters for the
+clause and 10 more for the re-wrap around it, 58 in all, where the round
+estimated 38; the commit message names the growth as a false claim exchanged
+for a true one, as the answer asked. No other `CLAUDE.md` edit was open to
+batch it with.

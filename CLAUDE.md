@@ -401,13 +401,15 @@ deviating from a described deliverable, not acting without one.
      a regression test, so `safety`- and `science`-classed work fails this test
      automatically and the clinical paths need no carve-out of their own.
   2. **It touches no file outside what the current item's work already
-     touches.** `bin/docket verify` reads the diff for files outside an item's
-     declared `touches`, so a wider fix either fails that audit honestly or
-     tempts the single edit that defeats it. A no-behaviour repair to another
-     item's file or to `docs/WORKING_NOTES.md` (drift, a stale status sentence,
-     a missing recommendation marker) is not a fix-now use at all. Declare the
-     file in the current item's `touches`, and it rides the commit already being
-     made, counting against neither this test nor the two (project owner,
+     touches.**
+     `bin/docket verify --self` names every file changed outside the item's
+     `touches` and still `ACCEPT`s, so a wider fix is reported, not refused:
+     this test holds where the session obeys it, and a delegated review
+     refuses it. A no-behaviour repair to another item's file or to
+     `docs/WORKING_NOTES.md` (drift, a stale status sentence, a missing
+     recommendation marker) is not a fix-now use at all. Declare the file in
+     the current item's `touches`, and it rides the commit already being made,
+     counting against neither this test nor the two (project owner,
      2026-09-22, ratified, over leaving that licence in the path-scoped
      citation-drift rule, which loads only after the decision to file; eleven
      such repairs became items in three days, `PL-G40Z`).

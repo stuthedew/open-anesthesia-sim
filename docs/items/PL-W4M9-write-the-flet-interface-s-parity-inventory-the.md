@@ -3,11 +3,13 @@ id: PL-W4M9
 title: Write the Flet interface's parity inventory the Qt port's definition of done measures against: the 200 tests in tests/unit/test_simulation_view.py are the only record of it and the port rewrites them, though the v0.4.25 tag keeps them reachable
 priority: P3
 effort: M
-status: ready
+status: dropped
 classes: docs, planning
 feature: qt-port
 touches: docs/ARCHITECTURE.md
 added: 2026-09-14
+closed: 2026-10-11
+reason: dead on PL-YVV4's count (2026-10-11): the Qt port it served shipped in v0.4.26 with all 28 Required-scope ids closed (PL-06YW), so the definition of done it was to measure against is settled
 verify: grep -q 'parity inventory' docs/ARCHITECTURE.md
 ---
 

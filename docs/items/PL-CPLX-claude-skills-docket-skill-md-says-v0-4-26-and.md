@@ -3,10 +3,12 @@ id: PL-CPLX
 title: .claude/skills/docket/SKILL.md says v0.4.26 and v0.6.0 are both milestones scoped out of turn whose gate freezes when the milestone before them ships, but v0.4.26 shipped on 2026-09-17 and took no gate of its own, so the example names a release that can no longer be waiting for anything
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
-touches: .claude/skills/docket/SKILL.md
+touches: .claude/skills/docket/modes/release.md
 added: 2026-09-17
+closed: 2026-10-11
+pr: 1407
 verify: ! grep -rqF 'v0.4.26 and v0.6.0 are both in that state' .claude/skills/docket/ && python3 tools/doc_check.py check
 ---
 
@@ -43,3 +45,12 @@ shipped 2026-09-17 having taken no gate by its own exception - if that closed
 case is worth keeping. A reader matching their situation against two instances,
 one of which is not an instance, is the shape that teaches the wrong rule
 quietly.
+
+## Built 2026-10-11
+
+Closed by `PL-KKRP`'s edit. The sentence had moved from the skill's front page
+to `.claude/skills/docket/modes/release.md` when the skill was split into
+modes, and the freeze mode there now states the trigger in one sentence - the
+later of the milestone's scoping and the ship of the milestone before it - so
+the worked example naming v0.4.26 and v0.6.0 is gone rather than repaired.
+`touches:` is re-pointed at the mode file.

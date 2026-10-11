@@ -133,9 +133,10 @@ instead of a checkout** (`PL-MTHC`). That item is on its way to the default
 branch, and a copy recovered from it is a second add of the same file, which
 the merge bringing the first in conflicts on: `PL-8ZGY`'s agreed corrections
 were lost to a resolution that kept the copy whole, with every check passing.
-The forge is asked through `open_pull_requests_command`, once and only where an
-item is listed, and a forge nobody could ask is said beneath the list rather
-than read as "none is open". `docket claim` answers from the same fact: asked
+The forge is asked through `open_pull_requests_command`, once for every branch
+this command names, and a forge nobody could ask is said above each list,
+where the unrefreshed-base caveat is and for its reason, rather than read as
+"none is open" (`PL-X3NY`). `docket claim` answers from the same fact: asked
 for an item the branch holds no copy of, it names the pull request to wait for
 rather than asking for a capture, and it refuses a copy added after the one an
 open pull request carries.
@@ -189,6 +190,9 @@ nothing. An item in the second is one the base *does* hold, so the same
 command discards whatever the base has recorded on it since — which is exactly
 what `PL-XLQ5` was dealt, and what `PL-THPB` was offered when a branch's
 `untriaged` copy was reported against the `done` one the base had closed.
+Where a pull request is open on the branch, it is named in place of the diff
+(`PL-X3NY`): the edit arrives when that pull request merges, and carried
+across by hand it is a second edit of the same lines.
 
 **The direction is decided from content and the ref's own history** — no date
 and no commit count, because `closed:` is a field a branch can be holding a
@@ -315,7 +319,9 @@ whatever the base has changed in it since (`PL-GHHW`). A commit whose change
 the base already holds - a port that also landed through another pull
 request - is not listed at all: `vcs.change_landed` replays it onto the base
 and finds it changes nothing, and `tools/left_behind_check.py` reads the same
-test.
+test. A branch with a pull request open again, opened on the name after the
+first merged, is named with it in place of the cherry-pick, which would land
+the same commits twice (`PL-X3NY`).
 
 **The branch ref is the only evidence, and that is worth stating because the
 obvious alternative does not work.** GitHub freezes `refs/pull/<n>/head` when
@@ -3875,21 +3881,22 @@ its test and over patching the line matcher).
 Three details keep that fact about the item. Its commits are folded per file,
 so an assertion cut in one and restored in the next is no change, and a form is
 charged only where the base holds it, so an assertion a sibling commit added on
-the same branch is never this item's to lose (`PL-2DTK`). A renamed file is
-followed as `git show` follows it, and a merge commit is read against every
-parent, as git reads one. And a file the running interpreter cannot parse -
-`bin/docket` runs on the bare `python3`, which can be older than the project's
-own - is read through the tokenizer instead, every version of it alike, so a
-docstring is one string and a bracketed `assert` one statement, and named on the
-page as read that way (project owner, 2026-10-04, ratified, over keeping the
-line predicate for it, `PL-TC2D`). Every syntax the project has adopted past
-3.11 adds grammar rather than tokens: on 2026-10-05 the tokenizers of 3.11,
-3.12, 3.13 and 3.14 split all 225 tracked Python files into the same 67,740
-logical lines.
-Only a file the tokenizer refuses as well is read line by line with the
-predicate the parser replaced, and named with both refusals. Not decided, as
-before: whether a new test asserts the right value, an assertion moved to
-another file, which stays two facts, and anything outside `.py`.
+the same branch is never this item's to lose (`PL-2DTK`). Nor is one the
+branch's tip still holds in the same file, which a later commit naming another
+item put back, since that is the response the check asks for (`PL-087W`). A
+renamed file is followed as `git show` follows it, and a merge commit is read
+against every parent, as git reads one. And a file the running interpreter
+cannot parse - `bin/docket` runs on the bare `python3`, which can be older than
+the project's own - is read through the tokenizer instead, every version of it
+alike, so a docstring is one string and a bracketed `assert` one statement, and
+named on the page as read that way (project owner, 2026-10-04, ratified, over
+keeping the line predicate for it, `PL-TC2D`). Every syntax the project has
+adopted past 3.11 adds grammar rather than tokens: on 2026-10-05 the tokenizers
+of 3.11, 3.12, 3.13 and 3.14 split all 225 tracked Python files into the same
+67,740 logical lines. Only a file the tokenizer refuses as well is read line by
+line with the predicate the parser replaced, and named with both refusals. Not
+decided, as before: whether a new test asserts the right value, an assertion
+moved to another file, which stays two facts, and anything outside `.py`.
 
 Two of the four take a **declared** exemption, which is what lets them stay
 absolute rather than a softening of them. Both were checks a correct close-out

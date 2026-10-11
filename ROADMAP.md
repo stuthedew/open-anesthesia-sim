@@ -417,7 +417,7 @@ adds no capability and exists to clear the ground they are built on:
 | — | **v0.4.26 — the interface moves to Qt** | **Shipped 2026-09-17**, all 28 Required-scope ids closed (`PL-06YW`). **Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day, and it has its own section below. The port `PL-55DH` spiked and `PL-X9T3` measured: the dashboard, the chart and the theme move to PySide6 + pyqtgraph, and nothing a learner can do is lost. **It absorbed planned-milestone item 33, the interface pass, and that absorption was reversed on 2026-09-16** (project owner, on `PL-L9RD`). The argument was that a restyle of a dashboard about to be rewritten is the same work twice, since porting redecides palette, type scale, spacing and layout regardless. The port that landed did not redecide them: its whole effect on `app/theme.py` is 10 insertions and 29 deletions, and the only constant whose value it touched is `ELAPSED_VALUE_WIDTH`, removed as a Flet layout width with no Qt equivalent - no palette entry, type size, padding or radius has moved since 2026-09-10. The port re-expressed the *widgets* and carried the *visual language* across intact, so the premise of the absorption did not come true and item 33 returns to the interface-pass row it held, which moved after item 34 on 2026-09-16 (`PL-PHKP`). What the port keeps is the **reservation** rather than the pass: the layout containers are built once here with their splitter handles inert, which is Required scope item 2 and is unaffected. **Moved ahead of v0.5.0 on 2026-09-14** (project owner, on `PL-RKWB`), from the row it held after MVP. The question put was whether v0.5.0's work would be redone after the port, and **the count says mostly not**: of v0.5.0's eight open Required-scope ids, one is wholly inside the rewritten surface (`PL-8PSW`, the two-branch overlay), two have a slice there, and five never touch it - because `tools/import_boundary_check.py` confines Flet to three modules and the milestone's landed work (`PL-T691`, `PL-J2TD`, `PL-TFX5`, `PL-B9PY`) all sits on the surviving side. **Three other grounds carried it, and they are the reasons of record.** `PL-8PSW` is the most presentation-safety-loaded item in the milestone and on Flet it is built where no session can look at it (`PL-2QMK`), while the spike already screenshots offscreen in that same container and `PL-YCWZ` adds headless rendering tests over the real interface. `PL-GS3R` and `PL-YVHK` are both `P1` and `safety`-classed and both sat blocked behind this port for the whole of a milestone. And this port's definition of done is parity against a **closed** enumeration, which is cheapest to check before compare mode - the largest new visual surface in the project - joins the list. **The operative form of the decision is narrower than the move**: nothing new is built in `app/simulation_view.py` or the Flet chart-series module before the port, and v0.5.0's port-neutral spine (`PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9`, `PL-49R8`) is untouched by it. **A patch number for a 5 133-line rewrite** because § "Versioning decision" chooses the number for the capability boundary crossed and this crosses none; v0.2.8 is the precedent for machinery at this scale taking one. **It no longer needs a section for the mechanical reason it had one** - every item that waited on it now names the port item doing the work rather than a version, so `blocked-by` resolves with no placed version - and it keeps one because a rewrite this size is not a patch-track row. **Gate 2's freeze is unchanged**: still when v0.5.0 ships, because that gate holds v0.5.0's findings and this port takes no gate of its own. | 2 L, 2 M, 3 S |
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **Shipped 2026-09-21**, all 20 Required-scope ids closed (`PL-4B1G`), and its own section below records what each one delivered. **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 185 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. **Five more shipped early the same way**, in v0.4.25 (2026-09-14, `PL-G7RD`): `PL-TFX5`, `PL-J2TD`, `PL-ZMRT`, `PL-B9PY` and `PL-5328`, ahead of the port; the scope list is unchanged and they are closed against it. **`PL-8PSW` makes a sixth**, in v0.4.26 (2026-09-17, `PL-06YW`): the two-branch overlay, asked for by id and built on the port's own chart rather than twice, on the same disposition - its Required-scope entry below records what shipped and is unchanged. **`PL-MN4J` makes a seventh**, in v0.4.28 (2026-09-19, `PL-T2LH`): the chart hover naming which of two drawn runs it reads, on the same disposition - its Required-scope entry below records what shipped and is unchanged too. | — |
 | — | **MVP complete** | **Reached 2026-09-21, with v0.5.0.** A learner can run, branch, and compare a case. | — |
-| 6 | **Gate 2** | **Frozen 2026-09-21, the day v0.5.0 shipped, not when the milestone below was scoped** (project owner, 2026-09-16, ratified - chosen over freezing it on the scoping day as beat 1 says, and over deferring the whole scoping round until v0.5.0 ships). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" records the exception and the item that re-examines the trigger; v0.6.0's own section says where the frozen list goes when the moment comes. Its work ships in `v0.5.x` patches as it clears, and it takes no release of its own (§ "The cadence", `PL-LPH9`). | — |
+| 6 | **Gate 2** | **Frozen 2026-09-21, the day v0.5.0 shipped, not when the milestone below was scoped** (project owner, 2026-09-16, ratified - chosen over freezing it on the scoping day as beat 1 says, and over deferring the whole scoping round until v0.5.0 ships). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" now states that as the trigger, the later of a milestone's scoping and its predecessor's ship (`PL-KKRP`); v0.6.0's own section says where the frozen list goes when the moment comes. Its work ships in `v0.5.x` patches as it clears, and it takes no release of its own (§ "The cadence", `PL-LPH9`). | — |
 | 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out, item 34's second half, is on no row: it is wanted eventually and not soon (project owner, 2026-09-26), and came off the timeline that day, having been the next release, "the second screen", since 2026-09-16 (`PL-V1Y7`) — see that section's "Explicitly out of scope" for why the split costs nothing structural, and why v0.6.0 keeps what break-out needs. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away): v0.5.0's Required scope is 13 of 20 `done` and the compare surface is among the closed, so the tail a re-order would protect is 4 M and 3 S against this row's own 4 L, 16 M, 3 S. Planned-milestone item 34's entry carries the count, and the standing rule that round produced - **no new display surface is built before this release**, until item 34's View contract and view registry ship. | 4 L, 16 M, 3 S |
 | — | **v0.6.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. **Renumbered `v0.6.x` on 2026-09-26** by the same rule, when break-out came off the timeline and this row came to follow v0.6.0 (`PL-V1Y7`); the entry for item 33 records why the argument that placed it still holds. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
 | 8 | **Gate 3** | Frozen when v0.6.0 ships; its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. | — |
@@ -452,9 +452,8 @@ because the design was already settled — `PL-3J2P` fixed the representation,
 `PL-C842` the container and `PL-FTP5` the provenance, and a queue audit
 (`PL-BNYF`) had filed fourteen prerequisites against a build item that did not
 exist. Scoping was what those fourteen were waiting on. The consequence is row
-6's, and § "The cadence" carries it: beat 1 no longer immediately precedes beat
-4, so the freeze that beat 1 normally performs is dated to v0.5.0's ship
-instead.
+6's: its gate froze on v0.5.0's ship, the later of the two days § "The cadence"
+freezes a gate on.
 
 Row 5's internal ordering — forking and comparison ahead of save/load and
 replay — was recorded here as a proposal rather than a decision, on the grounds
@@ -471,12 +470,11 @@ A gate that lives in a separate document, or in a session's memory, is
 renegotiated every time it is inconvenient. Put on the timeline it is a step
 with a size, and skipping it is visible as skipping a step. The cadence that
 generates rows 2, 4, 6, 8 and 10 is specified under § "The debt gate" below;
-the rule is that scoping a milestone freezes its gate, and the gate clears
-before that milestone's implementation begins. Row 6 is where that rule has an
-exception rather than an application, and § "The cadence" states it: a
-milestone scoped out of turn freezes its gate at the moment the cadence
-*intended* — when the milestone before it ships — rather than on the day it was
-scoped.
+the rule is that a milestone's gate freezes on the later of its scoping and
+the ship of the milestone before it, and clears before that milestone's
+implementation begins. Row 6 is the instance that showed the rule's shape, and
+§ "The cadence" records it: v0.6.0 was scoped out of turn, so its gate froze
+when v0.5.0 shipped rather than on the day it was scoped.
 
 ## Completed: v0.1.0 - first patient sevo model
 
@@ -5383,10 +5381,9 @@ make room, and cannot leave the screen with the surface that drew them.
 ### Debt gate: the frozen list
 
 **Frozen 2026-09-21, the day v0.5.0 shipped.** This milestone was scoped out of
-turn on 2026-09-16, so beat 1 of the cadence did not freeze its list - § "The
-debt gate" -> "The cadence" records that exception and the condition on it, and
-the condition is met here: Gate 2 holds v0.5.0's findings, and v0.5.0 is now
-implemented and released. Every open item that is debt by § "The debt gate"
+turn on 2026-09-16, so its list froze on the later of the two days § "The debt
+gate" -> "The cadence" names, v0.5.0's ship: Gate 2 holds v0.5.0's findings,
+and v0.5.0 is now implemented and released. Every open item that is debt by § "The debt gate"
 below - classed `defect`, `safety`, `science`, `refactor` or `perf`, or at
 `needs-decision` - is on this list as the store held it on the day of the cut.
 How many are *closed* is deliberately not recorded here, for the reason the
@@ -6529,9 +6526,9 @@ entry ships half-fixed while the thing that finishes it waits in the queue. So
 pair them - one branch, one review, closed together - and the issue is fully
 addressed before anything else starts.
 
-**When a milestone is scoped, the debt list is frozen at that moment** - except
-for a milestone scoped out of turn, whose gate freezes when the milestone before
-it ships, per the exception recorded under § "The cadence". A
+**When a milestone's gate freezes, the debt list is frozen at that moment** -
+on the later of the milestone's scoping and the ship of the milestone before
+it, per § "The cadence". A
 finding re-enters this gate — rather than waiting for the next one — when the
 problem it describes was already *present* at that moment, whatever id it is
 filed under or however long after the freeze it happened to be noticed. It
@@ -6643,9 +6640,11 @@ background. Every milestone runs the same four beats, and § "The plan" above
 shows them on one timeline with the milestones they gate:
 
 1. **Scope** the milestone here — goal, required scope, definition of done,
-   explicit out-of-scope list. Scoping is the act that freezes the list.
+   explicit out-of-scope list — with the heading its frozen list goes under,
+   empty of entries until the freeze.
 2. **Freeze and record** the debt list in that milestone's own section, as
-   item ids, on the day it was frozen.
+   item ids, on the day it was frozen. The list freezes on the later of two days:
+   the day the milestone is scoped, and the day the milestone before it ships.
 3. **Clear** it — every item `done`, or `dropped` with its reason, or
    **deferred to a later gate** on the terms below — before
    implementation of the milestone begins. **Sweep the frozen list for
@@ -6702,34 +6701,26 @@ shows them on one timeline with the milestones they gate:
    (per § "The gate is a snapshot" above) or is `P0`/`safety`/`science`, either
    of which re-enters this one.
 
-A milestone whose gate has not been recorded has not been scoped, whatever
-else has been written about it — **except where the milestone was scoped out
-of turn, which is the one case beat 1 was not written for.**
+A scoped milestone carries its gate heading from the day it is scoped, empty
+until the freeze; a milestone without one has not been scoped, whatever else
+has been written about it.
 
-**The exception, and why it is the rule's purpose rather than a departure from
-it** (project owner, 2026-09-16, ratified while scoping v0.6.0). Beat 1 freezes the list
-because scoping is normally the last thing that happens before beat 4: the
-milestone before has shipped, its findings are in the queue, and the gate that
-freezes is the gate that holds them. v0.6.0 was scoped with two releases still
-ahead of it, so applying beat 1 on the day would have frozen Gate 2 before
-v0.5.0 had been *implemented* — a list holding none of v0.5.0's findings, which
-is the one thing "Gate 1 onward hold one milestone's findings" defines a gate to
-hold, and v0.5.0's findings would have fallen to Gate 3. So a milestone scoped
-out of turn freezes its gate **when the milestone before it ships**, which is
-the moment beat 1 was reaching for, and beats 2, 3 and 4 then run unchanged.
-Nothing is renegotiable in it: the freeze date is fixed by the timeline rather
-than by whoever next opens the section, which is a stronger commitment than the
-day of a scoping round, and the milestone's own section names the heading the
-frozen list goes under when the moment comes.
-
-**Twice in a row now, which is a fact about the trigger rather than about the
-two milestones.** v0.4.26 took no gate by its own exception and v0.6.0 takes
-this one, so "scoping freezes the gate" has not described the last two
-milestones this project scoped. Whether the trigger should read "the gate
-freezes when the preceding milestone ships" is a real question and is
-`PL-KKRP`'s, filed 2026-09-16 rather than settled here: a rule that has been
-excepted twice wants re-examining deliberately, not amended in passing by the
-session that needed the second exception.
+**Why the later of the two days** (project owner, 2026-10-03, ratified, over
+keeping scoping as the trigger with exceptions recorded against it,
+`PL-KKRP`). A gate holds the preceding milestone's findings, so a list frozen
+before that milestone ships holds none of them and sends them to the gate
+after; and a list frozen before its own milestone is scoped has no section to
+be recorded in. Nothing is renegotiable in it: the freeze date is fixed by the
+timeline rather than by whoever next opens the section. Every gate frozen
+under this cadence froze on the later day. Gate 1 froze on 2026-09-06, the
+day v0.5.0 was scoped, v0.4.0 having shipped the day before. Gate 2 froze on
+2026-09-21, the day v0.5.0 shipped: v0.6.0 had been scoped two releases early,
+on 2026-09-16, and that freeze was recorded at the time as an exception to
+scoping as the trigger (project owner, 2026-09-16, ratified while scoping
+v0.6.0). It is the instance that showed the rule's shape, and the timeline's
+rows for Gates 3 and 4 were already written on the ship day. v0.4.26 was
+counted as a second exception, but it was a patch on the `v0.4.x` track, and a
+patch freezes no gate, so it says nothing about the trigger.
 
 Which beat is due is computed rather than recalled: `bin/docket wave` reads
 the version, the timeline above, the milestone sections and the frozen list

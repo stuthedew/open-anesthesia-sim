@@ -3,10 +3,12 @@ id: PL-WQT0
 title: docs/ARCHITECTURE.md:979 says 'those five commands' where the list nine lines above names four and quality.yml runs four, and doc_check passes over the contradiction
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: docs
 touches: docs/apparatus.md
 added: 2026-09-19
+closed: 2026-10-11
+reason: dead on PL-YVV4's count (2026-10-11): the passage moved to docs/apparatus.md (#1400) and says 'those six commands' over a six-item list since 5bb363a2 (#882); what is left of the list's staleness is PL-5N7T's
 payoff: stops the architecture doc telling a session CI runs five floor commands where it runs four
 verify: grep -qF 'four commands' docs/apparatus.md
 ---

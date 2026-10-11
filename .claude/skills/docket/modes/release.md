@@ -8,18 +8,12 @@ page and decides which file a session reads.
 
 ## Mode: freeze a milestone's debt gate
 
-Triggered by scoping a milestone — scoping is the act that freezes the list,
-**except for a milestone scoped out of turn, whose gate freezes when the
-milestone before it ships.** That exception is `ROADMAP.md` § "The debt gate" →
-"The cadence"'s rather than this file's, and the timeline row for the gate names
-the release the freeze waits for. It exists because a gate holds the
-*preceding* milestone's findings: freezing it while that milestone is still
-unimplemented produces a gate holding none of what it is for, and sends those
-findings to the next gate instead. v0.4.26 and v0.6.0 are both in that state.
-The rest of the cadence is unchanged — the list still clears before
-implementation begins, and the milestone's own section still carries the heading
-the frozen list goes under, empty of entries until the day. Whether the trigger
-itself should be reworded is `PL-KKRP`'s; do not reword it here.
+A milestone's gate freezes on the later of two days: the day the milestone is
+scoped, and the day the milestone before it ships. `ROADMAP.md`
+§ "The debt gate" → "The cadence" states the rule and why, and the timeline row
+for each gate names the release its freeze waits on. The milestone's own
+section carries the heading the frozen list goes under from the day it is
+scoped, empty of entries until the freeze.
 
 ```bash
 bin/docket gate --feature teachable-case
