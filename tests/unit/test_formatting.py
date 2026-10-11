@@ -11,10 +11,11 @@ string on the panel - stays in `tests/unit/test_simulation_view.py`, which
 is where a displayed value can be read off the control that carries it.
 """
 
+import inspect
 import math
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, get_type_hints
 
 import pytest
 
@@ -607,12 +608,12 @@ def test_a_concentration_fraction_reaching_the_mac_awake_band_is_refused_by_mypy
     correct = mac_awake_band_percent(
         fraction_of_mac=MacMultiple(0.34),
         standard_deviation_fraction_of_mac=MacMultiple(0.05),
-        mac_percent=2.0,
+        mac_percent=Percent(2.0),
     )
     swapped = mac_awake_band_percent(
         fraction_of_mac=Fraction(0.08),  # type: ignore[arg-type]
         standard_deviation_fraction_of_mac=MacMultiple(0.05),
-        mac_percent=2.0,
+        mac_percent=Percent(2.0),
     )
 
     assert correct == pytest.approx((0.58, 0.78))
@@ -637,6 +638,40 @@ def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> N
     assert format_percent(multiple) == format_percent(  # type: ignore[arg-type]
         Fraction(0.34)
     )
+
+
+def test_every_mac_divisor_here_is_typed_as_a_percent() -> None:
+    """Every `mac_percent` this module takes is a `Percent`, never a bare `float`.
+
+    Sevoflurane's 1 MAC is 2.0% of an atmosphere, and 0.02 as a fraction.
+    Handed the fraction, every function named below runs without complaint,
+    since the divisor is still positive: the chart's ceiling lands at 0.06%
+    where it belongs at 6%, and 1 MAC reads as 100.00 ×MAC. A `Fraction` is a
+    `float`, so only a parameter typed `Percent` refuses one, and a parameter
+    typed `float` breaks no caller, so `mypy` never asks for it to change: six
+    of these eight were `float` until `PL-W3Q5`. Read from the signatures
+    rather than from a list, so a function added with a bare `float` divisor
+    fails here too.
+    """
+
+    divisors = {
+        name: get_type_hints(function)["mac_percent"]
+        for name, function in inspect.getmembers(formatting_module, inspect.isfunction)
+        if function.__module__ == formatting_module.__name__
+        and "mac_percent" in inspect.signature(function).parameters
+    }
+
+    assert set(divisors) >= {
+        "chart_axis_top_percent",
+        "chart_grid_interval_percent",
+        "format_mac_awake_reference",
+        "format_mac_multiple",
+        "format_mac_reference",
+        "mac_awake_band_percent",
+        "mac_axis_ticks",
+        "mac_multiple",
+    }
+    assert {name: hint for name, hint in divisors.items() if hint is not Percent} == {}
 
 
 def test_format_mac_awake_reference_names_both_free_parameters() -> None:

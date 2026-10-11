@@ -3,11 +3,13 @@ id: PL-W3Q5
 title: app/formatting.py types mac_percent as Percent in two signatures and as a bare float in five others, so one parameter carries two types in one module
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: presentation-safety
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_formatting.py
 added: 2026-09-14
+closed: 2026-10-11
+pr: 1393
 verify: ! grep -q 'mac_percent: float' src/anesthesia_sim/app/formatting.py && uv run pytest tests/unit/test_formatting.py
 ---
 
