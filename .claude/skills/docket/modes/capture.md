@@ -167,10 +167,23 @@ but a commit carried across stops reading that way once its change is on `main`
 sweep copies its tip to `refs/archive/<branch>/<tip>` and deletes it. So run the
 three and delete nothing on the remote. The reply names a branch to the project owner
 only where `python3 tools/branch_sweep.py` keeps one that should go anyway,
-with `git push origin --delete <branch>` for them to run, since the same push
-from a session is refused (`docs/worker.md` § "Ref operations a session cannot
-perform"). `.claude/hooks/no-prune-guard.sh` prints this rule when it refuses a
-prune; keep the two in step. None of it weakens the `--prune` prohibition
+with the sweep's own push for them to run, since the same push from a session
+is refused (`docs/worker.md` § "Ref operations a session cannot perform"). Fill
+in the branch and the full forty-character tip the session judged, which
+`git ls-remote origin refs/heads/<branch>` prints:
+
+```
+git fetch origin <branch> && git push --atomic --force-with-lease=refs/heads/<branch>:<tip> origin <tip>:refs/archive/<branch>/<tip> :refs/heads/<branch>
+```
+
+It copies the tip to `refs/archive/<branch>/<tip>` and deletes the branch as one
+transaction, refused whole where the branch has moved since it was judged, so a
+branch deleted by hand restores as a swept one does (`docs/maintainer.md` §
+"Sweep branches now, or restore one the sweep deleted"). A bare
+`git push origin --delete` copies nothing, and a branch the sweep keeps is the
+one some reading still holds (`PL-Y3GK`). The fetch puts the tip in the owner's
+clone for the push to name. `.claude/hooks/no-prune-guard.sh` prints this rule
+when it refuses a prune; keep the two in step. None of it weakens the `--prune` prohibition
 below: prune and `branch -dr` clear local refs and nothing else, so neither one
 finishes the job.
 
