@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: infra
 feature: convergence-visibility
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-09-17
 verify: grep -q 'def test_converge_reports_filed_per_closed_and_surface_saturation' subprojects/docket/tests/test_cli.py
 ---
@@ -141,3 +141,76 @@ that reason.
 recurrence on a surface of 117 apparatus files is arithmetic, not regression. The
 30-day bound on signal 1 is what makes it a statement about a fix rather than
 about surface size.
+
+## Built 2026-10-11, and the one question it leaves
+
+**Built, the same under any answer below:** `bin/docket inflow`
+(`subprojects/docket/src/docket/inflow.py`, rendered by `render.format_inflow`,
+tests in `subprojects/docket/tests/test_inflow.py`). One row per 7-day period
+(or `--by day`), counting apparatus filings - an item whose `touches` name a
+path under `workflow_paths`, whatever its lane (`PL-4NZ7`), with `items_dir`
+and `notes_file` left out of that test and of the path count. Columns: `filed`
+and `/day` (divided by the days the period has, so a short final period
+compares); `+head`, the members a head's `root-cause-of:` names that were filed
+while that head was open, which is the campaign break-out `PL-04KR` asks for,
+read from the record rather than from a hand-cut window; the P0-P3 mix of
+`filed`, untriaged shown as `-`; and new apparatus paths with `/item`. First
+reading, 2026-10-11:
+
+| week from | filed | /day | +head | P1 | P2 | P3 | new paths | /item |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 08-24 | 73 | 10.4 | 0 | 2 | 55 | 11 | 46 | 0.63 |
+| 08-31 | 268 | 38.3 | 2 | 7 | 185 | 70 | 53 | 0.20 |
+| 09-07 | 110 | 15.7 | 6 | 4 | 87 | 19 | 27 | 0.23 |
+| 09-14 | 208 | 29.7 | 27 | 5 | 139 | 60 | 27 | 0.11 |
+| 09-21 | 225 | 32.1 | 79 | 5 | 115 | 93 | 38 | 0.12 |
+| 09-28 | 70 | 10.0 | 63 | 8 | 26 | 34 | 13 | 0.10 |
+| 10-05 | 46 | 6.6 | 60 | 1 | 3 | 42 | 2 | 0.02 |
+
+The break-out is load-bearing: `PL-R417`'s sweep filed 57 of the 60 `+head`
+filings in the last week, so folding them in would read 106 filings where 46
+arrived unexplained.
+
+**Decided in the session, each with one clearly correct option:**
+
+- **Path re-entry is refused, the 30-day bound included.** The brief's claim
+  that the bound "is what makes it a statement about a fix rather than about
+  surface size" was measured and does not hold: 93-100% of every week's
+  apparatus filings from 2026-08-31 name a path some item closed within the
+  previous 30 days - 75%, 97%, 95%, 97%, 97%, 100%, 100% by week at the
+  declared paths, and 75%, 97%, 93%, 97%, 97%, 100%, 100% at file granularity
+  alone. A column that reads the same every week changes no decision.
+- **The largest unexplained cluster is not computed.** Sharing a mechanism is
+  judgment - `PL-G424`'s 27 came from a manual clustering pass - and
+  `CLAUDE.md` refuses a tool that guesses at the judgment half.
+- **No owner-blocked count and no filed-per-closed ratio.** The owner ruled
+  out backlog counts and ratios on 2026-09-19 (above); closures are already
+  `bin/docket trend`'s.
+
+**The question.** The re-entry signal - the one the owner's "unknown
+generator" check rests on - has a record already, but in prose: since
+`PL-KVDK` every apparatus item's triage writes a `**Generator check.**` line
+saying whether it re-enters a closed fix or is a post-close instance of a head,
+and about 113 item files carry re-entry wording there today. `root-cause-of:`
+does not carry it: members filed after their head closed number 2 in the whole
+store, against `PL-04KR`'s hand count of 14 of 37 in two days. Reading that
+prose with a regex is the "sharper heuristic" `.claude/rules/apparatus-standard.md`
+refuses.
+
+**Recommendation:** record it as a field the triage generator check writes -
+`reenters: PL-XXXX`, naming the closed item or head whose fix should have
+covered this one - and have `inflow` count it per period beside `filed`, and
+name any closed item that three or more filings re-enter as a generator whose
+fix did not hold (triage.md's own rule for three post-close instances). Backfill
+it once from the existing `**Generator check.**` lines, by a subagent reading
+them, so the trend has history from 2026-09-22 rather than starting empty. It
+costs a field in `model.py` and `checks.py`, a sentence in
+`.claude/skills/docket/modes/triage.md`, and the one-off backfill. The
+alternative is to ship `inflow` without a re-entry column, which leaves the
+owner's question answered by hand.
+
+**Still to build after the answer:** the re-entry column and its test; the
+release-time report, silent while `PL-04KR`'s pre-registered expectations hold
+(new paths per item at or below 0.13, no P1 apparatus filings, re-entry not
+rising); the Done-when and `verify:` rewritten in the decided form, since the
+current `verify:` names a test this build did not write.

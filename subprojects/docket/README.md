@@ -1576,9 +1576,9 @@ carries one in full; `placement_clause` is the shared renderer, and it names a
 gate only while one is open, since with the gate clear "not on the gate" would
 be true of every item in the store.
 
-### The one command that looks backwards: `docket trend`
+### Looking backwards: `docket trend` and `docket inflow`
 
-Every other command describes the project as it stands. `docket trend` asks
+The other commands describe the project as it stands. `docket trend` asks
 how the balance between the two halves has *moved*, which is a question the
 store answers and nothing was reading:
 
@@ -1631,6 +1631,25 @@ Like `docket wave`, it computes and decides nothing. Whether the balance it
 prints is the right one is a judgment about the project, and a tool that
 answered it would re-open the same question every run without being able to
 see what the run was for.
+
+`docket trend` reads what was *closed*; `docket inflow` reads what was *filed*,
+which is the half that says whether the apparatus is still being handed work:
+
+    docket inflow            # 7-day periods
+    docket inflow --by day
+
+It counts apparatus filings - an item whose `touches` name a path under
+`workflow_paths`, whatever its lane, with `items_dir` and `notes_file` left out
+of that test for the reason churn leaves the store out - per period and per
+day, so a short final period compares with the full ones. Members a head's
+`root-cause-of:` names that were filed while that head was open get their own
+`+head` column: a deliberate sweep files dozens at once, and folded in it reads
+as the regression it was hunting. Beside them, the P0-P3 mix of the filings
+rather than of the backlog, and how many apparatus paths no earlier filing
+named, which falls towards zero as the surface is covered. Path recurrence is
+not reported: nearly every filing names a path something closed within the
+month before it, so the column would read the same every week (`PL-WXKD`).
+Like `trend`, it decides nothing and prints no score.
 
 ### The digest and the ranking cannot disagree
 

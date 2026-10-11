@@ -53,6 +53,7 @@ from .concurrency import (
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
 from .duplicates import anchor, near_duplicates
+from .inflow import analyze as analyze_inflow
 from .lines import split_lines
 from .model import (
     CLOSED_STATUSES,
@@ -4652,10 +4653,10 @@ def cmd_picks(args: argparse.Namespace) -> int:
 def cmd_trend(args: argparse.Namespace) -> int:
     """How the balance between the two halves of the project has moved.
 
-    The one command here that looks backwards. Everything else describes the
-    project as it stands, so "is the apparatus taking more of the work than it
-    used to" had no answer short of a session reading the store and the history
-    and classifying both by hand.
+    It looks backwards at closures, as `inflow` does at filings; everything else
+    describes the project as it stands, so "is the apparatus taking more of the
+    work than it used to" had no answer short of a session reading the store and
+    the history and classifying both by hand.
 
     Refuses without `workflow_paths`, exactly as the lane arguments to `next`
     do and for the same reason: with no boundary declared there are no halves,
@@ -4688,6 +4689,27 @@ def cmd_trend(args: argparse.Namespace) -> int:
         print(f"Lines written: partial - {history.declined}.")
         print()
     print(render.format_trend(report))
+    return 0
+
+
+def cmd_inflow(args: argparse.Namespace) -> int:
+    """What the apparatus is still being handed, period by period.
+
+    `trend` reports what was closed; this reports what was filed, so "is the
+    accumulation slowing?" has an answer other than a session scripting it over
+    the whole store (`PL-WXKD`). It reads only the store, so it asks git
+    nothing. Refuses without `workflow_paths`, as `trend` does and for the same
+    reason: with no boundary declared, no filing is an apparatus filing.
+    """
+    _, items, config = _load(args)
+    if not config.workflow_paths:
+        print(
+            f"Cannot answer: no `workflow_paths` are declared in {CONFIG_NAME}, so "
+            "no filing can be told apart as apparatus work."
+        )
+        return 1
+    report = analyze_inflow(items, config, by=args.by, today=args.today or date.today())
+    print(render.format_inflow(report))
     return 0
 
 
@@ -5724,6 +5746,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="period length (default: %(default)s)",
     )
     trend_cmd.set_defaults(func=cmd_trend)
+    inflow_cmd = add("inflow", "what the apparatus has been handed, filing by period")
+    inflow_cmd.add_argument(
+        "--by",
+        choices=(BY_WEEK, BY_DAY),
+        default=BY_WEEK,
+        help="period length (default: %(default)s)",
+    )
+    inflow_cmd.set_defaults(func=cmd_inflow)
     return parser
 
 
