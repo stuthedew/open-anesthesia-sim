@@ -5494,7 +5494,14 @@ added. A completed-step count is a `StepCount`, an `int` subclass checked only
 for what a count can be checked for alone - whole and nonnegative, with `bool`
 refused - because how many steps fit depends on the step: `SimulationState`
 holds the pair to `maximum_step_count` through `require_supported_step_count`, a
-relation between two fields and so the record's to check.
+relation between two fields and so the record's to check. It checks the pair at
+every write to either field, in `__setattr__`, so a count or a step assigned
+straight onto a built state - which `mypy` refuses in `src/`, and which nothing
+refused elsewhere until `PL-8W1W` - meets the constructor's own refusals, in its
+words, and leaves the field holding what it held: a bare `int` count or a bare
+`float` step with a `TypeError`, and a count past zero with no step or a pair
+past the run length with a `SimulationConfigurationError`, as § "Supported
+input ranges" says of a flow written onto its compartment (`PL-LBQY`).
 `SimulationState.elapsed_s` builds its product as a `CaseInstant`, which never
 refuses it, since the count it multiplies is decided on that same product
 (`PL-8H2R`). An instant a run is only *asked* about - `RunDefinition.state_at`,

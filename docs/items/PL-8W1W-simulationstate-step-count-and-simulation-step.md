@@ -3,11 +3,13 @@ id: PL-8W1W
 title: SimulationState.step_count and simulation_step_s can be assigned after construction without any check - state.step_count = 5 stores a bare int, and = -3 after a step makes elapsed_s raise - the shape PL-LBQY records for the compartments' flows, on the run's own state; nothing in src writes either outside advance and reset; decide it with PL-LBQY: a __setattr__ guard, read-only fields, or the window recorded as accepted (found reviewing #1354)
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/simulation.py, tests/unit/test_simulation.py
+touches: src/anesthesia_sim/core/simulation.py, tests/unit/test_simulation.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation_step.py, docs/MODEL.md
 added: 2026-10-04
+closed: 2026-10-11
+pr: 1406
 payoff: the run clock can no longer be moved by a write nothing checked, so the time shown beside every value, and every mark and control change stamped with it, comes from a count and a step the simulator checked
 verify: grep -q 'def test_a_count_or_a_step_written_onto_a_built_state_is_refused_at_the_write' tests/unit/test_simulation.py
 ---

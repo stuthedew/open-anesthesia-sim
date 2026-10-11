@@ -28,13 +28,13 @@ guarantee by mistake.
 
 **What the type cannot reach, and the check that does.** `mypy` reads `src/`
 but not `tests/`, and it passes a value typed `Any`, so a bare `float` can
-still arrive at runtime. Each of the run's entry points - `SimulationState`
-when it is built and when it advances, `AgentUptakeSystem.advance()` and
-`PlaybackRate.steps_per_tick()` - calls `require_simulation_step` first, which
-refuses anything that is not a `SimulationStep` as the programming error it
-is, and names a value built as another checked quantity as the swapped
-argument it is rather than prescribing a rebuild from it (`PL-848D`). Every
-function behind them takes the step as checked.
+still arrive at runtime. Each of the run's entry points - `SimulationState`,
+at every write to its step field (`PL-8W1W`), `AgentUptakeSystem.advance()`
+and `PlaybackRate.steps_per_tick()` - calls `require_simulation_step` first,
+which refuses anything that is not a `SimulationStep` as the programming
+error it is, and names a value built as another checked quantity as the
+swapped argument it is rather than prescribing a rebuild from it (`PL-848D`).
+Every function behind them takes the step as checked.
 """
 
 from __future__ import annotations

@@ -1,3 +1,7 @@
+import copy
+import pickle
+from dataclasses import replace
+
 import pytest
 
 from anesthesia_sim.core.concentration import Percent
@@ -81,8 +85,9 @@ def test_an_invalid_initial_step_is_refused_before_a_run_length_is_read_from_it(
     The run-length guard divides the span by the step, so taken first it would
     answer a zero step with `ZeroDivisionError`, `nan` with `ValueError`, a
     negative step with a run-length refusal and an infinite one with no refusal
-    at all - none of them the refusal naming the step that `__post_init__`
-    promises (`PL-BMY5`).
+    at all - none of them the refusal naming the step that the state's write
+    guard promises (`PL-BMY5`; `PL-8W1W` moved it from `__post_init__` to
+    `__setattr__`).
     """
 
     with pytest.raises(SimulationConfigurationError, match="simulation_step_s"):
@@ -437,3 +442,107 @@ def test_the_state_measured_past_the_limit_is_refused() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="supported run length"):
         SimulationState(step_count=StepCount(step_count), simulation_step_s=SimulationStep(0.1))
+
+
+# --- Written onto a built state (PL-8W1W) --------------------------------------
+#
+# Nothing in `src/` writes either field outside `advance` and `reset`, and
+# `mypy --strict` refuses the assignment there; what reaches it is a caller
+# `mypy` does not read. The write is held to the constructor's own refusals.
+
+
+def test_a_count_or_a_step_written_onto_a_built_state_is_refused_at_the_write() -> None:
+    """The run's clock moves only to a count and a step the simulator checked (`PL-8W1W`).
+
+    Until `PL-8W1W` only the constructor checked the pair: a fresh state took
+    a bare count of 5 and read 0 s, one step on it took a bare float step of
+    0.5 s and read 3.0 s for a system advanced 0.1 s, and a count of -3 was
+    refused only when `elapsed_s` was next read, as a run-length error naming
+    an instant nobody handed in. The state's `__setattr__` now runs the checks
+    the constructor runs, at the write and in the constructor's words, and
+    leaves the field holding what it held, so each refusal below is the one
+    the constructor gives the same pair. A checked count inside the run length
+    is written whoever writes it: the pair is all the write checks beyond the
+    types, so one cadence per run stays `advance`'s own refusal.
+    `dataclasses.replace`, a copy and a pickle write through the same path,
+    the last two because the state is a `slots=True` dataclass whose state is
+    restored one field at a time.
+    """
+
+    state = SimulationState()
+    fresh_count = state.step_count
+
+    with pytest.raises(TypeError, match="step_count of 5 was not built as StepCount"):
+        state.step_count = 5  # type: ignore[assignment]
+
+    assert state.step_count is fresh_count
+    assert state.elapsed_s == 0.0
+
+    with pytest.raises(SimulationConfigurationError, match="no simulation_step_s"):
+        state.step_count = StepCount(5)
+
+    assert state.step_count is fresh_count
+    assert state.elapsed_s == 0.0
+
+    state.advance(SimulationStep(0.1))
+    held_count = state.step_count
+    held_step = state.simulation_step_s
+
+    with pytest.raises(TypeError, match="simulation_step_s of 0.5 was not built as SimulationStep"):
+        state.simulation_step_s = 0.5  # type: ignore[assignment]
+
+    assert state.simulation_step_s is held_step
+    assert state.elapsed_s == 0.1
+
+    with pytest.raises(TypeError, match="step_count of -3 was not built as StepCount"):
+        state.step_count = -3  # type: ignore[assignment]
+
+    assert state.step_count is held_count
+    assert state.elapsed_s == 0.1
+
+    with pytest.raises(SimulationConfigurationError, match="no simulation_step_s"):
+        state.simulation_step_s = None
+
+    assert state.simulation_step_s is held_step
+
+    with pytest.raises(SimulationConfigurationError, match="supported run length"):
+        state.step_count = StepCount(maximum_step_count(SimulationStep(0.1)) + 1)
+
+    assert state.step_count is held_count
+    assert state.elapsed_s == 0.1
+
+    standing_at_the_limit = SimulationState(
+        step_count=StepCount(maximum_step_count(SimulationStep(0.025))),
+        simulation_step_s=SimulationStep(0.025),
+    )
+
+    with pytest.raises(SimulationConfigurationError, match="supported run length"):
+        standing_at_the_limit.simulation_step_s = SimulationStep(0.1)
+
+    assert standing_at_the_limit.simulation_step_s == 0.025
+    assert standing_at_the_limit.elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+
+    state.step_count = StepCount(2)
+
+    assert state.elapsed_s == 0.2
+
+    state.advance(SimulationStep(0.1))
+
+    assert state.step_count == 3
+
+    state.reset()
+
+    assert state.step_count == 0
+    assert state.simulation_step_s is None
+
+    with pytest.raises(TypeError, match="step_count of 5 was not built as StepCount"):
+        replace(state, step_count=5)  # type: ignore[arg-type]
+
+    smuggled = copy.copy(state)
+    object.__setattr__(smuggled, "step_count", 5)
+
+    with pytest.raises(TypeError, match="step_count of 5 was not built as StepCount"):
+        copy.copy(smuggled)
+
+    with pytest.raises(TypeError, match="step_count of 5 was not built as StepCount"):
+        pickle.loads(pickle.dumps(smuggled))

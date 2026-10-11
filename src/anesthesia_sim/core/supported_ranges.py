@@ -602,9 +602,9 @@ def require_step_count(step_count: object) -> None:
 
     The runtime half of the type, for the callers `mypy` does not read, as
     `require_fresh_gas_flow` explains. It runs where a count is stored, which
-    is `SimulationState` when it is built; every count the state stores after
-    that it builds as a `StepCount` itself. A value built as another checked
-    quantity is named as that and not told to rebuild, by
+    is `SimulationState`'s count field, at every write to it (`PL-8W1W`); every
+    count the state stores it builds as a `StepCount` itself. A value built as
+    another checked quantity is named as that and not told to rebuild, by
     `require_not_another_quantity`, which the constructor asks first as well
     (`core/checked_number.py`): a step or an instant arriving where a count
     belongs is a swapped argument, which no `StepCount` built from it would
