@@ -3,12 +3,15 @@ id: PL-DB5G
 title: Decide the look of the two Area failure states, an unknown View kind and a refused size, as presentation safety rather than taste
 priority: P1
 effort: S
-status: needs-decision
+status: done
 classes: safety, ux, planning
 feature: interface-areas
 touches: src/anesthesia_sim/app/, docs/items
 added: 2026-10-11
+closed: 2026-10-11
+pr: 1395
 payoff: an Area that cannot show its View shows one unmistakable notice and never a plausible number
+verify: grep -qF 'Answered 2026-10-11' docs/items/PL-DB5G-decide-the-look-of-the-two-area-failure-states.md
 ---
 
 **Problem.** Decide the look of the two Area failure states, an unknown View
@@ -67,6 +70,7 @@ showing a plausible number is the hazard `CLAUDE.md`'s clinical-output standard
 names, and the tests `PL-R1WQ` and `PL-K285` owe assert that the Area's visible
 strings are the notice's and nothing else.
 
+[superseded 2026-10-11: answered below, every recommendation ratified]
 **Decision needed.** Q1-Q3 above: one text-only Area notice for every state in
 which an Area shows no View (Q1), and the wording of its unknown-kind (Q2) and
 too-small (Q3) instances. Q4 restates the clinical-output standard and is not a
@@ -87,3 +91,13 @@ members `ROADMAP.md` Required-scope entry 20 names, scoped on 2026-09-21
 (`PL-M3X6`) and filed by its round on 2026-10-11. `touches` reaches
 `docs/items` only because the item closes on its own record once answered; no
 apparatus fact was misread.
+
+## Answers 2026-10-11
+
+**Answered 2026-10-11: Q1-Q3 ratified** (project owner, 2026-10-11, ratified,
+over the alternatives each question names - a tinted fill, a dialog, a smaller
+muted body, and two components), given in the project thread as "Agree with
+recs" after the recommendations were put one line each with the mock-up
+(https://claude.ai/artifact/3KmFvWB3nXmjLBHKogNiNE) and the 1366 by 768 floor
+confirmed by the same word. This item closes on that record; the build items
+named in its Done-when carry the look.

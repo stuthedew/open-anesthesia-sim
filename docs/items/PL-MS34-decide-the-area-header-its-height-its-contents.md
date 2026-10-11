@@ -3,12 +3,15 @@ id: PL-MS34
 title: Decide the Area header: its height, its contents and their order, with the View name and the chooser in it
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: ux, planning
 feature: interface-areas
 touches: src/anesthesia_sim/app/, docs/items
 added: 2026-10-11
+closed: 2026-10-11
+pr: 1395
 payoff: every Area carries one row that names its View and its run and reaches every Area operation, at a height the budget can count
+verify: grep -qF 'Answered 2026-10-11' docs/items/PL-MS34-decide-the-area-header-its-height-its-contents.md
 ---
 
 **Problem.** Decide the Area header: its height, its contents and their order,
@@ -72,6 +75,7 @@ statement, and `PL-DB5G` carries what that statement looks like. This item adds
 only that the header never shrinks below its row unit: an Area too short for
 its own header is the refused size, not a shorter header.
 
+[superseded 2026-10-11: answered below, every recommendation ratified]
 **Decision needed.** Q1-Q3 above: a one-row header derived from the font (Q1);
 chooser, run name, stretch, Area menu, left to right (Q2); the Area's own
 surface with a rule beneath (Q3). Q4 follows from `PL-K285` and is recorded
@@ -90,3 +94,14 @@ members `ROADMAP.md` Required-scope entry 20 names, scoped on 2026-09-21
 (`PL-M3X6`) and filed by its round on 2026-10-11. `touches` reaches
 `docs/items` only because the item closes on its own record once answered; no
 apparatus fact was misread.
+
+## Answers 2026-10-11
+
+**Answered 2026-10-11: Q1-Q3 ratified** (project owner, 2026-10-11, ratified,
+over the alternatives each question names - a literal pixel height, a title
+beside the chooser, a right-click-only header menu and Blender's tinted header
+band), given in the project thread as "Agree with recs" after the
+recommendations were put one line each with the mock-up
+(https://claude.ai/artifact/3KmFvWB3nXmjLBHKogNiNE) and the 1366 by 768 floor
+confirmed by the same word. This item closes on that record; the build items
+named in its Done-when carry the look.

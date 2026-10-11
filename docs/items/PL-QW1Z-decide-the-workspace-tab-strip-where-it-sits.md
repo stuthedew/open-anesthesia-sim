@@ -3,12 +3,15 @@ id: PL-QW1Z
 title: Decide the Workspace tab strip: where it sits, active against inactive, how rename, duplicate and delete surface, and how a shipped Workspace is told from one the learner saved
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: ux, planning
 feature: interface-areas
 touches: src/anesthesia_sim/app/, docs/items
 added: 2026-10-11
+closed: 2026-10-11
+pr: 1395
 payoff: the Workspace tab strip says, by where it sits and how it looks, exactly what a tab switches and which Workspaces are the learner's own
+verify: grep -qF 'Answered 2026-10-11' docs/items/PL-QW1Z-decide-the-workspace-tab-strip-where-it-sits.md
 ---
 
 **Problem.** Decide the Workspace tab strip: where it sits, active against
@@ -99,6 +102,7 @@ because `ROADMAP.md` item 34 asks for shipped presets *alongside* the learner's
 own and `PL-WV9K` gave the two different reset semantics, so a reader must be
 able to tell which they are about to reset.
 
+[superseded 2026-10-11: answered below, every recommendation ratified]
 **Decision needed.** Q1-Q4 above, each learner-visible: the strip below the
 region rather than at the window top (Q1); one-row text tabs with an indicator
 under the active one (Q2); double-click, F2 and a context menu for rename,
@@ -120,3 +124,13 @@ members `ROADMAP.md` Required-scope entry 20 names, scoped on 2026-09-21
 (`PL-M3X6`) and filed by its round on 2026-10-11. `touches` reaches
 `docs/items` only because the item closes on its own record once answered; no
 apparatus fact was misread.
+
+## Answers 2026-10-11
+
+**Answered 2026-10-11: Q1-Q4 ratified** (project owner, 2026-10-11, ratified,
+over the alternatives each question names - Blender's Topbar position, filled
+tabs, a template menu on "+" and a glyph on every learner-saved tab), given in
+the project thread as "Agree with recs" after the recommendations were put one
+line each with the mock-up (https://claude.ai/artifact/3KmFvWB3nXmjLBHKogNiNE)
+and the 1366 by 768 floor confirmed by the same word. This item closes on that
+record; the build items named in its Done-when carry the look.

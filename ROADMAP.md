@@ -6264,9 +6264,19 @@ removed, and this file's history before that change holds their text.
     the live handles all take screen from the chart, which is the teaching
     payload; `PL-Z4K6` asked whether seven readout columns are wanted on a
     1366 px laptop on a window carrying none of this furniture yet, and the
-    project needs the number before it adds three new consumers. The budget
-    is recorded here once decided, and entry 13's shipped Workspaces are
-    composed within it.
+    project needs the number before it adds three new consumers. **The budget**
+    (project owner, 2026-10-11, ratified, over lowering the chart's minimum and
+    over keeping the in-page title row, `PL-84QX`): on a 1366 by 768 display,
+    about 700 px of client area, with one run, the shipped default Workspace
+    shows the concentration chart at no less than its current 360 px minimum
+    with the parameter View visible; the furniture above the first Area is
+    capped at two text rows (the tab strip and one Area header) plus 8 px per
+    handle; and the region gives back the in-page title row (`PL-J8K2`).
+    Compare mode is past that minimum on that screen before any furniture,
+    and is `PL-W54S`'s to settle. Entry 13's shipped Workspaces are composed
+    within it. **All eight were decided on 2026-10-11** (project owner,
+    ratified, over the alternatives each item names); the items carry the
+    decisions, and the build items they name carry the look.
 
 ### Definition of done
 

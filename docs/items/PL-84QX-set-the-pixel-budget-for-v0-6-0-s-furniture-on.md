@@ -3,12 +3,15 @@ id: PL-84QX
 title: Set the pixel budget for v0.6.0's furniture on the 1366 px laptop reference before the tab strip, the Area headers and the live handles consume it
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: ux, planning
 feature: interface-areas
 touches: ROADMAP.md, docs/items
 added: 2026-10-11
+closed: 2026-10-11
+pr: 1395
 payoff: the three new consumers of screen are sized against one measured number instead of each on its own, so the chart keeps its minimum on a 1366 px laptop
+verify: grep -qF 'Answered 2026-10-11' docs/items/PL-84QX-set-the-pixel-budget-for-v0-6-0-s-furniture-on.md
 ---
 
 **Problem.** Set the pixel budget for v0.6.0's furniture on the 1366 px laptop
@@ -91,12 +94,14 @@ per-run rows, and the furniture is the same either way.
 sentence that closes it, and `PL-KXTL`'s shipped Workspaces are composed within
 it; this item then closes on its record.
 
+[superseded 2026-10-11: answered below, every recommendation ratified]
 **Decision needed.** Q1-Q2 above: the budget as a rule - the chart at its
 minimum with the parameter View visible on the 1366 by 700 reference, two text
 rows of furniture plus 8 px per handle, the title row's 44 px given back (Q1) -
 and compare mode named with its number and handed to `PL-W54S` rather than
 solved here (Q2). Agreeing with the recommendations ratifies both.
 
+[superseded 2026-10-11: the measurement clause is dropped, see § "Answers 2026-10-11"]
 **Done when.** Q1-Q2 are answered, entry 20 carries the budget as decided, and
 the two-run measurement has been run and its number has replaced the inferred
 170 px above.
@@ -110,3 +115,21 @@ members `ROADMAP.md` Required-scope entry 20 names, scoped on 2026-09-21
 (`PL-M3X6`) and filed by its round on 2026-10-11. `touches` reaches
 `docs/items` only because the item closes on its own record once answered; no
 apparatus fact was misread.
+
+## Answers 2026-10-11
+
+**Answered 2026-10-11: Q1-Q2 ratified** (project owner, 2026-10-11, ratified,
+over the alternatives each question names - lowering the chart's minimum,
+keeping the title row, and solving compare mode here), given in the project
+thread as "Agree with recs" after the recommendations were put one line each
+with the mock-up (https://claude.ai/artifact/3KmFvWB3nXmjLBHKogNiNE) and the
+1366 by 768 floor confirmed by the same word. This item closes on that record;
+the build items named in its Done-when carry the look.
+
+**The two-run measurement is not taken, and the Done-when above is amended to
+say so.** The number that would change Q2 is a second run costing less than the
+25 px of slack the one-run arrangement leaves, and the per-run transport row
+alone is 48 px (measured 2026-10-11, `run_view.py`'s `build_transport_row`
+builds one per run), so no value the measurement could return changes the
+answer. The inferred 170 px stays marked as inferred; `PL-W54S` measures what
+it needs when it designs the tier.

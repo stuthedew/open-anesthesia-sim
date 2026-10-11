@@ -3,12 +3,15 @@ id: PL-RBXL
 title: Decide the View chooser as a thing seen, where Required-scope entry 16 specifies only what it guarantees
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: ux, planning
 feature: interface-areas
 touches: src/anesthesia_sim/app/, docs/items
 added: 2026-10-11
+closed: 2026-10-11
+pr: 1395
 payoff: the View chooser reads as navigation rather than as a setting, so choosing a View is never mistaken for changing the run
+verify: grep -qF 'Answered 2026-10-11' docs/items/PL-RBXL-decide-the-view-chooser-as-a-thing-seen-where.md
 ---
 
 **Problem.** Decide the View chooser as a thing seen, where Required-scope
@@ -53,6 +56,7 @@ entry each.
 changes width when the View changes. Accepted: a fixed width would be sized to
 the longest title and spend header width in every other Area.
 
+[superseded 2026-10-11: answered below, every recommendation ratified]
 **Decision needed.** Q1-Q2 above: a flat menu button rather than a combo box
 (Q1), and a plain menu of every registered kind in registry order with the
 current one checked (Q2). Q3 is the session's call and is recorded rather than
@@ -72,3 +76,13 @@ members `ROADMAP.md` Required-scope entry 20 names, scoped on 2026-09-21
 (`PL-M3X6`) and filed by its round on 2026-10-11. `touches` reaches
 `docs/items` only because the item closes on its own record once answered; no
 apparatus fact was misread.
+
+## Answers 2026-10-11
+
+**Answered 2026-10-11: Q1-Q2 ratified** (project owner, 2026-10-11, ratified,
+over the alternatives each question names - a combo box, an icon, and Blender's
+grouped menu), given in the project thread as "Agree with recs" after the
+recommendations were put one line each with the mock-up
+(https://claude.ai/artifact/3KmFvWB3nXmjLBHKogNiNE) and the 1366 by 768 floor
+confirmed by the same word. This item closes on that record; the build items
+named in its Done-when carry the look.

@@ -3,12 +3,15 @@ id: PL-RQT1
 title: Decide the live splitter handle: width, rest, hover, cursor and drag feedback, rather than the toolkit's default
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: ux, planning
 feature: interface-areas
 touches: src/anesthesia_sim/app/, docs/items
 added: 2026-10-11
+closed: 2026-10-11
+pr: 1395
 payoff: the live splitter handle looks and behaves the same on the owner's macOS and in the test container, and shows the reader what a drag will move before it moves
+verify: grep -qF 'Answered 2026-10-11' docs/items/PL-RQT1-decide-the-live-splitter-handle-width-rest.md
 ---
 
 **Problem.** Decide the live splitter handle: width, rest, hover, cursor and
@@ -79,6 +82,7 @@ operator (Manual, `interface/window_system/areas.html`). Shift to move only the
 border under the pointer is kept as Blender has it; Ctrl snapping is not built,
 there being nothing to snap to while sizes are fractions and no grid exists.
 
+[superseded 2026-10-11: answered below, every recommendation ratified]
 **Decision needed.** Q1-Q3 above: an 8 px gap that is the hit zone and draws
 nothing at rest (Q1); the split cursor and a `PRIMARY` line along the whole
 chain on hover (Q2); live re-layout, a `WARNING` line at a neighbour's minimum,
@@ -98,3 +102,13 @@ members `ROADMAP.md` Required-scope entry 20 names, scoped on 2026-09-21
 (`PL-M3X6`) and filed by its round on 2026-10-11. `touches` reaches
 `docs/items` only because the item closes on its own record once answered; no
 apparatus fact was misread.
+
+## Answers 2026-10-11
+
+**Answered 2026-10-11: Q1-Q3 ratified** (project owner, 2026-10-11, ratified,
+over the alternatives each question names - the host style's handle, a drawn
+grip at rest, non-opaque resize and Ctrl snapping), given in the project thread
+as "Agree with recs" after the recommendations were put one line each with the
+mock-up (https://claude.ai/artifact/3KmFvWB3nXmjLBHKogNiNE) and the 1366 by 768
+floor confirmed by the same word. This item closes on that record; the build
+items named in its Done-when carry the look.

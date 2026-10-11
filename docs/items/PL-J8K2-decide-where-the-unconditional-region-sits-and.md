@@ -3,12 +3,15 @@ id: PL-J8K2
 title: Decide where the unconditional region sits and what it looks like, which every Workspace a learner builds has on screen
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: ux, planning
 feature: interface-areas
 touches: src/anesthesia_sim/app/, docs/items
 added: 2026-10-11
+closed: 2026-10-11
+pr: 1395
 payoff: the unconditional region sits where a tab visibly does not switch it, and costs the chart no more height than the laptop budget allows
+verify: grep -qF 'Answered 2026-10-11' docs/items/PL-J8K2-decide-where-the-unconditional-region-sits-and.md
 ---
 
 **Problem.** Decide where the unconditional region sits and what it looks like,
@@ -72,6 +75,7 @@ indicator. The region should look like the dashboard the learner already
 knows, with the Areas arriving under it, so the one thing that changed is the
 one thing they have to learn.
 
+[superseded 2026-10-11: answered below, every recommendation ratified]
 **Decision needed.** Q1-Q3 above: a band across the top above the tab strip and
 a line across the foot (Q1); the title row goes and each run's badge moves into
 its transport row (Q2); the control-input record as the band's right column
@@ -91,3 +95,13 @@ members `ROADMAP.md` Required-scope entry 20 names, scoped on 2026-09-21
 (`PL-M3X6`) and filed by its round on 2026-10-11. `touches` reaches
 `docs/items` only because the item closes on its own record once answered; no
 apparatus fact was misread.
+
+## Answers 2026-10-11
+
+**Answered 2026-10-11: Q1-Q3 ratified** (project owner, 2026-10-11, ratified,
+over the alternatives each question names - a column for the whole region,
+keeping the title row, and the record as a strip under the readouts), given in
+the project thread as "Agree with recs" after the recommendations were put one
+line each with the mock-up (https://claude.ai/artifact/3KmFvWB3nXmjLBHKogNiNE)
+and the 1366 by 768 floor confirmed by the same word. This item closes on that
+record; the build items named in its Done-when carry the look.
