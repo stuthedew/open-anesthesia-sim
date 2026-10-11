@@ -213,4 +213,6 @@ owner's question answered by hand.
 release-time report, silent while `PL-04KR`'s pre-registered expectations hold
 (new paths per item at or below 0.13, no P1 apparatus filings, re-entry not
 rising); the Done-when and `verify:` rewritten in the decided form, since the
-current `verify:` names a test this build did not write.
+current `verify:` names a test this build did not write; and `PL-04KR`'s
+sentence that the 30-day bound distinguishes its signal 1 from raw recurrence
+marked superseded by the measurement above.
