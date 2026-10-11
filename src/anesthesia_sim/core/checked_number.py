@@ -54,8 +54,13 @@ signed zero, and the formatters need no rule of their own.
 `CaseInstant` was brought here by `PL-7N8P`, after `PL-LLMN` had found the
 same holes in it, and `StepCount`, built from an `int` alone, refuses what is
 not one in the same form since `PL-LLMN`. The sign-and-finiteness guards in
-`core/validation.py`, with `SimulationStep` built on one of them, are
-`PL-3800`'s: each has the same holes, and is brought here as its item lands.
+`core/validation.py`, `require_positive_finite` and
+`require_nonnegative_finite`, with `SimulationStep` built on the first, had
+the same holes and were brought here by `PL-3800`, the last this module had
+named as outstanding. Having no supported range to refuse an `int` past the
+float range against, they refuse it by name as outside the range a `float`
+holds, where `math.isfinite` raised `OverflowError` converting it
+(`core/validation.py`).
 """
 
 from __future__ import annotations

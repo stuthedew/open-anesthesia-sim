@@ -9,8 +9,11 @@ itself, and the one thing an entry point still refuses: a step nothing built.
 
 import copy
 import pickle
+import sys
+from decimal import Decimal
 from math import inf, nan, nextafter
 
+import numpy
 import pytest
 
 from anesthesia_sim.app.playback import PlaybackRate
@@ -20,6 +23,7 @@ from anesthesia_sim.core.simulation_step import (
     MAXIMUM_SIMULATION_STEP_S,
     MINIMUM_SIMULATION_STEP_S,
     SimulationStep,
+    require_supported_simulation_step,
 )
 from anesthesia_sim.core.supported_ranges import StepCount
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -58,6 +62,50 @@ def test_a_step_outside_the_supported_range_cannot_be_built(seconds: float, refu
 
     with pytest.raises(SimulationConfigurationError, match=refusal):
         SimulationStep(seconds)
+
+
+def test_a_step_refuses_a_bool_a_decimal_and_an_overflowing_int_in_its_own_words() -> None:
+    """A step is built from an int or a float and nothing else, inside the range a float holds.
+
+    The guard the step is built on, `require_positive_finite`, reads the value
+    first since `PL-3800`. Until then `True` passed as the 1 it is to Python
+    and was refused as a step of 1 s rather than as no step at all;
+    `Decimal('0.05')` was converted and held as a 0.05 s step; a string was
+    refused in `math.isfinite`'s words; and `SimulationStep(10**400)` escaped
+    as `OverflowError` from `isfinite` converting it (`PL-21V4`), outside the
+    simulator's own exceptions, so a caller catching the
+    `SimulationConfigurationError` the docstring promised did not catch it.
+    Each is refused by the guard and the type alike, in the same words; an
+    `int` inside the float range is still refused against the step's own
+    range, as any step outside it is.
+    """
+
+    for value in (True, numpy.True_, Decimal("0.05"), Decimal("sNaN"), "0.05"):
+        for build in (require_supported_simulation_step, SimulationStep):
+            with pytest.raises(TypeError) as raised:
+                build(value)  # type: ignore[arg-type]
+
+            message = str(raised.value)
+
+            assert message.startswith(
+                f"simulation_step_s of {value!r} has type {type(value).__name__}"
+            )
+            assert "not int or float" in message
+
+    with pytest.raises(SimulationConfigurationError) as by_the_type:
+        SimulationStep(10**400)
+
+    with pytest.raises(SimulationConfigurationError) as by_the_guard:
+        require_supported_simulation_step(10**400)
+
+    assert str(by_the_type.value) == str(by_the_guard.value)
+    assert str(by_the_guard.value) == (
+        f"simulation_step_s of {10**400} is outside the range a float holds, "
+        f"-{sys.float_info.max!r} to {sys.float_info.max!r}"
+    )
+
+    with pytest.raises(SimulationConfigurationError, match="largest supported step"):
+        SimulationStep(10**300)
 
 
 def test_arithmetic_on_a_step_is_a_plain_float() -> None:
