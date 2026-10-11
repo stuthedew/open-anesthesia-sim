@@ -30,11 +30,13 @@ means the core rejected the value and changed nothing, so the run goes on
 under a "Setting refused" banner. Any other exception stops the run:
 `SimulationDomainLimitError` as the supported run length, everything else as
 a failure, per `dashboard_frame.halt_disposition` (`PL-V6M0`, `PL-Y5WR`,
-`PL-YK2V`). A halted run says so from its own snapshot, through
-`present_halt`, before any frame is attempted: the frame is the shared
-render path, and when that is what raised, a halt reported only through it
-would leave every status word reading "Paused" over a failed controller
-(`PL-25KS`).
+`PL-YK2V`). A halted run says so from its controller's status - three
+facts no compartment value is built for - through `present_halt`, before
+any frame is attempted: the frame is the shared render path, and when that
+is what raised, a halt reported only through it would leave every status
+word reading "Paused" over a failed controller (`PL-25KS`); and a halt
+stated from a fresh snapshot was not stated at all when the snapshot's own
+values were what refused (`PL-7DJK`).
 
 **Timers move the run and nothing else** (decision D7). One `QTimer` per
 run drives `step_tick`, which advances the controller by the playback
@@ -62,7 +64,7 @@ from PySide6.QtWidgets import (
 
 from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.control_timeline import AdjustmentGrouping, ControlAdjustment
-from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
+from anesthesia_sim.app.controller import RunStatus, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     ACCOUNTING_INITIAL_DETAIL_TEXT,
@@ -87,6 +89,7 @@ from anesthesia_sim.app.dashboard_frame import (
     compared_run_line,
     compared_run_notice,
     halt_disposition,
+    halt_notice,
     new_case_question,
     notice,
     off_scale_notice,
@@ -608,24 +611,24 @@ class RunView(QWidget):
         self._control_timeline_overflow_text.setText(timeline.overflow)
         self._control_timeline_overflow_text.setHidden(not timeline.overflow)
 
-        self._write_notice(snapshot)
+        self._write_notice(notice(snapshot, self._rejected_setting_notice))
 
-    def _write_notice(self, snapshot: SimulationSnapshot) -> None:
+    def _write_notice(self, banner: str | None) -> None:
         """Write the banner for this run, named while a second run is drawn.
 
         The one writer of it, because there are two callers and the
         attribution must not be a thing either could forget: `refresh` has a
-        frame and `present_halt` deliberately has none. That is also why the
-        run's name comes from `set_run_name` rather than from the frame -
-        `dashboard_frame.compared_run_notice` carries the argument.
+        frame and writes `dashboard_frame.notice`, and `present_halt`
+        deliberately has none and writes `dashboard_frame.halt_notice`. That
+        is also why the run's name comes from `set_run_name` rather than from
+        the frame - `dashboard_frame.compared_run_notice` carries the
+        argument.
 
         Args:
-            snapshot: The run's state this tick.
+            banner: The banner's text, or None to show none.
         """
 
-        self._notice_text.set_notice(
-            compared_run_notice(notice(snapshot, self._rejected_setting_notice), self._run_name)
-        )
+        self._notice_text.set_notice(compared_run_notice(banner, self._run_name))
 
     def _refresh_against_last_frame(self) -> None:
         """Rewrite this run's own widgets now, against the frame still on screen.
@@ -641,7 +644,7 @@ class RunView(QWidget):
             self.refresh(self.snapshot(), self._frame, self._run_index)
 
     def present_halt(self) -> None:
-        """Say this run has stopped, from its snapshot alone, with no frame drawn.
+        """Say this run has stopped, from its controller's status alone, with no frame drawn.
 
         The status word, the transport and the notice banner are the three
         widgets that state whether the run is going and why it is not, and
@@ -652,14 +655,23 @@ class RunView(QWidget):
         reading "Paused" over a failed controller, and no banner naming the
         exception (`PL-25KS`). `refresh` rewrites the same three on the next
         frame that can be drawn.
+
+        They are written from `SimulationController.status()` and not from a
+        snapshot, because the snapshot builds every compartment's fraction
+        and a refusal of one of those is among the halts presented here:
+        stated from a fresh snapshot, that halt raised out of this method
+        and was never stated, leaving the screen reading "Running" with
+        Pause offered over a failed controller (`PL-7DJK`). The banner is
+        `dashboard_frame.halt_notice`'s, which says no frame of the stopped
+        run has been drawn; the first frame that draws replaces it.
         """
 
-        snapshot = self.snapshot()
-        _emphasised(self._status_text, status_word(snapshot))
-        self._write_transport(self._transport_lock(snapshot))
-        self._write_notice(snapshot)
+        status = self.controller.status()
+        _emphasised(self._status_text, status_word(status))
+        self._write_transport(self._transport_lock(status))
+        self._write_notice(halt_notice(status))
 
-    def _transport_lock(self, snapshot: SimulationSnapshot) -> Transport:
+    def _transport_lock(self, status: RunStatus) -> Transport:
         """This run's transport enablement, with both facts `dashboard_frame` cannot read.
 
         `opened_from` is read live rather than cached at construction,
@@ -667,14 +679,16 @@ class RunView(QWidget):
         would learn of a change to it.
 
         Args:
-            snapshot: The run's state this tick.
+            status: The run's status this tick - the snapshot a frame drew
+                from, or the controller's bare status where no frame is
+                involved.
 
         Returns:
             `dashboard_frame.transport`'s answer for this run.
         """
 
         return transport(
-            snapshot, is_branch=self.controller.opened_from is not None, comparing=self._comparing
+            status, is_branch=self.controller.opened_from is not None, comparing=self._comparing
         )
 
     def set_comparing(self, comparing: bool) -> None:
@@ -689,7 +703,7 @@ class RunView(QWidget):
         """
 
         self._comparing = comparing
-        self._write_transport(self._transport_lock(self.snapshot()))
+        self._write_transport(self._transport_lock(self.controller.status()))
 
     def _write_transport(self, lock: Transport) -> None:
         """Write the transport's enablement and which of the selector and the chip is shown.
@@ -991,7 +1005,7 @@ class RunView(QWidget):
             self.controller.fail(reason)
 
     def _halt_run(self, error: BaseException) -> None:
-        """Halt the run, say so from its own snapshot, then ask for the frame.
+        """Halt the run, say so from its controller's status, then ask for the frame.
 
         The halt comes first, so a presentation that fails cannot unwind it:
         `SimulationView.present` answers a frame it cannot draw by halting

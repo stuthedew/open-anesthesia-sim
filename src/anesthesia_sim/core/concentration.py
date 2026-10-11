@@ -81,9 +81,12 @@ does:
   minutes on the way, which is the shift's documented cost
   (`core/matrix_exponential.py`, "What it costs"). The stepped path already
   halted there before this type existed, in ten of the twelve corners measured.
-  The display path, which builds each plotted value as a `Fraction`
-  (`app/chart_frame.py`), now refuses it as well instead of formatting it as
-  100.00%, and how that halt is shown is `PL-7DJK`'s. A 100% dial is outside
+  The display path, which builds each plotted value as a `Fraction` when
+  the frame is assembled (`app/chart_frame.py`), now refuses it as well
+  instead of formatting it as 100.00%, naming the compartment, and the
+  interface halts the run on the refusal before any frame is drawn, stating
+  the halt from the controller's run state rather than from a snapshot
+  that could refuse the same way (`PL-7DJK`). A 100% dial is outside
   `docs/MODEL.md` § "Supported input ranges" and reachable from no
   application path, so this is the type's documented limit and not a reason
   to leave a range unchecked.
@@ -183,9 +186,9 @@ class Percent(float, CheckedQuantity):
     al., Anesth Analg 1982;61(7):553-556; retrieved from PubMed, PMID 7201254,
     and verified against the abstract 2026-10-05), and `ROADMAP.md` plans that
     agent for v0.8.0. `core/parameters.py`'s `PositivePercent`
-    refuses its MAC at load already, and `app/dashboard_frame.py`'s
-    `off_scale_notice` builds its axis top, three MACs, as a `Percent`, which
-    refuses any agent's MAC above 33.3%. A dial's real limit is
+    refuses its MAC at load already, and `app/chart_frame.py`'s
+    `assemble_chart_frame` builds the chart's axis top, three MACs, as a
+    `Percent`, which refuses any agent's MAC above 33.3%. A dial's real limit is
     the vaporizer maximum of the agent in use, which is not this type's range
     but a relation between two percents, and is checked where both are held
     (`core/validation.py`'s `require_within_vaporizer_maximum`). It compares

@@ -25,6 +25,7 @@ with no size has no pixels for the hover to measure against.
 import importlib
 import re
 from collections.abc import Iterator, Sequence
+from dataclasses import replace
 
 import pytest
 from PySide6.QtCore import QEvent, QPoint, Qt
@@ -118,7 +119,12 @@ from anesthesia_sim.app.playback import (
     playback_rate_for,
 )
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, MarkListingLabel, ParameterSlider
-from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
+from anesthesia_sim.app.run_series import (
+    COMPARTMENT_QUANTITIES,
+    COMPARTMENT_STATE_INDEX,
+    DrawnWindow,
+    RecordedQuantity,
+)
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
@@ -1559,6 +1565,131 @@ def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
         assert "RuntimeError: this run's widgets could not be written" in notice
         assert run._pause_button.isEnabled() is False
         assert run._start_button.isEnabled() is False
+
+
+def test_a_halt_is_shown_when_the_snapshot_itself_is_refused(application: QApplication) -> None:
+    """A halt stated from a fresh snapshot is not stated at all when the snapshot is what refused.
+
+    `snapshot()` builds every compartment's fraction, so the alveolar amount
+    written past the compartment's capacity - the one route to a quotient
+    above 1, which no supported setting takes (`core/concentration.py`) -
+    refuses the snapshot and, through it, the frame. Before `PL-7DJK`,
+    `present_halt` read a fresh snapshot for the status word, the transport
+    and the banner, so the same refusal escaped the render tick with the
+    controller failed and the screen reading "Running", Pause offered and no
+    banner. The three are now written from `SimulationController.status()`,
+    which no compartment value is built for, and the banner says no frame of
+    the stopped run could be drawn rather than that a step was rolled back.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    view = _shown_view(application, controller)
+    view.render_tick()
+
+    alveoli = controller._state.uptake_system.alveoli
+    alveoli.agent_amount_l = alveoli.gas_volume_l * 1.0000001
+
+    view.render_tick()
+
+    reason = (
+        "SimulationConfigurationError: alveolar partial_pressure_fraction of 1.0000001 is "
+        "outside 0 to 1"
+    )
+    status = controller.status()
+
+    assert controller.is_running is False
+    assert controller.has_failed is True
+    assert status.failure_reason is not None
+    assert status.failure_reason.startswith(reason)
+
+    with pytest.raises(SimulationConfigurationError, match="alveolar partial_pressure_fraction"):
+        controller.snapshot()
+
+    run = view.runs[0]
+
+    assert run._status_text.text() == "Stopped — simulation error"
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert notice.startswith(f"Simulation stopped — {reason}")
+    assert "No frame of the stopped run could be drawn" in notice
+    assert "rolled back" not in notice
+    assert run._pause_button.isEnabled() is False
+    assert run._start_button.isEnabled() is False
+
+
+def _refusing_a_drawn_column(
+    controller: SimulationController, quantity: RecordedQuantity, value: float
+) -> None:
+    """Make the controller's next drawn window carry `value` in `quantity`'s last column.
+
+    The one route to a drawn fraction outside 0 to 1, since no supported
+    setting computes one (`core/concentration.py`): a drawn window is the
+    closed form's evaluation, so the value is written into the window the
+    controller answers with rather than into any compartment.
+    """
+
+    real_drawn_window = controller.drawn_window
+
+    def drawn_window(start_s: float, stop_s: float, columns: int) -> DrawnWindow:
+        window = real_drawn_window(start_s, stop_s, columns)
+        states = list(window.states)
+        values = list(states[-1].values)
+        values[COMPARTMENT_STATE_INDEX[quantity]] = value
+        states[-1] = replace(states[-1], values=tuple(values))
+
+        return DrawnWindow(window.substance_id, window.times_s, tuple(states))
+
+    controller.drawn_window = drawn_window  # type: ignore[method-assign]
+
+
+def test_a_frame_that_refuses_a_drawn_value_moves_no_trace(application: QApplication) -> None:
+    """Every drawn value is built before any is drawn, so a refusal leaves the chart as it was.
+
+    With each value built as the toolkit converted it, trace by trace, a
+    column refused in the muscle trace left the circuit, alveolar, mixed
+    venous and vessel-rich traces redrawn from the failed frame and muscle
+    and fat standing on the frame before it - six traces at two instants
+    under a banner blaming a step that never failed (`PL-7DJK`). Now
+    `assemble_chart_frame` refuses before a frame exists, the run halts,
+    the halt names the compartment, and no trace moves. The value is the one
+    that reproduced it.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    view = _shown_view(application, controller)
+    for _ in range(50):
+        controller.advance(SIMULATION_STEP_S)
+    view.render_tick()
+    chart = view._concentration_chart
+    before = {quantity: chart.drawn_points(0, quantity) for quantity in COMPARTMENT_QUANTITIES}
+
+    _refusing_a_drawn_column(controller, RecordedQuantity.MUSCLE, 1.0000000000001568)
+    for _ in range(50):
+        controller.advance(SIMULATION_STEP_S)
+
+    view.render_tick()
+
+    status = controller.status()
+    run = view.runs[0]
+
+    assert controller.has_failed is True
+    assert status.failure_reason is not None
+    assert status.failure_reason.startswith(
+        "SimulationConfigurationError: muscle partial_pressure_fraction of 1.0000000000001568 "
+        "is outside 0 to 1"
+    )
+    assert run._status_text.text() == "Stopped — simulation error"
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert "muscle partial_pressure_fraction of 1.0000000000001568" in notice
+    assert "No frame of the stopped run could be drawn" in notice
+    assert run._pause_button.isEnabled() is False
+    assert run._start_button.isEnabled() is False
+    assert {
+        quantity: chart.drawn_points(0, quantity) for quantity in COMPARTMENT_QUANTITIES
+    } == before
 
 
 def test_two_runs_that_come_to_be_on_different_agents_halt_visibly(
