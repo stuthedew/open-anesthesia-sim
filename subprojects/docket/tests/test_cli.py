@@ -3225,6 +3225,23 @@ def test_stranded_hands_an_item_a_pull_request_carries_the_pull_request_not_a_ch
     assert ("was not asked here" in out) is not bool(forge)
 
 
+def test_stranded_says_the_forge_went_unasked_above_the_checkout_it_qualifies(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-X3NY`: the caveat sits above the `git checkout`, as the stale-base one does.
+
+    Beneath the list it reached a reader who had already been handed the
+    command it exists to qualify - the order `format_stranded` refuses for an
+    unrefreshed base, for the same reason.
+    """
+    root = _branched_repo(tmp_path)
+
+    assert main(["--items", str(root / "items"), "stranded"]) == 0
+
+    out = capsys.readouterr().out
+    assert out.index("was not asked here") < out.index("recover: git checkout abandoned")
+
+
 def test_settings_are_read_from_the_repository_root_not_the_store_s_parent(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -3450,6 +3467,37 @@ def test_stranded_reports_a_commit_pushed_after_its_pull_request_merged(
     assert "git checkout claude/pl-k7qx-do-the-thing" not in out
     # The commit the pull request did take is not offered for recovery.
     assert "work.py" not in out
+
+
+@pytest.mark.parametrize(
+    ("forge", "carried"),
+    [("echo claude/pl-k7qx-do-the-thing 1302", True), ("", False)],
+    ids=["open-on-it", "unasked"],
+)
+def test_stranded_names_the_pull_request_carrying_a_commit_pushed_after_a_merge(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], forge: str, carried: bool
+) -> None:
+    """`PL-X3NY`: a second pull request on the branch merges what the first one left.
+
+    By file content alone, a branch that carried on under a new pull request
+    after its first merged reads exactly as work left behind, and the
+    cherry-pick it was handed would land the commits a second time.
+    """
+    root = _pushed_after_merge_repo(tmp_path)
+    if forge:
+        _forge(root, forge)
+
+    assert main(["--items", str(root / "items"), "stranded"]) == 0
+
+    out = capsys.readouterr().out
+    assert "PL-K7QX: the rule pushed after the merge" in out
+    carries = (
+        "carried: pull request #1302 is open on claude/pl-k7qx-do-the-thing; "
+        "it merges these commits, so nothing is left behind"
+    )
+    assert (carries in out) is carried
+    assert ("recover: git cherry-pick" in out) is not carried
+    assert ("was not asked here" in out) is not carried
     # The list is judged by file content too, so it names the exact check rather
     # than claiming nothing else reports such a commit (`PL-CZR6`).
     assert (
@@ -3616,15 +3664,8 @@ def _queue_repo(tmp_path: Path) -> tuple[Path, Callable[..., None]]:
     return root, git
 
 
-def test_stranded_hands_a_diff_for_an_item_edited_only_on_a_branch(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """`PL-KSCW`: the item is on `main` and a section of it is on a branch alone.
-
-    A `git checkout` is the wrong recovery here and the whole reason the two
-    findings print separately: the base holds a copy of its own, so restoring
-    the branch's over it discards whatever landed since.
-    """
+def _edited_on_a_branch_repo(tmp_path: Path) -> Path:
+    """An item `main` holds, with a section of it on `claude/pl-0001-a-fourth-instance` alone."""
     root, git = _queue_repo(tmp_path)
     item = root / "items" / "PL-0001-on-main.md"
     item.write_text(READY.replace("PL-B1B1", "PL-0001"))
@@ -3636,6 +3677,19 @@ def test_stranded_hands_a_diff_for_an_item_edited_only_on_a_branch(
     git("add", "-A")
     git("commit", "-qm", "PL-0001: record the fourth instance")
     git("checkout", "-q", "main")
+    return root
+
+
+def test_stranded_hands_a_diff_for_an_item_edited_only_on_a_branch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-KSCW`: the item is on `main` and a section of it is on a branch alone.
+
+    A `git checkout` is the wrong recovery here and the whole reason the two
+    findings print separately: the base holds a copy of its own, so restoring
+    the branch's over it discards whatever landed since.
+    """
+    root = _edited_on_a_branch_repo(tmp_path)
 
     assert main(["--items", str(root / "items"), "stranded"]) == 0
 
@@ -3649,6 +3703,45 @@ def test_stranded_hands_a_diff_for_an_item_edited_only_on_a_branch(
     ) in out
     # The recovery a reader must never be handed for a file the base holds.
     assert "git checkout" not in out
+
+
+@pytest.mark.parametrize(
+    ("forge", "carried", "unasked"),
+    [
+        ("echo claude/pl-0001-a-fourth-instance 1300", True, False),
+        ("echo elsewhere 1301", False, False),
+        ("", False, True),
+    ],
+    ids=["open-on-it", "open-elsewhere", "unasked"],
+)
+def test_stranded_hands_an_edit_a_pull_request_carries_the_pull_request_not_a_diff(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], forge: str, carried: bool, unasked: bool
+) -> None:
+    """`PL-X3NY`: an edit on a branch with a pull request open is in flight, not left behind.
+
+    The diff `PL-KSCW` hands an edit invites carrying it across by hand, which
+    for work a pull request is about to merge is a second edit of the same
+    lines. The forge's answer that splits the items above splits these too: a
+    forge naming another branch leaves the diff, and one nobody asked is said
+    above the list rather than read as "none is open".
+    """
+    root = _edited_on_a_branch_repo(tmp_path)
+    if forge:
+        _forge(root, forge)
+
+    assert main(["--items", str(root / "items"), "stranded"]) == 0
+
+    out = capsys.readouterr().out
+    assert "edited on: claude/pl-0001-a-fourth-instance" in out
+    carries = (
+        "carried: pull request #1300 is open on claude/pl-0001-a-fourth-instance; "
+        "the edit arrives when it merges"
+    )
+    assert (carries in out) is carried
+    assert ("read: git diff main:items/PL-0001-on-main.md" in out) is not carried
+    # The note explaining the diff goes with it.
+    assert ("A diff rather than a recovery command" in out) is not carried
+    assert ("was not asked here" in out) is unasked
 
 
 def test_stranded_does_not_offer_to_restore_a_copy_the_base_has_closed_since(

@@ -807,8 +807,9 @@ def format_stranded(
     copy recovered from its branch is a second add of the same file, which
     the merge bringing the first in conflicts on, and `PL-8ZGY`'s agreed
     corrections were lost to a resolution that kept the copy whole. `None` is
-    a forge nobody asked, which is said beneath the list rather than read as
-    "none is open".
+    a forge nobody asked, which is said above the recovery commands, where the
+    unrefreshed-base caveat is and for its reason, rather than read as "none
+    is open" (`PL-X3NY`). An edit below is split by the same answer.
     """
     if not report.known and not report.items and not report.edits:
         return f"Stranded items not checked: {report.declined}."
@@ -829,7 +830,7 @@ def format_stranded(
             "lacks it, and a branch not fetched here was not read, so this is bounded by both.",
             *([rests_on] if rests_on else []),
         ]
-        return "\n".join([*lines, *_edited_lines(report)])
+        return "\n".join([*lines, *_edited_lines(report, carried)])
 
     lines = [
         *partial,
@@ -837,18 +838,16 @@ def format_stranded(
         f"and outside this checkout's store, across the {refs} this checkout holds:",
         "",
         *([rests_on] if rests_on else []),
+        *([_UNASKED_ITEMS] if carried is None else []),
     ]
-    if rests_on:
+    if rests_on or carried is None:
         lines.append("")
     for item in report.items:
         lines.append(f"{item.identifier}  {item.title or '(title unreadable)'}")
         lines.append(f"  only on: {', '.join(item.branches)}")
-        open_on = [ref for ref in item.branches if carried is not None and ref in carried]
-        if open_on:
-            number = carried[open_on[0]] if carried is not None else None
-            pull = f"pull request #{number}" if number is not None else "a pull request"
+        if pull := _open_on(item.branches, carried):
             lines.append(
-                f"  carried: {pull} is open on {open_on[0]}; wait for it to merge rather than "
+                f"  carried: {pull}; wait for it to merge rather than "
                 "recovering a copy, which would be a second add of the same file"
             )
         else:
@@ -858,20 +857,37 @@ def format_stranded(
         "A branch on live work will appear here and that is expected; the hole is a "
         "branch nobody will merge."
     )
-    if carried is None:
-        lines.append(
-            "Whether a pull request is open on these branches was not asked here; "
-            "`bin/docket flight` says, and an item one carries waits for it to merge - a copy "
-            "recovered from it is a second add of the same file."
-        )
     lines.append(
         "Every other branch read carries no item missing from both the default branch "
         "and this checkout's store."
     )
-    return "\n".join([*lines, *_edited_lines(report)])
+    return "\n".join([*lines, *_edited_lines(report, carried)])
 
 
-def _edited_lines(report: StrandedReport) -> list[str]:
+#: Said above the recovery commands where the forge went unasked, as the
+#: unrefreshed-base caveat is: a reader who has read `git checkout` has made
+#: the decision a line beneath it would inform (`PL-X3NY`).
+_UNASKED_ITEMS = (
+    "Whether a pull request is open on these branches was not asked here, so recover only "
+    "from a branch `bin/docket flight` shows none open on: an item one carries waits for it "
+    "to merge, and a copy recovered from it is a second add of the same file."
+)
+
+
+def _open_on(branches: Sequence[str], carried: Mapping[str, int | None] | None) -> str:
+    """`pull request #N is open on REF` for the first of `branches` the forge named, or ""."""
+    ref = next((ref for ref in branches if ref in carried), None) if carried is not None else None
+    if ref is None or carried is None:
+        return ""
+    number = carried[ref]
+    return (
+        f"{f'pull request #{number}' if number is not None else 'a pull request'} is open on {ref}"
+    )
+
+
+def _edited_lines(
+    report: StrandedReport, carried: Mapping[str, int | None] | None = None
+) -> list[str]:
     """Items the default branch holds whose branch copy is ahead of it, or nothing.
 
     Its own section rather than more rows above, because the reader has to do
@@ -891,23 +907,41 @@ def _edited_lines(report: StrandedReport) -> list[str]:
     abandoned branch holding the only copy of a finding look identical here,
     and no timeout tells them apart. The session's own copy is the one case
     that is answered - `stranded` drops an edit whose blob `HEAD` also holds,
-    so what remains is somebody else's.
+    so what remains is somebody else's. **An edit a pull request open on its
+    branch carries is named with it and handed no diff** (`PL-X3NY`): it
+    arrives when that pull request merges, and carried across by hand it is
+    a second edit of the same lines. `carried` is `format_stranded`'s, and a
+    forge nobody asked is said above the list.
     """
     if not report.edits:
         return []
     held = _plural(len(report.edits), "item", "items")
     lines = ["", f"{held} the default branch holds, edited only on a branch:", ""]
+    if carried is None:
+        lines += [
+            "Whether a pull request is open on these branches was not asked here; "
+            "`bin/docket flight` says, and an edit one carries arrives when it merges.",
+            "",
+        ]
+    diffed = False
     for edit in report.edits:
         lines.append(f"{edit.identifier}  {edit.title or '(title unreadable)'}")
         lines.append(f"  edited on: {', '.join(edit.branches)}")
-        lines.append(
-            f"  read: git diff {report.base}:{edit.base_path} {edit.branches[0]}:{edit.path}"
-        )
+        if pull := _open_on(edit.branches, carried):
+            lines.append(f"  carried: {pull}; the edit arrives when it merges")
+        else:
+            diffed = True
+            lines.append(
+                f"  read: git diff {report.base}:{edit.base_path} {edit.branches[0]}:{edit.path}"
+            )
         lines.append("")
-    lines.append(
-        "A diff rather than a recovery command: the default branch holds a copy of its own, "
-        "and restoring the branch's over it discards whatever landed since."
-    )
+    if diffed:
+        lines.append(
+            "A diff rather than a recovery command: the default branch holds a copy of its own, "
+            "and restoring the branch's over it discards whatever landed since."
+        )
+    else:
+        lines.pop()
     return lines
 
 
@@ -924,7 +958,7 @@ _EXACT_LEFT_BEHIND = (
 )
 
 
-def format_orphaned(report: OrphanedReport) -> str:
+def format_orphaned(report: OrphanedReport, carried: Mapping[str, int | None] | None = None) -> str:
     """Work left on a branch after its pull request merged, and how to recover it.
 
     Organized by branch rather than by file, the opposite of `format_stranded`,
@@ -945,6 +979,12 @@ def format_orphaned(report: OrphanedReport) -> str:
     of `stranded` that nothing was behind while `tools/left_behind_check.py`
     named that commit. The list carries the same sentence, since the content
     reading can also name a commit whose change landed.
+
+    **A branch with a pull request open is carrying the rest, not leaving it**
+    (`PL-X3NY`). A later pull request on the same branch merges the commits the
+    first one left, so it is named in place of the cherry-pick, which would
+    land them twice. `carried` is the answer `format_stranded` is given, and
+    a forge nobody asked is said above the list.
     """
     if not report.known and not report.branches:
         return f"Work left on a merged branch not checked: {report.declined}."
@@ -969,6 +1009,13 @@ def format_orphaned(report: OrphanedReport) -> str:
         f"default branch does not hold, having already taken the rest of it:",
         "",
     ]
+    if carried is None:
+        lines += [
+            "Whether a pull request is open on these branches was not asked here, so recover "
+            "only from a branch `bin/docket flight` shows none open on: one open merges the "
+            "commits below.",
+            "",
+        ]
     for branch in report.branches:
         landed = _plural(len(branch.landed), "file", "files")
         lines.append(f"{branch.ref}  ({landed} of its work already landed)")
@@ -984,7 +1031,10 @@ def format_orphaned(report: OrphanedReport) -> str:
         # A cherry-pick applies only the change, and stops on a conflict.
         # Oldest first, since they are listed newest first.
         picks = " ".join(commit.commit[:9] for commit in reversed(branch.commits))
-        lines.append(f"  recover: git cherry-pick {picks}")
+        if pull := _open_on((branch.ref,), carried):
+            lines.append(f"  carried: {pull}; it merges these commits, so nothing is left behind")
+        else:
+            lines.append(f"  recover: git cherry-pick {picks}")
         lines.append("")
     lines.append(
         "A pull request merges the head it was opened against; a commit pushed to the "

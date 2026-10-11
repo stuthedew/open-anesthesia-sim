@@ -784,24 +784,24 @@ def _stranded(items: Sequence[Item], args: argparse.Namespace) -> StrandedReport
 
 
 def _carried(
-    args: argparse.Namespace, inv: Invocation, report: StrandedReport
+    args: argparse.Namespace, inv: Invocation, refs: Collection[str]
 ) -> Mapping[str, int | None] | None:
-    """Which refs holding a stranded item have a pull request open, or `None` where none was asked.
+    """Which of `refs` have a pull request open, or `None` where none was asked.
 
-    Keyed by the ref as the report spells it - `origin/claude/x` - since that
-    is the spelling the rendered row names, and valued by the pull request's
+    Keyed by the ref as the reports spell it - `origin/claude/x` - since that
+    is the spelling the rendered rows name, and valued by the pull request's
     number, `None` where the forge gave none. `None` for the whole answer is a
-    forge not asked, which `render.format_stranded` says rather than reading
-    it as "none is open" (`PL-MTHC`).
+    forge not asked, which `render.format_stranded` and `format_orphaned` say
+    rather than reading it as "none is open" (`PL-MTHC`, `PL-X3NY`). Nothing
+    listed asks nothing.
     """
     lookup = _open_pull_requests(args, inv.root, inv.config)
-    if lookup is None or inv.git is None or not report.items:
+    if lookup is None or inv.git is None or not refs:
         return None
     answer = lookup()
     if answer is None:
         return None
     remotes = _remotes(inv.root, inv.git)
-    refs = {ref for item in report.items for ref in item.branches}
     return {
         ref: answer[head] for ref in sorted(refs) if (head := _head_name(ref, remotes)) in answer
     }
@@ -4669,8 +4669,11 @@ def cmd_stranded(args: argparse.Namespace) -> int:
     That item is on its way to the base, and a copy recovered from the branch
     is a second add of the same file, which the merge bringing the first in
     conflicts on: `PL-8ZGY`'s agreed corrections were lost that way. So the
-    forge is asked, once and only where an item is listed, and the item is
-    handed the pull request to wait for instead.
+    forge is asked, once and only where something is listed, and the item is
+    handed the pull request to wait for instead. The same answer splits an
+    edit to an item the base holds and a branch `orphaned` names, since work
+    an open pull request carries is in flight there too, and asking once keeps
+    the three readings on one answer (`PL-X3NY`).
     """
     _, items, _ = _load(args)
     inv = _invocation(args)
@@ -4686,15 +4689,16 @@ def cmd_stranded(args: argparse.Namespace) -> int:
             "which items exist only on a branch"
         )
         return 0
-    print(
-        render.format_stranded(
-            report, rests_on=_refs_line(args), carried=_carried(args, inv, report)
-        )
-    )
     left = _orphaned(args)
+    refs = {ref for item in report.items for ref in item.branches}
+    refs.update(ref for edit in report.edits for ref in edit.branches)
+    if left is not None:
+        refs.update(branch.ref for branch in left.branches)
+    carried = _carried(args, inv, refs)
+    print(render.format_stranded(report, rests_on=_refs_line(args), carried=carried))
     if left is not None:
         print()
-        print(render.format_orphaned(left))
+        print(render.format_orphaned(left, carried=carried))
     return 0
 
 
