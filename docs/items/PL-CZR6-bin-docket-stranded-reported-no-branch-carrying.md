@@ -2,14 +2,14 @@
 id: PL-CZR6
 title: bin/docket stranded reported no branch carrying work its own pull request left behind while claude/sharp-lamport-t545rs carried two PL-X5PK commits pushed an hour after #823 squash-merged from it
 priority: P2
-effort: M
+effort: S
 status: ready
 classes: defect
 feature: stranded-report-fidelity
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-21
-payoff: a commit pushed after its own pull request merged is reported, so the read built to catch squash-merge leftovers actually catches them
-verify: grep -q 'def test_a_commit_pushed_after_the_merge_is_reported_orphaned' subprojects/docket/tests/test_vcs.py
+payoff: bin/docket stranded stops calling every branch clear on a content reading the exact check contradicts: its last line says what it read and where the exact answer is
+verify: grep -q 'def test_the_left_behind_clear_line_names_the_exact_check' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket stranded reported no branch carrying work its own pull request left behind while claude/sharp-lamport-t545rs carried two PL-X5PK commits pushed an hour after #823 squash-merged from it
@@ -28,6 +28,42 @@ to it after the merge is reachable only from a ref nobody will fetch again. A
 reader told nothing is behind has been given the strongest possible claim on the
 weakest possible evidence, and no second check anywhere would contradict it.
 
+[superseded 2026-10-11: the exact check answers this, as the next paragraph says]
 **Done when.** A commit pushed to a branch after that branch's own pull request
 merged is named by the `orphaned` read together with the command that recovers
 it, and a test in `subprojects/docket/tests/test_vcs.py` drives that sequence.
+
+**Re-pointed at `tools/left_behind_check.py`, 2026-10-11 (`PL-2C53`).** This
+item's question is that check's own, and it answers it wherever GitHub answers.
+It reads each branch tip on `origin` against the `refs/pull/<n>/head` its
+newest pull request merged at, and names the commits past that head which the
+default branch lacks, comparing no content, so a squash against a base that
+moved underneath cannot confound it. It runs at every session start
+(`.claude/hooks/docket-digest.sh`), and `tools/branch_sweep.py` keeps any branch
+it reports, so such a commit is named by the next session's digest and is
+never swept. That is the second check the paragraph above says nothing offers.
+So no further content reading in `vcs.py` is owed for this shape.
+`_commits_by_landing` records `orphaned`'s two silences on it as trades taken
+deliberately: a branch whose pre-merge commits were all re-merged against a
+moved base, and one whose only wholly landed commit is a queue write. The exact
+check is the answer those silences defer to.
+
+**What is still this item's: the line `stranded` prints.** Reproduced
+2026-10-11 on a scratch repository. A branch edits `F.txt`, the base edits
+another line of it, and the branch squash-merges as `#1`. Then a commit adding
+`H.txt` is pushed to the branch. `vcs.orphaned` reports nothing, and
+`format_orphaned` prints "No branch carries work its own pull request left
+behind, across the 2 unmerged branch refs read." Handed `#1` as merged at the
+branch's head before that push, `left_behind_check.examine` names the commit,
+and its digest line says "vcs.orphaned does not report it, and this ref
+comparison wins". So `bin/docket stranded`, which every reply's refresh runs,
+still prints the sentence this item was filed against as a clean result while
+the exact check reports the commit. The digest's line does not answer a defect
+in what `stranded` prints.
+
+**Done when.** `bin/docket stranded`'s closing line for this half no longer
+states a clean result on the content comparison alone. It says the reading
+compares content and names `python3 tools/left_behind_check.py --all` as the
+exact answer, or carries that check's answer where it can be read. A test in
+`subprojects/docket/tests/test_cli.py` pins the line. No new content test in
+`vcs.py` is part of this.
