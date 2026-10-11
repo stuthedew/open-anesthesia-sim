@@ -6,9 +6,9 @@ effort: M
 status: ready
 classes: infra
 feature: convergence-visibility
-touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
+touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/trend.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docs/items
 added: 2026-09-17
-verify: grep -q 'def test_converge_reports_filed_per_closed_and_surface_saturation' subprojects/docket/tests/test_cli.py
+verify: grep -q 'def test_a_reentry_is_counted_in_the_period_it_was_filed' subprojects/docket/tests/test_inflow.py && grep -q 'reenters' subprojects/docket/src/docket/model.py
 ---
 
 **Problem.** No command answers whether the workflow lane is converging: docket trend reports the workflow/product balance, so a session asked whether accumulation is slowing re-derives filed-per-closed, surface saturation and severity mix by hand at full context
@@ -92,7 +92,7 @@ every session that needs it". The decidable half here is large: filed-per-closed
 new-paths-per-item and the severity mix of filings are all arithmetic over the
 store. Only reading the result is judgment.
 
-**Done when.** One command reports, for the workflow lane, rolling
+[superseded 2026-10-11: the decided Done-when is under "Answered" at the end] **Done when.** One command reports, for the workflow lane, rolling
 filed-per-closed, new distinct apparatus paths per item filed with store paths
 excluded, the P1/P2/P3 mix of each period's *filings* rather than of the
 backlog, and the count blocked on an owner decision - no single composite score,
@@ -118,7 +118,7 @@ brief first framed them are context at most, not the headline.
 **What to report instead — two causal signals, with `PL-04KR` holding the
 baseline they are measured against:**
 
-1. **Re-entry rate** — new workflow items landing on a path that a *closed* item
+[superseded 2026-10-11: path recurrence reads 93-100% every week; re-entry is the triage-written `reenters:` field, under "Answered"] 1. **Re-entry rate** — new workflow items landing on a path that a *closed* item
    also touched, where that closure fell within the preceding 30 days. Rising
    means fixes are not holding. This is the signal the store currently cannot
    show at all: of 623 attributed parent-child links, 100% of children were filed
@@ -126,7 +126,7 @@ baseline they are measured against:**
    filed-while-working and never fix-did-not-hold. Exclude item-file paths — 11
    open items declare another item's file as their `touches` and would inflate it
    for a bookkeeping reason.
-2. **Largest unexplained cluster** — open items sharing a mechanism with no
+[superseded 2026-10-11: sharing a mechanism is judgment and is not computed; a closed item three or more filings re-enter is named instead] 2. **Largest unexplained cluster** — open items sharing a mechanism with no
    `root-cause-of:` head above them. 27 on 2026-09-19 (`PL-G424`). Growing means
    an unfound cause is accumulating instances.
 
@@ -138,7 +138,7 @@ separately, or the next deliberate sweep reads as regression — the 2026-09-17 
 that reason.
 
 **Do not re-propose raw path recurrence.** This item already refuted it: 90%
-recurrence on a surface of 117 apparatus files is arithmetic, not regression. The
+recurrence on a surface of 117 apparatus files is arithmetic, not regression. [superseded 2026-10-11: measured, it does not] The
 30-day bound on signal 1 is what makes it a statement about a fix rather than
 about surface size.
 
@@ -216,3 +216,22 @@ rising); the Done-when and `verify:` rewritten in the decided form, since the
 current `verify:` names a test this build did not write; and `PL-04KR`'s
 sentence that the 30-day bound distinguishes its signal 1 from raw recurrence
 marked superseded by the measurement above.
+
+### Answered (project owner, 2026-10-11, ratified, over recording the field going forward only and over shipping `inflow` without a re-entry column)
+
+The recommendation above, whole: a `reenters: PL-XXXX` field the triage
+generator check writes, backfilled once from the existing `**Generator check.**`
+lines by a subagent reading them, counted by `inflow`.
+
+**Done when.** `bin/docket inflow` reports, per period, the columns built
+2026-10-11 plus the count of filings carrying `reenters:`, and names any closed
+item that three or more filings re-enter as a generator whose fix did not hold;
+`reenters:` is parsed in `model.py`, validated in `checks.py` (it must name an
+item that exists and was closed before the filing), and asked for by the
+generator check in `.claude/skills/docket/modes/triage.md`; the backfill has
+written it on every item whose generator-check line names a closed fix that did
+not reach it; at release time `inflow` prints only where one of `PL-04KR`'s
+pre-registered expectations fails (new paths per filing above 0.13, a P1
+apparatus filing, re-entry rising); and a test under
+`subprojects/docket/tests/test_inflow.py` pins the re-entry count and the
+three-re-entry naming.
