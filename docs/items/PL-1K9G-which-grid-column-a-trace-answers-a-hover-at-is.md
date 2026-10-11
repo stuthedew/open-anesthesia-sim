@@ -222,7 +222,9 @@ before its fork - and within one run the lines now always agree.
 
 The scan was re-run against the shipped functions after the change: the time
 rule's selection matched `nearest_trace_point` at 400 random pointer positions
-in every case and `nearest_wash_in_point` at 300 per run, with no mismatch.
+in every case and `nearest_wash_in_point` at 300 per run, with no mismatch. Both
+scripts are kept in `PL-HS1V`'s brief, updated on 2026-10-11 to run on that
+day's tree, where they reproduce the table above.
 
 **The wash-in plot is in this change although the item's payoff names only the
 compartment chart.** It measured its distance in the same two dimensions, so
