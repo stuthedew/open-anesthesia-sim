@@ -71,8 +71,10 @@ test now samples the indicator's rect alone, on both boxes, so the label is
 outside what it reads. A box whose `TraceLegend` declaration is removed still
 fails it, in both states.
 
-**macOS is inferred, not run.** The sampled colours the 2026-09-28 run printed
-start `#323232`, the host `Window`, which is the same Fusion-under-offscreen
-rendering seen here; the label mechanism needs nothing platform-specific. The
-test passing on the project owner's Mac is the confirmation this item's
-**Done when** asks for, and it has not been seen from a cloud session.
+**Passes on macOS** (project owner, 2026-10-11): `uv run pytest -q
+tests/integration/test_dark_appearance.py -k legend_checkbox` on the owner's Mac,
+at this branch's `0af74890`, reported `2 passed`. That is the confirmation this
+item's **Done when** asks for. The mechanism had been inferred for macOS before
+it: the sampled colours the 2026-09-28 run printed start `#323232`, the host
+`Window`, which is the same Fusion-under-offscreen rendering seen here, and the
+label mechanism needs nothing platform-specific.
