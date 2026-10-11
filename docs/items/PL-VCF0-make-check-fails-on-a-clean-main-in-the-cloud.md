@@ -1,8 +1,15 @@
 ---
 id: PL-VCF0
 title: make check fails on a clean main in the cloud container: its default sans-serif is Inter, under which test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it never wraps its label, and PL-K9Z5's legend-checkbox guard fails there as it does on macOS, so bin/docket verify --self REJECTs every correct close-out a thread runs
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: test, defect
+touches: tests/integration/test_simulation_view.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
+payoff: make check passes on a clean main in a cloud session, so a correct close-out is accepted instead of rejected for a font the host happened to resolve
+not-delegable: the proof is the wrap test passing under a host whose sans-serif resolves to Inter while still failing on an unwrapped row; no admitted grep shows that, and a worker's container may resolve a different font
 ---
 
 **Problem.** make check fails on a clean main in the cloud container: its default sans-serif is Inter, under which test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it never wraps its label, and PL-K9Z5's legend-checkbox guard fails there as it does on macOS, so bin/docket verify --self REJECTs every correct close-out a thread runs
@@ -27,3 +34,20 @@ same way on `origin/main` at `d2310180`, run from a worktree with that tree's
 the failure is `main`'s before it can say so. The 2026-09-27 measurement in
 the shared notes had all 273 Qt tests passing, so the container image has
 changed since.
+
+**Reproduced 2026-10-11** on `main` at `16a20a4f` in this session's cloud
+container: `fc-match sans-serif` answers `Inter-Regular.otf`, and all three tests
+above fail (`3 failed in 3.14s`).
+
+**Why it matters.** `bin/docket verify --self` runs `make check`, so every
+correct close-out in a cloud session currently answers `REJECT`, and each session
+has to prove the failure is `main`'s before it can say so. That is a check being
+routed around, paid again by every remaining item worked in this container.
+
+**Scope.** The legend-checkbox half is `PL-K9Z5` (the vacuity guard that fails
+on macOS), already `ready`; this item is the wrap test, and the two together
+clear `make check` here.
+
+**Done when.** `test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it`
+wraps its label under any sans-serif the host resolves - including Inter - and
+still fails when the row does not wrap.

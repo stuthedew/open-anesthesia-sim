@@ -1,9 +1,16 @@
 ---
 id: PL-BVBB
 title: docket check's prerequisite and negation windows are measured in characters of _unmarked text, which keeps a continuation line's indentation and its blanked container markers, so a waits-on clause wrapped before its id is missed in a third-level list item and a negation wrapped across an indented line is missed; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+payoff: a waits-on clause or a negation wrapped onto an indented line reads as it does on one line, so docket check neither misses a stated prerequisite nor invents a denied one
+verify: grep -q 'def test_a_prerequisite_wrapped_before_its_id_is_read_at_any_list_depth' subprojects/docket/tests/test_checks.py && grep -q 'def test_a_negation_wrapped_across_an_indented_line_is_read' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** docket check's prerequisite and negation windows are measured in characters of _unmarked text, which keeps a continuation line's indentation and its blanked container markers, so a waits-on clause wrapped before its id is missed in a third-level list item and a negation wrapped across an indented line is missed; latent
@@ -39,11 +46,22 @@ line reads as negated. Latent: over 2,124 items, no paragraph continuation
 line's unmarked leading whitespace exceeds seven columns, and no answer
 differs.
 
+**Re-confirmed 2026-10-11** on main at `16a20a4f`: `_prerequisite_matches`
+with `PROSE_DEPENDENCY` finds `PL-ZZZZ` in the top-level and first-level
+forms, nothing in the third-level one, and a prerequisite in the indented
+negation, where the one-line negation gives none.
+
 **Generator check.** A member of `PL-R417`: the reader takes a physical line
 for a statement its format continues, the fact that head names. It is the gap
 closed `PL-WF35`'s and `PL-YCJJ`'s fixes left: a
 waits-on clause wrapped before its id is still unread where the wrap is
 indented.
+
+**Why it matters.** These windows decide which ids a brief says it waits on,
+which `docket check` holds against the declared `blocked-by` and reads for
+waits that have ended. A missed clause leaves an undeclared prerequisite
+unreported, and a missed negation reports one the brief denies. Latent: no
+brief in the store indents a continuation far enough to change an answer.
 
 **Done when.** Each window is measured over the statement's text with every
 soft break and the whitespace around it read as one space, and each form above

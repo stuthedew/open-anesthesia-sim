@@ -1,9 +1,16 @@
 ---
 id: PL-B53Y
 title: docket's front-matter fold takes an indented line opening with # for a comment before it takes it for a continuation, so a quoted value carried onto such a line is read short with its opening quote kept and nothing reported, a comment line inside a plain value does not end it, and a blank line inside a value folds to a space where YAML folds a newline, against the README's exactly-as-YAML promise; latent
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: front-matter-round-trip
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/README.md, subprojects/docket/tests/test_model.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
+payoff: a quoted or comment-interrupted front-matter value is read as YAML reads it or refused by name, rather than stored short with nothing reported
+verify: grep -q 'def test_a_quoted_value_continued_on_a_hash_led_line_is_read_whole' subprojects/docket/tests/test_model.py && grep -q 'def test_a_comment_line_inside_a_plain_value_is_not_folded_over' subprojects/docket/tests/test_model.py
 ---
 
 **Problem.** docket's front-matter fold takes an indented line opening with # for a comment before it takes it for a continuation, so a quoted value carried onto such a line is read short with its opening quote kept and nothing reported, a comment line inside a plain value does not end it, and a blank line inside a value folds to a space where YAML folds a newline, against the README's exactly-as-YAML promise; latent
@@ -38,13 +45,22 @@ value carried onto a `#`-led line reads `Fixed in` in both, the control. Latent:
 no tracked front matter carries a quoted value onto a second line or holds a
 line opening with `#`.
 
+**Re-confirmed 2026-10-11** on main at `16a20a4f`: the first form reads
+`"Fixed in` with no unread line and no repeated key, the second
+`Fixed in 1377 at last`, and `title: "a` over a blank line and `  b"` reads
+`a b`; PyYAML 6.0 reads `Fixed in #1377 at last`, refuses the second, and
+reads `a\nb`.
+
 **Why it matters.** A title or reason written this way is stored short with
 nothing said, and every reader of the item reads the short form.
 
 **Generator check.** Not a member of `PL-R417`. It reads the item front-matter
 value grammar, `PL-HXJY`'s fact, in the one reader itself, as `PL-LNDJ` did.
 `PL-HXJY` is closed with a `spent` verdict; the comment test dates from
-2026-08-24, so this is stock its sweep did not reach rather than new inflow.
+2026-08-24, so this is stock its sweep did not reach rather than new inflow. Filed
+2026-10-06, after `PL-HXJY` closed (2026-10-05), it is still a post-close
+instance of that head's fact, one of two with `PL-1R9S`; a third would read as
+a fix that did not hold (2026-10-11 triage).
 
 **Done when.** `_fold` takes an indented line for a continuation before it
 takes it for a comment while a quoted value is open, ends a plain value at a

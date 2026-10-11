@@ -1,9 +1,16 @@
 ---
 id: PL-Y3GK
 title: capture.md hands the project owner a bare git push origin --delete for a branch the branch sweep keeps that should go anyway, so the one deletion left to a hand is the only one that keeps no refs/archive copy, and no report names the non-item files such a branch may carry (found in PL-BYMX's design round)
-status: untriaged
-touches: .claude/skills/docket/modes/capture.md
+priority: P3
+effort: S
+status: ready
+classes: defect
+feature: stranded-report-fidelity
+touches: .claude/skills/docket/modes/capture.md, .claude/hooks/no-prune-guard.sh
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-11
+payoff: A claude/ branch the owner deletes by hand keeps an archive copy like every swept one, so work only that branch held stays a restore away.
+verify: grep -qF -- '--force-with-lease' .claude/skills/docket/modes/capture.md && ! grep -qF 'git push origin --delete <branch>' .claude/skills/docket/modes/capture.md && ! grep -qF 'git push origin --delete <branch>' .claude/hooks/no-prune-guard.sh
 ---
 
 **Problem.** capture.md hands the project owner a bare git push origin --delete for a branch the branch sweep keeps that should go anyway, so the one deletion left to a hand is the only one that keeps no refs/archive copy, and no report names the non-item files such a branch may carry (found in PL-BYMX's design round)
@@ -55,3 +62,38 @@ that evening (20:21 UTC, ten `claude/` branches read). The sweep keeps a branch
 for an edit to an open item that `main` lacks, so only a hand deletion could
 have taken it. `refs/pull/1092/head` kept the paragraph, and `PL-BYMX`'s design
 round restored it to `PL-X3NY` on 2026-10-11.
+
+**Why it matters.** `PL-BYMX` closed on asserting nothing about a branch's files
+outside the queue because every deletion is a restore away, and this path is
+the one that is not. It is also the path most likely to hold unfinished work:
+a branch the sweep keeps is one some reading still holds, and where no pull
+request was ever opened from it no `refs/pull/` ref keeps its commits either.
+It has run once since the sweep started and left nothing readable past the
+head `#1127` kept.
+
+**Reproduced 2026-10-11** on main at `16a20a4f`: `grep -rn 'push origin
+--delete <branch>' .claude/` finds the bare push three times, in
+`.claude/skills/docket/modes/capture.md` line 168 and in two refusal messages
+of `.claude/hooks/no-prune-guard.sh` (lines 455 and 478), which capture.md asks
+to be kept in step with it. `tools/branch_sweep.py`'s `sweep` deletes with
+`git push --atomic --force-with-lease=refs/heads/<branch>:<tip> origin
+<tip>:refs/archive/<branch>/<tip> :refs/heads/<branch>`; neither text hands
+that push or any other that copies the tip first.
+
+**Done when.** capture.md and both of `no-prune-guard.sh`'s messages hand the
+owner the sweep's own push, archive copy and delete in one atomic push leased
+on the tip judged, in place of the bare `git push origin --delete`, so a hand
+deletion of a `claude/` branch leaves a `refs/archive/` copy that
+`docs/maintainer.md` § "Sweep branches now, or restore one the sweep deleted"
+already restores.
+
+**Generator check.** The fact misread is whether a deleted `claude/` branch's
+work survives where a restore can reach it, which `tools/branch_sweep.py`
+encodes and nothing else consults. The bare push was written on 2026-09-27
+(`PL-G8TR`, `520e1c74`), a day after the sweep began archiving (`PL-X8SV`,
+`#1122`), so no later change left the text behind: it was written without reading the
+sweep's rule. No head's
+`misread:` states the fact; `PL-WNCT` (whether pushed work has a pull request
+to carry it) and `PL-BHVM` (whether the base holds a branch's change) are
+neighbours, not the same fact. A one-off. It is a repair to an existing
+instruction, not a new mechanism.

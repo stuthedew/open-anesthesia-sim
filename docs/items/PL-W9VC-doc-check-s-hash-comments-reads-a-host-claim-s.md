@@ -1,9 +1,17 @@
 ---
 id: PL-W9VC
 title: doc_check's _hash_comments reads a host claim's comments a physical line at a time, so a Makefile comment a backslash continues is read short, and a hash-led line inside a here-document, a multi-line quoted string, a YAML block scalar or a TOML multi-line string is read as a comment: an undated claim is missed or a dated one refused; latent
-status: untriaged
+priority: P3
+effort: S
+status: blocked
+classes: defect
 feature: one-answer
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
+blocked-by: PL-PBNK
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+payoff: a hash-led line that is a here-document's or a quoted string's content stops being read as a shell comment, so it no longer decides whether the host-claim gate refuses a sentence
+verify: grep -q 'def test_a_hash_line_inside_a_here_document_or_a_quoted_string_is_no_comment' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's _hash_comments reads a host claim's comments a physical line at a time, so a Makefile comment a backslash continues is read short, and a hash-led line inside a here-document, a multi-line quoted string, a YAML block scalar or a TOML multi-line string is read as a comment: an undated claim is missed or a dated one refused; latent
@@ -50,6 +58,33 @@ comments.
 
 Beside it, in the same function: a comment that follows a value or command on
 its line is never read, and the docstring alone says so.
+
+**Re-confirmed 2026-10-11** on main at `16a20a4f`, under python3 3.13.16:
+the continued Makefile comment dated on its second line is refused as
+undated, the one whose refusal is on its second line goes unreported, and the
+here-document's `#` line is refused at line 2.
+
+**The quoted-string form stands in a tracked file, found at triage
+2026-10-11.** `.claude/hooks/floor-interpreter-guard.sh` hands `python3 -c` a
+single-quoted string from line 74 to line 199, and the 40 `#` lines inside it
+are Python's comments, which `_hash_comments` reads as eight runs of shell
+comment. None names a host or a refusal, so no answer changes today - the same
+standing as `drift.yml`'s `run:` bodies above, which the capture counted and
+this one missed. Whether a form present with no answer changed is live for
+`PL-R417` is the parent pass's call, and it was reported there.
+
+**Why it matters.** The host-claim check is a hard gate, so a misread comment
+either fails `make check` on a claim that carries its date or passes one that
+does not; both are the floor's violation, and the first makes a writer reword
+a dated, correct sentence. Each format here already has a reader that knows
+where its statements end, so the line-at-a-time reading is a second answer
+that can disagree with it.
+
+**Scope after `PL-PBNK`, added at triage 2026-10-11.** `PL-PBNK` retires the
+host-claim check's reach into YAML, TOML and Makefile comments, where none of
+its 31 claims sits. Done first, it leaves this item the shell forms - the
+here-document and the multi-line quoted string - so this is `blocked` on it
+rather than built for formats that are about to stop being read.
 
 **Generator check.** A member of `PL-R417`: the reader takes a physical line
 for a statement its format continues, the fact that head names. The code is new

@@ -1,8 +1,10 @@
 ---
 id: PL-Y7BS
 title: ROADMAP.md's v0.5.3 row holds an unescaped pipe inside a code span, so GitHub's table cuts the row there and shows 1 of its 13 item ids, while docket's checks read all 13
-status: untriaged
+status: dropped
 added: 2026-10-10
+closed: 2026-10-11
+reason: Already fixed: #1392 (1ee4e78e, 2026-10-10) escaped the v0.5.3 row's pipe, so GitHub renders all 13 ids, and docket.markdown.cells already splits a row where GFM 0.29 does (PL-5NC3, #1358), pinned by test_doc_check's escaped-pipe case; re-measured 2026-10-11 at 16a20a4f.
 ---
 
 **Problem.** `ROADMAP.md`'s row for v0.5.3, at line 103 and 5,045 characters,
@@ -27,3 +29,12 @@ line, not where a statement ends across lines.
 **Done when.** The row's pipe is escaped, so GitHub shows all 13 ids, and
 docket reads a table row's cells where GFM does, or refuses such a row by
 name, pinned by a test.
+
+**Re-measured 2026-10-11** on main at `16a20a4f`: the premise no longer holds.
+`#1392` (`1ee4e78e`, 2026-10-10) escaped the pipe as `\|`, and markdown-it-py
+4.2.0's GFM table now renders 13 of the row's 13 ids. `docket.markdown.cells`
+already splits a row at every pipe no backslash escapes, inside a code span or
+not, as GFM 0.29 § 4.10 does (`PL-5NC3`, `#1358`), and
+`tests/unit/test_doc_check.py`'s case "table rows, an escaped pipe inside a
+cell" pins it: with the escape removed again, docket's cells and markdown-it-py
+both read 1 id in the row. Both halves of **Done when.** already hold.
