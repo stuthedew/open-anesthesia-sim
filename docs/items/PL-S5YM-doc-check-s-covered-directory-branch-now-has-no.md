@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: test, infra
-feature: dev-tooling
+feature: doc-consistency-checks
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/apparatus.md
 added: 2026-08-30
 verify: grep -q 'covered_dirs' tests/unit/test_doc_check.py && ! grep -q 'no tree draws one today' docs/apparatus.md

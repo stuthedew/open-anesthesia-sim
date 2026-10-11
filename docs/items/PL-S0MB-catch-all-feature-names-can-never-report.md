@@ -3,11 +3,13 @@ id: PL-S0MB
 title: Catch-all feature names can never report completion: dev-tooling carries 174 items and queue-hygiene 29, so bin/docket feature <name> cannot answer 'yes, that is dealt with' for either, and 32 of 33 workflow features read as live
 priority: P3
 effort: M
-status: ready
+status: done
 classes: infra
 feature: convergence-visibility
-touches: docs/items, docket.toml, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_checks.py
+touches: .claude/skills/docket/modes/capture.md, docket.toml, docs/items, subprojects/docket/README.md, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_config.py
 added: 2026-09-17
+closed: 2026-10-11
+pr: 1410
 verify: grep -qF 'retired_features' docket.toml
 ---
 
@@ -117,3 +119,32 @@ week). It is a build, M: twenty front-matter edits by `bin/docket set
 --feature`, three new names, one `docket.toml` list, one check with its test.
 Not a rename of any of the three, which the brief refuses: a name that
 completes but still carries unrelated items moves the problem.
+
+## Closed 2026-10-11
+
+`docket.toml` retires the three names as `retired_features`, read in
+`config.py` beside `known_classes`, and `bin/docket check` errors on an open
+item carrying one - `checks._check_retired_features`, beside
+`_check_feature_spellings`, matched after `_normalized_feature` so a variant
+spelling is not a way past it. Run on the tree before the members moved, it
+named exactly the twelve still open, and nothing after.
+
+Twelve of the table's twenty members were still open; the other eight
+(`PL-4ZK8`, `PL-7B3G`, `PL-2C53`, `PL-99YZ`, `PL-90CJ`, `PL-KRGY`, `PL-YVV4`,
+`PL-YZKK`) had closed and keep their names. The twelve went where the table put
+them, the two new names chosen for what completes:
+
+| member | feature now |
+| --- | --- |
+| `PL-X229`, `PL-S5YM`, `PL-DHJ7` | `doc-consistency-checks` |
+| `PL-41YP`, `PL-8LDF` | `model-requirements-tested` (new): complete when `docs/MODEL.md`'s required lists are bound to tests that resolve |
+| `PL-L1NX`, `PL-NDGS` | `contrast-base-entry-reading` (new): complete when `contrast_check --base` reads an entry it already holds correctly through a worsened colour and a rename |
+| `PL-037Y`, `PL-0R06` | `closed-item-claims` |
+| `PL-PTD8` | `merge-skew` |
+| `PL-M3YJ`, `PL-QHCP` | field removed |
+
+`PL-2M9N` (`docs/MODEL.md`'s "Required tests" headings bound to the tests that
+satisfy them) is the same kind as `PL-8LDF` and sits in `model-spec-accuracy`;
+it was not one of the three names' members, so it stays where it is. The
+`docket` skill's capture mode now names the retired list where it tells a
+session to pitch a name at what completes.

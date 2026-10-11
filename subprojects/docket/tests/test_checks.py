@@ -2957,6 +2957,35 @@ def test_genuinely_different_features_are_left_alone() -> None:
     assert not any("differ only in case or separator" in e for e in errors)
 
 
+RETIRED = Config(retired_features=("dev-tooling",))
+
+
+def test_an_open_item_carrying_a_retired_feature_is_an_error() -> None:
+    """`PL-S0MB`: an area's name never reports finished, and prose did not stop it refilling.
+
+    Every open status, untriaged included, since a fresh capture naming the
+    old bucket is exactly the refill the retirement is there to stop.
+    """
+    for status in ("untriaged", "ready", "needs-decision", "blocked"):
+        errors = analyze([_item(feature="dev-tooling", status=status)], TODAY, RETIRED).errors
+
+        assert _has(errors, "feature 'dev-tooling' is retired in docket.toml"), status
+
+
+def test_a_retired_feature_is_not_escaped_by_another_spelling() -> None:
+    errors = analyze([_item(feature="Dev_Tooling")], TODAY, RETIRED).errors
+
+    assert _has(errors, "feature 'Dev_Tooling' is retired")
+
+
+def test_a_closed_item_keeps_its_retired_feature() -> None:
+    """The history stays readable, and the name reports as finished rather than vanishing."""
+    closed = _item(feature="dev-tooling", status="done", closed=date(2026, 8, 20))
+
+    assert not _has(analyze([closed], TODAY, RETIRED).errors, "is retired")
+    assert not _has(analyze([_item(feature="docket")], TODAY, RETIRED).errors, "is retired")
+
+
 # The closing half of the same rule, which outlived the retired
 # `verify_required_from` because the `ready` gate never reaches an item that
 # goes straight to `done` (`PL-Z34C`).

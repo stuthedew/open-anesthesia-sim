@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: ready
 classes: test
-feature: dev-tooling
+feature: model-requirements-tested
 touches: tests/
 added: 2026-08-25
 verify: grep -rqE 'def test_every_minimum_displayed_output\w*widget' tests/integration/

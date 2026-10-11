@@ -4199,6 +4199,32 @@ def _check_feature_spellings(report: Report) -> None:
             )
 
 
+def _check_retired_features(report: Report, config: Config) -> None:
+    """An open item carrying a feature name the project has retired.
+
+    A feature name is there so `docket feature <name>` can answer "is that
+    dealt with?", and a name for an area rather than for what completes never
+    can. `PL-S0MB` retired three such names after twelve captures in one week
+    named one of them, a fortnight after the rule to name a group for what
+    completes reached `CLAUDE.md` - prose that was being routed around, which
+    is when a check should hold it. An error, because whether an item carries
+    a listed name is exact; matched after `_normalized_feature`, so a variant
+    spelling is not a way past it. Closed items keep theirs: the history stays
+    readable, and the name reports as finished.
+    """
+    retired = {_normalized_feature(name) for name in config.retired_features}
+    if not retired:
+        return
+    for item in report.items:
+        if item.feature and item.is_open and _normalized_feature(item.feature) in retired:
+            report.errors.append(
+                f"{_where(item)}: feature '{item.feature}' is retired in docket.toml - it "
+                "names an area rather than what completes, so `docket feature` can never "
+                "report it finished. Put the item in the group its work completes, or take "
+                "the field off with `docket set --feature ''` if none does"
+            )
+
+
 def analyze(
     items: list[Item],
     today: date,
@@ -4295,6 +4321,7 @@ def analyze(
     _check_generator_defects(report, settings)
     _check_generator_band(report, settings)
     _check_feature_spellings(report)
+    _check_retired_features(report, settings)
     _check_shared_verify(report, settings)
     _check_touched_items(report, settings)
     _check_filenames(report, settings)
