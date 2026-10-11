@@ -3,13 +3,15 @@ id: PL-TDBT
 title: docs/pr-bodies holds 187 historical documents that read as current: 21 cited paths no longer exist, 30 cite an unresolvable sha, and 22 angle-bracket placeholders in 15 files vanish in GitHub's own blob view, with doc_check blind to all of it by design
 priority: P3
 effort: M
-status: ready
+status: done
 classes: docs, infra
 feature: pr-body-integrity
 touches: docs/pr-bodies, tools/pr_body_check.py, tests/unit/test_pr_body_check.py
 added: 2026-09-20
+closed: 2026-10-11
+pr: 1407
 payoff: a reader who opens a recovered pull-request body learns on its first lines that it is a verbatim, unmaintained record, so a dead citation in it stops reading as a defect
-verify: grep -qF 'def test_recovery_header_says_the_record_is_historical' tests/unit/test_pr_body_check.py
+verify: grep -qF 'def test_recovery_header_says_the_record_is_historical' tests/unit/test_pr_body_check.py && grep -qF 'Every file here is a historical record' docs/pr-bodies/README.md && grep -qF 'note: historical record' docs/pr-bodies/108.md
 ---
 
 **Problem.** docs/pr-bodies holds 187 historical documents that read as current: 21 cited paths no longer exist, 30 cite an unresolvable sha, and 22 angle-bracket placeholders in 15 files vanish in GitHub's own blob view, with doc_check blind to all of it by design
@@ -105,3 +107,27 @@ once by script across the existing ones; no citation is repaired, and
 says. `touches:` is re-pointed here at the writer and its test as well as the
 records. Status moves to `ready` with this answer, as `docket check`
 requires of a recorded answer. Size S in practice, whatever the field says.
+
+## Built 2026-10-11
+
+As answered: `write_recovery` in `tools/pr_body_check.py` writes a `note:`
+field second after `pr:` - "historical record - the body is kept verbatim and
+not maintained; its paths, lines and hashes describe the tree at its merge
+(docs/pr-bodies/README.md)" - and one commit backfilled it into the 265
+records already written, every body and every other field unchanged (each file
+parsed at the parent commit and after). `docs/pr-bodies/README.md` holds the
+whole statement, including that `tools/doc_check.py` stays outside the
+directory by design. `--anchors` now passes over the README, as `recovered()`
+already did; read as a record it would have been named on every `make check`
+run. No citation was repaired.
+
+**The README also says why GitHub boxes most headers.** PyYAML cannot parse
+181 of the 265 headers, all on a colon inside a `subject:` value, so GitHub's
+view shows them under "Error in user YAML". The header follows the item files'
+convention, which is deliberately not YAML; the note line holds no colon, so
+the count is the same 181 after the backfill. `PL-S0D4` carries the item
+files' half of the same observation.
+
+`verify:` now also asks for the README's opening sentence and for the note
+line in `108.md`, the oldest record, so the command names the two things the
+work wrote as well as its test.
