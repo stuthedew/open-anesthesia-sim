@@ -1,9 +1,16 @@
 ---
 id: PL-0CJC
 title: docket.shell's grammar does not take the word after function NAME {, time -p or coproc for the head of a command, so a case, a (( or a [[ there is lexed as words: a case pattern's parenthesis closes the enclosing command substitution, and a newline inside the (( or [[ ends a line, so script_lines, shell_words and flat_reading cut one command into fragments; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+payoff: a case, (( or [[ after function NAME {, time -p or coproc is read as one command by docket, doc_check and the Bash guards alike, instead of as fragments that each read as complete
+verify: grep -q 'def test_a_compound_command_after_function_time_p_or_coproc_is_read_whole' subprojects/docket/tests/test_shell.py
 ---
 
 **Problem.** docket.shell's grammar does not take the word after function NAME {, time -p or coproc for the head of a command, so a case, a (( or a [[ there is lexed as words: a case pattern's parenthesis closes the enclosing command substitution, and a newline inside the (( or [[ ends a line, so script_lines, shell_words and flat_reading cut one command into fragments; latent
@@ -40,10 +47,25 @@ declined, where an unended `$(` is declined and `bash -n` refuses both.
 Latent: no tracked script or fence holds `function NAME {`, `time -p` or
 `coproc` followed by `case`, `((` or `[[`.
 
+**Re-confirmed 2026-10-11** on `main` at `16a20a4f`: `script_lines` still cuts
+the first form into three pieces, the first ending after `echo in1 ;;`;
+`function g { ((1 +` and `time -p ((1 +` are still cut after the `+`; and both
+one-line forms still close the substitution at `a)`, where a plain `$(case a
+in a) ...; esac)` is read whole. bash 5.2.21 still prints `in1` then `b`. A
+`git grep` outside `docs/items/` finds none of the three forms.
+
+**Why it matters.** `docket.shell` is the one shell reader that docket's
+verify audits, `tools/doc_check.py`'s workflow readers and, through
+`.claude/hooks/shell_split.py`, the Bash guards share (`PL-JNYL`), so a command
+it cuts short is misread by all of them at once: an arm read as a command, a
+guarded command after the fragment read in the wrong place. Nothing warns,
+because every piece reads as complete.
+
 **Generator check.** A member of `PL-R417`: the reader takes a physical line
 for a statement its format continues, the fact that head names. It is the gap
 closed `PL-2JYP`'s and `PL-M3M4`'s fixes left; the
-rewrite in `#1390` kept it.
+rewrite in `#1390` kept it. Re-read 2026-10-11: latent, so an ordinary item
+under that closed, spent head; found live, it would reopen it.
 
 **Done when.** The word after each of the three is read as a command's head,
 and each form above is a shell case in the reader's tests holding docket to
