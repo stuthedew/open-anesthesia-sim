@@ -3,12 +3,14 @@ id: PL-Y3GK
 title: capture.md hands the project owner a bare git push origin --delete for a branch the branch sweep keeps that should go anyway, so the one deletion left to a hand is the only one that keeps no refs/archive copy, and no report names the non-item files such a branch may carry (found in PL-BYMX's design round)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: stranded-report-fidelity
-touches: .claude/skills/docket/modes/capture.md, .claude/hooks/no-prune-guard.sh
+touches: .claude/skills/docket/modes/capture.md, .claude/hooks/no-prune-guard.sh, tests/unit/test_no_prune_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-11
+closed: 2026-10-11
+pr: 1418
 payoff: A claude/ branch the owner deletes by hand keeps an archive copy like every swept one, so work only that branch held stays a restore away.
 verify: grep -qF -- '--force-with-lease' .claude/skills/docket/modes/capture.md && ! grep -qF 'git push origin --delete <branch>' .claude/skills/docket/modes/capture.md && ! grep -qF 'git push origin --delete <branch>' .claude/hooks/no-prune-guard.sh
 ---
