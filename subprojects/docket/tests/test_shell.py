@@ -287,6 +287,29 @@ def test_an_ansi_c_quoted_string_ends_at_the_quote_bash_ends_it_at() -> None:
     )
 
 
+def test_a_locale_string_reads_as_its_double_quoted_text() -> None:
+    """Bash reads `$"..."` as the double-quoted string it holds, in the C locale (`PL-V690`).
+
+    Read as a `$` and then a double-quoted string, `$"git"` was the word `$git`
+    to both views, so a guard looking for `git` passed it by, where bash 5.2.21
+    runs `git`. A substitution inside it still runs, and inside double quotes
+    `$"` opens no locale string: `"$"x""` is `$x`.
+    """
+    for command, words in (
+        ('p $"loc"', ["p", "loc"]),
+        ('p $"git" push', ["p", "git", "push"]),
+        ('a$"b"c', ["abc"]),
+        ('p $\\\n"a b"', ["p", "a b"]),
+        ('p "$"x""', ["p", "$x"]),
+    ):
+        assert _words(command) == words, command
+        assert flat_reading(command).tokens == tuple(words), command
+    assert shell_words('p $"loc"').clauses[0].tokens[1] == Word("loc", quoted=True)
+
+    assert _words('p $"$(p x)"') == ["p", "$(p x)", "p", "x"]
+    assert flat_reading('p $"$(p x)"') == flat_reading('p "$(p x)"')
+
+
 def test_a_substitution_in_an_unquoted_body_is_a_command_it_runs() -> None:
     """Bash expands the body of a delimiter with no quoted part (POSIX.1-2017 XCU §2.7.4).
 
@@ -533,14 +556,15 @@ COMMENT = PLAIN + " '\"\\$`()<#;&|"
 def _word(draw: st.DrawFn) -> str:
     """A word bash hands over as written once its quotes are removed.
 
-    No `$` stands unescaped before a double quote, where it would open a
-    locale string the lexer misreads (`PL-V690`), and a `$'...'` holds no
-    backslash, whose escape the lexer keeps as written (`PL-48ZJ`).
+    A `$'...'` holds no backslash, whose escape the lexer keeps as written
+    (`PL-48ZJ`).
     """
     parts: list[str] = []
     for _ in range(draw(st.integers(1, 4))):
         kind = draw(
-            st.sampled_from(("plain", "plain", "escaped", "single", "double", "ansi", "join", "#"))
+            st.sampled_from(
+                ("plain", "plain", "escaped", "single", "double", "locale", "ansi", "join", "#")
+            )
         )
         if kind == "plain":
             parts.append(draw(st.text(PLAIN, min_size=1, max_size=4)))
@@ -548,12 +572,14 @@ def _word(draw: st.DrawFn) -> str:
             parts.append("\\" + draw(st.sampled_from(sorted(SPECIAL + "ab\n"))))
         elif kind == "single":
             parts.append("'" + draw(st.text(PLAIN + ' ;&|<>()$`"\\#*?[{}~\n', max_size=5)) + "'")
-        elif kind == "double":
+        elif kind in ("double", "locale"):
             inside = st.one_of(
                 st.text(PLAIN + " ;&|<>()#*?[{}~'\n\t", min_size=1, max_size=3),
                 st.sampled_from(('\\"', "\\\\", "\\$", "\\`", "\\a", "\\\n", "\\;")),
             )
-            parts.append('"' + "".join(draw(st.lists(inside, max_size=4))) + '"')
+            # A `$"..."` is the double-quoted string it holds, in the C locale.
+            opening = '$"' if kind == "locale" else '"'
+            parts.append(opening + "".join(draw(st.lists(inside, max_size=4))) + '"')
         elif kind == "ansi":
             parts.append("$'" + draw(st.text(PLAIN + ' ;&|<>()$`"#*?[{}~', max_size=4)) + "'")
         elif kind == "join":
@@ -901,9 +927,6 @@ KNOWN_DEPARTURES = [
         {("1", "+", "2"): 1, ("p", "x"): 1},
         {("1", "+", "2"): 1, ("p", "x"): 1},
         id="PL-3Z8B-command",
-    ),
-    pytest.param(
-        'p $"loc"\n', {("p", "loc"): 1}, {("p", "$loc"): 1}, {("p", "$loc"): 1}, id="PL-V690"
     ),
     pytest.param(
         "[[ -n a && -n b ]] && p x\n",

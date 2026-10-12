@@ -142,6 +142,8 @@ class _Value:
 class Word(_Value):
     """One shell word: its text once quotes are removed, and what the shell does to it.
 
+    Its text is what bash reads in the C locale, where a `$"..."` locale
+    string is the double-quoted string it holds, untranslated (`PL-V690`).
     A command or process substitution in it stays as written, `$(` or backquote
     and all, the way a double-quoted `$` always has: its body is read as a
     command of its own, into `Reading.substitutions`. A compound array
@@ -739,6 +741,13 @@ class _Lexer:
                     end = self.substitution_body(
                         index, after + 1, stop, flat, _arithmetic(command, after, stop)
                     )
+                elif char == "$" and follows == '"':
+                    # A locale string: the double-quoted string, its `$` dropped,
+                    # as bash reads one in the C locale (`PL-V690`).
+                    self.joins.extend(range(index + 1, after, 2))
+                    index = self.double_quoted(after + 1, stop, text, spelled)
+                    quoted = True
+                    continue
                 elif char == "$" and follows == "'":
                     # ANSI-C quoting: its escapes kept as written, which no reader decodes.
                     self.joins.extend(range(index + 1, after, 2))
@@ -1255,7 +1264,9 @@ def shell_words(command: str) -> Reading:
     "Quoting", §3.1.3 "Comments", §3.5.3 "Shell Parameter Expansion", §3.5.4
     "Command Substitution", §3.5.6 "Process Substitution", §6.7 "Arrays"):
     `'...'` is literal; in `"..."` a backslash escapes only `"`, a backslash,
-    `$` and a backtick; in `$'...'` it escapes the next character, an
+    `$` and a backtick; `$"..."` is the `"..."` it holds, as bash reads it in
+    the C locale, translating nothing (§3.1.2.5 "Locale-Specific Translation",
+    `PL-V690`); in `$'...'` it escapes the next character, an
     apostrophe included; outside quotes it escapes the next character; an
     operator is the longest match in `OPERATORS`, read across any
     backslash-newline inside it; `#` opens a comment only where no word is in
