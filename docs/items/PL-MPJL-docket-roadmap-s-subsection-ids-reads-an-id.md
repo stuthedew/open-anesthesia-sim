@@ -50,7 +50,9 @@ read, and no statement is cut short. `PL-KR6M` and `PL-2B0B` hold the same
 misread in other readers. No head's `misread:` states that fact - which
 block kinds hold a literal rather than prose, which `markdown.PROSE` already
 records - so the three, all open and latent, are a candidate head, put to the
-2026-10-11 triage pass's parent session rather than recorded here.
+2026-10-11 triage pass's parent session rather than recorded here. Recorded
+2026-10-12 as a `spent` head on `PL-KR6M` at its triage, with this item a
+member, and the two worked in one pull request.
 
 **Why it matters.** `excluded_ids` is what reports an id as out of a
 milestone's scope, so an example id quoted in an indented block would read as
