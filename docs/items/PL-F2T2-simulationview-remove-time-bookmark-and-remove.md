@@ -2,6 +2,7 @@
 id: PL-F2T2
 title: SimulationView._remove_time_bookmark and _remove_mac_target read the reference run's snapshot outside any halt gate, so Remove in the marks dialog on a run whose snapshot refuses raises out of the slot as PL-V2HC's readers did
 status: untriaged
+feature: every-control-restates-the-halt
 added: 2026-10-12
 ---
 
