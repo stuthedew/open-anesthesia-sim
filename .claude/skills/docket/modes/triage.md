@@ -51,6 +51,23 @@ different branch than the one the mark named. So read the mark as "somebody may
 be in this file" rather than as the identity of who: skipping is still right, and
 the branch named is where to look first rather than the whole answer.
 
+**Then read the marks again before every push, for the ids this pass answered**
+(`PL-XJ22`). The marks above are read when the pass starts, and a claim made
+while it runs reaches `origin` only afterwards, so both answers head for `main`
+and the merge keeps whichever arrives first. Two of about nine triage passes
+merged between 2026-09-24 and 2026-10-11 met one: #1124 committed its answer for
+`PL-QMN0` seven minutes after another branch claimed it and merged first, and
+that branch's finished fix closed unmerged; #1278 restored `main`'s copies of
+`PL-DHGC` and `PL-W560` only because its session re-read on its own. So run
+`bin/docket flight`, which fetches first, immediately before each push - an
+item-only branch arms auto-merge at its first, so nothing later asks. For any
+answered id it lists on a branch other than this one, restore `origin/main`'s
+copy (`git checkout origin/main -- <path>`), commit that, and name the branch
+in the reply as for a skip. `flight` keeps one row per item, a claim ahead of
+any status move and the earliest move ahead of later ones, so a second pass
+that answered after this one is not in it, nor is a file edited with no status
+move; `bin/docket show <id>` prints every branch on one item.
+
 Fill in what capture deliberately skipped:
 `priority`, `effort`, `classes`, `touches`, and `feature` when it belongs
 with related work. Safety-critical work starts at `P0` or `P1`; the checker

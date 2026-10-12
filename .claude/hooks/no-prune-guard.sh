@@ -437,6 +437,19 @@ deletes = generated(calls)
 if not (pushes or prunes or removes or deletes):
     sys.exit(0)
 
+# The push the sweep makes, for the project owner to run: a bare `--delete`
+# keeps no archive copy, and a branch the sweep keeps is one some reading still
+# holds (`PL-Y3GK`). `.claude/skills/docket/modes/capture.md` gives the same line.
+owner_delete = (
+    "the push the sweep makes, filled in with the branch and the full tip judged, "
+    "which `git ls-remote origin refs/heads/<branch>` prints. It copies the tip "
+    "to `refs/archive/` and deletes the branch as one transaction, refused "
+    "whole where the branch has moved since, where a bare "
+    "`git push origin --delete` copies nothing (`PL-Y3GK`):\n\n"
+    "    git fetch origin <branch> && git push --atomic "
+    "--force-with-lease=refs/heads/<branch>:<tip> origin "
+    "<tip>:refs/archive/<branch>/<tip> :refs/heads/<branch>"
+)
 push_reason = (
     "A push that can delete branches on the remote is refused in this "
     "repository. `--mirror` deletes every branch on the remote that this clone "
@@ -451,9 +464,9 @@ push_reason = (
     "Deleting branches on the remote is "
     "left to the branch sweep and the project owner: `branch-sweep.yml` deletes "
     "a finished `claude/*` branch daily, and `python3 tools/branch_sweep.py` "
-    "names any it keeps. Name any of those that should go anyway in the reply, "
-    "with `git push origin --delete <branch>` for the project owner to run "
-    "(`CLAUDE.md`, the housekeeping bullet)."
+    "names any it keeps. Name any of those that should go anyway in the reply "
+    "(`CLAUDE.md`, the housekeeping bullet), for the project owner to delete "
+    "with " + owner_delete
 )
 prune_reason = (
     "Pruning remote-tracking refs is refused in this repository. A stale "
@@ -474,9 +487,8 @@ prune_reason = (
     "when its own pull request merges, `branch-sweep.yml` deletes a finished "
     "`claude/*` branch daily, and `python3 tools/branch_sweep.py` names any the "
     "sweep keeps. Deleting one that should go anyway is for the project owner "
-    "to run, since a push from a session is refused, so name it in the reply: "
-    "`git push origin --delete <branch>` (`docs/worker.md`, `PL-K2C8`, "
-    "`PL-X8SV`).\n\n"
+    "to run, since a push from a session is refused (`docs/worker.md`, "
+    "`PL-K2C8`, `PL-X8SV`), so name it in the reply with " + owner_delete + "\n\n"
     "To fetch without pruning, drop the flag or the setting: `git fetch origin`."
 )
 delete_reason = (

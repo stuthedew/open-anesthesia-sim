@@ -3,11 +3,13 @@ id: PL-XJ22
 title: A triage pass checks the in-flight marks when it starts and not when it pushes, so an item claimed while the pass runs gets a second answer: #1124 triaged PL-QMN0 seven minutes after another branch claimed it, and merged first (2026-09-26)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: claim-record
 touches: .claude/skills/docket/modes/triage.md
 added: 2026-10-11
+closed: 2026-10-11
+pr: 1416
 payoff: A triage pass stops pushing a second answer for an item another branch claimed while the pass ran, so a finished fix is not lost to whichever pull request merges first.
 verify: grep -qF 'bin/docket flight' .claude/skills/docket/modes/triage.md
 reenters: PL-MB2W, PL-7TVT
@@ -82,3 +84,14 @@ reader; one instance, so no head is reopened.
 **Done when.** A triage pass cannot push an answer for an item another branch
 claimed or edited after the pass read the marks without being told so at that
 moment, or the rate above is recorded as not worth the line it would take.
+
+**Done 2026-10-11, by the declared route.** Triage mode now asks for
+`bin/docket flight` immediately before every push, and for `origin/main`'s copy
+to be restored for any answered id it lists on another branch. Read off
+`Holdings.holding` in `subprojects/docket/src/docket/claims.py` before writing
+it: a claim sorts ahead of every status move, so a rival claim always reaches
+the row even where this branch also answered the item. What `flight` cannot
+show - a second pass's later answer, since the earliest move keeps the row, and
+an edit with no status move - the step names, with `bin/docket show <id>` as
+the read that prints every branch. If a later instance shows the step skipped,
+the `bin/docket arm` hold above is the next answer.
