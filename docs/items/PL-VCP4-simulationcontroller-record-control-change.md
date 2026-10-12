@@ -1,8 +1,13 @@
 ---
 id: PL-VCP4
 title: SimulationController._record_control_change builds the settings record after the setter has written, so on a run whose tissue flows no longer sum to the cardiac output every setting but the cardiac output is half applied: the compartment holds the new value and the dial reads it, the definition's open segment and the timeline keep the old one, and the banner says the simulation is unchanged and still running its previous setting (found reviewing PL-M4M0)
-status: untriaged
+priority: P1
+effort: S
+status: blocked
+classes: safety, defect
 feature: cardiac-output-write-consistency
+touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
+blocked-by: PL-KFNP
 added: 2026-10-11
 ---
 

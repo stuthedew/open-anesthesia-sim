@@ -1,10 +1,15 @@
 ---
 id: PL-19Y0
 title: A direct write to a checked field of BreathingCircuit, VenousBloodCompartment, TissueGroup, AlveolarCompartment or AgentSimulationValidator skips every check its constructor and setters make: a sevoflurane dial of Percent(50.0) past its 8% vaporizer maximum, a bare-float dial, a zero circuit volume, an inspired fraction of 1.5 and a venous agent amount past capacity are each accepted; only the three flows are guarded (PL-LBQY), and PL-544D covers the alveolar and tissue agent amount alone (found sweeping PL-ZGYX)
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: safety, defect
 feature: parse-dont-validate
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/agent_simulation_validation.py, tests/unit/test_circuit.py, tests/unit/test_blood.py, tests/unit/test_tissue.py, tests/unit/test_alveolar.py, tests/unit/test_agent_simulation_validation.py
 added: 2026-10-11
+payoff: a test or notebook can no longer set a 50% sevoflurane dial, a zero circuit volume or an inverted flow range that the screen would then show as if the model had accepted it
+verify: grep -q 'def test_a_direct_write_is_held_to_the_constructors_checks' tests/unit/test_circuit.py && grep -q 'def test_a_direct_write_is_held_to_the_constructors_checks' tests/unit/test_blood.py && grep -q 'def test_a_direct_write_is_held_to_the_constructors_checks' tests/unit/test_tissue.py && grep -q 'def test_a_direct_write_is_held_to_the_constructors_checks' tests/unit/test_alveolar.py && grep -q 'def test_a_direct_write_is_held_to_the_constructors_checks' tests/unit/test_agent_simulation_validation.py
 ---
 
 **Problem.** A direct write to a checked field of BreathingCircuit, VenousBloodCompartment, TissueGroup, AlveolarCompartment or AgentSimulationValidator skips every check its constructor and setters make: a sevoflurane dial of Percent(50.0) past its 8% vaporizer maximum, a bare-float dial, a zero circuit volume, an inspired fraction of 1.5 and a venous agent amount past capacity are each accepted; only the three flows are guarded (PL-LBQY), and PL-544D covers the alveolar and tissue agent amount alone (found sweeping PL-ZGYX)
@@ -55,3 +60,15 @@ volume is bad. (3) The `require_a_number` on the capacity's factors inside
 the amount guard is a stop-gap for that write order, and goes when the
 volume's own guard runs first. An infinite capacity built from finite factors
 (1e200 by 1e200) passes construction and admits any amount, before and after.
+
+**Folded in from `PL-HJ7L` at the 2026-10-12 triage pass.** `BreathingCircuit
+.deliverable_fresh_gas_flow_range` is one of the checked fields above.
+Reassigned on a built circuit to `DeliverableFreshGasFlowRange(20.0, 30.0)`, it
+leaves `accepted_fresh_gas_flow_range_l_min` at `(20.0, 10.0)` and the held
+4.0 L/min outside the machine's range, where the same range at construction
+raises `SimulationConfigurationError`, because
+`_require_the_two_flow_claims_overlap` and `_require_deliverable_flow` run only
+in `__post_init__`. Its guard re-checks both - the overlap, and the held flow
+against the new range - as `set_circuit_volume` re-checks against the held
+amount. Reproduced by `PL-HJ7L`'s review of `#1442`; nothing under `src/`
+reassigns it.

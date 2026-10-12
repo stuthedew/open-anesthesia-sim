@@ -1,9 +1,16 @@
 ---
 id: PL-HPKK
 title: AgentParameters built directly admits a zero max_delivered_concentration_percent and a mac_percent above it: the loader's PositivePercent and _mac_percent_must_not_exceed_vaporizer_max hold for a file and for nothing past it, the shape PL-0FJ8 closed for the MAC's sign alone
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
+feature: parse-dont-validate
 touches: src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-11
+payoff: an agent record built outside the loader is held to the same vaporizer maximum and MAC relation a file is, so no second route admits a MAC the dial cannot reach
+verify: grep -q 'def test_a_zero_vaporizer_maximum_is_refused_at_construction' tests/unit/test_parameters.py && grep -q 'def test_a_mac_above_the_vaporizer_maximum_is_refused_at_construction' tests/unit/test_parameters.py
 ---
 
 **Problem.** AgentParameters built directly admits a zero max_delivered_concentration_percent and a mac_percent above it: the loader's PositivePercent and _mac_percent_must_not_exceed_vaporizer_max hold for a file and for nothing past it, the shape PL-0FJ8 closed for the MAC's sign alone
@@ -19,7 +26,7 @@ built by `dataclasses.replace` meets neither. Measured that day on `main`:
 builds, and so does `replace(..., mac_percent=Percent(9.0))` against the 8.0
 maximum.
 
-**Why a finding rather than a defect.** Nothing but the loader builds an
+**Why it matters, and why it is a finding rather than a defect.** Nothing but the loader builds an
 `AgentParameters` on an application path, so no displayed value is wrong, and a
 zero maximum stops the dial rather than printing a plausible number. It is the
 shape `.claude/rules/core-domain.md` § "Where it stops" names: a frozen record

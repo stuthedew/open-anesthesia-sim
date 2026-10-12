@@ -1,8 +1,12 @@
 ---
 id: PL-KFNP
 title: PatientCompartments.__setattr__'s type-only guard (PL-LBQY) admits a checked CardiacOutput written past set_cardiac_output and leaves every tissue's blood flow at the old output, a record the core refuses wherever it is next built; root cause of PL-M4M0 and the two items filed beside it, so decide whether the write keeps the relation through set_cardiac_output or is refused outright, which PL-LBQY's three options did not weigh (found reviewing PL-M4M0)
-status: untriaged
+priority: P1
+effort: M
+status: needs-decision
+classes: safety, defect
 feature: cardiac-output-write-consistency
+touches: src/anesthesia_sim/core/patient.py, tests/unit/test_supported_ranges.py, docs/MODEL.md
 added: 2026-10-11
 root-cause-of: PL-M4M0, PL-VCP4, PL-J39J
 generator: spent - every reader of the patient's output after the write has been walked: the step restates the record and Reset refuses it before clearing (PL-M4M0), a fork is refused by _disagreements_with, set_agent rebuilds through the setters, a setting change is PL-VCP4 and the readout PL-J39J; no control makes the write and mypy --strict refuses a bare float, so a new member needs a new reader of the output
@@ -41,3 +45,20 @@ message naming the setter; `tests/unit/test_supported_ranges.py` pins the
 choice beside `PL-LBQY`'s test; `docs/MODEL.md` § "Supported input ranges"
 says which; and `PL-VCP4` and `PL-J39J` are closed by it or re-scoped to what
 it leaves.
+
+**Generator check.** Recorded at capture: `root-cause-of: PL-M4M0, PL-VCP4,
+PL-J39J`, with `generator: spent` naming the readers walked. Confirmed at the
+2026-10-12 triage pass; nothing to add.
+
+**Decision needed** (the owner's: it reopens `PL-LBQY`, ratified 2026-10-04,
+on ordinary evidence). Whether a `CardiacOutput` assigned to
+`PatientCompartments.cardiac_output_l_min` past `set_cardiac_output` is refused
+at the assignment, or moves every tissue's flow as the setter does.
+**Recommendation: refuse it, with a message naming `set_cardiac_output`.** An
+assignment that silently redistributes six tissue flows is a hidden mode - one
+write doing a setter's work - and the safety standard prefers an obvious
+failure to a record quietly rebuilt; refusing leaves one way to change the
+output, the one the controller already uses. It extends `PL-LBQY`'s guard on
+this one field rather than replacing it, so frozen compartments stay refused as
+decided. `PL-VCP4` and `PL-J39J` are `blocked` on this item, and either answer
+makes both unreachable through this write.

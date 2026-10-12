@@ -1,8 +1,13 @@
 ---
 id: PL-J39J
 title: After a cardiac output written past set_cardiac_output halts the run, at the next step or at the Reset PL-M4M0 refuses, the cardiac output readout and dial show the written output beside compartment values and a chart computed at the old flows, under a banner saying the values shown are the last completed step; only the banner's own sentence names both figures (found reviewing PL-M4M0)
-status: untriaged
+priority: P1
+effort: S
+status: blocked
+classes: safety, defect
 feature: cardiac-output-write-consistency
+touches: src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py
+blocked-by: PL-KFNP
 added: 2026-10-11
 ---
 

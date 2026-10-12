@@ -1,8 +1,15 @@
 ---
 id: PL-JTCQ
 title: Three git path readers take git's C-quoted spelling of an unusual path for the path - vcs._commits_by_landing reads log --name-only and doc_check._baseline reads ls-tree, both without -z, and doc_check._deleted_paths unsets quotePath but not -z - so orphaned misses a commit that only adds a non-ASCII file, and the resident-size baseline drops a non-ASCII rule file; latent
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
+touches: subprojects/docket/src/docket/vcs.py, tools/doc_check.py, subprojects/docket/tests/test_vcs.py, tests/unit/test_doc_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-06
+payoff: orphaned and the resident-size baseline read a non-ASCII path as the path it is, so a commit adding one is not lost from stranded and a rule file is not dropped from the measurement
+verify: grep -q 'def test_a_non_ascii_path_is_read_as_git_wrote_it' subprojects/docket/tests/test_vcs.py && grep -q 'def test_the_resident_baseline_reads_a_non_ascii_rule_file' tests/unit/test_doc_check.py
 ---
 
 **Problem.** Three git path readers take git's C-quoted spelling of an unusual path for the path - vcs._commits_by_landing reads log --name-only and doc_check._baseline reads ls-tree, both without -z, and doc_check._deleted_paths unsets quotePath but not -z - so orphaned misses a commit that only adds a non-ASCII file, and the resident-size baseline drops a non-ASCII rule file; latent
@@ -48,7 +55,7 @@ Latent until a tracked path holds a byte git quotes.
 `listed_paths` does, pinned by a test with a non-ASCII path for each of the
 first two.
 
-**Generator question, open at the 2026-10-11 triage pass; left untriaged for it.**
+[superseded 2026-10-12: answered below, a `spent` head filed as `PL-4YDJ`] **Generator question, open at the 2026-10-11 triage pass; left untriaged for it.**
 `PL-JTCQ`, `PL-MR8Z` and `PL-PXT7` misread one fact no head states: git prints an
 unusual path C-quoted unless `-z` is given. `PL-MR8Z`'s own Generator check named
 the fact at two items; this is the third. About 15 `--name-only` and `ls-tree`
@@ -58,3 +65,9 @@ git quotes. It may instead be a post-close instance of `PL-PVW2`, which put `-z`
 into `changed_path_args`. **Leaning: a `spent` head**, on `PL-R417`'s reasoning,
 filed as its own item naming all three, since this item's fix covers only its own
 three readers; settle it before triaging this item. If ordinary: P3, M, `defect`.
+
+**Answered at the 2026-10-12 triage pass: a `spent` head, filed as `PL-4YDJ`**,
+with `root-cause-of: PL-JTCQ, PL-MR8Z, PL-PXT7` and the fact as its `misread:`,
+how git spells a path in its output and when it quotes one. No head stated it,
+and `PL-PVW2`'s fact is a different one. This item stays its own three readers
+at its own band; the head carries the rest of the reads.
