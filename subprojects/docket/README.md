@@ -1422,8 +1422,8 @@ entries of the gate's milestone that hold an item that can start now.
   features fill what is left, largest first, and one that does not fit folds
   into its items' lane lines, which the foot names. Build entries past the cap
   collapse into one line.
-- What the milestone clears itself and what waits outside the gate are counted
-  in one closing line and never offered.
+- What the milestone clears itself, what the gate defers and what waits outside
+  the gate are counted in one closing line and never offered.
 
 It reads as `next` does - one fetch, the default branch's copy of an item moved
 since the fork, the claims in flight - and exits non-zero, as `wave` does,
@@ -1864,6 +1864,16 @@ next` ranks by, so the two cannot place one item differently. With no
 `workflow_paths` declared there is no split to print, and `gate` says so rather
 than listing every item as `unplaced`.
 
+A last group carries the previous list. A frozen entry stays one whatever its
+classes become, so the open entries of the most recently frozen list that are
+no longer debt follow the debt, split by lane the same way, each one that gate
+deferred marked `deferred from vX.Y.Z`. Read from open debt alone, the freeze
+dropped them, and no command printed one's lane (`PL-JV5Q`, `PL-QWF8`). The
+list is the last section in version order that records one, released or not,
+since on the day of a freeze the list just cleared is what the new one builds
+on; a roadmap that cannot be read is named on a closing line rather than read
+as holding none.
+
 Debt is an open item classed `defect`, `safety`, `science`, `refactor` or
 `perf` — `debt_classes`, configurable — or one at `needs-decision`, since a
 decision left open stops being one anybody can make. It writes nothing and
@@ -1889,6 +1899,18 @@ list does not hold — cannot be closed by clearing this gate in any order, so i
 is counted apart and the beat asks for the rest. The entry stays on the list;
 the list is frozen, and this is a count of what it can be asked for today.
 
+Before that split, an entry the gate defers is counted apart as deferred: every
+id of it still open carries a `deferred-from:` naming the gate's version, the
+third disposition `ROADMAP.md` § "The cadence" allows, recorded on the item
+(`PL-8QMD`). Nothing it waits on is charged to this gate, since that belongs to
+the gate it goes to. A deferral used to be read off the `blocked-by` chain
+instead, so an off-list blocker deferred an entry nobody had deferred and a
+deferral with no id to block on read as work the gate could clear (`PL-D388`,
+`PL-18BD`). An entry left waiting on work that the list does not hold, the
+milestone's `Required scope` does not name and the release train does not
+schedule first is undecided, and `docket check` refuses it, naming both
+answers: defer it, or admit what it waits on.
+
 A second carve-out splits them again, and this one is read from the roadmap:
 debt the gated milestone's own `Required scope` names is cleared *by* that
 milestone rather than before it, so the gate is open once everything outside
@@ -1897,10 +1919,10 @@ that is how the rule states it — the group heading a frozen list writes the
 same split under is not parsed here. `tools/doc_check.py` holds that heading to
 `Required scope` instead, for the current gate, so the two cannot come apart
 the way v0.6.0's did, where two entries sat under § "Cleared before" after the
-scope had named them (`PL-J6HP`). The two carve-outs
-are disjoint and `blocked_outside` is computed first: an entry that is
-milestone work *and* waits on work off the list is not something the milestone
-can simply clear, and the three counts add back up to the open one either way.
+scope had named them (`PL-J6HP`). The carve-outs are disjoint, the deferral
+read first and `blocked_outside` next: an entry that is milestone work *and*
+waits on work off the list is not something the milestone can simply clear,
+and the four counts add back up to the open one either way.
 The same test splits what the blocked entries wait on: an item the milestone's
 `Required scope` names is counted as that scope's work, not as work outside the
 milestone. Before this, v0.6.0's gate reported ten open items outside it where
@@ -1919,8 +1941,9 @@ milestone still holds the milestone, because it ships when its scope is done and
 not when the remainder is somebody else's fault, and an id the store does not
 hold withholds completeness rather than being guessed either way.
 
-It also lists what the gate defers: every item whose `deferred-from:` names the
-gate's version, open and closed alike, with its state read from the store - an
+It also lists what the gate defers off its list: every item whose
+`deferred-from:` names the gate's version and that the list does not hold, open
+and closed alike, with its state read from the store - an
 open item's status, the release a shipped one went out in (its `milestone:`),
 the date a dropped one closed, and "done, not yet released" for work no cut has
 taken yet. A deferral is never withdrawn, since the gate is a snapshot, so this
@@ -3224,15 +3247,22 @@ only the third answer, neither. The deferral is this field: the version of the
 milestone whose frozen list the item is excused from, then a separator, then
 the ground. The version names the gate the item leaves, never one it goes to,
 because the next freeze takes every open debt item anyway. `docket set <id>
---deferred-from "vX.Y.Z - why"` writes it.
+--deferred-from "vX.Y.Z - why"` writes it. An entry the frozen list itself
+holds is deferred the same way, on the roadmap's terms for that (`PL-8QMD`): it
+stays on the list, `docket wave` counts it deferred, and `docket gate` carries
+it to the next freeze whatever its classes have become.
 
 `docket check` holds it both ways. While the roadmap records a current gate, an
 open item that is debt - a debt class, or `needs-decision` - is placed by that
 gate's section (its frozen list, or `Required scope`) or carries this field
 naming the gate's version, or it is an error that prints the command above. A
 value with no `vX.Y.Z` or no reason is refused, as is a version whose section
-records no frozen list, and so is an item one gate both places and defers.
-Without a readable roadmap the gate half is declined rather than guessed.
+records no frozen list, and so is an item the milestone's `Required scope`
+names and the field defers from the same gate, since a milestone clears its own
+work. An open frozen entry waiting on work that neither the list nor `Required
+scope` holds, and no earlier release schedules, is refused unless the field
+defers it. Without a readable roadmap the gate half is declined rather than
+guessed.
 `docket wave` lists the gate's deferrals from the field, each with its state
 and the release that took it.
 

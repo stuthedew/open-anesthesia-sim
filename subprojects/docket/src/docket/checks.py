@@ -65,7 +65,7 @@ from .release import (
     unrecorded_milestones,
     version_key,
 )
-from .roadmap import SENTENCE_BREAK, MilestoneStates
+from .roadmap import SENTENCE_BREAK, MilestoneStates, gate_status
 from .shell import Clause, Word, shell_words
 from .store import ID_PATTERN, ID_RE, filename_for
 from .vcs import (
@@ -2289,8 +2289,23 @@ def _check_gate_dispositions(
       moment of writing.
     - a version whose own section records no frozen list, which excuses the
       item from a gate nobody recorded.
-    - an item the current gate both places and defers: two answers to the one
-      question the gate asks of it.
+    - an item the current milestone's `Required scope` names and the field
+      defers from its gate: two answers to the one question the gate asks of
+      it, since the milestone clears its own work rather than deferring it.
+
+    **A frozen entry's deferral is the same field** (`PL-8QMD`, project owner,
+    2026-10-11, ratified, over keeping the frozen list's deferral group
+    headings, read through `blocked-by`, with a check per reader). So the field
+    is accepted on an entry the frozen list places, where it used to be the
+    third refusal, and `roadmap.gate_status` counts that entry deferred. The
+    refusal that replaces it is the one the old reading could not make: an
+    open frozen entry waiting on work the list does not hold, with neither the
+    field nor a place in the milestone's `Required scope`, and nothing the
+    train schedules ahead of the gate - `GateStatus.undecided`. Read through
+    `blocked-by`, every such entry looked deferred, so `PL-VV6N` was one a
+    message caught rather than this file (`PL-D388`). The remedy names both
+    answers, because which is right is judgment: defer the entry, or admit
+    what it waits on.
 
     Without a readable roadmap the gate half declines, as the milestone
     blockers in `analyze` do: refusing an item for a gate no file was read to
@@ -2342,14 +2357,15 @@ def _check_gate_dispositions(
         return
     current = "v{}.{}.{}".format(*gate.version)
     placed = frozenset(gate.scope_ids)
+    own = frozenset(gate.own_scope_ids)
     for item in report.items:
         deferred = deferring.get(item.identifier) == current
-        if deferred and item.identifier in placed:
+        if deferred and item.identifier in own:
             report.errors.append(
-                f"{_where(item)}: {current}'s section places it and its `deferred-from:` "
-                "excuses it from the same gate; keep the one that is true - remove the "
-                "field (`--deferred-from ''`), or take the id off the frozen list or "
-                "Required scope"
+                f"{_where(item)}: {current}'s Required scope places it and its "
+                "`deferred-from:` excuses it from the same gate, but a milestone clears its "
+                "own work rather than deferring it; keep the one that is true - remove the "
+                "field (`--deferred-from ''`), or take the id out of Required scope"
             )
         if deferred or item.identifier in placed or item.status in CLOSED_STATUSES:
             continue
@@ -2366,6 +2382,29 @@ def _check_gate_dispositions(
             "defers. The gate may take it or defer it and must say which: `bin/docket set "
             f'{item.identifier} --deferred-from "{current} - <why>"{overwrite}`, or add it '
             f"to the frozen list or Required scope in {config.roadmap_file}"
+        )
+
+    by_id = {item.identifier: item for item in report.items}
+    status = gate_status(
+        gate,
+        frozenset(item.identifier for item in report.items if item.status in CLOSED_STATUSES),
+        frozenset(by_id),
+        {item.identifier: item.blocked_by for item in report.items},
+        train=milestones.train,
+        deferrals=deferring,
+    )
+    for entry, unplaced in status.undecided.items():
+        # Some id of the entry is in the store, since a walk left the list from
+        # it; an id the store lacks is `wave`'s to name, not this rule's.
+        lead = next(by_id[identifier] for identifier in entry.ids if identifier in by_id)
+        overwrite = " --overwrite" if lead.deferred_from else ""
+        report.errors.append(
+            f"{_where(lead)}: {' and '.join(entry.ids)} on {current}'s frozen list waits on "
+            f"{', '.join(sorted(unplaced))}, which neither the list nor its Required scope "
+            "holds and nothing schedules first, so the gate can neither clear it nor show it "
+            "deferred. Say which: defer it - `bin/docket set "
+            f'{lead.identifier} --deferred-from "{current} - <why>"{overwrite}` - or admit '
+            f"what it waits on to the frozen list or Required scope in {config.roadmap_file}"
         )
 
 

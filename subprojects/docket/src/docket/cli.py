@@ -137,7 +137,7 @@ from .release import (
     unrecorded_milestones,
     unreferenced_by_version,
 )
-from .roadmap import IN_SCOPE, MilestoneStates, Scope, Wave, milestone_states, wave
+from .roadmap import IN_SCOPE, MilestoneStates, Scope, Wave, latest_gate, milestone_states, wave
 from .store import (
     ID_PREFIX,
     find_item,
@@ -1236,9 +1236,15 @@ def _plan(root: Path, items: Sequence[Item], config: Config) -> Wave | None:
             frozenset(item.identifier for item in items if not item.is_open),
             frozenset(item.identifier for item in items),
             {item.identifier: item.blocked_by for item in items},
+            _deferrals(items),
         )
     except (OSError, ValueError, KeyError):
         return None
+
+
+def _deferrals(items: Sequence[Item]) -> dict[str, str]:
+    """Each item's `deferred-from:`, by id, for the gate to read before its blockers."""
+    return {item.identifier: item.deferred_from for item in items if item.deferred_from}
 
 
 def _milestones(root: Path, config: Config) -> MilestoneStates | None:
@@ -3451,12 +3457,30 @@ def cmd_gate(args: argparse.Namespace) -> int:
     then by the lane each item is worked in. That is decidable, so it is
     decided here; freezing the list stays the deliberate act it is meant to
     be, and this command writes nothing.
+
+    The roadmap is read for one thing: the last frozen list, whose open
+    entries that are not debt the freeze carries too (`PL-JV5Q`). A roadmap
+    that cannot be read is said so, rather than read as one holding none.
     """
     _, items, config = _load(args)
+    roadmap = _invocation(args).root / config.roadmap_file
+    frozen_list = None
+    unread = ""
+    if roadmap.is_file():
+        try:
+            frozen_list = latest_gate(roadmap.read_text(encoding="utf-8"))
+        except (OSError, ValueError, KeyError) as error:
+            unread = f"{config.roadmap_file} could not be read ({error})"
     computed = gate(
-        items, args.feature or "", config.debt_classes, workflow_paths=config.workflow_paths
+        items,
+        args.feature or "",
+        config.debt_classes,
+        workflow_paths=config.workflow_paths,
+        frozen_list=frozen_list,
     )
     print(render.format_gate(computed, config.debt_classes))
+    if unread:
+        print(f"Not listed: the last frozen list's open entries that are not debt - {unread}.")
     return 0
 
 
@@ -4632,6 +4656,7 @@ def cmd_wave(args: argparse.Namespace) -> int:
         frozenset(item.identifier for item in items if not item.is_open),
         frozenset(item.identifier for item in items),
         {item.identifier: item.blocked_by for item in items},
+        _deferrals(items),
     )
     print(render.format_wave(plan, {item.identifier: item for item in items}))
     if (

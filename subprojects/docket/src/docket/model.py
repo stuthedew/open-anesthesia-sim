@@ -743,21 +743,27 @@ class Item:
     #: `reentry_faults` holds each id to a `done` item closed by the filing.
     reenters: tuple[str, ...] = ()
     #: The gate this item is excused from, and why, as `vX.Y.Z - why`: the
-    #: version of the milestone whose frozen list the item is not on, never a
-    #: gate it goes to. A target is what v0.6.0's prose headings got wrong four
+    #: version of the milestone whose gate does not hold the item, never a gate
+    #: it goes to. Two kinds of item carry it: a finding made after that gate's
+    #: list froze, which the list is not on, and a frozen entry the gate defers
+    #: on `ROADMAP.md` § "The cadence" beat 3's terms, which stays on the list
+    #: (`PL-8QMD`). A target is what v0.6.0's prose headings got wrong four
     #: times ("Declined to Gate 2" under Gate 2 itself), and the next freeze
-    #: takes every open debt item anyway, so naming one would record a promise
-    #: nothing reads.
+    #: takes both kinds anyway - every open debt item, and every open entry of
+    #: the list before it, which `bin/docket gate` prints - so naming one would
+    #: record a promise nothing reads.
     #:
     #: On the item rather than in `ROADMAP.md` because a disposition written
     #: as an id *mentioned* in a subsection's prose was a second store of queue
     #: state: a second place every debt capture during a freeze had to write,
     #: status narrated beside it that nothing re-read, and a regex that took a
     #: sentence saying an item was absent for its disposition (`PL-WD5Z`, route
-    #: 1, over structured lines in `ROADMAP.md`). `checks.py` requires it of an
-    #: open debt item the current gate does not place - see
-    #: `_check_gate_dispositions` - and `bin/docket wave` lists the gate's
-    #: deferrals from it.
+    #: 1, over structured lines in `ROADMAP.md`). A frozen entry's deferral was
+    #: still a group heading, read through `blocked-by`, until `PL-8QMD` gave it
+    #: the same field. `checks.py` requires it of an open debt item the current
+    #: gate does not place, and of a frozen entry waiting on work nothing
+    #: disposes of - see `_check_gate_dispositions` - and `roadmap.gate_status`
+    #: and `bin/docket wave` read the gate's deferrals from it.
     deferred_from: str = ""
     #: The shared thing a claim on this item also holds, from `RESOURCES`, or
     #: empty for an item that holds only itself. Release mode stamps

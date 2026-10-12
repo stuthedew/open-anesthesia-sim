@@ -5,9 +5,10 @@ priority: P2
 effort: M
 status: blocked
 classes: safety, anticipated
-blocked-by: PL-S6WW, PL-B396
 feature: preferences-store
 touches: src/anesthesia_sim/app/formatting.py, docs/MODEL.md, tests/unit
+blocked-by: PL-S6WW, PL-B396
+deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list): work planned-milestone item 28 would create, waiting on PL-B396; safety, but not live at 19af95d - agent amounts show in one fixed unit with no selector, so displayed precision is one quantity's
 added: 2026-09-16
 ---
 

@@ -156,8 +156,9 @@ def _wave(
     roadmap: str = ROADMAP,
     blockers: dict[str, tuple[str, ...]] | None = None,
     known: frozenset[str] = KNOWN,
+    deferrals: dict[str, str] | None = None,
 ):
-    return wave(roadmap, version, closed, known, blockers or {})
+    return wave(roadmap, version, closed, known, blockers or {}, deferrals)
 
 
 # --- the release train ------------------------------------------------------
@@ -493,6 +494,132 @@ def test_the_wave_block_names_what_the_milestone_clears_itself() -> None:
     assert "clear the gate - 3 entries of 4 still open here, 1 the milestone clears itself" in (
         printed
     )
+
+
+# --- debt the gate defers, and what nothing disposes of (PL-8QMD) -----------
+
+
+def _deferred_item(identifier: str, version: str = "v0.4.0") -> Item:
+    return parse_item(
+        f"---\nid: {identifier}\ntitle: t\npriority: P2\neffort: S\nstatus: blocked\n"
+        f"deferred-from: {version} - deferred on beat 3's terms\nadded: 2026-09-01\n---\n\nbody\n"
+    )
+
+
+def test_a_frozen_entry_deferred_from_its_gate_is_deferred_not_clearable() -> None:
+    """`PL-8QMD`: a frozen entry's deferral is its `deferred-from:`, read first.
+
+    Until then a deferral was a group heading in `ROADMAP.md`, which `wave`
+    read only through `blocked-by`: an entry whose chain left the list counted
+    as deferred whether or not anybody had deferred it, and a deferral with no
+    id to block on counted as work this gate could clear (`PL-D388`,
+    `PL-18BD`). So the field is read before the blockers, an entry it covers is
+    counted apart from what the gate can clear and from what waits outside it,
+    and what it waits on is charged to nobody here - it is the next gate's.
+    """
+    deferral = {"PL-KLMN": "v0.4.0 - deferred on beat 3's terms"}
+
+    held = _wave("0.2.5", frozenset({"PL-001"}), deferrals=deferral)
+    waiting = _wave(
+        "0.2.5", frozenset({"PL-001"}), blockers={"PL-KLMN": ("PL-VWXY",)}, deferrals=deferral
+    )
+
+    for plan in (held, waiting):
+        assert plan.gate is not None
+        assert [entry.ids for entry in plan.gate.deferred] == [("PL-KLMN",)]
+        assert [entry.ids for entry in plan.gate.clearable] == [("PL-BCDF", "PL-GHJK")]
+        assert plan.gate.blocked_outside == () and not plan.gate.undecided
+        assert not plan.gate.prerequisites and plan.gate.outside_items == ()
+        assert plan.beat == CLEAR
+
+    cleared = _wave("0.2.5", frozenset({"PL-001", "PL-BCDF", "PL-GHJK"}), deferrals=deferral)
+    assert cleared.gate is not None and cleared.gate.is_clear and cleared.beat == RELEASE
+
+
+def test_a_deferral_covers_an_entry_only_where_it_covers_every_open_id() -> None:
+    """One problem under two ids is deferred when the half still open is, and a
+    deferral from another gate excuses nothing from this one."""
+    partial = _wave(
+        "0.2.5",
+        frozenset({"PL-001"}),
+        deferrals={"PL-BCDF": "v0.4.0 - half of it", "PL-KLMN": "v0.3.0 - another gate"},
+    )
+    rest = _wave(
+        "0.2.5", frozenset({"PL-001", "PL-GHJK"}), deferrals={"PL-BCDF": "v0.4.0 - what is left"}
+    )
+
+    assert partial.gate is not None and partial.gate.deferred == ()
+    assert len(partial.gate.clearable) == 2
+    assert rest.gate is not None
+    assert [entry.ids for entry in rest.gate.deferred] == [("PL-BCDF", "PL-GHJK")]
+
+
+def test_wave_prints_a_deferred_entry_in_the_gate_block_and_not_again() -> None:
+    """The count and the ids beside the field that put them there; and once.
+
+    The deferral block below the gate lists what was deferred *off* the list,
+    so a frozen entry carrying the same field is counted in the gate block
+    with the rest of the list, and printed in both it would read as two.
+    """
+    plan = _wave("0.2.5", frozenset({"PL-001"}), deferrals={"PL-KLMN": "v0.4.0 - deferred"})
+
+    printed = format_wave(plan, {"PL-KLMN": _deferred_item("PL-KLMN")})
+
+    assert "2 open - 1 this gate can clear, 1 deferred from it" in printed
+    assert "          deferred by `deferred-from: v0.4.0`: PL-KLMN" in printed
+    assert "clear the gate - 1 entry of 3 still open here, 1 deferred from it" in printed
+    assert "Deferred  by" not in printed
+    assert "blocked outside" not in printed
+
+
+def test_an_entry_waiting_on_work_nothing_disposes_of_is_undecided() -> None:
+    """`PL-D388`: what is left of the entries waiting outside once every
+    disposition the plan can give is taken out.
+
+    Waiting on the milestone's own `Required scope` is the milestone's to
+    clear, and a deferral takes the entry out of `blocked_outside` before the
+    walk. What remains waits on work neither the list nor the scope holds -
+    an item off both, or a later milestone - and the gate can neither clear
+    it nor say it does not have to, which is `PL-VV6N` behind `PL-YVV4`.
+    Named with the ids the walk left the list at, because those are what a
+    reader admits or defers it over.
+    """
+    own = _wave("0.2.5", blockers={"PL-KLMN": ("PL-MNPQ",)})
+    item = _wave("0.2.5", blockers={"PL-KLMN": ("PL-MNPQ", "PL-VWXY")})
+    later = _wave("0.2.5", blockers={"PL-KLMN": ("v0.5.0",)})
+    deferred = _wave(
+        "0.2.5", blockers={"PL-KLMN": ("PL-VWXY",)}, deferrals={"PL-KLMN": "v0.4.0 - deferred"}
+    )
+
+    assert own.gate is not None and [e.ids for e in own.gate.blocked_outside] == [("PL-KLMN",)]
+    assert not own.gate.undecided
+    assert item.gate is not None
+    assert {e.ids: ids for e, ids in item.gate.undecided.items()} == {
+        ("PL-KLMN",): frozenset({"PL-VWXY"})
+    }
+    assert later.gate is not None
+    assert {e.ids: ids for e, ids in later.gate.undecided.items()} == {
+        ("PL-KLMN",): frozenset({"v0.5.0"})
+    }
+    assert deferred.gate is not None and not deferred.gate.undecided
+
+
+def test_an_entry_the_plan_sequences_ahead_of_the_gate_is_not_undecided() -> None:
+    """The train scheduling what it waits on before the gated milestone is a
+    disposition too - it clears in the plan's own order (`PL-7CSP`) - and an
+    entry the milestone's own `Required scope` names is the milestone's,
+    whatever it waits on."""
+    blockers = {"PL-001": ("PL-PRT7",), "PL-KLMN": ("PL-ZZZZ",)}
+    plan = _wave("0.3.0", roadmap=PORT_ROADMAP, blockers=blockers, known=PORT_KNOWN | {"PL-ZZZZ"})
+    named = _wave(
+        "0.2.5", roadmap=SELF_CLEARING, blockers={"PL-SLF9": ("v0.9.0",)}, known=SELF_KNOWN
+    )
+
+    assert plan.gate is not None
+    assert [entry.ids for entry in plan.gate.undecided] == [("PL-KLMN",)]
+    assert named.gate is not None
+    assert [entry.ids for entry in named.gate.blocked_outside] == [("PL-SLF9",)]
+    assert not named.gate.undecided
 
 
 def test_a_clear_gate_below_the_milestone_that_recorded_it_is_a_release() -> None:

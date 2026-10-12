@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 
 from . import markdown
 from .lines import split_lines
-from .model import MILESTONE_BLOCKER_RE, SEMVER_PATTERN
+from .model import MILESTONE_BLOCKER_RE, SEMVER_PATTERN, split_deferred_from
 from .release import SEMVER_RE, version_key
 from .store import ID_PATTERN
 from .vcs import leading_ids
@@ -946,6 +946,12 @@ class MilestoneStates:
     #: list. A `deferred-from:` naming any other excuses an item from a gate
     #: nobody recorded, which is a typo or a guess rather than a disposition.
     gated: frozenset[str] = frozenset()
+    #: The release train `gate` was read from, the one the version table's
+    #: baseline row stands on. Carried so that `checks.py` counts the gate's
+    #: entries with the train `wave` counts them with, which is what tells an
+    #: entry the plan sequences ahead of the gate from one nothing schedules
+    #: (`PL-8QMD`). `None` exactly where `gate` is.
+    train: ReleaseTrain | None = None
 
     def is_known(self, version: str) -> bool:
         return version in self.known
@@ -1007,13 +1013,16 @@ def milestone_states(text: str) -> MilestoneStates:
         for section in sections
         if section.scope_ids
     }
+    train = baseline_train(text)
+    gate = current_gate(train) if train is not None else None
     return MilestoneStates(
         known=frozenset(known),
         cleared=frozenset(cleared),
         claimed=claimed,
         released=frozenset(released),
-        gate=baseline_gate(text),
+        gate=gate,
         gated=frozenset(_rendered(s.version) for s in sections if s.records_a_gate),
+        train=train if gate is not None else None,
     )
 
 
@@ -1059,7 +1068,8 @@ class GateStatus:
     #: gate does not contain - a later milestone, or an item off the list. A
     #: subset of `outstanding`, never a fourth partition of `entries`: the
     #: frozen list keeps every id it froze, and this says which of them the
-    #: beat below cannot honestly ask for.
+    #: beat below cannot honestly ask for. An entry the gate defers is never
+    #: here, whatever it waits on: `deferred` is read first (`PL-8QMD`).
     blocked_outside: tuple[GateEntry, ...]
     #: Open entries the milestone clears *itself*, because its own `Required
     #: scope` names them. `ROADMAP.md` § "Debt inside the milestone's own
@@ -1096,6 +1106,23 @@ class GateStatus:
     #: would make the plan's own ordering look like unbudgeted work. Defaulted
     #: for a status built by hand; `gate_status` always fills it.
     prerequisites: Mapping[GateEntry, frozenset[str]] = field(default_factory=dict)
+    #: Open entries this gate defers on `ROADMAP.md` § "The cadence" beat 3's
+    #: terms: every id still open carries a `deferred-from:` naming this
+    #: milestone's version. The gate's third carve-out, beside
+    #: `blocked_outside` and `self_cleared`, a subset of `outstanding` and
+    #: disjoint from both, because it is computed first. The field is the
+    #: decision, and a `blocked-by` chain leaving the list is only where one
+    #: used to be inferred: read that way, an off-list blocker deferred an entry
+    #: nobody had deferred, and a deferral with no id to block on read as work
+    #: the gate could clear (`PL-8QMD`, naming `PL-D388` and `PL-18BD`). What a
+    #: deferred entry waits on belongs to the gate it goes to, so none of it is
+    #: charged to this one.
+    deferred: tuple[GateEntry, ...] = ()
+    #: Each entry waiting outside the list that nothing in the plan disposes of,
+    #: with the ids its walk left the list at that neither the list nor the
+    #: milestone's `Required scope` holds. See `gate_status`; `bin/docket check`
+    #: refuses every one (`PL-D388`).
+    undecided: Mapping[GateEntry, frozenset[str]] = field(default_factory=dict)
 
     @property
     def ids(self) -> tuple[str, ...]:
@@ -1191,9 +1218,12 @@ class GateStatus:
         on. An entry the milestone's own `Required scope` names is the same
         failure one rule along: the roadmap's carve-out has it cleared *by* the
         milestone, so a beat counting it keeps saying `clear the gate` for work
-        that implementing the milestone is what closes (`PL-WZBX`).
+        that implementing the milestone is what closes (`PL-WZBX`). And an
+        entry the gate defers is the third: beat 3 lets the release ship
+        without it, so asking for it would hold the release on work the gate
+        has already given to the next one (`PL-8QMD`).
         """
-        held = set(self.blocked_outside) | set(self.self_cleared)
+        held = set(self.blocked_outside) | set(self.self_cleared) | set(self.deferred)
         return tuple(entry for entry in self.outstanding if entry not in held)
 
     @property
@@ -1682,10 +1712,37 @@ def baseline_gate(text: str) -> MilestoneSection | None:
     makes exactly that condition a hard error and names the rows, so the run
     cannot be green while it holds.
     """
+    train = baseline_train(text)
+    return current_gate(train) if train is not None else None
+
+
+def baseline_train(text: str) -> ReleaseTrain | None:
+    """The release train the version table's baseline row stands on, or `None`.
+
+    `baseline_gate`'s first half, apart so that a reader holding the gate can
+    also hold the train it was found on (`MilestoneStates.train`). `None` where
+    no single row is marked current, for the reason `baseline_gate` gives.
+    """
     baseline = [row for row in parse_version_table(text) if row.is_baseline]
     if len(baseline) != 1:
         return None
-    return current_gate(release_train(text, baseline[0].version))
+    return release_train(text, baseline[0].version)
+
+
+def latest_gate(text: str) -> MilestoneSection | None:
+    """The section recording the most recently frozen list, released or not.
+
+    What the next freeze builds on, and not `current_gate`'s answer: a list
+    freezes once the milestone before it has shipped (`ROADMAP.md` § "The
+    cadence"), so on the day of a freeze no unreleased section records one and
+    `current_gate` names none, while the list just cleared still holds the
+    entries it deferred, which the new one has to carry (`PL-JV5Q`). Version
+    order rather than the train's, because a released section has left the
+    train's `ahead`.
+    """
+    return next(
+        (section for section in reversed(parse_milestones(text)) if section.records_a_gate), None
+    )
 
 
 def stale_milestones(
@@ -1986,12 +2043,21 @@ def gate_status(
     known_ids: frozenset[str],
     blockers: Mapping[str, Sequence[str]],
     train: ReleaseTrain | None = None,
+    deferrals: Mapping[str, str] | None = None,
 ) -> GateStatus:
     """Count a frozen list against the store, entry by entry.
 
     An entry is cleared when every id it holds is closed - `done` or `dropped`,
     which the store already distinguishes - because an entry holding two ids
     for one problem is not half finished when one of them closes.
+
+    `deferrals` is each item's `deferred-from:`, and it is read before anything
+    else. An open entry whose every open id carries one naming this milestone's
+    version is deferred on beat 3's terms, and is counted as that and as nothing
+    else - see `GateStatus.deferred`. An entry holding an id the field does not
+    cover is not deferred, since the gate still asks for that half. Without
+    `deferrals` nothing is read as deferred, which is a status built from an
+    unread store rather than a guess (`PL-8QMD`).
 
     `blockers` is each item's `blocked-by`, and it splits the open entries in
     two. An entry waiting on something the list does not hold cannot be closed
@@ -2023,6 +2089,19 @@ def gate_status(
     `_prerequisites_outside`, and `GateStatus.outside_items` for what is then
     reported from it (`PL-FCM3`).
 
+    `undecided` is what is left of them once every disposition the plan can
+    give is taken out, and the frontier is what it reads (`PL-D388`). An entry
+    waiting outside is accounted for when the milestone's `Required scope`
+    names it, or names every id the walk left the list at, since implementing
+    the milestone clears it; or when the train sequences that work ahead of the
+    gate. An entry the gate defers never reached `blocked_outside`. What
+    remains waits on work the list does not hold and nothing schedules first,
+    so the gate can neither clear it nor say it does not have to - `PL-VV6N`
+    behind `PL-YVV4` on 2026-10-03, admitted only because a message caught it.
+    The frontier rather than the total, because an id the walk stops on inside
+    `Required scope` is the milestone's to finish, and what that id waits on in
+    turn is the milestone's question rather than this entry's.
+
     **The section's group headings are not read, and are not the test.** Gate 1
     writes the same split in prose - "Cleared by v0.5.0 itself" - and the two
     disagreed on three ids when this was built: `PL-2FM6` and `PL-8LXM` sit
@@ -2045,9 +2124,25 @@ def gate_status(
             cleared.append(entry)
         else:
             outstanding.append(entry)
+    version = _rendered(milestone.version)
+    deferring = frozenset(
+        identifier
+        for identifier, value in (deferrals or {}).items()
+        if split_deferred_from(value)[0] == version
+    )
+    # An unknown id is never in `deferring`, which is read off the items, so an
+    # entry holding one stays where `unknown_ids` withholds `is_clear` from it.
+    deferred = tuple(
+        entry
+        for entry in outstanding
+        if all(identifier in closed_ids or identifier in deferring for identifier in entry.ids)
+    )
+    excused = set(deferred)
     gate_ids = frozenset(identifier for entry in milestone.gate_entries for identifier in entry.ids)
     outside: dict[GateEntry, frozenset[str]] = {}
     for entry in outstanding:
+        if entry in excused:
+            continue
         frontier = frozenset().union(
             *(
                 _blockers_outside(identifier, blockers, gate_ids, closed_ids, set())
@@ -2076,7 +2171,7 @@ def gate_status(
             ahead = [row for row in rows if row is not None and row < gate_row]
             if len(ahead) == len(rows):
                 sequenced.append(Sequenced(entry=entry, row=train.steps[max(ahead)].label))
-    held = set(blocked_outside)
+    held = set(blocked_outside) | excused
     own_scope = frozenset(milestone.own_scope_ids)
     # Every *open* id, rather than every id: an entry holding a closed id and an
     # open one is asked only for the half that is left. An unknown id counts
@@ -2092,6 +2187,16 @@ def gate_status(
             for identifier in entry.ids
         )
     )
+    in_order = {sequenced_entry.entry for sequenced_entry in sequenced}
+    undecided: dict[GateEntry, frozenset[str]] = {}
+    for entry in blocked_outside:
+        if entry in in_order or all(
+            identifier in closed_ids or identifier in own_scope for identifier in entry.ids
+        ):
+            continue
+        unplaced = frozenset(blocker for blocker in outside[entry] if blocker not in own_scope)
+        if unplaced:
+            undecided[entry] = unplaced
     return GateStatus(
         milestone=milestone,
         entries=milestone.gate_entries,
@@ -2102,6 +2207,8 @@ def gate_status(
         unknown_ids=tuple(unknown),
         sequenced_ahead=tuple(sequenced),
         prerequisites=prerequisites,
+        deferred=deferred,
+        undecided=undecided,
     )
 
 
@@ -2318,6 +2425,7 @@ def wave(
     closed_ids: frozenset[str],
     known_ids: frozenset[str],
     blockers: Mapping[str, Sequence[str]],
+    deferrals: Mapping[str, str] | None = None,
 ) -> Wave:
     """Read the plan and the store, and say which beat of the cadence is due.
 
@@ -2350,13 +2458,16 @@ def wave(
     `ReleaseTrain`, resolved first and handed down. The version is compared
     once, to decide which sections are released; nothing below compares it to
     recover an order the table already states (`PL-2T03`).
+
+    `deferrals` is each item's `deferred-from:`, which `gate_status` reads
+    before anything else about an entry (`PL-8QMD`).
     """
     train = release_train(roadmap, version)
     step = train.step
 
     recorded = current_gate(train)
     gate = (
-        gate_status(recorded, closed_ids, known_ids, blockers, train=train)
+        gate_status(recorded, closed_ids, known_ids, blockers, train=train, deferrals=deferrals)
         if recorded is not None
         else None
     )

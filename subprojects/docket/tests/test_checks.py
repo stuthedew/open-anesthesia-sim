@@ -5121,10 +5121,84 @@ def test_a_deferred_from_with_no_version_or_no_reason_is_refused_without_a_roadm
 
 
 def test_an_item_the_gate_both_places_and_defers_is_refused() -> None:
-    """Two answers to the one question the gate asks of an item."""
-    (error,) = _gate_errors(_item("PL-GGGG", deferred_from="v0.5.0 - and yet"))
+    """Two answers to the one question the gate asks of an item.
+
+    Its `Required scope` half since `PL-8QMD`: a milestone clears its own work
+    rather than deferring it. A frozen entry the gate defers carries the field
+    by design, which the test below pins.
+    """
+    (error,) = _gate_errors(_item("PL-SSSS", deferred_from="v0.5.0 - and yet"))
 
     assert "places it and its `deferred-from:` excuses it from the same gate" in error
+
+
+def test_a_frozen_entry_may_carry_the_deferral_its_gate_gives_it() -> None:
+    """`PL-8QMD`: a frozen entry's deferral is the field, where it was refused.
+
+    The frozen list keeps the id and the item says the gate does not hold it,
+    which is one answer rather than two - beat 3 of `ROADMAP.md` § "The
+    cadence" leaves a deferred entry written on the list. It answers the
+    undecided-entry refusal below as well: deferred, an entry waiting on work
+    off the list is disposed of.
+    """
+    deferred = _item(
+        "PL-GGGG",
+        status="blocked",
+        blocked_by=("PL-QQQQ",),
+        deferred_from="v0.5.0 - deferred on beat 3's terms",
+    )
+
+    assert _gate_errors(deferred, _item("PL-QQQQ", classes=("planning",))) == []
+
+
+def test_an_open_frozen_entry_waiting_outside_with_no_disposition_is_an_error() -> None:
+    """`PL-D388`: an entry the gate can neither clear nor show deferred.
+
+    `PL-VV6N` waited on `PL-YVV4`, a `planning` item the freeze's class filter
+    left off the list, so `wave` counted it outside the gate - a deferral
+    nobody had decided, caught by a message rather than a check. The error
+    names what it waits on and both answers, since which is right is judgment:
+    defer it, or admit the work it needs.
+    """
+    entry = _item("PL-GGGG", status="blocked", blocked_by=("PL-QQQQ",))
+
+    (error,) = _gate_errors(entry, _item("PL-QQQQ", classes=("planning",)))
+
+    assert "PL-GGGG on v0.5.0's frozen list waits on PL-QQQQ" in error
+    assert 'bin/docket set PL-GGGG --deferred-from "v0.5.0 - <why>"' in error
+    assert "admit what it waits on to the frozen list or Required scope" in error
+
+
+def test_a_frozen_entry_waiting_on_the_milestone_s_own_scope_is_disposed_of() -> None:
+    """The milestone clears what its `Required scope` names, so an entry
+    waiting only on that work is the milestone's to clear - v0.6.0's eleven
+    entries behind the layout model (`PL-W9BK`)."""
+    entry = _item("PL-GGGG", status="blocked", blocked_by=("PL-SSSS",))
+
+    assert _gate_errors(entry, _item("PL-SSSS", classes=("feature",))) == []
+
+
+def test_a_frozen_entry_the_plan_sequences_ahead_of_its_gate_is_disposed_of() -> None:
+    """Work the train schedules before the gated milestone clears in the plan's
+    own order, so the entry waiting on it needs nothing from anybody
+    (`PL-7CSP`). The check reads the train the version table's baseline stands
+    on, as `wave` does."""
+    sequenced = GATED_ROADMAP.replace(
+        "| 1 | **v0.5.0 — the case you can branch** | scoped below | - |\n"
+        "| 2 | **v0.6.0 — the machine** | not scoped yet | - |",
+        "| — | **v0.4.5 — the port** | scoped below | - |\n"
+        "| 1 | **v0.5.0 — the case you can branch** | scoped below | - |\n"
+        "| 2 | **v0.6.0 — the machine** | not scoped yet | - |",
+    ).replace(
+        "## v0.5.0 - the case you can branch",
+        "## v0.4.5 - the port\n\n### Required scope\n\n1. **The port** (queue item "
+        "`PL-QQQQ`).\n\n## v0.5.0 - the case you can branch",
+    )
+    entry = _item("PL-GGGG", status="blocked", blocked_by=("PL-QQQQ",))
+    prerequisite = _item("PL-QQQQ", classes=("feature",))
+
+    assert _gate_errors(entry, prerequisite, roadmap=sequenced) == []
+    assert len(_gate_errors(entry, prerequisite)) == 1
 
 
 def test_without_a_roadmap_a_deferral_is_declined_and_nothing_is_owed() -> None:

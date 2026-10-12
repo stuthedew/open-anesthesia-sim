@@ -8,6 +8,7 @@ classes: science, anticipated
 feature: liquid-agent-consumption
 touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, tests/reference
 blocked-by: PL-S6WW, PL-B396
+deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list): work planned-milestone item 28 would create, waiting on PL-B396; science, but not live at 19af95d - nothing in src/ stores or displays a liquid volume, a density or a molar mass
 added: 2026-09-16
 ---
 
