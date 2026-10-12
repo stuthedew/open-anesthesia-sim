@@ -13,10 +13,12 @@ small.
 
 `check` reports two different things, and the split is deliberate. A
 *structural* fault fails the build: an entry citing an id that resolves to
-nothing, or an entry wrapped across two lines. Both are silent otherwise - a
-dangling id leaves a claim with no reasoning behind it, and a wrapped entry is
-two lines in the file and one in the digest, or, carried on from the margin, a
-line nothing can place in an entry (`PL-F5B9`).
+nothing, an entry wrapped across two lines, or a bullet opening like an entry
+that `ENTRY` cannot read. All three are silent otherwise - a dangling id leaves
+a claim with no reasoning behind it, a wrapped entry is two lines in the file
+and one in the digest, or, carried on from the margin, a line nothing can place
+in an entry (`PL-F5B9`), and an unreadable one is never emitted at all
+(`PL-QFFF`).
 
 **Size never fails, and that is a decision rather than laxity.** Going over
 budget does not make a commit on an unrelated task wrong, and a red gate that
@@ -123,8 +125,8 @@ NUDGE_FRACTION = 0.8
 ENTRY = re.compile(r"^- \*\*(?P<what>.+?)\*\* [-—] (?P<why>.+)$")
 #: What an entry opens with, before its title is known to close: a top-level
 #: bullet and a bolded approach. A bullet opening this way is held to the
-#: entry's rules even where its title wraps, so it cannot leave the digest
-#: unreported (`PL-F5B9`).
+#: entry's rules even where its title wraps (`PL-F5B9`), and is refused where
+#: `ENTRY` cannot read it (`PL-QFFF`), so it cannot leave the digest unreported.
 OPENING = re.compile(r"^- \*\*")
 #: The store's own grammar, so that "cites X, which is not an item" is
 #: refused on the same tokens `bin/docket check` calls ids. `PL-[A-Z0-9]{3,4}`
@@ -241,18 +243,33 @@ def check(text: str) -> list[str]:
     # the margin is one the walker could not place at all: both are refused.
     unread: list[UnreadEntry] = []
     bullets = _bullets(text, unread)
+    wrapped: set[int] = set()
     for number, spanned, _ in bullets:
         if spanned > 1:
+            wrapped.add(number)
             problems.append(
                 f"docs/dead-ends.md:{number + 1}: continuation of the entry above. "
                 f"One line per entry - shorten it instead."
             )
-    opened = {number + spanned for number, spanned, _ in bullets}
+    opened = {number + spanned: number for number, spanned, _ in bullets}
     for lazy in unread:
         if lazy.line in opened:
+            wrapped.add(opened[lazy.line])
             problems.append(
                 f"docs/dead-ends.md:{lazy.line}: continuation of the entry above, carried on "
                 f"from the margin. One line per entry - shorten it instead."
+            )
+
+    # `entries` keeps what `ENTRY` reads and discards the rest, so any other
+    # bullet opening like an entry would leave the digest with nothing said
+    # (`PL-QFFF`). A wrapped one is already refused above, and is not called
+    # unreadable too: rejoined, it may read.
+    for number, _, joined in bullets:
+        if number not in wrapped and not ENTRY.match(joined):
+            problems.append(
+                f"docs/dead-ends.md:{number}: opens like an entry but is not in an entry's "
+                f"shape, `- **approach** — why`, so it is never emitted. Put nothing "
+                f"between the closing `**` and the dash."
             )
 
     return problems
