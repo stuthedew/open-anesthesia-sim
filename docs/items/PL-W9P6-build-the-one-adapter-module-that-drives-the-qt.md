@@ -7,7 +7,7 @@ status: blocked
 classes: feature
 feature: interface-areas
 touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, tests/integration
-blocked-by: PL-NWTM
+blocked-by: PL-NWTM, PL-5HSG
 added: 2026-09-16
 ---
 
@@ -41,3 +41,10 @@ move them out, which is `PL-NWTM`'s work. A live handle on that splitter could
 also drag the readouts to nothing, since a `QSplitter` child is collapsible by
 default. `PL-R1WQ`'s registry is built with this item, its first consumer, and
 `PL-TH35`'s contract after it.
+
+## Blocked on `PL-5HSG` as well, 2026-10-12
+
+The owner answered `PL-5HSG` on 2026-10-12 (ratified): a drag moves only the
+borders on its line, as Blender's does, and that lands before this item. The
+handles this item turns live give a reader their first drag, so a border they
+did not touch must not move under it from the start.

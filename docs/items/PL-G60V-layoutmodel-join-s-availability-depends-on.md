@@ -1,9 +1,16 @@
 ---
 id: PL-G60V
 title: LayoutModel.join's availability depends on which split was made first wherever four Areas meet at a point: a 2x2 grid built columns-first refuses joining its two left Areas, which rows-first allows, so decide whether join re-slices a cross junction
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: feature, ux
 feature: interface-areas
+touches: src/anesthesia_sim/layout/model.py, src/anesthesia_sim/layout/tree.py, tests/unit/test_layout_model.py
 added: 2026-10-12
+payoff: a join a reader is offered depends only on the rectangles they see, never on which split happened to come first
+verify: grep -q 'def test_where_four_areas_meet_a_join_is_taken_whichever_cut_came_first' tests/unit/test_layout_model.py
+falsifies: only where they sit next to each other
 ---
 
 **Problem.** `PL-1FT6`'s close-out review (`#1448`) found that the layout
@@ -12,7 +19,7 @@ independent of build order wherever four Areas meet at a point. A 2x2 grid
 split columns-first is held as `column[row[1,3], row[2,4]]`, and `join(1, 2)`
 (top-left with bottom-left) is refused as "only where they sit next to each
 other in the same split"; the identical rectangles split rows-first are held
-as `row[column[1,3], column[2,4]]`, and the same join is taken. The refused
+as `row[column[1,2], column[3,4]]`, and the same join is taken. The refused
 result is expressible (`row[1, column[3,4]]`), so this is not `PL-3J2P`'s "a
 join the tree cannot express". Blender's Shading workspace has exactly this
 2x2 block, and Blender holds its Areas as a graph of shared vertices and
@@ -22,6 +29,9 @@ edges rather than a tree, so it has no build order for a join to depend on
 `#1448` corrected the docstrings that claimed otherwise and pins today's
 behaviour with a test, so this item is the decision rather than the
 discovery.
+Reproduced 2026-10-12 at triage: that test,
+`test_where_four_areas_meet_a_join_depends_on_which_cut_came_first`, passes
+on `#1448`'s head.
 
 **Question.** Should `join` re-slice a cross junction - rebuild the
 surrounding splits so that two Areas sharing a whole edge can be joined
@@ -34,3 +44,32 @@ remove. It belongs before `PL-2KXB` builds the join a reader uses, since
 that is where the refusal would first be seen. The cost is a second shape
 of `join` in `src/anesthesia_sim/layout/model.py` and its tests; nothing is
 stored yet, so nothing has to migrate.
+
+**Answered 2026-10-12: yes, `join` re-slices a junction where four Areas
+meet** (project owner, 2026-10-12, ratified, over keeping today's `join`,
+which takes or refuses such a join by which split came first). Given as
+"Agree with recs" in the project thread at 19:16Z, on the review summary of
+`#1448` that put this item as "Recommendation: fix it". `PL-2KXB` now waits
+on this item, as the recommendation above asks. That ordering is the
+recommendation's own and the summary did not repeat it, so it is a session's
+sequencing rather than part of what he ratified. The rows-first tree in the
+problem statement read `row[column[1,3], column[2,4]]` until this answer,
+which is not the same rectangles; it is corrected above.
+
+**Why it matters.** A reader sees rectangles and never the tree, so a join
+taken in one 2x2 grid and refused in an identical one is a hidden mode, the
+kind `.claude/rules/expert-review.md` asks this interface to remove. A reader
+meets it the first time they join two Areas of a 2x2 grid.
+
+**Done when.** Whether `LayoutModel.join` takes a join depends on the
+rectangles alone, never on the order the splits were made in: two Areas that
+share a whole edge are joined wherever a tree can hold the result, and the
+only refusals left are a pair sharing no whole edge and a result no tree can
+hold (`PL-3J2P`). In the 2x2 grid each of the four edge-sharing joins is taken
+from both build orders and gives the same rectangles. The test pinning
+today's refusal,
+`test_where_four_areas_meet_a_join_depends_on_which_cut_came_first` in
+`tests/unit/test_layout_model.py`, gives way to one asserting this; the
+passages that call it an open decision or name the split as the rule
+(`layout/tree.py`'s module docstring, and `join`'s docstring and refusal
+wording in `layout/model.py`) say what the model now does.
