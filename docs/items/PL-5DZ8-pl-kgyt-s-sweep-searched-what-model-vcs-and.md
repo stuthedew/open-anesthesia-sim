@@ -17,6 +17,7 @@ verify: grep -qE '^\*\*Swept 2026-' docs/items/PL-5DZ8-*.md
 root-cause-of: PL-P72R, PL-C45K, PL-Z8RS, PL-YPLM, PL-HNXS, PL-QJ5F, PL-2P5L, PL-ZXCN, PL-FB77, PL-Y3TZ, PL-7DXZ, PL-RHPK, PL-8MHZ, PL-T3GW, PL-NNVJ, PL-HHYL, PL-S9JK, PL-QNHZ, PL-KL6B, PL-351H, PL-WCHF, PL-4DK2, PL-86H3, PL-5H48, PL-9NZ3, PL-8W1J
 generator: spent - the 2026-10-12 sweep read every module under subprojects/docket/src/docket/, .claude/hooks/ and tools/ with no enumerated boundary and filed its 72 facts as 19 members (one more added to PL-YPLM), so no second spelling in those trees is left for a later session to find one reader at a time; a new reader meets the write-time rule in .claude/rules/apparatus-standard.md (PL-HC8P)
 misread: Which spelling of a repeated predicate is the answer, when tools, hooks and docket each spell it
+reenters: PL-KGYT
 ---
 
 **Problem.** PL-KGYT's sweep searched what model, vcs and release export and so left docket's other modules, the hooks and the facts no module exports, so tools, hooks and docket still each spell one predicate: five readers filed since it closed on 2026-10-01 - shell operators and $'...' (PL-P72R, PL-C45K), code spans (PL-Z8RS), a front matter's edges (PL-YPLM) and the tracked-file list (PL-HNXS)

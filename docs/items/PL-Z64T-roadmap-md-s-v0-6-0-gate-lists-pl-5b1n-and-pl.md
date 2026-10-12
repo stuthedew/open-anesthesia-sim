@@ -9,7 +9,6 @@ touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 blocked-by: PL-8QMD
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
-reenters: PL-J6HP
 ---
 
 **Problem.** ROADMAP.md's v0.6.0 gate lists PL-5B1N and PL-TDBT under the product lane, while docket computes crossing and workflow for them, and nothing holds the three lane groups to the lane each entry's touches computes
