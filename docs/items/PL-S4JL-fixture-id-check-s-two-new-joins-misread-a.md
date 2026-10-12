@@ -3,12 +3,14 @@ id: PL-S4JL
 title: fixture_id_check's two new joins misread a continued form each - _fence_joins drops the last line of a shell fence its list item or block quote closes, and _front_matter_joins reads a quote opening a plain or block scalar's continuation line as a double-quoted scalar and joins its backslash-newline - so a malformed fixture id is missed; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/src/docket/fences.py, subprojects/docket/src/docket/frontmatter.py, subprojects/docket/tests/test_fences.py, subprojects/docket/tests/test_frontmatter_reference.py, docs/items/PL-YPLM-fixture-id-check-reads-three-forms-beside-its.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1435
 payoff: a malformed id carried across a container-closed shell fence or a quote-led scalar continuation line is reported rather than missed
 verify: grep -q 'def test_a_fence_its_container_closes_is_joined_to_its_last_line' tests/unit/test_fixture_id_check.py && grep -q 'def test_a_quote_opening_a_continuation_line_joins_nothing' tests/unit/test_fixture_id_check.py
 ---

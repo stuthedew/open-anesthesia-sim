@@ -3,10 +3,12 @@ id: PL-S0D4
 title: GitHub's file view shows an Error in user YAML box on 656 of 2,124 item files, since their front matter is deliberately not YAML, and docket's README does not say so
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: subprojects/docket/README.md
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1435
 payoff: a reader who meets GitHub's Error in user YAML box on an item finds the README saying it is expected and that docket reads the file as written
 verify: grep -qF 'Error in user YAML' subprojects/docket/README.md
 ---

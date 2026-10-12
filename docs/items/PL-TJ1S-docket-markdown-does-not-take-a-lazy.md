@@ -3,12 +3,14 @@ id: PL-TJ1S
 title: docket.markdown does not take a lazy continuation line for a table's header row where the delimiter row under it sits inside the list item or block quote, so a table cmark-gfm renders inside the container is read as the paragraph above it going on; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/markdown.py, subprojects/docket/tests/test_markdown_reference.py, docs/items/PL-TJ1S-docket-markdown-does-not-take-a-lazy.md
+touches: subprojects/docket/src/docket/markdown.py, subprojects/docket/tests/test_markdown_reference.py, subprojects/docket/tests/test_roadmap.py, docs/items/PL-TJ1S-docket-markdown-does-not-take-a-lazy.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1435
 payoff: docket.markdown reads a table under a lazy header row as cmark-gfm does, or says plainly where it does not.
 verify: grep -q 'def test_a_lazy_header_row_over_a_delimiter_row_inside_a_container' subprojects/docket/tests/test_markdown_reference.py
 recurrences: 2026-10-12 PL-NNVJ withdrawn 2026-10-12 PL-TJ1S, 2026-10-12 PL-D23H withdrawn 2026-10-12 PL-TJ1S
