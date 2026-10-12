@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 from docket.duplicates import DISPLAY_FLOOR, anchor, near_duplicates, similarity
@@ -15,6 +16,7 @@ def _item(
     touches: tuple[str, ...],
     status: str = "ready",
     recurrences: tuple[str, ...] = (),
+    feature: str = "",
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -25,7 +27,7 @@ def _item(
         classes=("defect",),
         touches=touches,
         blocked_by=(),
-        feature="",
+        feature=feature,
         milestone="",
         added=date(2026, 9, 1),
         closed=None,
@@ -111,6 +113,10 @@ def test_a_closed_item_is_not_offered() -> None:
     similarity finds at a usable threshold. Scoring open items alone is what
     keeps the warning off them, so this is the rule that would silently readmit
     sixteen "Triage the N captures on DATE" if it were dropped.
+
+    The two share a feature, so a subject selects the pair and the status is
+    the only thing left to drop it: sharing `docs/items` alone no longer
+    selects anything (`PL-SV0D`), which would let this pass with the rule gone.
     """
     store = [
         _item(
@@ -118,14 +124,25 @@ def test_a_closed_item_is_not_offered() -> None:
             "Triage the 12 untriaged captures standing in the queue",
             touches=("docs/items",),
             status="done",
+            feature="queue-triage",
         )
     ]
 
     found = near_duplicates(
-        "Triage the 9 untriaged captures standing in the queue", ("docs/items",), store
+        "Triage the 9 untriaged captures standing in the queue",
+        ("docs/items",),
+        store,
+        feature="queue-triage",
     )
 
     assert found == ()
+    reopened = near_duplicates(
+        "Triage the 9 untriaged captures standing in the queue",
+        ("docs/items",),
+        [replace(store[0], status="ready")],
+        feature="queue-triage",
+    )
+    assert [candidate.item.identifier for candidate in reopened] == ["PL-8888"]
 
 
 def test_a_declared_directory_reaches_a_module_inside_it() -> None:
@@ -176,13 +193,14 @@ def test_two_sessions_filing_the_same_title_get_the_same_order() -> None:
 
 
 def test_a_capture_declaring_nothing_searches_nothing() -> None:
-    """No paths means no answer, rather than a title-only search.
+    """No subject means no answer, rather than a title-only search.
 
     The fallback that looks conservative is the refuted key: scoring titles
-    across the store with no path to narrow on catches none of the known
+    across the store with nothing to narrow on catches none of the known
     duplicates and finds the recurring-by-design items instead. `PL-THLT` is
     what keeps a fresh capture out of this case, by reading the paths off the
-    working tree.
+    working tree; an id in the title or a `--feature` is what a capture on a
+    clean tree can still name.
     """
     store = [
         _item(
@@ -297,3 +315,207 @@ def test_a_cluster_is_still_caught_at_its_second_filing() -> None:
     )
 
     assert [candidate.item.identifier for candidate in found] == ["PL-8888"]
+
+
+# The four instances `PL-0HLS` was opened on, one test each, with the titles,
+# paths and features as filed: three pairs the path-only key missed, and the
+# false recurrence it recorded.
+
+YZ17 = (
+    "A simulation step below about 4.8e-304 s makes maximum_step_count raise OverflowError,"
+    " outside the simulator's exception hierarchy, because 86 400 s divided by the step"
+    " overflows to infinity; require_supported_simulation_step accepts every positive finite"
+    " step up to 0.1 s, so the model declares no smallest supported step"
+)
+F76 = (
+    "A simulation step below about 4.8e-304 s, or a step count too long to print, fails"
+    " SimulationState construction with OverflowError or ValueError rather than"
+    " SimulationConfigurationError"
+)
+
+
+def test_an_untriaged_capture_meets_an_untriaged_item() -> None:
+    """`PL-TS7L`'s instance: two captures of one overflow, neither declaring a path.
+
+    `PL-YZ17` was filed on 2026-10-03 into a store already holding `PL-5F76`.
+    Both were untriaged, so neither declared `touches`, and the path-only key
+    skipped every candidate without them; both carried `feature:
+    numerical-domain`, which is the subject they share.
+
+    Shown, and not recorded: two items one feature groups were grouped on
+    purpose, so the feature alone is never evidence that a defect fired again.
+    """
+    earlier = _item("PL-5F76", F76, touches=(), status="untriaged", feature="numerical-domain")
+
+    found = near_duplicates(YZ17, (), [earlier], feature="numerical-domain", items_dir="docs/items")
+
+    assert [candidate.item.identifier for candidate in found] == ["PL-5F76"]
+    assert found[0].feature == "numerical-domain"
+    assert anchor(found) is None, "the feature alone recorded a recurrence"
+
+
+def test_an_untriaged_item_without_touches_is_a_candidate() -> None:
+    """The candidate side of `PL-TS7L`: a capture with a path meets an item with none.
+
+    Capture leaves `touches` unset until triage, so skipping every open item
+    declaring none skipped exactly the same-day captures duplicates cluster in,
+    whatever paths the second capture declared or inferred.
+    """
+    store = [
+        _item(
+            "PL-8888",
+            "verify's suppression check reads prose as code",
+            touches=(),
+            status="untriaged",
+            feature="suppression-check",
+        )
+    ]
+
+    found = near_duplicates(
+        "verify's suppression check reads every added line as code",
+        ("subprojects/docket/src/docket/verify.py",),
+        store,
+        feature="suppression-check",
+        items_dir="docs/items",
+    )
+
+    assert [candidate.item.identifier for candidate in found] == ["PL-8888"]
+
+
+def test_a_clean_tree_capture_meets_the_item_its_title_names() -> None:
+    """`PL-9VPH`'s instance: a capture with no paths, paired by the id in its title.
+
+    The housekeeping recipe files before the work starts, so the tree is clean
+    and `PL-THLT` reads nothing. `PL-4CPP` named `PL-54V0`, and `PL-BYN2`, open
+    with the same job, declared `PL-54V0`'s file. Both name one item, so the
+    match is recorded as well as shown.
+    """
+    earlier = _item(
+        "PL-BYN2",
+        "A project-owner ratification on PL-54V0 exists only on"
+        " origin/claude/upbeat-rubin-v1dktv, whose session has completed with no pull request"
+        " open, so the one carrier of that decision is an unmerged branch",
+        touches=("docs/items/PL-54V0-resumed-at-refuses-an-unkeyframed-instant-with.md",),
+    )
+
+    found = near_duplicates(
+        "Carry PL-54V0's owner-ratification record across from claude/upbeat-rubin-v1dktv,"
+        " where it was pushed after #844 merged and no pull request ever took it",
+        (),
+        [earlier],
+        items_dir="docs/items",
+    )
+
+    assert [candidate.item.identifier for candidate in found] == ["PL-BYN2"]
+    assert found[0].named == ("PL-54V0",)
+    picked = anchor(found)
+    assert picked is not None
+    assert picked.item.identifier == "PL-BYN2"
+
+
+def test_an_item_file_is_compared_by_its_id_and_not_its_slug() -> None:
+    """A slug that drifted still names its item, read off the working tree here.
+
+    `docket check` only advises on a stale slug, so a declared item file can
+    outlive its title; compared as a path, the two would share nothing.
+    """
+    store = [
+        _item(
+            "PL-BBBB",
+            "Carry the ratification on PL-8888 across from a branch no pull request took",
+            touches=("docs/items/PL-8888-an-older-title.md",),
+        )
+    ]
+
+    found = near_duplicates(
+        "Carry the ratification record across from the stranded branch",
+        ("docs/items/PL-8888-the-title-it-has-now.md",),
+        store,
+        items_dir="docs/items",
+    )
+
+    assert [candidate.item.identifier for candidate in found] == ["PL-BBBB"]
+    assert found[0].named == ("PL-8888",)
+
+
+def test_a_shared_feature_survives_a_file_move() -> None:
+    """`PL-6SV4`'s instance: the earlier item still declared the file its section left.
+
+    `PL-VYK1` declared `.claude/skills/docket/SKILL.md`; the release section
+    moved to `modes/release.md` (`PL-2XM2`), which is what `PL-6SV4` declared,
+    so the two shared no path. Both carried `feature: release-process`.
+    """
+    earlier = _item(
+        "PL-VYK1",
+        "The docket skill's release handover tags at origin/main rather than at the cut's own"
+        " merge commit, so a re-run of the three commands tags whatever merged next",
+        touches=(".claude/skills/docket/SKILL.md",),
+        feature="release-process",
+    )
+
+    found = near_duplicates(
+        "The tag commands the release mode prescribes tag origin/main, which is the release's"
+        " merge commit only until the next merge lands: with sibling sessions merging minutes"
+        " apart a tag can land on a later commit, and doc_check's version test cannot tell it"
+        " apart because that commit still declares the same version",
+        (".claude/skills/docket/modes/release.md", "subprojects/docket/src/docket/cli.py"),
+        [earlier],
+        feature="release-process",
+        items_dir="docs/items",
+    )
+
+    assert [candidate.item.identifier for candidate in found] == ["PL-VYK1"]
+    assert found[0].shared == ()
+    assert found[0].feature == "release-process"
+
+
+def test_sharing_only_the_item_store_is_not_a_recurrence() -> None:
+    """`PL-SV0D`'s instance: `PL-DHGC` was recorded on `PL-JLBD` through `docs/items` alone.
+
+    The capture's working tree held two item files and nothing else, and
+    `PL-JLBD` declared the store directory beside two docket modules. Every
+    branch that files an item changes the directory, so sharing it says nothing
+    about a mechanism. The titles clear the floor, so the store rule is what
+    drops the pair, and a shared module still selects it.
+    """
+    title = (
+        "Ten reads parse item front matter by hand instead of through docket.model, and one is"
+        " wrong today: item_reads looks for status: done in a file's first 400 characters, so"
+        " it reads 20 of 1,624 closed items as open; the others are generator_check's own"
+        " parser, open-status set, list splits and a closure count that misses dropped,"
+        " item_reads's --- split, and model's own parser restating FIELD_ORDER and LIST_FIELDS"
+    )
+    unrelated = _item(
+        "PL-JLBD",
+        "PL-MT3R is done and bin/docket generators lists it drained, yet its front matter still"
+        " carries generator: live and docket check is silent, so the field and the register"
+        " disagree about one head while the pause rule reads only open items",
+        touches=(
+            "subprojects/docket/src/docket/checks.py",
+            "subprojects/docket/tests/test_checks.py",
+            "docs/items",
+        ),
+    )
+    tree = (
+        "docs/items/PL-KGYT-six-readers-found-2026-10-01-respell-facts.md",
+        "docs/items/PL-4NG0-thirteen-reads-ask-git-for-facts-docket-vcs.md",
+    )
+
+    found = near_duplicates(
+        title, tree, [unrelated], feature="read-facts-through-docket", items_dir="docs/items"
+    )
+
+    assert similarity(title, unrelated.title) > DISPLAY_FLOOR
+    assert found == ()
+    assert anchor(found) is None
+    above = replace(unrelated, touches=("docs",))
+    assert near_duplicates(title, ("docs",), [unrelated], items_dir="docs/items") == ()
+    assert near_duplicates(title, tree, [above], items_dir="docs/items") == ()
+    through_code = near_duplicates(
+        title,
+        (*tree, "subprojects/docket/src/docket/checks.py"),
+        [unrelated],
+        items_dir="docs/items",
+    )
+    assert [candidate.item.identifier for candidate in through_code] == ["PL-JLBD"]
+    assert through_code[0].shared == ("subprojects/docket/src/docket/checks.py",)

@@ -1460,7 +1460,13 @@ def cmd_new(args: argparse.Namespace) -> int:
         # printed after it so that the id and path stay the first line: a session
         # that reads no further has still recorded its finding, which is the half
         # of this command that may not be made conditional on anything.
-        found = near_duplicates(capture.title, declared or inferred, items)
+        found = near_duplicates(
+            capture.title,
+            declared or inferred,
+            items,
+            feature=capture.feature,
+            items_dir=_invocation(args).tracked,
+        )
         identifier = _capture(directory, capture)
         if found:
             print(render.format_near_duplicates(found, identifier, declared=bool(declared)))
@@ -1591,9 +1597,10 @@ def _inferred_paths(args: argparse.Namespace) -> tuple[str, ...]:
 
     **It may not prompt, refuse, or cost the session anything it can notice.**
     Capture is the one path in this project meant to be frictionless, so a
-    reading git declines is simply an empty answer: the search then has no key,
-    finds nothing, and the command behaves as it did before any of this existed.
-    That is not a title-only fallback, and deliberately so - see
+    reading git declines is simply an empty answer: the search then keys on
+    what the capture names - an item's id in its title, its feature - or, with
+    neither, finds nothing, and the command behaves as it did before any of
+    this existed. That is not a title-only fallback, and deliberately so - see
     `duplicates.near_duplicates`.
     """
     inv = _invocation(args)

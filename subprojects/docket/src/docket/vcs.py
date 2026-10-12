@@ -6193,13 +6193,12 @@ def working_paths(root: Path, *, runner: Runner | None = None) -> WorkingPaths:
     for a session started a day ago is most of the tree - and here that would
     make every capture match everything.
 
-    **The store is not excluded, which was considered and refused.** Every
-    session edits `docs/items/`, so it is tempting to read it as noise - but 28
-    of this store's 341 open items declare a path under it, and they are the
-    triage passes, backfills and queue-shape decisions that a capture *about*
-    the queue genuinely duplicates. Two open triage items is exactly the warning
-    worth having, and the recurring-by-design clusters are already dropped by
-    scoring open items alone, which is where that job belongs.
+    **The store is reported like any other path; what inside it counts is the
+    search's call.** `duplicates.near_duplicates` reads an item's file here as
+    naming that item, which a capture made while working on it is about, and
+    the bare directory as naming nothing, since every capturing branch changes
+    it. Every recurrence the directory alone recorded that the search now drops
+    was related work or a match already withdrawn (`PL-SV0D`, `PL-0HLS`).
     """
     run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)

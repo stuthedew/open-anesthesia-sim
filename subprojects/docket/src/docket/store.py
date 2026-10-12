@@ -50,6 +50,20 @@ ID_PATTERN = rf"{ID_PREFIX}(?:[{ID_ALPHABET}]{{{ID_LENGTH}}}|\d{{3}})(?![{ID_ALP
 ID_RE = re.compile(rf"^{ID_PATTERN}$")
 SLUG_RE = re.compile(r"[^a-z0-9]+")
 
+# An item file's whole name, as `filename_for` writes one: the id, then a
+# slug, then the suffix. This is what tells a `touches` entry that names *an
+# item* from one that names the store directory itself - 48 of this store's 95
+# entries under `docs/items/` on 2026-09-19 are the bare directory, written by
+# release cuts that rewrite many briefs at once, and those claim nothing about
+# any one item.
+#
+# Named apart from `vcs.ITEM_FILE_RE`, which is the same id capture without the
+# suffix anchor: that one pulls an id out of a path git already reported, so it
+# must match a prefix, and this one judges a string a person typed, so it must
+# refuse everything that is not a whole filename. One name over two rules is
+# how a reader imports the wrong one.
+DECLARED_ITEM_RE = re.compile(rf"^({ID_PATTERN})-.+\.md$")
+
 
 def new_id(taken: set[str], rng: random.Random | None = None) -> str:
     """Allocate an id that no existing item uses.
@@ -83,6 +97,29 @@ def filename_for(item: Item) -> str:
     listing is readable without opening anything.
     """
     return f"{item.identifier}-{slugify(item.title)}.md"
+
+
+def declared_item_file(entry: str, items_dir: str) -> tuple[str, str] | None:
+    """The (id, filename) a `touches` entry names inside the store, or `None`.
+
+    `None` for every entry that is not a claim about one item's file: a path
+    outside the store, the store directory itself, a subdirectory, anything
+    inside it that no id leads. Decided from the name rather than by asking
+    the filesystem, which keeps `analyze` pure - and the id is also the more
+    useful half, since it is what lets `docket check` say where the item
+    actually lives instead of only that the path is wrong.
+
+    Here rather than in `checks`, its first reader, because the near-duplicate
+    search asks it too: whether two declarations name one item, or only the
+    directory every capturing branch changes (`PL-0HLS`).
+    """
+    prefix = items_dir.strip().strip("/")
+    candidate = entry.strip().strip("/")
+    if not candidate.startswith(f"{prefix}/"):
+        return None
+    name = candidate[len(prefix) + 1 :]
+    match = DECLARED_ITEM_RE.match(name)
+    return None if match is None else (match.group(1), name)
 
 
 def read_items(directory: Path) -> list[Item]:
