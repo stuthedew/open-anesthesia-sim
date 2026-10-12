@@ -7170,9 +7170,10 @@ def _run_step(step: str) -> tuple[list[tuple[str, int]], list[tuple[int, str]]]:
 
 def _step_runs(step: str) -> list[tuple[str, ...]]:
     """The simple commands `workflow_runs` reads from `step` under `STEP_JOB`, as the gate does."""
-    unread: list[doc_check.UnreadStatement] = []
+    report, unread = doc_check.Report(), []
     runs = list(doc_check.workflow_runs(STEP_JOB + step, unread))
-    assert not unread
+    doc_check._decline_steps(report, Path("ci.yml"), unread, "unread")
+    assert not report.declined and not unread
     return runs
 
 
