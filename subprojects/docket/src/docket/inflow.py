@@ -28,6 +28,13 @@ over shipping without the column). Neither proxy carries the fact: path
 recurrence is the arithmetic above, and `root-cause-of:` records members filed
 while their head was open.
 
+**A line a successor head answers says so.** A head recorded after a closed
+head's fix did not hold carries its own `reenters:` naming that head
+(`PL-4097`), so it is counted among the re-entries it explains. The list names
+it as the line's successor, read from the same record by `model.is_generator`,
+so a reader can tell a settled line from an open one without knowing which
+filings are heads (`PL-0WT0`).
+
 **At release time it is silent unless an expectation failed.** `missed`
 checks the last complete period against `PL-04KR`'s pre-registered
 predictions, and `docket release` prints what it returns and nothing when it
@@ -50,7 +57,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from .config import Config
-from .model import MIN_ROOT_CAUSE_ITEMS, Item, is_under
+from .model import MIN_ROOT_CAUSE_ITEMS, Item, is_generator, is_under
 from .trend import BY_WEEK, WINDOWS, _windows, window_label
 
 #: What a filing with no `priority:` yet is counted as, so an untriaged capture
@@ -143,6 +150,11 @@ class Inflow:
     #: rule, a generator whose fix did not hold. Counted over the filings
     #: `filed` counts, for the reason `reentries` is.
     reentered: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+    #: For each id in `reentered` a successor answers, the heads whose
+    #: `reenters:` names it, by id. Read over every item rather than over the
+    #: filings counted, since the record makes a head the successor whether or
+    #: not its own `touches` made it an apparatus filing.
+    successors: Mapping[str, tuple[Item, ...]] = field(default_factory=dict)
 
 
 def apparatus_paths(item: Item, config: Config, excluded: tuple[str, ...]) -> frozenset[str]:
@@ -230,8 +242,30 @@ def analyze(
         for closed, filed in sorted(reentering.items())
         if len(filed) >= MIN_ROOT_CAUSE_ITEMS
     }
+    known = {item.identifier for item in items if item.identifier}
+    successors = {
+        closed: heads
+        for closed in reentered
+        if (
+            heads := tuple(
+                sorted(
+                    (
+                        item
+                        for item in items
+                        if closed in item.reenters and is_generator(item, known)
+                    ),
+                    key=lambda head: head.identifier,
+                )
+            )
+        )
+    }
     return Inflow(
-        periods=tuple(periods), anchor=anchor, by=by, excluded=excluded, reentered=reentered
+        periods=tuple(periods),
+        anchor=anchor,
+        by=by,
+        excluded=excluded,
+        reentered=reentered,
+        successors=successors,
     )
 
 
