@@ -30,6 +30,12 @@ the value above them. And the quoted scalars `quoted` places must be the ones
 PyYAML's scanner reads, each opening and closing where PyYAML's does, so that a
 quote opening a block scalar's line or a plain scalar's continuation line,
 which the corpus draws, is none (`PL-S4JL`).
+
+Two more corpora hold a line's own grammar to PyYAML's scanner (`PL-8MHZ`):
+`uncommented` must end a line where PyYAML's last token on it ends, over lines
+whose quotes stand where a node opens and where it does not, and `unquote` must
+read a quoted scalar as PyYAML loads it, every escape YAML 1.2.2 § 5.7 defines
+among them.
 """
 
 from __future__ import annotations
@@ -42,7 +48,7 @@ import yaml
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from docket.frontmatter import keys, quoted
+from docket.frontmatter import keys, quoted, uncommented, unquote
 
 LETTERS = "abcdefghijklmnopqrstuvwxyz"
 #: A word of a plain scalar in a block, which may hold no `: ` and no ` #`.
@@ -285,3 +291,105 @@ def test_quoted_places_each_quoted_scalar_where_pyyaml_does(block: list[str]) ->
     found = [(at.quote, at.line, at.column, at.end_line, at.end_column) for at in quoted(block)]
 
     assert found == expected, "\n".join(block)
+
+
+#: What opens a line before its node: nothing, a list entry, an explicit key, or a key.
+LINE_LEAD = st.sampled_from(("", "- ", "? ", "- - ", "key: ", "- key: ", '"k # y": ', "'it''s': "))
+#: A plain scalar's word, whose quote, bracket, comma or `#` opens nothing, no blank before it.
+PLAIN_WORD = st.builds(
+    operator.add, st.sampled_from(LETTERS), st.text(LETTERS + "'\"#,[]{}-", max_size=5)
+)
+#: What may stand between a plain scalar's words: an indicator, or a quote or a bracket
+#: after white space, none of which opens anything inside a plain scalar.
+PLAIN_GAP = st.sampled_from((" ", " - ", " ? ", ", ", " '", ' "', " ["))
+#: The pieces of a quoted scalar written on one line, by its quote.
+DOUBLE_PIECE = st.sampled_from(
+    (
+        "a",
+        " ",
+        "# x",
+        "'",
+        ": y",
+        "[,]",
+        '\\"',
+        "\\\\",
+        "\\/",
+        "\\t",
+        "\\\t",
+        "\\n",
+        "\\0",
+        "\\a",
+        "\\b",
+        "\\v",
+        "\\f",
+        "\\r",
+        "\\e",
+        "\\ ",
+        "\\N",
+        "\\_",
+        "\\L",
+        "\\P",
+        "\\x41",
+        "\\u00e9",
+        "\\U0001F600",
+    )
+)
+SINGLE_PIECE = st.sampled_from(("a", " ", "# x", '"', "''", ": y", "[,]", "\\", "\\n"))
+#: What follows a node on its line.
+TRAILER = st.sampled_from(("", " # tail", "  #"))
+PROPERTY = st.sampled_from(("", "", "&a ", "!!str "))
+
+
+@st.composite
+def one_line_quoted(draw: st.DrawFn) -> str:
+    """A quoted scalar closing on its own line, its quotes included."""
+    quote = draw(QUOTE)
+    pieces = draw(st.lists(DOUBLE_PIECE if quote == '"' else SINGLE_PIECE, max_size=6))
+    return quote + "".join(pieces) + quote
+
+
+@st.composite
+def one_line_flow(draw: st.DrawFn) -> str:
+    """A flow sequence or mapping closing on its own line, a quoted entry's `#` its content."""
+    entries = draw(st.lists(st.one_of(NAME, one_line_quoted()), min_size=1, max_size=3))
+    if draw(st.booleans()):
+        return "[" + ", ".join(entries) + "]"
+    names = draw(st.lists(NAME, min_size=len(entries), max_size=len(entries), unique=True))
+    pairs = [
+        f'"{name}":{entry}' if entry[:1] == '"' else f"{name}: {entry}"
+        for name, entry in zip(names, entries, strict=True)
+    ]
+    return "{" + ", ".join(pairs) + "}"
+
+
+@st.composite
+def yaml_lines(draw: st.DrawFn) -> str:
+    """One line of YAML: a lead, perhaps an anchor or a tag, a node, and perhaps a comment."""
+    kind = draw(st.sampled_from(("plain", "quoted", "flow")))
+    if kind == "plain":
+        words = draw(st.lists(PLAIN_WORD, min_size=1, max_size=4))
+        node = words[0] + "".join(draw(PLAIN_GAP) + word for word in words[1:])
+    else:
+        node = draw(one_line_quoted() if kind == "quoted" else one_line_flow())
+    return draw(LINE_LEAD) + draw(PROPERTY) + node + draw(TRAILER)
+
+
+def _pyyaml_content_end(line: str) -> int:
+    """Where PyYAML's last token on `line` ends, which is where its comment, if any, may open."""
+    return max(
+        token.end_mark.index
+        for token in yaml.scan(line + "\n", Loader=yaml.SafeLoader)
+        if not isinstance(token, yaml.StreamEndToken | yaml.BlockEndToken)
+    )
+
+
+@settings(derandomize=True, database=None, deadline=None, max_examples=2000)
+@given(yaml_lines())
+def test_uncommented_ends_a_line_where_pyyaml_ends_its_content(line: str) -> None:
+    assert uncommented(line).rstrip() == line[: _pyyaml_content_end(line)], line
+
+
+@settings(derandomize=True, database=None, deadline=None, max_examples=500)
+@given(one_line_quoted())
+def test_unquote_reads_a_quoted_scalar_as_pyyaml_loads_it(token: str) -> None:
+    assert unquote(token) == yaml.safe_load(f"k: {token}")["k"], token
