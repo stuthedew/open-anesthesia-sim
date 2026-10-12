@@ -61,6 +61,11 @@ import json, os, re, sys
 sys.path.insert(0, os.environ["HOOKS"])
 import shell_split
 
+# Which word is the git command, past the options git reads as its own and
+# their values, is read by `docket.gitargv`, the table `docket.vcs` reads too;
+# `shell_split` has put the `src` of docket on the path (`PL-ZXCN`).
+from docket.gitargv import is_git, own_options
+
 try:
     data = json.loads(os.environ["PAYLOAD"])
 except (ValueError, KeyError):
@@ -100,7 +105,8 @@ if not isinstance(command, str):
 #   refused whatever command follows. There `-p` and `-P` are --paginate and
 #   --no-pager, and a `-c` after the command name is an option of that command
 #   (`git grep -c` counts), so only the options git reads as its own are
-#   read, stepping over each value a word of its own carries.
+#   read, stepping over each value a word of its own carries, as
+#   `docket.gitargv` reads them.
 # - Four shapes delete refs, each a `git` command whose words include these in
 #   this order. `fetch`, `pull` and `remote update` prune on a flag, spelled
 #   long or as a letter among bundled short flags - `-tp` is `-t -p` - up to
@@ -198,9 +204,6 @@ if not isinstance(command, str):
 # a command other than `branch` - `update-ref --stdin` reading `delete` lines,
 # or a push `--delete` handed a substitution. None is how any session has
 # written it, so each is a known gap, pinned by a row of `KNOWN_GAPS`.
-TAKES_A_WORD = frozenset(
-    ("-C", "-c", "--config-env", "--git-dir", "--work-tree", "--namespace", "--attr-source")
-)
 PRUNE_SETTING = re.compile(r"\b(?:fetch|remote\.\S+)\.prune(?:tags)?\b", re.IGNORECASE)
 MIRROR_SETTING = re.compile(r"\bremote\.\S+\.mirror\b", re.IGNORECASE)
 FALSE = frozenset(("", "false", "no", "off", "0"))
@@ -215,7 +218,6 @@ BESIDE = frozenset(
     + ("-z", "--null", "--name-only", "--show-origin", "--show-scope")
 )
 VALUED = frozenset(("-f", "--file", "--blob", "-t", "--type", "--default"))
-EXPANDS = re.compile(r"[$`{]")
 GLOB = re.compile(r"[*?\[]")
 # The actions of a `config` that write a section whole, from `git config -h`,
 # and the names under a section that the two setting patterns guard (`PL-VM7C`).
@@ -257,22 +259,9 @@ PUSH_SHAPES = (("push", flag(("--mirror", "--prune"), "", "")),)
 REMOVE_SHAPES = (("remote", "remove"), ("remote", "rm"))
 
 
-def own_options(words):
-    """The options git reads ahead of the command name, each with its value, and where that name stands."""
-    options, at = [], 1
-    while at < len(words) and words[at].startswith("-"):
-        option, equals, value = words[at].partition("=")
-        at += 1
-        if option in TAKES_A_WORD and not equals:
-            value = words[at] if at < len(words) else ""
-            at += 1
-        options.append((option, value))
-    return options, at
-
-
 def sets(pattern, words):
     """Whether the options git reads ahead of the command name pass a setting `pattern` names."""
-    for option, value in own_options(words)[0]:
+    for option, value in own_options(words[1:])[0]:
         name, equals, setting = value.partition("=")
         if not pattern.fullmatch(name):
             continue
@@ -355,12 +344,7 @@ def writes(pattern, words):
     named = any(pattern.search(word) for word in after)
     if not (named or any(holds(pattern, section) for section in sections(after))):
         return False
-    return any(EXPANDS.search(word) for word in words) or not reads(after)
-
-
-def is_git(words):
-    """Whether `words` run git. A path to git is git: `/usr/bin/git fetch --prune` prunes (`PL-TRMN`)."""
-    return words[0].rsplit("/", 1)[-1] == "git"
+    return any(shell_split.EXPANDS.search(word) for word in words) or not reads(after)
 
 
 def runs(shapes, pattern, calls):
@@ -381,12 +365,13 @@ def remote_deletes(words):
     Its options are read as `git branch -h` gives them, bundled or not, and
     every word after `--` is a name.
     """
-    _, at = own_options(words)
-    if words[at : at + 1] != ["branch"]:
+    args = words[1:]
+    _, at = own_options(args)
+    if args[at : at + 1] != ["branch"]:
         return None
     delete = remote = False
     names = []
-    rest = iter(words[at + 1 :])
+    rest = iter(args[at + 1 :])
     for word in rest:
         if word == "--":
             names.extend(rest)
@@ -422,7 +407,9 @@ def generated(calls):
         names = remote_deletes(words) if is_git(words) else None
         if names is None:
             continue
-        if "xargs" in words.wrappers or any(EXPANDS.search(n) or GLOB.search(n) for n in names):
+        if "xargs" in words.wrappers or any(
+            shell_split.EXPANDS.search(n) or GLOB.search(n) for n in names
+        ):
             return True
         found = True
         named.update(names)

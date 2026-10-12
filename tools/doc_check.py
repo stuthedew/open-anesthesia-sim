@@ -166,6 +166,10 @@ try:
     from docket.frontmatter import plain as yaml_plain
     from docket.frontmatter import statements as frontmatter_statements
 
+    # `subcommand_of` names the git command an argv runs, past git's own
+    # options, as `docket.vcs` and the Bash guards read it (`PL-ZXCN`).
+    from docket.gitargv import subcommand_of
+
     # `instructions` is the one reading of a dated sentence: `_sentences` cuts a
     # statement where `docket.roadmap.SENTENCE_BREAK` does and at a blank line
     # inside a front matter's value, and `ISO_DATE_RE` is what counts as a date
@@ -284,7 +288,6 @@ try:
         listed_paths,
         notes_added,
         resolved,
-        subcommand_of,
         subject_pull_request,
         tags,
         untracked_path_args,
@@ -293,6 +296,7 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
         "grammar, docket/vcs.py for the tag read and the default-branch list, "
+        "docket/gitargv.py for which git command an argv names, "
         "docket/release.py for where a cut writes its notes, docket/shell.py for "
         "how a shell line splits, docket/fences.py for where a fenced block is, "
         "docket/python.py for where a Python statement ends, "
