@@ -3,12 +3,14 @@ id: PL-3Z8B
 title: docket.shell reads arithmetic as commands: a $(( )) expansion's body is a clause of Reading.substitutions and a (( )) command's expression a subshell's, so p $(( 1 + 2 )) and (( 1 + 2 )) && p x hand every reader a command 1 + 2 where bash runs none; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: shell-reads-as-bash
 touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, .claude/hooks/shell_split.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1449
 payoff: an arithmetic expression is never handed to docket, doc_check or the Bash guards as a command, while a substitution inside one still is
 verify: grep -q 'def test_arithmetic_is_one_word_that_runs_no_command' subprojects/docket/tests/test_shell.py && ! grep -qF 'id="PL-3Z8B' subprojects/docket/tests/test_shell.py
 recurrences: 2026-10-12 PL-X1VN withdrawn 2026-10-12 PL-X1VN, 2026-10-12 PL-48ZJ withdrawn 2026-10-12 PL-48ZJ

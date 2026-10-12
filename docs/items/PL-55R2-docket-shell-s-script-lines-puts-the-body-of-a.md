@@ -85,6 +85,17 @@ resolves. `workflow_commands`' docstring sentence that a body and delimiter
 are no line at all is amended, and the comparison's `p top-body` command and
 the subtraction that drops it go.
 
+**Next steps, 2026-10-12.** The thread that claimed this batch stopped for
+length with this item unstarted. The other four closed on
+`claude/shell-lexer-departures-qpgs3n` (#1449, a draft): `PL-V690`,
+`PL-48ZJ`, `PL-3Z8B` and `PL-X1VN`, the last two through a matched-pair
+reader, `_Lexer.matched`, which this item's span recording sits beside. Left
+for the next thread: this fix by the route above, with `workflow_commands`'
+docstring in `tools/doc_check.py` and a `tests/unit/test_doc_check.py` case;
+then `make check`, the close-out's docs sweep and review, `bin/docket record
+1449`, marking #1449 ready, and asking `bin/docket arm`. `origin/main` was two
+merges ahead (#1447, #1450) and was not brought in, since nothing is armed.
+
 **Done when.** Every command bash runs from a script is a command of one
 `script_lines` piece's reading, a body's substitutions included, and the
 comparison's subtraction of body commands from the pieces' sum, which pins

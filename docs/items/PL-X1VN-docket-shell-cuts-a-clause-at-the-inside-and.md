@@ -3,12 +3,14 @@ id: PL-X1VN
 title: docket.shell cuts a clause at the && inside [[ ]] and reads its (, ), ||, < and > as operators, so [[ -n a && -n b ]] && p x is the clauses [[ -n a, -n b ]] and p x to every reader, where bash runs one conditional and p x; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: shell-reads-as-bash
 touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, .claude/hooks/shell_split.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1449
 payoff: a conditional reads as the one command bash runs, so no reader is handed a clause headed by a test operator or a redirection that is a string comparison
 verify: grep -q 'def test_a_conditional_s_operators_are_its_own_words' subprojects/docket/tests/test_shell.py && ! grep -qF 'id="PL-X1VN' subprojects/docket/tests/test_shell.py
 ---
