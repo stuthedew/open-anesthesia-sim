@@ -67,7 +67,7 @@ from .release import (
 )
 from .roadmap import SENTENCE_BREAK, MilestoneStates, gate_status
 from .shell import Clause, Word, shell_words
-from .store import ID_PATTERN, ID_RE, filename_for
+from .store import ID_PATTERN, ID_RE, declared_item_file, filename_for
 from .vcs import (
     DEFAULT_BRANCHES,
     ClosureReport,
@@ -166,20 +166,6 @@ STATUS_REQUIREMENTS: tuple[tuple[str, str], ...] = (
 # so bold text inside a paragraph does not end a section and a bold-opened
 # paragraph does.
 BRIEF_HEADING = re.compile(r"^\*\*", re.MULTILINE)
-
-# An item file's whole name, as `store.filename_for` writes one: the id, then a
-# slug, then the suffix. This is what tells a `touches` entry that names *an
-# item* from one that names the store directory itself - 48 of this store's 95
-# entries under `docs/items/` on 2026-09-19 are the bare directory, written by
-# release cuts that rewrite many briefs at once, and those claim nothing about
-# any one item.
-#
-# Named apart from `vcs.ITEM_FILE_RE`, which is the same id capture without the
-# suffix anchor: that one pulls an id out of a path git already reported, so it
-# must match a prefix, and this one judges a string a person typed, so it must
-# refuse everything that is not a whole filename. One name over two rules is
-# how a reader imports the wrong one.
-DECLARED_ITEM_RE = re.compile(rf"^({ID_PATTERN})-.+\.md$")
 
 # What a dangling declaration costs, said once because every rule reporting
 # one ends with it - both branches of `_check_touched_items`, and
@@ -2695,25 +2681,6 @@ def _check_generator_band(report: Report, config: Config) -> None:
         )
 
 
-def _declared_item_file(entry: str, items_dir: str) -> tuple[str, str] | None:
-    """The (id, filename) a `touches` entry names inside the store, or `None`.
-
-    `None` for every entry that is not a claim about one item's file: a path
-    outside the store, the store directory itself, a subdirectory, anything
-    inside it that no id leads. Decided from the name rather than by asking
-    the filesystem, which keeps `analyze` pure - and the id is also the more
-    useful half, since it is what lets the error below say where the item
-    actually lives instead of only that the path is wrong.
-    """
-    prefix = items_dir.strip().strip("/")
-    candidate = entry.strip().strip("/")
-    if not candidate.startswith(f"{prefix}/"):
-        return None
-    name = candidate[len(prefix) + 1 :]
-    match = DECLARED_ITEM_RE.match(name)
-    return None if match is None else (match.group(1), name)
-
-
 def _declarers(report: Report, items_dir: str) -> dict[str, list[str]]:
     """Which items name each item file in their `touches`, keyed by filename.
 
@@ -2725,7 +2692,7 @@ def _declarers(report: Report, items_dir: str) -> dict[str, list[str]]:
     declared: dict[str, list[str]] = {}
     for item in report.items:
         for entry in item.touches:
-            named = _declared_item_file(entry, items_dir)
+            named = declared_item_file(entry, items_dir)
             if named is not None:
                 declared.setdefault(named[1], []).append(item.identifier)
     return {name: sorted(set(ids)) for name, ids in declared.items()}
@@ -2760,7 +2727,7 @@ def _check_touched_items(report: Report, config: Config) -> None:
     unknown_home: set[str] = set()
     for item in report.items:
         for entry in item.touches:
-            named = _declared_item_file(entry, config.items_dir)
+            named = declared_item_file(entry, config.items_dir)
             if named is None:
                 continue
             identifier, name = named
@@ -2885,7 +2852,7 @@ def _check_gone_touches(report: Report, gone: GoneReport | None, config: Config)
             entries := [
                 entry
                 for entry in item.touches
-                if entry in last and _declared_item_file(entry, config.items_dir) is None
+                if entry in last and declared_item_file(entry, config.items_dir) is None
             ]
         )
     ]

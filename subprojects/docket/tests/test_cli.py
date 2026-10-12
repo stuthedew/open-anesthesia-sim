@@ -600,6 +600,68 @@ def test_new_says_nothing_about_an_item_declaring_a_different_path(
     assert "PL-C1C1" not in capsys.readouterr().out
 
 
+def test_new_on_a_clean_tree_is_shown_the_item_its_title_names(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A capture with no paths still meets the item its title names (`PL-9VPH`).
+
+    The store is `items/` beneath the root here, not the setting's
+    `docs/items/`, so the declared item file matches only if the command hands
+    the search the store it was pointed at. Both name one item, so the filing
+    is recorded as well as shown.
+    """
+    stranded = """---
+id: PL-B2B2
+title: A ratification on PL-C1C1 exists only on a branch no pull request took
+priority: P2
+effort: S
+status: ready
+classes: housekeeping
+touches: items/PL-C1C1-verify-s-suppression-check-reads-prose-as-code.md
+added: 2026-08-01
+---
+
+**Problem.** x
+"""
+    store = _store(tmp_path, SUPPRESSION, stranded)
+
+    title = "Carry PL-C1C1's ratification across from the branch no pull request took"
+    assert _run("new", title, "--items", str(store)) == 0
+
+    printed = capsys.readouterr().out
+    assert "PL-B2B2 (ready)" in printed
+    assert "declares the item file of PL-C1C1, an item this capture names" in printed
+    assert "Recorded on PL-B2B2: 1 filing matched to it" in printed
+
+
+def test_new_shows_an_untriaged_capture_sharing_its_feature_and_records_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`--feature` reaches the search, and the feature alone is never a recurrence (`PL-TS7L`).
+
+    Two captures on a clean tree, as `PL-5F76` and `PL-YZ17` were filed: the
+    first declares no `touches`, and the second meets it on the feature.
+    """
+    store = _store(tmp_path)
+    first = (
+        "A simulation step below about 4.8e-304 s fails SimulationState construction with"
+        " OverflowError rather than SimulationConfigurationError"
+    )
+    second = (
+        "A simulation step below about 4.8e-304 s makes maximum_step_count raise OverflowError,"
+        " outside the simulator's exception hierarchy"
+    )
+
+    assert _run("new", "--feature", "numerical-domain", first, "--items", str(store)) == 0
+    capsys.readouterr()
+    assert _run("new", "--feature", "numerical-domain", second, "--items", str(store)) == 0
+
+    printed = capsys.readouterr().out
+    assert "shares feature numerical-domain, so nothing is recorded on it" in printed
+    assert "Recorded on" not in printed
+    assert not any("recurrences:" in path.read_text() for path in store.glob("*.md"))
+
+
 def test_a_space_separated_second_path_is_refused_rather_than_captured_as_a_title(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

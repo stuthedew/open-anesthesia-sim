@@ -1935,13 +1935,17 @@ def format_near_duplicates(
     this existed, and a session that stops reading has still captured its
     finding.
 
-    **What each line claims is what it can support.** The shared path is a fact
-    about two declarations and is named; the ranking that ordered them is not,
-    so no line gives a score or calls the match a duplicate. What the reader is
-    asked to do is open two briefs, which is the judgment this cannot make -
-    whether two items are one defect is a reading of prose, and
+    **What each line claims is what it can support.** What selected a
+    candidate - a path, an item's file, a feature - is a fact about two
+    declarations and is named; the ranking that ordered them is not, so no line
+    gives a score or calls the match a duplicate. What the reader is asked to do
+    is open two briefs, which is the judgment this cannot make - whether two
+    items are one defect is a reading of prose, and
     `subprojects/docket/README.md` already refuses to let a similarity score buy
-    a promotion (`PL-X5JR`).
+    a promotion (`PL-X5JR`). A candidate the feature alone selected says that
+    nothing is recorded on it, since `duplicates.anchor` never picks one and a
+    reader looking for the recurrence line would otherwise not know why it is
+    missing.
 
     The status comes with each id for the reason it does on a generator head: an
     item at `ready` with a brief already written is a diagnosis this session can
@@ -1950,18 +1954,35 @@ def format_near_duplicates(
     """
     if not candidates:
         return ""
-    named = _plural(len(candidates), "open item declares", "open items declare")
+    named = _plural(len(candidates), "open item shares", "open items share")
     # Where the paths came from, because the two are different claims. A
     # `--touches` is what the session said this capture is about; the working
     # tree is what it happened to be changing, which is a good guess and is not
     # the same thing - and a reader who is not told cannot weigh a wrong match
     # (`PL-THLT`).
-    key = "a path this capture reaches" if declared else "a path this branch is changing"
-    lines = [f"  Possibly filed already - {named} {key}:"]
+    source = "this capture reaches" if declared else "this branch is changing"
+    lines = [f"  Possibly filed already - {named} a path, an item or a feature with this capture:"]
     for candidate in candidates:
         item = candidate.item
         lines.append(f"    {item.identifier} ({item.status}) - {_gloss(item.title)}")
-        lines.append(f"      shares {', '.join(candidate.shared)}")
+        if candidate.shared:
+            paths = "a path" if len(candidate.shared) == 1 else "paths"
+            lines.append(f"      shares {', '.join(candidate.shared)}, {paths} {source}")
+        if candidate.named:
+            files = "file of" if len(candidate.named) == 1 else "files of"
+            which = "an item" if len(candidate.named) == 1 else "items"
+            lines.append(
+                f"      declares the item {files} {', '.join(candidate.named)}, "
+                f"{which} this capture names"
+            )
+        if candidate.feature:
+            unrecorded = "" if candidate.counted else ", so nothing is recorded on it"
+            lines.append(f"      shares feature {candidate.feature}{unrecorded}")
+    if all(candidate.feature for candidate in candidates):
+        lines.append(
+            "    Read those briefs before writing this one; its feature already groups them."
+        )
+        return "\n".join(lines)
     lines.append("    Read those briefs before writing this one. If it is the same problem,")
     lines.append(
         f"    group them: bin/docket set {identifier} --feature <name>, and the same on each."

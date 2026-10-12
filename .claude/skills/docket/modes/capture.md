@@ -245,6 +245,14 @@ bin/docket set PL-CSV0 --priority P2 --effort S --classes housekeeping \
   --touches docs/items --status ready --verify "..." --payoff "..."
 ```
 
+Filed before the work starts, the capture meets the near-duplicate search on a
+clean tree, where all it can search on is what the title names. So
+**a title about one item names its id**, as `PL-4CPP`'s did ("Carry PL-54V0's
+owner-ratification record across ..."), and an open item already declaring
+that item's file is printed under it. `--touches docs/items` on `new` would add
+nothing: the store directory names no item, and the search counts it for
+nothing (`PL-0HLS`).
+
 `**Problem.**` is what `docket new` writes from the title, and that is the
 brief. The two sections that go are the two such a pass cannot answer without
 restating the category - "why it matters" is the standing rule above, and "done
