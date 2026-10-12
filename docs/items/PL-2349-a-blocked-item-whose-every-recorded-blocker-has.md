@@ -118,6 +118,12 @@ items it releases - which could not honestly leave `blocked` before it closed.
 `set` therefore exempts the error on items other than the one written, matched
 by the message `checks.stale_blocked_error` builds, and prints them with the
 instruction to move each in the same pull request; a write that makes its own
-item's status false is still refused. The five items left stale on 2026-10-11
-moved to `ready` here, each held by nothing but the generator pause, which
-`bin/docket generators` showed over on `main` at `3ff9f0f6`.
+item's status false is still refused.
+
+The five items left stale on 2026-10-11 were each held by nothing but the
+generator pause, and `bin/docket generators` showed it over on `main` at
+`3ff9f0f6`, so this branch first moved them to `ready`. Before it pushed,
+#1419 (`PL-74T0`) recorded `PL-5DZ8`, `PL-8QMD` and `PL-ZGYX` as live heads,
+which restarts the pause, so each took the Done-when's other exit: blocked on
+those three heads, a real blocker, with its `verify:` and `payoff:` written so
+the pull request that ends the pause can promote it in one write.

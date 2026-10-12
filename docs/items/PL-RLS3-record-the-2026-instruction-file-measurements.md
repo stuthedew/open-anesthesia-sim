@@ -3,10 +3,10 @@ id: PL-RLS3
 title: Record the 2026 instruction-file measurements (McMillan, Gloaguen, Anthropic's 200-line target) beside PL-H253, whose own sources PL-YJG1 found overstated
 priority: P3
 effort: S
-status: ready
+status: blocked
 classes: docs
 touches: docs/resident-instructions.md
-blocked-by: PL-R417
+blocked-by: PL-5DZ8, PL-8QMD, PL-ZGYX
 added: 2026-10-04
 payoff: the next proposal to trim the resident set for adherence meets the published measurements beside the project's own count, instead of re-deriving the case from the count alone
 verify: grep -qF 'arXiv:2605.10039' docs/resident-instructions.md && grep -qF 'arXiv:2602.11988' docs/resident-instructions.md && grep -qF 'arXiv:2507.11538' docs/resident-instructions.md
@@ -78,6 +78,6 @@ generating"; recording it sooner is the owner's call, made by asking
 adds the sources published since that carry it. No head's `misread:` states a
 fact it touches.
 
-[superseded 2026-10-12: moved to `ready` by `PL-2349`, below] **The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it. It stays `blocked` only because `ready` needs a `verify:` command, which `bin/docket set` refuses `ready` without and triage writes beside the work; `bin/docket check` names it ready to promote meanwhile.
+[superseded 2026-10-12: `PL-R417` no longer holds it; the pause it ended restarted with #1419's three live heads, below] **The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it. It stays `blocked` only because `ready` needs a `verify:` command, which `bin/docket set` refuses `ready` without and triage writes beside the work; `bin/docket check` names it ready to promote meanwhile.
 
-**Promoted 2026-10-12** by `PL-2349`, whose check now refuses a `blocked` item whose every blocker has closed. `bin/docket generators` on `main` at `3ff9f0f6` marks no head "still generating" and no open item carries `generator: live`, so the pause is over and nothing else this brief names holds it. The fault stands: `docs/resident-instructions.md` cites none of the three preprints (it already links the Anthropic memory page, for other claims). `verify:` reads the three arXiv ids, and was seen failing (exit 1) on 2026-10-12.
+**Re-read 2026-10-12 under `PL-2349`**, whose check now refuses a `blocked` item whose every blocker has closed. `PL-R417`'s closure ended the generator pause on 2026-10-11, and `PL-74T0` restarted it the next day: #1419 (`febb37b4`) recorded `PL-5DZ8`, `PL-8QMD` and `PL-ZGYX` as live heads, and `bin/docket generators` marks all three still generating. Nothing else this brief names holds it, so it stays held by the pause, now blocked on those three - though the pause's own test is still `bin/docket generators` marking no head "still generating", not this list. The `verify:` and `payoff:` are written now, so the pull request that ends the pause can promote it in one write. The fault stands: `docs/resident-instructions.md` cites none of the three preprints (it already links the Anthropic memory page, for other claims). `verify:` reads the three arXiv ids, and was seen failing (exit 1) on 2026-10-12.

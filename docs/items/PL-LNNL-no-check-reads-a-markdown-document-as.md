@@ -3,11 +3,11 @@ id: PL-LNNL
 title: No check reads a Markdown document as CommonMark does, so a prose wrap that puts a spaced hyphen or plus sign at a line start renders a clause as a list item unnoticed - PL-DSMK's four in ROADMAP.md, PL-N7LK's four and PL-T4FK's one - and a rule refusing it must tell those apart from the 31 lists that interrupt a paragraph on purpose
 priority: P3
 effort: M
-status: ready
+status: blocked
 classes: docs
 feature: prose-renders-as-written
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
-blocked-by: PL-R417
+blocked-by: PL-5DZ8, PL-8QMD, PL-ZGYX
 added: 2026-10-04
 payoff: a prose wrap that would render a clause as a stray list item fails make check where it is written, instead of being found on the rendered page one capture at a time
 verify: grep -q 'def test_a_wrapped_clause_that_renders_as_a_list_item_is_refused' tests/unit/test_doc_check.py && grep -q 'def test_a_list_that_interrupts_a_paragraph_on_purpose_passes' tests/unit/test_doc_check.py
@@ -57,6 +57,6 @@ as that head's in `PL-N7LK`'s brief. `PL-R417`'s own fix makes readers read a
 continued statement whole, and reaches no writer, so this check is what would
 stop the next instance.
 
-[superseded 2026-10-12: moved to `ready` by `PL-2349`, below] **The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it: `#1392`'s inline test holds `doc_check`'s reading to markdown-it-py, and no check refuses a wrapped clause that renders as a list item. It stays `blocked` only because `ready` needs a `verify:` command, which `bin/docket set` refuses `ready` without and triage writes beside the work; `bin/docket check` names it ready to promote meanwhile.
+[superseded 2026-10-12: `PL-R417` no longer holds it; the pause it ended restarted with #1419's three live heads, below] **The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it: `#1392`'s inline test holds `doc_check`'s reading to markdown-it-py, and no check refuses a wrapped clause that renders as a list item. It stays `blocked` only because `ready` needs a `verify:` command, which `bin/docket set` refuses `ready` without and triage writes beside the work; `bin/docket check` names it ready to promote meanwhile.
 
-**Promoted 2026-10-12** by `PL-2349`, whose check now refuses a `blocked` item whose every blocker has closed. `bin/docket generators` on `main` at `3ff9f0f6` marks no head "still generating" and no open item carries `generator: live`, so the pause is over and nothing else this brief names holds it. The fault stands: `tools/doc_check.py` has no rule for a list item that interrupts a paragraph. `verify:` names the two halves Done-when asks the test to pin - `test_a_wrapped_clause_that_renders_as_a_list_item_is_refused` and `test_a_list_that_interrupts_a_paragraph_on_purpose_passes` in `tests/unit/test_doc_check.py` - and was seen failing (exit 1) on 2026-10-12.
+**Re-read 2026-10-12 under `PL-2349`**, whose check now refuses a `blocked` item whose every blocker has closed. `PL-R417`'s closure ended the generator pause on 2026-10-11, and `PL-74T0` restarted it the next day: #1419 (`febb37b4`) recorded `PL-5DZ8`, `PL-8QMD` and `PL-ZGYX` as live heads, and `bin/docket generators` marks all three still generating. Nothing else this brief names holds it, so it stays held by the pause, now blocked on those three - though the pause's own test is still `bin/docket generators` marking no head "still generating", not this list. The `verify:` and `payoff:` are written now, so the pull request that ends the pause can promote it in one write. The fault stands: `tools/doc_check.py` has no rule for a list item that interrupts a paragraph. `verify:` names the two halves Done-when asks the test to pin - `test_a_wrapped_clause_that_renders_as_a_list_item_is_refused` and `test_a_list_that_interrupts_a_paragraph_on_purpose_passes` in `tests/unit/test_doc_check.py` - and was seen failing (exit 1) on 2026-10-12.
