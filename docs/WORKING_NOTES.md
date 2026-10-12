@@ -566,6 +566,24 @@ whether this work is worth doing at all is met: "be aware of any time you feel
 discouraged from doing a small refactoring... Any such barrier is a smell that
 should prompt a conversation."
 
+**Widened on 2026-10-12, under `PL-6B1Z`.** The narrow door was measured
+against two weeks of filings: 176 S-effort defects, 37 of them incidental finds
+by 22 ordinary sessions (19 found one), and the door itself named as taken in
+two pull-request bodies of about 1,440. The project owner asked for small
+defects fixed in place whenever discovered, which overrides two of the
+2026-09-01 choices - the fix now carries its own regression test, and locality
+goes - and leaves within-branch deferral set aside. What replaced locality is a
+record rather than a refusal: the fix's own commit under the current item's
+id, one line in the pull request body, and `bin/docket verify --self` naming
+the file, which is left out of `touches` so the lane stays honest. The cap
+stayed at two on the count (one finder in 22 exceeded it, with four finds of
+one mechanism, which the generator rule takes), and the door stops at the
+clinical floor and at adding a read hold (project owner, 2026-10-12, ratified,
+over holding the pull request for the read and over opening the clinical
+paths). The two lessons above, on gate placement and on beating the cited
+source, stand; the source's locality argument now holds here after all, for the
+owner's reason rather than Fowler's.
+
 ## Settled: `.claude/rules/` path globs are unanchored - PL-ZQ35, PL-H588, PL-LLWN
 
 Measured on 2026-09-05 while closing `PL-ZQ35`: a `paths:` entry in a
