@@ -1,9 +1,16 @@
 ---
 id: PL-F2T2
 title: SimulationView._remove_time_bookmark and _remove_mac_target read the reference run's snapshot outside any halt gate, so Remove in the marks dialog on a run whose snapshot refuses raises out of the slot as PL-V2HC's readers did
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, ux
 feature: every-control-restates-the-halt
+touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+payoff: Remove in the marks dialog on a run that cannot be read ends in the halt on screen rather than a button that silently does nothing
+verify: grep -q 'def test_removing_a_mark_on_a_run_whose_snapshot_refuses_restates_the_halt' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** SimulationView._remove_time_bookmark and _remove_mac_target read the reference run's snapshot outside any halt gate, so Remove in the marks dialog on a run whose snapshot refuses raises out of the slot as PL-V2HC's readers did

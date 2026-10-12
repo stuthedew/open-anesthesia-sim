@@ -1,9 +1,15 @@
 ---
 id: PL-85LJ
 title: A slider dragged on a run whose snapshot refuses leaves its value label on the previous value while the dial and the circuit hold the new one, because only refresh rewrites it and no frame draws after the halt (found at PL-V2HC's review)
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: safety, defect
 feature: every-control-restates-the-halt
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_simulation_view.py
 added: 2026-10-12
+payoff: after a drag that halts the run, the number printed beside a dial is the value the dial and the run hold, not the one before the drag
+verify: grep -q 'def test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** A slider dragged on a run whose snapshot refuses leaves its value label on the previous value while the dial and the circuit hold the new one, because only refresh rewrites it and no frame draws after the halt (found at PL-V2HC's review)
