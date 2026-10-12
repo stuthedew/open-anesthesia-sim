@@ -412,6 +412,33 @@ def test_prose_outside_claude_is_not_scanned(tmp_path: Path) -> None:
     assert fixture_id_check.collect(tmp_path) == []
 
 
+def test_a_checkout_inside_a_claude_directory_reads_only_its_own_claude_tree(
+    tmp_path: Path,
+) -> None:
+    """`PL-QJ5F`: a desktop worktree sits under `.claude/worktrees/`, and was read whole.
+
+    `.claude` anywhere in the absolute path made its `ROADMAP.md` `.claude`
+    prose, 112 findings that were not errors; and the main checkout read every
+    agent's copy below it the same way, 502. Placed by its path relative to the
+    root and read from the tracked files, a checkout scans its own `.claude/`
+    and nothing else.
+    """
+    root = tmp_path / ".claude" / "worktrees" / "desktop"
+    _write(root, "ROADMAP.md", ROADMAP_LINE)
+    _write(root, ".claude/rules/citation-drift.md", CLAUDE_PLACEHOLDERS)
+    for command in (
+        ("init", "-q"),
+        ("add", "-A"),
+        ("-c", "user.email=test@example.invalid", "-c", "user.name=Test", "commit", "-qm", "init"),
+    ):
+        subprocess.run(("git", *command), cwd=root, check=True, capture_output=True)
+    _write(root, ".claude/worktrees/agent/ROADMAP.md", ROADMAP_LINE)
+    _write(root, ".claude/worktrees/agent/.claude/rules/citation-drift.md", CLAUDE_PLACEHOLDERS)
+
+    (offender,) = fixture_id_check.collect(root)
+    assert offender.render(root) == ".claude/rules/citation-drift.md:2 PL-A1B2"  # not-an-id
+
+
 def test_a_claude_document_takes_the_marker_as_well(tmp_path: Path) -> None:
     _write(tmp_path, ".claude/rules/thing.md", CLAUDE_MARKED)
 

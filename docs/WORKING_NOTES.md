@@ -2340,6 +2340,7 @@ resident in `CLAUDE.md` § "Architecture and development discipline", and
 `tools/fact_home_check.py` refuses the decidable part - a reader of git, the
 tree, the GitHub API, the default branch or a shell command outside the module
 that owns it, and a name defined in two apparatus files - against a baseline
-of 107 sites that only shrinks; `PL-5DZ8`'s 19 members, `PL-HNXS` and
-`PL-9NZ3` drain it. The pause on new workflow mechanisms, re-engaged by this
+that only shrinks: 107 sites when it landed, 91 once `PL-351H` read pull-request facts once and
+`PL-HNXS` and `PL-9NZ3` moved eight checks' walks onto `tracked_files`. `PL-5DZ8`'s members drain the
+rest, and `PL-J4YY` holds the six walks no item named. The pause on new workflow mechanisms, re-engaged by this
 head, ends when its pull request merges.
