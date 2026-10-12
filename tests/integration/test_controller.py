@@ -2250,21 +2250,32 @@ def test_a_branch_can_open_at_any_keyframe_the_run_holds() -> None:
         assert branch.run_segments[0].opening.state == segment.opening.state
 
 
-def test_an_instant_between_keyframes_is_refused_rather_than_approximated() -> None:
-    """`docs/MODEL.md` § "The canonical evaluation rule", enforced at the seam.
+def test_resumed_at_refuses_an_instant_no_setting_changed_at_and_names_the_other_doors() -> None:
+    """The refusal gives the door's scope as its reason, not an arithmetic limit (`PL-54V0`).
 
-    Opening between two keyframes would replace one propagation over an
-    interval with two over its halves - a different rounding of the same exact
-    solution - and `PL-Z3W6` requires element-wise reproduction rather than
-    agreement within a tolerance. The refusal names the keyframes the run does
-    hold, so a caller can pick one.
+    `resumed_at` opens at the run's opening or a recorded setting change. An
+    instant between two of them is not beyond reproducing - `resumed_at_mark`
+    and `resumed_at_halt` both fork there and reproduce the run element-wise -
+    it is another door's, so the message says which, and names the keyframes
+    this run does hold so a caller can pick one. The reason it used to give,
+    that opening there "would restart from two propagations where the run took
+    one", is true only of a construction no door uses, and a reader who
+    believed it would reach for the refused fix of recording a keyframe there.
     """
 
     trunk = _trunk_with_two_changes()
     between_s = trunk.run_segments[-1].opening.instant_s + 5.0
 
-    with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
+    with pytest.raises(SimulationConfigurationError, match="holds no keyframe") as refusal:
         trunk.resumed_at(CaseInstant(between_s))
+
+    message = str(refusal.value)
+    openings = [segment.opening.instant_s for segment in trunk.run_segments]
+
+    assert str(openings) in message
+    assert "resumed_at_mark" in message
+    assert "resumed_at_halt" in message
+    assert "two propagations" not in message
 
 
 def test_an_instant_the_run_never_reached_is_refused() -> None:

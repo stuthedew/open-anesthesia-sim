@@ -1004,14 +1004,20 @@ class SimulationController:
         is introduced - standing at the state this run passed through at
         `elapsed_s`.
 
-        **It opens at a keyframe or not at all.** `elapsed_s` must be an
-        instant this run holds a keyframe for, which is its start and every
-        recorded setting change. Restarting from the canonical state at any
-        other instant replaces one propagation over an interval with two over
-        its halves - a different rounding of the same exact solution, measured
-        at up to 5.3e-13 in an accumulator - and `PL-Z3W6` requires a branch to
-        reproduce its parent element-wise rather than within a tolerance. So an
-        instant between two keyframes is refused rather than approximated.
+        **It opens at a keyframe, because that is this door's scope**
+        (`PL-54V0`). `elapsed_s` must be an instant this run holds a keyframe
+        for, which is its start and every recorded setting change. Anywhere
+        else is refused, and not for want of a way to reproduce it: a marked
+        instant is branched at through `resumed_at_mark` and the crossing the
+        run is standing on through `resumed_at_halt`, and both fork between two
+        keyframes and reproduce this run element-wise, by opening the branch's
+        definition at the keyframe before the fork (`_open_at`). An instant
+        that is neither marked nor a control event is offered by no door, so a
+        learner marks it first. What no door does is *restart* a definition at
+        the fork from the canonical state there, which replaces one propagation
+        over an interval with two over its halves - a different rounding of the
+        same exact solution, measured at up to 5.3e-13 in an accumulator -
+        where `PL-Z3W6` requires a branch to reproduce its parent element-wise.
 
         **The branch's clock continues the case's**, because a branch is one
         patient's case under a second management rather than a second patient.
@@ -1505,10 +1511,15 @@ class SimulationController:
             if segment.opening.instant_s == elapsed_s:
                 break
         else:
+            # The door's scope is the reason, not arithmetic: the two other
+            # doors fork between keyframes and reproduce the run exactly
+            # (`PL-54V0`), so a message blaming the propagation would teach a
+            # constraint the code beside it disproves.
             raise SimulationConfigurationError(
-                f"this run holds no keyframe at {elapsed_s} s, so opening there would restart "
-                f"from two propagations where the run took one and would not reproduce it "
-                f"element-wise; it holds keyframes at {openings} s"
+                f"this run holds no keyframe at {elapsed_s} s, and resumed_at opens at one: the "
+                f"run's opening or a recorded setting change, which this run holds at {openings} "
+                "s. A marked instant is branched at with resumed_at_mark once the run has passed "
+                "it, and the crossing a run is standing on with resumed_at_halt"
             )
 
         # The fork *is* the stretch's opening here, which is what makes a
@@ -2357,10 +2368,11 @@ class BranchedCase:
 
         The trunk's keyframes: its opening at induction, and every setting
         change the model was actually stepped under. That is what `PL-TFX5`
-        means by "any recorded control-input-timeline event" - the run holds a
-        keyframe at exactly those instants, and a fork taken anywhere else
-        would restart from two propagations where the run took one, which
-        `SimulationController.resumed_at` refuses rather than approximates.
+        means by "any recorded control-input-timeline event", and it is
+        `fork_at`'s scope: an instant that is neither is refused there, not
+        because a branch could not reproduce the trunk at it but because it is
+        another door's - a marked instant through `fork_at_mark`, from
+        `mark_fork_points`, and a halt through `fork_at_halt` (`PL-54V0`).
 
         Induction is included rather than filtered out. A fork at zero is a
         second management of the whole case, which is a comparison a learner
