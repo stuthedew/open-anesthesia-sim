@@ -695,7 +695,7 @@ SETEXT = (
 
 
 @pytest.mark.parametrize("underline", ["---", "==="])
-def test_a_setext_bullet_takes_its_reference_on_its_title_rather_than_its_underline(
+def test_a_setext_underline_in_a_bullet_is_not_its_text_and_takes_no_reference(
     underline: str,
 ) -> None:
     """`PL-703R`: a setext heading's text is its title lines, and the underline ends it.

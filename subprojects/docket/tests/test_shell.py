@@ -1,15 +1,31 @@
-"""Where bash ends a line of a script, and how `shell_words` reads the newlines inside one.
+"""Where bash ends a line of a script and how `shell_words` reads one, held to bash itself.
 
 A workflow step's script reaches bash whole, so `tools/doc_check.py` cuts it with
 `shell.script_lines` rather than a line at a time, which read a here-document's
 body as commands and declined a command continued past its line (`PL-Q9LK`).
-Every shape below was run through bash 5.2.21 first; the one place this reading
-departs from it, a body its delimiter never ends, is pinned as the departure.
+Every hand-written shape below was run through bash 5.2.21 first; where this
+reading departs from it, as for a body its delimiter never ends, the departure
+is what is pinned.
+
+The last section runs bash: generated scripts go through it and through the
+lexer, and every command bash runs must be one the lexer reads, with the words
+bash handed it (`PL-C4XY`).
 """
 
 from __future__ import annotations
 
+import bisect
+import functools
+import re
+import shutil
+import subprocess
+import tempfile
+from collections import Counter
+from pathlib import Path
+
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from docket.shell import Word, flat_reading, joined_text, script_lines, shell_words
 
@@ -334,3 +350,597 @@ def test_a_field_on_one_line_reads_as_it_did() -> None:
         token if isinstance(token, str) else token.text for token in reading.clauses[0].tokens
     ] == ["cat", "<<", "EOF"]
     assert reading.refusal == "carries `<<`, which no admitted shape uses"
+
+
+# --- held to bash itself (`PL-C4XY`) ------------------------------------------
+
+
+@functools.cache
+def _bash() -> str:
+    """The bash the comparison runs, which must read bash 5.2's grammar, as the lexer does."""
+    path = shutil.which("bash")
+    assert path is not None, "the comparison runs bash, and no bash is on PATH"
+    version = subprocess.run(
+        [path, "-c", "echo $BASH_VERSION"], capture_output=True, text=True, check=True
+    ).stdout.strip()
+    major, minor = (int(part) for part in version.split(".")[:2])
+    assert (major, minor) >= (5, 2), f"{path} is bash {version}; the comparison needs 5.2 or newer"
+    return path
+
+
+#: What bash runs before each generated script. Every command a script runs is
+#: `p`, which writes the words it was handed to descriptor 3, the run's own
+#: output: each word ends in a unit separator, a newline in one is written as a
+#: group separator, and the command ends in a record separator, all in one
+#: write - bash line-buffers its output, and a record a newline split took in
+#: another command's from the background. Its standard output goes nowhere, so
+#: a substitution of `p` expands to nothing; `set -f` keeps an unquoted `*` a
+#: word; an empty `TIMEFORMAT` keeps `time` quiet; and SIGPIPE is ignored,
+#: since `time -p` prints to standard error regardless, which a `|&` makes a
+#: pipe whose reader may be gone, and the signal ended the commands after it.
+PROLOGUE = (
+    "exec 3>&1 1>/dev/null\n"
+    "trap '' PIPE\n"
+    "p() {\n"
+    "  local a r=\n"
+    "  for a in \"$@\"; do r+=${a//$'\\n'/$'\\035'}$'\\037'; done\n"
+    "  printf '%s\\036' \"$r\" >&3\n"
+    "}\n"
+    "set -f\n"
+    "TIMEFORMAT=\n"
+)
+#: What `time -p` prints to standard error.
+TIMED = re.compile(rb"(?m)^(?:real|user|sys) [0-9.]+\n")
+#: The path bash hands a command in place of a process substitution.
+PROCESS_PATH = re.compile(r"/dev/fd/\d+")
+
+
+def _bash_runs(script: str) -> Counter[tuple[str, ...]]:
+    """Each command bash runs from `script`, as the words it was handed, counted."""
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "script.sh"
+        path.write_text(PROLOGUE + script, encoding="utf-8")
+        run = subprocess.run(
+            [_bash(), "--norc", "--noprofile", str(path)],
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
+    assert (run.returncode, TIMED.sub(b"", run.stderr)) == (0, b""), (script, run.stderr)
+    return Counter(
+        ("p", *(_handed_word(word) for word in record.split("\x1f")[:-1]))
+        for record in run.stdout.decode().split("\x1e")[:-1]
+    )
+
+
+def _handed_word(recorded: str) -> str:
+    """A word as `p` recorded it, its newlines back and a process substitution's path general."""
+    return PROCESS_PATH.sub("/dev/fd/N", recorded.replace("\x1d", "\n"))
+
+
+#: The operators that end one simple command and start another, once `&&` has cut the clauses.
+ENDS = frozenset((";", "\n", "&", "|", "|&", "(", ")", ";;", ";&", ";;&"))
+#: The operators whose next word is where the redirection points rather than an argument.
+REDIRECTIONS = frozenset(("<", ">", ">>", ">|", "<>", "<&", ">&", "&>", "&>>", "<<", "<<-", "<<<"))
+#: The reserved words at a command's head that no command is handed.
+RESERVED = frozenset(("if", "then", "fi", "{", "}", "time", "do", "done"))
+DESCRIPTOR = re.compile(r"\d+|\{[A-Za-z_]\w*\}")
+ASSIGNMENT = re.compile(r"[A-Za-z_]\w*\+?=")
+#: A parameter no script sets, so its expansion is nothing.
+UNSET = "${unset_value"
+
+
+def _lexer_runs(script: str) -> Counter[tuple[str, ...]]:
+    """Each command `shell_words` reads in `script`, as the words bash would hand it, counted.
+
+    Its clauses and each substitution's are cut into simple commands where an
+    operator ends one, and each is read as bash hands it over: a redirection
+    and its target, a descriptor written against one, a `case` construct's own
+    words, a reserved word or an assignment at its head, and a `for` or `[[`
+    command's own words are no command's words; a word that is a substitution
+    or a parameter expansion, all of which expand to nothing here, is no word,
+    or an empty one in double quotes; and a process substitution is the path
+    bash hands over in its place.
+    """
+    reading = shell_words(script)
+    assert reading.clauses, (script, reading.refusal)
+    opened = sorted(body[0].spans[0][0] for body in reading.substitutions)
+    found: Counter[tuple[str, ...]] = Counter()
+    for clause in reading.every_clause():
+        command: list[tuple[Word | str, tuple[int, int]]] = []
+        for token, span in [*zip(clause.tokens, clause.spans, strict=True), (";", (0, 0))]:
+            if isinstance(token, Word) or token not in ENDS:
+                command.append((token, span))
+                continue
+            if words := _handed(script, command, opened):
+                found[words] += 1
+            command = []
+    return found
+
+
+def _handed(
+    script: str, command: list[tuple[Word | str, tuple[int, int]]], opened: list[int]
+) -> tuple[str, ...]:
+    """The words bash hands the simple command `command` is, or none where it runs none.
+
+    `opened` is where each substitution's body starts, so a word holding one
+    is the substitution, whatever its text.
+    """
+    words: list[str] = []
+    timed = False
+    skip = False
+    for index, (token, (start, end)) in enumerate(command):
+        if skip:
+            skip = False
+            continue
+        if not isinstance(token, Word):
+            assert token in REDIRECTIONS, (script, token)
+            skip = True
+            continue
+        following = command[index + 1] if index + 1 < len(command) else None
+        if (
+            following is not None
+            and following[0] in REDIRECTIONS
+            and following[1][0] == end
+            and DESCRIPTOR.fullmatch(script[start:end])
+        ):
+            continue
+        if token.case_syntax:
+            continue
+        if not words and not token.quoted:
+            if token.text in ("for", "[["):
+                return ()
+            if timed and token.text == "-p":
+                continue
+            timed = token.text == "time"
+            if token.text in RESERVED or ASSIGNMENT.match(token.text):
+                continue
+        after = bisect.bisect_right(opened, start)
+        held = after < len(opened) and opened[after] < end
+        if held and token.text.startswith(("<(", ">(")):
+            words.append("/dev/fd/N")
+        elif held or token.text.startswith(UNSET):
+            if token.quoted:
+                words.append("")
+        else:
+            words.append(token.text)
+    return tuple(words)
+
+
+def _lexer_runs_by_piece(script: str) -> Counter[tuple[str, ...]]:
+    """`_lexer_runs` a piece of `script_lines` at a time, as doc_check's line readers take one."""
+    found: Counter[tuple[str, ...]] = Counter()
+    for piece, _ in script_lines(script):
+        found += _lexer_runs(piece)
+    return found
+
+
+# The scripts the comparison draws, every command in them `p`. Each helper takes
+# the one `draw`, as the front-matter reference's do, which keeps the corpus to
+# seconds.
+
+#: What a word may hold unquoted that bash and the lexer both read as itself.
+PLAIN = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_./-+=@%,:!^]"
+#: Every character that is syntax unquoted, and taken literally after a backslash.
+SPECIAL = " \t;&|<>()$`'\"\\#*?[{}~"
+#: What a body's random line may hold: no `$`, backquote or backslash, each
+#: of which an unquoted body expands, and drawn separately.
+BODY = PLAIN + " ;&|<>()'\"#*"
+DELIMITERS = ("EOF", "'EOF'", '"EOF"', "E\\OF", "\\EOF", "END_1")
+COMMENT = PLAIN + " '\"\\$`()<#;&|"
+
+
+def _word(draw: st.DrawFn) -> str:
+    """A word bash hands over as written once its quotes are removed.
+
+    No `$` stands unescaped before a double quote, where it would open a
+    locale string the lexer misreads (`PL-V690`), and a `$'...'` holds no
+    backslash, whose escape the lexer keeps as written (`PL-48ZJ`).
+    """
+    parts: list[str] = []
+    for _ in range(draw(st.integers(1, 4))):
+        kind = draw(
+            st.sampled_from(("plain", "plain", "escaped", "single", "double", "ansi", "join", "#"))
+        )
+        if kind == "plain":
+            parts.append(draw(st.text(PLAIN, min_size=1, max_size=4)))
+        elif kind == "escaped":
+            parts.append("\\" + draw(st.sampled_from(sorted(SPECIAL + "ab\n"))))
+        elif kind == "single":
+            parts.append("'" + draw(st.text(PLAIN + ' ;&|<>()$`"\\#*?[{}~\n', max_size=5)) + "'")
+        elif kind == "double":
+            inside = st.one_of(
+                st.text(PLAIN + " ;&|<>()#*?[{}~'\n\t", min_size=1, max_size=3),
+                st.sampled_from(('\\"', "\\\\", "\\$", "\\`", "\\a", "\\\n", "\\;")),
+            )
+            parts.append('"' + "".join(draw(st.lists(inside, max_size=4))) + '"')
+        elif kind == "ansi":
+            parts.append("$'" + draw(st.text(PLAIN + ' ;&|<>()$`"#*?[{}~', max_size=4)) + "'")
+        elif kind == "join":
+            parts.append("\\\n")
+        else:
+            parts.append("#")
+    text = "".join(parts)
+    # A word of continuations alone is none, and a leading `#` or `~` is syntax.
+    if not text.replace("\\\n", "") or text.lstrip("\\\n").startswith(("#", "~")):
+        text = "w" + text
+    # Bash 5.2.21 reprints a `$( )` before it runs it, and takes a word's last
+    # `\&` for the `&` that ends a command: `if p a\&; then` loses its `;`.
+    if text.endswith("\\&"):
+        text += "w"
+    return text
+
+
+def _backquoted(command: str, quoted: bool) -> str:
+    """`command` in backquotes, each character bash removes a backslash before escaped."""
+    escaped = command.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$")
+    return "`" + (escaped.replace('"', '\\"') if quoted else escaped) + "`"
+
+
+def _substitution(draw: st.DrawFn, depth: int, quoted: bool) -> str:
+    """A command substitution, in `$( )` or backquotes, whose output is nothing."""
+    if draw(st.booleans()):
+        # The space keeps `$(` from opening an arithmetic `$((`, whose body the
+        # lexer reads as a command (`PL-3Z8B`). Bash 5.2.21 reprints a `$( )`
+        # before it runs it, and drops the first `;` it prints after a
+        # here-document's body: `p <<EOF`, the body, then `p a; p b` runs
+        # `p a p b`. So only the last command in one opens a here-document.
+        return "$( " + _list(draw, depth + 1, lines=True, opens="last") + ")"
+    return _backquoted(_simple(draw, depth + 1, bodies=None), quoted)
+
+
+def _argument(draw: st.DrawFn, depth: int) -> str:
+    """A word, or at shallow depth an expansion of one of the kinds bash expands to nothing."""
+    if depth >= 2 or draw(st.integers(0, 3)):
+        return _word(draw)
+    kind = draw(st.sampled_from(("$()", '"$()"', "${}", '"${}"', "${:-}", '"${:-}"', "<()", ">()")))
+    quoted = kind.startswith('"')
+    if kind in ("<()", ">()"):
+        return kind[0] + "( " + _list(draw, depth + 1, lines=False) + " )"
+    if ":-" in kind:
+        # Inside `${ }` a backquote's quotes are its own, in double quotes or not.
+        inner = UNSET + ":-" + _substitution(draw, depth, quoted=False) + "}"
+    elif "{" in kind:
+        inner = UNSET + "}"
+    else:
+        inner = _substitution(draw, depth, quoted)
+    return f'"{inner}"' if quoted else inner
+
+
+REDIRECT = (
+    "",
+    ">/dev/null",
+    "2>/dev/null",
+    "2>&1",
+    ">&2",
+    "</dev/null",
+    "{v}>/dev/null",
+    "&>/dev/null",
+)
+
+
+def _simple(draw: st.DrawFn, depth: int, bodies: list[str] | None) -> str:
+    """`p` and its arguments, redirections among them, and a here-document if `bodies` takes one."""
+    parts = ["p"]
+    for _ in range(draw(st.integers(0, 3))):
+        if draw(st.integers(0, 4)) == 0:
+            redirect = draw(st.sampled_from((*REDIRECT, "<<<")))
+            if redirect == "<<<":
+                redirect += _argument(draw, depth)
+            if redirect:
+                parts.append(redirect)
+        else:
+            parts.append(_argument(draw, depth))
+    if bodies is not None and draw(st.integers(0, 3)) == 0:
+        operator, body = _here_document(draw, nested=depth > 0)
+        parts.append(operator)
+        bodies.append(body)
+    return " ".join(parts)
+
+
+def _here_document(draw: st.DrawFn, nested: bool) -> tuple[str, str]:
+    """A `<<` or `<<-` and its delimiter, with the body and delimiter lines that end it.
+
+    A body's substitutions open no here-document of their own, which bash
+    5.2.21 refuses where the lexer reads one (`PL-GJKN`). Each runs `p body`,
+    or at the top level `p top-body`, which no piece of `script_lines` holds
+    (`PL-55R2`).
+    """
+    spelled = draw(st.sampled_from(DELIMITERS))
+    delimiter = re.sub(r"['\"\\]", "", spelled)
+    dash = draw(st.booleans())
+    quoted = spelled != delimiter
+    runs = "p body" if nested else "p top-body"
+    lines = draw(
+        st.lists(
+            st.one_of(
+                st.text(BODY, max_size=8),
+                st.sampled_from(
+                    ("p x", "EOF ", " EOF", "EOFX", "# EOF", "\tEOF", "a\\", "a\\\\", "x)")
+                ),
+                st.sampled_from((f"$({runs})", f"`{runs}`", f"a $({runs}) b")),
+            ),
+            max_size=3,
+        )
+    )
+    if dash:
+        lines = ["\t" + line for line in lines]
+    kept = []
+    for line in lines:
+        text = line.lstrip("\t") if dash else line
+        # A line its delimiter opens ends it, and inside a `$( )` one holding a
+        # `)` closes the substitution there too.
+        if text == delimiter or (nested and text.startswith(delimiter) and ")" in text):
+            continue
+        kept.append(line)
+    # A continuation joins an unquoted body's next line, so its last may not be one.
+    if kept and not quoted and re.search(r"(?<!\\)(\\\\)*\\$", kept[-1]):
+        kept[-1] += "z"
+    closing = ("\t" if dash else "") + delimiter
+    return ("<<-" if dash else "<<") + spelled, "".join(
+        line + "\n" for line in kept
+    ) + closing + "\n"
+
+
+def _case(draw: st.DrawFn, depth: int, lines: bool) -> str:
+    """A `case` every arm of which runs: `;;&` tries the next, `;&` runs it, `;;` ends."""
+    subject = draw(st.sampled_from(("x", '"x"', "'x'", "$( p subject)")))
+    matching = ("*", "''") if subject.startswith("$(") else ("*", "x", "?", "[x]", '"x"', "x|*")
+    space = "\n" if lines else " "
+    arms = []
+    count = draw(st.integers(1, 3))
+    tried = True
+    for index in range(count):
+        patterns = draw(st.sampled_from(matching if tried else (*matching, "y", "z|w")))
+        if index == 0 and patterns != "*":
+            patterns += "|*"
+        opening = draw(st.sampled_from(("", "(")))
+        # An arm opens no here-document, since a `;` after its body is lost
+        # in bash 5.2.21's reprint of the `$( )` it stands in.
+        body = _list(draw, depth + 1, lines, opens="none") if draw(st.integers(0, 3)) else ""
+        if index == count - 1:
+            end = draw(st.sampled_from((";;", "", ";&", ";;&")))
+        else:
+            end = draw(st.sampled_from((";;&", ";&")))
+        tried = end == ";;&"
+        if not end:
+            # The last arm, which `esac` alone closes: bash reads it as one only
+            # where a command could start, after a `;` or a newline (`PL-9NMR`).
+            end = ";" if body and not lines else ""
+            arms.append(f"{opening}{patterns}) {body}{end}")
+        else:
+            arms.append(f"{opening}{patterns}) {body}{space}{end}")
+    return f"case {subject} in{space}" + space.join(arms) + f"{space}esac"
+
+
+#: The compound commands a statement may be. No `(( ))`, whose expression the
+#: lexer reads as a command in two subshells (`PL-3Z8B`).
+COMPOUND = ("group", "subshell", "if", "time", "assign", "array", "case", "for", "test")
+
+
+def _statement(
+    draw: st.DrawFn, depth: int, bodies: list[str] | None, lines: bool, leads: bool
+) -> str:
+    """A pipeline's element: a simple command, or at shallow depth a compound one.
+
+    `leads` where it opens its pipeline, the one place bash reads `time` as
+    the reserved word: after a `|` it is the name of a command.
+    """
+    kinds: tuple[str, ...] = ("simple",) * 3 + (COMPOUND if leads else COMPOUND[:3] + COMPOUND[4:])
+    if depth >= 2:
+        kinds = ("simple",)
+    elif depth:
+        # Bash 5.2.21 misreads an array assignment inside a substitution:
+        # `$( a=(\;) )` is a syntax error, and `$( a=(b\<tab>c) )` assigns `b c`.
+        kinds = tuple(kind for kind in kinds if kind != "array")
+    kind = draw(st.sampled_from(kinds))
+    if kind == "simple":
+        return _simple(draw, depth, bodies)
+    if kind == "group":
+        return "{ " + _list(draw, depth + 1, lines=False) + "; }"
+    if kind == "subshell":
+        return "( " + _list(draw, depth + 1, lines=False) + " )"
+    if kind == "if":
+        return (
+            f"if {_simple(draw, depth + 1, None)}; then {_list(draw, depth + 1, lines=False)}; fi"
+        )
+    if kind == "time":
+        timed = _statement(draw, depth + 1, None, lines=False, leads=False)
+        return draw(st.sampled_from(("time ", "time -p "))) + timed
+    if kind == "assign":
+        return "v=" + _substitution(draw, depth, quoted=False)
+    if kind == "array":
+        return (
+            "a=(" + " ".join(_argument(draw, depth) for _ in range(draw(st.integers(0, 3)))) + ")"
+        )
+    if kind == "case":
+        return _case(draw, depth, lines)
+    if kind == "for":
+        listed = _substitution(draw, depth, quoted=False) + " 1" if draw(st.booleans()) else "1"
+        return f"for _ in {listed}; do {_list(draw, depth + 1, lines=False)}; done"
+    # A test of one term, since the lexer reads the `&&`, `||`, parentheses,
+    # `<` and `>` inside `[[ ]]` as operators (`PL-X1VN`).
+    test = draw(st.sampled_from(("-n x", "x == x", "-z SUB", "SUB == ''")))
+    if "SUB" in test:
+        test = test.replace("SUB", _substitution(draw, depth, quoted=False))
+    # A newline inside `[[ ]]` starts the bodies a `<<` before it opened, so
+    # one ends a line only where the bodies it would start are known to be none.
+    closing = draw(st.sampled_from((" ]]", "\n]]"))) if bodies == [] else " ]]"
+    return f"[[ {test}{closing}"
+
+
+#: What may stand between two statements on one line, each running both sides.
+SEPARATORS = ("; ", " && ", " | ", " & ", " &\\\n& ", " |& ")
+#: What may end a line and carry the list on to the next.
+LINE_ENDS = ("\n", " &&\n", " |\n")
+
+
+def _commented(draw: st.DrawFn, ending: str) -> str:
+    """`ending`, a comment before its newline now and then."""
+    if draw(st.integers(0, 3)):
+        return ending
+    return ending[:-1] + " #" + draw(st.text(COMMENT, max_size=6)) + "\n"
+
+
+def _list(
+    draw: st.DrawFn,
+    depth: int,
+    lines: bool,
+    bodies: list[str] | None = None,
+    leads: bool = True,
+    opens: str = "any",
+) -> str:
+    """One to three statements, each separator one bash runs both sides of.
+
+    Where `lines` holds, a separator may end a line, with the bodies of the
+    here-documents opened before it after it. Otherwise any opened go on
+    `bodies`, for the caller to place. None opens where `bodies` is None or
+    `opens` is "none", and where it is "last" only the last statement opens one.
+    """
+    own = None if opens == "none" else [] if lines else bodies
+    out: list[str] = []
+    count = draw(st.integers(1, 3))
+    for index in range(count):
+        if opens == "last" and index < count - 1:
+            out.append(_statement(draw, depth, None, False, leads))
+        else:
+            out.append(_statement(draw, depth, own, lines, leads))
+        if index == count - 1:
+            break
+        if lines and own:
+            separator = "\n"
+        else:
+            separator = draw(st.sampled_from(SEPARATORS + (LINE_ENDS if lines else ())))
+        leads = "|" not in separator
+        if separator.endswith("\n"):
+            separator = _commented(draw, separator) + "".join(own or ())
+            if own:
+                own.clear()
+        out.append(separator)
+    if lines and own:
+        out.append("\n" + "".join(own))
+    return "".join(out)
+
+
+@st.composite
+def scripts(draw: st.DrawFn) -> str:
+    """A script of one to four lines, each a list, its here-documents' bodies after it."""
+    out: list[str] = []
+    ending = "\n"
+    for _ in range(draw(st.integers(1, 4))):
+        bodies: list[str] = []
+        text = _list(draw, 0, lines=False, bodies=bodies, leads="|" not in ending)
+        ending = "\n" if bodies else draw(st.sampled_from((*LINE_ENDS, "\n", ";\n")))
+        out.append(text + _commented(draw, ending) + "".join(bodies))
+    if ending != "\n" and not ending.startswith(";"):
+        out.append("p last\n")
+    return "".join(out)
+
+
+@settings(derandomize=True, database=None, deadline=None, max_examples=300)
+@given(scripts())
+def test_the_lexer_reads_generated_commands_as_bash_does(script: str) -> None:
+    """Each command bash runs from a generated script is one `shell_words` reads, word for word.
+
+    `docket.shell` is what docket's audits and every Bash guard read a command
+    with, and no shell library reads both its views as bash does (`PL-JNYL`),
+    so bash itself is the reference: each script runs in bash 5.2 or newer,
+    every command recording the words it was handed, and the lexer's reading
+    of the same script is turned into the commands it says run. The two must
+    agree, whole and a piece of `script_lines` at a time but for `p top-body`,
+    which no piece holds (`PL-55R2`). Running the script compares what bash
+    does; `declare -f` would print bash's reprint of its parse instead, which
+    is where the faults the generator steers round live, and would want a
+    reader of its own.
+
+    Hypothesis draws the scripts, derandomized, so a red run reproduces
+    exactly: words in every quoting, continuations and comments; `$( )`,
+    nested backquotes, `${...}` with a default, and process substitutions;
+    redirections, descriptors and a `{v}` among them, here-strings, and
+    here-documents under every quoting of their delimiter, `<<-` too, inside
+    substitutions as well; `;`, `&`, `&&`, `|`, `|&` and an operator a
+    continuation splits; and groups, subshells, `if`, `time` and `time -p`,
+    assignments, arrays, `for`, `[[ ]]`, and `case` with `;;`, `;&` and `;;&`.
+    The same generator, run unseeded over 10,000 scripts on 2026-10-12,
+    disagreed with bash on none.
+
+    It leaves out what bash 5.2.21 refuses, or misreads in its reprint of a
+    `$( )`, each said where it is drawn, and each form the lexer reads
+    differently today, pinned in `KNOWN_DEPARTURES` by the item that will fix
+    it.
+    """
+    expected = _bash_runs(script)
+
+    assert _lexer_runs(script) == expected, script
+    del expected[("p", "top-body")]
+    assert _lexer_runs_by_piece(script) == expected, script
+
+
+#: Where the lexer reads a script differently from bash today, each by the item
+#: that will make it bash's: the script, what bash runs, and what `shell_words`
+#: reads from it whole and a piece of `script_lines` at a time. The generator
+#: leaves each form out; the fix deletes its row and lets the generator draw it.
+KNOWN_DEPARTURES = [
+    pytest.param(
+        "p <<EOF\nbody $(p from-a-body) line\nEOF\np after\n",
+        {("p",): 1, ("p", "from-a-body"): 1, ("p", "after"): 1},
+        {("p",): 1, ("p", "from-a-body"): 1, ("p", "after"): 1},
+        {("p",): 1, ("p", "after"): 1},
+        id="PL-55R2",
+    ),
+    pytest.param(
+        "p $(( 1 + 2 ))\n",
+        {("p", "3"): 1},
+        {("p",): 1, ("1", "+", "2"): 1},
+        {("p",): 1, ("1", "+", "2"): 1},
+        id="PL-3Z8B-expansion",
+    ),
+    pytest.param(
+        "(( 1 + 2 )) && p x\n",
+        {("p", "x"): 1},
+        {("1", "+", "2"): 1, ("p", "x"): 1},
+        {("1", "+", "2"): 1, ("p", "x"): 1},
+        id="PL-3Z8B-command",
+    ),
+    pytest.param(
+        'p $"loc"\n', {("p", "loc"): 1}, {("p", "$loc"): 1}, {("p", "$loc"): 1}, id="PL-V690"
+    ),
+    pytest.param(
+        "[[ -n a && -n b ]] && p x\n",
+        {("p", "x"): 1},
+        {("-n", "b", "]]"): 1, ("p", "x"): 1},
+        {("-n", "b", "]]"): 1, ("p", "x"): 1},
+        id="PL-X1VN-and",
+    ),
+    pytest.param(
+        "[[ ( -n a ) ]] && p x\n",
+        {("p", "x"): 1},
+        {("-n", "a"): 1, ("]]",): 1, ("p", "x"): 1},
+        {("-n", "a"): 1, ("]]",): 1, ("p", "x"): 1},
+        id="PL-X1VN-parentheses",
+    ),
+    pytest.param(
+        "p $'\\x41' $'a\\'b'\n",
+        {("p", "A", "a'b"): 1},
+        {("p", "\\x41", "a\\'b"): 1},
+        {("p", "\\x41", "a\\'b"): 1},
+        id="PL-48ZJ",
+    ),
+]
+
+
+@pytest.mark.parametrize(("script", "bash", "whole", "pieces"), KNOWN_DEPARTURES)
+def test_each_known_departure_from_bash_reads_as_its_row_records(
+    script: str,
+    bash: dict[tuple[str, ...], int],
+    whole: dict[tuple[str, ...], int],
+    pieces: dict[tuple[str, ...], int],
+) -> None:
+    """A form the comparison leaves out still reads as its item says, in bash and in the lexer.
+
+    A row whose reading has changed is fixed or has moved, and either way its
+    item, and the generator's exclusion of the form, want revisiting.
+    """
+    assert _bash_runs(script) == Counter(bash)
+    assert _lexer_runs(script) == Counter(whole)
+    assert _lexer_runs_by_piece(script) == Counter(pieces)

@@ -7392,6 +7392,24 @@ def _split_marker_set_aside(tmp_path: Path) -> list[str]:
     return _split_marker_errors(_repo(tmp_path, model=model))
 
 
+@pytest.mark.parametrize(
+    ("kind", "expected"), [("provenance", []), ("derived", []), ("absent", [UNMARKED_ABSENT])]
+)
+def test_a_marker_line_closing_a_longer_comment_is_not_read_as_a_marker(
+    kind: str, expected: list[str], tmp_path: Path
+) -> None:
+    """A comment runs to the first line holding a `-->`, so a marker closing one is its (`PL-7454`).
+
+    Set aside with the paragraph it was about, a provenance or derived marker
+    was held to its data file and failed a correct document, and an absent
+    marker excused a path the page no longer showed. Read with the comment as
+    nothing, it leaves the hidden paragraph's path held to the tree again, and
+    a split marker inside such a comment is the comment's too.
+    """
+    assert _marker_closing_a_comment(tmp_path, kind) == expected
+    assert _split_marker_set_aside(tmp_path) == []
+
+
 def _notes_claimed(tmp_path: Path, notes: str) -> dict[str, frozenset[str]]:
     """The ids `notes_by_version` reads from one release's notes, written as `notes`."""
     directory = tmp_path / "docs" / "releases"
@@ -7939,22 +7957,6 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda tmp_path: _marker_opened_above(tmp_path, "absent"),
         [SPLIT_MARKER_ERROR.format("README.md:7", "absent")],
     ),
-    # A marker line closing a comment opened above it is that comment's, and is
-    # read with it as nothing (`PL-7454`): held to its data file, it failed a
-    # correct document, and as `absent:` it was a claim about a hidden paragraph.
-    "markers, a marker closing a comment opened above it: provenance": (
-        lambda tmp_path: _marker_closing_a_comment(tmp_path, "provenance"),
-        [],
-    ),
-    "markers, a marker closing a comment opened above it: derived": (
-        lambda tmp_path: _marker_closing_a_comment(tmp_path, "derived"),
-        [],
-    ),
-    "markers, a marker closing a comment opened above it: absent": (
-        lambda tmp_path: _marker_closing_a_comment(tmp_path, "absent"),
-        [UNMARKED_ABSENT],
-    ),
-    "markers, a split marker inside a comment opened above it": (_split_marker_set_aside, []),
     # The Makefile (`PL-G2FY`), read through `_make_lines`: a recipe line keeps
     # the backslash-newline and loses the continuation's tab, any other line
     # becomes one, a comment included.
