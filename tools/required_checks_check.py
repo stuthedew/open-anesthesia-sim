@@ -161,6 +161,19 @@ ROOT = Path(__file__).resolve().parent.parent
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+# `frontmatter` is the one reading of a YAML line (`PL-8MHZ`): where its comment
+# opens, the key it opens, what a quoted scalar holds, and whether a node is a
+# plain scalar. This module spelt each beside it, and the two parted on
+# `don 't # x`, `"a\"b": 1` and `'it''s'`.
+from docket.frontmatter import (  # noqa: E402
+    Unread,
+    closing_quote,
+    is_item,
+    plain,
+    uncommented,
+    unquote,
+)
+from docket.frontmatter import key as frontmatter_key  # noqa: E402
 from docket.lines import record_text, split_lines  # noqa: E402
 from docket.vcs import REMOTE, default_branch, github_slug, github_token  # noqa: E402
 
@@ -187,15 +200,6 @@ PULL_REQUEST_FILTERS = ("types", "branches", "branches-ignore", "paths", "paths-
 DEFAULT_TYPES = frozenset({"opened", "synchronize", "reopened"})
 
 NOT_REQUIRED = re.compile(r"#\s*not-required:\s*(?P<reason>\S.*?)\s*$")
-
-# A comment closing a plain scalar on its line: a `#` after white space
-# (YAML 1.2.2 § 6.6), which is no part of the value.
-TRAILING_COMMENT = re.compile(r"[ \t]+#.*$")
-
-# What opens a value other than a plain scalar (YAML 1.2.2 § 5.3): a block
-# scalar's header, a quote, an anchor, alias or tag, a flow collection, or a
-# reserved indicator.
-NODE_INDICATORS = frozenset("|>\"'&*![]{}%@`")
 
 # Each indicator `triggers` refuses where a node opens, with what it opens there
 # (YAML 1.2.2 § 5.3). An anchor is read past on a key's line, where it names the
@@ -271,32 +275,6 @@ class _Line:
     text: str
 
 
-def _uncommented(text: str) -> str:
-    """`text` without its comment: a `#` opening it or after white space, outside quotes.
-
-    YAML 1.2.2 § 6.6. A quote opens a quoted scalar only where a node can open
-    (§ 7.3), so the `'` in `don't` is a character and a `#` after it ends the line.
-    """
-    quote = ""
-    index = 0
-    while index < len(text):
-        char = text[index]
-        if quote:
-            if char == "\\" and quote == '"':
-                index += 1
-            elif char == quote:
-                if quote == "'" and text[index + 1 : index + 2] == "'":
-                    index += 1
-                else:
-                    quote = ""
-        elif char == "#" and (index == 0 or text[index - 1] in " \t"):
-            return text[:index]
-        elif char in "'\"" and (index == 0 or text[index - 1] in " \t[{,"):
-            quote = char
-        index += 1
-    return text
-
-
 def _next(lines: Sequence[str], index: int) -> _Line | None:
     """The first line from `index` holding more than white space and a comment.
 
@@ -304,7 +282,7 @@ def _next(lines: Sequence[str], index: int) -> _Line | None:
     """
     for at in range(index, len(lines)):
         body = lines[at].lstrip(" ")
-        text = _uncommented(body).strip()
+        text = uncommented(body).strip()
         if text:
             if body[:1] == "\t":
                 raise Undecidable("a tab indents this line, where YAML takes only spaces", at + 1)
@@ -312,71 +290,42 @@ def _next(lines: Sequence[str], index: int) -> _Line | None:
     return None
 
 
-def _closing_quote(text: str, start: int = 0) -> int:
-    """Where the quote closing the scalar `text[start]` opens sits, or -1 past the line's end."""
-    quote = text[start]
-    index = start + 1
-    while index < len(text):
-        if quote == '"' and text[index] == "\\":
-            index += 2
-            continue
-        if text[index] == quote:
-            if quote == "'" and text[index + 1 : index + 2] == "'":
-                index += 2
-                continue
-            return index
-        index += 1
-    return -1
+def _quoted(token: str, line: int | None, what: str) -> str:
+    """The scalar a quoted `token` holds, as `docket.frontmatter.unquote` reads it (§ 7.3).
 
-
-def _quoted(token: str, line: int, what: str) -> str:
-    """The scalar a quoted `token` holds, read between its quotes (§ 7.3.1, § 7.3.2)."""
-    body = token[1:-1]
-    if token[0] == "'":
-        return body.replace("''", "'")
-    if "\\" in body:
-        raise Undecidable(
-            f"{what} holds a double-quoted scalar with an escape, which this reader does not "
-            "decode",
-            line,
-        )
-    return body
-
-
-def _item(text: str) -> bool:
-    """Whether `text` opens a block list entry (§ 8.2.1)."""
-    return text == "-" or text[:2] in ("- ", "-\t")
+    The one reading of a quoted scalar (`PL-8MHZ`), so `'it''s'` holds `it's`
+    and `"a\\"b"` holds `a"b`, where this reader refused every escape. One YAML
+    refuses raises `Undecidable`, naming it.
+    """
+    try:
+        return unquote(token)
+    except Unread as refused:
+        raise Undecidable(f"{what} holds a quoted scalar YAML refuses: {refused}", line) from None
 
 
 def _refuse_opener(text: str, line: int, what: str) -> None:
-    """Raise `Undecidable` where `text` opens with an indicator this reader does not read."""
-    opener = text[:1]
-    if opener in "-?:" and text[1:2] not in ("", " ", "\t"):
-        return
-    if opener and opener in REFUSED_OPENERS:
-        raise Undecidable(f"{what} holds {REFUSED_OPENERS[opener]}", line)
+    """Raise `Undecidable` where `text` opens a node, other than a plain scalar, not read here."""
+    if text and not plain(text) and text[0] in REFUSED_OPENERS:
+        raise Undecidable(f"{what} holds {REFUSED_OPENERS[text[0]]}", line)
 
 
 def _key(text: str, line: int) -> tuple[str, str] | None:
     """The key a block mapping entry opens `text` with, and what follows its `:`.
 
-    A plain or quoted scalar ended by a `:` that white space or the line's end
-    follows (§ 7.3, § 8.2.2), so `on :` and `"on":` name the key `on`. `None`
-    where `text` opens no key; a key YAML writes some other way raises
-    `Undecidable`, naming it.
+    `docket.frontmatter.key` reads it, the one reading of a key's line
+    (`PL-8MHZ`): a plain or quoted scalar ended by a `:` that white space or
+    the line's end follows (§ 7.3, § 8.2.2), so `on :` and `"on":` name the key
+    `on`, and `"a\\"b":` the key `a"b`. `None` where `text` opens none, a key
+    written behind an indicator included - an anchor, a tag, an alias, `?`, or
+    nothing before its `:` - which each caller refuses where a key belongs, and
+    `_top_level` where one could hide `on:` or `jobs:`. A quoted key YAML
+    refuses raises `Undecidable`.
     """
-    if text[:1] in "'\"":
-        end = _closing_quote(text)
-        after = text[end + 1 :].lstrip(" \t") if end >= 0 else ""
-        if after[:1] != ":" or after[1:2] not in ("", " ", "\t"):
-            return None
-        return _quoted(text[: end + 1], line, "a key"), after[1:].strip()
-    for index, char in enumerate(text):
-        if char == ":" and text[index + 1 : index + 2] in ("", " ", "\t"):
-            key = text[:index].rstrip()
-            _refuse_opener(key or ":", line, "a key")
-            return key, text[index + 1 :].strip()
-    return None
+    try:
+        opened = frontmatter_key(text)
+    except Unread as refused:
+        raise Undecidable(f"a key holds a quoted scalar YAML refuses: {refused}", line) from None
+    return None if opened is None else (opened[0], text[opened[1] :].strip())
 
 
 def _blank(text: str, at: int) -> int:
@@ -389,7 +338,7 @@ def _blank(text: str, at: int) -> int:
 def _flow_scalar(text: str, at: int, line: int, what: str) -> tuple[object, int]:
     """The scalar opening at `text[at]` inside a flow collection, and the index past it (§ 7.3)."""
     if text[at] in "'\"":
-        end = _closing_quote(text, at)
+        end = closing_quote(text, at)
         if end < 0:
             raise Undecidable(
                 f"{what} holds a quoted scalar carried past its line, which this reader does "
@@ -487,7 +436,7 @@ def _inline(text: str, line: int, what: str) -> object:
             )
         return value
     if text[:1] in "'\"":
-        end = _closing_quote(text)
+        end = closing_quote(text)
         if end < 0:
             raise Undecidable(
                 f"{what} holds a quoted scalar carried past its line, which this reader does "
@@ -525,7 +474,7 @@ def _sequence(lines: Sequence[str], first: _Line, what: str) -> tuple[object, in
     """The block list whose first entry is `first`, and the index past it (§ 8.2.1)."""
     entries: list[tuple[int, object]] = []
     entry: _Line | None = first
-    while entry is not None and entry.indent == first.indent and _item(entry.text):
+    while entry is not None and entry.indent == first.indent and is_item(entry.text):
         line = entry.index + 1
         rest = entry.text[1:].strip()
         if not rest:
@@ -551,11 +500,11 @@ def _passed_over(lines: Sequence[str], index: int, indent: int, inline: str) -> 
     """
     for at in range(index, len(lines)):
         body = lines[at].lstrip(" ")
-        text = _uncommented(body).strip()
+        text = uncommented(body).strip()
         if not text:
             continue
         depth = len(lines[at]) - len(body)
-        if depth < indent or (depth == indent and (inline or not _item(text))):
+        if depth < indent or (depth == indent and (inline or not is_item(text))):
             return at
     return len(lines)
 
@@ -567,7 +516,7 @@ def _entry_key(entry: _Line, seen: Iterable[str], what: str) -> tuple[str, str]:
     holds, since YAML allows a key once in a mapping (§ 3.2.1.1).
     """
     line = entry.index + 1
-    opened = None if entry.text[:1] in "[{" or _item(entry.text) else _key(entry.text, line)
+    opened = None if entry.text[:1] in "[{" or is_item(entry.text) else _key(entry.text, line)
     if opened is None:
         raise Undecidable(f"{what} holds `{entry.text}` among its keys, and it is no key", line)
     if opened[0] in seen:
@@ -630,9 +579,13 @@ def _block(
         _not_continued(lines, index, indent, what)
         return line, value, index
     first = _next(lines, index)
-    if first is None or first.indent < indent or (first.indent == indent and not _item(first.text)):
+    if (
+        first is None
+        or first.indent < indent
+        or (first.indent == indent and not is_item(first.text))
+    ):
         return line, None, index
-    if _item(first.text):
+    if is_item(first.text):
         entries, end = _sequence(lines, first, what)
         return first.index + 1, entries, end
     if first.text[:1] not in "[{" and _key(first.text, first.index + 1) is not None:
@@ -648,17 +601,22 @@ def _top_level(lines: Sequence[str], name: str) -> tuple[int, str] | None:
 
     `None` where no top-level key has that name. Two raise `Undecidable`, since
     YAML allows a key once in a mapping (§ 3.2.1.1) and which one a reader of a
-    malformed file keeps is not this parser's to guess.
+    malformed file keeps is not this parser's to guess. So does a line opening
+    with an indicator that `_key` reads no key in, since `&a on:` or `? on` may
+    be the key this looks for, written where this reader does not look - a
+    directive (`%`) included, which no workflow here writes.
     """
     found: tuple[int, str] | None = None
     for index, raw in enumerate(lines):
         if raw[:1] in ("", " ", "\t", "#"):
             continue
-        text = _uncommented(raw).strip()
-        if not text or text[:1] in "[{" or _item(text):
+        text = uncommented(raw).strip()
+        if not text or text[:1] in "[{" or is_item(text):
             continue
         opened = _key(text, index + 1)
-        if opened is not None and opened[0] == name:
+        if opened is None:
+            _refuse_opener(text, index + 1, "a key")
+        elif opened[0] == name:
             if found is not None:
                 raise Undecidable(
                     f"`{name}:` appears twice at the top level, which YAML does not allow",
@@ -928,16 +886,20 @@ def _job_name(job: str, inline: str, below: Sequence[str]) -> str | None:
 
     Two forms are read, the ones a workflow writes: a plain scalar on the key's
     line, which a comment ends (YAML 1.2.2 § 6.6), and a quoted scalar that
-    closes on that line and holds no escape, read as what lies between its
-    quotes. `None` where the key holds no value, so the job id names the check.
+    closes on that line, read as `docket.frontmatter.unquote` reads it, so
+    `'owner''s gate'` is `owner's gate` where it was refused as an escape
+    (`PL-8MHZ`). `None` where the key holds no value, so the job id names the
+    check.
 
     Every other form raises `Undecidable`, naming it (`PL-TMX9`). Read from the
     key's line alone, `name: >` was the check name `>`, and `name: Long` over
     an indented `title` was `Long` where YAML hands GitHub `Long title`
     (§ 7.3.3, § 8.1). So a block scalar is refused, as is a plain scalar
     carried onto the lines after the key or opening on the line after it, a
-    quoted scalar carried past the key's line or holding an escape, and an
-    anchor, alias, tag or flow collection. A comment line is no continuation.
+    quoted scalar carried past the key's line or followed by more than a comment,
+    an escape YAML refuses, and an anchor, alias, tag or flow collection - any
+    node `docket.frontmatter.plain` says is no plain scalar. A comment line is
+    no continuation.
     No workflow here writes any of these, so each is refused rather than
     folded, as `doc_check._run_script` refuses them in a `run:` value
     (`PL-R417`).
@@ -946,14 +908,14 @@ def _job_name(job: str, inline: str, below: Sequence[str]) -> str | None:
     if inline[:1] in ("|", ">"):
         form = f"a block scalar (`{inline[0]}`)"
     elif inline[:1] in ('"', "'"):
-        end = inline.find(inline[0], 1)
+        end = closing_quote(inline)
         if end < 0 or below:
             form = "a quoted scalar carried past the key's line"
-        elif inline[end + 1 : end + 2] == "'" or (inline[0] == '"' and "\\" in inline[1:end]):
-            form = "a quoted scalar holding an escape"
+        elif inline[end + 1 :].strip():
+            form = f"a quoted scalar followed by `{inline[end + 1 :].strip()}`"
         else:
-            return inline[1:end]
-    elif inline[:1] in NODE_INDICATORS:
+            return _quoted(inline, None, f"job `{job}`'s `name:`")
+    elif inline and not plain(inline):
         form = f"a YAML node opening `{inline[0]}`"
     elif below:
         form = f"a plain scalar {'carried onto' if inline else 'opening on'} the line after it"
@@ -1003,7 +965,7 @@ def _first_job(lines: Sequence[str]) -> tuple[int, _Line | None] | None:
     first = _next(lines, start + 1)
     if first is None or first.indent == 0:
         return start, None
-    if first.text[:1] in "[{" or _item(first.text):
+    if first.text[:1] in "[{" or is_item(first.text):
         raise Undecidable(
             "`jobs:` holds a flow collection or a list on the line after it, which this parser "
             "does not read - write the jobs as a block mapping",
@@ -1049,7 +1011,7 @@ def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
         display_name: str | None = None
         body = _next(lines, at.index + 1)
         if body is not None and body.index < end:
-            if body.text[:1] in "[{" or _item(body.text):
+            if body.text[:1] in "[{" or is_item(body.text):
                 raise Undecidable(
                     f"job `{job}` holds a flow collection or a list, which this parser does not "
                     "read - write its keys as a block mapping",
@@ -1062,7 +1024,7 @@ def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
                     below = [
                         line
                         for line in lines[key_line.index + 1 : value_end]
-                        if _uncommented(line.lstrip(" ")).strip()
+                        if uncommented(line.lstrip(" ")).strip()
                     ]
                     display_name = _job_name(job, held, below)
                 elif key == "strategy":
@@ -1184,7 +1146,7 @@ def _job_steps(
     body = _next(lines, opened.index + 1)
     if body is None or body.index >= end:
         return
-    if body.text[:1] in "[{" or _item(body.text):
+    if body.text[:1] in "[{" or is_item(body.text):
         raise Undecidable(
             f"job `{job}` holds a flow collection or a list, which this reader does not read - "
             "write its keys as a block mapping",
@@ -1202,7 +1164,7 @@ def _job_steps(
         entry = _next(lines, key_line.index + 1)
         column = None if entry is None else entry.indent
         while entry is not None and entry.index < value_end:
-            if entry.indent != column or not _item(entry.text):
+            if entry.indent != column or not is_item(entry.text):
                 raise Undecidable(
                     f"job `{job}`'s `steps:` holds `{entry.text}` where a list entry belongs, "
                     "which this reader does not read",

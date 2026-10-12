@@ -3,12 +3,14 @@ id: PL-8MHZ
 title: YAML scalar and line grammar is respelt outside docket.frontmatter and model - required_checks_check's _uncommented, _key and _quoted, rules_paths_check's _unquote, and two block-scalar and node-indicator readers - so [a, "b # c"], 'it''s' and |x each read two ways
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: tools/required_checks_check.py, tools/rules_paths_check.py, tools/doc_check.py, subprojects/docket/src/docket/frontmatter.py, subprojects/docket/src/docket/model.py, tests/unit/test_required_checks_check.py, tests/unit/test_rules_paths_check.py
+touches: tools/required_checks_check.py, tools/rules_paths_check.py, tools/doc_check.py, subprojects/docket/src/docket/frontmatter.py, subprojects/docket/src/docket/model.py, tests/unit/test_required_checks_check.py, tests/unit/test_rules_paths_check.py, tests/unit/test_doc_check.py, subprojects/docket/tests/test_frontmatter.py, subprojects/docket/tests/test_frontmatter_reference.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1458
 payoff: a YAML line or scalar reads the same in docket's front-matter reader and in the checks that read workflows and rules
 verify: grep -q 'def test_a_doubled_single_quote_reads_as_docket_reads_it' tests/unit/test_rules_paths_check.py
 recurrences: 2026-10-12 PL-4DK2
