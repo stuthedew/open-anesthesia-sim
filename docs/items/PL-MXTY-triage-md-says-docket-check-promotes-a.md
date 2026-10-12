@@ -2,6 +2,7 @@
 id: PL-MXTY
 title: triage.md says `docket check` promotes a milestone-blocked item once the milestone is scoped, but check only advises and never writes a status, so a reader of the triage mode can believe promotion is automatic and leave the item blocked
 status: untriaged
+feature: blocked-means-blocked
 added: 2026-10-11
 ---
 
