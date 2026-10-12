@@ -3927,7 +3927,10 @@ and comment dropped before matching what is left. So a marker a backslash or a
 bracket carries across lines is found as the one statement it is; a docstring
 naming the tokens, a fixture writing a suppression into a test file as a
 string, and a comment explaining why one was *not* used are each read as what
-they are; and a reflow that changes no token adds nothing. The logical lines are
+they are; and a reflow that changes no token adds nothing. Each is counted in
+the definition it applies to, a decorator in the one it decorates, so a marker
+moved from one test onto another is one added there, where a test moved whole
+takes its marker with it and adds nothing (`PL-W6ZD`). The logical lines are
 the tokenizer's, `docket.python`'s one reading of where a Python statement ends,
 so a file the running interpreter cannot parse is read the same way and named
 on the page as read through the tokenizer (`PL-TC2D`). Only a file the
@@ -4019,7 +4022,8 @@ the same branch is never this item's to lose (`PL-2DTK`). Nor is one the
 branch's tip still holds in the same file, which a later commit naming another
 item put back, since that is the response the check asks for (`PL-087W`). A
 renamed file is followed as `git show` follows it, and a merge commit is read
-against every parent, as git reads one. And a file the running interpreter
+against every parent, as git reads one, its combined diff included where a file
+is read line by line (`PL-W6ZD`). And a file the running interpreter
 cannot parse - `bin/docket` runs on the bare `python3`, which can be older than
 the project's own - is read through the tokenizer instead, every version of it
 alike, so a docstring is one string and a bracketed `assert` one statement, and

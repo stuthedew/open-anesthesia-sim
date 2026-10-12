@@ -3,11 +3,13 @@ id: PL-W6ZD
 title: docket verify's diff audits miss three changes - a skip decorator moved from one test to another cancels in the per-file fold, a merge commit's combined diff is read as a two-way one, and an uncommitted edit beside a sanctioned queue write is never read - so a suppression, an added line or a status edit passes unseen; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/python.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_python.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1447
 payoff: a skip moved onto another test, a suppression added in a merge commit, or an uncommitted status edit beside a record write can no longer pass verify unreported
 verify: grep -q 'def test_a_skip_decorator_moved_to_another_test_is_an_added_suppression' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_merge_commits_combined_diff_is_read_or_declined' subprojects/docket/tests/test_verify.py && grep -q 'def test_an_uncommitted_edit_beside_a_sanctioned_queue_write_is_not_sanctioned' subprojects/docket/tests/test_verify.py
 reenters: PL-4W2L
@@ -58,3 +60,34 @@ than an uncommitted edit at verify time.
 **Done when.** A suppression is compared with the definition it decorates, a
 combined diff is read as one or declined by name, and an uncommitted change to
 a path the audit judges is refused or named; a test pins each.
+
+**Fixed 2026-10-12** in `#1447`, one reading for each form.
+
+- `python.places` gives each logical line the definition it belongs to: a
+  `def` or `class` itself, a decorator the definition it decorates, as `ast`
+  holds it in that definition's node, and any other statement the definition
+  holding it. `added_suppressions` counts each statement there, so a skip
+  moved from `test_a` onto `test_b`, as a decorator or as a call to
+  `pytest.skip` in the body, is a suppression added to `test_b`, while a test
+  moved whole takes its marker with it and adds nothing. A test renamed takes
+  its marker to a name that did not hold one, which reads as added, the side
+  the check fails toward. `read_assertion_statements` takes its `where` from
+  the same function rather than a scope walk of its own, which puts a
+  decorator's assertion in the definition it decorates, as `read_assertions`
+  already did.
+- `_net_line_changes` reads a `diff --cc` section column by column and keeps
+  each line's least count across the columns: added where no parent held it,
+  removed where every parent did, which is `_file_steps`' reading of a merge.
+  A quoted path is read as `""`, as an unread two-way header is, and a
+  section is keyed as the file's two-way patches are so the fold runs across
+  both. The two-way reader's own misreads stay `PL-MR8Z`'s.
+- `sanctioned_queue_edit` answers no kind for a path with an uncommitted
+  change, as an uncommitted capture or record already read, since every kind
+  is read off a commit; the scope check names such a path as uncommitted.
+
+`test_a_skip_decorator_moved_to_another_test_is_an_added_suppression` (both
+shapes), `test_a_merge_commits_combined_diff_is_read_or_declined` and
+`test_an_uncommitted_edit_beside_a_sanctioned_queue_write_is_not_sanctioned`
+each fail on `main`'s code; `test_a_test_moved_whole_with_its_skip_adds_no_suppression`
+and `test_a_statement_belongs_to_its_definition_and_a_decorator_to_the_one_it_decorates`
+pin the other side.

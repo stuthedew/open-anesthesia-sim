@@ -208,6 +208,41 @@ def definition(line: LogicalLine) -> tuple[str, str]:
     return "", ""
 
 
+def places(lines: Sequence[LogicalLine]) -> tuple[str, ...]:
+    """The definition each of `lines` belongs to, as the names of it and those holding it.
+
+    Joined with `::`, outermost first, as pytest names a test, and `""` for a
+    statement no definition holds. A `def` or `class` belongs to itself and
+    holds every statement indented past the column it opens at, as a block's
+    statements are indented under it, until one opens at that column or
+    before it. A decorator belongs to the definition it decorates - the next
+    statement at its column that is no decorator - as `ast` holds a decorator
+    in its definition's node: read in the definition around it, a marker moved
+    from one test onto the next was the same statement in the same place
+    (`PL-W6ZD`).
+    """
+    found: list[str] = []
+    scopes: list[tuple[int, str]] = []  # each open class and function: its indent and name
+    for line in lines:
+        while scopes and scopes[-1][0] >= line.indent:
+            scopes.pop()
+        if name := definition(line)[1]:
+            scopes.append((line.indent, name))
+        found.append("::".join(scope for _, scope in scopes))
+    # From the end, so each decorator of a stack reaches the definition under it.
+    for at in range(len(lines) - 2, -1, -1):
+        line, after = lines[at], lines[at + 1]
+        if _decorates(line) and after.indent == line.indent:
+            if definition(after)[1] or _decorates(after):
+                found[at] = found[at + 1]
+    return tuple(found)
+
+
+def _decorates(line: LogicalLine) -> bool:
+    """Whether `line` is a decorator, which only a decorator's `@` can open."""
+    return line.pieces[0].code == "@"
+
+
 def refusal(error: Exception) -> str:
     """What the tokenizer said in refusing a file, and on which line, as a page prints it."""
     if isinstance(error, UnicodeDecodeError):
