@@ -3,12 +3,14 @@ id: PL-RC4S
 title: gate-status-guard.sh refuses a make gate run as a dry run - make --just-print check piped to tail - though --just-print runs no recipe and so has no gate status to lose; a session met it in PL-R417's link 23 sweep
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: bash-guard-bound
 touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1437
 payoff: a make dry run piped to tail is admitted, so auditing what a gate would run costs no retry and the refusal stops teaching a token for a command that loses nothing
 verify: grep -q 'def test_a_make_dry_run_has_no_gate_status_to_lose' tests/unit/test_gate_status_guard.py
 reenters: PL-61FT

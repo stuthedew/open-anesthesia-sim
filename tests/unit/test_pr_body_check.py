@@ -36,6 +36,7 @@ subjects and bodies, not git and not GitHub.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pr_body_check
@@ -484,6 +485,47 @@ def test_a_trailer_quoted_inside_the_body_is_compared() -> None:
         named + "\n\n---------\n\nCo-authored-by: C <c@x>\n"
     ) == pr_body_check.normalise(named)
     assert pr_body_check.normalise("Why.\n\nCo-authored-by: A <a@example.com>\n") == "Why."
+
+
+def _git_trailers(body: str) -> str:
+    """What git reads as the trailers of a squash commit carrying `body`."""
+    return subprocess.run(
+        ["git", "interpret-trailers", "--parse"],
+        input=f"PL-BCDF: a title (#1)\n\n{body}",
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "Thanks to the pairing with\nCo-authored-by: Alice <a@x>\n",
+        "Written with\nCo-authored-by: the reviewer, who asked for it\n",
+    ],
+)
+def test_a_trailer_closing_a_prose_paragraph_is_the_bodys_own(body: str) -> None:
+    """`PL-QLQF`: a trailer block is a paragraph of its own, so this last line is the body's.
+
+    git counts a group of trailers only where it is "preceded by one or more
+    empty (or whitespace-only) lines" (git 2.43.0's
+    `Documentation/git-interpret-trailers.txt`), and finds none in either body.
+    `normalise` took the line for GitHub's trailer, so a squash body keeping it
+    read as differing and one that lost it read as equal. Its own paragraph,
+    the line is a trailer to both.
+    """
+    appended = "\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>\n"
+    lost = body.split("\n")[0] + appended
+
+    assert _git_trailers(body) == ""
+    assert pr_body_check.normalise(body) == " ".join(body.split())
+    assert pr_body_check.verdict(body + appended, pr_body_check.Listed(body, None)) is None
+    assert pr_body_check.verdict(lost, pr_body_check.Listed(body, None)) == "differs"
+
+    paragraph = body.replace("\n", "\n\n", 1)
+    assert _git_trailers(paragraph) == paragraph.split("\n\n")[1]
+    assert pr_body_check.normalise(paragraph) == body.split("\n")[0]
 
 
 def test_names_a_body_frozen_when_auto_merge_was_armed(

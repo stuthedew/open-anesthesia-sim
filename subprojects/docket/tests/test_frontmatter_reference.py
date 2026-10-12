@@ -26,7 +26,10 @@ keeps the corpus to a few seconds.
 For each, the keys `keys` reads, by name and line, must be PyYAML's top-level
 keys, and each value must end on the line PyYAML's node ends on, past only
 blank lines and `#`-led ones, which PyYAML reads as nothing and `keys` hands to
-the value above them.
+the value above them. And the quoted scalars `quoted` places must be the ones
+PyYAML's scanner reads, each opening and closing where PyYAML's does, so that a
+quote opening a block scalar's line or a plain scalar's continuation line,
+which the corpus draws, is none (`PL-S4JL`).
 """
 
 from __future__ import annotations
@@ -39,7 +42,7 @@ import yaml
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from docket.frontmatter import keys
+from docket.frontmatter import keys, quoted
 
 LETTERS = "abcdefghijklmnopqrstuvwxyz"
 #: A word of a plain scalar in a block, which may hold no `: ` and no ` #`.
@@ -255,5 +258,30 @@ def test_keys_end_each_value_where_pyyaml_does(block: list[str]) -> None:
     expected = _pyyaml_reading(block)
 
     found = [(key.name, key.line, _core(block, key.end - 1)) for key in keys(block)]
+
+    assert found == expected, "\n".join(block)
+
+
+def _pyyaml_quoted(block: list[str]) -> list[tuple[str, int, int, int, int]]:
+    """Each quoted scalar PyYAML scans: its quote, and where its opening and closing quotes sit."""
+    return [
+        (
+            token.style,
+            token.start_mark.line,
+            token.start_mark.column,
+            token.end_mark.line,
+            token.end_mark.column - 1,
+        )
+        for token in yaml.scan("\n".join(block) + "\n", Loader=yaml.SafeLoader)
+        if isinstance(token, yaml.ScalarToken) and token.style in ("'", '"')
+    ]
+
+
+@settings(derandomize=True, database=None, deadline=None, max_examples=2000)
+@given(front_matters())
+def test_quoted_places_each_quoted_scalar_where_pyyaml_does(block: list[str]) -> None:
+    expected = _pyyaml_quoted(block)
+
+    found = [(at.quote, at.line, at.column, at.end_line, at.end_column) for at in quoted(block)]
 
     assert found == expected, "\n".join(block)

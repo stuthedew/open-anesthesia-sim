@@ -3,12 +3,14 @@ id: PL-6531
 title: docket release's notes_bullets reads no top-level bullet whose marker is indented one to three spaces, though notes_ids claims its id, so unreferenced and restate_references pass the bullet by; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1434
 payoff: A notes bullet indented by a space is checked and repaired for its pull request reference like every other bullet the notes claim.
 verify: grep -q 'def test_a_bullet_indented_one_to_three_spaces_is_read_as_notes_ids_reads_it' subprojects/docket/tests/test_release.py
 ---

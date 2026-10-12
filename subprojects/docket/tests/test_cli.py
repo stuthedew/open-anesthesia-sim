@@ -26,7 +26,7 @@ from typing import Any
 
 import pytest
 
-from docket import arming, claims, cli, shell, vcs
+from docket import arming, claims, cli, vcs
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.claims import SESSION_VARIABLE, Holdings
 from docket.cli import build_parser, main, merge_shared
@@ -3708,6 +3708,98 @@ def test_the_left_behind_clear_line_names_the_exact_check(
     ) in out
 
 
+def _repo_with_items(root: Path) -> Callable[..., None]:
+    """A repository at `root` holding one item, and a `git` that runs in it."""
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    return git
+
+
+def test_stranded_names_a_ref_whose_fork_point_a_shallow_clone_lacks(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-WDQN`: the left-behind half counts a ref it could not read as read, and names it.
+
+    A depth-1 clone holds a branch's tip without the commit it forked from, so
+    no merge base resolves and `vcs.orphaned` puts the ref in `unreadable`. Its
+    all-clear still counted it, "across the 1 unmerged branch ref read", over
+    the one ref it never read. Real git, because the missing fork point is a
+    property of the clone.
+    """
+    origin = tmp_path / "origin"
+    git = _repo_with_items(origin)
+    git("checkout", "-qb", "claude/old-work")
+    (origin / "work.py").write_text("work on the branch\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: work on the branch")
+    git("checkout", "-q", "main")
+    for number in range(4):
+        (origin / f"f{number}").write_text(f"main {number}\n")
+        git("add", "-A")
+        git("commit", "-qm", f"main {number}")
+    work = tmp_path / "work"
+    subprocess.run(
+        ["git", "clone", "-q", "--depth=1", "--no-single-branch", origin.as_uri(), str(work)],
+        check=True,
+        capture_output=True,
+    )
+
+    assert main(["--items", str(work / "items"), "stranded", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "across the 1 unmerged branch ref read" not in out
+    assert "judged by file content across the 0 unmerged branch refs read." in out
+    assert (
+        "1 unmerged branch ref could not be compared with the default branch on the history "
+        "this checkout holds, so it is not among the refs read and what its commits carry is "
+        "unknown:\n"
+        "  origin/claude/old-work\n"
+        "This clone is shallow: `git fetch --unshallow origin` brings the history in, and "
+        "`bin/docket stranded` then reads it.\n"
+    ) in out + "\n"
+
+
+def test_stranded_hands_no_fetch_to_a_ref_a_full_clone_cannot_compare(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A full clone's ref with no fork point shares no history with the base; no fetch helps.
+
+    An orphan branch stands in for a rewritten one: either way git finds no
+    merge base in a checkout that holds every commit, and the deepening advice
+    `branch_state` once gave a rewritten clone did nothing there (`PL-WDQN`).
+    """
+    root = tmp_path / "repo"
+    git = _repo_with_items(root)
+    git("checkout", "-q", "--orphan", "claude/unrelated")
+    (root / "other.py").write_text("an unrelated root\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: an unrelated root")
+    git("checkout", "-q", "main")
+
+    assert main(["--items", str(root / "items"), "stranded", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "  claude/unrelated\n" in out
+    assert (
+        "This clone is not shallow, so it shares no history git can find with the default "
+        "branch, as a rewritten or unrelated history does, and no fetch lets it be read."
+    ) in out
+    assert "--unshallow" not in out
+
+
 def _queue_repo(tmp_path: Path) -> tuple[Path, Callable[..., None]]:
     """An empty repository whose store sits where `--items` puts the root.
 
@@ -7321,6 +7413,44 @@ def test_concurrent_in_scope_names_a_plan_list_it_could_not_read_whole(
     assert "A list the plan is read from was not read whole, so a count above may be short:" in out
 
 
+#: A second ready item, whose id `CARRIED_ID_ROADMAP` carries on from the
+#: margin of the gate's one entry.
+CARRIED = READY.replace("PL-B1B1", "PL-Z9Z9").replace("A ready item", "Another ready item")
+#: `WAVE_ROADMAP` with that entry carried on from the margin, which the list
+#: walker declines by name, so the id on the carried line drops out of the plan.
+CARRIED_ID_ROADMAP = WAVE_ROADMAP.replace(
+    "- PL-B1B1 (S) The one entry on this gate",
+    "- PL-B1B1 and\nPL-Z9Z9 (S) The one entry on this gate",
+)
+
+
+@pytest.mark.parametrize(
+    "command", [("status",), ("show", "PL-Z9Z9"), ("next",), ("next", "--oldest")]
+)
+def test_status_show_and_next_name_a_plan_list_they_could_not_read_whole(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], command: tuple[str, ...]
+) -> None:
+    """An id the walker declined is no id the plan placed nowhere (`PL-L4X3`).
+
+    Each of these answered from `Scope`, which carries no `Wave.unread`, so the
+    carried-on `PL-Z9Z9` was unmarked, placed by no section, or ranked on its
+    band alone at exit 0, where `wave` names the line and exits 1. Each still
+    answers from what was read, names the entry as `wave` does, and exits 1.
+    """
+    store = _wave_project(tmp_path, READY, CARRIED)
+    (tmp_path / "ROADMAP.md").write_text(CARRIED_ID_ROADMAP, encoding="utf-8")
+
+    assert _run(*command, "--items", str(store)) == 1
+
+    out = capsys.readouterr().out
+    assert "PL-Z9Z9" in out
+    assert (
+        "A list the plan is read from was not read whole, so a placement above may be missing:"
+        in out
+    )
+    assert "  line 23, in the v0.4.0 section: this line carries on the entry above it" in out
+
+
 def test_next_oldest_reads_what_counts_as_new_work_from_the_config(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -10491,8 +10621,7 @@ def test_arm_arms_a_docket_only_pull_request_on_green(
     assert out.startswith(
         f"arm - {ARM_BRANCH} changes nothing on the owner's read list (src/, tests/ but a "
         "test importing no anesthesia_sim, docs/MODEL.md, src/anesthesia_sim/data/, "
-        "README.md, .github/workflows/, .claude/hooks/, docket's shell.py and arming.py), "
-        "holds no open claim"
+        "README.md and docket's arming.py), holds no open claim"
     )
     assert "outside docs/items" not in out
 
@@ -10523,14 +10652,12 @@ def test_arm_arms_a_pull_request_body_record_on_green(
         "tests/unit/test_uptake.py",
         "docs/MODEL.md",
         "README.md",
-        ".github/workflows/update-armed.yml",
-        ".claude/hooks/direct-merge-guard.sh",
     ],
 )
 def test_arm_holds_for_a_read_a_path_on_the_owners_read_list(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
 ) -> None:
-    """The owner's read list waits on a read: the simulator, the model, the workflows, the hooks.
+    """The owner's read list waits on a read: the simulator, its data, tests, model and README.
 
     The branch also changes a docket module and `CLAUDE.md`, which arm alone,
     so the hold is the listed path's own and the answer names it alone. Each
@@ -10552,6 +10679,47 @@ def test_arm_holds_for_a_read_a_path_on_the_owners_read_list(
     assert "subprojects/docket/src/docket/render.py" not in out
     assert "CLAUDE.md" not in out
     assert "keep the pull request a draft" not in out
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".github/workflows/update-armed.yml",
+        ".claude/hooks/direct-merge-guard.sh",
+        "subprojects/docket/src/docket/shell.py",
+    ],
+)
+def test_arm_arms_a_workflow_path_the_owner_released_on_green(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
+) -> None:
+    """The workflows, the hooks and docket's lexer arm on green, and hold no product path's read.
+
+    They waited on the owner's read from 2026-10-03 and 2026-10-10 until his
+    rule of 2026-10-12, "don't need to ask me for merge confirmation for
+    workflow items" (`PL-KPM2`). A change crossing both lanes still holds by
+    its product path, and the answer names that path alone.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, path)
+
+    assert _arm(root) == 0
+    first, *rest = capsys.readouterr().out.splitlines()
+    assert first.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
+    if path.startswith("subprojects/docket/"):
+        assert rest == []
+    else:
+        assert rest[1] == f"  {path}"
+
+    _put(git, root, "src/anesthesia_sim/core/uptake.py")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it changes 1 path on the owner's read list, so its pull request "
+        "waits on a read\n"
+    )
+    assert "\n  src/anesthesia_sim/core/uptake.py\n" in out
+    assert path not in out
 
 
 @pytest.mark.parametrize(
@@ -10603,13 +10771,13 @@ def test_a_change_outside_the_owners_read_list_arms_on_green(
 
 
 def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
-    """The list holds the owner's five paths, the two added later, docket's lexer and the gate.
+    """The list holds the owner's five simulator paths and the gate.
 
     `tests/` outside `subprojects/` was the owner's wording: the docket
-    package's own tests arm with the tooling. `.github/workflows/` and
-    `.claude/hooks/` are directories whole, so `.github/CODEOWNERS` and
-    `.claude/settings.json` arm. The lexer is one file, so the rest of
-    docket's `src/` arms with the tooling (`PL-JNYL`).
+    package's own tests arm with the tooling. The workflows, the hooks and
+    docket's lexer joined on 2026-10-03 and 2026-10-10 and left on the owner's
+    rule of 2026-10-12 that workflow items need no merge confirmation
+    (`PL-KPM2`), so a file under each arms beside the rest of the workflow lane.
     """
     assert arming.READ_PATHS == (
         "src/",
@@ -10617,9 +10785,6 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "docs/MODEL.md",
         "src/anesthesia_sim/data/",
         "README.md",
-        ".github/workflows/",
-        ".claude/hooks/",
-        "subprojects/docket/src/docket/shell.py",
     )
     for path in (
         "src/anesthesia_sim/app/main.py",
@@ -10628,20 +10793,20 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "tests/conftest.py",
         "docs/MODEL.md",
         "README.md",
-        ".github/workflows/update-armed.yml",
-        ".claude/hooks/direct-merge-guard.sh",
-        "subprojects/docket/src/docket/shell.py",
         ARM_GATE,
     ):
         assert arming.waits_on_read(path), path
         assert not arming.arms_on_green(path), path
     for path in (
         "subprojects/docket/tests/test_cli.py",
+        "subprojects/docket/src/docket/shell.py",
         "docs/MODEL.md.bak",
         "docs/README.md",
         "srcs/x.py",
         "tests.md",
+        ".github/workflows/update-armed.yml",
         ".github/CODEOWNERS",
+        ".claude/hooks/direct-merge-guard.sh",
         ".claude/settings.json",
         ".claude/rules/core-domain.md",
     ):
@@ -10934,17 +11099,6 @@ def test_the_gate_arm_holds_for_a_read_is_the_module_that_decides_the_answer() -
 
     assert arming.GATE == ARM_GATE
     assert (root / arming.GATE).resolve() == Path(arming.__file__).resolve()
-
-
-def test_the_lexer_arm_holds_for_a_read_is_the_one_the_guards_read() -> None:
-    """A move of `docket/shell.py` would leave the hold naming a file nothing reads (`PL-JNYL`).
-
-    The moved lexer would then arm on green, while it still decides what the
-    guard hooks refuse.
-    """
-    root = Path(__file__).resolve().parents[3]
-
-    assert (root / arming.LEXER).resolve() == Path(shell.__file__).resolve()
 
 
 def _flight_row(out: str, start: str) -> str:

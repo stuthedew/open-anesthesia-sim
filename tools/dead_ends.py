@@ -17,8 +17,8 @@ nothing, an entry wrapped across two lines, or a bullet opening like an entry
 that `ENTRY` cannot read. All three are silent otherwise - a dangling id leaves
 a claim with no reasoning behind it, a wrapped entry is two lines in the file
 and one in the digest, or, carried on from the margin, a line nothing can place
-in an entry (`PL-F5B9`), and an unreadable one is never emitted at all
-(`PL-QFFF`).
+in an entry (`PL-F5B9`), which the digest can only name in the entry's place
+(`PL-DQ9C`), and an unreadable one is never emitted at all (`PL-QFFF`).
 
 **Size never fails, and that is a decision rather than laxity.** Going over
 budget does not make a commit on an unrelated task wrong, and a red gate that
@@ -139,38 +139,70 @@ HEADER = (
 )
 
 
-def _bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, str]]:
-    """Every top-level bullet opening like an entry, as (line number, lines spanned, text).
+def _bullets(text: str) -> list[tuple[int, int, str, int]]:
+    """Every top-level bullet opening like an entry, as (line number, lines spanned, text, lazy).
 
     Read through `docket.roadmap.document_entry_lines`, section by section, so a
     bullet is what CommonMark makes one: an indented line carries it on and is
-    joined into it, and a line carrying it on from the margin is declined onto
-    `unread` rather than ending it short (`PL-F5B9`, `PL-R417`). Read a line at
-    a time, an entry whose bolded title wrapped was no entry at all, and a
-    margin line opening `#1234`, `*` or a pipe ended one with its ids unread.
+    joined into it, and a line carrying it on from the margin is declined
+    rather than ending it short (`PL-F5B9`, `PL-R417`). `lazy` is that line's
+    number, and 0 where no line is declined: the walker ends the bullet at the
+    line before it, so its text is short of the entry CommonMark makes. Read a
+    line at a time, an entry whose bolded title wrapped was no entry at all,
+    and a margin line opening `#1234`, `*` or a pipe ended one with its ids
+    unread.
     """
     lines = split_lines(text)
-    bullets: list[tuple[int, int, str]] = []
-    for first, end in document_entry_lines(lines, unread):
+    unread: list[UnreadEntry] = []
+    spans = list(document_entry_lines(lines, unread))
+    declined = {lazy.line for lazy in unread}
+    bullets: list[tuple[int, int, str, int]] = []
+    for first, end in spans:
         if OPENING.match(lines[first]):
             joined = " ".join([lines[first], *(line.strip() for line in lines[first + 1 : end])])
-            bullets.append((first + 1, end - first, joined))
+            bullets.append((first + 1, end - first, joined, end + 1 if end + 1 in declined else 0))
     return bullets
 
 
 def entries(text: str) -> list[tuple[int, str]]:
-    """Return `(line number, text)` for every bullet that is an entry.
+    """Return `(line number, text)` for every bullet that is an entry, read whole.
 
     An entry is a top-level bullet opening with a bolded approach. Prose
     bullets in the preamble are not entries, are not emitted, and do not count
     against either budget. An entry's text is the whole bullet, its wrapped
-    lines joined.
+    lines joined. A bullet a line carries on from the margin is none, since the
+    walker reads it short: `emitted` names it in its place and `check` refuses
+    the line (`PL-DQ9C`).
     """
-    return [(number, joined) for number, _, joined in _bullets(text, []) if ENTRY.match(joined)]
+    return [
+        (number, joined)
+        for number, _, joined, lazy in _bullets(text)
+        if not lazy and ENTRY.match(joined)
+    ]
+
+
+def _printed(text: str) -> list[str]:
+    """The lines the digest prints under its header, in the file's order.
+
+    Each entry whole, and in place of a bullet a line carries on from the
+    margin, a line naming it. Printed as the walker reads it, that bullet ended
+    short of whatever the declined line held, its retrieval id included, and
+    nothing said so (`PL-DQ9C`).
+    """
+    printed: list[str] = []
+    for number, _, joined, lazy in _bullets(text):
+        if lazy:
+            printed.append(
+                f"- docs/dead-ends.md:{number}: not printed, since line {lazy} carries it on "
+                f"from the margin and it would read short; read it in the file."
+            )
+        elif ENTRY.match(joined):
+            printed.append(joined)
+    return printed
 
 
 def emitted(text: str) -> str:
-    lines = [line for _, line in entries(text)]
+    lines = _printed(text)
     if not lines:
         return ""
     return "\n".join([HEADER, *lines])
@@ -199,7 +231,7 @@ def budget(text: str) -> list[str]:
     nothing about being over it makes a commit on an unrelated task wrong.
     """
     advisories: list[str] = []
-    found = entries(text)
+    found = _printed(text)
     size = len(emitted(text).encode("utf-8"))
 
     over_bytes = size > MAX_EMITTED_BYTES
@@ -241,22 +273,20 @@ def check(text: str) -> list[str]:
     # A wrapped entry is emitted joined, but the one-line rule is what keeps the
     # file and the digest the same text, and a line carrying an entry on from
     # the margin is one the walker could not place at all: both are refused.
-    unread: list[UnreadEntry] = []
-    bullets = _bullets(text, unread)
+    bullets = _bullets(text)
     wrapped: set[int] = set()
-    for number, spanned, _ in bullets:
+    for number, spanned, _, _ in bullets:
         if spanned > 1:
             wrapped.add(number)
             problems.append(
                 f"docs/dead-ends.md:{number + 1}: continuation of the entry above. "
                 f"One line per entry - shorten it instead."
             )
-    opened = {number + spanned: number for number, spanned, _ in bullets}
-    for lazy in unread:
-        if lazy.line in opened:
-            wrapped.add(opened[lazy.line])
+    for number, _, _, lazy in bullets:
+        if lazy:
+            wrapped.add(number)
             problems.append(
-                f"docs/dead-ends.md:{lazy.line}: continuation of the entry above, carried on "
+                f"docs/dead-ends.md:{lazy}: continuation of the entry above, carried on "
                 f"from the margin. One line per entry - shorten it instead."
             )
 
@@ -264,7 +294,7 @@ def check(text: str) -> list[str]:
     # bullet opening like an entry would leave the digest with nothing said
     # (`PL-QFFF`). A wrapped one is already refused above, and is not called
     # unreadable too: rejoined, it may read.
-    for number, _, joined in bullets:
+    for number, _, joined, _ in bullets:
         if number not in wrapped and not ENTRY.match(joined):
             problems.append(
                 f"docs/dead-ends.md:{number}: opens like an entry but is not in an entry's "

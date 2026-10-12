@@ -23,6 +23,7 @@ from docket.release import (
     milestones,
     notes_claims,
     notes_files,
+    notes_ids,
     notes_name,
     notes_version,
     outstanding_roadmap_edits,
@@ -350,6 +351,31 @@ def test_a_bump_its_one_line_cannot_make_is_refused(tmp_path: Path, text: str) -
     assert pyproject.read_text(encoding="utf-8") == text
 
 
+def test_a_resumed_bump_leaves_a_version_line_inside_a_multi_line_string_alone(
+    tmp_path: Path,
+) -> None:
+    """A resume asks for the version the file declares, so the version alone read back as asked.
+
+    The first `version = "..."` line sat inside the description, a TOML
+    multi-line string, and the substitution rewrote it there: `tomllib` read
+    the description changed and the version not (`PL-6KHQ`). Refused now, at
+    a resume as at a cut, while a resume of a file whose first such line is
+    the key still writes the file back unchanged.
+    """
+    text = '[project]\nname = "x"\ndescription = """\nversion = "0.1.0"\n"""\nversion = "0.2.0"\n'
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(text, encoding="utf-8")
+    plain = tmp_path / "plain.toml"
+    plain.write_text('[project]\nversion = "0.2.0"\n', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="not on its first"):
+        prepare_bump(pyproject, "0.2.0")
+    with pytest.raises(ValueError, match="not on its first"):
+        prepare_bump(pyproject, "0.3.0")
+    assert pyproject.read_text(encoding="utf-8") == text
+    assert prepare_bump(plain, "0.2.0").text == '[project]\nversion = "0.2.0"\n'
+
+
 def test_a_shipped_version_with_no_tag_is_reported() -> None:
     assert is_untagged("0.2.5", frozenset({"v0.2.3", "v0.2.4"}))
 
@@ -671,6 +697,30 @@ def test_a_bullet_carried_on_from_the_margin_is_declined_and_left_alone(tmp_path
     declined: list[str] = []
     assert unreferenced_by_version(tmp_path, unread=declined) == {}
     assert declined == [f"docs/releases/v0.3.0.md line 2: {LAZY_ENTRY}"]
+
+
+@pytest.mark.parametrize("indent", [" ", "  ", "   "])
+def test_a_bullet_indented_one_to_three_spaces_is_read_as_notes_ids_reads_it(indent: str) -> None:
+    """`PL-6531`: a marker indented up to three spaces still opens a top-level bullet.
+
+    CommonMark 0.31.2 § 5.2 reads both lines below as items of one list, and
+    `notes_ids` claimed both ids, but the bullet's text kept its indent and
+    `NOTES_BULLET_RE` is anchored at the margin, so `unreferenced` and
+    `restate_references` passed the first by: a missing pull request link that
+    read as clean.
+    """
+    text = f"## Fixed\n\n{indent}- PL-BCDF a title with no reference\n- PL-HJKM another title\n"
+    store = {identifier: _item(identifier) for identifier in ("PL-BCDF", "PL-HJKM")}
+
+    assert notes_ids(text) == frozenset(store)
+    assert unreferenced(text) == ("PL-BCDF", "PL-HJKM")
+    restated, repaired = restate_references(text, store)
+    assert repaired == ("PL-BCDF", "PL-HJKM")
+    assert restated == (
+        f"## Fixed\n\n{indent}- PL-BCDF a title with no reference — #48\n"
+        "- PL-HJKM another title — #48\n"
+    )
+    assert unreferenced(restated) == ()
 
 
 # --- the pointer section, which is not a claim -------------------------------

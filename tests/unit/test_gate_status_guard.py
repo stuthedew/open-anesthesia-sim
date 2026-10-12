@@ -20,6 +20,7 @@ on the command text alone.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -297,6 +298,105 @@ def test_a_wrapper_runs_the_command_after_it(command: str, refused: bool) -> Non
     """
     decision = _decision(command)
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+INTERPRETED = (
+    # `PL-6X0C`'s two reproductions, a scratch script handed a check or its
+    # test to read: the first verbatim from `#1392`, where it was met.
+    (
+        "uv run python guard_keys.py main_test_doc_check.py tests/unit/test_doc_check.py"
+        " | sed -n '1,5p'",
+        False,
+    ),
+    ("python3 scratch.py tools/glyph_check.py | head", False),
+    ("python3 scratch.py tools/dead_ends.py check | tail", False),
+    # The check itself, behind each kind of interpreter option: a flag, a run
+    # of flags, a value in the next word or glued on, and the end of options.
+    ("python3 tools/glyph_check.py | head", True),
+    ("python3 -u tools/glyph_check.py | head", True),
+    ("python3 -uI tools/glyph_check.py | head", True),
+    ("python3 -W error tools/glyph_check.py | head", True),
+    ("python3 -Werror tools/glyph_check.py | head", True),
+    ("python3 -X dev tools/glyph_check.py | head", True),
+    ("python3 --check-hash-based-pycs always tools/glyph_check.py | head", True),
+    ("python3 -- tools/glyph_check.py | head", True),
+    # A value that happens to be named like a check runs nothing.
+    ("python3 -W ignore scratch.py tools/glyph_check.py | head", False),
+    # A command, a module or stdin runs no script file, whatever follows.
+    ("python3 -c 'import sys' tools/glyph_check.py | head", False),
+    ("python3 -m json.tool tools/glyph_check.py | head", False),
+    ("python3 - tools/glyph_check.py < scratch.py | head", False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), INTERPRETED)
+def test_only_the_script_an_interpreter_runs_is_read_as_a_check(
+    command: str, refused: bool
+) -> None:
+    """Python runs its first argument past its own options and hands it the rest (`PL-6X0C`).
+
+    Any argument named like a check was read as the one it ran, so a scratch
+    script reading a check's own source or test was refused when piped, though
+    no check ran, and its remedy, `set -o pipefail`, was no help.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+DRY_RUNS = (
+    # `PL-RC4S`'s reproduction, met in `PL-R417`'s link 23 sweep, and the other
+    # three spellings of the option.
+    ("make -f Makefile.copy --just-print check 2>&1 | tail", False),
+    ("make -n check | tail", False),
+    ("make --dry-run check | tail", False),
+    ("make --recon check | tail", False),
+    # make reads an option after a target, and inside a run of short ones.
+    ("make check -n | tail", False),
+    ("make -sn prebuild 2>&1 | tail -20", False),
+    ("make -nf Makefile check | tail", False),
+    # A `-n` that an option takes as its value, or that stands past `--`, is
+    # no option, and `-o -n` and `-W -n` run the gate.
+    ("make -o -n check | tail", True),
+    ("make --what-if -n check | tail", True),
+    ("make -fn check | tail", True),
+    ("make -j4n check | tail", True),
+    ("make -- -n check | tail", True),
+    # An assignment is a variable, never an option.
+    ("make CFLAGS=-n check | tail", True),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), DRY_RUNS)
+def test_a_make_dry_run_has_no_gate_status_to_lose(command: str, refused: bool) -> None:
+    """`make -n` prints each recipe and runs none, so its pipe loses no gate's status (`PL-RC4S`).
+
+    Read as any other `make check`, a dry run piped to `tail` was refused, and
+    its remedy, `set -o pipefail`, would have admitted it without making it any
+    more correct. GNU make 4.3 ran or skipped the recipe as each row says.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+def test_the_tracked_makefile_runs_no_recipe_under_a_dry_run() -> None:
+    """The admission above holds only while `-n` runs nothing in this `Makefile` (`PL-RC4S`).
+
+    GNU make runs a recipe line under `-n` where it opens with `+` or names
+    `$(MAKE)` (manual § 5.7.1), so a gate's status could arrive through such a
+    line, and the pipe a dry run is admitted with would lose it. A line that is
+    a sub-make alone hands it the `-n`, and it runs dry too.
+    """
+    makefile = (REPO / "Makefile").read_text(encoding="utf-8").replace("\\\n", " ")
+    recipes = [line[1:] for line in makefile.splitlines() if line.startswith("\t")]
+    assert recipes, "no recipe line read from the Makefile"
+    for recipe in recipes:
+        prefix = re.match(r"[\s@+-]*", recipe)
+        assert prefix is not None
+        assert "+" not in prefix.group(), f"runs under make -n: {recipe!r}"
+        if "$(MAKE)" in recipe or "${MAKE}" in recipe:
+            assert re.fullmatch(r"[\s@-]*\$[({]MAKE[)}](?:\s+\w[\w.-]*)*\s*", recipe), (
+                f"runs more than a sub-make under make -n: {recipe!r}"
+            )
 
 
 REDIRECTED = (

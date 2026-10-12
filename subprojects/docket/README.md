@@ -360,6 +360,12 @@ landed. That check reads each branch on the remote against the head its merged
 pull request froze, needs GitHub where this reading needs only the checkout, and
 wins where the two disagree.
 
+A ref whose fork point this checkout cannot read has no content split to judge,
+so it is not counted among the refs read: it is named under the answer, with
+`git fetch --unshallow origin` where the clone is shallow and a note that no
+fetch helps where it is not, since a full clone's ref with no fork point shares
+no history with the base at all (`PL-WDQN`).
+
 ### The other loss: a merge that deletes an item nothing deleted
 
 `stranded` answers for a branch that never merged. The opposite case is a
@@ -1752,8 +1758,10 @@ answer below is:
   frozen-list pair or a scope declaration wrapped that way would lose its
   second half with nothing saying so. The walker records the line on
   `MilestoneSection.unread` instead. `tools/doc_check.py` fails it, `wave`
-  and `picks` print it and exit non-zero (`PL-GMR6`), and the digest's plan
-  line says the plan was not read whole. A release cut does not refuse on it,
+  and `picks` print it and exit non-zero (`PL-GMR6`), as do `status`, `show`
+  and `next`, saying a placement above may be missing where the others say a
+  count may be short (`PL-L4X3`), and the digest's plan line says the plan was
+  not read whole. A release cut does not refuse on it,
   as it does on a timeline that does not parse, because a list entry holds no
   version (`PL-MFVV`).
 
@@ -2056,8 +2064,10 @@ then reported nothing to release, because the work it would have shipped
 claimed to have shipped already. So `prepare_bump` settles everything the bump
 can reject — an absent version file, one that is not TOML, one carrying no
 version field, and one declaring its version where the bump's one-line write
-does not reach (`PL-3DD9`) — before the first stamp is written, and hands back
-the text to put there. A rejected file costs an exit code and a message naming
+does not reach (`PL-3DD9`), or where that write would change another value
+first, as a resume asking for the version already declared once did
+(`PL-6KHQ`) — before the first stamp is written, and hands back the text to
+put there. A rejected file costs an exit code and a message naming
 it, not a half-written store.
 
 The second is a write that is *interrupted*, which no ordering prevents: the
@@ -2300,6 +2310,16 @@ no lane (`PL-FX0K`), and quote characters landing inside 56 titles and 3
 `verify:` commands, where a shell reads the quoted form as one word and exits
 127 having run nothing (`PL-V6CR`, `PL-MZH2`). `PL-9HD1` is the cluster.
 
+**GitHub's file view reads the block as YAML, so it can show an error on an
+item that is not one.** It draws a Markdown file's front matter as a table
+where the block parses as YAML, and where it does not - most often a colon and
+a space inside a value, which this format reads as text and YAML as a second
+key - it shows an "Error in user YAML" box over the fields as raw text. The
+file is not broken: docket reads every such item as written, and only GitHub's
+display differs. PyYAML 6.0.3's `safe_load` refused 698 of the 2,230 item
+front matters on 2026-10-12. Making the store valid YAML instead would be a
+format change across those files and a check to hold it (`PL-S0D4`).
+
 Where a field cannot be read, it is **reported rather than guessed at** —
 `unknown_fields`, `duplicate_fields`, `block_list_fields`,
 `block_scalar_fields` and `unread_lines` on the parsed item, all five named by
@@ -2325,7 +2345,11 @@ gains later reaches the writers with no edit to them.
 an item leaves `untriaged`; the others are conventions. A heading is matched
 by the words it opens with and may continue past them — `**Why it matters, and
 why it is not new.**` is the same section, and a check that made an author
-flatten a better heading would be editing prose rather than checking it. What
+flatten a better heading would be editing prose rather than checking it. The
+words are matched whole, so `**Problems with the dose**` is not
+`**Problem.**`, and a heading ends at the `**` CommonMark 0.31.2 § 6.2 pairs
+its opening one with, so one that never closes has nothing under it and one a
+code span holds is a literal (`PL-47NJ`). What
 it does require is text under the heading: a required section with nothing
 below it is an error, because presence of a heading is not what makes an item
 startable by a stranger. Every line opening with a required heading's words
@@ -2354,8 +2378,10 @@ a design round's heading or numbered `Q1.`, or a marked recommendation, since
 one standing after an answer is a question the answer raised (`PL-J2TD`'s
 shape). Labels in code spans, fences, HTML comments, indented code blocks,
 quotations and superseded passages are not read; a heading is one as CommonMark
-reads it, setext included, and an emphasis run or a code span ends with its
-statement (`PL-HKHP`, `PL-FP7J`). An error rather than an advisory, because the
+reads it, setext included and inside a list item or a block quote as at the
+top level, an emphasis run is one CommonMark 0.31.2 § 6.2 pairs, so a
+multiplication's `*` opens none, and an emphasis run or a code span ends with
+its statement (`PL-HKHP`, `PL-FP7J`, `PL-47NJ`). An error rather than an advisory, because the
 labels are exact - none of the 17 was an item still waiting, and each later
 moved off `needs-decision` with no new question posed - and because the design
 round that left `PL-4ZK8` behind did so on purpose, so an advisory would have
@@ -2378,8 +2404,8 @@ So from `recommendation_required_from`, `check` advises on a `needs-decision`
 brief that marks no recommendation. Three things about the rule:
 
 - **The test is the marker, not the word.** A marked recommendation is the
-  token under emphasis - `**Recommended.**`, `**This is the
-  recommendation.**`, `*Recommendation: not yet.*` - or the labelled
+  token under emphasis as CommonMark pairs it - `**Recommended.**`, `**This is
+  the recommendation.**`, `*Recommendation: not yet.*` - or the labelled
   `Recommendation:`, capitalised as a label is and outside a code span, since
   "lacks a recommendation:" is prose about one and a quoted marker is a
   literal (`PL-FKH6`). Presence of the word decides nothing: of the ten open
@@ -2706,7 +2732,10 @@ dictated rather than chosen, so `verify.sanctioned_queue_edit` forgives a
 worker for editing an item it was never commissioned to touch. It reads the
 field through `model._fold`, as the writer does, so an append onto a value
 continued on an indented line is the append it is rather than an edit
-(`PL-J503`). A withdrawal is
+(`PL-J503`). A copy holding a form that read declines - a block list, a block
+scalar, a line continuing nothing - is no sanctioned write at all, `pr` or
+recurrence, since nothing read the lines an edit there would change
+(`PL-4DM0`). A withdrawal is
 chosen, and what it changes is how much evidence an item carries — so the item
 doing it declares the file in its `touches` like any other work, and `withdraw`
 says so where it has not. Withdrawing the last recorded entry appends to that
@@ -3388,7 +3417,8 @@ which the start mode permits at the claim push, the number rides the closure
 commit and nothing trails it; where the pull request opens after the closure,
 the number rides one more push. `verify` sanctions that write: an item that
 reads as it did with a `pr:` field added, every other field the same and in
-its place, is a queue edit the workflow asked for.
+its place, is a queue edit the workflow asked for, unless either copy holds a
+form its reader declines (`PL-4DM0`).
 
 **The guarantee is a check on the pull request, at the one point that knows
 its own number.** `tools/pr_record_check.py` runs as a step of the required
@@ -3877,9 +3907,16 @@ trailing comment blanked, and named as read that way, as the assertion check
 below does. Replayed under 3.11 over `main`'s 680
 non-merge commits that change a `.py` or `.pyi` file, on 2026-10-04, the
 statement reader finds exactly what the line reader found: the `bash` guard
-below. Only `.py` and `.pyi` are stripped: in a `.cfg` or `.ini` a quote is an
-ordinary character in a value and an inline `#` is part of that value, so the
-same strip would delete configuration rather than prose.
+below. A configuration file is read through its own format's reader the same
+way (`PL-PNZB`): every version of a `.toml` file through `tomllib`, and of a
+`.cfg` or `.ini` file through `configparser`, each value split into a statement
+per line under its dotted key. So a TOML array re-wrapped or an ini
+continuation re-indented adds nothing, while `no:xfail` split by a line-ending
+backslash, or moved to another key's value, is found; a file its reader
+refuses is read line by line and named. Only `.py` and `.pyi` lines are
+stripped: in a `.cfg` or `.ini` read line by line, a quote is an ordinary
+character in a value and an inline `#` is part of that value, so the same strip
+would delete configuration rather than prose.
 
 `# type: ignore` is deliberately not one of the markers. Replayed over `main`'s
 1,004 non-merge commits it is the only one that has ever matched a real
@@ -4421,7 +4458,9 @@ cleared.
 
 A date inside a code fence is skipped: a dated example command is a template
 rather than a claim, and an entry a reader cannot honestly clear is the one
-thing that stops the report reaching zero.
+thing that stops the report reaching zero. So is one in an indented code block
+or an HTML block, which holds a literal or a comment as a fence does: the body
+is read through `markdown.PROSE` (`PL-KR6M`).
 
 **Age is a proxy for staleness, not staleness.** A dated record does not go
 stale; a measured environmental fact does, and this cannot tell them apart.

@@ -65,7 +65,9 @@ def sites(root: Path, declined: list[str]) -> list[str]:
     A source file this run cannot parse or read is appended to `declined`
     rather than skipped, for the reason `doc_check._quoting_sources` gives: CI's
     floor section runs this under 3.11, which cannot parse every file the
-    source's own interpreter can, and a skip said nothing (`PL-MB3F`).
+    source's own interpreter can, and a skip said nothing (`PL-MB3F`). So is a
+    live brief's front-matter field `doc_check._brief_pieces` declines to hand
+    over as one statement (`PL-4J5H`).
     """
     documents = doc_check.read_docs(root)
     headings = {

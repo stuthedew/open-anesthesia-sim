@@ -3,12 +3,14 @@ id: PL-0CJC
 title: docket.shell's grammar does not take the word after function NAME {, time -p or coproc for the head of a command, so a case, a (( or a [[ there is lexed as words: a case pattern's parenthesis closes the enclosing command substitution, and a newline inside the (( or [[ ends a line, so script_lines, shell_words and flat_reading cut one command into fragments; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1433
 payoff: a case, (( or [[ after function NAME {, time -p or coproc is read as one command by docket, doc_check and the Bash guards alike, instead of as fragments that each read as complete
 verify: grep -q 'def test_a_compound_command_after_function_time_p_or_coproc_is_read_whole' subprojects/docket/tests/test_shell.py
 ---
@@ -70,3 +72,25 @@ under that closed, spent head; found live, it would reopen it.
 **Done when.** The word after each of the three is read as a command's head,
 and each form above is a shell case in the reader's tests holding docket to
 bash's reading.
+
+**Done 2026-10-12** (`#1433`). `docket.shell._Grammar` reads a head past what
+a word in the new `LEADS` takes before its command, as bash 5.2.21's parse.y
+does (`special_case_tokens`, `reserved_word_acceptable`): after `time`, its
+`-p`, and a `--` after either; after the name `function` takes, though not on
+the name itself; and after `coproc` and the name it may take, unless the word
+there is the `for` or `select` it runs. A newline or an operator ends what a
+`LEADS` word waits for. The unended `[[` this brief left to the fix is
+declined, at the end of the input and at the `)` closing its `$( )`, as an
+unclosed `$(` is: read on, it took every line left for the words of its test.
+`flat_reading` reads it incomplete, so the gate and floor guards fail open on
+it as on any command bash refuses (`PL-WGFY`). An unclosed subshell or `case`
+is still read a line at a time, as every compound command docket does not
+track is - an `if` with no `fi` reads as its lines - since reading those lines
+on takes no command for a word. Pinned by
+`test_a_compound_command_after_function_time_p_or_coproc_is_read_whole` (nine
+scripts), `test_a_case_after_time_p_or_coproc_on_one_line_stays_in_its_substitution`
+(the brief's one-line forms) and `test_a_test_bash_finds_unclosed_is_unreadable`
+in `subprojects/docket/tests/test_shell.py`, all twelve cases red on `main`,
+each script run through bash 5.2.21 first. bash also reads a reserved word
+after a closing word such as `fi` or `]]`, where docket still takes none:
+filed as `PL-9NMR`.

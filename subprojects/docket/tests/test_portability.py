@@ -35,6 +35,7 @@ ALLOWED_IMPORTS = {
     "collections",
     "collections.abc",
     "concurrent",
+    "configparser",
     "dataclasses",
     "datetime",
     "fnmatch",

@@ -1086,6 +1086,15 @@ MAKE_DIRECTIVES = frozenset(
 #: The words that open, turn and close a conditional (`conditional_line`, same
 #: file), none of which ends a rule.
 MAKE_CONDITIONALS = frozenset({"ifdef", "ifndef", "ifeq", "ifneq", "else", "endif"})
+#: A backslash escaping what a rule line's names end or split at: a blank, the
+#: `:` ending the targets, the `;` and `#` ending the line, the `|` before
+#: order-only prerequisites. GNU make 4.3 unquotes each by rules this reader
+#: does not port - `a\:b:` names `a:b`, `a\ b c:` names `a b` and `c`, and
+#: `x: a\;b` still ends the rule at the `;` - so a rule line holding one is
+#: declined by name (run through make 4.3 on 2026-10-12, `PL-5M36`). Before
+#: anything else a backslash names itself, as make keeps it, and `x: a\=b` is a
+#: target-specific variable to make and to `_make_rule` alike.
+MAKE_ESCAPED_NAME_RE = re.compile(r"\\[ \t:;#|]")
 # The target a `make` command names, read from the word after `make`.
 MAKE_TARGET_WORD_RE = re.compile(r"[a-z][\w.-]*")
 # `make docket`, as the documentation writes it. Read only inside code spans
@@ -1334,10 +1343,32 @@ def read_docs(root: Path) -> dict[Path, str]:
 
 
 def _fenced_blocks(text: str) -> Iterator[tuple[int, list[str]]]:
-    """Yield each closed fenced block as its opening line's number and the lines inside it."""
+    """Yield each closed fenced block as its opening line's number and the lines inside it.
+
+    Each line from where its own text starts, past the markers and indents of
+    the block quotes and list items holding it (`markdown.Document.columns`),
+    which is the text CommonMark gives the fence (0.31.2 § 4.5); and the last
+    line of a fence its container's end closes is one of them, being content
+    rather than a closing fence (`fences.Block.body`, `PL-D23H`). Read as
+    written, a `make` command in a block-quoted fence was a redirection to a
+    file named `make`, the line before its quote ended was dropped, and in a
+    list item's fence a here-document's indented delimiter closed nothing, so a
+    `make` line in its body was read as a command (`PL-5M36`).
+    """
     lines = split_lines(text)
+    columns = read_blocks(lines).columns
     for block in blocks(text):
-        yield block.start + 1, lines[block.start + 1 : block.end]
+        yield block.start + 1, [_from_column(lines[index], columns[index]) for index in block.body]
+
+
+def _from_column(line: str, column: int) -> str:
+    """`line` from its first character at or past `column`, its tabs read at four-column stops."""
+    width = 0
+    for index, character in enumerate(line):
+        if width >= column:
+            return line[index:]
+        width = width + 4 - width % 4 if character == "\t" else width + 1
+    return ""
 
 
 def parse_tree(root: Path, start_line: int, block: list[str]) -> TreeMap | None:
@@ -2085,7 +2116,9 @@ def check_baseline(root: Path, report: Report) -> None:
         )
         return
 
-    declared = _project_version(version_file)
+    declared = _project_version(
+        version_file, report, "the current baseline row was not held to the version it declares"
+    )
     if declared and marked[0].version != declared:
         report.errors.append(
             f"{ROADMAP}:{marked[0].line}: the current baseline row is v{marked[0].version}, "
@@ -3798,7 +3831,8 @@ def _check_tag_version_files(
 ) -> None:
     """Hold each release tag not already reported off its cut to its tree's version."""
     version_file = root / "pyproject.toml"
-    if not version_file.is_file() or not _project_version(version_file):
+    unread_tree = "no release tag was held to the version its tree declares"
+    if not version_file.is_file() or not _project_version(version_file, report, unread_tree):
         return
     releases = sorted(
         (
@@ -4242,8 +4276,18 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
         report.errors.extend(findings)
 
 
-def _project_version(pyproject: Path) -> str:
-    return version_in(pyproject.read_text(encoding="utf-8"))
+def _project_version(pyproject: Path, report: Report, unread: str) -> str:
+    """The version `pyproject` declares, or empty where it declares none or cannot be read.
+
+    A file that is not TOML is declined, naming `unread`: `version_in` raises
+    `tomllib.TOMLDecodeError` for it, which raised here ended the whole run
+    rather than the check reading it (`PL-5M36`).
+    """
+    try:
+        return version_in(pyproject.read_text(encoding="utf-8"))
+    except ValueError as error:  # `TOMLDecodeError`, or bytes that are not UTF-8
+        report.declined.append(f"pyproject.toml: cannot be read as TOML ({error}), so {unread}")
+        return ""
 
 
 def _is_path_citation(token: str) -> bool:
@@ -4766,11 +4810,13 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                     )
 
         # A fence or a code span holds a literal - an example, a command, the
-        # form being described - and a literal is not a claim about the tree.
+        # form being described - and a literal is not a claim about the tree. So
+        # do an indented code block and an HTML block, a literal or a comment,
+        # and the section readers read the blocks `PROSE` names (`PL-KR6M`).
         prose = without_fences(text)
         spans = [(span.start(), span.end()) for span in _statement_spans(text)]
 
-        for match in _statement_matches(CITATION_RE, prose):
+        for match in _statement_matches(CITATION_RE, prose, PROSE):
             # A code-spanned source directly before the mark says where the
             # section lives: a document, or an item brief no heading here
             # answers, and `check_quoted_sources` holds either by containment.
@@ -4795,7 +4841,7 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                     "section without the mark)"
                 )
 
-        for match in _statement_matches(UNMARKED_CITATION_RE, prose):
+        for match in _statement_matches(UNMARKED_CITATION_RE, prose, PROSE):
             before = prose[max(match.pos, match.start() - 200) : match.start() + 1]
             if (
                 _inside(match.start(), spans)
@@ -4855,7 +4901,7 @@ def _check_brief_paths(root: Path, basenames: frozenset[str], report: Report) ->
         # A front-matter field at a time, and the body after them (`PL-CZ28`).
         spans = (
             (first + _line_of(piece, match.start()) - 1, match["content"])
-            for first, piece in _brief_pieces(raw)
+            for first, piece in _brief_pieces(raw, path, "path citation", report.declined)
             for match in _statement_spans(piece)
         )
         for line, token in spans:
@@ -5066,7 +5112,9 @@ def _live_item_briefs(root: Path) -> Iterator[tuple[Path, str]]:
         yield path.relative_to(root), path.read_text(encoding="utf-8", errors="replace")
 
 
-def _brief_pieces(text: str) -> list[tuple[int, str]]:
+def _brief_pieces(
+    text: str, where: Path, unread: str, declined: list[str]
+) -> list[tuple[int, str]]:
     """A brief as the pieces its readers read apart, each with the line it starts on.
 
     Each front-matter field is one, ending where `docket.model` ends it, and so
@@ -5077,19 +5125,58 @@ def _brief_pieces(text: str) -> list[tuple[int, str]]:
     comment, or one no field reads - is read alone. A brief with no front
     matter is one piece. Each piece of one that has is a passage of it, so a
     body opening with a thematic break opens no front matter (`_as_passage`).
+
+    A field reaches its readers as `_fold` reads it, one statement (`PL-4J5H`).
+    Each line folded into it is indented four columns more, past where a list
+    item, a block quote, a fence, an HTML block, a heading, a setext underline,
+    a thematic break or a table row can open (CommonMark 0.31.2 § 4, § 5), so
+    none ends the paragraph where `_fold` reads on. A reader takes a line from
+    a piece and never a column, so the indent moves nothing it reports. Two
+    fields are declined instead, each named in `declined` with `where` and the
+    `unread` its readers look for: one with a blank, comment or unread line
+    inside it, since no line carries a paragraph over a blank one and `_fold`
+    reads past it, and one continuing on a line that opens with `>`, which
+    `SOFT_BREAK` drops as a block quote's marker where `_fold` reads it as text.
     """
     layout = front_matter_spans(text)
     if layout is None:
         return [(1, text)]
-    spans, body = layout
+    fields, body = layout
     lines = split_lines(text, keepends=True)
-    held = {index for first, end in spans for index in range(first, end)}
-    alone = [(index, index + 1) for index in range(1, body - 1) if index not in held]
-    pieces = sorted([*spans, *(span for span in alone if lines[span[0]].strip())])
+    held = {
+        index
+        for span in fields
+        for index in range(span.start, span.end)
+        if index not in span.interior
+    }
+    alone = [(index, lines[index]) for index in range(1, body - 1) if index not in held]
+    joined: list[tuple[int, str]] = []
+    for span in fields:
+        folded = lines[span.start + 1 : span.end]
+        if span.interior:
+            why, fix = (
+                "holds a blank, comment or unread line among the lines folded into it, where a "
+                "Markdown paragraph ends and docket reads on",
+                "join the value's lines, or end it above that line",
+            )
+        elif any(line.lstrip().startswith(">") for line in folded):
+            why, fix = (
+                "continues on a line opening with `>`, which the citation readers drop as a "
+                "block quote's marker and docket reads as text",
+                "rewrap the value so no line opens with one",
+            )
+        else:
+            joined.append(
+                (span.start, lines[span.start] + "".join(f"    {line}" for line in folded))
+            )
+            continue
+        declined.append(
+            f"{where}:{span.start + 1}: `{span.key}` {why}, so no {unread} in it was checked; {fix}"
+        )
+    pieces = sorted([*joined, *((index, line) for index, line in alone if line.strip())])
     return list(
         _as_passages(
-            [(first + 1, "".join(lines[first:end])) for first, end in pieces]
-            + [(body + 1, "".join(lines[body:]))]
+            [(first + 1, piece) for first, piece in pieces] + [(body + 1, "".join(lines[body:]))]
         )
     )
 
@@ -5155,7 +5242,7 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
     sources = [(path, 1, raw) for path, raw in documents.items()] + [
         (path, first, piece)
         for path, brief in _live_item_briefs(root)
-        for first, piece in _brief_pieces(brief)
+        for first, piece in _brief_pieces(brief, path, "line citation", report.declined)
     ]
     for path, offset, raw in sources:
         # A fence holds a literal, and read as a claim it made an item that
@@ -5256,7 +5343,8 @@ def _quoting_sources(
     for path, text in documents.items():
         yield path, 1, text
     for path, text in _live_item_briefs(root):
-        yield from ((path, first, piece) for first, piece in _brief_pieces(text))
+        pieces = _brief_pieces(text, path, "quotation", declined)
+        yield from ((path, first, piece) for first, piece in pieces)
     for path in sorted(_walk(root)):
         if path.suffix != ".py":
             continue
@@ -5471,8 +5559,10 @@ def _make_lines(text: str) -> Iterator[tuple[str, int]]:
     no `endef` closes, or one naming no variable, both of which make refuses
     (run through GNU make 4.3 on 2026-10-05); a line led by a tab where no rule
     is open that is no assignment, directive or conditional, which make refuses
-    where it reads it; and a line led by a tab after a branch that changed which
-    rule is open (both run through make 4.3 on 2026-10-06).
+    where it reads it; a line led by a tab after a branch that changed which
+    rule is open (both run through make 4.3 on 2026-10-06); and a rule line
+    escaping what its names end at, which make unquotes (`MAKE_ESCAPED_NAME_RE`,
+    `PL-5M36`), where every reader of a rule took the names as written.
     """
     lines = split_lines(text)
     index = 0
@@ -5539,6 +5629,12 @@ def _make_lines(text: str) -> Iterator[tuple[str, int]]:
             )
         else:
             opened = _make_rule(line)
+            if opened and opened.targets and MAKE_ESCAPED_NAME_RE.search(_make_rule_line(line)[0]):
+                raise UnreadStatement(
+                    opens + 1,
+                    "a backslash on this rule line escapes a blank, `:`, `;`, `#` or `|`, which "
+                    "make 4.3 unquotes in a name by rules this reader does not port",
+                )
             if opened is None:
                 rule = NO_RULE
             elif not opened.targets:
@@ -5789,6 +5885,17 @@ def _make_joined(parts: list[str]) -> str:
     return " ".join(piece for piece in pieces if piece)
 
 
+def _make_runs(line: str) -> bool:
+    """Whether a recipe line hands the shell a command, as GNU make 4.3 decides it.
+
+    `start_job_command` in `src/job.c` passes over the blanks and the `@`, `-`
+    and `+` prefixes ahead of a command and starts nothing where nothing is
+    left, so a tab-only line, or one holding `@` alone, runs nothing (run
+    through make 4.3 on 2026-10-12, `PL-5M36`).
+    """
+    return bool(line.lstrip(" \t@-+"))
+
+
 def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
     """Every target a Makefile names, and the subset that carries a recipe.
 
@@ -5808,15 +5915,19 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
     names is declared, and neither a comment's words nor a target-specific
     variable declares one (`PL-HR4V`). `.PHONY` declares its prerequisites,
     not itself, being make's special target rather than one a document runs;
-    and a recipe after a `;` on the rule's own line is a recipe (`PL-GZXY`).
-    Raises `UnreadStatement` where `_make_lines` does.
+    and a recipe after a `;` on the rule's own line is a recipe (`PL-GZXY`). A
+    recipe line `_make_runs` finds no command in is none, so a target whose
+    only recipe line is a tab is one that exits 0 without running, as make
+    says "Nothing to be done" for it (`PL-5M36`). Raises `UnreadStatement`
+    where `_make_lines` does.
     """
     declared: set[str] = set()
     with_recipe: set[str] = set()
     current: tuple[str, ...] = ()
     for line, _ in _make_lines(text):
         if line.startswith("\t"):
-            with_recipe.update(current)
+            if _make_runs(line):
+                with_recipe.update(current)
             continue
         rule = _make_rule(line) or NO_TARGETS
         if ".PHONY" in rule.targets:
@@ -5844,6 +5955,10 @@ def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
     commands bash runs from it (`_simple_commands`), so `cd sub && make x`,
     `true; make x` and `set -o pipefail; make check | tail` each name theirs,
     which read from the line's first clause alone they did not (`PL-GZXY`).
+    Each is reported on the line its `make` stands on, so one in a `$( )`
+    carried across lines is not placed where the substitution opens; and a
+    fence in a block quote is read without its markers, as `_fenced_blocks`
+    gives it (`PL-5M36`).
     """
     for match in _code_spans(text):
         for mention in MAKE_MENTION_RE.finditer(SPAN_BREAK_RE.sub(" ", match["content"])):
@@ -5858,10 +5973,10 @@ def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
                     if (command := FENCED_MAKE_RE.match(line)) is not None:
                         yield command.group("name"), first + at
                 continue
-            for words in _simple_commands(reading):
+            for words, at in _placed_commands(reading):
                 if len(words) > 1 and words[0] == "make":
                     if (name := MAKE_TARGET_WORD_RE.match(words[1])) is not None:
-                        yield name.group(), first
+                        yield name.group(), first + piece.count("\n", 0, at)
 
 
 def check_make_targets(root: Path, documents: dict[Path, str], report: Report) -> None:
@@ -6043,7 +6158,11 @@ def _run_script(
       does - and a comment (§ 8.1.1); each was read as the command before. It
       ends at the first line indented less than its content (§ 8.1.1.1), which
       a sibling key like `shell:` is: read to the next line no deeper than the
-      step's dash, as it was, that key became a line of the script.
+      step's dash, as it was, that key became a line of the script. Only a
+      comment may stand between the two, deeper than the key and short of the
+      content (§ 8.1.1.2); any other line there is one PyYAML refuses, so it is
+      declined at its own line, where the block's first lines were read as the
+      whole script (`PL-5M36`).
 
     Every other form is declined by name, raising `UnreadStatement` at the
     key's line: a folded block (`>`), whose lines YAML joins before bash reads
@@ -6077,6 +6196,14 @@ def _run_script(
             (at for at, text in enumerate(body) if text.strip() and _indent(text) < margin),
             len(body),
         )
+        for at, text in enumerate(body[stop:], start=first + 1 + stop):
+            if text.strip() and not text.lstrip().startswith("#"):
+                raise UnreadStatement(
+                    at,
+                    "this line stands deeper than the `run:` key above it and short of its "
+                    "literal block's content, which YAML refuses, where this reader would end "
+                    "the block at it",
+                )
         return [(text[margin:], first + 1 + at) for at, text in enumerate(body[:stop])]
     if header is not None:
         raise UnreadStatement(
@@ -6165,15 +6292,25 @@ def _simple_commands(reading: Reading) -> tuple[tuple[str, ...], ...]:
     pattern, `esac` - is no word of a command; docket's reading marks each
     (`PL-M3M4`).
     """
-    commands: list[tuple[str, ...]] = []
+    return tuple(words for words, _ in _placed_commands(reading))
+
+
+def _placed_commands(reading: Reading) -> tuple[tuple[tuple[str, ...], int], ...]:
+    """`_simple_commands`, each with the offset of its first word in the command read.
+
+    A substitution's body is placed where it stands in the command, so a
+    command inside a `$( )` carried across lines is placed on its own line
+    rather than on the substitution's first (`PL-5M36`).
+    """
+    commands: list[list[tuple[str, int]]] = []
     for clause in reading.every_clause():
-        words: list[str] = []
+        words: list[tuple[str, int]] = []
         target = descriptor = False
         previous = -1
         for token, (start, end) in zip(clause.tokens, clause.spans, strict=True):
             if isinstance(token, Word):
                 if not (target or token.case_syntax):
-                    words.append(token.text)
+                    words.append((token.text, start))
                 digits = token.text.isascii() and token.text.isdecimal()
                 descriptor = digits and not (target or token.quoted or token.case_syntax)
                 target = False
@@ -6182,11 +6319,11 @@ def _simple_commands(reading: Reading) -> tuple[tuple[str, ...], ...]:
                     words.pop()
                 target, descriptor = True, False
             else:
-                commands.append(tuple(words))
+                commands.append(words)
                 words, target, descriptor = [], False, False
             previous = end
-        commands.append(tuple(words))
-    return tuple(words for words in commands if words)
+        commands.append(words)
+    return tuple((tuple(text for text, _ in words), words[0][1]) for words in commands if words)
 
 
 def _shell_reading(where: str, command: str, report: Report, unread: str) -> Reading | None:
@@ -6667,16 +6804,18 @@ def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str
     target a rule, and every target a rule names takes its recipe and its
     prerequisites, which make gathers across every rule line naming a target,
     though not in the order make runs them (`PL-HR4V`); a recipe after a `;`
-    on the rule's own line is its first command (`PL-GZXY`). Raises
-    `UnreadStatement` where `_recipe_statements` does, a Makefile naming
-    `.ONESHELL` included (`PL-X43T`).
+    on the rule's own line is its first command (`PL-GZXY`). A recipe line
+    `_make_runs` finds no command in is none here, as it is none to
+    `make_targets` (`PL-5M36`). Raises `UnreadStatement` where
+    `_recipe_statements` does, a Makefile naming `.ONESHELL` included
+    (`PL-X43T`).
     """
     recipes: dict[str, list[str]] = {}
     prerequisites: dict[str, list[str]] = {}
     current: tuple[str, ...] = ()
     for line, _ in _recipe_statements(text):
         if line.startswith("\t"):
-            for target in current if line.strip() else ():
+            for target in current if _make_runs(line) else ():
                 recipes[target].append(line.strip())
             continue
         rule = _make_rule(line) or NO_TARGETS
@@ -6830,7 +6969,10 @@ def check_gate_parity(root: Path, report: Report) -> None:
 
     Silent where either file is missing, so a partial checkout is not failed
     for what it does not carry; declined where `_make_lines` declines the
-    Makefile, since what `make check` runs is then not known.
+    Makefile, since what `make check` runs is then not known; and reporting no
+    difference once anything on either side is declined - a workflow, a step,
+    a line of a script or of the `check:` recipe - since the unread part may
+    run what the other side does (`PL-5M36`).
     """
     makefile = root / "Makefile"
     workflows = sorted(
@@ -6849,6 +6991,7 @@ def check_gate_parity(root: Path, report: Report) -> None:
     if "check" not in recipes:
         return
     unread = "the scripts it runs were not compared"
+    declined_before = len(report.declined)
     local = {
         invocation
         for command in _target_commands(recipes, prerequisites, "check")
@@ -6857,7 +7000,6 @@ def check_gate_parity(root: Path, report: Report) -> None:
         )
     }
     merge: set[tuple[str, ...]] = set()
-    steps: list[UnreadStatement] = []
     default = default_branch(root)
     for path in workflows:
         text = path.read_text(encoding="utf-8")
@@ -6866,17 +7008,18 @@ def check_gate_parity(root: Path, report: Report) -> None:
             gates = _gates_pull_requests(text, default if resolved(default) else None)
         except UnreadStatement as trigger:
             report.declined.append(f"{where}:{trigger.line}: {trigger.why}, so {unread}")
-            steps.append(trigger)
             continue
         if not gates:
             continue
         declined: list[UnreadStatement] = []
         merge |= set(_gate_invocations(root, workflow_runs(text, where, report, unread, declined)))
         _decline_steps(report, where, declined, unread)
-        steps += declined
-    # A workflow or step left unread may hold a script either side runs, so a
+    # A workflow, a step or a line of a script left unread on either side - a
+    # `check:` recipe's included - may hold a script that side runs, so a
     # difference would not be a fact; the declines above say what went unread.
-    if steps or not local or not merge:
+    # Counting the declined steps alone passed over a recipe or script line
+    # `_shell_reading` declined (`PL-5M36`).
+    if len(report.declined) > declined_before or not local or not merge:
         return
     for invocation in sorted(local - merge):
         spelled = " ".join(invocation)
@@ -7811,11 +7954,6 @@ def _git_output(root: Path, *args: str) -> str:
             f"{command} exited {result.returncode}: {said or 'with nothing on stderr'}"
         )
     return stdout
-
-
-def _git(root: Path, *args: str) -> list[str]:
-    """The lines git printed, blank ones dropped; raises as `_git_output` does."""
-    return [line for line in split_lines(_git_output(root, *args)) if line.strip()]
 
 
 # What a diff changes that documentation is likely to name: a definition, a

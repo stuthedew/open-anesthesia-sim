@@ -48,11 +48,22 @@ class Block:
     """One closed fenced block: the indices of its opening line and its last line.
 
     The last is its closing fence line, or, where its container's end closed
-    it, the last line its container held.
+    it, the last line its container held, and `closing` says which, so a
+    reader of what the block holds keeps that line where it is content
+    (`PL-S4JL`).
     """
 
     start: int
     end: int
+    closing: bool = True
+
+    @property
+    def body(self) -> range:
+        """The indices of the lines it holds, between its fences.
+
+        Its last line is one of them where its container's end closed it.
+        """
+        return range(self.start + 1, self.end if self.closing else self.end + 1)
 
 
 def blocks(text: str) -> list[Block]:
@@ -63,7 +74,7 @@ def blocks(text: str) -> list[Block]:
     them.
     """
     return [
-        Block(block.start, block.end - 1)
+        Block(block.start, block.end - 1, block.closing)
         for block in markdown.read(split_lines(text)).blocks
         if block.kind == markdown.FENCE
     ]

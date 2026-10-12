@@ -26,7 +26,10 @@ from docket.grep import Wrap
 from docket.model import Item, parse_item
 from docket.store import insert_field, replace_field
 from docket.verify import (
+    CONFIGURATION_READERS,
     LANDED_GUARD,
+    QUOTING_SUFFIXES,
+    SUPPRESSION_BEARING_SUFFIXES,
     SUPPRESSIONS,
     TIMED_OUT,
     VERIFY_GUARD,
@@ -592,6 +595,102 @@ def test_a_pytest_configuration_key_is_still_a_suppression(tmp_path: Path) -> No
     report = verify(root, _item(touches=("pyproject.toml",)), _config(), "HEAD~1")
 
     assert not _check(report, "no suppression added").passed
+
+
+#: `PL-PNZB`'s five forms: a configuration file before and after the item's
+#: commit, and what `no suppression added` prints of it - nothing where the
+#: value its format's reader gives is unchanged, the statement that gained
+#: `no:xfail` where it changed.
+CONFIGURED_SUPPRESSIONS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
+    "A. a TOML array re-wrapped one element to a line": (
+        "pyproject.toml",
+        '[tool.pytest.ini_options]\naddopts = ["-p", "no:xfail"]\n',
+        '[tool.pytest.ini_options]\naddopts = [\n    "-p",\n    "no:xfail",\n]\n',
+        (),
+    ),
+    "B. a TOML multi-line string split by a line-ending backslash": (
+        "pyproject.toml",
+        '[tool.pytest.ini_options]\naddopts = """-p no:cacheprovider"""\n',
+        '[tool.pytest.ini_options]\naddopts = """-p no:cacheprovider -p no:x\\\n     fail"""\n',
+        ("tool.pytest.ini_options.addopts = -p no:cacheprovider -p no:xfail",),
+    ),
+    "C. a TOML array element moved to another key's array": (
+        "pyproject.toml",
+        '[tool.pytest.ini_options]\nmarkers = [\n    "no:xfail",\n]\naddopts = [\n    "-p",\n]\n',
+        '[tool.pytest.ini_options]\nmarkers = [\n]\naddopts = [\n    "-p",\n    "no:xfail",\n]\n',
+        ("tool.pytest.ini_options.addopts = no:xfail",),
+    ),
+    "D. an ini continuation re-indented": (
+        "tox.ini",
+        "[pytest]\naddopts =\n    -p\n    no:xfail\n",
+        "[pytest]\naddopts =\n  -p\n  no:xfail\n",
+        (),
+    ),
+    "E. an ini continuation moved to another key": (
+        "tox.ini",
+        "[pytest]\nmarkers =\n    slow\n    no:xfail\naddopts =\n    -p\n",
+        "[pytest]\nmarkers =\n    slow\naddopts =\n    -p\n    no:xfail\n",
+        ("pytest.addopts = no:xfail",),
+    ),
+}
+
+
+@pytest.mark.parametrize("form", sorted(CONFIGURED_SUPPRESSIONS))
+def test_a_configuration_suppression_is_compared_as_its_formats_reader_reads_it(
+    tmp_path: Path, form: str
+) -> None:
+    """A configuration value is compared as its format's reader gives it (`PL-PNZB`).
+
+    Read as diff lines, a TOML array re-wrapped and an ini continuation
+    re-indented were refused as suppressions added with the value unchanged,
+    while `no:xfail` split by a line-ending backslash, or moved from one key's
+    continued value to another's, passed as `none`. `tomllib` and
+    `configparser` read every version now, so it is the value that is compared.
+    """
+    path, before, after, found = CONFIGURED_SUPPRESSIONS[form]
+    root = _repo(tmp_path)
+    _work(root, "base: the configuration as it stood", path, before)
+    _work(root, "PL-K7QX rewrite the configuration", path, after)
+    report = verify(root, _item(touches=(path,)), _config(), "HEAD~1")
+
+    suppression = _check(report, "no suppression added")
+    assert suppression.lines == found
+    assert suppression.passed == (not found)
+
+
+@pytest.mark.parametrize(
+    ("path", "reader"), [("setup.cfg", "configparser"), ("pyproject.toml", "tomllib")]
+)
+def test_a_configuration_file_its_reader_refuses_is_read_line_by_line(
+    tmp_path: Path, path: str, reader: str
+) -> None:
+    """Where the format's reader refuses a copy, the lines are read, and the page says so.
+
+    A key ahead of any section header is no `configparser` file, and a bare
+    word is no TOML value, so each reader refuses the copy wherever this runs.
+    """
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX configure it where its reader refuses", path, "addopts = -p no:xfail\n")
+    report = verify(root, _item(touches=(path,)), _config(), "HEAD~1")
+
+    suppression = _check(report, "no suppression added")
+    assert not suppression.passed
+    assert suppression.lines[0] == "addopts = -p no:xfail"
+    assert suppression.lines[1].startswith(
+        f"read line by line, not parsed: {path} - {reader} refused its copy at "
+    )
+
+
+def test_each_file_the_suppression_check_reads_has_a_reader_that_reads_it_whole() -> None:
+    """A suffix with no reader of its own is read line by line, and none is named.
+
+    The decline names a file only where a reader refused it, so a suffix the
+    check reads that neither the tokenizer nor a configuration reader takes
+    would be read a line at a time with nothing on the page saying so; and a
+    reader whose suffix the check does not read would decline a file and then
+    read none of its lines (`PL-PNZB`).
+    """
+    assert set(SUPPRESSION_BEARING_SUFFIXES) == {*QUOTING_SUFFIXES, *CONFIGURATION_READERS}
 
 
 def test_a_type_ignore_is_not_a_suppression(tmp_path: Path) -> None:
@@ -2571,6 +2670,53 @@ def test_each_change_to_an_item_file_has_to_be_a_sanctioned_kind(tmp_path: Path)
     neighbour.write_text(neighbour.read_text().replace("status: ready\n", "status: blocked\n"))
     _git(root, "commit", "-qam", "PL-K7QX and reopen it")
     assert sanctioned_queue_edit(root, "HEAD~2", ("HEAD~1", "HEAD"), path) == ""
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        pytest.param(
+            "reason: >-\n  old words\n",
+            "reason: >-\n  new words\npr: 5\n",
+            id="a block scalar rewritten beside a pr write",
+        ),
+        pytest.param(
+            "touches:\n  - a\n",
+            "touches:\n  - a\n  - src/core.py\npr: 5\n",
+            id="a touches block list gaining an entry beside a pr write",
+        ),
+        pytest.param(
+            "touches:\n  - a\n",
+            "touches:\n  - a\n  - src/core.py\nrecurrences: 2026-10-12 PL-N3W1\n",
+            id="a touches block list gaining an entry beside a recurrence",
+        ),
+        pytest.param(
+            "a line continuing nothing\n",
+            "a line continuing nothing\npr: 5\n",
+            id="a pr write onto a copy holding a line no field reads",
+        ),
+    ],
+)
+def test_an_edit_inside_a_declined_block_is_not_a_sanctioned_queue_edit(
+    tmp_path: Path, before: str, after: str
+) -> None:
+    """`PL-4DM0`: a declined block compared equal, so an edit inside it rode a sanctioned write.
+
+    `_front_matter_pairs` hands a block list or block scalar back as its key
+    with an empty value, and a line continuing nothing as written, so the two
+    copies matched wherever only the declined lines differed. The audit cannot
+    vouch for lines its reader never read, so a copy holding any of them is no
+    `pr` or recurrence write, whatever else changed beside it.
+    """
+    root = _repo(tmp_path)
+    path = "docs/items/PL-B2B2-do-the-other.md"
+    front = "---\nid: PL-B2B2\ntitle: Do the other\nstatus: done\nverify: true\n{}---\n\n"
+    (root / path).write_text(front.format(before) + BRIEF)
+    _git(root, "commit", "-qam", "base: a neighbour whose front matter holds a declined form")
+    (root / path).write_text(front.format(after) + BRIEF)
+    _git(root, "commit", "-qam", "PL-K7QX write onto the neighbour")
+
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == ""
 
 
 def test_an_ordinary_edit_to_another_items_file_is_still_outside_touches(tmp_path: Path) -> None:

@@ -1028,6 +1028,32 @@ def test_a_bare_section_mark_citation_that_resolves_is_quiet(tmp_path: Path) -> 
     assert not any("cites section" in e for e in _errors(_repo(tmp_path, readme=readme)))
 
 
+@pytest.mark.parametrize(
+    ("opening", "closing"),
+    [("    ", ""), ("<!-- ", " -->"), ("```text\n", "\n```")],
+    ids=["indented code block", "HTML comment", "fence"],
+)
+def test_a_section_cited_in_an_indented_code_block_or_a_comment_is_not_held(
+    tmp_path: Path, opening: str, closing: str
+) -> None:
+    """A literal or a comment is no claim about the tree, as a fence's is none (`PL-KR6M`).
+
+    The two section readers left out fences alone, so a worked example indented
+    four spaces, or a comment, quoting a section title failed `make check` for
+    citing a section no documentation file has, and one naming a heading
+    without the mark was told to take it. They read the blocks
+    `markdown.PROSE` names now.
+    """
+    readme = (
+        f'# Demo\n\n{opening}The rest is per § "Renamed limitations", as the model says.{closing}'
+        f'\n\n{opening}See "Known limitations" for what it omits.{closing}\n'
+    )
+    report = doc_check.analyze(_repo(tmp_path, readme=readme))
+
+    assert not any("cites section" in e for e in report.errors)
+    assert not any('write § "Known limitations"' in a for a in report.advisories)
+
+
 def test_a_marked_citation_after_its_source_document_is_left_to_containment(tmp_path: Path) -> None:
     """`` `doc.md` § "X" `` names its document; `check_quoted_sources` holds it by containment."""
     readme = '# Demo\n\nThe rest is in `docs/MODEL.md` § "Renamed limitations".\n'
@@ -2146,6 +2172,25 @@ def test_a_missing_baseline_heading_is_an_error(tmp_path: Path) -> None:
     assert any("Current baseline" in message and "heading" in message for message in errors)
 
 
+def test_a_pyproject_that_is_not_toml_is_reported_not_raised(tmp_path: Path) -> None:
+    """Each check reading the version says it could not, and the run goes on (`PL-5M36`).
+
+    `version_in` raises `TOMLDecodeError` for a file that is not TOML, and
+    raised out of the baseline and tag checks it ended the whole run.
+    """
+    root = _tagged(tmp_path, "v0.2.4", "v0.2.5")
+    (root / "pyproject.toml").write_text("not = = toml\n", encoding="utf-8")
+
+    report = doc_check.analyze(root)
+
+    assert not any("pyproject.toml holds" in message for message in report.errors)
+    unread = [message for message in report.declined if message.startswith("pyproject.toml:")]
+    assert len(unread) == 2
+    assert all("cannot be read as TOML" in message for message in unread)
+    assert any("the current baseline row was not held" in message for message in unread)
+    assert any("no release tag was held" in message for message in unread)
+
+
 def test_a_version_table_that_has_vanished_is_an_error(tmp_path: Path) -> None:
     roadmap = VERSIONED_ROADMAP.replace("## Versioning decision", "## How we number things")
     errors = _errors(_versioned(tmp_path, roadmap=roadmap))
@@ -2355,6 +2400,63 @@ def test_an_inline_recipe_a_backslash_continues_is_spelled_as_make_hands_it_over
 
     assert list(doc_check._recipe_commands(makefile)) == [("echo a \\\necho b", 1)]
     assert doc_check._target_recipes(makefile)[1] == {"all": ["x", "y"]}
+
+
+@pytest.mark.parametrize("line", ["\t", "\t  ", "\t@", "\t@-+ "])
+def test_a_tab_only_line_under_a_rule_is_no_recipe(line: str, tmp_path: Path) -> None:
+    """A recipe line holding nothing past its tab, blanks and prefixes runs nothing (`PL-5M36`).
+
+    GNU make 4.3 answered "Nothing to be done for 'check'" and exited 0 for
+    each on 2026-10-12, where `make_targets` read the target as carrying a
+    recipe and `_target_recipes` as carrying none, so a documented `make
+    check` passed as one that runs.
+    """
+    makefile = f".PHONY: check\ncheck:\n{line}\n"
+    root = _with_make(tmp_path, makefile=makefile, mentions="\nRun `make check`.\n")
+
+    assert doc_check.make_targets(makefile) == (frozenset({"check"}), frozenset())
+    assert doc_check._target_recipes(makefile)[0] == {".PHONY": [], "check": []}
+    assert _errors(root) == [
+        "README.md:6 names `make check`, which is declared but carries no recipe, so it "
+        "exits 0 without running"
+    ]
+
+
+@pytest.mark.parametrize(
+    "rule", ["a\\:b:", "a\\ b c:", "x: a\\#b", "x: a\\|b", "x: a\\;b ; @echo inline"]
+)
+def test_a_rule_line_escaping_what_a_name_ends_at_is_declined(rule: str, tmp_path: Path) -> None:
+    """A backslash before a blank, `:`, `;`, `#` or `|` is make's to unquote (`PL-5M36`).
+
+    GNU make 4.3 named `a:b`, `a b` and `c`, `a#b`, `a|b` and `a;b` for these on
+    2026-10-12, where every reader here took the names as written, the
+    backslash kept and `a\\ b` split in two. Each Makefile check says what it
+    did not read instead.
+    """
+    makefile = f"{rule}\n\t@echo ran\n"
+    root = _with_make(tmp_path, makefile=makefile, mentions="\nRun `make b`.\n")
+
+    with pytest.raises(doc_check.UnreadStatement, match="make 4.3 unquotes in a name"):
+        doc_check.make_targets(makefile)
+    report = doc_check.analyze(root)
+    assert report.errors == []
+    assert any(
+        message.startswith("Makefile:1: a backslash on this rule line")
+        and "no documented `make` command was checked" in message
+        for message in report.declined
+    ), report.declined
+
+
+def test_a_backslash_before_anything_else_in_a_name_is_kept_as_make_keeps_it() -> None:
+    """`a\\x` names `a\\x` to make 4.3, and a target-specific variable names nothing.
+
+    `x: a\\=b` is one to make and to `_make_rule` alike, and the backslash in
+    `x: FLAGS = -I a\\ b` stays in the value make hands the recipe, so neither
+    is declined.
+    """
+    assert doc_check.make_targets("a\\x:\n\t@echo ran\n") == (frozenset({"a\\x"}),) * 2
+    assert doc_check.make_targets("x: a\\=b\n") == (frozenset(), frozenset())
+    assert doc_check.make_targets("x: FLAGS = -I a\\ b\n") == (frozenset(), frozenset())
 
 
 # --- release tags -----------------------------------------------------------
@@ -3646,6 +3748,35 @@ def test_a_script_only_ci_runs_is_an_error_too(tmp_path: Path) -> None:
     )
 
     assert any("runs tools/b_check.py and `make check` does not" in m for m in _parity(root))
+
+
+def test_gate_parity_reports_no_difference_once_a_make_check_line_is_declined(
+    tmp_path: Path,
+) -> None:
+    """A `check:` line the shell reader declines may run what the workflow runs (`PL-5M36`).
+
+    Only a declined workflow step stopped the comparison, so with the recipe's
+    second line unreadable the run still reported that `make check` runs no
+    `tools/b_check.py`, against the check's own comment that a difference is
+    then no fact.
+    """
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py", "python3 tools/b_check.py 'unclosed"],
+        workflows={
+            "quality.yml": (
+                GATING_WORKFLOW,
+                ["python3 tools/a_check.py", "python3 tools/b_check.py"],
+            )
+        },
+    )
+    report = doc_check.Report()
+
+    doc_check.check_gate_parity(root, report)
+
+    assert report.errors == []
+    assert len(report.declined) == 1
+    assert "`python3 tools/b_check.py 'unclosed` cannot be read" in report.declined[0]
 
 
 def test_a_recorded_asymmetry_is_accepted(tmp_path: Path) -> None:
@@ -6984,6 +7115,65 @@ SPLIT_QUOTATION_BRIEF = (
 RULED_QUOTATION = '---\nIt holds `docs/MODEL.md` § "Known\nlimitations" to that file.\n---\n'
 
 
+#: A live brief whose `reason` quotes `README.md` across the lines `{lines}`
+#: hold, which `docket.model._fold` reads on through (`PL-4J5H`).
+FOLDED_BRIEF = (
+    "---\nid: PL-T3ST\nstatus: ready\nreason: it holds `README.md`'s \"Alpha\n"
+    '{lines}\n  beta gamma." as written\n---\n\n**Problem.** x\n'
+)
+#: Each line a field continues on where CommonMark 0.31.2 opens a block at the
+#: margin and so ends the paragraph `_fold` reads on through, by the block. The
+#: fence is closed, since `docket.markdown` reads one nothing closes as written.
+OPENS_A_BLOCK = {
+    "a list item": "  - delta",
+    "a fence": "  ```\n  ```",
+    "an HTML tag": "  <div>",
+    "a thematic break": "  ***",
+}
+#: Each line inside a field `_fold` reads past and no Markdown paragraph can
+#: cross, or one the citation readers read otherwise: declined by name.
+DECLINED_FIELD = {
+    "a blank line": ("  delta\n", "holds a blank, comment or unread line"),
+    "a comment line": ("  delta\n  # a comment", "holds a blank, comment or unread line"),
+    "a block quote": ("  > delta", "continues on a line opening with `>`"),
+}
+
+
+@pytest.mark.parametrize("form", [*OPENS_A_BLOCK, *DECLINED_FIELD])
+def test_a_front_matter_field_reaches_the_markdown_readers_as_one_statement(
+    tmp_path: Path, form: str
+) -> None:
+    """`PL-4J5H`: a field is read as `_fold` reads it, one statement, or declined by name.
+
+    Handed over as written, a continuation line opening a list item, a fence,
+    an HTML block or a thematic break ended the field's paragraph, so a
+    quotation `_fold` and YAML read closed was refused as unclosed at the cut.
+    A blank or comment line no paragraph crosses, and a `>` the citation
+    readers drop as a block quote's marker, decline the field instead.
+    """
+    if form in OPENS_A_BLOCK:
+        line, why = OPENS_A_BLOCK[form], ""
+    else:
+        line, why = DECLINED_FIELD[form]
+    brief = FOLDED_BRIEF.format(lines=line)
+    words = " ".join(parse_item(brief, "x.md").reason.split('"')[1].split())
+    root = _repo(tmp_path, readme=f"# Demo\n\n{words}\n")
+    _item(root, "PL-T3ST-demo", brief)
+    report = doc_check.analyze(root)
+    said = ("cites section", "names a section", "quotes ", "opens a quotation")
+
+    assert [f for f in report.errors + report.advisories if any(s in f for s in said)] == []
+    declined = [entry for entry in report.declined if "`reason`" in entry]
+    if why:
+        assert declined and all(why in entry for entry in declined), report.declined
+        return
+    assert declined == []
+    pieces = doc_check._brief_pieces(brief, Path("x.md"), "quotation", [])
+    field = next(piece for first, piece in pieces if first == 4)
+    statements = list(docket_markdown.statement_lines(field.splitlines()))
+    assert statements == [(0, len(field.splitlines()))]
+
+
 def _possessive_sites(tmp_path: Path, readme: str) -> list[str]:
     return possessive_section_check.sites(_repo(tmp_path, readme=readme), [])
 
@@ -7398,6 +7588,13 @@ FRONT_MATTER_COMMENT = (
 
 #: The Symbols table's header and delimiter rows, and one row under them.
 SYMBOLS = "| Symbol | Meaning | Unit | Code |\n| --- | --- | --- | --- |\n| a | A | - | `X.a` |\n"
+
+
+#: How `_run_step` names a line deeper than its `run:` key and short of the
+#: literal block's content (`PL-5M36`).
+SHORT_OF_THE_BLOCK = (
+    "this line stands deeper than the `run:` key above it and short of its literal block's content"
+)
 
 
 #: Each reader, a statement its format carries across a line break,
@@ -7936,6 +8133,34 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: list(doc_check._make_mentions("> Run `make\n> check` first.\n")),
         [("check", 1)],
     ),
+    # A fence read as its block quote holds it, and a `make` placed on its own
+    # line inside a substitution carried across lines (`PL-5M36`).
+    "make mentions, a fence inside a block quote": (
+        lambda _: list(doc_check._make_mentions("> ```bash\n> make check\n> ```\n")),
+        [("check", 2)],
+    ),
+    "make mentions, a block-quoted fence its quote's end closes": (
+        lambda _: list(doc_check._make_mentions("> ```bash\n> make check\n\nAfter.\n")),
+        [("check", 2)],
+    ),
+    # A fence's last line is content where its list item's end closes it, not a
+    # closing fence, so the package-map tree reads it too (`PL-D23H`).
+    "fenced blocks, a list item's fence its item's end closes": (
+        lambda _: list(doc_check._fenced_blocks("- item\n\n  ```text\n  a\n  b\nafter\n")),
+        [(3, ["a", "b"])],
+    ),
+    "make mentions, a here-document in a list item's fence": (
+        lambda _: list(
+            doc_check._make_mentions(
+                "- step:\n\n  ```bash\n  cat <<EOF\n  make nosuch\n  EOF\n  make check\n  ```\n"
+            )
+        ),
+        [("check", 7)],
+    ),
+    "make mentions, `make` on a later line of a substitution": (
+        lambda _: list(doc_check._make_mentions("```bash\nx=$(\n  make check\n)\n```\n")),
+        [("check", 3)],
+    ),
     # The two shell lexers, each case run through bash 5.2.21 (`PL-97CF`,
     # `PL-2JYP`): a backslash-newline inside an operator, an unquoted
     # here-document's body read in logical lines, a `${...}` read to its `}`,
@@ -8076,6 +8301,23 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "workflow commands, a sibling key after a literal block ends it": (
         lambda _: _run_step("      - run: |\n          python3 tools/x.py\n        shell: bash\n"),
         ([("python3 tools/x.py", 2)], []),
+    ),
+    # A line deeper than the key and short of the block's content, which PyYAML
+    # 6.0.3 refuses unless it is a comment (`PL-5M36`): read as the block's end,
+    # its first lines were the whole script.
+    "workflow commands, a comment short of a literal block's content ends it": (
+        lambda _: _run_step(
+            "      - run: |\n          echo a\n         # why\n        shell: bash\n"
+        ),
+        ([("echo a", 2)], []),
+    ),
+    "workflow commands, a line short of a literal block's content is refused by name": (
+        lambda _: _run_step("      - run: |\n          echo a\n         echo b\n"),
+        ([], [(3, SHORT_OF_THE_BLOCK)]),
+    ),
+    "workflow commands, a line after a comment short of a literal block's content": (
+        lambda _: _run_step("      - run: |\n          echo a\n         # why\n          echo b\n"),
+        ([], [(4, SHORT_OF_THE_BLOCK)]),
     ),
     # Where a step's `run:` key is (`PL-S3XS`), read from the job's `steps:`
     # list through `required_checks_check.steps`: a line of another key's block

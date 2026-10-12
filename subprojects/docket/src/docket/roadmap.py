@@ -53,9 +53,6 @@ LAZY_ENTRY = (
 #: A list item's marker and the gap after it (CommonMark 0.31.2 § 5.2), which an
 #: entry's text is read without.
 ENTRY_MARKER_RE = re.compile(r" {0,3}(?:[-+*]|\d{1,9}[.)])(?:[ \t]+|$)")
-#: The blocks a heading's section, and an entry's text, read no id from: each
-#: holds a literal or a comment rather than what the page says (`PL-HKHP`).
-LITERAL_BLOCKS = (markdown.FENCE, markdown.HTML)
 #: Where a sentence of prose ends: its stop, any closing emphasis, code,
 #: parenthesis or bracket, and the space after it. A soft break is a space.
 SENTENCE_BREAK = re.compile(r"[.!?][*`)\]]*\s")
@@ -546,8 +543,9 @@ def _subsection_ids(lines: Sequence[str], start: int) -> Iterator[str]:
 
     `start` is the heading's line number, so reading begins on the line after
     it and stops at the next heading of the same depth or shallower - the same
-    bound `_gate_entries` uses, for the same reason. No id is read from a fence
-    or an HTML block, which holds a literal or a comment (`PL-HKHP`).
+    bound `_gate_entries` uses, for the same reason. Ids are read from its prose
+    blocks alone: a fence, an indented code block and an HTML block hold a
+    literal or a comment rather than what the page says (`PL-HKHP`, `PL-MPJL`).
     """
     for line in _subsection_lines(lines, start):
         for match in SECTION_ID_RE.finditer(line):
@@ -567,10 +565,15 @@ def _subsection_end(lines: Sequence[str], start: int, level: int = 3) -> int:
 
 
 def _subsection_lines(lines: Sequence[str], start: int) -> Iterator[str]:
-    """Each line under one `###` heading, less those of a fence or an HTML block."""
-    literal = markdown.block_lines(lines, LITERAL_BLOCKS)
+    """Each line of a prose block under one `###` heading, the blocks `markdown.PROSE` names.
+
+    Its prose rather than every line but a literal's: a second list of the
+    literal kinds left the indented code block out, so an id quoted in one was
+    read as the section's (`PL-KR6M`).
+    """
+    prose = markdown.block_lines(lines, markdown.PROSE)
     for index in range(start, _subsection_end(lines, start)):
-        if index not in literal:
+        if index in prose:
             yield lines[index]
 
 
@@ -604,24 +607,25 @@ def list_entries(
     an entry routinely wraps and a phrase split across the break would be
     invisible to every reader of this - the declaration slot included, where a
     pair of ids can wrap between them. A nested list and a later paragraph fold
-    in too, since CommonMark reads both as the entry's (`PL-YSMD`); a fence and
-    an HTML block inside it do not, holding a literal or a comment.
+    in too, since CommonMark reads both as the entry's (`PL-YSMD`); a fence, an
+    indented code block and an HTML block inside it do not, holding a literal or
+    a comment, so only its prose blocks are read (`PL-KR6M`).
 
     One walker and three readers - the frozen list, `Required scope`, and the
     exclusion advisory in `tools/doc_check.py` - because what an entry *is* is
     one question, and it was answered in three places that could drift. An
     entry it cannot read whole is declined by the walker, through `unread`.
     """
-    literal = markdown.block_lines(lines, LITERAL_BLOCKS)
+    prose = markdown.block_lines(lines, markdown.PROSE)
     for first, end in list_entry_lines(lines, start, unread):
-        yield first + 1, _entry_text(lines, first, end, literal)
+        yield first + 1, _entry_text(lines, first, end, prose)
 
 
-def _entry_text(lines: Sequence[str], first: int, end: int, literal: Collection[int]) -> str:
-    """An entry's span of `lines` joined into one line, less its marker and its literals."""
+def _entry_text(lines: Sequence[str], first: int, end: int, prose: Collection[int]) -> str:
+    """An entry's span of `lines` joined into one line, less its marker: the lines of its prose."""
     marker = ENTRY_MARKER_RE.match(lines[first])
-    parts = [lines[first][marker.end() if marker else 0 :].strip()]
-    parts.extend(lines[index].strip() for index in range(first + 1, end) if index not in literal)
+    parts = [lines[first][marker.end() if marker else 0 :].strip()] if first in prose else []
+    parts.extend(lines[index].strip() for index in range(first + 1, end) if index in prose)
     return " ".join(part for part in parts if part)
 
 
@@ -734,8 +738,8 @@ def _subsection_declared_ids(lines: Sequence[str], start: int, prose: _Prose) ->
     thing to say writes a sentence rather than a list - v0.2.0's scope is a
     paragraph - and the slot is the statement wherever it is written. The entry
     unit is what `tools/doc_check.py` needs, and it reads `scope_entries`. A
-    fence or an HTML block declares nothing, holding a literal or a comment
-    (`PL-HKHP`).
+    fence, an indented code block or an HTML block declares nothing, holding a
+    literal or a comment (`PL-HKHP`).
     """
     end = _subsection_end(lines, start)
     return _deduped(
@@ -778,12 +782,12 @@ def _gate_entries(
     item, not a second thing the entry is waiting on, and one opening a later
     paragraph is no part of the run (`PL-VQ50`).
     """
-    literal = markdown.block_lines(lines, LITERAL_BLOCKS)
+    prose_lines = markdown.block_lines(lines, markdown.PROSE)
     entries: list[GateEntry] = []
     for first, end in list_entry_lines(lines, start, unread):
         ids = leading_ids(next(prose.within(first, end), ""))
         if ids:
-            text = _entry_text(lines, first, end, literal)
+            text = _entry_text(lines, first, end, prose_lines)
             entries.append(GateEntry(line=first + 1, ids=ids, text=text))
     return tuple(entries)
 
@@ -799,12 +803,12 @@ def _scope_entries(
     a statement at a time, as the subsection's is (`PL-VQ50`), and its lead is
     its first statement.
     """
-    literal = markdown.block_lines(lines, LITERAL_BLOCKS)
+    prose_lines = markdown.block_lines(lines, markdown.PROSE)
     entries: list[ScopeEntry] = []
     for first, end in list_entry_lines(lines, start, unread):
         statements = list(prose.within(first, end))
         ids = _deduped(identifier for text in statements for identifier in _declared_ids(text))
-        text = _entry_text(lines, first, end, literal)
+        text = _entry_text(lines, first, end, prose_lines)
         entries.append(
             ScopeEntry(line=first + 1, ids=ids, text=text, lead=statements[0] if statements else "")
         )

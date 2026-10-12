@@ -332,9 +332,11 @@ def _git(root: Path, *args: str) -> None:
     )
 
 
-def _based(tmp_path: Path, *, theme: str = THEME_SOURCE, shortfalls: str = "{}") -> Path:
+def _based(
+    tmp_path: Path, *, theme: str = THEME_SOURCE, shortfalls: str = "{}", **modules: str
+) -> Path:
     """The miniature tree committed on `main`, with this file's ledger as the base held it."""
-    root = _repo(tmp_path, theme=theme)
+    root = _repo(tmp_path, theme=theme, **modules)
     ledger = root / contrast_check.SHORTFALLS_SOURCE
     ledger.parent.mkdir(parents=True)
     ledger.write_text(
@@ -1172,12 +1174,17 @@ def test_the_two_agent_fills_iso_5360_makes_inseparable_stay_measured() -> None:
 
 
 def test_a_color_declared_in_the_view_is_refused(tmp_path: Path) -> None:
-    """The convention PL-2CS8 established, held by the tool rather than by habit."""
-    root = _repo(tmp_path, view=VIEW_SOURCE + '\nSTRAY = "#123456"\n')
+    """The convention PL-2CS8 established, held by the tool rather than by habit.
+
+    A `#RGB` is a color too, though not one this tool can measure, so it is
+    refused here rather than going unread (PL-PXT7).
+    """
+    root = _repo(tmp_path, view=VIEW_SOURCE + '\nSTRAY = "#123456"\nSHORT = "#0AF"\n')
 
     misplaced = contrast_check.check_colors_live_in_the_theme(root)
 
     assert any("STRAY" in message for message in misplaced)
+    assert any("SHORT" in message for message in misplaced)
     assert any("theme.py" in message for message in misplaced)
 
 
@@ -1366,3 +1373,152 @@ def test_an_ordinary_enabled_stylesheet_is_not_a_disabled_rule(tmp_path: Path) -
     root = _repo(tmp_path, qt_widgets='SHEET = "QPushButton { color: #243B53; }"\n')
 
     assert contrast_check.analyze(root).author_styled_disabled == ()
+
+
+def test_a_disabled_rule_joined_with_a_plus_is_read(tmp_path: Path) -> None:
+    """`PL-QY94`: a rule split across two literals by a `+` is the one string Qt is handed.
+
+    Adjacent literals and an f-string's pieces reach `ast` joined already, and
+    Qt refuses a pseudo-state split by a line break or a comment, so a `+` is
+    the one way to write a rule no literal holds whole. Each half alone holds
+    no `:disabled`, and the uncited rule passed.
+    """
+    root = _repo(
+        tmp_path,
+        qt_widgets=(
+            'def stray_stylesheet():\n    return "QPushButton:" + "disabled { color: #777; }"\n'
+        ),
+    )
+
+    flagged = contrast_check.analyze(root).author_styled_disabled
+
+    assert len(flagged) == 1
+    assert "qt_widgets.py:2: a ':disabled' rule at `stray_stylesheet`" in flagged[0]
+
+
+def test_a_docstring_naming_disabled_is_not_a_rule(tmp_path: Path) -> None:
+    """`PL-QY94`: prose about the pseudo-state is no stylesheet, and draws no refusal.
+
+    A docstring is a string standing as a statement, thrown away where it
+    stands, as is one written as a comment, so nothing Qt is handed can be in
+    either. A function whose docstring named `:disabled` was refused as though
+    it wrote the rule; the rule it returns is still read.
+    """
+    root = _repo(
+        tmp_path,
+        qt_widgets=(
+            '"""Qt paints a :disabled button from the palette; :!enabled is the same state."""\n'
+            "\n"
+            "def describe():\n"
+            '    """Name the :disabled state, and write no rule for it."""\n'
+            '    "a :disabled note, standing as a statement"\n'
+            "    return None\n"
+            "\n"
+            "def uncited():\n"
+            '    """Write the rule nothing cites."""\n'
+            '    return "QPushButton:disabled { color: #777; }"\n'
+        ),
+    )
+
+    flagged = contrast_check.analyze(root).author_styled_disabled
+
+    assert len(flagged) == 1
+    assert "qt_widgets.py:10: a ':disabled' rule at `uncited`" in flagged[0]
+
+
+def test_a_not_enabled_rule_no_requirement_cites_is_an_error(tmp_path: Path) -> None:
+    """`PL-PXT7`: `:!enabled` is the disabled state negated, so it owes what `:disabled` owes.
+
+    Measured on Qt 6.11.2: `:!enabled`, `:DISABLED` and `:!ENABLED` each
+    restyled a disabled `QPushButton`, since Qt reads a pseudo-state's name in
+    any case, while `:!disabled` restyled it only enabled and `:! enabled`
+    dropped the rule. Only the `:disabled` literal was read.
+    """
+    root = _repo(
+        tmp_path,
+        qt_widgets=(
+            'NEGATED = "QPushButton:!enabled { color: #777; }"\n'
+            'SHOUTED = "QPushButton:DISABLED { color: #777; }"\n'
+            'ENABLED_ONLY = "QPushButton:!disabled { color: #777; }"\n'
+            'SPACED = "QPushButton:! enabled { color: #777; }"\n'
+        ),
+    )
+
+    flagged = contrast_check.analyze(root).author_styled_disabled
+
+    assert len(flagged) == 2
+    assert "qt_widgets.py:1: a ':!enabled' rule at `NEGATED`" in flagged[0]
+    assert "qt_widgets.py:2: a ':DISABLED' rule at `SHOUTED`" in flagged[1]
+
+
+def test_a_hex_colour_built_from_parts_or_inside_a_stylesheet_is_refused(tmp_path: Path) -> None:
+    """`PL-PXT7`: a color outside the theme is refused wherever a string holds it.
+
+    Only a literal that was exactly `#RRGGBB` was read, so a stylesheet's
+    `color: #D9E2EC;` and a constant built as `"#D9E2" + "EC"` were neither
+    measured nor refused. The constant is now read whole, so it is measured as
+    well as placed; a color inside a longer string has no name to measure it
+    by, so it is refused at the string's first line.
+    """
+    view = VIEW_SOURCE + (
+        "\n"
+        'LOOSE = "#D9E2EC"\n'
+        'STRAY = "#D9E2" + "EC"\n'
+        "def paint(w):\n"
+        '    w.setStyleSheet("QLabel { color: #D9E2EC; }")\n'
+        '    w.setStyleSheet("QLabel { background: #1D" + "2A3B; }")\n'
+    )
+    root = _repo(tmp_path, view=view)
+
+    misplaced = contrast_check.check_colors_live_in_the_theme(root)
+
+    assert len(misplaced) == 4
+    assert "LOOSE is declared in" in misplaced[0]
+    assert "STRAY is declared in" in misplaced[1]
+    assert (
+        "#D9E2EC is written inline at src/anesthesia_sim/app/simulation_view.py:12"
+        in (misplaced[2])
+    )
+    assert (
+        "#1D2A3B is written inline at src/anesthesia_sim/app/simulation_view.py:13"
+        in (misplaced[3])
+    )
+    assert contrast_check.read_palette(root)["STRAY"] == "#D9E2EC"
+
+
+def test_a_string_holding_no_six_digit_colour_is_left_alone(tmp_path: Path) -> None:
+    """The quiet half: a theme name, a character reference, a longer run and prose are no color.
+
+    `&#128512;` is a rich-text label's character reference rather than a
+    color, a nine-character run is no six-digit color, and a docstring is
+    prose; a stylesheet interpolating a theme constant is the form PL-2CS8
+    asks for, and one joined to it with `+` that opens with an id selector
+    is a stylesheet rather than a color declared outside the theme.
+    """
+    view = VIEW_SOURCE + (
+        "\n"
+        'TRANSPORT_STYLE = "#transport { color: " + INK + "; }"\n'
+        "\n"
+        "def paint(w):\n"
+        '    """Draw the label in #D9E2EC, which the theme declares."""\n'
+        '    w.setStyleSheet(f"QLabel {{ color: {INK}; }}")\n'
+        '    w.setText("Smile &#128512;")\n'
+        '    w.setObjectName("run#D9E2EC1")\n'
+    )
+    root = _repo(tmp_path, view=view)
+
+    assert contrast_check.check_colors_live_in_the_theme(root) == ()
+    assert "TRANSPORT_STYLE" not in contrast_check.read_palette(root)
+
+
+def test_a_base_module_whose_path_git_would_quote_is_read(tmp_path: Path) -> None:
+    """`PL-PXT7`: the base lists its modules with `-z`, so a name git would quote is read.
+
+    Without it `git ls-tree` prints `"src/anesthesia_sim/app/vu\\303\\251.py"`,
+    quotes and octal escapes included, which names no module, and the base's
+    palette was read without `EXTRA` while the tree on disk held it.
+    """
+    root = _based(tmp_path, **{"vué": 'EXTRA = "#123456"\n'})
+
+    assert contrast_check.read_base(root, "main").palette["EXTRA"] == "#123456"
+    assert contrast_check.read_palette(root)["EXTRA"] == "#123456"

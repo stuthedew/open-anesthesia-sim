@@ -102,6 +102,12 @@ OPENS_A_COMMAND = frozenset(
     ("if", "then", "elif", "else", "while", "until", "do", "{", "!", "time")
 )
 
+#: The reserved words bash reads more words after before the command they lead,
+#: so that the command's head is a word further on: `time` its options, `coproc`
+#: the name it may take, and `function` the name it must (Bash Reference Manual
+#: §3.2.3 "Pipelines", §3.2.6 "Coprocesses", §3.3 "Shell Functions").
+LEADS = frozenset(("time", "coproc", "function"))
+
 
 class _Value:
     """What `dataclass(frozen=True)` gave the classes below, without importing `dataclasses`.
@@ -346,12 +352,23 @@ class _Grammar:
     `case` pattern's `)` closes nothing; inside `(( ))` a newline is a space
     and a `<<` a shift; and inside `[[ ]]` a newline ends no line, though the
     here-documents waiting on it start after it, as bash 5.2.21 reads them.
-    One per read, since a substitution's body is a list of its own.
+    A head is where bash 5.2.21 reads a reserved word (`reserved_word_acceptable`
+    in its parse.y), and this takes one after a control operator or a newline,
+    after a word in `OPENS_A_COMMAND`, after a function definition's `()`, and
+    past what a word in `LEADS` takes before its command - `time`'s `-p` and
+    then `--`, the name after `function`, and the one `coproc` may take
+    (`PL-0CJC`). Not yet after a closing word bash also names there, such as
+    `fi` or `]]` (`PL-9NMR`). One per read, since a substitution's body is a
+    list of its own.
     """
 
     def __init__(self, arithmetic: bool) -> None:
         #: Whether the next word heads a command, where bash reads a reserved word.
         self.head = True
+        #: The word in `LEADS` the last word was, read at a head, or `time -p`
+        #: once the `-p` after a `time` is read: what bash may still read
+        #: before the command it leads.
+        self.leading = ""
         #: Whether the last operator was a `(`, so that a `)` after it closes
         #: the `()` of a function definition, whose body heads a command.
         self.opened = False
@@ -375,6 +392,7 @@ class _Grammar:
         reserved = "" if quoted else text
         state = self.cases[-1] if self.cases else ""
         head, self.head, self.opened = self.head, False, False
+        leading, self.leading = self.leading, ""
         if self.arithmetic is not None:
             return False
         if state == "word":
@@ -401,7 +419,20 @@ class _Grammar:
         if head and reserved == "[[":
             self.conditional = True
             return False
-        self.head = head and reserved in OPENS_A_COMMAND
+        if leading == "time" and reserved == "-p":
+            # bash reads `-p` straight after `time`, and `--` after either, as
+            # its options (parse.y's `special_case_tokens`).
+            self.head, self.leading = True, "time -p"
+        elif leading in ("time", "time -p") and reserved == "--":
+            self.head = True
+        elif leading == "function" or (leading == "coproc" and reserved not in ("for", "select")):
+            # The word after the name heads the body `function` defines or the
+            # command `coproc` runs; a `for` or `select` there is that command.
+            self.head = True
+        elif head and reserved in LEADS:
+            self.head, self.leading = reserved != "function", reserved
+        else:
+            self.head = head and reserved in OPENS_A_COMMAND
         return False
 
     def pattern(self, operator: str) -> bool:
@@ -413,11 +444,12 @@ class _Grammar:
         if (operator, state) not in ((")", "pattern"), (")", "patterns"), ("(", "pattern")):
             return False
         self.cases[-1] = "clause" if operator == ")" else "patterns"
-        self.head, self.opened = operator == ")", False
+        self.head, self.opened, self.leading = operator == ")", False, ""
         return True
 
     def operator(self, operator: str) -> None:
         """Read one operator a pattern does not own: where the next word stands after it."""
+        self.leading = ""
         if self.arithmetic is not None or self.conditional:
             return
         if self.cases and self.cases[-1] == "clause" and operator in (";;", ";&", ";;&"):
@@ -580,7 +612,7 @@ class _Lexer:
                 resume = self.here_documents(index, stop)
                 if not self.nested:
                     self.breaks.append((index, resume))
-                grammar.head = True
+                grammar.head, grammar.leading = True, ""
                 index = resume
             elif char == "#" and begin < 0:
                 self.refuse("carries an unquoted `#`, which no admitted shape uses")
@@ -660,6 +692,8 @@ class _Lexer:
                 )
                 if not grammar.pattern(operator):  # a pattern's `)` neither nests nor closes
                     if closes and operator == ")" and not depth:
+                        if grammar.conditional:  # bash reads it inside the `[[`, and refuses it
+                            raise _Unreadable("has an unclosed `[[`")
                         flat.append(Operator(operator))
                         self.frames.pop()
                         # Bash reads the bodies still waiting after the line this closes on.
@@ -724,6 +758,9 @@ class _Lexer:
         finish()
         if self.introducer is not None:
             raise _Unreadable("has a `<<` with no word after it")
+        if grammar.conditional:
+            # Read on, it would take every line left for the words of its test.
+            raise _Unreadable("has an unclosed `[[`")
         self.frames.pop()
         unended = frame.carried + frame.pending
         if backquote and unended and not self.bash_c:
@@ -761,7 +798,7 @@ class _Lexer:
                 return index + 1
             if inner in "$`":
                 self.refuse(f"has a `{inner}` inside double quotes, where the shell expands it")
-                end = self.substitution(index, stop)
+                end = self.substitution(index, stop, quoted=True)
                 text.append(command[index:end])
                 spelled.append(self.kept(index, end))
                 index = end
@@ -777,14 +814,15 @@ class _Lexer:
             spelled.append(inner)
             index += 1
 
-    def substitution(self, index: int, stop: int) -> int:
+    def substitution(self, index: int, stop: int, quoted: bool = False) -> int:
         """The offset past a command substitution opening at `index`, having read its body.
 
         `index + 1` where none opens there. A `$(` ends at the `)` that closes
         it, read by the same rules as the command, so a `)` inside quotes, a
         subshell or a `case` pattern does not, and a `$((` bash reads as
         arithmetic is read as `(( ))` is; a backquote ends at the first
-        backquote no backslash escapes (Bash Reference Manual §3.5.4 "Command
+        backquote no backslash escapes, as `backquote` reads one, `quoted`
+        where double quotes hold it (Bash Reference Manual §3.5.4 "Command
         Substitution", §3.5.5 "Arithmetic Expansion"). A `${` is read to the
         `}` that closes it, as `parameter` reads one. A backslash-newline after
         the `$` is removed first, as bash removes it before it reads what the
@@ -793,7 +831,7 @@ class _Lexer:
         """
         command = self.command
         if command[index] == "`":
-            return self.backquote(index, stop)
+            return self.backquote(index, stop, quoted)
         if command[index] != "$":
             return index + 1
         after = _past_continuations(command, index + 1, stop)
@@ -820,10 +858,24 @@ class _Lexer:
         self.bodies.append((opening, clauses))
         return end
 
-    def backquote(self, index: int, stop: int) -> int:
+    def backquote(self, index: int, stop: int, quoted: bool = False) -> int:
         """The offset past the backquote closing the one at `index`, having read the command inside.
 
-        Bash ends one at the first backquote no backslash escapes.
+        Bash ends one at the first backquote no backslash escapes, and reads
+        the command inside once each backslash before a backquote, a `$` or
+        another backslash is removed - and before a `"`, where double quotes
+        hold it - which is how backquotes nest: in ``x=`p \\`p bq\\``` the
+        inner `p bq` is a command of its own (POSIX.1-2017 XCU §2.6.3,
+        §2.2.3). Read from the raw text, its backquotes were escaped
+        characters in two of `p`'s words (`PL-BHS7`). Bash 5.2.21 keeps that
+        `\\"` in a double-quoted string inside a `${...}` double quotes hold,
+        which is read here as any double-quoted string is.
+
+        A body with no such backslash is read where it stands. One with any is
+        read as a command of its own, by a reading of the text bash reads,
+        and what that reading found is put back where it stands in the
+        command: each of its characters covers the backslash removed before
+        it, so a span runs from a word's first written character to its last.
         """
         command = self.command
         close = index + 1
@@ -833,11 +885,56 @@ class _Lexer:
             raise _Unreadable("has an unclosed command substitution")
         sink: list[str] = []
         self.substituted.append(sink)
+        escapes = '$`\\"' if quoted else "$`\\"
+        body: list[str] = []
+        #: Where each character of the body starts in the command, and where it ends.
+        starts: list[int] = []
+        at = index + 1
+        while at < close:
+            if command[at] == "\\" and command[at + 1] in escapes:
+                body.append(command[at + 1])
+                starts.append(at)
+                at += 2
+                continue
+            body.append(command[at])
+            starts.append(at)
+            at += 1
+        starts.append(close)
         self.nested += 1
-        clauses, _ = self.read(index + 1, close, closes=False, flat=sink, backquote=True)
-        self.nested -= 1
-        self.bodies.append((index, clauses))
+        if len(body) == close - index - 1:
+            clauses, _ = self.read(index + 1, close, closes=False, flat=sink, backquote=True)
+            self.nested -= 1
+            self.bodies.append((index, clauses))
+            return close + 1
+        inner = _Lexer("".join(body), bash_c=self.bash_c)
+        inner.nested = self.nested
+        try:
+            clauses, _ = inner.read(0, len(body), closes=False, flat=sink, backquote=True)
+        finally:
+            self.nested -= 1
+            # What its reading found, put where it stands: a continuation by
+            # the backslash just before its newline, which is never escaped.
+            self.substituted += inner.substituted
+            self.joins += [starts[join + 1] - 1 for join in inner.joins]
+            self.removed += [(starts[first], starts[last]) for first, last in inner.removed]
+            self.bodies += [(starts[at], self.placed(found, starts)) for at, found in inner.bodies]
+            if inner.refusal is not None:
+                self.refuse(inner.refusal)
+        self.bodies.append((index, self.placed(clauses, starts)))
         return close + 1
+
+    def placed(self, clauses: tuple[Clause, ...], starts: list[int]) -> tuple[Clause, ...]:
+        """Clauses read from a backquote's body, their spans put where they stand in the command.
+
+        `starts` gives where each character of the body starts, and where the
+        last ends; each clause is spelled as the command spells it.
+        """
+        placed: list[Clause] = []
+        for clause in clauses:
+            spans = tuple((starts[first], starts[last]) for first, last in clause.spans)
+            spelled = self.command[spans[0][0] : spans[-1][1]] if spans else ""
+            placed.append(Clause(spelled, clause.tokens, spans))
+        return tuple(placed)
 
     def ansi_c_end(self, quote: int, stop: int) -> int:
         """The offset of the quote closing the `$'...'` whose opening quote stands at `quote`.
@@ -1165,14 +1262,15 @@ def shell_words(command: str) -> Reading:
     progress, and it runs to the end of its line; a `${...}` is part of its
     word, to the `}` that closes it; a `$( )`, a `<( )`, a `>( )` or a
     backquote, quoted or not, or inside a `${...}`, runs a command, so its body
-    is read by these same rules into `Reading.substitutions`; and `name=(`
-    opens an array assignment, one word to its `)`. A newline is read as bash
-    reads one, though no field holds one, because `script_lines` hands this a
-    script's lines: a backslash before it removes both, quoted or not, as long
-    as it is not in single quotes; unquoted, it ends a command as `;` does, and
-    the bodies of the here-documents a `<<` or `<<-` opened before it are
-    skipped to their delimiters, in logical lines where no part of the
-    delimiter is quoted (§3.1.2.1 "Escape Character", §3.6.6 "Here
+    is read by these same rules into `Reading.substitutions`, a backquote's
+    once the backslashes bash removes from it are gone (`PL-BHS7`); and
+    `name=(` opens an array assignment, one word to its `)`. A newline is
+    read as bash reads one, though no field holds one, because `script_lines`
+    hands this a script's lines: a backslash before it removes both, quoted or
+    not, as long as it is not in single quotes; unquoted, it ends a command as
+    `;` does, and the bodies of the here-documents a `<<` or `<<-` opened
+    before it are skipped to their delimiters, in logical lines where no part
+    of the delimiter is quoted (§3.1.2.1 "Escape Character", §3.6.6 "Here
     Documents"). Bash's compound commands bend that, and `_Grammar` follows
     them: a `case` pattern's `)` closes no `$(`, a newline inside `(( ))` or
     `$(( ))` is a space and a `<<` there a shift, and inside `[[ ]]` or an
@@ -1188,9 +1286,10 @@ def shell_words(command: str) -> Reading:
     redirection or a subshell is a shape nobody has argued for. So are an
     unquoted character outside `PLAIN` and a `$` or backtick inside double
     quotes, where the shell expands it. A command the shell cannot read - an
-    unbalanced quote, a trailing backslash, an unclosed substitution, a `<<`
-    with no word after it, a here-document its delimiter never ends - has no
-    clauses, and its refusal says why unless something earlier already had.
+    unbalanced quote, a trailing backslash, an unclosed substitution or `[[`,
+    a `<<` with no word after it, a here-document its delimiter never ends -
+    has no clauses, and its refusal says why unless something earlier already
+    had.
     """
     lexer = _Lexer(command, bash_c=False)
     try:
@@ -1209,8 +1308,8 @@ def flat_reading(command: str) -> FlatReading:
     than refusing it: a body its delimiter never ends runs to the end of the
     input, and a trailing backslash is a backslash, where bash 5.2.21 reads
     both with a warning or none (`PL-JNYL`). What bash refuses - an unbalanced
-    quote, an unclosed substitution, a `<<` with no word after it - leaves it
-    incomplete.
+    quote, an unclosed substitution or `[[`, a `<<` with no word after it -
+    leaves it incomplete.
     """
     lexer = _Lexer(command, bash_c=True)
     tokens: list[str] = []

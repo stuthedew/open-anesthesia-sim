@@ -2461,10 +2461,14 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(_since_filed(args, item, root, config))
     print()
     print(item.body.strip())
+    # An id on a gate entry the walker declined reads as placed by no section
+    # in the plan line above, so that line is qualified here, beside the other
+    # reads this answer went without (`PL-L4X3`).
+    status = _say_plan_unread(plan, render.PLACEMENT_SHORT)
     if line := _base_unread_line(args):
         print(line)
     _say_unread(args, flight)
-    return 0
+    return status
 
 
 def _say_held_elsewhere(args: argparse.Namespace, items: list[Item]) -> None:
@@ -2741,11 +2745,22 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
         print(render.format_excluded(flight.ids, _holdings(args)))
     # A gate entry carried on past its line is read short, and the scope with
     # it, so a batch drawn from that scope may be missing work (`PL-GMR6`).
-    unread = render.plan_unread_lines(plan.unread) if plan is not None else []
-    for line in unread:
-        print(line)
+    status = _say_plan_unread(plan)
     _say_unread(args, flight)
-    return 1 if unread else 0
+    return status
+
+
+def _say_plan_unread(plan: Wave | None, short: str = render.COUNT_SHORT) -> int:
+    """Name each plan list entry not read whole, as `wave` does; 1 where one was.
+
+    `short` is what the list read short costs the answer above it. The exit
+    status is the caller's, so an answer drawn from a partial plan is never
+    handed over at 0 (`PL-GMR6`, `PL-L4X3`).
+    """
+    lines = render.plan_unread_lines(plan.unread, short) if plan is not None else []
+    for line in lines:
+        print(line)
+    return 1 if lines else 0
 
 
 def _unscoped(root: Path, config: Config, plan: Wave | None) -> str:
@@ -2787,17 +2802,20 @@ def cmd_status(args: argparse.Namespace) -> int:
     ready = readiness(items, current, config.minor_classes)
     flight = _flight(args)
     interrupted = _interrupted(root, items, current)
+    plan = _plan(root, items, config)
     rendered = render.format_status(
         report,
         ready,
         flight,
-        _plan(root, items, config),
+        plan,
         interrupted=interrupted,
         cuts=_cuts(root, config, args) if ready.shippable and not interrupted else None,
     )
     print(rendered if rendered else "Nothing open.")
     _say_snapshot(args)
-    return 0
+    # `format_status` names a plan list read short beneath the survey, which
+    # may then have left a mark off an id the roadmap places (`PL-L4X3`).
+    return 1 if plan is not None and plan.unread else 0
 
 
 def cmd_next(args: argparse.Namespace) -> int:
@@ -2883,8 +2901,9 @@ def cmd_next(args: argparse.Namespace) -> int:
         _say_recurring(items, flight.ids)
         _say_lane_holdouts(items, flight, config, args, lane)
         _say_read_from_base(args, replaced)
+        status = _say_plan_unread(plan, render.PLACEMENT_SHORT)
         _say_unread(args, flight)
-        return 0
+        return status
     print(f"{render.open_count(report)} open. Suggested next{where}:\n")
     for index, pick in enumerate(picks, start=1):
         print(f"  {index}. {pick.describe()}\n")
@@ -2901,8 +2920,11 @@ def cmd_next(args: argparse.Namespace) -> int:
             f"{len(report.advisories)} grooming advisory(ies) pending; `docket check` to see them."
         )
     _say_read_from_base(args, replaced)
+    # The scope ranks every pick above, and an id on a gate entry the walker
+    # declined drops out of it, so the order may be wrong too (`PL-L4X3`).
+    status = _say_plan_unread(plan, render.PLACEMENT_SHORT)
     _say_unread(args, flight)
-    return 0
+    return status
 
 
 def _next_oldest(
@@ -2962,8 +2984,9 @@ def _next_oldest(
     _say_lane_holdouts(owed, flight, config, args, lane)
     _say_plan_pick(items, flight, config, args, scope, lane)
     _say_read_from_base(args, replaced)
+    status = _say_plan_unread(plan, render.PLACEMENT_SHORT)
     _say_unread(args, flight)
-    return 0
+    return status
 
 
 #: Why `_say_decisions` names rather than ranks, under bare `next` and under

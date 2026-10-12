@@ -122,9 +122,6 @@ ANSWER_LABEL = re.compile(r"(?:Answer(?:ed|s)|Decided|Question \d+ is answered)\
 #: marked recommendation as one too, since it is a question put to the owner.
 QUESTION_LABEL = re.compile(r"(?:Decision needed|Design round|Q(?:uestion )?\d+[.:])")
 
-# An asterisk CommonMark reads as no emphasis delimiter at all.
-_NOT_EMPHASIS = re.compile(r"(?<!\S)\*(?=\s)")
-
 #: The line a triage pass writes once it has asked an item touching the
 #: apparatus where it came from. Not a required section: `bin/docket triage`
 #: marks the items that owe one, and nothing refuses an item without it.
@@ -194,25 +191,26 @@ DANGLING_TOUCHES = (
 )
 
 
-def _emphasised(flat: str) -> Iterator[str]:
-    """Every run of text under `**bold**` or `*italic*` emphasis, flattened text in.
+def _paired(text: str) -> tuple[markdown.Emphasis, ...]:
+    """Each span of emphasis in one statement's `text`, its code spans read as literals.
 
-    Tokenised by splitting rather than matched by a regex, because the obvious
-    pattern - emphasis, anything, the word, anything, emphasis - matches the
-    *gap between two emphasised spans* just as happily as it matches one span,
-    so a brief saying "before recommending it" between two bold headings reads
-    as having recommended. Splitting on the delimiter cannot do that: odd
-    chunks are inside, even chunks are outside, and there is no third reading.
+    Paired by `markdown.emphasis`, as CommonMark 0.31.2 § 6.2 pairs them, so
+    the gap between two emphasised spans is never read as one - the obvious
+    regex, emphasis, anything, the word, anything, emphasis, reads "before
+    recommending it" between two bold headings as having recommended - and a
+    `*` CommonMark reads as no delimiter, a multiplication's, opens nothing
+    (`PL-47NJ`).
     """
-    bold = flat.split("**")
-    for index, chunk in enumerate(bold):
-        if index % 2:
-            yield chunk
-            continue
-        italic = chunk.split("*")
-        for position, part in enumerate(italic):
-            if position % 2:
-                yield part
+    return markdown.emphasis(text, [found.span() for found in CODE_SPAN_RE.finditer(text)])
+
+
+def _outermost(spans: Sequence[markdown.Emphasis]) -> Iterator[markdown.Emphasis]:
+    """The spans of `spans`, in `markdown.emphasis`'s order, that no other of them holds."""
+    reach = -1
+    for span in spans:
+        if span.start >= reach:
+            reach = span.end
+            yield span
 
 
 def _marks_recommendation(body: str) -> bool:
@@ -248,12 +246,16 @@ def _marks_recommendation(body: str) -> bool:
     `Recommendation:` between them (`PL-FP7J`). And with its containers'
     markers blanked (`_unmarked`), so a `*` bullet opens no emphasis and a
     marker wrapped inside a block quote is read past the `>` (`PL-YCJJ`).
+    Emphasis is paired as CommonMark pairs it (`_paired`), so the `*` of
+    `2 * 3` marks nothing (`PL-47NJ`).
     """
     text = _unmarked(body)
     for start, end in _statements(body):
-        flat = CODE_SPAN_RE.sub(" ", " ".join(text[start:end].split()))
-        if "Recommendation:" in flat or any(
-            re.search(r"recommend", span, re.IGNORECASE) for span in _emphasised(flat)
+        flat = " ".join(text[start:end].split())
+        prose = CODE_SPAN_RE.sub(_blanked, flat)
+        if "Recommendation:" in prose or any(
+            re.search(r"recommend", prose[span.start : span.end], re.IGNORECASE)
+            for span in _paired(flat)
         ):
             return True
     return False
@@ -312,38 +314,28 @@ def _answered_beneath(body: str) -> str | None:
 def _labels(body: str) -> Iterator[tuple[int, int, str]]:
     """Every heading and emphasised run in `body`: where it opens, where it ends, its words.
 
-    A heading is one `markdown` reads at the top level, ATX or setext, so a
-    heading line inside a comment or a fence is none and a setext heading is
-    one (`PL-HKHP`). An emphasised run is `_emphasised`'s tokenising kept
-    positional: split on the delimiter rather than matched by a regex, so the
-    gap between two emphasised runs is never read as one. Split per statement,
-    with its code spans blanked first, since neither emphasis nor a span runs
-    past where its statement ends, so a stray delimiter costs its own statement
-    and not the rest of the brief (`PL-FP7J`). Read with its containers'
-    markers blanked (`_unmarked`), so a label wrapped inside a block quote is
-    read past the `>` and a list bullet's `*` opens nothing (`PL-YCJJ`); a `*`
-    with whitespace after it and none before opens nothing either - a
-    multiplication - so it is blanked before the split rather than left to turn
-    the words after it into a label.
+    A heading is one `markdown` reads, ATX or setext, so a heading line inside
+    a comment or a fence is none and a setext heading is one (`PL-HKHP`), and
+    one inside a list item or a block quote is one as it is at the top level
+    (`PL-47NJ`). An emphasised run is one `_paired` pairs and no other run
+    holds, its words those between its delimiters with its code spans blanked.
+    Paired per statement, since neither emphasis nor a span runs past where its
+    statement ends, so a stray delimiter costs its own statement and not the
+    rest of the brief (`PL-FP7J`). Read with its containers' markers blanked
+    (`_unmarked`), so a label wrapped inside a block quote is read past the `>`
+    and a list bullet's `*` opens nothing (`PL-YCJJ`).
     """
     starts = _line_starts(body)
-    for heading in markdown.headings(split_lines(body)):
+    for heading in markdown.headings(split_lines(body), nested=True):
         title = CODE_SPAN_RE.sub(_blanked, heading.title)
         yield starts[heading.line], starts[heading.end], title
     unmarked = _unmarked(body)
     for start, end in _statements(body):
-        text = _NOT_EMPHASIS.sub(" ", CODE_SPAN_RE.sub(_blanked, unmarked[start:end]))
-        at = start
-        for index, chunk in enumerate(text.split("**")):
-            if index % 2:
-                yield at - 2, at + len(chunk) + 2, chunk
-            else:
-                inner = at
-                for position, part in enumerate(chunk.split("*")):
-                    if position % 2:
-                        yield inner - 1, inner + len(part) + 1, part
-                    inner += len(part) + 1
-            at += len(chunk) + 2
+        text = unmarked[start:end]
+        words = CODE_SPAN_RE.sub(_blanked, text)
+        for span in _outermost(_paired(text)):
+            inner = words[span.start + span.width : span.end - span.width]
+            yield start + span.start, start + span.end, inner
 
 
 def _blanked(literal: re.Match[str]) -> str:
@@ -431,36 +423,56 @@ def _sections(body: str, marker: str) -> list[tuple[int, str]]:
     """
     scan = fences.without_fences(body)
     statements = _statements(body)
+    unmarked = _unmarked(body)
     sections = []
     for heading in _heading_words(marker).finditer(scan):
         # Past the heading's own closing `**`, so that an elaborated heading is
         # not mistaken for the text under itself. A heading that never closes
         # has nothing under it by this reading, which is the answer that
-        # heading deserves. Its closer is looked for in the statement it opens
-        # and before the next heading-opened line, since emphasis pairs inside
-        # one paragraph (CommonMark 0.31.2 § 6.2): searched to the end of the
-        # brief, an unclosed heading took the next heading's words as its own
-        # text and passed whenever any bold text followed it (`PL-M890`). The
-        # statement rather than the line, because nine elaborated headings in
-        # the store close on their second line.
+        # heading deserves. Its closer is the run CommonMark pairs its opening
+        # `**` with (`_paired`), inside the statement it opens, since emphasis
+        # pairs inside one paragraph (CommonMark 0.31.2 § 6.2): searched to the
+        # end of the brief, an unclosed heading took the next heading's words
+        # as its own text and passed whenever any bold text followed it
+        # (`PL-M890`), and taken as the next `**` written, it took a run that
+        # could only open - the one before `**foo**` - for its closer
+        # (`PL-47NJ`). The statement rather than the line, because nine
+        # elaborated headings in the store close on their second line; the
+        # line where no statement of prose holds it. A heading a wrapped code
+        # span carries to a line's start is a literal, as one in a fence is,
+        # and no heading at all.
         line_end = scan.find("\n", heading.end())
-        bound = next(
-            (end for start, end in statements if start <= heading.start() < end),
-            len(scan) if line_end == -1 else line_end,
+        first, last = next(
+            ((start, end) for start, end in statements if start <= heading.start() < end),
+            (heading.start(), len(scan) if line_end == -1 else line_end),
         )
-        following = BRIEF_HEADING.search(scan, heading.end())
-        if following is not None:
-            bound = min(bound, following.start())
-        close = scan.find("**", heading.end(), bound)
-        start = len(body) if close == -1 else close + 2
+        text = unmarked[first:last]
+        literals = [found.span() for found in CODE_SPAN_RE.finditer(text)]
+        at = heading.start() - first
+        if any(opens <= at < closes for opens, closes in literals):
+            continue
+        start = next(
+            (
+                first + span.end
+                for span in markdown.emphasis(text, literals)
+                if span.strong and span.start == at
+            ),
+            len(body),
+        )
         end = BRIEF_HEADING.search(scan, start)
         sections.append((heading.end(), body[start : end.start() if end else len(body)].strip()))
     return sections
 
 
 def _heading_words(marker: str) -> re.Pattern[str]:
-    """A line opening with `marker`'s words, whatever the heading goes on to say."""
-    return re.compile(rf"^{re.escape(marker.removesuffix('.**'))}", re.MULTILINE)
+    """A line opening with `marker`'s words, whole, whatever the heading goes on to say.
+
+    Whole, so `**Done whenever**` is not `**Done when.**` and `**Problems with
+    the dose**` is not `**Problem.**`: matched by prefix, either opened the
+    required section it only begins like (`PL-47NJ`). A hyphen joins a word to
+    the next, so `**Problem-solving**` is not one either.
+    """
+    return re.compile(rf"^{re.escape(marker.removesuffix('.**'))}(?![\w-])", re.MULTILINE)
 
 
 def _stub_above_brief(body: str) -> str | None:
@@ -2926,6 +2938,17 @@ SEQUENCING_CUES = (
 CLOSED_PREREQUISITE_CUES = (*DECLARING_CUES, *SEQUENCING_CUES)
 
 
+#: A soft break and the whitespace either side of it, which the gaps below
+#: count as one character, the one space it renders as: CommonMark reads the
+#: line ending as a soft break and strips a paragraph continuation line's
+#: leading whitespace (0.31.2 § 6.8, § 4.8), where `_unmarked` leaves that
+#: indent, and a container's markers, as spaces. Counted a column at a time, a
+#: third-level list item's indent filled the 40-character gap between a cue
+#: and its id (`PL-BVBB`). Atomic, so a gap that fails does not retry it a
+#: space at a time.
+SOFT_BREAK = r"(?>[ \t]*\n[ \t]*)"
+
+
 def _cue_pattern(cues: tuple[str, ...]) -> re.Pattern[str]:
     """The cue, then the id within the same clause.
 
@@ -2938,10 +2961,12 @@ def _cue_pattern(cues: tuple[str, ...]) -> re.Pattern[str]:
     positives came from. A line break is not one: the item format wraps at 80
     columns, so a cue ending one line with its id on the next is one clause
     (`PL-WF35`), and `_prerequisite_matches` reads a statement at a time, which
-    is what keeps the window off a blank line and a block's start.
+    is what keeps the window off a blank line and a block's start. The break
+    and the indent around it count as one character of the gap (`SOFT_BREAK`).
     """
     return re.compile(
-        rf"\b(?:{'|'.join(cues)})\b(?:\.?\*\*)?[^.;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?",
+        rf"\b(?:{'|'.join(cues)})\b(?:\.?\*\*)?(?:{SOFT_BREAK}|[^.;:()\"|—\n]){{0,40}}?"
+        rf"`?({ID_PATTERN})`?",
         re.IGNORECASE,
     )
 
@@ -2960,6 +2985,9 @@ CLOSED_DEPENDENCY = _cue_pattern(CLOSED_PREREQUISITE_CUES)
 # real wait - and "not only depends on" states the prerequisite twice over.
 # One line break may fall between the two, where the prose wraps, and a blank
 # line may not: a paragraph ending on "no" says nothing about the next one.
+# Searched from the statement's start, since the pattern ends at the cue: a
+# look-back of 24 characters counted the indent of a wrapped line and never
+# reached the `not` ending the line above (`PL-BVBB`).
 NEGATED_CUE = re.compile(
     r"(?:\b(?:not|cannot|never|nothing|neither|nor|without|no(?:\s+longer)?)|n['’]t)"
     r"[*_]{0,2}(?:[ \t]+|[ \t]*\n[ \t]*)\Z",
@@ -2979,7 +3007,9 @@ NEGATED_CUE = re.compile(
 # declared and the second matched no cue - so an open prerequisite of a v0.4.1
 # item stayed invisible to `docket next` while the check reported clean.
 PROSE_DEPENDENCY_CONTINUATION = re.compile(
-    rf"\band\s+(?:(?:up)?on|by)\b(?:\.?\*\*)?[^.;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?", re.IGNORECASE
+    rf"\band\s+(?:(?:up)?on|by)\b(?:\.?\*\*)?(?:{SOFT_BREAK}|[^.;:()\"|—\n]){{0,40}}?"
+    rf"`?({ID_PATTERN})`?",
+    re.IGNORECASE,
 )
 
 # The same second blocker with no preposition repeated - "**Blocked by `PL-S6WW`
@@ -2989,7 +3019,8 @@ PROSE_DEPENDENCY_CONTINUATION = re.compile(
 # parenthetical between them is the gloss every id carries here (`PL-QS9H`'s
 # "**Sequenced after `PL-6580`** (strip ...) and `PL-F9TQ`").
 PROSE_DEPENDENCY_LIST = re.compile(
-    rf"(?:\.?\*\*)?(?:\s*\([^()]{{0,160}}\))?(?:\s*,\s*(?:and\s+)?|\s+and\s+)`?({ID_PATTERN})`?",
+    rf"(?:\.?\*\*)?(?:\s*\((?:{SOFT_BREAK}|[^()\n]){{0,160}}\))?"
+    rf"(?:\s*,\s*(?:and\s+)?|\s+and\s+)`?({ID_PATTERN})`?",
     re.IGNORECASE,
 )
 
@@ -3386,7 +3417,7 @@ def _prerequisite_matches(body: str, cue: re.Pattern[str]) -> list[re.Match[str]
         cued = [
             match
             for match in cue.finditer(text, start, end)
-            if not NEGATED_CUE.search(text, max(start, match.start() - 24), match.start())
+            if not NEGATED_CUE.search(text, start, match.start())
         ]
         if cued:
             cued += PROSE_DEPENDENCY_CONTINUATION.finditer(text, start, end)

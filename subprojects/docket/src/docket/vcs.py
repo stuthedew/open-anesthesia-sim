@@ -4481,6 +4481,19 @@ _BEHIND = "behind"
 _EQUAL = "equal"
 
 
+def _declines_a_line(text: str) -> bool:
+    """Whether the fold declines a line of a copy's front matter, as `_markdown_statements` does.
+
+    A block list, a block scalar or a line no field reads, each of which
+    `_front_matter_pairs` returns beside the fields rather than in them.
+    """
+    parsed = _front_matter_pairs(text)
+    if parsed is None:
+        return False
+    _pairs, block_lists, block_scalars, unread, _body = parsed
+    return bool(block_lists or block_scalars or unread)
+
+
 def _standing(base_text: str, ref_text: str) -> str:
     """Whether a ref's copy of one item carries anything the base's copy does not.
 
@@ -4520,7 +4533,13 @@ def _standing(base_text: str, ref_text: str) -> str:
       `PL-YBFB`'s and `PL-JW9J`'s branches when `PL-F7Z6` counted, 2026-10-05.
     - **`_AHEAD` otherwise.** Including two copies that each hold something
       the other lacks: the reader is handed a diff either way, and calling
-      that case ahead reports it rather than hiding it.
+      that case ahead reports it rather than hiding it. And a copy whose front
+      matter the fold declines a line of - a block list, a block scalar, a
+      line no field reads - since a field it holds that way arrives empty, and
+      no arm can say a copy holds nothing more from fields it never read: the
+      removal arm's statement read already declined one, and the closure arm
+      answered behind for a ref reopening an item with `touches:` written as a
+      block list one path longer (`PL-63Y5`).
 
     **What the closure case costs, counted rather than asserted.** It is wrong
     exactly where a branch *reopens* an item the base closed, and a reopening
@@ -4540,6 +4559,8 @@ def _standing(base_text: str, ref_text: str) -> str:
     """
     if base_text == ref_text:
         return _EQUAL
+    if _declines_a_line(base_text) or _declines_a_line(ref_text):
+        return _AHEAD
     base_fields, base_body = parse_front_matter(base_text)
     ref_fields, ref_body = parse_front_matter(ref_text)
     held = set(split_lines(base_body))
@@ -5396,12 +5417,20 @@ class OrphanedReport:
     `refs_read` and `unreadable` carry the same meaning they do for
     `StrandedReport` and `FlightReport`: what was compared, and which refs the
     checkout could not compare, so a clean answer from a container holding two
-    refs is not mistaken for one from a checkout holding twenty.
+    refs is not mistaken for one from a checkout holding twenty. The two are
+    disjoint: a ref with no fork point to compare against is not one of the
+    refs read (`PL-WDQN`).
     """
 
     branches: tuple[OrphanedBranch, ...] = ()
     refs_read: int = 0
     unreadable: tuple[str, ...] = ()
+    #: Whether this checkout is shallow, asked only where a ref went unread,
+    #: because it decides what would let that ref be read: a fetch brings a
+    #: truncated clone's fork point in, and nothing brings one into a history
+    #: that shares none with the base. `None` where git would not say, or
+    #: where nothing went unread and the question was never put (`PL-WDQN`).
+    shallow: bool | None = None
     #: Refs that match this report's rule but whose divergence from the base is
     #: duplicated history, so the content evidence cannot tell them from a
     #: merge. Kept apart from `branches` because the recipe a merged branch
@@ -5781,12 +5810,20 @@ def orphaned(
             branches.append(
                 OrphanedBranch(ref=name, landed=landed, outstanding=carried, commits=left)
             )
+    unread = tuple(sorted(refs.unreadable))
     return OrphanedReport(
         declined=run.reason,
         branches=tuple(branches),
-        refs_read=len(refs.candidates),
-        unreadable=tuple(sorted(refs.unreadable)),
+        # The refs this read compared, which a ref with no readable fork point
+        # is not. Counted with them, a shallow clone holding only such a ref
+        # printed the all-clear "across the 1 unmerged branch ref read" over
+        # the one ref it never read (`PL-WDQN`).
+        refs_read=len(refs.candidates) - len(unread),
+        unreadable=unread,
         rewritten=tuple(sorted(rewritten)),
+        # Asked of the caller's runner rather than `run`, so a git too old to
+        # answer leaves the remedy open instead of marking the reading partial.
+        shallow=is_shallow(root, runner=runner) if unread else None,
     )
 
 

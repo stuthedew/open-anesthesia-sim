@@ -1002,7 +1002,7 @@ def format_orphaned(report: OrphanedReport, carried: Mapping[str, int | None] | 
             f"across the {refs} read.",
             f"File content can miss a commit pushed after the merge: {_EXACT_LEFT_BEHIND}",
         ]
-        return "\n".join([*clear, *_rewritten_lines(report)])
+        return "\n".join([*clear, *_unread_lines(report), *_rewritten_lines(report)])
 
     lines = [
         *partial,
@@ -1045,8 +1045,59 @@ def format_orphaned(report: OrphanedReport, carried: Mapping[str, int | None] | 
         "These were judged by file content, which can miss such a commit or name one whose "
         f"change landed: {_EXACT_LEFT_BEHIND}"
     )
+    lines.extend(_unread_lines(report))
     lines.extend(_rewritten_lines(report))
     return "\n".join(lines)
+
+
+def _unread_lines(report: OrphanedReport) -> list[str]:
+    """The refs this report could not compare, and what would let it, or nothing.
+
+    A ref whose fork point from the default branch is not in this checkout's
+    history has no content split to judge, so `vcs.orphaned` names it in
+    `unreadable` and leaves it out of `refs_read`. Said in the clear case as
+    much as the finding one, because the clear line is a claim across the refs
+    read, and a shallow clone printed it over the one ref it never read
+    (`PL-WDQN`).
+
+    The remedy turns on why the fork point is missing, which is what
+    `shallow` is asked for. A shallow clone, which is how an agent container
+    starts, holds the ref without its history, and fetching that history
+    lets it be read. A full clone holding a ref with no merge base holds a
+    history that shares nothing git can find with the base, a rewrite or an
+    unrelated root, and no fetch reads that: handing it the fetch is the
+    advice `branch_state` once gave a rewritten clone, where it did nothing.
+    """
+    if not report.unreadable:
+        return []
+    one = len(report.unreadable) == 1
+    lines = [
+        "",
+        f"{_plural(len(report.unreadable), 'unmerged branch ref', 'unmerged branch refs')} "
+        "could not be compared with the default branch on the history this checkout holds, "
+        f"so {'it is' if one else 'they are'} not among the refs read and what "
+        f"{'its' if one else 'their'} commits carry is unknown:",
+        *(f"  {name}" for name in report.unreadable),
+    ]
+    fetch = (
+        f"`git fetch --unshallow {REMOTE}` brings the history in, and `bin/docket stranded` "
+        f"then reads {'it' if one else 'them'}"
+    )
+    unrelated = (
+        f"{'it shares' if one else 'they share'} no history git can find with the default "
+        "branch, as a rewritten or unrelated history does, and no fetch lets "
+        f"{'it' if one else 'them'} be read"
+    )
+    if report.shallow is True:
+        lines.append(f"This clone is shallow: {fetch}.")
+    elif report.shallow is False:
+        lines.append(f"This clone is not shallow, so {unrelated}.")
+    else:
+        lines.append(
+            f"Git would not say whether this clone is shallow. If it is, {fetch}; "
+            f"if not, {unrelated}."
+        )
+    return lines
 
 
 def _rewritten_lines(report: OrphanedReport) -> list[str]:
@@ -3186,6 +3237,9 @@ def format_status(
             lines.append(f"  {_reserved_refusal(offer, '`docket wave` for what is due')}")
         else:
             lines.append(f"  Next version would be {offer.version}.")
+    # The legend's blank says no section places an unmarked id, which a list
+    # read short makes untrue of an id on the line it declined (`PL-L4X3`).
+    lines += plan_unread_lines(plan.unread, PLACEMENT_SHORT) if plan is not None else []
     if unread := format_unread(flight):
         lines.append("")
         lines.append(unread)
@@ -3451,17 +3505,28 @@ def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
     return "\n".join(lines)
 
 
-def plan_unread_lines(unread: Sequence[str]) -> list[str]:
+#: What a list read short costs a count drawn from it: `wave`'s gate, `picks`'
+#: entries, `concurrent --in-scope`'s batch.
+COUNT_SHORT = "a count above may be short"
+#: And what it costs a surface that places ids rather than counting them -
+#: `status`'s marks, `show`'s plan line, `next`'s reasons and order - where an
+#: id on the line the walker declined reads as placed by no section (`PL-L4X3`).
+PLACEMENT_SHORT = "a placement above may be missing"
+
+
+def plan_unread_lines(unread: Sequence[str], short: str = COUNT_SHORT) -> list[str]:
     """Each list entry the plan was not read whole at, named the same way by every reader.
 
     `wave`, `picks` and `concurrent --in-scope` print it, so a count each gives
-    from a list read short says so in the same words.
+    from a list read short says so in the same words; `status`, `show` and
+    `next` print it with `PLACEMENT_SHORT`, since what they answer from the
+    list is where an id is placed (`PL-L4X3`).
     """
     if not unread:
         return []
     return [
         "",
-        "A list the plan is read from was not read whole, so a count above may be short:",
+        f"A list the plan is read from was not read whole, so {short}:",
         *(f"  {entry}" for entry in unread),
     ]
 

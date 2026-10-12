@@ -3,12 +3,14 @@ id: PL-6X0C
 title: gate-status-guard reads any argument whose name ends _check.py as the check an interpreter runs, so a script handed such a file as an argument is refused when piped, though no check runs; met in PL-R417's link 24 with a copy of test_doc_check.py
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: bash-guard-bound
 touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-11
+closed: 2026-10-12
+pr: 1434
 payoff: a scratch script handed a tools check or its test as an argument is no longer refused as running that check, so reading a check's own files costs no retry
 verify: grep -q 'def test_only_the_script_an_interpreter_runs_is_read_as_a_check' tests/unit/test_gate_status_guard.py
 reenters: PL-61FT
@@ -34,6 +36,11 @@ hook as a Bash payload: the command above is refused as running
 tools/glyph_check.py | head`, which runs `scratch.py`, is refused as running
 `tools/glyph_check.py`. `python3 tools/glyph_check.py | head` is refused
 correctly.
+
+**Met again 2026-10-12**, by the session writing the fix: `python3 -u show.py
+a_check.py && ...`, run in a scratch directory to confirm Python's option
+grammar, was refused as running `a_check.py`, and renaming the argument was
+the retry.
 
 **Why it matters.** Reading or comparing a check's own source or test with a
 scratch script is ordinary work beside these tools, and each such pipe costs

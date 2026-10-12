@@ -185,6 +185,53 @@ def test_a_required_heading_with_nothing_under_it_is_not_a_brief() -> None:
     assert not _has(messages, "brief is missing")
 
 
+def test_a_heading_word_is_matched_whole() -> None:
+    """`PL-47NJ`: a heading that only begins with a required heading's words is another heading.
+
+    Matched by prefix, `**Problems with the dose**` opened `**Problem.**` and
+    `**Done whenever**` opened `**Done when.**`, so a brief holding neither
+    section passed the `ready` gate. An elaborated heading still continues
+    past the words, which `PL-921W`'s test above holds.
+    """
+    body = "**Problems with the dose** x\n**Why it matters.** y\n**Done whenever** z\n"
+
+    assert _has(_errors(_item(body=body)), "brief is missing **Problem.**, **Done when.**")
+
+
+def test_an_unclosed_heading_pairs_with_no_run_that_cannot_close_it() -> None:
+    """`PL-47NJ`: a heading's closer is the run CommonMark pairs its opener with.
+
+    The `**` before `foo` can only open, so CommonMark 0.31.2 § 6.2 pairs it
+    with the run after `foo` and leaves the heading's opener literal. Taken as
+    the next `**` written, it closed the heading, and `foo** is bar.` stood as
+    the text under a heading that never closed: `PL-M890`'s shape, inside one
+    statement.
+    """
+    body = (
+        "**Problem.** x\n**Why it matters.** y\n"
+        "**Done when. The suite\npasses and **foo** is bar.\n"
+    )
+
+    assert _has(_errors(_item(body=body)), "brief has nothing under **Done when.**")
+
+
+def test_a_heading_a_code_span_wraps_to_a_line_start_is_no_heading() -> None:
+    """A literal, as a heading in a fence is, so it neither fills a section nor empties one.
+
+    `PL-JL2M`'s brief quotes a triage message whose code span wraps to put
+    `**Done when.**` at a line's start. Read as a heading CommonMark never
+    closes, it would be an empty one and fail a brief with the section filled.
+    """
+    body = (
+        "**Problem.** The reader sees `brief has nothing under: **Why it matters.**,\n"
+        "**Done when.**` on an item whose brief says both.\n\n"
+        "**Why it matters.** y\n\n"
+    )
+
+    assert _errors(_item(body=body + "**Done when.** It is read.\n")) == []
+    assert _has(_errors(_item(body=body)), "brief is missing **Done when.**")
+
+
 STUB_ABOVE_BRIEF = (
     "**Problem.** x\n\n"
     "**Why it matters.**\n\n"
@@ -759,6 +806,35 @@ def test_a_negated_blocked_by_is_not_read_as_a_prerequisite() -> None:
         assert _prose(text, blocker_status="done") == [], text
 
 
+def test_a_prerequisite_wrapped_before_its_id_is_read_at_any_list_depth() -> None:
+    """A soft break and its indent are one space of the gap, as CommonMark reads them (`PL-BVBB`).
+
+    The 40-character window between the cue and the id counted every column
+    of a continuation line's indent, so the clause read at the top level and
+    in a list item, and not in a third-level one, whose indent filled it.
+    markdown-it-py 4.2.0 gives each the same inline text: one line break, no
+    indent.
+    """
+    clause = "It waits on the outcome of the design round in\n{indent}`PL-0002`.\n"
+    for opening, indent in (("", ""), ("- ", "  "), ("- a\n  - b\n    - ", "      ")):
+        advisories = _prose("x\n\n" + opening + clause.format(indent=indent))
+        assert _has(advisories, "names PL-0002 as a prerequisite in prose"), opening
+
+
+def test_a_negation_wrapped_across_an_indented_line_is_read() -> None:
+    """The negation is read from the statement's start, so an indent does not hide it (`PL-BVBB`).
+
+    A look-back of 24 characters counted the continuation line's indent and
+    never reached the `not` ending the line above, so the sentence denying
+    the wait read as stating it, as it does not on one line. markdown-it-py
+    4.2.0 renders the two lines across one soft break, the indent stripped.
+    """
+    text = "This item is not\n                         blocked by `PL-0002`."
+
+    assert _prose(text) == []
+    assert _prose(text, blocker_status="done") == []
+
+
 def test_a_negation_reaches_only_the_cue_it_stands_before() -> None:
     """Earlier in the clause a negation is usually about something else, and
     "not only" states the prerequisite twice over."""
@@ -995,6 +1071,22 @@ def test_an_answer_that_is_not_the_briefs_own_claim_is_not_read() -> None:
     ):
         errors = _errors(_item(status="needs-decision", body=question + answer))
         assert not _has(errors, "beneath a recorded answer"), answer
+
+
+def test_an_answer_heading_inside_a_list_item_is_an_answer() -> None:
+    """`PL-47NJ`: a heading is one as CommonMark reads it, inside a container as at the top level.
+
+    The same `## Answers` heading was an answer at the top level and nothing
+    inside a list item or a block quote, so an answered item sat at
+    `needs-decision` unreported.
+    """
+    question = BRIEF + "\n**Decision needed.** Which way?\n\n"
+    for answer in (
+        "- ## Answers 2026-10-01\n\n  Take A.\n",
+        "> ## Answers 2026-10-01\n>\n> Take A.\n",
+    ):
+        errors = _errors(_item(status="needs-decision", body=question + answer))
+        assert _has(errors, 'beneath a recorded answer, "Answers 2026-10-01"'), answer
 
 
 def test_safety_work_may_not_sit_in_a_low_band() -> None:
@@ -4773,6 +4865,25 @@ def test_lacks_a_recommendation_does_not_mark_one() -> None:
 
     labelled = UNMARKED + "Recommendation: take the second.\n"
     report = analyze([_decision(body=labelled)], TODAY, RECOMMEND)
+
+    assert not _has(report.advisories, "marks no recommendation")
+
+
+def test_a_multiplication_does_not_mark_a_recommendation() -> None:
+    """`PL-47NJ`: a `*` with whitespace on both sides is no delimiter (CommonMark 0.31.2 § 6.2).
+
+    Split on the delimiter, the words between two multiplications read as
+    emphasised, so `recommend` between them marked a recommendation nobody
+    wrote. Paired as CommonMark pairs it, emphasis in the same statement still
+    marks one.
+    """
+    multiplied = UNMARKED + "The cost is 2 * 3 and we recommend nothing x * y here.\n"
+    report = analyze([_decision(body=multiplied)], TODAY, RECOMMEND)
+
+    assert _has(report.advisories, "marks no recommendation")
+
+    marked = UNMARKED + "The cost is 2 * 3, so *we recommend the second*.\n"
+    report = analyze([_decision(body=marked)], TODAY, RECOMMEND)
 
     assert not _has(report.advisories, "marks no recommendation")
 
