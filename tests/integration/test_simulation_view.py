@@ -2872,12 +2872,13 @@ def test_the_compartment_selection_outlives_the_legend_that_renders_it(
     (`.claude/rules/ui-areas.md`, test 2). While the boxes were the
     selection, the dashboard read it back from them, so a deleted legend
     left no selection to assemble the next frame from. Here the legend is
-    deleted outright, the dashboard draws again, and the frame still carries
-    the reader's choice - and a new legend handed the selection checks
-    exactly the curves the plot is drawing.
+    deleted outright, and the dashboard still draws the reader's choice -
+    and still takes a branch and a Reset, each of which holds the selection
+    to the new run count with no legend left to show it to. A legend
+    connected afterwards follows the selection like the first.
     """
 
-    view = _shown_view(application, SimulationController())
+    view = _case_view(application, _branched_case())
     legend = view._legend
 
     _set_trace_shown(application, view, RecordedQuantity.FAT, False)
@@ -2909,10 +2910,40 @@ def test_the_compartment_selection_outlives_the_legend_that_renders_it(
     assert frame.visible == chosen.shown
     assert view._concentration_chart.drawn_points(0, RecordedQuantity.FAT) == ((), ())
 
+    _take_fork(view, 60.0)
+
+    assert len(view.runs) == 2
+    assert view.runs[1]._run_name_text.isHidden() is False, "the fork stopped part way"
+    assert view.compartment_selection == chosen.with_run_count(2)
+
+    compared = view._concentration_chart.frame
+
+    assert compared is not None
+    assert compared.visible == view.compartment_selection.shown
+
+    view.runs[0]._reset_button.click()
+    _settle(application)
+
+    assert len(view.runs) == 1
+    assert view.compartment_selection == chosen.with_run_count(2).with_run_count(1)
+
     renderer = TraceLegend()
     renderer.show_selection(view.compartment_selection)
+    view.compartment_selection_changed.connect(renderer.show_selection)
+    renderer.compartment_requested.connect(view._handle_compartment_request)
 
-    assert renderer.shown == frame.visible
+    assert renderer.shown == view.compartment_selection.shown
+
+    renderer.set_compartment_shown(RecordedQuantity.FAT, True)
+    application.processEvents()
+
+    assert RecordedQuantity.FAT in view.compartment_selection.shown
+    assert renderer.shown == view.compartment_selection.shown
+
+    drawn = view._concentration_chart.frame
+
+    assert drawn is not None
+    assert drawn.visible == renderer.shown
 
 
 def test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it(

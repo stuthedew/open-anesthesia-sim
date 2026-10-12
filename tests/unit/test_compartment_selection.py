@@ -9,6 +9,8 @@ longest-standing compartment making room for it. The second is checked
 against every selection a reader can reach, not a handful of examples.
 """
 
+import subprocess
+import sys
 from collections import deque
 from dataclasses import FrozenInstanceError
 from functools import cache
@@ -310,3 +312,24 @@ def test_a_run_count_the_dashboard_cannot_draw_is_refused(run_count: int) -> Non
 
     with pytest.raises(ValueError, match=f"1 to {MAX_DISPLAYED_RUNS} runs"):
         INITIAL_COMPARTMENT_SELECTION.with_run_count(run_count)
+
+
+def test_importing_the_selection_loads_no_toolkit() -> None:
+    """The selection is a value the dashboard holds, so it loads no widget library.
+
+    Asserted of everything the module reaches when it is imported, in a fresh
+    interpreter, since this test process may already hold Qt from another test.
+    """
+
+    probe = (
+        "import sys\n"
+        "import anesthesia_sim.app.compartment_selection\n"
+        "loaded = sorted(name for name in sys.modules "
+        "if name.split('.')[0] in {'PySide6', 'pyqtgraph', 'shiboken6'})\n"
+        "print(loaded)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe], capture_output=True, text=True, check=True
+    )
+
+    assert result.stdout.strip() == "[]"

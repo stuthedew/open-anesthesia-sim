@@ -33,7 +33,7 @@ from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import Final
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QResizeEvent
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -226,6 +226,15 @@ class SimulationView(QWidget):
             what the coalescing rule (`PL-R2YM`) is about.
     """
 
+    compartment_selection_changed = Signal(object)
+    """Emitted with the compartment selection each time this view sets it.
+
+    On a reader's request, and on every change to the run set, which may
+    leave it as it was. Every legend showing this view's selection is
+    connected to it rather than called, so one that has been closed is
+    simply no longer told, and a second is told the same (`PL-VN6M`).
+    """
+
     def __init__(
         self,
         controllers: Sequence[SimulationController],
@@ -309,6 +318,8 @@ class SimulationView(QWidget):
         self._concentration_chart = ConcentrationChart()
         self._wash_in_chart = WashInChart()
         self._legend = TraceLegend()
+        # Before any run is placed, since placing one sets the selection.
+        self.compartment_selection_changed.connect(self._legend.show_selection)
         self._wash_in_legend = WashInLegend()
         self._time_base_dropdown = QComboBox()
         self._time_base_dropdown.setFixedWidth(TIME_BASE_SELECTOR_WIDTH)
@@ -328,9 +339,9 @@ class SimulationView(QWidget):
         )
         self._hidden_traces_text.setHidden(True)
         # Conditional text, and it earns a sentence on
-        # `.claude/rules/ui-reader.md`'s own test: it is the one state in
-        # which the legend's checked boxes and the plot's curves disagree by
-        # design, and no label, unit or axis title can carry that.
+        # `.claude/rules/ui-reader.md`'s own test: it says why boxes the
+        # reader checked have come unchecked, which no label, unit or axis
+        # title can carry.
         self._capped_traces_text = styled_label(
             "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
         )
@@ -763,7 +774,7 @@ class SimulationView(QWidget):
 
         comparing = len(self._runs) > 1
         self._compartment_selection = self._compartment_selection.with_run_count(len(self._runs))
-        self._legend.show_selection(self._compartment_selection)
+        self.compartment_selection_changed.emit(self._compartment_selection)
         self._wash_in_legend.set_run_count(len(self._runs))
 
         for index, run in enumerate(self._runs):
@@ -1225,7 +1236,7 @@ class SimulationView(QWidget):
         """
 
         self._compartment_selection = self._compartment_selection.with_compartment(quantity, shown)
-        self._legend.show_selection(self._compartment_selection)
+        self.compartment_selection_changed.emit(self._compartment_selection)
         self.present(False)
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.

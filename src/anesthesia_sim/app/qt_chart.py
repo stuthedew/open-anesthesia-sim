@@ -1734,7 +1734,7 @@ class TraceLegend(QWidget):
         return self._selection.run_count
 
     def set_compartment_shown(self, quantity: RecordedQuantity, shown: bool) -> None:
-        """Show or hide one compartment, by exactly the route a reader's click takes.
+        """Show or hide one compartment, by the route a reader's click takes through the legend.
 
         Which makes it a request: the box moves, `compartment_requested` is
         emitted, and the box ends showing what the selection's owner answers
