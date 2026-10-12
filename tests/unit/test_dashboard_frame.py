@@ -20,8 +20,11 @@ the samples the fixture wrote, so the test asserts the frame's reading of
 those samples rather than the sampler's column placement.
 """
 
+import json
+import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from importlib.resources import files
 from typing import Any
 
 import pytest
@@ -114,6 +117,7 @@ from anesthesia_sim.app.dashboard_frame import (
     no_traces_shown,
     notice,
     off_scale_notice,
+    offered_range,
     readout_columns,
     readout_row_width,
     readouts,
@@ -159,6 +163,7 @@ from anesthesia_sim.app.run_series import (
     DrawnWindow,
     RecordedQuantity,
 )
+from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
@@ -170,6 +175,7 @@ from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
     MacAwakeReference,
     load_agent_parameters,
+    parse_breathing_circuit_parameters,
 )
 from anesthesia_sim.core.run_definition import DisplayState
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, MINIMUM_SIMULATION_STEP_S
@@ -309,6 +315,10 @@ def _snapshot(
     agent_id: str = _DEFAULT_AGENT,
     agent_display_name: str = "Sevoflurane",
     max_delivered_concentration_percent: float = 8.0,
+    accepted_fresh_gas_flow_range_l_min: tuple[float, float] = (
+        MINIMUM_FRESH_GAS_FLOW_L_MIN,
+        MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    ),
     agent_mac_percent: float | None = None,
     agent_mac_awake: MacAwakeReference | None = None,
     control_timeline: tuple[ControlChange, ...] = (),
@@ -352,6 +362,7 @@ def _snapshot(
         agent_mac_awake=agent_mac_awake,
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=FreshGasFlow(4.0),
+        accepted_fresh_gas_flow_range_l_min=accepted_fresh_gas_flow_range_l_min,
         delivered_concentration_percent=Percent(8.0),
         alveolar_ventilation_l_min=AlveolarVentilation(4.0),
         cardiac_output_l_min=CardiacOutput(5.0),
@@ -1224,7 +1235,10 @@ def test_the_sliders_span_the_supported_input_ranges() -> None:
     Equality in both directions: a slider reaching past a supported maximum
     hands the reader a setting `core/` refuses, and one stopping short
     silently narrows the reachable domain below what the reference gates
-    were driven at (`PL-0MLQ`).
+    were driven at (`PL-0MLQ`). The fresh gas flow's envelope is the whole
+    of its range here because the shipped machine profile declares no
+    deliverable range; one that declares a range narrows it
+    (`test_the_fresh_gas_flow_control_narrows_to_a_declared_machine_range`).
     """
 
     settings = _settings_by_control(SimulationController().snapshot())
@@ -1281,6 +1295,149 @@ def test_every_slider_endpoint_is_a_setting_the_core_accepts() -> None:
                     f"the core refused {applied}, an endpoint of a slider the interface "
                     f"offers: {error}"
                 )
+
+
+def _controller_on_a_machine_declaring(
+    monkeypatch: pytest.MonkeyPatch, minimum_l_min: float, maximum_l_min: float
+) -> SimulationController:
+    """A controller whose machine profile declares a deliverable fresh gas flow range.
+
+    The shipped profile declares none, so the run is built from that file with
+    the range added and nothing else changed, parsed as the loader parses it,
+    and handed to `AgentUptakeSystem.for_agent()` by replacing the loader it
+    calls - the route `tests/unit/test_circuit.py` hands it another profile by,
+    until `PL-2FZ9` lets a run name its machine. The shipped profile opens the
+    run at 4.0 L/min, so each range here holds that flow.
+    """
+
+    payload = json.loads(
+        files("anesthesia_sim.data.machines")
+        .joinpath("reference_circle_system.json")
+        .read_text(encoding="utf-8")
+    )
+    payload["deliverable_fresh_gas_flow_range"] = {
+        "minimum_l_min": minimum_l_min,
+        "maximum_l_min": maximum_l_min,
+    }
+    machine = parse_breathing_circuit_parameters(payload)
+    monkeypatch.setattr(uptake_system, "load_reference_circle_system_parameters", lambda: machine)
+
+    return SimulationController()
+
+
+def test_the_fresh_gas_flow_control_narrows_to_a_declared_machine_range(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A machine that cannot set what the model supports is not offered it (`PL-7CRY`).
+
+    The profile declares 0.5 to 8.0 L/min, inside the model's envelope at
+    both ends, so the control narrows at both. Read from a real controller
+    rather than a fixture snapshot, so the path is the one the interface
+    runs: profile, circuit, snapshot, control. Each end is held exact rather
+    than merely inside: the run accepts both and refuses the step past each,
+    in the machine's words, so the control is no narrower than the machine
+    either. The other two flows keep the model's envelope, which no machine
+    property bounds.
+    """
+
+    controller = _controller_on_a_machine_declaring(monkeypatch, 0.5, 8.0)
+    settings = _settings_by_control(controller.snapshot())
+    fresh_gas_flow = settings[ControlInput.FRESH_GAS_FLOW]
+    step = slider_value(1, fresh_gas_flow.decimals)
+
+    assert (fresh_gas_flow.minimum, fresh_gas_flow.maximum) == (0.5, 8.0)
+
+    for endpoint in (fresh_gas_flow.minimum, fresh_gas_flow.maximum):
+        controller.set_fresh_gas_flow(FreshGasFlow(endpoint))
+
+    for beyond in (fresh_gas_flow.minimum - step, fresh_gas_flow.maximum + step):
+        with pytest.raises(SimulationConfigurationError, match="outside what this machine"):
+            controller.set_fresh_gas_flow(FreshGasFlow(beyond))
+
+    assert (
+        settings[ControlInput.ALVEOLAR_VENTILATION].minimum,
+        settings[ControlInput.ALVEOLAR_VENTILATION].maximum,
+        settings[ControlInput.CARDIAC_OUTPUT].minimum,
+        settings[ControlInput.CARDIAC_OUTPUT].maximum,
+    ) == (
+        MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
+        MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+        MINIMUM_CARDIAC_OUTPUT_L_MIN,
+        MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+    )
+
+
+def test_a_declared_range_off_the_display_grid_offers_only_settings_inside_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A slider's ends are the steps just inside the range, never steps rounded past it.
+
+    A machine floored at 0.25 L/min is a plausible profile, and at the flow
+    control's one decimal the step nearest it is 0.2 L/min, which the machine
+    refuses; rounding half to even takes 8.75 to 8.8 the same way at the top.
+    So the floor is the first step above, 0.3, and the ceiling the last step
+    below, 8.7, each taken through the slider's own round trip and accepted.
+    """
+
+    controller = _controller_on_a_machine_declaring(monkeypatch, 0.25, 8.75)
+    fresh_gas_flow = _settings_by_control(controller.snapshot())[ControlInput.FRESH_GAS_FLOW]
+    decimals = fresh_gas_flow.decimals
+
+    assert (fresh_gas_flow.minimum, fresh_gas_flow.maximum) == (0.3, 8.7)
+
+    for endpoint in (fresh_gas_flow.minimum, fresh_gas_flow.maximum):
+        controller.set_fresh_gas_flow(
+            FreshGasFlow(slider_value(slider_position(endpoint, decimals), decimals))
+        )
+
+    for rounded_past in (0.2, 8.8):
+        with pytest.raises(SimulationConfigurationError, match="outside what this machine"):
+            controller.set_fresh_gas_flow(FreshGasFlow(rounded_past))
+
+
+def test_a_control_with_no_step_inside_its_range_fails_rather_than_offering_a_refused_one() -> None:
+    """No step to offer is a raise, not a slider collapsed onto a step outside the range.
+
+    A machine range narrower than one 0.1 L/min step and holding none is
+    implausible and is shipped by nothing, but the profile format admits it,
+    and the alternative is a plausible-looking control whose only setting the
+    run refuses. A raise on a refresh is stated as a halt
+    (`SimulationView.present`), and one while the dashboard is built stops it
+    opening.
+    """
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Fresh gas flow can offer no setting: no 0.1 L/min step lies inside 0.52 to 0.58 L/min"
+        ),
+    ):
+        setting_readouts(_snapshot(accepted_fresh_gas_flow_range_l_min=(0.52, 0.58)))
+
+
+@pytest.mark.parametrize(
+    ("minimum", "maximum", "decimals", "offered"),
+    (
+        # Whole steps are offered as they are, which is every shipped range.
+        (0.0, 10.0, FLOW_DISPLAY_DECIMALS, (0.0, 10.0)),
+        (0.0, 8.0, CONCENTRATION_DISPLAY_DECIMALS, (0.0, 8.0)),
+        # 0.3 and 0.7 are steps whose product with 10 is not a whole float;
+        # neither may be pushed off itself to the next step.
+        (0.3, 0.7, FLOW_DISPLAY_DECIMALS, (0.3, 0.7)),
+        # Ends between steps move inward, never outward.
+        (0.05, 9.95, FLOW_DISPLAY_DECIMALS, (0.1, 9.9)),
+        (0.25, 8.75, FLOW_DISPLAY_DECIMALS, (0.3, 8.7)),
+        # A one-step range, and a range holding no step at all.
+        (2.0, 2.0, FLOW_DISPLAY_DECIMALS, (2.0, 2.0)),
+        (0.52, 0.58, FLOW_DISPLAY_DECIMALS, None),
+    ),
+)
+def test_offered_range_keeps_both_ends_inside_the_range(
+    minimum: float, maximum: float, decimals: int, offered: tuple[float, float] | None
+) -> None:
+    """The slider's ends are steps, inside the range, and as wide as the range allows."""
+
+    assert offered_range(minimum, maximum, decimals) == offered
 
 
 def test_slider_drag_labels_match_the_readouts_beside_them() -> None:

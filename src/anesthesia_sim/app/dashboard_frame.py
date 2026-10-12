@@ -80,10 +80,8 @@ from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
-    MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
-    MINIMUM_FRESH_GAS_FLOW_L_MIN,
     CaseInstant,
 )
 
@@ -152,8 +150,11 @@ EMPTY_METRIC_SECONDARY_VALUE: Final = " "
 # agent-specific (the real vaporizer's capability) and comes from
 # `SimulationSnapshot.max_delivered_concentration_percent` rather than from a
 # constant; the floor is here because it is a percent where the core's own
-# guard is a fraction. The three flow ranges are `core/supported_ranges.py`'s
-# and are imported, never restated (`PL-0MLQ`).
+# guard is a fraction. The flow ranges are `core/`'s and are never restated:
+# ventilation's and cardiac output's are `core/supported_ranges.py`'s
+# constants, imported (`PL-0MLQ`), and the fresh gas flow's is the circuit's,
+# read from `SimulationSnapshot.accepted_fresh_gas_flow_range_l_min` because a
+# machine profile can narrow it (`PL-7CRY`).
 MIN_DELIVERED_CONCENTRATION_PERCENT: Final = 0.0
 
 # The four status words. Four states, not two: a stopped run must never
@@ -929,9 +930,12 @@ class ParameterControl:
         decimals: The display resolution the slider steps at, from
             `formatting.py`, so the value applied to the model is exactly
             the value printed beside the slider (`PL-25KS`, decision D4).
-        minimum: The slider's floor.
-        maximum: The slider's ceiling, or None where it is the running
-            agent's own vaporizer maximum and comes from the snapshot.
+
+    The range is not here. Two of the four are instance state rather than
+    constants - the delivered dial's ceiling is the running agent's
+    vaporizer maximum, and the fresh gas flow's range is what the mounted
+    machine narrows the model's envelope to - so `setting_readouts` reads
+    every control's range from the snapshot it draws, in one table.
     """
 
     control: ControlInput
@@ -939,13 +943,9 @@ class ParameterControl:
     qualifier: str | None
     unit: str
     decimals: int
-    minimum: float
-    maximum: float | None
 
 
-# The four controls in panel order. The three flow ranges are the model's
-# own declaration (`core/supported_ranges.py`) so the interface offers
-# exactly the domain the verification gates cover (`PL-0MLQ`).
+# The four controls in panel order.
 PARAMETER_CONTROLS: Final[tuple[ParameterControl, ...]] = (
     ParameterControl(
         ControlInput.FRESH_GAS_FLOW,
@@ -953,35 +953,17 @@ PARAMETER_CONTROLS: Final[tuple[ParameterControl, ...]] = (
         "common gas outlet",
         "L/min",
         FLOW_DISPLAY_DECIMALS,
-        MINIMUM_FRESH_GAS_FLOW_L_MIN,
-        MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     ),
-    ParameterControl(
-        ControlInput.DELIVERED,
-        None,
-        None,
-        "%",
-        CONCENTRATION_DISPLAY_DECIMALS,
-        MIN_DELIVERED_CONCENTRATION_PERCENT,
-        None,
-    ),
+    ParameterControl(ControlInput.DELIVERED, None, None, "%", CONCENTRATION_DISPLAY_DECIMALS),
     ParameterControl(
         ControlInput.ALVEOLAR_VENTILATION,
         "Alveolar ventilation",
         None,
         "L/min",
         FLOW_DISPLAY_DECIMALS,
-        MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
-        MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     ),
     ParameterControl(
-        ControlInput.CARDIAC_OUTPUT,
-        "Cardiac output",
-        None,
-        "L/min",
-        FLOW_DISPLAY_DECIMALS,
-        MINIMUM_CARDIAC_OUTPUT_L_MIN,
-        MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+        ControlInput.CARDIAC_OUTPUT, "Cardiac output", None, "L/min", FLOW_DISPLAY_DECIMALS
     ),
 )
 
@@ -1004,8 +986,9 @@ class SettingReadout:
             line the flow settings have no conversion for.
         unit: The unit of `value`.
         decimals: The display resolution the slider steps at.
-        minimum: The slider's floor, in `unit`.
-        maximum: The slider's ceiling, in `unit`.
+        minimum: The slider's floor, in `unit`: the lowest setting at the
+            slider's resolution that the run accepts (`offered_range`).
+        maximum: The slider's ceiling, in `unit`: the highest such setting.
         value: The setting in force, in `unit`.
         value_text: The setting as the readout beside the slider prints it.
         secondary: The same setting in the second display unit - the
@@ -1037,7 +1020,12 @@ def setting_readouts(snapshot: SimulationSnapshot) -> tuple[SettingReadout, ...]
 
     Raises:
         ValueError: If `agent_mac_percent` is not strictly positive
-            (`format_mac_multiple`, on the delivered dial's MAC line).
+            (`format_mac_multiple`, on the delivered dial's MAC line), or if
+            no step of a control's display resolution lies inside the range
+            the run accepts for it (`offered_range`): a control that can
+            offer no accepted setting fails visibly rather than offering a
+            refused one. No shipped range reaches it; a machine profile
+            declaring a fresh gas flow range narrower than one step could.
     """
 
     delivered = snapshot.delivered_partial_pressure_fraction
@@ -1046,9 +1034,33 @@ def setting_readouts(snapshot: SimulationSnapshot) -> tuple[SettingReadout, ...]
         ControlInput.ALVEOLAR_VENTILATION: snapshot.alveolar_ventilation_l_min,
         ControlInput.CARDIAC_OUTPUT: snapshot.cardiac_output_l_min,
     }
+    # The range the run accepts for each control, read this tick. The model's
+    # envelopes are `core/supported_ranges.py`'s, so the interface offers the
+    # domain the verification gates cover and no wider (`PL-0MLQ`); the fresh
+    # gas flow's is that envelope narrowed by the mounted machine, as the
+    # circuit states it (`PL-7CRY`), and the dial's ceiling is the running
+    # agent's vaporizer maximum.
+    accepted_ranges: dict[ControlInput, tuple[float, float]] = {
+        ControlInput.FRESH_GAS_FLOW: snapshot.accepted_fresh_gas_flow_range_l_min,
+        ControlInput.DELIVERED: (
+            MIN_DELIVERED_CONCENTRATION_PERCENT,
+            snapshot.max_delivered_concentration_percent,
+        ),
+        ControlInput.ALVEOLAR_VENTILATION: (
+            MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
+            MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+        ),
+        ControlInput.CARDIAC_OUTPUT: (MINIMUM_CARDIAC_OUTPUT_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN),
+    }
     settings: list[SettingReadout] = []
 
     for control in PARAMETER_CONTROLS:
+        name = (
+            control.name
+            if control.name is not None
+            else format_delivered_label(snapshot.agent_display_name)
+        )
+
         if control.control is ControlInput.DELIVERED:
             value: float = snapshot.delivered_concentration_percent
             value_text = format_percent(delivered)
@@ -1058,23 +1070,27 @@ def setting_readouts(snapshot: SimulationSnapshot) -> tuple[SettingReadout, ...]
             value_text = format_flow(value)
             secondary = ""
 
+        accepted_minimum, accepted_maximum = accepted_ranges[control.control]
+        offered = offered_range(accepted_minimum, accepted_maximum, control.decimals)
+
+        if offered is None:
+            raise ValueError(
+                f"{name} can offer no setting: no {slider_value(1, control.decimals)} "
+                f"{control.unit} step lies inside {accepted_minimum} to {accepted_maximum} "
+                f'{control.unit}, the range the run accepts (docs/MODEL.md, "Supported '
+                'input ranges")'
+            )
+
+        minimum, maximum = offered
         settings.append(
             SettingReadout(
                 control=control.control,
-                name=(
-                    control.name
-                    if control.name is not None
-                    else format_delivered_label(snapshot.agent_display_name)
-                ),
+                name=name,
                 qualifier=control.qualifier if control.qualifier is not None else "",
                 unit=control.unit,
                 decimals=control.decimals,
-                minimum=control.minimum,
-                maximum=(
-                    control.maximum
-                    if control.maximum is not None
-                    else snapshot.max_delivered_concentration_percent
-                ),
+                minimum=minimum,
+                maximum=maximum,
                 value=value,
                 value_text=value_text,
                 secondary=secondary,
@@ -1113,6 +1129,45 @@ def slider_value(position: int, decimals: int) -> float:
     """
 
     return position / 10.0**decimals
+
+
+def offered_range(minimum: float, maximum: float, decimals: int) -> tuple[float, float] | None:
+    """The floor and ceiling a slider stepping at `decimals` offers inside a closed range.
+
+    A slider steps at its display resolution (`slider_position`), so its
+    floor and ceiling are the steps nearest the range's ends from inside it.
+    Rounding an end to the nearest step instead can land outside the range,
+    on a setting the run refuses: a machine floored at 0.25 L/min would be
+    offered 0.2 L/min at one decimal (`PL-7CRY`). An end that is already a
+    step is that step, so a range declared in whole steps - every shipped
+    one - is offered exactly. Each step is compared as the value the slider
+    emits for it, `slider_value`, so the comparison is the one the run's
+    own guard makes on that value.
+
+    Args:
+        minimum: The lowest setting the run accepts, in the control's unit.
+        maximum: The highest, in the same unit.
+        decimals: The control's `SettingReadout.decimals`.
+
+    Returns:
+        The lowest and highest step inside the range, in the control's unit,
+        or None where no step lies inside it at all.
+    """
+
+    lowest = slider_position(minimum, decimals)
+
+    if slider_value(lowest, decimals) < minimum:
+        lowest += 1
+
+    highest = slider_position(maximum, decimals)
+
+    if slider_value(highest, decimals) > maximum:
+        highest -= 1
+
+    if lowest > highest:
+        return None
+
+    return (slider_value(lowest, decimals), slider_value(highest, decimals))
 
 
 @dataclass(frozen=True, slots=True)
