@@ -3,12 +3,13 @@ id: PL-1DP1
 title: fraction_from_percent and percent_from_fraction take a bare float as given, so percent_from_fraction(0.5) from a caller mypy does not read is a Percent of 50.0 and format_percent(0.5) prints 50.00% whether the 0.5 was a fraction or a 0.5% dial, where every place a concentration is held refuses a bare float since PL-4R3W; whether the two crossings require the checked form too, or keep taking a number nobody built because it carries no form to refuse it by, is undecided (found building PL-SWD1, which refuses the other form and every other checked quantity there)
 priority: P1
 effort: S
-status: needs-decision
+status: ready
 classes: safety, defect
 feature: parse-dont-validate
 touches: src/anesthesia_sim/core/concentration.py, tests/unit/test_concentration.py
 added: 2026-10-11
 payoff: a concentration crossing between fraction and percent is either proven to be the form it claims or refused, so a 0.5% setting can never be shown as 50%
+verify: grep -q 'def test_fraction_from_percent_refuses_a_bare_float' tests/unit/test_concentration.py
 ---
 
 **Problem.** fraction_from_percent and percent_from_fraction take a bare float as given, so percent_from_fraction(0.5) from a caller mypy does not read is a Percent of 50.0 and format_percent(0.5) prints 50.00% whether the 0.5 was a fraction or a 0.5% dial, where every place a concentration is held refuses a bare float since PL-4R3W; whether the two crossings require the checked form too, or keep taking a number nobody built because it carries no form to refuse it by, is undecided (found building PL-SWD1, which refuses the other form and every other checked quantity there)
@@ -38,10 +39,12 @@ how many of the 14 call sites under `src/` hand a bare float at runtime
 none does, refusing costs a docstring; if some do, each wraps its value where
 it is built, which is where its form is known.
 
-**Done when.** Either the two conversions refuse a bare float with a `TypeError`
-naming the constructor to use, with a test per direction, and every caller
-passes a checked value; or the decision to keep taking one is recorded in the
-module docstring with its reason.
+**Done when.** The two conversions refuse a bare float with a `TypeError`
+naming the constructor to use, with a test per direction in
+`tests/unit/test_concentration.py`; every caller under `src/` passes a checked
+value (the count below found all 13 already do); and the module docstring and
+both function docstrings say the bare float is refused rather than taken as
+given.
 
 **Counted 2026-10-12, in the first batched design round, against
 `origin/main` at 919ad967** - the count the recommendation above asked for.
@@ -75,3 +78,11 @@ number nobody built carries no form to refuse it by" - is also the reason it
 cannot be converted safely. The count that would have changed this, a call
 site handing a bare float at runtime, came back zero. Joined this batch at the
 owner's "Add it" on the coordinator's card, 2026-10-12 12:31Z.
+
+**Answered** (project owner, 2026-10-12, ratified, over keeping a bare float
+as `PL-4R3W` chose and the module docstring records): refuse it. "Agree with
+recs", in this thread at 12:51Z. `fraction_from_percent` requires a `Percent`
+and `percent_from_fraction` a `Fraction`, each refusing anything else with a
+`TypeError` naming the constructor to use; the module docstring's sentence
+that a bare `float` is taken as given goes with it, and the count above says
+no caller changes.

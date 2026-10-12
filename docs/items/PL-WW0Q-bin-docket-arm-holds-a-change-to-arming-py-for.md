@@ -3,12 +3,14 @@ id: PL-WW0Q
 title: bin/docket arm holds a change to arming.py for a read but arms one to what its answer is read through - vcs.changed_path_args and default_base, claims.holdings, cli.cmd_arm and the test_arm_ tests - so the gate can still be loosened unread from beside it
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect
 feature: review-hold
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-25
+payoff: a pull request that could loosen arm's answer through a pinned test waits on the owner's read, at about one read in ninety docket commits
+verify: grep -q 'def test_arm_holds_a_change_to_an_existing_test_arm_test' subprojects/docket/tests/test_cli.py
 reenters: PL-K6B2
 recurrences: 2026-10-05 PL-552M withdrawn 2026-10-05 PL-552M
 ---
@@ -47,10 +49,26 @@ recommendation stands: (c)**, the one option that closes the loosening route
 at a cost his 2026-10-12 rule can bear. It goes to him rather than being
 decided here because it reopens `PL-SQTR`'s recommendation 2, a ratified
 decision, which `CLAUDE.md` § "Working with the project owner" says to put
-back to him on ordinary evidence. His yes lifts the pause on new workflow
-mechanisms for it (`PL-6Q9L`); on 2026-10-12 `PL-8QMD` is the one open item
-carrying `generator: live`, and its pull request `#1439` is open.
+back to him on ordinary evidence. [superseded 2026-10-12: `#1439` merged before the answer came, so no open
+item carries `generator: live` and the build needs no lift] His yes lifts the
+pause on new workflow mechanisms for it (`PL-6Q9L`); on 2026-10-12 `PL-8QMD`
+is the one open item carrying `generator: live`, and its pull request `#1439`
+is open.
 
-**Done when.** `arm` holds for a read a pull request that could loosen its answer by the route the decision picks, a test in `subprojects/docket/tests/test_cli.py` holds it, and `docs/maintainer.md` says what the hold covers.
+**Done when.** `arm` holds for a read a pull request that changes or deletes
+an existing `test_arm_` test in `subprojects/docket/tests/test_cli.py`; each
+path class the read has broken on - a rename across the boundary, a non-ASCII
+path, a deletion - is pinned there in a `test_arm_` test through real git; a
+test holds the hold itself; and `docs/maintainer.md` says what the hold
+covers: `arming.py` and the tests that pin its answers, not its inputs.
 
 **Generator check.** Re-entry of `PL-K6B2` (closed 2026-09-25), whose Worked paragraph names this gap and whose `recurrences:` already records this capture. The fact misread is which code decides `arm`'s answer: `arming.py` alone, or everything it reads through. That is `PL-SQTR` recommendation 2's wording, and no head's `misread:` states it.
+
+**Answered** (project owner, 2026-10-12, ratified, over (a) holding `vcs.py`,
+`claims.py`, `cli.py` and `test_cli.py` as the gate, (b) holding `vcs.py` and
+`claims.py` alone, and (d) leaving it): (c). "Agree with recs", in this
+thread at 12:51Z. It reopens and replaces `PL-SQTR`'s recommendation 2 for
+this one route: the gate's read now reaches the pinned answers in `test_arm_`
+tests as well as `arming.py`. His yes was to lift the pause on new workflow
+mechanisms for it (`PL-6Q9L`); by the time it came `#1439` had merged and no
+open item carries `generator: live`, so the build needs no lift.
