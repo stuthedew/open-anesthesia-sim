@@ -59,7 +59,15 @@ ROOT = Path(__file__).resolve().parent.parent
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.frontmatter import Unread, closing, closing_quote, keys, uncommented  # noqa: E402
+from docket.frontmatter import (  # noqa: E402
+    Unread,
+    closing,
+    closing_quote,
+    is_item,
+    keys,
+    uncommented,
+    unquote,
+)
 from docket.lines import split_lines  # noqa: E402
 
 RULES_DIR = Path(".claude") / "rules"
@@ -71,14 +79,6 @@ DEAD_PREFIX = "./"
 #: Where a glob stops being a real path. Everything before the first of these
 #: is literal, and so is answerable against the tree.
 GLOB_CHARS = "*?["
-
-
-def _unquote(value: str) -> str:
-    """One frontmatter scalar, with the quotes these files write it in."""
-    value = value.strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-        return value[1:-1]
-    return value
 
 
 def frontmatter(text: str) -> list[str] | None:
@@ -153,7 +153,7 @@ def entries(block: list[str]) -> list[str]:
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
-        if not stripped.startswith("- "):
+        if not is_item(stripped):
             raise Unreadable(
                 f"`{stripped}` under `paths:` is no `- ` item, so YAML joins it into the "
                 "value above it; write each glob on one line, as a `- ` item"
@@ -180,11 +180,14 @@ def entries(block: list[str]) -> list[str]:
 def _glob(node: str, where: str) -> str:
     """The glob one line's node holds, without its comment or its quotes (YAML 1.2.2 § 6.6).
 
-    A plain scalar, or a quoted one its own line closes. Any other node raises
-    `Unreadable` with `where` naming it: a flow collection or a block scalar,
-    which this reader does not take, a quoted glob its line leaves open, which
-    YAML carries onto the lines below even where they open with `#`, and an item
-    holding nothing (`PL-BM8T`).
+    A plain scalar, or a quoted one its own line closes, read as
+    `docket.frontmatter.unquote` reads it: `'it''s'` is `it's` and `"a\\"b"` is
+    `a"b`, where this reader kept both quotes of the first and the backslash of
+    the second (`PL-8MHZ`). Any other node raises `Unreadable` with `where`
+    naming it: a flow collection or a block scalar, which this reader does not
+    take, a quoted glob its line leaves open, which YAML carries onto the lines
+    below even where they open with `#`, one followed by more than a comment or
+    holding an escape YAML refuses, and an item holding nothing (`PL-BM8T`).
     """
     value = uncommented(node).strip()
     if value[:1] in ("[", "{"):
@@ -197,14 +200,25 @@ def _glob(node: str, where: str) -> str:
             f"{where} is a block scalar, which this reader does not take; "
             "write each glob on one line, as a `- ` item"
         )
-    if value[:1] in ("'", '"') and closing_quote(value) < 0:
+    if not value:
+        raise Unreadable(f"{where} holds no glob; write one after the `- `, or drop the item")
+    if value[:1] not in ("'", '"'):
+        return value
+    end = closing_quote(value)
+    if end < 0:
         raise Unreadable(
             f"{where} opens a quoted glob its line does not close, so YAML carries "
             "it onto the lines below; close the quote on the glob's line"
         )
-    if not value:
-        raise Unreadable(f"{where} holds no glob; write one after the `- `, or drop the item")
-    return _unquote(value)
+    if end < len(value) - 1:
+        raise Unreadable(
+            f"{where} holds `{value[end + 1 :].strip()}` after its quoted glob, which YAML "
+            "refuses; end the item at the closing quote"
+        )
+    try:
+        return unquote(value)
+    except Unread as refused:
+        raise Unreadable(f"{where} holds a quoted glob YAML refuses: {refused}") from None
 
 
 def anchored(entry: str) -> str:
