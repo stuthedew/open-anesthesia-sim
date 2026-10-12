@@ -1,15 +1,26 @@
 ---
 id: PL-0F33
 title: Cut v0.5.23 from the 204 items finished since v0.5.22
-status: done
+status: untriaged
 resource: release-train
 added: 2026-10-11
-closed: 2026-10-12
-pr: 1422
 verify: grep -q "^version = \"0.5.23\"" pyproject.toml
 ---
 
 **Problem.** Cut v0.5.23 from the 204 items finished since v0.5.22
+
+**Reopened 2026-10-12, before its pull request merged**, at the project
+owner's note "See active pull requests less than 1422" (2026-10-11 23:58Z),
+read as: the release waits for the pull requests numbered below its own.
+`#1419` (`PL-74T0`) merged at 00:35Z and `#1420` (`PL-WXKD`) was running its
+checks; `#1424` (`PL-0FJ8`, `PL-QPN8`, `PL-08CR`) merged at 00:41Z, refusing a
+zero MAC in `core/` and rewriting a `data/` note. Next steps, once `#1420`
+merges: merge `origin/main`; re-run `make release VERSION=0.5.23` to take the
+eight items closed on `main` since the closure (`#1417`, `#1419`, `#1420`,
+`#1424`, `#1426`); re-run the trajectory comparison against v0.5.22 for
+`#1424`'s `core/` change; recount the row, the section and this title, with a
+`git mv` to the new slug; close again, run `bin/docket verify --self PL-0F33`,
+push, retitle the pull request and arm it on green.
 
 **Done 2026-10-12.** `make release VERSION=0.5.23` stamped the items finished
 since v0.5.22 and wrote `docs/releases/v0.5.23.md`. It was re-run three
