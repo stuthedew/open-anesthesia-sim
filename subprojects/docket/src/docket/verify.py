@@ -26,11 +26,13 @@ project, and that separation is what keeps a bare checkout able to use it.
 from __future__ import annotations
 
 import ast
+import configparser
 import os
 import re
 import subprocess
 import tempfile
 import time
+import tomllib
 import warnings
 from collections import Counter
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
@@ -263,9 +265,12 @@ def is_suppression_line(path: str, line: str) -> bool:
     marker split by a backslash or inside brackets - `@pytest.mark.\\` over
     `skip(...)` - holds no entry on either of its lines, so the check read
     `none`. A Python file is read as logical lines instead
-    (`added_suppressions`), and this reads the configuration files, where no
-    token can wrap, and a Python file some version of which the tokenizer
-    refuses, which the page names (`PL-TC2D`).
+    (`added_suppressions`), and a configuration file as the values its
+    format's reader gives, since a TOML array, a TOML multi-line string and a
+    `configparser` value all continue across lines too (`PL-PNZB`). This
+    reads what neither reader could: a file some version of which the
+    tokenizer or its format's reader refuses, which the page names
+    (`PL-TC2D`).
     """
     if path and not path.endswith(SUPPRESSION_BEARING_SUFFIXES):
         return False
@@ -283,6 +288,70 @@ def is_suppression_statement(line: LogicalLine) -> bool:
     another line could not be seen.
     """
     return bool(_SUPPRESSION_RE.search(line.code))
+
+
+def _statements(value: object, path: str = "") -> Iterator[str]:
+    """Each line of a configuration value under its dotted key, `key.path = line`.
+
+    A table's keys extend the path and an array's elements keep it, so an
+    array re-wrapped is the same statements and an element moved from one
+    key's array to another's is a different one (`PL-PNZB`). A string is a
+    statement per line, each stripped, since no entry of `SUPPRESSIONS` spans
+    a line break or ends in whitespace; what the reader made of a line-ending
+    backslash or an indented continuation is what the pattern reads. The key
+    stays in each statement because it can be the suppression itself
+    (`xfail_strict`), so a key whose value is empty is still one.
+    """
+    if isinstance(value, dict) and value:
+        for key, held in value.items():
+            yield from _statements(held, f"{path}.{key}" if path else str(key))
+    elif isinstance(value, list) and value:
+        for held in value:
+            yield from _statements(held, path)
+    elif path:
+        text = ("true" if value else "false") if isinstance(value, bool) else str(value)
+        lines = [line for line in (line.strip() for line in text.splitlines()) if line]
+        for line in lines or [""]:
+            yield f"{path} = {line}".rstrip()
+
+
+def _toml_statements(text: str) -> tuple[str, ...]:
+    """A TOML file's statements, as `tomllib` reads it."""
+    return tuple(_statements(tomllib.loads(text)))
+
+
+def _ini_statements(text: str) -> tuple[str, ...]:
+    """A `.cfg` or `.ini` file's statements, as `configparser` reads it.
+
+    Its defaults but two. No interpolation, so a value is the text the file
+    holds. And no defaults section: `default_section` is given a name no
+    header can spell, since `[]` is no header, so a `[DEFAULT]` section's keys
+    are read as its own rather than copied into every section beside it.
+    """
+    parser = configparser.ConfigParser(interpolation=None, default_section="")
+    parser.read_string(text)
+    sections = {name: dict(parser.items(name, raw=True)) for name in parser.sections()}
+    return tuple(_statements(sections))
+
+
+#: The configuration files among `SUPPRESSION_BEARING_SUFFIXES`, each read as
+#: the values its format's own reader gives rather than as diff lines
+#: (`PL-PNZB`). TOML continues an array across lines and trims a line-ending
+#: backslash inside a multi-line string, and `configparser` takes an indented
+#: line for more of the value above it, so in both a physical line can be a
+#: fragment of a value.
+#:
+#: Each suffix maps to its reader's name as the page prints it, what the reader
+#: makes of a copy, and what it raises in refusing one. `UnicodeDecodeError`
+#: is a `ValueError`, and a TOML array nested a few hundred deep exhausts the
+#: stack in `tomllib` itself, measured under 3.13 and 3.14.
+CONFIGURATION_READERS: dict[
+    str, tuple[str, Callable[[str], tuple[str, ...]], tuple[type[Exception], ...]]
+] = {
+    ".toml": ("tomllib", _toml_statements, (ValueError, RecursionError)),
+    ".cfg": ("configparser", _ini_statements, (configparser.Error, ValueError)),
+    ".ini": ("configparser", _ini_statements, (configparser.Error, ValueError)),
+}
 
 
 #: Only a file Python executes can hold an assertion, so a removed line from
@@ -1033,16 +1102,25 @@ def _untokenizable(why: str, spec: str, error: Exception) -> str:
     return f"{refused} ({refusal(error)}), though this interpreter parses every copy"
 
 
+def _unread_values(reader: str, spec: str, error: Exception) -> str:
+    """Why a configuration file is read line by line: its format's reader refused a copy."""
+    if isinstance(error, UnicodeDecodeError):
+        return f"its copy at {_short(spec)} is not UTF-8"
+    return f"{reader} refused its copy at {_short(spec)} ({' '.join(str(error).split())})"
+
+
 @dataclass(frozen=True)
 class SuppressionAudit:
     """What the item's own commits added that could suppress a test."""
 
-    #: Each logical line of a Python file, and each line of a file read line by
-    #: line, that the commits added and that holds a suppression - as the
-    #: report prints it, in the order the files and their lines come.
+    #: Each logical line of a Python file, each statement of a configuration
+    #: file, and each line of a file read line by line, that the commits added
+    #: and that holds a suppression - as the report prints it, in the order
+    #: the files and their lines come.
     found: tuple[str, ...] = ()
-    #: Python files a version of which the tokenizer refused, and why. Each is
-    #: read line by line instead, and named on the page as read so.
+    #: Files a version of which the tokenizer, or the configuration format's
+    #: own reader, refused, and why. Each is read line by line instead, and
+    #: named on the page as read so.
     unparsed: tuple[tuple[str, str], ...] = ()
     #: Why nothing could be read, where that is the answer. The check refuses
     #: on it: "could not look" is not "looked, found nothing".
@@ -1075,12 +1153,25 @@ def added_suppressions(
 
     The logical lines are the tokenizer's, so a file this interpreter cannot
     parse is read the same way and named as read so (`PL-TC2D`); each version
-    is parsed only to say that. `added_lines` is `_net_line_changes`' added
-    half, read for every file the logical lines did not read: a configuration
-    file, where no token can wrap, and a Python file some version of which the
-    tokenizer refuses, which is named.
+    is parsed only to say that.
+
+    **A configuration file is read the same way, through its format's own
+    reader** (`PL-PNZB`). A diff line of one can be a fragment of a value,
+    as a Python line can be of a statement: a TOML array re-wrapped one
+    element to a line was refused as a suppression added, and `no:xfail`
+    split by a line-ending backslash inside a multi-line string, or moved
+    from one key's continued value to another's, passed as `none`. So every
+    version of a `.toml` file is read with `tomllib`, and of a `.cfg` or
+    `.ini` file with `configparser`, each value split into statements
+    (`_statements`) and folded as the logical lines are. A comment is no
+    value either reader returns, so it is no statement, as in Python.
+
+    `added_lines` is `_net_line_changes`' added half, read for every file
+    neither reader read whole: one some version of which the tokenizer or
+    its format's reader refuses, which is named.
     """
-    steps, keys, unread = _file_steps(root, base, commits, QUOTING_SUFFIXES)
+    suffixes = QUOTING_SUFFIXES + tuple(CONFIGURATION_READERS)
+    steps, keys, unread = _file_steps(root, base, commits, suffixes)
     if unread:
         return SuppressionAudit(unread=unread)
     order = list(dict.fromkeys(step.key for step in steps))
@@ -1090,10 +1181,19 @@ def added_suppressions(
 
     versions = _versions(order, steps)
     read: dict[str, tuple[LogicalLine, ...]] = {}  # by object id: one version, one read
+    # Per file as well, so a copy is read by the one reader its file's name calls for.
+    values: dict[str, dict[str, tuple[str, ...]]] = {}
     parsed: dict[str, bool] = {}
     tokenized: dict[str, str] = {}
     unparsed: dict[str, str] = {}
     for key in order:
+        if not key.endswith(QUOTING_SUFFIXES):
+            name, reader, refusals = CONFIGURATION_READERS["." + key.rpartition(".")[2]]
+            values[key] = {}
+            declined = _read_versions(blobs, versions[key], reader, refusals, values[key])
+            if declined is not None:
+                unparsed[key] = _unread_values(name, *declined)
+            continue
         refused = _read_versions(blobs, versions[key], read_logical_lines, UNTOKENIZABLE, read)
         unparsable = _read_versions(blobs, versions[key], _parses, UNPARSABLE, parsed)
         why = _unparsable(*unparsable) if unparsable else ""
@@ -1102,18 +1202,27 @@ def added_suppressions(
         elif why:
             tokenized[key] = why
 
-    def lines_of(key: str, spec: str) -> tuple[LogicalLine, ...]:
+    # Each statement of one version: what the fold counts, what the page
+    # shows, and whether it holds a suppression.
+    def statements_of(key: str, spec: str) -> list[tuple[str, str, bool]]:
         held = blobs.get(spec) if spec else None
-        return () if held is None or key in unparsed else read[held[0]]
+        if held is None or key in unparsed:
+            return []
+        if key in values:
+            return [
+                (text, text, bool(_SUPPRESSION_RE.search(text))) for text in values[key][held[0]]
+            ]
+        return [(line.tokens, line.shown, is_suppression_statement(line)) for line in read[held[0]]]
 
     removed: dict[str, Counter[str]] = {key: Counter() for key in order}
     added: dict[str, Counter[str]] = {key: Counter() for key in order}
     last: dict[str, str] = {}
     for step in steps:
         parents = [
-            Counter(line.tokens for line in lines_of(step.key, spec)) for spec in step.before
+            Counter(counted for counted, _, _ in statements_of(step.key, spec))
+            for spec in step.before
         ]
-        now = Counter(line.tokens for line in lines_of(step.key, step.after))
+        now = Counter(counted for counted, _, _ in statements_of(step.key, step.after))
         for tokens in set(now).union(*parents):
             removed[step.key][tokens] += max(0, min(p[tokens] for p in parents) - now[tokens])
             added[step.key][tokens] += max(0, now[tokens] - max(p[tokens] for p in parents))
@@ -1121,13 +1230,11 @@ def added_suppressions(
 
     found: list[str] = []
     for key in order:
-        if key in unparsed:
-            continue
         net = added[key] - removed[key]
-        for line in lines_of(key, last[key]):
-            if net[line.tokens] > 0 and is_suppression_statement(line):
-                net[line.tokens] -= 1
-                found.append(line.shown)
+        for counted, shown, suppresses in statements_of(key, last[key]):
+            if suppresses and net[counted] > 0:
+                net[counted] -= 1
+                found.append(shown)
     read_whole = {key for key in order if key not in unparsed}
     found += [
         line.strip()
@@ -2022,10 +2129,11 @@ def _net_line_changes(
     and so the worker cannot argue with it (`PL-VP40`).
 
     Cancelling an added line against an identical removed line within the same
-    file is exactly as precise as what consumes this - the suppression check's
-    reading of a configuration file, and both checks' fallback for a Python
-    file the tokenizer refuses, all of which read a line's text rather than the
-    statement it belongs to - and it costs no extra git call. Both checks
+    file is exactly as precise as what consumes this - both checks' fallback
+    for a Python file the tokenizer refuses, and the suppression check's for a
+    configuration file its format's reader refuses, all of which read a line's
+    text rather than the statement it belongs to - and it costs no extra git
+    call. Both checks
     proper make the same fold over statements instead (`removed_assertions`,
     `added_suppressions`). Counting rather than
     de-duplicating is what keeps it safe: a file whose patches remove one
