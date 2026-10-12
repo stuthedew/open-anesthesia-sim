@@ -25,7 +25,7 @@ frame owed, and `render_tick` draws only while a run is running or a frame is
 owed, so on a paused dashboard the plot and the legend disagree until something
 else presents.
 
-No shipped path reaches it. `_handle_fork` and `_handle_halt_fork` call
+No shipped path reaches it. `_handle_fork` and `_handle_here_fork` call
 `present(False)` straight after `add_run`, and the frame-cost harness presents
 after it too. Before `PL-B1R9` a wide selection hid the gap, because the
 legend's own announcement drew a frame from inside `add_run`; from a selection
