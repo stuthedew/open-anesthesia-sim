@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, infra
 feature: pr-body-integrity
+milestone: v0.5.23
 touches: docs/pr-bodies, tools/pr_body_check.py, tests/unit/test_pr_body_check.py
 added: 2026-09-20
 closed: 2026-10-11

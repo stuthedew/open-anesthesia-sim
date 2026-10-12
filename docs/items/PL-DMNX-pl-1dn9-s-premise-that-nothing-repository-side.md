@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, infra
 feature: pr-body-integrity
+milestone: v0.5.23
 touches: docs/items
 added: 2026-09-20
 closed: 2026-10-03

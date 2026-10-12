@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor
 feature: sidebar-panel-rebuild
+milestone: v0.5.23
 touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py, tools/literal_home_check.py, docs/items/PL-TH35-define-the-common-view-contract-every-app-view.md
 blocked-by: PL-N67T
 added: 2026-09-21

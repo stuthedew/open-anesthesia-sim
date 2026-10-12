@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, defect
 feature: parse-dont-validate
+milestone: v0.5.23
 touches: src/anesthesia_sim/core/checked_number.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_checked_number.py, tests/unit/test_supported_ranges.py, tests/unit/test_concentration.py, tests/unit/test_simulation.py, docs/MODEL.md, docs/ARCHITECTURE.md, docs/items/PL-848D-require-simulation-step-advises-rebuilding-what.md
 added: 2026-10-04
 closed: 2026-10-05

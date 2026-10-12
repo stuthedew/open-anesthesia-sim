@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, defect
 feature: qt-port
+milestone: v0.5.23
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_chart.py, docs/MODEL.md
 added: 2026-10-04
 closed: 2026-10-05

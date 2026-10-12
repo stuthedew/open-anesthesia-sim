@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: parallel-sessions
+milestone: v0.5.23
 touches: subprojects/docket, .claude/skills/docket/modes/picking.md
 added: 2026-09-07
 closed: 2026-10-11

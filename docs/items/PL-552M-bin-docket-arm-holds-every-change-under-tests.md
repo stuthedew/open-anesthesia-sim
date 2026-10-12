@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: review-hold
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_portability.py, tools/workflow_paths_check.py, CLAUDE.md, docs/maintainer.md, docs/items/PL-WW0Q-bin-docket-arm-holds-a-change-to-arming-py-for.md
 added: 2026-10-05
 closed: 2026-10-05

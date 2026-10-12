@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: presentation-safety
+milestone: v0.5.23
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_formatting.py
 added: 2026-09-14
 closed: 2026-10-11

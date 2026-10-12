@@ -5,6 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: science, docs
+milestone: v0.5.23
 touches: src/anesthesia_sim/data/patients/reference_adult.json
 added: 2026-10-06
 closed: 2026-10-11

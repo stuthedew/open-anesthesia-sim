@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: refactor, safety
 feature: parse-dont-validate
+milestone: v0.5.23
 touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/core-domain.md
 added: 2026-10-04
 closed: 2026-10-04

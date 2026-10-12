@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: parse-dont-validate
+milestone: v0.5.23
 touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_concentration.py, tests/unit/test_supported_ranges.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05

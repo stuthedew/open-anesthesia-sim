@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, defect
 feature: provenance
+milestone: v0.5.23
 touches: src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md
 added: 2026-09-13
 closed: 2026-10-05

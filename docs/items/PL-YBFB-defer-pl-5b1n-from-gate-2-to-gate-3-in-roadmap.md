@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs
+milestone: v0.5.23
 touches: ROADMAP.md, docs/items/PL-5B1N-simulated-traces-should-be-solid-and-a-dotted.md
 added: 2026-09-27
 closed: 2026-10-03

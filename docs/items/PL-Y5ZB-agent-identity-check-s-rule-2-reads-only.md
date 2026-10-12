@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: qt-port
+milestone: v0.5.23
 touches: .claude/rules/ui-color.md, tests/unit/test_agent_identity_check.py, tools/agent_identity_check.py
 added: 2026-09-14
 closed: 2026-10-11

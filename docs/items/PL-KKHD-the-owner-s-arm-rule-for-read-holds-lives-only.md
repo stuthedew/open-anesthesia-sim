@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: owner-rules-in-repo
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_claims.py, docs/maintainer.md, CLAUDE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) and not safety or science; the Projects trial began on 2026-09-25, so the problem was not present at the freeze, and nothing on the frozen list names it
 added: 2026-10-03
