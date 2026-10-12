@@ -1538,9 +1538,9 @@ def _read_the_alveolar_quotient_as(monkeypatch: pytest.MonkeyPatch, quotient: fl
 
     The one route left to a quotient outside 0 to 1: no supported setting
     reaches one (`core/concentration.py`), and since `PL-544D` an amount
-    written past the capacity is refused at the write, so the quotient is
-    replaced where `snapshot()` reads it rather than reached through the
-    stored amount.
+    written past the capacity is refused at the write, so the quotient every
+    alveolar compartment answers is replaced, for the snapshot and the stepper
+    alike, rather than reached through the stored amount.
     """
 
     monkeypatch.setattr(

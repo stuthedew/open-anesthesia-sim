@@ -988,7 +988,8 @@ class RunView(QWidget):
         answered by the halt that refusal is, restated, and the selector is
         put back to the agent the controller names, since the snapshot that
         would name it is what refused (`PL-V2HC`); Reset is the way out the
-        halt banner names.
+        halt banner names, unless a refused Reset has left the setting to
+        change standing as the exit.
         """
 
         agent_id = self._agent_dropdown.itemData(index)
@@ -1032,8 +1033,18 @@ class RunView(QWidget):
         """Switch the run to `agent_id` through the setting gate.
 
         `SimulationController.set_agent` refuses a branch (`PL-TFX5`), and
-        that refusal reaches the reader as a refused-setting notice.
+        that refusal reaches the reader as a refused-setting notice. It also
+        carries the settings over from the snapshot, so on a run whose
+        snapshot refuses the gate would record that refusal as a refused
+        setting; the snapshot is read through `_snapshot_for_a_control`
+        first, so the raise is the halt it is, restated, and nothing is
+        recorded as refused (`PL-V2HC`). The confirmation path arrives here
+        with a snapshot read when the question was asked, which a halt in
+        the meantime outdates.
         """
+
+        if self._snapshot_for_a_control() is None:
+            return
 
         self._apply_setting(lambda: self.controller.set_agent(agent_id))
 

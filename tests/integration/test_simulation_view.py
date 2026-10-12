@@ -328,9 +328,9 @@ def _read_the_alveolar_quotient_as(monkeypatch: pytest.MonkeyPatch, quotient: fl
 
     The one route left to a quotient outside 0 to 1: no supported setting
     reaches one (`core/concentration.py`), and since `PL-544D` an amount
-    written past the capacity is refused at the write, so the quotient is
-    replaced where `SimulationController.snapshot()` reads it rather than
-    reached through the stored amount.
+    written past the capacity is refused at the write, so the quotient every
+    alveolar compartment answers is replaced, for the snapshot and the stepper
+    alike, rather than reached through the stored amount.
     """
 
     monkeypatch.setattr(
@@ -1739,6 +1739,51 @@ def test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it(
     assert notice.startswith(f"Simulation stopped — {reason}")
     assert run._pause_button.isEnabled() is False
     assert run._start_button.isEnabled() is False
+
+
+def test_a_confirmation_answered_after_the_snapshot_refuses_restates_the_halt(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    """A confirmation answered once the snapshot refuses is answered by the halt, not a refusal.
+
+    The question is asked from a snapshot read when the selector was used;
+    by the time the reader answers, the run's snapshot may refuse.
+    `set_agent` carries the settings over from the snapshot, so without the
+    gate its raise reached `_apply_setting` as a refused setting, recorded in
+    `_rejected_setting_notice` over a run halted for the same reason
+    (`PL-V2HC`, found at review). `_start_new_case` now reads the snapshot
+    through `_snapshot_for_a_control` first: the halt is stated, nothing is
+    recorded as refused, the dialog is gone and the run keeps its agent.
+    """
+
+    controller = _paused_run_with_history()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    _select_agent(run, "desflurane")
+    dialog = run._new_case_dialog
+    assert dialog is not None
+    _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
+    capfd.readouterr()
+
+    dialog.discard_button.click()
+
+    assert "Traceback" not in capfd.readouterr().err
+    reason = (
+        "SimulationConfigurationError: alveolar partial_pressure_fraction of 1.0000001 is "
+        "outside 0 to 1"
+    )
+    status = controller.status()
+    assert controller.has_failed is True
+    assert status.failure_reason is not None
+    assert status.failure_reason.startswith(reason)
+    assert controller.agent_id == "sevoflurane"
+    assert run._rejected_setting_notice is None
+    assert run._new_case_dialog is None
+    assert run._agent_dropdown.currentData() == "sevoflurane"
+    assert run._status_text.text() == "Stopped — simulation error"
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert notice.startswith(f"Simulation stopped — {reason}")
 
 
 def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplication) -> None:
