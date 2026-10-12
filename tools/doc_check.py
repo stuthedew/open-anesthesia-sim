@@ -166,10 +166,6 @@ try:
     from docket.frontmatter import plain as yaml_plain
     from docket.frontmatter import statements as frontmatter_statements
 
-    # `subcommand_of` names the git command an argv runs, past git's own
-    # options, as `docket.vcs` and the Bash guards read it (`PL-ZXCN`).
-    from docket.gitargv import subcommand_of
-
     # `instructions` is the one reading of a dated sentence: `_sentences` cuts a
     # statement where `docket.roadmap.SENTENCE_BREAK` does and at a blank line
     # inside a front matter's value, and `ISO_DATE_RE` is what counts as a date
@@ -180,7 +176,7 @@ try:
     # tracks, so `measure_on_demand` sizes the set `docket check` ages rather
     # than a second walk of the disk (`PL-NNVJ`, `PL-J4YY`).
     from docket.instructions import ISO_DATE_RE, _markdown_under, _sentences
-    from docket.lines import file_text, record_text, split_lines
+    from docket.lines import file_text, split_lines
 
     # `markdown` is the one reading of a document's blocks (`PL-R417`): where
     # each statement ends, so a code span or a bold run is read within its own
@@ -284,12 +280,14 @@ try:
     # the branch the merge gate protects, which a workflow's branch filter is
     # matched against (`PL-C72H`).
     from docket.vcs import (
-        DEFAULT_BRANCHES,
         ITEM_FILE_RE,
+        LONG_GIT_TIMEOUT,
         Cut,
         GitRunner,
+        GitUnanswered,
         Runner,
         answered,
+        call_git,
         changed_path_args,
         default_base,
         default_branch,
@@ -297,6 +295,7 @@ try:
         is_shallow,
         listed_paths,
         notes_added,
+        read_git,
         resolved,
         subject_pull_request,
         tags,
@@ -4516,17 +4515,10 @@ def _covered_by_gitignore(root: Path, token: str) -> bool:
     `/out/` asks about `out/` rather than about the filesystem's root.
     """
     for candidate in _expand_braces(token.lstrip("/")):
-        try:
-            result = subprocess.run(
-                ("git", "check-ignore", "-q", "--no-index", "--", candidate),
-                cwd=root,
-                capture_output=True,
-                timeout=10,
-                check=False,
-            )
-        except GIT_UNAVAILABLE:
-            return False
-        if result.returncode != GIT_PATH_IS_IGNORED:
+        # The exit status itself is the verdict, three ways, so it is read
+        # off the call rather than through `GitCall.answer`'s classification.
+        ignored = call_git(["check-ignore", "-q", "--no-index", "--", candidate], root)
+        if ignored.code != GIT_PATH_IS_IGNORED:
             return False
     return True
 
@@ -7482,17 +7474,14 @@ def _git_text(root: Path, *args: str) -> str | None:
     """Git's stdout verbatim, or `None` when it could not answer.
 
     `_git` drops blank lines, which is right for listing refs and wrong for
-    counting the lines of a file, so the two readers are kept apart. Decoded as
-    written, a record's raw `\\r` kept; a caller reading a blob translates it
-    with `file_text` (`PL-0R4M`).
+    counting the lines of a file, so the two readers are kept apart. Read by
+    `vcs.call_git`, as docket reads the same question (`PL-S9JK`): a blob comes
+    back translated as `read_text` translates its file, and one the revision
+    does not hold as `""` rather than `None`, which is the file's absence and
+    measures as no file.
     """
-    try:
-        result = subprocess.run(
-            ("git", *args), cwd=root, capture_output=True, timeout=10, check=False
-        )
-    except GIT_UNAVAILABLE:
-        return None
-    return None if result.returncode else record_text(result.stdout)
+    text = call_git(args, root).answer
+    return text if answered(text) else None
 
 
 def _resident_baseline(root: Path) -> tuple[str, tuple[ResidentFile, ...]] | None:
@@ -7516,23 +7505,30 @@ def _resident_baseline(root: Path) -> tuple[str, tuple[ResidentFile, ...]] | Non
 def _baseline(
     root: Path, roots: Sequence[str], measure: Callable[[str, str], ResidentFile | None]
 ) -> tuple[str, tuple[ResidentFile, ...]] | None:
-    """One measured set as it stands at the tip of the default branch."""
-    for ref in DEFAULT_BRANCHES:
-        listing = _git_text(root, "ls-tree", "-r", "--name-only", ref, "--", *roots)
-        if listing is None:
+    """One measured set as it stands at the tip of the default branch.
+
+    The branch is `vcs.default_base`'s, and only where it is established: where
+    the read of `origin/main` went unanswered and a local `main` resolved, the
+    loop over the candidates this held before `PL-S9JK` measured against the
+    local copy unmarked, where every docket command marks that answer a guess.
+    """
+    ref = default_base(root)
+    if not resolved(ref):
+        return None
+    listing = _git_text(root, "ls-tree", "-r", "--name-only", ref, "--", *roots)
+    if listing is None:
+        return None
+    measured: list[ResidentFile] = []
+    for name in sorted(split_lines(listing)):
+        if not name.endswith(".md"):
             continue
-        measured: list[ResidentFile] = []
-        for name in sorted(split_lines(listing)):
-            if not name.endswith(".md"):
-                continue
-            text = _git_text(root, "show", f"{ref}:{name}")
-            if text is None:
-                continue
-            row = measure(name, file_text(text))
-            if row is not None:
-                measured.append(row)
-        return ref, tuple(measured)
-    return None
+        text = _git_text(root, "show", f"{ref}:{name}")
+        if text is None:
+            continue
+        row = measure(name, text)
+        if row is not None:
+            measured.append(row)
+    return str(ref), tuple(measured)
 
 
 def check_resident_instructions(root: Path, report: Report) -> None:
@@ -8092,41 +8088,18 @@ def format_check(report: Report) -> str:
     return "\n".join(lines)
 
 
-class GitUnanswered(Exception):
-    """A git read the candidate list rests on that git did not answer, and why."""
-
-
 def _git_output(root: Path, *args: str) -> str:
-    # `git` is resolved through `PATH` rather than pinned, for the same reason
-    # as docket's `vcs._run_git`: the path differs by environment.
-    #
     # A failure raises rather than answering with an empty list, because every
     # caller reads the list as what changed, and an empty one is a diff with
     # nothing in it. A base that did not resolve, or a checkout that is not a
     # repository at all, printed "nothing to sweep", and the close-out sweep
     # was skipped over a diff nobody had read (`PL-9RFP`).
     #
-    # The read is named by `subcommand_of`, since an argv can open with an
-    # option; and git writes a changed path byte for byte under `-z`, so one
-    # whose bytes are not UTF-8 is a read this cannot decode, answered as
-    # unread rather than as a traceback, as `vcs._run_git` answers it
-    # (`PL-0T5X`).
-    command = f"`git {subcommand_of(args)}`"
-    try:
-        result = subprocess.run(("git", *args), cwd=root, capture_output=True, check=False)
-        # Decoded as written, so a raw `\r` in a `-z` path stays in it; the
-        # patch read below translates its file lines (`PL-0R4M`).
-        stdout, stderr = record_text(result.stdout), record_text(result.stderr)
-    except GIT_UNAVAILABLE as error:
-        raise GitUnanswered(f"{command} could not run: {error}") from error
-    except UnicodeDecodeError as error:
-        raise GitUnanswered(f"{command} printed a path this cannot read: {error}") from error
-    if result.returncode:
-        said = next((line.strip() for line in split_lines(stderr) if line.strip()), "")
-        raise GitUnanswered(
-            f"{command} exited {result.returncode}: {said or 'with nothing on stderr'}"
-        )
-    return stdout
+    # `vcs.read_git`, so the read is classified, decoded and bounded as docket
+    # reads the same question: a path whose bytes are not text here is unread
+    # rather than a traceback (`PL-0T5X`), and a git that hangs is given up on
+    # where this once waited for ever (`PL-S9JK`).
+    return read_git(args, root, timeout=LONG_GIT_TIMEOUT)
 
 
 # What a diff changes that documentation is likely to name: a definition, a
