@@ -23,20 +23,21 @@ appears in.
 Two consequences of that rule are worth stating, because both look like gaps:
 
 - **A `cancelled` run is not a verdict, but one newer than every verdict is
-  reported.** The verdict reported is the newest run that actually *reached* a
-  conclusion, the most recent real answer about `main`. Until `PL-SMN4` every
-  push to `main` shared one concurrency group, so a merge arriving while an
-  earlier one was still pending evicted it: 31 of the 257 completed `main` push
-  runs between 2026-09-05 and 2026-09-16 - 12.1% - were cancelled that way. A
-  per-commit group ended the eviction, and none of the 640 completed from its
-  merge to 2026-10-01 was cancelled, so one now means a hand cancellation or a
-  lost runner, and its commit has no whole-store verdict at all. Passing over
-  it in silence reported an older commit's verdict as `main`'s answer
-  (`PL-JTHW`), so a cancelled run newer than every verdict prints a line of its
-  own, naming both runs and asking for a re-run. One older than a verdict
-  still prints nothing: the later run checked the whole store again on a tree
-  that contains it, so there is nothing to ask for, and a green `main` prints
-  nothing.
+  reported**, and so is one that concluded `action_required`, which ran no step
+  to a verdict either (`PL-351H`). The verdict reported is the newest run that
+  actually *reached* a conclusion, the most recent real answer about `main`.
+  Until `PL-SMN4` every push to `main` shared one concurrency group, so a merge
+  arriving while an earlier one was still pending evicted it: 31 of the 257
+  completed `main` push runs between 2026-09-05 and 2026-09-16 - 12.1% - were
+  cancelled that way. A per-commit group ended the eviction, and none of the
+  640 completed from its merge to 2026-10-01 was cancelled, so one now means a
+  hand cancellation or a lost runner, and its commit has no whole-store verdict
+  at all. Passing over it in silence reported an older commit's verdict as
+  `main`'s answer (`PL-JTHW`), so a cancelled run newer than every verdict
+  prints a line of its own, naming both runs and asking for a re-run. One older
+  than a verdict still prints nothing: the later run checked the whole store
+  again on a tree that contains it, so there is nothing to ask for, and a green
+  `main` prints nothing.
 - **Silence is not a green tree.** It means "no failing verdict, and no
   cancelled run newer than the verdict, was readable from here", which is also
   what an offline container gets. The line exists to surface a red nobody would
@@ -131,9 +132,22 @@ API = "https://api.github.com"
 WORKFLOW = "quality.yml"
 TIMEOUT_S = 8
 
-# A conclusion that judged the tree. `cancelled` and `skipped` did not, and
-# `None` is a run still going.
-VERDICTS = ("success", "failure", "timed_out", "startup_failure", "action_required")
+#: The conclusions that are a verdict against a commit, for a workflow run here
+#: and for a check run in `update_armed.py`, which imports it (`PL-351H`).
+#: `cancelled` and `action_required` are not: neither ran the steps to the end,
+#: so neither says the change is wrong. `action_required` sat in `VERDICTS` until
+#: then, so a run GitHub held for an action was printed as "main is red" while
+#: `update_armed.py` read the same conclusion as not failed.
+FAILED = frozenset({"failure", "timed_out", "startup_failure"})
+
+# A conclusion that judged the tree. `skipped` did not, `None` is a run still
+# going, and `UNJUDGED` are the two that leave a commit with no verdict at all.
+VERDICTS = frozenset({"success"} | FAILED)
+
+# A run that ended without judging the tree, and how the line says so. Newer
+# than every verdict, its commit has none, which the line below reports rather
+# than letting an older commit's verdict stand as `main`'s (`PL-JTHW`).
+UNJUDGED = {"cancelled": "was cancelled", "action_required": "concluded action_required"}
 
 # The name `.github/workflows/quality.yml` gives the whole-store replay step,
 # which is the one step whose failure is a fact about the queue rather than
@@ -205,8 +219,8 @@ def pick_run(runs: list[object]) -> dict[str, object] | None:
     return None
 
 
-def pick_cancelled(runs: list[object]) -> dict[str, object] | None:
-    """Return the newest cancelled run newer than every verdict, or None.
+def pick_unjudged(runs: list[object]) -> dict[str, object] | None:
+    """Return the newest `UNJUDGED` run newer than every verdict, or None.
 
     Its commit has no whole-store verdict, and whatever `pick_run` answers - or
     the silence of a green answer - is about an older commit, which a reader
@@ -225,7 +239,7 @@ def pick_cancelled(runs: list[object]) -> dict[str, object] | None:
         conclusion = run.get("conclusion")
         if conclusion in VERDICTS:
             return None
-        if conclusion == "cancelled":
+        if conclusion in UNJUDGED:
             return run
     return None
 
@@ -380,8 +394,8 @@ def advisory(run: dict[str, object], steps: tuple[tuple[str, str], ...] = ()) ->
     return f"{head}{where} - main is red and no pull request will show it. {url}"
 
 
-def cancelled_advisory(cancelled: dict[str, object], verdict: dict[str, object] | None) -> str:
-    """The line for a cancelled run newer than every verdict, from `pick_cancelled`.
+def unjudged_advisory(cancelled: dict[str, object], verdict: dict[str, object] | None) -> str:
+    """The line for an `UNJUDGED` run newer than every verdict, from `pick_unjudged`.
 
     It names the newest verdict as well as the cancelled run, because which
     commit each answer is about is the reader's whole question. The action is
@@ -398,8 +412,9 @@ def cancelled_advisory(cancelled: dict[str, object], verdict: dict[str, object] 
             f"and the newest run that reached one, #{verdict.get('run_number', '?')} on "
             f"{_short_sha(verdict)}, checked an older commit"
         )
+    ended = UNJUDGED.get(str(cancelled.get("conclusion")), "reached no verdict")
     return (
-        f"main's quality run #{number} on {_short_sha(cancelled)} was cancelled, so that "
+        f"main's quality run #{number} on {_short_sha(cancelled)} {ended}, so that "
         f"commit has no whole-store verdict, {older}. Re-run it, unless a newer merge's run "
         f"is still going: {url}"
     )
@@ -473,9 +488,9 @@ def main() -> int:
 
     # First, because it is about a newer commit than any verdict line below it,
     # and whatever that verdict is: under a green one it is the only line.
-    cancelled = pick_cancelled(runs)
+    cancelled = pick_unjudged(runs)
     if cancelled is not None:
-        print(cancelled_advisory(cancelled, run))
+        print(unjudged_advisory(cancelled, run))
 
     if run is None:
         return 0

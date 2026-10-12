@@ -331,9 +331,20 @@ def _run_git(args: list[str], root: Path) -> str:
         stdout = record_text(result.stdout)
     except (OSError, subprocess.SubprocessError, UnicodeDecodeError):
         return SILENT
-    if result.returncode == 0:
+    return git_answer(args, result.returncode, stdout)
+
+
+def git_answer(args: list[str], returncode: int, stdout: str) -> str:
+    """What one finished git call answered: its output, `""` for git's no, or `SILENT`.
+
+    `_run_git`'s classification, table and all, kept apart from the running so
+    a tool that runs git itself - `tools/left_behind_check.py`, which keeps the
+    error text to name a decline by - hands this module's reads the same
+    answers rather than a second reading of git's exit codes (`PL-351H`).
+    """
+    if returncode == 0:
         return file_text(stdout) if _asks_for_a_blob(args) else stdout
-    if (result.returncode == 1 and not _asks_for_a_diff(args)) or _asks_for_a_blob(args):
+    if (returncode == 1 and not _asks_for_a_diff(args)) or _asks_for_a_blob(args):
         return ""
     return SILENT
 
@@ -2155,6 +2166,80 @@ class CarriedCommit:
     #: itself. Carried across a restart with `--allow-empty`, since
     #: `git cherry-pick` refuses an empty commit without it.
     empty: bool
+    #: Its committer date, `YYYY-MM-DD`, for a reader that prints when it was
+    #: pushed. Not part of what the commit is, so two readings compare equal.
+    date: str = field(default="", compare=False)
+
+
+@dataclass(frozen=True)
+class PastHead:
+    """The commits a branch holds past a merged pull request's head, oldest first.
+
+    `carried` is what nothing will merge, and `landed` what the base took by
+    another route, each beside the commit that took it. A merge of the base is
+    in neither: it brings nothing of the branch's own.
+    """
+
+    carried: tuple[CarriedCommit, ...] = ()
+    landed: tuple[tuple[CarriedCommit, Landing], ...] = ()
+
+
+def past_head(
+    head: str, base: str, root: Path, *, ref: str = "HEAD", runner: Runner | None = None
+) -> PastHead | None:
+    """What `ref` holds past `head` that `base` does not, split by whether anything will merge it.
+
+    **The one reading of a commit pushed after its pull request merged**
+    (`PL-351H`). `carried_merge` asks it to know what a restart replays, and
+    `tools/left_behind_check.py` to report what nothing will land; each wrote
+    its own `log` and its own landing test until then, held to each other by
+    nothing. Whether `ref` stands on `head` at all, and whether the answer is a
+    restart, are the callers' questions and stay with them.
+
+    Every commit past the head that is not a merge and not on the base is read
+    once: an empty one - a claim or a yield, whose record is the commit itself -
+    is carried whatever the base holds, since `change_landed` has no change of
+    it to look for; any other is `landed` where `change_landed` finds the base
+    took its change, and carried where it does not (`PL-GHHW`).
+
+    **A silence anywhere is None, never a partial record**, as `carried_merge`
+    explains: a list missing a commit is a restart that drops it, or a branch
+    reported clear that is not.
+    """
+    run = _Silences(runner or _run_git)
+    listed = run(
+        [
+            "log",
+            "--no-merges",
+            "--reverse",
+            "--format=%H%x1f%T%x1f%cs%x1f%s",
+            f"{head}..{ref}",
+            f"^{base}",
+            "--",
+        ],
+        root,
+    )
+    carried: list[CarriedCommit] = []
+    landed: list[tuple[CarriedCommit, Landing]] = []
+    # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
+    for line in listed.split("\n"):
+        fields = line.split("\x1f", 3)
+        if len(fields) != 4:
+            continue
+        sha, tree, day, subject = (part.strip() for part in fields)
+        parent = run(["rev-parse", "--verify", "--quiet", f"{sha}~1^{{tree}}"], root).strip()
+        if parent and parent == tree:
+            carried.append(CarriedCommit(sha=sha, subject=subject, empty=True, date=day))
+            continue
+        commit = CarriedCommit(sha=sha, subject=subject, empty=False, date=day)
+        landing = change_landed(sha, base, root, runner=run)
+        if landing is None:
+            carried.append(commit)
+        else:
+            landed.append((commit, landing))
+    if run.reason:
+        return None
+    return PastHead(carried=tuple(carried), landed=tuple(landed))
 
 
 @dataclass(frozen=True)
@@ -2203,13 +2288,16 @@ def carried_merge(
     from one that never did - so that shape is left to the reading without the
     forge rather than answered wrongly half the time.
 
-    **What is carried is what nothing will merge**: every commit past the head
-    that is not a merge - merging the base in brings nothing of the branch's
-    own - is not on the base, and is not one whose change the base took by
-    another route, which `change_landed` finds (`PL-GHHW`). An empty commit is
-    carried whatever the base holds, and marked: a claim or a yield is its own
-    record, `change_landed` has no change of it to look for, and a restart that
-    dropped it would drop the claim.
+    That None is about the restart, not about the commits: a branch that took a
+    commit after a merge-commit merge still holds it unmerged, and the counts
+    reading reports it ahead, as `tools/left_behind_check.py` reports it left
+    behind - both from `past_head`, which lists it either way (`PL-351H`).
+
+    **What is carried is what nothing will merge**, which is `past_head`'s
+    `carried`: every commit past the head that is not a merge, is not on the
+    base, and is not one whose change the base took by another route. An empty
+    commit is carried whatever the base holds, and marked: a claim or a yield
+    is its own record, and a restart that dropped it would drop the claim.
 
     **A silence anywhere here is None, never a partial record.** A carried list
     missing a commit is a `cherry-pick` line that drops it, so a read git did
@@ -2228,33 +2316,10 @@ def carried_merge(
         return None
     if run(["merge-base", head, ref], root).strip() != head:
         return None
-    listed = run(
-        [
-            "log",
-            "--no-merges",
-            "--reverse",
-            "--format=%H%x1f%T%x1f%s",
-            f"{head}..{ref}",
-            f"^{base}",
-            "--",
-        ],
-        root,
-    )
-    carried: list[CarriedCommit] = []
-    # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
-    for line in listed.split("\n"):
-        fields = line.split("\x1f", 2)
-        if len(fields) != 3:
-            continue
-        sha, tree, subject = (part.strip() for part in fields)
-        parent = run(["rev-parse", "--verify", "--quiet", f"{sha}~1^{{tree}}"], root).strip()
-        if parent and parent == tree:
-            carried.append(CarriedCommit(sha=sha, subject=subject, empty=True))
-        elif change_landed(sha, base, root, runner=run) is None:
-            carried.append(CarriedCommit(sha=sha, subject=subject, empty=False))
-    if run.reason:
+    past = past_head(head, base, root, ref=ref, runner=run)
+    if past is None or run.reason:
         return None
-    return MergedPullRequest(number=newest.number, head=head, carried=tuple(carried))
+    return MergedPullRequest(number=newest.number, head=head, carried=past.carried)
 
 
 def default_base(root: Path, *, runner: Runner | None = None) -> str:
