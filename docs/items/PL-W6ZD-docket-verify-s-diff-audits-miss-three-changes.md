@@ -91,3 +91,9 @@ shapes), `test_a_merge_commits_combined_diff_is_read_or_declined` and
 each fail on `main`'s code; `test_a_test_moved_whole_with_its_skip_adds_no_suppression`
 and `test_a_statement_belongs_to_its_definition_and_a_decorator_to_the_one_it_decorates`
 pin the other side.
+
+Replayed over `main` at `ab6475f7` before closing: the suppression fold on
+`main`'s code and on this branch's gives the same answer on each of the 835
+commits there that touch a Python or tool-configuration file, merges aside.
+None adds a suppression but `f7c326f0`, whose `skipif` both readings find,
+and neither leaves a file unread.
