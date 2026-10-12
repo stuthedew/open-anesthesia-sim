@@ -3237,6 +3237,9 @@ def format_status(
             lines.append(f"  {_reserved_refusal(offer, '`docket wave` for what is due')}")
         else:
             lines.append(f"  Next version would be {offer.version}.")
+    # The legend's blank says no section places an unmarked id, which a list
+    # read short makes untrue of an id on the line it declined (`PL-L4X3`).
+    lines += plan_unread_lines(plan.unread, PLACEMENT_SHORT) if plan is not None else []
     if unread := format_unread(flight):
         lines.append("")
         lines.append(unread)
@@ -3502,17 +3505,28 @@ def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
     return "\n".join(lines)
 
 
-def plan_unread_lines(unread: Sequence[str]) -> list[str]:
+#: What a list read short costs a count drawn from it: `wave`'s gate, `picks`'
+#: entries, `concurrent --in-scope`'s batch.
+COUNT_SHORT = "a count above may be short"
+#: And what it costs a surface that places ids rather than counting them -
+#: `status`'s marks, `show`'s plan line, `next`'s reasons and order - where an
+#: id on the line the walker declined reads as placed by no section (`PL-L4X3`).
+PLACEMENT_SHORT = "a placement above may be missing"
+
+
+def plan_unread_lines(unread: Sequence[str], short: str = COUNT_SHORT) -> list[str]:
     """Each list entry the plan was not read whole at, named the same way by every reader.
 
     `wave`, `picks` and `concurrent --in-scope` print it, so a count each gives
-    from a list read short says so in the same words.
+    from a list read short says so in the same words; `status`, `show` and
+    `next` print it with `PLACEMENT_SHORT`, since what they answer from the
+    list is where an id is placed (`PL-L4X3`).
     """
     if not unread:
         return []
     return [
         "",
-        "A list the plan is read from was not read whole, so a count above may be short:",
+        f"A list the plan is read from was not read whole, so {short}:",
         *(f"  {entry}" for entry in unread),
     ]
 

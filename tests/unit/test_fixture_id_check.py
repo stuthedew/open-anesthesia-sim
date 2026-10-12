@@ -499,6 +499,97 @@ def test_a_quote_opening_a_continuation_line_joins_nothing(tmp_path: Path) -> No
     assert found == [("folded", 4, "PL-K7Q"), ("plain", 4, "PL-K7Q")]  # not-an-id
 
 
+#: A skill's front matter whose `description:` carries `PL-K7QX` on over an
+#: escaped line break to a `Z`, `{}` standing where the value opens and after
+#: the closing `---`: as a double-quoted scalar PyYAML 6.0.3 reads the
+#: malformed `JOINED`, and as a plain scalar the well-formed `PL-K7QX`.
+ESCAPED_DESCRIPTION = '---\nname: x\ndescription: {}"see PL-K7QX\\\n  Z"\n---{}\nbody\n'
+JOINED = "PL-K7QXZ"  # not-an-id
+
+
+def _found(root: Path) -> list[tuple[str, int, str]]:
+    """Each offender as its file's directory, its line and its token."""
+    return [
+        (offender.path.parent.name, offender.line, offender.token)
+        for offender in fixture_id_check.collect(root)
+    ]
+
+
+def test_the_front_matter_joins_find_its_edges_through_docket(tmp_path: Path) -> None:
+    """A `---` with white space after it closes the front matter the joins read (`PL-YPLM`).
+
+    The joins found the edges themselves and closed only on an exact `---`,
+    where `docket.frontmatter.closing` takes white space after one, so a block
+    closed by `--- ` was never closed: its escaped line break was left in, and
+    the malformed id PyYAML 6.0.3 reads there passed as the well-formed
+    `PL-K7QX`.
+    """
+    for name, after in (("exact", ""), ("space", " "), ("tab", "\t")):
+        _write(tmp_path, f".claude/skills/{name}/SKILL.md", ESCAPED_DESCRIPTION.format("", after))
+
+    assert _found(tmp_path) == [("exact", 3, JOINED), ("space", 3, JOINED), ("tab", 3, JOINED)]
+
+
+def test_a_comma_ending_a_plain_scalar_opens_no_quoted_scalar(tmp_path: Path) -> None:
+    """A quote inside a plain scalar after a comma or a bracket opens nothing (`PL-YPLM`).
+
+    Read a line at a time, a `,` or `[` ending a plain scalar's text looked
+    like a flow collection opening a node, so the quote after it was joined as
+    a double-quoted scalar's, and the value PyYAML 6.0.3 reads as `one, "see
+    PL-K7QX\\ Z"` was reported as the malformed id. `docket.frontmatter.quoted`
+    follows the plain scalar to its end instead, and finds no quoted one.
+    """
+    for name, opener in (("comma", "one, "), ("bracket", "one [ ")):
+        _write(tmp_path, f".claude/skills/{name}/SKILL.md", ESCAPED_DESCRIPTION.format(opener, ""))
+
+    assert fixture_id_check.collect(tmp_path) == []
+
+
+def test_an_anchor_or_a_tag_ahead_of_a_quote_still_opens_it(tmp_path: Path) -> None:
+    """A quote after an anchor or a tag opens a double-quoted scalar (`PL-YPLM`).
+
+    A node's properties stand before its content (YAML 1.2.2 § 6.9). Read a
+    line at a time, an anchor or a tag ending the text before a quote
+    opened no node, so the escaped line break was left in, and the malformed
+    id PyYAML 6.0.3 reads passed as the well-formed `PL-K7QX`.
+    """
+    for name, properties in (("anchor", "&a "), ("tag", "!!str "), ("both", "&a !!str ")):
+        _write(
+            tmp_path, f".claude/skills/{name}/SKILL.md", ESCAPED_DESCRIPTION.format(properties, "")
+        )
+
+    assert _found(tmp_path) == [("anchor", 3, JOINED), ("both", 3, JOINED), ("tag", 3, JOINED)]
+
+
+#: A `.claude/settings.json` whose permission spells `PL-K7QX` with an escaped
+#: `Q`, and whose permission and hook command each carry `PL-K7QX` over an
+#: escaped backslash-newline to a `Z`.
+SETTINGS_JSON = (
+    "{\n"  # not-an-id
+    '  "permissions": {"allow": ["Bash(echo PL-K7\\u0051X)", "Bash(echo PL-K7QX\\\\\\nZ)"]},\n'
+    '  "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "echo PL-K7QX\\\\\\nZ"}]}]}\n'
+    "}\n"
+)
+#: The same, with a comma `json` refuses after its last member.
+REFUSED_JSON = '{"note": "PL-K7\\u0051X",}\n'  # not-an-id
+
+
+def test_a_settings_json_hook_command_is_read_decoded(tmp_path: Path) -> None:
+    """`.claude/settings.json` is read through `json`, a hook's command as the shell joins it.
+
+    Read raw (`PL-YPLM`), an escape stood inside the token: `PL-K7\\u0051X` was reported
+    as the malformed `PL-K7` though the string holds `PL-K7QX`, and the
+    command whose backslash-newline the shell removes, running `echo` on the
+    malformed id, passed as the well-formed `PL-K7QX`. Only a `command` value
+    is the shell's, so the same escape in a permission rule is left in. A
+    document `json` refuses, as the harness does, is read as written.
+    """
+    _write(tmp_path, ".claude/settings.json", SETTINGS_JSON)
+    _write(tmp_path, ".claude/refused/settings.json", REFUSED_JSON)
+
+    assert _found(tmp_path) == [("refused", 1, "PL-K7"), (".claude", 3, JOINED)]  # not-an-id
+
+
 # --- keyword names: an id that cannot be spelled as one ----------------------
 
 

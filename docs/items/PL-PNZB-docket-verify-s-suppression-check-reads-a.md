@@ -3,12 +3,14 @@ id: PL-PNZB
 title: docket verify's suppression check reads a configuration file's diff one physical line at a time, so a TOML array or multi-line string rewrapped with no change is refused as an added suppression, a suppression split by a line-ending backslash or moved between two keys' continued values passes, and a configparser continuation behaves the same; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, subprojects/docket/tests/test_portability.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1437
 payoff: a TOML or ini value reflowed without change no longer refuses a close-out, and a suppression continued across lines or moved between keys no longer passes verify as none added
 verify: grep -q 'def test_a_configuration_suppression_is_compared_as_its_formats_reader_reads_it' subprojects/docket/tests/test_verify.py
 ---

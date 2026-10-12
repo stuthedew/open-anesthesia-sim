@@ -1758,8 +1758,10 @@ answer below is:
   frozen-list pair or a scope declaration wrapped that way would lose its
   second half with nothing saying so. The walker records the line on
   `MilestoneSection.unread` instead. `tools/doc_check.py` fails it, `wave`
-  and `picks` print it and exit non-zero (`PL-GMR6`), and the digest's plan
-  line says the plan was not read whole. A release cut does not refuse on it,
+  and `picks` print it and exit non-zero (`PL-GMR6`), as do `status`, `show`
+  and `next`, saying a placement above may be missing where the others say a
+  count may be short (`PL-L4X3`), and the digest's plan line says the plan was
+  not read whole. A release cut does not refuse on it,
   as it does on a timeline that does not parse, because a list entry holds no
   version (`PL-MFVV`).
 
@@ -3905,9 +3907,16 @@ trailing comment blanked, and named as read that way, as the assertion check
 below does. Replayed under 3.11 over `main`'s 680
 non-merge commits that change a `.py` or `.pyi` file, on 2026-10-04, the
 statement reader finds exactly what the line reader found: the `bash` guard
-below. Only `.py` and `.pyi` are stripped: in a `.cfg` or `.ini` a quote is an
-ordinary character in a value and an inline `#` is part of that value, so the
-same strip would delete configuration rather than prose.
+below. A configuration file is read through its own format's reader the same
+way (`PL-PNZB`): every version of a `.toml` file through `tomllib`, and of a
+`.cfg` or `.ini` file through `configparser`, each value split into a statement
+per line under its dotted key. So a TOML array re-wrapped or an ini
+continuation re-indented adds nothing, while `no:xfail` split by a line-ending
+backslash, or moved to another key's value, is found; a file its reader
+refuses is read line by line and named. Only `.py` and `.pyi` lines are
+stripped: in a `.cfg` or `.ini` read line by line, a quote is an ordinary
+character in a value and an inline `#` is part of that value, so the same strip
+would delete configuration rather than prose.
 
 `# type: ignore` is deliberately not one of the markers. Replayed over `main`'s
 1,004 non-merge commits it is the only one that has ever matched a real
