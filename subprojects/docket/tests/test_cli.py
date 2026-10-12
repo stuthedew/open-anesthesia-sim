@@ -7413,6 +7413,44 @@ def test_concurrent_in_scope_names_a_plan_list_it_could_not_read_whole(
     assert "A list the plan is read from was not read whole, so a count above may be short:" in out
 
 
+#: A second ready item, whose id `CARRIED_ID_ROADMAP` carries on from the
+#: margin of the gate's one entry.
+CARRIED = READY.replace("PL-B1B1", "PL-Z9Z9").replace("A ready item", "Another ready item")
+#: `WAVE_ROADMAP` with that entry carried on from the margin, which the list
+#: walker declines by name, so the id on the carried line drops out of the plan.
+CARRIED_ID_ROADMAP = WAVE_ROADMAP.replace(
+    "- PL-B1B1 (S) The one entry on this gate",
+    "- PL-B1B1 and\nPL-Z9Z9 (S) The one entry on this gate",
+)
+
+
+@pytest.mark.parametrize(
+    "command", [("status",), ("show", "PL-Z9Z9"), ("next",), ("next", "--oldest")]
+)
+def test_status_show_and_next_name_a_plan_list_they_could_not_read_whole(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], command: tuple[str, ...]
+) -> None:
+    """An id the walker declined is no id the plan placed nowhere (`PL-L4X3`).
+
+    Each of these answered from `Scope`, which carries no `Wave.unread`, so the
+    carried-on `PL-Z9Z9` was unmarked, placed by no section, or ranked on its
+    band alone at exit 0, where `wave` names the line and exits 1. Each still
+    answers from what was read, names the entry as `wave` does, and exits 1.
+    """
+    store = _wave_project(tmp_path, READY, CARRIED)
+    (tmp_path / "ROADMAP.md").write_text(CARRIED_ID_ROADMAP, encoding="utf-8")
+
+    assert _run(*command, "--items", str(store)) == 1
+
+    out = capsys.readouterr().out
+    assert "PL-Z9Z9" in out
+    assert (
+        "A list the plan is read from was not read whole, so a placement above may be missing:"
+        in out
+    )
+    assert "  line 23, in the v0.4.0 section: this line carries on the entry above it" in out
+
+
 def test_next_oldest_reads_what_counts_as_new_work_from_the_config(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

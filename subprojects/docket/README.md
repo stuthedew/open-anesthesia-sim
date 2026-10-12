@@ -1758,8 +1758,10 @@ answer below is:
   frozen-list pair or a scope declaration wrapped that way would lose its
   second half with nothing saying so. The walker records the line on
   `MilestoneSection.unread` instead. `tools/doc_check.py` fails it, `wave`
-  and `picks` print it and exit non-zero (`PL-GMR6`), and the digest's plan
-  line says the plan was not read whole. A release cut does not refuse on it,
+  and `picks` print it and exit non-zero (`PL-GMR6`), as do `status`, `show`
+  and `next`, saying a placement above may be missing where the others say a
+  count may be short (`PL-L4X3`), and the digest's plan line says the plan was
+  not read whole. A release cut does not refuse on it,
   as it does on a timeline that does not parse, because a list entry holds no
   version (`PL-MFVV`).
 

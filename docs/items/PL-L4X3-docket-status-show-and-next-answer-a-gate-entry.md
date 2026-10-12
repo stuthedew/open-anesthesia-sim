@@ -3,12 +3,14 @@ id: PL-L4X3
 title: docket status, show and next answer a gate entry's placement from roadmap.Scope, which carries no Wave.unread, so an id on a gate entry the list walker declines by name - carried on from the margin - is reported placed by no section at exit 0, where wave, picks, check and the digest each name the decline; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1437
 payoff: status, show and next say when the plan was read short rather than calling a gate entry unplaced at exit 0.
 verify: grep -q 'def test_status_show_and_next_name_a_plan_list_they_could_not_read_whole' subprojects/docket/tests/test_cli.py
 ---
