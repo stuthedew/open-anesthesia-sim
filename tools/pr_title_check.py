@@ -85,6 +85,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.config import load as load_config  # noqa: E402
 from docket.lines import file_text, record_text, split_lines  # noqa: E402
 from docket.model import CLOSED_STATUSES, Item, parse_item  # noqa: E402
 from docket.store import read_items  # noqa: E402
@@ -92,7 +93,8 @@ from docket.vcs import ITEM_FILE_RE, default_base, leading_ids  # noqa: E402
 
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
 
-ITEMS_DIR = "docs/items"
+#: The store, where `docket.toml` puts it, as docket reads it (`PL-WCHF`).
+ITEMS_DIR = load_config(ROOT).items_dir
 
 #: The head `--discover` reads where no ref is named (`PL-T8PT`): the item files
 #: on disk, committed or not. Git refuses a ref name with a space in it, so no

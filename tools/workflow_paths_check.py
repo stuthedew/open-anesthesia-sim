@@ -118,7 +118,7 @@ pins, so it can only run under the project interpreter -
 `tests/unit/test_tools_portability.py` states that rule and names
 `contrast_check.py` and `import_boundary_check.py` as the other two. Like them,
 this file itself imports only what that suite admits - the standard library,
-and the in-tree `docket` package for `is_under` and the import rule - and
+and the in-tree `docket` package for `is_under`, the import rule and the settings - and
 parses at the declared floor, which is what keeps it in that suite's scope.
 """
 
@@ -127,7 +127,6 @@ from __future__ import annotations
 import argparse
 import ast
 import sys
-import tomllib
 from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -135,6 +134,8 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.arming import PRODUCT_PACKAGE, imports_product, is_test_file  # noqa: E402
 from docket.arming import TEST_FILE_PATTERNS as TEST_FILE_PATTERNS  # noqa: E402
+from docket.config import CONFIG_NAME  # noqa: E402
+from docket.config import load as load_config  # noqa: E402
 from docket.model import is_under  # noqa: E402
 
 # Which files the repository holds is git's fact, so the list lives beside git's one
@@ -150,36 +151,32 @@ from docket.vcs import tracked_under as tracked_under  # noqa: E402
 TESTS_DIR = Path("tests")
 
 #: The store's own settings file, which holds the lists being checked.
-CONFIG = Path("docket.toml")
+CONFIG = Path(CONFIG_NAME)
 
 
 def declared_workflow_paths(root: Path) -> tuple[str, ...]:
-    """`[docket] workflow_paths` from the store's settings file."""
-    with (root / CONFIG).open("rb") as handle:
-        data = tomllib.load(handle)
-    section = data.get("docket", {})
-    return tuple(section.get("workflow_paths", ()))
+    """`workflow_paths` as docket reads it from the store's settings file.
+
+    Through `docket.config.load` rather than a reading of the table here, so a
+    top-level key, a value that is not a list, or an absent key is answered as
+    docket answers it (`PL-WCHF`).
+    """
+    return load_config(root).workflow_paths
 
 
 def declared_product_paths(root: Path) -> tuple[str, ...]:
-    """`[docket] product_paths` from the store's settings file, or empty where none is declared.
+    """`product_paths` as docket reads it, or empty where none is declared.
 
     Docket itself does not read this list: `Item.lane` places every path
     `workflow_paths` does not cover on the product side. The list exists so
     that placement is a decision this check can hold the tree to.
     """
-    with (root / CONFIG).open("rb") as handle:
-        data = tomllib.load(handle)
-    section = data.get("docket", {})
-    return tuple(section.get("product_paths", ()))
+    return load_config(root).product_paths
 
 
 def declared_gate_paths(root: Path) -> tuple[str, ...]:
-    """`[docket] gate_paths` from the store's settings file."""
-    with (root / CONFIG).open("rb") as handle:
-        data = tomllib.load(handle)
-    section = data.get("docket", {})
-    return tuple(section.get("gate_paths", ()))
+    """`gate_paths` as docket reads it, its defaults included where none is declared."""
+    return load_config(root).gate_paths
 
 
 def ruff_configs(root: Path) -> list[str]:
@@ -197,13 +194,10 @@ def gate_problems(root: Path) -> list[str]:
     """Every `ruff.toml` in the tree that no `gate_paths` entry covers."""
     roots = declared_gate_paths(root)
     if not roots:
-        # Declined rather than failed. `docket.config` supplies package defaults
-        # for an absent `gate_paths`, and this file may import the standard
-        # library only, so a settings file that does not state the list is one
-        # whose effective list this tool cannot read. Reporting "no gate_paths"
-        # there would be a check answering a question it did not ask. This
-        # repository states the list - the whole reason `docket.toml` writes out
-        # values that are also defaults - so the rule fires where it matters.
+        # Declined rather than failed: only a settings file declaring the list
+        # empty reaches here, since an absent one takes docket's defaults, and
+        # with nothing gated there is no entry a `ruff.toml` could be missing
+        # from.
         return []
     return [
         f"{relative} is a linter config no {CONFIG.as_posix()} gate_paths entry covers, so "

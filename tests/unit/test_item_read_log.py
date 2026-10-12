@@ -216,3 +216,10 @@ def test_the_summariser_tells_an_item_s_file_by_docket_s_grammar(
 
     assert set(paths) == {"PL-8888"}
     assert closed == {"PL-8888"}
+
+
+def test_the_reader_reads_the_log_the_hook_writes() -> None:
+    """Two spellings of one name, since a tool cannot import a hook; held equal here (`PL-WCHF`)."""
+    import item_reads
+
+    assert item_reads.LOG.name == item_read_log.LOG_NAME

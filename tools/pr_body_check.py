@@ -199,6 +199,7 @@ from typing import NamedTuple
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.claims import RECORDS  # noqa: E402
 from docket.config import load as load_docket_config  # noqa: E402
 from docket.lines import record_text  # noqa: E402
 from docket.model import parse_front_matter  # noqa: E402
@@ -214,7 +215,8 @@ from docket.vcs import (  # noqa: E402
 )
 
 #: Relative, as a message names a file; `RECOVERY_DIR` is where they are read.
-RECORD_PATH = "docs/pr-bodies"
+#: `claims.RECORDS` is the directory's one spelling (`PL-WCHF`).
+RECORD_PATH = RECORDS.rstrip("/")
 RECOVERY_DIR = ROOT / RECORD_PATH
 API = "https://api.github.com"
 TIMEOUT_S = 15
@@ -422,15 +424,31 @@ class Listed(NamedTuple):
     armed_message: str | None
 
 
-def normalise(body: str | None) -> str:
+def normalise(body: str | None, *, appended: bool = True) -> str:
     """A body as `--compare` reads it, with what GitHub and the rewrite changed taken out.
 
     Applied to both sides alike, so a step can hide a difference but never make
     one. The module docstring gives the measurement behind each step.
+    `appended=False` keeps a closing trailer group, which `readings` needs.
     """
-    text = APPENDED_TRAILER_RE.sub("", (body or "").replace("\r\n", "\n"))
+    text = (body or "").replace("\r\n", "\n")
+    if appended:
+        text = APPENDED_TRAILER_RE.sub("", text)
     text = FOOTER_RE.sub("", " ".join(text.split()))
     return ABBREVIATED_HASH_RE.sub("<hash>", text)
+
+
+def readings(body: str | None) -> set[str]:
+    """What a squash of `body` may normalise to: GitHub's group taken off, or nothing.
+
+    A body closing with a trailer group of its own keeps it on `main` where
+    GitHub appended a group after it, and only GitHub's is taken off there, so
+    the body is compared with its group kept as well as without (`PL-SNQR`).
+    The kept reading is the body's own text, so a squash that gained a trailer
+    paragraph the body never had still differs; stripping repeatedly would have
+    hidden that.
+    """
+    return {normalise(body), normalise(body, appended=False)}
 
 
 def comparable(ref: str) -> list[tuple[str, int, str]]:
@@ -480,14 +498,13 @@ def listed_bodies(slug: str, wanted: set[int]) -> tuple[dict[int, Listed], str |
 def verdict(squash_body: str, listed: Listed) -> str | None:
     """Why a squash body is not its pull request's body, or None where it is."""
     ours = normalise(squash_body)
-    theirs = normalise(listed.body)
-    if ours == theirs:
+    if ours in readings(listed.body):
         return None
     if not ours:
         #: `missing()` asks for an empty body, and GitHub's trailer alone is not
         #: empty: `#325` escaped it that way, though its pull request had no body.
         return "carries only GitHub's trailer"
-    if listed.armed_message is not None and normalise(listed.armed_message) == ours:
+    if listed.armed_message is not None and ours in readings(listed.armed_message):
         return "is the body auto-merge was armed with, and the pull request was edited after"
     return "differs"
 

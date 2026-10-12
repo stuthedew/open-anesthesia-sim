@@ -404,7 +404,7 @@ def emphasis(text: str, literals: Collection[tuple[int, int]] = ()) -> tuple[Emp
     could only open.
 
     `literals` are the spans of `text` an inline literal holds: each code span
-    (§ 6.1), which a caller finds with `release.CODE_SPAN_RE`. No delimiter or
+    (§ 6.1), which a caller finds with `release.code_spans`. No delimiter or
     escape inside one is read, and a run beside one is flanked by its backtick,
     as CommonMark flanks it. Links, images, autolinks and raw HTML are not
     read, so a delimiter in a link's text can pair with one outside it, where

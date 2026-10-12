@@ -45,11 +45,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.config import load as load_config  # noqa: E402
 from docket.lines import file_text, record_text, split_lines  # noqa: E402
 from docket.release import notes_path, version_in  # noqa: E402
 from docket.vcs import REMOTE, default_branch, find_cut, is_shallow  # noqa: E402
-
-VERSION_FILE = "pyproject.toml"
 
 #: `git ls-remote --exit-code`'s status where the remote answered and holds no
 #: matching ref. Every other failure means it could not be asked, and a tag
@@ -100,18 +99,20 @@ def run(root: Path, *, apply: bool, remote: str = REMOTE, branch: str | None = N
     """
     branch = branch or default_branch(root)
     ref = f"{remote}/{branch}"
+    # Where `docket.toml` puts it, which is the file a cut bumps (`PL-WCHF`).
+    version_file = load_config(root).version_file
     fetched = _git(["fetch", "--quiet", remote, branch], root)
     if fetched.returncode != 0:
         print(f"Declined: `git fetch {remote} {branch}` failed: {_failure(fetched)}")
         return 1
     try:
-        version = version_in(file_text(_git(["show", f"{ref}:{VERSION_FILE}"], root).stdout))
+        version = version_in(file_text(_git(["show", f"{ref}:{version_file}"], root).stdout))
     except ValueError as error:
         # Not TOML, which is not the same as declaring no version (`PL-3DD9`).
-        print(f"Declined: {ref}:{VERSION_FILE} is not TOML ({error}), so no tag can be named.")
+        print(f"Declined: {ref}:{version_file} is not TOML ({error}), so no tag can be named.")
         return 1
     if not version:
-        print(f"Declined: {ref} declares no version in {VERSION_FILE}, so no tag can be named.")
+        print(f"Declined: {ref} declares no version in {version_file}, so no tag can be named.")
         return 1
     name = f"v{version}"
     if is_shallow(root) is not False:

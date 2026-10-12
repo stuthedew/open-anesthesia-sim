@@ -517,10 +517,10 @@ def test_a_code_span_is_read_inside_its_paragraph() -> None:
     does; a blank line closes it, so a stray backtick cannot pair with a run
     paragraphs below and read every span after it inside out.
     """
-    from docket.release import CODE_SPAN_RE
+    from docket.release import code_spans
 
     def contents(text: str) -> list[str]:
-        return [span["content"] for span in CODE_SPAN_RE.finditer(text)]
+        return [span["content"] for span in code_spans(text)]
 
     assert contents("run `bin/docket\nwave` and ``a`b`` then `c`") == [
         "bin/docket\nwave",
@@ -529,6 +529,39 @@ def test_a_code_span_is_read_inside_its_paragraph() -> None:
     ]
     assert contents("a stray ` here\n\nthen `x` and `y`") == ["x", "y"]
     assert contents("``two closed by three```") == []
+
+
+def test_an_escaped_backtick_opens_no_code_span() -> None:
+    """`PL-T3GW`: CommonMark 0.31.2 § 2.4 reads an escaped backtick as text.
+
+    The pattern asked only whether a backtick followed another, so the escaped
+    one opened a span running to the next span's opener: two spans where
+    CommonMark reads one. An escaped backslash escapes nothing after it, and a
+    backslash inside a span is the span's.
+    """
+    from docket.release import code_spans, replace_code_spans
+
+    def contents(text: str) -> list[str]:
+        return [span["content"] for span in code_spans(text)]
+
+    assert contents(r"\`a` b `c`") == [" b "]
+    assert contents(r"\\`a` and \``b`") == ["a", "b"]
+    assert contents(r"`a\` `b`") == ["a\\", "b"]
+    assert replace_code_spans("", r"\`a` b `c`") == r"\`ac`"
+
+
+def test_a_backslash_escaped_backtick_opens_no_code_span_in_a_title() -> None:
+    """`PL-CQC9`: a placeholder after an escaped backtick is escaped, not taken for code.
+
+    The escaped backtick opened a span running to the code span's opener, so
+    the placeholder between them was copied unescaped into the notes bullet,
+    where GitHub drops it as an HTML tag.
+    """
+    from docket.release import markdown_title
+
+    assert markdown_title(r"an escaped \` then refs/pull/<n>/head and `code`") == (
+        r"an escaped \` then refs/pull/\<n>/head and `code`"
+    )
 
 
 # --- bullets that shipped before their number existed ------------------------
