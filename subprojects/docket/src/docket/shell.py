@@ -108,6 +108,21 @@ OPENS_A_COMMAND = frozenset(
 #: §3.2.3 "Pipelines", §3.2.6 "Coprocesses", §3.3 "Shell Functions").
 LEADS = frozenset(("time", "coproc", "function"))
 
+#: The tests of a conditional expression that take one operand, and those that
+#: take two, an unquoted word each; bash reads `<` and `>` there as the two
+#: string comparisons (`test_unop` and `test_binop` in bash 5.2.21's test.c,
+#: each run through `bash -n`; Bash Reference Manual §6.4 "Bash Conditional
+#: Expressions").
+UNARY_TESTS = frozenset(f"-{letter}" for letter in "abcdefghknoprstuvwxzGLNORS")
+BINARY_TESTS = frozenset(
+    ("=", "==", "!=", "=~", "-eq", "-ne", "-lt", "-le", "-gt", "-ge", "-nt", "-ot", "-ef")
+)
+#: What the word after a binary test is read as: a pattern, whose extglob
+#: groups bash reads as pairs, or a regular expression, whose `(` opens a pair
+#: and whose `|` is part of it (`PST_EXTPAT` and `PST_REGEXP` in bash 5.2.21's
+#: parse.y, `PL-X1VN`).
+READS_AFTER = {"==": "pattern", "=": "pattern", "!=": "pattern", "=~": "regex"}
+
 
 class _Value:
     """What `dataclass(frozen=True)` gave the classes below, without importing `dataclasses`.
@@ -153,7 +168,10 @@ class Word(_Value):
     with the name before it (`PL-VJPH`), and so does arithmetic: a `$(( ))`
     in a word, and an arithmetic command or an arithmetic `for`'s `(( ))` as
     a word of its own, none of which runs a command, though a substitution
-    inside one does (`PL-3Z8B`).
+    inside one does (`PL-3Z8B`). Inside `[[ ]]` an `&&`, `||`, `(`, `)`, `<`
+    or `>` is a word of the conditional, which no command runs and none
+    redirects, and a regular expression or a pattern's groups are part of
+    their word (`PL-X1VN`).
     """
 
     _fields = __slots__ = ("text", "quoted", "globbed", "bang", "case_syntax")
@@ -250,7 +268,8 @@ class FlatReading(_Value):
     `;` and every comment, continuation and here-document body gone. An
     unquoted `$( )`, `<( )` or `>( )` is read inline, its parentheses as
     operators, so a walk counting subshells meets them as it always has,
-    while arithmetic is the one plain token `Word.text` is (`PL-3Z8B`).
+    while arithmetic is the one plain token `Word.text` is (`PL-3Z8B`), and
+    a conditional's own operators are plain tokens too (`PL-X1VN`).
     The tokens of a substitution inside double quotes, a `${...}`, backquotes
     or an array assignment are in `substituted`, one list each in the order
     they open, since they run although their text stays in the word.
@@ -429,7 +448,9 @@ class _Grammar:
     `case` pattern's `)` closes nothing, and inside `[[ ]]` a newline ends no
     line, though the here-documents waiting on it start after it, as bash
     5.2.21 reads them. An arithmetic `(( ))` is one word, which `_Lexer`
-    reads whole where a head or a `for` opens one (`PL-3Z8B`).
+    reads whole where a head or a `for` opens one (`PL-3Z8B`). Inside `[[ ]]`
+    this reads the conditional's own grammar, as `condition` describes, and
+    refuses what bash refuses there (`PL-X1VN`).
     A head is where bash 5.2.21 reads a reserved word (`reserved_word_acceptable`
     in its parse.y), and this takes one after a control operator or a newline,
     after a word in `OPENS_A_COMMAND`, after a function definition's `()`, and
@@ -457,8 +478,13 @@ class _Grammar:
         #: its `in`, a `pattern` (where `esac` closes it), the rest of one
         #: (`patterns`), or the commands of the `clause` a pattern opened.
         self.cases: list[str] = []
-        #: Whether a `[[` waits for its `]]`.
-        self.conditional = False
+        #: What an open `[[` waits for next, or "" where none is open: a `term`,
+        #: the `operand` of a unary test, the binary test after a term's first
+        #: word (`binop`), the word after one - an `operand`, a `pattern` or a
+        #: `regex` - or, once a term is whole, what `joined` it to the next.
+        self.conditional = ""
+        #: How many of the open `[[`'s groups wait for their `)`.
+        self.groups = 0
 
     def word(self, text: str, quoted: bool) -> bool:
         """Read one word: the reserved word it is, where bash reads one.
@@ -484,7 +510,7 @@ class _Grammar:
             self.cases[-1] = "patterns"
             return True
         if self.conditional:
-            self.conditional = reserved != "]]"
+            self.condition(reserved, operator=False)
             return False
         if head and reserved == "case":
             self.cases.append("word")
@@ -493,7 +519,7 @@ class _Grammar:
             self.cases.pop()
             return True
         if head and reserved == "[[":
-            self.conditional = True
+            self.conditional, self.groups = "term", 0
             return False
         if leading == "time" and reserved == "-p":
             # bash reads `-p` straight after `time`, and `--` after either, as
@@ -527,12 +553,48 @@ class _Grammar:
     def operator(self, operator: str) -> None:
         """Read one operator a pattern does not own: where the next word stands after it."""
         self.leading, self.counting = "", False
-        if self.conditional:
-            return
         if self.cases and self.cases[-1] == "clause" and operator in (";;", ";&", ";;&"):
             self.cases[-1] = "pattern"
         self.head = operator in HEADS or (operator == ")" and self.opened)
         self.opened = operator == "("
+
+    def condition(self, token: str, operator: bool) -> None:
+        """Read one token of an open `[[ ]]`, unreadable where bash refuses it there.
+
+        `token` is a word's text, "" for a quoted one, which none of the
+        conditional's own words is, or, where `operator`, the operator or the
+        newline read. As bash 5.2.21's `cond_term` reads them, a term opens
+        with any `!` and `(`, and is a unary test and its operand, a word, the
+        binary test and the word after it, or a word alone; `&&` and `||` join
+        two terms, a `)` closes a group, and `]]` the conditional where no
+        group is open. A newline stands only before a term or after one, and
+        every other operator nowhere (Bash Reference Manual §3.2.5.2
+        "Conditional Constructs", `PL-X1VN`).
+        """
+        expects = self.conditional
+        closing = not operator and token == "]]"
+        if operator and token == "\n":
+            accepted = expects in ("term", "joined")
+        elif expects in ("operand", "pattern", "regex"):
+            accepted, self.conditional = not (operator or closing), "joined"
+        elif expects == "term":
+            accepted = not closing and (not operator or token == "(")
+            if operator:
+                self.groups += 1
+            elif token != "!":
+                self.conditional = "operand" if token in UNARY_TESTS else "binop"
+        elif expects == "binop" and (token in ("<", ">") if operator else token in BINARY_TESTS):
+            accepted, self.conditional = True, READS_AFTER.get(token, "operand")
+        elif operator and token in ("&&", "||"):
+            accepted, self.conditional = True, "term"
+        elif operator and token == ")":
+            accepted, self.conditional = self.groups > 0, "joined"
+            self.groups -= 1
+        else:
+            accepted, self.conditional = closing and not self.groups, ""
+        if not accepted:
+            shown = "a newline" if token == "\n" else f"`{token}`" if token else "a quoted word"
+            raise _Unreadable(f"has {shown} where its `[[ ]]` cannot take it")
 
 
 class _Frame:
@@ -670,6 +732,7 @@ class _Lexer:
                     raise _Unreadable("has a `<<` with no word after it")
                 self.refuse("carries a newline, which no admitted shape uses")
                 if grammar.conditional:  # inside `[[ ]]`: the bodies start, and the line goes on
+                    grammar.condition(char, operator=True)
                     index = self.here_documents(index, stop)
                     continue
                 tokens.append(char)
@@ -735,6 +798,15 @@ class _Lexer:
                 end = self.substitution_body(index, after + 1, stop, flat)
                 text.append(command[index:end])
                 index = end
+            elif char in "(|" and grammar.conditional == "regex":
+                # A regular expression's `(` opens a pair, and its `|` is part
+                # of it, as bash reads the word after `=~` (`PL-X1VN`).
+                self.refuse(f"carries `{char}`, which no admitted shape uses")
+                start()
+                end = self.matched(index, stop) if char == "(" else index + 1
+                text.append(command[index:end])
+                spelled.append(self.kept(index, end))
+                index = end
             elif char in SHELL_OPERATORS:
                 operator, end = _operator_at(command, index, stop)
                 if (
@@ -766,7 +838,24 @@ class _Lexer:
                     index = end
                     finish()  # bash reads what follows the `))` as a token of its own
                     continue
-                finish(redirected=operator[0] in "<>")
+                against = begin >= 0 and not quoted and _names_a_descriptor("".join(text))
+                finish(redirected=operator[0] in "<>" and not grammar.conditional)
+                if grammar.conditional:
+                    # Inside `[[ ]]` its own operators are words of it, which no
+                    # command runs and none redirects (`PL-X1VN`).
+                    if against and operator in ("<", ">"):  # bash reads a NUMBER there, no word
+                        raise _Unreadable(f"has a descriptor against `{operator}` in `[[ ]]`")
+                    grammar.condition(operator, operator=True)
+                    if operator != "&&":
+                        self.refuse(f"carries `{operator}`, which no admitted shape uses")
+                    self.joins.extend(
+                        at for at in range(index + 1, end) if command.startswith("\\\n", at)
+                    )
+                    tokens.append(Word(operator))
+                    spans.append((index, end))
+                    flat.append(operator)
+                    index = end
+                    continue
                 if self.introducer is not None:
                     raise _Unreadable("has a `<<` with no word after it")
                 self.joins.extend(
@@ -774,8 +863,6 @@ class _Lexer:
                 )
                 if not grammar.pattern(operator):  # a pattern's `)` neither nests nor closes
                     if closes and operator == ")" and not depth:
-                        if grammar.conditional:  # bash reads it inside the `[[`, and refuses it
-                            raise _Unreadable("has an unclosed `[[`")
                         flat.append(Operator(operator))
                         self.frames.pop()
                         # Bash reads the bodies still waiting after the line this closes on.
@@ -786,7 +873,7 @@ class _Lexer:
                     grammar.operator(operator)
                 if operator != "&&":
                     self.refuse(f"carries `{operator}`, which no admitted shape uses")
-                if operator in ("<<", "<<-") and not grammar.conditional:
+                if operator in ("<<", "<<-"):
                     self.introducer = operator == "<<-"
                 tokens.append(operator)
                 spans.append((index, end))
@@ -801,9 +888,20 @@ class _Lexer:
                     shown = repr(char) if char.isspace() else f"`{char}`"
                     self.refuse(f"carries an unquoted {shown}, which no admitted shape uses")
                 start()
-                after = _past_continuations(command, index + 1, stop) if char == "$" else index
+                extglob = char in "@*+?!" and grammar.conditional == "pattern"
+                after = (
+                    _past_continuations(command, index + 1, stop)
+                    if char == "$" or extglob
+                    else index
+                )
                 follows = command[after : after + 1] if after < stop else ""
-                if char == "$" and follows == "(" and not _arithmetic(command, after, stop):
+                if extglob and follows == "(":
+                    # An extglob group, a pair as bash reads one in the word
+                    # after `==`, `=` or `!=` (`PL-X1VN`).
+                    self.joins.extend(range(index + 1, after, 2))
+                    end = self.matched(after, stop)
+                    spelled.append(self.kept(index, end))
+                elif char == "$" and follows == "(" and not _arithmetic(command, after, stop):
                     # Read inline for the hooks, as `$`, `(`, the body and `)`.
                     self.joins.extend(range(index + 1, after, 2))
                     spelled.append(char)
@@ -1412,12 +1510,16 @@ def shell_words(command: str) -> Reading:
     Documents"). Bash's compound commands bend that, and `_Grammar` follows
     them: a `case` pattern's `)` closes no `$(`, and inside `[[ ]]` or an
     array assignment a newline ends no command, though the bodies waiting on
-    it start after it. An arithmetic `(( ))` or `$(( ))` is one word, read as
-    bash 5.2.21's `parse_matched_pair` reads one, so a newline there is a
-    space and a `<<` a shift, and only a substitution inside runs a command
-    (§3.5.5 "Arithmetic Expansion", `PL-3Z8B`). Not read, as bash would read
-    them: a command run through `sh -c` or `eval`. The admitted shapes refuse
-    a `$'...'` at its `$`, though it is read to its end (`PL-C45K`).
+    it start after it. Inside `[[ ]]` an `&&`, `||`, `(`, `)`, `<` and `>`
+    are words of the conditional, the word after `=~` holds a regular
+    expression's groups and bars, and the word after `==`, `=` or `!=` a
+    pattern's extglob groups (§3.2.5.2 "Conditional Constructs",
+    `PL-X1VN`). An arithmetic `(( ))` or `$(( ))` is one word, read as bash
+    5.2.21's `parse_matched_pair` reads one, so a newline there is a space
+    and a `<<` a shift, and only a substitution inside runs a command (§3.5.5
+    "Arithmetic Expansion", `PL-3Z8B`). Not read, as bash would read them: a
+    command run through `sh -c` or `eval`. The admitted shapes refuse a
+    `$'...'` at its `$`, though it is read to its end (`PL-C45K`).
 
     Every operator is read rather than stopped at, because a pipe answering
     with another command's status is what the `-k` rule looks for. Every one
@@ -1427,7 +1529,8 @@ def shell_words(command: str) -> Reading:
     unquoted character outside `PLAIN` and a `$` or backtick inside double
     quotes, where the shell expands it. A command the shell cannot read - an
     unbalanced quote, a trailing backslash, an unclosed substitution or `[[`,
-    a `<<` with no word after it, a here-document its delimiter never ends -
+    a `[[ ]]` whose grammar bash refuses, a `<<` with no word after it, a
+    here-document its delimiter never ends -
     has no clauses, and its refusal says why unless something earlier already
     had.
     """

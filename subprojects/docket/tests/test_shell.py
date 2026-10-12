@@ -28,7 +28,15 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from docket.shell import FlatReading, Word, flat_reading, joined_text, script_lines, shell_words
+from docket.shell import (
+    FlatReading,
+    Operator,
+    Word,
+    flat_reading,
+    joined_text,
+    script_lines,
+    shell_words,
+)
 
 
 def _words(command: str) -> list[str]:
@@ -214,6 +222,72 @@ def test_a_test_bash_finds_unclosed_is_unreadable() -> None:
     assert not flat_reading("[[ a &&\nb").complete
     assert shell_words("x=$([[ a ); echo b").clauses == ()
     assert shell_words("x=$([[ ( a ) ]]); echo b").clauses != ()
+
+
+#: Conditionals bash refuses, as `bash -n` says, for the lexer to refuse too.
+REFUSED_CONDITIONALS = [
+    *(
+        f"[[ a {operator} b ]]"
+        for operator in (";", "|", "&", ">>", "<<", "<<-", "<&", ">&", ">|", "&>", "&>>", "<>")
+    ),
+    *(f"[[ a {operator} b ]]" for operator in (";;", ";&", ";;&", "|&", "<<<")),
+    "[[ ( -n a ]]",
+    "[[ a ) ]]",
+    "[[ ( ) ]]",
+    "[[ x == (a) ]]",
+    "[[ x == a|b ]]",
+    "[[ x =~ a)b ]]",
+    "[[ x =~ a(b ]]",
+    "[[ x=~(x) ]]",
+    "[[ @(a) == x ]]",
+    "[[ ]]",
+    "[[ -n ]]",
+    "[[ a && ]]",
+    "[[ a b ]]",
+    "[[ a == b == c ]]",
+    "[[ 2<3 ]]",
+    "[[ a\n]]",
+    "[[ a ==\n b ]]",
+]
+
+
+def test_a_conditional_s_operators_are_its_own_words() -> None:
+    """Inside `[[ ]]` an `&&`, `||`, `(`, `)`, `<` and `>` is a word of the test (`PL-X1VN`).
+
+    Read as operators, `[[ -n a && -n b ]] && p x` was the clauses `[[ -n a`,
+    `-n b ]]` and `p x` to every reader, and `a < b` a read from a file `b`,
+    where bash 5.2.21 runs one conditional and `p x`. The word after `=~` is a
+    regular expression, its groups pairs and its `|` part of it, and the word
+    after `==`, `=` or `!=` a pattern, its extglob groups pairs. A `<(` is
+    still the process substitution it is, and what bash refuses is refused.
+    """
+    reading = shell_words("[[ -n a && -n b ]] && p x")
+    assert [clause.text for clause in reading.clauses] == ["[[ -n a && -n b ]]", "p x"]
+    flat = flat_reading("[[ -n a && -n b ]] && p x").tokens
+    assert flat == ("[[", "-n", "a", "&&", "-n", "b", "]]", "&&", "p", "x")
+    assert [isinstance(token, Operator) for token in flat] == [False] * 7 + [True] + [False] * 2
+    assert [type(token) for token in flat_reading("[[ ( -n a ) || a < b ]]").tokens] == [str] * 10
+    (clause,) = shell_words("[[ ( -n a ) || a < b ]]").clauses
+    assert clause.tokens == tuple(Word(text) for text in "[[ ( -n a ) || a < b ]]".split())
+    assert _words("[[ -e <(p x) ]]") == ["[[", "-e", "<(p x)", "]]", "p", "x"]
+
+    for test, words in (
+        ("x =~ ^(a|x)$", ["x", "=~", "^(a|x)$"]),
+        ("x =~ ( x )", ["x", "=~", "( x )"]),
+        ("x =~ y|x", ["x", "=~", "y|x"]),
+        ("x == @(a|x)*", ["x", "==", "@(a|x)*"]),
+        ("x != !(y)", ["x", "!=", "!(y)"]),
+        ('x == "a"\\ @(b)', ["x", "==", "a @(b)"]),
+        ("x == @(y|\nx)", ["x", "==", "@(y|\nx)"]),
+    ):
+        command = f"[[ {test} ]]"
+        assert _words(command) == ["[[", *words, "]]"], command
+        assert flat_reading(command).tokens == ("[[", *words, "]]"), command
+
+    for command in REFUSED_CONDITIONALS:
+        assert subprocess.run([_bash(), "-n", "-c", command], capture_output=True).returncode
+        assert shell_words(command).clauses == (), command
+        assert not flat_reading(command).complete, command
 
 
 @pytest.mark.parametrize(
@@ -921,15 +995,68 @@ def _statement(
             return f"for ((i = {counted}; i < 2; i++)); do {body}; done"
         listed = _substitution(draw, depth, quoted=False) + " 1" if draw(st.booleans()) else "1"
         return f"for _ in {listed}; do {body}; done"
-    # A test of one term, since the lexer reads the `&&`, `||`, parentheses,
-    # `<` and `>` inside `[[ ]]` as operators (`PL-X1VN`).
-    test = draw(st.sampled_from(("-n x", "x == x", "-z SUB", "SUB == ''")))
-    if "SUB" in test:
-        test = test.replace("SUB", _substitution(draw, depth, quoted=False))
+    test = _condition(draw, depth, truth=True, room=2)
     # A newline inside `[[ ]]` starts the bodies a `<<` before it opened, so
     # one ends a line only where the bodies it would start are known to be none.
     closing = draw(st.sampled_from((" ]]", "\n]]"))) if bodies == [] else " ]]"
     return f"[[ {test}{closing}"
+
+
+#: Conditional tests bash 5.2.21 finds true, and those it finds false, each
+#: `SUB` a substitution expanding to nothing: string comparisons, a regular
+#: expression's groups and bars, and extglob groups after `==`, `=` and `!=`,
+#: a newline inside a group among them (`PL-X1VN`).
+TRUE_TESTS = (
+    "-n x",
+    "x == x",
+    "-z SUB",
+    "SUB == ''",
+    "a < b",
+    "b>a",
+    "x =~ ^(a|x)$",
+    "x =~ y|x",
+    "' x ' =~ ( x )",
+    "x =~ ((x))",
+    "x =~ (x|\ny)",
+    "x == @(a|x)",
+    "xy == @(a|x)*",
+    "x = @(x)",
+    "x != !(x)",
+    "x == +(x)",
+    "x != a@(b|c)",
+    "x == @(x|\ny)",
+    '"a b" == "a"\\ @(b)',
+)
+FALSE_TESTS = ("-z x", "x == y", "-n SUB", "SUB != ''", "b < a", "x =~ ^(a|y)$", "x != @(x)")
+
+
+def _condition(draw: st.DrawFn, depth: int, truth: bool, room: int) -> str:
+    """A conditional expression bash finds `truth`, every substitution in it run.
+
+    `&&` joins two terms after a true one and `||` after a false one, since
+    bash skips the other's right side and the substitutions in it, and each
+    side is a term so that no precedence decides what runs.
+    """
+    kind = draw(st.sampled_from(("term", "term", "&&", "||") if room else ("term",)))
+    if kind == "&&":
+        joined = draw(st.sampled_from((" && ", "&&")))
+        return _term(draw, depth, True, room - 1) + joined + _term(draw, depth, truth, room - 1)
+    if kind == "||":
+        # Spaced, since after `=~` a `|` is part of the regular expression.
+        return _term(draw, depth, False, room - 1) + " || " + _term(draw, depth, truth, room - 1)
+    return _term(draw, depth, truth, room)
+
+
+def _term(draw: st.DrawFn, depth: int, truth: bool, room: int) -> str:
+    """A test bash finds `truth`, or at shallow depth one negated with `!` or grouped."""
+    kind = draw(st.sampled_from(("test",) * 3 + (("!", "group") if room else ())))
+    if kind == "!":
+        return "! " + _term(draw, depth, not truth, room - 1)
+    if kind == "group":
+        grouped = draw(st.sampled_from(("( {} )", "({})")))
+        return grouped.format(_condition(draw, depth, truth, room - 1))
+    test = draw(st.sampled_from(TRUE_TESTS if truth else FALSE_TESTS))
+    return test.replace("SUB", _substitution(draw, depth, quoted=False)) if "SUB" in test else test
 
 
 #: What may stand between two statements on one line, each running both sides.
@@ -1024,8 +1151,9 @@ def test_the_lexer_reads_generated_commands_as_bash_does(script: str) -> None:
     here-documents under every quoting of their delimiter, `<<-` too, inside
     substitutions as well; `;`, `&`, `&&`, `|`, `|&` and an operator a
     continuation splits; and groups, subshells, `if`, `time` and `time -p`,
-    assignments, arrays, `for` and the arithmetic `for`, `(( ))`, `[[ ]]`,
-    and `case` with `;;`, `;&` and `;;&`.
+    assignments, arrays, `for` and the arithmetic `for`, `(( ))`, `[[ ]]`
+    with `!`, groups, `&&`, `||`, `<`, `>`, `=~` and extglob patterns
+    (`PL-X1VN`), and `case` with `;;`, `;&` and `;;&`.
     The same generator, run unseeded over 10,000 scripts on 2026-10-12,
     disagreed with bash on none.
 
@@ -1131,21 +1259,7 @@ KNOWN_DEPARTURES = [
         {("p",): 1, ("p", "from-a-body"): 1, ("p", "after"): 1},
         {("p",): 1, ("p", "after"): 1},
         id="PL-55R2",
-    ),
-    pytest.param(
-        "[[ -n a && -n b ]] && p x\n",
-        {("p", "x"): 1},
-        {("-n", "b", "]]"): 1, ("p", "x"): 1},
-        {("-n", "b", "]]"): 1, ("p", "x"): 1},
-        id="PL-X1VN-and",
-    ),
-    pytest.param(
-        "[[ ( -n a ) ]] && p x\n",
-        {("p", "x"): 1},
-        {("-n", "a"): 1, ("]]",): 1, ("p", "x"): 1},
-        {("-n", "a"): 1, ("]]",): 1, ("p", "x"): 1},
-        id="PL-X1VN-parentheses",
-    ),
+    )
 ]
 
 
