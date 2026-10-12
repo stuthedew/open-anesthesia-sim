@@ -58,6 +58,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.claims import holdings, unfinished_work  # noqa: E402
+from docket.config import load as load_config  # noqa: E402
 from docket.lines import record_text, split_lines  # noqa: E402
 from docket.model import CLOSED_STATUSES  # noqa: E402
 from docket.store import read_items  # noqa: E402
@@ -76,8 +77,6 @@ ARCHIVE = "refs/archive"
 
 #: How long after its last commit a branch is kept whatever else holds.
 GRACE = timedelta(hours=72)
-
-ITEMS = "docs/items"
 
 
 class Declined(Exception):
@@ -164,7 +163,7 @@ def read_pull_requests(root: Path, now: datetime, readings: Readings) -> None:
 
 
 def read_docket(root: Path, now: datetime, readings: Readings) -> None:
-    read = holdings(root, now=now, items_dir=ITEMS, include_head=False)
+    read = holdings(root, now=now, items_dir=load_config(root).items_dir, include_head=False)
     if read.declined:
         raise Declined(f"docket could not read the claims: {read.declined}")
     for ref in read.unreadable:
@@ -176,9 +175,10 @@ def read_docket(root: Path, now: datetime, readings: Readings) -> None:
 
 
 def read_stranded(root: Path, now: datetime, readings: Readings) -> None:
-    items = read_items(root / ITEMS)
+    items_dir = load_config(root).items_dir
+    items = read_items(root / items_dir)
     held_open = {item.identifier for item in items if item.status not in CLOSED_STATUSES}
-    report = stranded(root, {item.identifier for item in items}, items_dir=ITEMS)
+    report = stranded(root, {item.identifier for item in items}, items_dir=items_dir)
     if report.declined:
         raise Declined(f"`stranded` could not read the branches: {report.declined}")
     for lost in report.items:
@@ -193,7 +193,7 @@ def read_stranded(root: Path, now: datetime, readings: Readings) -> None:
 
 
 def read_orphaned(root: Path, now: datetime, readings: Readings) -> None:
-    report = orphaned(root, items_dir=ITEMS)
+    report = orphaned(root, items_dir=load_config(root).items_dir)
     if not report.known:
         raise Declined(f"`vcs.orphaned` could not read the branches: {report.declined}")
     for branch in report.branches:

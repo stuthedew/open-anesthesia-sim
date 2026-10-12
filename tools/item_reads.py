@@ -39,13 +39,18 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
 
+from docket.config import load as load_config  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.model import CLOSED_STATUSES, parse_front_matter, parse_item  # noqa: E402
 from docket.store import ID_PATTERN  # noqa: E402
 from docket.vcs import ITEM_FILE_RE  # noqa: E402
 
+#: The hook's `LOG_NAME`, spelled again because a tool may import nothing
+#: outside the standard library and `docket` (`test_tools_portability`);
+#: `test_item_read_log` pins the two equal (`PL-WCHF`).
 LOG = REPO / ".docket-reads.log"
-ITEMS = REPO / "docs" / "items"
+#: The store, where `docket.toml` puts it, as docket reads it (`PL-WCHF`).
+ITEMS = REPO / load_config(REPO).items_dir
 
 #: The store's own grammar. `PL-[A-Z0-9]{3,4}` stood here and read `PL-CAP`
 #: and `PL-B1B` as ids - three characters is an id only when all three are
