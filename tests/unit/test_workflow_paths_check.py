@@ -41,6 +41,7 @@ is what each recorded decision was for.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -661,6 +662,57 @@ def test_a_vendored_ruff_toml_is_not_the_repository_s_to_declare(tmp_path: Path)
     root = _gate_repo(tmp_path, gate_paths=("tools",), configs=(".venv/lib/pkg/ruff.toml",))
     assert workflow_paths_check.ruff_configs(root) == []
     assert workflow_paths_check.gate_problems(root) == []
+
+
+def _checkout(root: Path) -> Path:
+    """`root` made a git checkout with everything in it committed, as the real tree is."""
+    for command in (
+        ("init", "-q"),
+        ("add", "-A"),
+        ("-c", "user.email=test@example.invalid", "-c", "user.name=Test", "commit", "-qm", "init"),
+    ):
+        subprocess.run(("git", *command), cwd=root, check=True, capture_output=True)
+    return root
+
+
+def test_ruff_configs_ignores_an_untracked_nested_checkout(tmp_path: Path) -> None:
+    """`PL-HNXS`: a subagent's checkout under `.claude/worktrees/` was counted as this one's.
+
+    Walking the disk found its configs beside the repository's, six where git
+    tracks three, and one no `gate_paths` entry covered would fail `make
+    check` on a file the repository does not hold.
+    """
+    root = _checkout(_gate_repo(tmp_path, gate_paths=("tools",), configs=("tools/ruff.toml",)))
+    nested = root / ".claude" / "worktrees" / "agent"
+    (nested / "extra").mkdir(parents=True)
+    (nested / "extra" / "ruff.toml").write_text("line-length = 100\n", encoding="utf-8")
+    subprocess.run(("git", "init", "-q"), cwd=nested, check=True, capture_output=True)
+
+    assert workflow_paths_check.ruff_configs(root) == ["tools/ruff.toml"]
+    assert workflow_paths_check.gate_problems(root) == []
+
+
+def test_a_subtree_is_read_as_the_checkout_holds_it(tmp_path: Path) -> None:
+    """`PL-9NZ3`: the one list every check reading a subtree takes.
+
+    An untracked scratch module is not the repository's, a tracked file removed
+    from the working tree cannot be opened, and a sibling directory that only
+    shares the prefix is not below it.
+    """
+    for relative in (
+        "src/core/model.py",
+        "src/core/gone.py",
+        "src/core/notes.md",
+        "src/coreish.py",
+    ):
+        _support(tmp_path, relative, "")
+    root = _checkout(tmp_path)
+    _support(root, "src/core/scratch.py", "")
+    (root / "src" / "core" / "gone.py").unlink()
+
+    assert workflow_paths_check.tracked_under(root, "src/core", ".py") == [
+        root / "src" / "core" / "model.py"
+    ]
 
 
 def test_this_repository_covers_every_linter_config_it_carries() -> None:

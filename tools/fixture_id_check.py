@@ -164,6 +164,8 @@ from docket.lines import split_lines  # noqa: E402
 from docket.shell import joined_text  # noqa: E402
 from docket.store import ID_RE  # noqa: E402
 
+from workflow_paths_check import tracked_under  # noqa: E402
+
 #: A token written the way an id is written, to be judged against `ID_RE`: the
 #: prefix and then one whole word of capitals and digits, which is every
 #: character an id can hold and nothing else. See the module docstring for why
@@ -210,13 +212,8 @@ MARKER = "not-an-id"
 
 DOCSTRING_HOLDERS = (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 
-#: Never walked: neither is repository source, and both can hold anything.
-SKIP_DIRS = frozenset(
-    {".git", ".venv", "__pycache__", ".ruff_cache", ".mypy_cache", "node_modules"}
-)
-
-#: The one tree whose prose is scanned. See the module docstring for why it is
-#: this tree and not `docs/`.
+#: The one tree whose prose is scanned, as the first part of a path relative to
+#: the root. See the module docstring for why it is this tree and not `docs/`.
 TEXT_ROOT = ".claude"
 
 #: The info strings that mark a fenced block as a shell sample, which bash would
@@ -597,23 +594,22 @@ def _front_matter_joins(text: str) -> Iterator[tuple[int, int]]:
                 at += 2 if text[at] == "\\" else 1
 
 
-def _walk(root: Path) -> Iterator[Path]:
-    """Every file under `root`, skipping the directories nothing should parse."""
-    for path in sorted(root.rglob("*")):
-        if not path.is_file():
-            continue
-        if SKIP_DIRS.intersection(path.parts):
-            continue
-        yield path
-
-
 def collect(root: Path) -> list[Offender]:
-    """Every malformed id in the repository, in the order a reader would fix them."""
+    """Every malformed id in the repository, in the order a reader would fix them.
+
+    The files are the ones the repository holds, read from `tracked_files`, and
+    each is placed by its path relative to `root`. Walking the disk, and asking
+    whether `.claude` was anywhere in the absolute path, read a checkout under
+    `.claude/worktrees/` as `.claude` prose from top to bottom - its
+    `ROADMAP.md`, `docs/` and item store, which the module docstring puts out of
+    scope - and from the main checkout read every such worktree the same way,
+    112 and 502 ids that were not errors (`PL-QJ5F`).
+    """
     offenders: list[Offender] = []
-    for path in _walk(root):
+    for path in tracked_under(root, ""):
         if path.suffix == ".py":
             offenders.extend(scan_python(path))
-        elif TEXT_ROOT in path.parts:
+        elif path.relative_to(root).parts[0] == TEXT_ROOT:
             try:
                 offenders.extend(scan_text(path))
             except UnicodeDecodeError:

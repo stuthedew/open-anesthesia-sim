@@ -127,6 +127,8 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from workflow_paths_check import tracked_under
+
 #: Call names whose first literal string argument names a module.
 _DYNAMIC_IMPORTERS = frozenset({"import_module", "__import__"})
 
@@ -463,8 +465,13 @@ class Report:
 
 
 def _sources(root: Path, tree: str) -> Iterator[Path]:
-    """Every Python file under one boundary's tree, in a stable order."""
-    yield from sorted((root / tree).rglob("*.py"))
+    """Every Python file the repository holds under one boundary's tree, in a stable order.
+
+    Read from `tracked_files`, so an untracked scratch module is not a
+    violation and another checkout under `.claude/worktrees/` is not read as
+    this one (`PL-9NZ3`).
+    """
+    yield from tracked_under(root, tree, ".py")
 
 
 def analyze(root: Path, boundaries: Sequence[Boundary] = BOUNDARIES) -> Report:

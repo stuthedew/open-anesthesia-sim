@@ -34,14 +34,14 @@ Today's sites sit in `BASELINE`, keyed by file, rule and enclosing scope and
 never by line, and it only shrinks: a count above an entry fails, and so does
 an entry the tree no longer fills, so a copy a member removes cannot return
 and the baseline cannot drift into a list nobody reads. The open members of
-`PL-5DZ8`, and `PL-HNXS` and `PL-9NZ3` for the walks, drain it.
+`PL-5DZ8` drain it; `PL-HNXS` and `PL-9NZ3` drained the walks they named.
 
 Not read: the hooks written in shell, which call git directly and are held by
 their own tests; the test trees, where a `git init` in a fixture reads no
 shared fact; an argv built from a name (`[GIT, ...]`), which no site here
 uses; a glob whose pattern is held in a name; and a walk written by hand over
 `iterdir` or `scandir`, which this check reads as the listing it calls and not
-the recursion around it - `doc_check._walk` is one (`PL-2P5L`). Nor this file,
+the recursion around it - `doc_check._walk` was one until `PL-2P5L`. Nor this file,
 whose tables spell the very literals the rules look for and whose baseline
 names a scope called `main`. A file not yet added to git is not read until it
 is, which is `tracked_files`'s trade and the one CI's run of this check
@@ -234,7 +234,7 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("git", "_blobs"): 1,
         ("git", "_git"): 1,
     },
-    "tools/agent_identity_check.py": {("definition", "APP"): 1, ("walk", "read_modules"): 1},
+    "tools/agent_identity_check.py": {("definition", "APP"): 1},
     "tools/branch_id_check.py": {("git", "_git"): 1},
     "tools/branch_sweep.py": {("definition", "ITEMS"): 1, ("git", "_git"): 1},
     "tools/contrast_check.py": {
@@ -242,9 +242,7 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("definition", "EXEMPT"): 1,
         ("definition", "LINE_CITATION_RE"): 1,
         ("git", "_git_read"): 1,
-        ("walk", "app_modules"): 1,
     },
-    "tools/core_vocabulary_check.py": {("walk", "_sources"): 1},
     "tools/dead_ends.py": {
         ("definition", "ITEMS"): 1,
         ("definition", "ITEM_ID"): 1,
@@ -259,32 +257,24 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("definition", "LINE_CITATION_RE"): 1,
         ("definition", "REDIRECTIONS"): 1,
         ("definition", "ROADMAP"): 1,
-        ("definition", "RULES_DIR"): 1,
         ("definition", "SOFT_BREAK"): 1,
         ("git", "_covered_by_gitignore"): 1,
         ("git", "_git_output"): 1,
         ("git", "_git_text"): 1,
         ("walk", "_markdown_under"): 1,
         ("walk", "check_named_tests"): 1,
-        ("walk", "measure_resident"): 1,
     },
-    "tools/fixture_id_check.py": {
-        ("definition", "JSON_KEY_RE"): 1,
-        ("definition", "MARKER"): 1,
-        ("definition", "SKIP_DIRS"): 1,
-        ("walk", "_walk"): 1,
-    },
+    "tools/fixture_id_check.py": {("definition", "JSON_KEY_RE"): 1, ("definition", "MARKER"): 1},
     "tools/generator_check.py": {("definition", "ID_RE"): 1, ("git", "creation_parents"): 1},
     "tools/glyph_check.py": {("walk", "problems"): 2},
     "tools/ignore_check.py": {("walk", "directives"): 1},
-    "tools/import_boundary_check.py": {("walk", "_sources"): 1},
     "tools/item_reads.py": {
         ("definition", "ITEMS"): 1,
         ("definition", "ITEM_ID"): 1,
         ("definition", "REPO"): 1,
     },
     "tools/left_behind_check.py": {("git", "git_runner.run"): 1},
-    "tools/literal_home_check.py": {("definition", "EXEMPT"): 1, ("walk", "_sources"): 1},
+    "tools/literal_home_check.py": {("definition", "EXEMPT"): 1},
     "tools/main_ci_status.py": {
         ("definition", "API"): 1,
         ("definition", "TIMEOUT_S"): 1,
@@ -304,7 +294,6 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("git", "_repo_from_git"): 1,
         ("github-api", "<module>"): 1,
     },
-    "tools/rules_paths_check.py": {("definition", "RULES_DIR"): 1},
     "tools/tag_release.py": {("definition", "ABSENT"): 1, ("git", "_git"): 1},
     "tools/update_armed.py": {
         ("definition", "API"): 1,
@@ -312,13 +301,7 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("definition", "PAGE"): 1,
         ("github-api", "<module>"): 1,
     },
-    "tools/workflow_paths_check.py": {
-        ("definition", "SKIP_DIRS"): 1,
-        ("git", "tracked_files"): 1,
-        ("walk", "main"): 1,
-        ("walk", "problems"): 1,
-        ("walk", "ruff_configs"): 1,
-    },
+    "tools/workflow_paths_check.py": {("git", "tracked_files"): 1},
 }
 
 
