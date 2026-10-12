@@ -8245,7 +8245,7 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     ),
     "hook commands, a `$` reaches the quote it opens past a continuation": (
         lambda _: _hook_commands("echo $\\\n'\\''; git fetch --prune #'"),
-        [["echo", "\\'"], ["git", "fetch", "--prune"]],
+        [["echo", "'"], ["git", "fetch", "--prune"]],
     ),
     "shell lines, a case pattern does not close its substitution": (
         lambda _: script_lines("x=$(case a in\n  a) echo A;;\nesac)\necho after\n"),
