@@ -228,7 +228,7 @@ cut = shell_split.segments(command)
 if cut is None:
     sys.exit(0)
 
-INTERPRETER = re.compile(r"^python(?:3(?:\.\d+)?)?$")
+INTERPRETER = shell_split.PYTHON
 # A compound command runs in this shell, as a `{ }` group does, unless it is
 # piped or backgrounded. `case` is not read: the splitter reads the `)` after
 # each of its patterns as a subshell closing.

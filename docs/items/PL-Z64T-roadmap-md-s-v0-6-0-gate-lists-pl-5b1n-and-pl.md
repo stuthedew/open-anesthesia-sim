@@ -3,12 +3,13 @@ id: PL-Z64T
 title: ROADMAP.md's v0.6.0 gate lists PL-5B1N and PL-TDBT under the product lane, while docket computes crossing and workflow for them, and nothing holds the three lane groups to the lane each entry's touches computes
 priority: P3
 effort: S
-status: needs-decision
+status: ready
 classes: defect
-touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
-blocked-by: PL-8QMD
+touches: ROADMAP.md, .claude/skills/docket/modes/release.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+payoff: a session freezing or working a gate reads each entry's lane from bin/docket gate alone, and ROADMAP.md no longer carries a lane copy that goes stale when touches move
+verify: grep -qF 'begins unless deferred - ' ROADMAP.md && grep -qF 'in one group' .claude/skills/docket/modes/release.md
 ---
 
 **Problem.** ROADMAP.md's v0.6.0 gate lists PL-5B1N and PL-TDBT under the product lane, while docket computes crossing and workflow for them, and nothing holds the three lane groups to the lane each entry's touches computes
@@ -63,8 +64,40 @@ a close-out corrects. Reading the record is
 the fact. What would make it wrong: the owner working a gate from `ROADMAP.md`'s
 lane groups rather than from `bin/docket gate` or `picks`.
 
-**Done when.** Whichever answer is chosen is recorded here with its date, and
-either `ROADMAP.md`'s current frozen list groups no entry by lane and points at
-`bin/docket gate` for the split, with the freeze mode in
-`.claude/skills/docket/modes/release.md` saying the same, or `make check` fails
-on an open entry listed under a lane group its `touches` do not compute.
+**Decided 2026-10-12, in the second workflow decision batch: stop restating
+it.** Settled by a rule the repository states rather than weighed: a shared
+fact has one source of truth, imported from the module that owns it and never
+derived again beside it (`CLAUDE.md` § "Architecture and development
+discipline", project owner, 2026-10-12). An entry's lane is `Item.lane` over
+its `touches` (`subprojects/docket/src/docket/model.py`), and `bin/docket
+gate` has printed it for every open frozen entry since `PL-QWF8`, so a lane
+group in `ROADMAP.md` is a second copy of a fact docket already states - 2 of
+42 open entries wrong when measured on 2026-10-03, and `PL-TDBT` still under
+the product lane on `main` at `43d5aeaa`, done and computing `workflow` - and
+a check holding the copy to `Item.lane` would be the second store `PL-WD5Z`
+and `PL-8QMD` removed for dispositions. The case against, the owner working a
+gate from the lane groups rather than from docket, fails on the record: the
+lane split is `bin/docket gate`'s and `bin/docket picks`' to print, which the
+owner chose on 2026-10-03 (`PL-M26Q`, recorded in `PL-QWF8`). The "Cleared by
+v0.6.0 itself" group stays, since it restates Required scope and
+`tools/doc_check.py` holds it there through `SELF_CLEARED_GROUP_RE`
+(`PL-J6HP`), and `check_gate_counts` reads one group's count as it reads
+three. An internal structure of one document is a session's call under rule
+14 of `.claude/rules/instruction-writing.md`, so this was decided in the round
+and not offered. `tools/doc_check.py` and its test leave `touches`, since no
+check is built; `.claude/skills/docket/modes/release.md` joins it.
+
+**Done when.** `ROADMAP.md`'s v0.6.0 frozen list records every entry that
+clears before the milestone begins in one group, headed `**Cleared before
+v0.6.0 begins unless deferred - N entries**` beside the "Cleared by v0.6.0
+itself" group; the paragraph opening "Two kinds of group" says the lane split
+is `bin/docket gate`'s and `bin/docket picks`' to print, in place of its three
+groups; every sentence in that section placing an entry in a lane group - the
+form "is product-lane work and is listed in that group", and the "Deferred
+from this gate" subsection's sentences placing a triage pass's captures in the
+product lane - says instead that the entry is on the list, with its lane
+docket's to print; `.claude/skills/docket/modes/release.md` § "Mode: freeze a
+milestone's debt gate" says the list is recorded in one group below the
+self-cleared one, with lanes read from `bin/docket gate` when the list is
+worked, in place of "Group the list the way `gate` prints its lanes" and
+"transcribe that group with the others, by lane"; and `make check` passes.
