@@ -232,7 +232,11 @@ class TissueGroup:
                 which is what checks it against 0 to 1
                 (`core/concentration.py`).
             SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite. Both are checked before anything changes.
+                and finite. Both are checked before anything changes. Or the
+                amount held is already past the capacity, which only a write
+                past `__setattr__` can have stored: the amount advanced is
+                written through it, at zero flow too, where it is the amount
+                held, unchanged.
         """
 
         require_fraction("arterial_partial_pressure_fraction", arterial_partial_pressure_fraction)

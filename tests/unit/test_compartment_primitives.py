@@ -19,9 +19,10 @@ exact wherever `i` and `d` are within a factor of two of each other. It is the
 *ordinary* case that was not - a compartment well below the fraction driving
 it - which is why `LOADED_FRACTION` is small. The branches are gone since
 `PL-XWFP`, because the two closed forms were rewritten anchored at the amount
-each compartment holds (`core/exponential_approach.py`); the same loaded
-fraction is what fails the no-op test below if the form anchored at the
-driving fraction is ever written back.
+each compartment holds for a step closing up to half the gap, zero flow among
+them (`core/exponential_approach.py`); the same loaded fraction is what fails
+the no-op test below if the form anchored at the driving fraction is ever
+written back.
 """
 
 import fractions
@@ -96,9 +97,10 @@ ZERO_FLOW_ROUNDING_FRACTION = ulp(DRIVING_FRACTION)
 # The first decade at which every primitive's flow moves more agent over one
 # fine step than that rounding could hide. Measured 2026-10-12 with all three
 # closed forms anchored at what they hold: each first moves at all where its
-# own gap term stops rounding to zero - the circuit and the tissue at 1e-18
-# L/min, the venous pool at 1e-19 - and from there what moves grows in
-# proportion to the flow, passing the rounding at 1e-12 L/min for the circuit
+# own gap term stops rounding to zero - the circuit from 3.8e-19 L/min and the
+# tissue from 3.9e-19, the venous pool from 4.9e-20, so at 1e-18 and 1e-19 on
+# this module's grid of one and three times each decade - and from there what
+# moves grows in proportion to the flow, passing the rounding at 1e-12 L/min for the circuit
 # (measured 2026-10-11), 3e-12 for the tissue and 3e-13 for the venous pool.
 # Far below any flow a learner can set, so an epsilon anywhere a reader might
 # reach for would freeze it.
@@ -127,7 +129,7 @@ CIRCUIT_STATES = (
 # times each decade, three steps, and five states, each a driving fraction and
 # the fraction the compartment holds. Written `d + (i - d) * exp(-dt/tau)` on
 # the fraction, the tissue form reported a change of the sign opposite to its
-# gradient in 100 of the item's 900 cases and the venous form in 94, all at
+# gradient in 100 of the walk's 930 cases and the venous form in 94, all at
 # flows from 1e-30 to 3e-13 L/min, the largest -3.2e-18 L (measured
 # 2026-10-11).
 GRADIENT_FLOWS_L_MIN = tuple(
@@ -139,6 +141,20 @@ GRADIENT_STATES = (
     pytest.param(Fraction(0.08), Fraction(1e-9), id="nearly-empty-at-8%"),
     pytest.param(Fraction(0.0), Fraction(0.02), id="washing-out"),
     pytest.param(LOADED_FRACTION, DRIVING_FRACTION, id="full-washing-out"),
+)
+
+# Amounts below both capacities above that the round trip through a fraction,
+# `capacity * (amount / capacity)`, returns one ulp away - through the 6.0 L
+# tissue capacity and the 0.7943 L venous one alike (found 2026-10-12). No
+# `set_partial_pressure_fraction` stores them, since it stores that product; a
+# test or a notebook writing the amount does (`PL-19Y0`), and a closed form
+# written on the fraction and re-formed would move each of them at any flow,
+# zero included, in whichever direction the rounding fell.
+ROUND_TRIP_MOVED_AMOUNTS_L = (
+    0.40250137443750783,
+    0.437154095683643,
+    0.3998343256124454,
+    0.42401107649955255,
 )
 
 
@@ -345,8 +361,9 @@ def test_zero_flow_is_an_exact_no_op(primitive: CompartmentPrimitive) -> None:
     Written anchored at the driving fraction, `d + (i - d) * exp(-dt/tau)`,
     each fails here, one rounding of `d + (i - d)` from where it started: the
     circuit held 6.000000000172534e-06 L where it held 6e-06 (measured
-    2026-10-05), and each patient compartment came back one unit in the last
-    place away, which is what their branches bought until the form changed.
+    2026-10-05), and a 6 L tissue group the same 6.000000000172534e-06 L
+    (measured 2026-10-12), which is what their branches bought until the form
+    changed.
     Before `PL-B26Y` the circuit's exhausted-agent integral became `nan`.
     """
 
@@ -549,12 +566,15 @@ def test_a_compartment_never_reports_uptake_as_a_return_at_an_admitted_flow(
     closed form rounded at the scale of the driving fraction, and where
     `dt/tau` was small the amount could land below where it started while the
     input was above it: uptake reported as a return, in 100 and 94 of the
-    item's 900 cases, all at flows from 1e-30 to 3e-13 L/min. Anchored at the
+    walk's 930 cases, all at flows from 1e-30 to 3e-13 L/min. Anchored at the
     amount held, with the gap term taken by `expm1`, the result is the start
-    plus a term of the gradient's sign (`core/exponential_approach.py`). The
-    amount is held to the interval between its start and its equilibrium as
-    well, which is that module's far-end bound: a full approach that landed
-    an ulp past the capacity would be a write the tissue refuses.
+    plus a term of the gradient's sign for a step closing up to half the gap,
+    and the equilibrium plus a term of the opposite sign beyond it
+    (`core/exponential_approach.py`). The amount is held to the interval
+    between its start and its equilibrium as well, which either form keeps
+    with nothing clamped: a full approach that landed an ulp past the
+    capacity would be a write the tissue refuses, and it lands on the
+    capacity instead.
     """
 
     for flow_l_min in GRADIENT_FLOWS_L_MIN:
@@ -577,6 +597,60 @@ def test_a_compartment_never_reports_uptake_as_a_return_at_an_admitted_flow(
         ), (
             f"{primitive.name} holds {stored_agent_l!r} L at {flow_l_min:g} L/min, outside "
             f"its start {held_agent_l!r} L and its equilibrium {equilibrium_agent_l!r} L"
+        )
+
+
+@_PATIENT_CASES
+@pytest.mark.parametrize("simulation_step_s", (FINE_STEP_S, 1.0, COARSE_STEP_S))
+@pytest.mark.parametrize(
+    "driving_fraction", (DRIVING_FRACTION, Fraction(0.0)), ids=("filling", "washing-out")
+)
+@pytest.mark.parametrize("held_amount_l", ROUND_TRIP_MOVED_AMOUNTS_L)
+def test_a_compartment_holding_a_written_amount_never_reports_uptake_as_a_return(
+    primitive: PatientPrimitive,
+    held_amount_l: float,
+    driving_fraction: Fraction,
+    simulation_step_s: float,
+) -> None:
+    """The amount is what is anchored, so an amount no fraction reproduces is advanced from itself.
+
+    The walk above loads each compartment through its fraction, so every
+    amount it holds is one the round trip returns. These are written, as a
+    test or a notebook writes them, and the round trip returns each one ulp
+    away: formed on the fraction and re-formed as `capacity * fraction`, a
+    closed form would report that ulp as agent moved at zero flow, of
+    whichever sign the rounding gave it. Formed on the amount, the change is
+    exactly zero at zero flow, has the gradient's sign or is zero at every
+    other, and leaves the amount between what was held and the equilibrium
+    (`core/exponential_approach.py`).
+    """
+
+    for flow_l_min in (0.0, *GRADIENT_FLOWS_L_MIN):
+        compartment = primitive.build(flow_l_min, LOADED_FRACTION)
+        compartment.agent_amount_l = held_amount_l
+        capacity_l = primitive.capacity_l(compartment)
+        equilibrium_agent_l = capacity_l * driving_fraction
+
+        assert capacity_l * (held_amount_l / capacity_l) != held_amount_l
+
+        agent_moved_l = primitive.step(compartment, driving_fraction, simulation_step_s)
+        stored_agent_l = primitive.stored_agent_l(compartment)
+
+        if flow_l_min == 0.0:
+            assert agent_moved_l == 0.0
+        assert _has_the_sign_of(agent_moved_l, equilibrium_agent_l - held_amount_l), (
+            f"{primitive.name} reports {agent_moved_l!r} L moved at {flow_l_min:g} L/min "
+            f"over {simulation_step_s:g} s, holding {held_amount_l!r} L driven by "
+            f"{driving_fraction}"
+        )
+        assert agent_moved_l == stored_agent_l - held_amount_l
+        assert (
+            min(held_amount_l, equilibrium_agent_l)
+            <= stored_agent_l
+            <= max(held_amount_l, equilibrium_agent_l)
+        ), (
+            f"{primitive.name} holds {stored_agent_l!r} L at {flow_l_min:g} L/min, outside "
+            f"the {held_amount_l!r} L written and its equilibrium {equilibrium_agent_l!r} L"
         )
 
 

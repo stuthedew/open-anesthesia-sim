@@ -20,7 +20,8 @@ verify: grep -q 'def test_a_compartment_never_reports_uptake_as_a_return_at_an_a
 and 3 times each decade, steps of 0.1, 1 and 60 s, and five states - driving
 and compartment fractions of 1.0 and 1e-6, 0.02 and 0, 0.08 and 1e-9, 0 and
 0.02, and 1e-6 and 1.0. A 6 L vessel-rich `TissueGroup` (tissue:gas 1.0)
-returned a change of the sign opposite to its gradient in 100 of 900 cases,
+returned a change of the sign opposite to its gradient in 100 of 930 cases
+(900 as first filed; re-counted at close-out, 62 flows by 3 steps by 5 states),
 and a 1.222 L `VenousBloodCompartment` (blood:gas 0.65) in 94, all at flows
 from 1e-30 to 3e-13 L/min. The largest were -3.2e-18 L and -4.2e-19 L, at
 1e-30 L/min over 0.1 s with a driving fraction of 0.08 against a compartment
@@ -59,3 +60,17 @@ every admitted flow, step and state, the walk above included, and a test in
 `tests/unit/test_compartment_primitives.py` pins it beside
 `test_the_circuit_exhaust_is_never_negative_at_an_admitted_flow`.
 
+
+**Closed 2026-10-12, in `#1465`.** Both compartments advance their amount
+through `core/exponential_approach.py`, one line in two forms: formed from the
+amount held for a step closing up to half the gap, with `1 - exp(-dt/tau)`
+taken by `expm1`, and from the equilibrium beyond it, so the change has the
+gradient's sign and the amount stays between its start and its equilibrium
+with nothing clamped, a full approach lands on the equilibrium exactly, a long
+washout keeps its residual, and zero flow is exact with no branch - the two
+zero-flow branches the brief kept are retired, which `core/__init__.py`
+records. The form anchored at the amount throughout, clamped at the
+equilibrium, was built first and reworked on review: it reported a washout of
+forty time constants as exactly empty, with 2.5e-17 L remaining, and the clamp
+bound what the two forms hold by construction. The review's two findings not
+fixed here are `PL-FNH3` and `PL-CQ1M`.
