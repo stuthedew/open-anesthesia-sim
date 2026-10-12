@@ -55,7 +55,15 @@ from .model import (
     is_under,
     parse_front_matter,
 )
-from .python import UNTOKENIZABLE, LogicalLine, Piece, definition, read_logical_lines, refusal
+from .python import (
+    UNTOKENIZABLE,
+    LogicalLine,
+    Piece,
+    definition,
+    places,
+    read_logical_lines,
+    refusal,
+)
 from .release import CODE_SPAN_PATTERN
 from .shell import Clause, Word, shell_words
 
@@ -615,21 +623,17 @@ def read_assertion_statements(source: str) -> AssertionReading:
     that assert - an `assert`'s test without its message, a call or a `with`
     item whole - so a re-wrap, a re-indent or a comment leaves it as it was,
     and an edit to any token of it, on any of its lines, changes it. `where`
-    comes from the indentation each `class` and `def` opens at, as a block's
-    statements are indented under it.
+    is `python.places`', the definition the statement belongs to, which holds a
+    decorator in the definition it decorates as `ast` does.
 
     Raises one of `UNTOKENIZABLE` where the tokenizer refuses the file.
     """
     found: list[Assertion] = []
     defines: set[str] = set()
-    scopes: list[tuple[int, str]] = []  # each open class and function: its indent and name
-    for line in read_logical_lines(source):
-        while scopes and scopes[-1][0] >= line.indent:
-            scopes.pop()
-        if name := definition(line)[1]:
-            scopes.append((line.indent, name))
-            defines.add("::".join(scope for _, scope in scopes))
-        where = "::".join(scope for _, scope in scopes)
+    lines = read_logical_lines(source)
+    for line, where in zip(lines, places(lines), strict=True):
+        if definition(line)[1]:
+            defines.add(where)
         for kind, asserting, written in _asserted(line):
             text = line.text(written[0].start, written[-1].end)
             prefix = "with " if kind == "with" else ""
@@ -1155,6 +1159,15 @@ def added_suppressions(
     parse is read the same way and named as read so (`PL-TC2D`); each version
     is parsed only to say that.
 
+    **Each is counted in the definition it applies to** (`PL-W6ZD`), the one
+    `python.places` gives it: a decorator the one it decorates, any other
+    statement the one holding it. Counted by its tokens alone, a marker moved
+    from `test_a` onto `test_b` was one statement removed from the file and
+    the same one added, and the fold cancelled the two while a test that ran
+    no longer did. A test moved whole takes its marker with it and is no
+    change; one renamed takes it to a name that did not hold it, which reads
+    as added - the side this check fails toward.
+
     **A configuration file is read the same way, through its format's own
     reader** (`PL-PNZB`). A diff line of one can be a fragment of a value,
     as a Python line can be of a statement: a TOML array re-wrapped one
@@ -1180,7 +1193,7 @@ def added_suppressions(
         return SuppressionAudit(unread="git could not be asked for the files' contents")
 
     versions = _versions(order, steps)
-    read: dict[str, tuple[LogicalLine, ...]] = {}  # by object id: one version, one read
+    read: dict[str, tuple[tuple[str, str, bool], ...]] = {}  # by object id: one version, one read
     # Per file as well, so a copy is read by the one reader its file's name calls for.
     values: dict[str, dict[str, tuple[str, ...]]] = {}
     parsed: dict[str, bool] = {}
@@ -1194,7 +1207,7 @@ def added_suppressions(
             if declined is not None:
                 unparsed[key] = _unread_values(name, *declined)
             continue
-        refused = _read_versions(blobs, versions[key], read_logical_lines, UNTOKENIZABLE, read)
+        refused = _read_versions(blobs, versions[key], _suppression_statements, UNTOKENIZABLE, read)
         unparsable = _read_versions(blobs, versions[key], _parses, UNPARSABLE, parsed)
         why = _unparsable(*unparsable) if unparsable else ""
         if refused is not None:
@@ -1212,7 +1225,7 @@ def added_suppressions(
             return [
                 (text, text, bool(_SUPPRESSION_RE.search(text))) for text in values[key][held[0]]
             ]
-        return [(line.tokens, line.shown, is_suppression_statement(line)) for line in read[held[0]]]
+        return list(read[held[0]])
 
     removed: dict[str, Counter[str]] = {key: Counter() for key in order}
     added: dict[str, Counter[str]] = {key: Counter() for key in order}
@@ -1243,6 +1256,23 @@ def added_suppressions(
     ]
     return SuppressionAudit(
         tuple(found), tuple(unparsed.items()), tokenized=tuple(tokenized.items())
+    )
+
+
+def _suppression_statements(source: str) -> tuple[tuple[str, str, bool], ...]:
+    """Each logical line of `source` as `added_suppressions` folds it.
+
+    What the fold counts, what the page shows, and whether it suppresses. The
+    count joins the definition `python.places` gives the statement to its
+    tokens with a NUL, which no definition's name holds, so the two cannot run
+    together however the tokens read.
+
+    Raises one of `UNTOKENIZABLE` where the tokenizer refuses the file.
+    """
+    lines = read_logical_lines(source)
+    return tuple(
+        (f"{place}\0{line.tokens}", line.shown, is_suppression_statement(line))
+        for line, place in zip(lines, places(lines), strict=True)
     )
 
 
@@ -2077,8 +2107,17 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
         committed = _git(vcs.changed_path_args("show", "--name-only", "--format=", *commits), root)
     else:
         committed = _git(vcs.changed_path_args("diff", "--name-only", f"{base}...HEAD"), root)
+    return tuple(sorted({*vcs.listed_paths(committed), *_uncommitted_paths(root)}))
+
+
+def _uncommitted_paths(root: Path) -> frozenset[str]:
+    """Every path whose change the working tree holds and `HEAD` does not.
+
+    `changed_paths`' other half. Raises `GitUnanswered` where `git status`
+    cannot be read.
+    """
     working = _git(["status", "--porcelain", "-z", "--untracked-files=all"], root)
-    paths = set(vcs.listed_paths(committed))
+    paths: set[str] = set()
     entries = iter(working.split("\0"))
     for entry in entries:
         # `XY path`: two status letters and a space. A rename or a copy is
@@ -2087,7 +2126,7 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
         if "R" in entry[:2] or "C" in entry[:2]:
             paths.add(next(entries, ""))
     paths.discard("")
-    return tuple(sorted(paths))
+    return frozenset(paths)
 
 
 def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
@@ -2104,6 +2143,11 @@ def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
 #: cannot read yields `""`, which `is_assertion_line` reads as "could be code"
 #: rather than as "is not" - an unreadable header stays on the reporting side.
 DIFF_HEADER_RE = re.compile(r"^diff --git a/(?:.*) b/(?P<path>.*)$")
+
+#: A merge's file header in the combined diff `git show` writes for one, and
+#: the path git names; a quoted one is read as `""`, as an unread two-way
+#: header is (`PL-W6ZD`).
+COMBINED_HEADER_RE = re.compile(r"^diff --(?:cc|combined) (?P<path>.*)$")
 
 
 def _net_line_changes(
@@ -2144,6 +2188,17 @@ def _net_line_changes(
     Per file, never across: an assertion deleted from one file and an identical
     one added to another is two facts, not a move, and is reported as both.
 
+    **A merge's patch is a combined diff, and is read as one** (`PL-W6ZD`).
+    `git show` writes it under `diff --cc`, each line prefixed by one column
+    per parent, and read as a two-way patch `++xfail_strict = false`, a line
+    neither parent held, was taken for a `+++` header and dropped, while a
+    line one parent brought was charged to the merge. A line is now added or
+    removed where every column says so, counted per column and the counts'
+    least kept, which is `_file_steps`' reading of a merge against every
+    parent at once: added where no parent held it, removed where every one
+    did. A file's header lines run to its first hunk, whose header says how
+    many columns there are.
+
     Lines come back in the order the diff presented their files, so two runs
     over one branch report the same sample.
     """
@@ -2155,11 +2210,45 @@ def _net_line_changes(
     per_file: dict[str, tuple[str, tuple[Counter[str], Counter[str]]]] = {}
     current = ""
     path = ""
+    # A combined section's columns, one per parent, each the lines added and
+    # removed against that parent; none before its first hunk, or in a
+    # two-way section.
+    combined = False
+    columns: list[tuple[Counter[str], Counter[str]]] = []
+
+    def fold() -> None:
+        if not columns:
+            return
+        held = per_file.setdefault(current, (path, (Counter(), Counter())))[1]
+        for side in (0, 1):
+            agreed = columns[0][side].copy()
+            for column in columns[1:]:
+                agreed &= column[side]  # the least count of each line
+            held[side].update(agreed)
+
     for line in split_lines(diff):
+        if line.startswith("diff "):
+            fold()
+            combined, columns = False, []
         if line.startswith("diff --git "):
             current = line
             header = DIFF_HEADER_RE.match(line)
             path = header.group("path") if header else ""
+            continue
+        if merged := COMBINED_HEADER_RE.match(line):
+            path = "" if merged.group("path").startswith('"') else merged.group("path")
+            # Keyed as the file's two-way patches are, so the fold runs across both.
+            current, combined = f"diff --git a/{path} b/{path}" if path else line, True
+            continue
+        if combined:
+            if line.startswith("@@@"):
+                width = len(line) - len(line.lstrip("@")) - 1
+                columns = columns or [(Counter(), Counter()) for _ in range(width)]
+            elif columns:
+                text = line[len(columns) :]
+                for column, mark in zip(columns, line[: len(columns)], strict=False):
+                    if mark in "+-":
+                        column[0 if mark == "+" else 1][text] += 1
             continue
         # The `+++`/`---` header lines are excluded by the second test, exactly
         # as they were before the fold.
@@ -2172,6 +2261,7 @@ def _net_line_changes(
         if current not in per_file:
             per_file[current] = (path, (Counter(), Counter()))
         per_file[current][1][side][line[1:]] += 1
+    fold()
     added: list[tuple[str, str]] = []
     removed: list[tuple[str, str]] = []
     for where, (added_here, removed_here) in per_file.values():
@@ -2315,7 +2405,17 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     this reads each change rather than the path. Nor is a `pr` or recurrence
     write onto a copy whose front matter the reader declined part of, since
     neither can vouch for lines nobody read (`_declines`, `PL-4DM0`).
+
+    **Nor is a path with an uncommitted change** (`PL-W6ZD`). Every kind is
+    read off a commit's change, or the base and `HEAD`, so a change no commit
+    holds is one nothing here read: a `status: done` left uncommitted beside a
+    committed `pr:` write answered `pr`, while `changed_paths`, which reads
+    the working tree, listed the path. Such a path is outside `touches`
+    whatever its commits wrote, as an uncommitted capture or record already
+    was, since neither has a commit to read.
     """
+    if path in _uncommitted_paths(root):
+        return ""
     if is_under(path, (RECORDS,)):
         return "record" if _added_record(root, base, path) else ""
     kinds = [_queue_kind(before, after) for before, after in _changes(root, base, commits, path)]
@@ -3106,6 +3206,13 @@ def _check_item(
         and (kind := sanctioned_queue_edit(root, base, commits, path))
     }
     outside = [path for path in candidates if path not in sanctioned]
+    # Said, since a write the workflow asks for reads as sanctioned once it is
+    # committed, and the page would otherwise not say why it is not (`PL-W6ZD`).
+    unsanctioned = {
+        path
+        for path in _uncommitted_paths(root).intersection(outside)
+        if is_under(path, (config.items_dir, RECORDS))
+    }
     widened = [path for path in outside if commission.touches and is_under(path, item.touches)]
     if outside:
         detail = f"{len(outside)} path(s) outside"
@@ -3138,6 +3245,8 @@ def _check_item(
             tuple(
                 f"{path} - declared by this branch's `touches` and not by {base}'s copy"
                 if path in widened
+                else f"{path} - uncommitted, and only a commit's change can be a sanctioned edit"
+                if path in unsanctioned
                 else path
                 for path in outside
             )

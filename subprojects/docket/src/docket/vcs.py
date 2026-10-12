@@ -1302,7 +1302,8 @@ def _pathspec_chunks(paths: tuple[str, ...]) -> Iterator[tuple[str, ...]]:
 #: One statement of a file, as `_statements` reads it: a tag naming the reading
 #: - a front-matter `field`, a Markdown block's kind, or `python` - then, for a
 #: statement something holds, how many of what follows say where it sits, and
-#: those, then what it holds.
+#: those, then what it holds. A Markdown block says where it sits twice, each
+#: counted apart: the headings over it, then the list items holding it.
 Statement = tuple[str, ...]
 
 #: What the parser raises where this interpreter cannot read a file, as
@@ -1328,6 +1329,17 @@ def _markdown_statements(text: str) -> frozenset[Statement] | None:
     (CommonMark 0.31.2 § 4.4). Each is read under the marker line of every list
     item holding it, because an item holds its blocks (§ 5.2): a sub-item whose
     parent's line was cut sits somewhere the base never put it.
+
+    Each is read under every heading whose section holds it as well, outermost
+    first (`PL-HLS1`). A section is no CommonMark block, but a heading titles
+    what follows it: its section runs to the next heading of its level or above
+    that as many containers hold, or to the first block fewer containers hold.
+    A heading in a list item is so read open into a sibling item too, which
+    only adds to where a statement sits. Read without its section, a ref that
+    cut a heading - moving every statement under it into the section above, a
+    rule under "Refused" now under "Allowed" - held only statements the base
+    held, and read as holding nothing more.
+
     `None` where the fold declines a line - one no field reads, a block list or
     a block scalar - since a value it declines is one nobody can say is whole.
     """
@@ -1341,10 +1353,25 @@ def _markdown_statements(text: str) -> frozenset[Statement] | None:
         statements |= {("field", key, value) for key, value in pairs}
     lines = split_lines(body)
     document = markdown.read(lines)
+    #: The headings whose sections are open, outermost first: how many
+    #: containers hold each, its level, and its lines.
+    above: list[tuple[int, int, str]] = []
     for block in document.blocks:
         start, end = block.start, block.end
-        place = [lines[item.start] for item in document.items if item.start <= start < item.end]
-        statements.add((block.kind, str(len(place)), *place, *lines[start:end]))
+        heading = block.kind == markdown.HEADING
+        above = [
+            (depth, level, title)
+            for depth, level, title in above
+            if depth < block.depth
+            or (depth == block.depth and not (heading and level >= block.level))
+        ]
+        sections = [title for _, _, title in above]
+        items = [lines[item.start] for item in document.items if item.start <= start < item.end]
+        statements.add(
+            (block.kind, str(len(sections)), *sections, str(len(items)), *items, *lines[start:end])
+        )
+        if heading:
+            above.append((block.depth, block.level, "\n".join(lines[start:end])))
     return frozenset(statements)
 
 
