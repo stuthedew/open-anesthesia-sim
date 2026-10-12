@@ -88,3 +88,12 @@ lists the successor among the head's own re-entries:
 instance of a head's fact. Its premise misread which later head succeeds a
 closed one, because three successors carried no `reenters:`; that record is
 written above, so no reader of the list is left to infer it.
+
+**After the round, 2026-10-12.** Bringing `origin/main` in took the triage
+pass merged as #1455, which put `PL-0HPV` on the list, re-entered by
+`PL-RW3T`, `PL-ZXM1` and `PL-HSB3`, none of them a head. That line is
+`PL-SH4H`'s question, filed rather than answered here. It also gave `PL-61FT`
+an eighth re-entry, `PL-CDZ8`, which the owner's answer above covers until
+three `KNOWN_GAPS` rows are met within a quarter. `PL-0WT0` asks for the list
+to name a line's successor itself, so an answered line stops reading as an
+open one.
