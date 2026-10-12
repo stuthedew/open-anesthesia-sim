@@ -105,8 +105,9 @@ if cut is None:
     sys.exit(0)
 
 # Bare, and bare is the whole point: a name with no slash in it is the one
-# resolved through PATH, where this container answers 3.11.
-INTERPRETER = re.compile(r"^python(?:3(?:\.\d+)?)?$")
+# resolved through PATH, where this container answers 3.11. `shell_split.PYTHON`
+# is the one spelling of the name, which the gate guard reads too (`PL-Y3TZ`).
+INTERPRETER = shell_split.PYTHON
 # `src/anesthesia_sim/app/` sits under `src/`, so naming it again would only
 # widen the pattern. The first lookbehind lets a leading `./` or an absolute
 # path through while keeping `mysrc/` out. The second keeps out

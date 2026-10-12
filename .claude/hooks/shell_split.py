@@ -19,8 +19,9 @@ this file's own place: one pass decides where a word, a quote, an operator, a
 line, a here-document's body and a substitution end, for docket and the hooks
 alike, and that module names the bash rules it follows. What this module is
 handed is the hooks' view of that reading. Each word comes with its quotes
-removed, an operator as `Operator` and a redirection's descriptor as
-`Descriptor`; a newline that ends a command is `;`, except after a separator
+removed, an operator as `Operator`, a redirection's descriptor as
+`Descriptor`, a reserved word opening a command as `Reserved` and an
+assignment as `Assignment`; a newline that ends a command is `;`, except after a separator
 or `(`, where bash reads a linebreak; every comment, continuation and
 here-document body is gone; and an unquoted `$( )`, `<( )` or `>( )` is read
 inline, its parentheses as operators, so a substitution's parentheses reach a
@@ -32,7 +33,9 @@ runs to the end of the input and a trailing backslash is a backslash, as bash
 **Where a command's words start is answered here too**, by `command_words`,
 so no guard can disagree with another about which word is the command. It
 drops everything bash reads ahead of a command's name, the reserved words that
-open a command included: `do make check` runs `make`, where it once read as a
+open a command included, as docket's reading marks them and by its tables, so a
+quoted `"if"` is a command's name and `X+=1` an assignment here as there
+(`PL-Y3TZ`): `do make check` runs `make`, where it once read as a
 command named `do` and passed all three guards (`PL-0X0G`). A redirection is
 among them, and is no word of the command wherever it stands: bash lifts it out
 before it runs anything, so `2>/dev/null make check` runs `make` and `echo a
@@ -73,9 +76,9 @@ a `coproc` runs, a wrapper `WRAPPERS` does not name (`sudo`, `stdbuf`, a
 `program_words` reads no program at all. A reserved word opens a command here
 only at the head of its segment, so `command_words` does not reach the `make
 check` in `if (true) then make check; fi` or in `for f do make check; done`;
-`commands` reads the first, splitting at its `)`. And a quoted `if` or `{`, or
-a `time` after a `|`, reads as the reserved word, where bash reads a command's
-name. This list is the construct side of the Bash guards' known gaps
+`commands` reads the first, splitting at its `)`. And a `time` after a `|`
+reads as the reserved word, where bash 5.2.21 runs a command named `time`, as
+docket's reading does. This list is the construct side of the Bash guards' known gaps
 (`PL-61FT`): bash's grammar is read as far as sessions write it around a
 guarded command, so a construct found missing only by probing is added here
 rather than filed. Arithmetic, a `case` pattern's `)`, a newline inside `[[ ]]`
@@ -113,7 +116,15 @@ _DOCKET = os.path.normpath(
 if _DOCKET not in sys.path:
     sys.path.insert(0, _DOCKET)
 
-from docket.shell import Descriptor, Operator, flat_reading  # noqa: E402
+from docket.shell import (  # noqa: E402
+    HEADS,
+    REDIRECTIONS,
+    Assignment,
+    Descriptor,
+    Operator,
+    Reserved,
+    flat_reading,
+)
 
 
 class Command(list[str]):
@@ -130,42 +141,17 @@ class Command(list[str]):
         self.wrappers = wrappers
 
 
-# The operators that redirect, each taking the word after it. Only those opening
-# with `<` or `>` take a descriptor: in `echo hi 2&>x` the `2` is a word.
-REDIRECTIONS = frozenset("< << <<- <<< <& <> > >> >& >| &> &>>".split())
-
-# The operators that end a command, and the one each is read as: `|&` is a pipe
-# that carries stderr too, and `;;`, `;&` and `;;&` end a `case` clause as `;`
-# ends a command.
+# The operators that end a command - docket's `HEADS` but a subshell's `(` -
+# each with the one it is read as: `|&` is a pipe that carries stderr too, and
+# `;;`, `;&` and `;;&` end a `case` clause as `;` ends a command.
 SEPARATORS = {
-    ";": ";",
-    ";;": ";",
-    ";&": ";",
-    ";;&": ";",
-    "&": "&",
-    "&&": "&&",
-    "||": "||",
-    "|": "|",
-    "|&": "|",
+    operator: {"|&": "|", ";;": ";", ";&": ";", ";;&": ";"}.get(operator, operator)
+    for operator in HEADS - {"("}
 }
 
-# A subshell's `(`, a group's `{` and a negation's `!` open the command after them.
-GROUPING = frozenset(("(", "{", "!"))
-
-# The reserved words bash reads with a command after them: `if`, `while` and
-# `until` open a test, `then`, `else` and `do` a body, `elif` another test, and
-# `time` a pipeline it times (`help if`, `help while`, `help until`, `help for`
-# and `help time` in bash 5.2.21). The rest of `compgen -k` opens none: `for`,
-# `select`, `case` and `function` are followed by a name or a word, `in` by
-# words, and `fi`, `done`, `esac`, `}` and `]]` close what came before.
-OPENS_A_COMMAND = frozenset(("if", "then", "elif", "else", "while", "until", "do", "time"))
-
-# The options `time` takes ahead of its pipeline, each at most once and in this
-# order: `time -p -- make check` times `make check`.
-TIME_OPTIONS = ("-p", "--")
-
-# A leading `NAME=value` sets the command's environment, and is not its name.
-ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
+# A Python interpreter, named bare or by its basename: `python`, `python3`,
+# `python3.11`. The floor and gate guards both ask it (`PL-Y3TZ`).
+PYTHON = re.compile(r"^python(?:3(?:\.\d+)?)?$")
 
 # What makes bash read a word written bare as something else: a blank splits
 # it, a quote or a backslash is read as quoting, an operator character ends it,
@@ -322,7 +308,7 @@ def command_words(segment: list[str]) -> list[str]:
     """
     rest = _past_openers(segment)
     while rest:
-        taken = 1 if ASSIGNMENT.match(rest[0]) else _redirection(rest, 0)
+        taken = 1 if isinstance(rest[0], Assignment) else _redirection(rest, 0)
         if not taken:
             break
         del rest[:taken]
@@ -332,11 +318,10 @@ def command_words(segment: list[str]) -> list[str]:
 def _past_openers(segment: list[str]) -> list[str]:
     """`segment` past the grouping and reserved words opening its command, and `time`'s options."""
     rest = list(segment)
-    while rest and (rest[0] in GROUPING or rest[0] in OPENS_A_COMMAND):
-        if rest.pop(0) == "time":
-            for option in TIME_OPTIONS:
-                if rest and rest[0] == option:
-                    rest.pop(0)
+    while rest and (
+        isinstance(rest[0], Reserved) or (isinstance(rest[0], Operator) and rest[0] == "(")
+    ):
+        rest.pop(0)
     return rest
 
 
@@ -373,8 +358,7 @@ def _quoted(word: str) -> str:
     An assignment keeps its `NAME=` bare and has its value quoted, since
     quoted whole it would be a command's name rather than an assignment.
     """
-    name = ASSIGNMENT.match(word)
-    head = name.group() if name else ""
+    head = word[: word.index("=") + 1] if isinstance(word, Assignment) else ""
     value = word[len(head) :]
     if (value or head) and not NEEDS_QUOTES.search(value):
         return word

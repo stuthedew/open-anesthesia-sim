@@ -193,10 +193,6 @@ DEFAULT_BRANCH_LITERALS = frozenset({"main", "origin/main", "refs/heads/main"})
 #: Every second reader when this landed: file, then `(rule, enclosing scope)`,
 #: then how many. It may only shrink.
 BASELINE: dict[str, dict[tuple[str, str], int]] = {
-    ".claude/hooks/shell_split.py": {
-        ("definition", "OPENS_A_COMMAND"): 1,
-        ("definition", "REDIRECTIONS"): 1,
-    },
     "subprojects/docket/src/docket/arming.py": {
         ("definition", "BEHIND"): 1,
         ("definition", "LANDED"): 1,
@@ -218,7 +214,6 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
     "subprojects/docket/src/docket/model.py": {("definition", "CONTINUATION_RE"): 1},
     "subprojects/docket/src/docket/notes.py": {("definition", "ID_RE"): 1},
     "subprojects/docket/src/docket/roadmap.py": {("definition", "UNPLACED"): 1},
-    "subprojects/docket/src/docket/shell.py": {("definition", "OPENS_A_COMMAND"): 1},
     "subprojects/docket/src/docket/store.py": {("definition", "ID_RE"): 1},
     "subprojects/docket/src/docket/trend.py": {
         ("definition", "APPARATUS"): 1,
@@ -257,7 +252,6 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("definition", "CONTINUATION_RE"): 1,
         ("definition", "JSON_KEY_RE"): 1,
         ("definition", "LINE_CITATION_RE"): 1,
-        ("definition", "REDIRECTIONS"): 1,
         ("definition", "ROADMAP"): 1,
         ("definition", "SOFT_BREAK"): 1,
         ("git", "_covered_by_gitignore"): 1,

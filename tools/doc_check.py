@@ -247,7 +247,7 @@ try:
     # it rather than a split of this tool's own, which cut inside quotes and
     # read `python3 "tools/my file.py"` as `tools/my` (`PL-CWBJ`), and a step's
     # script is cut into those lines by the same reading (`PL-Q9LK`).
-    from docket.shell import Reading, Word, script_lines, shell_words
+    from docket.shell import REDIRECTIONS, Reading, Word, script_lines, shell_words
     from docket.store import ID_PATTERN, read_items
 
     # Reading `git tag` is a second borrowing, for the same reason as the first.
@@ -6313,13 +6313,6 @@ def _shell_words(where: str, command: str, report: Report, unread: str) -> tuple
         for token in clause.tokens
         if isinstance(token, Word)
     )
-
-
-#: The redirection operators among `docket.shell.OPERATORS`. Each takes the
-#: word after it as its file and leaves the command it stands in running on;
-#: every other operator there ends that command (Bash Reference Manual §3.6
-#: "Redirections", §2 "Definitions" for "control operator").
-REDIRECTIONS = frozenset({"<", ">", ">>", "<<", "<<-", "<<<", "<&", ">&", "<>", ">|", "&>", "&>>"})
 
 
 def _shell_commands(
