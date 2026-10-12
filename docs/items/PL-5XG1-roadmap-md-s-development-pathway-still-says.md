@@ -3,7 +3,7 @@ id: PL-5XG1
 title: ROADMAP.md's Development pathway still says Phase 1 follows v0.4.0 unchanged, while the timeline places Phase 1's substance generalization at v0.9.0 behind four releases, which its own known-risk paragraph argues against
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: docs
 touches: ROADMAP.md
 blocked-by: PL-V1Y7
@@ -130,7 +130,7 @@ kinks etc. before we complicate with multisubstance."
   the question to the owner rather than placing the generalization by pathway
   order.
 
-**Why the edit waits for `PL-V1Y7`'s pull request, #1134.** It renumbers the
+[superseded 2026-10-11: #1134 merged when `PL-V1Y7` closed on 2026-09-26, and `PL-8D1M` promoted this item to `ready`] **Why the edit waits for `PL-V1Y7`'s pull request, #1134.** It renumbers the
 same rows - break-out off, the schematic to v0.7.0, multi-substance to v0.8.0 -
 and its session is past its budget, so a conflict left on its side would have
 nobody to resolve it. This branch brings `main` in once #1134 lands and edits
