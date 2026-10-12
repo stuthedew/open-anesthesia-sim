@@ -3,10 +3,12 @@ id: PL-08CR
 title: Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 touches: src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py
 added: 2026-09-20
+closed: 2026-10-11
+pr: 1424
 payoff: the marks panel has one public entry point, or a recorded reason why it has three
 verify: ! grep -q 'def format_time_bookmark' src/anesthesia_sim/app/dashboard_frame.py && ! grep -q 'def format_mac_target' src/anesthesia_sim/app/dashboard_frame.py
 ---
