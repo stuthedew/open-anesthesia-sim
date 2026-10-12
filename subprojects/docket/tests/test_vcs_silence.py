@@ -71,6 +71,7 @@ from docket.vcs import (
     notes_added,
     open_pull_requests,
     orphaned,
+    past_head,
     records_on_base,
     ref_walk,
     released_on_base,
@@ -388,6 +389,11 @@ READS: tuple[Read, ...] = (
         "carried_merge",
         lambda r, g: carried_merge(_merged_at_parent(r), "origin/main", r, runner=g),
         lambda a: frozenset() if a is None else frozenset({a.head, *a.carried}),
+    ),
+    Read(
+        "past_head",
+        lambda r, g: past_head(_merged_at_parent(r).head, "origin/main", r, runner=g),
+        lambda a: frozenset() if a is None else frozenset({*a.carried, *a.landed}),
     ),
     Read(
         "with_newest_pull_request",

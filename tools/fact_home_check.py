@@ -258,7 +258,6 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("definition", "REDIRECTIONS"): 1,
         ("definition", "ROADMAP"): 1,
         ("definition", "SOFT_BREAK"): 1,
-        ("definition", "UNREADABLE"): 1,
         ("git", "_covered_by_gitignore"): 1,
         ("git", "_git_output"): 1,
         ("git", "_git_text"): 1,
@@ -274,7 +273,7 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("definition", "ITEM_ID"): 1,
         ("definition", "REPO"): 1,
     },
-    "tools/left_behind_check.py": {("definition", "UNREADABLE"): 1, ("git", "git_runner.run"): 1},
+    "tools/left_behind_check.py": {("git", "git_runner.run"): 1},
     "tools/literal_home_check.py": {("definition", "EXEMPT"): 1},
     "tools/main_ci_status.py": {
         ("definition", "API"): 1,
