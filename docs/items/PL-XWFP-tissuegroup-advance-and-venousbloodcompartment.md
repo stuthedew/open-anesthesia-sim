@@ -1,10 +1,15 @@
 ---
 id: PL-XWFP
 title: TissueGroup.advance and VenousBloodCompartment.advance report uptake as a return - a negative change, as low as -3.2e-18 L, while the driving fraction is above the compartment's - at admitted flows from 1e-30 to 3e-13 L/min, because d + (i - d) * exp(-dt/tau) rounds at the scale of the driving fraction; the circuit's closed form was rewritten for the same reason (found fixing PL-YT8N)
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: science, defect
 feature: numerical-domain
 touches: src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/__init__.py, tests/unit/test_compartment_primitives.py
 added: 2026-10-11
+payoff: the tissue and venous closed forms never report agent leaving while the gradient drives it in, so a reference case checked against them cannot be misled by a sign the physics forbids
+verify: grep -q 'def test_a_compartment_never_reports_uptake_as_a_return_at_an_admitted_flow' tests/unit/test_compartment_primitives.py
 ---
 
 **Problem.** TissueGroup.advance and VenousBloodCompartment.advance report uptake as a return - a negative change, as low as -3.2e-18 L, while the driving fraction is above the compartment's - at admitted flows from 1e-30 to 3e-13 L/min, because d + (i - d) * exp(-dt/tau) rounds at the scale of the driving fraction; the circuit's closed form was rewritten for the same reason (found fixing PL-YT8N)
@@ -40,6 +45,12 @@ can move the amount by a rounding of its own. So measure first whether that
 form alone holds the sign, or whether the change has to be formed from the
 fraction difference, which would then disagree with the stored amount by a
 rounding. Their zero-flow branches stay required either way.
+
+**Why it matters.** A closed form reporting uptake as a return while the
+driving fraction is above the compartment's is a number the physics forbids,
+and these are the forms reference cases and notebooks call to check the stepped
+model against, so a wrong sign there misleads verification rather than a run.
+`PL-YT8N` fixed the same rounding in the circuit at `P1`.
 
 **Done when.** Both report a change of their gradient's sign, or zero, at
 every admitted flow, step and state, the walk above included, and a test in

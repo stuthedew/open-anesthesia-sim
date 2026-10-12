@@ -85,7 +85,10 @@ def test_a_repository_with_nothing_open_answers_an_empty_listing(_served) -> Non
 def test_the_listing_asks_for_open_pull_requests_a_page_at_a_time(_served) -> None:
     urls = _served(_payload())
     open_pull_requests.open_pull_requests("owner/repo")
-    assert urls == ["https://api.github.com/repos/owner/repo/pulls?state=open&per_page=100"]
+    assert urls == [
+        "https://api.github.com/repos/owner/repo/pulls"
+        "?state=open&sort=created&direction=asc&per_page=100&page=1"
+    ]
 
 
 def test_a_head_narrows_the_listing_to_one_branch(_served) -> None:
@@ -93,19 +96,46 @@ def test_a_head_narrows_the_listing_to_one_branch(_served) -> None:
     open_pull_requests.open_pull_requests("owner/repo", head="claude/one")
     assert urls == [
         "https://api.github.com/repos/owner/repo/pulls"
-        "?state=open&per_page=1&head=owner%3Aclaude%2Fone"
+        "?state=open&head=owner%3Aclaude%2Fone&sort=created&direction=asc&per_page=100&page=1"
     ]
 
 
-def test_a_full_page_declines_rather_than_reporting_what_it_saw(_served) -> None:
-    """A truncated listing cannot say a particular branch is absent.
+def _pages(monkeypatch: pytest.MonkeyPatch, *answers: list[dict]) -> list[str]:
+    """Serve one listing per request, in order, and collect the URLs asked for."""
+    urls: list[str] = []
+    served = iter(answers)
 
-    The caller's question is whether *this* branch has something open, and a
-    listing that stopped at the page limit looks exactly like a complete one
-    while being unable to answer it. Declining is the reading that is never
-    wrong.
+    def _open(request: urllib.request.Request, timeout: float = 0) -> io.BytesIO:
+        urls.append(request.full_url)
+        return io.BytesIO(json.dumps(next(served)).encode())
+
+    monkeypatch.setenv("GH_TOKEN", TOKEN)
+    monkeypatch.setattr(open_pull_requests.urllib.request, "urlopen", _open)
+    return urls
+
+
+def test_a_full_page_is_read_past_as_update_armed_reads_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`PL-351H`: at 100 open this declined while `update_armed.py` read page 2.
+
+    Both read through `every_page` now, which reads to a short page and then
+    reads the first page again: one closed between the two reads would have
+    shifted an entry past both, unseen.
     """
-    _served(_payload(*(_entry(index, f"claude/{index}") for index in range(100))))
+    first = [_entry(index, f"claude/{index}") for index in range(1, 101)]
+    urls = _pages(monkeypatch, first, [_entry(101, "claude/101")], first)
+
+    found = open_pull_requests.open_pull_requests("owner/repo")
+
+    assert found is not None and [entry.number for entry in found] == list(range(1, 102))
+    assert [url.rsplit("page=", 1)[1] for url in urls] == ["1", "2", "1"]
+
+
+def test_a_listing_that_changed_between_its_pages_declines(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A pull request closed mid-read moves the 101st onto page 1, where it is never read."""
+    first = [_entry(index, f"claude/{index}") for index in range(1, 101)]
+    closed = first[1:] + [_entry(101, "claude/101")]
+    _pages(monkeypatch, first, [_entry(102, "claude/102")], closed)
+
     assert open_pull_requests.open_pull_requests("owner/repo") is None
 
 
@@ -224,7 +254,7 @@ def _newest(number: int, state: str, merged_at: str | None, sha: str = HEAD_SHA)
 
 
 def test_the_newest_asks_every_state_for_that_branch_into_that_base_newest_first(_served) -> None:
-    """The listing `left_behind_check.github_lookup` makes: one result, the newest created."""
+    """The listing `left_behind_check.github_lookup` reads through `newest`: the newest created."""
     urls = _served(_payload())
     open_pull_requests.newest_pull_request("owner/repo", "claude/one", "main")
     assert urls == [

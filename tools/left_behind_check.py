@@ -28,6 +28,13 @@ the branch reads as clear, and the clearance names the pull request that
 landed it. `vcs.orphaned` reads the same test, so the two checks cannot
 disagree about a port.
 
+**Both halves are read rather than spelt here** (`PL-351H`). The commits past
+the head are `vcs.past_head`'s, the reading `vcs.carried_merge` restarts a
+branch from, and the newest pull request is `open_pull_requests.newest`, the
+answer `docket branch` and `docket arm` ask for. This check wrote its own `log`
+and its own parse until then, and read an entry carrying no `merged_at` as
+"closed without merging", which `newest` refuses as unreadable.
+
 **What it needs, and what it says when it cannot have it.** Git holds no record
 of which pull request came from which branch, so that mapping comes from
 GitHub's pull-request listing, which needs a token. The frozen head is read from
@@ -61,13 +68,9 @@ library only, so a bare checkout can run it.
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -77,20 +80,35 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.lines import record_text, split_lines  # noqa: E402
-from docket.vcs import REMOTE, github_token, is_shallow  # noqa: E402
+from docket.vcs import (  # noqa: E402
+    PULL_MERGED,
+    PULL_OPEN,
+    REMOTE,
+    CarriedCommit,
+    Landing,
+    NewestPullRequest,
+    git_answer,
+    is_shallow,
+    past_head,
+)
 
-from open_pull_requests import GITHUB_API, LOOKUP_TIMEOUT, repo_slug  # noqa: E402
+from open_pull_requests import (  # noqa: E402
+    NO_NETWORK,
+    NO_PERMISSION,
+    UNREADABLE_ANSWER,
+    ListingFailed,
+    newest,
+    repo_slug,
+)
 
 #: Seconds for one git call. `ls-remote` is the only one that touches the
 #: network, and it answered in 0.6 s for 839 pull refs when this was written.
 GIT_TIMEOUT = 30.0
 
 #: The prefixes a decline opens with, one per condition, so a reader and a test
-#: can tell them apart without parsing the rest of the sentence.
-NO_NETWORK = "no network"
-NO_PERMISSION = "no permission"
+#: can tell them apart without parsing the rest of the sentence. The other three
+#: are `open_pull_requests`'s, whose request this check's lookup makes.
 NO_SUCH_REF = "no such ref"
-UNREADABLE = "unreadable"
 
 #: Phrases in git's error text that mean the remote refused, not that it could
 #: not be reached. Anything else is read as a network failure. Both decline.
@@ -146,14 +164,16 @@ def git_runner(root: Path) -> Runner:
 
 
 def _stdout(run: Runner) -> Callable[[list[str], Path], str]:
-    """`run` as `docket.vcs` asks git: the output where git succeeded, "" where it did not.
+    """`run` as `docket.vcs` asks git, its exit read by `vcs.git_answer` (`PL-351H`).
 
-    So `vcs.is_shallow` answers through the runner a test serves (`PL-4NG0`).
+    So `vcs.is_shallow` and `vcs.past_head` answer through the runner a test
+    serves (`PL-4NG0`), and a git that failed reaches them as the silence it
+    is, which `past_head` declines on rather than reading as no commits.
     """
 
     def ask(args: list[str], _root: Path) -> str:
         done = run(args)
-        return done.out if done.code == 0 else ""
+        return git_answer(args, done.code, done.out)
 
     return ask
 
@@ -199,87 +219,28 @@ def read_remote(run: Runner) -> Remote:
             if number.isdigit():
                 frozen[int(number)] = value
     if not default or default not in heads:
-        raise Declined(f"{UNREADABLE}: {REMOTE} did not name its default branch")
+        raise Declined(f"{UNREADABLE_ANSWER}: {REMOTE} did not name its default branch")
     return Remote(default=default, heads=heads, frozen=frozen)
 
 
-@dataclass(frozen=True)
-class PullRequest:
-    """The newest pull request from one branch into the default branch."""
-
-    number: int
-    state: str
-    merged: bool
-
-
-Lookup = Callable[[str], "PullRequest | None"]
+Lookup = Callable[[str], NewestPullRequest | None]
 
 
 def github_lookup(slug: str, base: str) -> Lookup:
     """Ask GitHub for the newest pull request from a branch into `base`.
 
-    The request is `open_pull_requests.py`'s, with every state and one result.
-    The listing is newest first, so that result is the one whose head the
-    branch was last merged at, or the open one now carrying it. What differs is
-    the failure: that script folds every failure into "could not look", and this
-    one separates them into the conditions its caller must name.
+    `open_pull_requests.newest`, the one reading of it, which names why it
+    could not answer: no token or a refusal, nothing answering, or an answer it
+    could not read. Each becomes a decline under the same prefix.
     """
-    token = github_token()
-    owner = slug.split("/")[0]
 
-    def lookup(branch: str) -> PullRequest | None:
-        if not token:
-            raise Declined(f"{NO_PERMISSION}: no GH_TOKEN or GITHUB_TOKEN to ask GitHub with")
-        query = urllib.parse.urlencode(
-            {
-                "state": "all",
-                "head": f"{owner}:{branch}",
-                "base": base,
-                "sort": "created",
-                "direction": "desc",
-                "per_page": 1,
-            }
-        )
-        request = urllib.request.Request(
-            f"{GITHUB_API}/repos/{slug}/pulls?{query}",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-                "User-Agent": "left_behind_check",
-            },
-        )
+    def lookup(branch: str) -> NewestPullRequest | None:
         try:
-            with urllib.request.urlopen(request, timeout=LOOKUP_TIMEOUT) as response:
-                body = response.read()
-        except urllib.error.HTTPError as error:
-            if error.code in (401, 403, 404, 429):
-                raise Declined(f"{NO_PERMISSION}: GitHub refused (HTTP {error.code})") from error
-            raise Declined(f"{UNREADABLE}: GitHub answered HTTP {error.code}") from error
-        except OSError as error:
-            # `URLError`, a timeout, a refused connection: nothing answered.
-            raise Declined(f"{NO_NETWORK}: GitHub could not be reached ({error})") from error
-        return _pull_request(body)
+            return newest(slug, branch, base)
+        except ListingFailed as failed:
+            raise Declined(str(failed)) from failed
 
     return lookup
-
-
-def _pull_request(body: bytes) -> PullRequest | None:
-    """The one entry a listing holds, or None where it holds none."""
-    try:
-        payload = json.loads(body)
-    except ValueError as error:
-        raise Declined(f"{UNREADABLE}: GitHub's answer was not JSON") from error
-    if not isinstance(payload, list):
-        raise Declined(f"{UNREADABLE}: GitHub's answer was not a listing")
-    if not payload:
-        return None
-    entry = payload[0]
-    number = entry.get("number") if isinstance(entry, dict) else None
-    state = entry.get("state") if isinstance(entry, dict) else None
-    if not isinstance(number, int) or state not in ("open", "closed"):
-        raise Declined(f"{UNREADABLE}: GitHub's listing had no number or state")
-    return PullRequest(number=number, state=state, merged=entry.get("merged_at") is not None)
 
 
 @dataclass(frozen=True)
@@ -315,28 +276,12 @@ def _has_commit(sha: str, run: Runner) -> bool:
     return run(["cat-file", "-e", f"{sha}^{{commit}}"]).code == 0
 
 
-def landed_through(sha: str, base: str, run: Runner) -> str:
-    """How the default branch took `sha`'s change another way, or "" where it has not.
+def _commit(carried: CarriedCommit) -> Commit:
+    return Commit(carried.sha, carried.date, carried.subject)
 
-    `vcs.change_landed` is the test, and it is `vcs.orphaned`'s too, so the two
-    checks give one answer about a port (`PL-GHHW`). Every failure reads as not
-    landed - an unimportable `docket`, a conflict, a git older than 2.40 - so the
-    commit stays a finding, which is what this check printed before the test
-    existed. A pull request is named where the landing commit is a squash
-    merge's, and the commit otherwise.
-    """
-    try:
-        from docket.vcs import change_landed
-    except Exception:  # a broken import must cost the clearance, never the finding
-        return ""
 
-    def call(args: list[str], _root: Path) -> str:
-        done = run(args)
-        return done.out if done.code == 0 else ""
-
-    landing = change_landed(sha, base, ROOT, runner=call)
-    if landing is None:
-        return ""
+def _through(landing: Landing) -> str:
+    """The pull request that landed a change where its squash names one, else the commit."""
     number = landing.pull_request
     return f"#{number}" if number is not None else landing.commit[:9]
 
@@ -354,14 +299,16 @@ def examine(
     if on_base == 0:
         return Verdict(branch, clear="already on the default branch")
     if on_base != 1:
-        return Verdict(branch, declined=f"{UNREADABLE}: git could not compare it with the base")
+        return Verdict(
+            branch, declined=f"{UNREADABLE_ANSWER}: git could not compare it with the base"
+        )
     pull = lookup(branch)
     if pull is None:
         return Verdict(branch, clear="no pull request was opened from it")
     number = pull.number
-    if pull.state == "open":
+    if pull.state == PULL_OPEN:
         return Verdict(branch, number, clear=f"#{number} is open on it")
-    if not pull.merged:
+    if pull.state != PULL_MERGED:
         return Verdict(branch, number, clear=f"#{number} closed without merging")
     head = remote.frozen.get(number)
     if head is None:
@@ -381,22 +328,20 @@ def examine(
         return Verdict(branch, number, clear=f"it does not descend from the head #{number} merged")
     if past != 0:
         return Verdict(
-            branch, number, declined=f"{UNREADABLE}: git could not compare it with #{number}"
+            branch, number, declined=f"{UNREADABLE_ANSWER}: git could not compare it with #{number}"
         )
-    listed = run(["log", "--no-merges", "--format=%H%x1f%cs%x1f%s", tip, f"^{head}", f"^{base}"])
-    if listed.code != 0:
-        return Verdict(branch, number, declined=f"{UNREADABLE}: git could not list its commits")
-    left = tuple(
-        Commit(sha, date, subject)
-        for sha, date, subject in (
-            line.split("\x1f", 2) for line in split_lines(listed.out) if line
+    after = past_head(head, base, ROOT, ref=tip, runner=_stdout(run))
+    if after is None:
+        return Verdict(
+            branch, number, declined=f"{UNREADABLE_ANSWER}: git could not list its commits"
         )
+    # Newest first, as the finding names its newest commit.
+    left = tuple(_commit(carried) for carried in reversed(after.carried))
+    landed = tuple(
+        (_commit(carried), _through(landing)) for carried, landing in reversed(after.landed)
     )
-    if not left:
+    if not left and not landed:
         return Verdict(branch, number, clear=f"only merges of the base since #{number} merged")
-    through = {commit.sha: landed_through(commit.sha, base, run) for commit in left}
-    landed = tuple((commit, through[commit.sha]) for commit in left if through[commit.sha])
-    left = tuple(commit for commit in left if not through[commit.sha])
     if not left:
         where = ", ".join(sorted({how for _, how in landed}))
         return Verdict(
@@ -428,7 +373,7 @@ def check(root: Path, *, run: Runner | None = None, lookup: Lookup | None = None
     run = run or git_runner(root)
     slug = repo_slug()
     if slug is None:
-        return Report(declined=f"{UNREADABLE}: {REMOTE} is not a GitHub repository")
+        return Report(declined=f"{UNREADABLE_ANSWER}: {REMOTE} is not a GitHub repository")
     if is_shallow(root, runner=_stdout(run)) is not False:
         return Report(declined="this checkout is shallow, so ancestry past its boundary is unknown")
     try:

@@ -1,9 +1,16 @@
 ---
 id: PL-SNQR
 title: pr_body_check's normalise strips the closing Co-authored-by paragraph a pull request body writes for itself, but on the squash side GitHub's appended group follows it and only that group is stripped, so --compare reports a faithful squash body as differing; latent
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
+touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+payoff: the read-back comparison no longer reports a faithful squash body as differing when the pull request body closes with its own trailer paragraph
+verify: grep -q 'def test_a_body_ending_with_its_own_trailer_paragraph_compares_equal' tests/unit/test_pr_body_check.py
 ---
 
 **Problem.** pr_body_check's normalise strips the closing Co-authored-by paragraph a pull request body writes for itself, but on the squash side GitHub's appended group follows it and only that group is stripped, so --compare reports a faithful squash body as differing; latent
@@ -37,6 +44,16 @@ that item read a trailer inside a paragraph of prose, which git reads as no
 trailer at all. Here git does read the body's paragraph as a trailer block;
 the fault is which side `normalise` strips it from.
 
+**Why it matters.** `--compare` is what says a published pull request body
+reached `main` intact (`CLAUDE.md`'s read-back rule, `PL-1DN9`), so a faithful
+body reported as differing is a false alarm a session spends a round disproving,
+and the next one trusts the comparison less. Latent: no recorded body ends with
+a trailer paragraph of its own.
+
 **Done when.** `--compare` reports a pull request body that ends with its own
 trailer paragraph as equal to a squash body that kept it, and a test pins the
 form above.
+
+**Generator check.** A one-off: `normalise` applies one strip to two texts that
+end differently. No head's `misread:` states it; `PL-QLQF` read a trailer inside
+prose, a different fact, as the brief says.

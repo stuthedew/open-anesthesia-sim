@@ -8372,6 +8372,12 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: _run_step('      - run: "python3 tools/x.py\n          --flag"\n'),
         ([], [(1, "a quoted scalar")]),
     ),
+    # `docket.frontmatter.plain` is the one reading of which node is a plain
+    # scalar (`PL-8MHZ`): `|x` is a header YAML refuses, handed to bash as `|x`.
+    "workflow commands, a header YAML refuses is refused by name": (
+        lambda _: _run_step("      - run: |x\n"),
+        ([], [(1, "a YAML node opening `|`")]),
+    ),
     "workflow commands, an indentation indicator places the block's content": (
         lambda _: _run_step("      - run: |2\n            deeper\n          python3 tools/x.py\n"),
         ([("deeper", 2), ("python3 tools/x.py", 3)], []),
@@ -10263,6 +10269,80 @@ def test_a_host_block_claim_dated_in_its_own_sentence_is_quiet(
     tmp_path: Path, sentence: str
 ) -> None:
     assert _host_claim_errors(tmp_path, {"docs/NOTE.md": sentence + "\n"}) == []
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Held to https://github.com/executablebooks/markdown-it-py, the reference its block "
+        "reading is held to.",
+        "The example from `github.com` sits in a code block below.",
+        "The egress block that stopped it is still in place for `docs.github.com`.",
+        "The engine is fetched from `www.gstatic.com`, which the network policy blocks.",
+    ],
+    ids=["a block reading", "a code block", "an egress block", "a policy that blocks"],
+)
+def test_block_beside_a_host_is_an_advisory_rather_than_refused(
+    tmp_path: Path, sentence: str
+) -> None:
+    """`block` and `blocks` name a block of text as often as a refusal (`PL-79DP`).
+
+    A docstring citing markdown-it-py's repository beside "its block reading"
+    was refused while `PL-0C2S`'s test was written, and was reworded to drop
+    the URL. Across the tree on 2026-10-12, dated records included, four
+    sentences named a host beside one of the two words and no other word of
+    refusal: two were claims, an egress block and a policy that blocks, and two
+    named blocks of text. The wording cannot tell them apart, so each is an
+    advisory: a claim still reaches its writer, and a code block is not refused.
+    """
+    report = _host_claim_report(tmp_path, {"docs/NOTE.md": sentence + "\n"})
+
+    assert report.errors == []
+    assert [advisory.split(" names ")[0] for advisory in report.advisories] == ["docs/NOTE.md:1"]
+
+
+def test_the_block_advisory_names_the_word_and_both_readings(tmp_path: Path) -> None:
+    report = _host_claim_report(
+        tmp_path, {"docs/NOTE.md": "The example from `github.com` sits in a code block below.\n"}
+    )
+
+    assert report.advisories == [
+        "docs/NOTE.md:1 names `github.com` beside `block` in a sentence that carries no "
+        "date: if it says the host was blocked, write the date it was probed in the same "
+        "sentence (`PL-CLW5`); if it names a block of text, such as a code block, nothing "
+        "to do (`PL-79DP`)"
+    ]
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "`github.com` is blocked, so the code block below was typed in by hand.",
+        "The code block below was refused by `pypi.org`.",
+        "`doi.org` was blocking the fenced block's source.",
+    ],
+    ids=["blocked", "refused", "blocking"],
+)
+def test_a_word_only_a_refusal_has_beside_a_block_is_still_refused(
+    tmp_path: Path, sentence: str
+) -> None:
+    """`blocked`, `blocking` and the other words of refusal have no sense of text (`PL-79DP`).
+
+    So a block of text in the same sentence changes nothing, and an undated
+    claim worded with one of them is refused as it was.
+    """
+    errors = _host_claim_errors(tmp_path, {"docs/NOTE.md": sentence + "\n"})
+
+    assert [error.split(" names ")[0] for error in errors] == ["docs/NOTE.md:1"]
+
+
+def test_a_dated_block_beside_a_host_is_quiet(tmp_path: Path) -> None:
+    report = _host_claim_report(
+        tmp_path,
+        {"docs/NOTE.md": "On 2026-10-06 the egress block was still in place for `doi.org`.\n"},
+    )
+
+    assert (report.errors, report.advisories) == ([], [])
 
 
 def test_a_date_in_another_sentence_does_not_date_the_claim(tmp_path: Path) -> None:

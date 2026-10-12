@@ -8,7 +8,16 @@ from __future__ import annotations
 
 import pytest
 
-from docket.frontmatter import Unread, closing, closing_quote, keys, uncommented
+from docket.frontmatter import (
+    Unread,
+    closing,
+    closing_quote,
+    key,
+    keys,
+    plain,
+    uncommented,
+    unquote,
+)
 
 
 def _extents(text: str) -> list[tuple[str, int, int]]:
@@ -87,3 +96,75 @@ def test_a_quote_closes_past_its_escapes() -> None:
     assert closing_quote('"a \\" b" c') == 7
     assert closing_quote("'it''s' x") == 6
     assert closing_quote('"open') == -1
+
+
+@pytest.mark.parametrize(
+    ("line", "kept"),
+    [
+        ('paths: [a, "b # c"] # why', 'paths: [a, "b # c"] '),
+        ("name: don 't # why", "name: don 't "),
+        ('- "a # b" # why', '- "a # b" '),
+        ("- &a 'x # y' # why", "- &a 'x # y' "),
+        ('k: a - "b # c"', 'k: a - "b '),
+    ],
+)
+def test_a_quote_opens_a_scalar_only_where_a_node_opens(line: str, kept: str) -> None:
+    """A line's comment is where YAML ends its content (`PL-8MHZ`).
+
+    Following only a quote that opened the text, this cut the first inside its
+    quoted scalar; taking a quote after any white space for one,
+    `required_checks_check` kept the second's comment as the name `don 't # why`.
+    """
+    assert uncommented(line) == kept
+
+
+def test_a_quoted_key_is_read_as_yaml_unquotes_it() -> None:
+    """This named the key `a\\"b` and `required_checks_check` refused it (`PL-8MHZ`)."""
+    assert key('"a\\"b": 1') == ('a"b', 7)
+    assert key("'it''s': 1") == ("it's", 8)
+
+
+def test_a_key_written_as_a_flow_collection_is_named_by_no_reader() -> None:
+    """`required_checks_check` named this key `[a]`, where YAML's is a sequence (`PL-8MHZ`)."""
+    assert key("[a]: b") is None
+
+
+@pytest.mark.parametrize(
+    ("token", "held"),
+    [
+        ("'it''s'", "it's"),
+        ('"a\\"b"', 'a"b'),
+        ('"a\\\\b"', "a\\b"),
+        ('"\\x41\\t\\u00e9\\U0001F600\\/"', "A\té\U0001f600/"),
+        ("'a\\nb'", "a\\nb"),
+    ],
+)
+def test_unquote_reads_the_escapes_yaml_defines(token: str, held: str) -> None:
+    """`rules_paths_check` kept `'it''s'` whole and the backslash of `"a\\"b"` (`PL-8MHZ`)."""
+    assert unquote(token) == held
+
+
+@pytest.mark.parametrize("token", ['"a\\qb"', '"\\x4"', '"\\U00110000"', '"a" b', "plain"])
+def test_unquote_refuses_what_yaml_refuses(token: str) -> None:
+    with pytest.raises(Unread):
+        unquote(token)
+
+
+@pytest.mark.parametrize(
+    ("text", "is_plain"),
+    [
+        ("x", True),
+        ("-x", True),
+        (":x", True),
+        ("- x", False),
+        (": x", False),
+        ("|x", False),
+        (">", False),
+        ("'x'", False),
+        ("[x]", False),
+        ("", False),
+    ],
+)
+def test_plain_reads_a_node_by_its_first_character(text: str, is_plain: bool) -> None:
+    """`|x` is a block scalar's header YAML refuses, which `doc_check` read as plain (`PL-8MHZ`)."""
+    assert plain(text) is is_plain

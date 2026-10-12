@@ -69,7 +69,8 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.vcs import default_branch, github_token  # noqa: E402
 
-from open_pull_requests import repo_slug  # noqa: E402
+from main_ci_status import FAILED  # noqa: E402
+from open_pull_requests import ListingFailed, every_page, repo_slug  # noqa: E402
 from required_checks_check import required_contexts  # noqa: E402
 
 API = "https://api.github.com"
@@ -80,12 +81,8 @@ API_VERSION = "2022-11-28"
 #: a misspelt secret reads as an absent one and the run would pass listing.
 WRITE_TOKEN = "UPDATE_BRANCH_TOKEN"
 
-#: A check run's conclusions that are a verdict against the pull request.
-#: `cancelled` and `action_required` are not: neither says the change is wrong,
-#: and the update starts the check again.
-FAILED = frozenset({"failure", "timed_out", "startup_failure"})
-
-#: GitHub's largest page. A listing is read page by page until one comes back short.
+#: GitHub's largest page, for the check runs read below. The pull request
+#: listing is `open_pull_requests.every_page`'s, which pages to a short page.
 PAGE = 100
 
 TIMEOUT = 30.0
@@ -216,20 +213,24 @@ def parse_pull(entry: object, slug: str) -> Pull:
 
 
 def open_pulls(api: GitHub, base: str) -> list[Pull]:
-    """Every open pull request onto `base`."""
-    found: list[Pull] = []
-    page = 1
-    while True:
-        query = urllib.parse.urlencode(
-            {"state": "open", "base": base, "per_page": PAGE, "page": page}
-        )
-        payload = api.get(f"/repos/{api.slug}/pulls?{query}")
+    """Every open pull request onto `base`, paged as `open_pull_requests.every_page` pages.
+
+    Read with this tool's own calls, which retry, and by that one paging rule,
+    so `docket flight` and this agree on which pull requests are open
+    (`PL-351H`).
+    """
+
+    def read(query: dict[str, str | int]) -> list[object]:
+        payload = api.get(f"/repos/{api.slug}/pulls?{urllib.parse.urlencode(query)}")
         if not isinstance(payload, list):
             raise Declined("GitHub's list of open pull requests was not a list")
-        found.extend(parse_pull(entry, api.slug) for entry in payload)
-        if len(payload) < PAGE:
-            return found
-        page += 1
+        return payload
+
+    try:
+        entries = every_page(read, {"state": "open", "base": base})
+    except ListingFailed as failed:
+        raise Declined(f"GitHub's open pull requests could not be read: {failed}") from failed
+    return [parse_pull(entry, api.slug) for entry in entries]
 
 
 def behind_by(api: GitHub, base: str, sha: str) -> int:
