@@ -3,12 +3,14 @@ id: PL-5DZ8
 title: PL-KGYT's sweep searched what model, vcs and release export and so left docket's other modules, the hooks and the facts no module exports, so tools, hooks and docket still each spell one predicate: five readers filed since it closed on 2026-10-01 - shell operators and $'...' (PL-P72R, PL-C45K), code spans (PL-Z8RS), a front matter's edges (PL-YPLM) and the tracked-file list (PL-HNXS)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: docs/items, tools, .claude/hooks, subprojects/docket/src/docket
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; recorded as a generator head by PL-74T0, 2026-10-11
 added: 2026-10-11
+closed: 2026-10-12
+pr: 1425
 payoff: every remaining second spelling of a predicate is found in one sweep with no enumerated boundary, so the fact stops arriving one reader per capture
 verify: grep -qE '^\*\*Swept 2026-' docs/items/PL-5DZ8-*.md
 root-cause-of: PL-P72R, PL-C45K, PL-Z8RS, PL-YPLM, PL-HNXS, PL-QJ5F, PL-2P5L, PL-ZXCN, PL-FB77, PL-Y3TZ, PL-7DXZ, PL-RHPK, PL-8MHZ, PL-T3GW, PL-NNVJ, PL-HHYL, PL-S9JK, PL-QNHZ, PL-KL6B, PL-351H, PL-WCHF, PL-4DK2, PL-86H3, PL-5H48, PL-9NZ3, PL-8W1J
