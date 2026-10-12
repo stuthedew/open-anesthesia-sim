@@ -1270,9 +1270,32 @@ def test_an_ansi_c_word_reads_as_bash_reads_it_in_the_c_locale(word: str) -> Non
 #: that will make it bash's: the script, what bash runs, and what `shell_words`
 #: reads from it whole and a piece of `script_lines` at a time. The generator
 #: leaves each form out; the fix deletes its row and lets the generator draw it.
-#: Empty since `PL-55R2` fixed the last of `PL-C4XY`'s, so pytest reports the
-#: test below as skipped, for an empty parameter set, until a departure is found.
-KNOWN_DEPARTURES: list[object] = []
+#: `PL-55R2` fixed the last of `PL-C4XY`'s. These are `PL-H710`'s, where bash
+#: runs a body's substitution in a child that re-reads its text, and each reads
+#: every command bash runs, and more (`PL-54MD`).
+KNOWN_DEPARTURES: list[object] = [
+    # The child runs the line ahead of the one the cut leaves open, and that one is one error.
+    (
+        "p <<E\n$(p a\np $(p deep <<F\nF))\nE\np after\n",
+        {("p",): 1, ("p", "a"): 1, ("p", "after"): 1},
+        {("p",): 2, ("p", "a"): 1, ("p", "after"): 1, ("p", "deep"): 1},
+        {("p",): 2, ("p", "a"): 1, ("p", "after"): 1, ("p", "deep"): 1},
+    ),
+    # Its top level ends no body early, so it reads the lines after `<<F` as `F`'s body.
+    (
+        "p <<E\n$(p inner <<F\nF ')'\n)\nE\np after\n",
+        {("p",): 1, ("p", "after"): 1, ("p", "inner"): 1},
+        {(")",): 1, ("p",): 1, ("p", "after"): 1, ("p", "inner"): 1},
+        {(")",): 1, ("p",): 1, ("p", "after"): 1, ("p", "inner"): 1},
+    ),
+    # And there the rest of `F`'s line, where the cut is, is body too.
+    (
+        "p <<E\n$(p inner <<'F'\nF p y; $(p w))\nE\np after\n",
+        {("p",): 1, ("p", "after"): 1, ("p", "inner"): 1},
+        {("p",): 1, ("p", "after"): 1, ("p", "inner"): 1, ("p", "w"): 1, ("p", "y"): 1},
+        {("p",): 1, ("p", "after"): 1, ("p", "inner"): 1, ("p", "w"): 1, ("p", "y"): 1},
+    ),
+]
 
 
 @pytest.mark.parametrize(("script", "bash", "whole", "pieces"), KNOWN_DEPARTURES)
@@ -1285,9 +1308,10 @@ def test_each_known_departure_from_bash_reads_as_its_row_records(
     """A form the comparison leaves out still reads as its item says, in bash and in the lexer.
 
     A row whose reading has changed is fixed or has moved, and either way its
-    item, and the generator's exclusion of the form, want revisiting.
+    item, and the generator's exclusion of the form, want revisiting. Bash
+    may warn running one, as it does each of `PL-H710`'s.
     """
-    assert _bash_runs(script) == Counter(bash)
+    assert _bash_runs(script, warns=True) == Counter(bash)
     assert _lexer_runs(script) == Counter(whole)
     assert _lexer_runs_by_piece(script) == Counter(pieces)
 
@@ -1354,6 +1378,15 @@ FAILED_EXPANSIONS = [
     ("p <<E\n$(p y)\n$(p a <<IN\nIN)\nIN\n)\nE\np after\n", {("p", "y"): 1, ("p", "after"): 1}),
     ("p <<E\n$(p a <<IN\nIN)\nIN\n) $(p z)\nE\np after\n", {("p", "after"): 1}),
     ("p <<E\n`p a\n$(p z)\nE\np after\n", {("p", "after"): 1}),
+    # `PL-54MD`'s: a `$( )` inside the one the body runs ends its body at `F)`
+    # as at the top level, and where the outer `)` comes from that line bash
+    # finds the outer end a character early, on what precedes the `)`.
+    ("p <<E\n$(p $(p deep <<F\nF) )\nE\np after\n", {("p", "after"): 1}),
+    ("p <<E\n$(p $(p deep <<F\nF) ; p x )\nE\np after\n", {("p", "after"): 1}),
+    ("p <<E\n$(p [$(p deep <<F\nF)])\nE\np after\n", {("p", "after"): 1}),
+    ('p <<E\n$(p "$(p deep <<F\nF)")\nE\np after\n', {("p", "after"): 1}),
+    ("p <<E\n${x:-$(p $(p deep <<F\nF) )}\nE\np after\n", {("p", "after"): 1}),
+    ("p <<E\n$(p $(p deep <<F\nF) ) $(p z)\nE\np after\n", {("p", "after"): 1}),
 ]
 
 
@@ -1361,14 +1394,15 @@ FAILED_EXPANSIONS = [
 def test_a_body_s_expansion_fails_where_bash_s_does(
     script: str, runs: dict[tuple[str, ...], int]
 ) -> None:
-    """The lexer read `p inner` from `PL-GJKN`'s form, a command bash never runs.
+    """The lexer read `p inner` from `PL-GJKN`'s form and `p deep` from `PL-54MD`'s.
 
     It took `F)` for the end of `F`'s body, as inside a `$( )` at the top
     level, and read on past a substitution that failed. Bash 5.2.21 expands
     nothing in the body past one that fails. The command the here-document
     is on is read as written, as `test_a_substitution_in_an_unquoted_body_is_a_command_it_runs`
     reads `cat`, though bash does not run it once its input's expansion has
-    failed.
+    failed. `PL-54MD`'s forms fail where the lexer took them for a `$( )`
+    inside one that closes as at the top level.
     """
     assert _bash_runs(script, warns=True) == Counter(runs)
     assert _lexer_runs(script) == Counter(runs) + Counter({("p",): 1})
@@ -1389,3 +1423,59 @@ def test_a_substitution_nested_in_a_body_s_ends_a_body_as_at_the_top_level(scrip
     """
     assert _lexer_runs(script) == _bash_runs(script, warns=True)
     assert _lexer_runs_by_piece(script) == _bash_runs(script, warns=True)
+
+
+#: Bodies holding a `$( )` whose end bash 5.2.21 finds a character early, on a
+#: `)`, and what it runs from each: the text up to that `)` in a child, and the
+#: rest of the body expanded, so the command the body is handed to, `p after`
+#: and any substitution after it run (`PL-54MD`).
+CUT_SHORT = [
+    # `PL-54MD`'s form: the child's text ends `F`, which leaves `$(p deep` open,
+    # and its run is one syntax error that runs nothing.
+    ("p <<E\n$(p $(p deep <<F\nF))\nE\np after\n", {("p",): 1, ("p", "after"): 1}),
+    # What follows it is expanded, on its line and after it.
+    (
+        "p <<E\n$(p $(p deep <<F\nF)) $(p z)\n$(p y)\nE\np after\n",
+        {("p", "z"): 1, ("p", "y"): 1, ("p",): 1, ("p", "after"): 1},
+    ),
+    # Whatever the `)` before closed: a deeper `$( )`, a subshell, one after
+    # the one the line ended, or the one inside a `${...}`.
+    ("p <<E\n$(p $(p $(p deep <<F\nF)))\nE\np after\n", {("p",): 1, ("p", "after"): 1}),
+    ("p <<E\n$( (p $(p deep <<F\nF)))\nE\np after\n", {("p",): 1, ("p", "after"): 1}),
+    ("p <<E\n$(p $(p deep <<F\nF) $(p y))\nE\np after\n", {("p",): 1, ("p", "after"): 1}),
+    ("p <<E\n${x:-$(p $(p deep <<F\nF))}\nE\np after\n", {("p",): 1, ("p", "after"): 1}),
+    # A command ahead of it on its line is part of the one error.
+    ("p <<E\n$(p a; p $(p deep <<F\nF))\nE\np after\n", {("p",): 1, ("p", "after"): 1}),
+    ("p <<E\n$(p a & p $(p deep <<F\nF))\nE\np after\n", {("p",): 1, ("p", "after"): 1}),
+    # A line of its own runs, so the text is read as found: here a delimiter
+    # ending in `)`, whose body the child reads to the end of its text.
+    (
+        "p <<E\n$(p inner <<'F)'\nF))\nE\np after\n",
+        {("p", "inner"): 1, ("p",): 1, ("p", "after"): 1},
+    ),
+]
+
+
+@pytest.mark.parametrize(("script", "runs"), CUT_SHORT)
+def test_a_substitution_bash_cuts_short_runs_what_bash_runs(
+    script: str, runs: dict[tuple[str, ...], int]
+) -> None:
+    """The lexer read `p deep`, and the `p` it is handed to, from `PL-54MD`'s form.
+
+    Bash 5.2.21 warns, runs nothing of the text it cut, and goes on expanding
+    the body, so the command the here-document is on runs, where it does not
+    once an expansion has failed.
+    """
+    assert _bash_runs(script, warns=True) == Counter(runs)
+    assert _lexer_runs(script) == Counter(runs)
+    assert _lexer_runs_by_piece(script) == Counter(runs)
+
+
+def test_an_escaped_paren_bash_cuts_at_is_read_as_found() -> None:
+    """An escaped `)` closes nothing, so bash runs the text it cuts there (`PL-54MD`).
+
+    Bash 5.2.21 runs `p deep` from this body, and hands the `p` around it a
+    word ending in the backslash and a byte the comparison cannot decode, so
+    the reading is checked alone: it keeps `p deep`.
+    """
+    assert _lexer_runs("p <<E\n$(p $(p deep <<F\nF) x\\))\nE\np after\n")[("p", "deep")] == 1
