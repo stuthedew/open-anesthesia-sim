@@ -3,12 +3,14 @@ id: PL-BHS7
 title: docket.shell reads a nested backquote's body from the raw text without first removing the backslash before an inner backquote, dollar or backslash, so the inner command bash runs is missed by shell_words and by the guards' flat reading; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1436
 payoff: a command nested in backquotes is read as the substitution bash runs, so a guard or a docket audit sees the inner command instead of escaped words
 verify: grep -q 'def test_a_nested_backquote_is_read_after_its_escapes_are_removed' subprojects/docket/tests/test_shell.py
 ---

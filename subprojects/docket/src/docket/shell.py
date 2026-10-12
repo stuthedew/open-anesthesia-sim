@@ -798,7 +798,7 @@ class _Lexer:
                 return index + 1
             if inner in "$`":
                 self.refuse(f"has a `{inner}` inside double quotes, where the shell expands it")
-                end = self.substitution(index, stop)
+                end = self.substitution(index, stop, quoted=True)
                 text.append(command[index:end])
                 spelled.append(self.kept(index, end))
                 index = end
@@ -814,14 +814,15 @@ class _Lexer:
             spelled.append(inner)
             index += 1
 
-    def substitution(self, index: int, stop: int) -> int:
+    def substitution(self, index: int, stop: int, quoted: bool = False) -> int:
         """The offset past a command substitution opening at `index`, having read its body.
 
         `index + 1` where none opens there. A `$(` ends at the `)` that closes
         it, read by the same rules as the command, so a `)` inside quotes, a
         subshell or a `case` pattern does not, and a `$((` bash reads as
         arithmetic is read as `(( ))` is; a backquote ends at the first
-        backquote no backslash escapes (Bash Reference Manual §3.5.4 "Command
+        backquote no backslash escapes, as `backquote` reads one, `quoted`
+        where double quotes hold it (Bash Reference Manual §3.5.4 "Command
         Substitution", §3.5.5 "Arithmetic Expansion"). A `${` is read to the
         `}` that closes it, as `parameter` reads one. A backslash-newline after
         the `$` is removed first, as bash removes it before it reads what the
@@ -830,7 +831,7 @@ class _Lexer:
         """
         command = self.command
         if command[index] == "`":
-            return self.backquote(index, stop)
+            return self.backquote(index, stop, quoted)
         if command[index] != "$":
             return index + 1
         after = _past_continuations(command, index + 1, stop)
@@ -857,10 +858,24 @@ class _Lexer:
         self.bodies.append((opening, clauses))
         return end
 
-    def backquote(self, index: int, stop: int) -> int:
+    def backquote(self, index: int, stop: int, quoted: bool = False) -> int:
         """The offset past the backquote closing the one at `index`, having read the command inside.
 
-        Bash ends one at the first backquote no backslash escapes.
+        Bash ends one at the first backquote no backslash escapes, and reads
+        the command inside once each backslash before a backquote, a `$` or
+        another backslash is removed - and before a `"`, where double quotes
+        hold it - which is how backquotes nest: in ``x=`p \\`p bq\\``` the
+        inner `p bq` is a command of its own (POSIX.1-2017 XCU §2.6.3,
+        §2.2.3). Read from the raw text, its backquotes were escaped
+        characters in two of `p`'s words (`PL-BHS7`). Bash 5.2.21 keeps that
+        `\\"` in a double-quoted string inside a `${...}` double quotes hold,
+        which is read here as any double-quoted string is.
+
+        A body with no such backslash is read where it stands. One with any is
+        read as a command of its own, by a reading of the text bash reads,
+        and what that reading found is put back where it stands in the
+        command: each of its characters covers the backslash removed before
+        it, so a span runs from a word's first written character to its last.
         """
         command = self.command
         close = index + 1
@@ -870,11 +885,56 @@ class _Lexer:
             raise _Unreadable("has an unclosed command substitution")
         sink: list[str] = []
         self.substituted.append(sink)
+        escapes = '$`\\"' if quoted else "$`\\"
+        body: list[str] = []
+        #: Where each character of the body starts in the command, and where it ends.
+        starts: list[int] = []
+        at = index + 1
+        while at < close:
+            if command[at] == "\\" and command[at + 1] in escapes:
+                body.append(command[at + 1])
+                starts.append(at)
+                at += 2
+                continue
+            body.append(command[at])
+            starts.append(at)
+            at += 1
+        starts.append(close)
         self.nested += 1
-        clauses, _ = self.read(index + 1, close, closes=False, flat=sink, backquote=True)
-        self.nested -= 1
-        self.bodies.append((index, clauses))
+        if len(body) == close - index - 1:
+            clauses, _ = self.read(index + 1, close, closes=False, flat=sink, backquote=True)
+            self.nested -= 1
+            self.bodies.append((index, clauses))
+            return close + 1
+        inner = _Lexer("".join(body), bash_c=self.bash_c)
+        inner.nested = self.nested
+        try:
+            clauses, _ = inner.read(0, len(body), closes=False, flat=sink, backquote=True)
+        finally:
+            self.nested -= 1
+            # What its reading found, put where it stands: a continuation by
+            # the backslash just before its newline, which is never escaped.
+            self.substituted += inner.substituted
+            self.joins += [starts[join + 1] - 1 for join in inner.joins]
+            self.removed += [(starts[first], starts[last]) for first, last in inner.removed]
+            self.bodies += [(starts[at], self.placed(found, starts)) for at, found in inner.bodies]
+            if inner.refusal is not None:
+                self.refuse(inner.refusal)
+        self.bodies.append((index, self.placed(clauses, starts)))
         return close + 1
+
+    def placed(self, clauses: tuple[Clause, ...], starts: list[int]) -> tuple[Clause, ...]:
+        """Clauses read from a backquote's body, their spans put where they stand in the command.
+
+        `starts` gives where each character of the body starts, and where the
+        last ends; each clause is spelled as the command spells it.
+        """
+        placed: list[Clause] = []
+        for clause in clauses:
+            spans = tuple((starts[first], starts[last]) for first, last in clause.spans)
+            spelled = self.command[spans[0][0] : spans[-1][1]] if spans else ""
+            placed.append(Clause(spelled, clause.tokens, spans))
+        return tuple(placed)
 
     def ansi_c_end(self, quote: int, stop: int) -> int:
         """The offset of the quote closing the `$'...'` whose opening quote stands at `quote`.
@@ -1202,14 +1262,15 @@ def shell_words(command: str) -> Reading:
     progress, and it runs to the end of its line; a `${...}` is part of its
     word, to the `}` that closes it; a `$( )`, a `<( )`, a `>( )` or a
     backquote, quoted or not, or inside a `${...}`, runs a command, so its body
-    is read by these same rules into `Reading.substitutions`; and `name=(`
-    opens an array assignment, one word to its `)`. A newline is read as bash
-    reads one, though no field holds one, because `script_lines` hands this a
-    script's lines: a backslash before it removes both, quoted or not, as long
-    as it is not in single quotes; unquoted, it ends a command as `;` does, and
-    the bodies of the here-documents a `<<` or `<<-` opened before it are
-    skipped to their delimiters, in logical lines where no part of the
-    delimiter is quoted (§3.1.2.1 "Escape Character", §3.6.6 "Here
+    is read by these same rules into `Reading.substitutions`, a backquote's
+    once the backslashes bash removes from it are gone (`PL-BHS7`); and
+    `name=(` opens an array assignment, one word to its `)`. A newline is
+    read as bash reads one, though no field holds one, because `script_lines`
+    hands this a script's lines: a backslash before it removes both, quoted or
+    not, as long as it is not in single quotes; unquoted, it ends a command as
+    `;` does, and the bodies of the here-documents a `<<` or `<<-` opened
+    before it are skipped to their delimiters, in logical lines where no part
+    of the delimiter is quoted (§3.1.2.1 "Escape Character", §3.6.6 "Here
     Documents"). Bash's compound commands bend that, and `_Grammar` follows
     them: a `case` pattern's `)` closes no `$(`, a newline inside `(( ))` or
     `$(( ))` is a space and a `<<` there a shift, and inside `[[ ]]` or an

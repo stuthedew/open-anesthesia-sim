@@ -351,6 +351,31 @@ def test_a_bump_its_one_line_cannot_make_is_refused(tmp_path: Path, text: str) -
     assert pyproject.read_text(encoding="utf-8") == text
 
 
+def test_a_resumed_bump_leaves_a_version_line_inside_a_multi_line_string_alone(
+    tmp_path: Path,
+) -> None:
+    """A resume asks for the version the file declares, so the version alone read back as asked.
+
+    The first `version = "..."` line sat inside the description, a TOML
+    multi-line string, and the substitution rewrote it there: `tomllib` read
+    the description changed and the version not (`PL-6KHQ`). Refused now, at
+    a resume as at a cut, while a resume of a file whose first such line is
+    the key still writes the file back unchanged.
+    """
+    text = '[project]\nname = "x"\ndescription = """\nversion = "0.1.0"\n"""\nversion = "0.2.0"\n'
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(text, encoding="utf-8")
+    plain = tmp_path / "plain.toml"
+    plain.write_text('[project]\nversion = "0.2.0"\n', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="not on its first"):
+        prepare_bump(pyproject, "0.2.0")
+    with pytest.raises(ValueError, match="not on its first"):
+        prepare_bump(pyproject, "0.3.0")
+    assert pyproject.read_text(encoding="utf-8") == text
+    assert prepare_bump(plain, "0.2.0").text == '[project]\nversion = "0.2.0"\n'
+
+
 def test_a_shipped_version_with_no_tag_is_reported() -> None:
     assert is_untagged("0.2.5", frozenset({"v0.2.3", "v0.2.4"}))
 

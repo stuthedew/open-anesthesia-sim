@@ -806,6 +806,35 @@ def test_a_negated_blocked_by_is_not_read_as_a_prerequisite() -> None:
         assert _prose(text, blocker_status="done") == [], text
 
 
+def test_a_prerequisite_wrapped_before_its_id_is_read_at_any_list_depth() -> None:
+    """A soft break and its indent are one space of the gap, as CommonMark reads them (`PL-BVBB`).
+
+    The 40-character window between the cue and the id counted every column
+    of a continuation line's indent, so the clause read at the top level and
+    in a list item, and not in a third-level one, whose indent filled it.
+    markdown-it-py 4.2.0 gives each the same inline text: one line break, no
+    indent.
+    """
+    clause = "It waits on the outcome of the design round in\n{indent}`PL-0002`.\n"
+    for opening, indent in (("", ""), ("- ", "  "), ("- a\n  - b\n    - ", "      ")):
+        advisories = _prose("x\n\n" + opening + clause.format(indent=indent))
+        assert _has(advisories, "names PL-0002 as a prerequisite in prose"), opening
+
+
+def test_a_negation_wrapped_across_an_indented_line_is_read() -> None:
+    """The negation is read from the statement's start, so an indent does not hide it (`PL-BVBB`).
+
+    A look-back of 24 characters counted the continuation line's indent and
+    never reached the `not` ending the line above, so the sentence denying
+    the wait read as stating it, as it does not on one line. markdown-it-py
+    4.2.0 renders the two lines across one soft break, the indent stripped.
+    """
+    text = "This item is not\n                         blocked by `PL-0002`."
+
+    assert _prose(text) == []
+    assert _prose(text, blocker_status="done") == []
+
+
 def test_a_negation_reaches_only_the_cue_it_stands_before() -> None:
     """Earlier in the clause a negation is usually about something else, and
     "not only" states the prerequisite twice over."""

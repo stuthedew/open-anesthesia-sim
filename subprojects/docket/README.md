@@ -2062,8 +2062,10 @@ then reported nothing to release, because the work it would have shipped
 claimed to have shipped already. So `prepare_bump` settles everything the bump
 can reject — an absent version file, one that is not TOML, one carrying no
 version field, and one declaring its version where the bump's one-line write
-does not reach (`PL-3DD9`) — before the first stamp is written, and hands back
-the text to put there. A rejected file costs an exit code and a message naming
+does not reach (`PL-3DD9`), or where that write would change another value
+first, as a resume asking for the version already declared once did
+(`PL-6KHQ`) — before the first stamp is written, and hands back the text to
+put there. A rejected file costs an exit code and a message naming
 it, not a half-written store.
 
 The second is a write that is *interrupted*, which no ordering prevents: the

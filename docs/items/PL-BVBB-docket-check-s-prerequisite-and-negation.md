@@ -3,12 +3,14 @@ id: PL-BVBB
 title: docket check's prerequisite and negation windows are measured in characters of _unmarked text, which keeps a continuation line's indentation and its blanked container markers, so a waits-on clause wrapped before its id is missed in a third-level list item and a negation wrapped across an indented line is missed; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1436
 payoff: a waits-on clause or a negation wrapped onto an indented line reads as it does on one line, so docket check neither misses a stated prerequisite nor invents a denied one
 verify: grep -q 'def test_a_prerequisite_wrapped_before_its_id_is_read_at_any_list_depth' subprojects/docket/tests/test_checks.py && grep -q 'def test_a_negation_wrapped_across_an_indented_line_is_read' subprojects/docket/tests/test_checks.py
 ---

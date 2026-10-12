@@ -1120,6 +1120,34 @@ def test_a_branch_copy_the_base_has_closed_since_is_not_reported() -> None:
     assert report.edits == ()
 
 
+def test_a_ref_reopening_a_closed_item_with_a_block_field_is_ahead() -> None:
+    """A field the fold declines arrives empty, so nothing can say the base holds it (`PL-63Y5`).
+
+    The closure arm compared fields alone, and a ref that reopened the item
+    with `touches:` written as a block list one path longer answered behind,
+    so `stranded` hid the path; PyYAML reads that list as two paths. A
+    `reason: |` block scalar did the same. Both now answer ahead, as the
+    removal arm already did for one at an equal status.
+    """
+    base = "---\nid: PL-0001\ntitle: On main\nstatus: done\ntouches: a\n---\n\n**Problem.** x\n"
+    block_list = base.replace("status: done", "status: ready").replace(
+        "touches: a", "touches:\n  - a\n  - src/new_module.py"
+    )
+    dropped = base.replace("status: done", "status: dropped\nreason: x")
+    block_scalar = dropped.replace("status: dropped\nreason: x", "status: ready\nreason: |\n  y")
+
+    assert _standing(base, block_list) == "ahead"
+    assert _standing(dropped, block_scalar) == "ahead"
+    assert _standing(base.replace("done", "ready"), block_list) == "ahead"
+    name = "PL-0001-on-main.md"
+    runner = _tree_runner(
+        {"origin/main": {name: base}, "origin/claude/reopened": {name: block_list}}
+    )
+    assert [edit.identifier for edit in stranded(ROOT, {"PL-0001"}, runner=runner).edits] == [
+        "PL-0001"
+    ]
+
+
 def test_a_branch_copy_the_base_has_only_added_to_is_not_reported() -> None:
     """The base holds every line the branch holds and more, so nothing is behind."""
     runner = _tree_runner({"origin/main": APPENDED, "origin/claude/older": MAIN})

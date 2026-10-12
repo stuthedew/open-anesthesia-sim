@@ -4481,6 +4481,19 @@ _BEHIND = "behind"
 _EQUAL = "equal"
 
 
+def _declines_a_line(text: str) -> bool:
+    """Whether the fold declines a line of a copy's front matter, as `_markdown_statements` does.
+
+    A block list, a block scalar or a line no field reads, each of which
+    `_front_matter_pairs` returns beside the fields rather than in them.
+    """
+    parsed = _front_matter_pairs(text)
+    if parsed is None:
+        return False
+    _pairs, block_lists, block_scalars, unread, _body = parsed
+    return bool(block_lists or block_scalars or unread)
+
+
 def _standing(base_text: str, ref_text: str) -> str:
     """Whether a ref's copy of one item carries anything the base's copy does not.
 
@@ -4520,7 +4533,13 @@ def _standing(base_text: str, ref_text: str) -> str:
       `PL-YBFB`'s and `PL-JW9J`'s branches when `PL-F7Z6` counted, 2026-10-05.
     - **`_AHEAD` otherwise.** Including two copies that each hold something
       the other lacks: the reader is handed a diff either way, and calling
-      that case ahead reports it rather than hiding it.
+      that case ahead reports it rather than hiding it. And a copy whose front
+      matter the fold declines a line of - a block list, a block scalar, a
+      line no field reads - since a field it holds that way arrives empty, and
+      no arm can say a copy holds nothing more from fields it never read: the
+      removal arm's statement read already declined one, and the closure arm
+      answered behind for a ref reopening an item with `touches:` written as a
+      block list one path longer (`PL-63Y5`).
 
     **What the closure case costs, counted rather than asserted.** It is wrong
     exactly where a branch *reopens* an item the base closed, and a reopening
@@ -4540,6 +4559,8 @@ def _standing(base_text: str, ref_text: str) -> str:
     """
     if base_text == ref_text:
         return _EQUAL
+    if _declines_a_line(base_text) or _declines_a_line(ref_text):
+        return _AHEAD
     base_fields, base_body = parse_front_matter(base_text)
     ref_fields, ref_body = parse_front_matter(ref_text)
     held = set(split_lines(base_body))

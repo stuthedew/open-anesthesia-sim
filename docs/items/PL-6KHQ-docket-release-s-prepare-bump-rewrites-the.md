@@ -3,12 +3,14 @@ id: PL-6KHQ
 title: docket release's prepare_bump rewrites the first line shaped like a version key in pyproject.toml, which can be a line inside a TOML multi-line string ahead of the real key, and its read-back passes when the requested version equals the declared one - the resume of an interrupted cut - so a string value is silently changed; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1436
 payoff: Resuming an interrupted release cut can never silently rewrite a string value in pyproject.toml.
 verify: grep -q 'def test_a_resumed_bump_leaves_a_version_line_inside_a_multi_line_string_alone' subprojects/docket/tests/test_release.py
 ---
