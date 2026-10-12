@@ -48,6 +48,8 @@ comma form reports `PL-K7QXZ` where PyYAML reads `PL-K7QX\ Z`; and a
 `settings.json` hook command holding `\\\n` before `Z` reports nothing where
 bash joins `PL-K7QXZ`. None of the three forms stands in `.claude/`.
 
+**A fourth form, found 2026-10-12 by `PL-5DZ8`'s closing sweep.** `_opens_a_node` sees an anchor or tag ahead of the quote as no node opener, so `description: &a "PL-K7\` followed by `  QX"` is not joined and `PL-K7` is reported, where `docket.frontmatter._node_start` skips the anchor and reads a quoted scalar. The Done-when's "place a double-quoted scalar only where YAML opens one" covers it.
+
 **Why it matters.** Each form either hides a malformed id from the check or
 reports a well-formed one as malformed, and the first keeps a second reading
 of a front matter's edges beside `docket.frontmatter`'s, free to drift from it.
