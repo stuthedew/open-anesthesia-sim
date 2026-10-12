@@ -3,12 +3,14 @@ id: PL-HLS1
 title: docket's vcs._markdown_statements compares a paragraph without the heading section it sits under, so a ref that deletes a heading between two sections - moving the paragraphs below it under the heading above - reads as holding nothing more, and stranded drops the edit; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: stranded-report-fidelity
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1447
 payoff: a branch whose only change is a deleted heading, moving paragraphs into another section, stays reported by stranded instead of reading as holding nothing the base lacks
 verify: grep -q 'def test_a_removed_heading_is_a_change_to_the_section_it_ended' subprojects/docket/tests/test_vcs.py
 ---
@@ -51,3 +53,16 @@ the report drops it rather than leaving it for a reader to compare.
 
 **Done when.** A removed heading counts as a change to the statements of the
 section it ended, so the form above reads as outstanding; a test pins it.
+
+**Fixed 2026-10-12** in `#1447`. `_markdown_statements` reads each block
+under every heading whose section holds it, outermost first, beside the list
+items holding it: a section runs to the next heading of its level or above
+that as many containers hold, or to the first block fewer containers hold. So
+the form above reads as outstanding, and so do a cut sub-heading, a setext
+heading and a heading inside a list item, while cutting a whole section, or a
+heading with nothing under it, still reads as held by the base.
+`test_a_removed_heading_is_a_change_to_the_section_it_ended` pins all six.
+Measured on this repository's history before the change: 7 of 3,894
+removal-only Markdown edits change answer, each now outstanding where the base
+had since inserted a heading mid-section, the direction `vcs.py` fails toward
+everywhere else, and none of 6,576 item-file standings.
