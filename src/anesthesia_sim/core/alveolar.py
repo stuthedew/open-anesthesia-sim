@@ -15,6 +15,7 @@ accepted a `bool` where `parameters.py` refuses one (`PL-LKRP`).
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from anesthesia_sim.core.checked_number import require_a_number
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, require_alveolar_ventilation
@@ -64,42 +65,68 @@ class AlveolarCompartment:
     agent_amount_l: float = 0.0
 
     def __post_init__(self) -> None:
-        # The ventilation's type was required as the constructor wrote the
-        # field, by `__setattr__` below.
+        # The ventilation's type and the agent amount's range were required as
+        # the constructor wrote each field, by `__setattr__` below.
         require_positive_finite("gas_volume_l", self.gas_volume_l)
-        require_nonnegative_finite("agent_amount_l", self.agent_amount_l)
-
-        if self.agent_amount_l > self.gas_volume_l:
-            raise SimulationConfigurationError(
-                "agent_amount_l exceeds the alveolar capacity for a concentration fraction of 1"
-            )
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
         # Hidden from `mypy` on purpose. A class that defines `__setattr__` is
         # one `mypy` lets assign any attribute name, typed by the method's
         # `value`, so with the guard in view a misspelt field written in `src/`
         # would pass `--strict` and fail at run time against the slots - on
-        # these three classes alone. Hidden, `mypy` reads the dataclass's
-        # fields and their types as before, and this is the runtime half for
-        # the callers it does not read; its three lines are checked by their
-        # tests rather than by `mypy` (`PL-LBQY`, found at review).
+        # the classes that define one alone. Hidden, `mypy` reads the
+        # dataclass's fields and their types as before, and this is the
+        # runtime half for the callers it does not read; its lines are checked
+        # by their tests rather than by `mypy` (`PL-LBQY`, found at review).
 
         def __setattr__(self, name: str, value: object) -> None:
-            """Write a field, refusing a ventilation that was not built as an `AlveolarVentilation`.
+            """Write a field, refusing a ventilation not built as an `AlveolarVentilation`
+            and an agent amount the compartment cannot hold.
 
             The one place a ventilation is stored on the compartment is this
             field, so its type is required here, for the constructor, the setter
             and an assignment made past both alike, as `BreathingCircuit.__setattr__`
-            explains (`PL-LBQY`). Nothing is written when it is refused.
+            explains (`PL-LBQY`). The agent amount is held to the compartment's
+            capacity here for the same reason. The relation between the amount
+            and the volume holding it is the compartment's to check rather than
+            any one quantity's (`.claude/rules/core-domain.md`), and until
+            `PL-544D` the constructor and `set_partial_pressure_fraction` each
+            made it while an assignment made past both did not, so an amount
+            past the capacity - a partial pressure above one atmosphere - was
+            stored, and refused only when `SimulationController.snapshot()`
+            built the fraction two layers later (`PL-7DJK`). Nothing is written
+            when either is refused. `restore_state` is the one write of the
+            amount made past this, and says why.
+
+            The constructor writes the amount before `__post_init__` has
+            refused a bad volume, so the volume is required to be a number
+            here first, under its own name (`require_a_number`), and a
+            capacity that is not positive is then left to that refusal, under
+            the same name, rather than read here as the amount exceeding it.
 
             Raises:
                 TypeError: `name` is `alveolar_ventilation_l_min` and `value` was
                     not built as an `AlveolarVentilation`
-                    (`require_alveolar_ventilation`).
+                    (`require_alveolar_ventilation`); or `name` is
+                    `agent_amount_l` and `value`, or the `gas_volume_l` it is
+                    held to, is not an `int` or a `float`
+                    (`require_nonnegative_finite`, `require_a_number`).
+                SimulationConfigurationError: `name` is `agent_amount_l` and
+                    `value` is negative, not finite, or more than
+                    `gas_volume_l`, the capacity at a fraction of one.
             """
 
             if name == "alveolar_ventilation_l_min":
                 require_alveolar_ventilation(value)
+            elif name == "agent_amount_l":
+                require_nonnegative_finite(name, value)
+                require_a_number("gas_volume_l", self.gas_volume_l)
+
+                if 0.0 < self.gas_volume_l < value:
+                    raise SimulationConfigurationError(
+                        "agent_amount_l exceeds the alveolar capacity for a concentration "
+                        "fraction of 1"
+                    )
 
             super().__setattr__(name, value)
 
@@ -152,12 +179,20 @@ class AlveolarCompartment:
     def restore_state(self, state: AlveolarCompartmentState) -> None:
         """Restore run state previously captured by `capture_state()`.
 
-        Assigns the field directly rather than going through
-        `apply_blood_uptake()`, so that rolling back cannot itself raise;
-        see `BreathingCircuit.restore_state()`.
+        Writes the slot past `__setattr__`, so that rolling back cannot
+        itself raise; see `BreathingCircuit.restore_state()`. The amount came
+        off this compartment, and what a rollback owes the step is that state
+        back exactly: a rollback refused partway would replace the step's own
+        error and leave the compartments restored after this one holding the
+        failed step (`AgentUptakeSystem.restore_state`). The one way the guard
+        could refuse it is a volume written under the held amount in the
+        meantime, which no setting does (`PL-19Y0`); the state restored is
+        then the one the step began from, over capacity as it already was,
+        and the quotient the snapshot builds from it is what refuses it,
+        visibly (`PL-7DJK`; `PL-544D`, found at review).
         """
 
-        self.agent_amount_l = state.agent_amount_l
+        object.__setattr__(self, "agent_amount_l", state.agent_amount_l)
 
     def reset(self) -> None:
         """Clear alveolar agent while preserving settings."""

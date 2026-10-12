@@ -3,11 +3,13 @@ id: PL-V2HC
 title: A halted run whose snapshot refuses cannot change agent: RunView._handle_agent_change and SimulationController.set_agent both read snapshot() while the selector is unlocked on a halted run, so the slot's raise is printed by Qt and the new-case dialog never opens; Reset is the one exit and the halt banner names it (found at PL-7DJK)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, docs/ARCHITECTURE.md, docs/MODEL.md, tests/integration/test_simulation_view.py, tests/integration/test_controller.py
 added: 2026-10-11
+closed: 2026-10-12
+pr: 1428
 payoff: a control used on a halted run answers with the halt already on screen, never by silently doing nothing
 verify: grep -q 'def test_an_agent_change_on_a_halted_run_restates_the_halt' tests/integration/test_simulation_view.py
 ---
@@ -53,3 +55,11 @@ part of this item.
 **Done when.** Picking an agent or moving a slider on a run halted by a refusing
 snapshot ends in the halt already on screen rather than a raise Qt prints, shown
 by an integration test that makes `snapshot` refuse.
+
+**Decision, 2026-10-12** (project owner, 2026-10-12, ratified, over locking
+the selector and the sliders on a halted run). The controls stay live and
+restate the halt, as built here. Put to the owner with the read of `#1428`,
+recommended because the agent selector carries agent identity and may not
+render disabled (`.claude/rules/ui-color.md`), so locking it would mean hiding
+it; answered "Agree" in the project thread at 11:09Z, recorded here and in
+`docs/MODEL.md`'s misled-reader row.

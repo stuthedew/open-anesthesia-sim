@@ -175,6 +175,7 @@ stays a reviewer's question.
 | reading a correct concentration as belonging to a different agent | agent colour is a redundant cue, never the sole identifier: the agent name is always visible - carried by the invariant tier every top-level window shows, subject to the observability limit stated there (§ "Minimum displayed outputs" -> "What this list requires once the layout is the reader's") - and the ISO 5360 colours and their accessible foregrounds are audited as one unit in `src/anesthesia_sim/app/theme.py` by `tools/agent_identity_check.py` | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
 | reading a run halted by a failure as one the user paused | a halt gets its own status words rather than falling back to "Paused", and the two failure modes are distinguished from each other as well; the status word, the transport and the banner are stated from the run's status alone - three facts no compartment value is built for - so a run whose own snapshot refuses a value still reads as stopped rather than as running with Pause offered, and the banner written before any frame of the stopped run has drawn says so instead of claiming a step was rolled back (`PL-7DJK`) | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`, `test_a_halt_is_shown_when_the_snapshot_itself_is_refused`, `test_a_halt_is_stated_from_the_run_status_alone`, `test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step` |
 | reading a run whose Reset the core refused as one still running, or as one that was reset | `SimulationController.reset()` builds the settings record the fresh run definition opens on before it clears anything, so a refusal - tissue flows that no longer sum to the cardiac output, which a checked output written onto the patient past the setter leaves - leaves the run exactly as it was rather than half cleared, and the interface halts it through the failed-step path: the refusal recorded as the failure (on a run that had already failed for something else, that failure stays the reason and the banner's exit states the refusal), the status word, the transport and the banner stating it, with the banner's way out naming the setting to change rather than the Reset just refused, and the two flows named in L/min, the unit every readout shows, as they were set (`PL-M4M0`) | `test_a_reset_the_core_refuses_halts_the_run_visibly`, `test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was`, `test_a_refused_reset_names_the_way_out_in_the_banner`, `test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute` |
+| reading the agent selector or a slider, used on a run whose snapshot refuses, as a control that took effect | the selector and the sliders read the snapshot through `RunView._snapshot_for_a_control`, which halts the run on the refusal and states the halt from the run's status rather than letting the raise escape the slot unseen, with the selector put back to the agent the controller names, since the snapshot that would name it is what refused; Reset stays the way out the banner names, unless a refused Reset has left the setting to change standing as the exit; the controls stay live on a halted run rather than locked (project owner, 2026-10-12, ratified, over locking them, which would render the agent selector disabled) (`PL-V2HC`) | `test_an_agent_change_on_a_halted_run_restates_the_halt`, `test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it` |
 | believing a setting above the vaporizer maximum was simulated | such a setting is **rejected, not clamped**, so no run proceeds on a value the user did not choose; the boundary itself is accepted - by the circuit, and by the settings record a run is built from, which carries the maximum beside the dial (`PL-BBMG`) | `test_rejects_delivered_concentration_above_the_vaporizer_maximum`, `test_explicit_delivered_concentration_above_the_agent_max_is_rejected`, `test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum`, `test_rejects_a_dial_above_the_vaporizer_maximum`, `test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum` |
 | reading a displayed value as resolved to its last digit | displayed precision is a recorded choice within a justified band, and the model retains precision the display discards rather than rounding its own state | `test_the_model_keeps_precision_the_display_throws_away`, `test_concentration_decimals_are_a_choice_within_a_recorded_band` |
 | reading a control mark on the timeline as a measurement | the timeline labels its marks "Settings only — not a measurement." | `test_the_interface_says_a_control_mark_is_an_input_not_a_measurement` |
@@ -5236,7 +5237,7 @@ it held; the dataclass constructor, `dataclasses.replace`, a copy and a pickle
 all write through it - the last two because each compartment is a `slots=True`
 dataclass, whose state a copy or a pickle restores one field at a time through
 `__setattr__` where a `__dict__` would be updated past it - so the constructors
-run no check of their own. The type is all the write checks. The circuit's setter still compares the flow against
+run no check of their own. The type is all the write checks of a flow. The circuit's setter still compares the flow against
 the machine's range before the write, and the patient's still recomputes the
 tissue flows after it, so a checked cardiac output written past the setter
 leaves the tissue flows stale, which `UptakeEquationSettings` refuses at the
@@ -5250,6 +5251,31 @@ flow against its own output and writes none, so the copy is refused and the
 original is left as it was. One made at the same output shares the original's
 compartments, so moving its output moves the original's flows with it
 (`PL-Z0T3`).
+
+**The alveolar and tissue agent amounts meet the compartment's capacity at
+the write, in the same `__setattr__`** (`PL-544D`). `set_partial_pressure_fraction`
+takes a `Fraction`, so no setter could store an amount past the capacity, but
+the field could: `alveoli.agent_amount_l = alveoli.gas_volume_l * 1.0000001`
+was accepted, and the quotient read from it - a partial pressure above one
+atmosphere - was refused only when `SimulationController.snapshot()` built the
+`Fraction` two layers later, which `PL-7DJK` made a visible halt. The relation
+between an amount and the volume holding it is the compartment's to check
+rather than any one quantity's (`.claude/rules/core-domain.md`), so
+`AlveolarCompartment` and `TissueGroup` check it where the amount is stored,
+for the constructor, the setter and an assignment made past them alike, in the
+constructor's own words, and the field holds what it held. A rollback is the
+one write made past the guard: `restore_state` puts back what the compartment
+held when the step began, and a rollback that could itself raise would replace
+the step's own error and leave the compartments restored after it holding the
+failed step (§ "Step atomicity"), so a capacity written under a held amount in
+the meantime - a direct write no setting makes, `PL-19Y0` - is left to the
+quotient the snapshot builds from the restored state, which refuses it visibly
+(`PL-7DJK`). The constructor writes the amount before `__post_init__` has
+refused a bad volume, so the volume is required to be a number there first,
+under its own name, and a capacity that is not positive is left to
+`__post_init__`'s refusal under the same name. No supported setting takes the
+write; the hole was the reproduction's own route to a refusing snapshot, which
+the tests now reach by replacing the quotient the snapshot reads.
 
 **Built from an `int` or a `float` and nothing else, with no sign at zero**
 (`PL-LLMN`). Until `PL-LLMN` each guard asked `math.isfinite` and then made

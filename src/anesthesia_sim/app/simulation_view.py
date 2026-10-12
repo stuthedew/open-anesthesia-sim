@@ -1064,14 +1064,22 @@ class SimulationView(QWidget):
         self._bookmark_dialog.open()
 
     def _apply_to_every_run(self, edit: Callable[[SimulationController], None]) -> None:
-        """Make one change to every displayed run, or to none of them.
+        """Make one change to every displayed run, or have the first of them refuse it.
 
         The marks are the case's, so a mark added to one run and refused by
         another would leave two runs of one case answering different
         questions - which is exactly the state this panel exists to prevent.
-        `BookmarkSet` is a value and every operation on it returns a new one,
-        so the edits are computed against copies first and written only once
-        all of them have been accepted.
+        The loop writes run by run and stops at the first refusal, with no
+        second phase: every `BookmarkSet` operation is a pure function of the
+        set and the mark, the displayed runs hold equal sets, and nothing
+        interleaves with a synchronous loop, so either every run accepts or
+        the first run refuses and none has changed. The equal sets carry
+        that, and `_refresh_bookmarks` halts the dashboard on the frame they
+        stop being equal (`PL-LHBY`). A write computed against copies and
+        committed only once every run had accepted was described here and
+        never built; it is not built now either, because it would guard an
+        invariant the frame already refuses louder, and the fuzz `PL-RBMK`
+        records found no divergence.
 
         Args:
             edit: What to do to one run.
