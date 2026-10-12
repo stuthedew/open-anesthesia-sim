@@ -67,10 +67,9 @@ program's name alone, the gate guard's remedy for `python3 tools/doc_check.py
 check` was `tools/doc_check.py`, and no `tools/` script is executable
 (`PL-ZS13`). It says what of the quoting `words` removed it cannot restore.
 
-**What it does not read**, none of which a guard here has needed: the `&&`,
-`||`, `<` and `>` inside `[[ ]]`, which read as a separator or a redirection,
-the command a `coproc` runs, a wrapper `WRAPPERS` does not name (`sudo`,
-`stdbuf`, a `time` run by path), and the string `env -S` splits, for which
+**What it does not read**, none of which a guard here has needed: the command
+a `coproc` runs, a wrapper `WRAPPERS` does not name (`sudo`, `stdbuf`, a
+`time` run by path), and the string `env -S` splits, for which
 `program_words` reads no program at all. A reserved word opens a command here
 only at the head of its segment, so `command_words` does not reach the `make
 check` in `if (true) then make check; fi` or in `for f do make check; done`;
@@ -84,7 +83,9 @@ and a backquote's body left it with the merge, since docket's reading reads
 all four (`PL-JNYL`): a `<<` inside `(( ))` is a shift rather than a
 here-document swallowing the lines after it, a backquote's command is read as
 a command it runs, and a pattern's `)` closes no `$( )` around it, though
-`words` still hands it over as the operator `)` a subshell closes with.
+`words` still hands it over as the operator `)` a subshell closes with. The
+`&&`, `||`, `(`, `)`, `<` and `>` inside `[[ ]]` left it with `PL-X1VN`: they
+reach here as plain words, so they end no command and redirect nothing.
 
 A redirection with no word after it, which bash refuses, is read as taking only
 its operator, and a `<(` or `>(` as the process substitution it is rather than

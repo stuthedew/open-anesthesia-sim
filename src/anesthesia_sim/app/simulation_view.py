@@ -786,6 +786,15 @@ class SimulationView(QWidget):
     def _handle_fork(self) -> None:
         """Take the branch the panel is set to, and draw it beside the trunk.
 
+        The selector holds two of the three doors, and the point it answers
+        with says which: a recorded control event is taken through
+        `BranchedCase.fork_at` at its instant, and a mark the trunk has passed
+        through `fork_at_mark` with the mark itself (`PL-W4XQ`), so where a
+        mark's branch opens is found by the case from the mark rather than
+        handed over as a float. Either refusal reaches the notice rather than
+        being swallowed: a press is not proof that what the frame offered is
+        still there.
+
         Refused rather than obeyed while a comparison is already shown. The
         display is capped at two runs and no run selector exists yet, so a
         second branch could only replace the one on screen while the first
@@ -806,16 +815,20 @@ class SimulationView(QWidget):
 
             return
 
-        instant_s = self._fork_panel.selected_instant_s()
+        point = self._fork_panel.selected_point()
 
-        if instant_s is None:
+        if point is None:
             self._fork_refusal = FORK_NOTHING_SELECTED_TEXT
             self.present(False)
 
             return
 
         try:
-            branch = case.fork_at(instant_s)
+            branch = (
+                case.fork_at(point.instant_s)
+                if point.mark is None
+                else case.fork_at_mark(point.mark)
+            )
         except SimulationConfigurationError as error:
             self._fork_refusal = refused_setting_notice(error)
             self.present(False)
@@ -872,20 +885,22 @@ class SimulationView(QWidget):
     def _refresh_fork_panel(self) -> None:
         """Redraw both branch controls from the trunk's state this tick.
 
-        The instants offered are the trunk's own, so a running case adds one
-        every time a setting changes and the panel has to follow; it keeps
-        the reader's selection where that instant still exists. The halt fork
-        follows the same tick: it appears on the frame the trunk halts on a
-        mark and is gone on the frame after it steps.
+        The points offered are the trunk's own - its keyframes and the marks
+        its clock has passed - so a running case adds one every time a
+        setting changes or the clock reaches a mark, and the panel has to
+        follow; it keeps the reader's selection where that point is still
+        offered. The halt fork follows the same tick: it appears on the frame
+        the trunk halts on a mark and is gone on the frame after it steps.
 
-        **The halt is read from the trunk rather than from the displayed
-        runs.** `BranchedCase.fork_at_halt` forks the trunk and refuses a
-        branch outright, so a panel drawn from a *branch's* halt would offer a
-        fork the case cannot take - a control that can only apologise, which
-        `.claude/rules/expert-review.md` prefers to prevent. The trunk is the
-        first displayed run today, but that is an invariant of how the
-        dashboard is built rather than one this method needs, and asking the
-        case costs one snapshot a frame.
+        **The halt and the marks are read from the trunk rather than from the
+        displayed runs.** `BranchedCase.fork_at_halt` and `fork_at_mark` fork
+        the trunk and refuse a branch outright, so a panel drawn from a
+        *branch's* halt or marks would offer a fork the case cannot take - a
+        control that can only apologise, which `.claude/rules/expert-review.md`
+        prefers to prevent. The trunk is the first displayed run today, but
+        that is an invariant of how the dashboard is built rather than one
+        this method needs, and asking the case costs one snapshot and one
+        reading of the marks' standings a frame.
         """
 
         if self._case is None:
@@ -894,6 +909,7 @@ class SimulationView(QWidget):
         self._fork_panel.set_offer(
             fork_offer(
                 self._case.fork_points_s,
+                marks=self._case.mark_fork_points,
                 comparing=len(self._runs) > 1,
                 halt=self._case.trunk.snapshot().bookmark_halt,
                 refusal=self._fork_refusal,
