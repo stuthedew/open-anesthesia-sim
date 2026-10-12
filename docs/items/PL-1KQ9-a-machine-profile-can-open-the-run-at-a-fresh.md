@@ -1,8 +1,13 @@
 ---
 id: PL-1KQ9
 title: A machine profile can open the run at a fresh gas flow off the slider's 0.1 L/min grid - 2.25 L/min, or 0.25 L/min under a declared range floored there, which the control offers from 0.3 - so the slider sits on a neighbouring step while the run holds the stated flow and the readout rounds it (found building PL-7CRY)
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: defect, ux
 feature: anesthesia-machine
+touches: src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
 ---
 
@@ -33,3 +38,24 @@ nearest step.
 **Not a recurrence of `PL-7CRY`,** which `docket new` matched on shared paths:
 that item bounds the control's range, and this one is the opening value inside
 it.
+
+**Why it matters.** The slider and the readout beside it are the reader's
+statement of the flow the run holds, and here neither is: the readout rounds
+2.25 to 2.2, and at the floor the slider stands at 0.3 beside a readout of 0.2
+over a run at 0.25. A displayed setting that differs from the one the model
+runs at is the wrong-context failure `CLAUDE.md`'s standard counts as a safety
+failure, held at `P3` only because no profile reaches it.
+
+**Decision needed.** Which of the two routes above. **Recommendation: refuse
+an opening flow off the control's grid, where the dashboard builds the control
+for the run**, so the grid stays the interface's fact and the core never learns
+it. The Qt port's rule that a slider position is a printed value (cited in
+`app/` as `PL-25KS`, decision D4) rules out the second route, under which the
+slider would stand for a flow the run does not hold, and the safety standard
+prefers an obvious failure to a plausible readout. The cost is a profile author
+meeting an error at launch rather than a run that opens.
+
+**Done when.** No run opens at a fresh gas flow the slider cannot state -
+refused where the profile is loaded under the recommended route, or stated at
+its own precision by slider and readout alike under the other - and a test in
+`tests/unit/test_dashboard_frame.py` pins 2.25 L/min and the 0.25 L/min floor.

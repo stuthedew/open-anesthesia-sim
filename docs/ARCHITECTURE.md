@@ -380,7 +380,7 @@ evaluation rule", which is the one place those are stated and measured. Which
 keyframe, and how it relates to the instant the branch itself began at, is the
 same section's "What this requires of a branch".
 
-Four things in `app/controller.py` carry it:
+Five things in `app/controller.py` carry it:
 
 - `SimulationController.resumed_at(elapsed_s)` makes one. It builds a second
   controller through the ordinary constructor, replays the trunk's settings
@@ -395,11 +395,21 @@ Four things in `app/controller.py` carry it:
   no float for a caller to name a mark the run has not reached with, and no
   way to confuse the instant a learner *marked* with the step instant the run
   actually stopped on.
+- `SimulationController.resumed_at_mark(bookmark)` makes one at a time
+  bookmark the trunk has passed, whether the run halted there or the learner
+  marked the instant after the clock went by (`PL-W4XQ`). It is the halt fork
+  taken late: the fork is the end of the step that reached the mark, found by
+  `TimeBookmark.steps_to_reach` from the crossing rule itself, and the branch
+  opens from the trunk's canonical state there exactly as a halt fork does. It
+  takes the mark rather than an instant for the reason the halt door takes
+  nothing, and `mark_fork_points` lists the marks it accepts, each with the
+  instant its branch would open at.
 - `ResumePoint` is where the branch came from: the trunk stretch it opened
   inside, the fork — the instant it was taken at and the canonical state
   there — the case's step count at the fork, the step it was taken at, the
   agent its accounting period started from, and the marked crossing it was
-  forked at, which is `None` for a fork at a control event. `opened_from` is
+  forked at, which is `None` where no step crossed a mark at the fork - a
+  control event, or a mark at the case's opening. `opened_from` is
   `None` on a trunk and this on a branch, so every run knows which it is. The
   stretch's opening and the fork are one instant for a fork at a control event
   and two for a fork at a bookmark, which is the whole of what `PL-B8MK`
@@ -454,16 +464,19 @@ branch's drawn columns anchored to its own zero, landing at case instants the
 trunk never draws — was dissolved by it rather than fixed separately.
 `docs/MODEL.md` § "The canonical evaluation rule" measures what that is worth.
 
-**Where a branch may be taken.** Two places, reached by two methods rather
+**Where a branch may be taken.** Three places, reached by three methods rather
 than by one list.
 
 At any keyframe the trunk holds — `BranchedCase.fork_points_s`, taken with
 `fork_at` — which is its opening at induction and every setting change the
-model was actually stepped under. Any *other* instant a caller names is
-refused rather than approximated, for the arithmetic reason `docs/MODEL.md`
-measures. `tests/unit/test_run_definition.py` holds the other side of that
-refusal: that a branch opened off a keyframe really does stop reproducing the
-run it claims to continue, rather than the refusal guarding against nothing.
+model was actually stepped under. Any *other* instant a caller names there is
+refused as another door's, not as one a branch could not reproduce
+(`PL-54V0`): the two doors below both fork between keyframes and reproduce the
+trunk exactly. What no door does is *restart* a branch's definition at its
+fork, which `docs/MODEL.md` measures, and `tests/unit/test_run_definition.py`
+holds that a restart really does stop reproducing the run it claims to
+continue, so the construction every door uses is never relaxed into one on
+the grounds that the difference is small.
 
 And at the **bookmark crossing the trunk is standing on**, taken with
 `fork_at_halt`. `app/bookmarks.py` is what a learner may mark (`PL-LPLD`), and
@@ -484,10 +497,23 @@ which of that section's two conditions the chosen route relaxes and what the
 relaxation costs.
 
 The halt is a permission rather than a standing offer: taking a step clears
-it, so a run that has resumed has no bookmark fork until the next crossing.
+it, so a run that has resumed has no halt to fork at until the next crossing.
 That is why it is not a widened `fork_points_s` — such a list would change
 membership as the run moved, and a caller holding an instant from it could ask
 for a fork at a mark the run is no longer standing on.
+
+And at any **time bookmark the trunk has passed** — `BranchedCase.mark_fork_points`,
+taken with `fork_at_mark` (`PL-W4XQ`). That is what a learner paused at three
+hours does after marking the one-hour point: the instant is behind the clock,
+the trunk holds no keyframe there and is not standing on it, and nothing in the
+bookmark fork's construction needed either. The step the mark is reached on is
+where the branch opens - the instant a halt would have stopped the run on -
+and its state is the trunk's definition evaluated there, so the branch is the
+one the halt would have given. Unlike the halt this list does not end at the
+next step: a mark joins it when the clock reaches it or one is set behind the
+clock, and leaves it only when the learner unmarks it or the trunk starts over,
+which is the keyframes' own lifetime. A MAC target is not on it, having no
+instant; a fork at a height is taken at its halt.
 
 ### How a learner takes one, and how a comparison ends
 
@@ -498,18 +524,30 @@ is a property of the display rather than of the model:
 
 - **The branch control is the case's**, so it stands beside the bookmark
   panel in `SimulationView` rather than in either `RunView`. It offers
-  `BranchedCase.fork_points_s` and takes the branch through `fork_at`;
+  `BranchedCase.fork_points_s` and `BranchedCase.mark_fork_points` and takes
+  the branch through `fork_at` or `fork_at_mark`;
   `dashboard_frame.fork_offer` decides what it shows and
   `qt_widgets.ForkPanel` draws it. A learner marks the decision point and
-  then forks there, which is the order the two panels are read in.
-- **Two controls, because the two doors to a fork have different lifetimes**
-  (`PL-TYWQ`). The selector offers `BranchedCase.fork_points_s` and takes the
-  branch through `fork_at`. Below it, a second button takes the branch at the
+  then forks there, which is the order the two panels are read in. Returning
+  to a mark forks rather than truncating: the trunk is kept and the change is
+  made on a branch drawn beside it, and a branch's own Reset is how a learner
+  tries something else from the same point (project owner, 2026-10-12,
+  ratified, over truncating the run at the mark after a confirm as Gas Man
+  does, `PL-ZW0J`).
+- **Two controls, because the doors to a fork have different lifetimes**
+  (`PL-TYWQ`). The selector offers `BranchedCase.fork_points_s`, taken through
+  `fork_at`, and every time bookmark the trunk has passed, from
+  `BranchedCase.mark_fork_points` and taken through `fork_at_mark`
+  (`PL-W4XQ`), merged earliest first; a mark's row is labelled with the instant
+  its branch opens at and "on your mark", in the halt button's wording, so it
+  never states where the mark itself lies. Below it, a second button takes the branch at the
   bookmark crossing the trunk is standing on, through `fork_at_halt`, and is
   on the panel only while it is standing on one — labelled with the instant
   the branch will open at and that the trunk stopped there on a mark. A
-  bookmark records no keyframe, so the halt adds nothing to `fork_points_s`
-  and the selector's membership never changes as the run moves. Shape chosen
+  bookmark records no keyframe, so the halt adds nothing to `fork_points_s`,
+  and the selector never loses a row as the run moves: it gains one as the
+  clock passes a mark, and loses one only to the learner unmarking it or the
+  trunk starting over. Shape chosen
   by the project owner (2026-09-21, ratified, over one list that grows a row
   while the run is halted): a vanishing list row is detectable only against a
   remembered list, which is the stale-state case
