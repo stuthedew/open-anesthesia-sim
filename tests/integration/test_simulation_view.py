@@ -44,6 +44,8 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QScrollArea,
     QSplitter,
+    QStyle,
+    QStyleOptionComboBox,
     QWidget,
 )
 
@@ -63,7 +65,7 @@ from anesthesia_sim.app.chart_time_base import (
 )
 from anesthesia_sim.app.control_record import ControlChange
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
-from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.controller import BranchedCase, MarkForkPoint, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     BRANCH_AGENT_LOCK_TEXT,
@@ -94,8 +96,10 @@ from anesthesia_sim.app.dashboard_frame import (
     START_NEW_CASE_TEMPLATE,
     STATUS_FAILED_TEXT,
     TRUNK_RUN_INDEX,
+    ForkPoint,
     MarkListing,
     comparing_fork_lock_text,
+    fork_offer,
     run_label,
     slider_position,
 )
@@ -155,6 +159,7 @@ from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, Simul
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -165,6 +170,7 @@ from anesthesia_sim.core.supported_ranges import (
     FreshGasFlow,
 )
 from anesthesia_sim.core.tissue import TissueGroup
+from anesthesia_sim.core.units import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # The size every dashboard here is shown at: wide enough for the seven
@@ -442,7 +448,12 @@ def _offered_fork_instants(view: SimulationView) -> tuple[float, ...]:
 
 
 def _take_fork(view: SimulationView, instant_s: float) -> None:
-    """Choose an offered instant in the branch control and press its button."""
+    """Choose an offered instant in the branch control and press its button.
+
+    `findData` answers the first entry at that instant, which is a recorded
+    control event wherever a mark stands at the same instant too, because
+    `fork_offer` lists the control event first.
+    """
 
     panel = view._fork_panel
     index = panel.point_selector.findData(instant_s)
@@ -451,9 +462,21 @@ def _take_fork(view: SimulationView, instant_s: float) -> None:
     panel.take_button.click()
 
 
+def _select_fork_entry(view: SimulationView, label: str) -> None:
+    """Choose the branch control's entry that reads `label`, as a reader picks it by its words."""
+
+    selector = view._fork_panel.point_selector
+    index = selector.findText(label)
+    assert index >= 0, (
+        f"the branch control offers no {label!r}; it offers "
+        f"{[selector.itemText(row) for row in range(selector.count())]}"
+    )
+    selector.setCurrentIndex(index)
+
+
 # The mark the halt tests stop the trunk on: later than the keyframe
-# `_branched_case` records at 60 s, so the instant a branch opens at is one the
-# permanent selector does not offer and cannot be confused with one it does.
+# `_branched_case` records at 60 s, so the instant a branch opens at is not one
+# of the trunk's keyframes and cannot be confused with one.
 _HALT_MARK_S = 80.0
 
 # A budget rather than "step until it stops": a test that fails by hanging
@@ -490,6 +513,51 @@ def _halted_trunk_case(application: QApplication) -> tuple[BranchedCase, Simulat
     view.present(False)
 
     return case, view
+
+
+# The rewind tests' trunk records one setting change at 30 s and is paused at
+# 120 s, so a mark between the two lies behind its clock at an instant it holds
+# no keyframe for: the case `PL-W4XQ` asked for, which only the mark door can
+# branch at.
+_REWIND_CHANGE_S = 30.0
+_REWIND_PAUSE_S = 120.0
+
+# The mark set behind that clock, inside a step: 75.05 s is first reached by the
+# step ending at 751 x 0.1 s, so the instant a branch taken there opens at is
+# not the instant typed. Written as the product the clock forms rather than
+# read from the controller, so the two are compared rather than copied.
+_BEHIND_MARK_S = 75.05
+_BEHIND_MARK_FORK_S = 751 * 0.1
+
+# What the selector says for that mark, restated rather than built from
+# `MARK_FORK_LABEL_TEMPLATE`, so an edit to the template cannot move both sides
+# of an assertion at once.
+_BEHIND_MARK_LABEL = f"{format_elapsed(_BEHIND_MARK_FORK_S)}, on your mark"
+
+
+def _rewind_case(application: QApplication) -> tuple[BranchedCase, SimulationView, TimeBookmark]:
+    """A case whose trunk is paused past a setting change, marked behind its clock.
+
+    The owner's sequence at a minute's scale: paused at 3 h, a learner marks
+    1 h to go back and try something else there. The mark is set after the
+    clock has passed it, so no step crossed it and the trunk never halted on
+    it; the frame is drawn afterwards, so the panel is the one a learner
+    would be looking at.
+    """
+
+    trunk = SimulationController()
+    trunk.start()
+    _advance_to(trunk, _REWIND_CHANGE_S)
+    trunk.set_fresh_gas_flow(FreshGasFlow(2.0))
+    _advance_to(trunk, _REWIND_PAUSE_S)
+    trunk.pause()
+    case = BranchedCase(trunk)
+    view = _case_view(application, case)
+    mark = TimeBookmark(CaseInstant(_BEHIND_MARK_S), "what if")
+    case.trunk.add_time_bookmark(mark)
+    view.present(False)
+
+    return case, view, mark
 
 
 def _select_agent(run: RunView, agent_id: str) -> None:
@@ -4765,7 +4833,7 @@ def test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis(application: QApp
     assert max(branch_times) <= max(trunk_times) + SIMULATION_STEP_S
 
 
-@pytest.mark.parametrize("door", ["keyframe", "halt"])
+@pytest.mark.parametrize("door", ["keyframe", "halt", "mark"])
 def test_a_fork_from_the_default_selection_draws_one_frame(
     application: QApplication, door: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -4779,11 +4847,13 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
     assemblies for one discrete action where `PL-R2YM` says one (`PL-B1R9`).
     `test_taking_a_fork_redraws_the_chart_without_prompting` holds the count
     from a selection the cap leaves alone; this holds it from one the cap
-    reduces, through both doors a branch is taken by.
+    reduces, through every door a branch is taken by.
     """
 
     if door == "halt":
         _, view = _halted_trunk_case(application)
+    elif door == "mark":
+        _, view, _ = _rewind_case(application)
     else:
         view = _case_view(application, _branched_case())
 
@@ -4805,6 +4875,9 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
 
     if door == "halt":
         view._fork_panel.halt_button.click()
+    elif door == "mark":
+        _select_fork_entry(view, _BEHIND_MARK_LABEL)
+        view._fork_panel.take_button.click()
     else:
         _take_fork(view, 60.0)
 
@@ -5180,8 +5253,8 @@ def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on(application: QAp
     branch = case.branches[0]
     assert branch.snapshot().elapsed_s == pytest.approx(halted_s)
     assert view.runs[1].controller is branch
-    # A mark adds no keyframe, so the list the other control offers is
-    # untouched by all of this.
+    # A mark adds no keyframe, so the trunk's keyframes are untouched by all
+    # of this.
     assert case.fork_points_s == (0.0, 60.0)
     # And the trunk still stands where it stopped.
     assert case.trunk.snapshot().elapsed_s == pytest.approx(halted_s)
@@ -5257,11 +5330,13 @@ def test_the_halt_fork_is_off_the_panel_until_the_trunk_stands_on_a_halt(
     """A halt is a permission, so the control is absent rather than present and inert.
 
     Absent before the run reaches a mark, there while it stands on one, and
-    gone again on the next step. The permanent selector is unaffected
-    throughout, which is the point of making this a second control: a list
-    that gained and lost a row would change membership under a reader who had
-    looked away, where a control that is either there or not is detectable on
-    sight.
+    gone again on the next step. The selector does not follow it, which is
+    the point of making this a second control: a list that gained and lost a
+    row would change membership under a reader who had looked away, where a
+    control that is either there or not is detectable on sight. The mark the
+    run stopped on joins the selector when the clock reaches it, as a mark
+    the trunk has passed (`PL-W4XQ`), and the halt's ending does not take it
+    away again.
     """
 
     case = _branched_case()
@@ -5277,9 +5352,12 @@ def test_the_halt_fork_is_off_the_panel_until_the_trunk_stands_on_a_halt(
     _advance_to(case.trunk, _HALT_MARK_S)
     view.present(False)
 
-    assert case.trunk.snapshot().bookmark_halt is not None
+    halt = case.trunk.snapshot().bookmark_halt
+    assert halt is not None
     assert view._fork_panel.halt_button.isHidden() is False
     assert view._fork_panel.halt_button.isEnabled() is True
+    offered_on_the_halt = list(_offered_fork_instants(view))
+    assert offered_on_the_halt == [*offered_before, halt.instant_s]
 
     case.trunk.start()
     case.trunk.advance(SIMULATION_STEP_S)
@@ -5288,7 +5366,7 @@ def test_the_halt_fork_is_off_the_panel_until_the_trunk_stands_on_a_halt(
     assert case.trunk.snapshot().bookmark_halt is None
     assert view._fork_panel.halt_button.isHidden() is True
     assert view._fork_panel.halt_button.isEnabled() is False
-    assert list(_offered_fork_instants(view)) == offered_before
+    assert list(_offered_fork_instants(view)) == offered_on_the_halt
 
 
 def test_the_halt_fork_is_refused_with_the_rest_while_two_runs_are_shown(
@@ -5350,17 +5428,30 @@ def test_a_halt_fork_the_case_refuses_is_reported_and_adds_no_run(
 def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApplication) -> None:
     """`resumed_at` refuses an instant that is not a keyframe rather than approximating.
 
-    The control cannot offer such an instant - it is built from
-    `fork_points_s` - so the entry is put there directly to reach the guard
-    behind it. A refusal leaves the case and the display untouched and says
-    which instant was refused.
+    The control cannot offer such an instant - `fork_offer` builds it from
+    `fork_points_s` - so an offer listing one is handed to the panel, the way
+    a frame hands it the real one, to reach the guard behind it. A refusal
+    leaves the case and the display untouched and says which instant was
+    refused.
     """
 
     case = _branched_case()
     view = _case_view(application, case)
     panel = view._fork_panel
-    panel.point_selector.addItem("30 s", userData=30.0)
+    unkeyframed = ForkPoint(CaseInstant(30.0), format_elapsed(30.0), None)
+    panel.set_offer(
+        fork_offer(
+            (CaseInstant(0.0), unkeyframed.instant_s, CaseInstant(60.0)),
+            marks=(),
+            comparing=False,
+            halt=None,
+        )
+    )
     panel.point_selector.setCurrentIndex(panel.point_selector.findData(30.0))
+
+    assert panel.selected_point() == unkeyframed
+    assert unkeyframed.instant_s not in case.fork_points_s
+
     panel.take_button.click()
 
     assert len(view.runs) == 1
@@ -5368,6 +5459,46 @@ def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApp
     notice = panel.notice.notice()
     assert notice is not None
     assert "30" in notice
+
+
+def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
+    application: QApplication,
+) -> None:
+    """The mark door re-asks the case on the press, and its refusal reaches the notice.
+
+    An entry outlives what it offers by the gap between a frame and a press,
+    so `_handle_fork` hands the mark back rather than trusting the entry.
+    Here the panel holds an entry for a mark the trunk does not hold - what an
+    unmark landing in that gap leaves behind - and `fork_at_mark` refuses it,
+    naming the instant, rather than branching anywhere near it.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    panel = view._fork_panel
+    unmarked = TimeBookmark(CaseInstant(30.0), "since removed")
+    panel.set_offer(
+        fork_offer(
+            case.fork_points_s,
+            marks=(MarkForkPoint(unmarked, CaseInstant(300 * 0.1)),),
+            comparing=False,
+            halt=None,
+        )
+    )
+    _select_fork_entry(view, f"{format_elapsed(30.0)}, on your mark")
+
+    selected = panel.selected_point()
+    assert selected is not None
+    assert selected.mark == unmarked
+    assert case.trunk.snapshot().bookmarks.time_bookmarks == ()
+
+    panel.take_button.click()
+
+    assert len(view.runs) == 1
+    assert case.branches == ()
+    notice = panel.notice.notice()
+    assert notice is not None
+    assert "no time bookmark stands at 30.0 s" in notice
 
 
 def test_a_branch_control_with_nothing_selected_says_so(application: QApplication) -> None:
@@ -5709,13 +5840,15 @@ def test_a_vanished_fork_instant_leaves_nothing_selected(application: QApplicati
 
     panel.point_selector.setCurrentIndex(panel.point_selector.findData(60.0))
 
-    assert panel.selected_instant_s() == pytest.approx(60.0)
+    selected = panel.selected_point()
+    assert selected is not None
+    assert selected.instant_s == pytest.approx(60.0)
 
     trunk.set_fresh_gas_flow(FreshGasFlow(original_flow))
     view.present(False)
 
     assert case.fork_points_s == (0.0,)
-    assert panel.selected_instant_s() is None
+    assert panel.selected_point() is None
 
     panel.take_button.click()
 
@@ -5730,11 +5863,10 @@ def test_a_fork_instant_still_offered_stays_selected_when_the_offer_grows(
     """The other half of `PL-J12Z`: a rebuilt list keeps a choice it still offers.
 
     A running trunk adds a keyframe at each setting change, and the selector
-    is rebuilt when one appears. It holds each instant as a plain `float`, so
-    `set_offer` looks the reader's choice up as one: `selected_instant_s`
-    builds a new `CaseInstant`, which `findData` matches only by identity, so
-    handed over as that it is found nowhere and the choice is dropped
-    (`PL-CN5S`).
+    is rebuilt when one appears. `set_offer` finds the reader's choice by
+    `ForkPoint` equality in the new list rather than with `findData`, which
+    matches a `CaseInstant` only by identity, so an equal one built anew is
+    found nowhere and the choice would be dropped (`PL-CN5S`).
     """
 
     trunk = SimulationController()
@@ -5755,4 +5887,216 @@ def test_a_fork_instant_still_offered_stays_selected_when_the_offer_grows(
     view.present(False)
 
     assert case.fork_points_s == (0.0, 60.0, 120.0)
-    assert panel.selected_instant_s() == 60.0
+    selected = panel.selected_point()
+    assert selected is not None
+    assert selected.instant_s == 60.0
+    assert selected.mark is None
+
+
+def test_a_cleared_fork_selection_stays_cleared_when_the_list_next_changes(
+    application: QApplication,
+) -> None:
+    """`PL-J12Z`'s clear holds past the next rebuild, rather than lasting one frame.
+
+    Qt selects the first entry of an emptied selector as soon as it is
+    refilled, so a rebuild that set no index put *induction* under a reader
+    whose choice had just been cleared - the substitution the clear exists to
+    refuse, arriving one setting change later. Each mark the trunk's clock
+    reaches is a rebuild too since `PL-W4XQ`, which makes that later change
+    the common case rather than a rare one.
+    """
+
+    trunk = SimulationController()
+    trunk.start()
+    _advance_to(trunk, 60.0)
+    trunk.pause()
+    original_flow = trunk.snapshot().fresh_gas_flow_l_min
+    trunk.set_fresh_gas_flow(FreshGasFlow(original_flow + 2.0))
+    case = BranchedCase(trunk)
+    view = _case_view(application, case)
+    panel = view._fork_panel
+    panel.point_selector.setCurrentIndex(panel.point_selector.findData(60.0))
+    trunk.set_fresh_gas_flow(FreshGasFlow(original_flow))
+    view.present(False)
+
+    assert panel.selected_point() is None
+
+    trunk.start()
+    _advance_to(trunk, 90.0)
+    trunk.pause()
+    trunk.set_fresh_gas_flow(FreshGasFlow(original_flow + 2.0))
+    view.present(False)
+
+    assert case.fork_points_s == (0.0, 90.0)
+    assert panel.point_selector.count() == len(case.fork_points_s)
+    assert panel.point_selector.currentIndex() == -1
+    assert panel.selected_point() is None
+
+    panel.take_button.click()
+
+    assert case.branches == ()
+    assert panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+
+
+def test_a_mark_set_behind_the_trunk_s_clock_is_offered_and_branched_at(
+    application: QApplication,
+) -> None:
+    """`PL-W4XQ` end to end: paused past a mark, a learner branches there from the selector.
+
+    The mark was set after the clock had passed it, so no step crossed it,
+    the trunk holds no keyframe there and the trunk is standing on no halt -
+    the case the other two doors refuse. It is offered beside the control
+    events, labelled with the instant the branch will open at rather than the
+    one typed, and the branch opens there, while the trunk stays the case it
+    was.
+    """
+
+    case, view, mark = _rewind_case(application)
+    panel = view._fork_panel
+    labels = [panel.point_selector.itemText(row) for row in range(panel.point_selector.count())]
+    keyframes = case.fork_points_s
+
+    assert case.trunk.snapshot().bookmark_halt is None
+    assert _BEHIND_MARK_FORK_S not in keyframes
+    assert labels == [
+        format_elapsed(keyframes[0]),
+        format_elapsed(keyframes[1]),
+        _BEHIND_MARK_LABEL,
+    ]
+    assert format_elapsed(_BEHIND_MARK_S) not in _BEHIND_MARK_LABEL
+
+    _select_fork_entry(view, _BEHIND_MARK_LABEL)
+
+    selected = panel.selected_point()
+    assert selected is not None
+    assert selected.mark == mark
+    assert selected.instant_s == _BEHIND_MARK_FORK_S
+
+    panel.take_button.click()
+
+    assert len(view.runs) == 2
+    assert len(case.branches) == 1
+    branch = case.branches[0]
+    assert view.runs[1].controller is branch
+    assert branch.began_at_s == _BEHIND_MARK_FORK_S
+    assert branch.snapshot().elapsed_s == _BEHIND_MARK_FORK_S
+    assert panel.notice.notice() is None
+    # The trunk is read and not written: no keyframe is recorded where it was
+    # branched, and its clock stands where it was paused.
+    assert case.fork_points_s == keyframes
+    assert case.trunk.snapshot().elapsed_s == pytest.approx(_REWIND_PAUSE_S)
+
+
+def test_a_mark_still_ahead_of_the_trunk_s_clock_is_not_offered(application: QApplication) -> None:
+    """The case holds no state at a mark the clock has not reached, so nothing branches there.
+
+    A branch there would be a prediction drawn as a run. The mark stops the
+    running case when it is reached, and then joins the selector; until
+    then the selector offers the control events and nothing else.
+    """
+
+    case, view, behind = _rewind_case(application)
+    ahead = TimeBookmark(CaseInstant(600.0), "later")
+    case.trunk.add_time_bookmark(ahead)
+    view.present(False)
+
+    selector = view._fork_panel.point_selector
+    offered = [selector.itemData(row) for row in range(selector.count())]
+    labels = [selector.itemText(row) for row in range(selector.count())]
+
+    assert ahead in case.trunk.snapshot().bookmarks.time_bookmarks
+    assert ahead.instant_s not in offered
+    assert labels == [
+        *(format_elapsed(instant_s) for instant_s in case.fork_points_s),
+        _BEHIND_MARK_LABEL,
+    ]
+    assert [point.bookmark for point in case.mark_fork_points] == [behind]
+
+
+def test_a_selected_mark_is_cleared_not_moved_when_the_learner_unmarks_it(
+    application: QApplication,
+) -> None:
+    """`PL-J12Z` at the mark door: an entry the learner removes takes the selection with it.
+
+    Unmarking is the mark's way of leaving the list, as a collapsed keyframe
+    is a control event's. Moving the choice to a neighbour - induction, or
+    the other mark beside it - would branch on the next press somewhere the
+    learner did not choose, so the selector is left on nothing and the press
+    says so.
+    """
+
+    case, view, mark = _rewind_case(application)
+    later = TimeBookmark(CaseInstant(100.0))
+    case.trunk.add_time_bookmark(later)
+    view.present(False)
+    panel = view._fork_panel
+    _select_fork_entry(view, _BEHIND_MARK_LABEL)
+
+    dialog = _opened_bookmark_dialog(view)
+    dialog.time_list.setCurrentRow(case.trunk.snapshot().bookmarks.time_bookmarks.index(mark))
+    dialog.remove_time_button.click()
+
+    labels = [panel.point_selector.itemText(row) for row in range(panel.point_selector.count())]
+
+    assert case.trunk.snapshot().bookmarks.time_bookmarks == (later,)
+    assert _BEHIND_MARK_LABEL not in labels
+    assert f"{format_elapsed(100.0)}, on your mark" in labels
+    assert panel.point_selector.currentIndex() == -1
+    assert panel.selected_point() is None
+
+    panel.take_button.click()
+
+    assert case.branches == ()
+    assert panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+
+
+def test_the_branch_selector_draws_its_widest_entry_whole(application: QApplication) -> None:
+    """A mark's entry cut short would lose the words that say it is a mark.
+
+    The selector is fixed in width (`theme.FORK_POINT_SELECTOR_WIDTH`) and its
+    widest entry is a mark's late in the supported run, so the width is held
+    against that entry in the font it is drawn in. The widest is found rather
+    than assumed: the face spaces its digits proportionally, so the last
+    step's 23h59m59.9s is not the widest reading. Hours, minutes and seconds
+    vary independently, so the widest of each together is the widest clock
+    `format_elapsed` can write, and it is offered through `fork_offer` and
+    read back off the selector rather than measured as a bare string.
+    """
+
+    view = _case_view(application, _branched_case())
+    panel = view._fork_panel
+    metrics = panel.point_selector.fontMetrics()
+    hours = max((f"{hour}h" for hour in range(10, 24)), key=metrics.horizontalAdvance)
+    minutes = max((f"{minute}m" for minute in range(10, 60)), key=metrics.horizontalAdvance)
+    seconds = max(
+        (f"{whole}.{tenth}s" for whole in range(10, 60) for tenth in range(1, 10)),
+        key=metrics.horizontalAdvance,
+    )
+    instant = CaseInstant(
+        int(hours[:-1]) * SECONDS_PER_HOUR
+        + int(minutes[:-1]) * SECONDS_PER_MINUTE
+        + float(seconds[:-1])
+    )
+
+    assert format_elapsed(instant) == hours + minutes + seconds
+    assert instant < MAXIMUM_ELAPSED_SIMULATION_TIME_S
+
+    panel.set_offer(
+        fork_offer(
+            (CaseInstant(0.0),),
+            marks=(MarkForkPoint(TimeBookmark(instant), instant),),
+            comparing=False,
+            halt=None,
+        )
+    )
+    _select_fork_entry(view, f"{hours}{minutes}{seconds}, on your mark")
+    option = QStyleOptionComboBox()
+    panel.point_selector.initStyleOption(option)
+    field = panel.point_selector.style().subControlRect(
+        QStyle.ComplexControl.CC_ComboBox,
+        option,
+        QStyle.SubControl.SC_ComboBoxEditField,
+        panel.point_selector,
+    )
+
+    assert metrics.horizontalAdvance(panel.point_selector.currentText()) <= field.width()

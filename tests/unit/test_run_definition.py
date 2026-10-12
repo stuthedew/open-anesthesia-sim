@@ -1596,15 +1596,18 @@ def test_a_canonical_answer_reads_nothing_the_chart_kept(monkeypatch: pytest.Mon
     assert _afresh(definition).segments == definition.segments
 
 
-"""Why a fork opens at a keyframe, measured rather than asserted (`PL-TFX5`).
+"""Why a branch's definition opens at a keyframe, measured rather than asserted (`PL-TFX5`).
 
-`SimulationController.resumed_at` refuses an instant the run holds no keyframe
-for, and `docs/MODEL.md` § "The canonical evaluation rule" says why: restarting
-from the canonical state at such an instant replaces one propagation over an
-interval with two over its halves. That section measures what the substitution
-costs; this measures that it costs anything at all, which is the half a refusal
-rests on. Without it nothing would catch the refusal being relaxed into an
-approximation on the grounds that the difference is too small to matter.
+No door to a fork restarts a definition at the fork, and `docs/MODEL.md`
+§ "The canonical evaluation rule" says why: restarting from the canonical state
+at an instant the run holds no keyframe for replaces one propagation over an
+interval with two over its halves. A fork between two keyframes opens its
+definition at the earlier one instead (`SimulationController._open_at`), which
+is why `resumed_at`'s refusal of such an instant is about that door's scope
+rather than this arithmetic (`PL-54V0`). That section measures what the
+substitution costs; this measures that it costs anything at all, which is the
+half the construction rests on. Without it nothing would catch a door being
+rebuilt as a restart on the grounds that the difference is too small to matter.
 """
 
 # One hour past a fork at 655.3 s on the two-change sevoflurane run below,
