@@ -3,10 +3,12 @@ id: PL-RBMK
 title: _apply_to_every_run documents a two-phase write it does not implement: it applies in a loop and catches, so the docstring promises atomicity the code cannot give
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
 added: 2026-09-20
+closed: 2026-10-12
+pr: 1428
 payoff: a reader of the write-to-every-run path is told what it actually guarantees, on the invariant the marks panel now halts the dashboard over
 verify: grep -q 'computed against copies first' src/anesthesia_sim/app/simulation_view.py && exit 1 || exit 0
 ---
@@ -46,3 +48,15 @@ one, not a live bug.
 
 **Done when.** The docstring describes what the loop does, or the loop does
 what the docstring describes — and the choice is recorded either way.
+
+**Decision, 2026-10-12** (a session's call, there being one clearly correct
+option). The docstring now describes the loop: run by run, stopping at the
+first refusal, with no second phase, and why that is all-or-none while the
+displayed runs' sets are equal - every `BookmarkSet` operation is a pure
+function of the set and the mark, so the first run refuses before any has
+changed - with `_refresh_bookmarks` halting the dashboard on the frame the
+sets diverge (`PL-LHBY`). The two-phase write was not built: it would guard an
+invariant the frame already refuses louder, every bookmark method on
+`SimulationController` delegates to a pure `BookmarkSet` operation (read
+2026-10-12), and the fuzz recorded above found no divergence. The phrase the
+`verify:` command greps for is gone with the paragraph that carried it.
