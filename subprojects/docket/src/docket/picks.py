@@ -34,12 +34,13 @@ The rules, decided at triage and recorded in `PL-G2HP`'s brief:
 
 from __future__ import annotations
 
-import re
 from collections.abc import Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass
 
+from . import markdown
 from .model import Item, ranks_as_generator
 from .plan import GATE_LANES, Recommendation, awaits_decision, offerable, recommend
+from .release import CODE_SPAN_RE
 from .roadmap import CLEAR, ScopeEntry, Wave
 
 #: The cap on pick lines: the Report paragraph's "at most eight lines" in the
@@ -53,9 +54,6 @@ LANE = "lane"
 BUILD = "build"
 #: Build entries past the cap, collapsed into one line.
 BUILD_REST = "build-rest"
-
-#: The bold lead a `Required scope` entry opens with, which names it.
-_BOLD_LEAD_RE = re.compile(r"\*\*(?P<lead>.+?)\*\*")
 
 
 @dataclass(frozen=True)
@@ -146,9 +144,18 @@ def _line(
 
 
 def bold_lead(text: str) -> str:
-    """The name a `Required scope` entry gives itself: its bold lead, less a closing stop."""
-    found = _BOLD_LEAD_RE.search(text)
-    return found.group("lead").rstrip(".") if found else text.split(". ", 1)[0]
+    """The name a `Required scope` entry gives itself: its bold lead, less a closing stop.
+
+    Its first strong emphasis as CommonMark 0.31.2 § 6.2 pairs it, with its
+    code spans read as the literals they are, so a `**` inside one neither opens
+    nor closes the lead (`PL-47NJ`). An entry with none is named by its first
+    sentence.
+    """
+    spans = markdown.emphasis(text, [found.span() for found in CODE_SPAN_RE.finditer(text)])
+    lead = next((span for span in spans if span.strong), None)
+    if lead is None:
+        return text.split(". ", 1)[0]
+    return text[lead.start + 2 : lead.end - 2].rstrip(".")
 
 
 def entry_name(entry: ScopeEntry) -> str:

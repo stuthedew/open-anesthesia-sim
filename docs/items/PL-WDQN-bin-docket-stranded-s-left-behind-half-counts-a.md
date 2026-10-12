@@ -3,12 +3,14 @@ id: PL-WDQN
 title: bin/docket stranded's left-behind half counts a ref whose fork point the checkout cannot read among the refs it read, and names it nowhere: vcs.orphaned fills OrphanedReport.unreadable and format_orphaned never prints it, so in a shallow clone an unread branch sits under the all-clear (found working PL-CZR6)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: stranded-report-fidelity
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-11
+closed: 2026-10-12
+pr: 1431
 payoff: stranded stops printing its all-clear over a branch it could not read, so a shallow clone names the unread ref and what would let it be read instead of counting it as checked
 verify: grep -q 'def test_stranded_names_a_ref_whose_fork_point_a_shallow_clone_lacks' subprojects/docket/tests/test_cli.py
 reenters: PL-9RFP
@@ -62,3 +64,20 @@ statement here continues across lines.
 read, and names each one with what would let it be read, as `flight`'s unread
 line does. A test in `subprojects/docket/tests/test_cli.py` drives a shallow
 clone holding a branch whose fork point it lacks.
+
+**Done 2026-10-12** (`#1431`). `vcs.orphaned` now leaves a ref with no
+readable fork point out of `refs_read`, which the all-clear counts, and asks
+`is_shallow` only where such a ref exists. `render.format_orphaned` names each
+one under its answer, in the clear case and the finding one, with what would
+let it be read: `git fetch --unshallow origin` in a shallow clone, and in a full
+one the fact that no fetch helps, since a ref there with no fork point shares no
+history with the base (a rewrite or an unrelated root, the case `branch_state`
+once handed the deepening advice). Pinned by
+`test_stranded_names_a_ref_whose_fork_point_a_shallow_clone_lacks` (a depth-1
+`--no-single-branch` clone, red on main's code) and
+`test_stranded_hands_no_fetch_to_a_ref_a_full_clone_cannot_compare` (an orphan
+branch in a full clone, red on main's code) in
+`subprojects/docket/tests/test_cli.py`, and `refs_read == 0` beside the unread
+ref in `subprojects/docket/tests/test_vcs.py`. The digest needed nothing: its
+flight line already names the same refs, read by the same `_unlanded_refs`.
+`subprojects/docket/README.md` says what the answer does with such a ref.

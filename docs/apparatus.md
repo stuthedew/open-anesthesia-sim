@@ -649,8 +649,10 @@ Markdown 0.29 specification are vendored unmodified, each named for the
 release tag it was fetched at, because
 `tests/unit/test_inline_reference.py` reads their examples as the corpus
 `tools/doc_check.py`'s inline Markdown is held to markdown-it-py over, and
-holds each to the SHA-256 of what that tag published (`PL-R417`). Both are
-licensed CC-BY-SA 4.0, as each file's front matter states with the licence's
+holds each to the SHA-256 of what that tag published (`PL-R417`).
+`subprojects/docket/tests/test_markdown_reference.py` holds
+`docket.markdown.emphasis` to markdown-it-py over the same examples
+(`PL-47NJ`). Both are licensed CC-BY-SA 4.0, as each file's front matter states with the licence's
 address. The licence lets a copy be shared whole, unmodified, with its notices
 kept (§ 2(a)(1), § 3(a)(1)), and attaches its ShareAlike condition only to an
 adaptation (§ 3(b)), which these are not, so the repository's Apache-2.0 does

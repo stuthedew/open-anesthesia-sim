@@ -2573,6 +2573,53 @@ def test_each_change_to_an_item_file_has_to_be_a_sanctioned_kind(tmp_path: Path)
     assert sanctioned_queue_edit(root, "HEAD~2", ("HEAD~1", "HEAD"), path) == ""
 
 
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        pytest.param(
+            "reason: >-\n  old words\n",
+            "reason: >-\n  new words\npr: 5\n",
+            id="a block scalar rewritten beside a pr write",
+        ),
+        pytest.param(
+            "touches:\n  - a\n",
+            "touches:\n  - a\n  - src/core.py\npr: 5\n",
+            id="a touches block list gaining an entry beside a pr write",
+        ),
+        pytest.param(
+            "touches:\n  - a\n",
+            "touches:\n  - a\n  - src/core.py\nrecurrences: 2026-10-12 PL-N3W1\n",
+            id="a touches block list gaining an entry beside a recurrence",
+        ),
+        pytest.param(
+            "a line continuing nothing\n",
+            "a line continuing nothing\npr: 5\n",
+            id="a pr write onto a copy holding a line no field reads",
+        ),
+    ],
+)
+def test_an_edit_inside_a_declined_block_is_not_a_sanctioned_queue_edit(
+    tmp_path: Path, before: str, after: str
+) -> None:
+    """`PL-4DM0`: a declined block compared equal, so an edit inside it rode a sanctioned write.
+
+    `_front_matter_pairs` hands a block list or block scalar back as its key
+    with an empty value, and a line continuing nothing as written, so the two
+    copies matched wherever only the declined lines differed. The audit cannot
+    vouch for lines its reader never read, so a copy holding any of them is no
+    `pr` or recurrence write, whatever else changed beside it.
+    """
+    root = _repo(tmp_path)
+    path = "docs/items/PL-B2B2-do-the-other.md"
+    front = "---\nid: PL-B2B2\ntitle: Do the other\nstatus: done\nverify: true\n{}---\n\n"
+    (root / path).write_text(front.format(before) + BRIEF)
+    _git(root, "commit", "-qam", "base: a neighbour whose front matter holds a declined form")
+    (root / path).write_text(front.format(after) + BRIEF)
+    _git(root, "commit", "-qam", "PL-K7QX write onto the neighbour")
+
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == ""
+
+
 def test_an_ordinary_edit_to_another_items_file_is_still_outside_touches(tmp_path: Path) -> None:
     """The half the exemption must not widen into.
 

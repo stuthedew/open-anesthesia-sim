@@ -360,6 +360,12 @@ landed. That check reads each branch on the remote against the head its merged
 pull request froze, needs GitHub where this reading needs only the checkout, and
 wins where the two disagree.
 
+A ref whose fork point this checkout cannot read has no content split to judge,
+so it is not counted among the refs read: it is named under the answer, with
+`git fetch --unshallow origin` where the clone is shallow and a note that no
+fetch helps where it is not, since a full clone's ref with no fork point shares
+no history with the base at all (`PL-WDQN`).
+
 ### The other loss: a merge that deletes an item nothing deleted
 
 `stranded` answers for a branch that never merged. The opposite case is a
@@ -2325,7 +2331,11 @@ gains later reaches the writers with no edit to them.
 an item leaves `untriaged`; the others are conventions. A heading is matched
 by the words it opens with and may continue past them — `**Why it matters, and
 why it is not new.**` is the same section, and a check that made an author
-flatten a better heading would be editing prose rather than checking it. What
+flatten a better heading would be editing prose rather than checking it. The
+words are matched whole, so `**Problems with the dose**` is not
+`**Problem.**`, and a heading ends at the `**` CommonMark 0.31.2 § 6.2 pairs
+its opening one with, so one that never closes has nothing under it and one a
+code span holds is a literal (`PL-47NJ`). What
 it does require is text under the heading: a required section with nothing
 below it is an error, because presence of a heading is not what makes an item
 startable by a stranger. Every line opening with a required heading's words
@@ -2354,8 +2364,10 @@ a design round's heading or numbered `Q1.`, or a marked recommendation, since
 one standing after an answer is a question the answer raised (`PL-J2TD`'s
 shape). Labels in code spans, fences, HTML comments, indented code blocks,
 quotations and superseded passages are not read; a heading is one as CommonMark
-reads it, setext included, and an emphasis run or a code span ends with its
-statement (`PL-HKHP`, `PL-FP7J`). An error rather than an advisory, because the
+reads it, setext included and inside a list item or a block quote as at the
+top level, an emphasis run is one CommonMark 0.31.2 § 6.2 pairs, so a
+multiplication's `*` opens none, and an emphasis run or a code span ends with
+its statement (`PL-HKHP`, `PL-FP7J`, `PL-47NJ`). An error rather than an advisory, because the
 labels are exact - none of the 17 was an item still waiting, and each later
 moved off `needs-decision` with no new question posed - and because the design
 round that left `PL-4ZK8` behind did so on purpose, so an advisory would have
@@ -2378,8 +2390,8 @@ So from `recommendation_required_from`, `check` advises on a `needs-decision`
 brief that marks no recommendation. Three things about the rule:
 
 - **The test is the marker, not the word.** A marked recommendation is the
-  token under emphasis - `**Recommended.**`, `**This is the
-  recommendation.**`, `*Recommendation: not yet.*` - or the labelled
+  token under emphasis as CommonMark pairs it - `**Recommended.**`, `**This is
+  the recommendation.**`, `*Recommendation: not yet.*` - or the labelled
   `Recommendation:`, capitalised as a label is and outside a code span, since
   "lacks a recommendation:" is prose about one and a quoted marker is a
   literal (`PL-FKH6`). Presence of the word decides nothing: of the ten open
@@ -2706,7 +2718,10 @@ dictated rather than chosen, so `verify.sanctioned_queue_edit` forgives a
 worker for editing an item it was never commissioned to touch. It reads the
 field through `model._fold`, as the writer does, so an append onto a value
 continued on an indented line is the append it is rather than an edit
-(`PL-J503`). A withdrawal is
+(`PL-J503`). A copy holding a form that read declines - a block list, a block
+scalar, a line continuing nothing - is no sanctioned write at all, `pr` or
+recurrence, since nothing read the lines an edit there would change
+(`PL-4DM0`). A withdrawal is
 chosen, and what it changes is how much evidence an item carries — so the item
 doing it declares the file in its `touches` like any other work, and `withdraw`
 says so where it has not. Withdrawing the last recorded entry appends to that
@@ -3388,7 +3403,8 @@ which the start mode permits at the claim push, the number rides the closure
 commit and nothing trails it; where the pull request opens after the closure,
 the number rides one more push. `verify` sanctions that write: an item that
 reads as it did with a `pr:` field added, every other field the same and in
-its place, is a queue edit the workflow asked for.
+its place, is a queue edit the workflow asked for, unless either copy holds a
+form its reader declines (`PL-4DM0`).
 
 **The guarantee is a check on the pull request, at the one point that knows
 its own number.** `tools/pr_record_check.py` runs as a step of the required

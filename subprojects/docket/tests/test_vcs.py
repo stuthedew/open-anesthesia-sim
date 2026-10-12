@@ -2397,6 +2397,8 @@ def test_a_ref_whose_commits_went_unread_is_named_rather_than_answered() -> None
 
     assert report.branches == ()
     assert report.unreadable == (PARTLY,)
+    # Not among the refs read, which the all-clear counts (`PL-WDQN`).
+    assert report.refs_read == 0
 
 
 def test_a_checkout_that_can_read_no_ref_declines_rather_than_answering() -> None:

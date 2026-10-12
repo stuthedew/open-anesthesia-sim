@@ -2204,7 +2204,9 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     Nothing else is exempt. An item file this branch edited in any other way -
     a `status`, a `touches`, a `verify:` command - is still outside `touches`
     and still fails, which is the case the audit exists for and the reason
-    this reads each change rather than the path.
+    this reads each change rather than the path. Nor is a `pr` or recurrence
+    write onto a copy whose front matter the reader declined part of, since
+    neither can vouch for lines nobody read (`_declines`, `PL-4DM0`).
     """
     if is_under(path, (RECORDS,)):
         return "record" if _added_record(root, base, path) else ""
@@ -2276,6 +2278,24 @@ def _captured(text: str) -> bool:
     return fields.get("status") == "untriaged"
 
 
+def _declines(
+    parsed: tuple[list[tuple[str, str]], tuple[str, ...], tuple[str, ...], tuple[str, ...], str],
+) -> bool:
+    """Whether `_front_matter_pairs` declined any of the front matter it read.
+
+    A block list or block scalar arrives as its key with an empty value, and a
+    line continuing nothing as written beside the fields, so two copies that
+    differ only inside a declined block compare equal: a `touches` block list
+    gaining an entry, or a folded `reason:` rewritten, beside an added `pr:`
+    passed as the `pr` write (`PL-4DM0`). Neither exemption can vouch for lines
+    its reader never read, so a copy holding any of the three is no sanctioned
+    edit, and the path stays outside the commission. `docket check` refuses
+    each form by name as well, so this costs a well-formed store nothing.
+    """
+    _pairs, block_lists, block_scalars, unread, _body = parsed
+    return bool(block_lists or block_scalars or unread)
+
+
 def _pr_recorded(before: str, after: str) -> bool:
     """Whether `after` is `before` with a `pr:` field added and nothing else changed.
 
@@ -2286,12 +2306,12 @@ def _pr_recorded(before: str, after: str) -> bool:
     short and its tail folded into `pr` - and a body changed beside it, a
     thematic break removed included, is an edit to the brief (`PL-24MT`).
     Every other field has to read the same and stand in the same order, and
-    every line no field reads and the body the same; `before` holds no `pr`,
-    since `record` never replaces the number on a landed closure; and `after`
-    holds one, a number.
+    the body the same; neither copy may hold anything the reader declined
+    (`_declines`); `before` holds no `pr`, since `record` never replaces the
+    number on a landed closure; and `after` holds one, a number.
     """
     was, now = _front_matter_pairs(before), _front_matter_pairs(after)
-    if was is None or now is None or was[1:] != now[1:]:
+    if was is None or now is None or _declines(was) or _declines(now) or was[1:] != now[1:]:
         return False
     if any(key == "pr" for key, _value in was[0]):
         return False
@@ -2309,10 +2329,11 @@ def _recurrences_grew(before: str, after: str) -> bool:
     The append `cmd_new` makes, and the only change this exemption admits. Both
     copies are read as `parse_item` reads them - `_front_matter_pairs`, whose
     fold is the one definition of where a value ends, and `_split_list` - so
-    the value is whole whichever lines carry it (`PL-J503`). Every other field,
-    every line no field reads and the body have to read the same on both sides,
-    and the entries already recorded have to stand first and unaltered, so an
-    entry cannot be altered or dropped under cover of the append.
+    the value is whole whichever lines carry it (`PL-J503`). Every other field
+    and the body have to read the same on both sides, neither copy may hold
+    anything the reader declined (`_declines`), and the entries already
+    recorded have to stand first and unaltered, so an entry cannot be altered
+    or dropped under cover of the append.
 
     **And what the value grew by has to be a new entry, not a suffix on the
     last one.** Withdrawing the final entry appends ` withdrawn DATE PL-XXXX`
@@ -2324,16 +2345,11 @@ def _recurrences_grew(before: str, after: str) -> bool:
     the last entry changed, so the recorded ones do not stand unaltered.
     """
     was, now = _front_matter_pairs(before), _front_matter_pairs(after)
-    if was is None or now is None:
+    if was is None or now is None or _declines(was) or _declines(now):
         return False
-    pairs_was, block_lists_was, block_scalars_was, unread_was, body_was = was
-    pairs_now, block_lists_now, block_scalars_now, unread_now, body_now = now
-    if "recurrences" in block_lists_now or (
-        block_lists_was,
-        block_scalars_was,
-        unread_was,
-        body_was,
-    ) != (block_lists_now, block_scalars_now, unread_now, body_now):
+    pairs_was, *_, body_was = was
+    pairs_now, *_, body_now = now
+    if body_was != body_now:
         return False
     if [p for p in pairs_was if p[0] != "recurrences"] != [
         p for p in pairs_now if p[0] != "recurrences"
