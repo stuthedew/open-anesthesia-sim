@@ -9,6 +9,7 @@ from anesthesia_sim.app.controller import (
     BranchedCase,
     HereForkPoint,
     MarkForkPoint,
+    RunSettings,
     RunStatus,
     SimulationController,
 )
@@ -1595,6 +1596,48 @@ def test_a_snapshot_whose_quotient_is_refused_names_the_compartment_and_the_stat
         is_running=False,
         supported_limit_reason=None,
         failure_reason="SimulationConfigurationError: alveolar partial_pressure_fraction refused",
+    )
+
+
+def test_settings_are_read_of_a_run_whose_snapshot_refuses(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`settings()` answers for a run whose `snapshot()` refuses, with the settings the run holds.
+
+    A `RunSettings` is built from the agent and the four settings the
+    compartments hold, each a checked type built when it was set, and no
+    compartment value, so a dial dragged into a halt can be written from
+    what the run holds (`PL-85LJ`); a snapshot is a `RunSettings` too, so
+    what reads one reads either.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=5.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(4.0))
+    snapshot = controller.snapshot()
+
+    assert isinstance(snapshot, RunSettings)
+
+    _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
+
+    with pytest.raises(SimulationConfigurationError):
+        controller.snapshot()
+
+    settings = controller.settings()
+
+    assert settings.fresh_gas_flow_l_min == 4.0
+    assert settings == RunSettings(
+        is_running=True,
+        supported_limit_reason=None,
+        failure_reason=None,
+        agent_id=snapshot.agent_id,
+        agent_display_name=snapshot.agent_display_name,
+        max_delivered_concentration_percent=snapshot.max_delivered_concentration_percent,
+        agent_mac_percent=snapshot.agent_mac_percent,
+        fresh_gas_flow_l_min=snapshot.fresh_gas_flow_l_min,
+        accepted_fresh_gas_flow_range_l_min=snapshot.accepted_fresh_gas_flow_range_l_min,
+        delivered_concentration_percent=snapshot.delivered_concentration_percent,
+        alveolar_ventilation_l_min=snapshot.alveolar_ventilation_l_min,
+        cardiac_output_l_min=snapshot.cardiac_output_l_min,
     )
 
 

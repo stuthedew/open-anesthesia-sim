@@ -76,9 +76,10 @@ class RunStatus:
     value for it, so it can be read of a run whose `snapshot()` refuses -
     which is what `RunView.present_halt` needs, since the snapshot's own
     `Fraction`s are among the values a halt can be for (`PL-7DJK`).
-    `SimulationSnapshot` extends it, so `dashboard_frame.status_word`,
-    `transport` and `notice` take either, and a frame that drew reads the
-    three off the snapshot it drew from.
+    `RunSettings` extends it, and `SimulationSnapshot` extends that, so
+    `dashboard_frame.status_word`, `transport` and `notice` take any of the
+    three, and a frame that drew reads the three off the snapshot it drew
+    from.
     """
 
     is_running: bool
@@ -118,25 +119,21 @@ class RunStatus:
 
 
 @dataclass(frozen=True, slots=True)
-class SimulationSnapshot(RunStatus):
-    """Read-only simulation data exposed to the user interface.
+class RunSettings(RunStatus):
+    """The agent and the four settings in force on the run: what a setting control is written from.
 
-    A `RunStatus` with everything else the interface draws: the three
-    run-state fields come first, inherited, and the rest follows. Built by
-    keyword in `SimulationController.snapshot()` and nowhere else in `src/`,
-    so the field order is nothing a caller relies on.
+    `SimulationController.settings()` builds one from the agent the run was
+    given and the settings its compartments hold - every one a checked type
+    or a string the controller holds - and builds no compartment value for
+    it, so it can be read of a run whose `snapshot()` refuses, as
+    `RunStatus` can. `dashboard_frame.setting_readouts` takes it, which is
+    what lets `RunView.present_halt` write every dial from what the run
+    holds: a dial dragged into a halt otherwise kept the value before the
+    drag printed beside it, since no frame followed to rewrite it
+    (`PL-85LJ`). `SimulationSnapshot` extends it, so a frame that drew reads
+    the settings off the snapshot it drew from.
     """
 
-    elapsed_s: CaseInstant
-    began_at_s: CaseInstant
-    """The case instant this run itself began at: zero on a trunk, its fork on a branch.
-
-    On the case's own axis like `elapsed_s`, and the value
-    `SimulationController.began_at_s` gives. It travels beside the elapsed time
-    it bounds because `has_recorded_run` reads the two together: a branch is
-    built already standing at its fork, so elapsed time above zero says nothing
-    about whether anyone has touched it (`PL-7TBQ`).
-    """
     agent_id: str
     agent_display_name: str
     max_delivered_concentration_percent: Percent
@@ -156,6 +153,53 @@ class SimulationSnapshot(RunStatus):
     quotient asserts, and § "Delivery-limit and MAC parameters" holds the
     value's provenance.
     """
+    fresh_gas_flow_l_min: FreshGasFlow
+    accepted_fresh_gas_flow_range_l_min: tuple[float, float]
+    """The lowest and highest fresh gas flow this run's circuit accepts, in L/min.
+
+    `BreathingCircuit.accepted_fresh_gas_flow_range_l_min`, read off the
+    circuit in force: the model's envelope narrowed to the mounted machine's
+    declared range. It travels beside the flow for the reason
+    `max_delivered_concentration_percent` travels beside the dial: the
+    control offering the setting reads its bounds from here, so it offers
+    no flow this machine refuses (`PL-7CRY`).
+    """
+    delivered_concentration_percent: Percent
+    alveolar_ventilation_l_min: AlveolarVentilation
+    cardiac_output_l_min: CardiacOutput
+
+    @property
+    def delivered_partial_pressure_fraction(self) -> Fraction:
+        """The delivered fraction of an atmosphere, derived from the percent dialled.
+
+        The snapshot carries the dial as the circuit holds it, the percent it
+        was set to, so the dial is drawn from what was dialled rather than
+        from a fraction multiplied back (`PL-NJPB`).
+        """
+
+        return fraction_from_percent(self.delivered_concentration_percent)
+
+
+@dataclass(frozen=True, slots=True)
+class SimulationSnapshot(RunSettings):
+    """Read-only simulation data exposed to the user interface.
+
+    A `RunSettings` with everything else the interface draws: the run-state
+    fields and the settings come first, inherited, and the rest follows.
+    Built by keyword in `SimulationController.snapshot()` and nowhere else
+    in `src/`, so the field order is nothing a caller relies on.
+    """
+
+    elapsed_s: CaseInstant
+    began_at_s: CaseInstant
+    """The case instant this run itself began at: zero on a trunk, its fork on a branch.
+
+    On the case's own axis like `elapsed_s`, and the value
+    `SimulationController.began_at_s` gives. It travels beside the elapsed time
+    it bounds because `has_recorded_run` reads the two together: a branch is
+    built already standing at its fork, so elapsed time above zero says nothing
+    about whether anyone has touched it (`PL-7TBQ`).
+    """
     agent_mac_awake: MacAwakeReference
     """The running agent's population MAC-awake, as a fraction of its MAC.
 
@@ -171,20 +215,6 @@ class SimulationSnapshot(RunStatus):
     trace it is read against, and why it is not a time to wake-up.
     """
     circuit_volume_l: float
-    fresh_gas_flow_l_min: FreshGasFlow
-    accepted_fresh_gas_flow_range_l_min: tuple[float, float]
-    """The lowest and highest fresh gas flow this run's circuit accepts, in L/min.
-
-    `BreathingCircuit.accepted_fresh_gas_flow_range_l_min`, read off the
-    circuit in force: the model's envelope narrowed to the mounted machine's
-    declared range. It travels beside the flow for the reason
-    `max_delivered_concentration_percent` travels beside the dial: the
-    control offering the setting reads its bounds from here, so it offers
-    no flow this machine refuses (`PL-7CRY`).
-    """
-    delivered_concentration_percent: Percent
-    alveolar_ventilation_l_min: AlveolarVentilation
-    cardiac_output_l_min: CardiacOutput
     # The six compartment values, and they are `agent_id`'s. Flat named
     # floats rather than a mapping keyed by substance, which is what the
     # recorded run became at `PL-W3DD` - and the asymmetry is deliberate
@@ -267,17 +297,6 @@ class SimulationSnapshot(RunStatus):
     `bookmarks.MarkStanding` carries the argument for each, and the reason a
     marked instant and a marked height are answered in different words.
     """
-
-    @property
-    def delivered_partial_pressure_fraction(self) -> Fraction:
-        """The delivered fraction of an atmosphere, derived from the percent dialled.
-
-        The snapshot carries the dial as the circuit holds it, the percent it
-        was set to, so the dial is drawn from what was dialled rather than
-        from a fraction multiplied back (`PL-NJPB`).
-        """
-
-        return fraction_from_percent(self.delivered_concentration_percent)
 
     @property
     def has_recorded_run(self) -> bool:
@@ -783,6 +802,35 @@ class SimulationController:
             is_running=self._is_running,
             supported_limit_reason=self.supported_limit_reason,
             failure_reason=self._failure_reason,
+        )
+
+    def settings(self) -> RunSettings:
+        """The agent and the four settings in force, built from nothing a compartment holds.
+
+        Read where a setting control is written on a run whose `snapshot()`
+        refuses (`RunView.present_halt`): the setting a drag applied is what
+        the run holds, and the control is written from here rather than left
+        on the value before the drag (`PL-85LJ`). The agent, its MAC and its
+        vaporizer maximum are the controller's own; the four settings are the
+        compartments', each a checked type built when it was set.
+        """
+
+        system = self._state.uptake_system
+        circuit = system.circuit
+
+        return RunSettings(
+            is_running=self._is_running,
+            supported_limit_reason=self.supported_limit_reason,
+            failure_reason=self._failure_reason,
+            agent_id=self._agent_id,
+            agent_display_name=self._agent_display_name,
+            max_delivered_concentration_percent=self._max_delivered_concentration_percent,
+            agent_mac_percent=self._agent_mac_percent,
+            fresh_gas_flow_l_min=circuit.fresh_gas_flow_l_min,
+            accepted_fresh_gas_flow_range_l_min=circuit.accepted_fresh_gas_flow_range_l_min,
+            delivered_concentration_percent=circuit.delivered_concentration_percent,
+            alveolar_ventilation_l_min=system.alveoli.alveolar_ventilation_l_min,
+            cardiac_output_l_min=system.patient.cardiac_output_l_min,
         )
 
     def snapshot(self) -> SimulationSnapshot:

@@ -50,6 +50,7 @@ from anesthesia_sim.app.control_timeline import ControlAdjustment, format_adjust
 from anesthesia_sim.app.controller import (
     HereForkPoint,
     MarkForkPoint,
+    RunSettings,
     RunStatus,
     SimulationSnapshot,
 )
@@ -1009,7 +1010,10 @@ class SettingReadout:
     Every slider is written from the snapshot on every tick, not left where
     the reader dragged it: a refused setting must not leave a control
     reading one value while the simulation runs at another, because the
-    control is a display of model state as much as an input to it.
+    control is a display of model state as much as an input to it. On a
+    halt no frame follows, it is written from
+    `SimulationController.settings()` instead, for the same reason
+    (`PL-85LJ`).
 
     Attributes:
         control: The setting it forwards.
@@ -1043,11 +1047,13 @@ class SettingReadout:
     secondary: str
 
 
-def setting_readouts(snapshot: SimulationSnapshot) -> tuple[SettingReadout, ...]:
-    """The four setting controls, in `PARAMETER_CONTROLS` order, from one snapshot.
+def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
+    """The four setting controls, in `PARAMETER_CONTROLS` order, from the settings in force.
 
     Args:
-        snapshot: The run's state this tick.
+        settings: The agent and the four settings in force: the snapshot a
+            frame drew from, or `SimulationController.settings()` on a run
+            whose snapshot refuses, where no frame draws (`PL-85LJ`).
 
     Returns:
         One `SettingReadout` per control.
@@ -1062,11 +1068,11 @@ def setting_readouts(snapshot: SimulationSnapshot) -> tuple[SettingReadout, ...]
             declaring a fresh gas flow range narrower than one step could.
     """
 
-    delivered = snapshot.delivered_partial_pressure_fraction
+    delivered = settings.delivered_partial_pressure_fraction
     flows = {
-        ControlInput.FRESH_GAS_FLOW: snapshot.fresh_gas_flow_l_min,
-        ControlInput.ALVEOLAR_VENTILATION: snapshot.alveolar_ventilation_l_min,
-        ControlInput.CARDIAC_OUTPUT: snapshot.cardiac_output_l_min,
+        ControlInput.FRESH_GAS_FLOW: settings.fresh_gas_flow_l_min,
+        ControlInput.ALVEOLAR_VENTILATION: settings.alveolar_ventilation_l_min,
+        ControlInput.CARDIAC_OUTPUT: settings.cardiac_output_l_min,
     }
     # The range the run accepts for each control, read this tick. The model's
     # envelopes are `core/supported_ranges.py`'s, so the interface offers the
@@ -1075,10 +1081,10 @@ def setting_readouts(snapshot: SimulationSnapshot) -> tuple[SettingReadout, ...]
     # circuit states it (`PL-7CRY`), and the dial's ceiling is the running
     # agent's vaporizer maximum.
     accepted_ranges: dict[ControlInput, tuple[float, float]] = {
-        ControlInput.FRESH_GAS_FLOW: snapshot.accepted_fresh_gas_flow_range_l_min,
+        ControlInput.FRESH_GAS_FLOW: settings.accepted_fresh_gas_flow_range_l_min,
         ControlInput.DELIVERED: (
             MIN_DELIVERED_CONCENTRATION_PERCENT,
-            snapshot.max_delivered_concentration_percent,
+            settings.max_delivered_concentration_percent,
         ),
         ControlInput.ALVEOLAR_VENTILATION: (
             MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -1086,19 +1092,19 @@ def setting_readouts(snapshot: SimulationSnapshot) -> tuple[SettingReadout, ...]
         ),
         ControlInput.CARDIAC_OUTPUT: (MINIMUM_CARDIAC_OUTPUT_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN),
     }
-    settings: list[SettingReadout] = []
+    readouts: list[SettingReadout] = []
 
     for control in PARAMETER_CONTROLS:
         name = (
             control.name
             if control.name is not None
-            else format_delivered_label(snapshot.agent_display_name)
+            else format_delivered_label(settings.agent_display_name)
         )
 
         if control.control is ControlInput.DELIVERED:
-            value: float = snapshot.delivered_concentration_percent
+            value: float = settings.delivered_concentration_percent
             value_text = format_percent(delivered)
-            secondary = format_mac_multiple(delivered, snapshot.agent_mac_percent)
+            secondary = format_mac_multiple(delivered, settings.agent_mac_percent)
         else:
             value = flows[control.control]
             value_text = format_flow(value)
@@ -1116,7 +1122,7 @@ def setting_readouts(snapshot: SimulationSnapshot) -> tuple[SettingReadout, ...]
             )
 
         minimum, maximum = offered
-        settings.append(
+        readouts.append(
             SettingReadout(
                 control=control.control,
                 name=name,
@@ -1131,7 +1137,7 @@ def setting_readouts(snapshot: SimulationSnapshot) -> tuple[SettingReadout, ...]
             )
         )
 
-    return tuple(settings)
+    return tuple(readouts)
 
 
 def slider_position(value: float, decimals: int) -> int:

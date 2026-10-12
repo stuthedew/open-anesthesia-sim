@@ -1811,6 +1811,39 @@ def test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it(
     assert run._start_button.isEnabled() is False
 
 
+def test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    """The value printed beside a dial dragged into a halt is the value the dial and the run hold.
+
+    `_apply_setting` applies the setting, then the snapshot read that would
+    rewrite the labels halts the run instead and no frame draws, so the
+    value label - written only through `set_setting` - kept the value before
+    the drag beside a dial standing at the new one: "2.0 L/min" beside a
+    dial at 4.0 with the circuit holding 4.0, until Reset (`PL-85LJ`, found
+    at `PL-V2HC`'s review). The halt now writes every dial from
+    `SimulationController.settings()`, which builds no compartment value,
+    so the label, the dial and the run agree.
+    """
+
+    controller = _paused_run_with_history()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    dial = run._fresh_gas_flow_slider
+    assert dial.value_label.text() == "2.0 L/min"
+    _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
+    capfd.readouterr()
+
+    _set_fresh_gas_flow(run, 4.0)
+
+    assert "Traceback" not in capfd.readouterr().err
+    assert controller.has_failed is True
+    assert run._status_text.text() == "Stopped — simulation error"
+    assert controller.settings().fresh_gas_flow_l_min == 4.0
+    assert dial.value() == 4.0
+    assert dial.value_label.text() == "4.0 L/min"
+
+
 def test_a_confirmation_answered_after_the_snapshot_refuses_restates_the_halt(
     application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
 ) -> None:
