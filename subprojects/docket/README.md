@@ -3075,9 +3075,9 @@ indistinguishable from a live dependency and would never fire.
 **Why one field rather than two.** An item whose real dependency is a milestone
 being scoped previously had no honest state. `blocked` with the field emptied
 is a store error; `blocked` naming an item that has since closed is false, and
-raises "every blocker has closed" in every session from then on — an advisory
-nobody can act on, which is the failure mode that trains a reader to skim the
-output where a real one also appears; and `ready` invites a session to start a
+was an advisory in every session from then on - the failure mode that trains a
+reader to skim the output where a real one also appears - until `PL-2349` made
+it an error, so it cannot stand at all; and `ready` invites a session to start a
 refactor against a target shape nobody has decided. `needs-decision` was the
 workaround, and it is debt by the `debt_classes` rule, so every item parked
 that way was counted into the next gate as though somebody could resolve it. A

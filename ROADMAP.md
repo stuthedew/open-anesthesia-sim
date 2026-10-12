@@ -6710,9 +6710,12 @@ exemption, read from there rather than decided again, so that `anticipated`
 means one thing across both tools.
 
 It lapses on the promotion rather than on the blocker closing, and nothing
-rewrites `status` on its own: `bin/docket check`'s "every blocker has closed; it
-is ready to promote" advisory is what asks for it. That leaves a window of one
-grooming pass, in place of the indefinite one it replaces.
+rewrites `status` on its own. Since `PL-2349` (2026-10-12) `bin/docket check`
+refuses a `blocked` item whose every item blocker has closed, so for an item
+blocker the promotion lands in the pull request that closes it and no window is
+left; a milestone blocker's "is scoped and every other blocker has closed"
+advisory still leaves one grooming pass, in place of the indefinite one it
+replaces.
 
 `check_gate_reentries` in `tools/doc_check.py` reads both fields for this
 reason, so the rule runs on every `make check` rather than on whether a session
