@@ -2342,5 +2342,6 @@ tree, the GitHub API, the default branch or a shell command outside the module
 that owns it, and a name defined in two apparatus files - against a baseline
 that only shrinks: 107 sites when it landed, 91 once `PL-351H` read pull-request facts once and
 `PL-HNXS` and `PL-9NZ3` moved eight checks' walks onto `tracked_files`. `PL-5DZ8`'s members drain the
-rest, and `PL-J4YY` holds the six walks no item named. The pause on new workflow mechanisms, re-engaged by this
+rest, and `PL-J4YY` drained the six walks no item named, moving the list into
+`docket.vcs` and naming `docket.grep`'s model of `grep -r` a walk home of its own. The pause on new workflow mechanisms, re-engaged by this
 head, ends when its pull request merges.

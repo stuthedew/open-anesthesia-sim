@@ -53,6 +53,8 @@ import tokenize
 from collections.abc import Sequence
 from pathlib import Path
 
+from workflow_paths_check import tracked_under
+
 #: The trees `[tool.mypy] files` excludes, and the only place this repository
 #: has ever carried a `type: ignore`.
 TREES = ("tests", "subprojects/docket/tests")
@@ -103,10 +105,15 @@ def directives(root: Path) -> list[str]:
     `test_directives_finds_the_real_ones_in_this_repository` fails if the trees
     stop carrying one a grep would over-count. The example that stood here
     before was outside `TREES` and went stale unread (`PL-S8JT`).
+
+    The files are the ones the repository holds, read from `tracked_files`, so
+    a scratch test a session has not added is not counted (`PL-J4YY`). Only the
+    count is the repository's: mypy reads the trees as the disk holds them, so
+    an inert directive in that scratch test is still reported.
     """
     found: list[str] = []
     for tree in TREES:
-        for path in sorted((root / tree).rglob("*.py")):
+        for path in tracked_under(root, tree, ".py"):
             try:
                 with tokenize.open(path) as handle:
                     tokens = list(tokenize.generate_tokens(handle.readline))

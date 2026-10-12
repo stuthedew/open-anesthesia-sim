@@ -8,6 +8,7 @@ and the boundaries are exercised now rather than in ten weeks.
 
 from __future__ import annotations
 
+import subprocess
 from datetime import date
 from pathlib import Path
 
@@ -266,6 +267,33 @@ def test_read_walks_a_directory_and_takes_a_named_file_as_it_stands(tmp_path: Pa
     rows = read(tmp_path, ("CLAUDE.md", "rules"))
 
     assert [row.file for row in rows] == ["CLAUDE.md", "rules/deep/two.md", "rules/one.md"]
+
+
+def test_an_untracked_markdown_file_is_not_read(tmp_path: Path) -> None:
+    """`PL-J4YY`: a directory entry is read for the files the repository holds.
+
+    A scratch note a session has not added, or another checkout beneath the
+    directory, is not part of the instruction set, and its dates aged into the
+    grooming pass's advisory as though it were.
+    """
+    _file(tmp_path, ".claude/rules/kept.md", "Measured 2026-09-04, a fact.\n")
+    for command in (
+        ("init", "-q"),
+        ("add", "-A"),
+        ("-c", "user.email=t@example.invalid", "-c", "user.name=T", "commit", "-qm", "init"),
+    ):
+        subprocess.run(("git", *command), cwd=tmp_path, check=True, capture_output=True)
+    _file(tmp_path, ".claude/rules/scratch.md", "Measured 2026-01-01, a scratch fact.\n")
+
+    assert [row.file for row in read(tmp_path, [".claude/rules"])] == [".claude/rules/kept.md"]
+
+
+def test_a_checkout_git_cannot_list_is_walked_rather_than_raised(tmp_path: Path) -> None:
+    """An advisory over-reads where git refuses; raising would take a grooming pass down."""
+    (tmp_path / ".git").write_text("not a gitdir\n", encoding="utf-8")
+    _file(tmp_path, ".claude/rules/kept.md", "Measured 2026-09-04, a fact.\n")
+
+    assert [row.file for row in read(tmp_path, [".claude/rules"])] == [".claude/rules/kept.md"]
 
 
 def test_read_takes_a_file_named_twice_only_once(tmp_path: Path) -> None:

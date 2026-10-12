@@ -55,6 +55,7 @@ from docket.vcs import (
     StrandedItem,
     StrandedReport,
     SubjectPullRequest,
+    Unlisted,
     _landed_since,
     _landing_split,
     _Landings,
@@ -97,6 +98,8 @@ from docket.vcs import (
     stranded,
     subject_pull_request,
     tags,
+    tracked_files,
+    tracked_under,
     untracked_path_args,
     with_newest_pull_request,
     working_paths,
@@ -5021,3 +5024,35 @@ def test_github_token_prefers_gh_token_and_skips_an_empty_one() -> None:
     assert github_token({"GH_TOKEN": "", "GITHUB_TOKEN": "b"}) == "b"
     assert github_token({"GITHUB_TOKEN": "b"}) == "b"
     assert github_token({}) is None
+
+
+def test_tracked_files_raises_where_git_ran_in_a_checkout_and_did_not_list_it(
+    tmp_path: Path,
+) -> None:
+    """`PL-J4YY`: a tree a check could not list is one it cannot vouch for.
+
+    A `.git` git cannot read is a checkout git runs in and refuses, which is
+    neither a tree that is not a checkout nor one git cannot be launched in, so
+    walking it would answer for files nobody asked git about.
+    """
+    (tmp_path / ".git").write_text("not a gitdir\n", encoding="utf-8")
+    (tmp_path / "kept.md").write_text("x\n", encoding="utf-8")
+
+    with pytest.raises(Unlisted, match="did not answer"):
+        tracked_files(tmp_path)
+
+
+def test_tracked_files_walks_a_checkout_it_could_not_list_when_told_not_to_raise(
+    tmp_path: Path,
+) -> None:
+    """The reader that would rather over-read than raise gets the walk, `SKIP_DIRS` out."""
+    (tmp_path / ".git").write_text("not a gitdir\n", encoding="utf-8")
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "kept.md").write_text("x\n", encoding="utf-8")
+    (tmp_path / "__pycache__").mkdir()
+    (tmp_path / "__pycache__" / "kept.pyc").write_bytes(b"")
+
+    assert tracked_files(tmp_path, raise_unlisted=False) == ["docs/kept.md"]
+    assert tracked_under(tmp_path, "docs", ".md", raise_unlisted=False) == [
+        tmp_path / "docs" / "kept.md"
+    ]
