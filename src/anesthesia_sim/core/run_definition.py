@@ -462,7 +462,7 @@ class RunDefinition:
         the keyframe they start from - which is the keyframe a state at
         `instant_s` is one propagation from, and so the one a branch taken
         there opens its own definition at (`app/controller.py`,
-        `SimulationController._resume_point_at_halt`).
+        `SimulationController._resume_point_here`).
 
         Handing out the segment rather than its index, because an index is
         only meaningful beside the tuple it came from and a caller holding one
