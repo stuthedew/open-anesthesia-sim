@@ -3,13 +3,15 @@ id: PL-JHHC
 title: A decision whose answer adds a commit to a pull request held for the owner's read is orphaned when the owner answers and merges in one sitting: PL-0GJC's answer was written while #1328 merged without it on 2026-10-04, and needed a follow-up pull request; nothing marks such a pull request as waiting on a commit, so the merge button reads as ready
 priority: P3
 effort: S
-status: blocked
+status: ready
 classes: infra
 feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, .claude/rules/instruction-writing.md
 blocked-by: PL-R417
 added: 2026-10-04
 payoff: a pull request that a pending answer will add a commit to stops reading as ready to merge, so the answer lands with its work instead of in a follow-up pull request
+verify: grep -qE '^\*\*Shape chosen, [0-9]{4}-' docs/items/PL-JHHC-*.md
+not-delegable: the shape - a draft-conversion rule or an arm hold on needs-decision - is the building session's judgment, and no admitted command reads either mechanism, so the command reads only the recorded choice
 ---
 
 **Problem.** A decision whose answer adds a commit to a pull request held for the owner's read is orphaned when the owner answers and merges in one sitting: PL-0GJC's answer was written while #1328 merged without it on 2026-10-04, and needed a follow-up pull request; nothing marks such a pull request as waiting on a commit, so the merge button reads as ready
@@ -49,7 +51,8 @@ generating"; building it sooner is the owner's call, made by asking
 
 **Done when.** A pull request that a pending decision will add a commit to
 cannot read as ready to merge until the answer is recorded, by whichever shape
-is chosen once the pause lifts, and the choice is recorded here.
+is chosen once the pause lifts, and the choice is recorded here, in a paragraph
+opening `**Shape chosen,` and its date.
 
 **Generator check.** Not a generator yet, with one predecessor. The fact
 misread is whether an open pull request still owes a commit, a pending
@@ -60,4 +63,6 @@ ordering in prose reaches. No head's `misread:` states it, and one more
 instance makes three. Not `PL-WNCT`'s fact, whether pushed work has a pull
 request to carry it: the answering session saw the merge and opened #1335.
 
-**The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it. It stays `blocked` only because `ready` needs a `verify:` command, which `bin/docket set` refuses `ready` without, and that command waits on which of the two shapes is built, the building session's choice, recorded here as Done-when asks. `bin/docket check` names it ready to promote meanwhile.
+[superseded 2026-10-12: moved to `ready` by `PL-2349`, below] **The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it. It stays `blocked` only because `ready` needs a `verify:` command, which `bin/docket set` refuses `ready` without, and that command waits on which of the two shapes is built, the building session's choice, recorded here as Done-when asks. `bin/docket check` names it ready to promote meanwhile.
+
+**Promoted 2026-10-12** by `PL-2349`, whose check now refuses a `blocked` item whose every blocker has closed. `bin/docket generators` on `main` at `3ff9f0f6` marks no head "still generating" and no open item carries `generator: live`, so the pause is over and nothing else this brief names holds it. The fault stands: `grep -c 'needs-decision' subprojects/docket/src/docket/arming.py` prints 0, and no rule converts such a pull request to a draft. The shape stays the building session's choice, so `verify:` reads the recorded choice rather than either mechanism - it passes once a paragraph opening `**Shape chosen,` and a date records which was built and why - and `not-delegable:` keeps it from a worker that `docket verify` would trust on that paragraph alone. Seen failing (exit 1) on 2026-10-12.

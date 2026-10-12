@@ -3,13 +3,15 @@ id: PL-QFCR
 title: arming.TOOLING and GATE write this repository's layout into the docket package, which reads every other path it depends on from docket.toml
 priority: P3
 effort: S
-status: blocked
+status: ready
 classes: refactor
 feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, docket.toml
 blocked-by: PL-R417
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-25
+payoff: docket.toml becomes the one place the package reads this repository's paths from, so moving the tooling or reusing docket in another repository changes a setting instead of holding every tooling change there for a read
+verify: ! grep -qF '"subprojects/docket/"' subprojects/docket/src/docket/arming.py
 ---
 
 **Problem.** arming.TOOLING and GATE write this repository's layout into the docket package, which reads every other path it depends on from docket.toml
@@ -28,4 +30,6 @@ added: 2026-09-25
 
 **Generator check.** One-off. The fact misread is where this repository's layout is recorded: `docket.toml`, not a module constant. No head's `misread:` states it, and its one other instance, `claims.CUTOVER_MARKER`, is deleted by `PL-CH3Z` rather than filed. The cause was `PL-K6B2`'s `touches`, which reached neither `config.py` nor `docket.toml`.
 
-**The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it: `arming.TOOLING` and `GATE` are still module constants. It stays `blocked` only because `ready` needs a `verify:` command and a `payoff:`, which `bin/docket set` refuses `ready` without and triage writes beside the work; `bin/docket check` names it ready to promote meanwhile.
+[superseded 2026-10-12: moved to `ready` by `PL-2349`, below] **The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it: `arming.TOOLING` and `GATE` are still module constants. It stays `blocked` only because `ready` needs a `verify:` command and a `payoff:`, which `bin/docket set` refuses `ready` without and triage writes beside the work; `bin/docket check` names it ready to promote meanwhile.
+
+**Promoted 2026-10-12** by `PL-2349`, whose check now refuses a `blocked` item whose every blocker has closed. `bin/docket generators` on `main` at `3ff9f0f6` marks no head "still generating" and no open item carries `generator: live`, so the pause is over and nothing else this brief names holds it. The fault stands: `grep -n '^TOOLING' subprojects/docket/src/docket/arming.py` prints `TOOLING = "subprojects/docket/"`. `verify:` passes once `arming.py` no longer spells that path, and was seen failing (exit 1) on 2026-10-12; the tests Done-when asks for are the reviewer's to read.
