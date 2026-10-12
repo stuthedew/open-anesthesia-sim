@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs, session-cost
+milestone: v0.5.24
 touches: CLAUDE.md, .claude/skills/docket/modes/capture.md, .claude/rules/citation-drift.md, docs/WORKING_NOTES.md, docs/resident-instructions.md, tools/pr_body_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a rule change the owner asked for on 2026-10-12, classed by its own design round
 added: 2026-10-12

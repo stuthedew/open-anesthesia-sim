@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
+milestone: v0.5.24
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 blocked-by: PL-8QMD
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass

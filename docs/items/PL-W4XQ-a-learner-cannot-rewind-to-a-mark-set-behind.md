@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature
 feature: scenario-branching
+milestone: v0.5.24
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_controller.py, tests/unit/test_bookmarks.py, tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py, docs/items/PL-ZW0J-returning-to-a-mark-truncates-the-run-at-that.md
 added: 2026-09-20
 closed: 2026-10-12

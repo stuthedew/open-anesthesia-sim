@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.24
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-10-12
 closed: 2026-10-12
