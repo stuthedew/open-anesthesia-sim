@@ -14,6 +14,7 @@ closed: 2026-10-05
 pr: 1363
 payoff: a line break typed into a title or field is refused where it is typed, instead of landing as a stray line the next check refuses or as a second status line that hides an open item from list and next
 verify: grep -q 'def test_new_and_set_refuse_a_value_holding_a_newline' subprojects/docket/tests/test_cli.py
+reenters: PL-9HD1
 ---
 
 **Problem.** docket new and docket set write a command-line value holding a newline verbatim and exit 0, leaving a file the next check refuses; latent

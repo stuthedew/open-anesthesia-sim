@@ -15,6 +15,7 @@ closed: 2026-09-26
 pr: 1119
 payoff: a claim is never withdrawn in favour of a rival branch GitHub has deleted, so no item is left held by nobody
 verify: grep -q 'def test_a_rival_whose_branch_the_remote_deleted_does_not_withdraw_the_claim' subprojects/docket/tests/test_claiming.py
+reenters: PL-4Q9B
 recurrences: 2026-09-26 PL-20DL withdrawn 2026-09-26 PL-20DL
 ---
 

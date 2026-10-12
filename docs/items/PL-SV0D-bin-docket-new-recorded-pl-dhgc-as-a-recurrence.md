@@ -10,6 +10,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-01
 payoff: a recurrence on a head means the same mechanism came back, never that two captures both live in docs/items
 verify: grep -q 'def test_sharing_only_the_item_store_is_not_a_recurrence' subprojects/docket/tests/test_duplicates.py
+reenters: PL-TZ7T
 ---
 
 **Problem.** bin/docket new recorded PL-DHGC as a recurrence of PL-JLBD on 2026-10-01 when the two shared only docs/items, a path every branch that files an item changes, so a capture can be counted toward an unrelated item's recurrences; it was withdrawn by hand

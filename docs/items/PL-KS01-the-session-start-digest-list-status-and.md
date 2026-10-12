@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-26 triage pass
 added: 2026-09-26
 payoff: the digest, list, status and concurrent answer from the same copy of each item as next and show, so a session resumed behind origin/main is not pointed at work main has closed
+reenters: PL-XBV4
 ---
 
 **Problem.** The session-start digest, list, status and concurrent answer from the working tree's copy of each item while next and show read origin/main's newer copy, so behind origin/main the digest's Top line can name an item next no longer offers

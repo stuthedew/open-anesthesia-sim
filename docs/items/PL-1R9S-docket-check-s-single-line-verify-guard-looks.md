@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-06
 payoff: a verify: continued across lines is refused by name, so a backslash continuation can no longer turn a failing ! grep into a pass the single-line guard never sees
 verify: grep -q 'def test_a_verify_continued_with_a_backslash_is_refused_through_the_parser' subprojects/docket/tests/test_checks.py
+reenters: PL-HXJY
 ---
 
 **Problem.** docket check's single-line verify: guard looks for a newline that docket.model's fold never leaves, so a verify: continued on an indented line is never refused though the README calls the field a single-line command, and one continued with a shell backslash runs with an escaped space, where a ! grep -q then passes on grep's exit 2; latent

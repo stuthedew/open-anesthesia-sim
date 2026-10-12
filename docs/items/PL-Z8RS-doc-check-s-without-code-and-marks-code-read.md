@@ -14,6 +14,7 @@ closed: 2026-10-04
 pr: 1332
 payoff: a TeX delimiter in prose after a code span wrapped across lines is checked instead of silently read as code
 verify: grep -q 'def test_without_code_reads_a_span_wrapped_across_lines' tests/unit/test_doc_check.py
+reenters: PL-KGYT
 ---
 
 **Problem.** doc_check's _without_code and _marks_code read code spans a line at a time, so on a line a wrapped span closes, its closing run pairs with the next span's opening run and the prose between reads as code: a TeX delimiter there goes unchecked, and a word there is listed as code

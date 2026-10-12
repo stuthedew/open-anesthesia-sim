@@ -10,6 +10,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-10
 payoff: a skip moved onto another test, a suppression added in a merge commit, or an uncommitted status edit beside a record write can no longer pass verify unreported
 verify: grep -q 'def test_a_skip_decorator_moved_to_another_test_is_an_added_suppression' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_merge_commits_combined_diff_is_read_or_declined' subprojects/docket/tests/test_verify.py && grep -q 'def test_an_uncommitted_edit_beside_a_sanctioned_queue_write_is_not_sanctioned' subprojects/docket/tests/test_verify.py
+reenters: PL-4W2L
 ---
 
 **Problem.** docket verify's diff audits miss three changes - a skip decorator moved from one test to another cancels in the per-file fold, a merge commit's combined diff is read as a two-way one, and an uncommitted edit beside a sanctioned queue write is never read - so a suppression, an added line or a status edit passes unseen; latent

@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-10
 payoff: pr_body_check --compare keeps a body's own last line, so a squash commit that lost one is reported rather than passed as equal, and a faithful one is not reported as differing
 verify: grep -q 'def test_a_trailer_closing_a_prose_paragraph_is_the_bodys_own' tests/unit/test_pr_body_check.py
+reenters: PL-4ZVH
 ---
 
 **Problem.** pr_body_check's APPENDED_TRAILER_RE takes a Co-authored-by line at the end of a prose paragraph for the trailer GitHub appends, where git counts a trailer block only as a whole paragraph, so --compare strips a body's own last line and reports two equal bodies as differing, or two differing bodies as equal; latent

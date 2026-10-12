@@ -14,6 +14,7 @@ closed: 2026-09-30
 pr: 1247
 payoff: a session restarting a merged branch leaves its remote copy to the branch sweep and hands the owner only a branch the sweep keeps, whichever of the two copies of the rule it read
 verify: grep -qF 'python3 tools/branch_sweep.py' .claude/skills/docket/modes/capture.md && grep -qF 'left to the branch sweep and the project owner' .claude/hooks/no-prune-guard.sh
+reenters: PL-G424
 ---
 
 **Problem.** capture.md's merged-branch restart recipe still hands every remote deletion to the project owner ('say the remote deletion is outstanding and leave it to the owner'), where PL-X8SV's branch sweep now deletes a finished claude/* branch daily and only a branch it keeps reaches the owner, so its copy of the recipe and no-prune-guard.sh's (PL-J3TV) no longer say the same thing

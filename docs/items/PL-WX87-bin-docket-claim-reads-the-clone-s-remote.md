@@ -14,6 +14,7 @@ closed: 2026-09-25
 pr: 1024
 payoff: a claim written in a fresh session reaches the remote at once, which is the window claim's push-at-once exists to close
 verify: grep -q "stale_tracking_ref" subprojects/docket/tests/test_claiming.py
+reenters: PL-4Q9B
 ---
 
 **Problem.** bin/docket claim reads the clone's remote-tracking ref as the remote's copy of the branch, so on a session branch whose tracking ref the harness created at startup with nothing pushed, claim skips its push-at-once and says the branch is on the remote when ls-remote shows it is not

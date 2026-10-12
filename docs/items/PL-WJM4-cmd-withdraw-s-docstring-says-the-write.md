@@ -14,6 +14,7 @@ closed: 2026-10-05
 pr: 1363
 payoff: a session reading cmd_withdraw is told the true extent of what a withdrawal rewrites, so nobody trusts a one-line diff a wrapped recurrences value does not give, or narrows the write to match and orphans the tail
 verify: ! grep -qF 'replaces one line' subprojects/docket/src/docket/cli.py && ! grep -qF 'whose diff is *one* line' subprojects/docket/src/docket/model.py
+reenters: PL-9HD1
 ---
 
 **Problem.** cmd_withdraw's docstring says the write replaces one line, but with_front_matter_value replaces the key's line and every continuation _fold gives it; latent

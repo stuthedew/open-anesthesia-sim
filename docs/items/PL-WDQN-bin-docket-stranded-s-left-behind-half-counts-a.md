@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-11
 payoff: stranded stops printing its all-clear over a branch it could not read, so a shallow clone names the unread ref and what would let it be read instead of counting it as checked
 verify: grep -q 'def test_stranded_names_a_ref_whose_fork_point_a_shallow_clone_lacks' subprojects/docket/tests/test_cli.py
+reenters: PL-9RFP
 ---
 
 **Problem.** bin/docket stranded's left-behind half counts a ref whose fork point the checkout cannot read among the refs it read, and names it nowhere: vcs.orphaned fills OrphanedReport.unreadable and format_orphaned never prints it, so in a shallow clone an unread branch sits under the all-clear (found working PL-CZR6)

@@ -14,6 +14,7 @@ closed: 2026-09-27
 pr: 1133
 payoff: bin/docket branch stops telling a session whose pull request is still open that it merged and should restart, whenever the branch restores a file to an earlier version
 verify: grep -q 'def test_a_restore_to_content_main_held_before_the_fork_is_not_landed' subprojects/docket/tests/test_vcs.py
+reenters: PL-GHHW, PL-R808, PL-BHVM
 recurrences: 2026-09-27 PL-WVSX, 2026-09-27 PL-P813
 ---
 
