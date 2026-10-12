@@ -1,10 +1,16 @@
 ---
 id: PL-3Z8B
 title: docket.shell reads arithmetic as commands: a $(( )) expansion's body is a clause of Reading.substitutions and a (( )) command's expression a subshell's, so p $(( 1 + 2 )) and (( 1 + 2 )) && p x hand every reader a command 1 + 2 where bash runs none; latent
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: shell-reads-as-bash
-touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, docs/items/PL-GJKN-docket-shell-s-lexer-applies-the-command.md
+touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, .claude/hooks/shell_split.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+payoff: an arithmetic expression is never handed to docket, doc_check or the Bash guards as a command, while a substitution inside one still is
+verify: grep -q 'def test_arithmetic_is_one_word_that_runs_no_command' subprojects/docket/tests/test_shell.py && ! grep -qF 'id="PL-3Z8B' subprojects/docket/tests/test_shell.py
 recurrences: 2026-10-12 PL-X1VN withdrawn 2026-10-12 PL-X1VN, 2026-10-12 PL-48ZJ withdrawn 2026-10-12 PL-48ZJ
 ---
 
@@ -44,6 +50,21 @@ meets `(` where a `((` opens. Latent: on 2026-10-12 no workflow step, tracked
 `.sh` file or fenced shell sample holds a `$((` or an arithmetic command, and
 `verify:` fields refuse one at its unquoted `$` or `(`.
 
+**Why it matters.** `docket.shell` is the one reader that docket's verify
+audit, `tools/doc_check.py`'s workflow readers and the Bash guards share
+(`PL-JNYL`), so an arithmetic expression read as a command misleads all of
+them at once: `doc_check` would check `y + 1` as a command a workflow runs,
+and every reader of a clause's head meets `(` where bash opens one arithmetic
+command. While it stands, `PL-C4XY`'s comparison cannot draw arithmetic at
+all.
+
+**Widened at triage, 2026-10-12: the arithmetic `for`.** `for ((i = 0; i < 1;
+i++)); do p $i; done` runs `p 0` under bash 5.2.21, and docket reads `i` and
+`i++` as commands (measured 2026-10-12): the same arithmetic expression read
+as a command list, in the form Bash Reference Manual §3.2.5.1 "Looping
+Constructs" gives. It goes with this item because the reading that takes
+`(( ))` whole takes `for ((` whole.
+
 **Not a recurrence of `PL-GJKN`**, which `docket new` matched on the shared
 `touches`: that item is where a here-document inside an expanded body ends,
 and this is what an arithmetic body is. The match is withdrawn because of this
@@ -55,5 +76,6 @@ generators --misread` on 2026-10-12, it misreads no recorded fact.
 
 **Done when.** An arithmetic expansion's body is no clause of `every_clause()`
 and holds no list of `FlatReading.substituted`, an arithmetic command's `((`
-and `))` open and close no subshell, a command substitution inside either
-still is one, and the comparison's known departure rows for them are gone.
+and `))` open and close no subshell, an arithmetic `for`'s expressions are no
+commands, a command substitution inside any of them still is one, and the
+comparison draws all three, its known departure rows for them gone.

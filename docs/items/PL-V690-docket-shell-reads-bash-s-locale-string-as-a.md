@@ -1,10 +1,16 @@
 ---
 id: PL-V690
 title: docket.shell reads bash's $"..." locale string as a literal $ before a double-quoted string, so p $"git" push is the words p, $git and push to docket and the guard hooks, where bash runs p with git and push; latent
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: shell-reads-as-bash
-touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, docs/items/PL-GJKN-docket-shell-s-lexer-applies-the-command.md
+touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, tests/unit/test_no_prune_guard.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+payoff: a command spelt with a locale string is checked by the Bash guards as the command bash runs, so a prune spelt that way is refused like any other
+verify: grep -q 'def test_a_locale_string_reads_as_its_double_quoted_text' subprojects/docket/tests/test_shell.py && ! grep -qF 'id="PL-V690"' subprojects/docket/tests/test_shell.py
 ---
 
 **Problem.** docket.shell reads bash's $"..." locale string as a literal $ before a double-quoted string, so p $"git" push is the words p, $git and push to docket and the guard hooks, where bash runs p with git and push; latent
@@ -33,6 +39,14 @@ push`. Latent: on 2026-10-12 no workflow step, tracked `.sh` file or fenced
 shell sample writes one, the only `$"` in the tree being inside Python regexes
 in two hooks' quoted here-document bodies, and `verify:` fields refuse one at
 its unquoted `$`.
+
+**Why it matters.** The Bash guards read a command's words through this
+lexer, so a command spelt with a locale string is not the command they check:
+`$"git" fetch --prune` passes `no-prune-guard`, which refuses `git fetch
+--prune` and `$'git' fetch --prune`, where bash in the C locale runs `git
+fetch --prune` (measured 2026-10-12). That is a gap in a safety-floor guard of
+`PL-P95F`'s kind, latent because nobody writes the form, and docket's verify
+audit and `doc_check` read the same wrong word.
 
 **Not a recurrence of `PL-GJKN`**, which `docket new` matched on the shared
 `touches`: that item is where a here-document inside an expanded body ends, and
