@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: platform-palette
+milestone: v0.5.23
 touches: tests/integration/test_dark_appearance.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-09-27
