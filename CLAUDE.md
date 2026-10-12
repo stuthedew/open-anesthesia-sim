@@ -215,15 +215,15 @@ is not optional.
   writing a reader of a fact, ask whether a module or document already states
   it: read that one, or, where none does, write the one record and read it,
   never a sharper heuristic. `tools/literal_home_check.py` refuses a second
-  copy of a number under `src/`, and `PL-4S6C`'s check refuses a reader of
-  git, the tree, the GitHub API, the default branch or a shell command
-  outside the module that owns it, and a constant defined in two apparatus
-  files. What neither reaches - two readers of one fact that touches no
-  primitive - is this sentence's to catch, and three generator heads closed
-  on sweeps and re-entered under a rule that loaded only on apparatus paths,
-  so it is resident. `.claude/rules/apparatus-standard.md` § "Read the fact
-  from its record; where none exists, write one" has the three shapes a new
-  reader takes.
+  copy of a number under `src/`, and `tools/fact_home_check.py` refuses a
+  reader of git, the tree, the GitHub API, the default branch or a shell
+  command outside the module that owns it, and a constant defined in two
+  apparatus files. What neither reaches - two readers of one fact that
+  touches no primitive - is this sentence's to catch, and three generator
+  heads closed on sweeps and re-entered under a rule that loaded only on
+  apparatus paths (`PL-4S6C`), so it is resident.
+  `.claude/rules/apparatus-standard.md` § "Read the fact from its record;
+  where none exists, write one" has the three shapes a new reader takes.
 - Keep agent/model parameters in validated, versioned data files.
 - Do not add executable equations to data files.
 - Do not implement beyond the current milestone. `ROADMAP.md` is the

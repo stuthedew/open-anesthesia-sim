@@ -3,16 +3,18 @@ id: PL-4S6C
 title: Nothing in the repository refuses a second reading of a fact it already answers, so one-answer closed spent three times on bounded sweeps (PL-PVW2, PL-KGYT, PL-5DZ8) and re-entered each time; make one source of truth for a shared fact a hard principle of the code, enforced where a check can decide it (project owner, 2026-10-12)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: CLAUDE.md, .claude/rules/apparatus-standard.md, docs/resident-instructions.md, tools, tests/unit/test_fact_home_check.py, Makefile, .github/workflows/quality.yml, docket.toml, docs/apparatus.md, docs/items
+touches: CLAUDE.md, .claude/rules/apparatus-standard.md, docs/resident-instructions.md, docs/WORKING_NOTES.md, tools, tests/unit/test_fact_home_check.py, Makefile, .github/workflows/quality.yml, docket.toml, docs/apparatus.md, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; recorded as a generator head by its own design round, 2026-10-12
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1445
 payoff: a second reader of git, the tree, the GitHub API, the default branch or a shell command outside that fact's home, or a constant defined in two apparatus files, fails make check, so one-answer stops re-entering one tool at a time and a head's spent verdict holds
 verify: grep -q 'A shared fact has one source of truth' CLAUDE.md && grep -q 'fact_home_check' .claude/rules/apparatus-standard.md && grep -q 'python3 tools/fact_home_check.py' Makefile && grep -q 'python3 tools/fact_home_check.py' .github/workflows/quality.yml && grep -q 'tests/unit/test_fact_home_check.py' docket.toml
 root-cause-of: PL-PVW2, PL-KGYT, PL-5DZ8, PL-D23H
-generator: live - three heads stating this fact closed spent on an enumerated sweep and were re-entered (PL-PVW2 by six filings, PL-KGYT by five, PL-5DZ8 by PL-D23H on the day it closed, per bin/docket inflow 2026-10-12), and until this head's check lands nothing in make check refuses a reader of git, the tree, the GitHub API, the default branch or a shell command outside that fact's home, so the next tool that needs one writes its own
+generator: spent - the mechanism was that nothing refused a copy; tools/fact_home_check.py refuses one from this pull request, under a baseline that only shrinks, so a reader written against it fails make check instead of becoming a member, and the resident bullet in CLAUDE.md carries what the check cannot see - two readers of one fact that touches no primitive, and a walk written by hand - as the judgment half; a member of that kind is evidence for a new head rather than this one
 misread: Which spelling of a repeated predicate is the answer, when tools, hooks and docket each spell it
 reenters: PL-5DZ8
 ---
@@ -84,6 +86,13 @@ work" refuses to script it.
   shapes a boundary can name - and four are a second grammar for Markdown or
   shell text inside one tool, which no boundary reaches. Five of `PL-KGYT`'s
   six are the first kind.
+- The check's own count at its first run, on this branch at 00d9bafa: 61
+  modules read and 107 second readers baselined - 18 git runners outside
+  `docket.vcs` and the hooks' `_git`, 17 recursive walks outside
+  `tracked_files`, the GitHub API's host in 4 tools, `shlex.split` once in
+  `docket.cli`, and 67 definitions of 31 names bound in two or more files,
+  `ROOT`'s 17 exempt. Walks written by hand over `iterdir`, `doc_check._walk`
+  among them, it does not see, and its docstring says so.
 - The pause: no open item carried `generator: live` before this one
   (`PL-40SJ` and `PL-MT3R` carry it closed). Recording this head live
   re-engages `CLAUDE.md`'s pause on new workflow mechanisms, which holds
@@ -243,7 +252,10 @@ shapes; `docs/resident-instructions.md` records what it costs;
 § "Read the fact from its record" in `.claude/rules/apparatus-standard.md`
 says the principle is resident and the check carries the decidable part;
 then `generator:` says spent and the head closes. `PL-5DZ8`'s 19 members and
-the four walkers drain the baseline and stay their own items.
+the walkers `PL-HNXS` and `PL-9NZ3` name drain the baseline and stay their
+own items. Done 2026-10-12, in this round's own pull request: the check runs
+bare in both gates against a baseline of 107, its 14 tests pass, and the
+three sentences name it.
 
 **Generator check.** The family head over `PL-PVW2`, `PL-KGYT` and
 `PL-5DZ8`, which state one fact in one wording that no head named at family

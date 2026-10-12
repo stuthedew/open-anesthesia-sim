@@ -267,6 +267,14 @@ check: sync
 # so an entry added without a thought for the cap is paid by every session
 # forever. Reads two files, so it costs milliseconds. `PL-NB35`.
 	python3 tools/dead_ends.py check
+# Beside the guards above and, like them, bare: it reads the apparatus trees -
+# `tools/`, `subprojects/docket/src/docket/` and `.claude/hooks/` - which are
+# held to the floor themselves, so the floor interpreter parses all of it. It
+# refuses a second reader of a fact the apparatus already answers - git, the
+# tree, the GitHub API, the default branch, a shell command - outside the
+# module that owns it, and a name defined in two files, against a baseline
+# that only shrinks (`PL-4S6C`).
+	python3 tools/fact_home_check.py
 # Under `uv run`, unlike the bare lines above, because it reads project source:
 # the docstrings of every module, for the citations in them, and that source
 # targets 3.14. The 3.11 floor parser cannot read all of it, and this names each

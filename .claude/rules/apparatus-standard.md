@@ -146,6 +146,6 @@ session to read before its first write, so a session meets the rule there and
 finds the three shapes here (project owner, 2026-10-12, `PL-4S6C`). The
 decidable part - a reader of git, the tree, the GitHub API, the default
 branch or a shell command outside the module that owns it, and an upper-case
-name defined in two apparatus files - is that head's check, with a baseline
+name defined in two apparatus files - is `tools/fact_home_check.py`, with a baseline
 that only shrinks; which of the three shapes a new reader is stays the
 judgment, and stays here.

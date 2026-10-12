@@ -861,7 +861,7 @@ three shapes since 2026-10-01 (`PL-HC8P`) and loads only once an apparatus
 file is opened, and three generator heads stating this fact closed and
 re-entered under it. A check carries the decidable part -
 `tools/literal_home_check.py` for numbers under `src/`,
-`tools/import_boundary_check.py` for imports, and `PL-4S6C`'s check for a
+`tools/import_boundary_check.py` for imports, and `tools/fact_home_check.py` for a
 reader of git, the tree, the GitHub API, the default branch or a shell
 command outside its home and for a name defined twice - and what no check
 reaches is whether two readers read one fact that touches no primitive, which
@@ -872,7 +872,8 @@ trigger at a write.
 grepped `CLAUDE.md` for it at its close on 2026-10-03 and found nothing, and
 the same grep found nothing on 2026-10-12. The data-file bullet beside it is an
 instance of this rule and says more - validated, versioned - so it stays.
-About a thousand characters, as `make check` counts the resident set.
+1,237 characters, the bullet's length by the count `make check` applies to the
+resident set.
 
 **What should retire it.** Nothing in sight. The checks carry what a check
 can decide; what stays resident is the principle the owner asked for as an
