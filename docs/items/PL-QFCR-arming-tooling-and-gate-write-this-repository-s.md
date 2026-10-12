@@ -3,7 +3,7 @@ id: PL-QFCR
 title: arming.TOOLING and GATE write this repository's layout into the docket package, which reads every other path it depends on from docket.toml
 priority: P3
 effort: S
-status: blocked
+status: ready
 classes: refactor
 feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, docket.toml
@@ -32,4 +32,9 @@ verify: ! grep -qF '"subprojects/docket/"' subprojects/docket/src/docket/arming.
 
 [superseded 2026-10-12: `PL-R417` no longer holds it; the pause it ended restarted with #1419's three live heads, below] **The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it: `arming.TOOLING` and `GATE` are still module constants. It stays `blocked` only because `ready` needs a `verify:` command and a `payoff:`, which `bin/docket set` refuses `ready` without and triage writes beside the work; `bin/docket check` names it ready to promote meanwhile.
 
-**Re-read 2026-10-12 under `PL-2349`**, whose check now refuses a `blocked` item whose every blocker has closed. `PL-R417`'s closure ended the generator pause on 2026-10-11, and `PL-74T0` restarted it the next day: #1419 (`febb37b4`) recorded `PL-5DZ8`, `PL-8QMD` and `PL-ZGYX` as live heads, and `bin/docket generators` marks all three still generating. Nothing else this brief names holds it, so it stays held by the pause, now blocked on those three - though the pause's own test is still `bin/docket generators` marking no head "still generating", not this list. The `verify:` and `payoff:` are written now, so the pull request that ends the pause can promote it in one write. The fault stands: `grep -n '^TOOLING' subprojects/docket/src/docket/arming.py` prints `TOOLING = "subprojects/docket/"`. `verify:` passes once `arming.py` no longer spells that path, and was seen failing (exit 1) on 2026-10-12; the tests Done-when asks for are the reviewer's to read.
+[superseded 2026-10-12] **Re-read 2026-10-12 under `PL-2349`**, whose check now refuses a `blocked` item whose every blocker has closed. `PL-R417`'s closure ended the generator pause on 2026-10-11, and `PL-74T0` restarted it the next day: #1419 (`febb37b4`) recorded `PL-5DZ8`, `PL-8QMD` and `PL-ZGYX` as live heads, and `bin/docket generators` marks all three still generating. Nothing else this brief names holds it, so it stays held by the pause, now blocked on those three - though the pause's own test is still `bin/docket generators` marking no head "still generating", not this list. The `verify:` and `payoff:` are written now, so the pull request that ends the pause can promote it in one write. The fault stands: `grep -n '^TOOLING' subprojects/docket/src/docket/arming.py` prints `TOOLING = "subprojects/docket/"`. `verify:` passes once `arming.py` no longer spells that path, and was seen failing (exit 1) on 2026-10-12; the tests Done-when asks for are the reviewer's to read.
+
+**Promoted to `ready` 2026-10-12.** `PL-8QMD` closed as the last head
+`bin/docket generators` marked still generating, so the generator pause that
+held this item has ended (`CLAUDE.md` § "What this project is"), and the
+`verify:` and `payoff:` written above stand.

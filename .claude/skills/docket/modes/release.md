@@ -33,6 +33,23 @@ directions - Gate 2's list did on four entries on 2026-09-23 - so write that
 group's heading from `Required scope`. `bin/docket wave` reads the frozen list
 against the same rule afterwards (`PL-RFHH`).
 
+**Carry every open entry of the previous list, debt or not.** A frozen entry
+stays one whatever its classes become, and one the previous gate deferred - its
+`deferred-from:` names that gate - lands on this list by `ROADMAP.md` §
+"The cadence" beat 3's terms. The debt among them is in `bin/docket gate`'s
+lists already, and the rest is its last group, "Open on vX.Y.Z's frozen list
+and not debt", each one that gate deferred marked `deferred from vX.Y.Z`;
+transcribe that group with the others, by lane (`PL-JV5Q`, `PL-8QMD`).
+
+**Give what each entry waits on one of its three homes before recording the
+list**: the milestone's own `Required scope`, a place on the list beside the
+entry, or a deferral of the entry on beat 3's terms, written `bin/docket set
+<id> --deferred-from "vX.Y.Z - <why>"` with the hazard's state for a `safety`
+or `science` entry (`ROADMAP.md` § "The gate is a snapshot, not a moving
+target"). A class-computed list is not closed under its own prerequisites, and
+`bin/docket check` refuses an entry waiting on work none of the three holds
+(`PL-D388`).
+
 **Sweep the frozen list for staleness before clearing it.** That is beat 3 of
 `ROADMAP.md`'s cadence and the first thing to happen once the list exists. A
 `verify:` command tests for the presence of the fix and never for the presence
@@ -53,15 +70,16 @@ re-checking against the tree.
 **Recorded debt is cleared before a new milestone begins.** `ROADMAP.md` §
 "The debt gate" is the rule: open items classed `defect`, `safety`, `science`,
 `refactor` or `perf`, and anything at `needs-decision`, reach `done` — or
-`dropped` with a reason — before milestone work starts. `feature` and
+`dropped` with a reason, or deferred to the next gate on beat 3's terms — before
+milestone work starts. `feature` and
 `planning` items are not debt. Process work is debt once its mechanism is live
 and unreliable, not while it is still being built; that case is classed
 `defect` like any other, so the class carries the rule.
 
 The command computes and decides nothing. Whether an item is *really* debt,
 whether the gate should open, and what goes into `ROADMAP.md` are yours —
-transcribe the two lists into the milestone's own section with the date they
-were frozen, per `ROADMAP.md` § "Recording it". The list is frozen at that
+transcribe the lists into the milestone's own section with the date they were
+frozen, per `ROADMAP.md` § "Recording it". The list is frozen at that
 moment; a finding made afterwards goes to the next gate unless the problem it
 describes predates the freeze, or is `P0`, `safety` or `science`.
 

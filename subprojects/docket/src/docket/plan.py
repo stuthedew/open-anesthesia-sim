@@ -36,7 +36,15 @@ from .model import (
     ranks_as_generator_defect,
     recurrence_count,
 )
-from .roadmap import EXCLUDED, IN_SCOPE, OUT_OF_SCOPE, UNPLACED, MilestoneStates, Scope
+from .roadmap import (
+    EXCLUDED,
+    IN_SCOPE,
+    OUT_OF_SCOPE,
+    UNPLACED,
+    MilestoneSection,
+    MilestoneStates,
+    Scope,
+)
 
 
 @dataclass(frozen=True)
@@ -281,6 +289,16 @@ class Gate:
     #: The boundary `docket.toml` declares, which `by_lane` reads. Empty where
     #: none is declared.
     workflow_paths: tuple[str, ...] = ()
+    #: The section recording the most recently frozen list (`roadmap.latest_gate`),
+    #: or `None` where no roadmap was read or no section records one.
+    frozen_list: MilestoneSection | None = None
+    #: The open entries of that list that are not debt, which `inside` and
+    #: `outside` never hold. A frozen entry stays one whatever its classes
+    #: become, so the next freeze carries it with the debt: Gate 2 holds two
+    #: such deferrals, `PL-5B1N` and `PL-B396`, and a freeze reading open debt
+    #: alone would have dropped both (`PL-JV5Q`). Printed with its lane, which
+    #: no other command reads for an entry like this (`PL-QWF8`).
+    frozen: list[Item] = field(default_factory=list)
 
     @property
     def items(self) -> list[Item]:
@@ -360,6 +378,7 @@ def gate(
     debt_classes: tuple[str, ...],
     *,
     workflow_paths: tuple[str, ...] = (),
+    frozen_list: MilestoneSection | None = None,
 ) -> Gate:
     """Every open debt item in the store, split by whether it carries `feature`.
 
@@ -367,11 +386,35 @@ def gate(
     whether the gate should open, and what is written into the plan are
     judgments, and recording the frozen list stays a deliberate act - the
     command removes the transcription, not the decision.
+
+    `frozen_list` adds the one set a freeze owes that is not debt: the open
+    entries of the list before it whose classes no longer make them debt
+    (`Gate.frozen`).
     """
     debt = sorted((i for i in items if is_debt(i, debt_classes)), key=lambda i: i.sort_key())
     inside = [i for i in debt if feature and i.feature == feature]
     outside = [i for i in debt if not (feature and i.feature == feature)]
-    return Gate(feature=feature, inside=inside, outside=outside, workflow_paths=workflow_paths)
+    on_list = frozenset(
+        identifier
+        for entry in (frozen_list.gate_entries if frozen_list is not None else ())
+        for identifier in entry.ids
+    )
+    frozen = sorted(
+        (
+            i
+            for i in items
+            if i.is_open and i.identifier in on_list and not is_debt(i, debt_classes)
+        ),
+        key=lambda i: i.sort_key(),
+    )
+    return Gate(
+        feature=feature,
+        inside=inside,
+        outside=outside,
+        workflow_paths=workflow_paths,
+        frozen_list=frozen_list,
+        frozen=frozen,
+    )
 
 
 def features(items: list[Item]) -> dict[str, Feature]:

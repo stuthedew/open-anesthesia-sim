@@ -3,7 +3,7 @@ id: PL-Z64T
 title: ROADMAP.md's v0.6.0 gate lists PL-5B1N and PL-TDBT under the product lane, while docket computes crossing and workflow for them, and nothing holds the three lane groups to the lane each entry's touches computes
 priority: P3
 effort: S
-status: blocked
+status: needs-decision
 classes: defect
 touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 blocked-by: PL-8QMD
@@ -40,6 +40,32 @@ lands.
 **Generator check, revised 2026-10-11 by `PL-74T0`.** Not a member of the gate
 head `PL-8QMD`: the lane groups restate what `Item.lane` computes, which is
 `PL-G424`'s fact, the link between a document sentence and the tree fact it
-restates. It waits on `PL-8QMD` instead of `PL-74T0`, because the record that
-head decides on decides where a gate entry's lane is written, if anywhere.
+restates. It waited on `PL-8QMD` instead of `PL-74T0`, because the record that
+head decided on decided where a gate entry's lane is written, if anywhere.
 
+**Decision needed, 2026-10-12.** `PL-8QMD` closed today: a frozen entry's
+deferral is its `deferred-from:`, and `bin/docket gate` prints every open entry
+of the last frozen list under its `Item.lane`, debt or not (`PL-QWF8`), so a
+lane is read from docket for every open frozen entry. Placing v0.6.0's seven
+former deferral-group entries, that change put `PL-5B1N` and `PL-B396` in the
+neither-lane group their `touches` compute. `PL-TDBT` is still listed in the
+product lane, though done and computing `workflow`. What is left is whether
+`ROADMAP.md`'s frozen lists keep grouping their entries by lane: held to
+`Item.lane` by a `tools/doc_check.py` check, or no longer restating it, with
+one group for what clears before the milestone and a pointer to
+`bin/docket gate` and `bin/docket picks` for the split.
+
+**Recommendation: stop restating it.** A lane is computed from `touches`,
+which triage and every close-out rewrite, so a held copy owes a `ROADMAP.md`
+edit for each such write - the second store `PL-WD5Z` and `PL-8QMD` removed for
+dispositions - and a check would have to skip closed entries, whose `touches`
+a close-out corrects. Reading the record is
+`.claude/rules/apparatus-standard.md`'s answer where the project already records
+the fact. What would make it wrong: the owner working a gate from `ROADMAP.md`'s
+lane groups rather than from `bin/docket gate` or `picks`.
+
+**Done when.** Whichever answer is chosen is recorded here with its date, and
+either `ROADMAP.md`'s current frozen list groups no entry by lane and points at
+`bin/docket gate` for the split, with the freeze mode in
+`.claude/skills/docket/modes/release.md` saying the same, or `make check` fails
+on an open entry listed under a lane group its `touches` do not compute.

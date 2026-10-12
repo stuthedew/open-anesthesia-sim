@@ -8,6 +8,7 @@ classes: feature
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/theme.py, tools/contrast_check.py, docs/MODEL.md, tests/integration/test_qt_chart.py, tests/integration/test_qt_widgets.py, tests/unit/test_chart_frame.py, tests/unit/test_chart_time_base.py, tests/unit/test_theme.py, tests/unit/test_contrast_check.py
 blocked-by: v0.7.0
+deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-YBFB, project owner, 2026-09-27, ratified, over building the preview now as the next item of the presentation-safety chain): an M feature build, blocked on v0.7.0; not live at 9ea31db2 - nothing in src/anesthesia_sim/app/ draws a predicted trajectory
 added: 2026-09-12
 verify: grep -qF 'PREVIEW_REGION' src/anesthesia_sim/app/theme.py && grep -qF 'preview' tests/integration/test_qt_chart.py
 ---
