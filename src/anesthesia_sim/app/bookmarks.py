@@ -47,13 +47,14 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from math import isfinite
+from math import ceil, isfinite
 from types import MappingProxyType
 
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
+from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
+from anesthesia_sim.core.supported_ranges import CaseInstant, StepCount, require_case_instant
 
 __all__ = [
     "BookmarkCrossing",
@@ -239,6 +240,51 @@ class TimeBookmark:
         """
 
         return before_s < self.instant_s <= after_s
+
+    def steps_to_reach(self, simulation_step_s: SimulationStep) -> StepCount:
+        """How many steps a run taken at `simulation_step_s` completes to reach this instant.
+
+        `crossed_between` read the other way round, on a run's own step grid:
+        the step ending at this count is the one that rule says reaches the
+        mark. So it is the step a halt stops on, and `count x step` - the
+        product `SimulationState.elapsed_s` forms - is the instant a branch
+        taken at the mark opens at (`SimulationController.resumed_at_mark`).
+        Zero for a mark at the case's opening, which a run stands on before
+        any step and which no step crosses.
+
+        **Found by the rule rather than by rounding** (`PL-W4XQ`). The quotient
+        `instant_s / simulation_step_s` is itself rounded, so its ceiling can
+        land a step late: `0.30000000000000004 / 0.1` is 3.0000000000000004,
+        though the third step's own product is that instant. The ceiling is
+        therefore only a first guess, which the two comparisons
+        `crossed_between` makes, applied to the products themselves, move to
+        the step they pick. `round` would be worse than late: it puts a mark
+        lying inside a step on the step *before* it, which no halt stops on.
+
+        Args:
+            simulation_step_s: The step the run is taken at.
+
+        Returns:
+            The count of completed steps at which the run first stands at or
+            past this instant.
+
+        Raises:
+            TypeError: If `simulation_step_s` is not a `SimulationStep`, so
+                nothing has checked it against the supported range
+                (`core/simulation_step.py`).
+        """
+
+        require_simulation_step(simulation_step_s)
+
+        count = ceil(self.instant_s / simulation_step_s)
+
+        while count > 0 and (count - 1) * simulation_step_s >= self.instant_s:
+            count -= 1
+
+        while count * simulation_step_s < self.instant_s:
+            count += 1
+
+        return StepCount(count)
 
 
 @dataclass(frozen=True, slots=True)
@@ -546,6 +592,27 @@ class BookmarkSet:
             )
 
         return BookmarkSet(kept, self.mac_targets)
+
+    def held_time_bookmark(self, bookmark: TimeBookmark) -> TimeBookmark:
+        """The bookmark this set holds at `bookmark`'s instant, as it holds it.
+
+        Matched on the instant, as `without_time_bookmark` matches, so a caller
+        naming a mark without reproducing its label still names it; what comes
+        back carries the label the set holds, which is the key a
+        `BookmarkStandings` answers to.
+
+        Raises:
+            SimulationConfigurationError: If no bookmark stands at that
+                instant, naming it.
+        """
+
+        for held in self.time_bookmarks:
+            if held.instant_s == bookmark.instant_s:
+                return held
+
+        raise SimulationConfigurationError(
+            f"no time bookmark stands at {bookmark.instant_s} s, so there is no mark there"
+        )
 
     def with_mac_target(self, target: MacTarget) -> BookmarkSet:
         """This set with `target` added at the end.
