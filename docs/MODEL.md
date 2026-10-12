@@ -5921,7 +5921,10 @@ limits and fails if the model moves one,
 `test_displayed_resolution_and_shipped_step_match_the_interface` does the
 same for the resolution and step every figure is quoted at, and
 `test_the_sliders_span_the_supported_input_ranges` fails if the interface
-stops short of the declared domain or reaches past it.
+stops short of the declared domain or reaches past it. It reads the shipped
+machine profile, which declares no deliverable range; a profile that declares
+one narrows the fresh gas flow slider to the overlap on purpose (§ "The model's
+envelope and a machine's deliverable range are two claims").
 
 **The simulation step is bounded too, and separately.** It is not a control a
 user sets, but it is an input to every `advance()` call, and what a caller

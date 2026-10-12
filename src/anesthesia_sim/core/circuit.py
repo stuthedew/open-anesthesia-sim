@@ -331,7 +331,9 @@ class BreathingCircuit:
 
         `_require_the_two_flow_claims_overlap` refuses a circuit whose two
         claims share no flow, so on a built circuit the first end is never
-        above the second.
+        above the second - unless `deliverable_fresh_gas_flow_range` has been
+        reassigned since, past that check, which nothing under `src/` does
+        (`PL-HJ7L`).
         """
 
         machine_range = self.deliverable_fresh_gas_flow_range

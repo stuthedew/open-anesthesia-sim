@@ -21,6 +21,7 @@ those samples rather than the sampler's column placement.
 """
 
 import json
+import math
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -1421,9 +1422,15 @@ def test_a_control_with_no_step_inside_its_range_fails_rather_than_offering_a_re
         # Whole steps are offered as they are, which is every shipped range.
         (0.0, 10.0, FLOW_DISPLAY_DECIMALS, (0.0, 10.0)),
         (0.0, 8.0, CONCENTRATION_DISPLAY_DECIMALS, (0.0, 8.0)),
-        # 0.3 and 0.7 are steps whose product with 10 is not a whole float;
-        # neither may be pushed off itself to the next step.
-        (0.3, 0.7, FLOW_DISPLAY_DECIMALS, (0.3, 0.7)),
+        # Ends that are steps although their product with 100 is not a whole
+        # float - 0.07 * 100 is 7.000000000000001 and 0.29 * 100 is
+        # 28.999999999999996 - so neither may be pushed off itself, inward.
+        (0.07, 0.29, CONCENTRATION_DISPLAY_DECIMALS, (0.07, 0.29)),
+        # Ends one unit in the last place outside a step, whose product with
+        # 10 rounds onto that step: the step is outside the range, and is not
+        # offered.
+        (math.nextafter(1.7, math.inf), 9.0, FLOW_DISPLAY_DECIMALS, (1.8, 9.0)),
+        (0.5, math.nextafter(0.9, -math.inf), FLOW_DISPLAY_DECIMALS, (0.5, 0.8)),
         # Ends between steps move inward, never outward.
         (0.05, 9.95, FLOW_DISPLAY_DECIMALS, (0.1, 9.9)),
         (0.25, 8.75, FLOW_DISPLAY_DECIMALS, (0.3, 8.7)),
