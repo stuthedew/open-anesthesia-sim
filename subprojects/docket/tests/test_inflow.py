@@ -87,17 +87,17 @@ def test_a_short_final_period_is_compared_per_day() -> None:
 def test_a_member_filed_while_its_head_was_open_is_counted_apart() -> None:
     """A sweep's filings are not inflow; a member arriving after the head closed is."""
     head = _item(
-        "PL-HEAD",
+        "PL-HD00",
         date(2026, 9, 2),
         closed=date(2026, 9, 4),
-        root_cause_of=("PL-0BEF", "PL-0DUR", "PL-0AFT"),
+        root_cause_of=("PL-0BFR", "PL-0DRN", "PL-0FTR"),
     )
     report = analyze(
         [
             head,
-            _item("PL-0BEF", date(2026, 9, 1)),  # the cluster that revealed it
-            _item("PL-0DUR", date(2026, 9, 3)),  # the sweep's own
-            _item("PL-0AFT", date(2026, 9, 6), priority="P3"),  # a fix that did not hold
+            _item("PL-0BFR", date(2026, 9, 1)),  # the cluster that revealed it
+            _item("PL-0DRN", date(2026, 9, 3)),  # the sweep's own
+            _item("PL-0FTR", date(2026, 9, 6), priority="P3"),  # a fix that did not hold
         ],
         CONFIG,
         today=date(2026, 9, 7),
@@ -141,24 +141,24 @@ def test_the_command_refuses_without_workflow_paths(
 
 
 #: A shipped fix outside the apparatus, so it anchors no window of its own.
-FIXED = _item("PL-FIXD", date(2026, 8, 20), touches=("src/a.py",), closed=date(2026, 8, 25))
+FIXED = _item("PL-FXD0", date(2026, 8, 20), touches=("src/a.py",), closed=date(2026, 8, 25))
 
 
 def test_a_reentry_is_counted_in_the_period_it_was_filed() -> None:
     """Counted where the fix failed to hold, and not for a sweep's own filings."""
     head = _item(
-        "PL-HEAD",
+        "PL-HD00",
         date(2026, 9, 9),
         touches=("src/b.py",),
-        root_cause_of=("PL-0SWA", "PL-0SWB", "PL-0SWC"),
+        root_cause_of=("PL-0SWD", "PL-0SWB", "PL-0SWC"),
     )
     report = analyze(
         [
             FIXED,
             head,
-            _item("PL-0ONE", date(2026, 9, 1), reenters=("PL-FIXD",)),
-            _item("PL-0TWO", date(2026, 9, 9), reenters=("PL-FIXD",)),
-            _item("PL-0SWA", date(2026, 9, 10), reenters=("PL-FIXD",)),  # the sweep's own
+            _item("PL-0NN1", date(2026, 9, 1), reenters=("PL-FXD0",)),
+            _item("PL-0TW2", date(2026, 9, 9), reenters=("PL-FXD0",)),
+            _item("PL-0SWD", date(2026, 9, 10), reenters=("PL-FXD0",)),  # the sweep's own
             _item("PL-0SWB", date(2026, 9, 10)),
             _item("PL-0SWC", date(2026, 9, 10)),
         ],
@@ -172,27 +172,27 @@ def test_a_reentry_is_counted_in_the_period_it_was_filed() -> None:
 
 def test_a_closed_item_three_filings_reenter_is_named() -> None:
     filings = [
-        _item(f"PL-0RE{n}", date(2026, 9, n), reenters=("PL-FIXD", "PL-FIXD")) for n in (1, 2, 3)
+        _item(f"PL-0RX{n}", date(2026, 9, n), reenters=("PL-FXD0", "PL-FXD0")) for n in (1, 2, 3)
     ]
 
     report = analyze([FIXED, *filings], CONFIG, today=date(2026, 9, 7))
 
-    assert report.reentered == {"PL-FIXD": ("PL-0RE1", "PL-0RE2", "PL-0RE3")}
+    assert report.reentered == {"PL-FXD0": ("PL-0RX1", "PL-0RX2", "PL-0RX3")}
 
 
 def test_a_reentry_must_name_a_fix_shipped_before_the_filing() -> None:
     """Counted as a fix that failed, an open, dropped or later-closed id is a fabrication."""
     by_id = {
-        "PL-DONE": _item("PL-DONE", date(2026, 8, 1), closed=date(2026, 9, 1)),
-        "PL-LATE": _item("PL-LATE", date(2026, 8, 1), closed=date(2026, 9, 5)),
-        "PL-OPEN": _item("PL-OPEN", date(2026, 8, 1)),
+        "PL-DNNN": _item("PL-DNNN", date(2026, 8, 1), closed=date(2026, 9, 1)),
+        "PL-KTTT": _item("PL-KTTT", date(2026, 8, 1), closed=date(2026, 9, 5)),
+        "PL-PNNN": _item("PL-PNNN", date(2026, 8, 1)),
     }
-    good = _item("PL-0NEW", date(2026, 9, 1), reenters=("PL-DONE",))
-    bad = _item("PL-0BAD", date(2026, 9, 1), reenters=("PL-LATE", "PL-OPEN", "PL-GONE", "PL-0BAD"))
+    good = _item("PL-0NWW", date(2026, 9, 1), reenters=("PL-DNNN",))
+    bad = _item("PL-0BDD", date(2026, 9, 1), reenters=("PL-KTTT", "PL-PNNN", "PL-GNNN", "PL-0BDD"))
 
     assert reentry_faults(good, by_id) == ()
     faults = " ".join(reentry_faults(bad, by_id))
-    for named in ("itself", "PL-GONE", "PL-OPEN", "PL-LATE"):
+    for named in ("itself", "PL-GNNN", "PL-PNNN", "PL-KTTT"):
         assert named in faults
 
 
@@ -211,10 +211,12 @@ def test_the_release_report_names_each_prediction_the_last_week_broke() -> None:
         FIXED,
         _item("PL-1000", date(2026, 9, 1)),
         _item("PL-2000", date(2026, 9, 8), touches=("tools/b.py",), priority="P1"),
-        _item("PL-2001", date(2026, 9, 9), reenters=("PL-FIXD",)),
+        _item("PL-2001", date(2026, 9, 9), reenters=("PL-FXD0",)),
     ]
 
-    head = _item("PL-2002", date(2026, 9, 9), priority="P1", root_cause_of=("PL-A", "PL-B", "PL-C"))
+    head = _item(
+        "PL-2002", date(2026, 9, 9), priority="P1", root_cause_of=("PL-00B1", "PL-00B2", "PL-00B3")
+    )
 
     paths, band, reentry = missed(analyze([*items, head], CONFIG, today=today), today)
 
