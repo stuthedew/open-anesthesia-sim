@@ -6984,6 +6984,65 @@ SPLIT_QUOTATION_BRIEF = (
 RULED_QUOTATION = '---\nIt holds `docs/MODEL.md` § "Known\nlimitations" to that file.\n---\n'
 
 
+#: A live brief whose `reason` quotes `README.md` across the lines `{lines}`
+#: hold, which `docket.model._fold` reads on through (`PL-4J5H`).
+FOLDED_BRIEF = (
+    "---\nid: PL-T3ST\nstatus: ready\nreason: it holds `README.md`'s \"Alpha\n"
+    '{lines}\n  beta gamma." as written\n---\n\n**Problem.** x\n'
+)
+#: Each line a field continues on where CommonMark 0.31.2 opens a block at the
+#: margin and so ends the paragraph `_fold` reads on through, by the block. The
+#: fence is closed, since `docket.markdown` reads one nothing closes as written.
+OPENS_A_BLOCK = {
+    "a list item": "  - delta",
+    "a fence": "  ```\n  ```",
+    "an HTML tag": "  <div>",
+    "a thematic break": "  ***",
+}
+#: Each line inside a field `_fold` reads past and no Markdown paragraph can
+#: cross, or one the citation readers read otherwise: declined by name.
+DECLINED_FIELD = {
+    "a blank line": ("  delta\n", "holds a blank, comment or unread line"),
+    "a comment line": ("  delta\n  # a comment", "holds a blank, comment or unread line"),
+    "a block quote": ("  > delta", "continues on a line opening with `>`"),
+}
+
+
+@pytest.mark.parametrize("form", [*OPENS_A_BLOCK, *DECLINED_FIELD])
+def test_a_front_matter_field_reaches_the_markdown_readers_as_one_statement(
+    tmp_path: Path, form: str
+) -> None:
+    """`PL-4J5H`: a field is read as `_fold` reads it, one statement, or declined by name.
+
+    Handed over as written, a continuation line opening a list item, a fence,
+    an HTML block or a thematic break ended the field's paragraph, so a
+    quotation `_fold` and YAML read closed was refused as unclosed at the cut.
+    A blank or comment line no paragraph crosses, and a `>` the citation
+    readers drop as a block quote's marker, decline the field instead.
+    """
+    if form in OPENS_A_BLOCK:
+        line, why = OPENS_A_BLOCK[form], ""
+    else:
+        line, why = DECLINED_FIELD[form]
+    brief = FOLDED_BRIEF.format(lines=line)
+    words = " ".join(parse_item(brief, "x.md").reason.split('"')[1].split())
+    root = _repo(tmp_path, readme=f"# Demo\n\n{words}\n")
+    _item(root, "PL-T3ST-demo", brief)
+    report = doc_check.analyze(root)
+    said = ("cites section", "names a section", "quotes ", "opens a quotation")
+
+    assert [f for f in report.errors + report.advisories if any(s in f for s in said)] == []
+    declined = [entry for entry in report.declined if "`reason`" in entry]
+    if why:
+        assert declined and all(why in entry for entry in declined), report.declined
+        return
+    assert declined == []
+    pieces = doc_check._brief_pieces(brief, Path("x.md"), "quotation", [])
+    field = next(piece for first, piece in pieces if first == 4)
+    statements = list(docket_markdown.statement_lines(field.splitlines()))
+    assert statements == [(0, len(field.splitlines()))]
+
+
 def _possessive_sites(tmp_path: Path, readme: str) -> list[str]:
     return possessive_section_check.sites(_repo(tmp_path, readme=readme), [])
 

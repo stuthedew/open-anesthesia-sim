@@ -4855,7 +4855,7 @@ def _check_brief_paths(root: Path, basenames: frozenset[str], report: Report) ->
         # A front-matter field at a time, and the body after them (`PL-CZ28`).
         spans = (
             (first + _line_of(piece, match.start()) - 1, match["content"])
-            for first, piece in _brief_pieces(raw)
+            for first, piece in _brief_pieces(raw, path, "path citation", report.declined)
             for match in _statement_spans(piece)
         )
         for line, token in spans:
@@ -5066,7 +5066,9 @@ def _live_item_briefs(root: Path) -> Iterator[tuple[Path, str]]:
         yield path.relative_to(root), path.read_text(encoding="utf-8", errors="replace")
 
 
-def _brief_pieces(text: str) -> list[tuple[int, str]]:
+def _brief_pieces(
+    text: str, where: Path, unread: str, declined: list[str]
+) -> list[tuple[int, str]]:
     """A brief as the pieces its readers read apart, each with the line it starts on.
 
     Each front-matter field is one, ending where `docket.model` ends it, and so
@@ -5077,19 +5079,58 @@ def _brief_pieces(text: str) -> list[tuple[int, str]]:
     comment, or one no field reads - is read alone. A brief with no front
     matter is one piece. Each piece of one that has is a passage of it, so a
     body opening with a thematic break opens no front matter (`_as_passage`).
+
+    A field reaches its readers as `_fold` reads it, one statement (`PL-4J5H`).
+    Each line folded into it is indented four columns more, past where a list
+    item, a block quote, a fence, an HTML block, a heading, a setext underline,
+    a thematic break or a table row can open (CommonMark 0.31.2 § 4, § 5), so
+    none ends the paragraph where `_fold` reads on. A reader takes a line from
+    a piece and never a column, so the indent moves nothing it reports. Two
+    fields are declined instead, each named in `declined` with `where` and the
+    `unread` its readers look for: one with a blank, comment or unread line
+    inside it, since no line carries a paragraph over a blank one and `_fold`
+    reads past it, and one continuing on a line that opens with `>`, which
+    `SOFT_BREAK` drops as a block quote's marker where `_fold` reads it as text.
     """
     layout = front_matter_spans(text)
     if layout is None:
         return [(1, text)]
-    spans, body = layout
+    fields, body = layout
     lines = split_lines(text, keepends=True)
-    held = {index for first, end in spans for index in range(first, end)}
-    alone = [(index, index + 1) for index in range(1, body - 1) if index not in held]
-    pieces = sorted([*spans, *(span for span in alone if lines[span[0]].strip())])
+    held = {
+        index
+        for span in fields
+        for index in range(span.start, span.end)
+        if index not in span.interior
+    }
+    alone = [(index, lines[index]) for index in range(1, body - 1) if index not in held]
+    joined: list[tuple[int, str]] = []
+    for span in fields:
+        folded = lines[span.start + 1 : span.end]
+        if span.interior:
+            why, fix = (
+                "holds a blank, comment or unread line among the lines folded into it, where a "
+                "Markdown paragraph ends and docket reads on",
+                "join the value's lines, or end it above that line",
+            )
+        elif any(line.lstrip().startswith(">") for line in folded):
+            why, fix = (
+                "continues on a line opening with `>`, which the citation readers drop as a "
+                "block quote's marker and docket reads as text",
+                "rewrap the value so no line opens with one",
+            )
+        else:
+            joined.append(
+                (span.start, lines[span.start] + "".join(f"    {line}" for line in folded))
+            )
+            continue
+        declined.append(
+            f"{where}:{span.start + 1}: `{span.key}` {why}, so no {unread} in it was checked; {fix}"
+        )
+    pieces = sorted([*joined, *((index, line) for index, line in alone if line.strip())])
     return list(
         _as_passages(
-            [(first + 1, "".join(lines[first:end])) for first, end in pieces]
-            + [(body + 1, "".join(lines[body:]))]
+            [(first + 1, piece) for first, piece in pieces] + [(body + 1, "".join(lines[body:]))]
         )
     )
 
@@ -5155,7 +5196,7 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
     sources = [(path, 1, raw) for path, raw in documents.items()] + [
         (path, first, piece)
         for path, brief in _live_item_briefs(root)
-        for first, piece in _brief_pieces(brief)
+        for first, piece in _brief_pieces(brief, path, "line citation", report.declined)
     ]
     for path, offset, raw in sources:
         # A fence holds a literal, and read as a claim it made an item that
@@ -5256,7 +5297,8 @@ def _quoting_sources(
     for path, text in documents.items():
         yield path, 1, text
     for path, text in _live_item_briefs(root):
-        yield from ((path, first, piece) for first, piece in _brief_pieces(text))
+        pieces = _brief_pieces(text, path, "quotation", declined)
+        yield from ((path, first, piece) for first, piece in pieces)
     for path in sorted(_walk(root)):
         if path.suffix != ".py":
             continue

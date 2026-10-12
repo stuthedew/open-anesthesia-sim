@@ -378,28 +378,56 @@ def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
     return dict(pairs), body
 
 
-def front_matter_spans(text: str) -> tuple[tuple[tuple[int, int], ...], int] | None:
+@dataclass(frozen=True)
+class FieldSpan:
+    """Where one front-matter field lies in its document's lines (`front_matter_spans`)."""
+
+    key: str
+    #: The index of the field's own line, and one past the last line `_fold`
+    #: folds into it: the extent every reader of a value here takes.
+    start: int
+    end: int
+    #: Each line between the two that `_fold` reads nothing from - a blank
+    #: line, a comment, or one it reads as no field's - which a reader of the
+    #: span meets inside it all the same (`PL-4J5H`).
+    interior: tuple[int, ...] = ()
+
+
+def front_matter_spans(text: str) -> tuple[tuple[FieldSpan, ...], int] | None:
     """Where each front-matter field lies, and where the body starts, in `text`'s lines.
 
-    Each field is the index of its own line and one past the last line `_fold`
-    folds into it, the extent every reader of a value here takes. The body
-    starts on the line after the closing `---`. Indices count from the opening
-    `---`, as `text.split("\n")` does, so a reader holding a match inside one
-    field can name the line it is on. A line no field holds - blank, a comment,
-    or one `_fold` reads as no field's - is in no span. `None` where `text` has
-    no front matter.
+    Each field is its key, its span and the interior lines of that span
+    (`FieldSpan`). The body starts on the line after the closing `---`. Indices
+    count from the opening `---`, as `text.split("\n")` does, so a reader
+    holding a match inside one field can name the line it is on. A line no
+    field holds - blank, a comment, or one `_fold` reads as no field's - is in
+    no span unless a line folded into a field stands below it, and then it is
+    in that field's span and named in its `interior`, since `_fold` reads past
+    it to the line below. `None` where `text` has no front matter.
 
     For a reader that matches within one field at a time, since a code span or
     a quotation in one never pairs with the next field's: read as one Markdown
     paragraph, a backtick or a quotation one field left open paired with the
-    next one's (`PL-CZ28`).
+    next one's (`PL-CZ28`). Such a reader has to carry the field over an
+    interior line or decline it, because a blank line ends a Markdown
+    paragraph where `_fold` reads on (`PL-4J5H`).
     """
     match = FRONT_MATTER_RE.match(text)
     if match is None:
         return None
     lines = match.group(1).split("\n")
     fields, _unread = _fold(lines)
-    spans = tuple((1 + index, 2 + max([index, *folded])) for _key, _head, index, folded in fields)
+    spans = tuple(
+        FieldSpan(
+            key,
+            1 + index,
+            2 + max([index, *folded]),
+            tuple(
+                1 + line for line in range(index + 1, max([index, *folded])) if line not in folded
+            ),
+        )
+        for key, _head, index, folded in fields
+    )
     return spans, len(lines) + 2
 
 
