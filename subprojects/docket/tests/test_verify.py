@@ -1368,6 +1368,33 @@ def test_no_run_call_in_verify_discards_its_exit_status() -> None:
     assert not discarded, f"`_run`'s exit status discarded at verify.py line(s) {discarded}"
 
 
+def test_no_run_call_in_verify_reads_git() -> None:
+    """Git is read through `vcs`, never through `_run`, which mixes stderr into the output.
+
+    Eight reads ran `git` that way beside `_git`, each with its own bound and
+    its own reading of a non-zero exit; they go through `vcs.call_git` now, as
+    every git read does (`PL-S9JK`). `tools/fact_home_check.py` cannot see these,
+    since `_run`'s argv is a parameter there, so this holds them.
+    """
+    tree = ast.parse(Path(verify_module.__file__).read_text(encoding="utf-8"))
+    runs = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_run"
+    ]
+    assert runs, "no `_run` call left to read; this guard is reading nothing"
+    git = [
+        node.lineno
+        for node in runs
+        if node.args
+        and isinstance(node.args[0], ast.List)
+        and node.args[0].elts
+        and isinstance(node.args[0].elts[0], ast.Constant)
+        and node.args[0].elts[0].value == "git"
+    ]
+    assert not git, f"`_run` runs git at verify.py line(s) {git}; read it through `vcs`"
+
+
 def test_the_item_s_own_file_is_always_in_scope(tmp_path: Path) -> None:
     """A worker is asked to append a `**Worked.**` note, so its own file counts."""
     root = _repo(tmp_path)

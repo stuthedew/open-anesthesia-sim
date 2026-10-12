@@ -6887,7 +6887,7 @@ def test_git_answers_an_undecodable_path_as_unanswered(tmp_path: Path) -> None:
     _git(root, "commit", "-qm", "add a Latin-1 name")
 
     with pytest.raises(
-        doc_check.GitUnanswered, match=r"^`git diff` printed a path this cannot read"
+        doc_check.GitUnanswered, match=r"^`git diff` printed output this cannot read"
     ):
         doc_check._git_output(root, "diff", "--no-renames", "-z", "--name-only", "HEAD~1", "HEAD")
 

@@ -69,7 +69,6 @@ library only, so a bare checkout can run it.
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -87,6 +86,7 @@ from docket.vcs import (  # noqa: E402
     CarriedCommit,
     Landing,
     NewestPullRequest,
+    call_git,
     git_answer,
     is_shallow,
     past_head,
@@ -101,9 +101,14 @@ from open_pull_requests import (  # noqa: E402
     repo_slug,
 )
 
-#: Seconds for one git call. `ls-remote` is the only one that touches the
-#: network, and it answered in 0.6 s for 839 pull refs when this was written.
-GIT_TIMEOUT = 30.0
+#: Seconds for one git call, longer than `vcs.GIT_TIMEOUT` because `ls-remote`
+#: touches the network; it answered in 0.6 s for 839 pull refs when this was
+#: written.
+REMOTE_TIMEOUT = 30.0
+
+#: The exit status `git_runner` reports for a call git gave no status or no
+#: readable output for, as a shell reports a command it could not run.
+DID_NOT_ANSWER = 127
 
 #: The prefixes a decline opens with, one per condition, so a reader and a test
 #: can tell them apart without parsing the rest of the sentence. The other three
@@ -140,25 +145,25 @@ Runner = Callable[[list[str]], Git]
 
 
 def git_runner(root: Path) -> Runner:
-    """Run git in `root`, never prompting for credentials and never raising."""
+    """Run git in `root`, never prompting for credentials and never raising.
+
+    By `vcs.call_git`, the one place git is started (`PL-S9JK`). A call that
+    never reached an exit status - git not found, or killed at the timeout - and
+    one whose output is not text here both come back as `DID_NOT_ANSWER`, which
+    is neither 0 nor git's no, with the reason as the error text.
+    """
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
 
     def run(args: list[str]) -> Git:
-        env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
+        call = call_git(args, root, timeout=REMOTE_TIMEOUT, env=env)
+        if call.code is None:
+            return Git(DID_NOT_ANSWER, "", call.reason)
         try:
-            done = subprocess.run(
-                ["git", *args],
-                cwd=root,
-                capture_output=True,
-                timeout=GIT_TIMEOUT,
-                check=False,
-                env=env,
-            )
-        except subprocess.TimeoutExpired:
-            return Git(124, "", f"git {args[0]} timed out after {GIT_TIMEOUT:.0f} s")
-        except OSError as error:
-            return Git(127, "", str(error))
-        # Decoded as written, so a raw `\r` in a record stays in it (`PL-0R4M`).
-        return Git(done.returncode, record_text(done.stdout), record_text(done.stderr))
+            # Decoded as written, so a raw `\r` in a record stays in it (`PL-0R4M`).
+            out = record_text(call.stdout)
+        except UnicodeDecodeError:
+            return Git(DID_NOT_ANSWER, "", call.reason)
+        return Git(call.code, out, call.stderr)
 
     return run
 

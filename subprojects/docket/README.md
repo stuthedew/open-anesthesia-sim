@@ -666,6 +666,14 @@ implies `--exit-code`, so its 1 means a path it could not read, not git saying
 no. Inside a repository a revision diff never exits 1. `changed_items` read
 that 1 as a branch that changed no item until `PL-19T3`.
 
+The table is every reader's, not `vcs`'s alone. `call_git` is the one place a
+git process starts, so `verify` and the tools under `tools/` run git there too,
+and `read_git` is the same reading for a read whose failure must raise
+`GitUnanswered`. Before `PL-S9JK` eight of them ran git themselves, and each
+had its own reading of the exit, its own decoding and its own timeout, one of
+them none at all. A `cat-file --batch` header is read once too, by
+`batch_header`, and `ambiguous` is no object, the same as `missing`.
+
 A public read wraps its runner in `_Silences` rather than threading a flag out
 of every helper, and reports what went unanswered as `declined`. It over-reports
 rather than withholding: an item wrongly marked in flight costs a session one

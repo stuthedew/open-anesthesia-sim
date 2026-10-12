@@ -66,6 +66,7 @@ from docket.vcs import (
     _unlanded_refs,
     _written_since,
     base_copies,
+    batch_header,
     behind_remote,
     branch_state,
     change_landed,
@@ -3762,6 +3763,42 @@ def test_a_blob_holding_crlf_reads_as_read_text_reads_its_file(tmp_path: Path) -
     assert _run_git(["show", "HEAD:f"], repo.root) == on_disk
     with GitRunner() as runner:
         assert runner._blob("HEAD:f", repo.root) == on_disk
+
+
+def test_an_ambiguous_name_is_no_object_and_keeps_the_batch(tmp_path: Path) -> None:
+    """`<name> ambiguous` reads as no file there, as `missing` does (`PL-S9JK`).
+
+    `GitRunner._blob` read it as a header it could not parse and dropped the
+    batch for the whole root, while `verify._blobs` read it as no file: one
+    `cat-file --batch` line, two answers. Both read it through `batch_header` now.
+    Real git, with two blobs found to share a four-digit prefix, because the
+    line under test is the one git prints.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", f="f\n")
+    seen: dict[str, bytes] = {}
+    for number in range(5000):
+        body = f"{number}\n".encode()
+        prefix = hashlib.sha1(b"blob %d\0" % len(body) + body).hexdigest()[:4]
+        if prefix in seen:
+            break
+        seen[prefix] = body
+    else:
+        pytest.fail("no two of 5,000 blobs share a four-digit prefix")
+    for blob in (seen[prefix], body):
+        subprocess.run(
+            ["git", "hash-object", "-w", "--stdin"], cwd=repo.root, input=blob, check=True
+        )
+
+    with GitRunner() as runner:
+        assert runner._blob(prefix, repo.root) == ""
+        assert str(repo.root) not in runner._unbatchable
+        assert runner._blob("HEAD:f", repo.root) == "f\n"
+    assert batch_header(f"{prefix} ambiguous\n".encode()) is None
+    assert batch_header(b"HEAD:a b.md missing\n") is None
+    assert batch_header(b"1f2e blob 3\n") == ("1f2e", "blob", 3)
+    with pytest.raises(ValueError):
+        batch_header(b"fatal: something else\n")
 
 
 # What the landing split is judged against: the blobs the base's commits wrote
