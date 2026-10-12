@@ -224,8 +224,10 @@ class RunView(QWidget):
     rearranges, and placing the same widgets again is what moves them
     (`.claude/rules/ui-areas.md`).
 
-    Refuses nothing at construction. What it refuses per tick is decided
-    by `dashboard_frame`: which setting values the core rejects, and how a
+    Refuses at construction only a first snapshot `setting_readouts` cannot
+    draw controls for, raising its `ValueError`; no shipped profile produces
+    one (`PL-7CRY`). What it refuses per tick is decided by
+    `dashboard_frame`: which setting values the core rejects, and how a
     raise is reported, are read from the exception and never guessed at
     (`PL-V6M0`, `PL-Y5WR`, `PL-YK2V`; see the module docstring).
 
@@ -534,6 +536,9 @@ class RunView(QWidget):
         Raises:
             IndexError: If `run_index` is not one of the frame's runs
                 (`dashboard_frame.off_scale_notice`).
+            ValueError: If `setting_readouts` refuses the snapshot: a
+                control with no step of its resolution inside the range the
+                run accepts (`PL-7CRY`), or a MAC that is not positive.
         """
 
         self._frame = frame
