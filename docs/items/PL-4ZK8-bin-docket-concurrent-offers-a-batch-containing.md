@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: parallel-sessions
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/picking.md, docs/items/PL-7B3G-bin-docket-concurrent-ranks-its-batch-by.md
 added: 2026-09-07
 closed: 2026-10-03

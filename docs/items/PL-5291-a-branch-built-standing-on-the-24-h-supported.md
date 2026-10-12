@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety
 feature: numerical-domain
+milestone: v0.5.23
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-10-03
 closed: 2026-10-03

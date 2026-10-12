@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, docs
+milestone: v0.5.23
 touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, docs/items/PL-S641-docs-maintainer-md-has-no-section-for-re.md
 added: 2026-10-03
 closed: 2026-10-03

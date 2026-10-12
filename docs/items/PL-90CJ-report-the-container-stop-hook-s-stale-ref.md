@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.5.23
 touches: docs/maintainer.md, .claude/hooks/stop_hook_patch.py
 added: 2026-09-04
 closed: 2026-10-03

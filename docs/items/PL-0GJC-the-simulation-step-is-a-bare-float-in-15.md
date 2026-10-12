@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: numerical-domain
+milestone: v0.5.23
 touches: src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/chart_frame.py, tests, docs/MODEL.md, docs/ARCHITECTURE.md, docs/items/PL-WP52-a-compartment-advanced-on-its-own.md, docs/items/PL-V10T-each-supported-range-guard-is-tested-at-the.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 session that claimed it
 added: 2026-10-03

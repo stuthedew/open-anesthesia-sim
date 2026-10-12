@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: blocked-means-blocked
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, tools/doc_check.py, ROADMAP.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/triage.md, docs/items/PL-JHHC-a-decision-whose-answer-adds-a-commit-to-a-pull.md, docs/items/PL-LNNL-no-check-reads-a-markdown-document-as.md, docs/items/PL-QFCR-arming-tooling-and-gate-write-this-repository-s.md, docs/items/PL-RLS3-record-the-2026-instruction-file-measurements.md, docs/items/PL-VF3C-port-the-2026-09-25-multi-session-stress.md
 deferred-from: v0.6.0 - filed after the gate froze, and a docket defect in how the queue records state, which the layout milestone does not clear
 added: 2026-10-11

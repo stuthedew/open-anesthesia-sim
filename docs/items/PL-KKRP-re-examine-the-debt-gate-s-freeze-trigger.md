@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: planning
+milestone: v0.5.23
 touches: ROADMAP.md, .claude/skills/docket/modes/release.md
 added: 2026-09-16
 closed: 2026-10-11

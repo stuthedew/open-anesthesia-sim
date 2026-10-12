@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, defect
 feature: parse-dont-validate
+milestone: v0.5.23
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_series.py, src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/patient.py, tests/integration/test_simulation_view.py, tests/integration/test_controller.py, tests/unit/test_chart_frame.py, tests/unit/test_dashboard_frame.py, docs/ARCHITECTURE.md, docs/MODEL.md
 added: 2026-10-05
 closed: 2026-10-11

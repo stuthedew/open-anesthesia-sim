@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, test
 feature: parse-dont-validate
+milestone: v0.5.23
 touches: tests/unit/test_supported_range_edges.py
 blocked-by: PL-0YYV, PL-CN5S
 added: 2026-10-04

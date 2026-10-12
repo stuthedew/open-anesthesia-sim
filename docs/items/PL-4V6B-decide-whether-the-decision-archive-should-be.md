@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra, planning
 feature: docket-store
+milestone: v0.5.23
 touches: subprojects/docket, docs/items, docs/dead-ends.md
 added: 2026-09-13
 closed: 2026-10-03

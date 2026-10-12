@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, science
 feature: prose-renders-as-written
+milestone: v0.5.23
 touches: docs/MODEL.md
 added: 2026-10-04
 closed: 2026-10-05

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: numerical-domain
+milestone: v0.5.23
 touches: tests/unit/test_supported_ranges.py, tests/unit/test_dashboard_frame.py, tests/unit/test_formatting.py
 added: 2026-10-03
 closed: 2026-10-03

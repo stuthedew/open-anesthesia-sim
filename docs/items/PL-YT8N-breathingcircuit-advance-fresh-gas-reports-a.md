@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, defect
 feature: numerical-domain
+milestone: v0.5.23
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/__init__.py, tests/unit/test_compartment_primitives.py
 added: 2026-10-05
 closed: 2026-10-11

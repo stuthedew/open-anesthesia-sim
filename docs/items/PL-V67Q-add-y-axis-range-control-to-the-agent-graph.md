@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, ux
 feature: chart-readout
+milestone: v0.5.23
 touches: docs/items
 added: 2026-09-08
 closed: 2026-10-03
