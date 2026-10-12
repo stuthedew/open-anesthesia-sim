@@ -934,8 +934,8 @@ class ParameterControl:
     The range is not here. Two of the four are instance state rather than
     constants - the delivered dial's ceiling is the running agent's
     vaporizer maximum, and the fresh gas flow's range is what the mounted
-    machine narrows the model's envelope to - so `setting_readouts` reads
-    every control's range from the snapshot it draws, in one table.
+    machine narrows the model's envelope to - so `setting_readouts` states
+    every control's range in one table, reading those two from the snapshot.
     """
 
     control: ControlInput

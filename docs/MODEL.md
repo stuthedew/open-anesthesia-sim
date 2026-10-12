@@ -5178,8 +5178,11 @@ the domain the verification gates cover, so every other caller of `core/` —
 a headless run, a notebook, a test — could leave it. `core/supported_ranges.py`
 declares the three intervals now and builds each flow as a type only its guard
 produces, so a value outside its range is refused where the flow is built,
-before any compartment or settings record can hold it (`PL-0YYV`, below);
-`app/` imports the same constants for its sliders rather than restating them.
+before any compartment or settings record can hold it (`PL-0YYV`, below).
+`app/` never restates them: its ventilation and cardiac output sliders import
+the constants, and its fresh gas flow slider reads the circuit's accepted
+range, which is this envelope narrowed by the mounted machine's (§ "The
+model's envelope and a machine's deliverable range are two claims", below).
 
 **Refused, not clamped**, for the reason the vaporizer maximum is: a silently
 clamped setting would simulate, display, and chart a value the user did not
