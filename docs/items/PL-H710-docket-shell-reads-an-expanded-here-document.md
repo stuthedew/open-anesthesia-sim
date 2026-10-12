@@ -29,7 +29,7 @@ found it.
 inner `p` too; `$(p inner <<F` over `F ')'` and `)` runs `p inner`, and docket
 reads a command `)` too; `$(p inner <<'F'` over `F p y; $(p w))` runs `p
 inner`, and docket reads `p y` and `p w` too. Each is a row of
-`KNOWN_DEPARTURES` in `subprojects/docket/tests/test_shell.py`.
+`WARNED_DEPARTURES` in `subprojects/docket/tests/test_shell.py`.
 
 **Why it matters.** docket reads every command bash runs here and some it
 does not, so a guard refuses or an audit names a command no run makes -
@@ -44,4 +44,4 @@ route left, by bash's child rather than its parse.
 bash's child re-reads a substitution's text, which nothing reads twice here.
 
 **Done when.** Each row is read as bash runs it, the rows are gone from
-`KNOWN_DEPARTURES`, and a test pins them against bash.
+`WARNED_DEPARTURES`, and a test pins them against bash.

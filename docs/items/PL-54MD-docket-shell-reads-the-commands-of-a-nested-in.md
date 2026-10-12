@@ -87,7 +87,7 @@ read. Bash's child also re-parses the text with no compatibility end at its
 top level (`parse_and_execute`), so where the `$( )`'s own here-document ended
 early it reads that body on - `$(p inner <<F` over `F ')'` and `)` runs `p
 inner`, which `PL-GJKN`'s rule read as failing. `PL-H710` holds those
-over-reads as `KNOWN_DEPARTURES`.
+over-reads as `WARNED_DEPARTURES`.
 
 So `_Lexer.push_back` records, on the `$( )` the body runs, the span bash reads
 again after each such line inside it - not inside a backquote or a nested

@@ -1270,10 +1270,33 @@ def test_an_ansi_c_word_reads_as_bash_reads_it_in_the_c_locale(word: str) -> Non
 #: that will make it bash's: the script, what bash runs, and what `shell_words`
 #: reads from it whole and a piece of `script_lines` at a time. The generator
 #: leaves each form out; the fix deletes its row and lets the generator draw it.
-#: `PL-55R2` fixed the last of `PL-C4XY`'s. These are `PL-H710`'s, where bash
-#: runs a body's substitution in a child that re-reads its text, and each reads
-#: every command bash runs, and more (`PL-54MD`).
-KNOWN_DEPARTURES: list[object] = [
+#: Empty since `PL-55R2` fixed the last of `PL-C4XY`'s, so pytest reports the
+#: test below as skipped, for an empty parameter set; one bash warns running is
+#: a row of `WARNED_DEPARTURES` instead.
+KNOWN_DEPARTURES: list[object] = []
+
+
+@pytest.mark.parametrize(("script", "bash", "whole", "pieces"), KNOWN_DEPARTURES)
+def test_each_known_departure_from_bash_reads_as_its_row_records(
+    script: str,
+    bash: dict[tuple[str, ...], int],
+    whole: dict[tuple[str, ...], int],
+    pieces: dict[tuple[str, ...], int],
+) -> None:
+    """A form the comparison leaves out still reads as its item says, in bash and in the lexer.
+
+    A row whose reading has changed is fixed or has moved, and either way its
+    item, and the generator's exclusion of the form, want revisiting.
+    """
+    assert _bash_runs(script) == Counter(bash)
+    assert _lexer_runs(script) == Counter(whole)
+    assert _lexer_runs_by_piece(script) == Counter(pieces)
+
+
+#: Departures bash 5.2.21 warns running, read as `KNOWN_DEPARTURES` are:
+#: `PL-H710`'s, where bash runs a body's substitution in a child that re-reads
+#: its text, so each reads every command bash runs, and more (`PL-54MD`).
+WARNED_DEPARTURES: list[object] = [
     # The child runs the line ahead of the one the cut leaves open, and that one is one error.
     (
         "p <<E\n$(p a\np $(p deep <<F\nF))\nE\np after\n",
@@ -1298,19 +1321,14 @@ KNOWN_DEPARTURES: list[object] = [
 ]
 
 
-@pytest.mark.parametrize(("script", "bash", "whole", "pieces"), KNOWN_DEPARTURES)
-def test_each_known_departure_from_bash_reads_as_its_row_records(
+@pytest.mark.parametrize(("script", "bash", "whole", "pieces"), WARNED_DEPARTURES)
+def test_each_known_departure_bash_warns_on_reads_as_its_row_records(
     script: str,
     bash: dict[tuple[str, ...], int],
     whole: dict[tuple[str, ...], int],
     pieces: dict[tuple[str, ...], int],
 ) -> None:
-    """A form the comparison leaves out still reads as its item says, in bash and in the lexer.
-
-    A row whose reading has changed is fixed or has moved, and either way its
-    item, and the generator's exclusion of the form, want revisiting. Bash
-    may warn running one, as it does each of `PL-H710`'s.
-    """
+    """As `test_each_known_departure_from_bash_reads_as_its_row_records`, where bash warns."""
     assert _bash_runs(script, warns=True) == Counter(bash)
     assert _lexer_runs(script) == Counter(whole)
     assert _lexer_runs_by_piece(script) == Counter(pieces)
