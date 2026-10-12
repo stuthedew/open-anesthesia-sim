@@ -78,17 +78,20 @@ from __future__ import annotations
 
 import argparse
 import os
-import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.lines import file_text, record_text, split_lines  # noqa: E402
+from docket.lines import split_lines  # noqa: E402
 from docket.model import CLOSED_STATUSES, Item, parse_item  # noqa: E402
 from docket.store import read_items  # noqa: E402
-from docket.vcs import ITEM_FILE_RE, default_base, leading_ids  # noqa: E402
+from docket.vcs import ITEM_FILE_RE, default_base, leading_ids, read_git  # noqa: E402
+
+# `GitUnanswered` is docket's, raised for a ref git did not read and for a
+# `WORKING_TREE` the disk did not, so a reader of either catches one class.
+from docket.vcs import GitUnanswered as GitUnanswered  # noqa: E402
 
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
 
@@ -100,14 +103,6 @@ ITEMS_DIR = "docs/items"
 WORKING_TREE = "the working tree"
 
 
-class GitUnanswered(Exception):
-    """A tree read the verdict rests on that did not answer, and the reason.
-
-    Git's reason for a ref, and the disk's for `WORKING_TREE`, which declines
-    the same way rather than reading as a tree that closes nothing.
-    """
-
-
 def _git(args: list[str]) -> str:
     """Git's standard output, or `GitUnanswered` where git did not answer.
 
@@ -115,26 +110,14 @@ def _git(args: list[str]) -> str:
     its place. This used to return the empty string on any failure, on the
     ground that "an unreadable tree closes nothing" - which is the claim
     `PL-9RFP` disproved for `verify`, and it was wrong here in both directions
-    (`PL-1PBV`, and the module docstring). Any non-zero exit is a failure:
-    `ls-tree`, `show` and `rev-parse --abbrev-ref` have no "no" to give, and
-    exit 0 whenever they answered at all.
+    (`PL-1PBV`, and the module docstring).
 
-    Decoded as written, so a raw `\\r` in a record stays in it; the one blob
-    read translates its own (`PL-0R4M`).
+    `vcs.read_git`, so a read is classified, decoded and bounded as docket
+    reads the same question (`PL-S9JK`): a stdout that is not text here is
+    unread rather than a `UnicodeDecodeError`, and the one blob read comes
+    back translated as `read_text` translates its file (`PL-0R4M`).
     """
-    try:
-        result = subprocess.run(
-            ["git", *args], cwd=ROOT, capture_output=True, timeout=30, check=False
-        )
-    except (OSError, subprocess.SubprocessError) as error:
-        raise GitUnanswered(f"`git {args[0]}` could not run: {error}") from error
-    if result.returncode != 0:
-        stderr = record_text(result.stderr)
-        said = next((line.strip() for line in split_lines(stderr) if line.strip()), "")
-        raise GitUnanswered(
-            f"`git {args[0]}` exited {result.returncode}: {said or 'with nothing on stderr'}"
-        )
-    return record_text(result.stdout)
+    return read_git(args, ROOT)
 
 
 def closed_items_at(ref: str) -> dict[str, Item]:
@@ -152,7 +135,7 @@ def closed_items_at(ref: str) -> dict[str, Item]:
         name = path.strip().split("/")[-1]
         if not ITEM_FILE_RE.match(name):
             continue
-        text = file_text(_git(["show", f"{ref}:{path.strip()}"]))
+        text = _git(["show", f"{ref}:{path.strip()}"])
         item = parse_item(text, name)
         if item.status in CLOSED_STATUSES and item.identifier:
             closed[item.identifier] = item

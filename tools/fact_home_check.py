@@ -35,7 +35,8 @@ never by line, and it only shrinks: a count above an entry fails, and so does
 an entry the tree no longer fills, so a copy a member removes cannot return
 and the baseline cannot drift into a list nobody reads. The open members of
 `PL-5DZ8` drain it; `PL-HNXS` and `PL-9NZ3` drained the walks they named, and
-`PL-J4YY` the rest, moving the list into `docket.vcs` beside git's one runner.
+`PL-J4YY` the rest, moving the list into `docket.vcs` beside git's one runner;
+`PL-S9JK` drained the tools' and `verify`'s own git runners into it.
 
 Not read: the hooks written in shell, which call git directly and are held by
 their own tests; the test trees, where a `git init` in a fixture reads no
@@ -113,12 +114,16 @@ HOMES: tuple[Home, ...] = (
         reads="runs git",
         where=((DOCKET + "vcs.py", None), (HOOKS + "stop_hook_patch.py", "_git")),
         why=(
-            "`_run_git` in `docket.vcs` is the one runner - it decodes a path as written, "
-            "times out, and tells a silent repository from an empty answer - and every tool "
-            "reaches docket; a hook cannot (#1095), so `_git` in `stop_hook_patch.py` is the "
-            "hooks' one runner"
+            "`call_git` in `docket.vcs` is the one runner - it decodes a path as written, "
+            "times out, and `_run_git` and `read_git` read its exit by one classification, "
+            "which tells a silent repository from an empty answer - and every tool reaches "
+            "docket; a hook cannot (#1095), so `_git` in `stop_hook_patch.py` is the hooks' "
+            "one runner"
         ),
-        remedy="read git through `docket.vcs`, or through `stop_hook_patch._git` from a hook",
+        remedy=(
+            "read git through `docket.vcs` - `call_git`, or `read_git` where a failure must "
+            "raise - or through `stop_hook_patch._git` from a hook"
+        ),
     ),
     Home(
         rule="walk",
@@ -233,17 +238,13 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
     "subprojects/docket/src/docket/verify.py": {
         ("definition", "ASSERTION_RE"): 1,
         ("definition", "UNPARSABLE"): 1,
-        ("git", "_blobs"): 1,
-        ("git", "_git"): 1,
     },
     "tools/agent_identity_check.py": {("definition", "APP"): 1},
-    "tools/branch_id_check.py": {("git", "_git"): 1},
     "tools/branch_sweep.py": {("definition", "ITEMS"): 1, ("git", "_git"): 1},
     "tools/contrast_check.py": {
         ("definition", "APP"): 1,
         ("definition", "EXEMPT"): 1,
         ("definition", "LINE_CITATION_RE"): 1,
-        ("git", "_git_read"): 1,
     },
     "tools/dead_ends.py": {
         ("definition", "ITEMS"): 1,
@@ -260,18 +261,14 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("definition", "REDIRECTIONS"): 1,
         ("definition", "ROADMAP"): 1,
         ("definition", "SOFT_BREAK"): 1,
-        ("git", "_covered_by_gitignore"): 1,
-        ("git", "_git_output"): 1,
-        ("git", "_git_text"): 1,
     },
     "tools/fixture_id_check.py": {("definition", "JSON_KEY_RE"): 1, ("definition", "MARKER"): 1},
-    "tools/generator_check.py": {("definition", "ID_RE"): 1, ("git", "creation_parents"): 1},
+    "tools/generator_check.py": {("definition", "ID_RE"): 1},
     "tools/item_reads.py": {
         ("definition", "ITEMS"): 1,
         ("definition", "ITEM_ID"): 1,
         ("definition", "REPO"): 1,
     },
-    "tools/left_behind_check.py": {("git", "git_runner.run"): 1},
     "tools/literal_home_check.py": {("definition", "EXEMPT"): 1},
     "tools/main_ci_status.py": {
         ("definition", "API"): 1,
@@ -283,10 +280,8 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
     "tools/pr_body_check.py": {
         ("definition", "API"): 1,
         ("definition", "TIMEOUT_S"): 1,
-        ("git", "_git"): 1,
         ("github-api", "<module>"): 1,
     },
-    "tools/pr_title_check.py": {("git", "_git"): 1},
     "tools/required_checks_check.py": {
         ("definition", "API_VERSION"): 1,
         ("git", "_repo_from_git"): 1,

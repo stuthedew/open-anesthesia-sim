@@ -398,15 +398,11 @@ def _run_git(args: list[str], root: Path) -> str:
     saw it, so git's records are decoded as written, and only a blob - the one
     shape `_asks_for_a_blob` names - is translated as `read_text` translates
     the file it came from.
+
+    Run through `call_git`, the one place git is started, which `read_git` and
+    every tool share, so they read the same answer from the same run (`PL-S9JK`).
     """
-    try:
-        result = subprocess.run(
-            ["git", *args], cwd=root, capture_output=True, timeout=10, check=False
-        )
-        stdout = record_text(result.stdout)
-    except (OSError, subprocess.SubprocessError, UnicodeDecodeError):
-        return SILENT
-    return git_answer(args, result.returncode, stdout)
+    return call_git(args, root).answer
 
 
 def git_answer(args: list[str], returncode: int, stdout: str) -> str:
@@ -422,6 +418,157 @@ def git_answer(args: list[str], returncode: int, stdout: str) -> str:
     if (returncode == 1 and not _asks_for_a_diff(args)) or _asks_for_a_blob(args):
         return ""
     return SILENT
+
+
+#: How long one git call may run before it is read as unanswered, unless the
+#: caller names a longer bound for a read it knows is long.
+GIT_TIMEOUT = 10
+
+#: The bound for a read over a whole branch or the whole history - a patch, a
+#: path listing, a log of every item ever added - which grows with the
+#: repository: `verify`'s audit, `tools/doc_check.py`'s close-out sweep and
+#: `tools/generator_check.py`'s walk. The last took a second on 2026-10-12.
+#: Before `PL-S9JK` the first gave up here and the other two never did.
+LONG_GIT_TIMEOUT = 1800
+
+
+@dataclass(frozen=True)
+class GitCall:
+    """One git call as it finished: its exit status and output, or why it did not run.
+
+    Kept whole rather than collapsed, because three readers want three things
+    from one run: `_run_git` the answer, `read_git` git's reason when there is
+    none, and `tools/left_behind_check.py` the exit status and stderr to name a
+    decline by. Before `PL-S9JK` each tool ran git itself and decided those
+    three on its own: on `git show HEAD:no/such/file`, exit 128, `_run_git` read
+    an answer and `tools/branch_id_check.py` none; on a stdout that is not text
+    here, two tools raised `UnicodeDecodeError` where two others declined; and
+    past its bound one gave up after 1,800 seconds where another waited for ever.
+    """
+
+    args: tuple[str, ...]
+    #: Git's exit status, or `None` where it never reached one: not on `PATH`,
+    #: or killed at the timeout.
+    code: int | None
+    #: Standard output as git wrote it, undecoded, for the one reader of a
+    #: binary stream - `cat-file --batch` - as much as for every text one.
+    stdout: bytes
+    #: What git wrote to stderr, or why it could not run where it never did.
+    stderr: str
+
+    @property
+    def said(self) -> str:
+        """Git's reason in a line: the first it wrote to stderr, or why it could not run."""
+        return next((line.strip() for line in split_lines(self.stderr) if line.strip()), "")
+
+    @property
+    def answer(self) -> str:
+        """Git's output, `""` for git's no, or `SILENT`, by `git_answer`'s classification.
+
+        Output that is not text in `ENCODING` is a silence: git answered and
+        this cannot read it (`PL-8HSX`).
+        """
+        if self.code is None:
+            return SILENT
+        try:
+            text = record_text(self.stdout)
+        except UnicodeDecodeError:
+            return SILENT
+        return git_answer(list(self.args), self.code, text)
+
+    @property
+    def reason(self) -> str:
+        """Why this call gave no answer, naming the read by its subcommand.
+
+        Also what a caller says that reads an exit `answer` takes for git's
+        no - a `show` of a file it has just listed - as a read that failed.
+        """
+        command = f"`git {subcommand_of(self.args)}`"
+        if self.code is None:
+            return f"{command} could not run: {self.said}"
+        if self.code:
+            return f"{command} exited {self.code}: {self.said or 'with nothing on stderr'}"
+        return f"{command} printed output this cannot read as {ENCODING}"
+
+
+def call_git(
+    args: Sequence[str],
+    root: Path,
+    *,
+    timeout: float = GIT_TIMEOUT,
+    stdin: bytes | None = None,
+    env: Mapping[str, str] | None = None,
+) -> GitCall:
+    """Run git once in `root`, never raising: the one place a git process starts.
+
+    `git` is resolved through `PATH`; `_run_git`'s docstring says why. `env`
+    replaces the environment whole, as `subprocess.run` takes it.
+    """
+    argv = tuple(args)
+    try:
+        result = subprocess.run(
+            ["git", *argv],
+            cwd=root,
+            input=stdin,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+            env=None if env is None else dict(env),
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        return GitCall(argv, None, b"", str(error))
+    # Lenient: stderr is only ever a reason, never an answer.
+    stderr = result.stderr.decode(ENCODING, "replace")
+    return GitCall(argv, result.returncode, result.stdout, stderr)
+
+
+class GitUnanswered(Exception):
+    """A git read the caller cannot do without, which git did not answer, and git's reason."""
+
+
+def read_git(args: Sequence[str], root: Path, *, timeout: float = GIT_TIMEOUT) -> str:
+    """Git's answer, by `_run_git`'s classification, or `GitUnanswered` with git's reason.
+
+    For a read with no value to return in place of an answer: an empty list of
+    changed paths is a branch that changed nothing, so returning one for a read
+    that never happened reports a clean result nobody established (`PL-9RFP`).
+    Git's no - exit 1 where `git_answer` reads one - is an answer, the empty
+    string, as it is to `_run_git`. None of the reads that raised on it before
+    `PL-S9JK` exits 1 on a failure: `log`, `show`, `ls-tree`, `diff-tree` and
+    `merge-base` on a revision git cannot read all exit 128, and `status`
+    outside a repository too (git 2.43.0, 2026-10-12).
+    """
+    call = call_git(args, root, timeout=timeout)
+    text = call.answer
+    if not answered(text):
+        raise GitUnanswered(call.reason)
+    return text
+
+
+#: What `cat-file --batch` prints in place of an object's header where it can
+#: give none: `missing` for a name nothing answers to, `ambiguous` for a short
+#: name more than one object does (git-cat-file(1), "OUTPUT").
+_NO_OBJECT = frozenset({b"missing", b"ambiguous"})
+
+
+def batch_header(line: bytes) -> tuple[str, str, int] | None:
+    """`(object id, type, size)` from one `cat-file --batch` header, or `None` for no object.
+
+    `<object> missing` and `<object> ambiguous` are both "no file there", and
+    the batch carries on after either. Read two ways before `PL-S9JK`: `verify`
+    read `ambiguous` as no file, and `GitRunner._blob` as a shape it could not
+    read, which dropped the batch for the whole root. Read by the last field,
+    since `<object>` echoes the name as asked and a path may hold a space.
+
+    Raises `ValueError` for a line in neither shape, which no reader can trust
+    the stream past.
+    """
+    fields = line.split()
+    if len(fields) >= 2 and fields[-1] in _NO_OBJECT:
+        return None
+    if len(fields) != 3 or not fields[2].isdigit():
+        raise ValueError(f"not a `cat-file --batch` header: {line!r}")
+    return fields[0].decode("ascii"), fields[1].decode("ascii"), int(fields[2])
 
 
 @dataclass
@@ -729,24 +876,21 @@ class GitRunner:
         if not header:
             self._drop(root)
             return None
-        fields = header.split()
-        if len(fields) >= 2 and fields[-1] == b"missing":
-            return ""
-        if len(fields) != 3:
-            self._drop(root)
-            return None
         try:
-            size = int(fields[2])
+            found = batch_header(header)
         except ValueError:
             self._drop(root)
             return None
+        if found is None:
+            return ""
+        _, kind, size = found
         try:
             body: bytes = stream.stdout.read(size)
             stream.stdout.read(1)  # the newline git writes after every object
         except (OSError, ValueError):
             self._drop(root)
             return None
-        if fields[1] != b"blob" or body is None or len(body) != size:
+        if kind != "blob" or body is None or len(body) != size:
             return None
         try:
             decoded = body.decode(ENCODING)

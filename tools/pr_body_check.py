@@ -188,7 +188,6 @@ from __future__ import annotations
 
 import json
 import re
-import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -200,11 +199,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_docket_config  # noqa: E402
-from docket.lines import record_text  # noqa: E402
 from docket.model import parse_front_matter  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import (  # noqa: E402
     REMOTE,
+    call_git,
     default_base,
     github_slug,
     is_shallow,
@@ -286,19 +285,16 @@ TOMBSTONE = (
 
 
 def _git(*args: str) -> str:
-    """Run git in the repository root, returning stdout, or "" on any failure.
+    """Git's answer in the repository root, by `vcs.call_git` (`PL-S9JK`).
 
-    Decoded as written, so a raw `\\r` in a subject or a body stays in it
-    (`PL-0R4M`).
+    `""` for git's no, and `SILENT` - which reads as `""` to every caller here
+    - where it gave none, so `default_base` and `is_shallow`, which this serves,
+    tell the two apart as they do through `vcs._run_git`. This used to return
+    `""` for every failure, so a base whose read went unanswered was a candidate
+    git had said was not there. Decoded as written, so a raw `\\r` in a subject or
+    a body stays in it (`PL-0R4M`).
     """
-    try:
-        return record_text(
-            subprocess.run(
-                ["git", *args], capture_output=True, timeout=TIMEOUT_S, check=True, cwd=ROOT
-            ).stdout
-        )
-    except (OSError, subprocess.SubprocessError):
-        return ""
+    return call_git(args, ROOT).answer
 
 
 def default_branch_ref() -> str | None:

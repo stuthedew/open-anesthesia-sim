@@ -45,7 +45,7 @@ from . import vcs
 from .arming import RECORDS
 from .config import Config
 from .grep import Cache, Wrap, wrapped
-from .lines import file_text, record_text, split_lines
+from .lines import ENCODING, file_text, split_lines
 from .model import (
     CLOSED_STATUSES,
     WITHDRAWN_MARKER,
@@ -761,36 +761,33 @@ def _blobs(root: Path, specs: Collection[str]) -> dict[str, tuple[str, bytes] | 
     if any("\n" in spec for spec in ordered):  # the protocol's own delimiter
         return None
     try:
-        result = subprocess.run(
-            ["git", "cat-file", "--batch"],
-            cwd=root,
-            input="".join(f"{spec}\n" for spec in ordered).encode(),
-            capture_output=True,
-            timeout=600,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
+        # Encoded as `vcs.GitRunner._blob` encodes a spec, by the codec git's
+        # output is decoded with, so a path read from git names the same bytes.
+        asked = "".join(f"{spec}\n" for spec in ordered).encode(ENCODING)
+    except UnicodeEncodeError:
         return None
-    if result.returncode != 0:
+    call = vcs.call_git(["cat-file", "--batch"], root, stdin=asked, timeout=vcs.LONG_GIT_TIMEOUT)
+    if call.code != 0:
         return None
-    out, at = result.stdout, 0
+    out, at = call.stdout, 0
     found: dict[str, tuple[str, bytes] | None] = {}
     for spec in ordered:
         end = out.find(b"\n", at)
         if end < 0:
             return None
-        fields = out[at:end].split()
+        try:
+            header = vcs.batch_header(out[at:end])
+        except ValueError:
+            return None
         at = end + 1
-        if fields[-1:] in ([b"missing"], [b"ambiguous"]):
+        if header is None:
             found[spec] = None
             continue
-        if len(fields) != 3 or not fields[2].isdigit():
-            return None
-        size = int(fields[2])
+        oid, kind, size = header
         body = out[at : at + size]
         at += size + 1  # git ends every object with a newline
         # A tree or a submodule at the path is not a file an assertion lives in.
-        found[spec] = (fields[0].decode(), body) if fields[1] == b"blob" else None
+        found[spec] = (oid, body) if kind == "blob" else None
     return found
 
 
@@ -855,8 +852,9 @@ def _file_steps(
     since the branch forked.
     """
     if commits:
-        status, listing = _run(["git", "show", "-s", "--format=%H %P", *commits], root)
-        if status != 0:
+        try:
+            listing = _git(["show", "-s", "--format=%H %P", *commits], root)
+        except GitUnanswered:
             return [], {}, f"the parents of {len(commits)} commit(s) could not be read"
         parents_of = {
             fields[0]: tuple(fields[1:])
@@ -865,8 +863,8 @@ def _file_steps(
         }
         revisions = [(commit, parents_of.get(commit, ())) for commit in reversed(commits)]
     else:
-        status, fork = _run(["git", "merge-base", base, "HEAD"], root)
-        if status != 0:
+        fork = vcs.call_git(["merge-base", base, "HEAD"], root).answer
+        if not fork.strip():
             return [], {}, f"{base} and HEAD share no commit to compare from"
         revisions = [("HEAD", (fork.strip(),))]
     steps: list[_FileStep] = []
@@ -951,8 +949,7 @@ def removed_assertions(
     steps, keys, unread = _file_steps(root, base, commits)
     if unread:
         return AssertionAudit(unread=unread)
-    status, _ = _run(["git", "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}"], root)
-    if status != 0:
+    if not vcs.call_git(["rev-parse", "--verify", "--quiet", f"{base}^{{commit}}"], root).answer:
         return AssertionAudit(
             unread=f"{base} does not name a commit to read the base's copies from"
         )
@@ -1949,24 +1946,20 @@ def _run(
 ) -> tuple[int, str]:
     """Run a command, returning its exit status and combined output.
 
-    Two kinds of command come through here, and both are meant to. Some
-    callers read history with `git`, named rather than given an absolute
-    path for the same reason as `vcs._run_git`: the path differs by
-    environment. The other two run a command recorded in the store - an
-    item's `verify:` field, and the configured check command - as written
-    and through a shell, because running the recorded command verbatim is
-    the entire job. Both were trusted enough to be committed to the
-    repository, so there is no untrusted input to guard against here; the
-    guard that matters is review of what gets committed.
+    What comes through here is a command recorded in the store - an item's
+    `verify:` field, and the configured check command - run as written and
+    through a shell, because running the recorded command verbatim is the
+    entire job. Both were trusted enough to be committed to the repository, so
+    there is no untrusted input to guard against here; the guard that matters
+    is review of what gets committed.
 
-    **A git read through here has to read the status it gets back**, because
-    the output is stdout and stderr together: discard the status and git's
-    complaint arrives as data. That is how a base that did not resolve came
-    back from `changed_paths` as three changed paths (`PL-9RFP`). The reads
-    left here are the ones with a use for a failure, such as `git show
-    <base>:<path>` exiting 128 for a file the base does not hold. A read with no
-    such use goes through `_git`, which cannot hand its failure back as an
-    answer.
+    **Git does not come through here.** The output is stdout and stderr
+    together, so a git read that discarded the status had git's complaint
+    arrive as data: that is how a base that did not resolve came back from
+    `changed_paths` as three changed paths (`PL-9RFP`). Every git read goes
+    through `vcs.call_git` - `_git` where a failure ends the audit - so it is
+    classified, decoded and bounded as `vcs` reads the same question
+    (`PL-S9JK`).
     """
     try:
         result = subprocess.run(
@@ -1989,8 +1982,8 @@ def _run(
     return result.returncode, (result.stdout or "") + (result.stderr or "")
 
 
-class GitUnanswered(Exception):
-    """A git read the audit rests on that git did not answer, and git's reason."""
+#: Raised by `_git`; `vcs`'s, so a reader of `verify` and one of `vcs` catch one class.
+GitUnanswered = vcs.GitUnanswered
 
 
 def _git(args: list[str], root: Path) -> str:
@@ -2005,42 +1998,14 @@ def _git(args: list[str], root: Path) -> str:
     (`PL-9RFP`). Nothing here has to remember to check a status, and a caller
     that forgets to catch fails loudly instead of answering.
 
-    Any non-zero exit is a failure, which is narrower than `vcs._run_git` on
-    purpose. There, `rev-parse --verify` and `merge-base` exit 1 to say no, and
-    that is an answer. None of the reads here has a no to give: `log`, `diff`,
-    `show` and `status` exit 0 whenever they answered at all.
-
-    The reason is git's first line on stderr, which names the revision it
-    could not read. Only stdout is returned, so none of stderr can reach a
-    caller as output.
+    `vcs.read_git`, so a read here is classified, decoded and bounded as
+    `vcs._run_git` reads the same question (`PL-S9JK`): the reason is git's
+    first line on stderr, which names the revision it could not read, and only
+    stdout is returned, so none of stderr can reach a caller as output. Decoded
+    as written, so a raw `\r` in a subject or a `-z` path stays in its record;
+    the two patch reads translate theirs (`PL-0R4M`).
     """
-    # By the subcommand, not `args[0]`, which is `-c` for every read
-    # `vcs.changed_path_args` builds.
-    command = f"`git {vcs.subcommand_of(args)}`"
-    try:
-        result = subprocess.run(
-            ["git", *args],
-            cwd=root,
-            capture_output=True,
-            # The bound these reads had while they went through `_run`.
-            timeout=1800,
-            check=False,
-        )
-        # Decoded as written, so a raw `\r` in a subject or a `-z` path stays
-        # in its record; the two patch reads translate theirs (`PL-0R4M`).
-        stdout, stderr = record_text(result.stdout), record_text(result.stderr)
-    except (OSError, subprocess.SubprocessError) as error:
-        raise GitUnanswered(f"{command} could not run: {error}") from error
-    except UnicodeDecodeError as error:
-        # A path printed as written whose bytes are not text here: unread, so
-        # the audit stops rather than passing a path it cannot compare.
-        raise GitUnanswered(f"{command} printed a path this cannot read: {error}") from error
-    if result.returncode != 0:
-        said = next((line.strip() for line in split_lines(stderr) if line.strip()), "")
-        raise GitUnanswered(
-            f"{command} exited {result.returncode}: {said or 'with nothing on stderr'}"
-        )
-    return stdout
+    return vcs.read_git(args, root, timeout=vcs.LONG_GIT_TIMEOUT)
 
 
 def item_commits(root: Path, base: str, identifier: str) -> tuple[str, ...]:
@@ -2274,10 +2239,22 @@ def _net_line_changes(
 
 def _store_at(root: Path, base: str, items_dir: str) -> tuple[str, ...] | None:
     """The item filenames the base ref holds, or `None` where its store cannot be read."""
-    status, listing = _run(["git", "ls-tree", "--name-only", f"{base}:{items_dir}"], root)
-    if status != 0:
+    listing = vcs.call_git(["ls-tree", "--name-only", f"{base}:{items_dir}"], root).answer
+    if not vcs.answered(listing):
         return None
     return tuple(line.strip() for line in split_lines(listing) if line.strip())
+
+
+def _listed_copy(root: Path, spec: str) -> str | None:
+    """The file at `<rev>:<path>` that `_store_at` listed, or `None` where git did not give it.
+
+    Absent counts as unread here, though `vcs.git_answer` reads `git show`'s
+    exit 128 on a blob as "not there": the caller has just listed the file, so
+    a copy git will not show is a read that failed, not an item the base lacks.
+    """
+    call = vcs.call_git(["show", spec], root)
+    text = call.answer
+    return text if call.code == 0 and vcs.answered(text) else None
 
 
 def _base_copy(held: tuple[str, ...], identifier: str) -> str:
@@ -2436,8 +2413,8 @@ def _changes(
     if commits:
         steps = [(f"{commit}^:{path}", f"{commit}:{path}") for commit in commits]
     else:
-        status, fork = _run(["git", "merge-base", base, "HEAD"], root)
-        if status != 0:
+        fork = vcs.call_git(["merge-base", base, "HEAD"], root).answer
+        if not fork.strip():
             return []
         steps = [(f"{fork.strip()}:{path}", f"HEAD:{path}")]
     blobs = _blobs(root, {spec for step in steps for spec in step})
@@ -2591,8 +2568,8 @@ def _added_record(root: Path, base: str, path: str) -> bool:
         return False
     if _git(["ls-tree", "--name-only", base, "--", path], root).strip():
         return False
-    status, text = _run(["git", "show", f"HEAD:{path}"], root)
-    if status != 0:
+    text = vcs.call_git(["show", f"HEAD:{path}"], root).answer
+    if not text:
         return False
     fields, _ = parse_front_matter(text)
     number = name.removesuffix(".md")
@@ -2737,8 +2714,8 @@ def read_commission(root: Path, base: str, items_dir: str, item: Item) -> Commis
     was = _base_copy(held, item.identifier)
     if not was:
         return Commission()
-    status, before = _run(["git", "show", f"{base}:{items_dir}/{was}"], root)
-    if status != 0:
+    before = _listed_copy(root, f"{base}:{items_dir}/{was}")
+    if before is None:
         return Commission(unread=f"{base}:{items_dir}/{was} could not be read")
     fields, _ = parse_front_matter(before)
     return Commission(fields=fields)
@@ -2888,8 +2865,8 @@ def front_matter_check(
         return Check(
             name, True, f"a new item file - {base} holds no copy to differ from", commission=True
         )
-    status, before = _run(["git", "show", f"{base}:{items_dir}/{was}"], root)
-    if status != 0:
+    before = _listed_copy(root, f"{base}:{items_dir}/{was}")
+    if before is None:
         return Check(
             name,
             False,
