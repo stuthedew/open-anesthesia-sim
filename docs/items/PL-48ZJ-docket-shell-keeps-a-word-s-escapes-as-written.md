@@ -67,6 +67,33 @@ quoting form's text is. The match is withdrawn because of this paragraph.
 departure of this kind reaching `main` from now on; read against `bin/docket
 generators --misread` on 2026-10-12, it misreads no recorded fact.
 
+**Route, measured 2026-10-12.** The `$'` branch hands what `ansi_c_end`
+bounds to one decoder, written from bash 5.2.21's behaviour under
+`LC_ALL=C` (measured byte by byte with `od`). It works on the string's UTF-8
+bytes and decodes its result with `surrogateescape`:
+
+- `\a \b \e \E \f \n \r \t \v` are their control characters and `\\ \' \"
+  \?` the character itself; any other escaped character, `\8`, `\9` and a
+  trailing `\c` among them, is kept with its backslash.
+- `\NNN` takes one to three octal digits, masked to a byte: `\1012` is `A2`
+  and `\400` a NUL.
+- `\xHH` takes one or two hex digits, and `\x` with none is kept as written;
+  `\x{...}` takes every hex digit and an optional `}`, masked to a byte, so
+  `\x{4142}` is `B`, `\x{41` is `A` and `\x{}` a NUL.
+- `\u` and `\U` take up to four and eight hex digits, and with none keep the
+  escape as written. At or below 0x7f the value is its character; above it,
+  the escape bash writes in the C locale, `\u%04X` below 0x10000 and
+  `\U%08X` below 0x80000000; at or above that, nothing.
+- `\cX` is `X` upper-cased and masked with 0x1f, `\c?` is 0x7f, and `\c\\`
+  takes both backslashes, a multibyte `X` giving up its first byte alone.
+- A NUL ends that `$'...'` segment's text and nothing more: `x$'a\0b'y` is
+  `xay`.
+
+The comparison draws escapes whose result is printable ASCII with no NUL;
+`test_an_ansi_c_word_reads_as_bash_reads_it_in_the_c_locale` holds a table of
+the rest to bash run under `LC_ALL=C`, byte for byte, and
+`tests/unit/test_no_prune_guard.py` pins `$'\x67it' fetch --prune` refused.
+
 **Done when.** A `$'...'` word's text has its escapes replaced as §3.1.2.4
 lists them and bash replaces them in the C locale, in both `shell_words` and
 `flat_reading`, the comparison draws `$'...'` with escapes in it, and its

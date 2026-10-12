@@ -74,6 +74,34 @@ paragraph.
 departure of this kind reaching `main` from now on; read against `bin/docket
 generators --misread` on 2026-10-12, it misreads no recorded fact.
 
+**Route, measured 2026-10-12.** One matched-pair reader, modelled on
+`_Lexer.parameter`, reads an arithmetic body as bash 5.2's
+`parse_matched_pair` does: it counts parentheses, steps over quotes,
+backslash escapes and `$'...'`, reads each `$` expansion and backquote it
+meets through `_Lexer.substitution`, so `$(( $(p x) + 1 ))` still runs `p x`,
+takes `#`, a newline and `<<` as plain characters, and is unreadable where
+nothing closes it. Then:
+
+- A `$((` that `_arithmetic` finds arithmetic stays part of its word, as
+  written, with no body clause and no list of `FlatReading.substituted` of its
+  own; only a `$(` that is not arithmetic is read inline for the hooks.
+- A `((` at a command's head, and after `for` there, is one word, as written,
+  not `quoted`, so it stays apart from `'((1))'`, refused as a command name,
+  and a plain string in the flat view. `_Grammar.arithmetic` and the
+  `arithmetic` parameters go, since a newline inside is inside the word. The
+  head after the closing `))` stays as `PL-9NMR` describes it.
+- Refuted: `((` and `))` as operator tokens, which leave the expression a
+  command, and `quoted=True`, which reads the word as `'((1))'`.
+
+Bash 5.2.21 measured: `(( $(p y) ))` runs `p y` and exits 1, so the generator
+keeps a drawn arithmetic command's status zero; a backquoted substitution
+expanding to nothing inside `$(( 1 + ... ))` leaves `+` with no operand, a
+syntax error, so the generator draws substitutions in arithmetic only where
+the expression stays valid; `$(( 16#ff ))` is 255. The generator draws
+`$(( ))`, `(( ))` and `for (( ))`, and `_handed` reads a `((`-led command as it
+reads `for` and `[[`. `PL-X1VN` reuses the matched-pair reader, so this lands
+first.
+
 **Done when.** An arithmetic expansion's body is no clause of `every_clause()`
 and holds no list of `FlatReading.substituted`, an arithmetic command's `((`
 and `))` open and close no subshell, an arithmetic `for`'s expressions are no

@@ -66,6 +66,26 @@ paragraph.
 departure of this kind reaching `main` from now on; read against `bin/docket
 generators --misread` on 2026-10-12, it misreads no recorded fact.
 
+**Route, measured 2026-10-12.** Inside `[[ ]]`, `&&`, `||`, `(`, `)`, `<` and
+`>` read as words of the conditional rather than as operators: in
+`shell_words` they cut no clause, and in the flat view they are plain
+strings, never `Operator`. A group depth refuses what bash 5.2.21 refuses: a
+`)` with no group open, a `]]` with one open, and every other operator (`;`,
+`|`, `&`, `>>`, `<<`, `<&`, `>|`, `&>`, `<>`, `;;`, `|&`, `<<<`), while a `<(`
+process substitution stays one. The word after an unquoted `=~` is read with
+`PL-3Z8B`'s matched-pair reader, a `(` opening a pair and `|` part of the
+word, and the word after `==`, `=` or `!=` with extglob's `@(`, `*(`, `+(`,
+`?(` and `!(` as pairs, as bash's parser reads them under `PST_REGEXP` and
+`PST_EXTPAT`. Measured accepted: `[[ -e <(true) ]]`, `[[(a)]]`, `=~ x|y`, `=~
+^(a|x)$`, `=~ ( x )`, `== @(a|x)*`, `= @(x)`, `!= !(y)`, `"a"\ @(b)`, and a
+newline inside a pair; refused: `[[ ( -n a ]]`, `[[ a ) ]]`, `[[ x == (a) ]]`,
+`[[ x == a|b ]]`, `=~ a)b`, `=~ a(b` and `[[ x=~(x) ]]`. Refuted: the
+operators as string tokens that `commands` skips, which gives one string two
+meanings. `test_a_test_bash_finds_unclosed_is_unreadable` keeps passing, the
+generator draws `&&`, `||`, groups, `<`, `>`, `=~` and extglob patterns, and
+`.claude/hooks/shell_split.py`'s list of what it does not read loses the
+`[[ ]]` operators.
+
 **Done when.** Inside `[[ ]]` an `&&` cuts no clause and `(`, `)`, `||`, `<`
 and `>` are read as the conditional's own, a regular expression's or
 pattern's groups and bars are part of its word, in both `shell_words` and

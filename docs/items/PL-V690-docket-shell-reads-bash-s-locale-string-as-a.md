@@ -57,6 +57,17 @@ paragraph.
 departure of this kind reaching `main` from now on; read against `bin/docket
 generators --misread` on 2026-10-12, it misreads no recorded fact.
 
+**Route, measured 2026-10-12.** In `_Lexer.read`'s `$` branch, a `$"` reads as
+the double-quoted string with its `$` dropped: record the continuations
+between the `$` and the quote as the `$'` branch does, then read the string
+with `double_quoted` from the quote, so `text` and `spelled` hold the string's
+text and the word is `quoted`. Bash 5.2.21 measured: `$"git"` is `git`,
+`a$"b"c` is `abc`, `$"$(p x)"` runs `p x`, and `"$"x""` is `$x`, a `$"` inside
+double quotes opening no locale string. The generator's `_word` draws
+`$"..."` beside the other quoting forms, `test_a_locale_string_reads_as_its_double_quoted_text`
+pins both views, and `tests/unit/test_no_prune_guard.py` pins `$"git" fetch
+--prune` refused.
+
 **Done when.** `$"..."` reads as the double-quoted string with its `$` dropped,
 as bash reads it in the C locale, in both views, and the comparison's known
 departure row for it is gone.

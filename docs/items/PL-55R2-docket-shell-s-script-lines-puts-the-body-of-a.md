@@ -69,6 +69,22 @@ withdrawn because of this paragraph.
 departure of this kind reaching `main` from now on; read against `bin/docket
 generators --misread` on 2026-10-12, it misreads no recorded fact.
 
+**Route, measured 2026-10-12.** Keep the line pieces, and add each outermost
+substitution that `_Lexer.expanded` reads in a top-level unquoted body, which
+lies in a gap between two pieces, as a piece of its own: record a span where
+the call grew `bodies`, in a new list `expanded` rolls back with the rest of
+its state on `_Unreadable`, keep the outermost spans, and merge them into the
+pieces in offset order. Refuted: a body and its delimiter in the opening
+line's piece, since pieces would then hold input text, which breaks
+`check_coverage_gate`'s substring test, `_make_mentions`' line fallback, and
+`workflow_commands`' contract and its test. With the route, `_make_mentions`
+reads a body's `$(make check)` as a mention on the body's line and
+`workflow_commands` yields it, so its paths are held to the tree, while the
+one-word command that is the substitution itself names no program a check
+resolves. `workflow_commands`' docstring sentence that a body and delimiter
+are no line at all is amended, and the comparison's `p top-body` command and
+the subtraction that drops it go.
+
 **Done when.** Every command bash runs from a script is a command of one
 `script_lines` piece's reading, a body's substitutions included, and the
 comparison's subtraction of body commands from the pieces' sum, which pins
