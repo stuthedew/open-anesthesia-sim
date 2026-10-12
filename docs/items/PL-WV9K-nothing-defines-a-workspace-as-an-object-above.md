@@ -3,12 +3,14 @@ id: PL-WV9K
 title: Nothing defines a Workspace as an object above PL-C842's layout tree - the named set, the tab lifecycle with item 34's last-workspace floor, and where a learner's own presets are kept
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: planning
 feature: interface-areas
+touches: src/anesthesia_sim/layout/, tests/unit, docs/ARCHITECTURE.md, ROADMAP.md
 blocked-by: PL-1FT6
-touches: ROADMAP.md, docs/ARCHITECTURE.md
 added: 2026-09-16
+payoff: a Workspace and the ordered set of them exist as objects the tab strip, the store and run pinning can address, and removing the last one is refused by the type rather than by a dialog
+verify: grep -q 'def test_the_last_workspace_cannot_be_removed' tests/unit/test_layout_workspace.py
 ---
 
 **Problem.** Nothing defines a Workspace as an object above PL-C842's layout tree - the named set, the tab lifecycle with item 34's last-workspace floor, and where a learner's own presets are kept
@@ -157,3 +159,18 @@ The design that follows:
   nothing written before the first save, a failed save reported at the
   action), and a newer-version file's "read-only session" means the Save
   action is disabled with the reason shown beside it.
+
+## Moved to `ready`, 2026-10-12
+
+Set by `PL-1FT6`'s close-out. The decision this item's Done when asks for is
+recorded in § "Answers 2026-09-27" and restated in `ROADMAP.md` v0.6.0
+Required scope entry 11, which names this item as the Workspace object, with
+the last-Workspace floor "enforced by the type rather than by a warning
+dialog". So what is left is the object: `Workspace` and `WorkspaceSet` in
+`src/anesthesia_sim/layout/`, pure Python, carrying Q1's members and Q2's
+operations, with the floor as `remove` raising `LastWorkspace` and each
+View's saved state held opaquely per Area id per kind. Q1's `next_area_id` is
+the layout's and is on `LayoutModel` already. `pinned_run` is added by
+`PL-7Z84`, which supplies the run identity it holds and is itself blocked on
+this item. Nothing else open holds this; `PL-SSQW`'s store, `PL-KXTL`'s shipped
+set and `PL-50PZ` wait on it.

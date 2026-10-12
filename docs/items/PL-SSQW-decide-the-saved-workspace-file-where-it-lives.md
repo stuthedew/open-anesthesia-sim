@@ -6,8 +6,8 @@ effort: M
 status: blocked
 classes: planning
 feature: interface-areas
-blocked-by: PL-1FT6
 touches: docs/ARCHITECTURE.md
+blocked-by: PL-WV9K
 added: 2026-09-16
 recurrences: 2026-09-20 PL-ZW0J
 ---
@@ -156,3 +156,18 @@ before, and the pre-migration copy is kept at that moment. **Answered
 the same day:** the owner chose reading A in `PL-WV9K` § "Answers
 2026-09-27" (reopening loads the saved default, no last-state section), so
 Q3, Q4 and Q6 stand as worded and the file holds one `WorkspaceSet`.
+
+## Blocked on `PL-WV9K`, 2026-10-12
+
+Set by `PL-1FT6`'s close-out. Two parts of this are built at the level of one
+layout document. `layout_from_json` refuses a newer `schema_version` with
+`UnsupportedSchemaVersion` before it reads the body, and an invalid document
+with `LayoutFormatError` naming the invariant and where
+(`src/anesthesia_sim/layout/serialization.py`, tested with no `QApplication`
+in `tests/unit/test_layout_serialization.py`, a document one version ahead
+included). And `tools/import_boundary_check.py` refuses `PySide6` and
+`pyqtgraph` under `layout/`, Q8's "nothing from Qt". What holds the rest is
+Q2: the file holds one `WorkspaceSet`, whose invariants are the set's, and that
+object is `PL-WV9K`'s. The store, the atomic write, `layout/migrations.py`
+with its empty table and the `docs/ARCHITECTURE.md` user-state entry wait on
+it.

@@ -2,9 +2,9 @@
 
 `SimulationView` is the shared half of the dashboard along `PL-B9PY`'s seam.
 It holds what two runs cannot each have their own of - the concentration
-chart, the wash-in plot, the compartment legend, the time base and its
-caption, the two clinical reference lines - and one `RunView` per run for
-everything else. Every surface is an independent widget inside nested
+chart, the wash-in plot, the compartment legend and the selection it shows,
+the time base and its caption, the two clinical reference lines - and one
+`RunView` per run for everything else. Every surface is an independent widget inside nested
 splitters whose handles are inert (`PL-25KS`), so a later item can let a
 reader resize them by enabling the handles.
 
@@ -33,7 +33,7 @@ from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import Final
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QResizeEvent
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -55,6 +55,10 @@ from anesthesia_sim.app.chart_time_base import (
     SELECTABLE_TIME_BASES,
     ChartTimeBase,
     time_base_for_span,
+)
+from anesthesia_sim.app.compartment_selection import (
+    INITIAL_COMPARTMENT_SELECTION,
+    CompartmentSelection,
 )
 from anesthesia_sim.app.controller import BranchedCase, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
@@ -92,6 +96,7 @@ from anesthesia_sim.app.qt_widgets import (
     inert_splitter,
     styled_label,
 )
+from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.stylesheets import (
     foreground_stylesheet,
@@ -221,6 +226,15 @@ class SimulationView(QWidget):
             what the coalescing rule (`PL-R2YM`) is about.
     """
 
+    compartment_selection_changed = Signal(object)
+    """Emitted with the compartment selection each time this view sets it.
+
+    On a reader's request, and on every change to the run set, which may
+    leave it as it was. Every legend showing this view's selection is
+    connected to it rather than called, so one that has been closed is
+    simply no longer told, and a second is told the same (`PL-VN6M`).
+    """
+
     def __init__(
         self,
         controllers: Sequence[SimulationController],
@@ -293,6 +307,10 @@ class SimulationView(QWidget):
         # render tick would be gone before a reader could read it.
         self._fork_refusal: str | None = None
         self._time_base: ChartTimeBase | None = None
+        # Which compartments both runs are drawn with: this view's, handed to
+        # the legend and to every frame, so neither is read back from the
+        # other and closing the legend takes nothing with it (`PL-VN6M`).
+        self._compartment_selection = INITIAL_COMPARTMENT_SELECTION
         self._frame: ChartFrame | None = None
         self._render_pending = False
         self.presented_frames = 0
@@ -300,6 +318,8 @@ class SimulationView(QWidget):
         self._concentration_chart = ConcentrationChart()
         self._wash_in_chart = WashInChart()
         self._legend = TraceLegend()
+        # Before any run is placed, since placing one sets the selection.
+        self.compartment_selection_changed.connect(self._legend.show_selection)
         self._wash_in_legend = WashInLegend()
         self._time_base_dropdown = QComboBox()
         self._time_base_dropdown.setFixedWidth(TIME_BASE_SELECTOR_WIDTH)
@@ -319,9 +339,9 @@ class SimulationView(QWidget):
         )
         self._hidden_traces_text.setHidden(True)
         # Conditional text, and it earns a sentence on
-        # `.claude/rules/ui-reader.md`'s own test: it is the one state in
-        # which the legend's checked boxes and the plot's curves disagree by
-        # design, and no label, unit or axis title can carry that.
+        # `.claude/rules/ui-reader.md`'s own test: it says why boxes the
+        # reader checked have come unchecked, which no label, unit or axis
+        # title can carry.
         self._capped_traces_text = styled_label(
             "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
         )
@@ -353,7 +373,7 @@ class SimulationView(QWidget):
             self._place_run(controller)
 
         self._time_base_dropdown.currentIndexChanged.connect(self._handle_time_base_change)
-        self._legend.visibility_changed.connect(self._handle_trace_visibility_change)
+        self._legend.compartment_requested.connect(self._handle_compartment_request)
 
         self._render_timer = QTimer(self)
         self._render_timer.setTimerType(Qt.TimerType.PreciseTimer)
@@ -377,6 +397,12 @@ class SimulationView(QWidget):
         """
 
         return self._case
+
+    @property
+    def compartment_selection(self) -> CompartmentSelection:
+        """The compartments the chart draws, which the legend shows and asks to change."""
+
+        return self._compartment_selection
 
     # -------------------------------------------------------------- layout
 
@@ -726,25 +752,29 @@ class SimulationView(QWidget):
         freeze_splitter_handles(self._sections)
 
     def _rename_runs(self) -> None:
-        """Tell both legends and every run how many runs there now are.
+        """Hold the compartment selection to the run count, and tell both legends and every run.
 
         Said on every change to the run set rather than once at
         construction. A lone run is given no name, having nothing to be told
         apart from; two runs are named by `run_label`, which is what the
         legend entries call them. The same count decides whether an agent
-        selector may be used at all, because two runs share one MAC axis.
+        selector may be used at all, because two runs share one MAC axis,
+        and whether the compartment selection is held to the cap
+        (`CompartmentSelection.with_run_count`).
 
         **It draws nothing, and nothing it calls may** (`PL-B1R9`). A frame
         assembled before the last of these has been told is drawn from a run
         set half told that it has changed, so the frame the change owes is
         drawn by whatever changed the run set, once this returns: the press
         that took a branch, the Reset that dropped one, or `main()` after the
-        window is shown. `TraceLegend.set_run_count` announces nothing for
-        that reason, though it may uncheck a box.
+        window is shown. `TraceLegend.show_selection` announces nothing for
+        that reason, though the selection it is handed may have lost a
+        compartment to the cap.
         """
 
         comparing = len(self._runs) > 1
-        self._legend.set_run_count(len(self._runs))
+        self._compartment_selection = self._compartment_selection.with_run_count(len(self._runs))
+        self.compartment_selection_changed.emit(self._compartment_selection)
         self._wash_in_legend.set_run_count(len(self._runs))
 
         for index, run in enumerate(self._runs):
@@ -967,7 +997,7 @@ class SimulationView(QWidget):
         frame = assemble_chart_frame(
             inputs,
             self._time_base,
-            self._legend.shown,
+            self._compartment_selection.shown,
             plot_width_px=max(
                 self._concentration_chart.plot_width_px(), self._wash_in_chart.plot_width_px()
             ),
@@ -1212,9 +1242,18 @@ class SimulationView(QWidget):
         self._time_base = None if key == FIT_RUN_KEY else time_base_for_span(float(key))
         self.present(False)
 
-    def _handle_trace_visibility_change(self) -> None:
-        """Redraw at once when a reader shows or hides a compartment, so legend and plot agree."""
+    def _handle_compartment_request(self, quantity: RecordedQuantity, shown: bool) -> None:
+        """Answer a reader's click in the legend: change the selection, show it, and draw at once.
 
+        The legend only asks (`PL-VN6M`). Its boxes and the frame drawn next
+        are both written from the selection this leaves, which is what keeps
+        the legend naming exactly the curves on the plot - a click over the
+        two-compartment cap included, where the selection rather than the
+        legend decides which compartment makes room.
+        """
+
+        self._compartment_selection = self._compartment_selection.with_compartment(quantity, shown)
+        self.compartment_selection_changed.emit(self._compartment_selection)
         self.present(False)
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.

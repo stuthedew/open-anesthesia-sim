@@ -39,18 +39,23 @@ def _boundary(*allowed: str, package: str = "pydantic") -> Boundary:
 
 
 def _allowed_modules(package: Path) -> Path:
-    """The two modules the real allowances name, each making its import, plus `app/`.
+    """The two modules the real allowances name, each making its import, plus `app/` and `layout/`.
 
     Every test that runs `main` against the real `BOUNDARIES` needs them,
     because an allowance naming a module that is absent, or one that no longer
     makes the import, is itself an error - which is what keeps a stale
     allowance from rotting, and what a fixture has to satisfy to be about
-    anything else.
+    anything else. A module under `layout/` for the same reason: the two
+    boundaries declared over that package would otherwise each report a tree
+    with nothing in it, which is an error too.
     """
     core = package / "core"
     core.mkdir(parents=True, exist_ok=True)
     (core / "parameters.py").write_text("from pydantic import BaseModel\n", encoding="utf-8")
     (package / "app_metadata.py").write_text("import subprocess\n", encoding="utf-8")
+    layout = package / "layout"
+    layout.mkdir(parents=True, exist_ok=True)
+    (layout / "model.py").write_text("from dataclasses import dataclass\n", encoding="utf-8")
     app = package / "app"
     app.mkdir(parents=True, exist_ok=True)
     return app
@@ -190,6 +195,8 @@ class TestAnalyze:
             "pyqtgraph",
             "numpy",
             "anesthesia_sim.app",
+            "PySide6",
+            "pyqtgraph",
         )
         by_package = {boundary.package: boundary for boundary in BOUNDARIES}
         assert by_package["pydantic"].allowed == ("src/anesthesia_sim/core/parameters.py",)
@@ -225,10 +232,37 @@ class TestAnalyze:
         interface schedules its ticks with the wall clock, which the guarantee
         permits. Widening this to `src/anesthesia_sim` would fail on a real
         import the design allows; narrowing the packages would leave a route in.
+
+        Found by its tree as well as its package, because the toolkit's two
+        packages are also refused in `layout/`, by entries of their own that
+        the test below holds.
         """
-        (boundary,) = [entry for entry in BOUNDARIES if entry.package == package]
+        (boundary,) = [
+            entry
+            for entry in BOUNDARIES
+            if entry.package == package and entry.tree == "src/anesthesia_sim/core"
+        ]
         assert boundary.tree == "src/anesthesia_sim/core"
         assert boundary.allowed == ()
+
+    @pytest.mark.parametrize("package", ["PySide6", "pyqtgraph"])
+    def test_the_toolkit_boundaries_permit_no_module_in_the_layout_package(
+        self, package: str
+    ) -> None:
+        """The layout is a pure-Python model, so neither route into Qt reaches it (`PL-1FT6`).
+
+        `PL-C842` made the model the layout's one source of truth rather than
+        the widget tree; a layout module importing Qt would make the widgets a
+        second one. pyqtgraph is the second route because it imports Qt at
+        module load.
+        """
+        (boundary,) = [
+            entry
+            for entry in BOUNDARIES
+            if entry.package == package and entry.tree == "src/anesthesia_sim/layout"
+        ]
+        assert boundary.allowed == ()
+        assert boundary.why.strip()
 
     def test_a_boundary_permitting_no_module_admits_nothing(self, tmp_path: Path) -> None:
         """An empty `allowed` is a confinement out of the tree, not a disabled rule."""
@@ -419,6 +453,30 @@ class TestMain:
         assert "src/anesthesia_sim/core/tissue.py:1: import numpy" in out
         assert "src/anesthesia_sim/core/tissue.py:2: from PySide6.QtCore import QObject" in out
         assert "src/anesthesia_sim/core/tissue.py:3: import pyqtgraph" in out
+
+    def test_the_layout_package_may_not_import_the_toolkit(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Both routes into Qt, refused in a layout module, and only those two (`PL-1FT6`).
+
+        Against the real `BOUNDARIES`, so the two entries are pinned
+        end-to-end rather than by their declaration alone. The count is the
+        planted pair and nothing else, so the fixture is not passing on an
+        error the table raises about itself.
+        """
+        package = tmp_path / "src" / "anesthesia_sim"
+        _allowed_modules(package)
+        (package / "layout" / "adapter.py").write_text(
+            "from PySide6.QtWidgets import QSplitter\nimport pyqtgraph\n", encoding="utf-8"
+        )
+        assert main(["--root", str(tmp_path)]) == 1
+        out = capsys.readouterr().out
+        adapter = "src/anesthesia_sim/layout/adapter.py"
+        assert f"{adapter}:1: from PySide6.QtWidgets import QSplitter" in out
+        assert f"{adapter}:2: import pyqtgraph" in out
+        assert "PySide6 is permitted in no module under src/anesthesia_sim/layout/" in out
+        assert "pyqtgraph is permitted in no module under src/anesthesia_sim/layout/" in out
+        assert "2 errors" in out
 
     def test_any_module_importing_flet_is_a_violation(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
