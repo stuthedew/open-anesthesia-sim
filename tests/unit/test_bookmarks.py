@@ -314,6 +314,132 @@ def test_a_time_bookmark_is_not_crossed_again_by_the_step_after_it() -> None:
     assert not bookmark.crossed_between(29.8, 29.9)
 
 
+# ----------------------------------------------- the step that reaches a mark
+#
+# `TimeBookmark.steps_to_reach` is `crossed_between` read the other way round:
+# the count it returns is the step that predicate names, so it is where a halt
+# stops and where `resumed_at_mark` forks (`PL-W4XQ`). Asserted against the
+# predicate itself, on the grid products `SimulationState.elapsed_s` forms,
+# rather than against a second formula for the same step.
+
+
+def _reaching_step_is_the_crossing_one(instant_s: float, step: SimulationStep) -> bool:
+    """Whether `steps_to_reach` names the step `crossed_between` says reaches it."""
+
+    bookmark = TimeBookmark(CaseInstant(instant_s))
+    count = bookmark.steps_to_reach(step)
+
+    if count == 0:
+        return instant_s == 0.0
+
+    return bookmark.crossed_between(CaseInstant((count - 1) * step), CaseInstant(count * step))
+
+
+def test_every_instant_a_learner_can_type_is_reached_on_the_step_the_halt_names() -> None:
+    """All 36 001 one-decimal instants to an hour, the dialog's own resolution.
+
+    12 767 of them are not a whole number of 0.1 s steps in binary - `453 x
+    0.1` is 45.300000000000004 - so a fork instant built from the typed value
+    would be refused, and one built by rounding would sometimes land a step
+    early. Each is reached by exactly the step `crossed_between` picks.
+    """
+
+    misses = [
+        tenths / 10
+        for tenths in range(36_001)
+        if not _reaching_step_is_the_crossing_one(tenths / 10, STEP_S)
+    ]
+
+    assert misses == []
+
+
+def test_every_grid_instant_is_reached_by_the_step_that_lands_on_it() -> None:
+    """The products themselves, which a halted run and its branches stand on."""
+
+    misses = [
+        count
+        for count in range(1, 36_001)
+        if TimeBookmark(CaseInstant(count * STEP_S)).steps_to_reach(STEP_S) != count
+    ]
+
+    assert misses == []
+
+
+def test_a_quotient_rounded_up_does_not_place_the_mark_a_step_late() -> None:
+    """`0.30000000000000004 / 0.1` is 3.0000000000000004, whose ceiling is 4.
+
+    The third step lands exactly on that instant, so it is the one that
+    reaches it; trusting the ceiling would fork a step after the halt.
+    """
+
+    instant_s = 3 * STEP_S
+
+    assert math.ceil(instant_s / STEP_S) == 4, "the premise: the quotient rounds up"
+    assert TimeBookmark(CaseInstant(instant_s)).steps_to_reach(STEP_S) == 3
+
+
+def test_a_mark_inside_a_step_is_reached_at_the_step_s_end_and_not_rounded_back() -> None:
+    """Rounding would put 45.35 s on the step ending at 45.3 s, before the mark.
+
+    No halt stops there: the step that reaches the mark is the one ending at
+    45.4 s, at a coarser step as at the interface's own.
+    """
+
+    inside = TimeBookmark(CaseInstant(45.35))
+
+    assert inside.steps_to_reach(STEP_S) == 454
+    assert inside.steps_to_reach(SimulationStep(0.05)) == 907
+    assert _reaching_step_is_the_crossing_one(45.35, SimulationStep(0.05))
+
+
+@pytest.mark.parametrize("step_s", [0.001, 0.025, 0.05, 0.1])
+def test_off_grid_instants_are_reached_on_the_crossing_step_at_every_step(step_s: float) -> None:
+    """Instants between grid points, at steps across the supported range."""
+
+    step = SimulationStep(step_s)
+    instants = [round(k * 0.137, 6) for k in range(1, 2001)]
+
+    assert [s for s in instants if not _reaching_step_is_the_crossing_one(s, step)] == []
+
+
+def test_a_mark_at_the_case_s_opening_is_reached_by_no_step() -> None:
+    """A run stands on it before stepping, and `crossed_between` never fires for it."""
+
+    assert TimeBookmark(CaseInstant(0.0)).steps_to_reach(STEP_S) == 0
+
+
+def test_the_last_supported_instant_is_reached_on_the_last_supported_step() -> None:
+    """The far boundary: the count stays inside the span rather than running off it."""
+
+    last = TimeBookmark(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
+    count = last.steps_to_reach(STEP_S)
+
+    assert count * STEP_S == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+    assert _reaching_step_is_the_crossing_one(MAXIMUM_ELAPSED_SIMULATION_TIME_S, STEP_S)
+
+
+def test_steps_to_reach_refuses_a_step_not_built_as_one() -> None:
+    """A bare float has passed no range check, and a zero step would divide by zero."""
+
+    with pytest.raises(TypeError):
+        TimeBookmark(CaseInstant(30.0)).steps_to_reach(0.1)  # type: ignore[arg-type]
+
+
+def test_a_held_bookmark_is_found_by_its_instant_and_returned_as_the_set_holds_it() -> None:
+    """The label the set holds comes back, which is the key a standing answers to."""
+
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600.0), "intubation"))
+
+    assert marks.held_time_bookmark(TimeBookmark(CaseInstant(600.0))) == TimeBookmark(
+        CaseInstant(600.0), "intubation"
+    )
+
+
+def test_a_bookmark_the_set_does_not_hold_is_refused_by_its_instant() -> None:
+    with pytest.raises(SimulationConfigurationError, match="no time bookmark stands at 600.0 s"):
+        BookmarkSet().held_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+
+
 def test_a_target_is_crossed_by_the_step_that_reaches_its_height() -> None:
     target = _target(multiple=0.8)
 

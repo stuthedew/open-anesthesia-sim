@@ -3,11 +3,13 @@ id: PL-54V0
 title: resumed_at refuses an unkeyframed instant with a reason resumed_at_halt disproves
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: scenario-branching
-touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py, tests/unit/test_run_definition.py, docs/ARCHITECTURE.md
 added: 2026-09-21
+closed: 2026-10-12
+pr: 1451
 payoff: a reader meeting the fork refusal learns which door takes which instant, instead of an arithmetic limit the code beside it disproves - which would steer them into recording a keyframe at the fork and so changing the parent run
 verify: ! grep -qF 'two propagations where the run took one' src/anesthesia_sim/app/controller.py
 ---
