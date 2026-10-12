@@ -3,12 +3,14 @@ id: PL-0WT0
 title: bin/docket inflow's re-entered list prints a head its successor already answers exactly as it prints one nobody has: on 2026-10-12 eight of its ten lines named a successor head among their re-entries, visible only to a reader who knows which filings carry root-cause-of, so each run re-asks settled questions; name the successor where a re-entering filing is a head
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: generator-heads
 touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1459
 payoff: bin/docket inflow lists apart the closed heads a successor head already answers, naming it, so a session reading the list asks only the questions still open
 verify: grep -q 'def test_a_line_a_successor_head_answers_names_it' subprojects/docket/tests/test_inflow.py
 ---
