@@ -8372,6 +8372,12 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: _run_step('      - run: "python3 tools/x.py\n          --flag"\n'),
         ([], [(1, "a quoted scalar")]),
     ),
+    # `docket.frontmatter.plain` is the one reading of which node is a plain
+    # scalar (`PL-8MHZ`): `|x` is a header YAML refuses, handed to bash as `|x`.
+    "workflow commands, a header YAML refuses is refused by name": (
+        lambda _: _run_step("      - run: |x\n"),
+        ([], [(1, "a YAML node opening `|`")]),
+    ),
     "workflow commands, an indentation indicator places the block's content": (
         lambda _: _run_step("      - run: |2\n            deeper\n          python3 tools/x.py\n"),
         ([("deeper", 2), ("python3 tools/x.py", 3)], []),
