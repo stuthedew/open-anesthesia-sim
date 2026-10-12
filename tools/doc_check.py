@@ -161,10 +161,11 @@ try:
     from docket.frontmatter import statements as frontmatter_statements
 
     # `instructions` is the one reading of a dated sentence: `_sentences` cuts a
-    # statement where `docket.roadmap.SENTENCE_BREAK` does, and `ISO_DATE_RE` is
-    # what counts as a date in one. `check_host_claims` asks whether a sentence
-    # naming a host carries a date, the question that module asks of an
-    # instruction, so the two cannot disagree about where a sentence ends.
+    # statement where `docket.roadmap.SENTENCE_BREAK` does and at a blank line
+    # inside a front matter's value, and `ISO_DATE_RE` is what counts as a date
+    # in one. `check_host_claims` asks whether a sentence naming a host carries
+    # a date, the question that module asks of an instruction, so the two
+    # cannot disagree about where a sentence ends.
     from docket.instructions import ISO_DATE_RE, _sentences
     from docket.lines import file_text, record_text, split_lines
 

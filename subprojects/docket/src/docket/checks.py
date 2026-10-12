@@ -3812,7 +3812,11 @@ STALE_ASSERTION_CHARS = 70
 
 
 def _check_stale_instructions(
-    report: Report, assertions: tuple[Assertion, ...] | None, config: Config, today: date
+    report: Report,
+    assertions: tuple[Assertion, ...] | None,
+    config: Config,
+    today: date,
+    unread: Sequence[str] = (),
 ) -> None:
     """Name the dated assertions in the instruction set that are due for re-checking.
 
@@ -3859,8 +3863,15 @@ def _check_stale_instructions(
 
     **It stays silent where it cannot answer.** A project naming no
     instruction paths, or a caller supplying none, leaves the audit unraised
-    rather than computed against an empty parse.
+    rather than computed against an empty parse. A front matter the reading
+    could not split into its keys is read for no sentence, and `unread` names
+    each such file, so the run does not look complete without it (`PL-J8ML`).
     """
+    report.declined.extend(
+        f"the dated sentences of an instruction file's front matter, which "
+        f"`docket.frontmatter` could not split into its keys: {line}"
+        for line in unread
+    )
     if not assertions:
         return
     stale = sorted(
@@ -3899,6 +3910,7 @@ def _groom(
     milestones: MilestoneStates | None = None,
     threads: tuple[Thread, ...] | None = None,
     assertions: tuple[Assertion, ...] | None = None,
+    unread_instructions: Sequence[str] = (),
 ) -> None:
     """Detect the conditions that make a grooming pass worth someone's time."""
     # Grooming rather than close-out, and that placement is the decision
@@ -3907,7 +3919,7 @@ def _groom(
     # hand, instead of on every close-out, where one permanent false fire
     # costs the whole advisory block its reader.
     _check_stale_open_threads(report, threads, config)
-    _check_stale_instructions(report, assertions, config, today)
+    _check_stale_instructions(report, assertions, config, today, unread_instructions)
     stale = [
         item
         for item in report.untriaged
@@ -4339,6 +4351,7 @@ def analyze(
     unread_notes: Sequence[str] = (),
     threads: tuple[Thread, ...] | None = None,
     assertions: tuple[Assertion, ...] | None = None,
+    unread_instructions: Sequence[str] = (),
     settings_source: SettingsSource | None = None,
     written: WrittenReport | None = None,
     gone: GoneReport | None = None,
@@ -4388,7 +4401,9 @@ def analyze(
     from `instruction_paths`. Passed in for the reason the rest are: this
     module reads no filesystem. A caller that does not supply it, or a project
     that names no instruction paths, leaves the staleness advisory unraised
-    rather than reporting that nothing has aged.
+    rather than reporting that nothing has aged. `unread_instructions` is each
+    instruction file whose front matter that reading declined, by file and
+    reason (`PL-J8ML`).
 
     `written` is which open items' `verify:` this branch wrote rather than
     inherited from the default base - the authoring moment the capture date
@@ -4435,7 +4450,7 @@ def analyze(
     _check_records(report, records)
     _check_written(report, written, settings, today)
     _check_lost(report, lost)
-    _groom(report, today, settings, ids, milestones, threads, assertions)
+    _groom(report, today, settings, ids, milestones, threads, assertions, unread_instructions)
     # Said once, for both advisories above that read `offered`, and said even
     # where neither fired: an unread ref might carry the item that would have
     # been named, so silence there is the same partial answer as a wrong name.

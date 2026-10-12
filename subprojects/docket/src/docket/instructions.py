@@ -38,7 +38,8 @@ reported stale on 2026-12-16, when its newest date made it 86 days old. Not the
 whole paragraph either, which would date a long rule by the newest of every
 record inside it and hide the old ones. The paragraphs are
 `markdown.statement_lines`', the one reading of where a Markdown statement ends
-(`PL-R417`), and the sentences `SENTENCE_BREAK`'s. Re-reading the instruction
+(`PL-R417`), and the sentences `SENTENCE_BREAK`'s, and a blank line's inside a
+front matter's value (`PL-J8ML`). Re-reading the instruction
 set this way on 2026-10-04 moved seven of its date occurrences, every one onto
 a newer date, and split no line's dates between two sentences.
 
@@ -54,10 +55,15 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from .frontmatter import closing, statements
+from .frontmatter import Unread, closing, key_statements, keys
 from .lines import split_lines
 from .markdown import PROSE, statement_lines
 from .roadmap import SENTENCE_BREAK
+
+#: Where a paragraph ends inside one statement's text: a blank line, which no
+#: Markdown statement holds and a YAML value can, as a line break YAML keeps
+#: (1.2.2 § 6.5), a block scalar's included (§ 8.1).
+PARAGRAPH_BREAK = re.compile(r"\n(?:[ \t]*\n)+")
 
 ISO_DATE_RE = re.compile(r"\b(20\d{2})-(\d{2})-(\d{2})\b")
 """An ISO date written out in prose: `2026-09-21`.
@@ -116,13 +122,24 @@ def _dates(text: str) -> list[tuple[date, int]]:
 
 
 def _sentences(text: str) -> Iterator[tuple[int, int]]:
-    """Each sentence of one statement's text, as its offsets."""
-    start = 0
-    for stop in SENTENCE_BREAK.finditer(text):
-        yield start, stop.end()
-        start = stop.end()
-    if text[start:].strip():
-        yield start, len(text)
+    """Each sentence of one statement's text, as its offsets.
+
+    A sentence ends where `SENTENCE_BREAK` ends one, and at a blank line, as a
+    paragraph's end ends one in the body: read across the blank line inside a
+    `>` or `|` value, a record in its first paragraph was dated by its second
+    one's date, and hidden behind it (`PL-J8ML`).
+    """
+    begin = 0
+    for paragraph in [*PARAGRAPH_BREAK.finditer(text), None]:
+        end = len(text) if paragraph is None else paragraph.start()
+        start = begin
+        for stop in SENTENCE_BREAK.finditer(text, begin, end):
+            yield start, stop.end()
+            start = stop.end()
+        if text[start:end].strip():
+            yield start, end
+        if paragraph is not None:
+            begin = paragraph.end()
 
 
 def parse(name: str, text: str) -> list[Assertion]:
@@ -149,14 +166,19 @@ def parse(name: str, text: str) -> list[Assertion]:
     A YAML front matter is no Markdown, and is read a key at a time
     (`PL-2MLT`): read from the file's first line, the keys were one paragraph
     its closing `---` underlines as a setext heading (CommonMark 0.31.2 § 4.3),
-    which dated every key by the newest date in any of them. The body is read
-    as Markdown from the line after the fence, every line in its place.
+    which dated every key by the newest date in any of them. A block
+    `docket.frontmatter.keys` cannot split is read for no sentence at all, and
+    `unread_front_matter` names it: read a line at a time, a key's value
+    continued onto a second line was cut into fragments, each dated by its own
+    dates, so a record re-verified on the second line was reported stale from
+    the first (`PL-J8ML`). The body is read as Markdown from the line after the
+    fence, every line in its place.
     """
     lines = split_lines(text)
     assertions: list[Assertion] = []
     fence = closing(lines)
     body = 0 if fence is None else fence + 1
-    spans = [] if fence is None else [(1 + a, 1 + b) for a, b in statements(lines[1:fence])]
+    spans = [] if fence is None else _key_spans(lines[1:fence])
     spans += statement_lines([""] * body + lines[body:], PROSE)
     for first, end in spans:
         statement = "\n".join(lines[first:end])
@@ -169,6 +191,14 @@ def parse(name: str, text: str) -> list[Assertion]:
             words = " ".join(statement[start:stop].split())
             assertions.append(Assertion(file=name, line=line, when=when, text=words))
     return assertions
+
+
+def _key_spans(block: Sequence[str]) -> list[tuple[int, int]]:
+    """The statements of a front matter's `block`, as lines of the file; none where it is unread."""
+    try:
+        return [(1 + first, 1 + end) for first, end in key_statements(block)]
+    except Unread:
+        return []
 
 
 def _markdown_under(root: Path, paths: Sequence[str]) -> list[str]:
@@ -192,8 +222,8 @@ def _markdown_under(root: Path, paths: Sequence[str]) -> list[str]:
     return sorted(dict.fromkeys(names))
 
 
-def read(root: Path, paths: Sequence[str]) -> tuple[Assertion, ...]:
-    """Every dated assertion in the project's instruction set.
+def _texts(root: Path, paths: Sequence[str]) -> Iterator[tuple[str, str]]:
+    """Each instruction file's name and text.
 
     A file that cannot be read is skipped rather than raised on, for the
     reason `notes.read` gives: the setting is optional, a project may delete
@@ -202,11 +232,33 @@ def read(root: Path, paths: Sequence[str]) -> tuple[Assertion, ...]:
     entry says. Raising would take a grooming pass down over a file nobody
     was asking about.
     """
-    assertions: list[Assertion] = []
     for name in _markdown_under(root, paths):
         try:
-            text = (root / name).read_text(encoding="utf-8")
+            yield name, (root / name).read_text(encoding="utf-8")
         except OSError:
             continue
-        assertions += parse(name, text)
-    return tuple(assertions)
+
+
+def read(root: Path, paths: Sequence[str]) -> tuple[Assertion, ...]:
+    """Every dated assertion in the project's instruction set."""
+    return tuple(assertion for name, text in _texts(root, paths) for assertion in parse(name, text))
+
+
+def unread_front_matter(root: Path, paths: Sequence[str]) -> tuple[str, ...]:
+    """Each front matter in the instruction set that `parse` read no sentence of, and why.
+
+    Named by its file, with `docket.frontmatter.keys`' reason, since its dated
+    sentences are in no assertion `read` returns and a report saying nothing
+    of them would read as a set with nothing in it to age (`PL-J8ML`).
+    """
+    found: list[str] = []
+    for name, text in _texts(root, paths):
+        lines = split_lines(text)
+        fence = closing(lines)
+        if fence is None:
+            continue
+        try:
+            keys(lines[1:fence])
+        except Unread as refusal:
+            found.append(f"{name} - {refusal}")
+    return tuple(found)

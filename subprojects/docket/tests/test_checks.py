@@ -13,7 +13,7 @@ from pathlib import Path
 from docket.checks import Report, analyze
 from docket.config import Config
 from docket.grep import Wrap
-from docket.instructions import Assertion
+from docket.instructions import Assertion, unread_front_matter
 from docket.instructions import read as read_instructions
 from docket.model import Item, parse_item, render_item
 from docket.notes import Thread, read
@@ -1484,6 +1484,30 @@ def test_the_staleness_audit_reads_instruction_files_end_to_end(tmp_path: Path) 
     # Line 5 carries a 2026-01-05 record and a 2026-08-20 re-verification; the
     # newest date is what it is judged on, so it is four days short of due.
     assert "CLAUDE.md:5" not in named
+
+
+def test_a_front_matter_the_reading_declined_is_named_as_not_checked(tmp_path: Path) -> None:
+    """`PL-J8ML`: its dated sentences are in no assertion, so the run says so.
+
+    Named even with nothing aged, since the unread block might hold the one
+    that has.
+    """
+    (tmp_path / "rule.md").write_text(
+        "---\ndescription: Measured 2026-01-04.\nstray line\n---\n\nAn undated rule.\n",
+        encoding="utf-8",
+    )
+
+    report = analyze(
+        [_item()],
+        TODAY,
+        STALE_DAYS,
+        assertions=read_instructions(tmp_path, ("rule.md",)),
+        unread_instructions=unread_front_matter(tmp_path, ("rule.md",)),
+    )
+
+    assert not _has(report.advisories, AUDITED)
+    (declined,) = [line for line in report.declined if "rule.md - " in line]
+    assert "could not split into its keys" in declined
 
 
 def test_a_blocked_item_whose_every_blocker_has_closed_is_an_error() -> None:
