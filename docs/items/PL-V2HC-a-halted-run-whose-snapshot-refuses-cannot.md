@@ -55,3 +55,11 @@ part of this item.
 **Done when.** Picking an agent or moving a slider on a run halted by a refusing
 snapshot ends in the halt already on screen rather than a raise Qt prints, shown
 by an integration test that makes `snapshot` refuse.
+
+**Decision, 2026-10-12** (project owner, 2026-10-12, ratified, over locking
+the selector and the sliders on a halted run). The controls stay live and
+restate the halt, as built here. Put to the owner with the read of `#1428`,
+recommended because the agent selector carries agent identity and may not
+render disabled (`.claude/rules/ui-color.md`), so locking it would mean hiding
+it; answered "Agree" in the project thread at 11:09Z, recorded here and in
+`docs/MODEL.md`'s misled-reader row.
