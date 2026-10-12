@@ -120,6 +120,7 @@ from anesthesia_sim.app.playback import (
     PlaybackRate,
     playback_rate_for,
 )
+from anesthesia_sim.app.qt_chart import TraceLegend
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, MarkListingLabel, ParameterSlider
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
@@ -385,10 +386,10 @@ def _set_trace_shown(
 ) -> None:
     """Check or uncheck one compartment in the legend, as a reader clicking would.
 
-    Through the box rather than through `set_shown`, because the two are
-    different acts once the two-compartment cap is holding: a click keeps
-    what was just asked for and drops the longest-standing selection, where
-    a bulk set has no order of preference to read.
+    Through the box, which is the route a click takes: the legend asks, and
+    the dashboard's answer is what both the boxes and the chart then show
+    (`PL-VN6M`). Once the two-compartment cap is holding, that answer keeps
+    what was just asked for and drops the longest-standing selection.
     """
 
     view._legend.set_compartment_shown(quantity, shown)
@@ -2849,8 +2850,8 @@ def test_the_hidden_traces_advisory_is_present_always_and_shown_only_when_nothin
     assert view._hidden_traces_text.isHidden() is True
     assert NO_TRACES_SHOWN_TEXT in _interface_strings(view)
 
-    view._legend.set_shown(())
-    application.processEvents()
+    for quantity in COMPARTMENT_QUANTITIES:
+        _set_trace_shown(application, view, quantity, False)
 
     assert view._hidden_traces_text.isHidden() is False
     frame = view._concentration_chart.frame
@@ -2860,6 +2861,58 @@ def test_the_hidden_traces_advisory_is_present_always_and_shown_only_when_nothin
     _set_trace_shown(application, view, RecordedQuantity.ALVEOLAR, True)
 
     assert view._hidden_traces_text.isHidden() is True
+
+
+def test_the_compartment_selection_outlives_the_legend_that_renders_it(
+    application: QApplication,
+) -> None:
+    """The selection is the dashboard's, so the legend can go without taking it (`PL-VN6M`).
+
+    An Area holding the legend is a thing a reader will be able to close
+    (`.claude/rules/ui-areas.md`, test 2). While the boxes were the
+    selection, the dashboard read it back from them, so a deleted legend
+    left no selection to assemble the next frame from. Here the legend is
+    deleted outright, the dashboard draws again, and the frame still carries
+    the reader's choice - and a new legend handed the selection checks
+    exactly the curves the plot is drawing.
+    """
+
+    view = _shown_view(application, SimulationController())
+    legend = view._legend
+
+    _set_trace_shown(application, view, RecordedQuantity.FAT, False)
+    _set_trace_shown(application, view, RecordedQuantity.MUSCLE, False)
+
+    chosen = view.compartment_selection
+
+    assert chosen.shown == legend.shown
+    assert RecordedQuantity.FAT not in chosen.shown
+
+    deleted: list[bool] = []
+    legend.destroyed.connect(lambda: deleted.append(True))
+    legend.deleteLater()
+    _settle(application)
+
+    assert deleted, "the legend was not deleted, so nothing here outlived it"
+
+    presented = view.presented_frames
+    view.present(False)
+
+    # `present` turns a raise into a halt rather than letting it out, so the
+    # count is what tells a frame drawn from one refused.
+    assert view.presented_frames == presented + 1, "no frame could be drawn without the legend"
+    assert view.compartment_selection == chosen
+
+    frame = view._concentration_chart.frame
+
+    assert frame is not None
+    assert frame.visible == chosen.shown
+    assert view._concentration_chart.drawn_points(0, RecordedQuantity.FAT) == ((), ())
+
+    renderer = TraceLegend()
+    renderer.show_selection(view.compartment_selection)
+
+    assert renderer.shown == frame.visible
 
 
 def test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it(

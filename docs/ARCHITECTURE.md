@@ -81,14 +81,15 @@ src/anesthesia_sim/
 │   ├── run_series.py               # the vocabulary a run's drawn values are addressed by, and the window one frame reads them from: RecordedQuantity, RecordedSeries, DrawnWindow; toolkit-independent
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_UNITS, ControlChange; toolkit-independent
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed, which SimulationController.advance supplies each step
-│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the charts, the legend, the time base, the captions, the wash-in section, the render tick, the splitter layout; no domain logic
+│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the charts, the legend and the compartment selection it shows, the time base, the captions, the wash-in section, the render tick, the splitter layout; no domain logic
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, inert_splitter, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; toolkit-independent
 │   ├── dashboard_frame.py          # what the dashboard claims about one run at one instant, as plain values: the status word, the notice and its precedence, the readouts and their glosses, the setting controls, the transport enablement, the accounting panel, the control-change list, the captions and the new-case question; toolkit-independent
 │   ├── chart_frame.py              # what one frame of both plots draws, as plain values: the trace table, the window, the axes' ticks, the references, the marks, the wash-in stretches and the hover text; toolkit-independent
-│   ├── qt_chart.py                 # the concentration chart, the wash-in plot and the legend on pyqtgraph, moved per frame to match a chart_frame.ChartFrame; declares no colour and formats no value
+│   ├── compartment_selection.py    # CompartmentSelection: which compartments the chart draws, as a value the dashboard owns and the legend shows (PL-VN6M); held inside the compared cap, and a reader's click over it drops the longest-standing; toolkit-independent
+│   ├── qt_chart.py                 # the concentration chart, the wash-in plot and the legend on pyqtgraph, moved per frame to match a chart_frame.ChartFrame, the legend showing a CompartmentSelection it is handed; declares no colour and formats no value
 │   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; toolkit-independent
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; toolkit-independent
 │   ├── wash_in.py                  # F_A/F_I and the domain it holds on; toolkit-independent
@@ -867,7 +868,8 @@ in it, or a line left behind after a deletion, fails `make check`.
   table is the chart's rather than any one run's: `assemble_chart_frame`
   reads it once per run, for the substance that run's snapshot names — the
   run is recorded under that identifier — and `ChartFrame.visible` is the
-  subset the legend leaves drawn, narrowed by `compared_compartments` to
+  dashboard's `CompartmentSelection`, which the legend shows and asks to
+  change rather than holds (`PL-VN6M`), narrowed by `compared_compartments` to
   `COMPARED_COMPARTMENT_CAP` once more than one run is on the chart, so
   `app/qt_chart.py` holds one curve per run per trace and moves it to match;
   nothing is edited directly. The *width* of that curve is the run's own

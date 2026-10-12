@@ -40,6 +40,10 @@ from anesthesia_sim.app.chart_frame import (
     trace_style,
 )
 from anesthesia_sim.app.chart_time_base import time_base_for_span
+from anesthesia_sim.app.compartment_selection import (
+    INITIAL_COMPARTMENT_SELECTION,
+    CompartmentSelection,
+)
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import AdjustmentGrouping, ControlAdjustment
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
@@ -207,7 +211,9 @@ def test_a_hidden_trace_is_not_drawn_and_is_current_when_shown_again(
     controller = _run_with_a_dial_change()
     chart = _shown(application, ConcentrationChart(), 480)
     legend = TraceLegend()
-    legend.set_shown([RecordedQuantity.ALVEOLAR, RecordedQuantity.CIRCUIT])
+    legend.show_selection(
+        CompartmentSelection((RecordedQuantity.ALVEOLAR, RecordedQuantity.CIRCUIT), 1)
+    )
     chart.draw(_frame(controller, shown=legend.shown))
 
     assert chart.drawn_points(0, RecordedQuantity.FAT) == ((), ())
@@ -215,7 +221,7 @@ def test_a_hidden_trace_is_not_drawn_and_is_current_when_shown_again(
     assert chart.readout_at(*_a_drawn_point(chart, RecordedQuantity.FAT, frame=None)) is None
 
     _advance(controller, 60.0)
-    legend.set_shown(COMPARTMENT_QUANTITIES)
+    legend.show_selection(INITIAL_COMPARTMENT_SELECTION)
     frame = _frame(controller, shown=legend.shown)
     chart.draw(frame)
 
@@ -981,16 +987,103 @@ def test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark(
 
 
 def test_the_legend_is_the_visibility_control(application: QApplication) -> None:
+    """A click is a request, and the boxes show the owner's answer to it (`PL-VN6M`).
+
+    The test stands where `SimulationView` stands: it holds the selection,
+    applies each request to it, and hands the result back. What the legend
+    shows after every click is the selection the owner holds.
+    """
+
     legend = TraceLegend()
+    selection = INITIAL_COMPARTMENT_SELECTION
     changes: list[tuple[RecordedQuantity, ...]] = []
-    legend.visibility_changed.connect(lambda: changes.append(legend.shown))
+
+    def answer(quantity: RecordedQuantity, shown: bool) -> None:
+        nonlocal selection
+        selection = selection.with_compartment(quantity, shown)
+        legend.show_selection(selection)
+        changes.append(legend.shown)
+
+    legend.compartment_requested.connect(answer)
 
     assert legend.shown == COMPARTMENT_QUANTITIES
 
-    legend.set_shown([RecordedQuantity.MUSCLE])
+    for quantity in COMPARTMENT_QUANTITIES:
+        if quantity is not RecordedQuantity.MUSCLE:
+            legend.set_compartment_shown(quantity, False)
 
     assert legend.shown == (RecordedQuantity.MUSCLE,)
     assert changes and changes[-1] == (RecordedQuantity.MUSCLE,)
+    assert len(changes) == len(COMPARTMENT_QUANTITIES) - 1
+    assert selection.shown == legend.shown
+
+
+def _box(legend: TraceLegend, quantity: RecordedQuantity) -> QCheckBox:
+    """The box a reader clicks for one compartment, found by the name it is announced by."""
+
+    from anesthesia_sim.app.dashboard_frame import TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE
+
+    name = TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=trace_style(quantity).label)
+
+    return next(box for box in legend.findChildren(QCheckBox) if box.accessibleName() == name)
+
+
+def test_a_click_nobody_answers_leaves_the_legend_showing_what_it_was_handed(
+    application: QApplication,
+) -> None:
+    """The boxes hold no state of their own, so a request nobody answers changes nothing.
+
+    A legend whose owner is gone, or has not yet connected, is the case
+    where a box left as the reader clicked it would name a curve no frame
+    draws. The click is still sent, once; the box, its swatch and its words
+    go back to the selection last shown.
+    """
+
+    legend = TraceLegend()
+    requests: list[tuple[RecordedQuantity, bool]] = []
+    legend.compartment_requested.connect(lambda quantity, shown: requests.append((quantity, shown)))
+    box = _box(legend, RecordedQuantity.FAT)
+    inked = box.styleSheet()
+
+    box.click()
+
+    assert requests == [(RecordedQuantity.FAT, False)]
+    assert box.isChecked()
+    assert legend.shown == COMPARTMENT_QUANTITIES
+    assert box.styleSheet() == inked
+    assert legend._swatches[RecordedQuantity.FAT]._filled
+
+
+def test_a_selection_handed_to_the_legend_is_shown_and_requests_nothing(
+    application: QApplication,
+) -> None:
+    """`PL-B1R9`: the owner's own change is not echoed back to it as a reader's.
+
+    A selection the owner hands down - a click it answered, or a second run
+    holding the selection to the cap - owes its frame to the owner. Echoed
+    back as a request, the cap's reduction drew a frame from a run set half
+    told it had grown, and the fork that caused it then drew its own.
+    """
+
+    legend = TraceLegend()
+    requests: list[tuple[RecordedQuantity, bool]] = []
+    legend.compartment_requested.connect(lambda quantity, shown: requests.append((quantity, shown)))
+    reduced = INITIAL_COMPARTMENT_SELECTION.with_run_count(2)
+
+    legend.show_selection(reduced)
+
+    assert requests == []
+    assert legend.shown == reduced.shown == (RecordedQuantity.CIRCUIT, RecordedQuantity.ALVEOLAR)
+    assert legend._run_count == 2
+    assert legend.branch_mark is not None
+    assert len(legend.compared_marks) == len(reduced.shown) * reduced.run_count
+    assert not _box(legend, RecordedQuantity.FAT).isChecked()
+
+    legend.show_selection(reduced.with_run_count(1))
+
+    assert requests == []
+    assert legend.branch_mark is None
+    assert legend.compared_marks == ()
 
 
 def _legend_rows(legend: QWidget) -> list[FlowLayout]:
@@ -1220,7 +1313,7 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
     wash_in.draw(frame)
     legend = TraceLegend()
     wash_in_legend = WashInLegend()
-    legend.set_run_count(len(frame.runs))
+    legend.show_selection(INITIAL_COMPARTMENT_SELECTION.with_run_count(len(frame.runs)))
     wash_in_legend.set_run_count(len(frame.runs))
 
     # The cap: two compartments, which is what leaves the width free at all.

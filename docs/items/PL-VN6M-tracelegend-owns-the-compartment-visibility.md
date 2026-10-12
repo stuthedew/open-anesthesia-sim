@@ -3,11 +3,13 @@ id: PL-VN6M
 title: TraceLegend owns the compartment-visibility state inside a widget, which an area system will have to move out
 priority: P2
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: interface-areas
-touches: src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/simulation_view.py, tests/integration
+touches: src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/compartment_selection.py, src/anesthesia_sim/app/dashboard_frame.py, docs/ARCHITECTURE.md, .claude/rules/ui-areas.md, tests/integration, tests/unit/test_compartment_selection.py
 added: 2026-09-16
+closed: 2026-10-12
+pr: 1448
 verify: grep -q 'def test_the_compartment_selection_outlives_the_legend_that_renders_it' tests/integration/test_simulation_view.py && uv run pytest tests/integration/test_simulation_view.py
 ---
 
