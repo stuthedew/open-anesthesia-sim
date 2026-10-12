@@ -1078,8 +1078,8 @@ class SimulationView(QWidget):
         stop being equal (`PL-LHBY`). A write computed against copies and
         committed only once every run had accepted was described here and
         never built; it is not built now either, because it would guard an
-        invariant the frame already refuses louder, and some 24,000 fuzzed
-        gestures found no divergence (`PL-RBMK`).
+        invariant the frame already refuses louder, and the fuzz `PL-RBMK`
+        records found no divergence.
 
         Args:
             edit: What to do to one run.

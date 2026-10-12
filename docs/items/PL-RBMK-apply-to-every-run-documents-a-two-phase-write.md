@@ -58,5 +58,8 @@ changed - with `_refresh_bookmarks` halting the dashboard on the frame the
 sets diverge (`PL-LHBY`). The two-phase write was not built: it would guard an
 invariant the frame already refuses louder, every bookmark method on
 `SimulationController` delegates to a pure `BookmarkSet` operation (read
-2026-10-12), and the fuzz recorded above found no divergence. The phrase the
-`verify:` command greps for is gone with the paragraph that carried it.
+2026-10-12), and the fuzz recorded above found no divergence - its own
+arithmetic, 40 trials of 120 gestures, gives 4,800 rather than the roughly
+24,000 it states, so the code quotes neither figure (found at review). The
+phrase the `verify:` command greps for is gone with the paragraph that carried
+it.
