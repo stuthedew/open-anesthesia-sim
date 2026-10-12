@@ -3,12 +3,15 @@ id: PL-CGBK
 title: PL-SL16's title and census name model versions in a pushed artifact, against PL-B11M's no-model-id rule the same item restates, and the title carried one into docs/releases/v0.5.11.md, whose bullet PL-DRRG reworded by hand
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: docs
 feature: public-history
 touches: docs/items/
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
+closed: 2026-10-12
+payoff: PL-B11M's record says what its no-model-id rule reaches, so no session re-raises the nine files on main that name a model deliberately
+verify: grep -qF 'governs attribution' docs/items/PL-B11M-detect-a-silent-model-fallback-last-served.md
 ---
 
 **Problem.** PL-SL16's title and census name model versions in a pushed artifact, against PL-B11M's no-model-id rule the same item restates, and the title carried one into docs/releases/v0.5.11.md, whose bullet PL-DRRG reworded by hand
@@ -84,3 +87,20 @@ file it condemns has been reworded.
 and no head's `misread:` states it. The eight other files on `main` name models
 deliberately, so they are not misreadings of it. The one reach that mattered, a
 release bullet rendered from a title, happened once and `PL-DRRG` repaired it.
+
+**Decided and done** (2026-10-12, in the first batched design round, a
+session's call, as the brief itself says a session can take it): the
+recommendation. The scope is recorded under `PL-B11M`'s decision, dated and
+naming this item: the rule governs attribution - a trailer, or any line that
+credits a model as an author of a pushed artifact - and not quotation as
+evidence, a census, or the owner's own model-choice guidance; a closed brief's
+census stays as the evidence it is (`.claude/rules/citation-drift.md`). What a
+session writes anew still follows the harness's own instruction against model
+identifiers, which is broader and binds the session whatever the record says,
+so the note licenses no new model name. Nothing else changed: `PL-SL16`'s
+title and census stand, and no title check was built, which the pause on new
+workflow mechanisms would have held in any case. It reads the owner's own
+decision of 2026-09-16 by its three recorded reasons rather than reversing it;
+if he reads it literally instead, the consequence is rewording all nine files,
+`docs/maintainer.md` included, and that is the one line this item leaves for
+him.
