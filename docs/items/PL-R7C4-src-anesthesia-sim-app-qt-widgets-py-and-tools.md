@@ -5,10 +5,10 @@ priority: P3
 effort: S
 status: ready
 classes: docs
-touches: src/anesthesia_sim/app/qt_widgets.py, tools/contrast_check.py
+touches: src/anesthesia_sim/app/stylesheets.py, tools/contrast_check.py
 added: 2026-10-06
 payoff: the reason given for the transport button's disabled-state edge rests on what WCAG actually says, read at W3C's source, rather than on its never having been read
-verify: ! grep -qF 'inactive-component wording has never' src/anesthesia_sim/app/qt_widgets.py && ! grep -qF 'was **not** read at the source' tools/contrast_check.py && ! grep -qF 'check_disabled_states_are_the_style_s' src/anesthesia_sim/app/qt_widgets.py
+verify: ! grep -qF 'inactive-component wording has never' src/anesthesia_sim/app/stylesheets.py && ! grep -qF 'was **not** read at the source' tools/contrast_check.py && ! grep -qF 'check_disabled_states_are_the_style_s' src/anesthesia_sim/app/stylesheets.py
 ---
 
 **Problem.** src/anesthesia_sim/app/qt_widgets.py and tools/contrast_check.py say SC 1.4.11's inactive-component exception was never read at the source, but PL-JX0Z records the project owner supplying W3C's Understanding document for SC 1.4.11 on 2026-09-07; check whether that text carries the exception and correct both if it does
@@ -46,7 +46,13 @@ about inactive components; if it states the exception, the reason given for the
 `MUTED` edge is restated so it does not rest on the exception being unread.
 
 **Also in the same docstring, found 2026-10-11 by the triage pass:**
-`transport_button_stylesheet`'s docstring (`app/qt_widgets.py`, line 310) names
+`transport_button_stylesheet`'s docstring (now in `app/stylesheets.py`) names
 `check_disabled_states_are_the_style_s`, since renamed
 `check_authored_disabled_colours_are_measured` in `tools/contrast_check.py`.
 The rewrite above corrects it in passing.
+
+**Moved, 2026-10-12.** `PL-Y4YX` moved `transport_button_stylesheet`, with
+this docstring verbatim, from `app/qt_widgets.py` into `app/stylesheets.py`,
+so `touches:` and `verify:` now name that file; read at the old path, the
+command would have passed with none of this work done. Both sentences and the
+stale check name are as the brief describes, one file over.

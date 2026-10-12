@@ -7820,7 +7820,8 @@ shortfall, as the paragraph above records for the gridline grey.
 
 **A declared colour reaches the screen by one of three mechanisms.** Most of
 this interface is drawn by a stylesheet composed from `app/theme.py`'s
-constants, which is what `tools/contrast_check.py` reads. Some widgets cannot
+constants, which is what `tools/contrast_check.py` reads; every one is composed
+in `app/stylesheets.py` (`PL-Y4YX`). Some widgets cannot
 be: an entry's fill, a spin box's stepper, a list's rows and its scroll bar, a
 check box's indicator and a dialog's own surface are painted from Qt palette
 roles, and styling them as a stylesheet instead costs the native stepper and
