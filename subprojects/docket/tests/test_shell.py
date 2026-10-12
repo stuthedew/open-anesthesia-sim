@@ -96,6 +96,68 @@ def test_script_lines_cuts_where_bash_ends_a_line(script: str, pieces: list[str]
     assert [piece for piece, _ in script_lines(script)] == pieces
 
 
+@pytest.mark.parametrize(
+    ("script", "pieces"),
+    [
+        # The word after `function`'s name heads its body, so a `case` there is
+        # one, a `((` arithmetic and a `[[` a test.
+        (
+            "x=$(function f { case a in\n  a) echo in1 ;;\nesac; }; f)\necho b\n",
+            ["x=$(function f { case a in\n  a) echo in1 ;;\nesac; }; f)", "echo b"],
+        ),
+        (
+            "function g { ((1 +\n2)) && echo yes; }\ng\n",
+            ["function g { ((1 +\n2)) && echo yes; }", "g"],
+        ),
+        (
+            "function h { [[ a == a &&\nb == b ]]; }\nh\n",
+            ["function h { [[ a == a &&\nb == b ]]; }", "h"],
+        ),
+        # The word after `time`'s `-p`, its `--`, or both, is the command it times.
+        ("time -p ((1 +\n2))\necho b\n", ["time -p ((1 +\n2))", "echo b"]),
+        ("time -- ((1 +\n2))\necho b\n", ["time -- ((1 +\n2))", "echo b"]),
+        (
+            "time -p -- [[ a == a &&\nb == b ]]\necho b\n",
+            ["time -p -- [[ a == a &&\nb == b ]]", "echo b"],
+        ),
+        (
+            "x=$(time -p case a in a) echo in1;;\nesac)\necho b\n",
+            ["x=$(time -p case a in a) echo in1;;\nesac)", "echo b"],
+        ),
+        # The word after `coproc`, or after the name it takes, is the command it runs.
+        (
+            "x=$(coproc case a in a) echo in1;;\nesac)\necho b\n",
+            ["x=$(coproc case a in a) echo in1;;\nesac)", "echo b"],
+        ),
+        ("coproc named ((1 +\n2))\necho b\n", ["coproc named ((1 +\n2))", "echo b"]),
+    ],
+)
+def test_a_compound_command_after_function_time_p_or_coproc_is_read_whole(
+    script: str, pieces: list[str]
+) -> None:
+    """Bash reads a reserved word past what `function`, `time` and `coproc` take (`PL-0CJC`).
+
+    Read as words, a `case` there let its pattern's `)` close the `$(` around
+    it, and a newline inside a `((` or a `[[` ended a line, so one command was
+    cut into pieces that each read as complete. Bash 5.2.21 runs each script
+    as that command and the line after it.
+    """
+    assert [piece for piece, _ in script_lines(script)] == pieces
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["x=$(time -p case a in a) echo in1;; esac)", "x=$(coproc case a in a) echo in1;; esac)"],
+)
+def test_a_case_after_time_p_or_coproc_on_one_line_stays_in_its_substitution(command: str) -> None:
+    """Its pattern's `)` closes nothing, so the assignment is one word to the last `)`.
+
+    Read as words, the `case` let the `)` after its pattern close the `$(`,
+    where bash 5.2.21 runs the `case` whole inside it (`PL-0CJC`).
+    """
+    assert _words(command)[0] == command
+
+
 def test_each_piece_carries_the_offset_its_line_starts_at() -> None:
     script = "cat <<'PY'\nbody\nPY\na \\\n  b\n"
 
@@ -117,6 +179,24 @@ def test_the_rest_of_a_script_that_stops_reading_is_one_unreadable_piece(script:
 
     assert first == "ok"
     assert shell_words(rest).clauses == ()
+
+
+def test_a_test_bash_finds_unclosed_is_unreadable() -> None:
+    """A `[[` left open at the end of the input, or of its `$( )`, is declined (`PL-0CJC`).
+
+    Read on, it took every line left for the words of its test, where an
+    unclosed `$(` is declined and bash 5.2.21 refuses both. Inside a test a
+    `)` closes no substitution, so bash refuses one there too, though the
+    test's own parentheses are read. The hooks' reading is incomplete, as it
+    is for every command bash refuses.
+    """
+    (first, _), (rest, _) = script_lines("ok\n[[ a &&\nb\n")
+
+    assert first == "ok"
+    assert shell_words(rest).clauses == ()
+    assert not flat_reading("[[ a &&\nb").complete
+    assert shell_words("x=$([[ a ); echo b").clauses == ()
+    assert shell_words("x=$([[ ( a ) ]]); echo b").clauses != ()
 
 
 @pytest.mark.parametrize(

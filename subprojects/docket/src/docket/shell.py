@@ -102,6 +102,12 @@ OPENS_A_COMMAND = frozenset(
     ("if", "then", "elif", "else", "while", "until", "do", "{", "!", "time")
 )
 
+#: The reserved words bash reads more words after before the command they lead,
+#: so that the command's head is a word further on: `time` its options, `coproc`
+#: the name it may take, and `function` the name it must (Bash Reference Manual
+#: §3.2.3 "Pipelines", §3.2.6 "Coprocesses", §3.3 "Shell Functions").
+LEADS = frozenset(("time", "coproc", "function"))
+
 
 class _Value:
     """What `dataclass(frozen=True)` gave the classes below, without importing `dataclasses`.
@@ -346,12 +352,23 @@ class _Grammar:
     `case` pattern's `)` closes nothing; inside `(( ))` a newline is a space
     and a `<<` a shift; and inside `[[ ]]` a newline ends no line, though the
     here-documents waiting on it start after it, as bash 5.2.21 reads them.
-    One per read, since a substitution's body is a list of its own.
+    A head is where bash 5.2.21 reads a reserved word (`reserved_word_acceptable`
+    in its parse.y), and this takes one after a control operator or a newline,
+    after a word in `OPENS_A_COMMAND`, after a function definition's `()`, and
+    past what a word in `LEADS` takes before its command - `time`'s `-p` and
+    then `--`, the name after `function`, and the one `coproc` may take
+    (`PL-0CJC`). Not yet after a closing word bash also names there, such as
+    `fi` or `]]` (`PL-9NMR`). One per read, since a substitution's body is a
+    list of its own.
     """
 
     def __init__(self, arithmetic: bool) -> None:
         #: Whether the next word heads a command, where bash reads a reserved word.
         self.head = True
+        #: The word in `LEADS` the last word was, read at a head, or `time -p`
+        #: once the `-p` after a `time` is read: what bash may still read
+        #: before the command it leads.
+        self.leading = ""
         #: Whether the last operator was a `(`, so that a `)` after it closes
         #: the `()` of a function definition, whose body heads a command.
         self.opened = False
@@ -375,6 +392,7 @@ class _Grammar:
         reserved = "" if quoted else text
         state = self.cases[-1] if self.cases else ""
         head, self.head, self.opened = self.head, False, False
+        leading, self.leading = self.leading, ""
         if self.arithmetic is not None:
             return False
         if state == "word":
@@ -401,7 +419,20 @@ class _Grammar:
         if head and reserved == "[[":
             self.conditional = True
             return False
-        self.head = head and reserved in OPENS_A_COMMAND
+        if leading == "time" and reserved == "-p":
+            # bash reads `-p` straight after `time`, and `--` after either, as
+            # its options (parse.y's `special_case_tokens`).
+            self.head, self.leading = True, "time -p"
+        elif leading in ("time", "time -p") and reserved == "--":
+            self.head = True
+        elif leading == "function" or (leading == "coproc" and reserved not in ("for", "select")):
+            # The word after the name heads the body `function` defines or the
+            # command `coproc` runs; a `for` or `select` there is that command.
+            self.head = True
+        elif head and reserved in LEADS:
+            self.head, self.leading = reserved != "function", reserved
+        else:
+            self.head = head and reserved in OPENS_A_COMMAND
         return False
 
     def pattern(self, operator: str) -> bool:
@@ -413,11 +444,12 @@ class _Grammar:
         if (operator, state) not in ((")", "pattern"), (")", "patterns"), ("(", "pattern")):
             return False
         self.cases[-1] = "clause" if operator == ")" else "patterns"
-        self.head, self.opened = operator == ")", False
+        self.head, self.opened, self.leading = operator == ")", False, ""
         return True
 
     def operator(self, operator: str) -> None:
         """Read one operator a pattern does not own: where the next word stands after it."""
+        self.leading = ""
         if self.arithmetic is not None or self.conditional:
             return
         if self.cases and self.cases[-1] == "clause" and operator in (";;", ";&", ";;&"):
@@ -580,7 +612,7 @@ class _Lexer:
                 resume = self.here_documents(index, stop)
                 if not self.nested:
                     self.breaks.append((index, resume))
-                grammar.head = True
+                grammar.head, grammar.leading = True, ""
                 index = resume
             elif char == "#" and begin < 0:
                 self.refuse("carries an unquoted `#`, which no admitted shape uses")
@@ -660,6 +692,8 @@ class _Lexer:
                 )
                 if not grammar.pattern(operator):  # a pattern's `)` neither nests nor closes
                     if closes and operator == ")" and not depth:
+                        if grammar.conditional:  # bash reads it inside the `[[`, and refuses it
+                            raise _Unreadable("has an unclosed `[[`")
                         flat.append(Operator(operator))
                         self.frames.pop()
                         # Bash reads the bodies still waiting after the line this closes on.
@@ -724,6 +758,9 @@ class _Lexer:
         finish()
         if self.introducer is not None:
             raise _Unreadable("has a `<<` with no word after it")
+        if grammar.conditional:
+            # Read on, it would take every line left for the words of its test.
+            raise _Unreadable("has an unclosed `[[`")
         self.frames.pop()
         unended = frame.carried + frame.pending
         if backquote and unended and not self.bash_c:
@@ -1188,9 +1225,10 @@ def shell_words(command: str) -> Reading:
     redirection or a subshell is a shape nobody has argued for. So are an
     unquoted character outside `PLAIN` and a `$` or backtick inside double
     quotes, where the shell expands it. A command the shell cannot read - an
-    unbalanced quote, a trailing backslash, an unclosed substitution, a `<<`
-    with no word after it, a here-document its delimiter never ends - has no
-    clauses, and its refusal says why unless something earlier already had.
+    unbalanced quote, a trailing backslash, an unclosed substitution or `[[`,
+    a `<<` with no word after it, a here-document its delimiter never ends -
+    has no clauses, and its refusal says why unless something earlier already
+    had.
     """
     lexer = _Lexer(command, bash_c=False)
     try:
@@ -1209,8 +1247,8 @@ def flat_reading(command: str) -> FlatReading:
     than refusing it: a body its delimiter never ends runs to the end of the
     input, and a trailing backslash is a backslash, where bash 5.2.21 reads
     both with a warning or none (`PL-JNYL`). What bash refuses - an unbalanced
-    quote, an unclosed substitution, a `<<` with no word after it - leaves it
-    incomplete.
+    quote, an unclosed substitution or `[[`, a `<<` with no word after it -
+    leaves it incomplete.
     """
     lexer = _Lexer(command, bash_c=True)
     tokens: list[str] = []
