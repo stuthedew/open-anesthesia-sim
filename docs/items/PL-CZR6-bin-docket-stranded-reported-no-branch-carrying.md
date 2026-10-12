@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: stranded-report-fidelity
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-09-21
 closed: 2026-10-11

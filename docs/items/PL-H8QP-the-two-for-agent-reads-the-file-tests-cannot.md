@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, test
 feature: machine-profile-framework
+milestone: v0.5.23
 touches: tests/unit/test_circuit.py, tests/unit/test_alveolar.py, docs/MODEL.md
 added: 2026-09-27
 closed: 2026-10-03

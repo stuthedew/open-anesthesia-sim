@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: delegation
+milestone: v0.5.23
 touches: subprojects/docket/README.md, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-15
 closed: 2026-10-11

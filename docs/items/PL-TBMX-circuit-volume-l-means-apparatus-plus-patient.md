@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, anticipated
 feature: machine-profile-framework
+milestone: v0.5.23
 touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/data/machines/reference_circle_system.json, docs/MODEL.md, docs/machine-abstraction.md, ROADMAP.md
 added: 2026-09-20
 closed: 2026-10-04

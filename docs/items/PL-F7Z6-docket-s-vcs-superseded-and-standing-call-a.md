@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests, subprojects/docket/README.md, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-R417's change-record slice, 2026-10-05
 added: 2026-10-04

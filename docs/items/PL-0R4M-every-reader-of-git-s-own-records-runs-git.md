@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: line-ends
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/lines.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/verify.py, tools, .claude/hooks/stop_hook_patch.py, tests/unit, subprojects/docket/tests, docs/items/PL-4YVK-readers-split-line-oriented-text-with-str.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage
 added: 2026-10-05

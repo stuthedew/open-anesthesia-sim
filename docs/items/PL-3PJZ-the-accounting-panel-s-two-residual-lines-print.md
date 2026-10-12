@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: presentation-safety
+milestone: v0.5.23
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_formatting.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 added: 2026-10-03
 closed: 2026-10-03

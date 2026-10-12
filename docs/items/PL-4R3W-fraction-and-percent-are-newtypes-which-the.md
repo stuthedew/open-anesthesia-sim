@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: parse-dont-validate
+milestone: v0.5.23
 touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/run_view.py, tools/core_vocabulary_check.py, .claude/rules/core-domain.md, tests, docs/MODEL.md, docs/ARCHITECTURE.md, docs/items/PL-T137-core-validation-py-rejects-a-value-without.md, docs/items/PL-HXKC-eight-of-the-twenty-three-public-functions-in.md, docs/items/PL-LLMN-require-supported-admits-0-0-shown-as-0-0-l-min.md
 added: 2026-10-04
 closed: 2026-10-05
