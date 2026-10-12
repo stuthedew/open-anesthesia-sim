@@ -1,14 +1,16 @@
 ---
 id: PL-NWTM
 title: The unconditional displayed set has no structural home in the code, so the guarantee docs/MODEL.md states as structural - a region outside the area system - exists only as prose
-priority: P2
+priority: P1
 effort: L
-status: blocked
+status: ready
 classes: safety, anticipated
 feature: interface-areas
-blocked-by: PL-1FT6
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, docs/MODEL.md
+blocked-by: PL-1FT6
 added: 2026-09-16
+payoff: the values docs/MODEL.md says no Workspace may remove leave the splitter tree before its handles go live, so no drag, split, join or close can take them off screen, and a run with no volatile agent is never asked for a vaporizer dial
+verify: grep -q 'def test_no_unconditional_value_sits_inside_the_layout_container' tests/integration/test_simulation_view.py && grep -q 'def test_a_run_with_no_volatile_agent_owes_no_vaporizer_circuit_or_mac_value' tests/unit/test_unconditional_set.py
 ---
 
 **Problem.** The unconditional displayed set has no structural home in the code, so the guarantee docs/MODEL.md states as structural - a region outside the area system - exists only as prose
@@ -54,3 +56,23 @@ application package - so the **Done when** clause that has `PL-036`'s check
 read this item's declaration needs re-deciding when this is started: a
 bare-checkout check cannot call a Python declaration under `src/`. `PL-41YP`'s
 half is unaffected.
+
+## Moved to `ready`, 2026-10-12
+
+Set by `PL-1FT6`'s close-out. Read against the tree at that commit, the
+readout section is still placed in the vertical `inert_splitter` by
+`SimulationView._restack_sections`
+(`src/anesthesia_sim/app/simulation_view.py`), and nothing open holds the
+region or the declaration. The layout model now exists and addresses Areas
+only, so the region needs no change to the model to be unaddressable. The
+clause asking that each value stay on screen after a split, a join, a close
+and a Workspace switch cannot be driven before the adapter and those
+operations exist, and `PL-G5SX` (Required scope entry 18) already carries that
+assertion over every operation; this item's test asserts the structural half,
+that no unconditional value has the layout container among its widget's
+ancestors. It goes first because `PL-W9P6` turns the handles live, and the
+order the v0.6.0 Goal names - the required values out of the container before
+it becomes live - is the one that keeps them on screen; `PL-W9P6` is blocked
+on this item for that reason. The `PL-036` half of the second Done when still
+wants the re-decision the 2026-09-22 note records, and the third Problem,
+reachability, is `PL-50PZ`'s (Required scope entry 16).

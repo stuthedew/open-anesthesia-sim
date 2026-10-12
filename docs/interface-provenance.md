@@ -872,7 +872,13 @@ one handle. Across the thirty-two shipped workspaces this differs exactly once,
 at a four-way junction. The fix is not the graph: it is for the layout model to
 resolve, on a drag, the set of handles that are collinear and adjacent to the
 one being dragged, and move them together. That is a query over the tree rather
-than a change of representation.
+than a change of representation. Built as `LayoutModel.borders()` (`PL-1FT6`),
+it reads the line from where the borders lie, since a tree has no vertices to
+share, and that leaves one difference: two borders a drag brings into line are
+one line from then on here, where Blender's border drag merges no vertices -
+`area_move_exit` in `screen_ops.cc` removes duplicate edges and nothing else
+(`blender/blender` `main`, read 2026-10-12) - so its two edges stay two until
+the reader merges them on purpose.
 
 **Prune the contract; do not let it accumulate.** Blender's `SpaceType` carries
 hooks nothing implements and a field nothing assigns, and nothing in the design

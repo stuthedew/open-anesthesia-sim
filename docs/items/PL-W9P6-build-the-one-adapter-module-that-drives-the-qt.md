@@ -1,14 +1,14 @@
 ---
 id: PL-W9P6
 title: Build the one adapter module that drives the Qt widget tree from the LayoutModel, and turn the Qt port's inert splitter handles live
-status: blocked
-feature: interface-areas
-added: 2026-09-16
 priority: P2
 effort: M
-blocked-by: PL-1FT6
+status: blocked
 classes: feature
+feature: interface-areas
 touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, tests/integration
+blocked-by: PL-NWTM
+added: 2026-09-16
 ---
 
 **Problem.** Build the one adapter module that drives the Qt widget tree from the LayoutModel, and turn the Qt port's inert splitter handles live
@@ -28,3 +28,16 @@ than the widget tree alone.
 
 *Scope.* `ROADMAP.md` § "v0.6.0 - the layout is the reader's" -> "Required
 scope" item 2.
+
+## Blocked on `PL-NWTM`, 2026-10-12
+
+Set by `PL-1FT6`'s close-out. The model this item drives exists now. What
+holds it is the readout section, still placed in the vertical splitter by
+`SimulationView._restack_sections`: the adapter builds that splitter from the
+model, and the model has no address for an unconditional value (`PL-NWTM`,
+Required scope entry 7). Building today's dashboard from it would either make
+the readouts an Area - the closeable placement `docs/MODEL.md` forbids - or
+move them out, which is `PL-NWTM`'s work. A live handle on that splitter could
+also drag the readouts to nothing, since a `QSplitter` child is collapsible by
+default. `PL-R1WQ`'s registry is built with this item, its first consumer, and
+`PL-TH35`'s contract after it.

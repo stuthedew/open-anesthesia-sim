@@ -6,8 +6,8 @@ effort: M
 status: blocked
 classes: planning
 feature: interface-areas
-blocked-by: PL-1FT6
 touches: docs/ARCHITECTURE.md
+blocked-by: PL-W9P6
 added: 2026-09-16
 ---
 
@@ -101,3 +101,14 @@ ratified, over the alternative each names). The one decision the owner
 specified otherwise is `PL-WV9K` Q4: layouts are saved by an explicit "Save
 as default" action in the layout menu, not automatically; `PL-WV9K`
 § "Answers 2026-09-27" carries that design.
+
+## Blocked on `PL-W9P6`, 2026-10-12
+
+Set by `PL-1FT6`'s close-out. Q2's half is built with no Qt import: `ViewKind`
+checks the tag's syntax, and `LayoutModel.unknown_kinds(known)` returns the
+Areas whose tag is not in the set a caller passes
+(`src/anesthesia_sim/layout/tree.py`, `src/anesthesia_sim/layout/model.py`).
+What is left is the registry module Q1 places in `app/` and the per-Area
+failure Required scope entry 4 names. The adapter reads both when it resolves
+a tag, so the registry is built with the adapter, its first consumer, rather
+than ahead of it as a table nothing reads.

@@ -11,11 +11,13 @@ rules, and what this project deliberately does differently — see
 
 ## Layering
 
-The codebase is split into three independent layers, enforced by import
-direction (never edit around this — see `CLAUDE.md`):
+The codebase is split into independent layers, enforced by import direction
+(never edit around this — see `CLAUDE.md`):
 
 ```text
 data/  --loaded by-->  core/  --read by-->  app/
+                                             ^
+                    layout/  --read by-------+
 ```
 
 - **`core/`** is the scientific simulation. It has no dependency on the UI
@@ -25,6 +27,13 @@ data/  --loaded by-->  core/  --read by-->  app/
   unit calculation itself — it only reads immutable snapshots from `core/`
   (through a thin controller) and renders them, and forwards user input back
   as setter calls.
+- **`layout/`** is the area layout as a value: which View occupies which part
+  of each window, and the operations a reader performs on it (`PL-C842`,
+  `PL-1FT6`). It imports no toolkit, which `tools/import_boundary_check.py`
+  enforces, so every operation is tested with no `QApplication`, and of
+  `core/` it reads only `core/checked_number.py`'s naming of a refused value.
+  The adapter that builds the widget tree from it is `PL-W9P6`'s, and until it
+  lands nothing in `app/` reads the package.
 - **`data/`** holds versioned, schema-validated parameter files (JSON) with
   citations, in three kinds — the agent, the patient, and the machine in front
   of them. Every scientific constant a shipped run uses comes from one of them:
@@ -86,6 +95,11 @@ src/anesthesia_sim/
 │   ├── theme.py                    # every display token: palette, cited ISO 5360 agent colors, type sizes, spacing, dash patterns; toolkit-independent
 │   ├── stylesheets.py              # every stylesheet a widget is given, composed from theme.py's tokens, so each visual decision is written once; toolkit-independent
 │   └── main.py                     # PySide6 entry point; builds the BranchedCase and opens the dashboard over its trunk; the window opens maximized (PL-Z4K6) over a sized, centred normal geometry (PL-005)
+├── layout/               # the area layout as a value: which View occupies which part of each window - no toolkit dependency (PL-C842, PL-1FT6)
+│   ├── tree.py                     # the values a layout is built from - AreaId, ViewKind, Area, Split, Window - each refusing what could not be one, and the one form a tree takes
+│   ├── model.py                    # LayoutModel: every window's tree; split, join, resize, swap and set_view, each returning a new layout; the borders() line a drag moves
+│   ├── serialization.py            # the layout as JSON: the body a Workspace holds, and a versioned document holding one on its own
+│   └── exceptions.py               # what the package refuses, and what each refusal means to a caller
 └── data/                 # versioned, cited parameter files
     ├── agents/{sevoflurane,isoflurane,desflurane}.json
     ├── machines/reference_circle_system.json
@@ -709,8 +723,9 @@ in it, or a line left behind after a deletion, fails `make check`.
 
 - **`tests/unit/`** — one module's behavior in isolation (a compartment, a
   validator, a parameter loader, the controller, the displayed-value
-  formatters, and what the dashboard claims per tick with no toolkit loaded,
-  in `test_dashboard_frame.py`).
+  formatters, what the dashboard claims per tick with no toolkit loaded, in
+  `test_dashboard_frame.py`, and the area layout's every operation and
+  refusal, in `test_layout_model.py` and `test_layout_serialization.py`).
 - **`tests/integration/`** — components wired together as the app assembles
   them (e.g. controller driving a full `AgentUptakeSystem`), the Qt chart
   drawn headless against a real run (`test_qt_chart.py`), which reads the
