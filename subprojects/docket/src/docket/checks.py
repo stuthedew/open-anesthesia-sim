@@ -2223,6 +2223,7 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
     known_items = {i.identifier: i for i in report.items}
     _outranks_its_blocker(report, known_items)
     _ready_with_an_open_blocker(report, known_items)
+    _blocked_with_every_blocker_closed(report)
     _check_prose_dependencies(report)
 
     duplicates = [
@@ -3080,6 +3081,49 @@ def _ready_with_an_open_blocker(report: Report, known_items: dict[str, Item]) ->
         )
 
 
+def stale_blocked_error(item: Item) -> str:
+    """The error `docket check` raises on a `blocked` item nothing open holds.
+
+    Public so that `docket set` can tell this error, raised on an item a
+    closure released, from one its own write caused: the closure is not
+    refused for it, and prints the released items instead (`PL-2349`).
+    """
+    return (
+        f"{_where(item)}: sits at `blocked` though every blocker has closed "
+        f"({', '.join(item.blocking_items)}); move it to `ready` with its `verify:` and "
+        "`payoff:` written, or record what really holds it in `blocked-by` - an item for "
+        "the condition, as `PL-0H5D` settled - in the pull request that closed the last one"
+    )
+
+
+def _blocked_with_every_blocker_closed(report: Report) -> None:
+    """Refuse `blocked` on an item whose every item blocker has closed.
+
+    The mirror of `_ready_with_an_open_blocker`, and the half `PL-6T44` left
+    as an advisory. Since `PL-0H5D` (ratified 2026-09-21) a holding condition
+    `blocked-by` cannot express gets an item of its own to block on, so
+    `blocked` with every named item closed is always a false statement, never
+    an inexpressible true one. As an advisory it was named on every run and
+    moved by nobody: `PL-R417`'s closure on 2026-10-11 left five items that
+    way in the pull request that released them, and two older ones had sat 8
+    and 15 days. An error makes the pull request that closes a blocker move
+    what it released (project owner, 2026-10-11, ratified, over a fifth
+    `unblocked` status and over keeping the advisory, `PL-2349`).
+
+    **The judgment stays the session's; only the falsehood is refused.** A
+    closed blocker is not evidence that nothing else holds an item -
+    `plan.promotable` carries the 7-of-13 count - so the message offers both
+    exits, `ready` or the real holding condition, and writes neither.
+
+    Items only, read through `plan.promotable` so that `docket next` and this
+    error name one set. A milestone blocker clears when a scoping round
+    happens, which needs the roadmap and is no closure, so that half stays the
+    advisory `_groom` raises. An id the store cannot place counts as
+    unresolved, so a typo is `_check_references`' error alone.
+    """
+    report.errors.extend(stale_blocked_error(item) for item in promotable(report.items))
+
+
 def _check_prose_dependencies(report: Report) -> None:
     report.advisories.extend(brief_contradictions(report.items))
 
@@ -3881,21 +3925,13 @@ def _groom(
             "none is owed, say that and why"
         )
 
-    # The item-blocker half is `plan.promotable`, which `docket next` also
-    # reads so that it can name these ids at the moment a session is choosing.
-    # Derived once and shared rather than computed twice: an advisory saying an
-    # item may now be started, beside a ranking that disagrees, is the silent
-    # wrong answer `.claude/rules/apparatus-standard.md` makes the floor
-    # (`PL-6T44`). Membership is tested inside the existing walk so the
-    # advisories still appear in store order.
-    ready_now = {item.identifier for item in promotable(report.items)}
+    # The item-blocker half is an error since `PL-2349`, raised by
+    # `_blocked_with_every_blocker_closed`: a closure is the moment the status
+    # goes false, and the pull request making it is the one that moves it. A
+    # milestone blocker clears on a scoping round instead, which is no closure
+    # and has no pull request of its own to refuse, so it stays advice here.
     resolved = {i.identifier for i in report.items if i.status in CLOSED_STATUSES}
     for item in report.items:
-        if item.identifier in ready_now:
-            report.advisories.append(
-                f"{item.identifier}: every blocker has closed; it is ready to promote"
-            )
-            continue
         versions = item.blocking_milestones
         if item.status != "blocked" or not versions:
             continue

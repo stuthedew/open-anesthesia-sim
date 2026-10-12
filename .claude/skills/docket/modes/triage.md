@@ -109,8 +109,11 @@ project can answer is `needs-decision`, and `bin/docket gate` counting it as
 debt is right - somebody can go and resolve it. A milestone not yet scoped is
 `status: blocked` with `blocked-by: v0.6.0`, and is not debt: only a scoping
 round resolves it, and working the item cannot bring one forward. `docket
-check` promotes it once that section carries its four subsections, and errors
-on a version the roadmap names nowhere. `PL-B9PY` is what the wrong one cost -
+check` advises that it is ready to promote once that section carries its four
+subsections - a session promotes it, with `bin/docket set <id> --status ready`
+after reading it against the tree - and errors on a version the roadmap names
+nowhere. An item blocker is stricter: once every one has closed, `check`
+refuses the item left `blocked` (`PL-2349`). `PL-B9PY` is what the wrong one cost -
 parked at `needs-decision`, counted into Gate 1 as resolvable, then two days
 hidden from `bin/docket next` after v0.5.0 was scoped. A patch track
 (`v0.5.x`) is not a version anything can wait on: it freezes no gate and takes

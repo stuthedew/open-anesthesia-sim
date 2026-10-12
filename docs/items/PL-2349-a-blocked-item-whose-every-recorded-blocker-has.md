@@ -3,12 +3,14 @@ id: PL-2349
 title: A blocked item whose every recorded blocker has closed has no status to move to short of ready, which demands verify: and payoff:, so the session closing the blocker leaves status: blocked standing as a false claim - PL-R417's closure on 2026-10-11 left five that way, and PL-5XG1 and PL-ZYHX sat 15 and 8 days
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: blocked-means-blocked
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/triage.md, docs/items/PL-JHHC-a-decision-whose-answer-adds-a-commit-to-a-pull.md, docs/items/PL-LNNL-no-check-reads-a-markdown-document-as.md, docs/items/PL-QFCR-arming-tooling-and-gate-write-this-repository-s.md, docs/items/PL-RLS3-record-the-2026-instruction-file-measurements.md, docs/items/PL-VF3C-port-the-2026-09-25-multi-session-stress.md
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, tools/doc_check.py, ROADMAP.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/triage.md, docs/items/PL-JHHC-a-decision-whose-answer-adds-a-commit-to-a-pull.md, docs/items/PL-LNNL-no-check-reads-a-markdown-document-as.md, docs/items/PL-QFCR-arming-tooling-and-gate-write-this-repository-s.md, docs/items/PL-RLS3-record-the-2026-instruction-file-measurements.md, docs/items/PL-VF3C-port-the-2026-09-25-multi-session-stress.md
 deferred-from: v0.6.0 - filed after the gate froze, and a docket defect in how the queue records state, which the layout milestone does not clear
 added: 2026-10-11
+closed: 2026-10-12
+pr: 1427
 payoff: an item stops reading blocked the moment nothing blocks it, so released work reaches bin/docket next in the pull request that released it instead of waiting for a grooming pass
 verify: grep -q 'def test_a_blocked_item_whose_every_blocker_has_closed_is_an_error' subprojects/docket/tests/test_checks.py
 ---
@@ -106,3 +108,22 @@ items stale on 2026-10-11 - `PL-JHHC`, `PL-LNNL`, `PL-QFCR`, `PL-RLS3`,
 `PL-VF3C` - leave `blocked` in the same pull request, each to `ready` with its
 `verify:` and `payoff:` written for the end state, or to a real blocker, so
 `main` never carries the error.
+
+**Built 2026-10-12.** `checks._blocked_with_every_blocker_closed` raises the
+error for each item in `plan.promotable`, the set `next` names, so the two
+cannot disagree; the milestone branch of `_groom`'s walk keeps its advisory.
+One consequence the Done-when did not spell out: `docket set` refuses any write
+that adds a `check` error, so closing a blocker would have been refused for the
+items it releases - which could not honestly leave `blocked` before it closed.
+`set` therefore exempts the error on items other than the one written, matched
+by the message `checks.stale_blocked_error` builds, and prints them with the
+instruction to move each in the same pull request; a write that makes its own
+item's status false is still refused.
+
+The five items left stale on 2026-10-11 were each held by nothing but the
+generator pause, and `bin/docket generators` showed it over on `main` at
+`3ff9f0f6`, so this branch first moved them to `ready`. Before it pushed,
+#1419 (`PL-74T0`) recorded `PL-5DZ8`, `PL-8QMD` and `PL-ZGYX` as live heads,
+which restarts the pause, so each took the Done-when's other exit: blocked on
+those three heads, a real blocker, with its `verify:` and `payoff:` written so
+the pull request that ends the pause can promote it in one write.

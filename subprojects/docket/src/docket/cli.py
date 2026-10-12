@@ -26,6 +26,7 @@ from .checks import (
     SettingsSource,
     analyze,
     brief_contradictions,
+    stale_blocked_error,
     tier_entrances,
 )
 from .claims import (
@@ -2029,7 +2030,14 @@ def cmd_set(args: argparse.Namespace) -> int:
         # the whole store is clean would refuse the command on exactly the
         # days it is needed.
         already = set(analyze(items, today, config, milestones=milestones).errors)
-        introduced = [error for error in introduced if error not in already]
+        # Nor does an item this closure released: refusing the closure for
+        # it would leave the blocker open, and the released item could not
+        # honestly leave `blocked` before it closed. `_say_unblocked` names
+        # each one, and `check` holds the pull request until it has moved
+        # (`PL-2349`). The item written is never exempt - a write that makes
+        # its own status false is refused like any other.
+        released = {stale_blocked_error(c) for c in promotable(after) if c is not updated}
+        introduced = [e for e in introduced if e not in already and e not in released]
     if introduced:
         print(f"{item.identifier}: nothing was written; `docket check` would then report{raised}:")
         for error in introduced:
@@ -2172,6 +2180,11 @@ def _say_unblocked(
     user-facing question written in since triage. `PL-6T44` carries why a
     recomputed status must not override what an item declares - it would have
     put `PL-WZVZ`, unbuildable, into `P1` and onto the debt gate.
+
+    **Named, and not optional.** `docket check` refuses each one until it has
+    moved, so the print says the move belongs to this pull request: the
+    closure is let through for them, and the advisory that preceded the error
+    was named on every run and acted on by nobody (`PL-2349`).
     """
     if "status" not in changes or updated.status not in CLOSED_STATUSES:
         return
@@ -2183,10 +2196,12 @@ def _say_unblocked(
     for candidate in freed:
         print(f"  {candidate.identifier}  {candidate.title}")
     print(
-        "  Not promoted for you - a closed blocker is not evidence that nothing else "
-        "holds an item, and 7 of 13 measured this way were held by something the field "
-        "could not see. Read each against the tree, then `docket set <id> --status ready` "
-        "or write what is really holding it into `blocked-by`."
+        "  Move each in this pull request - `docket check` refuses a blocked item whose "
+        "every blocker has closed. Not promoted for you: a closed blocker is not evidence "
+        "that nothing else holds an item, and 7 of 13 measured this way were held by "
+        "something the field could not see. Read each against the tree, then `docket set "
+        "<id> --status ready` with its `--verify` and `--payoff`, or write what is really "
+        "holding it into `blocked-by` - an item for the condition, as `PL-0H5D` settled."
     )
 
 
@@ -3031,9 +3046,10 @@ def _say_promotable(items: list[Item]) -> None:
     """Name the blocked items whose every recorded blocker has since closed.
 
     `recommend` cannot offer them - `plan._startable` filters on `status` - and
-    `docket check` has named them in an advisory all along, which is a command
-    a session picking work has no reason to run. `next` prints the *number* of
-    advisories pending and not the ids, so on 2026-09-17 the one item that
+    `docket check` named them only in an advisory until `PL-2349` made it an
+    error, which is a command a session picking work has no reason to run.
+    `next` prints the *number* of advisories pending and not the ids, so on
+    2026-09-17 the one item that
     would have unblocked three more of v0.5.0's own scope was reachable only by
     reading `blocked-by` on five items and resolving each root by hand
     (`PL-6T44`).
@@ -3045,6 +3061,11 @@ def _say_promotable(items: list[Item]) -> None:
     Named, never ranked. `plan.promotable` carries the count that settled it -
     6 of 13 were genuinely startable, and ranking the other 7 would have put an
     unbuildable item into `P1` and onto the debt gate.
+
+    Since the error, a non-empty line means a closure reached this checkout
+    without its move: a branch mid-close-out, or two pull requests that each
+    passed alone, one closing a blocker and one adding the edge. So it says
+    whose move it is rather than offering it as a choice.
     """
     candidates = promotable(items)
     if not candidates:
@@ -3056,8 +3077,9 @@ def _say_promotable(items: list[Item]) -> None:
     print(
         "  Not ranked above - a closed blocker is not evidence that nothing else holds an "
         "item, and 7 of 13 measured this way were held by something the field could not "
-        "see. Read each against the tree, then `docket set <id> --status ready` or record "
-        "what is really holding it."
+        "see. `docket check` refuses the state, so the pull request that closed the "
+        "blocker moves each: `docket set <id> --status ready` with its `--verify` and "
+        "`--payoff`, or what is really holding it recorded in `blocked-by`."
     )
 
 
