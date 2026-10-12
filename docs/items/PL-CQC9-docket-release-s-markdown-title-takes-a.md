@@ -3,11 +3,13 @@ id: PL-CQC9
 title: docket.release's markdown_title takes a backslash-escaped backtick for a code span's opener, so in a title holding one before a placeholder in angle brackets the placeholder is copied unescaped into the notes bullet or capture line, where GitHub drops it as an HTML tag; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
+closed: 2026-10-12
+pr: 1464
 payoff: A placeholder after an escaped backtick in a title survives into release notes and capture lines rather than being dropped by GitHub.
 verify: grep -q 'def test_a_backslash_escaped_backtick_opens_no_code_span_in_a_title' subprojects/docket/tests/test_release.py
 ---
