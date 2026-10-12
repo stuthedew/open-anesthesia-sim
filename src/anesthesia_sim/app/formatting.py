@@ -252,10 +252,12 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
     A negative fraction is never given the below-resolution form, which
     would absorb it into a plausible-looking reading. No `Fraction` can
     hold one, minus zero included since `PL-LLMN`, so a negative reaching
-    here came from a caller `mypy` does not read, and
-    `percent_from_fraction` refuses it before anything is rendered.
-    Until `PL-4R3W` it was rendered with its sign instead, as the anomaly
-    it is; refusing it is the stronger form of the same rule.
+    here came from a caller `mypy` does not read, as a bare `float`, and
+    `percent_from_fraction` refuses it before anything is rendered: since
+    `PL-1DP1` for never having been built as a `Fraction`, whatever its
+    value, where `PL-4R3W` refused it by its range. Until `PL-4R3W` it was
+    rendered with its sign instead, as the anomaly it is; refusing it is
+    the stronger form of the same rule.
 
     Args:
         partial_pressure_fraction: Dimensionless partial-pressure-equivalent
@@ -266,11 +268,10 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
         below-resolution form for a positive value that rounds to zero.
 
     Raises:
-        SimulationConfigurationError: the value is outside 0 to 1, which
-            no `Fraction` holds (`core/concentration.py`).
-            `percent_from_fraction` is what refuses it, as the percent it
-            would have been, so the message gives the value times a
-            hundred.
+        TypeError: the value was not built as a `Fraction` - a bare `float`
+            included, whatever its value - which `percent_from_fraction`
+            refuses before anything is rendered, naming the constructor to
+            build (`core/concentration.py`, `PL-1DP1`).
     """
 
     percent = percent_from_fraction(partial_pressure_fraction)
@@ -322,8 +323,8 @@ def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percent) -> M
             plausible-looking number — the loader's `PositivePercent`
             already makes one unreachable from a shipped data file, so
             one arriving here means something upstream is wrong.
-        SimulationConfigurationError: the fraction is outside 0 to 1,
-            which no `Fraction` holds, as `format_percent` refuses it.
+        TypeError: the fraction was not built as a `Fraction`, which
+            `percent_from_fraction` refuses as `format_percent` says.
     """
 
     if not mac_percent > 0.0:
@@ -338,9 +339,9 @@ def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percen
     The same three rules `format_percent` follows, for the same reasons,
     at this unit's own derived resolution: round rather than truncate,
     mark a positive value that rounds to zero as below the resolution
-    instead of showing it as `0.00`, and refuse an impossible negative
-    rather than absorb it, which `mac_multiple` does before anything is
-    rendered.
+    instead of showing it as `0.00`, and refuse a value never built as a
+    `Fraction`, an impossible negative among them, rather than absorb it,
+    which `mac_multiple` does before anything is rendered.
 
     The below-resolution form matters more here than in percent, not
     less. 0.01 MAC is 0.02 percentage points of sevoflurane and 0.06 of
@@ -362,7 +363,7 @@ def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percen
 
     Raises:
         ValueError: If `mac_percent` is not strictly positive.
-        SimulationConfigurationError: the fraction is outside 0 to 1, as
+        TypeError: the fraction was not built as a `Fraction`, as
             `mac_multiple` refuses it.
     """
 
