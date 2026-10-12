@@ -2330,3 +2330,16 @@ fix is a new record, which the pause captures and does not build. `PL-JLBD` is
 ready at `P3`, decided as a `docket check` refusal of `generator: live` on a
 closed item. The sweep for other readers that closes the head is its own work,
 recorded in its brief under `**Swept <date>.**`, which its `verify:` names.
+
+**The family head, 2026-10-12.** `PL-KGYT` closed spent on 2026-10-03 and was
+re-entered by five, as `PL-PVW2` had been by six and `PL-5DZ8` was by
+`PL-D23H` on the day it closed. `PL-4S6C` is the head over the three: the
+mechanism is that nothing refused the next copy, and the owner made one source
+of truth for a shared fact a hard principle of the code. The principle is
+resident in `CLAUDE.md` § "Architecture and development discipline", and
+`tools/fact_home_check.py` refuses the decidable part - a reader of git, the
+tree, the GitHub API, the default branch or a shell command outside the module
+that owns it, and a name defined in two apparatus files - against a baseline
+of 107 sites that only shrinks; `PL-5DZ8`'s 19 members, `PL-HNXS` and
+`PL-9NZ3` drain it. The pause on new workflow mechanisms, re-engaged by this
+head, ends when its pull request merges.

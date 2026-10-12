@@ -139,4 +139,13 @@ The test that separates the first two is cheap, and is what split them
 this fact with a grammar? If so, read it; if not, the fix is a place to write
 it, never a sharper heuristic. This is prose rather than a check because
 whether a reader infers or reads is the judgment half, which `CLAUDE.md`
-refuses to script (project owner, 2026-10-01, `PL-HC8P`).
+refuses to script (project owner, 2026-10-01, `PL-HC8P`). The principle it
+serves is resident since 2026-10-12, in `CLAUDE.md` § "Architecture and
+development discipline", as a hard coding principle the owner asked every
+session to read before its first write, so a session meets the rule there and
+finds the three shapes here (project owner, 2026-10-12, `PL-4S6C`). The
+decidable part - a reader of git, the tree, the GitHub API, the default
+branch or a shell command outside the module that owns it, and an upper-case
+name defined in two apparatus files - is `tools/fact_home_check.py`, with a baseline
+that only shrinks; which of the three shapes a new reader is stays the
+judgment, and stays here.

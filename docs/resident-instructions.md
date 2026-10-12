@@ -838,3 +838,44 @@ make unnecessary.
 **What should retire it.** A check that could tell a defect from a choice,
 which none can and `CLAUDE.md` refuses to script; or the door falling back
 into disuse, which the pull-request bodies under `docs/pr-bodies` would show.
+
+## The one-source-of-truth principle, added 2026-10-12
+
+`PL-4S6C` wrote one bullet into `CLAUDE.md` § "Architecture and development
+discipline": a shared fact has one source of truth, imported from the module
+or data file that owns it and never derived again beside it, with the
+record-or-read test, the two checks that carry the decidable part, and a
+pointer to the apparatus rule's three shapes. The project owner asked for it
+in those terms on 2026-10-12 - "I want this to be a hard coding principle.
+Shared facts should be one source of truth" - and, offered a check, said both
+"I'm not saying we need to build a check, but this seems like critical
+context/instruction to follow" and "I'm not saying no check. I'm saying make
+sure this happens. However the best approach". So the instruction is wanted
+as context in its own right, and the approach that makes it hold was the
+session's to choose: the check, beside the sentence.
+
+**The carrier test.** The moment is a session about to write a new reader of
+a fact, often into a new file, which no read precedes, so a `paths:` scope
+cannot fire first: `.claude/rules/apparatus-standard.md` has carried the
+three shapes since 2026-10-01 (`PL-HC8P`) and loads only once an apparatus
+file is opened, and three generator heads stating this fact closed and
+re-entered under it. A check carries the decidable part -
+`tools/literal_home_check.py` for numbers under `src/`,
+`tools/import_boundary_check.py` for imports, and `tools/fact_home_check.py` for a
+reader of git, the tree, the GitHub API, the default branch or a shell
+command outside its home and for a name defined twice - and what no check
+reaches is whether two readers read one fact that touches no primitive, which
+is the judgment half `CLAUDE.md` refuses to script. The `docket` skill has no
+trigger at a write.
+
+**Why nothing is cut.** No resident sentence stated the principle: `PL-40SJ`
+grepped `CLAUDE.md` for it at its close on 2026-10-03 and found nothing, and
+the same grep found nothing on 2026-10-12. The data-file bullet beside it is an
+instance of this rule and says more - validated, versioned - so it stays.
+1,237 characters, the bullet's length by the count `make check` applies to the
+resident set.
+
+**What should retire it.** Nothing in sight. The checks carry what a check
+can decide; what stays resident is the principle the owner asked for as an
+instruction, which no check can carry. It shrinks if the judgment half ever
+becomes decidable, and goes if the owner withdraws the principle.
