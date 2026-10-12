@@ -2306,6 +2306,16 @@ no lane (`PL-FX0K`), and quote characters landing inside 56 titles and 3
 `verify:` commands, where a shell reads the quoted form as one word and exits
 127 having run nothing (`PL-V6CR`, `PL-MZH2`). `PL-9HD1` is the cluster.
 
+**GitHub's file view reads the block as YAML, so it can show an error on an
+item that is not one.** It draws a Markdown file's front matter as a table
+where the block parses as YAML, and where it does not - most often a colon and
+a space inside a value, which this format reads as text and YAML as a second
+key - it shows an "Error in user YAML" box over the fields as raw text. The
+file is not broken: docket reads every such item as written, and only GitHub's
+display differs. PyYAML 6.0.3's `safe_load` refused 698 of the 2,230 item
+front matters on 2026-10-12. Making the store valid YAML instead would be a
+format change across those files and a check to hold it (`PL-S0D4`).
+
 Where a field cannot be read, it is **reported rather than guessed at** —
 `unknown_fields`, `duplicate_fields`, `block_list_fields`,
 `block_scalar_fields` and `unread_lines` on the parsed item, all five named by
