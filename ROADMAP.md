@@ -6088,10 +6088,11 @@ removed, and this file's history before that change holds their text.
 
 ### Required scope
 
-1. **The layout model** (queue items `PL-1FT6` and `PL-HJPY`). Pure Python,
-   no Qt import: a tree of splits and Areas with `split`, `join`, `resize`,
-   `swap` and `set_view`, a `borders()` query returning the handles collinear and
-   adjacent to a given one, and versioned JSON serialization. The serialized
+1. **The layout model** (queue items `PL-1FT6`, `PL-HJPY`, `PL-G60V` and
+   `PL-5HSG`). Pure Python, no Qt import: a tree of splits and Areas with
+   `split`, `join`, `resize`, `swap` and `set_view`, a `borders()` query
+   returning the handles collinear and adjacent to a given one, and versioned
+   JSON serialization. The serialized
    root holds a *set of windows* from version 1, which `PL-HJPY` settles -
    what owns the set, how an Area is addressed across windows, and
    where the border-chain query terminates - because a root that gains a window
@@ -6103,6 +6104,17 @@ removed, and this file's history before that change holds their text.
    strictly less expressive than Blender's shared-vertex graph, on the ground
    that the limit "shows up as a join being unavailable rather than as a wrong
    value". That is a property the model has to have, not one it gets for free.
+
+   *What a reader is offered depends on the rectangles they see, never on how
+   the tree was built.* `PL-G60V` and `PL-5HSG` are two corrections the
+   model's own close-out review found (`#1448`), each answered (project
+   owner, 2026-10-12, ratified, over keeping the `join` and the proportional
+   drag `#1448` shipped): where four Areas meet, whether a join is available
+   no longer depends on which split came first, and a drag moves only the
+   borders on its line, as Blender's does. `PL-5HSG` lands before the adapter
+   (`PL-W9P6`) turns the handles live, as the answer says, and `PL-G60V`
+   before the join a reader uses (`PL-2KXB`), so neither behaviour reaches a
+   reader in the form being replaced (`PL-F6H6`).
 
 2. **The adapter** (queue item `PL-W9P6`). One module, the only importer of
    `QSplitter`, building and updating the widget tree from the model; this is
