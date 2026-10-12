@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-10
 payoff: a substitution inside an unquoted here-document body is read as bash reads it, so no reader of the shared lexer names a command bash never runs
 verify: grep -q 'def test_a_heredoc_in_an_expanded_heredoc_body_ends_only_at_its_delimiter' subprojects/docket/tests/test_shell.py
+recurrences: 2026-10-12 PL-55R2 withdrawn 2026-10-12 PL-55R2, 2026-10-12 PL-3Z8B withdrawn 2026-10-12 PL-3Z8B, 2026-10-12 PL-V690 withdrawn 2026-10-12 PL-V690
 ---
 
 **Problem.** docket.shell's lexer applies the command-substitution here-document end - a line opening with the delimiter and holding a closing parenthesis - inside an unquoted here-document's expanded body, where bash 5.2 does not end the nested body there, so docket reads a command bash never runs; latent

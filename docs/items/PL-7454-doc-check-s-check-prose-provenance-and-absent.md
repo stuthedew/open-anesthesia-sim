@@ -3,12 +3,14 @@ id: PL-7454
 title: doc_check's check_prose_provenance and _absent_paths read a complete marker line that closes a longer HTML comment as a marker of its own, where CommonMark ends the comment's one HTML block at that line, so a commented-out provenance marker is held to its data file and an absent marker inside a comment silences a citation; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1444
 payoff: a commented-out provenance or absent marker stays commented out, so it neither fails a correct docs/MODEL.md against a value nobody claims nor silences a citation
 verify: grep -q 'def test_a_marker_line_closing_a_longer_comment_is_not_read_as_a_marker' tests/unit/test_doc_check.py
 ---

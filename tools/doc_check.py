@@ -1831,20 +1831,41 @@ def _split_markers(lines: Sequence[str]) -> dict[int, str]:
     one broken after its kind is: read a line at a time it was nothing, and the
     value or the absence it declared went unchecked (`PL-GT0J`).
     `SPLIT_MARKER_RE` still reads a line on its own, for the comment nothing
-    closes, which the block reader reads as the paragraph it is written as.
+    closes, which the block reader reads as the paragraph it is written as. A
+    line inside a longer comment is that comment's and opens no marker, as
+    `_marker_lines` reads a complete one (`PL-7454`).
     """
     split: dict[int, str] = {}
+    inside: set[int] = set()
     if any("<!--" in line for line in lines):
         for block in read_blocks(lines).blocks:
             if block.kind != HTML or block.end - block.start < 2:
                 continue
+            inside.update(range(block.start + 1, block.end))
             comment = "\n".join(line.strip() for line in lines[block.start : block.end])
             if (opening := MARKER_OPENING_RE.match(comment)) is not None:
                 split[block.start] = opening.group("kind")
     for index, line in enumerate(lines):
+        if index in inside:
+            continue
         if (opening := SPLIT_MARKER_RE.match(line.strip())) is not None:
             split.setdefault(index, opening.group("kind"))
     return split
+
+
+def _marker_lines(lines: Sequence[str]) -> frozenset[int]:
+    """The index of each line a marker can stand on: one that opens an HTML block.
+
+    A comment is an HTML block from its `<!--` to the first line holding a
+    `-->` (CommonMark 0.31.2 § 4.6), so a complete marker written under a
+    comment opened above it - a paragraph and its marker set aside together -
+    is that comment's last line, and the page renders neither. Read a line at
+    a time, it was held to its data file, or marked a path absent, as a marker
+    a reader is shown (`PL-7454`).
+    """
+    if not any("<!--" in line for line in lines):
+        return frozenset()
+    return frozenset(block.start for block in read_blocks(lines).blocks if block.kind == HTML)
 
 
 def _marked_span(lines: Sequence[str], index: int) -> tuple[int, int]:
@@ -1945,6 +1966,10 @@ def check_prose_provenance(root: Path, report: Report) -> None:
     states the inputs a computed figure came from, and moving any of them
     reports that the figure needs recomputing - by a person, which is where
     the line between the decidable half and the judgment half falls.
+
+    A marker is read where its line opens an HTML block (`_marker_lines`), so
+    one closing a comment opened above it is that comment's, set aside with
+    the paragraph it was about, and is held to nothing (`PL-7454`).
     """
     path = root / MODEL
     if not path.is_file():
@@ -1954,6 +1979,7 @@ def check_prose_provenance(root: Path, report: Report) -> None:
     lines = split_lines(text)
     fenced = _fenced_lines(text)
     split = {index: kind for index, kind in _split_markers(lines).items() if kind != "absent"}
+    openings = _marker_lines(lines)
     markers = 0
     for index, line in enumerate(lines):
         # A marker inside a code fence is the format being *shown*, not a claim
@@ -1964,6 +1990,8 @@ def check_prose_provenance(root: Path, report: Report) -> None:
             continue
         if index in split:
             report.errors.append(_split_marker(MODEL, index + 1, split[index]))
+            continue
+        if index not in openings:
             continue
         match = PROSE_MARKER_RE.match(line.strip())
         if match is None:
@@ -5012,14 +5040,19 @@ def _absent_paths(
     is the format being shown, and is not read. Nor is one in a front matter,
     whose blocks are read from the body alone: a front matter is YAML, where
     `<!--` opens no comment, and read as Markdown one a value left open hid the
-    body's paragraphs down to the next `-->` (`PL-WX79`).
+    body's paragraphs down to the next `-->` (`PL-WX79`). Nor is one closing a
+    comment opened above it, which is that comment's (`_marker_lines`,
+    `PL-7454`).
     """
     lines = _body_lines(split_lines(without_fences(text)))
     split = _split_markers(lines)
+    openings = _marker_lines(lines)
     declared: dict[int, set[str]] = {}
     for index, line in enumerate(lines):
         if split.get(index) == "absent":
             report.errors.append(_split_marker(path, index + 1, "absent"))
+        if index not in openings:
+            continue
         marker = ABSENT_MARKER_RE.match(line.strip())
         if marker is None:
             continue
