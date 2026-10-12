@@ -156,6 +156,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.fences import blocks  # noqa: E402
+from docket.frontmatter import Unread, closing, quoted  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.shell import joined_text  # noqa: E402
 from docket.store import ID_RE  # noqa: E402
@@ -223,11 +224,6 @@ SHELL_FENCES = frozenset({"bash", "sh", "shell", "zsh"})
 #: quote holds it: up to three columns in, as CommonMark 0.31.2 § 4.5 opens one,
 #: those columns being what it takes off each line inside.
 FENCE_OPENING_RE = re.compile(r"(?P<margin> {0,3})(?:`{3,}|~{3,})[ \t]*(?P<info>[^\s`]*)")
-
-#: What may stand before a quote on its line for the quote to open a YAML
-#: scalar rather than sit inside a plain one: nothing, or an indicator that a
-#: node follows - a mapping value, a sequence entry, a key, a flow collection.
-YAML_NODE_OPENERS = (":", "-", "?", "[", "{", ",")
 
 
 #: The two rules, and the key each finding is grouped under for reporting.
@@ -432,11 +428,12 @@ def _fence_joins(text: str) -> Iterator[tuple[int, int]]:
     """Each span bash takes out of a fenced shell sample, as offsets into `text`.
 
     A sample is a closed block, as `docket.fences` reads one, whose info string
-    names a shell (`SHELL_FENCES`). Its lines are the script less the columns
-    CommonMark takes off each, which are taken out too, and the script is read
-    through `shell.joined_text`, as a `.sh` file is. A fence a block quote
-    holds, or one further in than a list item's three columns, is read as
-    written.
+    names a shell (`SHELL_FENCES`). Its lines are the ones `Block.body` says it
+    holds - its last among them where the end of its list item, rather than a
+    fence, closed it (`PL-S4JL`) - less the columns CommonMark takes off each,
+    which are taken out too, and the script is read through
+    `shell.joined_text`, as a `.sh` file is. A fence a block quote holds, or
+    one further in than a list item's three columns, is read as written.
     """
     lines = split_lines(text, keepends=True)
     starts = [0]
@@ -448,7 +445,7 @@ def _fence_joins(text: str) -> Iterator[tuple[int, int]]:
             continue
         script: list[str] = []
         where: list[int] = []
-        for index in range(block.start + 1, block.end):
+        for index in block.body:
             line = lines[index]
             margin = min(len(opening["margin"]), len(line) - len(line.lstrip(" ")))
             yield starts[index], starts[index] + margin
@@ -505,55 +502,44 @@ def _toml_joins(text: str) -> Iterator[tuple[int, int]]:
 def _front_matter_joins(text: str) -> Iterator[tuple[int, int]]:
     """Each escaped line break in a double-quoted scalar of `text`'s YAML front matter.
 
-    The front matter is the lines between a first line of `---` and the next
-    `---` or `...`, which the harness reads as YAML - a skill's `description:`
-    is shown to sessions. In a double-quoted scalar "the escaped line break is
-    excluded from the content" (YAML 1.2.2 § 7.3.1), and so is the next line's
-    leading white space, so `"PL-K7\\` over `  QX"` holds `PL-K7QX`, as
-    PyYAML 6.0.1 reads it. A quote opens a scalar only where `YAML_NODE_OPENERS`
-    says a node starts; one inside a plain scalar, a single-quoted scalar or a
-    comment escapes nothing.
+    The front matter is the block `docket.frontmatter.closing` closes, which
+    the harness reads as YAML - a skill's `description:` is shown to sessions.
+    In a double-quoted scalar "the escaped line break is excluded from the
+    content" (YAML 1.2.2 § 7.3.1), and so is the next line's leading white
+    space, so `"PL-K7\\` over `  QX"` holds `PL-K7QX`, as PyYAML 6.0.1 reads it.
+    Which quote opens one is `docket.frontmatter.quoted`'s to say (`PL-S4JL`):
+    a quote opening a plain scalar's continuation line or a block scalar's
+    line is text (§ 7.3.3, § 8.1), and the backslash after it stays. A block
+    that reader cannot split - a first-column line opening no key, an
+    indented line above the first key, a quote or bracket nothing closes - is
+    one PyYAML 6.0.3 refuses too, so it holds no scalar to join and is read as
+    written.
     """
-    lines = split_lines(text, keepends=True)
-    if not lines or lines[0].rstrip("\n") != "---":
+    lines = split_lines(text)
+    close = closing(lines)
+    if close is None:
         return
-    closing = next(
-        (index for index in range(1, len(lines)) if lines[index].rstrip("\n") in ("---", "...")),
-        None,
-    )
-    if closing is None:
+    try:
+        scalars = quoted(lines[1:close])
+    except Unread:
         return
-    at, end = len(lines[0]), sum(len(line) for line in lines[:closing])
-    while at < end:
-        char = text[at]
-        if char == "#" and text[at - 1] in " \t\n":
-            close = text.find("\n", at)
-            at = end if close < 0 else close
-        elif char not in "\"'" or not _opens_a_node(text, at):
-            at += 1
-        elif char == "'":
-            at += 1
-            while at < end and (text[at] != "'" or text.startswith("''", at)):
-                at += 2 if text[at] == "'" else 1
-            at += 1
-        else:
-            at += 1
-            while at < end and text[at] != '"':
-                if text.startswith("\\\n", at):
-                    rest = at + 2
-                    while rest < end and text[rest] in " \t":
-                        rest += 1
-                    yield at, rest
-                    at = rest
-                else:
-                    at += 2 if text[at] == "\\" else 1
-            at += 1
-
-
-def _opens_a_node(text: str, at: int) -> bool:
-    """Whether what stands before `at` on its line leaves a YAML node to start there."""
-    before = text[text.rfind("\n", 0, at) + 1 : at].strip(" \t")
-    return not before or before.endswith(YAML_NODE_OPENERS)
+    starts = [0]
+    for line in split_lines(text, keepends=True):
+        starts.append(starts[-1] + len(line))
+    for scalar in scalars:
+        if scalar.quote != '"':
+            continue
+        at = starts[scalar.line + 1] + scalar.column + 1
+        end = starts[scalar.end_line + 1] + scalar.end_column
+        while at < end:
+            if text.startswith("\\\n", at):
+                rest = at + 2
+                while rest < end and text[rest] in " \t":
+                    rest += 1
+                yield at, rest
+                at = rest
+            else:
+                at += 2 if text[at] == "\\" else 1
 
 
 def _walk(root: Path) -> Iterator[Path]:

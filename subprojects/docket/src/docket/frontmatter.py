@@ -4,8 +4,9 @@ The front matter Claude Code reads on a rule or a skill: a first line of `---`,
 then YAML, then a closing `---`. This is the one reading of it (`PL-R417`):
 `tools/rules_paths_check.py` reads a rule's `paths:` through it,
 `tools/doc_check.py` whether a rule declares one and each key's value as a
-statement of its own, `docket.instructions` each key's dated sentences, and
-`docket.notes` where a notes file's Markdown begins.
+statement of its own, `docket.instructions` each key's dated sentences,
+`docket.notes` where a notes file's Markdown begins, and
+`tools/fixture_id_check.py` which quoted scalar a line break is escaped in.
 Each of those read the block its own way, a physical line at a time or as
 Markdown, where YAML 1.2.2 carries a value across lines: a quoted scalar to its
 closing quote (§ 7.3.1, § 7.3.2), a flow collection to its closing bracket
@@ -27,13 +28,15 @@ after a list entry's `- `, or after a nested key's `:` (§ 8.2.1, § 8.2.2). Bel
 the key's line it was once followed by indentation alone, so a first-column
 line inside it read as a key (`PL-YQ9G`). A block scalar's lines and a plain
 scalar's continuation lines are text, so a quote opening one of them opens
-nothing. Nothing inside a value is checked, so a value YAML refuses can still be
-passed over here: what a value holds is its reader's to decide, and
-`rules_paths_check.entries` decides `paths:`'s. A line at the first column that
-opens no key raises `Unread` naming it, as does an indented line above the first
-key, since no value holds either and a reader passing over one would hand on the
-key above it short. Where each value ends is held to PyYAML's reading over a
-generated corpus by `subprojects/docket/tests/test_frontmatter_reference.py`.
+nothing; `quoted` hands back the quoted scalars this reading does follow, each
+where it opens and closes (`PL-S4JL`). Nothing inside a value is checked, so a
+value YAML refuses can still be passed over here: what a value holds is its
+reader's to decide, and `rules_paths_check.entries` decides `paths:`'s. A line
+at the first column that opens no key raises `Unread` naming it, as does an
+indented line above the first key, since no value holds either and a reader
+passing over one would hand on the key above it short. Where each value ends,
+and where each quoted scalar opens and closes, is held to PyYAML's reading over
+a generated corpus by `subprojects/docket/tests/test_frontmatter_reference.py`.
 
 Not docket's own item front matter, which is not YAML: its grammar is
 `docket.model`'s. Standard library only, as the rest of the package is.
@@ -80,6 +83,22 @@ class Key:
     end: int
 
 
+@dataclass(frozen=True)
+class Quoted:
+    """One quoted scalar a value holds: its quote, and where it opens and closes.
+
+    `line` and `column` place its opening quote in the block, and `end_line`
+    and `end_column` its closing one, so a double-quoted scalar's escapes
+    (§ 7.3.1) can be read between them and nowhere else (`PL-S4JL`).
+    """
+
+    quote: str
+    line: int
+    column: int
+    end_line: int
+    end_column: int
+
+
 def opens(lines: Sequence[str]) -> bool:
     """Whether `lines` open with a front matter's `---`."""
     return bool(lines) and lines[0].strip() == FENCE
@@ -112,6 +131,25 @@ def keys(block: Sequence[str]) -> tuple[Key, ...]:
     line that opens no key, an indented line above the first key, and a quoted
     scalar or flow collection that nothing in the block closes.
     """
+    return _keys(block, [])
+
+
+def quoted(block: Sequence[str]) -> tuple[Quoted, ...]:
+    """Each quoted scalar the values of `block`'s top-level keys hold, in order.
+
+    Found where `keys` follows each one to its close, so a quote opening a
+    block scalar's line or a plain scalar's continuation line, which is text
+    (§ 8.1.1, § 7.3.3), opens none (`PL-S4JL`). A quoted key closes on its own
+    line, as an implicit key must (§ 8.2.2), and is not one of them. Raises
+    `Unread` where `keys` does.
+    """
+    quotes: list[Quoted] = []
+    _keys(block, quotes)
+    return tuple(quotes)
+
+
+def _keys(block: Sequence[str], quotes: list[Quoted]) -> tuple[Key, ...]:
+    """`keys`, adding each quoted scalar a value holds to `quotes` on the way."""
     found: list[Key] = []
     index = 0
     while index < len(block):
@@ -125,7 +163,7 @@ def keys(block: Sequence[str]) -> tuple[Key, ...]:
         if opened is None:
             raise Unread(f"`{text}` sits at the first column and opens no key")
         name, at = opened
-        end = _value_end(block, index, at)
+        end = _value_end(block, index, at, quotes)
         found.append(Key(name, block[index][at:], index, end))
         index = end
     return tuple(found)
@@ -151,7 +189,7 @@ def statements(block: Sequence[str]) -> list[tuple[int, int]]:
     return sorted(spans + [span for span in alone if span[0] not in held])
 
 
-def _value_end(block: Sequence[str], index: int, at: int) -> int:
+def _value_end(block: Sequence[str], index: int, at: int, quotes: list[Quoted]) -> int:
     """The index past the last line of the value of the key `block[index]` opens at column 0.
 
     The value is every line indented under the key, and every `- ` item at its
@@ -169,7 +207,7 @@ def _value_end(block: Sequence[str], index: int, at: int) -> int:
     literal = None if bare or node[0] in CLOSED_NODES else 0
     # The column of the entry holding nothing on its line, whose node opens below it.
     holder = 0
-    line = _past(block, index, at)
+    line = _past(block, index, at, quotes)
     last = line - 1
     while line < len(block):
         text = block[line]
@@ -195,7 +233,7 @@ def _value_end(block: Sequence[str], index: int, at: int) -> int:
             position = _skip_blanks(text, position + nested[1])
         opened = _node(text, position)
         if opened[:1] in CLOSED_NODES:
-            last = _past(block, last, position) - 1
+            last = _past(block, last, position, quotes) - 1
             line = last + 1
         elif opened:
             literal = entry
@@ -276,8 +314,13 @@ def _scan_quote(text: str, position: int, quote: str) -> int:
     return -1
 
 
-def _quote_end(block: Sequence[str], line: int, position: int) -> tuple[int, int]:
-    """The line and column of the quote closing the scalar `block[line][position]` opens."""
+def _quote_end(
+    block: Sequence[str], line: int, position: int, quotes: list[Quoted]
+) -> tuple[int, int]:
+    """The line and column of the quote closing the scalar `block[line][position]` opens.
+
+    The scalar is added to `quotes`.
+    """
     first, quote = line, block[line][position]
     found = _scan_quote(block[line], position + 1, quote)
     while found < 0:
@@ -288,6 +331,7 @@ def _quote_end(block: Sequence[str], line: int, position: int) -> tuple[int, int
                 "matter closes"
             )
         found = _scan_quote(block[line], 0, quote)
+    quotes.append(Quoted(quote, first, position, line, found))
     return line, found
 
 
@@ -321,24 +365,24 @@ def _key(line: str) -> tuple[str, int] | None:
     return None
 
 
-def _past(block: Sequence[str], index: int, at: int) -> int:
+def _past(block: Sequence[str], index: int, at: int, quotes: list[Quoted]) -> int:
     """The index past the line on which the node opening at `block[index][at:]` ends.
 
     The next line, unless the node is a quoted scalar or a flow collection that
     line does not close, which is followed to its close across the lines below.
     An anchor or a tag before the node names it and changes nothing in it
-    (§ 6.9).
+    (§ 6.9). Each quoted scalar followed is added to `quotes`.
     """
     text = block[index]
     at = _node_start(text, at)
     if text[at : at + 1] in ("'", '"'):
-        return _quote_end(block, index, at)[0] + 1
+        return _quote_end(block, index, at, quotes)[0] + 1
     if text[at : at + 1] in ("[", "{"):
-        return _flow_end(block, index, at) + 1
+        return _flow_end(block, index, at, quotes) + 1
     return index + 1
 
 
-def _flow_end(block: Sequence[str], index: int, at: int) -> int:
+def _flow_end(block: Sequence[str], index: int, at: int, quotes: list[Quoted]) -> int:
     """The index of the line closing the flow collection `block[index][at]` opens (§ 7.4).
 
     A quote inside it opens a quoted scalar only where a node can open, after a
@@ -355,7 +399,7 @@ def _flow_end(block: Sequence[str], index: int, at: int) -> int:
             if char == "#" and (position == 0 or text[position - 1] in " \t"):
                 break
             if char in ("'", '"') and node:
-                line, position = _quote_end(block, line, position)
+                line, position = _quote_end(block, line, position, quotes)
                 text = block[line]
                 node = False
             elif char in "[{":

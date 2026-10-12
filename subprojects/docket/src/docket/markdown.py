@@ -83,6 +83,10 @@ class Block:
     depth: int
     #: A heading's level, 1 to 6; 0 for every other kind.
     level: int = 0
+    #: A fence's: whether its own closing run ended it, so that its last line
+    #: is that run rather than the last line its container held (`PL-S4JL`).
+    #: False for every other kind.
+    closing: bool = False
 
 
 @dataclass(frozen=True)
@@ -647,10 +651,10 @@ def _parse(
     stack: list[_Container] = []
     leaf: _Leaf | None = None
 
-    def finish() -> None:
+    def finish(closing: bool = False) -> None:
         nonlocal leaf
         assert leaf is not None
-        blocks.append(Block(leaf.kind, leaf.start, leaf.last + 1, leaf.depth, leaf.level))
+        blocks.append(Block(leaf.kind, leaf.start, leaf.last + 1, leaf.depth, leaf.level, closing))
         leaf = None
 
     def unwind(keep: int) -> None:
@@ -696,7 +700,7 @@ def _parse(
                 and closing["fence"][0] == leaf.fence[0]
                 and len(closing["fence"]) >= len(leaf.fence)
             ):
-                finish()
+                finish(closing=True)
             if not blank:
                 _touch(stack, index)
             continue
