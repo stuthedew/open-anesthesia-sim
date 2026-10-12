@@ -1011,9 +1011,8 @@ class SettingReadout:
     the reader dragged it: a refused setting must not leave a control
     reading one value while the simulation runs at another, because the
     control is a display of model state as much as an input to it. On a
-    halt no frame follows, it is written from
-    `SimulationController.settings()` instead, for the same reason
-    (`PL-85LJ`).
+    halt it is written from `SimulationController.settings()` first, since
+    no frame may follow, for the same reason (`PL-85LJ`).
 
     Attributes:
         control: The setting it forwards.

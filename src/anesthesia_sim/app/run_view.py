@@ -671,10 +671,13 @@ class RunView(QWidget):
         frame that can be drawn.
 
         The four setting controls need no frame either, and are written here
-        from `SimulationController.settings()`, before the banner: a dial
-        dragged into the halt has changed what the run holds, and with no
-        frame to follow, the value printed beside it stayed the value before
-        the drag, beside a dial standing at the new one (`PL-85LJ`).
+        from `SimulationController.settings()`, after the banner: a dial
+        dragged into a halt whose snapshot refuses has changed what the run
+        holds, and with no frame to follow, the value printed beside it stayed
+        the value before the drag, beside a dial standing at the new one
+        (`PL-85LJ`). They come last because `setting_readouts` can raise, for
+        a control that can offer no setting, and the three statements of the
+        halt are on screen before it does.
 
         They are written from `SimulationController.status()` and not from a
         snapshot, because the snapshot builds every compartment's fraction
@@ -689,8 +692,8 @@ class RunView(QWidget):
         status = self.controller.status()
         _emphasised(self._status_text, status_word(status))
         self._write_transport(self._transport_lock(status))
-        self._write_settings(self.controller.settings())
         self._write_notice(halt_notice(status, refused_reset=self._refused_reset_notice))
+        self._write_settings(self.controller.settings())
 
     def _write_settings(self, settings: RunSettings) -> None:
         """Write the four setting controls from the settings in force.

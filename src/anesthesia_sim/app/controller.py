@@ -123,8 +123,9 @@ class RunSettings(RunStatus):
     """The agent and the four settings in force on the run: what a setting control is written from.
 
     `SimulationController.settings()` builds one from the agent the run was
-    given and the settings its compartments hold - every one a checked type
-    or a string the controller holds - and builds no compartment value for
+    given and the settings its compartments hold - every one a checked type,
+    a string the controller holds or the accepted range's two floats - and
+    builds no compartment value for
     it, so it can be read of a run whose `snapshot()` refuses, as
     `RunStatus` can. `dashboard_frame.setting_readouts` takes it, which is
     what lets `RunView.present_halt` write every dial from what the run
@@ -805,7 +806,7 @@ class SimulationController:
         )
 
     def settings(self) -> RunSettings:
-        """The agent and the four settings in force, built from nothing a compartment holds.
+        """The agent and the four settings in force, built from no compartment value.
 
         Read where a setting control is written on a run whose `snapshot()`
         refuses (`RunView.present_halt`): the setting a drag applied is what
