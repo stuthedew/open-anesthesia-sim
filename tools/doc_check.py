@@ -205,15 +205,17 @@ try:
     # signature wrapped over several lines included (`PL-V2HK`).
     from docket.python import UNTOKENIZABLE, definition, read_logical_lines, refusal
     from docket.release import (
-        CODE_SPAN_RE,
+        CODE_SPAN_AT,
         NOTES_BULLET_RE,
         NOTES_DIR,
         REFERENCED_RE,
         SEMVER_RE,
         SPAN_HEADING,
+        code_spans,
         notes_bullets,
         notes_claims,
         notes_path,
+        replace_code_spans,
         version_in,
         version_key,
     )
@@ -514,12 +516,6 @@ QUOTATION_CHAR = rf'(?:[^"\n]|{SOFT_BREAK})'
 UNCLOSED_QUOTATION = rf'(?P<unclosed>{QUOTATION_CHAR}*+)(?!")'
 
 
-#: A code span (CommonMark 0.31.2 § 6.1) opening at the backtick run the inline
-#: reader stands on, closed by the first run of exactly as many backticks.
-#: Where one may open is the reader's to say: an escaped backtick opens none,
-#: and one inside an autolink or raw HTML is that construct's, which
-#: `CODE_SPAN_RE`, finding a span wherever its pattern does, cannot know.
-SPAN_AT = re.compile(r"(?P<run>`+)(?!`)(?P<content>[\s\S]+?)(?<!`)(?P=run)(?!`)")
 #: An autolink (§ 6.5): a URI, or an email address, in angle brackets.
 AUTOLINK_RE = re.compile(
     r"<(?:[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\x00-\x20]*"
@@ -609,7 +605,7 @@ class _InlineReader:
         while position < end:
             character = text[position]
             if character == "`":
-                span = SPAN_AT.match(text, position, end)
+                span = CODE_SPAN_AT.match(text, position, end)
                 if span is None:
                     position = _run_end(text, position, end)
                     continue
@@ -637,7 +633,7 @@ class _InlineReader:
             if depth >= INLINE_NESTING:
                 found = end
             elif character == "`":
-                span = SPAN_AT.match(text, position, end)
+                span = CODE_SPAN_AT.match(text, position, end)
                 found = _run_end(text, position, end) if span is None else span.end()
             elif character == "[" or (character == "!" and text.startswith("[", position + 1)):
                 link = self._link(position, end, depth + 1)
@@ -1615,7 +1611,7 @@ def check_provenance(root: Path, report: Report) -> None:
             continue
 
         parameter, value_cell, _unit, source_cell = cells[0], cells[1], cells[2], cells[3]
-        spans = [span["content"] for span in CODE_SPAN_RE.finditer(source_cell)]
+        spans = [span["content"] for span in code_spans(source_cell)]
         if len(spans) != 2:
             report.errors.append(
                 f"{where}: {parameter!r} names {len(spans)} code spans in its source cell; "
@@ -4601,7 +4597,7 @@ def _code_spans(text: str) -> list[re.Match[str]]:
     offset = 0
     for index, line in enumerate(split_lines(text, keepends=True)):
         if index in fenced:
-            spans.extend(CODE_SPAN_RE.finditer(text, offset, offset + len(line.removesuffix("\n"))))
+            spans.extend(code_spans(text, offset, offset + len(line.removesuffix("\n"))))
         offset += len(line)
     return sorted(spans, key=lambda span: span.start())
 
@@ -4612,17 +4608,17 @@ def _statement_spans(text: str) -> Iterator[re.Match[str]]:
     A statement as `markdown.statement_lines` cuts one: CommonMark keeps a
     span inside its paragraph (0.31.2 § 6.1), and a paragraph ends at a list
     item's, a block quote's, a heading's or an HTML block's start as well as at
-    a blank line, which `CODE_SPAN_RE` alone reads only the last of. Read
+    a blank line, which `code_spans` alone reads only the last of. Read
     across them, a stray backtick paired with the next statement's first span
     and blanked the prose between them (`PL-FP7J`). A prose statement's spans
     are `_inline`'s, so an escaped backtick opens none and a backtick inside an
     autolink or raw HTML is that construct's (`PL-R417`); an indented code
     block's and an HTML block's, which CommonMark reads none in, are read with
-    `CODE_SPAN_RE`, as a fence's lines are. Offsets are the document's.
+    `code_spans`, as a fence's lines are. Offsets are the document's.
     """
     spans = list(_inline(text)[0])
     for start, end in _statement_offsets(text, (CODE, HTML)):
-        spans.extend(CODE_SPAN_RE.finditer(text, start, end))
+        spans.extend(code_spans(text, start, end))
     yield from sorted(spans, key=lambda span: span.start())
 
 
@@ -5100,7 +5096,7 @@ def _absent_paths(
         if marker is None:
             continue
         start, end = _marked_span(lines, index)
-        cited = {span["content"] for span in CODE_SPAN_RE.finditer("\n".join(lines[start:end]))}
+        cited = {span["content"] for span in code_spans("\n".join(lines[start:end]))}
         for token in marker.group("paths").split():
             if token not in cited:
                 report.errors.append(
@@ -6755,7 +6751,7 @@ def _without_code(text: str) -> list[str]:
     # read within its statement, as `_statement_spans` reads one (`PL-FP7J`).
     for first, end in _statements(source):
         prose = "\n".join(lines[first:end])
-        blanked = CODE_SPAN_RE.sub(partial(_blanked_span, prose), prose)
+        blanked = replace_code_spans(partial(_blanked_span, prose), prose)
         lines[first:end] = blanked.split("\n")
     return lines
 
