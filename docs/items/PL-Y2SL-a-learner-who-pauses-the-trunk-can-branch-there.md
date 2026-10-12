@@ -1,10 +1,15 @@
 ---
 id: PL-Y2SL
 title: A learner who pauses the trunk can branch there only if it stopped on a mark or a setting changed at that instant, where the owner wants the paused point to be the default place to branch, with marks and setting changes still offered
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: feature
 feature: scenario-branching
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, docs/ARCHITECTURE.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/run_definition.py, docs/ARCHITECTURE.md, docs/MODEL.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py, tests/unit/test_chart_frame.py
 added: 2026-10-12
+payoff: a learner who pauses to think can try something else from that instant in one press, without marking it first
+verify: grep -q 'def test_a_paused_trunk_branches_where_it_stands' tests/integration/test_controller.py
 ---
 
 **Problem.** A learner who pauses the trunk can branch there only if it stopped on a mark or a setting changed at that instant, where the owner wants the paused point to be the default place to branch, with marks and setting changes still offered
@@ -12,6 +17,11 @@ added: 2026-10-12
 **Asked for by the project owner, 2026-10-12**, replying to `#1451`: "Allow
 branch from current paused point. Make default behavior. Can also branch from
 bookmark, or change. But if I pause I should be able to branch from there too".
+
+**Why it matters.** Pausing is how a learner stops to think, and the paused
+instant is the decision point they are looking at. Today it is not on offer at
+all unless a mark or a setting change sits on it, so trying an alternative from
+there takes two detours - mark the instant, then find the mark in the selector.
 
 **What exists.** Three doors: `resumed_at` (a keyframe - induction or a setting
 change), `resumed_at_halt` (the crossing the run is standing on) and
@@ -45,7 +55,64 @@ default selection that jumps to it moves a choice the reader made. Labelled
 a halt; not offered while the run is going, on a failed run, or on a trunk with
 nothing recorded yet, where the selector's induction entry already covers it.
 
+**Answered 2026-10-12**: the button, as recommended above (project owner,
+2026-10-12, ratified, over a "here" row at the top of the selector, selected by
+default).
+
+**Build plan, written before the session reset that followed the answer.**
+What reading the code settled, so the build does not derive it again:
+
+- **One door for where the trunk stands: `resumed_here()`, kept by
+  `BranchedCase.fork_here()`, replaces `resumed_at_halt()` and
+  `fork_at_halt()` rather than joining them**, so the paragraph above calling
+  it a fourth door is amended: three doors remain - `resumed_at` (a keyframe),
+  `resumed_at_mark` (a passed time mark) and `resumed_here` (where the paused
+  trunk stands, a halt included). The halt door has no caller once its button
+  goes, and keeping it would keep `PL-2N43`'s defect alive in a second door to
+  the same instant; `PL-2N43` rides as a rider and closes with this.
+- **The fork** is `self._state.elapsed_s`, which is `_instant_after` of
+  `self._state.step_count` bit for bit; the state is `RunDefinition.state_at`
+  there and the stretch `segment_at(fork_s)`. The crossing is reconstructed for
+  the step ending there by a helper extracted from `_resume_point_at_mark`
+  (none at step 0), so both doors read one rule.
+- **It refuses** a branch (every door's reason), a running run (where it
+  stands moves with each step, so the instant a label showed need not be the
+  fork) and a failed run (`RunStatus.failure_reason`: a failure must not be
+  presented as a pause). **Not the supported run length**: a branch at a halt
+  on the limit is tested behaviour
+  (`test_a_branch_forked_at_a_halt_on_the_supported_run_length_reads_as_stopped_there`).
+- **One predicate**: a `here_fork_point` property, `HereForkPoint(fork_s,
+  stopped_on_mark)` or None, answered from the same private check the door
+  raises from, so the offer and the door cannot disagree;
+  `BranchedCase.here_fork_point` reads the trunk's.
+- **`fork_offer` takes `here: HereForkPoint | None` in place of `halt`**, and
+  `ForkOffer.halt_offered`/`halt_label` become `here_offered`/`here_label`.
+  Not offered at instant 0 (nothing recorded) or while comparing; labelled
+  `HERE_FORK_LABEL_TEMPLATE`, "Branch here: {instant}", on a plain pause and
+  the ratified `HALT_FORK_LABEL_TEMPLATE` when `stopped_on_mark`.
+- **`ForkPanel.halt_button` becomes `here_button`**, and
+  `SimulationView._handle_halt_fork` becomes `_handle_here_fork`, through
+  `fork_here`.
+- **Tests**: about 42 references to the halt door in
+  `tests/integration/test_controller.py`, 22 in
+  `tests/integration/test_simulation_view.py`, 15 in
+  `tests/unit/test_dashboard_frame.py` and 1 in `tests/unit/test_chart_frame.py`.
+  Two change meaning rather than name:
+  `test_a_run_not_standing_on_a_bookmark_has_no_instant_to_fork_at` becomes the
+  positive case, `test_a_paused_trunk_branches_where_it_stands` (this item's
+  `verify:`), and `test_resuming_past_a_bookmark_withdraws_the_fork_it_offered`
+  becomes the running refusal.
+- **Docs**: `docs/ARCHITECTURE.md`'s list of doors, § "Where a branch may be
+  taken" and the learner-control bullets; the `resumed_at_halt()` mention in
+  `docs/MODEL.md` § "What this requires of a branch"; a docstring mention in
+  `src/anesthesia_sim/core/run_definition.py`. `ROADMAP.md`'s mentions are
+  v0.5.0's record and stay.
+- **For the owner's read when it lands**: the selector's own button is also
+  labelled "Branch here" (`TAKE_FORK_LABEL`), and will now sit beside "Branch
+  here: 1h23m" on most pauses.
+
 **Done when.** Paused anywhere with something recorded, a learner sees "Branch
-here" at the paused instant, and pressing it branches there reproducing the
-trunk element-wise; marks and setting changes stay offered beside it; and
-`docs/ARCHITECTURE.md` describes the fourth door and the control.
+here: 1h23m" at the paused instant, and pressing it branches there reproducing
+the trunk element-wise; on a halt it keeps the ratified "..., stopped on your
+mark" wording; marks and setting changes stay offered in the selector beside
+it; and `docs/ARCHITECTURE.md` describes the door and the control.
