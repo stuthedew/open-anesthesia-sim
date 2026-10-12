@@ -16,6 +16,7 @@ verify: grep -q 'def test_a_frozen_entry_deferred_from_its_gate_is_deferred_not_
 root-cause-of: PL-18BD, PL-D388, PL-JV5Q, PL-QWF8
 generator: spent - every gate entry's deferral, frozen or not and debt or not, is now its deferred-from:, which gate_status, check, gate and the freeze mode read, and v0.6.0's deferral group headings are gone, so no reader is left inferring a disposition from blocked-by or ROADMAP.md prose
 misread: A gate entry's disposition: whether a milestone's gate holds, clears, defers or still owes it
+reenters: PL-WD5Z, PL-J6HP
 ---
 
 **Problem.** A gate entry's disposition is still read from ROADMAP.md prose wherever PL-WD5Z's deferred-from: does not reach - a frozen entry and a non-debt deferral - so four readers filed since it closed on 2026-09-23 lose or misplace one: an id-less holding condition (PL-18BD), an off-list blocker read as a deferral (PL-D388), Gate 3's freeze dropping Gate 2's non-debt deferrals (PL-JV5Q), a non-debt entry's lane (PL-QWF8)
