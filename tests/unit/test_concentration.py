@@ -154,30 +154,35 @@ def test_a_concentration_refuses_what_is_not_a_number_and_holds_negative_zero_as
 
 
 @pytest.mark.parametrize(
-    ("crossing", "name"),
-    [(fraction_from_percent, "percent"), (percent_from_fraction, "fraction")],
+    ("crossing", "name", "form"),
+    [(fraction_from_percent, "percent", Percent), (percent_from_fraction, "fraction", Fraction)],
     ids=["fraction_from_percent", "percent_from_fraction"],
 )
 def test_a_crossing_refuses_what_is_not_a_number_before_converting_it(
-    crossing: Callable[[Any], float], name: str
+    crossing: Callable[[Any], float], name: str, form: type[float]
 ) -> None:
     """`True` times a hundred is 100.0, a percent the range admits (`PL-LLMN`).
 
     Each crossing does its arithmetic before a constructor sees the result, so
     a `bool` came through as a held value - `format_percent(True)` printed
     `100.00%` - and a `str` or a `Decimal` was refused as Python's unsupported
-    operand. Both now meet the constructors' own rule, in its words, after the
-    two form checks `PL-SWD1` put ahead of it, which admit a bare `bool` or
-    `str` to this one.
+    operand. `PL-LLMN` put the constructors' own number rule ahead of the
+    arithmetic; since `PL-1DP1` each crossing asks the wider question every
+    place a concentration is held asks, whether the value was built as the form
+    at all, so each of these is refused in `require_percent`'s or
+    `require_fraction`'s words, before any arithmetic, and the constructor it
+    names refuses it again as not a number.
     """
 
     for value in (True, numpy.True_, Decimal("50"), "50"):
         with pytest.raises(TypeError) as raised:
             crossing(value)
 
-        assert str(raised.value).startswith(f"{name} of {value!r} has type {type(value).__name__}")
+        assert str(raised.value).startswith(
+            f"{name} of {value!r} was not built as {form.__name__}, it is {type(value).__name__}"
+        )
 
-    with pytest.raises(TypeError, match="^fraction of True has type bool"):
+    with pytest.raises(TypeError, match="^fraction of True was not built as Fraction, it is bool"):
         format_percent(True)  # type: ignore[arg-type]
 
 
@@ -604,6 +609,71 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
 
     with pytest.raises(TypeError, match="^mac_percent of 2.0 was not built"):
         replace(agent, mac_percent=2.0)  # type: ignore[arg-type]
+
+
+def test_fraction_from_percent_refuses_a_bare_float() -> None:
+    """A number nobody built carries no form, so the crossing cannot convert it (`PL-1DP1`).
+
+    `fraction_from_percent(50.0)` was a `Fraction` of 0.5 while every place a
+    percent is held had refused the same 50.0 since `PL-4R3W`, so the crossing
+    was where a number of unknown form still entered. The refusal is
+    `require_percent`'s, in its words, naming the constructor to build where
+    the form is known, and nothing is converted. `mypy` refuses the call in
+    `src/`, which the directive asserts; the `TypeError` is the run-time half,
+    for a caller it does not read. A value built as the form converts as before.
+    """
+
+    with pytest.raises(TypeError) as refused:
+        fraction_from_percent(50.0)  # type: ignore[arg-type]
+
+    assert str(refused.value) == (
+        "percent of 50.0 was not built as Percent, it is float: build it as Percent(...) "
+        'where it is set, which checks it against 0 to 100 once (docs/MODEL.md, "Concentrations")'
+    )
+
+    with pytest.raises(TypeError, match="^percent of 50 was not built as Percent, it is int"):
+        fraction_from_percent(50)  # type: ignore[arg-type]
+
+    narrower = numpy.float64(50.0)
+
+    with pytest.raises(TypeError) as not_the_type:
+        fraction_from_percent(narrower)  # type: ignore[arg-type]
+
+    assert str(not_the_type.value).startswith(
+        f"percent of {narrower!r} was not built as Percent, it is float64"
+    )
+
+    assert fraction_from_percent(Percent(50.0)) == Fraction(0.5)
+
+
+def test_percent_from_fraction_refuses_a_bare_float() -> None:
+    """The display direction, where a 0.5 could be a fraction or a 0.5% dial (`PL-1DP1`).
+
+    `percent_from_fraction(0.5)` was a `Percent` of 50.0 and `format_percent(0.5)`
+    printed `50.00%`, whichever the 0.5 was: the number carries no form to tell
+    them apart, which is why it cannot be converted rather than a reason to
+    take it as given, as `PL-4R3W` had chosen. Refused as `require_fraction`
+    refuses a bare float wherever a fraction is held, and the formatter built
+    on the crossing refuses with it, so nothing is printed.
+    """
+
+    with pytest.raises(TypeError) as refused:
+        percent_from_fraction(0.5)  # type: ignore[arg-type]
+
+    assert str(refused.value) == (
+        "fraction of 0.5 was not built as Fraction, it is float: build it as Fraction(...) "
+        "where it is computed, which checks it against 0 to 1 once "
+        '(docs/MODEL.md, "Concentrations")'
+    )
+
+    with pytest.raises(TypeError, match="^fraction of 0.5 was not built as Fraction, it is float"):
+        format_percent(0.5)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="^fraction of 1 was not built as Fraction, it is int"):
+        percent_from_fraction(1)  # type: ignore[arg-type]
+
+    assert percent_from_fraction(Fraction(0.5)) == Percent(50.0)
+    assert format_percent(Fraction(0.005)) == "0.50%"
 
 
 def test_a_percent_past_100_is_refused_where_it_is_built_and_the_maximum_where_it_is_set() -> None:
