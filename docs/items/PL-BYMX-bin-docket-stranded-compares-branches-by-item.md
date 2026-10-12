@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: stranded-report-fidelity
+milestone: v0.5.23
 touches: docs/items
 added: 2026-09-20
 closed: 2026-10-11

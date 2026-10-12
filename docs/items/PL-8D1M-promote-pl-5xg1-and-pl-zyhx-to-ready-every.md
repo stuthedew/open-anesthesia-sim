@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: housekeeping
 feature: blocked-means-blocked
+milestone: v0.5.23
 touches: docs/items/PL-5XG1-roadmap-md-s-development-pathway-still-says.md, docs/items/PL-ZYHX-the-resident-instruction-set-is-75-kb-72.md
 added: 2026-10-11
 closed: 2026-10-11

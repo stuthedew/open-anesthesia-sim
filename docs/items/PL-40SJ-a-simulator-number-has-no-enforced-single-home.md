@@ -3,6 +3,7 @@ id: PL-40SJ
 title: A simulator number has no enforced single home: nothing refuses a second literal copy of a value src/ already names, so the copies drift (PL-T5J5, PL-TCW5, PL-QRBB, PL-DJYF, PL-4YY1, PL-8DJ7, PL-017) and the rule lives only in prose; extend the colours' one-home check to numeric literals, ratcheted from today's count
 status: done
 feature: one-home-for-constants
+milestone: v0.5.23
 touches: tools, Makefile, .github/workflows/quality.yml, tests/unit, src/anesthesia_sim, docket.toml, docs/ARCHITECTURE.md
 added: 2026-10-03
 closed: 2026-10-03

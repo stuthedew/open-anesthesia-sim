@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, infra
 feature: parallel-sessions
+milestone: v0.5.23
 touches: docket.toml, docs/ARCHITECTURE.md, docs/apparatus.md, tools/doc_check.py, tests/unit/test_doc_check.py, tests/unit/test_inline_reference.py, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-28 triage pass
 added: 2026-09-27

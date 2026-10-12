@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.23
 touches: docs/items, tools, .claude/hooks, subprojects/docket/src/docket
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; recorded as a generator head by PL-74T0, 2026-10-11
 added: 2026-10-11

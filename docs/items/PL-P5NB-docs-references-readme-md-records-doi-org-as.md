@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: provenance
+milestone: v0.5.23
 touches: docs/references/README.md
 added: 2026-09-04
 closed: 2026-10-06

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: convergence-visibility
+milestone: v0.5.23
 touches: .claude/skills/docket/modes/capture.md, docket.toml, docs/items, subprojects/docket/README.md, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_config.py
 added: 2026-09-17
 closed: 2026-10-11

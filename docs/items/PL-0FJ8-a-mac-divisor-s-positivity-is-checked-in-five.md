@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, defect
 feature: parse-dont-validate
+milestone: v0.5.23
 touches: src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py
 added: 2026-10-11
 closed: 2026-10-11

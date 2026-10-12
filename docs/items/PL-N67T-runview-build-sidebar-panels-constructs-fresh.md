@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: sidebar-panel-rebuild
+milestone: v0.5.23
 touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py, docs/items/PL-KZR1-runview-s-build-methods-are-split-between.md, src/anesthesia_sim/app/theme.py, tools/literal_home_check.py
 added: 2026-09-21
 closed: 2026-10-04

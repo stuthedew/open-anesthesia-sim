@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra, docs
 feature: provenance
+milestone: v0.5.23
 touches: tests/unit, docs/MODEL.md
 added: 2026-09-13
 closed: 2026-10-05

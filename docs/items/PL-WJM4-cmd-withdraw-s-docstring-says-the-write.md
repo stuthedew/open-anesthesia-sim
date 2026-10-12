@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, defect
 feature: front-matter-round-trip
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: stranded-report-fidelity
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-21
 closed: 2026-10-11

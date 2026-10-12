@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: science, test
 feature: late-washout-evidence
+milestone: v0.5.23
 touches: docs/MODEL.md, tests/reference/test_late_washout_against_published_fits.py
 added: 2026-09-27
 closed: 2026-10-03

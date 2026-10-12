@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs
+milestone: v0.5.23
 touches: .claude/rules/expert-review.md, .claude/rules/core-domain.md, docs/resident-instructions.md
 added: 2026-10-04
 closed: 2026-10-04

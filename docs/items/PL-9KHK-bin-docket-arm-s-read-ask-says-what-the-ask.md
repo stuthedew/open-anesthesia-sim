@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: review-hold
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 added: 2026-10-03
 closed: 2026-10-03

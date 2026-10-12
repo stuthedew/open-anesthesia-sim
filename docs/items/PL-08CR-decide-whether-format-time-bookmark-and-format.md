@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: refactor
+milestone: v0.5.23
 touches: src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py
 added: 2026-09-20
 closed: 2026-10-11

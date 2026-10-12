@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: verify-command-meaning
+milestone: v0.5.23
 touches: docs/items
 added: 2026-09-19
 closed: 2026-10-03

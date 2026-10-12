@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect, infra
+milestone: v0.5.23
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-10-11

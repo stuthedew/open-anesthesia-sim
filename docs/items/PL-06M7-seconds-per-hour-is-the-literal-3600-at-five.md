@@ -3,6 +3,7 @@ id: PL-06M7
 title: Seconds per hour is the literal 3600 at five sites (core/supported_ranges.py:349, :393, :428; app/formatting.py:743, :800-803) while core/units.py names the minute and the hour's minutes; give it one home and read it there
 status: done
 feature: one-home-for-constants
+milestone: v0.5.23
 touches: src/anesthesia_sim/core/units.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/app/formatting.py, tests/unit
 added: 2026-10-03
 closed: 2026-10-03
