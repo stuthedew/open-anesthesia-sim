@@ -3,12 +3,14 @@ id: PL-48ZJ
 title: docket.shell keeps a $'...' word's escapes as written, so p $'\x41' is the words p and \x41 to docket and the guard hooks, where bash hands p the word A; latent
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: shell-reads-as-bash
 touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, tests/unit/test_no_prune_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1449
 payoff: a word spelt through an ANSI-C escape is checked by the Bash guards as the word bash passes on, so a prune spelt that way is refused like any other
 verify: grep -q 'def test_an_ansi_c_word_reads_as_bash_reads_it_in_the_c_locale' subprojects/docket/tests/test_shell.py && ! grep -qF 'id="PL-48ZJ"' subprojects/docket/tests/test_shell.py
 ---

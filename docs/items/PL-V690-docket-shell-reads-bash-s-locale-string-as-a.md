@@ -3,12 +3,14 @@ id: PL-V690
 title: docket.shell reads bash's $"..." locale string as a literal $ before a double-quoted string, so p $"git" push is the words p, $git and push to docket and the guard hooks, where bash runs p with git and push; latent
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: shell-reads-as-bash
 touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, tests/unit/test_no_prune_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1449
 payoff: a command spelt with a locale string is checked by the Bash guards as the command bash runs, so a prune spelt that way is refused like any other
 verify: grep -q 'def test_a_locale_string_reads_as_its_double_quoted_text' subprojects/docket/tests/test_shell.py && ! grep -qF 'id="PL-V690"' subprojects/docket/tests/test_shell.py
 ---
