@@ -337,8 +337,10 @@ bullets cite their pull requests, and `tools/pr_body_check.py`
 found one squash commit that lost its body, `#1450`'s, which GitHub holds
 none for either and `docs/pr-bodies/1450.md` records as nothing to recover.
 
-None shipped inside v0.5.23's tag: every pull request the notes cite merged
-after ``36e5e87``, the v0.5.23 cut where that tag sits. As at v0.5.23, anything
+One shipped inside v0.5.23's tag: `#1420` (`PL-WXKD`) merged after that
+release's cut was written and before its pull request landed at `36e5e87`,
+where the tag sits, so v0.5.23's notes now point here for it; every other pull
+request the notes cite merged after that commit. As at v0.5.23, anything
 that merges on `main` after this cut is written and before its pull request
 lands ships inside the v0.5.24 tag, is described in the next release, and
 takes a pointer in v0.5.24's notes at that release's cut.
