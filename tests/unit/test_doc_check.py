@@ -2754,6 +2754,24 @@ def test_a_missing_tags_statement_is_an_error(tmp_path: Path) -> None:
     assert any('no "**Tags.**" statement' in message for message in errors)
 
 
+def test_a_tags_claim_inside_a_container_is_read() -> None:
+    """`PL-8NPN`: `TAGS_MARK_RE` read a claim at its line's first column alone.
+
+    In a block quote or a nested list item CommonMark renders the same bold
+    lead, and the claim was reported missing; an indented code block's is a
+    literal and stays unread.
+    """
+    assert doc_check._tags_region("> **Tags.** Each is tagged.\n\n## Next\n") == (
+        1,
+        "> **Tags.** Each is tagged.\n",
+    )
+    assert doc_check._tags_region("- top\n  - **Tags.** Each is tagged.\n\n## Next\n") == (
+        2,
+        "  - **Tags.** Each is tagged.\n",
+    )
+    assert doc_check._tags_region("Prose.\n\n    **Tags.** Each is tagged.\n") is None
+
+
 def test_a_checkout_git_cannot_answer_for_is_told_nothing(tmp_path: Path) -> None:
     """A tag-less clone is a normal checkout, and PL-J3ZK's own trap.
 
@@ -3817,6 +3835,26 @@ UNREADABLE_CASE_STEP = (
     '      - run: |\n          case "$M" in\n            check) make check ;;\n'
     '          esac\n          echo "unterminated\n'
 )
+
+
+def test_a_bold_title_inside_a_container_is_a_citable_section_title() -> None:
+    """`PL-8NPN`: `MARKER_RE` read a bold title past a top-level bullet alone.
+
+    After an ordered marker, a nested bullet or a block quote's `>` CommonMark
+    renders the same bold lead, and a citation of it was refused as naming no
+    section. An indented code block's bold run is a literal and names none.
+    """
+    text = (
+        "1. **Ordered title.** Text.\n"
+        "- top\n"
+        "  - **Nested title.** Text.\n"
+        "\n"
+        "> **Quoted title.** Text.\n"
+        "\n"
+        "    **Code, not a title.** Text.\n"
+    )
+
+    assert doc_check._headings(text) == ["Ordered title", "Nested title", "Quoted title"]
 
 
 def test_a_step_one_pass_cannot_read_is_declined_whole() -> None:
@@ -5214,6 +5252,21 @@ def test_prose_about_some_entries_is_not_read_as_a_gate_count_heading(tmp_path: 
     correct.
     """
     assert not any("says 2 entries" in error for error in _gate_errors(tmp_path))
+
+
+def test_an_emphasised_note_stating_a_count_is_no_gate_group(tmp_path: Path) -> None:
+    """`PL-8NPN`: the count has to sit inside the emphasis the line opens with.
+
+    `GATE_GROUP_RE` ran past the closing `*` of `*Note.*`, so the sentence was
+    read as a group heading over three entries and the list failed its counts.
+    """
+    roadmap = GATE_ROADMAP.replace(
+        "- PL-HHHH (S) The fifth thing",
+        "- PL-HHHH (S) The fifth thing\n\n"
+        "*Note.* This list was frozen on 30 September - three entries were admitted later.",
+    )
+
+    assert _gate_errors(tmp_path, roadmap) == []
 
 
 def test_a_group_heading_stating_no_gate_count_is_passed_over(tmp_path: Path) -> None:

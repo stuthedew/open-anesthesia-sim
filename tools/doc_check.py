@@ -186,7 +186,16 @@ try:
     # each statement ends, so a code span or a bold run is read within its own
     # (`PL-FP7J`, `PL-VQBY`), where an HTML block runs (`PL-GT0J`), and which
     # lines are a heading, so a `#` line inside a fence is none (`PL-T1X0`).
-    from docket.markdown import CODE, HTML, PROSE, TABLE, block_lines, statement_lines, unmarked
+    from docket.markdown import (
+        CODE,
+        HTML,
+        PROSE,
+        TABLE,
+        block_lines,
+        emphasis,
+        statement_lines,
+        unmarked,
+    )
     from docket.markdown import headings as read_headings
     from docket.markdown import read as read_blocks
     from docket.markdown import tables as read_tables
@@ -930,15 +939,20 @@ DIRECTION_RE = re.compile(GAP + r"*(?:above|below)\b", re.IGNORECASE)
 #: the break would read the end of the window there (`PL-XW87`).
 MARKED_RE = re.compile(r"§{1,2}" + GAP + r"*(?=.\Z)", re.DOTALL)
 
-# A `**Bold.**` run opening a line, with or without a list bullet in front of
-# it. This repository subdivides long documents with these rather than with
-# deeper `#` levels, and then cites them by name exactly as it cites headings
-# - `docs/MODEL.md` alone carries 513 of them against 269 headings. Reading
-# only `#` lines therefore made a correct citation look stale, which is the
-# worse failure of the two: a reader sent to repair prose that was right. A
-# title wrapped across a soft break is still one title (`PL-R417`); `_headings`
-# hands it back on one line, as a citation of it is compared.
-MARKER_RE = re.compile(rf"^(?:[-*+]\s+)?\*\*(?P<title>(?:[^*\n]|{SOFT_BREAK})+?)\.?\*\*", re.M)
+# A `**Bold.**` run opening a statement, matched in text whose containers'
+# markers `_headings` has blanked, so the run after a list item's bullet or
+# number, at any depth, or a block quote's `>` is read as the one at a line's
+# start is. This repository subdivides long documents with these rather than
+# with deeper `#` levels, and then cites them by name exactly as it cites
+# headings - `docs/MODEL.md` alone carries 513 of them against 269 headings.
+# Reading only `#` lines therefore made a correct citation look stale, which
+# is the worse failure of the two: a reader sent to repair prose that was
+# right. Read past a top-level bullet alone, a title after an ordered marker,
+# a nested bullet or a `>` was no title, and a correct citation of one was
+# refused (`PL-8NPN`). A title wrapped across a soft break is still one title
+# (`PL-R417`); `_headings` hands it back on one line, as a citation of it is
+# compared.
+MARKER_RE = re.compile(rf"^[ \t]*\*\*(?P<title>(?:[^*\n]|{SOFT_BREAK})+?)\.?\*\*", re.M)
 
 # A citation that names its target document and then quotes it:
 # `` `docs/WORKING_NOTES.md`, "Splitting error outside the gate's operating
@@ -1035,7 +1049,7 @@ ITEM_SECTION_RE = re.compile(
 # is named in a bold sentence, and the decidable half of that is its count
 # against the names it gives; whether the omission is settled or an open
 # decision is not, and is left alone.
-TAGS_MARK_RE = re.compile(r"^\*\*Tags\.\*\*")
+TAGS_MARK_RE = re.compile(r"^[ \t]*\*\*Tags\.\*\*")
 UNTAGGED_CLAIM_RE = re.compile(
     rf"\*\*(?P<count>[A-Za-z]+|\d+){GAP}+versions?{GAP}+(?:are|is){GAP}+untagged\*\*", re.I
 )
@@ -2236,6 +2250,9 @@ ENTRY_COUNT_RE = re.compile(r"(?P<count>[\w-]+)\s+entries\b")
 # on the far side of the dash, where a heading puts it, which is what keeps a
 # paragraph *about* some entries - "Four entries added 2026-08-30 from an
 # outside review of the repository" - from being read as a heading over them.
+# And it has to sit inside the emphasis the line opens with, as CommonMark
+# pairs it: `*Note.* This list was frozen - three entries were admitted later`
+# is a paragraph whose emphasis closes before its count (`PL-8NPN`).
 #
 # `entry` is accepted beside `entries` so that a group holding exactly one can
 # be written in English (`PL-L0K3`). Requiring the plural left a post-freeze
@@ -2335,7 +2352,7 @@ def _gate_groups(lines: Sequence[str], section: MilestoneSection) -> Iterator[_G
         if not section.gate_line <= index < end or not lines[index].startswith("*"):
             continue  # what `GATE_GROUP_RE` opens with, so no other line is one
         heading = _normalized("\n".join(lines[index:stop]))
-        match = GATE_GROUP_RE.match(heading)
+        match = GATE_GROUP_RE.match(heading, 0, _opening_emphasis_end(heading))
         if match is None:
             continue
         stated = _count_word(match.group("entries"))
@@ -2348,6 +2365,18 @@ def _gate_groups(lines: Sequence[str], section: MilestoneSection) -> Iterator[_G
         following = headings[position + 1][0] if position + 1 < len(headings) else end + 1
         covered = tuple(entry for entry in section.gate_entries if line < entry.line < following)
         yield _GateGroup(line, heading, stated, stated_ids, covered)
+
+
+def _opening_emphasis_end(statement: str) -> int:
+    """Where the emphasis opening `statement` closes, as § 6.2 pairs it, or 0 where none opens it.
+
+    Its code spans are `_InlineReader`'s, so a delimiter inside one pairs with
+    nothing.
+    """
+    reader = _InlineReader(statement)
+    reader.read(0, len(statement))
+    spans = emphasis(statement, [span.span() for span in reader.spans])
+    return max((span.end for span in spans if span.start == 0), default=0)
 
 
 def _uncheckable_heading_counts(
@@ -3501,15 +3530,19 @@ def _tags_region(text: str) -> tuple[int, str] | None:
 
     The exception sentence has historically sat in a paragraph below the claim
     rather than inside it, so the region runs to the heading rather than to the
-    blank line. The mark opens a statement, as `statement_lines` reads one: a
-    `**Tags.**` a soft break carries onto a line's start is its paragraph's own
-    text (`PL-VQBY`). The heading that ends the region is one `markdown` reads,
-    so a shell sample's `# comment` inside a fence below the claim leaves the
-    exception sentence after it in the region (`PL-0Y7J`).
+    blank line. The mark opens a statement of prose, as `statement_lines`
+    reads one, read past its containers' markers, so a claim in a block quote
+    or a list item is read (`PL-8NPN`): a `**Tags.**` a soft break carries onto
+    a line's start is its paragraph's own text (`PL-VQBY`). The heading that
+    ends the region is one `markdown` reads, so a shell sample's `# comment`
+    inside a fence below the claim leaves the exception sentence after it in
+    the region (`PL-0Y7J`).
     """
     lines = split_lines(text)
+    blanked = unmarked(lines)
     start = next(
-        (first for first, _ in statement_lines(lines) if TAGS_MARK_RE.match(lines[first])), None
+        (first for first, _ in statement_lines(lines, PROSE) if TAGS_MARK_RE.match(blanked[first])),
+        None,
     )
     if start is None:
         return None
@@ -4541,11 +4574,15 @@ def _headings(text: str) -> list[str]:
     vertical range is denominated in MAC, and fixed.**` marker, and that
     citation is correct.
 
-    A marker opens a statement, as `statement_lines` reads one. A bold run a
-    soft break carries onto a line's start is its paragraph's own text, and was
-    read as a title of its own (`PL-VQBY`).
+    A marker opens a statement of prose, as `statement_lines` reads one, and
+    is read past its containers' markers (`PL-8NPN`). A bold run a soft break
+    carries onto a line's start is its paragraph's own text, and was read as a
+    title of its own (`PL-VQBY`); an indented code block's is a literal.
     """
-    markers = (MARKER_RE.match(text, start, end) for start, end in _statement_offsets(text))
+    blanked = _unmarked(text, _body_lines(split_lines(text)))
+    markers = (
+        MARKER_RE.match(blanked, start, end) for start, end in _statement_offsets(text, PROSE)
+    )
     return _hash_headings(text) + [_normalized(match["title"]) for match in markers if match]
 
 
