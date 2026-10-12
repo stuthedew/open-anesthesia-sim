@@ -252,6 +252,20 @@ RESERVED = (
 )
 
 
+def test_a_quoted_reserved_word_is_a_command_name_and_an_append_an_assignment() -> None:
+    """The guard reads the head of a command by docket's grammar, not tables of its own (`PL-Y3TZ`).
+
+    Bash 5.2.21 runs `"if" make check` as a command named `if`, so no gate
+    runs, and `X+=1 make check` as `make` with `X` appended to. The hook's own
+    tables read the first as `make`, the quoting being gone from its tokens,
+    and the second as a command named `X+=1`, so a gate went unseen.
+    """
+    assert _decision('"if" make check | tail') is None
+    decision = _decision("X+=1 make check | tail")
+    assert decision is not None
+    assert "LAST stage" in decision["permissionDecisionReason"]
+
+
 @pytest.mark.parametrize("command", RESERVED)
 def test_a_reserved_word_opens_the_command_after_it(command: str) -> None:
     """`do`, `then`, `time` and the rest are bash's words, not the command's name (`PL-0X0G`).
@@ -453,6 +467,12 @@ RUN_A_BUILTIN = (
     ("/usr/bin/command set -o pipefail; make check 2>&1 | tail -45", True),
     # And a `set +o` run by `command` turns it off, as a bare one does.
     ("command set +o pipefail; make check 2>&1 | tail -45", True),
+    # After an assignment or a redirection `time` and `!` name a command, which
+    # is not found, so no `set` runs: docket's grammar marks neither reserved
+    # there (`PL-DCHW`, read so since `PL-Y3TZ`).
+    ("FOO=1 time set -o pipefail; make check 2>&1 | tail -5", True),
+    ("2>/dev/null time set -o pipefail; make check 2>&1 | tail -5", True),
+    ("FOO=1 ! set -o pipefail; make check 2>&1 | tail -5", True),
 )
 
 
@@ -963,10 +983,6 @@ UV_OPTIONS = (
     "grammar, is `59ea9d1c`, the head of `#1127` on `claude/project-thread-qt3onr`, ready "
     "to rebase if the spelling is met"
 )
-NOT_RESERVED = (
-    "`time` or `!` after an assignment or a redirection, ahead of a `set`, is written "
-    "nowhere here and met by no session: `PL-DCHW`, found closing `PL-9RSP`"
-)
 AS_A_MODULE = (
     "a listed gate run as `python -m` is written nowhere here and met by no session: "
     "`PL-7PB9`, found working `PL-QMN0` on `claude/project-thread-qt3onr`"
@@ -1009,27 +1025,6 @@ KNOWN_GAPS = (
     ("uv run --frozen mypy | tail", False, LOSES, UV_OPTIONS),
     ("uv run -m pytest | tail", False, LOSES, UV_OPTIONS),
     ("uv -q run pytest -q 2>&1 | tail", False, LOSES, UV_OPTIONS),
-    (
-        "FOO=1 time set -o pipefail; make check 2>&1 | tail -5",
-        False,
-        "exits 0 when the gate fails: after an assignment `time` names a program, which is "
-        "not found, so no `set` runs",
-        NOT_RESERVED,
-    ),
-    (
-        "2>/dev/null time set -o pipefail; make check 2>&1 | tail -5",
-        False,
-        "exits 0 when the gate fails: after a redirection `time` names a program, which is "
-        "not found, so no `set` runs",
-        NOT_RESERVED,
-    ),
-    (
-        "FOO=1 ! set -o pipefail; make check 2>&1 | tail -5",
-        False,
-        "exits 0 when the gate fails: after an assignment `!` names a command, which is not "
-        "found, so no `set` runs",
-        NOT_RESERVED,
-    ),
     ("python3 -m pytest -q 2>&1 | tail", False, LOSES, AS_A_MODULE),
     ("python3 -m mypy | tail", False, LOSES, AS_A_MODULE),
     ("python -m ruff check . | tail", False, LOSES, AS_A_MODULE),
