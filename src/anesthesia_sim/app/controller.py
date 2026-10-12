@@ -1133,15 +1133,20 @@ class SimulationController:
         the step's end. It is the one door for a MAC target, which has no
         instant to name.
 
-        **It refuses a run that is going, a failed run and the run's own
-        opening**, each for a reason of its own. Where a running run stands
+        **It refuses a run that is going, a failed run, the run's own opening
+        and the supported run length**, each for a reason of its own. Where a running run stands
         moves with every step, so an instant read off it is stale before it
         can be taken. A failure is not a pause (`RunStatus.failure_reason`),
         and a branch opening where it stands would resume what `fail` says is
-        not resumed. And a run standing at its opening has recorded nothing to branch from,
-        and `resumed_at` already opens there. The supported run length is not
-        refused: a run halted there is stopped on a completed step, and a
-        branch taken there opens stopped in the same place.
+        not resumed. A run standing at its opening has recorded nothing to
+        branch from, and `resumed_at` already opens there. And a run at the
+        supported run length is stopped rather than paused
+        (`RunStatus.supported_limit_reason`): no step is left to take, so a
+        branch opened there could never be run, and on a dashboard showing one
+        comparison at a time only the trunk's Reset, which discards the case,
+        would take it off the chart. The doors that still fork there - a
+        keyframe or a mark on the limit - are kept for what `PL-5291` holds of
+        such a branch.
 
         **The trunk is not touched.** No keyframe is recorded where the run
         stands: the branch's run definition opens at the keyframe the
@@ -1169,8 +1174,9 @@ class SimulationController:
             control timeline of its own and a copy of this run's bookmarks.
 
         Raises:
-            SimulationConfigurationError: this run is going, has failed or
-                stands at its opening; it is itself a branch, since a branch
+            SimulationConfigurationError: this run is going, has failed, or
+                stands at its opening or at the supported run length; it is
+                itself a branch, since a branch
                 of a branch is refused rather than silently flattened; or the
                 rebuilt branch holds an equation setting or agent reference
                 this run did not hold at the fork, each named with both of its
@@ -1644,6 +1650,14 @@ class SimulationController:
                 f"({self._failure_reason}), so where it stands is not a place to branch; a "
                 "setting change or a mark it passed before is still branched at with resumed_at "
                 "or resumed_at_mark"
+            )
+
+        if self.has_reached_supported_limit:
+            return (
+                f"this run stands at {self._state.elapsed_s} s, the supported run length, "
+                "where no step is left to take, so a branch opened where it stands could not be "
+                "run; a setting change or a mark it passed before is still branched at with "
+                "resumed_at or resumed_at_mark"
             )
 
         if self._state.step_count == 0:
@@ -2535,7 +2549,8 @@ class BranchedCase:
         """Where the paused trunk stands, as `fork_here`'s place to branch, or None.
 
         The trunk's `SimulationController.here_fork_point`: None while it is
-        going, has failed or stands at its opening (`PL-Y2SL`). It ends when
+        going, has failed, or stands at its opening or at the supported run
+        length (`PL-Y2SL`). It ends when
         the trunk starts again, where the entries in `fork_points_s` and
         `mark_fork_points` stay until the case changes.
         """
@@ -2587,10 +2602,10 @@ class BranchedCase:
             has not lost it. The trunk is left standing where it was.
 
         Raises:
-            SimulationConfigurationError: the trunk is going, has failed or
-                stands at its opening, or the branch rebuilt there would not
-                hold what the trunk held. `resumed_here` raises these and
-                names which.
+            SimulationConfigurationError: the trunk is going, has failed, or
+                stands at its opening or at the supported run length; or the
+                branch rebuilt there would not hold what the trunk held.
+                `resumed_here` raises these and names which.
         """
 
         return self._kept(self._trunk.resumed_here())

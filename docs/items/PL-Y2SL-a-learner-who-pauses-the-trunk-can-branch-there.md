@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: feature
 feature: scenario-branching
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/run_definition.py, docs/ARCHITECTURE.md, docs/MODEL.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py, tests/unit/test_chart_frame.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/run_definition.py, docs/ARCHITECTURE.md, docs/MODEL.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py, tests/unit/test_chart_frame.py, docs/items/PL-0LG6-simulationview-add-run-leaves-no-frame-owed-so.md, docs/items/PL-08SS-simulationview-handle-fork-and-handle-halt-fork.md
 added: 2026-10-12
 closed: 2026-10-12
 pr: 1453
@@ -117,9 +117,25 @@ What reading the code settled, so the build does not derive it again:
   `docs/MODEL.md` § "What this requires of a branch"; a docstring mention in
   `src/anesthesia_sim/core/run_definition.py`. `ROADMAP.md`'s mentions are
   v0.5.0's record and stay.
-- **For the owner's read when it lands**: the selector's own button is also
-  labelled "Branch here" (`TAKE_FORK_LABEL`), and will now sit beside "Branch
-  here: 1h23m" on most pauses.
+- **Reversed in the build, on the adversarial review's evidence: the
+  supported run length is refused too.** The bullet above kept it because a
+  branch at a halt on the limit is tested behaviour. But the button is offered
+  at every stop, so every run reaching 24 h offered "Branch here: 24h", and
+  the branch it took could never step, its own Reset returned it to 24 h, and
+  the comparison lock then left only the trunk's Reset, which discards the
+  case (reproduced 2026-10-12). A run at the limit is stopped rather than
+  paused, by `RunStatus.supported_limit_reason`'s own words, so refusing it
+  is the request read as written. The tested behaviour survives through the
+  doors that still fork there: the two limit tests now fork through
+  `resumed_at_mark`.
+- **Decided in the build, on the same review: the selector's button reads
+  "Branch".** It was "Branch here" (`TAKE_FORK_LABEL`), directly above "Branch
+  here: 1h23m" in the same style, and a press of the wrong one - reproduced:
+  paused at 2 min, the top button branched at 0 s - locks the panel until the
+  trunk's Reset discards the case. "From [0s] [Branch]" names its instant in
+  the selector beside it, and "here" is left to the paused point. One clearly
+  better option rather than a close call, so taken and reported rather than
+  asked; a one-line revert if the owner prefers other words.
 
 **Done when.** Paused anywhere with something recorded, a learner sees "Branch
 here: 1h23m" at the paused instant, and pressing it branches there reproducing

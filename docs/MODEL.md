@@ -5067,8 +5067,9 @@ inside the parent's own stretch, with nothing recorded on the trunk. It opens
 standing on the crossing the step ending there made, asked again of the marks
 as they stand, as `resumed_at_mark` asks it, rather than read from a halt's
 record, which names only what was marked when the run stopped (`PL-2N43`). A
-running run is refused, since where it stands moves with every step, and so
-is a failed one, a failure not being a pause.
+running run is refused, since where it stands moves with every step; so is a
+failed one, a failure not being a pause; and so is a run at the supported run
+length, which has no step left for a branch to take.
 
 **So nothing is left over to bound, and there is nothing to show a learner**
 (`PL-Z3W6`, 2026-09-21). `ROADMAP.md`'s v0.5.0 definition of done asks this

@@ -394,7 +394,12 @@ MARK_ATTRIBUTION_TEMPLATE: Final = "{run} {said}"
 # are written under.
 FORK_HEADING: Final = "Branch"
 FORK_POINT_LABEL: Final = "From"
-TAKE_FORK_LABEL: Final = "Branch here"
+# "Branch" and not "Branch here" (`PL-Y2SL`): "here" names where the paused
+# trunk stands, on the button below, and this one branches at the point "From"
+# names. Two adjacent buttons with the same leading words doing different
+# things invite the wrong press, and a branch taken at the wrong instant ends
+# only with the trunk's Reset while one comparison is the cap.
+TAKE_FORK_LABEL: Final = "Branch"
 # Conditional text, so it earns a sentence where standing chrome would not
 # (`.claude/rules/ui-reader.md`). It says the rule and the way out of it,
 # because a refused control that does not say how to un-refuse itself is a
@@ -1962,8 +1967,10 @@ def fork_offer(
             (`.claude/rules/expert-review.md`).
         here: Where the **trunk** is paused, from
             `BranchedCase.here_fork_point`, or None while `fork_here` would
-            refuse: the trunk is going, has failed, or stands at its opening,
-            which the selector's induction entry already offers. The model's
+            refuse: the trunk is going, has failed, stands at the supported
+            run length, where a branch would have no step to take, or stands
+            at its opening, which the selector's induction entry already
+            offers. The model's
             answer rather than an instant read off the clock here, so the
             offer is drawn from the check the door raises from, and it says
             whether a mark stopped the trunk there, which a float could not.

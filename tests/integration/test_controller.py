@@ -4327,10 +4327,13 @@ def test_a_branch_forked_at_a_halt_on_the_supported_run_length_reads_as_stopped_
     it has room for a step, and nothing refuses one until Start is pressed. A
     branch is a new controller, so a flag the parent held would not have
     reached it either; the limit has to be read from the state the branch
-    stands in.
+    stands in. Taken through the mark door, since where the trunk stands at the
+    limit is not offered as a place to branch (`PL-Y2SL`).
     """
 
-    branch = trunk_halted_on_a_mark_at_the_limit.resumed_here()
+    branch = trunk_halted_on_a_mark_at_the_limit.resumed_at_mark(
+        TimeBookmark(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
+    )
 
     assert branch.opened_from is not None
     _assert_reads_as_stopped_at_the_supported_run_length(branch)
@@ -4371,7 +4374,32 @@ def test_a_branch_reset_onto_a_fork_on_the_supported_run_length_reads_as_stopped
     standing there.
     """
 
-    branch = trunk_halted_on_a_mark_at_the_limit.resumed_here()
+    branch = trunk_halted_on_a_mark_at_the_limit.resumed_at_mark(
+        TimeBookmark(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
+    )
     branch.reset()
 
     _assert_reads_as_stopped_at_the_supported_run_length(branch)
+
+
+def test_a_run_at_the_supported_run_length_offers_no_place_to_branch_where_it_stands(
+    trunk_stepped_onto_the_limit: SimulationController,
+    trunk_halted_on_a_mark_at_the_limit: SimulationController,
+) -> None:
+    """A stop at the limit is not a pause, so where the run stands is neither offered nor taken.
+
+    No step is left to take there, so a branch opened where the run stands
+    could never be run, and while one comparison is the cap only the trunk's
+    Reset, discarding the case, would take it off the chart (`PL-Y2SL`). Both
+    ways a run arrives there are refused alike, stepped onto the limit and
+    halted on a mark at it; the refusal names the doors that still fork there.
+    """
+
+    for trunk in (trunk_stepped_onto_the_limit, trunk_halted_on_a_mark_at_the_limit):
+        assert trunk.here_fork_point is None
+        assert BranchedCase(trunk).here_fork_point is None
+
+        with pytest.raises(SimulationConfigurationError, match="supported run length") as refusal:
+            trunk.resumed_here()
+
+        assert "resumed_at_mark" in str(refusal.value)

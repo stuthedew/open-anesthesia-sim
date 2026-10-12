@@ -395,7 +395,8 @@ Five things in `app/controller.py` carry it:
   clock, so there is no float for a caller to name an instant the run has not
   reached with, and no way to confuse the instant a learner *marked* with the
   step instant the run actually stopped on. It refuses a running trunk, a
-  failed one and one standing at its opening, and `here_fork_point` answers
+  failed one, one standing at its opening and one at the supported run length,
+  where a branch would have no step to take, and `here_fork_point` answers
   from the same check, so an offer drawn from it cannot disagree with the
   door. The crossing the branch opens standing on is the step's, asked again
   of the marks as they stand, as `resumed_at_mark` asks it, so a mark added
@@ -506,8 +507,10 @@ relaxation costs.
 
 The paused point is a permission rather than a standing offer: it ends when
 the trunk starts again, because where a running trunk stands moves with every
-step. A failed trunk offers none either, a failure not being a pause,
-and nor does one standing at its opening, where `fork_at` already opens. That
+step. A failed trunk offers none either, a failure not being a pause; nor
+does one at the supported run length, which is a stop rather than a pause and
+leaves a branch no step to take; nor one standing at its opening, where
+`fork_at` already opens. That
 is why it is not a widened `fork_points_s` — such a list would change
 membership as the run moved, and a caller holding an instant from it could ask
 for a fork at an instant the run is no longer standing on.
@@ -554,7 +557,8 @@ is a property of the display rather than of the model:
   instant its branch opens at and "on your mark", in the halt label's wording,
   so it never states where the mark itself lies. Below it, a second button
   takes the branch where the paused trunk stands, through `fork_here`, and is
-  on the panel whenever `BranchedCase.here_fork_point` offers that — labelled
+  on the panel whenever `BranchedCase.here_fork_point` offers that and no
+  comparison is shown — labelled
   "Branch here: 1h23m" with the instant the branch will open at, and
   "..., stopped on your mark" when a mark stopped the trunk there. Pausing
   records no keyframe, so the paused point adds nothing to `fork_points_s`,
