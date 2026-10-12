@@ -3,12 +3,14 @@ id: PL-J4YY
 title: Six tree walks still read the disk where tracked_files asks git after PL-9NZ3 - glyph_check.problems (two), ignore_check.directives and doc_check.check_named_tests in tools, and docket's grep._walk and instructions._markdown_under, which cannot import tools/ - so the home for the tracked-file list wants to move into docket.vcs, which is already git's one runner and which tracked_files bypasses (fact_home_check baselines it as a git site)
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/grep.py, tools/workflow_paths_check.py, tools/fact_home_check.py, tools/glyph_check.py, tools/ignore_check.py, tools/doc_check.py, tests/unit/test_workflow_paths_check.py, tests/unit/test_glyph_check.py, tests/unit/test_ignore_check.py, tests/unit/test_doc_check.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_instructions.py, docs/items/PL-NNVJ-doc-check-roadmap-instructions-and-notes-copy.md
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/grep.py, tools/workflow_paths_check.py, tools/fact_home_check.py, tools/glyph_check.py, tools/ignore_check.py, tools/doc_check.py, tests/unit/test_workflow_paths_check.py, tests/unit/test_fact_home_check.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_instructions.py, subprojects/docket/tests/test_portability.py, docs/items/PL-NNVJ-doc-check-roadmap-instructions-and-notes-copy.md, docs/apparatus.md, docs/WORKING_NOTES.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1461
 payoff: a check or the instruction-age advisory answers only for files the repository holds, so a scratch module or another checkout under .claude/worktrees/ no longer fails make check or reaches a grooming pass
 verify: grep -q 'def tracked_files' subprojects/docket/src/docket/vcs.py && ! grep -q '("walk", ' tools/fact_home_check.py && grep -q 'def test_an_untracked_markdown_file_is_not_read' subprojects/docket/tests/test_instructions.py
 ---

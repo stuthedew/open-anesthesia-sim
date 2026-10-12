@@ -285,6 +285,14 @@ def _walk(root: Path, directory: Path, filters: tuple[tuple[bool, str], ...]) ->
     followed, the last `--include` or `--exclude` to match a file's base name
     decides it, and one no filter matches is read unless the first filter is
     an `--include`.
+
+    **The disk, and not `vcs.tracked_files`, on purpose** (`PL-J4YY`). `grep -r`
+    reads an untracked file, an ignored one and another checkout beneath the
+    directory alike, and this is the model of that command: read from the
+    tracked list instead, `wrapped` would explain a `grep` reading other files
+    than the one whose exit status it is explaining. So it is a home of its own
+    in `tools/fact_home_check.py`'s `HOMES`, rather than a second reader of
+    which files the repository holds.
     """
     for parent, directories, names in os.walk(directory):
         directories.sort()

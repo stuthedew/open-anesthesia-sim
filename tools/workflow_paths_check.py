@@ -126,10 +126,9 @@ from __future__ import annotations
 
 import argparse
 import ast
-import subprocess
 import sys
 import tomllib
-from pathlib import Path, PurePath, PurePosixPath
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
@@ -138,6 +137,13 @@ from docket.arming import PRODUCT_PACKAGE, imports_product, is_test_file  # noqa
 from docket.arming import TEST_FILE_PATTERNS as TEST_FILE_PATTERNS  # noqa: E402
 from docket.model import is_under  # noqa: E402
 
+# Which files the repository holds is git's fact, so the list lives beside git's one
+# runner in `docket.vcs`, where docket's own readers reach it too (`PL-J4YY`). The
+# tools that read it import it from here, as they did before it moved.
+from docket.vcs import Unlisted  # noqa: E402
+from docket.vcs import tracked_files as tracked_files  # noqa: E402
+from docket.vcs import tracked_under as tracked_under  # noqa: E402
+
 #: Where this check looks. `subprojects/*/tests/` is out of scope: those trees
 #: are already covered whole by the `subprojects` entry, so no file in them can
 #: land on the product side by omission.
@@ -145,12 +151,6 @@ TESTS_DIR = Path("tests")
 
 #: The store's own settings file, which holds the lists being checked.
 CONFIG = Path("docket.toml")
-
-#: Directories a checkout carries but does not author. Skipped by the walk that
-#: stands in for `git ls-files` in a tree that is not a checkout.
-SKIP_DIRS = frozenset(
-    {".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".ruff_cache"}
-)
 
 
 def declared_workflow_paths(root: Path) -> tuple[str, ...]:
@@ -259,65 +259,6 @@ def problems(root: Path) -> list[str]:
     return found
 
 
-def tracked_files(root: Path) -> list[str]:
-    """Every file the repository tracks, as posix paths relative to `root`.
-
-    `git ls-files` where `root` is a checkout, because an untracked file - a
-    scratch script, a build product, a virtualenv - is nobody's to place. A
-    tree that is not a checkout, which is what the tests build, is walked
-    instead, skipping only `SKIP_DIRS`; that walk sees every file and stands
-    in for git rather than replacing it, and so does a checkout where git
-    cannot be launched at all, which is what every reader but placement did
-    before this list was theirs (`PL-9NZ3`): the walk reads more than git
-    would and never less, so it can only over-report. Git running and failing
-    in a checkout is raised to the caller, which reports it: a tree this check
-    could not list is one it cannot vouch for, and passing it silently is the
-    failure the check exists to stop.
-
-    A tracked file deleted from the working tree and not yet staged is left
-    out, because git still lists it and every reader here opens what it is
-    given: the list is what the checkout holds, so a session that ran `rm`
-    before `make check` is not told a file it removed cannot be read.
-    """
-    if (root / ".git").exists():
-        try:
-            completed = subprocess.run(
-                ["git", "-C", str(root), "ls-files", "-z"], capture_output=True, check=True
-            )
-        except FileNotFoundError:
-            completed = None
-        if completed is not None:
-            # Decoded as written: a `-z` path can hold a raw `\r` (`PL-0R4M`).
-            listed = completed.stdout.decode("utf-8")
-            return sorted(name for name in listed.split("\0") if name and (root / name).is_file())
-    found = []
-    for path in sorted(root.rglob("*")):
-        relative = path.relative_to(root)
-        if path.is_file() and not any(part in SKIP_DIRS for part in relative.parts):
-            found.append(relative.as_posix())
-    return found
-
-
-def tracked_under(root: Path, tree: str | PurePath, suffix: str = "") -> list[Path]:
-    """The files `tracked_files` lists below `tree` whose names end in `suffix`, as paths.
-
-    The filter every check reading one subtree shares, so each reads the files
-    the repository holds rather than whatever a walk of the disk finds there:
-    an untracked scratch module, or another checkout under `.claude/worktrees/`
-    (`PL-9NZ3`). An empty `tree` is the whole repository. Sorted as paths,
-    which is the order the walks it replaced yielded, so a report's order is
-    unchanged by the move.
-    """
-    prefix = PurePosixPath(tree).as_posix().strip("/")
-    if prefix == ".":
-        prefix = ""
-    return sorted(
-        root / name
-        for name in tracked_files(root)
-        if (not prefix or name.startswith(prefix + "/")) and name.endswith(suffix)
-    )
-
-
 def unplaced_ancestor(relative: str, entries: tuple[str, ...]) -> str:
     """The shortest ancestor of an uncovered file that no entry reaches into.
 
@@ -367,7 +308,7 @@ def placement_problems(root: Path) -> list[str]:
             )
     try:
         tracked = tracked_files(root)
-    except (OSError, subprocess.CalledProcessError) as error:
+    except (OSError, Unlisted) as error:
         found.append(
             f"the tracked files could not be listed ({error}), so no path outside "
             f"{TESTS_DIR.as_posix()}/ can be vouched for"

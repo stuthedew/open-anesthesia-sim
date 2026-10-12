@@ -34,7 +34,8 @@ Today's sites sit in `BASELINE`, keyed by file, rule and enclosing scope and
 never by line, and it only shrinks: a count above an entry fails, and so does
 an entry the tree no longer fills, so a copy a member removes cannot return
 and the baseline cannot drift into a list nobody reads. The open members of
-`PL-5DZ8` drain it; `PL-HNXS` and `PL-9NZ3` drained the walks they named.
+`PL-5DZ8` drain it; `PL-HNXS` and `PL-9NZ3` drained the walks they named, and
+`PL-J4YY` the rest, moving the list into `docket.vcs` beside git's one runner.
 
 Not read: the hooks written in shell, which call git directly and are held by
 their own tests; the test trees, where a `git init` in a fixture reads no
@@ -122,13 +123,15 @@ HOMES: tuple[Home, ...] = (
     Home(
         rule="walk",
         reads="walks the tree",
-        where=(("tools/workflow_paths_check.py", "tracked_files"),),
+        where=((DOCKET + "vcs.py", "tracked_files"), (DOCKET + "grep.py", "_walk")),
         why=(
             "`tracked_files` asks git which files the repository holds and walks only a tree "
             "that is not a checkout, so a reader of it never sees another checkout under "
-            "`.claude/worktrees/`, a virtualenv or a build product (`PL-HNXS`)"
+            "`.claude/worktrees/`, a virtualenv or a build product (`PL-HNXS`); `_walk` in "
+            "`docket.grep` is the model of what `grep -r` reads, which is the disk, so a "
+            "`verify:` command's grep is explained by the files it read (`PL-J4YY`)"
         ),
-        remedy="read the files through `tracked_files` and filter the list",
+        remedy="read the files through `tracked_files`, or `tracked_under` for one subtree",
     ),
     Home(
         rule="github-api",
@@ -207,8 +210,7 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
     },
     "subprojects/docket/src/docket/cli.py": {("shell-lexer", "_run_forge_command"): 1},
     "subprojects/docket/src/docket/frontmatter.py": {("definition", "FENCE"): 1},
-    "subprojects/docket/src/docket/grep.py": {("definition", "MARKER"): 1, ("walk", "_walk"): 1},
-    "subprojects/docket/src/docket/instructions.py": {("walk", "_markdown_under"): 1},
+    "subprojects/docket/src/docket/grep.py": {("definition", "MARKER"): 1},
     "subprojects/docket/src/docket/markdown.py": {
         ("definition", "FENCE"): 2,
         ("definition", "MARKER"): 1,
@@ -261,13 +263,9 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("git", "_covered_by_gitignore"): 1,
         ("git", "_git_output"): 1,
         ("git", "_git_text"): 1,
-        ("walk", "_markdown_under"): 1,
-        ("walk", "check_named_tests"): 1,
     },
     "tools/fixture_id_check.py": {("definition", "JSON_KEY_RE"): 1, ("definition", "MARKER"): 1},
     "tools/generator_check.py": {("definition", "ID_RE"): 1, ("git", "creation_parents"): 1},
-    "tools/glyph_check.py": {("walk", "problems"): 2},
-    "tools/ignore_check.py": {("walk", "directives"): 1},
     "tools/item_reads.py": {
         ("definition", "ITEMS"): 1,
         ("definition", "ITEM_ID"): 1,
@@ -301,7 +299,6 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("definition", "PAGE"): 1,
         ("github-api", "<module>"): 1,
     },
-    "tools/workflow_paths_check.py": {("git", "tracked_files"): 1},
 }
 
 
