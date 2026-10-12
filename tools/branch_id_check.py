@@ -115,7 +115,6 @@ from __future__ import annotations
 import argparse
 import os
 import re
-import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -137,17 +136,17 @@ from docket.claims import (  # noqa: E402
 )
 from docket.config import Config  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
-from docket.lines import record_text, split_lines  # noqa: E402
+from docket.lines import split_lines  # noqa: E402
 from docket.model import SEMVER_PATTERN  # noqa: E402
 from docket.vcs import (  # noqa: E402
     BRANCH_ID_RE,
     DEFAULT_BRANCHES,
-    SILENT,
     _head_name,
     _item_paths_on,
     _remotes,
     _Silences,
     answered,
+    call_git,
     default_base,
     leading_ids,
     resolved,
@@ -175,30 +174,22 @@ NOT_ASKED = 3
 
 
 def _git(args: list[str]) -> str:
-    """Run git, returning its answer, or `SILENT` where it gave none.
+    """Git's answer, or `SILENT` where it gave none, by `vcs.call_git` (`PL-S9JK`).
 
-    The classification is `docket.vcs._run_git`'s, because `default_base` reads
-    it: `rev-parse --verify` exits 1 to say a candidate is not there, which is
-    an answer, and anything else that is not 0 is git saying nothing. The walk
-    has no "no" to give - `git log` exits 128 on a revision it cannot read - so
-    `_subjects` asks `answered` rather than taking the empty string for a
-    branch with nothing on it.
+    The classification is `docket.vcs._run_git`'s because it is that runner,
+    and `default_base` reads it: `rev-parse --verify` exits 1 to say a
+    candidate is not there, which is an answer. The walk has no "no" to give -
+    `git log` exits 128 on a revision it cannot read - so `_subjects` asks
+    `answered` rather than taking the empty string for a branch with nothing on
+    it. This used to run git itself under a docstring claiming `_run_git`'s
+    rule, and read `git show HEAD:no/such/file`, which `_run_git` answers as a
+    file the revision does not hold, as git saying nothing.
 
     Every failure used to collapse to the empty string here, and a base that
     resolved followed by a walk that did not printed "nothing ahead of <base>;
     no id is owed" and exited 0. `--base no-such-ref` was enough (`PL-1PBV`).
     """
-    try:
-        result = subprocess.run(
-            ["git", *args], cwd=ROOT, capture_output=True, timeout=30, check=False
-        )
-    except (OSError, subprocess.SubprocessError):
-        return SILENT
-    if result.returncode == 0:
-        # Decoded as written, so a subject holding a raw `\r` is read as the
-        # one subject git wrote rather than as two lines (`PL-0R4M`).
-        return record_text(result.stdout)
-    return "" if result.returncode == 1 else SILENT
+    return call_git(args, ROOT).answer
 
 
 def branch_name() -> str:

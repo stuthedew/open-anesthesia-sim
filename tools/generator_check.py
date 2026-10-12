@@ -73,7 +73,6 @@ from __future__ import annotations
 
 import argparse
 import re
-import subprocess
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -83,7 +82,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_config  # noqa: E402
-from docket.lines import record_text, split_lines  # noqa: E402
+from docket.lines import split_lines  # noqa: E402
 from docket.model import (  # noqa: E402
     CLOSED_STATUSES,
     MIN_ROOT_CAUSE_ITEMS,
@@ -92,7 +91,13 @@ from docket.model import (  # noqa: E402
     parse_item,
 )
 from docket.store import ID_PATTERN  # noqa: E402
-from docket.vcs import ITEM_FILE_RE, leading_ids  # noqa: E402
+from docket.vcs import (  # noqa: E402
+    ITEM_FILE_RE,
+    LONG_GIT_TIMEOUT,
+    GitUnanswered,
+    leading_ids,
+    read_git,
+)
 
 #: The floor for showing a cluster, and it is the recorded definition's own:
 #: `CLAUDE.md` calls a mechanism causing three or more items a generator, so a
@@ -121,10 +126,6 @@ SHOW = 6
 #: It reads the ids an item cites; which file is an item's, and whose, is
 #: `vcs.ITEM_FILE_RE`, built on the same pattern (`PL-5QG4`).
 ID_RE = re.compile(ID_PATTERN)
-
-
-class GitUnanswered(Exception):
-    """The item history spawn attribution rests on, which git did not give, and why."""
 
 
 @dataclass(frozen=True)
@@ -227,23 +228,14 @@ def creation_parents(repo: Path) -> dict[str, set[str]]:
     measured and zero (`PL-1PBV`).
     """
     items_dir = load_config(repo).items_dir.strip("/")
-    try:
-        result = subprocess.run(
-            ["git", "log", "--diff-filter=A", "--name-only", "--format=\x01%s", "--", items_dir],
-            capture_output=True,
-            cwd=repo,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError) as error:
-        raise GitUnanswered(f"`git log` could not run: {error}") from error
-    if result.returncode != 0:
-        stderr = record_text(result.stderr)
-        said = next((line.strip() for line in split_lines(stderr) if line.strip()), "")
-        raise GitUnanswered(
-            f"`git log` exited {result.returncode}: {said or 'with nothing on stderr'}"
-        )
+    # `vcs.read_git`, so a log that failed, a git that hangs and a subject that
+    # is not text here all decline alike, as docket reads them (`PL-S9JK`).
     # Decoded as written, so a raw `\r` in a subject stays in it (`PL-0R4M`).
-    out = record_text(result.stdout)
+    out = read_git(
+        ["log", "--diff-filter=A", "--name-only", "--format=\x01%s", "--", items_dir],
+        repo,
+        timeout=LONG_GIT_TIMEOUT,
+    )
     parents: dict[str, set[str]] = {}
     for block in out.split("\x01")[1:]:
         subject, _, body = block.partition("\n")

@@ -41,7 +41,7 @@ from pathlib import Path
 import branch_id_check
 import pytest
 from docket.claims import Holdings
-from docket.vcs import SILENT, answered, leading_ids
+from docket.vcs import SILENT, _run_git, answered, leading_ids
 
 #: The items the fake store holds, in both copies: every id the tests below
 #: expect to attribute work. `PL-SN2T`'s two reproductions are not among them.
@@ -389,6 +389,41 @@ def _commit(repo: Path, subject: str, when: str, **kwargs: object) -> None:
 
 def _branch(repo: Path, name: str, start: str = "main") -> None:
     subprocess.run(["git", "checkout", "-q", "-b", name, start], cwd=repo, check=True)
+
+
+def test_a_missing_blob_is_an_answer_as_vcs_reads_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`git show HEAD:no/such/file` is git saying "not there", here as in `vcs` (`PL-S9JK`).
+
+    It exits 128, the one shape where that is an answer. This file's own runner
+    read it as git saying nothing while its docstring claimed `_run_git`'s rule,
+    so the two disagreed on the very input the rule names. Real git, because
+    the exit code is the evidence.
+    """
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, capture_output=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@example.com",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "seed",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+    monkeypatch.setattr(branch_id_check, "ROOT", tmp_path)
+
+    answer = branch_id_check._git(["show", "HEAD:no/such/file"])
+
+    assert answered(answer)
+    assert answer == "" == _run_git(["show", "HEAD:no/such/file"], tmp_path)
 
 
 def _repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:

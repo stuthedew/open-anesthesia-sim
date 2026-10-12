@@ -222,13 +222,16 @@ from __future__ import annotations
 import argparse
 import ast
 import re
-import subprocess
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
 
 from workflow_paths_check import tracked_under
+
+# isort: split
+# After `workflow_paths_check`, whose import puts docket on the path.
+from docket.vcs import answered, call_git
 
 #: Every module under this tree is read; nothing under it is named by path.
 APP = Path("src/anesthesia_sim/app")
@@ -1678,23 +1681,18 @@ def _git_read(root: Path, *args: str) -> str:
     call that failed must not be able to look like one: that is a partial
     reading handed over as a whole one.
 
-    Read as bytes and decoded as written, so a raw `\\r` in a record stays in
-    it; a `show`, which here only ever reads `<commit>:<path>`, is a blob and is
-    translated as `read_text` translates its file (`PL-0R4M`).
+    Through `vcs.call_git`, so it is decoded and bounded as docket reads the
+    same question (`PL-S9JK`): a `show`, which here only ever reads
+    `<commit>:<path>`, is a blob and comes back translated as `read_text`
+    translates its file (`PL-0R4M`). Every read here names something that has
+    to be there - the merge base, a file the base listed, this file's own
+    copy - so the no `vcs.git_answer` reads in a non-zero exit is a failure too.
     """
-    command = "git " + " ".join(args)
-    try:
-        completed = subprocess.run(
-            ["git", "-C", str(root), *args], capture_output=True, timeout=30, check=False
-        )
-    except (OSError, subprocess.SubprocessError) as error:
-        raise BaseUnreadable(f"{command}: {error}") from error
-    if completed.returncode != 0:
-        said = completed.stderr.decode("utf-8").strip().rpartition("\n")[2]
-        reason = said or f"exit {completed.returncode}, and nothing on stderr"
-        raise BaseUnreadable(f"{command}: {reason}")
-    stdout = completed.stdout.decode("utf-8")
-    return stdout.replace("\r\n", "\n").replace("\r", "\n") if args[0] == "show" else stdout
+    call = call_git(args, root)
+    text = call.answer
+    if call.code != 0 or not answered(text):
+        raise BaseUnreadable(f"git {' '.join(args)}: {call.reason}")
+    return text
 
 
 def shortfall_keys(source: str) -> frozenset[tuple[str, str]]:
