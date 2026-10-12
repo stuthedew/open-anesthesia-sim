@@ -2059,8 +2059,13 @@ citation wearing a journal's name. Both of this project's tier-3 citations are
 of exactly that kind, and neither measured a coefficient: De Wolf et al. 2012
 is a Gas Man simulation study whose Table 1 is the parameter set it fed to Gas
 Man, and Meybohm et al. 2021 is a Gas Man simulation study describing the
-product's standard 70 kg patient. Citing either as though the value had been
-measured is the specific failure this section exists to prevent.
+product's standard 70 kg patient. The two do not even agree on what that set
+holds: Meybohm et al.'s Table 1 prints Gas Man 4.2's 1 MAC as 2.1% sevoflurane
+and 1.1% isoflurane where De Wolf et al. state 2.0% and 1.2%, the values stored
+on De Wolf's authority, while every partition coefficient the two print is the
+same (`PL-0SG0`; each agent file's De Wolf note carries the figures, read
+2026-10-12 from PMC's XML record of PMC7943506). Citing either as though the
+value had been measured is the specific failure this section exists to prevent.
 
 **Where this project stands, stated rather than implied.** Of the 37 rows in
 the provenance table below, 16 are tier 3, one is tier 2, 18 are tier 1, and
