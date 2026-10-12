@@ -8,6 +8,7 @@ classes: ux, docs
 feature: liquid-agent-consumption
 touches: ROADMAP.md, docs/items
 blocked-by: PL-YRLM
+deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list to hold the gate open): planned-milestone item 28's liquid-volume readout, waiting on PL-YRLM, which holds whether a release schedules item 28; none does before v0.6.0
 added: 2026-09-16
 ---
 

@@ -2991,29 +2991,50 @@ def format_gate(gate: Gate, debt_classes: tuple[str, ...]) -> str:
 
     Each list is reported by lane as well as by effort (`PL-M26Q`), from
     `Gate.by_lane`, which reads every item's lane as `docket next` does.
+
+    A third group follows them where the last frozen list holds open entries
+    that are not debt: the freeze carries those too, and nothing else prints
+    one with its lane (`PL-JV5Q`, `PL-QWF8`).
     """
-    if not gate.items:
+    frozen_on = (
+        "v{}.{}.{}".format(*gate.frozen_list.version) if gate.frozen_list is not None else ""
+    )
+    if not gate.items and not gate.frozen:
         # Every open debt item, so an empty store is the only way to get here:
         # naming the feature would say there is debt that does not carry it.
         return "No open debt in the store. Nothing to clear."
 
-    lines = [
-        f"{_plural(len(gate.items), 'open debt item', 'open debt items')} in the store"
-        + (f", split by whether each carries `{gate.feature}`." if gate.feature else ".")
-    ]
-
-    lines.append("")
-    lines.extend(
-        _gate_group(
-            f"Not carrying `{gate.feature}`" if gate.feature else "Open debt", gate.outside, gate
-        )
-    )
-
-    if gate.feature:
+    if gate.items:
+        lines = [
+            f"{_plural(len(gate.items), 'open debt item', 'open debt items')} in the store"
+            + (f", split by whether each carries `{gate.feature}`." if gate.feature else ".")
+        ]
         lines.append("")
-        lines.extend(_gate_group(f"Carrying `{gate.feature}`", gate.inside, gate))
-        if not gate.inside:
-            lines.append("  nothing carries that feature")
+        lines.extend(
+            _gate_group(
+                f"Not carrying `{gate.feature}`" if gate.feature else "Open debt",
+                gate.outside,
+                gate,
+            )
+        )
+        if gate.feature:
+            lines.append("")
+            lines.extend(_gate_group(f"Carrying `{gate.feature}`", gate.inside, gate))
+            if not gate.inside:
+                lines.append("  nothing carries that feature")
+    else:
+        lines = ["No open debt in the store."]
+
+    if gate.frozen:
+        lines.append("")
+        lines.extend(
+            _gate_group(
+                f"Open on {frozen_on}'s frozen list and not debt",
+                gate.frozen,
+                gate,
+                deferred_from=frozen_on,
+            )
+        )
 
     lines.append("")
     lines.append(f"Debt is an open item classed {', '.join(debt_classes)}, or at needs-decision.")
@@ -3025,12 +3046,26 @@ def format_gate(gate: Gate, debt_classes: tuple[str, ...]) -> str:
     lines.append("This reads the whole store, on a frozen list or not. `bin/docket wave` reads the")
     lines.append("frozen list, and counts as the milestone's own what its Required scope names -")
     lines.append("the roadmap's rule, which is not the feature: the two can differ both ways.")
+    if gate.frozen:
+        lines.append("A frozen entry stays one whatever its classes become, so the next freeze")
+        lines.append("carries the last group with the debt; `deferred from` marks the entries")
+        lines.append(f"{frozen_on}'s gate deferred, which `bin/docket wave` counts apart.")
+    elif gate.frozen_list is not None:
+        lines.append(f"Every open entry of {frozen_on}'s frozen list is debt, so the lists above")
+        lines.append("hold all of it.")
     lines.append("Whether each of these is really debt, whether the gate should open, and")
     lines.append("what goes into the plan are not decided here. Recording it is a deliberate act.")
+    if gate.frozen_list is not None:
+        lines += plan_unread_lines(
+            tuple(
+                f"line {entry.line}, in the {frozen_on} section: {entry.why}"
+                for entry in gate.frozen_list.unread
+            )
+        )
     return "\n".join(lines)
 
 
-def _gate_group(heading: str, items: list[Item], gate: Gate) -> list[str]:
+def _gate_group(heading: str, items: list[Item], gate: Gate, deferred_from: str = "") -> list[str]:
     """One of `format_gate`'s groups: its sizes and lanes, then its items lane by lane.
 
     The heading names every lane, the ones at zero included, for the reason
@@ -3044,19 +3079,25 @@ def _gate_group(heading: str, items: list[Item], gate: Gate) -> list[str]:
     lanes = gate.by_lane(items)
     sizes = effort_total(items)
     if not lanes or not items:
-        return [f"{heading} - {len(items)} ({sizes}):", *_gate_lines(items)]
+        return [
+            f"{heading} - {len(items)} ({sizes}):",
+            *_gate_lines(items, deferred_from=deferred_from),
+        ]
     counts = ", ".join(f"{len(members)} {lane}" for lane, members in lanes.items())
     lines = [f"{heading} - {len(items)} ({sizes}; {counts}):"]
     width = max(len(item.identifier) for item in items)
     for lane, members in lanes.items():
         if members:
             lines.append(f"  {lane} - {len(members)} ({effort_total(members)}):")
-            lines.extend(f"  {line}" for line in _gate_lines(members, width))
+            lines.extend(f"  {line}" for line in _gate_lines(members, width, deferred_from))
     return lines
 
 
-def _gate_lines(items: list[Item], width: int = 0) -> list[str]:
-    """One line per item. `width` aligns the ids across a group's lanes."""
+def _gate_lines(items: list[Item], width: int = 0, deferred_from: str = "") -> list[str]:
+    """One line per item. `width` aligns the ids across a group's lanes.
+
+    `deferred_from`, a version, marks each item whose `deferred-from:` names it.
+    """
     if not items:
         return ["  nothing"]
     width = width or max(len(item.identifier) for item in items)
@@ -3065,6 +3106,8 @@ def _gate_lines(items: list[Item], width: int = 0) -> list[str]:
         marks = ", ".join(item.classes) or "no classes"
         if item.status != "ready":
             marks = f"{item.status}, {marks}"
+        if deferred_from and split_deferred_from(item.deferred_from)[0] == deferred_from:
+            marks = f"deferred from {deferred_from}, {marks}"
         lines.append(
             f"  {item.priority} {item.effort or '-'} {item.identifier:<{width}} "
             f"{item.title} ({marks})"
@@ -3368,8 +3411,9 @@ def format_picks(picks: Picks) -> str:
     if picks.led:
         lines.append(f"  Led on a generator line rather than grouped: {', '.join(picks.led)}.")
     lines.append("")
+    deferred = f", {picks.deferred} deferred from it" if picks.deferred else ""
     lines.append(
-        f"Not offered: {picks.self_cleared} the milestone clears itself and"
+        f"Not offered: {picks.self_cleared} the milestone clears itself{deferred} and"
         f" {picks.blocked_outside} blocked outside the gate; `docket wave` names them."
     )
     if picks.folded:
@@ -3432,11 +3476,13 @@ def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
             f'Gate      frozen list recorded under "{gate.milestone.title}" ({entries}, {ids})'
         )
         counted = f"{len(gate.cleared)} cleared, {len(gate.outstanding)} open"
-        # The three sets are disjoint by construction, so the split adds back up
-        # to the open count and a reader can check it without being told to.
+        # The sets are disjoint by construction, so the split adds back up to
+        # the open count and a reader can check it without being told to.
         aside = []
         if gate.self_cleared:
             aside.append(f"{len(gate.self_cleared)} the milestone clears itself")
+        if gate.deferred:
+            aside.append(f"{len(gate.deferred)} deferred from it")
         # Two verdicts where there was one, and the wording is the deliverable:
         # an entry the plan sequences ahead of the gate needs nothing from
         # anybody, an entry waiting on work placed later or nowhere is excused
@@ -3465,6 +3511,15 @@ def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
             lines.append(
                 "          named in its Required scope, so cleared by the milestone itself: "
                 + ", ".join(own)
+            )
+        if gate.deferred:
+            # The field named beside the ids, because it is the whole record:
+            # a frozen entry's deferral was a group heading in `ROADMAP.md`,
+            # read through `blocked-by`, until `PL-8QMD`.
+            version = "v{}.{}.{}".format(*gate.milestone.version)
+            deferred = [identifier for entry in gate.deferred for identifier in entry.ids]
+            lines.append(
+                f"          deferred by `deferred-from: {version}`: " + ", ".join(deferred)
             )
         by_row: dict[str, list[str]] = {}
         for sequenced in gate.sequenced_ahead:
@@ -3545,18 +3600,30 @@ def _deferral_lines(plan: Wave, items: Mapping[str, Item]) -> list[str]:
     naming a release it has not had.
 
     The deferrals are the items whose `deferred-from:` names this gate's
-    version, open and closed alike (`PL-WD5Z`). They were the leading ids of
-    entries under a `ROADMAP.md` subsection headed `Declined`, `Deferred` or
-    `Sequenced` until the disposition moved onto the item, so nothing here can
-    now disagree with what `docket check` counts as disposed. Oldest capture
-    first, which is the order the subsections recorded them in.
+    version, open and closed alike, and that its frozen list does not hold
+    (`PL-WD5Z`). They were the leading ids of entries under a `ROADMAP.md`
+    subsection headed `Declined`, `Deferred` or `Sequenced` until the
+    disposition moved onto the item, so nothing here can now disagree with what
+    `docket check` counts as disposed. Oldest capture first, which is the order
+    the subsections recorded them in.
+
+    A frozen entry the gate defers carries the same field and is left out
+    here, because the gate block above already counts it with the rest of the
+    list - deferred while open, cleared once closed - and printed in both it
+    would read as two deferrals (`PL-8QMD`).
     """
     gate = plan.gate
     if gate is None:
         return []
     version = "v{}.{}.{}".format(*gate.milestone.version)
+    on_list = frozenset(gate.ids)
     deferred = sorted(
-        (item for item in items.values() if split_deferred_from(item.deferred_from)[0] == version),
+        (
+            item
+            for item in items.values()
+            if split_deferred_from(item.deferred_from)[0] == version
+            and item.identifier not in on_list
+        ),
         key=lambda item: (item.added or date.min, item.identifier),
     )
     if not deferred:
@@ -3757,6 +3824,8 @@ def _beat_line(plan: Wave) -> str:
         aside = []
         if plan.gate.self_cleared:
             aside.append(f"{len(plan.gate.self_cleared)} the milestone clears itself")
+        if plan.gate.deferred:
+            aside.append(f"{len(plan.gate.deferred)} deferred from it")
         if plan.gate.sequenced_ahead:
             aside.append(f"{len(plan.gate.sequenced_ahead)} sequenced ahead of it")
         if plan.gate.waiting_outside:

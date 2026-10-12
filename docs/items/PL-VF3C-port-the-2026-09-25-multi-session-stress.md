@@ -3,7 +3,7 @@ id: PL-VF3C
 title: Port the 2026-09-25 multi-session stress harness into subprojects/docket/tests as a regression suite: each reproduced violation a named scenario test, the seeded random interleavings behind a slow marker, and a fake forge that can say merged and closed as well as open
 priority: P3
 effort: M
-status: blocked
+status: ready
 classes: test, infra
 feature: workflow-stress-2026-09
 touches: subprojects/docket/tests/test_multisession.py, subprojects/docket/tests/conftest.py
@@ -33,4 +33,9 @@ Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
 
 [superseded 2026-10-12: `PL-R417` no longer holds it; the pause it ended restarted with #1419's three live heads, below] **The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it: `subprojects/docket/tests/test_multisession.py` does not exist yet. It stays `blocked` only because `ready` needs a `verify:` command and a `payoff:`, which `bin/docket set` refuses `ready` without and triage writes beside the work; `bin/docket check` names it ready to promote meanwhile.
 
-**Re-read 2026-10-12 under `PL-2349`**, whose check now refuses a `blocked` item whose every blocker has closed. `PL-R417`'s closure ended the generator pause on 2026-10-11, and `PL-74T0` restarted it the next day: #1419 (`febb37b4`) recorded `PL-5DZ8`, `PL-8QMD` and `PL-ZGYX` as live heads, and `bin/docket generators` marks all three still generating. Nothing else this brief names holds it, so it stays held by the pause, now blocked on those three - though the pause's own test is still `bin/docket generators` marking no head "still generating", not this list. The `verify:` and `payoff:` are written now, so the pull request that ends the pause can promote it in one write. The fault stands: `subprojects/docket/tests/test_multisession.py` does not exist. `verify:` reads the first and last of the eight reproductions, so the scenario tests are named after the archive's numbering, `test_v1_...` through `test_v8_...`; it was seen failing (exit 2, the file absent) on 2026-10-12.
+[superseded 2026-10-12] **Re-read 2026-10-12 under `PL-2349`**, whose check now refuses a `blocked` item whose every blocker has closed. `PL-R417`'s closure ended the generator pause on 2026-10-11, and `PL-74T0` restarted it the next day: #1419 (`febb37b4`) recorded `PL-5DZ8`, `PL-8QMD` and `PL-ZGYX` as live heads, and `bin/docket generators` marks all three still generating. Nothing else this brief names holds it, so it stays held by the pause, now blocked on those three - though the pause's own test is still `bin/docket generators` marking no head "still generating", not this list. The `verify:` and `payoff:` are written now, so the pull request that ends the pause can promote it in one write. The fault stands: `subprojects/docket/tests/test_multisession.py` does not exist. `verify:` reads the first and last of the eight reproductions, so the scenario tests are named after the archive's numbering, `test_v1_...` through `test_v8_...`; it was seen failing (exit 2, the file absent) on 2026-10-12.
+
+**Promoted to `ready` 2026-10-12.** `PL-8QMD` closed as the last head
+`bin/docket generators` marked still generating, so the generator pause that
+held this item has ended (`CLAUDE.md` § "What this project is"), and the
+`verify:` and `payoff:` written above stand.

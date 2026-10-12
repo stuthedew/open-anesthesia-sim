@@ -3,14 +3,16 @@ id: PL-QWF8
 title: A report on a frozen gate cannot read every open entry's lane from docket: bin/docket gate lists lanes for open debt only, and wave, show and list print none, so v0.6.0's PL-5B1N (classed feature) and PL-B396 (ux, docs) still need Item.lane by hand
 priority: P3
 effort: S
-status: blocked
+status: done
 classes: defect
-touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 blocked-by: PL-8QMD
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+closed: 2026-10-12
+pr: 1439
 payoff: a what's-left report reads every frozen entry's lane from docket, the non-debt ones included, instead of computing two by hand
-verify: grep -q 'def test_wave_prints_each_entry_lane' subprojects/docket/tests/test_roadmap.py
+verify: grep -q 'def test_gate_prints_each_open_frozen_entry_the_debt_lists_leave_out' subprojects/docket/tests/test_cli.py
 reenters: PL-J6HP, PL-WD5Z
 recurrences: 2026-10-04 PL-G2HP withdrawn 2026-10-04 PL-G2HP
 ---
@@ -47,4 +49,10 @@ holds, each one's lane, and what clears it - with `PL-JV5Q`, `PL-Z64T`,
 `PL-D388` and `PL-W9BK`. Three post-close instances read as a fix that did not
 hold; `PL-74T0` records the head or refuses it as its cluster 2.
 
-**Blocked on `PL-8QMD`, 2026-10-11.** That head's answer (project owner, 2026-10-11, ratified) records a frozen entry's deferral as `deferred-from:` on the item, and its build has a report read every frozen entry's lane from a docket command, the non-debt ones included, which is this item's Done-when. Its closing commit leads with this item, so building this one first would be work that change removes or redoes.
+[superseded 2026-10-12] **Blocked on `PL-8QMD`, 2026-10-11.** That head's answer (project owner, 2026-10-11, ratified) records a frozen entry's deferral as `deferred-from:` on the item, and its build has a report read every frozen entry's lane from a docket command, the non-debt ones included, which is this item's Done-when. Its closing commit leads with this item, so building this one first would be work that change removes or redoes.
+
+**Closed 2026-10-12 with `PL-8QMD`.** `bin/docket gate`'s last group lists
+every open entry of the last frozen list that is not debt under its
+`Item.lane`, so with the debt groups every open frozen entry has a lane a report
+reads from docket. `verify:` named a `wave` test the decided form does not
+write, since `gate` is what prints the lane, so it now names `test_cli.py`'s.

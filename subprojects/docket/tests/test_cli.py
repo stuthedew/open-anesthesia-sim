@@ -3208,6 +3208,76 @@ def test_gate_says_why_it_prints_no_lanes_where_no_boundary_is_declared(
     assert "Carrying `teachable-case` - 1 (1 M):" in out
 
 
+FROZEN_ROADMAP = """# Plan
+
+## v0.6.0 - the layout
+
+### Debt gate: the frozen list
+
+- PL-PR0D (S) A debt entry, which the debt lists print
+- PL-F3TR (M) A feature entry the gate deferred
+- PL-XD0N (S) A docs entry still on the list
+"""
+
+
+def test_gate_prints_each_open_frozen_entry_the_debt_lists_leave_out(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-JV5Q` and `PL-QWF8`. A frozen entry stays one whatever its classes
+    become, and the next freeze carries it, but `gate` listed open debt alone:
+    Gate 2's `PL-5B1N` and `PL-B396` were reclassed after the freeze, so Gate
+    3's freeze would have dropped both, and no command printed either's lane.
+    The last frozen list's open entries that are not debt are a third group,
+    laned as the other two are, with the ones its gate deferred marked by the
+    field that defers them - and an entry the debt lists already print, or an
+    item the list does not hold, is not repeated there."""
+    store = _laned_store(tmp_path)
+    (store.parent / "ROADMAP.md").write_text(FROZEN_ROADMAP, encoding="utf-8")
+    for ident, fields in (
+        (
+            "PL-F3TR",
+            "effort: M\nclasses: feature\ntouches: src/app/chart.py\n"
+            "deferred-from: v0.6.0 - deferred on beat 3's terms\n",
+        ),
+        ("PL-XD0N", "effort: S\nclasses: docs\ntouches: tools/doc_check.py\n"),
+        ("PL-N0TL", "effort: S\nclasses: feature\ntouches: src/app/chart.py\n"),
+    ):
+        (store / f"{ident}-x.md").write_text(
+            f"---\nid: {ident}\ntitle: Item {ident}\npriority: P2\nstatus: ready\n{fields}"
+            "added: 2026-08-01\n---\n\n**Problem.** P\n**Why it matters.** W\n**Done when.** D\n",
+            encoding="utf-8",
+        )
+
+    assert _run("gate", "--items", str(store)) == 0
+    out = capsys.readouterr().out
+
+    _, _, frozen = out.partition("Open on v0.6.0's frozen list and not debt - 2 (1 M, 1 S; ")
+    assert frozen.startswith("1 product, 1 workflow, 0 crossing, 0 unplaced):")
+    assert _lanes_gate_listed(frozen) == {"PL-F3TR": "product", "PL-XD0N": "workflow"}
+    assert "PL-F3TR Item PL-F3TR (deferred from v0.6.0, feature)" in frozen
+    assert "PL-XD0N Item PL-XD0N (docs)" in frozen
+    assert "PL-PR0D" in out.partition(frozen)[0] and "PL-PR0D" not in frozen
+    assert "PL-N0TL" not in out
+    assert "so the next freeze" in out and "carries the last group with the debt" in out
+
+
+def test_gate_with_no_open_debt_still_prints_the_frozen_entries_a_freeze_carries(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An empty debt list said "Nothing to clear" and stopped, which is the
+    freeze dropping a non-debt deferral by another route."""
+    feature = READY.replace("classes: perf", "classes: feature").replace("PL-B1B1", "PL-F3TR")
+    store = _store(tmp_path, feature)
+    (tmp_path / "ROADMAP.md").write_text(FROZEN_ROADMAP, encoding="utf-8")
+
+    assert _run("gate", "--items", str(store)) == 0
+    out = capsys.readouterr().out
+
+    assert out.startswith("No open debt in the store.\n")
+    assert "Nothing to clear" not in out
+    assert "Open on v0.6.0's frozen list and not debt - 1 (" in out and "PL-F3TR" in out
+
+
 def _branched_repo(tmp_path: Path, store: str = "items") -> Path:
     """A repository whose second branch carries an item `main` has never seen.
 

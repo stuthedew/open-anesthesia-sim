@@ -5550,7 +5550,7 @@ word, though, so none of the five rests on either. All five are product-lane
 work and are listed in that group, and `bin/docket feature parse-dont-validate`
 reads their progress.
 
-**Three kinds of group, and only the third is a precondition.** The first is
+**Two kinds of group, and only the second is a precondition.** The first is
 debt inside this milestone's own Required scope, cleared *by* it per § "Debt
 inside the milestone's own scope" - the test is whether `Required scope` below
 names the id, rather than whether the item carries the `interface-areas`
@@ -5562,14 +5562,24 @@ the whole store by feature (`PL-RFHH`). `PL-CNCF` and `PL-PGZF` sat in the
 product-lane and neither-lane groups until 2026-09-23, because `#862` declared
 them in Required scope after `#850` had grouped this list. They moved into the
 first group when `tools/doc_check.py` began holding it to Required scope
-(`PL-J6HP`), and the three group counts moved with them. The second is what
-this gate defers to Gate 3, in the three groups below that say so. The rest clears
-before implementation of this milestone begins, and is recorded in three groups
-rather than one because that
-is how it is meant to be worked: `docket.toml` computes a lane from each item's
-`touches`, the product and workflow lanes share no files and so run
-concurrently in two sessions, and the entries in neither lane cross both and
-want a session that can hold the whole change.
+(`PL-J6HP`), and the three group counts moved with them. The rest clears
+before implementation of this milestone begins, unless this gate defers it, and
+is recorded in three groups rather than one because that is how it is meant to
+be worked: `docket.toml` computes a lane from each item's `touches`, the product
+and workflow lanes share no files and so run concurrently in two sessions, and
+the entries in neither lane cross both and want a session that can hold the
+whole change.
+
+**What this gate defers is not a group: it is each entry's `deferred-from:
+v0.6.0`, which `bin/docket wave` prints** (`PL-8QMD`, project owner,
+2026-10-11, ratified, over keeping the deferral group headings, read through
+`blocked-by`, with a check per reader). A deferred entry stays in the lane group
+its `touches` compute and its item says why; `wave` counts it apart from what
+this gate can clear, and `bin/docket gate` marks it for the freeze that takes
+it. The paragraphs below record each deferral's decision. Three groups headed
+"Deferred to Gate 3" held the seven entries until 2026-10-12, and `wave` read a
+deferral from a `blocked-by` chain leaving the list, which counted an entry
+deferred whether or not anybody had deferred it (`PL-D388`).
 
 **`PL-Y04W` is deferred to Gate 3 on § "The cadence" beat 3's terms, and the
 three conditions are met here rather than assumed.** It is the break-out build
@@ -5596,9 +5606,11 @@ timeline** (project owner, 2026-09-26: wanted eventually, not soon;
 `PL-V1Y7`). No release builds break-out now, so the deferral has no release
 to clear before, and an eventual feature is intent in planned-milestone item
 34 rather than an `L` item waiting in the queue. A dropped entry clears this
-gate as a fixed one does, per § "What counts". The paragraph above and the
-group heading below are left as the freeze wrote them: their v0.7.0 is the
-break-out row as it then stood, and v0.7.0 has been the schematic since.
+gate as a fixed one does, per § "What counts". The paragraph above is left as
+the freeze wrote it: its v0.7.0 is the break-out row as it then stood, and
+v0.7.0 has been the schematic since. The group of its own that it names was
+retired on 2026-10-12 with the other deferral groups, and the entry stands in
+the product lane (`PL-8QMD`).
 Nothing the entry guarded is lost with it - the rule a break-out build must
 satisfy is `docs/MODEL.md` § "Minimum displayed outputs" -> "What this list
 requires once the layout is the reader's", and item 34's entry cites the
@@ -5615,8 +5627,9 @@ put it in the workflow lane.
 entry - deferred on § "The cadence" beat 3's terms by `PL-S5Q9`, and still
 written on v0.5.0's frozen list, where removing it would have been the
 renegotiation a freeze exists to prevent. This gate defers it again, to Gate 3,
-with four other entries, as the next paragraph records, and its holding
-condition is in `PL-0H5D`'s field rather than in prose. Being
+with four other entries, as the next paragraph records. The deferral is its
+`deferred-from:`, and its holding condition is in `PL-0H5D`'s field rather than
+in prose. Being
 `safety`-classed, it took that route only because the gate
 section recording it also records that its hazard is not live, read against the
 tree: there is one machine profile and no chooser, so no displayed value can
@@ -5644,12 +5657,15 @@ worked:
 
 The deferral names **Gate 3**, which freezes when v0.6.0 ships and clears
 before v0.7.0's implementation begins, and v0.6.0 ships without the five. They
-stay written on this list, moved out of the lane groups, whose headings say
-their entries clear before this milestone begins, into a group of their own
-below, as `PL-Y04W` was. Nothing about them changes by waiting: unless a
-release schedules item 28 or machine selection before v0.6.0 ships, Gate 3
-inherits all five as this gate inherited `PL-WZVZ`, and owes them the same
-disposition.
+stay written on this list, in the lane groups their `touches` compute, and each
+item's `deferred-from: v0.6.0` says so and why; from 2026-09-27 to 2026-10-12
+they sat in a group of their own, as `PL-Y04W` did (`PL-8QMD`). Nothing about
+them changes by waiting: unless a release schedules item 28 or machine
+selection before v0.6.0 ships, Gate 3 inherits all five as this gate inherited
+`PL-WZVZ`, and owes them the same disposition. That includes `PL-B396`, whose
+`ux` and `docs` classes are not debt: `bin/docket gate` prints every open entry
+of this list beside the store's open debt, each deferral marked, and the freeze
+carries all of them (`PL-JV5Q`).
 
 **Four of the five are `safety`- or `science`-classed, and no hazard among them
 is live, read against the tree at `19af95d` rather than asserted.**
@@ -5668,15 +5684,18 @@ or a liquid figure. `PL-B396` is classed `ux` and `docs`, so beat 3 asks this
 record of the other four alone.
 
 **What reads this, and what reads past it.** `bin/docket wave` counts this list
-from the items rather than from this prose, and the two readings agree for all
-five: each `blocked-by` chain leaves the list, `PL-WZVZ`'s at `PL-TBMK` and
-`PL-4TWW`, and `PL-B396`'s at `PL-YRLM`, which the other three reach through
-`PL-B396`. So `wave` counts all five apart from the entries this gate can
-clear. `PL-YRLM` was filed for exactly that, off this list, to give item 28's
+from the items rather than from this prose: an open entry whose `deferred-from:`
+names v0.6.0 is counted as deferred, apart from both the entries this gate can
+clear and those waiting on work outside it, and `bin/docket check` refuses an
+open entry waiting on work that neither this list nor Required scope holds and
+nothing schedules first, unless its field defers it (`PL-8QMD`). Until
+2026-10-12 `wave` read a deferral from the `blocked-by` chain leaving the list
+instead, which is why `PL-YRLM` was filed off this list, to give item 28's
 scheduling the id a `blocked-by` needs (`PL-18BD`, project owner, 2026-09-27,
-ratified, over teaching `wave` to read this section's group headings), which is
-the route `PL-0H5D` took for `PL-WZVZ`. A later deferral whose condition has no
-id is given one the same way, since `wave` reads no group heading.
+ratified, over teaching `wave` to read this section's group headings), the
+route `PL-0H5D` took for `PL-WZVZ`. That reading is retired and the blockers
+stay, so `bin/docket next` and the promote advisory still read each holding
+condition.
 
 **`PL-5B1N` is deferred to Gate 3 on § "The cadence" beat 3's terms**
 (project owner, 2026-09-27, ratified, over building the preview now as the
@@ -5695,11 +5714,12 @@ than rewrites.
 
 The deferral names **Gate 3**, which freezes when v0.6.0 ships and clears
 before v0.7.0's implementation begins, and v0.6.0 ships without it. It stays
-written on this list, moved out of the product-lane group into a group of its
-own below, as the five were. Gate 3's freeze will not take it up by itself:
-the freeze lists open debt, which is what `bin/docket gate` prints, and a
-`feature` entry is not debt, so the session that freezes Gate 3 writes it onto
-that list from this paragraph.
+written on this list, in the neither-lane group its `touches` compute, and its
+`deferred-from: v0.6.0` says so and why; from 2026-10-03 to 2026-10-12 it sat
+in a group of its own, as the five did (`PL-8QMD`). Gate 3's freeze takes it up
+although a `feature` entry is not debt: `bin/docket gate` prints every open
+entry of this list beside the store's open debt, and the freeze carries all of
+them (`PL-JV5Q`).
 
 **Its hazard is not live, read against the tree at `9ea31db2`**, though beat 3
 asks that record only of a `safety`- or `science`-classed entry. Nothing under
@@ -5712,16 +5732,17 @@ mistaken for a prediction, and the three failure modes the item's brief names
 (a preview outliving the interaction, carrying the run's visual weight, or
 reaching a screenshot unlabelled) bind whoever builds it.
 
-**What `bin/docket wave` reads.** `PL-5B1N` is `blocked` on `v0.7.0`, as
-`PL-Y04W` was, so `wave` counts it apart from the entries this gate can clear,
-and `bin/docket next` no longer offers a build the owner deferred. A milestone
+**What `bin/docket wave` reads.** `PL-5B1N`'s `deferred-from: v0.6.0`, so
+`wave` counts it deferred, apart from the entries this gate can clear
+(`PL-8QMD`). It is also `blocked` on `v0.7.0`, as `PL-Y04W` was, so
+`bin/docket next` does not offer a build the owner deferred. A milestone
 blocker clears when that milestone is scoped, so once v0.7.0 is scoped
 `bin/docket check` names `PL-5B1N` ready to promote. The design round set it
-`ready`, the status a recorded answer moves `needs-decision` to; left there,
-`wave` would go on counting it among the entries this gate can clear, and a
-`ready` item naming a blocker says both that the work can start and that it
-cannot, so it moved to `blocked` when this deferral was recorded, on
-2026-10-03.
+`ready`, the status a recorded answer moves `needs-decision` to, and a `ready`
+item naming a blocker says both that the work can start and that it cannot, so
+it moved to `blocked` when this deferral was recorded, on 2026-10-03. Until the
+field, that blocker was also what kept `wave` from counting it among the
+entries this gate can clear (`PL-D388`).
 
 **What this list is not swept for yet.** Beat 3 of the cadence requires a
 staleness pass before any of it is worked - a `verify:` command tests for the
@@ -5749,26 +5770,11 @@ named here, for the reason beat 3 gives.
 - PL-W54S (M) Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
 - PL-JSY5 (S) docs/MODEL.md's readout-row rung and its educational-disclaimer line both assume one window's width and one always-on-screen surface, which the area system makes false
 
-**Deferred to Gate 3, because v0.7.0 is where the work is - 1 entries**
-
-- PL-Y04W (L) Build break-out: an Area taken into its own top-level window, the window lifetime that keeps the main window unclosable while break-outs exist, and the test that every window the application can be left showing carries the invariant display tier
-
-**Deferred to Gate 3 on 2026-09-27, because none can close before v0.6.0 begins - 5 entries**
-
-- PL-0S0V (M) AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
-- PL-B396 (M) Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
-- PL-KZ99 (M) Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
-- PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
-- PL-WZVZ (M) Make an inter-machine difference attributable: which parameter differs, and what it does to the result
-
-**Deferred to Gate 3 on 2026-09-27, because its build is feature work for after v0.6.0 ships - 1 entry**
-
-- PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
-
-**Cleared before v0.6.0 begins, the product lane - 75 entries**
+**Cleared before v0.6.0 begins unless deferred, the product lane - 80 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-0FJ8 (S) A MAC divisor's positivity is checked in five app/formatting.py functions and by nothing that holds it: AgentParameters admits Percent(0.0) built directly, only the loader's PositivePercent refuses one, and format_mac_reference checks nothing, directly or through another
+- PL-0S0V (M) AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
 - PL-0YYV (L) The three flows - fresh gas flow, alveolar ventilation and cardiac output - are bare floats range-checked by hand at each way in, so the way in nobody checked, UptakeEquationSettings, ran a cardiac output of 1000 L/min (PL-HSFV); slice 1 of PL-51B7 gives each a checked type built only through its require_supported_* guard, as SimulationStep is for the step
 - PL-1DP1 (S) fraction_from_percent and percent_from_fraction take a bare float as given, so percent_from_fraction(0.5) from a caller mypy does not read is a Percent of 50.0 and format_percent(0.5) prints 50.00% whether the 0.5 was a fraction or a 0.5% dial, where every place a concentration is held refuses a bare float since PL-4R3W; whether the two crossings require the checked form too, or keep taking a number nobody built because it carries no form to refuse it by, is undecided (found building PL-SWD1, which refuses the other form and every other checked quantity there)
 - PL-1K9G (M) Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
@@ -5809,6 +5815,7 @@ named here, for the reason beat 3 gives.
 - PL-JS0X (S) test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar calls build_sidebar_panels a second time and then measures mapTo(page, ...) on panels that are not in the page, so its last two assertions are vacuous and the sidebar they claim to measure has been dismantled
 - PL-KK1Q (M) Compare this model's washout over the first 24 h against Yasuda 1991's published five-compartment mean fits, to measure whether the modelled tail runs fast or slow where only the five-minute point is validated today
 - PL-KRZW (M) Decide what the interface does under a dark system appearance, now that every colour it declares is a light-theme value
+- PL-KZ99 (M) Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
 - PL-KZR1 (S) RunView's build_* methods are split between returning a stored widget (build_notice, build_off_scale_notice) and constructing a new one on each call (build_sidebar_panels, build_readout_section), with nothing in the names saying which
 - PL-LBQY (M) A bare float written straight onto a non-frozen compartment field (circuit.fresh_gas_flow_l_min = 1000.0) is caught only at the next equation_settings(), so for one tick the snapshot and the readouts carry an unchecked value and SimulationSnapshot's typed fields carry no runtime check of their own; decide whether a __setattr__ guard or frozen compartments moves the check to the write, or record the one-tick window as accepted (found reviewing #1350)
 - PL-LLBV (S) The whole-step guard on a fork instant refuses 35.5% of the one-decimal times a user could type
@@ -5833,17 +5840,20 @@ named here, for the reason beat 3 gives.
 - PL-TDBT (M) docs/pr-bodies holds 187 historical documents that read as current: 21 cited paths no longer exist, 30 cite an unresolvable sha, and 22 angle-bracket placeholders in 15 files vanish in GitHub's own blob view, with doc_check blind to all of it by design
 - PL-V2HC (M) A halted run whose snapshot refuses cannot change agent: RunView._handle_agent_change and SimulationController.set_agent both read snapshot() while the selector is unlocked on a halted run, so the slot's raise is printed by Qt and the new-case dialog never opens; Reset is the one exit and the halt banner names it (found at PL-7DJK)
 - PL-V67Q (M) Add y-axis range control to the agent graph: optional auto-scale, and a settable MAC / volume-percent scale
+- PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 - PL-W3Q5 (S) app/formatting.py types mac_percent as Percent in two signatures and as a bare float in five others, so one parameter carries two types in one module
 - PL-WG73 (S) COMPARING_FORK_LOCK_TEXT tells a learner to Reset the case, which labels no control - and the Reset they are likeliest to press discards the branch and leaves the lock standing
 - PL-WMCJ (S) docs/MODEL.md's Known limitations never names intertissue diffusion, the route Eger and Saidman 2005 describe for agent reaching fat, though every tissue group here exchanges only with arterial blood
 - PL-WPDB (S) The frame-cost harness measures a one-run dashboard, but v0.5.0 draws two runs on one chart, so the frame cost the branching milestone will actually pay is unmeasured
+- PL-WZVZ (M) Make an inter-machine difference attributable: which parameter differs, and what it does to the result
+- PL-Y04W (L) Build break-out: an Area taken into its own top-level window, the window lifetime that keeps the main window unclosable while break-outs exist, and the test that every window the application can be left showing carries the invariant display tier
 - PL-Y4YX (S) PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
 - PL-YD2V (S) Supported run length and the validation section's caveat 4 bound the slow tail on metabolism and fat flow alone, but the fourth compartment this model lacks is the largest term in Yasuda 1991's measured washouts from about hour 2-3 to hour 21-29, inside the 24 h envelope, and neither passage says so
 - PL-YT8N (S) BreathingCircuit.advance_fresh_gas reports a negative exhaust, as low as -3.3e-16 L, at admitted flows from 1e-15 to 1e-6 L/min, because 1 - exp(-dt/tau) loses its digits to cancellation when dt/tau is small; the exhaust it integrates cannot be negative (found fixing PL-B26Y)
 - PL-Z0T3 (S) dataclasses.replace() on PatientCompartments rewrites the tissue and venous flows of the original it shares those sub-objects with, because __post_init__ calls _update_blood_flows on them: a running system is left perfusing at the twin's cardiac output while its snapshot reports the old one, until the next step's tissue-sum check halts the run (found reviewing #1350)
 - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
 
-**Cleared before v0.6.0 begins, the workflow lane - 116 entries**
+**Cleared before v0.6.0 begins unless deferred, the workflow lane - 116 entries**
 
 - PL-LN69 (L) Instruction-set growth is measured but never tested for effect, so a rule can be added on an argument and can never be retired on evidence
 - PL-087W (M) bin/docket verify unions removed assertions per commit and never nets them against a later restore, so a line a session puts back on the check's own advice keeps refusing the branch
@@ -5962,12 +5972,14 @@ named here, for the reason beat 3 gives.
 - PL-Z9K5 (S) bin/docket record normalizes an item's whole front matter as well as inserting pr:, so PL-ZYQC's 'pr, not counted' exemption misses and the close-out audit reports files the skill told the session to touch
 - PL-ZM48 (S) docs/worker.md records remote-branch deletion as exit status 0, and PL-3V6C as two incompatible causes, but one 2026-09-20 transcript carries the 403 and the Everything up-to-date line together at exit 1
 
-**Cleared before v0.6.0 begins, in neither lane - 10 entries**
+**Cleared before v0.6.0 begins unless deferred, in neither lane - 12 entries**
 
 - PL-1RTM (M) doc_check resolves path citations only in DOC_GLOBS, so the queue - most of this project's prose - has its citations unchecked
 - PL-316G (M) Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
 - PL-4L49 (M) tools/contrast_check.py measures only declared pairs, so a control that declares no colour reads as covered when nothing measures it
+- PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
 - PL-65HT (M) A core/ dataclass numeric field default other than 0 or 1 that appears in no provenance-table value is an unsourced scientific constant, and nothing checks for one
+- PL-B396 (M) Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
 - PL-KKRP (M) Re-examine the debt gate's freeze trigger: scoping a milestone has not frozen its gate for the last two milestones scoped, so the cadence's beat 1 no longer describes what the project does
 - PL-0MLZ (S) uv run pytest writes bytecode that survives a source restore, so a mutation test can silently keep running the mutated build
 - PL-73G8 (S) The recovery file header claims the body verbatim, but it is the body as GitHub serves it today rather than at merge time, and its commit: sha silently dangles after a history rewrite with nothing checking it
@@ -5978,13 +5990,18 @@ named here, for the reason beat 3 gives.
 ### Deferred from this gate
 
 An open debt item captured after the cut (`e6cdfd93`, 07:04 on 2026-09-21)
-defers to the next gate unless it is classed `safety` or `science`. It was not
-in the store the snapshot was taken from, and § "The gate is a snapshot, not a
-moving target" then holds it to the presence test, which answers no. Each such
+defers to the next gate unless it is classed `safety` or `science`, or an entry
+on the list waits on it. It was not in the store the snapshot was taken from,
+and § "The gate is a snapshot, not a moving target" then holds it to the
+presence test, which answers no. A capture an entry waits on is not deferred by
+its date: it is let in beside the entry, or the entry is deferred with it, two
+of that section's three homes for a prerequisite (`PL-D388`). Each deferred
 item records it as `deferred-from: v0.6.0 - <why>`, written by the triage pass
 that classes it. `bin/docket check` fails an open debt item that this section
 neither places nor defers, and `bin/docket wave` lists the deferrals with each
-one's state and the release that took it (`PL-WD5Z`).
+one's state and the release that took it (`PL-WD5Z`). A frozen entry this gate
+defers carries the same field, and `wave` counts it on the gate's own line
+instead (`PL-8QMD`).
 
 The `safety` or `science` items captured after the cut are placed in the lane
 groups above with the rest, and named here with the date each re-entered.
@@ -6620,6 +6637,16 @@ entry ships half-fixed while the thing that finishes it waits in the queue. So
 pair them - one branch, one review, closed together - and the issue is fully
 addressed before anything else starts.
 
+**What a frozen entry waits on has three homes** (`PL-D388`, project owner,
+2026-10-03, ratified, over admitting every open prerequisite of an entry
+automatically): work the milestone's own `Required scope` names makes the entry
+the milestone's, per § "Debt inside the milestone's own scope"; work no release
+schedules before the milestone begins defers the entry on § "The cadence"
+beat 3's terms, as its `deferred-from:`; and anything else is let in beside the
+entry, dated, and worked with it as above. `bin/docket check` refuses an open
+frozen entry waiting on work none of the three holds and the release train does
+not schedule first (`PL-8QMD`).
+
 **When a milestone's gate freezes, the debt list is frozen at that moment** -
 on the later of the milestone's scoping and the ship of the milestone before
 it, per § "The cadence". A
@@ -6771,15 +6798,23 @@ shows them on one timeline with the milestones they gate:
    cleared, and the release then ships without it — but only on all three of:
 
    - § "The gate is a snapshot, not a moving target" permits the deferral,
-     which means the gate's own section **says so and says why**;
-   - the deferral **names the later gate** the entry lands in, because an entry
-     deferred to nowhere is what holds a release open (`PL-S5Q9`); and
+     which means it **says so and says why**: the entry's item carries
+     `deferred-from: vX.Y.Z - <why>` naming this gate, the one record every
+     reader of the gate reads (`PL-8QMD`, project owner, 2026-10-11, ratified,
+     over the deferral group headings this section used to carry), and the
+     gate section may set out the decision behind it at any length;
+   - the deferral **lands in a named later gate**, the next one, whose freeze
+     carries every open entry this list deferred, debt or not, from what
+     `bin/docket gate` prints, because an entry deferred to nowhere is what
+     holds a release open (`PL-S5Q9`). The field names the gate it leaves
+     rather than the one it reaches, as `PL-WD5Z` decided, since the next
+     freeze is always the one that takes it; and
    - the entry **stays written on the frozen list**, since removing it is the
      renegotiation the freeze exists to prevent.
 
-   A `safety`- or `science`-classed entry may take this route only where the
-   gate section also records that its hazard is **not live**, read against the
-   tree rather than asserted.
+   A `safety`- or `science`-classed entry may take this route only where its
+   deferral also records that its hazard is **not live**, read against the
+   tree rather than asserted, in the field's reason or in the gate section.
 
    **Stated here rather than in each definition of done**, because it recurs.
    Gate 1's last entry `PL-WZVZ` is deferred to Gate 2 on exactly these terms
@@ -6882,7 +6917,13 @@ to, because the next freeze takes every open debt item anyway. The reason is
 the ground, which is what a reader of the gate is owed. `bin/docket set <id>
 --deferred-from "..."` writes it. `bin/docket check` fails an open debt item
 the current gate neither places nor defers, and the error prints that command
-(`PL-WD5Z`). A section may state the ground its deferrals share, as v0.6.0's
+(`PL-WD5Z`). **A frozen entry deferred on § "The cadence" beat 3's terms
+carries the same field** (`PL-8QMD`). It stays on its list, and the next freeze
+takes it whatever its classes, since `bin/docket gate` prints every open entry
+of the last frozen list beside the store's open debt. `bin/docket check` fails
+an open frozen entry waiting on work that neither its list nor the milestone's
+`Required scope` holds and the release train does not schedule first, unless
+the field defers it. A section may state the ground its deferrals share, as v0.6.0's
 does, but nothing reads that prose. Until `PL-WD5Z` a deferral was an id named
 in a `###` subsection headed `Declined`, `Deferred` or `Sequenced`, and each
 way that second store disagreed with the items became an item of its own.

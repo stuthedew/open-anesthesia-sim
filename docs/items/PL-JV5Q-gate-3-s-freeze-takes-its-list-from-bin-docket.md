@@ -3,12 +3,14 @@ id: PL-JV5Q
 title: Gate 3's freeze takes its list from bin/docket gate, which prints open debt only, so PL-5B1N (feature) and PL-B396 (ux, docs), both deferred to Gate 3 from Gate 2, will not be on it, and release.md's freeze mode never tells the freezing session to carry a previous gate's deferrals
 priority: P2
 effort: S
-status: blocked
+status: done
 classes: defect
 touches: .claude/skills/docket/modes/release.md, ROADMAP.md
 blocked-by: PL-8QMD
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+closed: 2026-10-12
+pr: 1439
 payoff: Gate 3's frozen list carries every entry the v0.6.0 gate deferred to it, the two non-debt ones included
 verify: grep -qi 'deferr' .claude/skills/docket/modes/release.md
 reenters: PL-J6HP
@@ -48,4 +50,11 @@ not, and the five-entry deferral paragraph in `ROADMAP.md` says how
 named in `PL-QWF8`'s check; `PL-74T0` records the head or refuses it as its
 cluster 2.
 
-**Blocked on `PL-8QMD`, 2026-10-11.** That head's answer (project owner, 2026-10-11, ratified) records a frozen entry's deferral as `deferred-from:` on the item, and its build makes the freeze carry every open entry the previous gate's list deferred, debt or not, which is this item's Done-when in the decided form. Its closing commit leads with this item, so building this one first would be work that change removes or redoes.
+[superseded 2026-10-12] **Blocked on `PL-8QMD`, 2026-10-11.** That head's answer (project owner, 2026-10-11, ratified) records a frozen entry's deferral as `deferred-from:` on the item, and its build makes the freeze carry every open entry the previous gate's list deferred, debt or not, which is this item's Done-when in the decided form. Its closing commit leads with this item, so building this one first would be work that change removes or redoes.
+
+**Closed 2026-10-12 with `PL-8QMD`.** `bin/docket gate` prints the last
+frozen list's open entries that are not debt in a group of their own, each
+deferral marked, and the freeze mode in `.claude/skills/docket/modes/release.md`
+tells the freezing session to carry every open entry of the previous list, debt
+or not. The five-entry paragraph in `ROADMAP.md` says that is how `PL-B396`
+reaches Gate 3, and `PL-5B1N`'s says the same.
