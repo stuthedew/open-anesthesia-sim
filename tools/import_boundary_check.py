@@ -335,6 +335,30 @@ BOUNDARIES: tuple[Boundary, ...] = (
             "the rule while it read only root packages and declared none (PL-YXFF)"
         ),
     ),
+    Boundary(
+        package="PySide6",
+        tree="src/anesthesia_sim/layout",
+        allowed=(),
+        why=(
+            "`PL-C842` made the layout's source of truth a pure-Python model rather than the "
+            "widget tree, because `QSplitter.saveState()` records no View identity and so "
+            "cannot be tested, diffed or made to fail loudly; a layout module importing Qt "
+            "has made the widgets a second source of it. `PL-SSQW` Q8 (ratified 2026-09-27) "
+            "asked for this entry, and `PL-1FT6` lands it with the tree, so the model's "
+            "first commit is measured against it. One adapter module builds the widgets "
+            "from the model (`PL-W9P6`), and confining `QSplitter` to it is `PL-L8RN`'s"
+        ),
+    ),
+    Boundary(
+        package="pyqtgraph",
+        tree="src/anesthesia_sim/layout",
+        allowed=(),
+        why=(
+            "the same rule as `PySide6` above, by the other route into Qt: pyqtgraph imports "
+            "Qt at module load, so a layout module importing it carries the toolkit whether "
+            "it draws anything or not"
+        ),
+    ),
 )
 
 

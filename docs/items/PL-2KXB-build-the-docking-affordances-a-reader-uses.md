@@ -1,14 +1,14 @@
 ---
 id: PL-2KXB
 title: Build the docking affordances a reader uses: border drag moving the collinear chain, corner drag to split and to join, and Area swap, with a join the splitter tree cannot express refused rather than approximated
-status: blocked
-feature: interface-areas
-added: 2026-09-16
 priority: P2
 effort: L
-blocked-by: PL-W9P6
+status: blocked
 classes: feature, ux
+feature: interface-areas
 touches: src/anesthesia_sim/app/, tests/integration
+blocked-by: PL-W9P6, PL-G60V
+added: 2026-09-16
 ---
 
 **Problem.** Build the docking affordances a reader uses: border drag moving the collinear chain, corner drag to split and to join, and Area swap, with a join the splitter tree cannot express refused rather than approximated
@@ -29,3 +29,11 @@ tree.
 
 *Scope.* `ROADMAP.md` § "v0.6.0 - the layout is the reader's" -> "Required
 scope" item 14.
+
+## Blocked on `PL-G60V`, 2026-10-12
+
+The owner answered `PL-G60V` on 2026-10-12 (ratified): whether two Areas can
+be joined depends on the rectangles alone, never on which split came first.
+This item builds the join a reader uses, where a refusal would first be seen,
+so it waits for that change, as `PL-G60V`'s recommendation asked; the
+ordering is a session's, recorded in `PL-G60V`.

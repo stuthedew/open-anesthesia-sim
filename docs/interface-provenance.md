@@ -872,7 +872,20 @@ one handle. Across the thirty-two shipped workspaces this differs exactly once,
 at a four-way junction. The fix is not the graph: it is for the layout model to
 resolve, on a drag, the set of handles that are collinear and adjacent to the
 one being dragged, and move them together. That is a query over the tree rather
-than a change of representation.
+than a change of representation. Built as `LayoutModel.borders()` (`PL-1FT6`),
+it reads the line from where the borders lie, since a tree has no vertices to
+share, and that leaves two differences. Two borders a drag brings into line are
+one line from then on here, where Blender's border drag merges no vertices -
+`area_move_exit` in `screen_ops.cc` removes duplicate edges and nothing else
+(`blender/blender` `main`, read 2026-10-12) - so its two edges stay two until
+the reader merges them on purpose. And `LayoutModel.resize()` keeps the
+proportions inside each of the two children a moved handle divides, so a
+border nested in one of them moves with it although it lies on no moved line:
+in `row[1, column[row[2, 4], 3]]`, dragging the root border from one half to a
+quarter widens Area 4 from a quarter of the window to three eighths. Blender's
+`area_move_apply_do`, in the same file, moves only the vertices flagged as on
+the dragged line (`editflag`), so there a nested border keeps its place and
+Area 4 its width. Which a reader should get is `PL-5HSG`'s decision.
 
 **Prune the contract; do not let it accumulate.** Blender's `SpaceType` carries
 hooks nothing implements and a field nothing assigns, and nothing in the design

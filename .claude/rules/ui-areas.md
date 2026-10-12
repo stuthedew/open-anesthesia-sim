@@ -54,9 +54,11 @@ each is cheap now and expensive later.
    reads a module-level singleton, is bound to one layout by that call.
 2. **State a layout could duplicate or relocate does not live inside the
    widget.** Ask who owns it when two areas show the same view, or when the
-   view is closed and reopened. `TraceLegend` owning compartment visibility
-   is the standing counter-example (`PL-VN6M`); a view holds its own scroll
-   position, not the selection the rest of the dashboard draws from.
+   view is closed and reopened. `TraceLegend` is the worked instance: it
+   shows the `CompartmentSelection` the dashboard owns and hands down, and
+   asks for a change to it rather than holding it (`PL-VN6M`). A view holds
+   its own scroll position, not the selection the rest of the dashboard
+   draws from.
 3. **A view is instantiable more than once and assumes it is not alone.**
    `RunView` already is. Anything keyed on "the" chart, "the" legend or a
    class-level mutable is not.

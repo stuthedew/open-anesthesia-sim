@@ -124,6 +124,7 @@ from anesthesia_sim.app.playback import (
     PlaybackRate,
     playback_rate_for,
 )
+from anesthesia_sim.app.qt_chart import TraceLegend
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, MarkListingLabel, ParameterSlider
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
@@ -391,10 +392,10 @@ def _set_trace_shown(
 ) -> None:
     """Check or uncheck one compartment in the legend, as a reader clicking would.
 
-    Through the box rather than through `set_shown`, because the two are
-    different acts once the two-compartment cap is holding: a click keeps
-    what was just asked for and drops the longest-standing selection, where
-    a bulk set has no order of preference to read.
+    Through the box, which is the route a click takes: the legend asks, and
+    the dashboard's answer is what both the boxes and the chart then show
+    (`PL-VN6M`). Once the two-compartment cap is holding, that answer keeps
+    what was just asked for and drops the longest-standing selection.
     """
 
     view._legend.set_compartment_shown(quantity, shown)
@@ -2917,8 +2918,8 @@ def test_the_hidden_traces_advisory_is_present_always_and_shown_only_when_nothin
     assert view._hidden_traces_text.isHidden() is True
     assert NO_TRACES_SHOWN_TEXT in _interface_strings(view)
 
-    view._legend.set_shown(())
-    application.processEvents()
+    for quantity in COMPARTMENT_QUANTITIES:
+        _set_trace_shown(application, view, quantity, False)
 
     assert view._hidden_traces_text.isHidden() is False
     frame = view._concentration_chart.frame
@@ -2928,6 +2929,121 @@ def test_the_hidden_traces_advisory_is_present_always_and_shown_only_when_nothin
     _set_trace_shown(application, view, RecordedQuantity.ALVEOLAR, True)
 
     assert view._hidden_traces_text.isHidden() is True
+
+
+def test_the_compartment_selection_outlives_the_legend_that_renders_it(
+    application: QApplication,
+) -> None:
+    """The selection is the dashboard's, so the legend can go without taking it (`PL-VN6M`).
+
+    An Area holding the legend is a thing a reader will be able to close
+    (`.claude/rules/ui-areas.md`, test 2). While the boxes were the
+    selection, the dashboard read it back from them, so a deleted legend
+    left no selection to assemble the next frame from. Here the legend is
+    deleted outright, and the dashboard still draws the reader's choice -
+    and still takes a branch and a Reset, each of which holds the selection
+    to the new run count with no legend left to show it to. A legend
+    connected afterwards follows the selection like the first.
+    """
+
+    view = _case_view(application, _branched_case())
+    legend = view._legend
+
+    _set_trace_shown(application, view, RecordedQuantity.FAT, False)
+    _set_trace_shown(application, view, RecordedQuantity.MUSCLE, False)
+
+    chosen = view.compartment_selection
+
+    assert chosen.shown == legend.shown
+    assert RecordedQuantity.FAT not in chosen.shown
+
+    deleted: list[bool] = []
+    legend.destroyed.connect(lambda: deleted.append(True))
+    legend.deleteLater()
+    _settle(application)
+
+    assert deleted, "the legend was not deleted, so nothing here outlived it"
+
+    presented = view.presented_frames
+    view.present(False)
+
+    # `present` turns a raise into a halt rather than letting it out, so the
+    # count is what tells a frame drawn from one refused.
+    assert view.presented_frames == presented + 1, "no frame could be drawn without the legend"
+    assert view.compartment_selection == chosen
+
+    frame = view._concentration_chart.frame
+
+    assert frame is not None
+    assert frame.visible == chosen.shown
+    assert view._concentration_chart.drawn_points(0, RecordedQuantity.FAT) == ((), ())
+
+    _take_fork(view, 60.0)
+
+    assert len(view.runs) == 2
+    assert view.runs[1]._run_name_text.isHidden() is False, "the fork stopped part way"
+    assert view.compartment_selection == chosen.with_run_count(2)
+
+    compared = view._concentration_chart.frame
+
+    assert compared is not None
+    assert compared.visible == view.compartment_selection.shown
+
+    view.runs[0]._reset_button.click()
+    _settle(application)
+
+    assert len(view.runs) == 1
+    assert view.compartment_selection == chosen.with_run_count(2).with_run_count(1)
+
+    renderer = TraceLegend()
+    renderer.show_selection(view.compartment_selection)
+    view.compartment_selection_changed.connect(renderer.show_selection)
+    renderer.compartment_requested.connect(view._handle_compartment_request)
+
+    assert renderer.shown == view.compartment_selection.shown
+
+    renderer.set_compartment_shown(RecordedQuantity.FAT, True)
+    application.processEvents()
+
+    assert RecordedQuantity.FAT in view.compartment_selection.shown
+    assert renderer.shown == view.compartment_selection.shown
+
+    drawn = view._concentration_chart.frame
+
+    assert drawn is not None
+    assert drawn.visible == renderer.shown
+
+
+def test_a_legend_click_draws_one_frame_over_the_cap_too(application: QApplication) -> None:
+    """A click is a discrete action, so it draws once and at once (`PL-R2YM`).
+
+    Held on one run, and on two, where the click is over the cap and the
+    selection rather than the legend decides which compartment makes room.
+    """
+
+    view = _case_view(application, _branched_case())
+    presented = view.presented_frames
+
+    _set_trace_shown(application, view, RecordedQuantity.FAT, False)
+
+    assert view.presented_frames == presented + 1
+
+    _take_fork(view, 60.0)
+    before = view.compartment_selection
+    presented = view.presented_frames
+
+    assert len(before.shown) == COMPARED_COMPARTMENT_CAP
+
+    _set_trace_shown(application, view, RecordedQuantity.FAT, True)
+
+    assert view.presented_frames == presented + 1
+    assert view.compartment_selection == before.with_compartment(RecordedQuantity.FAT, True)
+
+    frame = view._concentration_chart.frame
+
+    assert frame is not None
+    assert frame.visible == view.compartment_selection.shown
+    assert RecordedQuantity.FAT in frame.visible
 
 
 def test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it(
@@ -4725,12 +4841,11 @@ def test_taking_a_fork_redraws_the_chart_without_prompting(application: QApplica
     and a fork that added the run without redrawing fails on the one-run
     frame `_case_view` drew (`PL-624C`).
 
-    The legend is narrowed to the pair the cap would draw first, so the second
-    run leaves the selection as it stands.
+    The selection is narrowed, through the legend, to the pair the cap would
+    draw first, so the second run leaves it as it stands.
     `test_a_fork_from_the_default_selection_draws_one_frame` takes the fork
-    from a selection the second run makes the legend reduce, which drew a
-    second frame until `PL-B1R9`; between them a press draws once from either
-    kind of selection.
+    from a selection the second run reduces, which drew a second frame until
+    `PL-B1R9`; between them a press draws once from either kind of selection.
     """
 
     case = _branched_case()
@@ -4787,7 +4902,8 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
     """One press, one frame, assembled once both legends and both runs know there are two.
 
     The default selection is wider than `COMPARED_COMPARTMENT_CAP`, so the
-    second run makes the legend reduce it. The reduction used to announce
+    second run reduces it (`CompartmentSelection.with_run_count`), and the
+    legend is shown the reduction. The reduction used to announce
     itself as a reader's change, and the dashboard drew a frame for it from
     inside `_rename_runs` - while the wash-in legend still counted one run and
     neither run had been named - before the press drew its own: two
@@ -4841,8 +4957,8 @@ def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
 ) -> None:
     """Everything that reads the run count follows the addition, not the construction.
 
-    The legends name the runs and hold the compartment selection to the
-    compared cap from this count, the panels carry the names the legend
+    The dashboard holds its compartment selection to the compared cap from
+    this count, the legends name the runs from it, the panels carry the names the legend
     entries use, and `PL-25KS` gives every surface a splitter section of its
     own - so a second run adds two.
     """
