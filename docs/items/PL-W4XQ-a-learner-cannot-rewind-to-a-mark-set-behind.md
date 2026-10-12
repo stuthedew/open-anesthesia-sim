@@ -6,10 +6,10 @@ effort: M
 status: ready
 classes: feature
 feature: scenario-branching
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, tests/integration/test_controller.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_controller.py, tests/unit/test_bookmarks.py, tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py
 added: 2026-09-20
 payoff: makes a mark set behind the clock something a learner can return to, which is the act the owner described the feature for
-verify: grep -q 'def test_a_mark_set_behind_the_clock_can_be_returned_to' tests/integration/test_controller.py && uv run pytest tests/integration/test_controller.py -k returning_to_a_mark
+verify: grep -q 'def test_a_mark_set_behind_the_clock_can_be_returned_to' tests/integration/test_controller.py
 recurrences: 2026-09-21 PL-54V0
 ---
 
@@ -91,17 +91,53 @@ it right unless it snaps the mark to `round(t / step) * step` once, at the one
 boundary that accepts it, where the learner can see the instant taken. The
 guard stays exact, because the branch's step count rests on it.
 
+**Re-confirmed 2026-10-12 against `4b6f9557`, and changed shape.** Both doors
+still refuse, with the messages quoted above, so the problem stands. What has
+gone is the obstacle. "What it runs into" below rests on `PL-B8MK` having needed
+the run's live state at the fork, and it never did: `_resume_point_at_halt`
+takes the fork state from `RunDefinition.state_at`, one propagation from the
+keyframe opening the stretch, and opens the branch's definition at that keyframe
+(`PL-54V0` found this on 2026-09-23). `state_at` answers any instant the run has
+reached, so a mark behind the clock has exactly the state a halt fork opens
+from. The guarantee carries over with it, because it rests on parent and branch
+propagating from one keyframe and not on the run having stopped there:
+`docs/MODEL.md` § "What this requires of a branch" measured 0 of 54 elements
+differing at a fork between two keyframes.
+
+That retires the ranking of routes below:
+
+- **Replaying from the opening is that construction**, read through the closed
+  form. § "The canonical evaluation rule" defines the state at an instant as one
+  propagation from its stretch's keyframe, each keyframe composed from the
+  opening, so evaluating the run's own definition at the mark is the replay,
+  with no stepping. Re-stepping the live stepper from zero instead would hand
+  the branch a chained live state, which the same section refuses as a branch's
+  opening state, and would make one mark forked at its halt and forked later
+  into two different branches.
+- **Re-propagating from the nearest keyframe** has nothing to declare: it is
+  the halt fork, and its divergence on the canonical path is zero.
+- Recording a keyframe stays refused, for `PL-B8MK`'s reason, and refusing the
+  act at entry is not needed.
+
+**So the route is a third door, and it takes the mark itself.**
+`SimulationController.resumed_at_mark(bookmark)`, kept by
+`BranchedCase.fork_at_mark`, forks at the step that reaches the mark - the first
+step instant at or past it, which is the instant a halt would have stopped on,
+decided by `TimeBookmark.crossed_between`'s own rule rather than by rounding -
+with the halt fork's construction, and refuses a mark the run has not passed or
+does not hold. It takes a `TimeBookmark` rather than a float, so the typed-value
+hazard below cannot be expressed: the fork instant comes from the step count and
+nothing is snapped. `round(t / step) * step` would have been wrong as well as
+visible, since it rounds a mark lying inside a step down to a step before it,
+which no halt ever stops on. The interface lists each mark the trunk has passed
+in the branch control's selector beside the control events, labelled with the
+instant the branch opens at. The halt button stays, because a MAC target has no
+instant to list.
+
 **Done when.** A learner who marks an instant the run has already passed can
 return to it, or is told at the moment of marking that they cannot and why; and
 `docs/MODEL.md` states what returning to a marked instant reproduces and what it
 does not.
 
-**Its `verify:` cannot pass as written** (noted 2026-09-22 by `PL-0HPV`'s
-reorder pass). `-k returning_to_a_mark` does not select
-`test_a_mark_set_behind_the_clock_can_be_returned_to`, the test its `grep`
-names, so once the work exists the command exits 5 unless another test carrying
-that substring is added too. The pass moved the `grep` to the front, so before
-the work the command now exits 1 and the replay no longer reports it as
-selecting no test - which is why this line is here. Record the `grep` alone
-when starting it: that is what `.claude/skills/docket/modes/triage.md` asks of
-both a grandfathered `-k` and a health check beside a `grep`.
+`verify:` is the `grep` alone since 2026-10-12, as `PL-0HPV`'s reorder pass
+asked: `-k returning_to_a_mark` never selected the test the `grep` names.
