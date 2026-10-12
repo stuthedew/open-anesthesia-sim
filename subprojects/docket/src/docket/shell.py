@@ -293,6 +293,17 @@ class _Unreadable(Exception):
     """A command the shell refuses to read, and why."""
 
 
+class _Cut(Exception):
+    """A substitution an expanded here-document body runs, which bash cuts short and runs nothing.
+
+    `after` is where the expansion goes on, as `_Lexer.slipped` reads it (`PL-54MD`).
+    """
+
+    def __init__(self, after: int) -> None:
+        super().__init__(after)
+        self.after = after
+
+
 def _past_continuations(command: str, index: int, stop: int) -> int:
     """The offset of the first character from `index` that no backslash-newline removes."""
     while command.startswith("\\\n", index, stop):
@@ -616,12 +627,16 @@ class _Frame:
         #: ends a body at a line that opens with its delimiter and holds a `)`.
         self.compat = compat
         #: Whether this is the reading `_Lexer.expanded` gives an unquoted
-        #: here-document's body, where a `$( )` that ends a body so can no
-        #: longer close (`PL-GJKN`).
+        #: here-document's body (`PL-GJKN`).
         self.expansion = expansion
-        #: Whether this is the body of a `$( )` read in such a reading, where
-        #: that line fails the expansion rather than ending the body.
-        self.fails = False
+        #: Whether this is the body of a `$( )` read directly in such a
+        #: reading, whose end bash finds by a parse of its own, as
+        #: `_Lexer.slipped` reads it (`PL-54MD`).
+        self.extracted = False
+        #: What bash reads again after the last line inside it that ended a
+        #: body early: from the rest of that line to the start of the next,
+        #: as `_Lexer.push_back` records it (`PL-54MD`).
+        self.pushed: tuple[int, int] | None = None
 
 
 class _Lexer:
@@ -680,7 +695,7 @@ class _Lexer:
         """
         command = self.command
         frame = _Frame(compat=closes)
-        frame.fails = closes and bool(self.frames) and self.frames[-1].expansion
+        frame.extracted = closes and bool(self.frames) and self.frames[-1].expansion
         self.frames.append(frame)
         # A `<<` outside waits for a word outside, not for the body's first.
         outside, self.introducer = self.introducer, None
@@ -876,6 +891,8 @@ class _Lexer:
                 )
                 if not grammar.pattern(operator):  # a pattern's `)` neither nests nor closes
                     if closes and operator == ")" and not depth:
+                        if frame.extracted:
+                            self.slipped(frame, index, end, tokens)
                         flat.append(Operator(operator))
                         self.frames.pop()
                         # Bash reads the bodies still waiting after the line this closes on.
@@ -1316,26 +1333,71 @@ class _Lexer:
         after_compat = -1
         for at, (delimiter, strip_tabs, joined) in enumerate(waiting):
             compat = frame.compat and at >= own and resume is None
-            index, rest = self.body(index, stop, delimiter, strip_tabs, joined, compat, frame.fails)
+            index, rest = self.body(index, stop, delimiter, strip_tabs, joined, compat)
             if rest is not None:
                 resume, after_compat = rest, index
         if resume is None:
             return index
+        self.push_back(resume, after_compat)
         if index != after_compat:
             # The bodies after the one ended early took the lines after its
             # own, so reading jumps past them once the rest of it is read.
             self.jumps[after_compat] = index
         return resume
 
+    def push_back(self, rest: int, after: int) -> None:
+        """Record that bash reads from `rest` to `after` again, for `slipped`.
+
+        That is the rest of a line that ended a body early, which bash pushes
+        back into its input, newline and all (`shell_ungets` in bash 5.2.21's
+        parse.y, called from `make_here_document` in make_cmd.c). It counts on
+        the `$( )` an expanded body runs where the line ended a body of that
+        one or of a `$( )` inside it, since bash's parse for its end reads
+        those as it goes, and not inside a backquote or a nested body's
+        expansion, which that parse reads past as text (`PL-54MD`).
+        """
+        for frame in reversed(self.frames):
+            if frame.extracted:
+                frame.pushed = (rest, after)
+                return
+            if not frame.compat:
+                return
+
+    def slipped(self, frame: _Frame, index: int, end: int, tokens: list[Word | str]) -> None:
+        """Read the end bash finds for the `$( )` an expanded body runs, its `)` at `index`.
+
+        Bash 5.2.21 finds it with a parse of its own (`xparse_dolparen` in
+        parse.y), whose `rewind_input_string` takes the offset reading reached,
+        less what is unread of the current line and one more for the newline
+        that line's length leaves out. A line `push_back` recorded has its
+        newline counted in, so where this `)` is read from one, the offset
+        comes out a character early, on whatever bash read before the `)`.
+        Where that is not a `)`, bash finds none closing the substitution, and
+        the expansion fails: unreadable here. Where it is one, bash takes that
+        one for the end, runs the text up to it, and expands what follows as
+        text, which the `_Cut` it raises goes on past. The text leaves open
+        what that `)` closed, so where the substitution holds no newline of
+        its own, bash's run is one syntax error and runs nothing; with one, the
+        lines before it run, and an escaped `)` closes nothing, so both are
+        read as the parse found them, every command bash runs among what it
+        reads (`PL-54MD`, `PL-H710`).
+        """
+        if frame.pushed is None or not frame.pushed[0] <= index < frame.pushed[1]:
+            return
+        command = self.command
+        before = index - 1
+        while command[before] == "\n" and before - 1 in self.joins:  # bash removed the pair
+            before -= 2
+        if command[before] != ")":
+            raise _Unreadable("has a substitution bash finds no `)` to close")
+        escapes = 0
+        while before - escapes > 0 and command[before - escapes - 1] == "\\":
+            escapes += 1
+        if not escapes % 2 and "\n" not in tokens:
+            raise _Cut(end)
+
     def body(
-        self,
-        index: int,
-        stop: int,
-        delimiter: str,
-        strip_tabs: bool,
-        joined: bool,
-        compat: bool,
-        fails: bool,
+        self, index: int, stop: int, delimiter: str, strip_tabs: bool, joined: bool, compat: bool
     ) -> tuple[int, int | None]:
         """Read one here-document's body: where the next line starts, and where reading resumes.
 
@@ -1346,15 +1408,14 @@ class _Lexer:
         after it, and reads the rest of that line as the body's commands, so
         `EOF)` closes the substitution and `EOFecho x)` runs `echo x` first.
         It does not end one so at the top level, in a subshell, or for a body
-        carried out of its substitution. Where `fails`, in a `$( )` an unquoted
-        here-document's body runs, which `expanded` reads, bash ends the body
-        at that line and then cannot close the substitution, whatever follows,
-        so the expansion fails there and this is unreadable (`PL-GJKN`); a
-        `$( )` inside that one, or inside a backquote there, ends one as at the
-        top level. Bash reads a body its delimiter never ends to the end of the
-        input, with a warning; here that is unreadable unless the input is read
-        as `bash -c` reads it, so that a `<<` docket took for one leaves what
-        follows it declined rather than read as a body unannounced. Where no
+        carried out of its substitution. Bash reads the rest of that line again
+        from the input, and inside a `$( )` an unquoted here-document's body
+        runs, where that can move the end bash finds for it, `push_back`
+        records where (`PL-54MD`). Bash reads a body its delimiter never ends
+        to the end of the input, with a warning; here that is unreadable unless
+        the input is read as `bash -c` reads it, so that a `<<` docket took for
+        one leaves what follows it declined rather than read as a body
+        unannounced. Where no
         part of the delimiter was quoted, `joined`, bash expands the body once
         it has found where the body ends, and `expanded` reads the commands
         that expansion runs.
@@ -1376,11 +1437,6 @@ class _Lexer:
                 self.removed.append((begin, after))
                 return after, None
             if compat and content.startswith(delimiter) and ")" in content[len(delimiter) :]:
-                if fails:
-                    raise _Unreadable(
-                        f"has a here-document that a `{delimiter}` line holding a `)` ends "
-                        "where bash cannot then close its substitution"
-                    )
                 rest = self.physical(index, len(line) - len(content) + len(delimiter), joined, stop)
                 if joined:
                     self.expanded(begin, index)
@@ -1405,11 +1461,10 @@ class _Lexer:
         script runs on: it is read as the text it is, and nothing reading it
         began is kept. Bash expands nothing in the body past it either, so a
         substitution after one that failed runs nothing and is not read. One
-        fails too where a here-document it opens meets a line that opens with
-        the delimiter and holds a `)`: `$(echo inner <<F` over `F)` closes at
-        the top level, and here bash ends the body at that line and finds no
-        `)` to close the substitution, even where a delimiter line follows
-        (`PL-GJKN`).
+        fails too, or is cut short and runs nothing while the expansion goes
+        on, where bash finds its end a character early, as `slipped` reads it:
+        `$(echo inner <<F` over `F)` closes at the top level and fails here
+        (`PL-GJKN`, `PL-54MD`).
         """
         command = self.command
         at = start
@@ -1428,11 +1483,14 @@ class _Lexer:
             self.frames.append(_Frame(compat=False, expansion=True))
             try:
                 after = self.substitution(at, end)
-            except _Unreadable:
+            except (_Unreadable, _Cut) as stopped:
                 del self.bodies[bodies:], self.substituted[substituted:], self.joins[joins:]
                 del self.removed[removed:], self.frames[frames:], self.expansions[expansions:]
                 self.nested, self.introducer, self.jumps = nested, introducer, jumps
-                return
+                if isinstance(stopped, _Unreadable):
+                    return
+                at = stopped.after  # it runs nothing, and the expansion goes on past it
+                continue
             self.frames.pop()
             if not nested and len(self.bodies) > bodies:  # a `${x}` or `$((1))` runs nothing
                 self.expansions.append((at, after))

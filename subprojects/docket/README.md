@@ -1665,7 +1665,10 @@ Re-entry is read from its record instead: `re-entry` counts the filings whose
 `reenters:` names a `done` item, closed by the filing's `added:` date, whose fix
 should have covered them, as triage's generator check judged it, and any closed
 item three filings re-enter is named under the table as a generator whose fix
-did not hold. Like `trend`, it decides nothing and prints no score.
+did not hold. Where a head's own `reenters:` names that item, the head is its
+successor (`PL-4097`), and the line is listed apart under a heading of its own,
+naming the successor and its status, so a settled line does not read as an open
+one (`PL-0WT0`). Like `trend`, it decides nothing and prints no score.
 
 `docket release` prints the one verdict, and only when it is unwelcome: when
 the last complete week broke one of `PL-04KR`'s pre-registered predictions -
