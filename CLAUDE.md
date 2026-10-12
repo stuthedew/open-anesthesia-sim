@@ -393,40 +393,54 @@ deviating from a described deliverable, not acting without one.
   a thread is still open when the session ends, update `docs/WORKING_NOTES.md`
   too — but only for a thread spanning more than one item, outliving its item,
   or having none. One item's own reasoning goes in that item, at any length.
-- **Or fix it now, through a door this narrow.** The exemption the capture rule
-  states — "not fixed in that same session" — opens only when all three of these
-  hold, and any one of them failing means file the item instead:
+- **Or fix it in place, now.** The exemption the capture rule states — "not
+  fixed in that same session" — opens for a small defect a session finds while
+  building an item, wherever in the tree it finds it (project owner,
+  2026-10-12, widening the door `PL-3MJH` built narrow on 2026-09-01; `PL-6B1Z`
+  carries the count and the decisions). All four hold, or the finding is filed:
 
-  1. **It needs no new test.** Absolute, everywhere. A safety-critical bug owes
-     a regression test, so `safety`- and `science`-classed work fails this test
-     automatically and the clinical paths need no carve-out of their own.
-  2. **It touches no file outside what the current item's work already
-     touches.**
-     `bin/docket verify --self` names every file changed outside the item's
-     `touches` and still `ACCEPT`s, so a wider fix is reported, not refused:
-     this test holds where the session obeys it, and a delegated review
-     refuses it. A no-behaviour repair to another item's file or to
-     `docs/WORKING_NOTES.md` (drift, a stale status sentence, a missing
-     recommendation marker) is not a fix-now use at all. Declare the file in
-     the current item's `touches`, and it rides the commit already being made,
-     counting against neither this test nor the two (project owner,
-     2026-09-22, ratified, over leaving that licence in the path-scoped
-     citation-drift rule, which loads only after the decision to file; eleven
-     such repairs became items in three days, `PL-G40Z`).
-  3. **No reasonable person could prefer the current state.** A typo, a stale
-     doc line, a dead import, a wrong error string. Not a rename, an extracted
-     helper, or anything where what is there is a defensible choice — that is a
-     decision, and decisions are items.
+  1. **It is a defect, not a choice.** No reasonable person could prefer the
+     current state: a wrong answer against the code's own stated intent, a rule
+     this repository states, or plain fact. A rename, an extracted helper, a
+     check somebody might defend — that is a decision, and decisions are items.
+  2. **It is small: one defect, one commit, with its regression test.** The
+     fix carries the test a code change owes under both standards and nothing
+     more; one that wants a second commit, reaches a second mechanism, or
+     leaves anything to come back to is an item.
+  3. **It stays off the clinical floor and adds no read hold.** A defect in
+     `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/` or `docs/MODEL.md`,
+     or any finding the safety-critical standard reaches, is filed: the item is
+     what ranks it `P1`, offers it to the strongest model and stands as its
+     provenance. A fix on the owner's read list (the arm bullet below names it)
+     is taken only where the branch already carries a hold for a read, so a fix
+     never turns a pull request that would merge on green into one that waits
+     on the owner (project owner, 2026-10-12, ratified, over holding the pull
+     request for the read, and over opening the clinical paths with a
+     regression test).
+  4. **No open item already describes it.** Then it is that item's: claim it
+     alongside and close it under its own id, or leave it to the queue; a fix
+     under another id leaves the item open with its fix merged.
 
-  **Fix at most two per branch**, and the third means stop and file. A hard
-  count rather than a judgement call, because knowing when to call it a day is
-  the judgement a session is likeliest to rationalise past. Record each as its
-  own commit led by the *current* item's id, and one line in your reply: no
-  item file, no triage. That separate commit is what makes this safe to grant —
-  the owner can drop it in a rebase without touching the item's work — and it
-  is also why a session holding no item cannot use this rule at all, having no
-  `touches` for test 2 to read and no id to lead the commit. `PL-3MJH` carries
-  the design, and the two widenings that were considered and refused.
+  **Fix at most two per branch**, and the third means stop and file — or, where
+  the three are one mechanism, record the generator. A hard count rather than a
+  judgement call, because knowing when to call it a day is the judgement a
+  session is likeliest to rationalise past; it binds about one finder in 22.
+  Record each as its own commit led by the *current* item's id, and one line in
+  the pull request body saying what it fixed and where: no item file, no triage,
+  and the file is *not* added to the item's `touches`, which derive its lane
+  and feed `bin/docket concurrent`. `bin/docket verify --self` names the file
+  as outside `touches` and still `ACCEPT`s, the intended reading (`PL-6QZP`); a
+  delegated review refuses it, so this is a session's door and never a
+  delegated worker's (`docs/worker.md`). The separate commit is what makes this
+  safe to grant — the owner can drop it in a rebase — and why a session holding
+  no item cannot use the rule, having no id to lead it. A no-behaviour repair
+  to another item's file or to `docs/WORKING_NOTES.md` (drift, a stale status
+  sentence, a missing recommendation marker) is not a fix-now use at all:
+  declare the file in the current item's `touches`, and it rides the commit
+  already being made, counting against nothing (project owner, 2026-09-22,
+  ratified, over leaving that licence in the path-scoped citation-drift rule,
+  which loads only after the decision to file; eleven such repairs became items
+  in three days, `PL-G40Z`).
 - **Housekeeping you are about to do yourself is filed before you do it.** The
   capture rule records what a session will *not* fix; this one covers repository
   work no item names — resolving a merge, clearing a stale ref, a docs sweep, a
