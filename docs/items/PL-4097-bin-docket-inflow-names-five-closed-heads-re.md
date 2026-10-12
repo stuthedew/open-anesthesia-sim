@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: housekeeping
 feature: generator-heads
+milestone: v0.5.24
 touches: docs/items/PL-0HLS-pl-tz7t-s-mechanism-is-producing-again-four.md, docs/items/PL-5DZ8-pl-kgyt-s-sweep-searched-what-model-vcs-and.md, docs/items/PL-8QMD-a-gate-entry-s-disposition-is-still-read-from.md, docs/items/PL-927J-pl-ghhw-s-mechanism-is-producing-again-three.md, docs/items/PL-Z64T-roadmap-md-s-v0-6-0-gate-lists-pl-5b1n-and-pl.md
 added: 2026-10-12
 closed: 2026-10-12

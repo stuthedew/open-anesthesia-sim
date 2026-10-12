@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.24
 touches: tools/required_checks_check.py, tools/rules_paths_check.py, tools/doc_check.py, subprojects/docket/src/docket/frontmatter.py, subprojects/docket/src/docket/model.py, tests/unit/test_required_checks_check.py, tests/unit/test_rules_paths_check.py, tests/unit/test_doc_check.py, subprojects/docket/tests/test_frontmatter.py, subprojects/docket/tests/test_frontmatter_reference.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12

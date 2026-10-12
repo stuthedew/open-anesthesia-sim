@@ -5,6 +5,7 @@ priority: P3
 effort: M
 status: done
 classes: defect
+milestone: v0.5.24
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/python.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_python.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
