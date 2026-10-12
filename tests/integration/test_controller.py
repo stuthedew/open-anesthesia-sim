@@ -2,10 +2,15 @@ import dataclasses
 
 import pytest
 
-from anesthesia_sim.app.bookmarks import MacTarget, MarkStanding, TimeBookmark
+from anesthesia_sim.app.bookmarks import BookmarkCrossing, MacTarget, MarkStanding, TimeBookmark
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
-from anesthesia_sim.app.controller import BranchedCase, RunStatus, SimulationController
+from anesthesia_sim.app.controller import (
+    BranchedCase,
+    MarkForkPoint,
+    RunStatus,
+    SimulationController,
+)
 from anesthesia_sim.app.dashboard_frame import SUPPORTED_LIMIT_NOTICE_TEMPLATE, notice, transport
 from anesthesia_sim.app.formatting import format_supported_run_length
 from anesthesia_sim.app.run_series import (
@@ -3112,9 +3117,9 @@ def test_an_instant_between_keyframes_is_refused_even_where_the_run_stands_on_it
 
     What `PL-B8MK` added is a second door, not a wider one, and `PL-Z3W6` did
     not widen it either: every instant a run can be halted at is already
-    reachable through `resumed_at_halt`, and an instant a run has merely run
-    past is a rewind rather than a fork - the branch's clock would have to be
-    set back, which is a feature and not a relaxation of this rule.
+    reachable through `resumed_at_halt`. A marked instant the run has run past
+    is reachable too, through `resumed_at_mark` (`PL-W4XQ`) - a third door,
+    which still leaves this one's scope where it was.
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -3681,6 +3686,346 @@ def test_a_branch_reset_under_new_settings_records_them_at_its_fork() -> None:
     assert branch.run_segments[1].opening.state == fork_state
     assert branch._run_definition.state_at(fork_s) == fork_state
     assert branch.drawn_window(0.0, fork_s, 150).times_s == (fork_s,)
+
+
+# --- A mark the run has passed, returned to (PL-W4XQ) -------------------------
+#
+# The act the owner described a time bookmark for: paused at 3 h, mark 1 h and
+# go back to it. Neither earlier door reaches it - `resumed_at` opens only at a
+# keyframe and `resumed_at_halt` only at the crossing the run stands on - so
+# `resumed_at_mark` is a third, built from the halt fork's construction. The
+# cases scale the owner's hours down to seconds: nothing in the fork depends on
+# the scale, and the suite pays for every step it takes.
+
+
+def _trunk_paused_past_a_change(past_s: float = 180.0) -> SimulationController:
+    """The item's case at a minute's scale: a setting change at 30 s, then on to `past_s`.
+
+    Keyframes at 0 s and 30 s and nowhere else, so an instant past 30 s that a
+    learner marks is one the trunk holds no keyframe for, and one no step
+    crossed while it was marked - the case both earlier doors refuse.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=30.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(1.0))
+    _advance_for(controller, duration_s=past_s - 30.0)
+    controller.pause()
+
+    return controller
+
+
+def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
+    """`PL-W4XQ`'s deliverable: an instant marked after the run passed it, and returned to.
+
+    When the item was filed both doors refused it: the trunk holds no keyframe
+    there, and no step ever crossed a mark set after the clock had gone by. The
+    branch opens where a halt would have stopped the run, from the trunk's
+    canonical state there, reproduces the trunk element-wise from that instant
+    on, and leaves the trunk exactly the case it was.
+    """
+
+    trunk = _trunk_paused_past_a_change()
+    mark = TimeBookmark(CaseInstant(60.0), "what if")
+    trunk.add_time_bookmark(mark)
+    keyframes = [
+        (segment.opening.instant_s, segment.opening.state) for segment in trunk.run_segments
+    ]
+
+    with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
+        trunk.resumed_at(CaseInstant(60.0))
+
+    with pytest.raises(SimulationConfigurationError, match="not standing on"):
+        trunk.resumed_at_halt()
+
+    branch = trunk.resumed_at_mark(mark)
+
+    assert branch.began_at_s == branch.snapshot().elapsed_s == 60.0
+    assert branch.opened_from is not None
+    assert branch.opened_from.fork.state == trunk._run_definition.state_at(CaseInstant(60.0))
+    assert branch.snapshot().bookmark_standings.of_time_bookmark(mark) is MarkStanding.PASSED
+    # The branch's definition opens at the trunk's own keyframe before the mark,
+    # and nothing was recorded on the trunk to make one where it was marked.
+    assert branch.run_segments[0].opening.instant_s == 30.0
+    assert [
+        (segment.opening.instant_s, segment.opening.state) for segment in trunk.run_segments
+    ] == keyframes
+    assert trunk.snapshot().elapsed_s == 180.0
+
+    branch.start()
+    _advance_for(branch, duration_s=60.0)
+    branch.pause()
+
+    for steps_past_fork in range(0, 601):
+        case_s = (600 + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+
+        assert branch._run_definition.state_at(case_s) == trunk._run_definition.state_at(case_s), (
+            f"the branch and the trunk it returned to differ at {case_s} s"
+        )
+
+
+def test_a_mark_set_behind_the_clock_forks_where_its_halt_would_have() -> None:
+    """Marking late changes when the mark was set, and nothing about the branch.
+
+    One case run twice. Marked before its clock reached 45.3 s, it halted there
+    and was forked at the halt; marked only once the clock had passed it, no
+    step crossed it and the fork comes through `resumed_at_mark`. The two
+    branches open at the same step - 45.300000000000004 s, the end of the step
+    that reached the typed 45.3 - from the same state, inside the same stretch,
+    standing on the same crossing.
+    """
+
+    at_the_halt = _trunk_halted_on_a_bookmark().resumed_at_halt()
+
+    late = SimulationController()
+    late.start()
+    _advance_for(late, duration_s=30.0)
+    late.set_delivered_concentration_percent(Percent(4.0))
+    _advance_for(late, duration_s=60.0)
+    late.pause()
+    late.add_time_bookmark(TimeBookmark(CaseInstant(45.3), "the decision point"))
+
+    behind_the_clock = late.resumed_at_mark(TimeBookmark(CaseInstant(45.3)))
+
+    assert behind_the_clock.began_at_s == 453 * MAXIMUM_SIMULATION_STEP_S
+    assert behind_the_clock.began_at_s != 45.3
+    assert behind_the_clock.opened_from is not None
+    assert behind_the_clock.opened_from == at_the_halt.opened_from
+
+
+def test_a_mark_the_run_halted_on_is_returned_to_alike_before_and_after_it_steps_on() -> None:
+    """The halt is a permission a step spends, and the mark it stopped on is not.
+
+    Standing on the halt, both doors give one branch. Once the trunk steps on,
+    `resumed_at_halt` refuses, as it should - and the mark still gives the
+    branch the halt gave.
+    """
+
+    marked = _trunk_halted_on_a_bookmark()
+    mark = TimeBookmark(CaseInstant(45.3))
+    at_the_halt = marked.resumed_at_halt()
+
+    assert marked.resumed_at_mark(mark).opened_from == at_the_halt.opened_from
+
+    marked.start()
+    _advance_for(marked, duration_s=30.0)
+    marked.pause()
+
+    with pytest.raises(SimulationConfigurationError, match="not standing on"):
+        marked.resumed_at_halt()
+
+    assert marked.resumed_at_mark(mark).opened_from == at_the_halt.opened_from
+
+
+@pytest.mark.parametrize(("typed_s", "steps"), [(45.3, 453), (45.35, 454)])
+def test_a_branch_returned_to_a_mark_off_the_step_grid_reads_it_as_passed(
+    typed_s: float, steps: int
+) -> None:
+    """A mark a few parts in 1e16 off the grid, or inside a step outright, is opened just past.
+
+    That puts the mark before the branch's own beginning, which the clock alone
+    would call `BEFORE_THIS_BRANCH` - unreachable, the wrong answer for the one
+    mark the branch was taken at. The crossing the branch opens standing on is
+    what says the two are one (`PL-3K9B`, case B), and a reset keeps it.
+    """
+
+    trunk = _trunk_paused_past_a_change()
+    mark = TimeBookmark(CaseInstant(typed_s))
+    trunk.add_time_bookmark(mark)
+
+    branch = trunk.resumed_at_mark(mark)
+
+    assert branch.began_at_s == steps * MAXIMUM_SIMULATION_STEP_S
+    assert branch.began_at_s > typed_s, "the premise: the branch opens after its own mark"
+    assert branch.snapshot().bookmark_standings.of_time_bookmark(mark) is MarkStanding.PASSED
+
+    branch.start()
+    _advance_for(branch, duration_s=10.0)
+    branch.reset()
+
+    assert branch.snapshot().elapsed_s == steps * MAXIMUM_SIMULATION_STEP_S
+    assert branch.snapshot().bookmark_standings.of_time_bookmark(mark) is MarkStanding.PASSED
+
+
+def test_a_height_crossed_on_the_step_that_reached_a_passed_mark_is_stood_on_too() -> None:
+    """The crossing is reconstructed by the rule that halts a run, so it names every mark crossed.
+
+    One run finds the step a height is crossed on by halting there. A second,
+    identical run marks that instant and that height only once its clock is
+    well past both, so no step halted on either. Returning to the instant opens
+    the branch standing on both, as a halt there would have.
+    """
+
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.4), "the decision point")
+    finder = SimulationController()
+    finder.add_mac_target(target)
+    finder.start()
+    _advance_until_halted(finder, limit_s=400.0)
+    crossed_at_s = finder.snapshot().elapsed_s
+
+    late = SimulationController()
+    late.start()
+
+    for _ in range(finder._state.step_count + 600):
+        late.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+
+    late.pause()
+    instant = TimeBookmark(CaseInstant(crossed_at_s))
+    late.add_time_bookmark(instant)
+    late.add_mac_target(target)
+
+    branch = late.resumed_at_mark(instant)
+
+    assert branch.opened_from is not None
+    assert branch.opened_from.crossing == BookmarkCrossing(crossed_at_s, (instant,), (target,))
+    assert branch.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
+
+
+def test_a_mark_at_the_case_s_opening_returns_to_induction_with_no_crossing() -> None:
+    """No step reaches it: the run stands on it from the start, so the fork is the opening.
+
+    It is the branch `resumed_at` gives at the opening keyframe, and the clock
+    alone reads the mark as passed there.
+    """
+
+    trunk = _trunk_paused_past_a_change()
+    at_induction = TimeBookmark(CaseInstant(0.0), "induction")
+    trunk.add_time_bookmark(at_induction)
+
+    returned = trunk.resumed_at_mark(at_induction)
+
+    assert returned.opened_from is not None
+    assert returned.opened_from.crossing is None
+    assert returned.opened_from == trunk.resumed_at(CaseInstant(0.0)).opened_from
+    assert returned.snapshot().bookmark_standings.of_time_bookmark(at_induction) is (
+        MarkStanding.PASSED
+    )
+
+
+def test_a_mark_is_returned_to_by_its_instant_whatever_label_the_caller_holds() -> None:
+    """Matched as removal matches, and the crossing carries the mark as the run holds it."""
+
+    trunk = _trunk_paused_past_a_change()
+    held = TimeBookmark(CaseInstant(60.0), "what if")
+    trunk.add_time_bookmark(held)
+
+    branch = trunk.resumed_at_mark(TimeBookmark(CaseInstant(60.0)))
+
+    assert branch.opened_from is not None
+    assert branch.opened_from.crossing is not None
+    assert branch.opened_from.crossing.time_bookmarks == (held,)
+
+
+def test_a_mark_still_ahead_of_the_clock_cannot_be_returned_to() -> None:
+    """The case holds no state there yet, and a fork there would be a prediction drawn as a run."""
+
+    trunk = _trunk_paused_past_a_change()
+    ahead = TimeBookmark(CaseInstant(600.0))
+    trunk.add_time_bookmark(ahead)
+
+    with pytest.raises(SimulationConfigurationError, match="short of the mark at 600.0 s"):
+        trunk.resumed_at_mark(ahead)
+
+    assert trunk.mark_fork_points == ()
+
+
+def test_an_instant_nobody_marked_cannot_be_returned_to_as_a_mark() -> None:
+    """The door takes a mark the run holds; marking the instant is the learner's act first."""
+
+    trunk = _trunk_paused_past_a_change()
+
+    with pytest.raises(SimulationConfigurationError, match="no time bookmark stands at 60.0 s"):
+        trunk.resumed_at_mark(TimeBookmark(CaseInstant(60.0)))
+
+
+def test_a_branch_cannot_be_returned_to_a_mark_it_has_passed() -> None:
+    """The flat shape holds at the third door too, and says the same thing."""
+
+    trunk = _trunk_paused_past_a_change()
+    mark = TimeBookmark(CaseInstant(60.0))
+    trunk.add_time_bookmark(mark)
+    branch = trunk.resumed_at_mark(mark)
+    branch.start()
+    _advance_for(branch, duration_s=30.0)
+    branch.pause()
+    later = TimeBookmark(CaseInstant(75.0))
+    branch.add_time_bookmark(later)
+
+    with pytest.raises(SimulationConfigurationError, match="branch of a branch"):
+        branch.resumed_at_mark(later)
+
+
+def test_the_marks_a_trunk_can_be_returned_to_are_the_ones_its_standings_call_passed() -> None:
+    """Earliest first, each with the step instant a branch opens at, and none still ahead."""
+
+    trunk = _trunk_paused_past_a_change()
+    later = TimeBookmark(CaseInstant(120.0), "added first")
+    ahead = TimeBookmark(CaseInstant(600.0))
+    off_grid = TimeBookmark(CaseInstant(45.3))
+
+    for mark in (later, ahead, off_grid):
+        trunk.add_time_bookmark(mark)
+
+    snapshot = trunk.snapshot()
+
+    assert trunk.mark_fork_points == (
+        MarkForkPoint(off_grid, CaseInstant(453 * MAXIMUM_SIMULATION_STEP_S)),
+        MarkForkPoint(later, CaseInstant(1200 * MAXIMUM_SIMULATION_STEP_S)),
+    )
+    assert {point.bookmark for point in trunk.mark_fork_points} == {
+        mark
+        for mark in snapshot.bookmarks.time_bookmarks
+        if snapshot.bookmark_standings.of_time_bookmark(mark) is MarkStanding.PASSED
+    }
+
+
+def test_a_trunk_that_has_not_stepped_can_be_returned_only_to_a_mark_at_its_opening() -> None:
+    """With no step taken there is no step to reach anything, and the opening is where it stands."""
+
+    trunk = SimulationController()
+    at_induction = TimeBookmark(CaseInstant(0.0))
+    ahead = TimeBookmark(CaseInstant(30.0))
+    trunk.add_time_bookmark(at_induction)
+    trunk.add_time_bookmark(ahead)
+
+    assert trunk.mark_fork_points == (MarkForkPoint(at_induction, CaseInstant(0.0)),)
+    assert trunk.resumed_at_mark(at_induction).began_at_s == 0.0
+
+    with pytest.raises(SimulationConfigurationError, match="short of the mark at 30.0 s"):
+        trunk.resumed_at_mark(ahead)
+
+
+def test_a_case_keeps_a_branch_returned_to_a_mark_its_trunk_has_passed() -> None:
+    """The case-level door, which keeps the branch and adds no instant to `fork_points_s`."""
+
+    trunk = _trunk_paused_past_a_change()
+    mark = TimeBookmark(CaseInstant(60.0))
+    trunk.add_time_bookmark(mark)
+    case = BranchedCase(trunk)
+
+    assert case.mark_fork_points == trunk.mark_fork_points
+
+    branch = case.fork_at_mark(mark)
+
+    assert case.branches == (branch,)
+    assert branch.began_at_s == 60.0
+    assert case.fork_points_s == (0.0, 30.0)
+    assert trunk.snapshot().elapsed_s == 180.0
+
+
+def test_a_case_refuses_a_mark_its_trunk_has_not_reached_and_keeps_nothing() -> None:
+    """The refusal reaches through `BranchedCase` as the other two doors' do."""
+
+    trunk = _trunk_paused_past_a_change()
+    ahead = TimeBookmark(CaseInstant(600.0))
+    trunk.add_time_bookmark(ahead)
+    case = BranchedCase(trunk)
+
+    with pytest.raises(SimulationConfigurationError, match="short of the mark"):
+        case.fork_at_mark(ahead)
+
+    assert case.branches == ()
 
 
 # --- Standing on the supported run length with no step refused (PL-5291) ------
