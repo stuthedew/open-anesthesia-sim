@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import re
 import tomllib
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -618,10 +618,11 @@ def release_notes(milestone: Milestone, today: date) -> str:
 
 #: A code span, as CommonMark delimits one: a run of backticks and the next run
 #: of exactly as many, neither part of a longer run, inside one paragraph. The
-#: one reading of a span in docket and `tools/` (`PL-9L39`), where four regexes
+#: one grammar of a span in docket and `tools/` (`PL-9L39`), where four regexes
 #: and a backtick count of their own each answered differently: on a
 #: double-backtick span, on runs of unequal length, and on a span wrapped
-#: across a line break, which none of them read.
+#: across a line break, which none of them read. Matched where a run opens;
+#: where one may open is `CODE_SPAN_PATTERN`'s to say.
 #:
 #: `content` is the text between the runs as written, before CommonMark turns
 #: its line breaks into spaces and trims a space from each end, which no reader
@@ -630,13 +631,43 @@ def release_notes(milestone: Milestone, today: date) -> str:
 #: below and reading every span after it inside out. The other places a
 #: paragraph ends - a heading, a list item, a block quote - are not the
 #: pattern's to read, so a reader of a whole document applies it a statement
-#: at a time, as `markdown.statement_lines` cuts them (`PL-FP7J`). The pattern
-#: carries no flags, so `verify.NON_CODE_RE` takes it into an alternation as it
-#: stands.
-CODE_SPAN_PATTERN = (
-    r"(?<!`)(?P<run>`+)(?!`)(?P<content>(?:(?!\n[ \t]*\n)[\s\S])+?)(?<!`)(?P=run)(?!`)"
-)
-CODE_SPAN_RE = re.compile(CODE_SPAN_PATTERN)
+#: at a time, as `markdown.statement_lines` cuts them (`PL-FP7J`).
+CODE_SPAN = r"(?P<run>`+)(?!`)(?P<content>(?:(?!\n[ \t]*\n)[\s\S])+?)(?<!`)(?P=run)(?!`)"
+CODE_SPAN_AT = re.compile(CODE_SPAN)
+
+#: Where a span may open, as a left-to-right scan finds it (CommonMark 0.31.2
+#: § 6.1): a backslash escape is stepped over whole, so an escaped backtick
+#: opens nothing (§ 2.4), and a run no closer matches is stepped over whole,
+#: so no span opens inside it. A lookbehind cannot count the backslashes
+#: before a backtick, and the pattern read `\`a` b `c`` as two spans where
+#: CommonMark reads one (`PL-T3GW`). So the escape and the stray run are
+#: alternatives the scan consumes, and a caller keeps the matches whose `run`
+#: is set: `code_spans` and `replace_code_spans` do. The pattern carries no
+#: flags, so `verify.NON_CODE_RE` takes it into an alternation as it stands,
+#: blanking the escape and the stray run with the span. An autolink or raw HTML
+#: opening first takes a backtick inside it (§ 6.1), which only
+#: `tools/doc_check.py`'s inline reader reads; it matches `CODE_SPAN_AT` where
+#: its own scan stands on a run, so the grammar is this one.
+CODE_SPAN_PATTERN = rf"\\[\s\S]|{CODE_SPAN}|`+"
+CODE_SPAN_SCAN = re.compile(CODE_SPAN_PATTERN)
+
+
+def code_spans(text: str, start: int = 0, end: int | None = None) -> list[re.Match[str]]:
+    """The code spans from `start` to `end`, in order, as `CODE_SPAN_PATTERN` scans them."""
+    stop = len(text) if end is None else end
+    return [found for found in CODE_SPAN_SCAN.finditer(text, start, stop) if found["run"]]
+
+
+def replace_code_spans(replacement: str | Callable[[re.Match[str]], str], text: str) -> str:
+    """`text` with each code span replaced: by a string as written, or by a function's return."""
+
+    def replaced(found: re.Match[str]) -> str:
+        if not found["run"]:
+            return found.group()
+        return replacement if isinstance(replacement, str) else replacement(found)
+
+    return CODE_SPAN_SCAN.sub(replaced, text)
+
 
 #: An opening angle bracket no backslash already escapes.
 UNESCAPED_LT_RE = re.compile(r"(?<!\\)<")
@@ -657,7 +688,7 @@ def markdown_title(title: str) -> str:
     """
     kept: list[str] = []
     start = 0
-    for span in CODE_SPAN_RE.finditer(title):
+    for span in code_spans(title):
         kept.append(UNESCAPED_LT_RE.sub(r"\\<", title[start : span.start()]))
         kept.append(span.group())
         start = span.end()

@@ -40,7 +40,7 @@ from dataclasses import dataclass
 from . import markdown
 from .model import Item, ranks_as_generator
 from .plan import GATE_LANES, Recommendation, awaits_decision, offerable, recommend
-from .release import CODE_SPAN_RE
+from .release import code_spans
 from .roadmap import CLEAR, ScopeEntry, Wave
 
 #: The cap on pick lines: the Report paragraph's "at most eight lines" in the
@@ -154,7 +154,7 @@ def bold_lead(text: str) -> str:
     nor closes the lead (`PL-47NJ`). An entry with none is named by its first
     sentence.
     """
-    spans = markdown.emphasis(text, [found.span() for found in CODE_SPAN_RE.finditer(text)])
+    spans = markdown.emphasis(text, [found.span() for found in code_spans(text)])
     lead = next((span for span in spans if span.strong), None)
     if lead is None:
         return text.split(". ", 1)[0]
