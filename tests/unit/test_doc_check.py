@@ -4748,6 +4748,30 @@ def test_math_latex_inline_delimiters_are_reported(tmp_path: Path) -> None:
     assert any("does not render" in error for error in errors)
 
 
+def test_a_worktree_under_claude_worktrees_is_not_walked(tmp_path: Path) -> None:
+    """`PL-2P5L`: a worktree-isolated agent's copy failed the main checkout's run.
+
+    The walk read the disk, so a file under `.claude/worktrees/` that git does
+    not track was held to every rule as if the repository carried it. Read
+    from the tracked files, the agent's copy is not this tree's, and the same
+    text tracked here is still reported.
+    """
+    root = _repo(tmp_path)
+    body = "The step \\(\\Delta t\\) is explicit.\n"
+    (root / "docs" / "NOTE.md").write_text(body, encoding="utf-8")
+    _git_init(root)
+    copy = root / ".claude" / "worktrees" / "agent" / "docs" / "NOTE.md"
+    copy.parent.mkdir(parents=True)
+    copy.write_text(body, encoding="utf-8")
+
+    report = doc_check.Report()
+    doc_check.check_math_delimiters(root, report)
+
+    assert report.errors
+    assert all("docs/NOTE.md:1" in error for error in report.errors)
+    assert not any(".claude/worktrees" in error for error in report.errors)
+
+
 def test_math_latex_block_delimiters_are_reported(tmp_path: Path) -> None:
     errors = _math_errors(tmp_path / "repo", "docs/NOTE.md", "\\[F = 0.02\\]\n")
 

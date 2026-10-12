@@ -17,6 +17,7 @@ verify: grep -q 'def test_every_landed_reader_answers_from_the_branch_s_own_hist
 root-cause-of: PL-8BR0, PL-RLTK, PL-P64J, PL-WVSX
 generator: spent - every reader of whether the base took a branch's change answers from vcs._Landings, which reads the ref's own history since its fork; a reader added beside it would have to re-derive a blob set of its own, and test_every_landed_reader_answers_from_the_branch_s_own_history pins the three that existed to that one function
 misread: Whether the base already holds or has superseded a branch commit's change, by whatever route
+reenters: PL-GHHW
 ---
 
 **Problem.** PL-GHHW's mechanism is producing again: three readers of whether the base took a branch's change, left off vcs.change_landed by its fix, were filed after it closed - PL-8BR0 (landed_whole refuses queue-only commits as merge evidence), PL-RLTK (_base_blobs holds every blob the base ever held) and PL-P64J (claims._landed_through, the same ever-held set) - so a live head wants recording with root-cause-of and generator: live once PL-P64J reaches main with #1133

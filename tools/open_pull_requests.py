@@ -31,7 +31,8 @@ the next capture on its branch landed nowhere. It prints `NUMBER STATE HEAD` -
 `STATE` one of `open`, `merged` or `closed`, `HEAD` the commit the forge names
 as the pull request's head, which GitHub freezes when it closes - or nothing
 where no pull request was ever opened from the branch. The listing is
-`left_behind_check.py`'s: every state, that head, that base, newest first.
+`left_behind_check.py`'s too, read through `newest` here: every state, that
+head, that base, newest first.
 
 **The contract is the exit status, and it is the whole point of the script.**
 Exit 0 means the forge was asked and these - possibly none - are the branches
@@ -41,23 +42,33 @@ is open", which is exactly the confident wrong answer this repository's
 apparatus floor refuses: `docket flight` says "every item closed" alone when
 this exits 1, and adds "and no pull request is open" only when it exits 0.
 
+**One reading of each pull-request fact, for every tool that asks** (`PL-351H`).
+`left_behind_check.py` asked for the newest pull request with its own request
+and its own parse, and read an entry carrying no `merged_at` as "closed without
+merging", the answer `newest` refuses; `update_armed.py` paged the open listing
+where this declined on a full page. So the request is `fetch`, which names why
+it failed for the caller that must say so; the listing is `every_page`; and the
+newest pull request is `newest`. Each tool reads its own fields off an entry,
+and none spells the query, the paging or the merge test again.
+
 Standard library only, like every tool here, so it runs in a bare checkout.
 `urllib` is in that library; the token is read from the environment and never
-printed. `pr_title_check.py` shares the request code below, and both questions
-here make it through `_listing`, which is what keeps one spelling of the token,
+printed. `pr_title_check.py` shares the request code below, and every question
+here makes it through `fetch`, which is what keeps one spelling of the token,
 the timeout and the failure rule rather than several.
 """
 
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import subprocess
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -66,7 +77,15 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.lines import record_text  # noqa: E402
-from docket.vcs import REMOTE, github_slug, github_token  # noqa: E402
+from docket.vcs import (  # noqa: E402
+    PULL_CLOSED,
+    PULL_MERGED,
+    PULL_OPEN,
+    REMOTE,
+    NewestPullRequest,
+    github_slug,
+    github_token,
+)
 
 #: Where the lookup goes. Named here rather than inline so a test can point it
 #: somewhere that is not the network.
@@ -77,9 +96,27 @@ GITHUB_API = "https://api.github.com"
 #: hold up a check or a report. A timeout is a failure like any other.
 LOOKUP_TIMEOUT = 10.0
 
-#: How many open pull requests one listing may describe. GitHub's maximum, and
-#: a full page is treated as a failure below rather than as a complete answer.
+#: How many pull requests one page of a listing holds: GitHub's maximum.
 PAGE = 100
+
+#: Why a listing could not be read, opening `ListingFailed`'s message so a reader
+#: and a test can tell them apart without parsing the rest of the sentence.
+NO_NETWORK = "no network"
+NO_PERMISSION = "no permission"
+UNREADABLE_ANSWER = "unreadable"
+
+#: GitHub's answers that refuse this token rather than fail to answer.
+_REFUSAL_CODES = (401, 403, 404, 429)
+
+Query = dict[str, str | int]
+
+
+class ListingFailed(Exception):
+    """GitHub could not be asked, or its answer could not be read; `kind` says which."""
+
+    def __init__(self, kind: str, detail: str) -> None:
+        super().__init__(f"{kind}: {detail}")
+        self.kind = kind
 
 
 @dataclass(frozen=True)
@@ -94,21 +131,6 @@ class PullRequest:
     title: str
     head: str
     base: str = ""
-
-
-@dataclass(frozen=True)
-class NewestPullRequest:
-    """The newest pull request from one branch into one base, and what became of it.
-
-    `state` is `merged` where the forge records a merge and otherwise its own
-    `open` or `closed`. `head` is the commit the forge names as the pull
-    request's head: frozen when it closes, so a merged one names the commit
-    its merge took whatever the branch gained since (checked on `#793`).
-    """
-
-    number: int
-    state: str
-    head: str
 
 
 def _git(args: list[str]) -> str:
@@ -134,19 +156,18 @@ def repo_slug() -> str | None:
     return github_slug(_git(["remote", "get-url", REMOTE]))
 
 
-def _listing(slug: str, query: dict[str, str | int]) -> list[object] | None:
-    """One page of `slug`'s pull requests as `query` narrows it, or None where it could not ask.
+def fetch(slug: str, query: Query) -> list[object]:
+    """One page of `slug`'s pull requests as `query` narrows it, or `ListingFailed` saying why not.
 
-    The one request every question here makes. None covers every reason there
-    is no answer, and they are deliberately not told apart: no token, no
-    network, a proxy refusing, a rate limit, a repository this token cannot
-    see, or a body that is not a JSON list. Every caller does the same thing
-    with all of them - says it could not look - so separating them would buy a
-    message nobody can act on differently.
+    The one request every question here makes. Its failures are named apart -
+    no token or a refusal is `NO_PERMISSION`, nothing answering is
+    `NO_NETWORK`, an answer that is not a JSON list is `UNREADABLE_ANSWER` - because
+    `left_behind_check.py` must say which; a caller that does the same thing
+    with all of them, as this script's own do, catches the one exception.
     """
     token = github_token()
     if not token:
-        return None
+        raise ListingFailed(NO_PERMISSION, "no GH_TOKEN or GITHUB_TOKEN to ask GitHub with")
     request = urllib.request.Request(
         f"{GITHUB_API}/repos/{slug}/pulls?{urllib.parse.urlencode(query)}",
         headers={
@@ -158,35 +179,70 @@ def _listing(slug: str, query: dict[str, str | int]) -> list[object] | None:
     )
     try:
         with urllib.request.urlopen(request, timeout=LOOKUP_TIMEOUT) as response:
-            payload = json.load(response)
-    except (OSError, ValueError):
-        # `URLError` and `HTTPError` are both `OSError`; a body that is not
-        # JSON raises `ValueError`. Nothing else should escape a GET.
-        return None
-    return payload if isinstance(payload, list) else None
+            body = response.read()
+    except urllib.error.HTTPError as error:
+        if error.code in _REFUSAL_CODES:
+            raise ListingFailed(NO_PERMISSION, f"GitHub refused (HTTP {error.code})") from error
+        raise ListingFailed(UNREADABLE_ANSWER, f"GitHub answered HTTP {error.code}") from error
+    except (OSError, http.client.HTTPException) as error:
+        # `URLError`, a timeout, a refused connection: nothing answered. A body
+        # cut short raises `IncompleteRead`, which is not an `OSError`.
+        raise ListingFailed(NO_NETWORK, f"GitHub could not be reached ({error})") from error
+    try:
+        payload = json.loads(body)
+    except ValueError as error:
+        raise ListingFailed(UNREADABLE_ANSWER, "GitHub's answer was not JSON") from error
+    if not isinstance(payload, list):
+        raise ListingFailed(UNREADABLE_ANSWER, "GitHub's answer was not a listing")
+    return payload
+
+
+def _numbers(page: list[object]) -> list[object]:
+    return [entry.get("number") if isinstance(entry, dict) else None for entry in page]
+
+
+def every_page(read: Callable[[Query], list[object]], query: Query) -> list[object]:
+    """Every entry of the listing `query` asks for, read a page at a time with `read`, oldest first.
+
+    **Read to a short page, never stopped at a full one** (`PL-351H`). This
+    declined on a full page while `update_armed.py` read the next, so at 100
+    open the two disagreed about which pull requests were open. Paging is the
+    complete answer; what made the decline safe was that a page read later
+    than the one before it can miss an entry, and that is checked instead.
+
+    **Oldest first, so only a close can shift a page**: a pull request opened
+    mid-read joins the last page, but one closed shifts every later entry back
+    by one, and the entry crossing into a page already read is never seen. So
+    a listing that took more than one page reads each page but the last again
+    and compares the numbers; any change is `ListingFailed`, since a listing
+    missing an entry looks exactly like a complete one. One page - every
+    listing here so far - costs one request, as before.
+    """
+    asked: Query = {**query, "sort": "created", "direction": "asc", "per_page": PAGE}
+    pages: list[list[object]] = []
+    while not pages or len(pages[-1]) >= PAGE:
+        pages.append(read({**asked, "page": len(pages) + 1}))
+    for number, page in enumerate(pages[:-1], start=1):
+        if _numbers(read({**asked, "page": number})) != _numbers(page):
+            raise ListingFailed(
+                UNREADABLE_ANSWER, "the listing changed while it was read a page at a time"
+            )
+    return [entry for page in pages for entry in page]
 
 
 def open_pull_requests(slug: str, *, head: str | None = None) -> tuple[PullRequest, ...] | None:
     """The open pull requests on `slug`, or None when the forge could not be asked.
 
     `head` narrows the listing to one branch, which is what a caller holding a
-    branch already wants and costs the same single request. `_listing` says
-    what None covers.
-
-    **A full page is one of those reasons.** A listing that comes back at the
-    per-page maximum may have more behind it, and the caller's question is
-    whether a *particular* branch is absent - which a truncated listing cannot
-    answer, while looking exactly like an answer. Declining is the one reading
-    that is never wrong. It cannot fire on a `head` listing, which asks about
-    one branch and is complete at one entry.
+    branch already wants. None is any `ListingFailed`, from `fetch` or from
+    `every_page`: every caller here does the same thing with all of them.
     """
-    query: dict[str, str | int] = {"state": "open", "per_page": 1 if head else PAGE}
+    query: Query = {"state": "open"}
     if head:
         query["head"] = f"{slug.split('/')[0]}:{head}"
-    payload = _listing(slug, query)
-    if payload is None:
-        return None
-    if head is None and len(payload) >= PAGE:
+    try:
+        payload = every_page(lambda asked: fetch(slug, asked), query)
+    except ListingFailed:
         return None
     found: list[PullRequest] = []
     for entry in payload:
@@ -202,17 +258,19 @@ def open_pull_requests(slug: str, *, head: str | None = None) -> tuple[PullReque
     return tuple(found)
 
 
-def newest_pull_request(slug: str, branch: str, base: str) -> tuple[NewestPullRequest, ...] | None:
-    """The newest pull request from `branch` into `base`: one, `()` where none was opened, or None.
+def newest(slug: str, branch: str, base: str) -> NewestPullRequest | None:
+    """The newest pull request from `branch` into `base`, None where none was ever opened.
 
-    None is `_listing`'s refusal, and an entry this cannot read is one too: a
-    number that is not one, a state that is neither `open` nor `closed`, a
-    `merged_at` that is neither null nor a time - absent included, since a
-    merge read as "not merged" is the answer this exists to correct - or no
-    head commit. `()` is an answer: the forge was asked, and nothing was ever
-    opened from the branch.
+    `ListingFailed` is `fetch`'s, and an entry this cannot read is one too,
+    `UNREADABLE_ANSWER`: a number that is not one, a state that is neither `open` nor
+    `closed`, a `merged_at` that is neither null nor a time - absent included,
+    since a merge read as "not merged" is the answer this exists to correct -
+    or no head commit. `state` is `merged` where the forge records a merge and
+    otherwise its own `open` or `closed`; `head` is the commit the forge names
+    as the head, frozen when it closes, so a merged one names the commit its
+    merge took whatever the branch gained since (checked on `#793`).
     """
-    query: dict[str, str | int] = {
+    query: Query = {
         "state": "all",
         "head": f"{slug.split('/')[0]}:{branch}",
         "base": base,
@@ -220,28 +278,41 @@ def newest_pull_request(slug: str, branch: str, base: str) -> tuple[NewestPullRe
         "direction": "desc",
         "per_page": 1,
     }
-    payload = _listing(slug, query)
-    if payload is None:
-        return None
+    payload = fetch(slug, query)
     if not payload:
-        return ()
+        return None
     entry = payload[0]
     if not isinstance(entry, dict):
-        return None
+        raise ListingFailed(UNREADABLE_ANSWER, "GitHub's listing held an entry that is not one")
     number, state = entry.get("number"), entry.get("state")
     merged_at = entry.get("merged_at", False)
     head = entry.get("head")
     sha = head.get("sha") if isinstance(head, dict) else None
     if (
         not isinstance(number, int)
-        or state not in ("open", "closed")
+        or state not in (PULL_OPEN, PULL_CLOSED)
         or not (merged_at is None or isinstance(merged_at, str))
         or not isinstance(sha, str)
         or not sha
     ):
+        raise ListingFailed(
+            UNREADABLE_ANSWER, "GitHub's listing had no number, state, merged_at or head commit"
+        )
+    merged = PULL_MERGED if merged_at is not None else str(state)
+    return NewestPullRequest(number=number, state=merged, head=sha)
+
+
+def newest_pull_request(slug: str, branch: str, base: str) -> tuple[NewestPullRequest, ...] | None:
+    """`newest` as the command prints it: one, `()` for none opened, None where it could not ask.
+
+    `()` is an answer: the forge was asked, and nothing was ever opened from
+    the branch.
+    """
+    try:
+        found = newest(slug, branch, base)
+    except ListingFailed:
         return None
-    merged = "merged" if merged_at is not None else state
-    return (NewestPullRequest(number=number, state=merged, head=sha),)
+    return () if found is None else (found,)
 
 
 def main(argv: Sequence[str] = ()) -> int:

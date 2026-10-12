@@ -169,6 +169,8 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from workflow_paths_check import tracked_under
+
 ROOT = Path(__file__).resolve().parent.parent
 
 #: Every module under this tree is read; none is named by path (PL-V53R).
@@ -271,9 +273,9 @@ class Report:
 
 
 def read_modules(root: Path) -> tuple[Module, ...]:
-    """Every module under `APP`, parsed, in path order."""
+    """Every module the repository holds under `APP`, parsed, in path order."""
     found: list[Module] = []
-    for path in sorted((root / APP).rglob("*.py")):
+    for path in tracked_under(root, APP, ".py"):
         source = path.read_text(encoding="utf-8")
         found.append(
             Module(path.relative_to(root).as_posix(), ast.parse(source, filename=str(path)))

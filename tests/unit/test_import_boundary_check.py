@@ -12,6 +12,7 @@ nothing passes, and passing over nothing is indistinguishable from passing.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -273,6 +274,24 @@ class TestAnalyze:
         _tree(tmp_path, allowed="from pydantic import BaseModel\n", other="import json\n")
         report = analyze(tmp_path, [_boundary("src/pkg/allowed.py")])
         assert not report.errors
+
+    def test_an_untracked_module_is_not_read(self, tmp_path: Path) -> None:
+        """`PL-9NZ3`: the tree is what the repository holds, read from `tracked_files`.
+
+        A scratch file a session has not added is nobody's to accuse, and the
+        same walk read another checkout under `.claude/worktrees/` as this one.
+        """
+        _tree(tmp_path, allowed="from pydantic import BaseModel\n", other="import json\n")
+        for command in (
+            ("init", "-q"),
+            ("add", "-A"),
+            ("-c", "user.email=t@example.invalid", "-c", "user.name=T", "commit", "-qm", "init"),
+        ):
+            subprocess.run(("git", *command), cwd=tmp_path, check=True, capture_output=True)
+        (tmp_path / "src" / "pkg" / "scratch.py").write_text("import pydantic\n", encoding="utf-8")
+        report = analyze(tmp_path, [_boundary("src/pkg/allowed.py")])
+        assert not report.errors
+        assert report.scanned == 2
 
     def test_an_allowance_naming_a_missing_file_is_an_error(self, tmp_path: Path) -> None:
         """A rename would otherwise move the exception somewhere nothing checks."""

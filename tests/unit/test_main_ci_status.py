@@ -116,42 +116,65 @@ class TestPickRun:
         assert main_ci_status.pick_run(["not a dict", 7]) is None
 
 
-class TestPickCancelled:
+class TestPickUnjudged:
     """The cancelled run that earns a line: the newest one above every verdict (`PL-JTHW`)."""
 
     def test_takes_a_cancelled_run_newer_than_every_verdict(self) -> None:
         runs = [_run("cancelled", 1555), _run("success", 1553)]
-        assert main_ci_status.pick_cancelled(runs)["run_number"] == 1555
+        assert main_ci_status.pick_unjudged(runs)["run_number"] == 1555
 
     def test_takes_the_newest_of_several(self) -> None:
         """Re-running the newest checks the whole store again, so it answers for the rest."""
         runs = [_run("cancelled", 1556), _run("cancelled", 1555), _run("failure", 1553)]
-        assert main_ci_status.pick_cancelled(runs)["run_number"] == 1556
+        assert main_ci_status.pick_unjudged(runs)["run_number"] == 1556
 
     def test_passes_over_a_cancelled_run_a_later_verdict_covers(self) -> None:
         """Run 1556 checked the whole store on a tree containing 1555's commit."""
         runs = [_run("success", 1556), _run("cancelled", 1555), _run("success", 1553)]
-        assert main_ci_status.pick_cancelled(runs) is None
+        assert main_ci_status.pick_unjudged(runs) is None
 
     def test_looks_past_a_run_that_is_neither_a_verdict_nor_cancelled(self) -> None:
         runs = [_run("skipped", 1556), _run("cancelled", 1555), _run("success", 1553)]
-        assert main_ci_status.pick_cancelled(runs)["run_number"] == 1555
+        assert main_ci_status.pick_unjudged(runs)["run_number"] == 1555
 
     def test_takes_a_cancelled_run_when_none_reached_a_verdict(self) -> None:
         runs = [_run("cancelled", 1555), _run("cancelled", 1554)]
-        assert main_ci_status.pick_cancelled(runs)["run_number"] == 1555
+        assert main_ci_status.pick_unjudged(runs)["run_number"] == 1555
 
     def test_returns_none_without_a_cancelled_run_above_the_verdict(self) -> None:
-        assert main_ci_status.pick_cancelled([]) is None
-        assert main_ci_status.pick_cancelled([_run("success"), _run("cancelled")]) is None
-        assert main_ci_status.pick_cancelled(["not a dict", 7]) is None
+        assert main_ci_status.pick_unjudged([]) is None
+        assert main_ci_status.pick_unjudged([_run("success"), _run("cancelled")]) is None
+        assert main_ci_status.pick_unjudged(["not a dict", 7]) is None
 
     def test_skips_a_malformed_entry_above_it(self) -> None:
         runs = ["not a dict", _run("cancelled", 1555)]
-        assert main_ci_status.pick_cancelled(runs)["run_number"] == 1555
+        assert main_ci_status.pick_unjudged(runs)["run_number"] == 1555
 
 
-class TestCancelledAdvisory:
+class TestUnjudgedAdvisory:
+    def test_action_required_is_no_verdict_rather_than_main_red(self) -> None:
+        """`PL-351H`: the conclusion `update_armed.py` reads as not failed is read so here too.
+
+        It sat in `VERDICTS`, so a run GitHub held for an action printed "main
+        is red" while the same conclusion on a check run did not hold a pull
+        request back. Now neither reads it as a failure, and this says the
+        commit has no verdict, as it does for a cancelled run.
+        """
+        runs = [_run("action_required", 1555, "c0ffee9900"), _run("success", 1553, "abcdef1234")]
+
+        assert main_ci_status.pick_run(runs)["run_number"] == 1553
+        unjudged = main_ci_status.pick_unjudged(runs)
+        assert unjudged is not None and unjudged["run_number"] == 1555
+        line = main_ci_status.unjudged_advisory(unjudged, main_ci_status.pick_run(runs))
+        assert "#1555 on c0ffee99 concluded action_required" in line
+        assert "no whole-store verdict" in line and "main is red" not in line
+
+    def test_failed_is_the_one_set_update_armed_reads(self) -> None:
+        import update_armed
+
+        assert update_armed.FAILED is main_ci_status.FAILED
+        assert "action_required" not in main_ci_status.FAILED | main_ci_status.VERDICTS
+
     def test_names_the_cancelled_run_and_the_older_verdict(self) -> None:
         """Which commit each answer is about is the reader's whole question.
 
@@ -159,7 +182,7 @@ class TestCancelledAdvisory:
         invisible to it; the line says so rather than send a reader to re-run
         a commit that run is already checking again.
         """
-        line = main_ci_status.cancelled_advisory(
+        line = main_ci_status.unjudged_advisory(
             _run("cancelled", 1555, "c0ffee9900"), _run("success", 1553, "abcdef1234")
         )
         assert "#1555 on c0ffee99 was cancelled" in line
