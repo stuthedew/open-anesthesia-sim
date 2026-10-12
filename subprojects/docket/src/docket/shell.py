@@ -606,7 +606,7 @@ class _Frame:
     delimiter was quoted.
     """
 
-    def __init__(self, compat: bool) -> None:
+    def __init__(self, compat: bool, expansion: bool = False) -> None:
         #: Those a `<<` in this reading opened, whose bodies start after its next newline.
         self.pending: list[tuple[str, bool, bool]] = []
         #: Those a substitution inside it still held when its `)` closed it,
@@ -615,6 +615,13 @@ class _Frame:
         #: Whether this is the body of a `$( )`, `<( )` or `>( )`, where bash
         #: ends a body at a line that opens with its delimiter and holds a `)`.
         self.compat = compat
+        #: Whether this is the reading `_Lexer.expanded` gives an unquoted
+        #: here-document's body, where a `$( )` that ends a body so can no
+        #: longer close (`PL-GJKN`).
+        self.expansion = expansion
+        #: Whether this is the body of a `$( )` read in such a reading, where
+        #: that line fails the expansion rather than ending the body.
+        self.fails = False
 
 
 class _Lexer:
@@ -673,6 +680,7 @@ class _Lexer:
         """
         command = self.command
         frame = _Frame(compat=closes)
+        frame.fails = closes and bool(self.frames) and self.frames[-1].expansion
         self.frames.append(frame)
         # A `<<` outside waits for a word outside, not for the body's first.
         outside, self.introducer = self.introducer, None
@@ -1308,7 +1316,7 @@ class _Lexer:
         after_compat = -1
         for at, (delimiter, strip_tabs, joined) in enumerate(waiting):
             compat = frame.compat and at >= own and resume is None
-            index, rest = self.body(index, stop, delimiter, strip_tabs, joined, compat)
+            index, rest = self.body(index, stop, delimiter, strip_tabs, joined, compat, frame.fails)
             if rest is not None:
                 resume, after_compat = rest, index
         if resume is None:
@@ -1320,7 +1328,14 @@ class _Lexer:
         return resume
 
     def body(
-        self, index: int, stop: int, delimiter: str, strip_tabs: bool, joined: bool, compat: bool
+        self,
+        index: int,
+        stop: int,
+        delimiter: str,
+        strip_tabs: bool,
+        joined: bool,
+        compat: bool,
+        fails: bool,
     ) -> tuple[int, int | None]:
         """Read one here-document's body: where the next line starts, and where reading resumes.
 
@@ -1331,13 +1346,18 @@ class _Lexer:
         after it, and reads the rest of that line as the body's commands, so
         `EOF)` closes the substitution and `EOFecho x)` runs `echo x` first.
         It does not end one so at the top level, in a subshell, or for a body
-        carried out of its substitution. Bash reads a body its delimiter never
-        ends to the end of the input, with a warning; here that is unreadable
-        unless the input is read as `bash -c` reads it, so that a `<<` docket
-        took for one leaves what follows it declined rather than read as a body
-        unannounced. Where no part of the delimiter was quoted, `joined`, bash
-        expands the body once it has found where the body ends, and `expanded`
-        reads the commands that expansion runs.
+        carried out of its substitution. Where `fails`, in a `$( )` an unquoted
+        here-document's body runs, which `expanded` reads, bash ends the body
+        at that line and then cannot close the substitution, whatever follows,
+        so the expansion fails there and this is unreadable (`PL-GJKN`); a
+        `$( )` inside that one, or inside a backquote there, ends one as at the
+        top level. Bash reads a body its delimiter never ends to the end of the
+        input, with a warning; here that is unreadable unless the input is read
+        as `bash -c` reads it, so that a `<<` docket took for one leaves what
+        follows it declined rather than read as a body unannounced. Where no
+        part of the delimiter was quoted, `joined`, bash expands the body once
+        it has found where the body ends, and `expanded` reads the commands
+        that expansion runs.
         """
         begin = index
         while True:
@@ -1356,6 +1376,11 @@ class _Lexer:
                 self.removed.append((begin, after))
                 return after, None
             if compat and content.startswith(delimiter) and ")" in content[len(delimiter) :]:
+                if fails:
+                    raise _Unreadable(
+                        f"has a here-document that a `{delimiter}` line holding a `)` ends "
+                        "where bash cannot then close its substitution"
+                    )
                 rest = self.physical(index, len(line) - len(content) + len(delimiter), joined, stop)
                 if joined:
                     self.expanded(begin, index)
@@ -1378,7 +1403,13 @@ class _Lexer:
         body only once its delimiter has ended it, so one the delimiter line
         cuts, or one never closed, fails that expansion with an error and the
         script runs on: it is read as the text it is, and nothing reading it
-        began is kept.
+        began is kept. Bash expands nothing in the body past it either, so a
+        substitution after one that failed runs nothing and is not read. One
+        fails too where a here-document it opens meets a line that opens with
+        the delimiter and holds a `)`: `$(echo inner <<F` over `F)` closes at
+        the top level, and here bash ends the body at that line and finds no
+        `)` to close the substitution, even where a delimiter line follows
+        (`PL-GJKN`).
         """
         command = self.command
         at = start
@@ -1394,15 +1425,14 @@ class _Lexer:
             removed, frames, nested = len(self.removed), len(self.frames), self.nested
             introducer, jumps, expansions = self.introducer, dict(self.jumps), len(self.expansions)
             # Its own reading: a here-document it leaves unended is not carried out.
-            self.frames.append(_Frame(compat=False))
+            self.frames.append(_Frame(compat=False, expansion=True))
             try:
                 after = self.substitution(at, end)
             except _Unreadable:
                 del self.bodies[bodies:], self.substituted[substituted:], self.joins[joins:]
                 del self.removed[removed:], self.frames[frames:], self.expansions[expansions:]
                 self.nested, self.introducer, self.jumps = nested, introducer, jumps
-                at += 1
-                continue
+                return
             self.frames.pop()
             if not nested and len(self.bodies) > bodies:  # a `${x}` or `$((1))` runs nothing
                 self.expansions.append((at, after))
