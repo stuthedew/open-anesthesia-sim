@@ -76,6 +76,17 @@ def test_a_guard_s_import_loads_only_the_reader_and_docket_s_lexer(tmp_path: Pat
     assert loaded.split() == LOADED
 
 
+def test_the_git_reader_a_guard_imports_loads_nothing_more(tmp_path: Path) -> None:
+    """`PL-ZXCN`: `docket.gitargv`, where two guards find a git call's command, is a leaf."""
+    loaded = _bare(
+        "import shell_split\nbefore = set(sys.modules)\nimport docket.gitargv\n"
+        "print(' '.join(sorted(set(sys.modules) - before)))",
+        tmp_path,
+    )
+
+    assert loaded.split() == ["docket.gitargv"]
+
+
 @pytest.mark.parametrize("operator", sorted(shell.OPERATORS))
 def test_the_hooks_read_the_one_operators_table(operator: str) -> None:
     """`PL-P72R`: docket's `OPERATORS` is the only spelling, and the hooks read each one whole.

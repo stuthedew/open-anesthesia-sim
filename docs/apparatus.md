@@ -611,7 +611,11 @@ behavior is, in their own headers. `shell_split.py`
 is the one file there that nothing wires: the four Bash guards import it for where one shell command
 ends (`PL-PVW2`). The reading itself is docket's `subprojects/docket/src/docket/shell.py`,
 which `shell_split.py` finds from its own place, the one lexer docket and the
-guards share (`PL-JNYL`). So the code that decides what the guards refuse lies
+guards share (`PL-JNYL`). Which word of a git call is its command is docket's
+too: `no-prune-guard.sh` and `push-check-guard.sh` read
+`subprojects/docket/src/docket/gitargv.py`, the table `docket.vcs` reads, and
+the push guard reads the default base and git's answers through `docket.vcs`
+once it has found a push (`PL-ZXCN`). So the code that decides what the guards refuse lies
 outside the protected directory, and an edit to it is approved as any other
 edit is. A pull request changing it arms on green, as one changing
 `.claude/hooks/` does, since the owner's rule of 2026-10-12 that workflow
