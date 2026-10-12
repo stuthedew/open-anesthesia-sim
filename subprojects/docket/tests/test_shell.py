@@ -29,8 +29,10 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from docket.shell import (
+    Assignment,
     FlatReading,
     Operator,
+    Reserved,
     Word,
     flat_reading,
     joined_text,
@@ -474,6 +476,34 @@ def test_the_hooks_read_input_that_ends_early_as_bash_c_reads_it() -> None:
     assert flat_reading("cat <<EOF\nbody").tokens == ("cat", "<<", "EOF", ";")
     assert flat_reading("echo a\\").tokens == ("echo", "a\\")
     assert shell_words("echo a\\").clauses == ()
+
+
+def test_the_hooks_are_told_which_words_open_a_command_and_which_assign() -> None:
+    """A quoted `if` is a command's name and `X+=1` an assignment, as bash 5.2.21 reads them.
+
+    The hooks kept tables of their own beside this module's and read the flat
+    tokens with the quoting gone, so `"if" make check` read as `make` and
+    `X+=1 make check` as a command named `X+=1` (`PL-Y3TZ`).
+    """
+
+    def kinds(command: str) -> list[tuple[str, str]]:
+        return [(type(token).__name__, token) for token in flat_reading(command).tokens]
+
+    assert kinds('"if" make') == [("str", "if"), ("str", "make")]
+    assert kinds("if make") == [("Reserved", "if"), ("str", "make")]
+    assert kinds("X+=1 make") == [("Assignment", "X+=1"), ("str", "make")]
+    assert kinds('"X"=1 make') == [("str", "X=1"), ("str", "make")]
+    assert kinds("\u00e9=1 make".encode().decode("unicode_escape")) == [
+        ("str", "\u00e9=1".encode().decode("unicode_escape")),
+        ("str", "make"),
+    ]
+    assert kinds("time -p -- make")[:3] == [("Reserved", t) for t in ("time", "-p", "--")]
+    assert kinds("echo if")[1] == ("str", "if")
+    # Only a word's first piece assigns: `c` is no assignment of its own.
+    assert [type(t) for t in flat_reading("X=a$(b)c make").tokens][0] is Assignment
+    assert type(flat_reading("X=a$(b)c make").tokens[4]) is str
+    # A `)` heads a command, so `then` after a subshell is reserved.
+    assert isinstance(flat_reading("if (true) then make; fi").tokens[4], Reserved)
 
 
 def test_a_newline_in_a_substitution_ends_a_command() -> None:
