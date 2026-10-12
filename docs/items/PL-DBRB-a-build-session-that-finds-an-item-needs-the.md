@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs
+milestone: v0.5.24
 touches: .claude/skills/docket/modes/design.md, .claude/skills/docket/modes/start.md
 added: 2026-10-12
 closed: 2026-10-12

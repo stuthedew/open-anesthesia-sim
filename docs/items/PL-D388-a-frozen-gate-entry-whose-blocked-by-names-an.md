@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: gate-prerequisites
+milestone: v0.5.24
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_checks.py, ROADMAP.md, .claude/skills/docket/modes/release.md
 blocked-by: PL-8QMD
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) and not safety or science; its problem was present at the freeze, so the presence test answers yes, and it is deferred on a stated reason: its one instance on this list, PL-VV6N, is disposed by the owner's answer recorded here whether or not the check is built first, and the check itself guards the triage passes and freezes still to come rather than any v0.6.0 entry

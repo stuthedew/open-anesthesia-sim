@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: anticipated, defect
 feature: anesthesia-machine
+milestone: v0.5.24
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, docs/MODEL.md, tests/unit
 added: 2026-09-20
 closed: 2026-10-12

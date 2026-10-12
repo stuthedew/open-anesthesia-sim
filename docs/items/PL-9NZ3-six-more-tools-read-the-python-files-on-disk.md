@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.24
 touches: tools/import_boundary_check.py, tools/core_vocabulary_check.py, tools/literal_home_check.py, tools/contrast_check.py, tools/agent_identity_check.py, tools/workflow_paths_check.py, tools/doc_check.py, tools/rules_paths_check.py, tools/fact_home_check.py, docs/apparatus.md, docs/WORKING_NOTES.md, tests/unit/test_import_boundary_check.py, tests/unit/test_rules_paths_check.py, tests/unit/test_workflow_paths_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
