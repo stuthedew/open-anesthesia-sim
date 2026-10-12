@@ -3708,6 +3708,98 @@ def test_the_left_behind_clear_line_names_the_exact_check(
     ) in out
 
 
+def _repo_with_items(root: Path) -> Callable[..., None]:
+    """A repository at `root` holding one item, and a `git` that runs in it."""
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    return git
+
+
+def test_stranded_names_a_ref_whose_fork_point_a_shallow_clone_lacks(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-WDQN`: the left-behind half counts a ref it could not read as read, and names it.
+
+    A depth-1 clone holds a branch's tip without the commit it forked from, so
+    no merge base resolves and `vcs.orphaned` puts the ref in `unreadable`. Its
+    all-clear still counted it, "across the 1 unmerged branch ref read", over
+    the one ref it never read. Real git, because the missing fork point is a
+    property of the clone.
+    """
+    origin = tmp_path / "origin"
+    git = _repo_with_items(origin)
+    git("checkout", "-qb", "claude/old-work")
+    (origin / "work.py").write_text("work on the branch\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: work on the branch")
+    git("checkout", "-q", "main")
+    for number in range(4):
+        (origin / f"f{number}").write_text(f"main {number}\n")
+        git("add", "-A")
+        git("commit", "-qm", f"main {number}")
+    work = tmp_path / "work"
+    subprocess.run(
+        ["git", "clone", "-q", "--depth=1", "--no-single-branch", origin.as_uri(), str(work)],
+        check=True,
+        capture_output=True,
+    )
+
+    assert main(["--items", str(work / "items"), "stranded", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "across the 1 unmerged branch ref read" not in out
+    assert "judged by file content across the 0 unmerged branch refs read." in out
+    assert (
+        "1 unmerged branch ref could not be compared with the default branch on the history "
+        "this checkout holds, so it is not among the refs read and what its commits carry is "
+        "unknown:\n"
+        "  origin/claude/old-work\n"
+        "This clone is shallow: `git fetch --unshallow origin` brings the history in, and "
+        "`bin/docket stranded` then reads it.\n"
+    ) in out + "\n"
+
+
+def test_stranded_hands_no_fetch_to_a_ref_a_full_clone_cannot_compare(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A full clone's ref with no fork point shares no history with the base; no fetch helps.
+
+    An orphan branch stands in for a rewritten one: either way git finds no
+    merge base in a checkout that holds every commit, and the deepening advice
+    `branch_state` once gave a rewritten clone did nothing there (`PL-WDQN`).
+    """
+    root = tmp_path / "repo"
+    git = _repo_with_items(root)
+    git("checkout", "-q", "--orphan", "claude/unrelated")
+    (root / "other.py").write_text("an unrelated root\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: an unrelated root")
+    git("checkout", "-q", "main")
+
+    assert main(["--items", str(root / "items"), "stranded", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "  claude/unrelated\n" in out
+    assert (
+        "This clone is not shallow, so it shares no history git can find with the default "
+        "branch, as a rewritten or unrelated history does, and no fetch lets it be read."
+    ) in out
+    assert "--unshallow" not in out
+
+
 def _queue_repo(tmp_path: Path) -> tuple[Path, Callable[..., None]]:
     """An empty repository whose store sits where `--items` puts the root.
 

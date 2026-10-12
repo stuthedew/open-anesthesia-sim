@@ -5396,12 +5396,20 @@ class OrphanedReport:
     `refs_read` and `unreadable` carry the same meaning they do for
     `StrandedReport` and `FlightReport`: what was compared, and which refs the
     checkout could not compare, so a clean answer from a container holding two
-    refs is not mistaken for one from a checkout holding twenty.
+    refs is not mistaken for one from a checkout holding twenty. The two are
+    disjoint: a ref with no fork point to compare against is not one of the
+    refs read (`PL-WDQN`).
     """
 
     branches: tuple[OrphanedBranch, ...] = ()
     refs_read: int = 0
     unreadable: tuple[str, ...] = ()
+    #: Whether this checkout is shallow, asked only where a ref went unread,
+    #: because it decides what would let that ref be read: a fetch brings a
+    #: truncated clone's fork point in, and nothing brings one into a history
+    #: that shares none with the base. `None` where git would not say, or
+    #: where nothing went unread and the question was never put (`PL-WDQN`).
+    shallow: bool | None = None
     #: Refs that match this report's rule but whose divergence from the base is
     #: duplicated history, so the content evidence cannot tell them from a
     #: merge. Kept apart from `branches` because the recipe a merged branch
@@ -5781,12 +5789,20 @@ def orphaned(
             branches.append(
                 OrphanedBranch(ref=name, landed=landed, outstanding=carried, commits=left)
             )
+    unread = tuple(sorted(refs.unreadable))
     return OrphanedReport(
         declined=run.reason,
         branches=tuple(branches),
-        refs_read=len(refs.candidates),
-        unreadable=tuple(sorted(refs.unreadable)),
+        # The refs this read compared, which a ref with no readable fork point
+        # is not. Counted with them, a shallow clone holding only such a ref
+        # printed the all-clear "across the 1 unmerged branch ref read" over
+        # the one ref it never read (`PL-WDQN`).
+        refs_read=len(refs.candidates) - len(unread),
+        unreadable=unread,
         rewritten=tuple(sorted(rewritten)),
+        # Asked of the caller's runner rather than `run`, so a git too old to
+        # answer leaves the remedy open instead of marking the reading partial.
+        shallow=is_shallow(root, runner=runner) if unread else None,
     )
 
 

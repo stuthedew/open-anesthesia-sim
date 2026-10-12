@@ -360,6 +360,12 @@ landed. That check reads each branch on the remote against the head its merged
 pull request froze, needs GitHub where this reading needs only the checkout, and
 wins where the two disagree.
 
+A ref whose fork point this checkout cannot read has no content split to judge,
+so it is not counted among the refs read: it is named under the answer, with
+`git fetch --unshallow origin` where the clone is shallow and a note that no
+fetch helps where it is not, since a full clone's ref with no fork point shares
+no history with the base at all (`PL-WDQN`).
+
 ### The other loss: a merge that deletes an item nothing deleted
 
 `stranded` answers for a branch that never merged. The opposite case is a
