@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: scenario-branching
+milestone: v0.5.24
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py, tests/unit/test_run_definition.py, docs/ARCHITECTURE.md
 added: 2026-09-21
 closed: 2026-10-12

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: scenario-branching
+milestone: v0.5.24
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
 deferred-from: v0.6.0 - it closes with PL-Y2SL, a feature outside the gate whose door replaces resumed_at_halt, so it takes no gate work of its own
 added: 2026-10-12

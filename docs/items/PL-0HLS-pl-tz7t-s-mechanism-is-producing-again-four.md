@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: recurrence-signal
+milestone: v0.5.24
 touches: subprojects/docket/src/docket/duplicates.py, subprojects/docket/tests/test_duplicates.py, .claude/skills/docket/modes/capture.md, subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; recorded as a generator head by PL-4097, 2026-10-12
 added: 2026-10-12
