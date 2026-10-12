@@ -3,12 +3,14 @@ id: PL-9TZH
 title: doc_check's _without_code blanks MATH_SPAN_RE's matches a physical line at a time before code spans are read per statement, so a dollar-backtick that a code span opened on the line above has claimed is taken for a well-formed math span and the literal debris CommonMark leaves on the page is never reported; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1472
 payoff: a math span whose opening a wrapped code span has claimed is reported as the literal dollar and backtick GitHub shows, rather than passed as well-formed TeX
 verify: grep -q 'def test_a_math_span_a_wrapped_code_span_claims_reports_its_debris' tests/unit/test_doc_check.py
 recurrences: 2026-10-12 PL-T3GW

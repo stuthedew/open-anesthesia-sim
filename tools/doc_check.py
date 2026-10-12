@@ -113,7 +113,7 @@ import tokenize
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
-from functools import lru_cache, partial
+from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path, PurePath, PurePosixPath
 
@@ -228,7 +228,6 @@ try:
         notes_bullets,
         notes_claims,
         notes_path,
-        replace_code_spans,
         version_in,
         version_key,
     )
@@ -1170,15 +1169,13 @@ FENCED_MAKE_RE = re.compile(r"^\s*make\s+(?P<name>[a-z][\w.-]*)")
 # text in `docs/MODEL.md` is the failure an advisory would leave unread.
 TEX_DELIMITER_RE = re.compile(r"\\[()\[\]]")
 
-# A well-formed inline expression, `$`...`$`, allowing the longer backtick runs
-# CommonMark permits.
-MATH_SPAN_RE = re.compile(r"\$(`+)(?:(?!\1).)*\1\$")
-
-# The two halves of one that is not well-formed. Inline math is parsed within a
-# line, so an expression split by a line break renders as literal text on both
-# sides. Four in this repository were split that way, one of them already on
-# the correct delimiters and broken only by a paragraph reflow - which is why
-# the rule is worth keeping after the conversion rather than only during it.
+# The two halves of an inline expression, `$`...`$`, that is not well-formed:
+# what `_without_code` leaves, having blanked every one that is. Inline math is
+# parsed within a line, so an expression split by a line break renders as
+# literal text on both sides. Four in this repository were split that way, one
+# of them already on the correct delimiters and broken only by a paragraph
+# reflow - which is why the rule is worth keeping after the conversion rather
+# than only during it.
 MATH_EDGE_RE = re.compile(r"\$`|`\$")
 
 
@@ -6763,7 +6760,10 @@ def _without_code(text: str) -> list[str]:
 
     Blanking rather than deleting keeps the line numbering true. Well-formed
     math spans are blanked too: they are correct by construction, and what the
-    rules look for is the debris a malformed one leaves behind.
+    rules look for is the debris a malformed one leaves behind. One is a code
+    span on one line with a `$` against each of its runs, as GitHub reads
+    `$`...`$`, so it is found among the code spans rather than ahead of them
+    (`_blanked_code`).
 
     **An indented code block is code too**, by CommonMark's own definition: a
     run of lines indented four columns past their container, which cannot
@@ -6797,7 +6797,7 @@ def _without_code(text: str) -> list[str]:
     source = split_lines(text)
     code = _fenced_lines(text) | block_lines(_body_lines(source), (CODE,))
     lines = [
-        "" if index in code or not raw.strip() else MATH_SPAN_RE.sub(_spaces, raw.expandtabs(4))
+        "" if index in code or not raw.strip() else raw.expandtabs(4)
         for index, raw in enumerate(source)
     ]
     # A code span is blanked before either rule runs: `\(` inside one is a
@@ -6805,10 +6805,33 @@ def _without_code(text: str) -> list[str]:
     # snippet like `"$upstream..HEAD"` is not an unclosed expression. Each is
     # read within its statement, as `_statement_spans` reads one (`PL-FP7J`).
     for first, end in _statements(source):
-        prose = "\n".join(lines[first:end])
-        blanked = replace_code_spans(partial(_blanked_span, prose), prose)
-        lines[first:end] = blanked.split("\n")
+        lines[first:end] = _blanked_code("\n".join(lines[first:end])).split("\n")
     return lines
+
+
+def _blanked_code(prose: str) -> str:
+    """One statement's text with its code spans blank, and each inline expression's dollars.
+
+    An inline expression is a code span on one line with a `$` against each of
+    its runs. Read ahead of the code spans, a line at a time, a pattern for
+    `$`...`$` took a backtick a span opened on the line above had already
+    claimed for a well-formed expression, so the backtick and dollar the page
+    shows as literal text went unreported (`PL-9TZH`); and it paired the dollar
+    ending one span with the one opening the next, blanking the prose between
+    them as math (`PL-8NPN`). A dollar the expression before has taken opens
+    none.
+    """
+    kept: list[str] = []
+    done = 0
+    for span in code_spans(prose):
+        start, end = span.span()
+        blank = _blanked_span(prose, span)
+        expression = start > done and prose[start - 1] == "$" and prose[end : end + 1] == "$"
+        if expression and "\n" not in blank:
+            start, end, blank = start - 1, end + 1, f" {blank} "
+        kept += [prose[done:start], blank]
+        done = end
+    return "".join(kept) + prose[done:]
 
 
 def _blanked_span(prose: str, span: re.Match[str]) -> str:
@@ -6826,11 +6849,6 @@ def _blanked_span(prose: str, span: re.Match[str]) -> str:
     if prose[span.end() : span.end() + 1] == "$":
         blank = blank[:-run] + span["run"]
     return blank
-
-
-def _spaces(match: re.Match[str]) -> str:
-    """A match's text as as many spaces."""
-    return " " * len(match.group(0))
 
 
 #: A script, in one mode, that one gate runs and the other deliberately does
@@ -7235,7 +7253,8 @@ def check_math_delimiters(root: Path, report: Report) -> None:
             for match in MATH_EDGE_RE.finditer(line):
                 report.errors.append(
                     f"{relative}:{number} leaves `{match.group(0)}` unpaired, so an inline "
-                    "expression is split across a line break and renders as literal text"
+                    "expression renders as literal text: one split across a line break, left "
+                    "open, or with a backtick a code span opened before it has claimed"
                 )
 
 

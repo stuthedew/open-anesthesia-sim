@@ -4981,6 +4981,40 @@ def test_math_broken_syntax_quoted_in_a_code_span_is_quiet(tmp_path: Path) -> No
     assert _math_errors(tmp_path / "repo", "docs/NOTE.md", body) == []
 
 
+def test_a_math_span_a_wrapped_code_span_claims_reports_its_debris(tmp_path: Path) -> None:
+    """A code span opened a line above closes on the math span's opening backtick.
+
+    CommonMark reads the code span across the line ending (0.31.2 § 6.1), so
+    the page shows `cmd --opt $` as code and the rest of the line as literal
+    text, a backtick and a dollar included. Math spans were blanked a line at a
+    time, before the code spans were read, so that debris went unreported
+    (`PL-9TZH`).
+    """
+    body = "The `cmd\n--opt $`x`$ here.\n"
+
+    errors = _math_errors(tmp_path / "repo", "docs/NOTE.md", body)
+
+    assert len(errors) == 1
+    assert errors[0].startswith("docs/NOTE.md:2 leaves ``$` unpaired")
+    assert "a backtick a code span opened before it has claimed" in errors[0]
+
+
+def test_dollars_in_two_code_spans_pair_as_no_math_span(tmp_path: Path) -> None:
+    """The dollar ending one span and the one opening the next bracket prose, not math.
+
+    A pattern for `$`...`$` read ahead of the code spans paired them and
+    blanked the prose between, so a TeX delimiter there went unchecked
+    (`PL-8NPN`). An inline expression is a code span with a `$` against each
+    of its runs, and neither span here is one.
+    """
+    body = "Run `echo $` and then \\(t\\) `$ cost`.\n"
+
+    errors = _math_errors(tmp_path / "repo", "docs/NOTE.md", body)
+
+    assert len(errors) == 2
+    assert all("writes math as" in error for error in errors)
+
+
 def test_without_code_reads_a_span_wrapped_across_lines() -> None:
     """A wrapped span is blanked whole, and the prose after its close stays prose.
 
