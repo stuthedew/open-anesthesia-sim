@@ -137,6 +137,7 @@ try:
     # A second copy of either grammar would drift from the one
     # `bin/docket check` enforces, and the drift would be in the documents that
     # say which milestone is current and what it still owes.
+    from docket.claims import RECORDS
     from docket.config import Config
     from docket.config import load as load_docket_config
 
@@ -404,13 +405,22 @@ APPARATUS = Path("docs/apparatus.md")
 PACKAGE_MAPS = (ARCHITECTURE, APPARATUS)
 MODEL = Path("docs/MODEL.md")
 
+
 # Where the release train lives. `ROADMAP.md` calls itself the authoritative
 # version and milestone map, and it is the only statement of which milestone
 # is current and which is next. That makes its rows something a tool has to be
 # able to read, not only a person: `docket wave` reports the project's position
 # on this table, and a parser guessing at free prose would be guessing at the
 # plan.
-ROADMAP = Path("ROADMAP.md")
+#
+# Where it is, is `docket.toml`'s `roadmap_file`, read through docket for the
+# root being checked, so a project moving its plan moves this check with it
+# (`PL-WCHF`).
+def roadmap_path(root: Path) -> Path:
+    """The plan's path relative to `root`, as `docket.config` reads it."""
+    return Path(load_docket_config(root).roadmap_file)
+
+
 REFERENCES = Path("docs/references/README.md")
 
 PACKAGE_ROOT = PurePosixPath("src/anesthesia_sim")
@@ -2069,21 +2079,22 @@ def check_prose_provenance(root: Path, report: Report) -> None:
 
 def check_timeline(root: Path, report: Report) -> None:
     """Hold `ROADMAP.md`'s release train to a shape a tool can read."""
-    roadmap = root / ROADMAP
+    roadmap_name = roadmap_path(root)
+    roadmap = root / roadmap_name
     if not roadmap.is_file():
         return
     text = roadmap.read_text(encoding="utf-8")
 
     steps, problems = parse_timeline(text)
-    report.errors.extend(f"{ROADMAP}: {problem}" for problem in problems)
+    report.errors.extend(f"{roadmap_name}: {problem}" for problem in problems)
     if not steps and not problems:
         # The table is the mechanism, not decoration: losing it to a rename or
         # a reformat would leave every reader of the plan with nothing, and
         # would do it silently.
-        report.errors.append(f'{ROADMAP}: no timeline table found under "{TIMELINE_HEADING}"')
+        report.errors.append(f'{roadmap_name}: no timeline table found under "{TIMELINE_HEADING}"')
         return
     if steps and not any(step.kind == "milestone" for step in steps):
-        report.errors.append(f"{ROADMAP}: the timeline names no milestone version")
+        report.errors.append(f"{roadmap_name}: the timeline names no milestone version")
 
 
 def check_milestone_lists(root: Path, report: Report) -> None:
@@ -2097,13 +2108,14 @@ def check_milestone_lists(root: Path, report: Report) -> None:
     was not; this is where the line fails, so a plan read short never reaches
     `main`.
     """
-    roadmap = root / ROADMAP
+    roadmap_name = roadmap_path(root)
+    roadmap = root / roadmap_name
     if not roadmap.is_file():
         return
     for section in parse_milestones(roadmap.read_text(encoding="utf-8")):
         rendered = "v{}.{}.{}".format(*section.version)
         report.errors.extend(
-            f"{ROADMAP}:{entry.line}: a list entry of the {rendered} section was not read "
+            f"{roadmap_name}:{entry.line}: a list entry of the {rendered} section was not read "
             f"whole, so the gate and scope docket reads there may be short: {entry.why}"
             for entry in section.unread
         )
@@ -2127,22 +2139,26 @@ def check_baseline(root: Path, report: Report) -> None:
     answer; this one compares three statements already in the tree and can run
     anywhere.
     """
-    roadmap = root / ROADMAP
-    version_file = root / "pyproject.toml"
+    roadmap_name = roadmap_path(root)
+    roadmap = root / roadmap_name
+    version_name = load_docket_config(root).version_file
+    version_file = root / version_name
     if not roadmap.is_file() or not version_file.is_file():
         return
     text = roadmap.read_text(encoding="utf-8")
 
     rows = parse_version_table(text)
     if not rows:
-        report.errors.append(f'{ROADMAP}: no version table found under "{VERSION_TABLE_HEADING}"')
+        report.errors.append(
+            f'{roadmap_name}: no version table found under "{VERSION_TABLE_HEADING}"'
+        )
         return
 
     seen: dict[str, int] = {}
     for row in rows:
         if row.version in seen:
             report.errors.append(
-                f"{ROADMAP}:{row.line}: v{row.version} already has a row at line "
+                f"{roadmap_name}:{row.line}: v{row.version} already has a row at line "
                 f"{seen[row.version]}; one row per released version"
             )
         seen.setdefault(row.version, row.line)
@@ -2151,7 +2167,7 @@ def check_baseline(root: Path, report: Report) -> None:
     if len(marked) != 1:
         where = ", ".join(f"line {row.line}" for row in marked) or "no row"
         report.errors.append(
-            f'{ROADMAP}: {len(marked)} rows are marked "{BASELINE_MARK}" ({where}); '
+            f'{roadmap_name}: {len(marked)} rows are marked "{BASELINE_MARK}" ({where}); '
             "exactly one release is current"
         )
         return
@@ -2161,16 +2177,16 @@ def check_baseline(root: Path, report: Report) -> None:
     )
     if declared and marked[0].version != declared:
         report.errors.append(
-            f"{ROADMAP}:{marked[0].line}: the current baseline row is v{marked[0].version}, "
-            f"but pyproject.toml holds {declared}"
+            f"{roadmap_name}:{marked[0].line}: the current baseline row is v{marked[0].version}, "
+            f"but {version_name} holds {declared}"
         )
 
     heading = baseline_heading(text)
     if heading is None:
-        report.errors.append(f'{ROADMAP}: no "Current baseline: vX.Y.Z" heading')
+        report.errors.append(f'{roadmap_name}: no "Current baseline: vX.Y.Z" heading')
     elif heading[1] != marked[0].version:
         report.errors.append(
-            f"{ROADMAP}:{heading[0]}: the baseline heading names v{heading[1]}, but the "
+            f"{roadmap_name}:{heading[0]}: the baseline heading names v{heading[1]}, but the "
             f"table marks v{marked[0].version} current"
         )
 
@@ -2442,10 +2458,11 @@ def _store_or_decline(root: Path, report: Report, rule: str) -> _Store | None:
     gate rules below each wrote their own, and whatever reads the store next
     would have written a third.
     """
+    roadmap_name = roadmap_path(root)
     store = _read_store(root)
     if store is None:
         report.declined.append(
-            f"{ROADMAP}: {rule}, because the item store would not read; "
+            f"{roadmap_name}: {rule}, because the item store would not read; "
             "`bin/docket check` is what reports why"
         )
     return store
@@ -2522,7 +2539,8 @@ def check_gate_counts(root: Path, report: Report) -> None:
     the reader's exemption above does not reach it: it counts the subsection
     below it and is wrong the next time one is added.
     """
-    roadmap = root / ROADMAP
+    roadmap_name = roadmap_path(root)
+    roadmap = root / roadmap_name
     if not roadmap.is_file():
         return
     text = roadmap.read_text(encoding="utf-8")
@@ -2542,26 +2560,26 @@ def check_gate_counts(root: Path, report: Report) -> None:
             ids = sum(len(entry.ids) for entry in group.entries)
             if group.stated != entries:
                 report.errors.append(
-                    f"{ROADMAP}:{group.line}: this group heading of {rendered}'s frozen list "
+                    f"{roadmap_name}:{group.line}: this group heading of {rendered}'s frozen list "
                     f"says {group.stated} entries, but {entries} follow it"
                 )
             if group.stated_ids is not None and group.stated_ids != ids:
                 report.errors.append(
-                    f"{ROADMAP}:{group.line}: this group heading of {rendered}'s frozen list "
+                    f"{roadmap_name}:{group.line}: this group heading of {rendered}'s frozen list "
                     f"says {group.stated_ids} item ids, but the entries under it hold {ids}"
                 )
 
         summed = sum(group.stated for group in groups)
         if groups and summed != total:
             report.errors.append(
-                f"{ROADMAP}:{section.gate_line}: the group headings of {rendered}'s frozen "
+                f"{roadmap_name}:{section.gate_line}: the group headings of {rendered}'s frozen "
                 f"list count {summed} entries between them, but the list holds {total}"
             )
 
         for line, stated in _uncheckable_heading_counts(lines, section):
             counted = "entry" if stated == 1 else "entries"
             report.errors.append(
-                f"{ROADMAP}:{line}: this heading in {rendered}'s section states {stated} "
+                f"{roadmap_name}:{line}: this heading in {rendered}'s section states {stated} "
                 f"{counted}, and nothing checks it - a frozen list's counts are read from its "
                 "emphasized group headings, which stop at the first `###`, and from the "
                 "table rows naming the release. Drop the number: the entries below are the "
@@ -2571,7 +2589,7 @@ def check_gate_counts(root: Path, report: Report) -> None:
         for line, where, stated in _table_counts(text, section):
             if stated != total:
                 report.errors.append(
-                    f"{ROADMAP}:{line}: the {where} row for {rendered} says {stated} "
+                    f"{roadmap_name}:{line}: the {where} row for {rendered} says {stated} "
                     f"entries, but its frozen list holds {total}"
                 )
 
@@ -2579,14 +2597,14 @@ def check_gate_counts(root: Path, report: Report) -> None:
         for line, stated in _withheld_counts(lines, section):
             if withheld is None:
                 report.declined.append(
-                    f"{ROADMAP}:{line}: this `not-delegable` count of {rendered}'s frozen "
+                    f"{roadmap_name}:{line}: this `not-delegable` count of {rendered}'s frozen "
                     "list was not compared, because the item store did not answer for every "
                     "id on the list; `bin/docket check` is what reports why"
                 )
                 continue
             if stated != len(withheld):
                 report.errors.append(
-                    f"{ROADMAP}:{line}: this sentence says {stated} of {rendered}'s frozen "
+                    f"{roadmap_name}:{line}: this sentence says {stated} of {rendered}'s frozen "
                     f"entries are marked `not-delegable`, but {len(withheld)} of them hold "
                     "an item carrying that field"
                 )
@@ -2631,7 +2649,8 @@ def check_self_cleared_group(root: Path, report: Report) -> None:
     written afterwards would be the renegotiation "The gate is a snapshot"
     forbids, one level down.
     """
-    roadmap = root / ROADMAP
+    roadmap_name = roadmap_path(root)
+    roadmap = root / roadmap_name
     if not roadmap.is_file():
         return
     text = roadmap.read_text(encoding="utf-8")
@@ -2658,7 +2677,7 @@ def check_self_cleared_group(root: Path, report: Report) -> None:
         ids = " and ".join(entry.ids)
         if inside and not named:
             report.errors.append(
-                f"{ROADMAP}:{entry.line}: {ids} sits under {label}, but {rendered}'s "
+                f"{roadmap_name}:{entry.line}: {ids} sits under {label}, but {rendered}'s "
                 "Required scope does not declare it, so by the rule the group stands for "
                 "the milestone does not clear it - move the entry to the group that does, "
                 "or declare it in Required scope"
@@ -2670,7 +2689,7 @@ def check_self_cleared_group(root: Path, report: Report) -> None:
                 else "under no group heading"
             )
             report.errors.append(
-                f"{ROADMAP}:{entry.line}: {ids} is declared in {rendered}'s Required scope, "
+                f"{roadmap_name}:{entry.line}: {ids} is declared in {rendered}'s Required scope, "
                 f"so the milestone clears it itself, but its frozen entry sits {where} - "
                 f"move it under {label} and correct both groups' counts"
             )
@@ -3138,9 +3157,10 @@ def check_scope_exclusions(root: Path, report: Report) -> None:
     catches the original shape, where the exclusion is written *only* in the
     scope bullet and there is no contradiction to find.
     """
-    roadmap = root / ROADMAP
+    roadmap_name = roadmap_path(root)
+    roadmap = root / roadmap_name
     if not roadmap.is_file():
-        report.declined.append(f"{ROADMAP} is absent, so its scope headings were not compared")
+        report.declined.append(f"{roadmap_name} is absent, so its scope headings were not compared")
         return
     text = roadmap.read_text(encoding="utf-8")
     lines = split_lines(text)
@@ -3153,7 +3173,7 @@ def check_scope_exclusions(root: Path, report: Report) -> None:
             scope_heading = SCOPE_SUBSECTION.capitalize()
             excluded_heading = EXCLUDED_SUBSECTION.capitalize()
             report.errors.append(
-                f"{ROADMAP}{at}: {section.label} names {', '.join(both)} under both "
+                f"{roadmap_name}{at}: {section.label} names {', '.join(both)} under both "
                 f'"{scope_heading}" and "{excluded_heading}", so the section says the same '
                 "item is in scope and out of it; `docket next` reads the scope heading "
                 "and reports it as in scope"
@@ -3176,7 +3196,7 @@ def check_scope_exclusions(root: Path, report: Report) -> None:
             if marker is None:
                 continue
             report.advisories.append(
-                f'{ROADMAP}:{entry.line}: this "{SCOPE_SUBSECTION.capitalize()}" entry says '
+                f'{roadmap_name}:{entry.line}: this "{SCOPE_SUBSECTION.capitalize()}" entry says '
                 f'"{marker}" and declares {", ".join(entry.ids)}, which `docket next` '
                 f'reads as scope. Move the exclusion under "{EXCLUDED_SUBSECTION.capitalize()} for '
                 f'{section.label.split()[0]}" and leave the entry declaring only what is in scope'
@@ -3204,9 +3224,10 @@ def check_scope_declarations(root: Path, report: Report) -> None:
     it, which is the same property that lets a milestone be scoped in prose
     before its items are filed.
     """
-    roadmap = root / ROADMAP
+    roadmap_name = roadmap_path(root)
+    roadmap = root / roadmap_name
     if not roadmap.is_file():
-        report.declined.append(f"{ROADMAP} is absent, so its scope declarations were not read")
+        report.declined.append(f"{roadmap_name} is absent, so its scope declarations were not read")
         return
     text = roadmap.read_text(encoding="utf-8")
     store = _read_store(root)
@@ -3221,7 +3242,7 @@ def check_scope_declarations(root: Path, report: Report) -> None:
         for entry in section.scope_entries:
             if not entry.ids:
                 report.errors.append(
-                    f'{ROADMAP}:{entry.line}: this "{scope_heading}" entry of '
+                    f'{roadmap_name}:{entry.line}: this "{scope_heading}" entry of '
                     f"{section.label} declares no queue item where the section's other "
                     f'entries declare: "{_opening(entry.text)}". Membership is the '
                     "`(queue item PL-XXXX)` slot after the entry's title, so an entry "
@@ -3234,7 +3255,7 @@ def check_scope_declarations(root: Path, report: Report) -> None:
                 if identifier in items:
                     continue
                 report.errors.append(
-                    f'{ROADMAP}:{entry.line}: this "{scope_heading}" entry of '
+                    f'{roadmap_name}:{entry.line}: this "{scope_heading}" entry of '
                     f"{section.label} declares {identifier}, which the queue does not "
                     "hold. A declaration is what places an item in a milestone, so a "
                     "typo here places nothing and reports nothing"
@@ -3245,7 +3266,7 @@ def check_scope_declarations(root: Path, report: Report) -> None:
         # fixture - has no ids to look up, and a decline there would report a
         # gap that does not exist and suppress the run's own "all resolve".
         report.declined.append(
-            f"{ROADMAP}: whether its scope declarations name items that exist, because "
+            f"{roadmap_name}: whether its scope declarations name items that exist, because "
             "the item store could not be read; `bin/docket check` is what reports why"
         )
 
@@ -3422,7 +3443,8 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     gate, rather than the newest recorded one, so that an open item is never
     measured against a shipped milestone's closed list.
     """
-    roadmap = root / ROADMAP
+    roadmap_name = roadmap_path(root)
+    roadmap = root / roadmap_name
     if not roadmap.is_file():
         return
     text = roadmap.read_text(encoding="utf-8")
@@ -3457,7 +3479,7 @@ def check_gate_reentries(root: Path, report: Report) -> None:
         for item in owed
     )
     report.advisories.append(
-        f"{ROADMAP}:{gate.gate_line}: {rendered}'s frozen list does not place "
+        f"{roadmap_name}:{gate.gate_line}: {rendered}'s frozen list does not place "
         f"{_plural(len(owed), 'open item', 'open items')} classed "
         f"{' or '.join(config.safety_classes)}, which re-enter the current gate "
         f"regardless of presence: {listed}. Add each to the frozen list with the "
@@ -3507,7 +3529,7 @@ def _version_list(text: str, start: int, end: int) -> list[str]:
 
 
 def _version_claim(
-    claim: re.Pattern[str], said: str, body: str, first_line: int
+    claim: re.Pattern[str], said: str, body: str, first_line: int, roadmap_name: Path
 ) -> tuple[frozenset[str], list[str], int]:
     """The versions an exception sentence names, and whether it counts them right.
 
@@ -3526,12 +3548,12 @@ def _version_claim(
     stated = match.group("count")
     count = int(stated) if stated.isdigit() else NUMBER_WORDS.get(stated.casefold())
     if count is None:
-        return frozenset(named), [f'{ROADMAP}:{line}: cannot read "{stated}" as a count'], line
+        return frozenset(named), [f'{roadmap_name}:{line}: cannot read "{stated}" as a count'], line
     if count != len(named):
         return (
             frozenset(named),
             [
-                f"{ROADMAP}:{line}: the sentence says {stated} {said}, but names "
+                f"{roadmap_name}:{line}: the sentence says {stated} {said}, but names "
                 f"{len(named)}; the two halves cannot both be right"
             ],
             line,
@@ -3621,7 +3643,8 @@ def check_tags(root: Path, report: Report) -> None:
     network, so the message names the command that asks and the repair rather
     than guessing (`PL-LT77`).
     """
-    roadmap = root / ROADMAP
+    roadmap_name = roadmap_path(root)
+    roadmap = root / roadmap_name
     if not roadmap.is_file():
         return
     text = roadmap.read_text(encoding="utf-8")
@@ -3634,17 +3657,19 @@ def check_tags(root: Path, report: Report) -> None:
     region = _tags_region(text)
     if region is None:
         report.errors.append(
-            f'{ROADMAP}: no "**Tags.**" statement; it is where this file says every '
+            f'{roadmap_name}: no "**Tags.**" statement; it is where this file says every '
             "released version is traceable to a tag, and deleting it removes the claim "
             "rather than making it true"
         )
         return
     first_line, body = region
 
-    untagged, problems, claim_line = _version_claim(UNTAGGED_CLAIM_RE, "untagged", body, first_line)
+    untagged, problems, claim_line = _version_claim(
+        UNTAGGED_CLAIM_RE, "untagged", body, first_line, roadmap_name
+    )
     report.errors.extend(problems)
     stale, problems, stale_line = _version_claim(
-        STALE_VERSION_CLAIM_RE, "shipped with a stale version file", body, first_line
+        STALE_VERSION_CLAIM_RE, "shipped with a stale version file", body, first_line, roadmap_name
     )
     report.errors.extend(problems)
     for named, line, said in (
@@ -3654,7 +3679,7 @@ def check_tags(root: Path, report: Report) -> None:
         for version in sorted(named):
             if version not in completed:
                 report.errors.append(
-                    f"{ROADMAP}:{line}: v{version} is named as {said}, but no row of the "
+                    f"{roadmap_name}:{line}: v{version} is named as {said}, but no row of the "
                     "version table marks it completed"
                 )
 
@@ -3681,7 +3706,7 @@ def check_tags(root: Path, report: Report) -> None:
             # since you last fetched" (`PL-R7C0`).
             continue
         absent.append(
-            f"{ROADMAP}:{row.line}: v{version} is marked completed but git holds no tag "
+            f"{roadmap_name}:{row.line}: v{version} is marked completed but git holds no tag "
             "for it, so no commit in its span maps to the release it went out in"
         )
 
@@ -3709,7 +3734,7 @@ def check_tags(root: Path, report: Report) -> None:
     for version in sorted(untagged):
         if _is_tagged(version, existing):
             report.errors.append(
-                f"{ROADMAP}:{claim_line}: v{version} is named as untagged, but git holds a "
+                f"{roadmap_name}:{claim_line}: v{version} is named as untagged, but git holds a "
                 "tag for it"
             )
 
@@ -3723,13 +3748,13 @@ def check_tags(root: Path, report: Report) -> None:
     for name, version in unnamed.items():
         if name not in ahead:
             report.errors.append(
-                f"{ROADMAP}: git holds {name}, but no row of the version table marks v{version} "
-                "completed; a release that shipped is one this table has to name - unless "
-                f"`git ls-remote --tags origin` no longer lists {name}, when this clone is "
+                f"{roadmap_name}: git holds {name}, but no row of the version table marks "
+                f"v{version} completed; a release that shipped is one this table has to name - "
+                f"unless `git ls-remote --tags origin` no longer lists {name}, when this clone is "
                 f"keeping a tag deleted on the remote and `git tag -d {name}` is the repair"
             )
     if ahead:
-        report.declined.append(_behind_the_tags(ahead, base, truncated))
+        report.declined.append(_behind_the_tags(ahead, base, truncated, roadmap_name))
 
     _check_tag_versions(
         root,
@@ -3779,7 +3804,9 @@ def _holds(run: Callable[[list[str], Path], str], root: Path, ref: str, commit: 
     return fork.strip() == commit if answered(fork) else None
 
 
-def _behind_the_tags(ahead: Sequence[str], base: str, truncated: bool | None) -> str:
+def _behind_the_tags(
+    ahead: Sequence[str], base: str, truncated: bool | None, roadmap_name: Path
+) -> str:
     """The `declined` line for tags the working tree predates, naming what brings them in."""
     one = len(ahead) == 1
     names = ahead[0] if one else f"{', '.join(ahead[:-1])} and {ahead[-1]}"
@@ -3787,7 +3814,7 @@ def _behind_the_tags(ahead: Sequence[str], base: str, truncated: bool | None) ->
     line = (
         f"release tags: git holds {names}, which {base} has and this checkout's HEAD does "
         f"not, so the working tree predates {'that release' if one else 'those releases'} "
-        f"rather than leaving {them} out of {ROADMAP}; `git pull` brings {them} in on "
+        f"rather than leaving {them} out of {roadmap_name}; `git pull` brings {them} in on "
         f"{base.rsplit('/', 1)[-1]}, and `bin/docket branch` says how on any other branch"
     )
     if truncated is False:
@@ -3839,6 +3866,7 @@ def _check_tag_versions(
     the version's could not. The releases cut before notes were written have
     no cut to be held to and keep the version check alone.
     """
+    roadmap_name = roadmap_path(root)
     with GitRunner() as run:
         cuts = _release_cuts(root, existing, run)
         if cuts is None:
@@ -3849,7 +3877,7 @@ def _check_tag_versions(
         else:
             for name in sorted(cuts.off_cut, key=version_key):
                 version = name.lstrip("v")
-                where = f"{ROADMAP}:{rows[version]}" if version in rows else str(ROADMAP)
+                where = f"{roadmap_name}:{rows[version]}" if version in rows else str(roadmap_name)
                 report.errors.append(_off_cut_error(where, name, cuts, root, run))
         _check_tag_version_files(
             root,
@@ -3874,7 +3902,9 @@ def _check_tag_version_files(
     run: Runner,
 ) -> None:
     """Hold each release tag not already reported off its cut to its tree's version."""
-    version_file = root / "pyproject.toml"
+    roadmap_name = roadmap_path(root)
+    version_name = load_docket_config(root).version_file
+    version_file = root / version_name
     unread_tree = "no release tag was held to the version its tree declares"
     if not version_file.is_file() or not _project_version(version_file, report, unread_tree):
         return
@@ -3889,7 +3919,7 @@ def _check_tag_version_files(
     unread: list[str] = []
     if releases:
         for version, name in releases:
-            text = run(["show", f"refs/tags/{name}:pyproject.toml"], root)
+            text = run(["show", f"refs/tags/{name}:{version_name}"], root)
             try:
                 declared = version_in(text) if answered(text) else ""
             except ValueError:  # not TOML, which reads nothing rather than no version
@@ -3899,16 +3929,16 @@ def _check_tag_version_files(
             elif declared == version:
                 if version in stale:
                     report.errors.append(
-                        f"{ROADMAP}:{stale_line}: v{version} is named as shipping with a stale "
-                        f"version file, but the commit {name} points at declares {declared}; "
+                        f"{roadmap_name}:{stale_line}: v{version} is named as shipping with a "
+                        f"stale version file, but the commit {name} points at declares {declared}; "
                         "take it out of that sentence, which has nothing left to excuse"
                     )
             elif version not in stale:
                 commit = run(["rev-parse", "--short", f"refs/tags/{name}^{{commit}}"], root)
-                where = f"{ROADMAP}:{rows[version]}" if version in rows else ROADMAP
+                where = f"{roadmap_name}:{rows[version]}" if version in rows else roadmap_name
                 report.errors.append(
                     f"{where}: {name} points at "
-                    f"{commit.strip() or 'a commit git would not name'}, whose pyproject.toml "
+                    f"{commit.strip() or 'a commit git would not name'}, whose {version_name} "
                     f"declares {declared}. A release tag goes on the commit its release shipped "
                     "from, so move it there - unless `git ls-remote --tags origin` no longer "
                     "lists it, when this clone is keeping a tag deleted on the remote and "
@@ -3918,7 +3948,7 @@ def _check_tag_version_files(
                 )
     if unread:
         report.declined.append(
-            f"release tags: no version could be read from the pyproject.toml at "
+            f"release tags: no version could be read from the {version_name} at "
             f"{', '.join(unread)} - the file is absent, is not TOML or declares none at that "
             "commit, or git did not answer - so whether each sits on its own release's commit "
             "is unknown"
@@ -4201,6 +4231,7 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     identical from inside it. So does a span whose notes carry a bullet on from
     the margin, which may name what reads as missing (`PL-CL8R`).
     """
+    roadmap_name = roadmap_path(root)
     held = tags(root)
     if not held.known or not held.names:
         return
@@ -4295,7 +4326,7 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
             + ("it", "them")[len(numbers) > 1]
             + f' under a "{SPAN_HEADING}" heading - '
             + "; ".join(bullets)
-            + f" - rather than among what the cut stamped; {ROADMAP} "
+            + f" - rather than among what the cut stamped; {roadmap_name} "
             '§ "Tags" is why the two records differ'
         )
 
@@ -4330,7 +4361,7 @@ def _project_version(pyproject: Path, report: Report, unread: str) -> str:
     try:
         return version_in(pyproject.read_text(encoding="utf-8"))
     except ValueError as error:  # `TOMLDecodeError`, or bytes that are not UTF-8
-        report.declined.append(f"pyproject.toml: cannot be read as TOML ({error}), so {unread}")
+        report.declined.append(f"{pyproject.name}: cannot be read as TOML ({error}), so {unread}")
         return ""
 
 
@@ -5461,7 +5492,7 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
 
     def briefs_of(item: str) -> list[str]:
         if not briefs:
-            for brief in sorted((root / "docs" / "items").glob("*.md")):
+            for brief in sorted((root / load_docket_config(root).items_dir).glob("*.md")):
                 if found := ITEM_FILE_RE.match(brief.name):
                     held = briefs.setdefault(found.group(1), [])
                     held.append(brief.relative_to(root).as_posix())
@@ -7625,13 +7656,21 @@ HOST_BLOCK_RE = re.compile(r"\bblocks?\b", re.IGNORECASE)
 #: none of them, nor a host, is passed over unparsed: it cannot carry a claim in
 #: any comment or docstring however they are joined.
 HOST_REFUSAL_STEM_RE = re.compile(r"block|refus|den(?:y|i)|reach", re.IGNORECASE)
+
+
 #: Where a sentence records the day it was written rather than claiming the
 #: present: an item's brief, which `bin/docket show` prints under its `added:`
 #: date; a release's notes, under its version; and a recovered pull request's
 #: body, under its merge. Holding them to this rule would refuse records nobody
 #: rewrites, which is why a closed brief keeps its stale line citations
 #: (`PL-G424`).
-DATED_RECORDS = ("docs/items/", f"{NOTES_DIR}/", "docs/pr-bodies/")
+#: Each spelled by its owner: the store where `docket.toml` puts it,
+#: `release.NOTES_DIR` and `claims.RECORDS` (`PL-WCHF`).
+def dated_records(root: Path) -> tuple[str, ...]:
+    """The directories `root` keeps dated records in, as path prefixes."""
+    return (load_docket_config(root).items_dir.strip("/") + "/", f"{NOTES_DIR}/", RECORDS)
+
+
 #: The formats that write a comment as a line opening `#`, by suffix and by
 #: name: YAML, the citation file's YAML among it, TOML, shell and make.
 HASH_COMMENTED_SUFFIXES = frozenset({".yml", ".yaml", ".cff", ".toml", ".sh"})
@@ -7773,7 +7812,9 @@ def _json_strings(text: str) -> Iterator[tuple[int, str]]:
             yield row, match.group(0)[1:-1]
 
 
-def _host_claim_texts(path: Path, relative: Path, report: Report) -> Iterator[tuple[int, str]]:
+def _host_claim_texts(
+    path: Path, relative: Path, report: Report, dated: tuple[str, ...]
+) -> Iterator[tuple[int, str]]:
     """The prose `path` holds, each piece as the row it opens on and its text.
 
     A Markdown file is one piece, a document; a run of comment, a docstring
@@ -7783,7 +7824,7 @@ def _host_claim_texts(path: Path, relative: Path, report: Report) -> Iterator[tu
     passed as read.
     """
     posix = relative.as_posix()
-    if posix.startswith(DATED_RECORDS):
+    if posix.startswith(dated):
         return
     suffix = path.suffix
     hashed = suffix in HASH_COMMENTED_SUFFIXES or path.name in HASH_COMMENTED_NAMES
@@ -7839,7 +7880,7 @@ def check_host_claims(root: Path, report: Report) -> None:
     names a code block or a YAML block, is an advisory instead (`PL-79DP`).
 
     Read wherever the tree writes prose a later session takes for the present:
-    every Markdown file but the records `DATED_RECORDS` names, a Python file's
+    every Markdown file but the records `dated_records` names, a Python file's
     docstrings and comments, the `#` comments of the formats
     `HASH_COMMENTED_SUFFIXES` and `HASH_COMMENTED_NAMES` name, and a JSON file's
     strings, where a data file keeps its provenance notes. Whether a sentence is
@@ -7849,9 +7890,10 @@ def check_host_claims(root: Path, report: Report) -> None:
     """
     paths = list(_walk(root))
     files_named = frozenset(path.name for path in paths)
+    dated = dated_records(root)
     for path in paths:
         relative = path.relative_to(root)
-        for row, text in _host_claim_texts(path, relative, report):
+        for row, text in _host_claim_texts(path, relative, report, dated):
             for line, hosts, block in _undated_host_claims(text, files_named):
                 named = ", ".join(f"`{host}`" for host in hosts)
                 if block is not None:

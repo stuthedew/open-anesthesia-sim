@@ -222,7 +222,6 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
     "subprojects/docket/src/docket/store.py": {("definition", "ID_RE"): 1},
     "subprojects/docket/src/docket/trend.py": {
         ("definition", "APPARATUS"): 1,
-        ("definition", "ROADMAP"): 1,
         ("definition", "UNPLACED"): 1,
     },
     "subprojects/docket/src/docket/vcs.py": {
@@ -238,7 +237,7 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
     },
     "tools/agent_identity_check.py": {("definition", "APP"): 1},
     "tools/branch_id_check.py": {("git", "_git"): 1},
-    "tools/branch_sweep.py": {("definition", "ITEMS"): 1, ("git", "_git"): 1},
+    "tools/branch_sweep.py": {("git", "_git"): 1},
     "tools/contrast_check.py": {
         ("definition", "APP"): 1,
         ("definition", "EXEMPT"): 1,
@@ -258,7 +257,6 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("definition", "JSON_KEY_RE"): 1,
         ("definition", "LINE_CITATION_RE"): 1,
         ("definition", "REDIRECTIONS"): 1,
-        ("definition", "ROADMAP"): 1,
         ("definition", "SOFT_BREAK"): 1,
         ("git", "_covered_by_gitignore"): 1,
         ("git", "_git_output"): 1,
