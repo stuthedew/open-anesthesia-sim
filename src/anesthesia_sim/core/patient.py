@@ -92,10 +92,11 @@ class PatientCompartments:
         # one `mypy` lets assign any attribute name, typed by the method's
         # `value`, so with the guard in view a misspelt field written in `src/`
         # would pass `--strict` and fail at run time against the slots - on
-        # these three classes alone. Hidden, `mypy` reads the dataclass's
-        # fields and their types as before, and this is the runtime half for
-        # the callers it does not read; its three lines are checked by their
-        # tests rather than by `mypy` (`PL-LBQY`, found at review).
+        # the classes that define one alone. Hidden, `mypy` reads the
+        # dataclass's fields and their types as before, and this is the
+        # runtime half for the callers it does not read; its three lines are
+        # checked by their tests rather than by `mypy` (`PL-LBQY`, found at
+        # review).
 
         def __setattr__(self, name: str, value: object) -> None:
             """Write a field, refusing a cardiac output that was not built as a `CardiacOutput`.

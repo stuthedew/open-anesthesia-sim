@@ -1,4 +1,6 @@
+import copy
 import json
+from dataclasses import replace
 from importlib.resources import files
 
 import pytest
@@ -24,6 +26,107 @@ def test_rejects_agent_amount_above_alveolar_capacity() -> None:
         match="^agent_amount_l exceeds the alveolar capacity for a concentration fraction of 1$",
     ):
         AlveolarCompartment(agent_amount_l=2.6)
+
+
+def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
+    """An assignment straight onto the amount meets the constructor's refusal, and writes nothing.
+
+    `set_partial_pressure_fraction` takes a `Fraction`, so no setter could
+    store an amount past the alveolar capacity; until `PL-544D` the field
+    could, and the quotient read from it - a partial pressure above one
+    atmosphere - was refused only when `SimulationController.snapshot()`
+    built the `Fraction` two layers later. The compartment's `__setattr__`
+    now holds the amount to `gas_volume_l` at the write, in the constructor's
+    own words, and leaves the field holding what it held; `dataclasses.replace`
+    and a copy write through the same `__setattr__`, as the flows' guard test
+    shows for a flow (`PL-LBQY`). An amount at the capacity itself is written:
+    a fraction of exactly one is the top of the range, not past it.
+    """
+
+    alveoli = AlveolarCompartment()
+    alveoli.set_partial_pressure_fraction(Fraction(0.05))
+    held = alveoli.agent_amount_l
+    past_capacity = alveoli.gas_volume_l * 1.0000001
+    refused = "^agent_amount_l exceeds the alveolar capacity for a concentration fraction of 1$"
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        alveoli.agent_amount_l = past_capacity
+
+    assert alveoli.agent_amount_l == held
+
+    for not_an_amount in (-0.1, float("inf"), float("nan")):
+        with pytest.raises(SimulationConfigurationError, match="agent_amount_l"):
+            alveoli.agent_amount_l = not_an_amount
+
+        assert alveoli.agent_amount_l == held
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        replace(alveoli, agent_amount_l=past_capacity)
+
+    smuggled = copy.copy(alveoli)
+    object.__setattr__(smuggled, "agent_amount_l", past_capacity)
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        copy.copy(smuggled)
+
+    alveoli.agent_amount_l = alveoli.gas_volume_l
+
+    assert alveoli.partial_pressure_fraction == 1.0
+
+
+@pytest.mark.parametrize("invalid_value", [0.0, -1.0, float("inf"), float("nan")])
+def test_rejects_invalid_alveolar_gas_volume(invalid_value: float) -> None:
+    """A bad volume is refused under its own name, though the amount's write reads it first.
+
+    The constructor writes `agent_amount_l` after `gas_volume_l` and before
+    `__post_init__` has refused the volume, so the capacity check in
+    `__setattr__` meets a capacity that is zero, negative, infinite or NaN
+    and leaves it to `__post_init__`, which names the volume (`PL-544D`).
+    """
+
+    with pytest.raises(SimulationConfigurationError, match="gas_volume_l"):
+        AlveolarCompartment(gas_volume_l=invalid_value)
+
+
+@pytest.mark.parametrize("not_a_number", ["2.5", None])
+def test_a_volume_that_is_not_a_number_is_refused_under_its_own_name(not_a_number: object) -> None:
+    """The amount's write reads the volume first, and refuses a non-number by the volume's name.
+
+    The capacity check `PL-544D` put in `__setattr__` reads `gas_volume_l`
+    before `__post_init__` has required it, so without `require_a_number`
+    there the comparison's own `TypeError` came back - "'<' not supported
+    between instances of 'float' and 'str'" - naming neither the field nor
+    its constraint, the shape `PL-3800` had removed (found at review). The
+    message is `__post_init__`'s own, byte for byte.
+    """
+
+    with pytest.raises(TypeError, match=f"^gas_volume_l of {not_a_number!r} has type "):
+        AlveolarCompartment(gas_volume_l=not_a_number)  # type: ignore[arg-type]
+
+
+def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> None:
+    """`restore_state` writes what the compartment held, whatever the capacity has become.
+
+    A rollback that could raise would replace the step's own error and leave
+    the compartments restored after this one holding the failed step
+    (`AgentUptakeSystem.restore_state`), so it writes the slot past
+    `__setattr__` (`PL-544D`, found at review). The volume is written past any
+    guard it has or gets (`PL-19Y0`), since what is under test is the rollback
+    and not how the capacity came to be below the amount; the state restored
+    is the one the step began from, over capacity as it already was, for the
+    snapshot's `Fraction` to refuse.
+    """
+
+    alveoli = AlveolarCompartment()
+    alveoli.set_partial_pressure_fraction(Fraction(0.05))
+    captured = alveoli.capture_state()
+    alveoli.set_partial_pressure_fraction(Fraction(0.06))
+    object.__setattr__(alveoli, "gas_volume_l", captured.agent_amount_l / 2)
+
+    alveoli.restore_state(captured)
+
+    assert alveoli.agent_amount_l == captured.agent_amount_l
+    assert alveoli.partial_pressure_fraction == 2.0
 
 
 def test_changing_ventilation_preserves_alveolar_agent() -> None:

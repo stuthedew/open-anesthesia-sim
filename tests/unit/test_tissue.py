@@ -1,3 +1,5 @@
+import copy
+from dataclasses import replace
 from math import exp, inf
 
 import pytest
@@ -55,6 +57,49 @@ def test_rejects_agent_amount_above_tissue_capacity() -> None:
             tissue_gas_partition_coefficient=2.0,
             agent_amount_l=4.1,
         )
+
+
+def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
+    """An assignment straight onto the amount meets the constructor's refusal, and writes nothing.
+
+    The tissue's counterpart of `tests/unit/test_alveolar.py`'s test of the
+    same name: until `PL-544D` `TissueGroup` guarded no write at all, so an
+    amount past `capacity_l` was stored and its quotient refused only when the
+    snapshot built the `Fraction`. The write is refused in the constructor's
+    own words and leaves the field holding what it held; `dataclasses.replace`
+    and a copy write through the same `__setattr__`; an amount at the capacity
+    itself is written.
+    """
+
+    tissue = _build_tissue()
+    tissue.set_partial_pressure_fraction(Fraction(0.4))
+    held = tissue.agent_amount_l
+    past_capacity = tissue.capacity_l * 1.0000001
+    refused = "^agent_amount_l exceeds the tissue capacity for a concentration fraction of 1$"
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        tissue.agent_amount_l = past_capacity
+
+    assert tissue.agent_amount_l == held
+
+    for not_an_amount in (-0.1, float("inf"), float("nan")):
+        with pytest.raises(SimulationConfigurationError, match="agent_amount_l"):
+            tissue.agent_amount_l = not_an_amount
+
+        assert tissue.agent_amount_l == held
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        replace(tissue, agent_amount_l=past_capacity)
+
+    smuggled = copy.copy(tissue)
+    object.__setattr__(smuggled, "agent_amount_l", past_capacity)
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        copy.copy(smuggled)
+
+    tissue.agent_amount_l = tissue.capacity_l
+
+    assert tissue.partial_pressure_fraction == 1.0
 
 
 def test_capacity_uses_volume_and_tissue_gas_coefficient() -> None:
@@ -200,3 +245,49 @@ def test_rejects_invalid_tissue_volume(invalid_value: float) -> None:
             blood_gas_partition_coefficient=0.5,
             tissue_gas_partition_coefficient=2.0,
         )
+
+
+@pytest.mark.parametrize("factor", ["volume_l", "tissue_gas_partition_coefficient"])
+def test_a_capacity_factor_that_is_not_a_number_is_refused_under_its_own_name(factor: str) -> None:
+    """The amount's write reads both factors of the capacity first, and names the one refused.
+
+    The tissue's counterpart of `tests/unit/test_alveolar.py`'s test of the
+    same shape: `capacity_l` multiplies the volume by the coefficient, so
+    without `require_a_number` on each a `str` in either came back as the
+    multiplication's own `TypeError`, naming neither (`PL-544D`, found at
+    review). The message is `__post_init__`'s own, byte for byte.
+    """
+
+    fields: dict[str, object] = dict(
+        name="test",
+        volume_l=2.0,
+        perfusion_fraction=0.2,
+        blood_gas_partition_coefficient=0.5,
+        tissue_gas_partition_coefficient=2.0,
+    )
+    fields[factor] = "2"
+
+    with pytest.raises(TypeError, match=f"^{factor} of '2' has type str"):
+        TissueGroup(**fields)  # type: ignore[arg-type]
+
+
+def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> None:
+    """`restore_state` writes what the tissue held, whatever the capacity has become.
+
+    The tissue's counterpart of `tests/unit/test_alveolar.py`'s test of the
+    same name (`PL-544D`, found at review): the volume is written past any
+    guard it has or gets (`PL-19Y0`), the rollback writes the captured amount
+    past the capacity guard, and the restored state is the one the step began
+    from, over capacity, for the snapshot's `Fraction` to refuse.
+    """
+
+    tissue = _build_tissue()
+    tissue.set_partial_pressure_fraction(Fraction(0.4))
+    captured = tissue.capture_state()
+    tissue.set_partial_pressure_fraction(Fraction(0.5))
+    object.__setattr__(tissue, "volume_l", tissue.volume_l / 4)
+
+    tissue.restore_state(captured)
+
+    assert tissue.agent_amount_l == captured.agent_amount_l
+    assert tissue.partial_pressure_fraction > 1.0

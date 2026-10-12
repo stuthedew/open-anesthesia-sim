@@ -3,15 +3,17 @@ id: PL-D388
 title: A frozen gate entry whose blocked-by names an item no list holds silently leaves what bin/docket wave asks the gate to clear: PL-VV6N sits under 'Cleared before v0.6.0 begins' behind PL-YVV4, so Gate 2 can read clear with it undecided, and nothing checks the 2026-08-30 rule that what an entry needs is let in
 priority: P2
 effort: M
-status: blocked
+status: done
 classes: defect, infra
 feature: gate-prerequisites
-touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md, .claude/skills/docket/modes/release.md
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_checks.py, ROADMAP.md, .claude/skills/docket/modes/release.md
 blocked-by: PL-8QMD
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) and not safety or science; its problem was present at the freeze, so the presence test answers yes, and it is deferred on a stated reason: its one instance on this list, PL-VV6N, is disposed by the owner's answer recorded here whether or not the check is built first, and the check itself guards the triage passes and freezes still to come rather than any v0.6.0 entry
 added: 2026-10-03
+closed: 2026-10-12
+pr: 1439
 payoff: A frozen entry can leave what the gate is asked to clear only through a disposition its section records, so bin/docket wave cannot report Gate 2 clear while an entry like PL-VV6N sits undecided behind a prerequisite no list holds
-verify: grep -q 'def check_gate_prerequisites' tools/doc_check.py
+verify: grep -q 'def test_an_open_frozen_entry_waiting_outside_with_no_disposition_is_an_error' subprojects/docket/tests/test_checks.py
 reenters: PL-WD5Z, PL-J6HP
 ---
 
@@ -183,4 +185,17 @@ lane with `ROADMAP.md` § "Deferred from this gate" naming the date and the
 ground, so `bin/docket wave` counts `PL-VV6N` and `PL-YVV4` among the entries
 this gate can clear. The pair's design round, and steps 1 and 2, remain.
 
-**Blocked on `PL-8QMD`, 2026-10-11.** That head's answer (project owner, 2026-10-11, ratified) records a frozen entry's deferral as `deferred-from:` on the item, and its build refuses an undecided frozen entry in `bin/docket check` rather than in `tools/doc_check.py`, and leaves no deferral group for the second direction to check, so this item's `verify:` names a `doc_check` function that build will not write and its closing commit rewrites it. Its closing commit leads with this item, so building this one first would be work that change removes or redoes.
+[superseded 2026-10-12] **Blocked on `PL-8QMD`, 2026-10-11.** That head's answer (project owner, 2026-10-11, ratified) records a frozen entry's deferral as `deferred-from:` on the item, and its build refuses an undecided frozen entry in `bin/docket check` rather than in `tools/doc_check.py`, and leaves no deferral group for the second direction to check, so this item's `verify:` names a `doc_check` function that build will not write and its closing commit rewrites it. Its closing commit leads with this item, so building this one first would be work that change removes or redoes.
+
+**Closed 2026-10-12 with `PL-8QMD`**, in the form that head's answer
+decided. `bin/docket check` refuses an open frozen entry waiting on work that
+neither the list nor Required scope holds and the release train does not
+schedule first, unless its `deferred-from:` defers it
+(`roadmap.GateStatus.undecided`), so the first direction lives in docket rather
+than in `tools/doc_check.py`, and the second has nothing left to check: v0.6.0's
+deferral groups are gone. The three prose places state the rule: `ROADMAP.md`
+§ "The gate is a snapshot, not a moving target", the opening of v0.6.0's
+§ "Deferred from this gate", and the freeze mode in
+`.claude/skills/docket/modes/release.md`. `verify:` named
+`check_gate_prerequisites` in `tools/doc_check.py`, which the decided form does
+not build, so it now names the check's test.

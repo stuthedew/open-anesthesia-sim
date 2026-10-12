@@ -3,16 +3,18 @@ id: PL-8QMD
 title: A gate entry's disposition is still read from ROADMAP.md prose wherever PL-WD5Z's deferred-from: does not reach - a frozen entry and a non-debt deferral - so four readers filed since it closed on 2026-09-23 lose or misplace one: an id-less holding condition (PL-18BD), an off-list blocker read as a deferral (PL-D388), Gate 3's freeze dropping Gate 2's non-debt deferrals (PL-JV5Q), a non-debt entry's lane (PL-QWF8)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect
 feature: gate-prerequisites
-touches: docs/items, ROADMAP.md, subprojects/docket/src/docket/roadmap.py
+touches: docs/items, ROADMAP.md, subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md, .claude/skills/docket/modes/release.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; recorded as a generator head by PL-74T0, 2026-10-11
 added: 2026-10-11
+closed: 2026-10-12
+pr: 1439
 payoff: every gate entry's disposition, frozen or not, debt or not, is read from one record, so a freeze or a report stops losing a deferral the prose held
 verify: grep -q 'def test_a_frozen_entry_deferred_from_its_gate_is_deferred_not_clearable' subprojects/docket/tests/test_roadmap.py && grep -q 'def test_an_open_frozen_entry_waiting_outside_with_no_disposition_is_an_error' subprojects/docket/tests/test_checks.py
 root-cause-of: PL-18BD, PL-D388, PL-JV5Q, PL-QWF8
-generator: live - four members since PL-WD5Z closed on 2026-09-23, three filed on 2026-10-03 when a gate was last read whole, and every later freeze or deferral reads the same prose, as PL-JV5Q shows for Gate 3
+generator: spent - every gate entry's deferral, frozen or not and debt or not, is now its deferred-from:, which gate_status, check, gate and the freeze mode read, and v0.6.0's deferral group headings are gone, so no reader is left inferring a disposition from blocked-by or ROADMAP.md prose
 misread: A gate entry's disposition: whether a milestone's gate holds, clears, defers or still owes it
 ---
 
@@ -182,3 +184,16 @@ or more post-close instances of `PL-WD5Z`'s fact, which triage reads as a
 generator whose fix did not hold. Its `misread:` is the family wording, and
 `PL-J6HP`'s and `PL-WD5Z`'s were rewritten to it in the same commit so the
 three sort together.
+
+**Closed 2026-10-12, as decided.** `roadmap.gate_status` reads `deferred-from:`
+first, as `GateStatus.deferred`, and names a frozen entry nothing disposes of as
+`GateStatus.undecided`, which `bin/docket check` refuses; `bin/docket wave` and
+`picks` count the deferred apart from what the gate can clear; `bin/docket gate`
+adds the last frozen list's open entries that are not debt, with their lanes
+and deferral marks. v0.6.0's six open deferrals carry the field, and its three
+deferral groups are folded into the lane groups behind one pointer to
+`bin/docket wave`; § "The cadence" beat 3, § "Recording it" and the freeze mode
+record a frozen deferral on the item. `PL-D388`, `PL-JV5Q` and `PL-QWF8` close
+with it. No open head is left `live`, so the generator pause ends, and the five
+items it held moved to `ready`; `PL-Z64T` moved to `needs-decision` on whether
+the lane groups keep restating `Item.lane`.

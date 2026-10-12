@@ -15,8 +15,8 @@ sentence, and which line to recommend, are judgment and stay the reply's.
 The rules, decided at triage and recorded in `PL-G2HP`'s brief:
 
 - **Population.** The open items of `GateStatus.clearable`, exactly as `wave`
-  counts them. What the milestone clears itself and what waits outside the
-  gate are counted in one closing line and never offered.
+  counts them. What the milestone clears itself, what the gate defers and what
+  waits outside the gate are counted in one closing line and never offered.
 - **Grouping.** By `feature:`. A feature holding two or more of those items
   gets a line of its own; one holding a single item, and items carrying no
   feature, collapse into one line per lane, in `plan.GATE_LANES` order.
@@ -106,6 +106,9 @@ class Picks:
     #: Each list entry the plan was not read whole at (`Wave.unread`), so a
     #: count above may be short, named as `wave` names it (`PL-GMR6`).
     unread: tuple[str, ...] = ()
+    #: Entries `GateStatus.deferred` holds, which the gate does not ask for
+    #: (`PL-8QMD`).
+    deferred: int = 0
 
 
 def _lanes(items: Iterable[Item], workflow_paths: tuple[str, ...]) -> tuple[tuple[str, int], ...]:
@@ -320,6 +323,7 @@ def picks(
         lines=tuple(lines),
         folded=tuple((name, len(by_feature[name])) for name in candidates if name not in shown),
         self_cleared=len(gate.self_cleared),
+        deferred=len(gate.deferred),
         blocked_outside=len(gate.blocked_outside),
         build_waits=plan.beat == CLEAR,
         led=led,
