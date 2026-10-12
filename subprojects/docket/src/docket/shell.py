@@ -143,7 +143,9 @@ class Word(_Value):
     """One shell word: its text once quotes are removed, and what the shell does to it.
 
     Its text is what bash reads in the C locale, where a `$"..."` locale
-    string is the double-quoted string it holds, untranslated (`PL-V690`).
+    string is the double-quoted string it holds, untranslated (`PL-V690`),
+    and a `$'...'` has its escapes replaced as bash replaces them there
+    (`PL-48ZJ`).
     A command or process substitution in it stays as written, `$(` or backquote
     and all, the way a double-quoted `$` always has: its body is read as a
     command of its own, into `Reading.substitutions`. A compound array
@@ -239,11 +241,12 @@ class Descriptor(str):
 class FlatReading(_Value):
     """A command as the guard hooks read it, from the same pass as `Reading`.
 
-    `tokens` is every word, quotes removed, operators as `Operator` and a
-    redirection's descriptor as `Descriptor`, with each newline that ends a
-    command read as `;` and every comment, continuation and here-document body
-    gone. An unquoted `$( )`, `<( )` or `>( )` is read inline, its parentheses
-    as operators, so a walk counting subshells meets them as it always has.
+    `tokens` is every word, its quotes removed and a `$'...'`'s escapes
+    replaced as in `Word.text`, operators as `Operator` and a redirection's
+    descriptor as `Descriptor`, with each newline that ends a command read as
+    `;` and every comment, continuation and here-document body gone. An
+    unquoted `$( )`, `<( )` or `>( )` is read inline, its parentheses as
+    operators, so a walk counting subshells meets them as it always has.
     The tokens of a substitution inside double quotes, a `${...}`, backquotes
     or an array assignment are in `substituted`, one list each in the order
     they open, since they run although their text stays in the word.
@@ -287,6 +290,87 @@ def _operator_at(command: str, index: int, stop: int) -> tuple[str, int]:
         if after >= stop or longer not in OPERATORS:
             return operator, end
         operator, end = longer, after + 1
+
+
+#: The escapes a `$'...'` replaces with one byte each, as bash 5.2.21's
+#: `ansicstr` does: the control characters, `\E` the same escape as `\e`, and
+#: four characters that stand for themselves.
+ANSI_C_ESCAPES = {
+    bytes([escape]): bytes([byte])
+    for escape, byte in zip(b"abeEfnrtv\\'\"?", b"\a\b\x1b\x1b\f\n\r\t\v\\'\"?", strict=True)
+}
+
+
+def _digits(data: bytes, at: int, most: int, base: int) -> tuple[int, int]:
+    """The value of up to `most` digits in `base` from `at`, or 0 for none, and where they end."""
+    digits = b"01234567" if base == 8 else b"0123456789abcdefABCDEF"
+    end = at
+    while end < len(data) and end - at < most and data[end] in digits:
+        end += 1
+    return (int(data[at:end], base) if end > at else 0), end
+
+
+def _ansi_c(raw: str) -> str:
+    """The text of the `$'...'` holding `raw`, its escapes replaced as bash replaces them.
+
+    Bash 5.2.21's `ansicstr` works on bytes, and so does this, in the C
+    locale, measured under `LC_ALL=C` (Bash Reference Manual §3.1.2.4
+    "ANSI-C Quoting", `PL-48ZJ`). `\\NNN` takes one to three octal digits
+    and `\\xHH` one or two hex digits, and `\\x{...}` every hex digit and an
+    optional `}`, each masked to a byte. `\\u` and `\\U` take up to four and
+    eight hex digits: at or below 0x7f the value is its character, and above
+    it bash writes the escape back, `\\u%04X` below 0x10000 and `\\U%08X`
+    below 0x80000000, or nothing at all. `\\cX` is `X` masked with 0x1f, or
+    0x7f for `?`; `\\c\\\\` takes both backslashes, and a multibyte `X` gives
+    up its first byte alone. Any other escape - `\\8`, `\\q`, a `\\x`, `\\u`
+    or `\\U` with no digit, a trailing `\\c` - keeps its backslash. A NUL
+    ends the text, which is decoded with `surrogateescape`, so a byte that
+    is no UTF-8 stays the byte it was.
+    """
+    try:
+        data = raw.encode("utf-8", "surrogateescape")
+    except UnicodeEncodeError:  # a lone surrogate no byte stands for, in no command bash is handed
+        data = raw.encode("utf-8", "surrogatepass")
+    out = bytearray()
+    at = 0
+    while at < len(data):
+        if data[at] != ord("\\") or at + 1 == len(data):
+            out.append(data[at])
+            at += 1
+            continue
+        escape = data[at + 1 : at + 2]
+        at += 2
+        if escape in ANSI_C_ESCAPES:
+            out += ANSI_C_ESCAPES[escape]
+        elif escape in b"01234567":
+            value, at = _digits(data, at - 1, 3, 8)
+            out.append(value & 0xFF)
+        elif escape == b"x" and data.startswith(b"{", at):
+            value, at = _digits(data, at + 1, len(data), 16)
+            if data.startswith(b"}", at):
+                at += 1
+            out.append(value & 0xFF)
+        elif escape in (b"x", b"u", b"U"):
+            value, end = _digits(data, at, {b"x": 2, b"u": 4, b"U": 8}[escape], 16)
+            if end == at:
+                out += b"\\" + escape
+            elif value <= 0x7F or escape == b"x":
+                out.append(value)
+            elif value < 0x10000:
+                out += b"\\u%04X" % value
+            elif value < 0x80000000:
+                out += b"\\U%08X" % value
+            at = end
+        elif escape == b"c" and at < len(data):
+            control = data[at]
+            at += 1
+            if control == ord("\\") and data.startswith(b"\\", at):
+                at += 1
+            # Upper-casing a letter first, as bash does, changes no bit the mask keeps.
+            out.append(0x7F if control == ord("?") else control & 0x1F)
+        else:
+            out += b"\\" + escape
+    return bytes(out).split(b"\0", 1)[0].decode("utf-8", "surrogateescape")
 
 
 def _arithmetic(command: str, index: int, stop: int) -> bool:
@@ -749,11 +833,13 @@ class _Lexer:
                     quoted = True
                     continue
                 elif char == "$" and follows == "'":
-                    # ANSI-C quoting: its escapes kept as written, which no reader decodes.
+                    # ANSI-C quoting: its escapes replaced as bash replaces them
+                    # in the C locale (`PL-48ZJ`).
                     self.joins.extend(range(index + 1, after, 2))
                     close = self.ansi_c_end(after, stop)
-                    text.append(command[after + 1 : close])
-                    spelled.append(command[after + 1 : close])
+                    decoded = _ansi_c(command[after + 1 : close])
+                    text.append(decoded)
+                    spelled.append(decoded)
                     quoted = True
                     index = close + 1
                     continue
@@ -1267,7 +1353,8 @@ def shell_words(command: str) -> Reading:
     `$` and a backtick; `$"..."` is the `"..."` it holds, as bash reads it in
     the C locale, translating nothing (§3.1.2.5 "Locale-Specific Translation",
     `PL-V690`); in `$'...'` it escapes the next character, an
-    apostrophe included; outside quotes it escapes the next character; an
+    apostrophe included, and each escape is replaced as bash replaces it in
+    the C locale (`PL-48ZJ`); outside quotes it escapes the next character; an
     operator is the longest match in `OPERATORS`, read across any
     backslash-newline inside it; `#` opens a comment only where no word is in
     progress, and it runs to the end of its line; a `${...}` is part of its

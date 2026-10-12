@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import bisect
 import functools
+import os
 import re
 import shutil
 import subprocess
@@ -551,13 +552,31 @@ SPECIAL = " \t;&|<>()$`'\"\\#*?[{}~"
 BODY = PLAIN + " ;&|<>()'\"#*"
 DELIMITERS = ("EOF", "'EOF'", '"EOF"', "E\\OF", "\\EOF", "END_1")
 COMMENT = PLAIN + " '\"\\$`()<#;&|"
+#: Escapes a `$'...'` replaces with printable ASCII, whatever follows them: each
+#: number takes all the digits it can, so a digit after it is a character.
+ANSI_C_ESCAPED = (
+    "\\x41",
+    "\\x7e",
+    "\\x{41}",
+    "\\101",
+    "\\060",
+    "\\u0041",
+    "\\U0000007e",
+    "\\'",
+    '\\"',
+    "\\\\",
+    "\\?",
+    "\\q",
+    "\\8",
+)
 
 
 def _word(draw: st.DrawFn) -> str:
     """A word bash hands over as written once its quotes are removed.
 
-    A `$'...'` holds no backslash, whose escape the lexer keeps as written
-    (`PL-48ZJ`).
+    A `$'...'` holds escapes whose result is printable ASCII with no NUL
+    (`PL-48ZJ`): one above 0x7f is the locale's, and a control character
+    could be a separator `p` records with.
     """
     parts: list[str] = []
     for _ in range(draw(st.integers(1, 4))):
@@ -581,7 +600,11 @@ def _word(draw: st.DrawFn) -> str:
             opening = '$"' if kind == "locale" else '"'
             parts.append(opening + "".join(draw(st.lists(inside, max_size=4))) + '"')
         elif kind == "ansi":
-            parts.append("$'" + draw(st.text(PLAIN + ' ;&|<>()$`"#*?[{}~', max_size=4)) + "'")
+            inside = st.one_of(
+                st.text(PLAIN + ' ;&|<>()$`"#*?[{}~', min_size=1, max_size=3),
+                st.sampled_from(ANSI_C_ESCAPED),
+            )
+            parts.append("$'" + "".join(draw(st.lists(inside, max_size=4))) + "'")
         elif kind == "join":
             parts.append("\\\n")
         else:
@@ -902,6 +925,85 @@ def test_the_lexer_reads_generated_commands_as_bash_does(script: str) -> None:
     assert _lexer_runs_by_piece(script) == expected, script
 
 
+#: A `$'...'` for every escape bash 5.2.21's `ansicstr` reads, each grammar at
+#: and past its edges: too many digits, too few, none, and values a byte or the
+#: C locale cannot hold.
+ANSI_C_WORDS = [
+    *(
+        f"$'{inside}'"
+        for inside in (
+            r"\x41",
+            r"\x414",
+            r"\x{4142}",
+            r"\x{41",
+            r"\x{}",
+            r"\x",
+            r"\xg",
+            r"\xff",
+            r"\1012",
+            r"\400",
+            r"\777",
+            r"\0101",
+            r"\8",
+            r"\q",
+            r"\cA",
+            r"\ca",
+            r"\c?",
+            r"\c\\",
+            r"\c\'",
+            r"\c\x",
+            r"\c",
+            r"a\c@b",
+            r"\e\E",
+            r"\a\b\f\n\r\t\v",
+            r"\'\"\?\\",
+            "A1",
+            "é",
+            r"\cé",
+            r"\é",
+            r"\U0001F600",
+            r"\uD800",
+            r"é",
+            r"\U000000e9",
+            r"\U00110000",
+            r"\U7FFFFFFF",
+            r"\U80000000",
+            r"\u",
+            r"\uq",
+            r"\U",
+            r"\u0",
+            r"A",
+            "a\\\nb",
+        )
+    ),
+    r"x$'a\0b'y",
+]
+
+
+@pytest.mark.parametrize("word", ANSI_C_WORDS)
+def test_an_ansi_c_word_reads_as_bash_reads_it_in_the_c_locale(word: str) -> None:
+    """A `$'...'` word is the bytes bash makes of it under `LC_ALL=C`, in both views (`PL-48ZJ`).
+
+    The lexer kept its escapes as written, so `$'\\x67it'` was a word no
+    guard took for `git`. Bash itself is the reference, printing the word
+    under the C locale, and the lexer's text must be those bytes once
+    encoded back with `surrogateescape`. A NUL ends the `$'...'` it stands
+    in and nothing more, as `x$'a\\0b'y` holds.
+    """
+    printed = subprocess.run(
+        [_bash(), "--norc", "--noprofile", "-c", f"printf %s {word}"],
+        capture_output=True,
+        env={"LC_ALL": "C", "PATH": os.environ["PATH"]},
+        timeout=60,
+        check=True,
+    ).stdout
+    (token,) = shell_words(word).clauses[0].tokens
+
+    assert isinstance(token, Word)
+    assert token.text.encode("utf-8", "surrogateescape") == printed
+    assert flat_reading(word).tokens == (token.text,)
+
+
 #: Where the lexer reads a script differently from bash today, each by the item
 #: that will make it bash's: the script, what bash runs, and what `shell_words`
 #: reads from it whole and a piece of `script_lines` at a time. The generator
@@ -941,13 +1043,6 @@ KNOWN_DEPARTURES = [
         {("-n", "a"): 1, ("]]",): 1, ("p", "x"): 1},
         {("-n", "a"): 1, ("]]",): 1, ("p", "x"): 1},
         id="PL-X1VN-parentheses",
-    ),
-    pytest.param(
-        "p $'\\x41' $'a\\'b'\n",
-        {("p", "A", "a'b"): 1},
-        {("p", "\\x41", "a\\'b"): 1},
-        {("p", "\\x41", "a\\'b"): 1},
-        id="PL-48ZJ",
     ),
 ]
 
