@@ -42,9 +42,10 @@ does:
   compartment's own closed form takes, `BreathingCircuit` built or set, the
   `BreathingCircuitState` a rollback restores it from,
   `UptakeEquationSettings`, and the `AgentParameters` an agent's data file is
-  parsed into - first calls `require_fraction` or `require_percent`, which
-  refuse with `TypeError` anything not built as the type, a bare `float`
-  included. What only carries a value onward checks nothing.
+  parsed into - and, since `PL-1DP1`, each of the two conversions below -
+  first calls `require_fraction` or `require_percent`, which refuse with
+  `TypeError` anything not built as the type, a bare `float` included. What
+  only carries a value onward checks nothing.
 - **They cannot catch a wrong magnitude.** `Percent(0.02)` and `Percent(2.0)`
   are 0.02% and 2%, and both are valid percents. What is caught is a *missing
   conversion*: a `Fraction` handed where a `Percent` is wanted is refused by
@@ -68,9 +69,16 @@ does:
   each refuses a value already in the form it returns, before its arithmetic
   runs, since converted again that value is a hundred times off under the type
   meant to prove it was checked, and refuses a value built as any other checked
-  quantity as the constructors do. A bare `float` they take as given, because a
-  number nobody built carries no form to refuse it by; the number the
-  arithmetic makes is checked against its range where the result is built.
+  quantity as the constructors do. A bare `float` they took as given until
+  `PL-1DP1`, because a number nobody built carries no form to refuse it by -
+  which is also why neither could convert it: `percent_from_fraction(0.5)` was
+  a `Percent` of 50.0 whether the 0.5 was a fraction or a 0.5% dial, and
+  `format_percent(0.5)` printed `50.00%` for both. So each now asks of its
+  argument what every place above asks, through `require_percent` or
+  `require_fraction`, and a bare `float` is refused with the constructor to
+  build it named (project owner, 2026-10-12, ratified, over keeping the number
+  as given, which `PL-4R3W` chose). The number the arithmetic makes is checked
+  against its range where the result is built.
 - **A dial at 100% can carry a computed fraction just past 1, and the type
   refuses it.** Measured 2026-10-04 (`PL-4R3W`): no supported setting computes
   a fraction outside 0 to 1 on either path - the highest anywhere was
@@ -287,7 +295,8 @@ def require_fraction(name: str, fraction: object) -> None:
     which the constructor has already checked, and it runs where a fraction is
     held - each compartment's setter, the driving fraction a compartment's own
     closed form takes, `BreathingCircuit` when it is built or set, and the
-    `BreathingCircuitState` a rollback restores it from - so a bare `float` is
+    `BreathingCircuitState` a rollback restores it from, and since `PL-1DP1`
+    `percent_from_fraction`, where the display reads one - so a bare `float` is
     refused once, before anything changes. Until `PL-4R3W` a range
     check of the same name in `core/validation.py` stood at those places and
     was made again at each; this is the type's check that replaced it.
@@ -339,8 +348,9 @@ def require_percent(name: str, percent: object) -> None:
     The runtime half of the type, as `require_fraction` is for a fraction. It
     runs where a percent is held - `BreathingCircuit`, built or set,
     `UptakeEquationSettings`, and the `AgentParameters` holding an agent's MAC
-    and vaporizer maximum - and it is the one check that refuses a fraction
-    reaching the dial at run time as well as under `mypy`.
+    and vaporizer maximum - and since `PL-1DP1` at `fraction_from_percent`,
+    where the governing equations read the dial - and it is the one check that
+    refuses a fraction reaching the dial at run time as well as under `mypy`.
 
     A `Fraction` is named as one and told to convert rather than to rebuild: a
     `Percent` built from a fraction's value holds a concentration a hundred
@@ -384,23 +394,26 @@ def fraction_from_percent(percent: Percent) -> Fraction:
     division rounds monotonically and 100 divides to exactly 1, so a percent
     from 0 through 100 gives a fraction from 0 through 1 (`PL-4R3W` measured a
     million of them). What is handed in is refused before the arithmetic runs,
-    in the order the constructors ask, because `Fraction` then sees only the
-    plain `float` the division made and admits it: a `Fraction`, which is
+    because `Fraction` then sees only the plain `float` the division made and
+    admits it. A `Fraction` is refused first and with its own advice: it is
     already the form this returns, so dividing it would hold a concentration a
     hundred times too small under the type meant to prove it was checked -
     `fraction_from_percent(Fraction(0.5))` was a `Fraction` of 0.005
-    (`PL-SWD1`); a value built as any other checked quantity, a swapped
-    argument, refused as the constructors refuse it (`core/checked_number.py`,
-    `PL-979Z`); and what is not a number, as the constructors require one -
-    `True` divided by a hundred was a fraction of 0.01, and a `str` was refused
-    as Python's unsupported operand (`PL-LLMN`). A bare `float` is taken as
-    given, as the module docstring says.
+    (`PL-SWD1`) - and the remedy `require_percent` gives, convert, is the error
+    here. Everything else is `require_percent`'s question, asked here as it is
+    wherever a percent is held (`PL-1DP1`): a value built as any other checked
+    quantity is named as the swapped argument it is (`core/checked_number.py`,
+    `PL-979Z`), and a value never built as a `Percent` - a bare `float`, a
+    `bool`, a `str` - is told to build one where its form is known, which is
+    where it is checked as a number and against its range. Until `PL-1DP1` a
+    bare `float` was taken as given, as the module docstring records, and until
+    `PL-LLMN` `True` divided by a hundred was a fraction of 0.01.
 
     Raises:
         TypeError: `percent` is a `Fraction`, which is told to be used as the
-            fraction it is; or was built as another checked quantity; or is
-            not an `int` or a `float`, or is a `bool`
-            (`core/checked_number.py`).
+            fraction it is; or is anything else not built as a `Percent`,
+            refused as `require_percent` refuses it - a bare `float`
+            included, whatever its value.
     """
 
     if isinstance(percent, Fraction):
@@ -410,8 +423,7 @@ def fraction_from_percent(percent: Percent) -> Fraction:
             "the Fraction it is (core/concentration.py)"
         )
 
-    require_not_another_quantity("percent", percent, Percent)
-    require_a_number("percent", percent)
+    require_percent("percent", percent)
 
     return Fraction(percent / PERCENT_PER_UNIT_FRACTION)
 
@@ -424,24 +436,29 @@ def percent_from_fraction(fraction: Fraction) -> Percent:
 
     The product is built as a `Percent`, which cannot refuse it for a
     `Fraction`: multiplication rounds monotonically and 1 gives exactly 100.
-    Handed a value that was never a `Fraction` - an impossible negative, from a
-    caller `mypy` does not read - it refuses that value here, before anything
-    can display it (`PL-4R3W`). What is handed in is refused before the
-    arithmetic runs, in the order `fraction_from_percent` gives: a `Percent`,
-    already the form this returns, so multiplying it would hold a concentration
-    a hundred times too large - `percent_from_fraction(Percent(0.5))` was a
-    `Percent` of 50.0, a 0.5% dial shown as 50% (`PL-SWD1`); a value built as
-    any other checked quantity (`PL-979Z`); and what is not a number - `True`
-    times a hundred was a percent of 100, inside the range, and
-    `format_percent(True)` printed `100.00%` (`PL-LLMN`).
+    What is handed in is refused before the arithmetic runs, in the order
+    `fraction_from_percent` gives: a `Percent`, already the form this returns,
+    so multiplying it would hold a concentration a hundred times too large -
+    `percent_from_fraction(Percent(0.5))` was a `Percent` of 50.0, a 0.5% dial
+    shown as 50% (`PL-SWD1`); then `require_fraction`'s question, as every
+    place a fraction is held asks it (`PL-1DP1`) - a value built as any other
+    checked quantity (`PL-979Z`), and a value never built as a `Fraction`, a
+    bare `float` included, told to build one where it is computed. Until
+    `PL-1DP1` a bare `float` was taken as given, so `percent_from_fraction(0.5)`
+    was a `Percent` of 50.0 whether the 0.5 was a fraction or a 0.5% dial, and
+    only an impossible value - a negative, from a caller `mypy` does not read -
+    was refused, by the range where the product was built (`PL-4R3W`); until
+    `PL-LLMN` `True` times a hundred was a percent of 100, inside the range,
+    and `format_percent(True)` printed `100.00%`. A number of unknown form is
+    refused the same way now, before anything is built on it: no `Fraction`
+    holds an impossible value, and a number that was never one proves nothing
+    about what it is.
 
     Raises:
         TypeError: `fraction` is a `Percent`, which is told to be used as the
-            percent it is; or was built as another checked quantity; or is
-            not an `int` or a `float`, or is a `bool`
-            (`core/checked_number.py`).
-        SimulationConfigurationError: `fraction` times a hundred is outside 0
-            to 100, which no `Fraction` can make.
+            percent it is; or is anything else not built as a `Fraction`,
+            refused as `require_fraction` refuses it - a bare `float`
+            included, whatever its value.
     """
 
     if isinstance(fraction, Percent):
@@ -451,7 +468,6 @@ def percent_from_fraction(fraction: Fraction) -> Percent:
             "so use it as the Percent it is (core/concentration.py)"
         )
 
-    require_not_another_quantity("fraction", fraction, Fraction)
-    require_a_number("fraction", fraction)
+    require_fraction("fraction", fraction)
 
     return Percent(fraction * PERCENT_PER_UNIT_FRACTION)

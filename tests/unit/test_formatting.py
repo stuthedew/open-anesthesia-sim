@@ -54,8 +54,7 @@ from anesthesia_sim.app.formatting import (
     mac_multiple,
 )
 from anesthesia_sim.app_metadata import APP_BUILD, APP_BUILD_VERSION, APP_VERSION
-from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
@@ -74,10 +73,10 @@ def test_format_percent_uses_the_documented_display_resolution() -> None:
     assert CONCENTRATION_DISPLAY_DECIMALS == 2
     assert CONCENTRATION_DISPLAY_RESOLUTION_PERCENT == pytest.approx(0.01)
 
-    assert format_percent(0.0) == "0.00%"
-    assert format_percent(1.0) == "100.00%"
-    assert format_percent(0.0803456) == "8.03%"
-    assert format_percent(0.02) == "2.00%"
+    assert format_percent(Fraction(0.0)) == "0.00%"
+    assert format_percent(Fraction(1.0)) == "100.00%"
+    assert format_percent(Fraction(0.0803456)) == "8.03%"
+    assert format_percent(Fraction(0.02)) == "2.00%"
 
 
 def test_concentration_decimals_are_a_choice_within_a_recorded_band() -> None:
@@ -142,8 +141,8 @@ def test_format_percent_rounds_rather_than_truncates() -> None:
     not asserted: a decimal tie is not generally representable as a double.
     """
 
-    assert format_percent(0.021_39) == "2.14%"
-    assert format_percent(0.021_31) == "2.13%"
+    assert format_percent(Fraction(0.021_39)) == "2.14%"
+    assert format_percent(Fraction(0.021_31)) == "2.13%"
 
 
 def test_format_percent_marks_a_value_below_the_resolution() -> None:
@@ -155,16 +154,16 @@ def test_format_percent_marks_a_value_below_the_resolution() -> None:
     the resolution instead.
     """
 
-    assert format_percent(1e-8) == "<0.01%"
-    assert format_percent(4.0e-5) == "<0.01%"
+    assert format_percent(Fraction(1e-8)) == "<0.01%"
+    assert format_percent(Fraction(4.0e-5)) == "<0.01%"
 
     # Exactly zero is the one value that may read as zero: nothing has
     # reached the compartment, which is a fact the model does hold.
-    assert format_percent(0.0) == "0.00%"
+    assert format_percent(Fraction(0.0)) == "0.00%"
 
     # Either side of the rounding threshold, at half the resolution.
-    assert format_percent(4.9e-5) == "<0.01%"
-    assert format_percent(5.1e-5) == "0.01%"
+    assert format_percent(Fraction(4.9e-5)) == "<0.01%"
+    assert format_percent(Fraction(5.1e-5)) == "0.01%"
 
 
 @pytest.mark.parametrize("impossible", [-1e-8, -0.02, 1.0000000000000002])
@@ -176,11 +175,13 @@ def test_format_percent_refuses_an_impossible_fraction(impossible: float) -> Non
     below-resolution form would render a small negative as an ordinary small
     positive reading, and a value a rounding past 1 would read as `100.00%`;
     `CLAUDE.md` requires the obvious failure instead. Until `PL-4R3W` a negative
-    was rendered with its sign, and the refusal is the stronger form of that.
+    was rendered with its sign; that item refused it by its range, and since
+    `PL-1DP1` the bare float it has to arrive as is refused for carrying no form
+    at all, before its value is read, which is the stronger form again.
     """
 
-    with pytest.raises(SimulationConfigurationError, match="outside 0 to 100"):
-        format_percent(impossible)
+    with pytest.raises(TypeError, match="was not built as Fraction, it is float: build it as"):
+        format_percent(impossible)  # type: ignore[arg-type]
 
 
 def test_format_percent_states_the_below_resolution_form_from_the_constant() -> None:
@@ -195,7 +196,7 @@ def test_format_percent_states_the_below_resolution_form_from_the_constant() -> 
 
     expected = f"<{CONCENTRATION_DISPLAY_RESOLUTION_PERCENT:.{CONCENTRATION_DISPLAY_DECIMALS}f}%"
 
-    assert format_percent(1e-9) == expected
+    assert format_percent(Fraction(1e-9)) == expected
 
 
 def test_format_subtitle_names_the_running_model_and_its_version() -> None:
@@ -312,8 +313,8 @@ def test_one_mac_of_every_agent_reads_as_one() -> None:
     for agent_id in AGENT_DATA_FILENAMES:
         mac_percent = load_agent_parameters(agent_id).mac_percent
 
-        assert mac_multiple(mac_percent / 100.0, mac_percent) == pytest.approx(1.0)
-        assert format_mac_multiple(mac_percent / 100.0, mac_percent) == "1.00 ×MAC"
+        assert mac_multiple(fraction_from_percent(mac_percent), mac_percent) == pytest.approx(1.0)
+        assert format_mac_multiple(fraction_from_percent(mac_percent), mac_percent) == "1.00 ×MAC"
 
 
 def test_format_mac_multiple_carries_the_multiplication_sign() -> None:
@@ -327,9 +328,9 @@ def test_format_mac_multiple_carries_the_multiplication_sign() -> None:
     """
 
     assert MAC_UNIT_SUFFIX == " ×MAC"
-    assert format_mac_multiple(0.016, 2.0) == "0.80 ×MAC"
-    assert format_mac_multiple(0.0, 2.0) == "0.00 ×MAC"
-    assert format_mac_multiple(0.04, 2.0) == "2.00 ×MAC"
+    assert format_mac_multiple(Fraction(0.016), Percent(2.0)) == "0.80 ×MAC"
+    assert format_mac_multiple(Fraction(0.0), Percent(2.0)) == "0.00 ×MAC"
+    assert format_mac_multiple(Fraction(0.04), Percent(2.0)) == "2.00 ×MAC"
 
 
 def test_format_mac_multiple_marks_a_value_below_the_resolution() -> None:
@@ -346,9 +347,9 @@ def test_format_mac_multiple_marks_a_value_below_the_resolution() -> None:
     expected = f"<{MAC_DISPLAY_RESOLUTION_MAC:.{MAC_DISPLAY_DECIMALS}f}{MAC_UNIT_SUFFIX}"
 
     # 0.015% of desflurane: above the percent resolution, below the MAC one.
-    assert format_percent(0.00015) == "0.01%"
-    assert format_mac_multiple(0.00015, 6.0) == expected
-    assert format_mac_multiple(1e-9, 2.0) == expected
+    assert format_percent(Fraction(0.00015)) == "0.01%"
+    assert format_mac_multiple(Fraction(0.00015), Percent(6.0)) == expected
+    assert format_mac_multiple(Fraction(1e-9), Percent(2.0)) == expected
 
 
 @pytest.mark.parametrize("impossible", [-0.02, -1e-9])
@@ -357,11 +358,12 @@ def test_format_mac_multiple_refuses_an_impossible_negative(impossible: float) -
 
     Same rule as `format_percent`, for the same reason: no `Fraction` holds a
     negative, so one arriving here is refused before it can be absorbed into
-    the plausible-looking below-resolution form.
+    the plausible-looking below-resolution form - since `PL-1DP1` as the bare
+    float it has to be, before its value is read.
     """
 
-    with pytest.raises(SimulationConfigurationError, match="outside 0 to 100"):
-        format_mac_multiple(impossible, 2.0)
+    with pytest.raises(TypeError, match="was not built as Fraction, it is float: build it as"):
+        format_mac_multiple(impossible, Percent(2.0))  # type: ignore[arg-type]
 
 
 def test_a_non_positive_mac_refuses_to_produce_a_number() -> None:
@@ -375,10 +377,10 @@ def test_a_non_positive_mac_refuses_to_produce_a_number() -> None:
 
     for bad_mac in (0.0, -2.0):
         with pytest.raises(ValueError, match="strictly positive"):
-            mac_multiple(0.02, bad_mac)
+            mac_multiple(Fraction(0.02), bad_mac)
 
         with pytest.raises(ValueError, match="strictly positive"):
-            format_mac_multiple(0.02, bad_mac)
+            format_mac_multiple(Fraction(0.02), bad_mac)
 
         with pytest.raises(ValueError, match="strictly positive"):
             mac_axis_ticks(8.0, bad_mac)
@@ -628,6 +630,10 @@ def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> N
     is an alveolar fraction of 0.0068; rendering the multiple as though it
     were the fraction prints the percent of 0.34 next to "0.34" of MAC, so the
     two readouts of one compartment disagree by the factor of 50 between them.
+    `mypy` refuses the call, which the directive asserts, and since `PL-1DP1`
+    so does the formatter at run time: a `MacMultiple` is a bare `float` there,
+    built as no `Fraction`, where until then it printed as the fraction it is
+    not.
     """
 
     fraction = Fraction(0.0068)
@@ -635,9 +641,11 @@ def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> N
 
     assert format_percent(fraction) == f"{0.68:.{CONCENTRATION_DISPLAY_DECIMALS}f}%"
     assert multiple == pytest.approx(0.34)
-    assert format_percent(multiple) == format_percent(  # type: ignore[arg-type]
-        Fraction(0.34)
-    )
+
+    with pytest.raises(
+        TypeError, match=f"^fraction of {multiple!r} was not built as Fraction, it is float"
+    ):
+        format_percent(multiple)  # type: ignore[arg-type]
 
 
 def test_every_mac_divisor_here_is_typed_as_a_percent() -> None:
