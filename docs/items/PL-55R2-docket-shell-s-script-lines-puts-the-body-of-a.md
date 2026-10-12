@@ -3,12 +3,14 @@ id: PL-55R2
 title: docket.shell's script_lines puts the body of a here-document whose delimiter has no quoted part in no piece, so a substitution in that body, which bash runs (PL-P95F), is a command no per-piece reader sees: doc_check's _make_mentions, workflow_commands and workflow_runs' line-at-a-time fallback all miss it; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: shell-reads-as-bash
 touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1449
 payoff: a command in an unquoted here-document body is checked by every doc_check reader that reads a script a piece at a time, as bash runs it
 verify: grep -q 'def test_script_lines_hands_a_here_document_body_s_substitutions_a_piece' subprojects/docket/tests/test_shell.py && ! grep -qF 'id="PL-55R2"' subprojects/docket/tests/test_shell.py
 ---

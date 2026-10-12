@@ -3167,6 +3167,38 @@ def test_a_heredoc_body_naming_a_path_runs_nothing(tmp_path: Path) -> None:
     )
 
 
+def test_a_substitution_in_an_unquoted_body_is_a_command_bash_runs(tmp_path: Path) -> None:
+    """Bash expands the body of a delimiter with no quoted part, so a `$( )` there runs.
+
+    It was in no line `workflow_commands` handed on, so the path it runs went
+    unchecked (`PL-55R2`); it is a line of its own now, at the line it opens
+    on, and a quoted delimiter's body stays input.
+    """
+    step = (
+        "      - run: |\n"
+        "          python3 - <<PY\n"
+        "          print('$(bin/gone --flag)')\n"
+        "          PY\n"
+        "          python3 - <<'PY'\n"
+        "          print('$(bin/quoted-gone)')\n"
+        "          PY\n"
+    )
+    body = WORKFLOW.replace("      - run: bin/runner check\n", step)
+
+    errors = _errors(_with_workflow(_repo(tmp_path), body=body))
+
+    assert _step_commands(step) == [
+        ("python3 - <<PY", 2),
+        ("$(bin/gone --flag)", 3),
+        ("python3 - <<'PY'", 5),
+    ]
+    assert any("runs `bin/gone`, which does not exist" in message for message in errors), errors
+    assert not any("bin/quoted-gone" in message for message in errors), errors
+    assert list(doc_check._make_mentions("```bash\ncat <<EOF\n$(make check)\nEOF\n```\n")) == [
+        ("check", 3)
+    ]
+
+
 def test_a_command_continued_past_its_line_is_read_whole(tmp_path: Path) -> None:
     """Its path is checked where it was declined, at the line it starts on.
 

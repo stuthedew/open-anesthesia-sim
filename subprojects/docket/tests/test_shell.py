@@ -104,6 +104,14 @@ def _words(command: str) -> list[str]:
             ["cat <<EOF; x=$(echo a\necho b); next", "last"],
         ),
         ("cat <<A; x=$(cat <<B)\nbody-1\nB\nbody-2\nA\nnext\n", ["cat <<A; x=$(cat <<B)", "next"]),
+        # A substitution in an unquoted body is a piece of its own, in a body
+        # carried out of its substitution too, and one the delimiter line cuts,
+        # which bash 5.2.21 fails to expand, is none (`PL-55R2`).
+        (
+            "cat <<A; x=$(cat <<B)\n$(p b)\nB\n`p a`\nA\nnext\n",
+            ["cat <<A; x=$(cat <<B)", "$(p b)", "`p a`", "next"],
+        ),
+        ("cat <<EOF\n$(p a\nEOF\nnext\n", ["cat <<EOF", "next"]),
         # Inside a substitution a line that opens with the delimiter and holds a
         # `)` ends the body, and the rest of it is read; the bodies after it
         # take the lines after its own.
@@ -861,14 +869,13 @@ def _here_document(draw: st.DrawFn, nested: bool) -> tuple[str, str]:
 
     A body's substitutions open no here-document of their own, which bash
     5.2.21 refuses where the lexer reads one (`PL-GJKN`). Each runs `p body`,
-    or at the top level `p top-body`, which no piece of `script_lines` holds
+    which at the top level `script_lines` hands on as a piece of its own
     (`PL-55R2`).
     """
     spelled = draw(st.sampled_from(DELIMITERS))
     delimiter = re.sub(r"['\"\\]", "", spelled)
     dash = draw(st.booleans())
     quoted = spelled != delimiter
-    runs = "p body" if nested else "p top-body"
     lines = draw(
         st.lists(
             st.one_of(
@@ -876,7 +883,7 @@ def _here_document(draw: st.DrawFn, nested: bool) -> tuple[str, str]:
                 st.sampled_from(
                     ("p x", "EOF ", " EOF", "EOFX", "# EOF", "\tEOF", "a\\", "a\\\\", "x)")
                 ),
-                st.sampled_from((f"$({runs})", f"`{runs}`", f"a $({runs}) b")),
+                st.sampled_from(("$(p body)", "`p body`", "a $(p body) b")),
             ),
             max_size=3,
         )
@@ -978,6 +985,9 @@ def _statement(
     if kind == "assign":
         return "v=" + _substitution(draw, depth, quoted=False)
     if kind == "array":
+        # On one line: bash 5.2.21 misreads a body waiting on a newline inside
+        # one. `cat <<EOF; a=(x` over `hello`, `EOF` and `y)` warns that the
+        # body ran to the end of the script, wanting `hello` and its newline.
         return (
             "a=(" + " ".join(_argument(draw, depth) for _ in range(draw(st.integers(0, 3)))) + ")"
         )
@@ -1137,11 +1147,11 @@ def test_the_lexer_reads_generated_commands_as_bash_does(script: str) -> None:
     so bash itself is the reference: each script runs in bash 5.2 or newer,
     every command recording the words it was handed, and the lexer's reading
     of the same script is turned into the commands it says run. The two must
-    agree, whole and a piece of `script_lines` at a time but for `p top-body`,
-    which no piece holds (`PL-55R2`). Running the script compares what bash
-    does; `declare -f` would print bash's reprint of its parse instead, which
-    is where the faults the generator steers round live, and would want a
-    reader of its own.
+    agree, whole and a piece of `script_lines` at a time, a top-level body's
+    substitutions in pieces of their own (`PL-55R2`). Running the script
+    compares what bash does; `declare -f` would print bash's reprint of its
+    parse instead, which is where the faults the generator steers round live,
+    and would want a reader of its own.
 
     Hypothesis draws the scripts, derandomized, so a red run reproduces
     exactly: words in every quoting, continuations and comments; `$( )`,
@@ -1165,7 +1175,6 @@ def test_the_lexer_reads_generated_commands_as_bash_does(script: str) -> None:
     expected = _bash_runs(script)
 
     assert _lexer_runs(script) == expected, script
-    del expected[("p", "top-body")]
     assert _lexer_runs_by_piece(script) == expected, script
 
 
@@ -1252,15 +1261,9 @@ def test_an_ansi_c_word_reads_as_bash_reads_it_in_the_c_locale(word: str) -> Non
 #: that will make it bash's: the script, what bash runs, and what `shell_words`
 #: reads from it whole and a piece of `script_lines` at a time. The generator
 #: leaves each form out; the fix deletes its row and lets the generator draw it.
-KNOWN_DEPARTURES = [
-    pytest.param(
-        "p <<EOF\nbody $(p from-a-body) line\nEOF\np after\n",
-        {("p",): 1, ("p", "from-a-body"): 1, ("p", "after"): 1},
-        {("p",): 1, ("p", "from-a-body"): 1, ("p", "after"): 1},
-        {("p",): 1, ("p", "after"): 1},
-        id="PL-55R2",
-    )
-]
+#: Empty since `PL-55R2` fixed the last of `PL-C4XY`'s, so pytest reports the
+#: test below as skipped, for an empty parameter set, until a departure is found.
+KNOWN_DEPARTURES: list[object] = []
 
 
 @pytest.mark.parametrize(("script", "bash", "whole", "pieces"), KNOWN_DEPARTURES)
@@ -1278,3 +1281,46 @@ def test_each_known_departure_from_bash_reads_as_its_row_records(
     assert _bash_runs(script) == Counter(bash)
     assert _lexer_runs(script) == Counter(whole)
     assert _lexer_runs_by_piece(script) == Counter(pieces)
+
+
+#: Scripts whose here-document bodies hold a substitution, and the pieces
+#: `script_lines` cuts each into: every substitution bash 5.2.21 runs from a
+#: top-level body is a piece of its own, where it opens (`PL-55R2`).
+BODY_SUBSTITUTIONS = [
+    # `p from-a-body` was in no piece, so no reader taking one at a time saw it.
+    (
+        "p <<EOF\nbody $(p from-a-body) line\nEOF\np after\n",
+        [("p <<EOF", 0), ("$(p from-a-body)", 13), ("p after", 39)],
+    ),
+    # A backquote, and a `${...}` holding a substitution, run one; a bare
+    # `${...}`, an arithmetic expansion and an escaped `$` run none.
+    (
+        "p <<EOF\n`p a` ${x} ${y:-$(p b)} $((1)) \\$(p c)\nEOF\np next\n",
+        [("p <<EOF", 0), ("`p a`", 8), ("${y:-$(p b)}", 19), ("p next", 51)],
+    ),
+    # One carried across the body's lines is one piece.
+    ("p <<EOF\n$(p a\np b)\nEOF\np next\n", [("p <<EOF", 0), ("$(p a\np b)", 8), ("p next", 23)]),
+    # A quoted delimiter's body runs nothing.
+    ("p <<'EOF'\n$(p a)\nEOF\np next\n", [("p <<'EOF'", 0), ("p next", 21)]),
+    # A body a line's `[[ ]]` starts is in that line's piece, and read there.
+    (
+        "p <<EOF; [[\n$(p a)\nEOF\na == a ]]\np next\n",
+        [("p <<EOF; [[\n$(p a)\nEOF\na == a ]]", 0), ("p next", 33)],
+    ),
+]
+
+
+@pytest.mark.parametrize(("script", "pieces"), BODY_SUBSTITUTIONS)
+def test_script_lines_hands_a_here_document_body_s_substitutions_a_piece(
+    script: str, pieces: list[tuple[str, int]]
+) -> None:
+    """Bash expands the body of a delimiter with no quoted part, so a substitution there runs.
+
+    `PL-P95F` read each one into `shell_words`' reading of a script whole, and
+    `script_lines` still put the body in no piece, so `tools/doc_check.py`'s
+    readers that take a script a piece at a time saw none of them. Each is a
+    piece of its own now, spelled from its `$` or backquote, so the pieces
+    summed run what bash runs (`PL-55R2`).
+    """
+    assert list(script_lines(script)) == pieces
+    assert _lexer_runs_by_piece(script) == _bash_runs(script)

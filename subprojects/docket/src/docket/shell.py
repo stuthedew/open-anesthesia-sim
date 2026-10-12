@@ -15,7 +15,8 @@ compound commands carries past its newline is one piece, and a here-document's
 body is the input it is rather than lines of commands (`PL-Q9LK`, `PL-2JYP`,
 `PL-VJPH`). A body starts after the line its `<<` is read on ends, past any
 substitution carried across lines (`PL-QSN5`), and a substitution in the body
-of a delimiter with no quoted part is a command bash runs (`PL-P95F`).
+of a delimiter with no quoted part is a command bash runs (`PL-P95F`), so it
+is a piece of its own (`PL-55R2`).
 `tools/fixture_id_check.py` takes `joined_text`, a script as bash reads it once
 each backslash-newline it removes is gone (`PL-WG6S`), in a `.sh` file and a
 fenced shell sample alike (`PL-HKR5`).
@@ -650,6 +651,10 @@ class _Lexer:
         self.jumps: dict[int, int] = {}
         #: The hooks' tokens of each substitution read apart from its words.
         self.substituted: list[list[str]] = []
+        #: The span of each substitution a here-document's body runs, where the
+        #: body is read outside every substitution: each is a piece of
+        #: `script_lines` (`PL-55R2`).
+        self.expansions: list[tuple[int, int]] = []
 
     def refuse(self, reason: str) -> None:
         if self.refusal is None:
@@ -1366,11 +1371,14 @@ class _Lexer:
         a backslash escapes only `$`, a backquote, a backslash and a newline,
         and a quote is the character it is (POSIX.1-2017 XCU §2.7.4,
         `PL-P95F`). Each such body is read as a command of its own, into
-        `Reading.substitutions` and `FlatReading.substituted`. Bash 5.2.21
-        expands the body only once its delimiter has ended it, so one the
-        delimiter line cuts, or one never closed, fails that expansion with an
-        error and the script runs on: it is read as the text it is, and nothing
-        reading it began is kept.
+        `Reading.substitutions` and `FlatReading.substituted`. Where the
+        here-document's body is read outside every substitution, each
+        substitution's span goes into `expansions` too, which `script_lines`
+        hands on as a piece of its own (`PL-55R2`). Bash 5.2.21 expands the
+        body only once its delimiter has ended it, so one the delimiter line
+        cuts, or one never closed, fails that expansion with an error and the
+        script runs on: it is read as the text it is, and nothing reading it
+        began is kept.
         """
         command = self.command
         at = start
@@ -1384,18 +1392,20 @@ class _Lexer:
                 continue
             bodies, substituted, joins = len(self.bodies), len(self.substituted), len(self.joins)
             removed, frames, nested = len(self.removed), len(self.frames), self.nested
-            introducer, jumps = self.introducer, dict(self.jumps)
+            introducer, jumps, expansions = self.introducer, dict(self.jumps), len(self.expansions)
             # Its own reading: a here-document it leaves unended is not carried out.
             self.frames.append(_Frame(compat=False))
             try:
                 after = self.substitution(at, end)
             except _Unreadable:
                 del self.bodies[bodies:], self.substituted[substituted:], self.joins[joins:]
-                del self.removed[removed:], self.frames[frames:]
+                del self.removed[removed:], self.frames[frames:], self.expansions[expansions:]
                 self.nested, self.introducer, self.jumps = nested, introducer, jumps
                 at += 1
                 continue
             self.frames.pop()
+            if not nested and len(self.bodies) > bodies:  # a `${x}` or `$((1))` runs nothing
+                self.expansions.append((at, after))
             at = after
 
     def body_line(self, index: int, stop: int, joined: bool) -> tuple[str, int]:
@@ -1577,18 +1587,23 @@ def script_lines(script: str) -> tuple[tuple[str, int], ...]:
     piece, since bash reads them as input rather than as commands (Bash
     Reference Manual §3.1.2.1 "Escape Character", §3.2.5.2 "Conditional
     Constructs", §3.5.6 "Process Substitution", §3.6.6 "Here Documents", §6.7
-    "Arrays"). A body a `<<` ahead of a substitution opened starts after the
-    line the substitution closes on, as bash reads it (`PL-QSN5`). A newline
-    after `&&` or `|` ends a piece too: the command goes on, and each piece
-    still reads whole.
+    "Arrays"). All but a substitution in the body of a delimiter with no
+    quoted part, which bash expands and so runs (`PL-P95F`): each is a piece
+    of its own after its line's, spelled from its `$` or backquote, so
+    `shell_words` reads it as one word whose substitution is the command bash
+    runs (`PL-55R2`). A body a `<<` ahead of a substitution opened starts
+    after the line the substitution closes on, as bash reads it (`PL-QSN5`).
+    A newline after `&&` or `|` ends a piece too: the command goes on, and
+    each piece still reads whole.
 
     Each piece is spelled as the script spells it, from where its line starts
-    to the newline ending it, so `shell_words` reads it as it stands in the
-    script. Its continuations, and the body of any here-document opened inside
-    a substitution, are left for that reading to remove: cut out here, a body
+    to the newline ending it, or from where its substitution opens to where it
+    closes, so `shell_words` reads it as it stands in the script. Its
+    continuations, and the body of any here-document opened inside a
+    substitution, are left for that reading to remove: cut out here, a body
     would leave its `<<` to take whatever line came next. Where the script
-    stops being readable, everything from the start of that line is one piece,
-    which `shell_words` declines in turn.
+    stops being readable, everything from the start of that line is one
+    piece, which `shell_words` declines in turn.
     """
     lexer = _Lexer(script, bash_c=False)
     try:
@@ -1597,8 +1612,14 @@ def script_lines(script: str) -> tuple[tuple[str, int], ...]:
         pass  # the lines before it stand; the rest is the last piece, read as unreadable
     pieces: list[tuple[str, int]] = []
     start = 0
+    expansions = iter(lexer.expansions)
+    expansion = next(expansions, None)
     for end, resume in lexer.breaks:
         pieces.append((script[start:end], start))
+        while expansion is not None and expansion[0] < resume:
+            if expansion[0] > end:  # after the line, not in a body a `[[ ]]` or array read
+                pieces.append((script[expansion[0] : expansion[1]], expansion[0]))
+            expansion = next(expansions, None)
         start = resume
     if start < len(script):
         pieces.append((script[start:], start))
