@@ -1681,7 +1681,12 @@ class TraceLegend(QWidget):
 
     @property
     def shown(self) -> tuple[RecordedQuantity, ...]:
-        """The compartments currently checked, in table order."""
+        """The compartments currently checked, in table order.
+
+        What the boxes show, for a check that they show the selection they
+        were handed. Nothing reads the selection back from here: the
+        dashboard draws from its own (`PL-VN6M`).
+        """
 
         return tuple(
             style.quantity

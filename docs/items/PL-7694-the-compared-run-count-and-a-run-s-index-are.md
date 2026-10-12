@@ -1,13 +1,13 @@
 ---
 id: PL-7694
-title: The compared-run count and a run's index are bare ints checked by hand in seven app functions - run_count at least one in run_trace_style, _hover_context, format_compared_trace_hover, _wash_in_pen and both set_run_count, run_index against it in two and nonnegative in run_label - while off_scale_notice reads frame.runs[run_index] with no check, so an index of -1 answers for the last run under its name (found sweeping PL-ZGYX)
+title: The compared-run count and a run's index are bare ints checked by hand in seven app functions - run_count at least one in run_trace_style, _hover_context, format_compared_trace_hover, _wash_in_pen, WashInLegend.set_run_count and CompartmentSelection, run_index against it in two and nonnegative in run_label - while off_scale_notice reads frame.runs[run_index] with no check, so an index of -1 answers for the last run under its name (found sweeping PL-ZGYX)
 status: untriaged
 feature: parse-dont-validate
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_chart_frame.py, tests/unit/test_dashboard_frame.py, tests/integration/test_qt_chart.py
 added: 2026-10-11
 ---
 
-**Problem.** The compared-run count and a run's index are bare ints checked by hand in seven app functions - run_count at least one in run_trace_style, _hover_context, format_compared_trace_hover, _wash_in_pen and both set_run_count, run_index against it in two and nonnegative in run_label - while off_scale_notice reads frame.runs[run_index] with no check, so an index of -1 answers for the last run under its name (found sweeping PL-ZGYX)
+**Problem.** The compared-run count and a run's index are bare ints checked by hand in seven app functions - run_count at least one in run_trace_style, _hover_context, format_compared_trace_hover, _wash_in_pen, WashInLegend.set_run_count and CompartmentSelection, run_index against it in two and nonnegative in run_label - while off_scale_notice reads frame.runs[run_index] with no check, so an index of -1 answers for the last run under its name (found sweeping PL-ZGYX)
 
 **Found 2026-10-11** by `PL-ZGYX`'s sweep, read from the code on `main` at
 `d9340516` and not executed: `off_scale_notice` in `app/dashboard_frame.py`

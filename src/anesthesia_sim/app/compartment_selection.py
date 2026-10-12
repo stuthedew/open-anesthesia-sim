@@ -85,8 +85,7 @@ class CompartmentSelection:
                 f"{', '.join(repeated)} more than once"
             )
 
-        if isinstance(self.run_count, bool) or not isinstance(self.run_count, int):
-            raise TypeError(f"a run count is an int, not {type(self.run_count).__name__}")
+        _require_run_count(self.run_count)
 
         if not 1 <= self.run_count <= MAX_DISPLAYED_RUNS:
             raise ValueError(
@@ -172,14 +171,25 @@ class CompartmentSelection:
             ValueError: If `run_count` is not between 1 and `MAX_DISPLAYED_RUNS`.
         """
 
-        if isinstance(run_count, bool) or not isinstance(run_count, int):
-            raise TypeError(f"a run count is an int, not {type(run_count).__name__}")
-
+        _require_run_count(run_count)
         drawn, _ = compared_compartments(self.order, run_count)
 
         return CompartmentSelection(
             tuple(quantity for quantity in self.order if quantity in drawn), run_count
         )
+
+
+def _require_run_count(run_count: object) -> None:
+    """Refuse a run count that is not an `int`, before anything compares it.
+
+    A `bool` is an `int` to Python, and would make `True` one run.
+
+    Raises:
+        TypeError: If `run_count` is a `bool` or not an `int`.
+    """
+
+    if isinstance(run_count, bool) or not isinstance(run_count, int):
+        raise TypeError(f"a run count is an int, not {type(run_count).__name__}")
 
 
 def _require_compartment(quantity: object) -> RecordedQuantity:

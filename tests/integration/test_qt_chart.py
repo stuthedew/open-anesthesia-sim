@@ -73,6 +73,7 @@ from anesthesia_sim.app.qt_chart import (
 )
 from anesthesia_sim.app.qt_widgets import FlowLayout
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
+from anesthesia_sim.app.stylesheets import foreground_stylesheet
 from anesthesia_sim.app.theme import (
     COMPARED_RUN_WIDTH_STEP,
     CONTROL_MARK_COLOR,
@@ -82,6 +83,7 @@ from anesthesia_sim.app.theme import (
     EQUILIBRIUM_LINE_DASH_PATTERN,
     EQUILIBRIUM_LINE_STROKE_WIDTH,
     GRIDLINE,
+    INK,
     MAC_AWAKE_BAND_COLOR,
     MAC_AWAKE_BAND_EDGE_STROKE_WIDTH,
     MAC_AWAKE_BAND_FILL_OPACITY,
@@ -1070,6 +1072,10 @@ def test_a_selection_handed_to_the_legend_is_shown_and_requests_nothing(
     legend.compartment_requested.connect(lambda quantity, shown: requests.append((quantity, shown)))
     reduced = INITIAL_COMPARTMENT_SELECTION.with_run_count(2)
 
+    # A new legend shows the opening selection on one run, with no compared row.
+    assert legend.shown == COMPARTMENT_QUANTITIES
+    assert legend._compared_caption.isHidden() is True
+
     legend.show_selection(reduced)
 
     assert requests == []
@@ -1077,7 +1083,16 @@ def test_a_selection_handed_to_the_legend_is_shown_and_requests_nothing(
     assert legend._run_count == 2
     assert legend.branch_mark is not None
     assert len(legend.compared_marks) == len(reduced.shown) * reduced.run_count
-    assert not _box(legend, RecordedQuantity.FAT).isChecked()
+    assert legend._compared_caption.isHidden() is False
+
+    # The key of a compartment the cap took off says so in both channels that
+    # are not colour, so it cannot be read as a curve on the plot.
+    fat = _box(legend, RecordedQuantity.FAT)
+
+    assert not fat.isChecked()
+    assert legend._swatches[RecordedQuantity.FAT]._filled is False
+    assert fat.styleSheet() == foreground_stylesheet(MUTED)
+    assert _box(legend, RecordedQuantity.CIRCUIT).styleSheet() == foreground_stylesheet(INK)
 
     legend.show_selection(reduced.with_run_count(1))
 

@@ -2946,6 +2946,38 @@ def test_the_compartment_selection_outlives_the_legend_that_renders_it(
     assert drawn.visible == renderer.shown
 
 
+def test_a_legend_click_draws_one_frame_over_the_cap_too(application: QApplication) -> None:
+    """A click is a discrete action, so it draws once and at once (`PL-R2YM`).
+
+    Held on one run, and on two, where the click is over the cap and the
+    selection rather than the legend decides which compartment makes room.
+    """
+
+    view = _case_view(application, _branched_case())
+    presented = view.presented_frames
+
+    _set_trace_shown(application, view, RecordedQuantity.FAT, False)
+
+    assert view.presented_frames == presented + 1
+
+    _take_fork(view, 60.0)
+    before = view.compartment_selection
+    presented = view.presented_frames
+
+    assert len(before.shown) == COMPARED_COMPARTMENT_CAP
+
+    _set_trace_shown(application, view, RecordedQuantity.FAT, True)
+
+    assert view.presented_frames == presented + 1
+    assert view.compartment_selection == before.with_compartment(RecordedQuantity.FAT, True)
+
+    frame = view._concentration_chart.frame
+
+    assert frame is not None
+    assert frame.visible == view.compartment_selection.shown
+    assert RecordedQuantity.FAT in frame.visible
+
+
 def test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it(
     application: QApplication,
 ) -> None:
@@ -4741,12 +4773,11 @@ def test_taking_a_fork_redraws_the_chart_without_prompting(application: QApplica
     and a fork that added the run without redrawing fails on the one-run
     frame `_case_view` drew (`PL-624C`).
 
-    The legend is narrowed to the pair the cap would draw first, so the second
-    run leaves the selection as it stands.
+    The selection is narrowed, through the legend, to the pair the cap would
+    draw first, so the second run leaves it as it stands.
     `test_a_fork_from_the_default_selection_draws_one_frame` takes the fork
-    from a selection the second run makes the legend reduce, which drew a
-    second frame until `PL-B1R9`; between them a press draws once from either
-    kind of selection.
+    from a selection the second run reduces, which drew a second frame until
+    `PL-B1R9`; between them a press draws once from either kind of selection.
     """
 
     case = _branched_case()
@@ -4803,7 +4834,8 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
     """One press, one frame, assembled once both legends and both runs know there are two.
 
     The default selection is wider than `COMPARED_COMPARTMENT_CAP`, so the
-    second run makes the legend reduce it. The reduction used to announce
+    second run reduces it (`CompartmentSelection.with_run_count`), and the
+    legend is shown the reduction. The reduction used to announce
     itself as a reader's change, and the dashboard drew a frame for it from
     inside `_rename_runs` - while the wash-in legend still counted one run and
     neither run had been named - before the press drew its own: two
@@ -4852,8 +4884,8 @@ def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
 ) -> None:
     """Everything that reads the run count follows the addition, not the construction.
 
-    The legends name the runs and hold the compartment selection to the
-    compared cap from this count, the panels carry the names the legend
+    The dashboard holds its compartment selection to the compared cap from
+    this count, the legends name the runs from it, the panels carry the names the legend
     entries use, and `PL-25KS` gives every surface a splitter section of its
     own - so a second run adds two.
     """
