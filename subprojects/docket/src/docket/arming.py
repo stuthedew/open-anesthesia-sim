@@ -102,8 +102,9 @@ has already merged; what went unread is said beside it.
   green with the rest of the workflow lane, while a product path waits as
   before, in a change crossing both lanes too (`PL-KPM2`). This module stays
   on the list so that the gate still cannot loosen itself: a change to it
-  could drop `src/` from the list and merge unread. That was put to the owner
-  the same day as a recommendation, and is built on it until he answers;
+  could drop `src/` from the list and merge unread (project owner, 2026-10-12,
+  ratified, over arming a change to it on green with the rest of the workflow
+  lane; `PL-VKHD` records the answer);
 - a test of the tooling under `tests/` - a file pytest collects that imports
   no `anesthesia_sim` on either side of the change - arms on green, as
   `subprojects/docket/tests/` does, and the rest of `tests/` stays on the list
