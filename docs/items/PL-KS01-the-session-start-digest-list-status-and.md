@@ -3,13 +3,14 @@ id: PL-KS01
 title: The session-start digest, list, status and concurrent answer from the working tree's copy of each item while next and show read origin/main's newer copy, so behind origin/main the digest's Top line can name an item next no longer offers
 priority: P3
 effort: M
-status: needs-decision
+status: ready
 classes: defect
 feature: one-snapshot
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-26 triage pass
 added: 2026-09-26
 payoff: the digest, list, status and concurrent answer from the same copy of each item as next and show, so a session resumed behind origin/main is not pointed at work main has closed
+verify: grep -q 'def test_digest_reads_the_base_s_copy_behind_main' subprojects/docket/tests/test_cli.py
 reenters: PL-XBV4
 ---
 
@@ -47,14 +48,11 @@ to each command, so a read command added later gets the base's copy by
 construction. The counts moving is the correction rather than its cost: they
 then describe the moment the digest's refs line already dates.
 
-**Done when.** Under A: in a checkout behind `origin/main` whose base closed an
-item, the digest, `list`, `status` and `concurrent` answer from the base's copy
-as `next` does, and say so. The commands that validate or write the store still
-read the working tree, and the README's `PL-Y48N` paragraph names which commands
-read which copy. Under B: the digest's `Top:` and `By lane` lines name what
-`next` names in that checkout. Its counts say they are the working tree's, and
-`PL-XBV4`'s `generator:` line names the store as the input its snapshot does not
-carry.
+**Done when.** In a checkout behind `origin/main` whose base closed an item,
+the digest, `list`, `status` and `concurrent` answer from the base's copy as
+`next` does, and say so. The commands that validate or write the store still
+read the working tree, and the README's `PL-Y48N` paragraph names which
+commands read which copy.
 
 **Generator check.** Not a new head: this is the first post-close instance of
 `PL-XBV4`'s fact, the working tree's moment read as the moment of the refs
@@ -64,3 +62,16 @@ the commit that closed its member `PL-Y48N`, and `docket new` recorded it as
 (`cli.Invocation`: "The store itself is not held here"). So each read command
 still picks the copy it answers from, and `PL-Y48N`'s fix moved `next`, `show`
 and `claim` alone.
+
+**Decided** (2026-10-12, in the first batched design round, a session's call,
+as the brief says): A. Checked against `origin/main` at 919ad967:
+`cli._from_base` now has three callers - `cmd_show`, `cmd_next` and
+`cmd_picks` (`PL-G2HP`) - and `subprojects/docket/README.md`'s `PL-Y48N`
+paragraph still says the digest, `list` and `status` answer from the working
+tree, so the premise holds and `picks` is one more command that picked its
+sources by hand. A carries `PL-XBV4`'s fix to the one input each command still
+chooses, so a read command added later gets the base's copy by construction,
+and the counts moving is the correction: they then describe the moment the
+refs line already dates. B is not taken, for the reason given above - one
+digest answering from two moments. A defect in what exists, so the pause on
+new workflow mechanisms does not hold it.

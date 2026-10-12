@@ -101,7 +101,10 @@ own id-led commit, every id leads the title, and a build and the members it
 closes go together. An item keeps a pull request of its own where combining
 would cost later: a claim likely to stall and hold the rest, a path that waits
 on the owner's read holding items that would arm on green, or a change better
-reverted on its own.
+reverted on its own. An item that turns out to need the owner's decision
+mid-batch is set aside and the batch goes on, never stopped for the answer:
+`.claude/skills/docket/modes/design.md` § "A build that meets a decision sets
+the item aside and goes on" (project owner, 2026-10-12, `PL-DBRB`).
 
 **Taking over a dead claim is `bin/docket claim <id> --over <branch> --reason
 "..."`, and only on the owner's word or with `get_session` showing the holding

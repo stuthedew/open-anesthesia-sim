@@ -53,6 +53,19 @@ leaving every session with two contradictory rules — the condition Claude Code
 own documentation says it may resolve arbitrarily, and the failure `PL-5D2R`
 was filed against. Inconsistent trailers are worse provenance than none.
 
+**Scope, recorded 2026-10-12 (`PL-CGBK`, a session's reading of the decision
+above).** The decision governs attribution: a trailer, or any line that
+credits a model as an author of a pushed artifact. It does not govern
+quotation of the harness reminder as evidence, a census counting model-named
+lines, or the owner's model-choice guidance in `docs/maintainer.md`, which
+name models deliberately; the nine files on `main` that named one on
+2026-09-25 are those, and a closed brief's census stays as the evidence it is
+(`.claude/rules/citation-drift.md`). What a session writes anew still follows
+the harness's own instruction against model identifiers, which is broader and
+binds the session whatever this record says, so this note licenses no new
+model name. Read literally instead, the decision would condemn the owner's own
+guidance, and nobody on `main` has read it so.
+
 **Not a dead-ends entry, on that file's own test.** `docs/dead-ends.md` earns a
 line only where a session could propose the approach again without first
 reading what refutes it. No session would propose this one: the harness pushes
