@@ -1,10 +1,18 @@
 ---
 id: PL-55R2
 title: docket.shell's script_lines puts the body of a here-document whose delimiter has no quoted part in no piece, so a substitution in that body, which bash runs (PL-P95F), is a command no per-piece reader sees: doc_check's _make_mentions, workflow_commands and workflow_runs' line-at-a-time fallback all miss it; latent
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: defect
 feature: shell-reads-as-bash
-touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, docs/items/PL-GJKN-docket-shell-s-lexer-applies-the-command.md
+touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, tools/doc_check.py, tests/unit/test_doc_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1449
+payoff: a command in an unquoted here-document body is checked by every doc_check reader that reads a script a piece at a time, as bash runs it
+verify: grep -q 'def test_script_lines_hands_a_here_document_body_s_substitutions_a_piece' subprojects/docket/tests/test_shell.py && ! grep -qF 'id="PL-55R2"' subprojects/docket/tests/test_shell.py
 ---
 
 **Problem.** docket.shell's script_lines puts the body of a here-document whose delimiter has no quoted part in no piece, so a substitution in that body, which bash runs (PL-P95F), is a command no per-piece reader sees: doc_check's _make_mentions, workflow_commands and workflow_runs' line-at-a-time fallback all miss it; latent
@@ -44,6 +52,15 @@ names is not a mention), `workflow_commands`, and `workflow_runs` where one
 lose, and the one fenced sample that does is `PL-GJKN`'s own example in its
 brief.
 
+**Why it matters.** `script_lines` is how `tools/doc_check.py` reads what a
+workflow's `run:` steps and a fenced shell sample execute, a piece at a time,
+so a command in an unquoted here-document's body escapes every check made on
+those pieces: a path it names is not held to the tree, and a `make` target it
+names is no mention. `PL-P95F` closed the hole for the Bash guards, which read
+a command whole; the per-piece readers still have it, and `PL-C4XY`'s
+comparison subtracts a body's commands from the pieces' sum to pass, so a
+regression there would go unseen.
+
 **Not a recurrence of `PL-GJKN`**, which `docket new` matched on the shared
 `touches`: that item is where a nested body ends inside an expanded body, a
 rule of the lexer's single pass, and this is which piece `script_lines` hands a
@@ -53,6 +70,33 @@ withdrawn because of this paragraph.
 **Generator check.** Found by `PL-C4XY`'s comparison, which is what stops a
 departure of this kind reaching `main` from now on; read against `bin/docket
 generators --misread` on 2026-10-12, it misreads no recorded fact.
+
+**Route, measured 2026-10-12.** Keep the line pieces, and add each outermost
+substitution that `_Lexer.expanded` reads in a top-level unquoted body, which
+lies in a gap between two pieces, as a piece of its own: record a span where
+the call grew `bodies`, in a new list `expanded` rolls back with the rest of
+its state on `_Unreadable`, keep the outermost spans, and merge them into the
+pieces in offset order. Refuted: a body and its delimiter in the opening
+line's piece, since pieces would then hold input text, which breaks
+`check_coverage_gate`'s substring test, `_make_mentions`' line fallback, and
+`workflow_commands`' contract and its test. With the route, `_make_mentions`
+reads a body's `$(make check)` as a mention on the body's line and
+`workflow_commands` yields it, so its paths are held to the tree, while the
+one-word command that is the substitution itself names no program a check
+resolves. `workflow_commands`' docstring sentence that a body and delimiter
+are no line at all is amended, and the comparison's `p top-body` command and
+the subtraction that drops it go.
+
+**Next steps, 2026-10-12.** The thread that claimed this batch stopped for
+length with this item unstarted. The other four closed on
+`claude/shell-lexer-departures-qpgs3n` (#1449, a draft): `PL-V690`,
+`PL-48ZJ`, `PL-3Z8B` and `PL-X1VN`, the last two through a matched-pair
+reader, `_Lexer.matched`, which this item's span recording sits beside. Left
+for the next thread: this fix by the route above, with `workflow_commands`'
+docstring in `tools/doc_check.py` and a `tests/unit/test_doc_check.py` case;
+then `make check`, the close-out's docs sweep and review, `bin/docket record
+1449`, marking #1449 ready, and asking `bin/docket arm`. `origin/main` was two
+merges ahead (#1447, #1450) and was not brought in, since nothing is armed.
 
 **Done when.** Every command bash runs from a script is a command of one
 `script_lines` piece's reading, a body's substitutions included, and the
