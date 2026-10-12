@@ -3403,7 +3403,8 @@ which the start mode permits at the claim push, the number rides the closure
 commit and nothing trails it; where the pull request opens after the closure,
 the number rides one more push. `verify` sanctions that write: an item that
 reads as it did with a `pr:` field added, every other field the same and in
-its place, is a queue edit the workflow asked for.
+its place, is a queue edit the workflow asked for, unless either copy holds a
+form its reader declines (`PL-4DM0`).
 
 **The guarantee is a check on the pull request, at the one point that knows
 its own number.** `tools/pr_record_check.py` runs as a step of the required

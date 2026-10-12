@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
-touches: tools/doc_check.py, subprojects/docket/src/docket/model.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, subprojects/docket/src/docket/model.py, tests/unit/test_doc_check.py, tools/possessive_section_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
 closed: 2026-10-12
