@@ -5178,8 +5178,11 @@ the domain the verification gates cover, so every other caller of `core/` —
 a headless run, a notebook, a test — could leave it. `core/supported_ranges.py`
 declares the three intervals now and builds each flow as a type only its guard
 produces, so a value outside its range is refused where the flow is built,
-before any compartment or settings record can hold it (`PL-0YYV`, below);
-`app/` imports the same constants for its sliders rather than restating them.
+before any compartment or settings record can hold it (`PL-0YYV`, below).
+`app/` never restates them: its ventilation and cardiac output sliders import
+the constants, and its fresh gas flow slider reads the circuit's accepted
+range, which is this envelope narrowed by the mounted machine's (§ "The
+model's envelope and a machine's deliverable range are two claims", below).
 
 **Refused, not clamped**, for the reason the vaporizer maximum is: a silently
 clamped setting would simulate, display, and chart a value the user did not
@@ -5455,11 +5458,21 @@ volatile agent in a single gas phase and no oxygen at all. The second becomes
 admissible the day a hypoxic guard needs it, which is a model extension rather
 than a data question.
 
-**The interface's sliders still read the envelope alone**, which is correct
-while every shipped profile declares no range and wrong the moment one does:
-a slider offering a flow the mounted machine cannot set would invite a
-refusal instead of preventing one. Narrowing the controls to the intersection
-is `PL-7CRY` (narrow the fresh gas flow control to the intersection) — no test yet (`PL-7CRY`).
+**The fresh gas flow control offers the intersection, read from the
+circuit.** `BreathingCircuit.accepted_fresh_gas_flow_range_l_min` states it
+once - the envelope where a profile declares no range, the overlap of the two
+claims where one does - and the interface's control is bounded by it rather
+than by the envelope alone, because a slider offering a flow the mounted
+machine cannot set would invite a refusal instead of preventing one
+(`PL-7CRY`). The slider steps at the flow's displayed resolution, 0.1 L/min,
+so an end falling between two steps is offered as the step just inside it: a
+machine floored at 0.25 L/min is offered 0.3 L/min, never the 0.2 L/min it
+would refuse. A range holding no step at all is an error rather than a control
+whose only setting the run refuses.
+`test_the_fresh_gas_flow_control_narrows_to_a_declared_machine_range` and
+`test_a_declared_range_off_the_display_grid_offers_only_settings_inside_it`
+in `tests/unit/test_dashboard_frame.py` hold both, and nothing displayed
+changes while the shipped profile declares no range.
 
 #### Supported run length
 
@@ -5908,7 +5921,10 @@ limits and fails if the model moves one,
 `test_displayed_resolution_and_shipped_step_match_the_interface` does the
 same for the resolution and step every figure is quoted at, and
 `test_the_sliders_span_the_supported_input_ranges` fails if the interface
-stops short of the declared domain or reaches past it.
+stops short of the declared domain or reaches past it. It reads the shipped
+machine profile, which declares no deliverable range; a profile that declares
+one narrows the fresh gas flow slider to the overlap on purpose (§ "The model's
+envelope and a machine's deliverable range are two claims").
 
 **The simulation step is bounded too, and separately.** It is not a control a
 user sets, but it is an input to every `advance()` call, and what a caller
@@ -7810,7 +7826,8 @@ shortfall, as the paragraph above records for the gridline grey.
 
 **A declared colour reaches the screen by one of three mechanisms.** Most of
 this interface is drawn by a stylesheet composed from `app/theme.py`'s
-constants, which is what `tools/contrast_check.py` reads. Some widgets cannot
+constants, which is what `tools/contrast_check.py` reads; every one is composed
+in `app/stylesheets.py` (`PL-Y4YX`). Some widgets cannot
 be: an entry's fill, a spin box's stepper, a list's rows and its scroll bar, a
 check box's indicator and a dialog's own surface are painted from Qt palette
 roles, and styling them as a stylesheet instead costs the native stepper and

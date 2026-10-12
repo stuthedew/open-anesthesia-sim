@@ -192,7 +192,7 @@ AGENT_COLOR_SCHEMES: Final[dict[str, AgentColorScheme]] = {
 # `tools/agent_identity_check.py` read this file in a bare checkout and so need
 # it to import nothing they would have to install. That is not what carries the
 # rule: both call `ast.parse` on the file's *text*
-# (`contrast_check.py:862`, `:906`, `:945`; `agent_identity_check.py:261`), and
+# (`contrast_check.read_palette`, `agent_identity_check.read_modules`), and
 # `ast.parse` executes nothing and resolves no import, so a `from PySide6...`
 # line at the top would leave both working exactly as they do. The correction
 # matters because a rule defended by a reason a reader can check and find false
@@ -203,10 +203,17 @@ AGENT_COLOR_SCHEMES: Final[dict[str, AgentColorScheme]] = {
 # without a display, a Qt event loop or a plugin. `tests/` reads it directly,
 # and so can anything that never draws.
 #
-# **That is not a decision about where the Qt styling layer lives.** 27
-# `setStyleSheet` sites across `app/` compose CSS strings from these constants,
-# with partial helpers living in the view modules; whether those centralise
-# here, behind a toolkit import, is open and is `PL-Y4YX`.
+# **The stylesheets these values are drawn through are composed beside this
+# file, in `app/stylesheets.py`, and not in it** (project owner, 2026-10-03,
+# ratified, over composing them here, `PL-Y4YX`). The rule and "make each
+# visual decision once" turned out not to pull against each other: a composer
+# takes these values and returns a string, so it needs no toolkit either, and
+# every `setStyleSheet` call under `app/` passes one. Tokens are values and
+# composers are strings, and they stay apart because a composer is written in
+# Qt's selector vocabulary, which is the toolkit's styling even where nothing
+# imports it, and because `contrast_check.read_palette` reads this file as
+# tokens in file order, which functions among the constants would make harder
+# to follow.
 #
 # **Order is load-bearing.** `contrast_check.read_palette` resolves a bare name
 # against the palette built so far, in file order, so an alias must sit below

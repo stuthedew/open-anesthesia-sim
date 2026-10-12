@@ -29,6 +29,9 @@ The effective limit is the intersection, and each side refuses in its own
 name — because a machine whose flowmeter runs to 15 L/min must not thereby
 widen the domain anything was verified over, and a machine that will not go
 below 0.5 L/min must not move the model's floor for every other machine.
+`BreathingCircuit.accepted_fresh_gas_flow_range_l_min` states the intersection
+once, and the interface's fresh gas flow control offers what it states
+(`PL-7CRY`).
 """
 
 from dataclasses import dataclass
@@ -239,7 +242,8 @@ class BreathingCircuit:
     It is instance state for the reason the vaporizer maximum is: it belongs
     to the device in front of the patient and differs between devices, where
     a module constant would be one number for every machine there will ever
-    be (`PL-8PS6`).
+    be (`PL-8PS6`). `accepted_fresh_gas_flow_range_l_min` is the two claims
+    read together, the one statement of their intersection.
     """
 
     circuit_volume_l: float = 6.0
@@ -309,6 +313,39 @@ class BreathingCircuit:
 
             super().__setattr__(name, value)
 
+    @property
+    def accepted_fresh_gas_flow_range_l_min(self) -> tuple[float, float]:
+        """The lowest and highest fresh gas flow this circuit accepts, in L/min.
+
+        The intersection the module docstring names, stated once: the model's
+        envelope in `core/supported_ranges.py`, narrowed to the machine's
+        `deliverable_fresh_gas_flow_range` where its profile declares one, and
+        the envelope alone where it declares none. Both ends are inclusive,
+        as both claims are. A flow inside it is one `set_fresh_gas_flow`
+        accepts; one outside it is refused by the model's guard or the
+        machine's, each in its own words. So it is the range a control
+        offering this setting offers, which is what the interface reads it
+        for (`PL-7CRY`): a slider bounded by the envelope alone would offer a
+        flow the mounted machine cannot set, inviting a refusal the control
+        could have made unreachable.
+
+        `_require_the_two_flow_claims_overlap` refuses a circuit whose two
+        claims share no flow, so on a built circuit the first end is never
+        above the second - unless `deliverable_fresh_gas_flow_range` has been
+        reassigned since, past that check, which nothing under `src/` does
+        (`PL-HJ7L`).
+        """
+
+        machine_range = self.deliverable_fresh_gas_flow_range
+
+        if machine_range is None:
+            return (MINIMUM_FRESH_GAS_FLOW_L_MIN, MAXIMUM_FRESH_GAS_FLOW_L_MIN)
+
+        return (
+            max(MINIMUM_FRESH_GAS_FLOW_L_MIN, machine_range.minimum_l_min),
+            min(MAXIMUM_FRESH_GAS_FLOW_L_MIN, machine_range.maximum_l_min),
+        )
+
     def _require_the_two_flow_claims_overlap(self) -> None:
         """Reject a machine that can deliver no flow the model is claimed over.
 
@@ -317,7 +354,9 @@ class BreathingCircuit:
         `MAXIMUM_FRESH_GAS_FLOW_L_MIN` cannot be simulated at all: every flow
         it can set is outside the model's envelope and every flow the model
         supports is outside its own range, so each individual refusal would be
-        correct and none of them would say that the pair is the problem.
+        correct and none of them would say that the pair is the problem. The
+        test is that `accepted_fresh_gas_flow_range_l_min`, the intersection,
+        is empty, so the rule is written once.
 
         Raises:
             SimulationConfigurationError: the machine's declared range and the
@@ -329,10 +368,9 @@ class BreathingCircuit:
         if machine_range is None:
             return
 
-        lowest_supported = max(MINIMUM_FRESH_GAS_FLOW_L_MIN, machine_range.minimum_l_min)
-        highest_supported = min(MAXIMUM_FRESH_GAS_FLOW_L_MIN, machine_range.maximum_l_min)
+        lowest_accepted, highest_accepted = self.accepted_fresh_gas_flow_range_l_min
 
-        if lowest_supported > highest_supported:
+        if lowest_accepted > highest_accepted:
             raise SimulationConfigurationError(
                 "this machine can deliver no fresh gas flow the model is claimed over: "
                 f"it delivers {machine_range.minimum_l_min} to "

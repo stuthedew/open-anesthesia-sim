@@ -56,8 +56,8 @@ from anesthesia_sim.app.qt_widgets import (
     inert_splitter,
     initial_window_geometry,
     styled_label,
-    transport_button_stylesheet,
 )
+from anesthesia_sim.app.stylesheets import transport_button_stylesheet
 from anesthesia_sim.app.theme import ACCENT, INK, MUTED, PANEL, WARNING
 from anesthesia_sim.core.concentration import Percent, fraction_from_percent
 

@@ -171,6 +171,16 @@ class SimulationSnapshot(RunStatus):
     """
     circuit_volume_l: float
     fresh_gas_flow_l_min: FreshGasFlow
+    accepted_fresh_gas_flow_range_l_min: tuple[float, float]
+    """The lowest and highest fresh gas flow this run's circuit accepts, in L/min.
+
+    `BreathingCircuit.accepted_fresh_gas_flow_range_l_min`, read off the
+    circuit in force: the model's envelope narrowed to the mounted machine's
+    declared range. It travels beside the flow for the reason
+    `max_delivered_concentration_percent` travels beside the dial: the
+    control offering the setting reads its bounds from here, so it offers
+    no flow this machine refuses (`PL-7CRY`).
+    """
     delivered_concentration_percent: Percent
     alveolar_ventilation_l_min: AlveolarVentilation
     cardiac_output_l_min: CardiacOutput
@@ -762,6 +772,7 @@ class SimulationController:
             agent_mac_awake=self._agent_mac_awake,
             circuit_volume_l=circuit.circuit_volume_l,
             fresh_gas_flow_l_min=circuit.fresh_gas_flow_l_min,
+            accepted_fresh_gas_flow_range_l_min=circuit.accepted_fresh_gas_flow_range_l_min,
             delivered_concentration_percent=circuit.delivered_concentration_percent,
             alveolar_ventilation_l_min=alveoli.alveolar_ventilation_l_min,
             cardiac_output_l_min=patient.cardiac_output_l_min,

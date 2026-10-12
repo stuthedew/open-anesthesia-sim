@@ -652,3 +652,61 @@ def test_for_agent_passes_the_machine_file_s_declared_range_to_the_circuit() -> 
 
     assert machine.deliverable_fresh_gas_flow_range is None
     assert circuit.deliverable_fresh_gas_flow_range is machine.deliverable_fresh_gas_flow_range
+
+
+# --- The one statement of the intersection (PL-7CRY) --------------------------
+
+# `accepted_fresh_gas_flow_range_l_min` is what the interface's fresh gas flow
+# control is bounded by, so it is held here to be exactly the flows the circuit
+# accepts: both of its ends taken, and the flow just past each refused, by the
+# model's guard or the machine's. "Just past" is far below any step a control
+# offers, so the ends are pinned as the closed interval and nothing wider.
+
+_JUST_PAST_AN_END_L_MIN = 1e-6
+
+
+@pytest.mark.parametrize(
+    ("declared", "accepted"),
+    (
+        # No claim: the model's envelope is the only bound.
+        (None, (MINIMUM_FRESH_GAS_FLOW_L_MIN, MAXIMUM_FRESH_GAS_FLOW_L_MIN)),
+        # Narrower at both ends: the machine's range.
+        ((0.5, 8.0), (0.5, 8.0)),
+        # Wider at the top: the machine's floor and the model's ceiling.
+        ((0.5, 15.0), (0.5, MAXIMUM_FRESH_GAS_FLOW_L_MIN)),
+        # Touching the envelope at one flow: that flow alone.
+        (
+            (MAXIMUM_FRESH_GAS_FLOW_L_MIN, 15.0),
+            (MAXIMUM_FRESH_GAS_FLOW_L_MIN, MAXIMUM_FRESH_GAS_FLOW_L_MIN),
+        ),
+    ),
+)
+def test_the_accepted_range_is_exactly_the_flows_the_circuit_accepts(
+    declared: tuple[float, float] | None, accepted: tuple[float, float]
+) -> None:
+    """Both ends are settings the circuit takes, and the flow past either is refused.
+
+    The property is read by a control the reader drags, so an end the
+    circuit refused would be a setting offered and then turned down, and a
+    range narrower than the circuit's would hide flows the run supports.
+    """
+
+    lowest, highest = accepted
+    circuit = BreathingCircuit(
+        fresh_gas_flow_l_min=FreshGasFlow(lowest),
+        deliverable_fresh_gas_flow_range=(
+            None
+            if declared is None
+            else DeliverableFreshGasFlowRange(minimum_l_min=declared[0], maximum_l_min=declared[1])
+        ),
+    )
+
+    assert circuit.accepted_fresh_gas_flow_range_l_min == accepted
+
+    for end in accepted:
+        circuit.set_fresh_gas_flow(FreshGasFlow(end))
+        assert circuit.fresh_gas_flow_l_min == end
+
+    for past in (lowest - _JUST_PAST_AN_END_L_MIN, highest + _JUST_PAST_AN_END_L_MIN):
+        with pytest.raises(SimulationConfigurationError):
+            circuit.set_fresh_gas_flow(FreshGasFlow(past))

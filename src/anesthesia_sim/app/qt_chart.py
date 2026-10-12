@@ -98,6 +98,7 @@ from anesthesia_sim.app.dashboard_frame import (
 from anesthesia_sim.app.formatting import format_chart_time_label
 from anesthesia_sim.app.qt_widgets import FlowLayout, declare_interface_colours
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
+from anesthesia_sim.app.stylesheets import foreground_stylesheet
 from anesthesia_sim.app.theme import (
     BAND_SWATCH_HEIGHT,
     BAND_SWATCH_WIDTH,
@@ -1519,7 +1520,7 @@ def legend_caption(text: str) -> QLabel:
     """
 
     label = QLabel(text)
-    label.setStyleSheet(f"color: {MUTED};")
+    label.setStyleSheet(foreground_stylesheet(MUTED))
 
     return label
 
@@ -1582,7 +1583,7 @@ class TraceLegend(QWidget):
             box = QCheckBox(trace_legend_label(style))
             box.setAccessibleName(TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label))
             box.setChecked(True)
-            box.setStyleSheet(f"color: {INK};")
+            box.setStyleSheet(foreground_stylesheet(INK))
             # The label's colour is the stylesheet's; the *indicator* is drawn
             # from palette `Base` and `Text`, which the stylesheet does not
             # reach - so under a dark host appearance the box was a dark square
@@ -1874,7 +1875,7 @@ class TraceLegend(QWidget):
 
     def _on_toggled(self, quantity: RecordedQuantity, checked: bool) -> None:
         self._swatches[quantity].set_filled(checked)
-        self._boxes[quantity].setStyleSheet(f"color: {INK if checked else MUTED};")
+        self._boxes[quantity].setStyleSheet(foreground_stylesheet(INK if checked else MUTED))
 
         if quantity in self._check_order:
             self._check_order.remove(quantity)
@@ -2053,6 +2054,6 @@ class WashInLegend(QWidget):
 
 def _legend_label(text: str) -> QLabel:
     label = QLabel(text)
-    label.setStyleSheet(f"color: {INK};")
+    label.setStyleSheet(foreground_stylesheet(INK))
 
     return label
