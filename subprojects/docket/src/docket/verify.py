@@ -206,7 +206,8 @@ QUOTING_SUFFIXES = (".py", ".pyi")
 #: the markup is the only evidence left on the line. It is docket's one reading
 #: of a span, `release.CODE_SPAN_PATTERN`, so a reST-style ``literal`` is
 #: blanked whole rather than read as two empty spans around a bare token
-#: (`PL-9L39`).
+#: (`PL-9L39`). It steps over a backslash escape and a backtick run no closer
+#: matches as CommonMark's scan does, and blanks them with the spans (`PL-T3GW`).
 #:
 #: **The comment alternative is safe only because `SUPPRESSIONS` now holds no
 #: comment-form marker**, and that coupling is why `PL-G21K`'s two halves were
