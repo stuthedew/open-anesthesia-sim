@@ -449,6 +449,56 @@ def test_the_shape_still_reads_a_malformed_id_beside_the_prose(tmp_path: Path) -
         assert list(fixture_id_check.malformed(f"see {candidate}.")) == [candidate]
 
 
+def test_a_fence_its_container_closes_is_joined_to_its_last_line(tmp_path: Path) -> None:
+    """A shell fence its list item's end closes still holds its last line (`PL-S4JL`).
+
+    `docket.fences` ends such a block on the last line the item held rather
+    than on a closing fence, so reading up to that line, as for a fence closed
+    by its own run, left out the line bash joins to the one above it, and the
+    malformed id the two make passed while the same fence closed by its run
+    was reported.
+    """
+    sample = "- item\n\n  ```bash\n  echo PL-K7QX\\\n  Z\n"
+    _write(tmp_path, ".claude/rules/closed-by-item.md", sample + "not indented\n")
+    _write(tmp_path, ".claude/rules/closed-by-fence.md", sample + "  ```\n")
+
+    found = [
+        (offender.path.name, offender.line, offender.token)
+        for offender in fixture_id_check.collect(tmp_path)
+    ]
+
+    assert found == [
+        ("closed-by-fence.md", 4, "PL-K7QXZ"),  # not-an-id
+        ("closed-by-item.md", 4, "PL-K7QXZ"),  # not-an-id
+    ]
+
+
+#: A skill's front matter whose `description:` holds `{}` on its key's line and
+#: a quote-led line under it carrying `PL-K7Q` on over an escaped line break.
+CONTINUED_FRONT_MATTER = '---\nname: x\ndescription:{}\n  "see PL-K7Q\\\n  X"\n---\n'  # not-an-id
+
+
+def test_a_quote_opening_a_continuation_line_joins_nothing(tmp_path: Path) -> None:
+    """A quote opening a plain or block scalar's continued line is text, and so is its backslash.
+
+    Only a double-quoted scalar escapes a line break (YAML 1.2.2 § 7.3.1), and
+    a quote opening a plain scalar's continuation line or a block scalar's
+    line opens none (§ 7.3.3, § 8.1), as PyYAML 6.0.3 reads both. So the id
+    there is the malformed `PL-K7Q` YAML holds, which joining read as the
+    well-formed `PL-K7QX` (`PL-S4JL`). Under a key holding nothing on its
+    line, the same quote does open a double-quoted scalar, and is joined.
+    """
+    for name, value in (("plain", " Use it for the queue"), ("folded", " >"), ("quoted", "")):
+        _write(tmp_path, f".claude/skills/{name}/SKILL.md", CONTINUED_FRONT_MATTER.format(value))
+
+    found = [
+        (offender.path.parent.name, offender.line, offender.token)
+        for offender in fixture_id_check.collect(tmp_path)
+    ]
+
+    assert found == [("folded", 4, "PL-K7Q"), ("plain", 4, "PL-K7Q")]  # not-an-id
+
+
 # --- keyword names: an id that cannot be spelled as one ----------------------
 
 

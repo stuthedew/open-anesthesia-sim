@@ -21,7 +21,9 @@ them:
 - markdown-it-py's link reference definition rule is off.
 
 It is also set to cmark-gfm's reading in the one place markdown-it-py departs
-from it, which `_gfm_table` names.
+from it that a tracked file holds, which `_gfm_table` names. It departs on a
+lazy table header row too, which no tracked file holds, so that form is pinned
+to cmark-gfm's reading by a test of its own rather than compared (`PL-TJ1S`).
 """
 
 from __future__ import annotations
@@ -151,6 +153,23 @@ FIXTURES = {
 @pytest.mark.parametrize("lines", FIXTURES.values(), ids=FIXTURES.keys())
 def test_each_fixture_reads_as_markdown_it_py_reads_it(lines: tuple[str, ...]) -> None:
     assert ours(lines) == theirs(lines)
+
+
+def test_a_lazy_header_row_over_a_delimiter_row_inside_a_container() -> None:
+    """A lazy line is a table's header row where the delimiter row under it is in the container.
+
+    cmark-gfm, which GitHub renders with, reads each form below as a paragraph
+    and then a table inside the list item or the block quote (cmarkgfm
+    2025.10.22, measured 2026-10-12), and so does `docket.markdown`, which read
+    one paragraph over all four lines (`PL-TJ1S`). markdown-it-py 4.2.0 parts
+    from cmark-gfm on both, so they are pinned here rather than compared: it
+    reads the list form's table outside the list, and the block-quote form as
+    one paragraph.
+    """
+    paragraph_then_table = [(markdown.PARAGRAPH, 0, 1, 1, 0), (markdown.TABLE, 1, 4, 1, 0)]
+
+    assert ours(("- x", "a | b", "  --|--", "  c | d")) == paragraph_then_table
+    assert ours(("> x", "a | b", "> --|--", "> c | d")) == paragraph_then_table
 
 
 #: The vendored specifications, which `tests/unit/test_inline_reference.py`

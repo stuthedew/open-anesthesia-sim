@@ -3,11 +3,13 @@ id: PL-QY94
 title: contrast_check's check_authored_disabled_colours_are_measured misses a :disabled rule built with a plus between two string literals, and reads :disabled in a docstring as a rule; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1435
 payoff: Every authored :disabled rule is held to a measured contrast requirement however its string is joined, and prose about the rule draws no false refusal
 verify: grep -q 'def test_a_disabled_rule_joined_with_a_plus_is_read' tests/unit/test_contrast_check.py && grep -q 'def test_a_docstring_naming_disabled_is_not_a_rule' tests/unit/test_contrast_check.py
 ---

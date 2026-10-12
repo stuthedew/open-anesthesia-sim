@@ -132,8 +132,9 @@ these tools run under a bare `python3`, and it reads them from every module
 under `app/` — the theme first, then the rest in path order — rather than from
 two named paths (`PL-BXB2`). Since `PL-2CS8` every color is declared
 in `app/theme.py`, and `check_colors_live_in_the_theme` fails the build on one
-declared anywhere else, as a named constant or as a hex literal written inline
-in a call; every module is still parsed for colors as well, so a
+declared anywhere else, as a named constant or as a hex color written inline,
+in a call or inside a longer string such as a stylesheet (`PL-PXT7`); every
+module is still parsed for colors as well, so a
 color put back outside the theme is measured rather than lost, which is the failure that
 item was filed for. Its `REQUIREMENTS` table is the specification: each entry names
 the colors that appear on screen together, the success criterion, the minimum,

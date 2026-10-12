@@ -50,6 +50,14 @@ bash joins `PL-K7QXZ`. None of the three forms stands in `.claude/`.
 
 **A fourth form, found 2026-10-12 by `PL-5DZ8`'s closing sweep.** `_opens_a_node` sees an anchor or tag ahead of the quote as no node opener, so `description: &a "PL-K7\` followed by `  QX"` is not joined and `PL-K7` is reported, where `docket.frontmatter._node_start` skips the anchor and reads a quoted scalar. The Done-when's "place a double-quoted scalar only where YAML opens one" covers it.
 
+**Narrowed 2026-10-12 by `PL-S4JL`'s fix.** `_front_matter_joins` now takes
+the front matter's edges from `docket.frontmatter.closing` and each
+double-quoted scalar from `docket.frontmatter.quoted`, and `_opens_a_node` is
+gone. So the trailing-space close, the comma form and the anchor form read as
+PyYAML 6.0.3 reads them - `PL-K7QX` joined, nothing reported, and `PL-K7QX`
+joined - and a `...` line ends nothing. What is left here is the
+`.claude/settings.json` form, and the tests this item's `verify:` names.
+
 **Why it matters.** Each form either hides a malformed id from the check or
 reports a well-formed one as malformed, and the first keeps a second reading
 of a front matter's edges beside `docket.frontmatter`'s, free to drift from it.

@@ -58,6 +58,20 @@ def test_an_indented_fence_is_a_fence() -> None:
     assert blocks(text) == [Block(2, 4)]
 
 
+def test_a_block_its_container_closes_ends_on_a_line_it_holds() -> None:
+    """Its last line is the item's last, which is content rather than a fence (`PL-S4JL`).
+
+    `closing` says which of the two its last line is, and `body` holds that
+    line only where it is content, so a reader of what the block holds keeps
+    it where reading up to a closing fence would drop it.
+    """
+    text = "- An item\n\n  ```bash\n  echo one\n  echo two\nafter\n"
+
+    assert blocks(text) == [Block(2, 4, closing=False)]
+    assert list(blocks(text)[0].body) == [3, 4]
+    assert list(blocks("```bash\necho one\n```\n")[0].body) == [1]
+
+
 def test_an_opener_nothing_closes_opens_no_block() -> None:
     """A fence nothing closes is not a fence: its lines are read as written.
 

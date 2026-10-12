@@ -1384,11 +1384,13 @@ def test_a_lazy_line_opening_like_a_block_is_declined_too(follows: str) -> None:
     """A line that only looks like a block's opening carries the entry on (`PL-F5B9`).
 
     A pipe line with no delimiter row under it is paragraph text (GitHub
-    Flavored Markdown § 4.10), and so is one with a delimiter row under it here:
-    a table's header row is a paragraph line, never a lazy one, as cmark-gfm and
-    markdown-it-py 4.2.0 both read it. A tag outside § 4.6's first six kinds
-    cannot interrupt a paragraph, a backtick run with a backtick after it is a
-    code span (§ 4.5), and `#1234` and `*bold*` open no heading or item.
+    Flavored Markdown § 4.10), and so is one with a delimiter row under it here,
+    at the margin: a lazy line is a table's header row only where the delimiter
+    row under it is inside the item (`PL-TJ1S`), and cmark-gfm (cmarkgfm
+    2025.10.22) and markdown-it-py 4.2.0 both read this one as the entry going
+    on. A tag outside § 4.6's first six kinds cannot interrupt a paragraph, a
+    backtick run with a backtick after it is a code span (§ 4.5), and `#1234`
+    and `*bold*` open no heading or item.
     CommonMark reads each into the entry above, so the walker declines it as it
     declines any other lazy line, rather than ending the entry short.
     """

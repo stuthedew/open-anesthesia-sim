@@ -3,11 +3,13 @@ id: PL-PXT7
 title: contrast_check reads a colour only from a constant that is exactly #RRGGBB, treats only the :disabled literal as a disabled state, and lists files without -z, so a colour built from parts, a Qt :!enabled rule and a non-ASCII path go unread; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
-touches: tools/contrast_check.py, tests/unit
+touches: tools/contrast_check.py, tests/unit/test_contrast_check.py, docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-12
+pr: 1435
 payoff: Every colour the interface authors outside the theme, and every disabled-state rule, is measured or refused, and the base comparison reads the whole palette
 verify: grep -q 'def test_a_hex_colour_built_from_parts_or_inside_a_stylesheet_is_refused' tests/unit/test_contrast_check.py && grep -q 'def test_a_not_enabled_rule_no_requirement_cites_is_an_error' tests/unit/test_contrast_check.py && grep -q 'def test_a_base_module_whose_path_git_would_quote_is_read' tests/unit/test_contrast_check.py
 recurrences: 2026-10-06 PL-JTCQ withdrawn 2026-10-06 PL-R417
