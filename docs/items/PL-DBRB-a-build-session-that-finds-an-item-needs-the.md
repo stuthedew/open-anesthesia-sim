@@ -3,11 +3,13 @@ id: PL-DBRB
 title: A build session that finds an item needs the owner's decision sets it aside for the next batched design round and goes on with the rest, as the owner asked on 2026-10-12, where the docket skill says only that a design round stops for the answer
 priority: P2
 effort: S
-status: untriaged
+status: done
 classes: docs
 touches: .claude/skills/docket/modes/design.md, .claude/skills/docket/modes/start.md
 added: 2026-10-12
+closed: 2026-10-12
 payoff: a build session that meets a question for the owner keeps building the rest of its batch, and the owner answers the lane's questions in one sitting
+verify: grep -qF 'A build that meets a decision sets the item aside and goes on' .claude/skills/docket/modes/design.md && grep -qF 'set aside and the batch goes on' .claude/skills/docket/modes/start.md
 ---
 
 **Problem.** A build session that finds an item needs the owner's decision sets it aside for the next batched design round and goes on with the rest, as the owner asked on 2026-10-12, where the docket skill says only that a design round stops for the answer
@@ -54,3 +56,9 @@ not hold a rule the owner asked for: his request lifts it for that request
 **Done when.** `.claude/skills/docket/modes/design.md` carries the rule under
 a heading of its own, dated and attributed, and
 `.claude/skills/docket/modes/start.md`'s batching paragraph points at it.
+
+**Generator check.** One-off. The fact is what a build session does with an
+item it cannot decide, which no document stated and no head's `misread:`
+names; the Project's instructions carried the owner's answer alone, which is
+`PL-PDVF`'s shape, and that head is closed with its mechanism - this item is
+its repair for one more rule, not a new instance of the misreading.

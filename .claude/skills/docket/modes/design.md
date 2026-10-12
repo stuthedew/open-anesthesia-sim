@@ -78,6 +78,21 @@ The procedure, in the order it runs:
    brings `origin/main` in once and asks again; `arm` marks the pull request
    ready and arms it. The build that follows claims the item again.
 
+**A build that meets a decision sets the item aside and goes on** (project
+owner, 2026-10-12: "batch all needs my input items as able so we limit it
+halting waiting for my input"; the set-aside mechanics and the one round per
+lane are the coordinator's reading of his words, `PL-DBRB`). A session holding
+several items that finds one of them needs the owner's answer writes the
+question and a marked recommendation into that item, sets it `needs-decision`,
+yields its claim, and goes on with the rest. It neither stops the batch for
+the answer nor settles the question itself. The questions are then put to the
+owner together: one design round over every open `needs-decision` item in the
+lane, each worked as this mode says, so he answers in one sitting and no build
+thread waits on him. Step 5 above still binds that round's own thread, and
+`CLAUDE.md`'s ask-gate is unchanged: while a question is open, the parts of
+the work that are the same under either answer are still done, and the parts
+that depend on it are not.
+
 **What the round is not.** It is not the design round `.claude/skills/docket/modes/ideas.md`
 runs on a new idea, which proposes items that do not exist yet; this one
 answers questions an existing item already holds. Nor is it the thread that
