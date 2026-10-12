@@ -25,6 +25,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from docket.gitargv import TAKES_A_WORD
 
 REPO = Path(__file__).resolve().parents[2]
 HOOK = REPO / ".claude" / "hooks" / "no-prune-guard.sh"
@@ -722,6 +723,33 @@ def test_a_generated_list_of_refs_is_refused_as_a_prune(command: str) -> None:
     print, so the pipeline that deletes the set a prune computes ran
     unrefused, `xargs` naming each ref.
     """
+    decision = _decision(command)
+    assert decision is not None, f"{command!r} was allowed"
+    assert decision["permissionDecision"] == "deny"
+
+
+#: A value each option git reads as its own takes as the next word.
+OWN_OPTION_VALUES = {
+    "-C": ".",
+    "-c": "color.ui=auto",
+    "--config-env": "core.editor=EDITOR",
+    "--git-dir": ".git",
+    "--work-tree": ".",
+    "--namespace": "ns",
+    "--attr-source": "HEAD",
+}
+
+
+@pytest.mark.parametrize("option", sorted(TAKES_A_WORD))
+def test_a_generated_delete_behind_each_option_git_reads_with_a_word_is_refused(
+    option: str,
+) -> None:
+    """`PL-ZXCN`: `branch` is found past the table `docket.vcs` reads, `docket.gitargv`.
+
+    The guard held its own copy of it, so a narrower one in either would have
+    read the value as the command and let the deletes through.
+    """
+    command = f"git {option} {OWN_OPTION_VALUES[option]} branch -dr origin/a origin/b"
     decision = _decision(command)
     assert decision is not None, f"{command!r} was allowed"
     assert decision["permissionDecision"] == "deny"

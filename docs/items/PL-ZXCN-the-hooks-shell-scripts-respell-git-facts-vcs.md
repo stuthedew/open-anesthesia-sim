@@ -3,12 +3,14 @@ id: PL-ZXCN
 title: The hooks' shell scripts respell git facts vcs exports - where git's subcommand stands past git's own options (byte copies in no-prune-guard.sh and push-check-guard.sh), origin/main, the shallow test and git's output decoding - so `--git-dir X log` reads as subcommand X in vcs.subcommand_of and log in both hooks
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: .claude/hooks/no-prune-guard.sh, .claude/hooks/push-check-guard.sh, .claude/hooks/docket-digest.sh, subprojects/docket/src/docket/vcs.py, tests/unit/test_push_check_guard.py, subprojects/docket/tests/test_vcs.py
+touches: .claude/hooks/no-prune-guard.sh, .claude/hooks/push-check-guard.sh, .claude/hooks/docket-digest.sh, .claude/hooks/shell_split.py, subprojects/docket/src/docket/gitargv.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_gitargv.py, tools/doc_check.py, tools/fact_home_check.py, Makefile, docs/apparatus.md, tests/unit/test_push_check_guard.py, tests/unit/test_no_prune_guard.py, tests/unit/test_shell_reader.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1467
 payoff: git's command line reads one way in docket and in the hooks that guard a push or a prune
 verify: grep -q 'def test_git_own_options_read_as_vcs_reads_them' tests/unit/test_push_check_guard.py
 ---

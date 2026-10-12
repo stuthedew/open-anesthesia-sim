@@ -75,13 +75,28 @@ root="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}
 # `--unshallow` rather than a bounded `--deepen` because this repository is
 # small enough to make the whole history the cheaper thing to reason about. If
 # that stops being true, `--deepen=100` is the same guard with a bound.
-if command -v git >/dev/null 2>&1 &&
-  [ "$(git -C "$root" rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
+#
+# Whether the checkout is shallow, and which remote deepens it, are answered by
+# `docket.vcs` - `is_shallow` and `REMOTE` - rather than spelled here a second
+# time (`PL-ZXCN`). Read from the docket beside this hook, found from its own
+# place as `shell_split.py` finds it, the remote is printed only where the
+# checkout is shallow; where git will not say, nothing is, and the checkout is
+# left as it was.
+docket_src="$(dirname "${BASH_SOURCE[0]}")/../../subprojects/docket/src"
+remote=$(python3 -c '
+import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from docket import vcs
+if vcs.is_shallow(Path(sys.argv[2])):
+    print(vcs.REMOTE)
+' "$docket_src" "$root" 2>/dev/null)
+if [ -n "$remote" ] && command -v git >/dev/null 2>&1; then
   bound=""
   command -v timeout >/dev/null 2>&1 && bound="timeout 60"
   # Unquoted on purpose: empty when `timeout` is absent, two words when not.
   # shellcheck disable=SC2086
-  $bound git -C "$root" fetch --quiet --unshallow origin >/dev/null 2>&1 || true
+  $bound git -C "$root" fetch --quiet --unshallow "$remote" >/dev/null 2>&1 || true
 fi
 
 # `--brief` because the digest below prints what is in flight, and printing it

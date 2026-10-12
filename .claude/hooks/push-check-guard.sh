@@ -13,8 +13,9 @@
 # So each went out without `make check`, most often on the capture path, which
 # is kept cheap on purpose. Run side by side the three take about as long as
 # `doc_check` alone, 11 s, and cost no tokens; a red run costs a session a fix
-# cycle. The store check reads `origin/main` as of the last fetch and never
-# fetches, so a push never waits on the network. The other 2 of those 43 runs
+# cycle. The store check compares against the default base `docket.vcs` names -
+# `origin/main` here, the ref `make check` spells - as of the last fetch, and
+# never fetches, so a push never waits on the network. The other 2 of those 43 runs
 # were `main`'s, on one day and from one cause `tools/pr_record_check.py` has
 # refused since; on such a day this refuses a push the branch did not cause,
 # naming the item on `main` that is wrong.
@@ -59,10 +60,15 @@ command -v python3 >/dev/null 2>&1 || exit 0
 hooks=$(dirname "${BASH_SOURCE[0]}")
 
 PAYLOAD="$payload" HOOKS="$hooks" python3 -c '
-import json, os, re, subprocess, sys, time
+import json, os, subprocess, sys, time
 
 sys.path.insert(0, os.environ["HOOKS"])
 import shell_split
+
+# Which word is the git command, past the options git reads as its own and
+# their values, is read by `docket.gitargv`, the table `docket.vcs` reads too;
+# `shell_split` has put the `src` of docket on the path (`PL-ZXCN`).
+from docket.gitargv import is_git, own_options
 
 try:
     data = json.loads(os.environ["PAYLOAD"])
@@ -74,52 +80,36 @@ command = data.get("tool_input", {}).get("command")
 if not isinstance(command, str):
     sys.exit(0)
 
-# The options git reads ahead of the command name that take the next word, as
-# `no-prune-guard.sh` reads them.
-TAKES_A_WORD = frozenset(
-    ("-C", "-c", "--config-env", "--git-dir", "--work-tree", "--namespace", "--attr-source")
-)
 # From `git push -h` (git 2.43): the options taking the next word as their value
 # where no `=` joins one, the letter among them, and what sends nothing.
 PUSH_VALUED = frozenset(("--repo", "--recurse-submodules", "--receive-pack", "--exec", "--push-option"))
 SENDS_NOTHING = frozenset(("--delete", "--dry-run", "--no-verify"))
-EXPANDS = re.compile(r"[$`{]")
-# Each check as a session types it to re-run it: `python3` runs as this
-# interpreter, and `bin/docket`, a bash wrapper, runs under bash.
-CHECKS = (
-    ("doc_check", ("python3", "tools/doc_check.py", "check")),
-    ("branch_id_check", ("python3", "tools/branch_id_check.py")),
-    ("docket check", ("bin/docket", "check", "--verify", "--verify-base", "origin/main", "--no-fetch")),
-)
 READS_THE_TREE = frozenset(("doc_check", "docket check"))
 DEADLINE = 100
 SHOWN = 40
 
 
-def own_options(words):
-    """The options git reads ahead of the command name, each with its value, and where that name stands."""
-    options, at = [], 1
-    while at < len(words) and words[at].startswith("-"):
-        option, equals, value = words[at].partition("=")
-        at += 1
-        if option in TAKES_A_WORD and not equals:
-            value = words[at] if at < len(words) else ""
-            at += 1
-        options.append((option, value))
-    return options, at
+def checks(base):
+    """Each check as a session types it to re-run it, the store check comparing against `base`.
 
-
-def is_git(words):
-    """Whether `words` run git, by name or by path."""
-    return words[0].rsplit("/", 1)[-1] == "git"
+    `python3` runs as this interpreter, and `bin/docket`, a bash wrapper, runs
+    under bash. `base` is the default base `docket.vcs` answers for the tree,
+    `origin/main` in this repository, as `make check` spells it (`PL-ZXCN`).
+    """
+    return (
+        ("doc_check", ("python3", "tools/doc_check.py", "check")),
+        ("branch_id_check", ("python3", "tools/branch_id_check.py")),
+        ("docket check", ("bin/docket", "check", "--verify", "--verify-base", base, "--no-fetch")),
+    )
 
 
 def sends(words):
     """Whether a git call is a push that sends commits: not a delete, a dry run or an exempted push."""
-    _, at = own_options(words)
-    if words[at : at + 1] != ["push"]:
+    args = words[1:]
+    _, at = own_options(args)
+    if args[at : at + 1] != ["push"]:
         return False
-    rest = iter(words[at + 1 :])
+    rest = iter(args[at + 1 :])
     for word in rest:
         if word == "--":
             return not any(ref.lstrip("+").startswith(":") for ref in rest)
@@ -145,14 +135,14 @@ def sends(words):
 
 def moved(where, target):
     """`where` after a change of directory to `target`, or None where the target is built by the shell."""
-    if where is None or target == "-" or EXPANDS.search(target):
+    if where is None or target == "-" or shell_split.EXPANDS.search(target):
         return None
     return os.path.join(where, os.path.expanduser(target))
 
 
 def directory(words, where):
     """Where a git call runs: `where`, moved by each `-C` in turn, or None where git is pointed elsewhere."""
-    for option, value in own_options(words)[0]:
+    for option, value in own_options(words[1:])[0]:
         if option in ("--git-dir", "--work-tree"):
             return None
         if option == "-C":
@@ -161,14 +151,13 @@ def directory(words, where):
 
 
 def git(where, *args):
-    """What git prints for `args` run in `where`, or None where it fails."""
-    try:
-        done = subprocess.run(
-            ["git", "-C", where, *args], capture_output=True, text=True, timeout=20
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    return done.stdout.strip() if done.returncode == 0 and done.stdout.strip() else None
+    """What git prints for `args` run in `where`, or None where it does not answer.
+
+    Read through the runner of `docket.vcs`, which decodes what git prints as
+    git wrote it, so a raw carriage return in a directory name stays in the
+    path, where text mode made it a line end (`PL-0R4M`, `PL-ZXCN`).
+    """
+    return run(list(args), Path(where)).strip() or None
 
 
 def common_directory(where):
@@ -211,6 +200,12 @@ for words in shell_split.commands(command):
 if not targets:
     sys.exit(0)
 
+# A push is being sent, so the reads of `docket.vcs` are worth their import,
+# which a Bash call that pushes nothing never pays.
+from pathlib import Path
+from docket import vcs
+
+run = vcs.GitRunner()
 project = os.environ.get("CLAUDE_PROJECT_DIR") or os.path.join(os.environ["HOOKS"], "..", "..")
 ours = common_directory(project)
 trees = []
@@ -223,7 +218,7 @@ for target in targets:
 
 running = []
 for top in trees:
-    for name, argv in CHECKS:
+    for name, argv in checks(vcs.default_base(Path(top), runner=run)):
         python = argv[0] == "python3"
         if os.path.isfile(os.path.join(top, argv[1] if python else argv[0])):
             process = subprocess.Popen(
@@ -260,7 +255,7 @@ reason = (
 )
 changed = sum(uncommitted(top) for top in read_trees)
 if changed:
-    names = " and ".join("`" + name + "`" for name, _ in CHECKS if name in readers)
+    names = " and ".join("`" + name + "`" for name, _ in checks("") if name in readers)
     paths = "1 path" if changed == 1 else f"{changed} paths"
     reason += (
         f"\n\n{names} read the working tree, and `git status --short` lists {paths} "

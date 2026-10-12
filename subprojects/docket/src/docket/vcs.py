@@ -48,6 +48,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path, PurePath, PurePosixPath
 
 from . import markdown
+from .gitargv import subcommand_of
 from .lines import ENCODING, file_text, record_text, split_lines
 from .model import CLOSED_STATUSES, _front_matter_pairs, is_under, parse_front_matter, parse_item
 from .release import (
@@ -652,27 +653,6 @@ _READ_ONLY = frozenset(
         "show",
     }
 )
-
-
-def subcommand_of(argv: Sequence[str]) -> str:
-    """The git subcommand an argv names, ignoring the options in front of it.
-
-    `-c` and `-C` take their value as the next word, which is not the
-    subcommand. `claims.work_outside_queue` asked `-c core.quotePath=false log`
-    first, and read as the subcommand `core.quotePath=false` it was counted
-    under that name and, being no read this module knows, emptied the memo
-    (`PL-N162`). Every read `changed_path_args` built asked that way until
-    `-z` made the setting moot (`PL-PVW2`), which is why `verify` and
-    `tools/doc_check.py` name a read that failed by this rather than by
-    `argv[0]`: an argv with an option in front still names its read.
-    """
-    words = iter(argv)
-    for token in words:
-        if token in {"-c", "-C"}:
-            next(words, None)
-        elif not token.startswith("-"):
-            return token
-    return ""
 
 
 @dataclass(frozen=True)

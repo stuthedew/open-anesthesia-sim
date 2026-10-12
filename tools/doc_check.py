@@ -294,6 +294,7 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
         "grammar, docket/vcs.py for the tag read and the default-branch list, "
+        "docket/gitargv.py for which git command an argv names, "
         "docket/release.py for where a cut writes its notes, docket/shell.py for "
         "how a shell line splits, docket/fences.py for where a fenced block is, "
         "docket/python.py for where a Python statement ends, "
