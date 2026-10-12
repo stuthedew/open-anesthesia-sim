@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, test
 feature: agent-worktrees
+milestone: v0.5.24
 touches: tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27

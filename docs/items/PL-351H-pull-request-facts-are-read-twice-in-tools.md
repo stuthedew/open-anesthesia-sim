@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.24
 touches: tools/open_pull_requests.py, tools/left_behind_check.py, tools/update_armed.py, tools/main_ci_status.py, tools/fact_home_check.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs_silence.py, tests/unit/test_left_behind_check.py, tests/unit/test_open_pull_requests.py, tests/unit/test_update_armed.py, tests/unit/test_main_ci_status.py, docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12

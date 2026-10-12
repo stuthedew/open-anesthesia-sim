@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: test
 feature: reader-checks
+milestone: v0.5.24
 touches: subprojects/docket/tests/test_shell.py
 added: 2026-10-10
 closed: 2026-10-12
