@@ -106,8 +106,6 @@ from anesthesia_sim.app.dashboard_frame import (
     compared_run_notice,
     comparing_fork_lock_text,
     fork_offer,
-    format_mac_target,
-    format_time_bookmark,
     halt_disposition,
     halt_notice,
     mac_awake_caption,
@@ -2100,6 +2098,50 @@ def _marks() -> BookmarkSet:
     )
 
 
+def _target_row(target: MacTarget, *, reached: bool = False, run_failed: bool = False) -> str:
+    """The row a lone run draws for `target`, given what that run has done.
+
+    Through `bookmark_panel`, the one path a drawn row takes (`PL-08CR`): the
+    standing is computed from the run's facts rather than handed in, so a test
+    here pins the words on the path a reader meets.
+    """
+
+    marks = BookmarkSet().with_mac_target(target)
+    crossings: frozenset[tuple[RecordedQuantity, float]] = (
+        frozenset({target.crossing_key}) if reached else frozenset()
+    )
+    standings = _standings(marks, reached_crossings=crossings, run_failed=run_failed)
+
+    return bookmark_panel(marks, _one_run(standings)).targets.rows[0]
+
+
+def _time_row(
+    bookmark: TimeBookmark,
+    *,
+    opened_at_s: float = 0.0,
+    elapsed_s: float = 0.0,
+    stopped_at_cap: bool = False,
+    run_failed: bool = False,
+) -> str:
+    """The row a lone run draws for `bookmark`, given where its clock stands.
+
+    As `_target_row`, through `bookmark_panel`: a bookmark at or behind the
+    clock is passed, one before the run's own opening is inherited, and one
+    still ahead takes the cap's word, the failure's, or none.
+    """
+
+    marks = BookmarkSet().with_time_bookmark(bookmark)
+    standings = _standings(
+        marks,
+        opened_at_s=opened_at_s,
+        elapsed_s=elapsed_s,
+        stopped_at_cap=stopped_at_cap,
+        run_failed=run_failed,
+    )
+
+    return bookmark_panel(marks, _one_run(standings)).times.rows[0]
+
+
 def test_an_unmarked_run_lists_each_collection_as_empty_in_its_own_words() -> None:
     panel = bookmark_panel(BookmarkSet(), _one_run(_unreached(BookmarkSet())))
 
@@ -2139,9 +2181,7 @@ def test_a_target_is_named_by_the_table_that_names_its_trace() -> None:
     for quantity in COMPARTMENT_QUANTITIES:
         target = MacTarget(quantity, MacMultiple(0.8))
 
-        assert format_mac_target(target, MarkStanding.STILL_RUNNING).startswith(
-            trace_style(quantity).label
-        )
+        assert _target_row(target).startswith(trace_style(quantity).label)
 
 
 def test_a_target_is_rendered_by_the_renderer_the_readouts_use() -> None:
@@ -2152,22 +2192,20 @@ def test_a_target_is_rendered_by_the_renderer_the_readouts_use() -> None:
     target = MacTarget(RecordedQuantity.ALVEOLAR, height)
 
     assert render_mac_multiple(height) == "0.80 ×MAC"
-    assert render_mac_multiple(height) in format_mac_target(target, MarkStanding.STILL_RUNNING)
+    assert render_mac_multiple(height) in _target_row(target)
 
 
 def test_a_target_row_is_the_compartment_then_the_height() -> None:
     target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
 
-    assert format_mac_target(target, MarkStanding.STILL_RUNNING) == "Fat 0.50 \u00d7MAC"
+    assert _target_row(target) == "Fat 0.50 \u00d7MAC"
 
 
 def test_two_heights_on_one_compartment_are_told_apart_on_the_row() -> None:
     lower = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
     higher = MacTarget(RecordedQuantity.FAT, MacMultiple(0.8))
 
-    assert format_mac_target(lower, MarkStanding.STILL_RUNNING) != format_mac_target(
-        higher, MarkStanding.STILL_RUNNING
-    )
+    assert _target_row(lower) != _target_row(higher)
 
 
 def test_marks_are_listed_oldest_first() -> None:
@@ -2201,7 +2239,7 @@ def test_a_mark_the_run_can_still_reach_adds_no_words_to_its_row() -> None:
 def test_a_mark_the_run_halted_on_says_so_on_its_row() -> None:
     target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
 
-    assert "reached" in format_mac_target(target, MarkStanding.REACHED)
+    assert "reached" in _target_row(target, reached=True)
 
 
 def test_a_mark_on_a_failed_run_says_the_run_stopped_rather_than_saying_nothing() -> None:
@@ -2220,8 +2258,8 @@ def test_a_mark_on_a_failed_run_says_the_run_stopped_rather_than_saying_nothing(
     said = MARK_STANDING_TEXT[MarkStanding.NOT_REACHED_BEFORE_FAILURE]
 
     assert said
-    assert said in format_time_bookmark(bookmark, MarkStanding.NOT_REACHED_BEFORE_FAILURE)
-    assert said in format_mac_target(target, MarkStanding.NOT_REACHED_BEFORE_FAILURE)
+    assert said in _time_row(bookmark, run_failed=True)
+    assert said in _target_row(target, run_failed=True)
     assert said != MARK_STANDING_TEXT[MarkStanding.NOT_REACHED_WITHIN_CAP]
 
 
@@ -2244,17 +2282,22 @@ def test_a_mark_the_clock_has_gone_past_is_worded_apart_from_one_the_run_halted_
     "Reached" is what the run did, and a clock taken backwards - a rewind, a
     truncation at a mark - would revoke it while the mark went on being
     perfectly reachable.
+
+    A bookmark is never `REACHED` on a drawn row - `_time_bookmark_standing`
+    has no such case - so the two words are compared on the two rows that
+    carry them: a bookmark the clock stands on, and a target the run crossed.
     """
 
     bookmark = TimeBookmark(CaseInstant(600.0))
     target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
 
-    passed = format_time_bookmark(bookmark, MarkStanding.PASSED)
+    passed = _time_row(bookmark, elapsed_s=600.0)
+    reached = _target_row(target, reached=True)
 
     assert "passed" in passed
     assert "reached" not in passed
-    assert passed != format_time_bookmark(bookmark, MarkStanding.REACHED)
-    assert "reached" in format_mac_target(target, MarkStanding.REACHED)
+    assert "reached" in reached
+    assert "passed" not in reached
 
 
 def test_the_two_unreachable_outcomes_are_worded_apart() -> None:
@@ -2263,8 +2306,8 @@ def test_the_two_unreachable_outcomes_are_worded_apart() -> None:
     # running. `CLAUDE.md`'s safety-critical standard is what rules that out:
     # the model can decide it outright, so a row must not imply otherwise.
     bookmark = TimeBookmark(CaseInstant(600.0))
-    at_the_cap = format_time_bookmark(bookmark, MarkStanding.NOT_REACHED_WITHIN_CAP)
-    inherited = format_time_bookmark(bookmark, MarkStanding.BEFORE_THIS_BRANCH)
+    at_the_cap = _time_row(bookmark, stopped_at_cap=True)
+    inherited = _time_row(bookmark, opened_at_s=900.0, elapsed_s=900.0)
 
     assert at_the_cap != inherited
     assert "run length" in at_the_cap
