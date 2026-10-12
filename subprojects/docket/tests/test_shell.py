@@ -705,14 +705,19 @@ def _arithmetic(draw: st.DrawFn, depth: int, expansion: bool) -> str:
     A substitution in it runs a simple command: bash 5.2.21 misreads a `case`
     in its reprint of a `$( )` there, a syntax error inside `for (( ))` and
     in `$(( ))` an expansion it runs as a command. In a `$(( ))` it is a
-    `$( )`, since bash decides again whether one is arithmetic as it expands
-    it, and counts a `(` a backquote holds: `$((1 + 0`p \\\\(`))` runs `1`.
+    `$( )` of plain words, since bash decides again whether one is arithmetic
+    as it expands it, and miscounts a backquote holding a backslash anywhere
+    inside: `$((1 + 0`p \\\\(`))` runs `1`, and so does
+    `$((1 + 0$( p `p \\\\"`)))`.
     """
     expression = draw(st.sampled_from(ARITHMETIC))
     if "SUB" in expression:
-        simple = _simple(draw, depth + 1, bodies=None)
-        forms = (f"$( {simple})",) if expansion else (f"$( {simple})", _backquoted(simple, False))
-        expression = expression.replace("SUB", draw(st.sampled_from(forms)))
+        if expansion:
+            substitution = f"$( {_simple(draw, 2, bodies=None)})"  # its words plain at depth 2
+        else:
+            simple = _simple(draw, depth + 1, bodies=None)
+            substitution = draw(st.sampled_from((f"$( {simple})", _backquoted(simple, False))))
+        expression = expression.replace("SUB", substitution)
     space = draw(st.sampled_from(("", " ")))
     return space + expression + space
 
