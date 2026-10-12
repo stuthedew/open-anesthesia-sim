@@ -88,6 +88,47 @@ def test_rejects_invalid_alveolar_gas_volume(invalid_value: float) -> None:
         AlveolarCompartment(gas_volume_l=invalid_value)
 
 
+@pytest.mark.parametrize("not_a_number", ["2.5", None])
+def test_a_volume_that_is_not_a_number_is_refused_under_its_own_name(not_a_number: object) -> None:
+    """The amount's write reads the volume first, and refuses a non-number by the volume's name.
+
+    The capacity check `PL-544D` put in `__setattr__` reads `gas_volume_l`
+    before `__post_init__` has required it, so without `require_a_number`
+    there the comparison's own `TypeError` came back - "'<' not supported
+    between instances of 'float' and 'str'" - naming neither the field nor
+    its constraint, the shape `PL-3800` had removed (found at review). The
+    message is `__post_init__`'s own, byte for byte.
+    """
+
+    with pytest.raises(TypeError, match=f"^gas_volume_l of {not_a_number!r} has type "):
+        AlveolarCompartment(gas_volume_l=not_a_number)  # type: ignore[arg-type]
+
+
+def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> None:
+    """`restore_state` writes what the compartment held, whatever the capacity has become.
+
+    A rollback that could raise would replace the step's own error and leave
+    the compartments restored after this one holding the failed step
+    (`AgentUptakeSystem.restore_state`), so it writes the slot past
+    `__setattr__` (`PL-544D`, found at review). The volume is written past any
+    guard it has or gets (`PL-19Y0`), since what is under test is the rollback
+    and not how the capacity came to be below the amount; the state restored
+    is the one the step began from, over capacity as it already was, for the
+    snapshot's `Fraction` to refuse.
+    """
+
+    alveoli = AlveolarCompartment()
+    alveoli.set_partial_pressure_fraction(Fraction(0.05))
+    captured = alveoli.capture_state()
+    alveoli.set_partial_pressure_fraction(Fraction(0.06))
+    object.__setattr__(alveoli, "gas_volume_l", captured.agent_amount_l / 2)
+
+    alveoli.restore_state(captured)
+
+    assert alveoli.agent_amount_l == captured.agent_amount_l
+    assert alveoli.partial_pressure_fraction == 2.0
+
+
 def test_changing_ventilation_preserves_alveolar_agent() -> None:
     alveoli = AlveolarCompartment()
     alveoli.set_partial_pressure_fraction(Fraction(0.05))

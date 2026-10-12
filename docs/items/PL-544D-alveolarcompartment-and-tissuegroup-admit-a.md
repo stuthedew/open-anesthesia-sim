@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/simulation.py, docs/MODEL.md, tests/unit/test_alveolar.py, tests/unit/test_tissue.py, tests/integration/test_simulation_view.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/simulation.py, docs/MODEL.md, tests/unit/test_alveolar.py, tests/unit/test_tissue.py, tests/unit/test_uptake_system_failure.py, tests/integration/test_simulation_view.py, tests/integration/test_controller.py, docs/items/PL-19Y0-a-direct-write-to-a-checked-field-of.md
 added: 2026-10-11
 closed: 2026-10-12
 pr: 1428
@@ -53,3 +53,28 @@ shape `PL-LBQY` closed for the flows, and is classed the same way.
 is refused at the write on both `AlveolarCompartment` and `TissueGroup`, with a
 unit test for each; and the two integration tests that use the write today reach
 a refusing snapshot by another route, still passing.
+
+**Review, 2026-10-12** (three adversarial passes over `#1428`'s simulator
+diff; the core-invariants pass found two things, both fixed here). The
+rollback: `restore_state` on both compartments wrote the amount through the
+new guard, so a capacity written under a held amount - `PL-19Y0`'s hole, which
+no setting reaches - had the step refused at fat, the rollback refused at fat
+too, and the venous pool, restored after fat, left holding the failed step
+under a `SimulationConfigurationError` that had replaced the
+`SimulationNumericalError`: the partial state `AgentUptakeSystem.restore_state`
+says cannot happen. Both now write the slot with `object.__setattr__`, with a
+test per compartment and one on the system
+(`tests/unit/test_uptake_system_failure.py`), each red without the fix. The
+message: the guard read the volume before `__post_init__` had required it, so
+`AlveolarCompartment(gas_volume_l="2.5")` was refused in the comparison's own
+words, naming neither the field nor its constraint, the shape `PL-3800` had
+removed; `require_a_number` on the capacity's factors inside the guard gives
+`__post_init__`'s message byte for byte, with a test per compartment. The
+pass checked and found sound: field order on both classes, `replace`, copy,
+deepcopy and pickle writing through the guard, every refusal message otherwise
+byte-identical to `main` (a blank name beside an over-capacity amount now
+refuses the amount first), an amount exactly at capacity accepted by field,
+setter and `advance`, 100% branch coverage of both modules, and some 400,000
+replica pairs and 60,000 real advances across capacities from 2^-16 to 2^16
+finding no amount carried past capacity by rounding. What it found and this
+item does not fix is on `PL-19Y0`.

@@ -35,3 +35,23 @@ value its constructor would refuse - by a `__setattr__` guard as `PL-LBQY`
 added, or by making the record frozen and its setters `replace` - with a unit
 test per record, and lands with or after `PL-544D`, which holds the same
 mechanism for the alveolar and tissue agent amount.
+
+**At `PL-544D`'s review, 2026-10-12** (the core-invariants pass over `#1428`),
+three facts for the fix above. (1) A volume or coefficient guard has to compare
+against the amount already held, as `set_circuit_volume` does
+("circuit_volume_l is smaller than stored agent"): a volume written under the
+held amount leaves the compartment over capacity with the amount's own guard
+never consulted. Reproduced on a sevoflurane run at 8% for 300 s:
+`alveoli.gas_volume_l = 1e-6` with 0.098 L held completes the next step and
+propagates a fraction near 98,000 into every other compartment with the
+accounting passing; `fat.volume_l` written to half the held amount's worth
+has the step refused at fat, and `PL-544D` made `restore_state` write past
+the capacity guard so that the rollback completes rather than replacing the
+step's own error (`tests/unit/test_uptake_system_failure.py`). (2) A NaN,
+zero, infinite or negative volume written onto a built compartment passes
+every later amount, since `0.0 < nan` is false: the `0.0 <` leniency the
+amount guard keeps for the constructor's write order is permanent once the
+volume is bad. (3) The `require_a_number` on the capacity's factors inside
+the amount guard is a stop-gap for that write order, and goes when the
+volume's own guard runs first. An infinite capacity built from finite factors
+(1e200 by 1e200) passes construction and admits any amount, before and after.

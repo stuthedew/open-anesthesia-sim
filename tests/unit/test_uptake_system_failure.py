@@ -629,6 +629,45 @@ def test_the_state_a_failed_step_leaves_is_the_last_completed_step() -> None:
     assert failed.agent_simulation_validation.passes_validation
 
 
+def test_a_capacity_written_under_a_held_amount_is_rolled_back_past_the_guard() -> None:
+    """The rollback writes past the capacity guard, so a refused step is undone whole.
+
+    `PL-544D` holds the alveolar and tissue amounts to the compartment's
+    capacity at the write, and a rollback is a write. Through the guard, a
+    capacity moved under a held amount - a direct write no setting makes,
+    `PL-19Y0` - had `restore_state` refused at fat after the circuit, the
+    alveoli and two tissue groups were restored, and the venous pool, restored
+    after fat, left holding the failed step under a configuration error that
+    had replaced the step's own (found at review, 2026-10-12, on a run at 8%
+    for 300 s whose fat volume was halved under the held amount: the step
+    itself then refuses at fat). The refusal here is the armed one the file
+    injects throughout, because whether a shrunk fat volume makes the *step*
+    refuse depends on the parameter set - at ordinary loads it gives fat a
+    time constant shorter than the step, and the fraction written is back in
+    range - while the rollback's requirement does not. The volume is written
+    past any guard it has or gets, since what is under test is the rollback
+    and not the route; the state left is the one the step began from, with
+    fat over capacity as it already was, for the snapshot's `Fraction` to
+    refuse.
+    """
+
+    system = _a_run_whose_next_step_a_compartment_refuses()
+    fat = system.patient.fat
+    object.__setattr__(
+        fat, "volume_l", fat.agent_amount_l / fat.tissue_gas_partition_coefficient / 2
+    )
+    before = system.capture_state()
+
+    with pytest.raises(SimulationNumericalError, match=FAT_REFUSAL_TEXT):
+        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+
+    assert system.capture_state() == before
+    assert system.patient.venous_blood.agent_amount_l == (
+        before.patient.venous_blood.agent_amount_l
+    )
+    assert fat.partial_pressure_fraction > 1.0
+
+
 def test_a_failed_step_says_it_was_rolled_back_and_names_the_invariant() -> None:
     """The diagnosis PL-026 moved out of the display and into the message.
 

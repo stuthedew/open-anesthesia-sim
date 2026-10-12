@@ -245,3 +245,49 @@ def test_rejects_invalid_tissue_volume(invalid_value: float) -> None:
             blood_gas_partition_coefficient=0.5,
             tissue_gas_partition_coefficient=2.0,
         )
+
+
+@pytest.mark.parametrize("factor", ["volume_l", "tissue_gas_partition_coefficient"])
+def test_a_capacity_factor_that_is_not_a_number_is_refused_under_its_own_name(factor: str) -> None:
+    """The amount's write reads both factors of the capacity first, and names the one refused.
+
+    The tissue's counterpart of `tests/unit/test_alveolar.py`'s test of the
+    same shape: `capacity_l` multiplies the volume by the coefficient, so
+    without `require_a_number` on each a `str` in either came back as the
+    multiplication's own `TypeError`, naming neither (`PL-544D`, found at
+    review). The message is `__post_init__`'s own, byte for byte.
+    """
+
+    fields: dict[str, object] = dict(
+        name="test",
+        volume_l=2.0,
+        perfusion_fraction=0.2,
+        blood_gas_partition_coefficient=0.5,
+        tissue_gas_partition_coefficient=2.0,
+    )
+    fields[factor] = "2"
+
+    with pytest.raises(TypeError, match=f"^{factor} of '2' has type str"):
+        TissueGroup(**fields)  # type: ignore[arg-type]
+
+
+def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> None:
+    """`restore_state` writes what the tissue held, whatever the capacity has become.
+
+    The tissue's counterpart of `tests/unit/test_alveolar.py`'s test of the
+    same name (`PL-544D`, found at review): the volume is written past any
+    guard it has or gets (`PL-19Y0`), the rollback writes the captured amount
+    past the capacity guard, and the restored state is the one the step began
+    from, over capacity, for the snapshot's `Fraction` to refuse.
+    """
+
+    tissue = _build_tissue()
+    tissue.set_partial_pressure_fraction(Fraction(0.4))
+    captured = tissue.capture_state()
+    tissue.set_partial_pressure_fraction(Fraction(0.5))
+    object.__setattr__(tissue, "volume_l", tissue.volume_l / 4)
+
+    tissue.restore_state(captured)
+
+    assert tissue.agent_amount_l == captured.agent_amount_l
+    assert tissue.partial_pressure_fraction > 1.0

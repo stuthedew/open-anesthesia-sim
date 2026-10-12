@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from math import exp, inf
 from typing import TYPE_CHECKING
 
+from anesthesia_sim.core.checked_number import require_a_number
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
@@ -76,17 +77,20 @@ class TissueGroup:
 
             The one place the amount is stored is this field, so the capacity
             is held here, for the constructor, `set_partial_pressure_fraction`,
-            `advance`, a rollback and an assignment made past them alike, as
-            `AlveolarCompartment.__setattr__` explains (`PL-544D`). Nothing is
-            written when it is refused. The constructor writes the amount
-            before `__post_init__` has refused a bad volume or coefficient, so
-            a capacity that is not positive is left to that refusal, under the
-            parameter's own name, rather than read here as the amount
-            exceeding it.
+            `advance` and an assignment made past them alike, as
+            `AlveolarCompartment.__setattr__` explains (`PL-544D`);
+            `restore_state` is the one write made past it, and says why.
+            Nothing is written when it is refused. The constructor writes the
+            amount before `__post_init__` has refused a bad volume or
+            coefficient, so each is required to be a number here first, under
+            its own name (`require_a_number`), and a capacity that is not
+            positive is then left to that refusal, under the parameter's own
+            name, rather than read here as the amount exceeding it.
 
             Raises:
-                TypeError: `name` is `agent_amount_l` and `value` is not an
-                    `int` or a `float` (`require_nonnegative_finite`).
+                TypeError: `name` is `agent_amount_l` and `value`, `volume_l`
+                    or `tissue_gas_partition_coefficient` is not an `int` or a
+                    `float` (`require_nonnegative_finite`, `require_a_number`).
                 SimulationConfigurationError: `name` is `agent_amount_l` and
                     `value` is negative, not finite, or more than `capacity_l`,
                     the capacity at a fraction of one.
@@ -94,6 +98,10 @@ class TissueGroup:
 
             if name == "agent_amount_l":
                 require_nonnegative_finite(name, value)
+                require_a_number("volume_l", self.volume_l)
+                require_a_number(
+                    "tissue_gas_partition_coefficient", self.tissue_gas_partition_coefficient
+                )
 
                 if 0.0 < self.capacity_l < value:
                     raise SimulationConfigurationError(
@@ -252,14 +260,17 @@ class TissueGroup:
     def restore_state(self, state: TissueGroupState) -> None:
         """Restore run state previously captured by `capture_state()`.
 
-        Assigns the field directly, so that rolling back cannot itself
-        raise; see `BreathingCircuit.restore_state()`. The write still meets
-        `__setattr__`'s capacity check, which a captured amount passes: it
-        came off this tissue, whose volume and coefficient are parameters no
-        step moves.
+        Writes the slot past `__setattr__`, so that rolling back cannot
+        itself raise, for the reasons `AlveolarCompartment.restore_state`
+        gives: the amount came off this tissue, a rollback refused partway
+        would replace the step's own error and leave the compartments restored
+        after this one holding the failed step, and a volume or coefficient
+        written under the held amount in the meantime (`PL-19Y0`) is left to
+        the quotient the snapshot builds, which refuses it visibly (`PL-7DJK`;
+        `PL-544D`, found at review).
         """
 
-        self.agent_amount_l = state.agent_amount_l
+        object.__setattr__(self, "agent_amount_l", state.agent_amount_l)
 
     def reset(self) -> None:
         """Clear stored agent while preserving tissue parameters."""

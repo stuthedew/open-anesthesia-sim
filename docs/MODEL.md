@@ -5262,13 +5262,20 @@ atmosphere - was refused only when `SimulationController.snapshot()` built the
 between an amount and the volume holding it is the compartment's to check
 rather than any one quantity's (`.claude/rules/core-domain.md`), so
 `AlveolarCompartment` and `TissueGroup` check it where the amount is stored,
-for the constructor, the setter, a rollback and an assignment made past them
-alike, in the constructor's own words, and the field holds what it held. The
-constructor writes the amount before `__post_init__` has refused a bad volume,
-so a capacity that is not positive is left to that refusal under the volume's
-own name. No supported setting takes the write; the hole was the reproduction's
-own route to a refusing snapshot, which the tests now reach by replacing the
-quotient the snapshot reads.
+for the constructor, the setter and an assignment made past them alike, in the
+constructor's own words, and the field holds what it held. A rollback is the
+one write made past the guard: `restore_state` puts back what the compartment
+held when the step began, and a rollback that could itself raise would replace
+the step's own error and leave the compartments restored after it holding the
+failed step (§ "Step atomicity"), so a capacity written under a held amount in
+the meantime - a direct write no setting makes, `PL-19Y0` - is left to the
+quotient the snapshot builds from the restored state, which refuses it visibly
+(`PL-7DJK`). The constructor writes the amount before `__post_init__` has
+refused a bad volume, so the volume is required to be a number there first,
+under its own name, and a capacity that is not positive is left to
+`__post_init__`'s refusal under the same name. No supported setting takes the
+write; the hole was the reproduction's own route to a refusing snapshot, which
+the tests now reach by replacing the quotient the snapshot reads.
 
 **Built from an `int` or a `float` and nothing else, with no sign at zero**
 (`PL-LLMN`). Until `PL-LLMN` each guard asked `math.isfinite` and then made

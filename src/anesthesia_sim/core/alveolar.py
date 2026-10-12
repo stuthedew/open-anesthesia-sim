@@ -15,6 +15,7 @@ accepted a `bool` where `parameters.py` refuses one (`PL-LKRP`).
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from anesthesia_sim.core.checked_number import require_a_number
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, require_alveolar_ventilation
@@ -94,19 +95,22 @@ class AlveolarCompartment:
             past the capacity - a partial pressure above one atmosphere - was
             stored, and refused only when `SimulationController.snapshot()`
             built the fraction two layers later (`PL-7DJK`). Nothing is written
-            when either is refused.
+            when either is refused. `restore_state` is the one write of the
+            amount made past this, and says why.
 
             The constructor writes the amount before `__post_init__` has
-            refused a bad volume, so a capacity that is not positive is left
-            to that refusal, under the volume's own name, rather than read
-            here as the amount exceeding it.
+            refused a bad volume, so the volume is required to be a number
+            here first, under its own name (`require_a_number`), and a
+            capacity that is not positive is then left to that refusal, under
+            the same name, rather than read here as the amount exceeding it.
 
             Raises:
                 TypeError: `name` is `alveolar_ventilation_l_min` and `value` was
                     not built as an `AlveolarVentilation`
                     (`require_alveolar_ventilation`); or `name` is
-                    `agent_amount_l` and `value` is not an `int` or a `float`
-                    (`require_nonnegative_finite`).
+                    `agent_amount_l` and `value`, or the `gas_volume_l` it is
+                    held to, is not an `int` or a `float`
+                    (`require_nonnegative_finite`, `require_a_number`).
                 SimulationConfigurationError: `name` is `agent_amount_l` and
                     `value` is negative, not finite, or more than
                     `gas_volume_l`, the capacity at a fraction of one.
@@ -116,6 +120,7 @@ class AlveolarCompartment:
                 require_alveolar_ventilation(value)
             elif name == "agent_amount_l":
                 require_nonnegative_finite(name, value)
+                require_a_number("gas_volume_l", self.gas_volume_l)
 
                 if 0.0 < self.gas_volume_l < value:
                     raise SimulationConfigurationError(
@@ -174,14 +179,20 @@ class AlveolarCompartment:
     def restore_state(self, state: AlveolarCompartmentState) -> None:
         """Restore run state previously captured by `capture_state()`.
 
-        Assigns the field directly rather than going through a setter, so
-        that rolling back cannot itself raise; see
-        `BreathingCircuit.restore_state()`. The write still meets
-        `__setattr__`'s capacity check, which a captured amount passes: it
-        came off this compartment, whose volume is a setting no step moves.
+        Writes the slot past `__setattr__`, so that rolling back cannot
+        itself raise; see `BreathingCircuit.restore_state()`. The amount came
+        off this compartment, and what a rollback owes the step is that state
+        back exactly: a rollback refused partway would replace the step's own
+        error and leave the compartments restored after this one holding the
+        failed step (`AgentUptakeSystem.restore_state`). The one way the guard
+        could refuse it is a volume written under the held amount in the
+        meantime, which no setting does (`PL-19Y0`); the state restored is
+        then the one the step began from, over capacity as it already was,
+        and the quotient the snapshot builds from it is what refuses it,
+        visibly (`PL-7DJK`; `PL-544D`, found at review).
         """
 
-        self.agent_amount_l = state.agent_amount_l
+        object.__setattr__(self, "agent_amount_l", state.agent_amount_l)
 
     def reset(self) -> None:
         """Clear alveolar agent while preserving settings."""
