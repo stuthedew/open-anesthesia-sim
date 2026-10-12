@@ -28,7 +28,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from docket.shell import Word, flat_reading, joined_text, script_lines, shell_words
+from docket.shell import FlatReading, Word, flat_reading, joined_text, script_lines, shell_words
 
 
 def _words(command: str) -> list[str]:
@@ -311,6 +311,41 @@ def test_a_locale_string_reads_as_its_double_quoted_text() -> None:
     assert flat_reading('p $"$(p x)"') == flat_reading('p "$(p x)"')
 
 
+def test_arithmetic_is_one_word_that_runs_no_command() -> None:
+    """An arithmetic expansion, command or `for` is a word; a substitution in it runs (`PL-3Z8B`).
+
+    Read as two subshells or a substitution's body, each expression was a
+    command to both views: bash 5.2.21 runs `p 3` for `p $(( 1 + 2 ))` and no
+    command at all for `(( 1 + 2 ))`, where docket was handed `1 + 2`. Inside
+    one a `<<` is a shift and a newline a space, so neither opens a body or
+    ends a line, and `$(( $(p x) + 1 ))` still runs `p x`.
+    """
+    for command, tokens in (
+        ("p $(( 1 + 2 ))", ["p", "$(( 1 + 2 ))"]),
+        ("x=$((y + 1)); p x", ["x=$((y + 1))", ";", "p", "x"]),
+        ("(( 1 + 2 )) && p x", ["(( 1 + 2 ))", "&&", "p", "x"]),
+        (
+            "for ((i = 0; i < 1; i++)); do p $i; done",
+            ["for", "((i = 0; i < 1; i++))", ";", "do", "p", "$i", ";", "done"],
+        ),
+        ("(( x = 1 << 2 )) && p x", ["(( x = 1 << 2 ))", "&&", "p", "x"]),
+        ("((1 +\n2)) && p x", ["((1 +\n2))", "&&", "p", "x"]),
+    ):
+        assert _words(command) == [token for token in tokens if token not in (";", "&&")], command
+        assert shell_words(command).substitutions == (), command
+        assert flat_reading(command) == FlatReading(tuple(tokens), (), True), command
+    assert shell_words("(( 1 ))").clauses[0].tokens == (Word("(( 1 ))"),)
+    assert shell_words("(( 1 ))").refusal == "carries `(`, which no admitted shape uses"
+    assert [piece for piece, _ in script_lines("cat <<EOF; ((1 <<\n2))\nbody\nEOF\nnext\n")] == [
+        "cat <<EOF; ((1 <<\n2))",
+        "next",
+    ]
+
+    command = "p $(( $(p x) + 1 ))"
+    assert _words(command) == ["p", "$(( $(p x) + 1 ))", "p", "x"]
+    assert flat_reading(command) == FlatReading(("p", command[2:]), (("p", "x", ")"),), True)
+
+
 def test_a_substitution_in_an_unquoted_body_is_a_command_it_runs() -> None:
     """Bash expands the body of a delimiter with no quoted part (POSIX.1-2017 XCU §2.7.4).
 
@@ -460,11 +495,12 @@ def _lexer_runs(script: str) -> Counter[tuple[str, ...]]:
     Its clauses and each substitution's are cut into simple commands where an
     operator ends one, and each is read as bash hands it over: a redirection
     and its target, a descriptor written against one, a `case` construct's own
-    words, a reserved word or an assignment at its head, and a `for` or `[[`
-    command's own words are no command's words; a word that is a substitution
-    or a parameter expansion, all of which expand to nothing here, is no word,
-    or an empty one in double quotes; and a process substitution is the path
-    bash hands over in its place.
+    words, a reserved word or an assignment at its head, and a `for`, `[[` or
+    `((` command's own words are no command's words; a word that is a
+    substitution or a parameter expansion, all of which expand to nothing here,
+    is no word, or an empty one in double quotes; an arithmetic expansion is
+    the `1` every one the generator draws comes to; and a process substitution
+    is the path bash hands over in its place.
     """
     reading = shell_words(script)
     assert reading.clauses, (script, reading.refusal)
@@ -512,13 +548,16 @@ def _handed(
         if token.case_syntax:
             continue
         if not words and not token.quoted:
-            if token.text in ("for", "[["):
+            if token.text in ("for", "[[") or token.text.startswith("(("):
                 return ()
             if timed and token.text == "-p":
                 continue
             timed = token.text == "time"
             if token.text in RESERVED or ASSIGNMENT.match(token.text):
                 continue
+        if script[start:end].lstrip('\\"').startswith("$(("):  # in quotes or backquotes too
+            words.append("1")
+            continue
         after = bisect.bisect_right(opened, start)
         held = after < len(opened) and opened[after] < end
         if held and token.text.startswith(("<(", ">(")):
@@ -617,7 +656,8 @@ def _word(draw: st.DrawFn) -> str:
     # `\&` for the `&` that ends a command: `if p a\&; then` loses its `;`.
     if text.endswith("\\&"):
         text += "w"
-    return text
+    # `"\$((` would spell an arithmetic expansion in backquotes, as `_handed` reads one.
+    return text.replace("\\$(", "\\$w(")
 
 
 def _backquoted(command: str, quoted: bool) -> str:
@@ -629,24 +669,69 @@ def _backquoted(command: str, quoted: bool) -> str:
 def _substitution(draw: st.DrawFn, depth: int, quoted: bool) -> str:
     """A command substitution, in `$( )` or backquotes, whose output is nothing."""
     if draw(st.booleans()):
-        # The space keeps `$(` from opening an arithmetic `$((`, whose body the
-        # lexer reads as a command (`PL-3Z8B`). Bash 5.2.21 reprints a `$( )`
-        # before it runs it, and drops the first `;` it prints after a
-        # here-document's body: `p <<EOF`, the body, then `p a; p b` runs
+        # The space keeps `$(` from opening an arithmetic `$((`, which
+        # `_handed` takes for one. Bash 5.2.21 reprints a `$( )` before it
+        # runs it, and drops the first `;` it prints after a here-document's
+        # body: `p <<EOF`, the body, then `p a; p b` runs
         # `p a p b`. So only the last command in one opens a here-document.
         return "$( " + _list(draw, depth + 1, lines=True, opens="last") + ")"
     return _backquoted(_simple(draw, depth + 1, bodies=None), quoted)
 
 
+#: Arithmetic expressions bash 5.2.21 evaluates to 1, each `SUB` a substitution
+#: expanding to nothing where the expression stays one without it: `1 + ` is a
+#: syntax error, and `1 + 0` is not (`PL-3Z8B`).
+ARITHMETIC = (
+    "1",
+    "2 - 1",
+    "(1 + 2) / 3",
+    "1 << 0",
+    "2#1",
+    "16#ff / 255",
+    "2 > 1",
+    "x = 1",
+    "1 +\n0",
+    '"1"',
+    "(1)",
+    "1 + 0SUB",
+    "SUB1",
+    "1 SUB",
+)
+
+
+def _arithmetic(draw: st.DrawFn, depth: int, expansion: bool) -> str:
+    """An arithmetic expression that comes to 1, its parentheses spaced or not.
+
+    A substitution in it runs a simple command: bash 5.2.21 misreads a `case`
+    in its reprint of a `$( )` there, a syntax error inside `for (( ))` and
+    in `$(( ))` an expansion it runs as a command. In a `$(( ))` it is a
+    `$( )`, since bash decides again whether one is arithmetic as it expands
+    it, and counts a `(` a backquote holds: `$((1 + 0`p \\\\(`))` runs `1`.
+    """
+    expression = draw(st.sampled_from(ARITHMETIC))
+    if "SUB" in expression:
+        simple = _simple(draw, depth + 1, bodies=None)
+        forms = (f"$( {simple})",) if expansion else (f"$( {simple})", _backquoted(simple, False))
+        expression = expression.replace("SUB", draw(st.sampled_from(forms)))
+    space = draw(st.sampled_from(("", " ")))
+    return space + expression + space
+
+
 def _argument(draw: st.DrawFn, depth: int) -> str:
-    """A word, or at shallow depth an expansion of one of the kinds bash expands to nothing."""
+    """A word, or at shallow depth an expansion: one of the kinds bash expands to nothing, or 1."""
     if depth >= 2 or draw(st.integers(0, 3)):
         return _word(draw)
-    kind = draw(st.sampled_from(("$()", '"$()"', "${}", '"${}"', "${:-}", '"${:-}"', "<()", ">()")))
+    kind = draw(
+        st.sampled_from(
+            ("$()", '"$()"', "${}", '"${}"', "${:-}", '"${:-}"', "<()", ">()", "$(())", '"$(())"')
+        )
+    )
     quoted = kind.startswith('"')
     if kind in ("<()", ">()"):
         return kind[0] + "( " + _list(draw, depth + 1, lines=False) + " )"
-    if ":-" in kind:
+    if "((" in kind:
+        inner = "$((" + _arithmetic(draw, depth, expansion=True) + "))"
+    elif ":-" in kind:
         # Inside `${ }` a backquote's quotes are its own, in double quotes or not.
         inner = UNSET + ":-" + _substitution(draw, depth, quoted=False) + "}"
     elif "{" in kind:
@@ -762,9 +847,19 @@ def _case(draw: st.DrawFn, depth: int, lines: bool) -> str:
     return f"case {subject} in{space}" + space.join(arms) + f"{space}esac"
 
 
-#: The compound commands a statement may be. No `(( ))`, whose expression the
-#: lexer reads as a command in two subshells (`PL-3Z8B`).
-COMPOUND = ("group", "subshell", "if", "time", "assign", "array", "case", "for", "test")
+#: The compound commands a statement may be.
+COMPOUND = (
+    "group",
+    "subshell",
+    "if",
+    "time",
+    "assign",
+    "array",
+    "case",
+    "for",
+    "test",
+    "arithmetic",
+)
 
 
 def _statement(
@@ -804,9 +899,18 @@ def _statement(
         )
     if kind == "case":
         return _case(draw, depth, lines)
+    if kind == "arithmetic":
+        # True, as every drawn expression is, so the script's status stays 0.
+        return "((" + _arithmetic(draw, depth, expansion=False) + "))"
     if kind == "for":
+        body = _list(draw, depth + 1, lines=False)
+        if draw(st.booleans()):
+            # The arithmetic `for`, its body run once. Its test runs on each
+            # pass, a substitution in it twice, so the drawn one is the first.
+            counted = _arithmetic(draw, depth, expansion=False)
+            return f"for ((i = {counted}; i < 2; i++)); do {body}; done"
         listed = _substitution(draw, depth, quoted=False) + " 1" if draw(st.booleans()) else "1"
-        return f"for _ in {listed}; do {_list(draw, depth + 1, lines=False)}; done"
+        return f"for _ in {listed}; do {body}; done"
     # A test of one term, since the lexer reads the `&&`, `||`, parentheses,
     # `<` and `>` inside `[[ ]]` as operators (`PL-X1VN`).
     test = draw(st.sampled_from(("-n x", "x == x", "-z SUB", "SUB == ''")))
@@ -905,11 +1009,13 @@ def test_the_lexer_reads_generated_commands_as_bash_does(script: str) -> None:
     Hypothesis draws the scripts, derandomized, so a red run reproduces
     exactly: words in every quoting, continuations and comments; `$( )`,
     nested backquotes, `${...}` with a default, and process substitutions;
+    arithmetic expansions, a substitution inside some (`PL-3Z8B`);
     redirections, descriptors and a `{v}` among them, here-strings, and
     here-documents under every quoting of their delimiter, `<<-` too, inside
     substitutions as well; `;`, `&`, `&&`, `|`, `|&` and an operator a
     continuation splits; and groups, subshells, `if`, `time` and `time -p`,
-    assignments, arrays, `for`, `[[ ]]`, and `case` with `;;`, `;&` and `;;&`.
+    assignments, arrays, `for` and the arithmetic `for`, `(( ))`, `[[ ]]`,
+    and `case` with `;;`, `;&` and `;;&`.
     The same generator, run unseeded over 10,000 scripts on 2026-10-12,
     disagreed with bash on none.
 
@@ -1015,20 +1121,6 @@ KNOWN_DEPARTURES = [
         {("p",): 1, ("p", "from-a-body"): 1, ("p", "after"): 1},
         {("p",): 1, ("p", "after"): 1},
         id="PL-55R2",
-    ),
-    pytest.param(
-        "p $(( 1 + 2 ))\n",
-        {("p", "3"): 1},
-        {("p",): 1, ("1", "+", "2"): 1},
-        {("p",): 1, ("1", "+", "2"): 1},
-        id="PL-3Z8B-expansion",
-    ),
-    pytest.param(
-        "(( 1 + 2 )) && p x\n",
-        {("p", "x"): 1},
-        {("1", "+", "2"): 1, ("p", "x"): 1},
-        {("1", "+", "2"): 1, ("p", "x"): 1},
-        id="PL-3Z8B-command",
     ),
     pytest.param(
         "[[ -n a && -n b ]] && p x\n",
