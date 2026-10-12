@@ -129,7 +129,7 @@ import ast
 import subprocess
 import sys
 import tomllib
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePath, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
@@ -146,9 +146,8 @@ TESTS_DIR = Path("tests")
 #: The store's own settings file, which holds the lists being checked.
 CONFIG = Path("docket.toml")
 
-#: Directories a checkout carries but does not author. Skipped by
-#: `ruff_configs`, and by the walk that stands in for `git ls-files` in a tree
-#: that is not a checkout.
+#: Directories a checkout carries but does not author. Skipped by the walk that
+#: stands in for `git ls-files` in a tree that is not a checkout.
 SKIP_DIRS = frozenset(
     {".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".ruff_cache"}
 )
@@ -184,19 +183,14 @@ def declared_gate_paths(root: Path) -> tuple[str, ...]:
 
 
 def ruff_configs(root: Path) -> list[str]:
-    """Every `ruff.toml` in the tree, as repository-relative paths.
+    """Every `ruff.toml` the repository holds, as repository-relative paths.
 
-    Skipping the directories a checkout carries but does not author. A
-    `ruff.toml` vendored inside `.venv` is somebody else's file and naming it
-    in `gate_paths` would be meaningless.
+    Read from `tracked_files`, so a `ruff.toml` vendored inside `.venv`, or one
+    in another checkout under `.claude/worktrees/`, is not counted: it is
+    somebody else's file, and naming it in `gate_paths` would be meaningless
+    (`PL-HNXS`).
     """
-    found = []
-    for path in sorted(root.rglob("ruff.toml")):
-        relative = path.relative_to(root)
-        if any(part in SKIP_DIRS for part in relative.parts):
-            continue
-        found.append(relative.as_posix())
-    return found
+    return [name for name in tracked_files(root) if PurePosixPath(name).name == "ruff.toml"]
 
 
 def gate_problems(root: Path) -> list[str]:
@@ -234,7 +228,7 @@ def problems(root: Path) -> list[str]:
         ]
 
     found: list[str] = []
-    for path in sorted((root / TESTS_DIR).rglob("*.py")):
+    for path in tracked_under(root, TESTS_DIR, ".py"):
         relative = path.relative_to(root).as_posix()
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=relative)
@@ -272,24 +266,56 @@ def tracked_files(root: Path) -> list[str]:
     scratch script, a build product, a virtualenv - is nobody's to place. A
     tree that is not a checkout, which is what the tests build, is walked
     instead, skipping only `SKIP_DIRS`; that walk sees every file and stands
-    in for git rather than replacing it. Git failing in a checkout is raised
-    to the caller, which reports it: a tree this check could not list is one
-    it cannot vouch for, and passing it silently is the failure the check
-    exists to stop.
+    in for git rather than replacing it, and so does a checkout where git
+    cannot be launched at all, which is what every reader but placement did
+    before this list was theirs (`PL-9NZ3`): the walk reads more than git
+    would and never less, so it can only over-report. Git running and failing
+    in a checkout is raised to the caller, which reports it: a tree this check
+    could not list is one it cannot vouch for, and passing it silently is the
+    failure the check exists to stop.
+
+    A tracked file deleted from the working tree and not yet staged is left
+    out, because git still lists it and every reader here opens what it is
+    given: the list is what the checkout holds, so a session that ran `rm`
+    before `make check` is not told a file it removed cannot be read.
     """
     if (root / ".git").exists():
-        completed = subprocess.run(
-            ["git", "-C", str(root), "ls-files", "-z"], capture_output=True, check=True
-        )
-        # Decoded as written: a `-z` path can hold a raw `\r` (`PL-0R4M`).
-        listed = completed.stdout.decode("utf-8")
-        return sorted(name for name in listed.split("\0") if name)
+        try:
+            completed = subprocess.run(
+                ["git", "-C", str(root), "ls-files", "-z"], capture_output=True, check=True
+            )
+        except FileNotFoundError:
+            completed = None
+        if completed is not None:
+            # Decoded as written: a `-z` path can hold a raw `\r` (`PL-0R4M`).
+            listed = completed.stdout.decode("utf-8")
+            return sorted(name for name in listed.split("\0") if name and (root / name).is_file())
     found = []
     for path in sorted(root.rglob("*")):
         relative = path.relative_to(root)
         if path.is_file() and not any(part in SKIP_DIRS for part in relative.parts):
             found.append(relative.as_posix())
     return found
+
+
+def tracked_under(root: Path, tree: str | PurePath, suffix: str = "") -> list[Path]:
+    """The files `tracked_files` lists below `tree` whose names end in `suffix`, as paths.
+
+    The filter every check reading one subtree shares, so each reads the files
+    the repository holds rather than whatever a walk of the disk finds there:
+    an untracked scratch module, or another checkout under `.claude/worktrees/`
+    (`PL-9NZ3`). An empty `tree` is the whole repository. Sorted as paths,
+    which is the order the walks it replaced yielded, so a report's order is
+    unchanged by the move.
+    """
+    prefix = PurePosixPath(tree).as_posix().strip("/")
+    if prefix == ".":
+        prefix = ""
+    return sorted(
+        root / name
+        for name in tracked_files(root)
+        if (not prefix or name.startswith(prefix + "/")) and name.endswith(suffix)
+    )
 
 
 def unplaced_ancestor(relative: str, entries: tuple[str, ...]) -> str:
@@ -391,7 +417,7 @@ def main() -> int:
         outside = sum(
             1 for name in tracked_files(args.root) if PurePosixPath(name).parts[0] != TESTS_DIR.name
         )
-        files = sorted((args.root / TESTS_DIR).rglob("*.py"))
+        files = tracked_under(args.root, TESTS_DIR, ".py")
         tests = [path for path in files if is_test_file(path.name)]
         support = [path for path in files if not is_test_file(path.name)]
         apparatus = sum(
