@@ -1,19 +1,19 @@
 ---
 id: PL-7694
-title: The compared-run count and a run's index are bare ints checked by hand in seven app functions - run_count at least one in run_trace_style, _hover_context, format_compared_trace_hover, _wash_in_pen and both set_run_count, run_index against it in two and nonnegative in run_label - while off_scale_notice reads frame.runs[run_index] with no check, so an index of -1 answers for the last run under its name (found sweeping PL-ZGYX)
+title: The compared-run count and a run's index are bare ints checked by hand in seven app functions - run_count at least one in run_trace_style, _hover_context, format_compared_trace_hover, _wash_in_pen, WashInLegend.set_run_count and CompartmentSelection, run_index against it in two and nonnegative in run_label - while off_scale_notice reads frame.runs[run_index] with no check, so an index of -1 answers for the last run under its name (found sweeping PL-ZGYX)
 priority: P3
 effort: M
 status: ready
 classes: refactor, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_chart_frame.py, tests/unit/test_dashboard_frame.py, tests/integration/test_qt_chart.py
+touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/compartment_selection.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_chart_frame.py, tests/unit/test_dashboard_frame.py, tests/integration/test_qt_chart.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-11
 payoff: a run's values can no longer be drawn under another run's name through an unchecked index, and the next chart reader inherits one checked type rather than copying a hand check
 verify: grep -q 'def test_off_scale_notice_refuses_a_negative_run_index' tests/unit/test_dashboard_frame.py
 ---
 
-**Problem.** The compared-run count and a run's index are bare ints checked by hand in seven app functions - run_count at least one in run_trace_style, _hover_context, format_compared_trace_hover, _wash_in_pen and both set_run_count, run_index against it in two and nonnegative in run_label - while off_scale_notice reads frame.runs[run_index] with no check, so an index of -1 answers for the last run under its name (found sweeping PL-ZGYX)
+**Problem.** The compared-run count and a run's index are bare ints checked by hand in seven app functions - run_count at least one in run_trace_style, _hover_context, format_compared_trace_hover, _wash_in_pen, WashInLegend.set_run_count and CompartmentSelection, run_index against it in two and nonnegative in run_label - while off_scale_notice reads frame.runs[run_index] with no check, so an index of -1 answers for the last run under its name (found sweeping PL-ZGYX)
 
 **Found 2026-10-11** by `PL-ZGYX`'s sweep, read from the code on `main` at
 `d9340516` and not executed: `off_scale_notice` in `app/dashboard_frame.py`

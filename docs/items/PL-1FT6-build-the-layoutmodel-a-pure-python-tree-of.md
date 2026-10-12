@@ -3,11 +3,13 @@ id: PL-1FT6
 title: Build the LayoutModel: a pure-Python tree of Splits and Areas with split, join, resize, swap and set_view, a borders() collinear-chain query, and versioned JSON serialization over a root that holds one or more windows from v1
 priority: P2
 effort: L
-status: ready
+status: done
 classes: feature
 feature: interface-areas
-touches: src/anesthesia_sim/layout/, tests/unit
+touches: src/anesthesia_sim/layout/, tests/unit, tools/import_boundary_check.py, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/items/PL-L8RN-nothing-enforces-the-one-adapter-qsplitter.md
 added: 2026-09-16
+closed: 2026-10-12
+pr: 1448
 verify: grep -q 'def test_a_join_the_tree_cannot_express_is_refused' tests/unit/test_layout_model.py && uv run pytest tests/unit/test_layout_model.py
 ---
 

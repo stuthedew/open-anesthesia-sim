@@ -11,11 +11,13 @@ rules, and what this project deliberately does differently — see
 
 ## Layering
 
-The codebase is split into three independent layers, enforced by import
-direction (never edit around this — see `CLAUDE.md`):
+The codebase is split into independent layers, enforced by import direction
+(never edit around this — see `CLAUDE.md`):
 
 ```text
 data/  --loaded by-->  core/  --read by-->  app/
+                                             ^
+                    layout/  --read by-------+
 ```
 
 - **`core/`** is the scientific simulation. It has no dependency on the UI
@@ -25,6 +27,13 @@ data/  --loaded by-->  core/  --read by-->  app/
   unit calculation itself — it only reads immutable snapshots from `core/`
   (through a thin controller) and renders them, and forwards user input back
   as setter calls.
+- **`layout/`** is the area layout as a value: which View occupies which part
+  of each window, and the operations a reader performs on it (`PL-C842`,
+  `PL-1FT6`). It imports no toolkit, which `tools/import_boundary_check.py`
+  enforces, so every operation is tested with no `QApplication`, and of
+  `core/` it reads only `core/checked_number.py`'s naming of a refused value.
+  The adapter that builds the widget tree from it is `PL-W9P6`'s, and until it
+  lands nothing in `app/` reads the package.
 - **`data/`** holds versioned, schema-validated parameter files (JSON) with
   citations, in three kinds — the agent, the patient, and the machine in front
   of them. Every scientific constant a shipped run uses comes from one of them:
@@ -72,20 +81,26 @@ src/anesthesia_sim/
 │   ├── run_series.py               # the vocabulary a run's drawn values are addressed by, and the window one frame reads them from: RecordedQuantity, RecordedSeries, DrawnWindow; toolkit-independent
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_UNITS, ControlChange; toolkit-independent
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed, which SimulationController.advance supplies each step
-│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the charts, the legend, the time base, the captions, the wash-in section, the render tick, the splitter layout; no domain logic
+│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the charts, the legend and the compartment selection it shows, the time base, the captions, the wash-in section, the render tick, the splitter layout; no domain logic
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, inert_splitter, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; toolkit-independent
 │   ├── dashboard_frame.py          # what the dashboard claims about one run at one instant, as plain values: the status word, the notice and its precedence, the readouts and their glosses, the setting controls, the transport enablement, the accounting panel, the control-change list, the captions and the new-case question; toolkit-independent
 │   ├── chart_frame.py              # what one frame of both plots draws, as plain values: the trace table, the window, the axes' ticks, the references, the marks, the wash-in stretches and the hover text; toolkit-independent
-│   ├── qt_chart.py                 # the concentration chart, the wash-in plot and the legend on pyqtgraph, moved per frame to match a chart_frame.ChartFrame; declares no colour and formats no value
+│   ├── compartment_selection.py    # CompartmentSelection: which compartments the chart draws, as a value the dashboard owns and the legend shows (PL-VN6M); held inside the compared cap, and a reader's click over it drops the longest-standing; toolkit-independent
+│   ├── qt_chart.py                 # the concentration chart, the wash-in plot and the legend on pyqtgraph, moved per frame to match a chart_frame.ChartFrame, the legend showing a CompartmentSelection it is handed; declares no colour and formats no value
 │   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; toolkit-independent
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; toolkit-independent
 │   ├── wash_in.py                  # F_A/F_I and the domain it holds on; toolkit-independent
 │   ├── theme.py                    # every display token: palette, cited ISO 5360 agent colors, type sizes, spacing, dash patterns; toolkit-independent
 │   ├── stylesheets.py              # every stylesheet a widget is given, composed from theme.py's tokens, so each visual decision is written once; toolkit-independent
 │   └── main.py                     # PySide6 entry point; builds the BranchedCase and opens the dashboard over its trunk; the window opens maximized (PL-Z4K6) over a sized, centred normal geometry (PL-005)
+├── layout/               # the area layout as a value: which View occupies which part of each window - no toolkit dependency (PL-C842, PL-1FT6)
+│   ├── tree.py                     # the values a layout is built from - AreaId, ViewKind, Area, Split, Window - each refusing what could not be one, and the one form a tree takes
+│   ├── model.py                    # LayoutModel: every window's tree; split, join, resize, swap and set_view, each returning a new layout; the borders() line a drag moves
+│   ├── serialization.py            # the layout as JSON: the body a Workspace holds, and a versioned document holding one on its own
+│   └── exceptions.py               # what the package refuses, and what each refusal means to a caller
 └── data/                 # versioned, cited parameter files
     ├── agents/{sevoflurane,isoflurane,desflurane}.json
     ├── machines/reference_circle_system.json
@@ -747,8 +762,9 @@ in it, or a line left behind after a deletion, fails `make check`.
 
 - **`tests/unit/`** — one module's behavior in isolation (a compartment, a
   validator, a parameter loader, the controller, the displayed-value
-  formatters, and what the dashboard claims per tick with no toolkit loaded,
-  in `test_dashboard_frame.py`).
+  formatters, what the dashboard claims per tick with no toolkit loaded, in
+  `test_dashboard_frame.py`, and the area layout's every operation and
+  refusal, in `test_layout_model.py` and `test_layout_serialization.py`).
 - **`tests/integration/`** — components wired together as the app assembles
   them (e.g. controller driving a full `AgentUptakeSystem`), the Qt chart
   drawn headless against a real run (`test_qt_chart.py`), which reads the
@@ -890,7 +906,8 @@ in it, or a line left behind after a deletion, fails `make check`.
   table is the chart's rather than any one run's: `assemble_chart_frame`
   reads it once per run, for the substance that run's snapshot names — the
   run is recorded under that identifier — and `ChartFrame.visible` is the
-  subset the legend leaves drawn, narrowed by `compared_compartments` to
+  dashboard's `CompartmentSelection`, which the legend shows and asks to
+  change rather than holds (`PL-VN6M`), narrowed by `compared_compartments` to
   `COMPARED_COMPARTMENT_CAP` once more than one run is on the chart, so
   `app/qt_chart.py` holds one curve per run per trace and moves it to match;
   nothing is edited directly. The *width* of that curve is the run's own
