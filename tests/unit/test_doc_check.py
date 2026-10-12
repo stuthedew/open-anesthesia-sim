@@ -7717,6 +7717,31 @@ def _removed_heading_terms(tmp_path: Path, before: str, after: str) -> list[str]
     return sorted(terms["README.md"])
 
 
+def test_a_setext_heading_changed_from_outside_its_rows_is_a_removed_title(tmp_path: Path) -> None:
+    """`PL-F6T5`: a heading counted as removed only where the patch removed one of its rows.
+
+    A line added under `Keep Title` and the blank line above `Other Head`
+    removed retitle both - CommonMark reads `Keep Title now longer` and
+    `Text. Other Head` - while every row of each stays.
+    """
+    before = "Intro para.\n\nKeep Title\n==========\n\nText.\n\nOther Head\n----------\n"
+    after = "Intro para.\n\nKeep Title\nnow longer\n==========\n\nText.\nOther Head\n----------\n"
+
+    assert _removed_heading_terms(tmp_path, before, after) == ["Keep Title", "Other Head"]
+
+
+def test_a_document_the_base_does_not_have_lost_no_heading(tmp_path: Path) -> None:
+    """Asked about every changed document, the sweep reads no base copy of a new one."""
+    root = _repo(tmp_path)
+    _git_init(root)
+    (root / "docs" / "NEW.md").write_text("# New\n\nText.\n", encoding="utf-8")
+    subprocess.run(("git", "add", "docs/NEW.md"), cwd=root, check=True, capture_output=True)
+
+    terms = doc_check.changed_tokens(root, "HEAD", doc_check.read_docs(root), [])
+
+    assert terms.get("docs/NEW.md", set()) == set()
+
+
 #: A milestone with a `Required scope` and a frozen list, each filled by a case.
 DECLARING_MILESTONE = (
     "## v9.9.9 \u2014 Old\n\n### Required scope\n\n{scope}\n"

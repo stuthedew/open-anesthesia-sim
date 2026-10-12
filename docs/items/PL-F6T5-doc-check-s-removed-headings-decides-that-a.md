@@ -3,12 +3,14 @@ id: PL-F6T5
 title: doc_check's _removed_headings decides that a heading changed only where the patch removed rows inside the heading's base span, so a setext heading changed from outside its rows - a line added to its text, or the blank line above it removed so the paragraph joins it - leaves the old title off the candidates list; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1472
 payoff: a setext heading retitled by a line added under it or a blank line removed above it lists its old title for the citation sweep, so a citation of it is not left naming a section no document has
 verify: grep -q 'def test_a_setext_heading_changed_from_outside_its_rows_is_a_removed_title' tests/unit/test_doc_check.py
 ---

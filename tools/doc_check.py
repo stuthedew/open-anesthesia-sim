@@ -8132,6 +8132,8 @@ JSON_KEY_RE = re.compile(r'^[-+]\s*"(\w+)"\s*:')
 #: A `-U0` patch's hunk header: the rows it removes from the old file and adds
 #: to the new one, each a first row and a count that is 1 where it is left out.
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", re.MULTILINE)
+#: A patch's old-file header where the base has no such file.
+NEW_FILE_RE = re.compile(r"^--- /dev/null$", re.MULTILINE)
 #: The suffixes whose definitions are read as statements.
 PYTHON_SUFFIXES = (".py", ".pyi")
 
@@ -8393,9 +8395,9 @@ def _json_keys(value: object) -> set[str]:
 
 
 def _removed_headings(root: Path, base: str, relative: str, patch: str) -> set[str]:
-    """The title of each heading of a document's base copy that `patch` removed rows of.
+    """The title of each heading of a document's base copy that its working tree's copy lacks.
 
-    Read from `markdown.headings` over the base copy, as `_changed_definitions`
+    Read from `markdown.headings` over both copies, as `_changed_definitions`
     reads Python through statements, rather than from each removed line of the
     diff (`PL-B47B`): a setext heading spans its text and its underline
     (CommonMark 0.31.2 § 4.3), so a removed one left no `#` line, and a removed
@@ -8404,21 +8406,21 @@ def _removed_headings(root: Path, base: str, relative: str, patch: str) -> set[s
     one, and read whole it was reported removed whenever a key changed
     (`PL-WX79`). A title the working tree's copy still has as a heading - one
     moved, or a line reflowed - is not removed.
+
+    Any row `patch` touches can retitle one, which is why no row is asked
+    about: a setext heading's text is its paragraph's lines, so a line added
+    under it, or the blank line above it removed so the paragraph before joins
+    it (§ 4.8), changes its title while every row of it stays. Counted only
+    where the patch removed one of its rows, either change left the old title
+    off the list (`PL-F6T5`). A document the base does not have lost none.
     """
-    removed: set[int] = set()
-    for hunk in HUNK_RE.finditer(patch):
-        first, count = int(hunk.group(1)), int(hunk.group(2) or 1)
-        removed.update(range(first, first + count))
-    if not removed:
+    if HUNK_RE.search(patch) is None or NEW_FILE_RE.search(patch) is not None:
         return set()
     before = split_lines(_git_output(root, "show", f"{base}:{relative}").removeprefix("\ufeff"))
     after = (root / relative).read_bytes().decode("utf-8-sig")
     kept = {heading.title for heading in read_headings(_body_lines(split_lines(after)))}
     return {
-        heading.title
-        for heading in read_headings(_body_lines(before))
-        if heading.title not in kept
-        and any(row in removed for row in range(heading.line + 1, heading.end + 1))
+        heading.title for heading in read_headings(_body_lines(before)) if heading.title not in kept
     }
 
 
