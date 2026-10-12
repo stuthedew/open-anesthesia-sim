@@ -3,12 +3,14 @@ id: PL-4DM0
 title: docket verify's queue-edit audit compares the block lists and block scalars docket.model declines only for equality, so an edit inside a declined block - a block scalar's lines, a touches block list gaining an entry - beside an added pr or recurrences entry passes as the sanctioned write; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1431
 payoff: a touches widened or a value rewritten inside a block the item reader declines can no longer ride a pr or recurrence write past the queue-edit audit as sanctioned
 verify: grep -q 'def test_an_edit_inside_a_declined_block_is_not_a_sanctioned_queue_edit' subprojects/docket/tests/test_verify.py
 ---
@@ -56,3 +58,15 @@ today, but the audit's own line still answers wrongly.
 **Done when.** The audit refuses to call an edit sanctioned where either copy
 holds a declined block list, block scalar or unread line, and a test pins both
 forms above.
+
+**Done 2026-10-12** (`#1431`). `verify._declines` says whether
+`_front_matter_pairs` declined any of a copy - a block list, a block scalar, or
+a line continuing nothing - and `_pr_recorded` and `_recurrences_grew` refuse a
+copy on either side that holds one, so an edit inside a declined block can no
+longer ride a `pr` or recurrence write as the sanctioned kind. `capture` is
+unchanged: a created file has no prior content for an edit to hide in. Pinned by
+`test_an_edit_inside_a_declined_block_is_not_a_sanctioned_queue_edit` in
+`subprojects/docket/tests/test_verify.py`, four cases (both forms above, the
+block list beside a recurrence, and a `pr` write onto a copy holding an unread
+line), each red on main's `verify.py`. `subprojects/docket/README.md` says the
+exemption does not reach such a copy.

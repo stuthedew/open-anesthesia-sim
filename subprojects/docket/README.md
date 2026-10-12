@@ -2712,7 +2712,10 @@ dictated rather than chosen, so `verify.sanctioned_queue_edit` forgives a
 worker for editing an item it was never commissioned to touch. It reads the
 field through `model._fold`, as the writer does, so an append onto a value
 continued on an indented line is the append it is rather than an edit
-(`PL-J503`). A withdrawal is
+(`PL-J503`). A copy holding a form that read declines - a block list, a block
+scalar, a line continuing nothing - is no sanctioned write at all, `pr` or
+recurrence, since nothing read the lines an edit there would change
+(`PL-4DM0`). A withdrawal is
 chosen, and what it changes is how much evidence an item carries — so the item
 doing it declares the file in its `touches` like any other work, and `withdraw`
 says so where it has not. Withdrawing the last recorded entry appends to that
