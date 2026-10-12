@@ -13,10 +13,10 @@ Triggered by the owner raising a passing thought they are not developing, or
 by a finding this session makes that it will not fix.
 
 **Whether a finding this session made is one it may fix instead is decided in
-`CLAUDE.md`, not here.** Its capture bullet holds the three tests that all have
-to pass and the cap of two per branch; the door is deliberately narrow, and a
-second copy of it here is how the two drift apart. Read it there, and treat
-everything below as being about a finding that is being recorded.
+`CLAUDE.md`, not here.** Its fix-now bullet holds the tests that all have to
+pass and the cap per branch; the door has one copy, and a second one here is
+how the two drift apart. Read it there, and treat everything below as being
+about a finding that is being recorded.
 
 **This is the opposite case to the one above, and the difference is whether a
 design conversation is happening.** A thought dropped in passing — "the
