@@ -81,7 +81,9 @@ token under `.claude/` failing the grammar was a defect - 2 of 2, both
 the conventions, so a malformed id in it is a template, not a discussion. A
 shell script's lines are the ones bash reads, joined where a backslash-newline
 continues one, so an id carried across two lines is judged as the one id bash
-builds (`PL-WG6S`).
+builds (`PL-WG6S`). `.claude/settings.json` is read through `json`, its
+escapes decoded and a hook's command joined as the shell joins it, so an id it
+spells with an escape is judged as the harness hands it on (`PL-YPLM`).
 
 **What makes a token an attempted id is its shape, not its prefix** (`PL-VH5V`,
 under `PL-GPJ7`'s rule that a hard gate recognises what it checks by explicit
@@ -146,6 +148,7 @@ from __future__ import annotations
 import argparse
 import ast
 import bisect
+import json
 import re
 import sys
 from collections.abc import Iterable, Iterator
@@ -224,6 +227,12 @@ SHELL_FENCES = frozenset({"bash", "sh", "shell", "zsh"})
 #: quote holds it: up to three columns in, as CommonMark 0.31.2 § 4.5 opens one,
 #: those columns being what it takes off each line inside.
 FENCE_OPENING_RE = re.compile(r"(?P<margin> {0,3})(?:`{3,}|~{3,})[ \t]*(?P<info>[^\s`]*)")
+
+#: A token of a JSON document `json` has read whole: a string's literal, or one
+#: character outside every string, white space aside. A string followed by a
+#: `:` is an object's key (RFC 8259 § 4).
+JSON_TOKEN_RE = re.compile(r'"(?:[^"\\]|\\.)*"|[^\s"]')
+JSON_KEY_RE = re.compile(r"\s*:")
 
 
 #: The two rules, and the key each finding is grouped under for reporting.
@@ -382,9 +391,10 @@ def scan_text(path: Path) -> list[Offender]:
     a malformed id split that way passed as two fragments. Three more forms
     join one the same way (`PL-HKR5`): a fenced shell sample in Markdown, a
     TOML multi-line basic string's line-ending backslash, and an escaped line
-    break in a double-quoted scalar of a Markdown file's YAML front matter.
-    Markdown's own prose and JSON join no token, so the rest of a file is read
-    as written.
+    break in a double-quoted scalar of a Markdown file's YAML front matter. A
+    JSON file's strings are read decoded, and a `command` value among them as
+    the shell joins it (`PL-YPLM`). Markdown's own prose joins no token, so the
+    rest of a file is read as written.
     """
     text = path.read_text(encoding="utf-8")
     lines = split_lines(text)
@@ -411,9 +421,15 @@ def _joined(path: Path, text: str) -> tuple[str, tuple[int, ...]]:
     fenced shell sample (`_fence_joins`) and the escaped line breaks of its
     front matter (`_front_matter_joins`), a TOML file those of its multi-line
     basic strings (`_toml_joins`), and any other file nothing.
+    A `.json` file is read through `json` instead (`_json_joined`), where it
+    reads the file at all.
     """
     if path.suffix == ".sh":
         return joined_text(text)
+    if path.suffix == ".json":
+        decoded = _json_joined(text)
+        if decoded is not None:
+            return decoded
     removed: Iterable[tuple[int, int]] = ()
     if path.suffix == ".md":
         removed = [*_front_matter_joins(text), *_fence_joins(text)]
@@ -422,6 +438,45 @@ def _joined(path: Path, text: str) -> tuple[str, tuple[int, ...]]:
     gone = {at for start, end in removed for at in range(start, end)}
     origin = tuple(at for at in range(len(text)) if at not in gone)
     return "".join(text[at] for at in origin), origin
+
+
+def _json_joined(text: str) -> tuple[str, tuple[int, ...]] | None:
+    """Each string of a JSON document as `json` decodes it, one to a line, and where it stood.
+
+    A string's escapes are decoded first (RFC 8259 § 7), so `PL-K7\\u0051X` is
+    the id `PL-K7QX`, which the raw text read as the malformed `PL-K7`. A
+    `command` value is a shell command - a hook's, or the status line's - and
+    the shell removes a backslash-newline before it splits words (POSIX.1-2017
+    XCU § 2.2.1), so one is read through `shell.joined_text`, as a `.sh` file
+    is: `"echo PL-K7QX\\\\\\nZ"` runs `echo PL-K7QXZ`, which the raw text read
+    as the well-formed `PL-K7QX` (`PL-YPLM`). Every character is placed at
+    its literal's opening quote, which shares its line, since JSON escapes
+    each line break inside a string. `None` where `json` refuses the document,
+    which the harness refuses too, so it is read as written.
+    """
+    try:
+        json.loads(text)
+    except ValueError:
+        return None
+    joined: list[str] = []
+    origin: list[int] = []
+    key: str | None = None
+    for token in JSON_TOKEN_RE.finditer(text):
+        literal = token.group()
+        if not literal.startswith('"'):
+            if literal != ":":
+                key = None
+            continue
+        value = json.loads(literal)
+        if JSON_KEY_RE.match(text, token.end()):
+            key = value
+        else:
+            if key == "command":
+                value = joined_text(value)[0]
+            key = None
+        joined.append(value + "\n")
+        origin.extend([token.start()] * (len(value) + 1))
+    return "".join(joined), tuple(origin)
 
 
 def _fence_joins(text: str) -> Iterator[tuple[int, int]]:

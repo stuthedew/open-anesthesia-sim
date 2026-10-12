@@ -3,15 +3,18 @@ id: PL-YPLM
 title: fixture_id_check reads three forms beside its joins wrongly - _front_matter_joins finds a front matter's edges itself so a closing marker with trailing space is no close and a document-end marker is one, _opens_a_node takes a comma or bracket ending a plain scalar's text for a node opener, and scan_text reads .claude/settings.json raw so a JSON-escaped line continuation is not decoded - and a malformed fixture id is misread; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py
+touches: tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py, docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1437
 payoff: fixture_id_check reads a front matter's edges, a quoted scalar's start and a settings.json hook command as their formats do, so a malformed id there is neither missed nor falsely reported
 verify: grep -q 'def test_the_front_matter_joins_find_its_edges_through_docket' tests/unit/test_fixture_id_check.py && grep -q 'def test_a_comma_ending_a_plain_scalar_opens_no_quoted_scalar' tests/unit/test_fixture_id_check.py && grep -q 'def test_a_settings_json_hook_command_is_read_decoded' tests/unit/test_fixture_id_check.py
 reenters: PL-KGYT
+recurrences: 2026-10-12 PL-G8ZN
 ---
 
 **Problem.** fixture_id_check reads three forms beside its joins wrongly - _front_matter_joins finds a front matter's edges itself so a closing marker with trailing space is no close and a document-end marker is one, _opens_a_node takes a comma or bracket ending a plain scalar's text for a node opener, and scan_text reads .claude/settings.json raw so a JSON-escaped line continuation is not decoded - and a malformed fixture id is misread; latent
