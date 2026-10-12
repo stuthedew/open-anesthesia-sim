@@ -14,6 +14,7 @@ closed: 2026-10-01
 pr: 1271
 payoff: an item's audit reads the commits that lead with its id and no commit that merely cites it, the same answer the claim record gives
 verify: grep -q 'def test_item_commits_reads_leading_ids_only' subprojects/docket/tests/test_verify.py
+reenters: PL-PVW2
 ---
 
 **Problem.** verify.py item_commits selects an item's commits with git log --grep=\<id> over the whole message while other_items_named reads vcs.leading_ids, so a commit citing the id mid-sentence counts as the item's and the two readers can disagree

@@ -14,6 +14,7 @@ closed: 2026-10-01
 pr: 1271
 payoff: a tag whose span holds a closure its notes never name is refused instead of passing on a longer number that happens to contain it
 verify: grep -q 'def test_a_span_note_names_its_pull_request_as_a_token' tests/unit/test_doc_check.py
+reenters: PL-PVW2
 ---
 
 **Problem.** tools/doc_check.py check_tag_span_covers_its_notes tests the release notes for pull request #N as a substring, so #12 is covered by a note naming #123 and the check passes while the span it stands for is uncovered

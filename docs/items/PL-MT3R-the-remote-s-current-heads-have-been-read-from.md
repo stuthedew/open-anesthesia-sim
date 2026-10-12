@@ -17,6 +17,7 @@ verify: grep -q 'def test_holdings_reads_no_hold_from_a_branch_the_remote_delete
 root-cause-of: PL-WX87, PL-KX73, PL-C3MN, PL-21KN
 generator: live - five readers in claiming.py, arming.py, claims.py and vcs.py still take a local copy for the remote's: claiming._on_copy a rival's tracking ref, arming.arm HEAD for the pull request's branch, claims.holdings and vcs.cuts_in_flight every refs/remotes ref as live, one for a branch the remote deleted included, and claiming.yield_claims the local branch; only claiming._on_remote asks the remote, for the checkout's own branch, so each new reader picks its own copy again
 misread: The remote's current refs and tags, and whether the clone's local copies still match them
+reenters: PL-4Q9B
 ---
 
 **Problem.** The remote's current heads have been read from the clone's own copies by four readers since PL-4Q9B closed - a harness-written tracking ref, the upstream setting, a rival's unpruned tracking ref, the local branch - so what the remote holds wants one record per command, consulted by claim, yield and arm

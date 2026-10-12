@@ -3,11 +3,13 @@ id: PL-WXKD
 title: No command answers whether the workflow lane is converging: docket trend reports the workflow/product balance, so a session asked whether accumulation is slowing re-derives filed-per-closed, surface saturation and severity mix by hand at full context
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra
 feature: convergence-visibility
 touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/trend.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docs/items, CLAUDE.md
 added: 2026-09-17
+closed: 2026-10-12
+pr: 1420
 verify: grep -q 'def test_a_reentry_is_counted_in_the_period_it_was_filed' subprojects/docket/tests/test_inflow.py && grep -rqE '^reenters: PL-' docs/items
 ---
 
@@ -287,3 +289,28 @@ marked superseded, with this item as the reason. Its Done-when keeps its last
 two sentences, the three release checks recorded in its file, and its
 `verify:` now names the third of those checks instead of `test_trend.py`'s
 `test_the_re_entry_rate`, which this design will never write.
+
+**The backfill, 2026-10-12.** A subagent read the `**Generator check.**`
+paragraph of all 475 files carrying one: 293 in full, and 182 that use none of
+the words for re-entry, closing, instances, siblings, recurrence or fixes. It
+wrote `reenters:` on 89, through `bin/docket set`, so `docket check` validated
+each one, and the diff is 89 one-line additions. I spot-checked four against
+their lines. Two calls, each with one clearly correct option:
+
+- **`PL-ZYHX` gets none.** Its line names `PL-LN69` "closed as spent", but
+  `PL-LN69` was dropped as "answered rather than built", so it shipped no fix.
+  `done` stays the rule: 51 of 55 heads are `done` and 3 `dropped`.
+- **The 20 `PL-R417` sweep members phrased "the gap closed PL-X's fix left"
+  get none.** Their lines stop short of saying re-entry, and all 20 were filed
+  while `PL-R417` was open, so `inflow` counts them under `+head` and none of
+  them could move a re-entry count. The other 10 skipped lines are
+  ambiguous about which item was re-entered, and are left unwritten for that
+  reason.
+
+First reading with the column: 33, 19 and 11 re-entries in the weeks from
+09-21, 09-28 and 10-05, falling. Eight closed items are named as re-entered by
+three or more filings. Three of them already have a successor head
+(`PL-4Q9B` by `PL-MT3R`, `PL-9HD1` by `PL-HXJY`, `PL-WFFX` by `PL-979D`); the
+five without one are `PL-4097`. A cut on 2026-10-12 prints nothing: the week of
+10-05 had fewer re-entries than the week before, 0.02 new paths a filing, and
+its one `P1` is a head.

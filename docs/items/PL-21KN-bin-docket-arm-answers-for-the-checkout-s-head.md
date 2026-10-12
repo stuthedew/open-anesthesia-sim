@@ -15,6 +15,7 @@ closed: 2026-09-26
 pr: 1126
 payoff: arm stops advising an update for a pull request already level with main, so neither misfiring remedy gets run
 verify: grep -q 'def test_arm_reads_the_pull_requests_branch_on_the_remote_not_head' subprojects/docket/tests/test_cli.py
+reenters: PL-4Q9B
 ---
 
 **Problem.** bin/docket arm answers for the checkout's HEAD even where the pull request's own branch on origin is ahead of it, so once someone else has brought main into the pull request it still reports behind N and advises update_pull_request_branch or a merge and push, both of which misfire

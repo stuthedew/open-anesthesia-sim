@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-06
 payoff: a quoted or comment-interrupted front-matter value is read as YAML reads it or refused by name, rather than stored short with nothing reported
 verify: grep -q 'def test_a_quoted_value_continued_on_a_hash_led_line_is_read_whole' subprojects/docket/tests/test_model.py && grep -q 'def test_a_comment_line_inside_a_plain_value_is_not_folded_over' subprojects/docket/tests/test_model.py
+reenters: PL-HXJY
 ---
 
 **Problem.** docket's front-matter fold takes an indented line opening with # for a comment before it takes it for a continuation, so a quoted value carried onto such a line is read short with its opening quote kept and nothing reported, a comment line inside a plain value does not end it, and a blank line inside a value folds to a space where YAML folds a newline, against the README's exactly-as-YAML promise; latent

@@ -10,6 +10,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 payoff: every session starts with the whole dead-ends record, and an entry the tool cannot read fails make check instead of vanishing from the digest
 verify: grep -q 'def test_an_entry_the_pattern_cannot_read_is_refused' tests/unit/test_dead_ends.py
+reenters: PL-F5B9
 ---
 
 **Problem.** tools/dead_ends.py's ENTRY pattern does not match docs/dead-ends.md line 74, whose bold title is followed by a parenthetical before its dash, so the session-start digest drops that dead end with nothing reported and shows 10 of the 11

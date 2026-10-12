@@ -9,6 +9,7 @@ touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpr
 added: 2026-09-24
 payoff: a session that hits the 3.11 floor is told the true set of collisions and uv-run tools, so it does not re-derive a second SyntaxError on main as a defect
 verify: grep -qF 'app/bookmarks.py' .claude/hooks/floor-interpreter-guard.sh && grep -qF 'fixture_id_check.py' .claude/hooks/floor-interpreter-guard.sh && ! grep -qF 'The collision is one line' .claude/hooks/floor-interpreter-guard.sh && ! grep -qF 'the CI floor section run these bare on purpose' tests/unit/test_floor_interpreter_guard.py
+reenters: PL-G424
 ---
 
 **Problem.** .claude/hooks/floor-interpreter-guard.sh names one 3.11 collision (app_metadata.py) and six uv-run tools, where app/bookmarks.py:451 is a second collision and seven ast tools run under uv, and neither its comments nor its deny message say doc_check and possessive_section_check also parse source and decline at the floor
