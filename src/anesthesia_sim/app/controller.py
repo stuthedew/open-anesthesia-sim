@@ -399,6 +399,27 @@ class MarkForkPoint:
     fork_s: CaseInstant
 
 
+@dataclass(frozen=True, slots=True)
+class HereForkPoint:
+    """Where a paused run stands, as a place to branch, and whether a mark stopped it there.
+
+    `SimulationController.here_fork_point`'s answer (`PL-Y2SL`). The instant
+    is the clock's, and the clock stands on whole steps, so the instant a
+    reader is shown and the instant `resumed_here` forks at are one number;
+    nothing here is a typed value for a caller to get wrong.
+
+    Attributes:
+        fork_s: The instant the run stands at, which is where a branch taken
+            here opens.
+        stopped_on_mark: Whether the run halted here on a marked crossing,
+            `SimulationSnapshot.bookmark_halt`, rather than being paused here,
+            so a label can say which.
+    """
+
+    fork_s: CaseInstant
+    stopped_on_mark: bool
+
+
 class SimulationController:
     """Own run controls and read-only history for one app session."""
 
@@ -1008,12 +1029,12 @@ class SimulationController:
         (`PL-54V0`). `elapsed_s` must be an instant this run holds a keyframe
         for, which is its start and every recorded setting change. Anywhere
         else is refused, and not for want of a way to reproduce it: a marked
-        instant is branched at through `resumed_at_mark` and the crossing the
-        run is standing on through `resumed_at_halt`, and both fork between two
+        instant is branched at through `resumed_at_mark` and the instant a
+        paused run stands at through `resumed_here`, and both fork between two
         keyframes and reproduce this run element-wise, by opening the branch's
-        definition at the keyframe before the fork (`_open_at`). An instant
-        that is neither marked nor a control event is offered by no door, so a
-        learner marks it first. What no door does is *restart* a definition at
+        definition at the keyframe before the fork (`_open_at`). Any other
+        instant is offered by no door, so a learner marks it, or pauses the
+        run on it, first. What no door does is *restart* a definition at
         the fork from the canonical state there, which replaces one propagation
         over an interval with two over its halves - a different rounding of the
         same exact solution, measured at up to 5.3e-13 in an accumulator -
@@ -1042,7 +1063,7 @@ class SimulationController:
         the branch forms its interval from the same two floats its parent did,
         where a definition re-based to its own zero would depend on a
         subtraction that does not always round-trip. Opening *at the fork* is
-        this door's own property rather than every branch's: `resumed_at_halt`
+        this door's own property rather than every branch's: `resumed_here`
         and `resumed_at_mark` open at the keyframe before the fork, on the same
         axis and with the same guarantee, which `_open_at` and `docs/MODEL.md`
         § "What this requires of a branch" set out.
@@ -1087,56 +1108,92 @@ class SimulationController:
 
         return self._branch_from(self._resume_point_at(elapsed_s))
 
-    def resumed_at_halt(self) -> SimulationController:
-        """Open a second live run at the bookmark crossing this run is standing on.
+    def resumed_here(self) -> SimulationController:
+        """Open a second live run where this paused run stands, stopped on a mark or not.
 
-        The other door to a branch, and the one `ROADMAP.md`'s v0.5.0
-        Definition of done asks for when it says "a branch taken at any
-        recorded control event **or bookmark**" (`PL-B8MK`). Everything a
-        branch is - a paused controller carrying this run's agent, patient and
-        circuit, advancing by the path every run takes - is what `resumed_at`
-        describes; what differs is only where it may be taken.
+        The door for the decision point a learner is looking at (`PL-Y2SL`):
+        paused to think, they try something else from that instant in one
+        act, without marking it first (project owner, 2026-10-12). It is also
+        the door for a bookmark halt, which is a pause a mark made, and so
+        what `ROADMAP.md`'s v0.5.0 Definition of done asks for when it says "a
+        branch taken at any recorded control event **or bookmark**"
+        (`PL-B8MK`). Everything a branch is - a paused controller carrying this
+        run's agent, patient and circuit, advancing by the path every run
+        takes - is what `resumed_at` describes; what differs is only where it
+        may be taken.
 
         **It takes no instant, so there is none for a caller to get wrong.**
-        The halt names the fork - the step the run is standing on, read from
-        the clock - and supplies nothing else: the state there is
-        `RunDefinition.state_at`'s, the canonical path every door forks from,
-        and not the live system's. Offering this as a float instead would let
-        a branch be asked for at a bookmark the run has not reached, or at the
-        instant a learner *marked* rather than the step instant the run
-        actually stopped on - which are not the same number, since a mark
-        lying inside a step halts the run at the step's end. A time bookmark
-        the run has already passed is `resumed_at_mark`'s, which takes the mark
-        rather than a float for the same reason (`PL-W4XQ`); this door stays
-        the only one for a MAC target, which has no instant to name.
+        The clock names the fork - the step the run is standing on - and
+        supplies nothing else: the state there is `RunDefinition.state_at`'s,
+        the canonical path every door forks from, and not the live system's.
+        Offering this as a float instead would let a branch be asked for at an
+        instant the run has not reached, or at the instant a learner *marked*
+        rather than the step instant the run actually stopped on - which are
+        not the same number, since a mark lying inside a step halts the run at
+        the step's end. It is the one door for a MAC target, which has no
+        instant to name.
 
-        **The trunk is not touched, which is the whole point of route two.**
-        No keyframe is recorded where the run halted: the branch's run
-        definition opens at the keyframe the parent's own stretch opens at,
-        while the branch's clock and its live system stand at the fork. See
-        `_open_at`, and `docs/MODEL.md` § "What this requires of a branch"
-        for which of that section's two conditions this relaxes and why the
-        element-wise guarantee survives it. Recording the keyframe instead -
-        the obvious route - leaves the branch exact against its parent and
-        displaces that parent's own later answers, 48 of 54 elements against
-        the same case built unmarked, so marking a run would change it.
+        **It refuses a run that is going, a failed run and the run's own
+        opening**, each for a reason of its own. Where a running run stands
+        moves with every step, so an instant read off it is stale before it
+        can be taken. A failure is not a pause (`RunStatus.failure_reason`),
+        and a branch opening where it stands would resume what `fail` says is
+        not resumed. And a run standing at its opening has recorded nothing to branch from,
+        and `resumed_at` already opens there. The supported run length is not
+        refused: a run halted there is stopped on a completed step, and a
+        branch taken there opens stopped in the same place.
+
+        **The trunk is not touched.** No keyframe is recorded where the run
+        stands: the branch's run definition opens at the keyframe the
+        parent's own stretch opens at, while the branch's clock and its live
+        system stand at the fork. See `_open_at`, and `docs/MODEL.md`
+        § "What this requires of a branch" for which of that section's two
+        conditions this relaxes and why the element-wise guarantee survives
+        it. Recording the keyframe instead - the obvious route - leaves the
+        branch exact against its parent and displaces that parent's own later
+        answers, 48 of 54 elements against the same case built unmarked, so
+        pausing or marking a run would change it.
+
+        **The crossing the branch opens standing on is the step's, asked
+        again** (`_crossing_ending_at`), as `resumed_at_mark` asks it, and not
+        read from a halt's record. The record names what was marked when the
+        run stopped, so a mark added inside the halting step while the run
+        stood on it was missing from it and read as before the branch, where
+        the same mark reached through `resumed_at_mark` read as passed
+        (`PL-2N43`). Asked of the marks as they stand, both doors give one
+        account of one step.
 
         Returns:
-            A paused `SimulationController` standing at the halted instant,
+            A paused `SimulationController` standing where this run stands,
             carrying this run's agent, patient and circuit, with an empty
             control timeline of its own and a copy of this run's bookmarks.
 
         Raises:
-            SimulationConfigurationError: this run is not standing on a
-                bookmark crossing, so there is no fork to take; this run is
-                itself a branch, since a branch of a branch is refused rather
-                than silently flattened; the halted instant is not a whole
-                number of this run's steps; or the rebuilt branch holds an
-                equation setting or agent reference this run did not hold at
-                the fork, each named with both of its values.
+            SimulationConfigurationError: this run is going, has failed or
+                stands at its opening; it is itself a branch, since a branch
+                of a branch is refused rather than silently flattened; or the
+                rebuilt branch holds an equation setting or agent reference
+                this run did not hold at the fork, each named with both of its
+                values.
         """
 
-        return self._branch_from(self._resume_point_at_halt())
+        return self._branch_from(self._resume_point_here())
+
+    @property
+    def here_fork_point(self) -> HereForkPoint | None:
+        """Where `resumed_here` would open a branch, or None where it would refuse.
+
+        Answered from the check the door raises from (`_refusal_here`), so an
+        offer drawn from this and the door it is taken through cannot
+        disagree about whether there is a place to branch. Answered on a
+        branch as on a trunk, and None there, for the reason every door
+        refuses a branch; `BranchedCase.here_fork_point` reads the trunk's.
+        """
+
+        if self._refusal_here() is not None:
+            return None
+
+        return HereForkPoint(self._state.elapsed_s, self._bookmark_halt is not None)
 
     def resumed_at_mark(self, bookmark: TimeBookmark) -> SimulationController:
         """Open a second live run at the step that reached `bookmark`, stopped there or not.
@@ -1153,23 +1210,23 @@ class SimulationController:
         that reaches the mark (`TimeBookmark.steps_to_reach`), which is the
         instant a halt stops the run on; the state is `RunDefinition.state_at`
         there; the branch's definition opens at the keyframe at or before it.
-        So a mark the run halted on forks where `resumed_at_halt` forks and
+        So a mark the run is halted on forks where `resumed_here` forks and
         from the same state, and a mark set behind the clock forks where the
         halt would have, had it been set in time. Nothing is recorded on this
         run, which is what leaves it the case it would have been unmarked
         (`docs/MODEL.md` § "What this requires of a branch").
 
         **The crossing the branch opens standing on is reconstructed**, since
-        a step that halted nothing kept no record of what it crossed. It is
-        `BookmarkSet.crossings_between` asked about that one step, with the
-        marks as they stand now and each compartment read canonically at
-        either end, so the rule that halts a running case is the rule that
-        names this crossing - and a mark lying inside the step, which the
-        branch opens just past, still reads as passed rather than as before
-        the branch (`PL-3K9B`, case B).
+        a step that halted nothing kept no record of what it crossed
+        (`_crossing_ending_at`). It is `BookmarkSet.crossings_between` asked
+        about that one step, with the marks as they stand now and each
+        compartment read canonically at either end, so the rule that halts a
+        running case is the rule that names this crossing - and a mark lying
+        inside the step, which the branch opens just past, still reads as
+        passed rather than as before the branch (`PL-3K9B`, case B).
 
         **It takes the mark, not an instant**, for the reason
-        `resumed_at_halt` takes nothing: a float would let a caller name the
+        `resumed_here` takes nothing: a float would let a caller name the
         instant a learner typed, which is not in general the step instant the
         run reached it at. A mark at the case's opening is the one no step
         reaches; the run stands on it from the start, so it forks at the
@@ -1190,7 +1247,7 @@ class SimulationController:
             SimulationConfigurationError: this run holds no time bookmark at
                 that instant; it has not passed the mark, so the case holds no
                 state there yet - a mark ahead of the clock stops a running
-                case when it is reached, and `resumed_at_halt` is then the
+                case when it is reached, and `resumed_here` is then the
                 fork; this run is itself a branch, since a branch of a branch
                 is refused rather than silently flattened; or the rebuilt
                 branch holds an equation setting or agent reference this run
@@ -1223,8 +1280,8 @@ class SimulationController:
     def _branch_from(self, resume_point: ResumePoint) -> SimulationController:
         """Build the branch `resume_point` describes, leaving this run untouched.
 
-        Shared by every door to a fork - `resumed_at`, `resumed_at_halt` and
-        `resumed_at_mark` - because where a branch may be taken is the only
+        Shared by every door to a fork - `resumed_at`, `resumed_at_mark` and
+        `resumed_here` - because where a branch may be taken is the only
         thing that separates them. What a branch *is* is stated once, here.
         """
 
@@ -1519,7 +1576,7 @@ class SimulationController:
                 f"this run holds no keyframe at {elapsed_s} s, and resumed_at opens at one: the "
                 f"run's opening or a recorded setting change, which this run holds at {openings} "
                 "s. A marked instant is branched at with resumed_at_mark once the run has passed "
-                "it, and the crossing a run is standing on with resumed_at_halt"
+                "it, and the instant a paused run stands at with resumed_here"
             )
 
         # The fork *is* the stretch's opening here, which is what makes a
@@ -1531,38 +1588,101 @@ class SimulationController:
         # snapshot (`PL-3K9B`, case E).
         return self._resume_point(segment, segment.opening, None)
 
-    def _resume_point_at_halt(self) -> ResumePoint:
-        """Everything a branch opening at this run's halt needs, or a refusal saying why.
+    def _resume_point_here(self) -> ResumePoint:
+        """Everything a branch opening where this run stands needs, or a refusal saying why.
 
-        The fork instant is read from the clock rather than from the crossing,
-        because the clock is where the state is. They are the same number -
-        `BookmarkMarks.crossings_between` stamps a crossing with the instant
-        the crossing step ended at, which is the instant the run then stands
-        at - and taking it from the clock is what makes that agreement
-        something this method does not have to rely on.
+        The fork is the clock - `SimulationState.elapsed_s`, which stands on
+        `_instant_after` of the step count bit for bit - because the clock is
+        where the run is. On a halt that is the crossing's own instant too,
+        since `BookmarkSet.crossings_between` stamps a crossing with the
+        instant its step ended at; taking it from the clock is what makes that
+        agreement something this method does not rely on.
 
         Raises:
-            SimulationConfigurationError: this run is a branch; it is not
-                standing on a bookmark crossing; or the halted instant is not
-                a whole number of this run's steps.
+            SimulationConfigurationError: `_refusal_here` names a reason; or
+                the fork instant is not a whole number of this run's steps,
+                which the clock it is read from rules out.
         """
 
-        self._require_forkable()
+        refusal = self._refusal_here()
 
-        if self._bookmark_halt is None:
-            raise SimulationConfigurationError(
-                "this run is not standing on a bookmark crossing, so there is no halt to "
-                "branch at; a time bookmark the run has passed is branched at with "
-                "resumed_at_mark, and a mark still ahead stops a running case on the step "
-                "that crosses it"
-            )
+        if refusal is not None:
+            raise SimulationConfigurationError(refusal)
 
-        fork_at_s = self._state.elapsed_s
+        fork_s = self._state.elapsed_s
+        fork = Keyframe(fork_s, self._run_definition.state_at(fork_s))
 
         return self._resume_point(
-            self._run_definition.segment_at(fork_at_s),
-            Keyframe(fork_at_s, self._run_definition.state_at(fork_at_s)),
-            self._bookmark_halt,
+            self._run_definition.segment_at(fork_s),
+            fork,
+            self._crossing_ending_at(self._state.step_count, fork),
+        )
+
+    def _refusal_here(self) -> str | None:
+        """Why a branch where this run stands is refused, or None where it is not.
+
+        The one check `here_fork_point` and `resumed_here` both read, so the
+        offer and the door cannot disagree. `resumed_here` carries the reason
+        for each refusal; the messages say what to do instead.
+        """
+
+        refusal_as_a_branch = self._refusal_as_a_branch()
+
+        if refusal_as_a_branch is not None:
+            return refusal_as_a_branch
+
+        if self._is_running:
+            return (
+                "this run is going, so where it stands moves with every step and an instant read "
+                "off it is gone before it can be branched at; pause it, and resumed_here branches "
+                "where it then stands"
+            )
+
+        if self._failure_reason is not None:
+            return (
+                f"this run stopped at {self._state.elapsed_s} s on a failure, not a pause "
+                f"({self._failure_reason}), so where it stands is not a place to branch; a "
+                "setting change or a mark it passed before is still branched at with resumed_at "
+                "or resumed_at_mark"
+            )
+
+        if self._state.step_count == 0:
+            return (
+                "this run stands at its opening and has recorded nothing to branch from; "
+                "resumed_at opens a branch at the opening"
+            )
+
+        return None
+
+    def _crossing_ending_at(self, step_count: StepCount, fork: Keyframe) -> BookmarkCrossing | None:
+        """The marks the step ending at `fork` crossed, as the marks stand now, or None.
+
+        Asked again of the rule `advance` halts by, about that one step, with
+        each compartment read canonically at either end, rather than read
+        from any record: a step that halted nothing kept none, and a halt's
+        record names only what was marked when the run stopped, so a mark
+        added inside the halting step afterwards would be missing from it
+        (`PL-2N43`). The end reading is the state the branch opens from, so
+        its first step begins where this one ends and a height arrived at here
+        is not crossed again by it. The case's opening is reached by no step,
+        so a fork there stands on no crossing.
+
+        Args:
+            step_count: How many steps the case had completed at the fork.
+            fork: The instant those steps end at, and the canonical state
+                there.
+        """
+
+        if step_count == 0:
+            return None
+
+        before_s = self._instant_after(StepCount(step_count - 1))
+
+        return self._bookmarks.crossings_between(
+            before_s=before_s,
+            after_s=fork.instant_s,
+            before=self._compartment_mac_multiples(self._run_definition.state_at(before_s)),
+            after=self._compartment_mac_multiples(fork.state),
         )
 
     def _resume_point_at_mark(self, bookmark: TimeBookmark) -> ResumePoint:
@@ -1582,31 +1702,19 @@ class SimulationController:
             raise SimulationConfigurationError(
                 f"this run's clock stands at {self._state.elapsed_s} s, short of the mark at "
                 f"{held.instant_s} s, so the case holds no state there to branch from: a mark is "
-                "branched at once the run has passed it, or on the step that crosses it with "
-                "resumed_at_halt"
+                "branched at once the run has passed it, or, standing on the step that crosses "
+                "it, with resumed_here"
             )
 
         step_count = self._steps_to_reach(held)
         fork_s = self._instant_after(step_count)
         fork = Keyframe(fork_s, self._run_definition.state_at(fork_s))
-        crossing = None
 
-        # A step that halted nothing kept no record of what it crossed, so the
-        # crossing is asked of the rule `advance` halts by, about that one
-        # step, with each compartment read canonically at either end. The end
-        # reading is the state the branch opens from, so its first step begins
-        # where this one ends and a height arrived at here is not crossed
-        # again by it. A mark at the opening is reached by no step at all.
-        if step_count > 0:
-            before_s = self._instant_after(StepCount(step_count - 1))
-            crossing = self._bookmarks.crossings_between(
-                before_s=before_s,
-                after_s=fork_s,
-                before=self._compartment_mac_multiples(self._run_definition.state_at(before_s)),
-                after=self._compartment_mac_multiples(fork.state),
-            )
-
-        return self._resume_point(self._run_definition.segment_at(fork_s), fork, crossing)
+        return self._resume_point(
+            self._run_definition.segment_at(fork_s),
+            fork,
+            self._crossing_ending_at(step_count, fork),
+        )
 
     def _passed_time_bookmarks(self) -> tuple[TimeBookmark, ...]:
         """The time bookmarks this run's clock is at or past, as its standings say.
@@ -1662,12 +1770,26 @@ class SimulationController:
                 which `BranchedCase` cannot reach.
         """
 
-        if self._opened_from is not None:
-            raise SimulationConfigurationError(
-                f"this run is itself a branch opened at {self._opened_from.fork.instant_s} s, "
-                "and a branch of a branch is refused rather than silently flattened; branch "
-                "from the trunk instead"
-            )
+        refusal = self._refusal_as_a_branch()
+
+        if refusal is not None:
+            raise SimulationConfigurationError(refusal)
+
+    def _refusal_as_a_branch(self) -> str | None:
+        """Why a fork from this run is refused for its being a branch, or None for a trunk.
+
+        `_require_forkable`'s message, kept apart so `_refusal_here` can
+        answer without raising.
+        """
+
+        if self._opened_from is None:
+            return None
+
+        return (
+            f"this run is itself a branch opened at {self._opened_from.fork.instant_s} s, "
+            "and a branch of a branch is refused rather than silently flattened; branch "
+            "from the trunk instead"
+        )
 
     def _resume_point(
         self, segment: RunSegment, fork: Keyframe, crossing: BookmarkCrossing | None
@@ -1679,10 +1801,10 @@ class SimulationController:
                 the keyframe the branch's own definition opens at.
             fork: The instant the branch is taken at and this run's canonical
                 state there.
-            crossing: The marked crossing being forked at, or `None` where the
-                fork is a control event rather than a halt. Required rather
-                than defaulted, so a door added later states which it is
-                instead of inheriting the quieter answer.
+            crossing: The marked crossing being forked at, or `None` where no
+                step crossed a mark there: a control event, or the case's
+                opening. Required rather than defaulted, so a door added later
+                states which it is instead of inheriting the quieter answer.
 
         Raises:
             SimulationConfigurationError: the fork instant is not a whole
@@ -2372,7 +2494,8 @@ class BranchedCase:
         `fork_at`'s scope: an instant that is neither is refused there, not
         because a branch could not reproduce the trunk at it but because it is
         another door's - a marked instant through `fork_at_mark`, from
-        `mark_fork_points`, and a halt through `fork_at_halt` (`PL-54V0`).
+        `mark_fork_points`, and where the paused trunk stands through
+        `fork_here`, from `here_fork_point` (`PL-54V0`).
 
         Induction is included rather than filtered out. A fork at zero is a
         second management of the whole case, which is a comparison a learner
@@ -2384,7 +2507,7 @@ class BranchedCase:
         (`PL-B8MK`). Making it one would mean recording a keyframe where the
         run halted, which leaves the branch exact against its parent and
         displaces that parent's own later answers - marking a run would change
-        it. A fork at a mark is taken through `fork_at_halt` or `fork_at_mark`
+        it. A fork at a mark is taken through `fork_here` or `fork_at_mark`
         instead, neither of which needs a keyframe, so neither adds an instant
         to this list.
         """
@@ -2400,11 +2523,23 @@ class BranchedCase:
         (`PL-W4XQ`). It changes as the case does - a mark joins it when the
         trunk's clock reaches it or when one is set behind the clock, and
         leaves only when the learner unmarks it or the trunk starts over - which
-        is the lifetime of the keyframes beside it, and not the halt's, which
-        ends at the next step.
+        is the lifetime of the keyframes beside it, and not `here_fork_point`'s,
+        which ends at the next step.
         """
 
         return self._trunk.mark_fork_points
+
+    @property
+    def here_fork_point(self) -> HereForkPoint | None:
+        """Where the paused trunk stands, as `fork_here`'s place to branch, or None.
+
+        The trunk's `SimulationController.here_fork_point`: None while it is
+        going, has failed or stands at its opening (`PL-Y2SL`). It ends at the
+        next step the trunk takes, where the entries in `fork_points_s` and
+        `mark_fork_points` stay until the case changes.
+        """
+
+        return self._trunk.here_fork_point
 
     def fork_at(self, elapsed_s: CaseInstant) -> SimulationController:
         """Take a branch from the trunk at `elapsed_s`, and keep it.
@@ -2433,30 +2568,31 @@ class BranchedCase:
 
         return self._kept(self._trunk.resumed_at(elapsed_s))
 
-    def fork_at_halt(self) -> SimulationController:
-        """Take a branch from the trunk where a bookmark has halted it, and keep it.
+    def fork_here(self) -> SimulationController:
+        """Take a branch from the trunk where it is paused, stopped on a mark or not, and keep it.
 
-        The other half of `ROADMAP.md`'s v0.5.0 Definition of done - "a branch
-        taken at any recorded control event **or bookmark**" - where
-        `fork_at` is the first half. It takes no instant, because the fork is
-        the one the trunk is standing on; `SimulationController.resumed_at_halt`
-        says why that is the interface rather than a widened `fork_at`.
+        The decision point a learner paused at, in one act (`PL-Y2SL`), and,
+        on a bookmark halt, the other half of `ROADMAP.md`'s v0.5.0 Definition
+        of done - "a branch taken at any recorded control event **or
+        bookmark**" - where `fork_at` is the first half. It takes no instant,
+        because the fork is the one the trunk is standing on;
+        `SimulationController.resumed_here` says why that is the interface
+        rather than a widened `fork_at`.
 
         Returns:
-            The new branch, paused at the trunk's state at the halted instant,
-            carrying the trunk's agent and patient. It is also appended to
-            `branches`, so a caller that discards the return value has not
-            lost it. The trunk is left standing on its halt.
+            The new branch, paused at the trunk's state where the trunk
+            stands, carrying the trunk's agent and patient. It is also
+            appended to `branches`, so a caller that discards the return value
+            has not lost it. The trunk is left standing where it was.
 
         Raises:
-            SimulationConfigurationError: the trunk is not standing on a
-                bookmark crossing, the halted instant is not a whole number of
-                the trunk's steps, or the branch rebuilt there would not hold
-                what the trunk held. `resumed_at_halt` raises these and names
-                which.
+            SimulationConfigurationError: the trunk is going, has failed or
+                stands at its opening, or the branch rebuilt there would not
+                hold what the trunk held. `resumed_here` raises these and
+                names which.
         """
 
-        return self._kept(self._trunk.resumed_at_halt())
+        return self._kept(self._trunk.resumed_here())
 
     def fork_at_mark(self, bookmark: TimeBookmark) -> SimulationController:
         """Take a branch from the trunk at a time bookmark it has passed, and keep it.

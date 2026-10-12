@@ -5058,6 +5058,18 @@ A mark still ahead of the clock is refused rather than reached: the case holds
 no state there yet, and a fork there would be a prediction drawn as a run. It
 is reached by running on, and the halt is then the fork.
 
+**Branching where a paused run stands is the same fork, with the clock naming
+the instant** (`PL-Y2SL`, 2026-10-12). The clock stands on a whole number of
+steps and the construction above reproduces the case at any instant the run
+has reached, so `SimulationController.resumed_here` forks wherever the trunk
+is paused - on a halt or anywhere else - from the canonical state there,
+inside the parent's own stretch, with nothing recorded on the trunk. It opens
+standing on the crossing the step ending there made, asked again of the marks
+as they stand, as `resumed_at_mark` asks it, rather than read from a halt's
+record, which names only what was marked when the run stopped (`PL-2N43`). A
+running run is refused, since where it stands moves with every step, and so
+is a failed one, a failure not being a pause.
+
 **So nothing is left over to bound, and there is nothing to show a learner**
 (`PL-Z3W6`, 2026-09-21). `ROADMAP.md`'s v0.5.0 definition of done asks this
 document for "the bound on any divergence that could not be eliminated", and on
@@ -5130,7 +5142,7 @@ what rules the chart's axis, what the supported run length is measured
 against, and what its run definition's segments and keyframes are stamped in —
 is the case's, measured from induction, and continues the parent's rather than
 restarting at the fork. `SimulationController.resumed_at()` opens the branch's
-definition at the fork instant, and `resumed_at_halt()` and `resumed_at_mark()`
+definition at the fork instant, and `resumed_here()` and `resumed_at_mark()`
 open it at the keyframe at or before one — all on the case's own axis; `advance()` and
 `drawn_window()` pass case time straight through to it. Nothing converts
 between frames anywhere, because there is only the one.

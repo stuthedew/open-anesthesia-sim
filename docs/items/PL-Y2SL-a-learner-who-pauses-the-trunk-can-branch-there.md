@@ -3,11 +3,13 @@ id: PL-Y2SL
 title: A learner who pauses the trunk can branch there only if it stopped on a mark or a setting changed at that instant, where the owner wants the paused point to be the default place to branch, with marks and setting changes still offered
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/run_definition.py, docs/ARCHITECTURE.md, docs/MODEL.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py, tests/unit/test_chart_frame.py
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1453
 payoff: a learner who pauses to think can try something else from that instant in one press, without marking it first
 verify: grep -q 'def test_a_paused_trunk_branches_where_it_stands' tests/integration/test_controller.py
 ---
@@ -77,8 +79,9 @@ What reading the code settled, so the build does not derive it again:
   (none at step 0), so both doors read one rule.
 - **It refuses** a branch (every door's reason), a running run (where it
   stands moves with each step, so the instant a label showed need not be the
-  fork) and a failed run (`RunStatus.failure_reason`: a failure must not be
-  presented as a pause). **Not the supported run length**: a branch at a halt
+  fork), a failed run (`RunStatus.failure_reason`: a failure must not be
+  presented as a pause) and the run's opening (amended below). **Not the
+  supported run length**: a branch at a halt
   on the limit is tested behaviour
   (`test_a_branch_forked_at_a_halt_on_the_supported_run_length_reads_as_stopped_there`).
 - **One predicate**: a `here_fork_point` property, `HereForkPoint(fork_s,
@@ -87,9 +90,16 @@ What reading the code settled, so the build does not derive it again:
   `BranchedCase.here_fork_point` reads the trunk's.
 - **`fork_offer` takes `here: HereForkPoint | None` in place of `halt`**, and
   `ForkOffer.halt_offered`/`halt_label` become `here_offered`/`here_label`.
-  Not offered at instant 0 (nothing recorded) or while comparing; labelled
-  `HERE_FORK_LABEL_TEMPLATE`, "Branch here: {instant}", on a plain pause and
-  the ratified `HALT_FORK_LABEL_TEMPLATE` when `stopped_on_mark`.
+  Not offered while comparing; labelled `HERE_FORK_LABEL_TEMPLATE`, "Branch
+  here: {instant}", on a plain pause and the ratified
+  `HALT_FORK_LABEL_TEMPLATE` when `stopped_on_mark`.
+- **Amended in the build: the run's opening is refused by the model, not
+  hidden by the frame.** This plan had `fork_offer` hide the button at instant
+  0. That would leave the door wider than its offer there, which is the
+  disagreement the one predicate exists to rule out, so `_refusal_here`
+  refuses a run at step 0 as well - nothing is recorded there, and
+  `resumed_at` already opens a branch at the opening - and `fork_offer` has no
+  rule about instants of its own.
 - **`ForkPanel.halt_button` becomes `here_button`**, and
   `SimulationView._handle_halt_fork` becomes `_handle_here_fork`, through
   `fork_here`.

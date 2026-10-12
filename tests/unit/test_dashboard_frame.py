@@ -31,7 +31,6 @@ from typing import Any
 import pytest
 
 from anesthesia_sim.app.bookmarks import (
-    BookmarkCrossing,
     BookmarkSet,
     BookmarkStandings,
     MacTarget,
@@ -49,6 +48,7 @@ from anesthesia_sim.app.chart_time_base import ChartTimeBase, time_base_for_span
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
 from anesthesia_sim.app.controller import (
+    HereForkPoint,
     MarkForkPoint,
     ResumePoint,
     RunStatus,
@@ -67,6 +67,7 @@ from anesthesia_sim.app.dashboard_frame import (
     EMPTY_METRIC_QUALIFIER,
     EMPTY_METRIC_SECONDARY_VALUE,
     HALT_FORK_LABEL_TEMPLATE,
+    HERE_FORK_LABEL_TEMPLATE,
     INTERPRETATION_DISCLAIMER_TEXT,
     MAC_TARGET_HEADING,
     MARK_FORK_LABEL_TEMPLATE,
@@ -2699,7 +2700,7 @@ def test_fork_offer_labels_every_keyframe_the_trunk_holds() -> None:
     none carries a mark.
     """
 
-    offer = fork_offer((0.0, 60.0, 185.0), marks=(), comparing=False, halt=None)
+    offer = fork_offer((0.0, 60.0, 185.0), marks=(), comparing=False, here=None)
 
     assert _offered_instants(offer) == (0.0, 60.0, 185.0)
     assert _offered_labels(offer) == tuple(
@@ -2721,7 +2722,7 @@ def test_fork_offer_requires_the_marks_to_be_stated() -> None:
     """
 
     with pytest.raises(TypeError, match="marks"):
-        fork_offer((CaseInstant(0.0),), comparing=False, halt=None)  # type: ignore[call-arg]
+        fork_offer((CaseInstant(0.0),), comparing=False, here=None)  # type: ignore[call-arg]
 
 
 def test_fork_offer_is_refused_while_a_comparison_is_shown_and_says_the_way_out() -> None:
@@ -2732,7 +2733,7 @@ def test_fork_offer_is_refused_while_a_comparison_is_shown_and_says_the_way_out(
     comparison - by the run it belongs to, which is the test below.
     """
 
-    offer = fork_offer((0.0, 60.0), marks=(), comparing=True, halt=None)
+    offer = fork_offer((0.0, 60.0), marks=(), comparing=True, here=None)
 
     assert offer.locked is True
     assert offer.lock_reason == comparing_fork_lock_text()
@@ -2771,22 +2772,22 @@ def test_the_comparison_lock_names_a_control_the_learner_can_press() -> None:
     assert "where it branched" in instead
 
 
-def test_fork_offer_offers_no_halt_fork_while_the_trunk_stands_on_no_halt() -> None:
+def test_fork_offer_offers_no_fork_here_while_the_trunk_is_going() -> None:
     """The second control is absent rather than present and inert (`PL-TYWQ`).
 
-    The selector is unaffected: a bookmark records no keyframe, so the halt
-    control and the selector never trade rows with each other.
+    The selector is unaffected: pausing records no keyframe, so the control at
+    the paused point and the selector never trade rows with each other.
     """
 
-    offer = fork_offer((0.0, 60.0), marks=(), comparing=False, halt=None)
+    offer = fork_offer((0.0, 60.0), marks=(), comparing=False, here=None)
 
-    assert offer.halt_offered is False
-    assert offer.halt_label == ""
+    assert offer.here_offered is False
+    assert offer.here_label == ""
     assert _offered_instants(offer) == (0.0, 60.0)
 
 
-def test_fork_offer_offers_the_halt_fork_while_the_trunk_stands_on_a_crossing() -> None:
-    """A halt is a permission, so the control appears with it and says what it will do.
+def test_fork_offer_offers_the_fork_here_while_the_trunk_is_paused() -> None:
+    """`PL-Y2SL`: paused anywhere, the control appears and says the instant it will branch at.
 
     A separate control rather than a row in the selector, because the two
     offers have different lifetimes: an entry in the selector stays until the
@@ -2795,62 +2796,45 @@ def test_fork_offer_offers_the_halt_fork_while_the_trunk_stands_on_a_crossing() 
     readable without inferring it from the run clock.
     """
 
-    halt = BookmarkCrossing(
-        CaseInstant(45.0), (TimeBookmark(CaseInstant(45.0), "the decision point"),)
-    )
+    here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=False)
 
-    offer = fork_offer((0.0, 60.0), marks=(), comparing=False, halt=halt)
+    offer = fork_offer((0.0, 60.0), marks=(), comparing=False, here=here)
 
-    assert offer.halt_offered is True
-    assert offer.halt_label == HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(45.0))
-    assert format_elapsed(45.0) in offer.halt_label
-    # The permanent list is left exactly as it was: the halt adds no row to it
-    # and removes none, which is what keeps its membership from changing under
-    # a reader who looked away.
+    assert offer.here_offered is True
+    assert offer.here_label == HERE_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(45.0))
+    assert format_elapsed(45.0) in offer.here_label
+    # The permanent list is left exactly as it was: the paused point adds no
+    # row to it and removes none, which is what keeps its membership from
+    # changing under a reader who looked away.
     assert _offered_instants(offer) == (0.0, 60.0)
     assert _offered_labels(offer) == tuple(format_elapsed(instant_s) for instant_s in (0.0, 60.0))
 
 
-def test_the_halt_fork_is_labelled_with_the_instant_it_forks_at_not_the_marked_one() -> None:
-    """A mark inside a step halts the run at the step's end, and those differ.
+def test_the_fork_here_says_a_mark_stopped_the_trunk_when_one_did() -> None:
+    """A halt keeps its ratified words, and a plain pause does not borrow them.
 
-    `SimulationController.resumed_at_halt` opens the branch at the instant the
-    run actually stopped on, so that is the instant the label has to carry: a
-    button reading the marked instant would name a time the branch does not
-    open at, which `CLAUDE.md`'s safety-critical standard counts as a failure
-    of the value rather than of its presentation. The wording keeps the two
-    apart as well as the number does - it says the run *stopped on* a mark and
-    never says where the mark is.
+    The instant is the one the trunk stands at, `HereForkPoint.fork_s`, which
+    for a mark lying inside a step is the step's end rather than the marked
+    instant: the frame is handed no marked instant at all, so it cannot label
+    the button with one. Which kind of mark stopped it is not handed over
+    either - one label serves a marked instant and a marked height alike,
+    because which marks were crossed is the bookmark panel's row to state.
     """
 
-    marked_s = 45.3
     halted_s = 45.4
-    halt = BookmarkCrossing(CaseInstant(halted_s), (TimeBookmark(CaseInstant(marked_s)),))
+    halted = HereForkPoint(CaseInstant(halted_s), stopped_on_mark=True)
+    paused = HereForkPoint(CaseInstant(halted_s), stopped_on_mark=False)
 
-    label = fork_offer((0.0,), marks=(), comparing=False, halt=halt).halt_label
+    on_the_mark = fork_offer((0.0,), marks=(), comparing=False, here=halted).here_label
+    on_a_pause = fork_offer((0.0,), marks=(), comparing=False, here=paused).here_label
 
-    assert format_elapsed(halted_s) in label
-    assert format_elapsed(marked_s) not in label
-
-
-def test_a_marked_height_offers_the_halt_fork_in_the_same_words() -> None:
-    """One crossing type reaches the control, and a step can cross both kinds at once.
-
-    Which marks were crossed is the bookmark panel's row to state; saying it
-    here too would put two accounts of one stop on screen, and "your mark" is
-    true of a marked height exactly as it is of a marked instant.
-    """
-
-    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8))
-    height = BookmarkCrossing(CaseInstant(72.0), (), (target,))
-    both = BookmarkCrossing(CaseInstant(72.0), (TimeBookmark(CaseInstant(72.0)),), (target,))
-    expected = HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(72.0))
-
-    assert fork_offer((0.0,), marks=(), comparing=False, halt=height).halt_label == expected
-    assert fork_offer((0.0,), marks=(), comparing=False, halt=both).halt_label == expected
+    assert on_the_mark == HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(halted_s))
+    assert on_a_pause == HERE_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(halted_s))
+    assert format_elapsed(halted_s) in on_the_mark
+    assert "mark" not in on_a_pause
 
 
-def test_the_halt_fork_is_refused_with_the_rest_while_a_comparison_is_shown() -> None:
+def test_the_fork_here_is_refused_with_the_rest_while_a_comparison_is_shown() -> None:
     """The cap is on branches, not on the door one came through.
 
     A second branch would have to replace the shown one while the first went
@@ -2860,13 +2844,14 @@ def test_the_halt_fork_is_refused_with_the_rest_while_a_comparison_is_shown() ->
     interface that prevents the error to the one that reports it.
     """
 
-    halt = BookmarkCrossing(CaseInstant(45.0), (TimeBookmark(CaseInstant(45.0)),))
+    for stopped_on_mark in (False, True):
+        here = HereForkPoint(CaseInstant(45.0), stopped_on_mark)
 
-    offer = fork_offer((0.0, 60.0), marks=(), comparing=True, halt=halt)
+        offer = fork_offer((0.0, 60.0), marks=(), comparing=True, here=here)
 
-    assert offer.halt_offered is False
-    assert offer.halt_label == ""
-    assert offer.locked is True
+        assert offer.here_offered is False
+        assert offer.here_label == ""
+        assert offer.locked is True
 
 
 def test_a_standing_refusal_shows_only_while_the_control_is_offered() -> None:
@@ -2881,9 +2866,9 @@ def test_a_standing_refusal_shows_only_while_the_control_is_offered() -> None:
     refusal = "Setting refused: no keyframe at 30.0 s"
 
     assert (
-        fork_offer((0.0,), marks=(), comparing=False, halt=None, refusal=refusal).refusal == refusal
+        fork_offer((0.0,), marks=(), comparing=False, here=None, refusal=refusal).refusal == refusal
     )
-    assert fork_offer((0.0,), marks=(), comparing=True, halt=None, refusal=refusal).refusal is None
+    assert fork_offer((0.0,), marks=(), comparing=True, here=None, refusal=refusal).refusal is None
 
 
 def test_fork_offer_lists_each_passed_mark_among_the_keyframes_by_instant() -> None:
@@ -2903,7 +2888,7 @@ def test_fork_offer_lists_each_passed_mark_among_the_keyframes_by_instant() -> N
         (CaseInstant(0.0), CaseInstant(60.0), CaseInstant(185.0)),
         marks=(late, early),
         comparing=False,
-        halt=None,
+        here=None,
     )
 
     assert _offered_instants(offer) == (0.0, 30.0, 60.0, 120.0, 185.0)
@@ -2928,7 +2913,7 @@ def test_a_mark_s_entry_is_labelled_with_the_instant_its_branch_opens_at() -> No
     """
 
     offer = fork_offer(
-        (CaseInstant(0.0),), marks=(_MARK_INSIDE_A_STEP,), comparing=False, halt=None
+        (CaseInstant(0.0),), marks=(_MARK_INSIDE_A_STEP,), comparing=False, here=None
     )
     entry = offer.points[-1]
 
@@ -2957,7 +2942,7 @@ def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
         (CaseInstant(0.0), CaseInstant(60.0)),
         marks=(at_opening, on_the_change),
         comparing=False,
-        halt=None,
+        here=None,
     )
 
     assert offer.points == (
@@ -2991,7 +2976,7 @@ def test_each_entry_carries_the_door_it_is_taken_through() -> None:
         (CaseInstant(0.0), CaseInstant(60.0)),
         marks=(_MARK_INSIDE_A_STEP,),
         comparing=False,
-        halt=None,
+        here=None,
     )
     control_events = [point for point in offer.points if point.mark is None]
     marks = [point for point in offer.points if point.mark is not None]
@@ -3004,25 +2989,25 @@ def test_each_entry_carries_the_door_it_is_taken_through() -> None:
 def test_a_locked_offer_stays_locked_whatever_marks_the_trunk_has_passed() -> None:
     """The cap is on branches, so a passed mark opens no way round the lock.
 
-    The lock, its reason, the halt control and the refusal read exactly as
-    they do with no marks at all: the marks are entries in the control the
-    lock replaces, not a further control the cap could miss.
+    The lock, its reason, the control at the paused point and the refusal read
+    exactly as they do with no marks at all: the marks are entries in the
+    control the lock replaces, not a further control the cap could miss.
     """
 
-    halt = BookmarkCrossing(CaseInstant(45.0), (TimeBookmark(CaseInstant(45.0)),))
+    here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=True)
     refusal = "Setting refused: no keyframe at 30.0 s"
     keyframes = (CaseInstant(0.0), CaseInstant(60.0))
 
-    unmarked = fork_offer(keyframes, marks=(), comparing=True, halt=halt, refusal=refusal)
+    unmarked = fork_offer(keyframes, marks=(), comparing=True, here=here, refusal=refusal)
     marked = fork_offer(
-        keyframes, marks=(_MARK_INSIDE_A_STEP,), comparing=True, halt=halt, refusal=refusal
+        keyframes, marks=(_MARK_INSIDE_A_STEP,), comparing=True, here=here, refusal=refusal
     )
 
     for offer in (unmarked, marked):
         assert offer.locked is True
         assert offer.lock_reason == comparing_fork_lock_text()
-        assert offer.halt_offered is False
-        assert offer.halt_label == ""
+        assert offer.here_offered is False
+        assert offer.here_label == ""
         assert offer.refusal is None
 
 

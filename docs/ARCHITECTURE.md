@@ -388,20 +388,26 @@ Five things in `app/controller.py` carry it:
   trunk's canonical state at `elapsed_s`, and hands it back paused. The trunk
   is read and never written, so the two runs share no compartment, no
   accounting and no clock — which is what lets both be advanced.
-- `SimulationController.resumed_at_halt()` makes one at the bookmark crossing
-  the trunk is standing on. What a branch *is* is the bullet above — the two
-  share `_branch_from` — and what differs is only where the fork may be
-  taken. It takes no instant, deliberately: the fork is the halt, so there is
-  no float for a caller to name a mark the run has not reached with, and no
-  way to confuse the instant a learner *marked* with the step instant the run
-  actually stopped on.
+- `SimulationController.resumed_here()` makes one where the paused trunk
+  stands, on a bookmark halt or not (`PL-Y2SL`). What a branch *is* is the
+  bullet above — the two share `_branch_from` — and what differs is only where
+  the fork may be taken. It takes no instant, deliberately: the fork is the
+  clock, so there is no float for a caller to name an instant the run has not
+  reached with, and no way to confuse the instant a learner *marked* with the
+  step instant the run actually stopped on. It refuses a running trunk, a
+  failed one and one standing at its opening, and `here_fork_point` answers
+  from the same check, so an offer drawn from it cannot disagree with the
+  door. The crossing the branch opens standing on is the step's, asked again
+  of the marks as they stand, as `resumed_at_mark` asks it, so a mark added
+  inside the halting step reads as passed on the branch as on the trunk
+  (`PL-2N43`).
 - `SimulationController.resumed_at_mark(bookmark)` makes one at a time
   bookmark the trunk has passed, whether the run halted there or the learner
   marked the instant after the clock went by (`PL-W4XQ`). It is the halt fork
   taken late: the fork is the end of the step that reached the mark, found by
   `TimeBookmark.steps_to_reach` from the crossing rule itself, and the branch
   opens from the trunk's canonical state there exactly as a halt fork does. It
-  takes the mark rather than an instant for the reason the halt door takes
+  takes the mark rather than an instant for the reason `resumed_here` takes
   nothing, and `mark_fork_points` lists the marks it accepts, each with the
   instant its branch would open at.
 - `ResumePoint` is where the branch came from: the trunk stretch it opened
@@ -478,29 +484,33 @@ holds that a restart really does stop reproducing the run it claims to
 continue, so the construction every door uses is never relaxed into one on
 the grounds that the difference is small.
 
-And at the **bookmark crossing the trunk is standing on**, taken with
-`fork_at_halt`. `app/bookmarks.py` is what a learner may mark (`PL-LPLD`), and
+And **where the paused trunk stands**, taken with `fork_here` (`PL-Y2SL`). A
+learner who pauses to think tries something else from that instant in one
+act, without marking it first (project owner, 2026-10-12). A bookmark halt is
+one such pause: `app/bookmarks.py` is what a learner may mark (`PL-LPLD`), and
 `SimulationController.advance` is what halts a run on the step crossing one
-(`PL-CTD7`): it reads every compartment either side of each step and pauses
-the run where a mark lies between the two readings. A bookmark's instant is
-not in general a setting change — on a 120 s run with two control changes, 3
-of the 1 201 instants a halt could land on are keyframes — so the trunk holds
-no keyframe there, and nothing records one. The branch's *definition* opens at
-the keyframe at or before the bookmark while its clock and its live system
-stand at the bookmark, which costs the trunk nothing and reproduces it
-element-wise. The obvious route was measured and refused: recording a keyframe
-where the run halts makes the branch exact against the trunk it forked from,
-and it moves that trunk's own later answers away from what the case would have
-said unmarked, so marking a run would change it. `PL-B8MK` carries both
+(`PL-CTD7`), reading every compartment either side of each step and pausing
+the run where a mark lies between the two readings. Where a run stands is not
+in general a setting change — on a 120 s run with two control changes, 3 of
+the 1 201 instants it can stand at are keyframes — so the trunk holds no
+keyframe there, and nothing records one. The branch's *definition* opens at
+the keyframe at or before the fork while its clock and its live system stand
+at the fork, which costs the trunk nothing and reproduces it element-wise. The
+obvious route was measured and refused: recording a keyframe where the run
+halts makes the branch exact against the trunk it forked from, and it moves
+that trunk's own later answers away from what the case would have said
+unmarked, so marking a run would change it. `PL-B8MK` carries both
 measurements, and `docs/MODEL.md` § "What this requires of a branch" records
 which of that section's two conditions the chosen route relaxes and what the
 relaxation costs.
 
-The halt is a permission rather than a standing offer: taking a step clears
-it, so a run that has resumed has no halt to fork at until the next crossing.
-That is why it is not a widened `fork_points_s` — such a list would change
+The paused point is a permission rather than a standing offer: it ends at the
+next step, and a running trunk offers none, because where it stands moves with
+every step. A failed trunk offers none either, a failure not being a pause,
+and nor does one standing at its opening, where `fork_at` already opens. That
+is why it is not a widened `fork_points_s` — such a list would change
 membership as the run moved, and a caller holding an instant from it could ask
-for a fork at a mark the run is no longer standing on.
+for a fork at an instant the run is no longer standing on.
 
 And at any **time bookmark the trunk has passed** — `BranchedCase.mark_fork_points`,
 taken with `fork_at_mark` (`PL-W4XQ`). That is what a learner paused at three
@@ -509,11 +519,12 @@ the trunk holds no keyframe there and is not standing on it, and nothing in the
 bookmark fork's construction needed either. The step the mark is reached on is
 where the branch opens - the instant a halt would have stopped the run on -
 and its state is the trunk's definition evaluated there, so the branch is the
-one the halt would have given. Unlike the halt this list does not end at the
-next step: a mark joins it when the clock reaches it or one is set behind the
+one the halt would have given. Unlike the paused point this list does not end
+at the next step: a mark joins it when the clock reaches it or one is set behind the
 clock, and leaves it only when the learner unmarks it or the trunk starts over,
 which is the keyframes' own lifetime. A MAC target is not on it, having no
-instant; a fork at a height is taken at its halt.
+instant; a fork at a height is taken where its halt stops the run, through
+`fork_here`.
 
 ### How a learner takes one, and how a comparison ends
 
@@ -524,41 +535,45 @@ is a property of the display rather than of the model:
 
 - **The branch control is the case's**, so it stands beside the bookmark
   panel in `SimulationView` rather than in either `RunView`. It offers
-  `BranchedCase.fork_points_s` and `BranchedCase.mark_fork_points` and takes
-  the branch through `fork_at` or `fork_at_mark`;
-  `dashboard_frame.fork_offer` decides what it shows and
-  `qt_widgets.ForkPanel` draws it. A learner marks the decision point and
-  then forks there, which is the order the two panels are read in. Returning
+  `BranchedCase.fork_points_s`, `BranchedCase.mark_fork_points` and
+  `BranchedCase.here_fork_point`, and takes the branch through `fork_at`,
+  `fork_at_mark` or `fork_here`; `dashboard_frame.fork_offer` decides what it
+  shows and `qt_widgets.ForkPanel` draws it. A learner pauses at the decision
+  point, or marks it and is stopped there, and then forks there, which is the
+  order the two panels are read in. Returning
   to a mark forks rather than truncating: the trunk is kept and the change is
   made on a branch drawn beside it, and a branch's own Reset is how a learner
   tries something else from the same point (project owner, 2026-10-12,
   ratified, over truncating the run at the mark after a confirm as Gas Man
   does, `PL-ZW0J`).
 - **Two controls, because the doors to a fork have different lifetimes**
-  (`PL-TYWQ`). The selector offers `BranchedCase.fork_points_s`, taken through
-  `fork_at`, and every time bookmark the trunk has passed, from
+  (`PL-TYWQ`, `PL-Y2SL`). The selector offers `BranchedCase.fork_points_s`,
+  taken through `fork_at`, and every time bookmark the trunk has passed, from
   `BranchedCase.mark_fork_points` and taken through `fork_at_mark`
-  (`PL-W4XQ`), merged earliest first; a mark's row is labelled with the instant
-  its branch opens at and "on your mark", in the halt button's wording, so it
-  never states where the mark itself lies. Below it, a second button takes the branch at the
-  bookmark crossing the trunk is standing on, through `fork_at_halt`, and is
-  on the panel only while it is standing on one — labelled with the instant
-  the branch will open at and that the trunk stopped there on a mark. A
-  bookmark records no keyframe, so the halt adds nothing to `fork_points_s`,
+  (`PL-W4XQ`), merged earliest first; a mark's row is labelled with the
+  instant its branch opens at and "on your mark", in the halt label's wording,
+  so it never states where the mark itself lies. Below it, a second button
+  takes the branch where the paused trunk stands, through `fork_here`, and is
+  on the panel whenever `BranchedCase.here_fork_point` offers that — labelled
+  "Branch here: 1h23m" with the instant the branch will open at, and
+  "..., stopped on your mark" when a mark stopped the trunk there. Pausing
+  records no keyframe, so the paused point adds nothing to `fork_points_s`,
   and the selector never loses a row as the run moves: it gains one as the
   clock passes a mark, and loses one only to the learner unmarking it or the
-  trunk starting over. Shape chosen
-  by the project owner (2026-09-21, ratified, over one list that grows a row
-  while the run is halted): a vanishing list row is detectable only against a
-  remembered list, which is the stale-state case
-  `.claude/rules/expert-review.md` names, where a vanishing control is
-  detectable on sight. The button names no instant to `fork_at_halt`, which
-  takes none — so the hazard that method exists to prevent, a fork asked for
-  at the instant a learner *marked* rather than the step the run stopped on,
-  is not expressible through the interface either. `fork_offer` reads the
-  halt from the **trunk** rather than from the displayed runs, because
-  `fork_at_halt` forks the trunk and refuses a branch: a panel drawn from a
-  branch's halt would offer a fork the case cannot take.
+  trunk starting over. Shape chosen by the project owner (2026-09-21,
+  ratified, over one list that grows a row while the run is halted; and
+  2026-10-12, ratified, over a row at the top of the selector selected by
+  default): a vanishing list row is detectable only against a remembered
+  list, which is the stale-state case `.claude/rules/expert-review.md` names,
+  where a vanishing control is detectable on sight, and a default selection
+  that jumped to the paused point would move a choice the reader had made.
+  The button names no instant to `fork_here`, which takes none — so the
+  hazard that method exists to prevent, a fork asked for at the instant a
+  learner *marked* rather than the step the run stopped on, is not expressible
+  through the interface either. `fork_offer` reads the paused point from the
+  **trunk** rather than from the displayed runs, because `fork_here` forks the
+  trunk and refuses a branch: a panel drawn from a branch's paused point would
+  offer a fork the case cannot take.
 - **`SimulationView.add_run` is how a run reaches the dashboard after
   construction.** Its run set was fixed at construction until `PL-VKJW` —
   "the count cannot change while a dashboard is alive" — so a branch taken
