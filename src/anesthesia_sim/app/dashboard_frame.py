@@ -1602,35 +1602,6 @@ def _standing_clauses(answers: Sequence[tuple[str, MarkStanding]]) -> tuple[str,
     )
 
 
-def format_time_bookmark(bookmark: TimeBookmark, standing: MarkStanding) -> str:
-    """One marked instant, as a reader meets it.
-
-    The time first and the name after it, because the time is what the row
-    asserts and the name is what the learner chose to call it — and because
-    two rows read against each other are read down their first column.
-    `format_elapsed` renders it, so a bookmark and the run clock beside it
-    state one quantity one way. Where the run has something to say about the
-    mark, it comes last, after both.
-
-    **The unattributed form, which is the row every displayed run agrees
-    on.** `bookmark_panel` builds a drawn row from `_stated_time_bookmark`
-    and `_standing_clauses` instead, because a row whose runs *disagree*
-    carries a clause per run and there is then no single standing to pass
-    here. So this renders the row a lone run draws, and the row two runs
-    draw when they answer alike — and it is where the unattributed wording
-    is pinned.
-
-    Args:
-        bookmark: The marked instant.
-        standing: Its standing, from `SimulationSnapshot.bookmark_standings`.
-            Required rather than defaulted, so no row can be rendered that
-            quietly asserts a mark is still reachable without anybody having
-            asked the run.
-    """
-
-    return _with_standings(_stated_time_bookmark(bookmark), (MARK_STANDING_TEXT[standing],))
-
-
 def _stated_time_bookmark(bookmark: TimeBookmark) -> str:
     """A marked instant's own words: the time, and the name if it was given one.
 
@@ -1647,33 +1618,6 @@ def _stated_time_bookmark(bookmark: TimeBookmark) -> str:
         return rendered
 
     return f"{rendered}{MARK_LABEL_JOINER}{bookmark.label}"
-
-
-def format_mac_target(target: MacTarget, standing: MarkStanding) -> str:
-    """One marked height, as a reader meets it.
-
-    Compartment, then height, then the name. The compartment is on the row
-    rather than in a heading above it because a target means a different thing
-    on each one: `docs/MODEL.md` § "MAC multiples as a display unit" states
-    that a multiple of 1 MAC is the conventional reading only on the alveolar
-    compartment and is a partial-pressure ratio everywhere else, so a row
-    naming the height alone would be one number standing for six claims.
-
-    The compartment's name comes from `chart_frame.trace_style`, so the row
-    and the trace it is read against are named by one table.
-
-    The unattributed form, for the reason `format_time_bookmark` gives: a
-    drawn row whose runs disagree carries a clause per run, and
-    `bookmark_panel` assembles that from `_stated_mac_target` and
-    `_standing_clauses`.
-
-    Args:
-        target: The marked height.
-        standing: Its standing, required for the reason
-            `format_time_bookmark` gives.
-    """
-
-    return _with_standings(_stated_mac_target(target), (MARK_STANDING_TEXT[standing],))
 
 
 def _stated_mac_target(target: MacTarget) -> str:

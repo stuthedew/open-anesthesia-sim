@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-10
 payoff: a math span whose opening a wrapped code span has claimed is reported as the literal dollar and backtick GitHub shows, rather than passed as well-formed TeX
 verify: grep -q 'def test_a_math_span_a_wrapped_code_span_claims_reports_its_debris' tests/unit/test_doc_check.py
+recurrences: 2026-10-12 PL-T3GW
 ---
 
 **Problem.** doc_check's _without_code blanks MATH_SPAN_RE's matches a physical line at a time before code spans are read per statement, so a dollar-backtick that a code span opened on the line above has claimed is taken for a well-formed math span and the literal debris CommonMark leaves on the page is never reported; latent
