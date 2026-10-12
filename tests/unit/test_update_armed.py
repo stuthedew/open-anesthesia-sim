@@ -53,7 +53,8 @@ class FakeGitHub(GitHub):
 
     def get(self, path: str) -> object:
         if "/pulls?" in path:
-            return self.entries
+            page = int(re.search(r"[?&]page=(\d+)", path).group(1))  # type: ignore[union-attr]
+            return self.entries[(page - 1) * 100 : page * 100]
         if compare := re.search(r"/compare/main\.\.\.(\w+)$", path):
             if compare.group(1) not in self.behind:
                 raise Declined(f"GitHub could not be read at {path}: HTTP 404, Not Found")
@@ -87,6 +88,24 @@ def test_an_unarmed_pull_request_is_never_updated() -> None:
 
     assert api.updated == []
     assert lines == ["1 of 1 open pull request(s) onto main not armed, so not read"]
+
+
+def test_a_hundred_open_are_read_past_the_first_page_by_the_listing_flight_reads() -> None:
+    """`PL-351H`: at 100 open, `docket flight`'s listing declined and this one read page 2.
+
+    Both now read through `open_pull_requests.every_page`, so the 101st pull
+    request is read here, and the first page is read twice to show nothing
+    closed under the read.
+    """
+    api = FakeGitHub(
+        [_entry(number, armed=False) for number in range(1, 101)] + [_entry(101)],
+        behind={_sha(101): 1},
+    )
+
+    lines = _run(api)
+
+    assert api.updated == [(101, _sha(101))]
+    assert "100 of 101 open pull request(s) onto main not armed, so not read" in lines
 
 
 def test_an_armed_pull_request_behind_its_base_is_updated_on_the_head_it_was_read_at() -> None:
