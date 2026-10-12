@@ -3,14 +3,16 @@ id: PL-79DP
 title: doc_check's undated host-claim check reads block as a refusal in its Markdown sense too, so a sentence holding a project's URL and 'its block reading' or 'a code block' is refused as an undated claim that the host was blocked; found writing PL-0C2S's test docstring
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: host-reachability
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1454
 payoff: make check stops refusing a true sentence that cites a Markdown project's URL beside a code block, so nobody rewords correct prose to get past the host-claim check
-verify: grep -q 'def test_block_as_markdown_s_noun_beside_a_host_is_no_host_claim' tests/unit/test_doc_check.py
+verify: grep -q 'def test_block_beside_a_host_is_an_advisory_rather_than_refused' tests/unit/test_doc_check.py && grep -q 'def test_a_word_only_a_refusal_has_beside_a_block_is_still_refused' tests/unit/test_doc_check.py
 reenters: PL-GPJ7
 ---
 
@@ -46,6 +48,22 @@ with `PL-CLW5` on 2026-10-06 and refuses on a word rather than on a syntax the
 writer put there, the shape `PL-GPJ7`'s fix moved every gate it then knew off.
 The first post-close instance found; three would record that fix as not
 holding. Not a member of `PL-R417`: the sentence is read whole.
+
+**Route, measured 2026-10-12.** Across the tree, dated sentences and the
+dated records included, 139 sentences named a host beside a word
+`HOST_REFUSAL_RE` read. In 4 the only such word was `block` or `blocks`, and 2
+of those were real claims - an egress block, a policy that blocks a host -
+while 2 named a block of text. Narrowing the word list would have let through
+as many true claims as it freed false ones, so the item's second route was
+taken, the one `PL-GPJ7` took for its gates. `HOST_REFUSAL_RE` keeps `blocked`
+and `blocking`, which only a refusal says, and a new `HOST_BLOCK_RE` reads
+`block` and `blocks`: a sentence whose only refusal is one of them is an
+advisory naming the word and both readings, never an error.
+`test_block_beside_a_host_is_an_advisory_rather_than_refused` pins the two
+Markdown readings and the two claims, and
+`test_a_word_only_a_refusal_has_beside_a_block_is_still_refused` pins an
+undated `blocked` beside a code block. `verify:` had named a test for the
+narrowing route ("is no host claim"); it now names these two.
 
 **Done when.** A sentence that uses "block" as Markdown's noun beside a host -
 a code block, a fenced block, a block reading - is not refused as an undated
