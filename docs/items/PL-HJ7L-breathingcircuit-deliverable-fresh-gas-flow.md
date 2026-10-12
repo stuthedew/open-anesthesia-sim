@@ -1,8 +1,10 @@
 ---
 id: PL-HJ7L
 title: BreathingCircuit.deliverable_fresh_gas_flow_range can be reassigned on a built circuit past both its guards: the overlap check and the held flow's check run only in __post_init__, so a reassigned range can invert accepted_fresh_gas_flow_range_l_min and leave the held flow outside it
-status: untriaged
+status: dropped
 added: 2026-10-12
+closed: 2026-10-12
+reason: folded into PL-19Y0 at the 2026-10-12 triage pass: the range is one of BreathingCircuit's checked fields that item already holds to its constructor's checks, and its brief now carries this reproduction
 ---
 
 **Problem.** BreathingCircuit.deliverable_fresh_gas_flow_range can be reassigned on a built circuit past both its guards: the overlap check and the held flow's check run only in __post_init__, so a reassigned range can invert accepted_fresh_gas_flow_range_l_min and leave the held flow outside it

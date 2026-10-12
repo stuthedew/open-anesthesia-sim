@@ -1,9 +1,15 @@
 ---
 id: PL-0SG0
 title: Meybohm et al. 2021 Table 1 prints Gas Man 4.2's 1 MAC as 2.1% sevoflurane and 1.1% isoflurane where the three agent files store De Wolf et al. 2012's 2.0% and 1.2% as the same program's set, and no agent note records that the two tier-3 descriptions of Gas Man disagree on the MAC while agreeing on every partition coefficient
-status: untriaged
-touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json
+priority: P1
+effort: S
+status: ready
+classes: science
+feature: provenance
+touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md
 added: 2026-10-11
+payoff: a reader of the agent files can see that the two published descriptions of Gas Man's parameter set disagree on the sevoflurane and isoflurane MAC the display divides by
+verify: grep -qF 'Meybohm' src/anesthesia_sim/data/agents/sevoflurane.json && grep -qF 'Meybohm' src/anesthesia_sim/data/agents/isoflurane.json && grep -qF 'Meybohm' src/anesthesia_sim/data/agents/desflurane.json
 ---
 
 **Problem.** Meybohm et al. 2021 Table 1 prints Gas Man 4.2's 1 MAC as 2.1% sevoflurane and 1.1% isoflurane where the three agent files store De Wolf et al. 2012's 2.0% and 1.2% as the same program's set, and no agent note records that the two tier-3 descriptions of Gas Man disagree on the MAC while agreeing on every partition coefficient

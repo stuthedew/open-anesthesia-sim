@@ -1,9 +1,16 @@
 ---
 id: PL-08SS
 title: SimulationView._handle_fork and _handle_halt_fork keep the branch in the case before add_run reads its snapshot, so a fork taken on a run whose snapshot refuses raises out of the slot and leaves a branch kept but never displayed, which Reset neither drops nor rebuilds (found at PL-V2HC's review)
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, ux
 feature: every-control-restates-the-halt
+touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+payoff: pressing Fork on a run that cannot be read ends in the halt on screen, instead of a silent branch that Reset neither shows nor clears
+verify: grep -q 'def test_a_fork_on_a_run_whose_snapshot_refuses_keeps_no_branch' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** SimulationView._handle_fork and _handle_halt_fork keep the branch in the case before add_run reads its snapshot, so a fork taken on a run whose snapshot refuses raises out of the slot and leaves a branch kept but never displayed, which Reset neither drops nor rebuilds (found at PL-V2HC's review)

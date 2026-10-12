@@ -1,9 +1,16 @@
 ---
 id: PL-HSB3
 title: doc_check's Makefile readers read a conditional's branches in turn, so make_targets and the gate parity check count a recipe line only one configuration runs, where until PL-TDVJ they dropped every recipe line inside a conditional; latent
-status: untriaged
-touches: docs/items/PL-GZXY-doc-check-s-make-readers-read-only-the-first.md
+priority: P3
+effort: M
+status: ready
+classes: defect
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-06
+payoff: gate parity and the make-target check count a recipe line only where every configuration runs it, so neither passes a script make check may skip
+verify: grep -q 'def test_a_recipe_line_inside_a_conditional_runs_only_in_its_branch' tests/unit/test_doc_check.py
+reenters: PL-0HPV
 ---
 
 **Problem.** doc_check's Makefile readers read a conditional's branches in turn, so make_targets and the gate parity check count a recipe line only one configuration runs, where until PL-TDVJ they dropped every recipe line inside a conditional; latent
@@ -44,7 +51,7 @@ where every branch gives it one and a script counts as run by `make check` only
 where no branch leaves it out, or decline by name a target whose recipe a
 conditional splits; a test pins each.
 
-**Generator question, open at the 2026-10-11 triage pass; left untriaged for it.**
+[superseded 2026-10-12: answered below, a re-entry of `PL-0HPV`] **Generator question, open at the 2026-10-11 triage pass; left untriaged for it.**
 This item's own brief calls it the Makefile side of `PL-ZXM1`'s fact, and
 `PL-ZXM1` records itself as the second post-close instance of `PL-0HPV`'s fact
 (the checks the local gate and the merge gate each run, and where the two sets
@@ -56,3 +63,11 @@ rather than a sweep, so the reading is **`live`**, which is `P1` by rule and
 restarts `CLAUDE.md`'s pause on new workflow mechanisms. **Leaning: record a live
 head**, after re-reading `PL-0HPV`'s and `PL-ZXM1`'s briefs; settle it before
 triaging this item.
+
+**Answered at the 2026-10-12 triage pass: a re-entry of `PL-0HPV`, recorded as
+`reenters: PL-0HPV`.** It is the third filing to carry the field, after
+`PL-RW3T` and `PL-ZXM1`, so `bin/docket inflow` names `PL-0HPV` as a head whose
+fix did not hold, and whether it takes a successor head is answered under
+`PL-4097` with the other heads that report names. A `live` reading restarts
+`CLAUDE.md`'s pause on new workflow mechanisms, which is why `PL-61FT`'s went to
+the owner; this item is worked at its own band meanwhile.
