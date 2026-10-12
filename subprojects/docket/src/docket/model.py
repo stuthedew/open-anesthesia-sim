@@ -86,7 +86,7 @@ STATUSES = OPEN_STATUSES + CLOSED_STATUSES
 # lower priority bands however small the task looks.
 SAFETY_CLASSES = ("safety", "science")
 
-LIST_FIELDS = ("classes", "touches", "blocked-by", "root-cause-of", "recurrences")
+LIST_FIELDS = ("classes", "touches", "blocked-by", "root-cause-of", "reenters", "recurrences")
 
 # What a `resource:` may name: the one thing in the repository that more than
 # one item can want at once, so a claim on an item carrying it holds the thing
@@ -692,6 +692,28 @@ class Item:
     #: and `plan.py`, so the checker and the ranking cannot disagree about
     #: what a claim is - the same arrangement `root_cause_faults` already has.
     impairs_generators: str = ""
+    #: The closed items whose fix should have covered this one and did not, as
+    #: triage's generator check judged them. `root-cause-of:` cannot carry it:
+    #: a head's members are almost all filed while it is open, so it records
+    #: filed-while-working and, measured 2026-10-11, only 2 members filed after
+    #: their head closed in the whole store - against `PL-04KR`'s hand count of
+    #: 14 re-entries in 37 filings over two days. Path recurrence cannot carry
+    #: it either: 93-100% of every week's apparatus filings name a path a
+    #: closed item touched in the month before, because the surface is small
+    #: (`PL-WXKD`). Until this field the fact lived only in the
+    #: `**Generator check.**` prose line, where no command could count it.
+    #:
+    #: Written on the new filing, not on the item it re-enters, so a filing
+    #: and its judgment arrive together and no second item's file is touched -
+    #: the conflict `recurrences:` accepts and this has no reason to. Unlike
+    #: `recurrences:`, which a title match writes at capture and which names a
+    #: candidate duplicate, this is triage's judgment that a *fix did not
+    #: hold*: the new item is a different defect from the mechanism the closed
+    #: item was meant to remove. `docket inflow` counts it per period and names
+    #: any closed item three or more filings re-enter (project owner,
+    #: 2026-10-11, ratified, over recording it going forward only).
+    #: `reentry_faults` holds each id to a `done` item closed by the filing.
+    reenters: tuple[str, ...] = ()
     #: The gate this item is excused from, and why, as `vX.Y.Z - why`: the
     #: version of the milestone whose frozen list the item is not on, never a
     #: gate it goes to. A target is what v0.6.0's prose headings got wrong four
@@ -1465,6 +1487,48 @@ def recurrence_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
     return tuple(faults)
 
 
+def reentry_faults(item: Item, by_id: Mapping[str, Item]) -> tuple[str, ...]:
+    """Why a `reenters:` id cannot be a fix that did not hold, or `()`.
+
+    A re-entry claims a fix was shipped and then failed to reach this filing,
+    so each id has to name a `done` item - a `dropped` one shipped no fix -
+    closed on or before the day this one was filed. Exact rules, so errors:
+    whether the closed item's fix *should* have reached this one is triage's
+    judgment and is checked nowhere. An id that breaks one would be counted
+    by `docket inflow` as a re-entry that never happened.
+    """
+    faults: list[str] = []
+    named = list(dict.fromkeys(item.reenters))
+    if item.identifier and item.identifier in named:
+        faults.append("names itself")
+    others = [i for i in named if i != item.identifier]
+    missing = [i for i in others if i not in by_id]
+    if missing:
+        faults.append(f"names {', '.join(missing)}, which no item in this store carries")
+    unshipped = [i for i in others if i in by_id and by_id[i].status != "done"]
+    if unshipped:
+        faults.append(
+            f"names {', '.join(unshipped)}, which is not `done` - a re-entry is a shipped fix "
+            "that did not hold, and an open or dropped item shipped none"
+        )
+    later = [
+        i
+        for i in others
+        if i in by_id and by_id[i].status == "done" and not _closed_by(by_id[i].closed, item.added)
+    ]
+    if later:
+        faults.append(
+            f"names {', '.join(later)}, which was not closed by this item's `added:` date - "
+            "a fix not yet shipped when this was filed cannot have failed to reach it"
+        )
+    return tuple(faults)
+
+
+def _closed_by(closed: date | None, filed: date | None) -> bool:
+    """Whether a close date is known to fall on or before a filing date."""
+    return closed is not None and filed is not None and closed <= filed
+
+
 def is_under(path: str, roots: tuple[str, ...]) -> bool:
     """Whether one declared path falls inside any of `roots`.
 
@@ -1529,6 +1593,7 @@ def parse_item(text: str, path: str = "") -> Item:
         generator=fields.get("generator", ""),
         misread=fields.get("misread", ""),
         impairs_generators=fields.get("impairs-generators", ""),
+        reenters=lists["reenters"],
         recurrences=lists["recurrences"],
         deferred_from=fields.get("deferred-from", ""),
         resource=fields.get("resource", ""),
@@ -1575,6 +1640,7 @@ FIELD_ORDER = (
     "generator",
     "misread",
     "impairs-generators",
+    "reenters",
     "recurrences",
 )
 
@@ -1612,6 +1678,7 @@ def _front_matter_values(item: Item) -> dict[str, str]:
         "generator": item.generator,
         "misread": item.misread,
         "impairs-generators": item.impairs_generators,
+        "reenters": ", ".join(item.reenters),
         "recurrences": ", ".join(item.recurrences),
     }
 

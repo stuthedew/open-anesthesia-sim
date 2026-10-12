@@ -14,6 +14,7 @@ closed: 2026-09-26
 pr: 1054
 payoff: a session whose fetch failed is told its branch was read from the last fetch instead of 'current with origin/main', before it builds on a base that moved or a release guard reads stale refs
 verify: grep -q 'def test_branch_after_a_failed_fetch_says_it_read_the_last_fetch' subprojects/docket/tests/test_cli.py
+reenters: PL-9RFP
 ---
 
 **Problem.** vcs.fetch_remote discards git fetch's exit status and cmd_branch and cmd_stranded pass fetched=not no_fetch, so after a failed fetch branch prints 'current with origin/main' and stranded prints recover lines with no staleness caveat - the session-start digest's first line reads fresh when the fetch failed

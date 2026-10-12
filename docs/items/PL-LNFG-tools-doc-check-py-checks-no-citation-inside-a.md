@@ -11,6 +11,7 @@ blocked-by: PL-R417
 added: 2026-10-05
 payoff: a provenance note under src/anesthesia_sim/data/ that names a test or a docs/MODEL.md section that does not exist fails make check, instead of standing for weeks as desflurane's did
 verify: grep -q 'def test_a_data_note_citing_a_missing_path_or_section_is_an_error' tests/unit/test_doc_check.py
+reenters: PL-4FBP
 ---
 
 **Problem.** tools/doc_check.py checks no citation inside a data file's sources note, so a provenance note under src/anesthesia_sim/data/ can name a test file or a docs/MODEL.md section that does not exist and make check still passes; desflurane.json named a missing tests/reference/test_published_wash_in.py until PL-DBGT repaired it, and the notes cite as bare paths and as docs/MODEL.md, 'Section', a form check_citations does not read (split from PL-DBGT's 2026-09-19 re-scope)

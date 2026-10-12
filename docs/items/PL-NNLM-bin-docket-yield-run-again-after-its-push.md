@@ -14,6 +14,7 @@ closed: 2026-09-26
 pr: 1070
 payoff: a yield whose push failed reaches the remote when yield is run again, or says it did not, so no session reports a yield as done while every other session still reads the item as held
 verify: grep -q 'def test_yield_run_again_after_its_push_failed' subprojects/docket/tests/test_claiming.py
+reenters: PL-1X56
 ---
 
 **Problem.** bin/docket yield run again after its push failed says the claim has already ended and pushes nothing, so the yield stays in this checkout while every other session still reads the item as held

@@ -1576,9 +1576,9 @@ carries one in full; `placement_clause` is the shared renderer, and it names a
 gate only while one is open, since with the gate clear "not on the gate" would
 be true of every item in the store.
 
-### The one command that looks backwards: `docket trend`
+### Looking backwards: `docket trend` and `docket inflow`
 
-Every other command describes the project as it stands. `docket trend` asks
+The other commands describe the project as it stands. `docket trend` asks
 how the balance between the two halves has *moved*, which is a question the
 store answers and nothing was reading:
 
@@ -1631,6 +1631,35 @@ Like `docket wave`, it computes and decides nothing. Whether the balance it
 prints is the right one is a judgment about the project, and a tool that
 answered it would re-open the same question every run without being able to
 see what the run was for.
+
+`docket trend` reads what was *closed*; `docket inflow` reads what was *filed*,
+which is the half that says whether the apparatus is still being handed work:
+
+    docket inflow            # 7-day periods
+    docket inflow --by day
+
+It counts apparatus filings - an item whose `touches` name a path under
+`workflow_paths`, whatever its lane, with `items_dir` and `notes_file` left out
+of that test for the reason churn leaves the store out - per period and per
+day, so a short final period compares with the full ones. Members a head's
+`root-cause-of:` names that were filed while that head was open get their own
+`+head` column: a deliberate sweep files dozens at once, and folded in it reads
+as the regression it was hunting. Beside them, the P0-P3 mix of the filings
+rather than of the backlog, and how many apparatus paths no earlier filing
+named, which falls towards zero as the surface is covered. Path recurrence is
+not reported: nearly every filing names a path something closed within the
+month before it, so the column would read the same every week (`PL-WXKD`).
+Re-entry is read from its record instead: `re-entry` counts the filings whose
+`reenters:` names a `done` item, closed by the filing's `added:` date, whose fix
+should have covered them, as triage's generator check judged it, and any closed
+item three filings re-enter is named under the table as a generator whose fix
+did not hold. Like `trend`, it decides nothing and prints no score.
+
+`docket release` prints the one verdict, and only when it is unwelcome: when
+the last complete week broke one of `PL-04KR`'s pre-registered predictions -
+more than 0.13 new apparatus paths a filing, a `P0` or `P1` apparatus filing
+outside the generator tier, or more re-entries than the week before - the cut
+names it, and otherwise says nothing about inflow at all.
 
 ### The digest and the ranking cannot disagree
 
@@ -2683,6 +2712,17 @@ doing it declares the file in its `touches` like any other work, and `withdraw`
 says so where it has not. Withdrawing the last recorded entry appends to that
 line exactly as a new filing does, which is why the append rule requires what
 it gained to start a new entry rather than extend the last one.
+
+`reenters` records the other half of a fix not holding, and is written the
+opposite way round. It goes on the *new* filing, by triage's generator check
+through `docket set --reenters`, and names the `done` item - closed by the
+filing's `added:` date, which `docket check` holds it to - whose fix should have
+covered it: a different defect from the mechanism the closed item removed,
+where a recurrence is the same defect filed again. Neither `recurrences` nor
+`root-cause-of:` could carry it: the first is a title match against an item
+that may still be open, and the second records members filed while their head
+was open, two in the whole store after it closed. `docket inflow` counts it
+per period and names any closed item three filings re-enter (`PL-WXKD`).
 
 An item at `ready` must carry one of them: the command that would prove it
 done, or a recorded reason why no command can. The gate sits at `ready` rather

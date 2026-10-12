@@ -13,6 +13,7 @@ closed: 2026-09-26
 pr: 1112
 payoff: a session that sets pipefail through command or builtin - command set -o pipefail; make check 2>&1 | tail -45 - is let through, as bash holds the setting for that pipe, while every spelling that runs no set in this shell is still refused
 verify: grep -q 'def test_pipefail_set_through_command_or_builtin_keeps_the_status' tests/unit/test_gate_status_guard.py
+reenters: PL-TRMN
 ---
 
 **Problem.** gate-status-guard.sh reads command set -o pipefail as no set at all, so command set -o pipefail; make check 2>&1 | tail -45 is refused, though command runs the set builtin in this shell and the pipe keeps the gate's status

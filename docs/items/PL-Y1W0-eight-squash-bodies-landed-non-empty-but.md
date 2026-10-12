@@ -14,6 +14,7 @@ closed: 2026-09-24
 pr: 998
 payoff: a commit on main that says something other than its pull request is reported, not passed as intact
 verify: grep -q 'def test_fires_on_a_squash_body_that_differs_from_its_pull_request_body' tests/unit/test_pr_body_check.py
+reenters: PL-WFFX
 ---
 
 **Problem.** Eight squash bodies landed non-empty but different from their pull request's body (#834, #844-847, #861, #868, #938), and tools/pr_body_check.py tests only for an empty body, so it cannot see one

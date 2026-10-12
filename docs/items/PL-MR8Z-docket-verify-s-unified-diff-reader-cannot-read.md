@@ -10,6 +10,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 payoff: verify reads every changed line of a branch, so a file git quotes or a line opening with two signs can no longer let a deleted assertion or an added suppression through on a reading of none
 verify: grep -q 'def test_a_removed_line_in_a_file_git_quotes_is_charged_to_that_file' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_content_line_opening_with_two_signs_is_not_read_as_a_header' subprojects/docket/tests/test_verify.py
+reenters: PL-4W2L
 ---
 
 **Problem.** docket verify's unified-diff reader cannot read git's quoted header path and takes a removed -- or added ++ content line for a file header, so a deleted assertion in a file whose name git quotes, or a content line opening with two signs, drops out of the line reading; latent

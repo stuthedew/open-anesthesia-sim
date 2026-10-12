@@ -13,6 +13,7 @@ closed: 2026-09-27
 pr: 1165
 payoff: bin/docket wave's Gate 2 count stops listing four entries the roadmap defers to Gate 3, so the gate reads clear when the work it can clear is done, with no hand subtraction from prose
 verify: grep -qF 'blocked-by: PL-YRLM' docs/items/PL-B396-*.md
+reenters: PL-0H5D
 ---
 
 **Problem.** bin/docket wave cannot read a gate deferral whose holding condition has no id, so PL-B396 and the three entries it blocks, deferred to Gate 3 on 2026-09-27, still count as work Gate 2 can clear and hold the beat at clear the gate

@@ -14,6 +14,7 @@ closed: 2026-10-01
 pr: 1271
 payoff: which branch is the base is one answer in docket and in every CI tool, so a clone where main is only local, or a renamed default, cannot split them
 verify: ! grep -qF 'BRANCH = "main"' tools/main_ci_status.py && ! grep -qF 'BRANCH = "main"' tools/tag_release.py && ! grep -qF 'default="main"' tools/update_armed.py
+reenters: PL-PVW2
 ---
 
 **Problem.** Five tools and the Makefile hard-code main or origin/main as the default branch beside vcs.default_base (main_ci_status, tag_release, update_armed, pr_record_check, required_checks_check): read it against PL-PVW2's misread as a post-close instance

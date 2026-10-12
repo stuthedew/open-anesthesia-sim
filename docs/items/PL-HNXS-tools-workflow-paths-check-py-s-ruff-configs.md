@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-03
 payoff: the linter-config check counts the configs the repository holds, so a subagent's nested checkout neither inflates its count nor fails make check
 verify: grep -q 'def test_ruff_configs_ignores_an_untracked_nested_checkout' tests/unit/test_workflow_paths_check.py
+reenters: PL-KGYT
 recurrences: 2026-10-12 PL-9NZ3
 ---
 

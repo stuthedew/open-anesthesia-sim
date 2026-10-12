@@ -14,6 +14,7 @@ closed: 2026-09-27
 pr: 1150
 payoff: a session's git config --remove-section or --rename-section on the fetch section or a remote's is refused before it drops a local prune override or writes a prune or mirror setting, so no later plain fetch or push deletes the refs the guard keeps
 verify: grep -q 'def test_a_config_section_write_is_refused' tests/unit/test_no_prune_guard.py
+reenters: PL-61FT
 ---
 
 **Problem.** no-prune-guard.sh lets git config --remove-section fetch and --rename-section fetch past, though either drops a local fetch.prune = false and a global true then prunes on the next plain fetch, as the refused --unset fetch.prune does
