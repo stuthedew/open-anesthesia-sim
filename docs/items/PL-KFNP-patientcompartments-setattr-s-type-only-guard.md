@@ -3,11 +3,13 @@ id: PL-KFNP
 title: PatientCompartments.__setattr__'s type-only guard (PL-LBQY) admits a checked CardiacOutput written past set_cardiac_output and leaves every tissue's blood flow at the old output, a record the core refuses wherever it is next built; root cause of PL-M4M0 and the two items filed beside it, so decide whether the write keeps the relation through set_cardiac_output or is refused outright, which PL-LBQY's three options did not weigh (found reviewing PL-M4M0)
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: safety, defect
 feature: cardiac-output-write-consistency
 touches: src/anesthesia_sim/core/patient.py, tests/unit/test_supported_ranges.py, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_uptake_system_failure.py, docs/MODEL.md
 added: 2026-10-11
+payoff: a cardiac output the compartments were never perfused at cannot be stored on the patient through that write, so no readout, record or Reset can state a run the model never ran because of it
+verify: grep -q 'def test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_write' tests/unit/test_supported_ranges.py
 root-cause-of: PL-M4M0, PL-VCP4, PL-J39J
 generator: spent - every reader of the patient's output after the write has been walked: the step restates the record and Reset refuses it before clearing (PL-M4M0), a fork is refused by _disagreements_with, set_agent rebuilds through the setters, a setting change is PL-VCP4 and the readout PL-J39J; no control makes the write and mypy --strict refuses a bare float, so a new member needs a new reader of the output
 misread: the output field is the cardiac output in force, where the tissue flows still hold the old one
@@ -38,7 +40,7 @@ for.
 screen can state a run the model never ran, and each has so far been found
 one at a time.
 
-**Done when.** A `CardiacOutput` assigned to `PatientCompartments
+**Done when.** [superseded 2026-10-12: the answer below chose refusal, and "Done when, under the recommendation" is the decided form] A `CardiacOutput` assigned to `PatientCompartments
 .cardiac_output_l_min` past `set_cardiac_output` either moves every tissue's
 flow with it, so the record `UptakeEquationSettings` builds afterwards is the
 one the setter would have left, or is refused at the assignment with a
@@ -162,3 +164,16 @@ record through a tissue's `set_blood_flow`; `docs/MODEL.md` § "Supported
 input ranges" and § "Reset" no longer call this the one write the type-only
 guard admits and say what the write meets instead; and `PL-VCP4` and
 `PL-J39J` are re-scoped as above.
+
+**Answered 2026-10-12** (project owner, 2026-10-12, ratified, over moving every
+tissue's flow at the write): refuse it, with the shape the design round
+decided above, and "Done when, under the recommendation" is the Done-when.
+"Agree with recs" in the thread at 21:07Z, with the question why it was his
+at all. It was not: the capture labelled it the owner's as reopening
+`PL-LBQY`, and `PL-LBQY` chose a write guard over frozen compartments and over
+accepting the window; refusing a stale output at the write extends that guard
+and chooses neither of the two it was chosen over, so nothing ratified was
+reopened, and the count the round took - no caller in the tree wants the
+redistribution - made it the obvious call rule 14 says is never offered.
+Filed as `PL-JZV8` from this round, so the next capture does not label
+an extension of a ratified mechanism a reopening of the decision.
