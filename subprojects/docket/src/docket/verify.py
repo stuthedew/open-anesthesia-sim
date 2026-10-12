@@ -310,7 +310,7 @@ def _statements(value: object, path: str = "") -> Iterator[str]:
             yield from _statements(held, path)
     elif path:
         text = ("true" if value else "false") if isinstance(value, bool) else str(value)
-        lines = [line for line in (line.strip() for line in text.splitlines()) if line]
+        lines = [line for line in (line.strip() for line in split_lines(text)) if line]
         for line in lines or [""]:
             yield f"{path} = {line}".rstrip()
 
