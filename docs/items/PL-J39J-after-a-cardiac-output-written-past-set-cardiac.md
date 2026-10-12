@@ -32,3 +32,15 @@ among the half-reset run's symptoms and could fix only the half reset.
 disagree in, the cardiac output readout states the disagreement rather than
 one of the two figures, or `PL-KFNP` makes the state unreachable; a test in
 `tests/integration/test_simulation_view.py` pins whichever is chosen.
+
+**Re-scoped 2026-10-12, in `PL-KFNP`'s design round.** Neither answer to
+`PL-KFNP` makes this state unreachable: a tissue's or the venous pool's
+`set_blood_flow` still sets a compartment's flow past the patient's output,
+nothing in `src/` but `PatientCompartments._update_blood_flows` calls it, and
+a caller `mypy` does not read can. Reached that way the readout shows the
+output the dial was set to beside values computed at flows that do not sum to
+it, which is still one of two disagreeing figures, so the fix above is
+unchanged by the answer. It stays blocked on `PL-KFNP` because that build
+re-points `_with_stale_tissue_flows` in
+`tests/integration/test_simulation_view.py`, the helper this item's test
+would use.
