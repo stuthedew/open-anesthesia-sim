@@ -3,15 +3,17 @@ id: PL-9NZ3
 title: Six more tools read the Python files on disk where tracked_files asks git - import_boundary, core_vocabulary and literal_home's _sources, contrast_check.app_modules, agent_identity.read_modules, workflow_paths_check.problems - and doc_check measures nested .claude/rules files that rules_paths_check never reads
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: tools/import_boundary_check.py, tools/core_vocabulary_check.py, tools/literal_home_check.py, tools/contrast_check.py, tools/agent_identity_check.py, tools/workflow_paths_check.py, tools/doc_check.py, tools/rules_paths_check.py, tests/unit/test_import_boundary_check.py, tests/unit/test_rules_paths_check.py
+touches: tools/import_boundary_check.py, tools/core_vocabulary_check.py, tools/literal_home_check.py, tools/contrast_check.py, tools/agent_identity_check.py, tools/workflow_paths_check.py, tools/doc_check.py, tools/rules_paths_check.py, tools/fact_home_check.py, docs/apparatus.md, docs/WORKING_NOTES.md, tests/unit/test_import_boundary_check.py, tests/unit/test_rules_paths_check.py, tests/unit/test_workflow_paths_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1457
 payoff: every check reads the files the repository holds, by one list
 verify: grep -q 'def test_an_untracked_module_is_not_read' tests/unit/test_import_boundary_check.py
-recurrences: 2026-10-12 PL-8W1J
+recurrences: 2026-10-12 PL-8W1J, 2026-10-12 PL-J4YY
 ---
 
 **Problem.** Six more tools read the Python files on disk where tracked_files asks git - import_boundary, core_vocabulary and literal_home's _sources, contrast_check.app_modules, agent_identity.read_modules, workflow_paths_check.problems - and doc_check measures nested .claude/rules files that rules_paths_check never reads

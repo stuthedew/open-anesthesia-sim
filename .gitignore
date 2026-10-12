@@ -72,6 +72,14 @@ wheels/
 /output/
 /outputs/
 
+# Checkouts the harness creates for worktree-isolated agents, one per agent,
+# each a whole live copy of the repository. Unignored, the stop hook read one as
+# untracked and told the session to commit and push another agent's checkout -
+# the one instruction here that must never be followed (`PL-M9QW`). The checks
+# that walk the tree read git's tracked files, so they skip it either way
+# (`PL-2P5L`, `PL-QJ5F`).
+/.claude/worktrees/
+
 # Local environment variables and secrets
 .env
 .env.*

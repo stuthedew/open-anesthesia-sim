@@ -3,12 +3,14 @@ id: PL-M9QW
 title: .gitignore does not cover .claude/worktrees/, so a worktree-isolated workflow agent's live checkout shows as untracked and the stop hook asks the session to commit and push it
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: agent-worktrees
 touches: .gitignore
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-24
+closed: 2026-10-12
+pr: 1457
 payoff: the stop hook stops telling a session to commit and push another agent's live checkout
 verify: grep -qF '/.claude/worktrees/' .gitignore
 ---

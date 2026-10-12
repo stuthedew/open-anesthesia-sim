@@ -4748,6 +4748,30 @@ def test_math_latex_inline_delimiters_are_reported(tmp_path: Path) -> None:
     assert any("does not render" in error for error in errors)
 
 
+def test_a_worktree_under_claude_worktrees_is_not_walked(tmp_path: Path) -> None:
+    """`PL-2P5L`: a worktree-isolated agent's copy failed the main checkout's run.
+
+    The walk read the disk, so a file under `.claude/worktrees/` that git does
+    not track was held to every rule as if the repository carried it. Read
+    from the tracked files, the agent's copy is not this tree's, and the same
+    text tracked here is still reported.
+    """
+    root = _repo(tmp_path)
+    body = "The step \\(\\Delta t\\) is explicit.\n"
+    (root / "docs" / "NOTE.md").write_text(body, encoding="utf-8")
+    _git_init(root)
+    copy = root / ".claude" / "worktrees" / "agent" / "docs" / "NOTE.md"
+    copy.parent.mkdir(parents=True)
+    copy.write_text(body, encoding="utf-8")
+
+    report = doc_check.Report()
+    doc_check.check_math_delimiters(root, report)
+
+    assert report.errors
+    assert all("docs/NOTE.md:1" in error for error in report.errors)
+    assert not any(".claude/worktrees" in error for error in report.errors)
+
+
 def test_math_latex_block_delimiters_are_reported(tmp_path: Path) -> None:
     errors = _math_errors(tmp_path / "repo", "docs/NOTE.md", "\\[F = 0.02\\]\n")
 
@@ -10269,6 +10293,80 @@ def test_a_host_block_claim_dated_in_its_own_sentence_is_quiet(
     tmp_path: Path, sentence: str
 ) -> None:
     assert _host_claim_errors(tmp_path, {"docs/NOTE.md": sentence + "\n"}) == []
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Held to https://github.com/executablebooks/markdown-it-py, the reference its block "
+        "reading is held to.",
+        "The example from `github.com` sits in a code block below.",
+        "The egress block that stopped it is still in place for `docs.github.com`.",
+        "The engine is fetched from `www.gstatic.com`, which the network policy blocks.",
+    ],
+    ids=["a block reading", "a code block", "an egress block", "a policy that blocks"],
+)
+def test_block_beside_a_host_is_an_advisory_rather_than_refused(
+    tmp_path: Path, sentence: str
+) -> None:
+    """`block` and `blocks` name a block of text as often as a refusal (`PL-79DP`).
+
+    A docstring citing markdown-it-py's repository beside "its block reading"
+    was refused while `PL-0C2S`'s test was written, and was reworded to drop
+    the URL. Across the tree on 2026-10-12, dated records included, four
+    sentences named a host beside one of the two words and no other word of
+    refusal: two were claims, an egress block and a policy that blocks, and two
+    named blocks of text. The wording cannot tell them apart, so each is an
+    advisory: a claim still reaches its writer, and a code block is not refused.
+    """
+    report = _host_claim_report(tmp_path, {"docs/NOTE.md": sentence + "\n"})
+
+    assert report.errors == []
+    assert [advisory.split(" names ")[0] for advisory in report.advisories] == ["docs/NOTE.md:1"]
+
+
+def test_the_block_advisory_names_the_word_and_both_readings(tmp_path: Path) -> None:
+    report = _host_claim_report(
+        tmp_path, {"docs/NOTE.md": "The example from `github.com` sits in a code block below.\n"}
+    )
+
+    assert report.advisories == [
+        "docs/NOTE.md:1 names `github.com` beside `block` in a sentence that carries no "
+        "date: if it says the host was blocked, write the date it was probed in the same "
+        "sentence (`PL-CLW5`); if it names a block of text, such as a code block, nothing "
+        "to do (`PL-79DP`)"
+    ]
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "`github.com` is blocked, so the code block below was typed in by hand.",
+        "The code block below was refused by `pypi.org`.",
+        "`doi.org` was blocking the fenced block's source.",
+    ],
+    ids=["blocked", "refused", "blocking"],
+)
+def test_a_word_only_a_refusal_has_beside_a_block_is_still_refused(
+    tmp_path: Path, sentence: str
+) -> None:
+    """`blocked`, `blocking` and the other words of refusal have no sense of text (`PL-79DP`).
+
+    So a block of text in the same sentence changes nothing, and an undated
+    claim worded with one of them is refused as it was.
+    """
+    errors = _host_claim_errors(tmp_path, {"docs/NOTE.md": sentence + "\n"})
+
+    assert [error.split(" names ")[0] for error in errors] == ["docs/NOTE.md:1"]
+
+
+def test_a_dated_block_beside_a_host_is_quiet(tmp_path: Path) -> None:
+    report = _host_claim_report(
+        tmp_path,
+        {"docs/NOTE.md": "On 2026-10-06 the egress block was still in place for `doi.org`.\n"},
+    )
+
+    assert (report.errors, report.advisories) == ([], [])
 
 
 def test_a_date_in_another_sentence_does_not_date_the_claim(tmp_path: Path) -> None:
