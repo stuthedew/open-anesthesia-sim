@@ -28,8 +28,9 @@ fenced shell sample alike (`PL-HKR5`).
 line, a here-document's body and a substitution end, and builds two views of
 it. docket's is `Word`s with their quoting and spans, cut into clauses, with
 each substitution's body beside them (`PL-B5VZ`). The hooks' is flat tokens,
-operators as `Operator` and a redirection's descriptor as `Descriptor`, a
-newline read as `;` except after a separator or `(`, an unquoted `$( )`,
+operators as `Operator`, a redirection's descriptor as `Descriptor`, a
+reserved word opening a command as `Reserved` and an assignment as
+`Assignment` (`PL-Y3TZ`), a newline read as `;` except after a separator or `(`, an unquoted `$( )`,
 `<( )` or `>( )` read inline, and the tokens of one inside quotes, a `${...}`
 or backquotes kept apart, in `FlatReading.substituted`.
 
@@ -93,6 +94,12 @@ OPERATORS = (
 #: after one is a linebreak rather than another `;`, so `make check &&` over
 #: `tail -5 log` is one list (POSIX.1-2017 XCU §2.10.2, `linebreak`).
 HEADS = frozenset((";", ";;", ";&", ";;&", "&", "&&", "||", "|", "|&", "("))
+
+#: The operators that redirect, each taking the word after it; only those
+#: opening with `<` or `>` take a descriptor written against them (Bash
+#: Reference Manual §3.6 "Redirections"). The rest of `OPERATORS` end a
+#: command or open and close a subshell.
+REDIRECTIONS = frozenset(operator for operator in OPERATORS if "<" in operator or ">" in operator)
 
 #: The reserved words bash reads with a command after them: `if`, `while` and
 #: `until` open a test, `then`, `else` and `do` a body, `elif` another test,
@@ -249,6 +256,29 @@ class Operator(str):
     __slots__ = ()
 
 
+class Reserved(str):
+    """A reserved word bash reads with a command after it, where it reads one: `if` in `if make`.
+
+    Or an option `time` reads ahead of its pipeline. Quoted, or where bash
+    reads no reserved word, the same text is an ordinary word - `"if" make`
+    runs a command named `if` - so it cannot be a plain string (`PL-Y3TZ`).
+    """
+
+    __slots__ = ()
+
+
+class Assignment(str):
+    """A word of the form bash reads as an assignment: a name, unquoted, then `=` or `+=`.
+
+    Bash reads one as an assignment only ahead of a command's name, which a
+    reader of the flat tokens decides by where it stands; quoted, as in
+    `"X"=1`, it is an ordinary word (Bash Reference Manual §3.4 "Shell
+    Parameters", `PL-Y3TZ`).
+    """
+
+    __slots__ = ()
+
+
 class Descriptor(str):
     """The descriptor a redirection names ahead of its operator: `2` in `2>&1`, `fd` in `{fd}>x`.
 
@@ -264,13 +294,15 @@ class FlatReading(_Value):
     """A command as the guard hooks read it, from the same pass as `Reading`.
 
     `tokens` is every word, its quotes removed and a `$'...'`'s escapes
-    replaced as in `Word.text`, operators as `Operator` and a redirection's
-    descriptor as `Descriptor`, with each newline that ends a command read as
-    `;` and every comment, continuation and here-document body gone. An
-    unquoted `$( )`, `<( )` or `>( )` is read inline, its parentheses as
-    operators, so a walk counting subshells meets them as it always has,
-    while arithmetic is the one plain token `Word.text` is (`PL-3Z8B`), and
-    a conditional's own operators are plain tokens too (`PL-X1VN`).
+    replaced as in `Word.text`, operators as `Operator`, a redirection's
+    descriptor as `Descriptor`, a reserved word opening a command as `Reserved`
+    and the first piece of an assignment word as `Assignment`, with each
+    newline that ends a command read as `;` and every comment, continuation and
+    here-document body gone. An unquoted `$( )`, `<( )` or `>( )` is read
+    inline, its parentheses as operators, so a walk counting subshells meets
+    them as it always has, while arithmetic is the one plain token `Word.text`
+    is (`PL-3Z8B`), and a conditional's own operators are plain tokens too
+    (`PL-X1VN`).
     The tokens of a substitution inside double quotes, a `${...}`, backquotes
     or an array assignment are in `substituted`, one list each in the order
     they open, since they run although their text stays in the word.
@@ -439,6 +471,19 @@ def _names_a_descriptor(text: str) -> bool:
     return text[:1] == "{" and text[-1:] == "}" and name.isascii() and name.isidentifier()
 
 
+def _assigning(text: str) -> str:
+    """The `name=` or `name+=` opening `text` where it opens with one, or "".
+
+    A name is ASCII letters, digits and `_`, not opening with a digit: bash
+    5.2.21 runs `é=1 true` as a command named `é=1`, in a UTF-8 locale too.
+    """
+    name, equals, _ = text.partition("=")
+    name = name.removesuffix("+")
+    if not equals or not (name.isascii() and name.isidentifier()):
+        return ""
+    return text[: text.index("=") + 1]
+
+
 def _assigns_a_list(text: str) -> bool:
     """Whether a word so far, unquoted, is a name and `=` or `+=`, so a `(` after it opens an array.
 
@@ -447,8 +492,7 @@ def _assigns_a_list(text: str) -> bool:
     `echo a=(1)` are syntax errors to bash 5.2.21, and a subscripted name a
     runtime one.
     """
-    name = text.removesuffix("=").removesuffix("+")
-    return text.endswith("=") and name.isascii() and name.isidentifier()
+    return _assigning(text) == text
 
 
 class _Grammar:
@@ -469,8 +513,10 @@ class _Grammar:
     past what a word in `LEADS` takes before its command - `time`'s `-p` and
     then `--`, the name after `function`, and the one `coproc` may take
     (`PL-0CJC`). Not yet after a closing word bash also names there, such as
-    `fi` or `]]` (`PL-9NMR`). One per read, since a substitution's body is a
-    list of its own.
+    `fi` or `]]` (`PL-9NMR`). A `)` heads a command too, whether it closes a
+    subshell or a function definition's `()`: `if (true) then` runs, and
+    bash 5.2.21 reads `(true) if` as a misplaced `if` (`PL-Y3TZ`). One per
+    read, since a substitution's body is a list of its own.
     """
 
     def __init__(self) -> None:
@@ -483,9 +529,10 @@ class _Grammar:
         #: once the `-p` after a `time` is read: what bash may still read
         #: before the command it leads.
         self.leading = ""
-        #: Whether the last operator was a `(`, so that a `)` after it closes
-        #: the `()` of a function definition, whose body heads a command.
-        self.opened = False
+        #: Whether the last word read was a reserved word opening a command,
+        #: or an option `time` read ahead of its pipeline: the flat reading's
+        #: `Reserved` (`PL-Y3TZ`).
+        self.opens = False
         #: Each `case` open, innermost last, by what it waits for: its `word`,
         #: its `in`, a `pattern` (where `esac` closes it), the rest of one
         #: (`patterns`), or the commands of the `clause` a pattern opened.
@@ -507,7 +554,7 @@ class _Grammar:
         """
         reserved = "" if quoted else text
         state = self.cases[-1] if self.cases else ""
-        head, self.head, self.opened, self.counting = self.head, False, False, False
+        head, self.head, self.opens, self.counting = self.head, False, False, False
         leading, self.leading = self.leading, ""
         if state == "word":
             self.cases[-1] = "in"
@@ -536,17 +583,18 @@ class _Grammar:
         if leading == "time" and reserved == "-p":
             # bash reads `-p` straight after `time`, and `--` after either, as
             # its options (parse.y's `special_case_tokens`).
-            self.head, self.leading = True, "time -p"
+            self.head, self.leading, self.opens = True, "time -p", True
         elif leading in ("time", "time -p") and reserved == "--":
-            self.head = True
+            self.head = self.opens = True
         elif leading == "function" or (leading == "coproc" and reserved not in ("for", "select")):
             # The word after the name heads the body `function` defines or the
             # command `coproc` runs; a `for` or `select` there is that command.
             self.head = True
         elif head and reserved in LEADS:
             self.head, self.leading = reserved != "function", reserved
+            self.opens = reserved == "time"
         else:
-            self.head = head and reserved in OPENS_A_COMMAND
+            self.head = self.opens = head and reserved in OPENS_A_COMMAND
             self.counting = head and reserved == "for"
         return False
 
@@ -559,7 +607,7 @@ class _Grammar:
         if (operator, state) not in ((")", "pattern"), (")", "patterns"), ("(", "pattern")):
             return False
         self.cases[-1] = "clause" if operator == ")" else "patterns"
-        self.head, self.opened, self.leading = operator == ")", False, ""
+        self.head, self.leading = operator == ")", ""
         return True
 
     def operator(self, operator: str) -> None:
@@ -567,8 +615,7 @@ class _Grammar:
         self.leading, self.counting = "", False
         if self.cases and self.cases[-1] == "clause" and operator in (";;", ";&", ";;&"):
             self.cases[-1] = "pattern"
-        self.head = operator in HEADS or (operator == ")" and self.opened)
-        self.opened = operator == "("
+        self.head = operator in HEADS or operator == ")"
 
     def condition(self, token: str, operator: bool) -> None:
         """Read one token of an open `[[ ]]`, unreadable where bash refuses it there.
@@ -707,6 +754,8 @@ class _Lexer:
         spelled: list[str] = []
         begin = -1
         spelling = False
+        #: How many pieces of the word in progress the hooks have been handed.
+        piece = 0
         quoted = globbed = bang = False
         depth = 0
         grammar = _Grammar()
@@ -717,16 +766,26 @@ class _Lexer:
                 begin = index
             spelling = True
 
-        def end_spelling(descriptor: bool = False) -> None:
-            nonlocal spelling
+        def end_spelling(descriptor: bool = False, reserved: bool = False) -> None:
+            nonlocal spelling, piece
             if spelling:
                 word = "".join(spelled)
-                flat.append(Descriptor(word) if descriptor else word)
+                # Only a word's first piece can be an assignment, and only
+                # where its `name=` stood bare in the command.
+                assigning = _assigning(word) if piece == 0 else ""
+                if descriptor:
+                    word = Descriptor(word)
+                elif reserved:
+                    word = Reserved(word)
+                elif assigning and command.startswith(assigning, begin):
+                    word = Assignment(word)
+                flat.append(word)
+                piece += 1
             spelled.clear()
             spelling = False
 
         def finish(redirected: bool = False) -> None:
-            nonlocal begin, quoted, globbed, bang
+            nonlocal begin, quoted, globbed, bang, piece
             descriptor = False
             if begin >= 0:
                 word = "".join(text)
@@ -744,8 +803,9 @@ class _Lexer:
                 if self.introducer is not None:  # the word after `<<` names the delimiter
                     frame.pending.append((word, self.introducer, not quoted))
                     self.introducer = None
-            end_spelling(descriptor)
+            end_spelling(descriptor, reserved=begin >= 0 and grammar.opens)
             text.clear()
+            piece = 0
             begin = -1
             quoted = globbed = bang = False
 
