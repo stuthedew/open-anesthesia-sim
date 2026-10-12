@@ -158,9 +158,9 @@ then it is gone for good.
 
 **It runs at each release rather than at session start or in `make check`,
 and the reason is about when a session may act rather than about cost.** The
-remedy is a network fetch and a commit of files outside the current item's
-declared `touches`, which `CLAUDE.md`'s fix-now rule forbids inline and its
-housekeeping rule says must be filed first. In `make check` this advisory would
+remedy is a network fetch and a commit of recovered records - repository work
+no item names, which `CLAUDE.md`'s housekeeping rule says is filed first, and
+not a defect its fix-now door admits. In `make check` this advisory would
 fire at the one moment a session may do nothing about it, and at session start,
 where it ran until `PL-3PH2`, it fired in every session between a drop and its
 recovery with nothing that session should do. Either way it trains a reader to

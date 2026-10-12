@@ -3,11 +3,13 @@ id: PL-6B1Z
 title: CLAUDE.md's fix-now door opens only for a test-free fix inside the current item's touches, so a small defect found while working something else is filed, triaged and batched instead of fixed where it is found - 176 S defects filed in the two weeks to 2026-10-12, and the door named as taken in two pull-request bodies of about 1,440; the owner asks on 2026-10-12 to fix small defects in place whenever discovered
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, session-cost
 touches: CLAUDE.md, .claude/skills/docket/modes/capture.md, .claude/rules/citation-drift.md, docs/WORKING_NOTES.md, docs/resident-instructions.md, tools/pr_body_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a rule change the owner asked for on 2026-10-12, classed by its own design round
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1443
 payoff: a small defect found while building an item is fixed in its own commit where it is found, with its test, instead of becoming an item to triage, batch and carry through a pull request of its own
 verify: grep -q 'Or fix it in place, now' CLAUDE.md && ! grep -q 'It needs no new test' CLAUDE.md && grep -q 'The fix-now door, widened 2026-10-12' docs/resident-instructions.md
 ---
