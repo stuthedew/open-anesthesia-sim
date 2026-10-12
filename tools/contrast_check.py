@@ -128,14 +128,17 @@ it.** A color declared in a module that was neither `app/theme.py` nor
 probe D1 put a selection color at 1.07:1 on the panel in a new chart-panel
 module and this tool reported `0 errors`. Every module under `app/` is read
 now, so that color is measured, and `check_colors_live_in_the_theme` refuses it
-for being outside the theme - as a named constant, or as a hex literal written
-inline in a call, which has no name a requirement could cite and so could never
-be measured at all. The report says how many modules it read, so a decomposed
-view being measured is visible rather than assumed. What remains unread, and is
-stated rather than hidden: a color that is neither a module-level constant nor
-a literal - one computed, or taken from a toolkit's own palette by name - is
-not a value this tool can see, and `tools/agent_identity_check.py` exists for
-the one such case that has bitten.
+for being outside the theme - as a named constant, or as a hex color written
+inline, in a call or inside a longer string such as a stylesheet, which has no
+name a requirement could cite and so could never be measured at all. A color
+built from literals joined by `+` is read whole, as Python builds it (PL-PXT7).
+The report says how many modules it read, so a decomposed view being measured
+is visible rather than assumed. What remains unread, and is stated rather than
+hidden: a color that is neither a module-level constant nor a literal - one
+computed, or taken from a toolkit's own palette by name - is not a value this
+tool can see, and `tools/agent_identity_check.py` exists for the one such case
+that has bitten; nor is one written in any form but six hex digits, such as
+`#RGB`, `rgb()` or a color's name, which no module here writes.
 
 **Disabled states are out of scope, and that is a decision rather than an
 oversight (PL-NGF7, decided 2026-09-16).** Every colour a control takes when it
@@ -207,11 +210,11 @@ softened for the disabled state on an exception nobody here has read.
 
 *And the scope note cannot rot silently*, which is the half a docstring alone
 would not buy. `check_authored_disabled_colours_are_measured` fails the build on
-a `:disabled` rule written anywhere a requirement does not cite, and on any
-`setPalette` call. It used to refuse the first form outright; it now enforces
-what PL-NGF7 said was owed the moment the premise changed - declare the colour
-in the theme and give it a requirement - which is what this file did rather than
-delete the check.
+a disabled-state rule - `:disabled`, or the same state negated as `:!enabled` -
+written anywhere a requirement does not cite, and on any `setPalette` call. It
+used to refuse the first form outright; it now enforces what PL-NGF7 said was
+owed the moment the premise changed - declare the colour in the theme and give
+it a requirement - which is what this file did rather than delete the check.
 """
 
 from __future__ import annotations
@@ -233,8 +236,22 @@ THEME = APP / "theme.py"
 #: This file, where `--base` reads the base's own `KNOWN_SHORTFALLS` from.
 SHORTFALLS_SOURCE = Path("tools/contrast_check.py")
 
-#: A six-digit sRGB hex literal, the only form a color takes in this tree.
-HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
+#: A six-digit sRGB hex color, the only form a color takes in this tree,
+#: wherever it stands in a string: alone, or in a stylesheet's
+#: `color: #D9E2EC;`, which matching the whole string never read (PL-PXT7).
+#: Not inside a longer run of hex digits or a word, and not a character
+#: reference such as `&#128512;`, which a rich-text label can hold.
+HEX_COLOR_RE = re.compile(r"(?<![0-9A-Za-z_&])#[0-9A-Fa-f]{6}(?![0-9A-Za-z_])")
+#: A stylesheet rule for the disabled state: `:disabled`, or the same state
+#: negated, `:!enabled` (PL-PXT7). Qt reads a pseudo-state's name in any case,
+#: and only written straight after its `:` or `!`: measured on Qt 6.11.2, where
+#: `:DISABLED` and `:!ENABLED` restyled a disabled `QPushButton`, `: disabled`
+#: and `:! enabled` dropped the rule, and `:!disabled` restyled it only enabled.
+DISABLED_RULE_RE = re.compile(r":(?:disabled|!enabled)", re.IGNORECASE)
+#: What stands in a string's text for a piece its source does not spell out -
+#: an f-string's replacement field, or a side of a `+` that is no string - so
+#: that nothing is read across the piece. No stylesheet or color holds it.
+UNSPELLED = "\0"
 
 #: Where the other half of the coverage question is decided: whether a control
 #: on the *built* dashboard declares a foreground at all. That needs a built
@@ -1111,12 +1128,80 @@ def separation_ceiling_above_floor(count: int, floor: float) -> float:
 
 
 def _string_value(node: ast.expr, known: dict[str, str]) -> str | None:
-    """Resolve a literal string or a reference to an already-known constant."""
+    """Resolve a literal string, a reference to an already-known constant, or a `+` of them.
+
+    The `+` because a color built from parts, `"#D9E2" + "EC"`, is the color
+    Python builds, and is measured and placed as one (PL-PXT7).
+    """
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
     if isinstance(node, ast.Name):
         return known.get(node.id)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left, right = _string_value(node.left, known), _string_value(node.right, known)
+        if left is not None and right is not None:
+            return left + right
     return None
+
+
+def _string_text(node: ast.expr) -> tuple[str, tuple[ast.expr, ...]] | None:
+    """The text a string expression spells out, and the nodes that spell it.
+
+    A string literal; an f-string, each replacement field standing as
+    `UNSPELLED`; or a `+` joining either to anything, a side that is no string
+    standing as `UNSPELLED`. The `+` is how a stylesheet split across two
+    literals still holds `:disabled` (PL-QY94) and a color split across two
+    still holds `#D9E2EC` (PL-PXT7); adjacent literals and the pieces of one
+    f-string need nothing here, since `ast` hands them over joined. `None`
+    where the expression holds no string text at all.
+
+    The nodes are the literals and joins read, and not a replacement field or
+    a side that is no string, which the caller still walks: a string inside
+    one is a string of its own.
+    """
+    if isinstance(node, ast.Constant):
+        return (node.value, (node,)) if isinstance(node.value, str) else None
+    if isinstance(node, ast.JoinedStr):
+        pieces: list[str] = []
+        literals: list[ast.expr] = []
+        for part in node.values:
+            if isinstance(part, ast.Constant) and isinstance(part.value, str):
+                pieces.append(part.value)
+                literals.append(part)
+            else:
+                pieces.append(UNSPELLED)
+        return "".join(pieces), (node, *literals)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left, right = _string_text(node.left), _string_text(node.right)
+        if left is None and right is None:
+            return None
+        text = (UNSPELLED if left is None else left[0]) + (UNSPELLED if right is None else right[0])
+        return text, (
+            node,
+            *(() if left is None else left[1]),
+            *(() if right is None else right[1]),
+        )
+    return None
+
+
+def _string_sites(tree: ast.AST) -> Iterator[tuple[str, ast.expr, str]]:
+    """Each string a module builds, read whole, with the name holding it and its text.
+
+    A string read as part of a `+` is not read again on its own, so a color or
+    a rule is reported once, at the expression's first line. A string standing
+    as a statement - a docstring, or one written as a comment - is thrown away
+    where it stands, so no stylesheet or color can be in it, and it is passed
+    over (PL-QY94).
+    """
+    read: set[int] = set()
+    for holder, node in _named_holders(tree):
+        if id(node) in read:
+            continue
+        if isinstance(node, ast.Expr) and (discarded := _string_text(node.value)) is not None:
+            read.update(id(part) for part in discarded[1])
+        elif isinstance(node, ast.expr) and (spelled := _string_text(node)) is not None:
+            read.update(id(part) for part in spelled[1])
+            yield holder, node, spelled[0]
 
 
 def _collect_agent_schemes(node: ast.expr, known: dict[str, str]) -> dict[str, str]:
@@ -1353,10 +1438,13 @@ def check_colors_live_in_the_theme(root: Path) -> tuple[str, ...]:
     Two forms are refused. A module-level constant resolving to a color, which
     `read_palette` deliberately still reads so that it is *measured* rather than
     lost - the error is then the difference between a convention and a
-    guarantee. And a hex literal written inline, in a call or anywhere else,
+    guarantee. And a hex color written inline, in a call or anywhere else,
     which has no name a requirement could cite and so could never be measured
     at all: the only correct treatment is to send it to the theme, where it
-    gains one. Every module rather than the view alone since PL-BXB2.
+    gains one. Every module rather than the view alone since PL-BXB2. Inline is
+    read anywhere in a string since PL-PXT7, a stylesheet's `color: #D9E2EC;`
+    as much as a literal holding the color alone, and a string built with `+`
+    as the one string Python builds; a docstring is prose, and is not read.
 
     Returns:
         One message per offending declaration, empty when only the theme
@@ -1393,16 +1481,12 @@ def check_colors_live_in_the_theme(root: Path) -> tuple[str, ...]:
                         f"{THEME.as_posix()} (PL-2CS8). Move the constant, and its comment "
                         "with it."
                     )
-        for node in ast.walk(tree):
+        for _, node, text in _string_sites(tree):
             if id(node) in reported:
                 continue
-            if (
-                isinstance(node, ast.Constant)
-                and isinstance(node.value, str)
-                and HEX_COLOR_RE.match(node.value)
-            ):
+            for color in dict.fromkeys(found.group() for found in HEX_COLOR_RE.finditer(text)):
                 offenders.append(
-                    f"  {node.value} is written inline at {module}:{node.lineno}; a literal "
+                    f"  {color} is written inline at {module}:{node.lineno}; a literal "
                     "has no name a requirement can cite, so it can never be measured. "
                     f"Declare it in {THEME.as_posix()} and cite the constant (PL-2CS8, "
                     "PL-BXB2)."
@@ -1428,7 +1512,10 @@ def check_authored_disabled_colours_are_measured(root: Path) -> tuple[str, ...]:
     what is owed. That is decidable by reading the tree: the enclosing
     definition's name either appears in a `why` or it does not, and whether
     that requirement names the right pair stays a reader's judgment exactly as
-    `check_citations` leaves it.
+    `check_citations` leaves it. A rule is what `DISABLED_RULE_RE` reads - the
+    same state written `:!enabled` included (PL-PXT7) - in a string as
+    `_string_sites` reads one: joined across a `+`, and never a docstring,
+    which no stylesheet is (PL-QY94).
 
     `setPalette` is admitted on the same terms and refused everywhere else,
     which is narrower than it was. It used to be refused outright, because a
@@ -1462,12 +1549,15 @@ def check_authored_disabled_colours_are_measured(root: Path) -> tuple[str, ...]:
         path = root / relative
         module = relative.as_posix()
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        strings = {id(site): (site, text) for _, site, text in _string_sites(tree)}
         for holder, node in _named_holders(tree):
-            if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                if ":disabled" in node.value and holder not in cited:
+            if id(node) in strings:
+                site, text = strings[id(node)]
+                rule = DISABLED_RULE_RE.search(text)
+                if rule is not None and holder not in cited:
                     owner = f"`{holder}`" if holder else "module level"
                     offenders.append(
-                        f"  {module}:{node.lineno}: a ':disabled' rule at {owner}, which no "
+                        f"  {module}:{site.lineno}: a '{rule.group()}' rule at {owner}, which no "
                         "requirement cites. An authored disabled colour is this project's "
                         "value rather than the style's, so it owes a constant in "
                         "app/theme.py and a requirement here naming the pair it is drawn "
@@ -1646,10 +1736,12 @@ def read_base(root: Path, ref: str) -> Base:
             then, and the run fails rather than passing on a partial reading.
     """
     commit = _git_read(root, "merge-base", "HEAD", ref).strip()
-    listed = _git_read(root, "ls-tree", "-r", "--name-only", commit, "--", APP.as_posix())
+    # `-z`, so a path git would otherwise quote - a non-ASCII name, as
+    # `"vu\303\251.py"` - is listed as written and read (PL-PXT7).
+    listed = _git_read(root, "ls-tree", "-r", "-z", "--name-only", commit, "--", APP.as_posix())
     at = f"{ref} (merge base {commit[:12]})"
     try:
-        modules = _theme_first(Path(line) for line in listed.split("\n") if line.endswith(".py"))
+        modules = _theme_first(Path(name) for name in listed.split("\0") if name.endswith(".py"))
     except FileNotFoundError as error:
         raise BaseUnreadable(f"at {at}: {error}") from error
     sources = [(path, _git_read(root, "show", f"{commit}:{path.as_posix()}")) for path in modules]
