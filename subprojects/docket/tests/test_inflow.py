@@ -16,6 +16,7 @@ from docket.cli import _missed_expectations, main
 from docket.config import Config
 from docket.inflow import UNBANDED, analyze, missed
 from docket.model import Item, reentry_faults
+from docket.render import format_inflow
 
 CONFIG = Config(
     items_dir="docs/items",
@@ -178,6 +179,44 @@ def test_a_closed_item_three_filings_reenter_is_named() -> None:
     report = analyze([FIXED, *filings], CONFIG, today=date(2026, 9, 7))
 
     assert report.reentered == {"PL-FXD0": ("PL-0RX1", "PL-0RX2", "PL-0RX3")}
+
+
+def test_a_line_a_successor_head_answers_names_it() -> None:
+    """A head whose `reenters:` names the line answers it, and is listed apart.
+
+    Under one heading, a line a successor already answered read exactly as one
+    nobody had (`PL-0WT0`). A claim `model.is_generator` refuses - two members,
+    under the floor - answers nothing, so its line stays open.
+    """
+    other = _item("PL-FXD1", date(2026, 8, 20), touches=("src/a.py",), closed=date(2026, 8, 25))
+    members = [_item(f"PL-0MB{n}", date(2026, 9, 1), touches=("src/c.py",)) for n in (1, 2, 3)]
+    head = _item(
+        "PL-0HD1",
+        date(2026, 9, 3),
+        reenters=("PL-FXD0",),
+        root_cause_of=("PL-0MB1", "PL-0MB2", "PL-0MB3"),
+    )
+    unsound = _item(
+        "PL-0NS1", date(2026, 9, 3), reenters=("PL-FXD1",), root_cause_of=("PL-0MB1", "PL-0MB2")
+    )
+    filings = [
+        _item(f"PL-0R{n}B", date(2026, 9, n), reenters=("PL-FXD0", "PL-FXD1")) for n in (1, 2)
+    ]
+
+    report = analyze(
+        [FIXED, other, *members, head, unsound, *filings], CONFIG, today=date(2026, 9, 7)
+    )
+
+    assert report.reentered == {
+        "PL-FXD0": ("PL-0R1B", "PL-0R2B", "PL-0HD1"),
+        "PL-FXD1": ("PL-0R1B", "PL-0R2B", "PL-0NS1"),
+    }
+    assert report.successors == {"PL-FXD0": (head,)}
+    text = format_inflow(report)
+    unanswered, answered = text.split("a generator whose fix did not hold:")[1].split("answered by")
+    assert "PL-FXD1" in unanswered and "PL-FXD0" not in unanswered
+    assert "PL-FXD0  by PL-0R1B, PL-0R2B, PL-0HD1" in answered
+    assert "successor PL-0HD1 (ready)" in answered
 
 
 def test_a_reentry_must_name_a_fix_shipped_before_the_filing() -> None:
