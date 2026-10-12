@@ -3,12 +3,14 @@ id: PL-351H
 title: Pull-request facts are read twice in tools - whether a branch's newest pull request merged (open_pull_requests, left_behind_check), which are open (update_armed pages past 100), a failing CI conclusion (main_ci_status, update_armed) and commits past a merged head (vcs.carried_merge, left_behind_check) - and each pair parts on one input
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: tools/open_pull_requests.py, tools/left_behind_check.py, tools/update_armed.py, tools/main_ci_status.py, subprojects/docket/src/docket/vcs.py, tests/unit/test_left_behind_check.py
+touches: tools/open_pull_requests.py, tools/left_behind_check.py, tools/update_armed.py, tools/main_ci_status.py, tools/fact_home_check.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs_silence.py, tests/unit/test_left_behind_check.py, tests/unit/test_open_pull_requests.py, tests/unit/test_update_armed.py, tests/unit/test_main_ci_status.py, docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1456
 payoff: a pull request's state reads the same to the tools that arm, update and audit branches
 verify: grep -q 'def test_an_entry_without_merged_at_is_declined_as_open_pull_requests_declines' tests/unit/test_left_behind_check.py
 ---
@@ -25,3 +27,43 @@ verify: grep -q 'def test_an_entry_without_merged_at_is_declined_as_open_pull_re
 **Done when.** Each tool reads these through `open_pull_requests` or `vcs`, or a shared helper, and a test pins each parting input.
 
 **Generator check.** A member of `PL-5DZ8`, filed by that head's closing sweep on 2026-10-12 and named in its `root-cause-of:`. The fact is the head's: which spelling of a repeated predicate is the answer, when tools, hooks and docket each spell it. It is neither a post-close instance nor a new generator.
+
+**Resolved 2026-10-12.** Each pair now reads one record, and the parting input
+of each is pinned by a test. Which side was right was decided per pair:
+
+- *Whether the newest pull request merged.* `open_pull_requests` was right: an
+  entry with no `merged_at` is unreadable, not unmerged. `left_behind_check`'s
+  request and parse are gone; its lookup is `open_pull_requests.newest`, which
+  raises `ListingFailed` with the kind (`NO_PERMISSION`, `NO_NETWORK`,
+  `UNREADABLE_ANSWER`) the check names a decline by, and returns docket's own
+  `vcs.NewestPullRequest` with `vcs.PULL_*` states rather than a second
+  dataclass. Pinned by
+  `test_an_entry_without_merged_at_is_declined_as_open_pull_requests_declines`.
+- *Which pull requests are open.* `update_armed` was right that the answer is
+  every page; `open_pull_requests` was right that a page read later can miss
+  an entry. `open_pull_requests.every_page` takes both: it reads oldest first
+  to a short page, so only a close can shift a page, then reads every page but
+  the last again and declines on any change. One page - 3 open on 2026-10-12 -
+  is still one request. `update_armed.open_pulls` pages through it with its own
+  retrying calls. Pinned on both sides at 100 open, and on a close mid-read.
+- *A failing conclusion.* `update_armed` was right: `action_required` ran no
+  step to a verdict. `main_ci_status.FAILED` is the one set, `VERDICTS` is
+  `success` plus it, and `update_armed` imports it. An `action_required` run
+  newer than every verdict now prints the line a cancelled one does - no
+  whole-store verdict for that commit - since passing over it silently would
+  report an older commit's verdict as `main`'s (`PL-JTHW`).
+  `pick_cancelled`/`cancelled_advisory` are `pick_unjudged`/`unjudged_advisory`.
+- *Commits past a merged head.* Not a parting on re-confirmation: on a
+  merge-commit merge `carried_merge`'s None is its restart guard, and docket's
+  counts reading reports the commit ahead, as the check reports it left
+  behind. What was duplicated was the reading itself - each wrote its own
+  `log` and landing loop. `vcs.past_head` is that one reading; `carried_merge`
+  and `left_behind_check.examine` both call it, and the check's runner reaches
+  it through `vcs.git_answer`, `_run_git`'s exit classification split out, so a
+  failed `log` declines rather than reading as no commits. Pinned by the
+  merge-commit test and the failed-`log` test.
+
+`fact_home_check` refused the two names the move first gave the shared
+constants (`UNREADABLE` is `doc_check`'s exception tuple, `REFUSED` claiming's
+exit status), so they are `UNREADABLE_ANSWER` and `_REFUSAL_CODES`, and the
+baseline fell from 107 to 105.
