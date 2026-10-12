@@ -20,7 +20,9 @@ which then runs to a blank line or another block's start.
 containers hold it, every list item the same way, and the column each line's
 own text starts at. `fences`, `statement_lines`, `unmarked`, the heading and
 table readers below and the list walker in `roadmap` are views of it, so they
-cannot disagree about where a block is.
+cannot disagree about where a block is. One inline reading is here too:
+`emphasis` pairs a statement's emphasis as § 6.2 pairs it, for the readers of a
+brief's labels and sections and of a scope entry's bold lead (`PL-47NJ`).
 `subprojects/docket/tests/test_markdown_reference.py` holds it to
 markdown-it-py on every tracked Markdown file (`PL-0C2S`), with markdown-it-py
 set to cmark-gfm's reading in the one place the two part: a bare run of hyphens
@@ -48,6 +50,7 @@ stand on it.
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Collection, Iterator, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
@@ -111,12 +114,28 @@ class Document:
 
 @dataclass(frozen=True)
 class Heading:
-    """A top-level heading: its first line's index, one past its last, its level and its text."""
+    """A heading: its first line's index, one past its last, its level and its text."""
 
     line: int
     end: int
     level: int
     title: str
+
+
+@dataclass(frozen=True)
+class Emphasis:
+    """One span of emphasis (§ 6.2), as its offsets in the text read, delimiters and all."""
+
+    #: Where its opening delimiters start, and one past its closing ones.
+    start: int
+    end: int
+    #: Strong emphasis, two delimiters at each end; emphasis has one.
+    strong: bool
+
+    @property
+    def width(self) -> int:
+        """How many delimiters stand at each end of it."""
+        return 2 if self.strong else 1
 
 
 @dataclass(frozen=True)
@@ -303,23 +322,29 @@ def block_lines(lines: Sequence[str], kinds: Collection[str]) -> frozenset[int]:
     )
 
 
-def headings(lines: Sequence[str]) -> list[Heading]:
+def headings(lines: Sequence[str], *, nested: bool = False) -> list[Heading]:
     """Every top-level heading, ATX (§ 4.2) and setext (§ 4.3), in order.
 
     An ATX heading's title loses its closing run of `#`s; a setext heading's is
     its paragraph's lines, joined with the space a soft break renders as.
+    `nested` adds every heading a block quote or a list item holds, its title
+    read from where its line's own text starts (`PL-47NJ`).
     """
+    document = read(lines)
     found: list[Heading] = []
-    for block in read(lines).blocks:
-        if block.kind != HEADING or block.depth:
+    for block in document.blocks:
+        if block.kind != HEADING or (block.depth and not nested):
             continue
         if block.end - block.start == 1:
-            line = lines[block.start].expandtabs(4)
+            line = lines[block.start].expandtabs(4)[document.columns[block.start] :]
             opening = _ATX.match(line)
             assert opening is not None
             title = _ATX_CLOSE.sub("", line[opening.end() :].strip())
         else:
-            title = " ".join(line.strip() for line in lines[block.start : block.end - 1])
+            title = " ".join(
+                _blanked_to(lines[index], document.columns[index]).strip()
+                for index in range(block.start, block.end - 1)
+            )
         found.append(Heading(block.start, block.end, block.level, title.strip()))
     return found
 
@@ -350,6 +375,159 @@ def cells(row: str) -> tuple[str, ...]:
     if parts and parts[-1] == "":
         parts.pop()
     return tuple(part.replace("\\|", "|").strip() for part in parts)
+
+
+def emphasis(text: str, literals: Collection[tuple[int, int]] = ()) -> tuple[Emphasis, ...]:
+    """Each span of emphasis CommonMark 0.31.2 § 6.2 pairs in one statement's `text` (`PL-47NJ`).
+
+    Paired as the specification's appendix pairs them, by "process emphasis"
+    over a stack of delimiter runs. A run of `*` or `_` no backslash escapes is
+    read for what flanks it (rules 1 to 8), and each run that can close, in
+    order, takes the nearest run of its character that can open and that rule
+    9's multiple-of-3 test allows: two delimiters from each where both have two
+    left, one otherwise, and every run between them is left literal. So a `*`
+    with whitespace on both sides opens nothing, a `_` inside a word opens
+    nothing, and a run is closed by the run CommonMark closes it with rather
+    than by the next one written. Readers that split on the delimiter instead
+    took a multiplication for emphasis and paired an opener with a run that
+    could only open.
+
+    `literals` are the spans of `text` an inline literal holds: each code span
+    (§ 6.1), which a caller finds with `release.CODE_SPAN_RE`. No delimiter or
+    escape inside one is read, and a run beside one is flanked by its backtick,
+    as CommonMark flanks it. Links, images, autolinks and raw HTML are not
+    read, so a delimiter in a link's text can pair with one outside it, where
+    CommonMark keeps the two apart (rule 17).
+
+    `text` is one statement's, because emphasis ends with its paragraph: a
+    line break, and an indent a container's blanked marker left, is whitespace
+    to a run beside it, as the start and the end of `text` are. In the order
+    the spans open, a span before any it holds.
+    """
+    runs = _delimiter_runs(text, literals)
+    found: list[Emphasis] = []
+    left = [True] * len(runs)
+    #: Per character, whether the closer can also open, and its length modulo
+    #: 3: the highest index known to hold no opener for such a closer.
+    bottoms: dict[tuple[str, bool, int], int] = {}
+    closer = 0
+    while closer < len(runs):
+        run = runs[closer]
+        if not left[closer] or not run.closes:
+            closer += 1
+            continue
+        kind = (run.character, run.opens, run.length % 3)
+        opener = _opener(runs, left, closer, bottoms.get(kind, -1))
+        if opener < 0:
+            bottoms[kind] = closer - 1
+            left[closer] = run.opens
+            closer += 1
+            continue
+        other = runs[opener]
+        width = 2 if other.end - other.start >= 2 and run.end - run.start >= 2 else 1
+        found.append(Emphasis(other.end - width, run.start + width, width == 2))
+        other.end -= width
+        run.start += width
+        left[opener + 1 : closer] = [False] * (closer - opener - 1)
+        left[opener] = other.start < other.end
+        if run.start == run.end:
+            left[closer] = False
+            closer += 1
+    return tuple(sorted(found, key=lambda span: (span.start, -span.end)))
+
+
+@dataclass
+class _Run:
+    """A delimiter run (§ 6.2): its character, the delimiters still unpaired, and what it can do."""
+
+    character: str
+    #: The offsets of its delimiters not yet paired. An opener gives up its
+    #: last ones and a closer its first, so these close in on each other.
+    start: int
+    end: int
+    #: Its length as written, which rule 9's multiple-of-3 test reads.
+    length: int
+    opens: bool
+    closes: bool
+
+
+#: What a backslash escapes (§ 2.4): any ASCII punctuation character.
+_ESCAPABLE = frozenset("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
+
+
+def _delimiter_runs(text: str, literals: Collection[tuple[int, int]]) -> list[_Run]:
+    """Every run of `*` or `_` in `text` outside `literals` that no backslash escapes."""
+    skipped = sorted(literals)
+    runs: list[_Run] = []
+    position = 0
+    while position < len(text):
+        while skipped and skipped[0][1] <= position:
+            skipped.pop(0)
+        if skipped and skipped[0][0] <= position:
+            position = skipped[0][1]
+        elif text[position] == "\\" and text[position + 1 : position + 2] in _ESCAPABLE:
+            position += 2
+        elif text[position] in "*_":
+            end = position
+            while end < len(text) and text[end] == text[position]:
+                end += 1
+            runs.append(_flanked(text, position, end))
+            position = end
+        else:
+            position += 1
+    return runs
+
+
+def _flanked(text: str, start: int, end: int) -> _Run:
+    """The run `text[start:end]`, read for whether it can open and close (rules 1 to 8)."""
+    character = text[start]
+    before = text[start - 1] if start else " "
+    after = text[end] if end < len(text) else " "
+    left = not _whitespace(after) and (
+        not _punctuation(after) or _whitespace(before) or _punctuation(before)
+    )
+    right = not _whitespace(before) and (
+        not _punctuation(before) or _whitespace(after) or _punctuation(after)
+    )
+    if character == "_":
+        return _Run(
+            character,
+            start,
+            end,
+            end - start,
+            opens=left and (not right or _punctuation(before)),
+            closes=right and (not left or _punctuation(after)),
+        )
+    return _Run(character, start, end, end - start, opens=left, closes=right)
+
+
+def _opener(runs: Sequence[_Run], left: Sequence[bool], closer: int, bottom: int) -> int:
+    """The index of the run `runs[closer]` pairs with, or -1 where none above `bottom` can.
+
+    The nearest that can open, of the same character, which rules 9 and 10
+    allow: where either run can both open and close, their lengths as written
+    may not sum to a multiple of 3 unless each is one.
+    """
+    run = runs[closer]
+    for index in range(closer - 1, bottom, -1):
+        other = runs[index]
+        if not left[index] or not other.opens or other.character != run.character:
+            continue
+        if (other.closes or run.opens) and (other.length + run.length) % 3 == 0:
+            if other.length % 3 or run.length % 3:
+                continue
+        return index
+    return -1
+
+
+def _whitespace(character: str) -> bool:
+    """A Unicode whitespace character (§ 2.1): `Zs`, a tab, a line or form feed, a return."""
+    return character in "\t\n\f\r" or unicodedata.category(character) == "Zs"
+
+
+def _punctuation(character: str) -> bool:
+    """A Unicode punctuation character (§ 2.1): the `P` and `S` categories."""
+    return unicodedata.category(character)[0] in "PS"
 
 
 def _delimiter_columns(text: str) -> int:

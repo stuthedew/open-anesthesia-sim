@@ -9,7 +9,7 @@ import pytest
 
 from docket.cli import main
 from docket.model import Item, parse_item
-from docket.picks import BUILD, BUILD_REST, FEATURE, HEAD, LANE, MAX_LINES, Picks, picks
+from docket.picks import BUILD, BUILD_REST, FEATURE, HEAD, LANE, MAX_LINES, Picks, bold_lead, picks
 from docket.render import format_picks
 from docket.roadmap import CLEAR, Wave, wave
 
@@ -168,6 +168,18 @@ def _picks(limit: int = MAX_LINES) -> tuple[list[Item], Picks]:
     plan = _plan(items)
     assert plan.beat == CLEAR and plan.gate is not None
     return items, picks(items, plan, {"PL-C3C3"}, workflow_paths=WORKFLOW, limit=limit)
+
+
+def test_bold_lead_reads_past_asterisks_in_a_code_span() -> None:
+    """`PL-47NJ`: a code span is a literal, so a `**` inside one neither opens nor closes the lead.
+
+    Matched as the next `**` written, the lead stopped inside the span. Paired
+    as CommonMark 0.31.2 § 6.2 pairs it, a `**` a code span holds is text, here
+    and after the lead alike.
+    """
+    assert bold_lead("**`a ** b`** lead") == "`a ** b`"
+    assert bold_lead("**Name.** The rest, with `**` in it.") == "Name"
+    assert bold_lead("No bold lead. The rest.") == "No bold lead"
 
 
 def test_picks_collapses_a_one_entry_feature_into_its_lanes_line() -> None:
