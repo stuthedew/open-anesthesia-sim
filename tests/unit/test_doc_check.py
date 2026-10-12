@@ -3811,6 +3811,52 @@ def test_gate_parity_reports_no_difference_once_a_make_check_line_is_declined(
     assert "`python3 tools/b_check.py 'unclosed` cannot be read" in report.declined[0]
 
 
+#: A `case` construct above an unclosed quote, which bash refuses only at the
+#: quote: read a line at a time, its word, arm and `esac` were commands (`PL-7CQ5`).
+UNREADABLE_CASE_STEP = (
+    '      - run: |\n          case "$M" in\n            check) make check ;;\n'
+    '          esac\n          echo "unterminated\n'
+)
+
+
+def test_a_step_one_pass_cannot_read_is_declined_whole() -> None:
+    """`PL-7CQ5`: the step is declined whole, at the line where the reading stops.
+
+    The fallback read each line alone and declined only the unreadable one, so
+    the commands `check`, `make check` and `esac` reached the gate-parity check
+    as what CI runs.
+    """
+    unread: list[doc_check.UnreadStatement] = []
+
+    runs = list(doc_check.workflow_runs(STEP_JOB + UNREADABLE_CASE_STEP, unread))
+
+    assert runs == []
+    assert [declined.line - STEP_JOB.count("\n") for declined in unread] == [5]
+    assert unread[0].why.startswith("this `run:` step's script cannot be read to its end")
+
+
+def test_gate_parity_declines_a_step_it_cannot_read_by_name(tmp_path: Path) -> None:
+    """`PL-7CQ5`: the decline names the step and stops the comparison, as any decline does."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py"],
+        workflows={"quality.yml": (GATING_WORKFLOW, ["python3 tools/a_check.py"])},
+    )
+    workflow = root / ".github" / "workflows" / "quality.yml"
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8") + UNREADABLE_CASE_STEP, encoding="utf-8"
+    )
+    report = doc_check.Report()
+
+    doc_check.check_gate_parity(root, report)
+
+    assert report.errors == []
+    assert [message.partition(": ")[0] for message in report.declined] == [
+        ".github/workflows/quality.yml:17"
+    ]
+    assert "step's script cannot be read to its end" in report.declined[0]
+
+
 def test_a_recorded_asymmetry_is_accepted(tmp_path: Path) -> None:
     """`GATE_ONLY` is where the reason lives, and writing one is the whole ask."""
     root = _parity_repo(
@@ -7037,9 +7083,9 @@ def _run_step(step: str) -> tuple[list[tuple[str, int]], list[tuple[int, str]]]:
 
 def _step_runs(step: str) -> list[tuple[str, ...]]:
     """The simple commands `workflow_runs` reads from `step` under `STEP_JOB`, as the gate does."""
-    report, unread = doc_check.Report(), []
-    runs = list(doc_check.workflow_runs(STEP_JOB + step, "ci.yml", report, "unread", unread))
-    assert not report.declined and not unread
+    unread: list[doc_check.UnreadStatement] = []
+    runs = list(doc_check.workflow_runs(STEP_JOB + step, unread))
+    assert not unread
     return runs
 
 

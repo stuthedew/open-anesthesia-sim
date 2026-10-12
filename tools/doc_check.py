@@ -6144,9 +6144,7 @@ def workflow_commands(
                 yield command.strip(), script[body.count("\n", 0, offset)][1]
 
 
-def workflow_runs(
-    text: str, where: Path | str, report: Report, unread: str, steps: list[UnreadStatement]
-) -> Iterator[tuple[str, ...]]:
+def workflow_runs(text: str, steps: list[UnreadStatement]) -> Iterator[tuple[str, ...]]:
     """Every simple command a workflow's `run:` steps execute, each as its words.
 
     Each step's script is read in one pass of docket's `shell.shell_words`,
@@ -6154,9 +6152,13 @@ def workflow_runs(
     patterns and its `esac` are no commands and the commands in its arms are
     (`PL-M3M4`). Taken from `workflow_commands`' lines, each read on its own,
     the arm `check) make check ;;` read as `check` and `make check`, a script
-    the merge gate never runs. A script that pass cannot read to its end is
-    read a line at a time as `workflow_commands` cuts it, each line it cannot
-    read declined at its own line through `_shell_reading`, naming `unread`.
+    the merge gate never runs.
+
+    A script that pass cannot read to its end is declined whole, on `steps`
+    at the line where the reading stops, and gives no commands. Read a line
+    at a time instead, as it was until `PL-7CQ5`, a `case` construct above
+    an unclosed quote gave `check`, `make check` and `esac` as commands, and
+    only the unreadable line was declined.
 
     A step `workflow_commands` declines goes on `steps`, as it would there.
     """
@@ -6165,10 +6167,18 @@ def workflow_runs(
         if reading.clauses:
             yield from _simple_commands(reading)
             continue
-        for command, offset in script_lines(body):
-            if command.strip():
-                line = script[body.count("\n", 0, offset)][1]
-                yield from _shell_commands(f"{where}:{line}", command.strip(), report, unread)
+        # `script_lines` hands the line where the reading stops on, with every
+        # line after it, as its last piece.
+        stop = script_lines(body)[-1][1]
+        steps.append(
+            UnreadStatement(
+                script[body.count("\n", 0, stop)][1],
+                "this `run:` step's script cannot be read to its end from this line - a "
+                "quote, a command substitution or a backslash runs past it, or a `<<` has "
+                "no delimiter - and none of the step was read, since a line of it read "
+                "alone can be a fragment of a command bash runs, such as a `case` arm",
+            )
+        )
 
 
 def _step_scripts(
@@ -7102,13 +7112,12 @@ def check_gate_parity(root: Path, report: Report) -> None:
         if not gates:
             continue
         declined: list[UnreadStatement] = []
-        merge |= set(_gate_invocations(root, workflow_runs(text, where, report, unread, declined)))
+        merge |= set(_gate_invocations(root, workflow_runs(text, declined)))
         _decline_steps(report, where, declined, unread)
-    # A workflow, a step or a line of a script left unread on either side - a
-    # `check:` recipe's included - may hold a script that side runs, so a
-    # difference would not be a fact; the declines above say what went unread.
-    # Counting the declined steps alone passed over a recipe or script line
-    # `_shell_reading` declined (`PL-5M36`).
+    # A workflow, a step or a line of the `check:` recipe left unread may hold
+    # a script that side runs, so a difference would not be a fact; the
+    # declines above say what went unread. Counting the declined steps alone
+    # passed over a recipe line `_shell_reading` declined (`PL-5M36`).
     if len(report.declined) > declined_before or not local or not merge:
         return
     for invocation in sorted(local - merge):
