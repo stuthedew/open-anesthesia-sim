@@ -528,6 +528,26 @@ def test_a_trailer_closing_a_prose_paragraph_is_the_bodys_own(body: str) -> None
     assert pr_body_check.normalise(paragraph) == body.split("\n")[0]
 
 
+def test_a_body_ending_with_its_own_trailer_paragraph_compares_equal() -> None:
+    """`PL-SNQR`: GitHub's group follows the body's own, and only GitHub's is taken off.
+
+    `normalise` strips one closing group, so the body lost its paragraph while
+    the squash kept it and read as differing. A squash that gained a trailer
+    paragraph the body never had still differs, which stripping until nothing
+    changed would have hidden.
+    """
+    body = "Why, in brief.\n\nCo-authored-by: A <a@x>\n"
+    github = "Co-authored-by: Claude <noreply@anthropic.com>\n"
+
+    # GitHub appended nothing, a group after `---------`, or one after a blank line.
+    for squash in (body, f"{body}\n---------\n\n{github}", f"{body}\n{github}"):
+        assert pr_body_check.verdict(squash, pr_body_check.Listed(body, None)) is None
+    gained = f"Why, in brief.\n\nCo-authored-by: B <b@x>\n\n---------\n\n{github}"
+    assert pr_body_check.verdict(gained, pr_body_check.Listed("Why, in brief.\n", None)) == (
+        "differs"
+    )
+
+
 def test_names_a_body_frozen_when_auto_merge_was_armed(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:

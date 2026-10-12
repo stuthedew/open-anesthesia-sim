@@ -40,6 +40,7 @@ from markdown_it.rules_inline import StateInline, backtick, emphasis
 
 from docket import markdown
 from docket.lines import record_text, split_lines
+from docket.release import code_spans
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -266,7 +267,7 @@ def test_emphasis_pairs_every_specification_example_as_markdown_it_py_pairs_it()
     CommonMark 0.31.2's and GitHub Flavored Markdown 0.29's examples, each
     inline text handed to both with markdown-it-py's own code spans as the
     literals, so what is compared is the pairing alone and not
-    `release.CODE_SPAN_RE`, whose escaped backtick is `PL-T3GW`'s. A text
+    `release.code_spans`, which the next test compares. A text
     holding a link, an image, an autolink or raw HTML is passed over:
     `emphasis` reads none of them, the departure its docstring names. Measured
     over every tracked Markdown file as well on 2026-10-12, 2,613 files and the
@@ -290,4 +291,24 @@ def test_emphasis_pairs_every_specification_example_as_markdown_it_py_pairs_it()
                 differing.append(
                     f"{text!r}: docket {sorted(found)}, markdown-it-py {sorted(expected)}"
                 )
+    assert not differing, "\n".join(differing)
+
+
+def test_code_spans_finds_each_specification_example_span_markdown_it_py_finds() -> None:
+    """`release.code_spans` against markdown-it-py, over every vendored example (`PL-T3GW`).
+
+    The examples hold escaped backticks, runs no closer matches and runs of
+    unequal length, each of which the pattern before this one read on its own
+    terms. A text holding a link, an image, an autolink or raw HTML is passed
+    over, as the emphasis test passes it: an autolink or raw HTML opening first
+    takes a backtick inside it, which `code_spans` does not read.
+    """
+    reference = _EmphasisReference()
+    differing = [
+        f"{text!r}: docket {found}, markdown-it-py {literals}"
+        for name in ("commonmark-0.31.2.txt", "gfm-0.29.0.gfm.13.txt")
+        for example in _examples(SPECIFICATIONS / name)
+        for text, literals, _ in reference.read(example)
+        if (found := [span.span() for span in code_spans(text)]) != literals
+    ]
     assert not differing, "\n".join(differing)
