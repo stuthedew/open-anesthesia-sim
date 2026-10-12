@@ -26,7 +26,7 @@ from typing import Any
 
 import pytest
 
-from docket import arming, claims, cli, shell, vcs
+from docket import arming, claims, cli, vcs
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.claims import SESSION_VARIABLE, Holdings
 from docket.cli import build_parser, main, merge_shared
@@ -10583,8 +10583,7 @@ def test_arm_arms_a_docket_only_pull_request_on_green(
     assert out.startswith(
         f"arm - {ARM_BRANCH} changes nothing on the owner's read list (src/, tests/ but a "
         "test importing no anesthesia_sim, docs/MODEL.md, src/anesthesia_sim/data/, "
-        "README.md, .github/workflows/, .claude/hooks/, docket's shell.py and arming.py), "
-        "holds no open claim"
+        "README.md and docket's arming.py), holds no open claim"
     )
     assert "outside docs/items" not in out
 
@@ -10615,14 +10614,12 @@ def test_arm_arms_a_pull_request_body_record_on_green(
         "tests/unit/test_uptake.py",
         "docs/MODEL.md",
         "README.md",
-        ".github/workflows/update-armed.yml",
-        ".claude/hooks/direct-merge-guard.sh",
     ],
 )
 def test_arm_holds_for_a_read_a_path_on_the_owners_read_list(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
 ) -> None:
-    """The owner's read list waits on a read: the simulator, the model, the workflows, the hooks.
+    """The owner's read list waits on a read: the simulator, its data, tests, model and README.
 
     The branch also changes a docket module and `CLAUDE.md`, which arm alone,
     so the hold is the listed path's own and the answer names it alone. Each
@@ -10644,6 +10641,47 @@ def test_arm_holds_for_a_read_a_path_on_the_owners_read_list(
     assert "subprojects/docket/src/docket/render.py" not in out
     assert "CLAUDE.md" not in out
     assert "keep the pull request a draft" not in out
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".github/workflows/update-armed.yml",
+        ".claude/hooks/direct-merge-guard.sh",
+        "subprojects/docket/src/docket/shell.py",
+    ],
+)
+def test_arm_arms_a_workflow_path_the_owner_released_on_green(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
+) -> None:
+    """The workflows, the hooks and docket's lexer arm on green, and hold no product path's read.
+
+    They waited on the owner's read from 2026-10-03 and 2026-10-10 until his
+    rule of 2026-10-12, "don't need to ask me for merge confirmation for
+    workflow items" (`PL-KPM2`). A change crossing both lanes still holds by
+    its product path, and the answer names that path alone.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, path)
+
+    assert _arm(root) == 0
+    first, *rest = capsys.readouterr().out.splitlines()
+    assert first.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
+    if path.startswith("subprojects/docket/"):
+        assert rest == []
+    else:
+        assert rest[1] == f"  {path}"
+
+    _put(git, root, "src/anesthesia_sim/core/uptake.py")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it changes 1 path on the owner's read list, so its pull request "
+        "waits on a read\n"
+    )
+    assert "\n  src/anesthesia_sim/core/uptake.py\n" in out
+    assert path not in out
 
 
 @pytest.mark.parametrize(
@@ -10695,13 +10733,13 @@ def test_a_change_outside_the_owners_read_list_arms_on_green(
 
 
 def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
-    """The list holds the owner's five paths, the two added later, docket's lexer and the gate.
+    """The list holds the owner's five simulator paths and the gate.
 
     `tests/` outside `subprojects/` was the owner's wording: the docket
-    package's own tests arm with the tooling. `.github/workflows/` and
-    `.claude/hooks/` are directories whole, so `.github/CODEOWNERS` and
-    `.claude/settings.json` arm. The lexer is one file, so the rest of
-    docket's `src/` arms with the tooling (`PL-JNYL`).
+    package's own tests arm with the tooling. The workflows, the hooks and
+    docket's lexer joined on 2026-10-03 and 2026-10-10 and left on the owner's
+    rule of 2026-10-12 that workflow items need no merge confirmation
+    (`PL-KPM2`), so a file under each arms beside the rest of the workflow lane.
     """
     assert arming.READ_PATHS == (
         "src/",
@@ -10709,9 +10747,6 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "docs/MODEL.md",
         "src/anesthesia_sim/data/",
         "README.md",
-        ".github/workflows/",
-        ".claude/hooks/",
-        "subprojects/docket/src/docket/shell.py",
     )
     for path in (
         "src/anesthesia_sim/app/main.py",
@@ -10720,20 +10755,20 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "tests/conftest.py",
         "docs/MODEL.md",
         "README.md",
-        ".github/workflows/update-armed.yml",
-        ".claude/hooks/direct-merge-guard.sh",
-        "subprojects/docket/src/docket/shell.py",
         ARM_GATE,
     ):
         assert arming.waits_on_read(path), path
         assert not arming.arms_on_green(path), path
     for path in (
         "subprojects/docket/tests/test_cli.py",
+        "subprojects/docket/src/docket/shell.py",
         "docs/MODEL.md.bak",
         "docs/README.md",
         "srcs/x.py",
         "tests.md",
+        ".github/workflows/update-armed.yml",
         ".github/CODEOWNERS",
+        ".claude/hooks/direct-merge-guard.sh",
         ".claude/settings.json",
         ".claude/rules/core-domain.md",
     ):
@@ -11026,17 +11061,6 @@ def test_the_gate_arm_holds_for_a_read_is_the_module_that_decides_the_answer() -
 
     assert arming.GATE == ARM_GATE
     assert (root / arming.GATE).resolve() == Path(arming.__file__).resolve()
-
-
-def test_the_lexer_arm_holds_for_a_read_is_the_one_the_guards_read() -> None:
-    """A move of `docket/shell.py` would leave the hold naming a file nothing reads (`PL-JNYL`).
-
-    The moved lexer would then arm on green, while it still decides what the
-    guard hooks refuse.
-    """
-    root = Path(__file__).resolve().parents[3]
-
-    assert (root / arming.LEXER).resolve() == Path(shell.__file__).resolve()
 
 
 def _flight_row(out: str, start: str) -> str:

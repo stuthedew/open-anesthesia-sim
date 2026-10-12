@@ -89,12 +89,21 @@ has already merged; what went unread is said beside it.
   owner, 2026-10-03, ratified, over holding them as before). `.github/workflows/`
   and `.claude/hooks/` joined the list the same day, since they decide merges
   and tags as this module does (project owner, 2026-10-03, ratified, over
-  leaving them armed on green; `PL-KKHD` records both answers);
-- docket's lexer, `LEXER`, joined the list when `PL-JNYL` made it the reader
-  every guard hook reads a Bash call through, so that a change to what the
-  guards refuse still waits on a read once it lies outside `.claude/hooks/`
-  (project owner, 2026-10-10, ratified, over arming lexer changes on green;
-  `PL-JNYL` records the answer);
+  leaving them armed on green; `PL-KKHD` records both answers), until the
+  owner's rule of 2026-10-12 below;
+- docket's lexer, `docket/shell.py`, joined the list when `PL-JNYL` made it the
+  reader every guard hook reads a Bash call through, so that a change to what
+  the guards refuse still waited on a read outside `.claude/hooks/` (project
+  owner, 2026-10-10, ratified, over arming lexer changes on green; `PL-JNYL`
+  records the answer), until the same rule;
+- workflow items need no merge confirmation (project owner, 2026-10-12: "don't
+  need to ask me for merge confirmation for workflow items"), so
+  `.github/workflows/`, `.claude/hooks/` and the lexer left the list and arm on
+  green with the rest of the workflow lane, while a product path waits as
+  before, in a change crossing both lanes too (`PL-KPM2`). This module stays
+  on the list so that the gate still cannot loosen itself: a change to it
+  could drop `src/` from the list and merge unread. That was put to the owner
+  the same day as a recommendation, and is built on it until he answers;
 - a test of the tooling under `tests/` - a file pytest collects that imports
   no `anesthesia_sim` on either side of the change - arms on green, as
   `subprojects/docket/tests/` does, and the rest of `tests/` stays on the list
@@ -204,14 +213,6 @@ RECORDS = "docs/pr-bodies/"
 #: naming a file nothing reads.
 GATE = TOOLING + "src/docket/arming.py"
 
-#: Docket's shell lexer, which every guard hook under `.claude/hooks/` reads a
-#: Bash call through since `PL-JNYL` merged the hooks' reader into it: a change
-#: to it changes what they refuse, as a change to them does, so it waits on a
-#: read beside them (`PL-JNYL` records the owner's answer). `test_cli` pins it
-#: to `docket.shell`'s own path, so a move cannot leave it naming a file
-#: nothing reads.
-LEXER = TOOLING + "src/docket/shell.py"
-
 #: The simulator's tests, at the root: `subprojects/docket/tests/` starts with
 #: `subprojects/`, so the prefix leaves it to the tooling.
 TESTS = "tests/"
@@ -237,25 +238,16 @@ TEST_FILE_PATTERNS = ("test_*.py", "*_test.py")
 #: file is itself. `TESTS` is the simulator's, but for a test of the tooling
 #: (`tests_the_tooling`), which arms on green since the owner's answer of
 #: 2026-10-05. `src/anesthesia_sim/data/` lies under `src/` and is kept for
-#: the reader who looks for it by name. `.github/workflows/` and
-#: `.claude/hooks/` decide merges and tags as this module does, and joined on
-#: the owner's answer of 2026-10-03; `LEXER` joined them with `PL-JNYL`.
-READ_PATHS = (
-    "src/",
-    TESTS,
-    "docs/MODEL.md",
-    "src/anesthesia_sim/data/",
-    "README.md",
-    ".github/workflows/",
-    ".claude/hooks/",
-    LEXER,
-)
+#: the reader who looks for it by name. `.github/workflows/`, `.claude/hooks/`
+#: and docket's lexer, which joined on the owner's answers of 2026-10-03 and
+#: 2026-10-10, left it on his rule of 2026-10-12 that workflow items need no
+#: merge confirmation (`PL-KPM2`): what is left is the simulator's.
+READ_PATHS = ("src/", TESTS, "docs/MODEL.md", "src/anesthesia_sim/data/", "README.md")
 
 #: The list as the answers name it, the gate included.
 READ_LIST = (
     f"src/, {TESTS} but a test importing no {PRODUCT_PACKAGE}, docs/MODEL.md, "
-    "src/anesthesia_sim/data/, README.md, .github/workflows/, .claude/hooks/, "
-    "docket's shell.py and arming.py"
+    "src/anesthesia_sim/data/, README.md and docket's arming.py"
 )
 
 

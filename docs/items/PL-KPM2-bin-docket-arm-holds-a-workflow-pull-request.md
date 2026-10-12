@@ -3,11 +3,13 @@ id: PL-KPM2
 title: bin/docket arm holds a workflow pull request for the owner's read where it changes .github/workflows/, .claude/hooks/ or docket's shell.py, though the owner said on 2026-10-12 that workflow items need no merge confirmation
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: review-hold
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, CLAUDE.md, docs/maintainer.md
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_claims.py, CLAUDE.md, docs/maintainer.md, docs/apparatus.md
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1432
 payoff: a workflow pull request merges on green CI without waiting for the owner's merge word, as he asked on 2026-10-12, while a change a learner or clinician could see still waits for his read
 verify: grep -q 'def test_arm_arms_a_workflow_path_the_owner_released_on_green' subprojects/docket/tests/test_cli.py
 ---
@@ -56,3 +58,17 @@ the store lie under `.github/workflows/` or `.claude/hooks/` or are docket's
 owner's answer above decides; `arming.py`'s decision record, `CLAUDE.md`'s
 arming bullet and `docs/maintainer.md` § "Read a simulator change before you
 arm it" say so; a test pins each released path arming on green.
+
+**Done 2026-10-12** (`#1432`). `arming.READ_PATHS` keeps the five simulator
+paths: `.github/workflows/`, `.claude/hooks/` and docket's lexer left it, so
+`bin/docket arm` answers `arm` for a branch changing them and nothing on the
+list, and a branch crossing both lanes holds by its product path alone.
+`arming.py` itself stays held on the recommendation above until the owner
+answers. `LEXER` and its pin went with the lexer's hold, since nothing reads the
+constant now. `arming.py`'s decision record, `CLAUDE.md`'s arming bullet,
+`docs/maintainer.md` § "Read a simulator change before you arm it" and
+`docs/apparatus.md`'s hooks paragraph say so. Pinned by
+`test_arm_arms_a_workflow_path_the_owner_released_on_green` in
+`subprojects/docket/tests/test_cli.py`, three paths, each red on `main`'s gate
+and each holding beside a product path; the read list's spelling test and
+`test_claims.py`'s arm assertions turned with the list.
