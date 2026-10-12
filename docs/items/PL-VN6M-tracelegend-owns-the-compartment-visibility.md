@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: interface-areas
+milestone: v0.5.24
 touches: src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/compartment_selection.py, src/anesthesia_sim/app/dashboard_frame.py, docs/ARCHITECTURE.md, .claude/rules/ui-areas.md, tests/integration, tests/unit/test_compartment_selection.py, docs/items/PL-9LNF-three-app-surfaces-own-state-a-layout-could.md, docs/items/PL-7694-the-compared-run-count-and-a-run-s-index-are.md
 added: 2026-09-16
 closed: 2026-10-12

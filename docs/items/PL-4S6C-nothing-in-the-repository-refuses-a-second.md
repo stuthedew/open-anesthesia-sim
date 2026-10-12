@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.24
 touches: CLAUDE.md, .claude/rules/apparatus-standard.md, docs/resident-instructions.md, docs/WORKING_NOTES.md, tools, tests/unit/test_fact_home_check.py, Makefile, .github/workflows/quality.yml, docket.toml, docs/apparatus.md, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; recorded as a generator head by its own design round, 2026-10-12
 added: 2026-10-12

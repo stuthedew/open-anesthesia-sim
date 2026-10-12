@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, refactor
 feature: parse-dont-validate
+milestone: v0.5.24
 touches: docs/items, src/anesthesia_sim
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21); the head's own work is a sweep, and each safety find is filed and placed by its own triage, as PL-0FJ8 was; recorded as a generator head by PL-74T0, 2026-10-11
 added: 2026-10-11
