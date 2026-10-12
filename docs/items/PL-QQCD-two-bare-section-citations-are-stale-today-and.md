@@ -14,6 +14,7 @@ closed: 2026-09-26
 pr: 1083
 payoff: a reader following a section citation in the roadmap or the model specification lands on the section it names instead of nowhere
 verify: ! grep -qF 'Current baseline: v0.4.26' ROADMAP.md && ! grep -qF 'wash-in validation test' docs/MODEL.md
+reenters: PL-B9VL
 ---
 
 **Problem.** Two bare section citations are stale today and nothing checks a bare citation: ROADMAP.md cites a Current baseline v0.4.26 heading that is now v0.5.10, and docs/MODEL.md cites Published wash-in validation test, now Published wash-in and elimination validation test

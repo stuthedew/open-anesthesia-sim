@@ -15,6 +15,7 @@ closed: 2026-09-26
 pr: 1091
 payoff: the two lost pull-request bodies are in the checkout, and PL-WFFX's record stops telling a session that a session-armed auto-merge never loses a body
 verify: grep -qF 'commit: 6d2f0531' docs/pr-bodies/1044.md && grep -qF 'commit: fdc76b16' docs/pr-bodies/1015.md && grep -qF '#1044' docs/items/PL-WFFX-*.md
+reenters: PL-WFFX
 ---
 
 **Problem.** #1044 landed on main with an empty squash body (6d2f0531) although a session armed its auto-merge, the path PL-WFFX's spent verdict credits with losing none since #918, and PL-WFFX says a new empty body reopens it

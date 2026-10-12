@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-03
 payoff: Gate 3's frozen list carries every entry the v0.6.0 gate deferred to it, the two non-debt ones included
 verify: grep -qi 'deferr' .claude/skills/docket/modes/release.md
+reenters: PL-J6HP
 ---
 
 **Problem.** Gate 3's freeze takes its list from bin/docket gate, which prints open debt only, so PL-5B1N (feature) and PL-B396 (ux, docs), both deferred to Gate 3 from Gate 2, will not be on it, and release.md's freeze mode never tells the freezing session to carry a previous gate's deferrals

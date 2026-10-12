@@ -7,6 +7,7 @@ touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/c
 added: 2026-09-22
 closed: 2026-09-23
 reason: Duplicate of PL-VYK1 (ready since 2026-09-07): the same origin/main tag block in the release mode. Missed at capture because PL-VYK1's touches still name .claude/skills/docket/SKILL.md, where the release mode lived before modes/release.md, so the near-duplicate search shared no path with it. What this filing adds - the MERGE_COMMIT line cli._hand_off prints, cli._untagged_warning's grep that matches no v0.4 or v0.5 cut, the #919-#923 timing, and the version-bump commit as a key known before the pull request exists - belongs on PL-VYK1.
+reenters: PL-TZ7T
 ---
 
 **Problem.** The tag commands the release mode prescribes tag origin/main, which is the release's merge commit only until the next merge lands: with sibling sessions merging minutes apart a tag can land on a later commit, and doc_check's version test cannot tell it apart because that commit still declares the same version

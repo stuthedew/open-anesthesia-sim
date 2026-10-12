@@ -14,6 +14,7 @@ closed: 2026-10-01
 pr: 1271
 payoff: the recovery record pr_body_check writes into the store reads pr:, id: and a subject's ids the way the store does, so a long front matter or a cited id cannot write a wrong record
 verify: ! grep -qF '[:2000]' tools/pr_body_check.py && ! grep -qF 're.findall(ID_PATTERN, subject)' tools/pr_body_check.py
+reenters: PL-PVW2
 ---
 
 **Problem.** tools/pr_body_check.py reads pr: and id: by regex over an item's first 2000 characters and takes ids from anywhere in a subject rather than vcs.leading_ids, so a long front matter or a mid-subject citation answers differently from the store's reader

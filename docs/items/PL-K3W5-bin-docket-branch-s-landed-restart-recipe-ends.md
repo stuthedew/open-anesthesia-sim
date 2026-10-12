@@ -13,6 +13,7 @@ closed: 2026-10-01
 pr: 1273
 payoff: a session restarting a branch whose pull request merged is told how to push over the old remote branch, instead of choosing between a pull that brings the merged history back and an unsanctioned force push
 verify: grep -rq 'def test_the_restart_recipe_says_what_the_push_meets' subprojects/docket/tests/
+reenters: PL-MT3R
 ---
 
 **Problem.** bin/docket branch's landed restart recipe ends at 'then push' without saying that a remote still holding the old branch - the case whenever a commit was pushed after the merge - refuses a plain push as non-fast-forward, so a session following it is left to choose between git pull, which brings the merged history back, and a force push the recipe never sanctioned

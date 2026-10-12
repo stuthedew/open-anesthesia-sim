@@ -13,6 +13,7 @@ closed: 2026-09-27
 pr: 1133
 payoff: a check wired into make check in one mode can no longer merge unenforced because CI happens to run the same script in another mode
 verify: grep -q 'def test_gate_parity_refuses_a_mode_only_one_gate_runs' tests/unit/test_doc_check.py
+reenters: PL-0HPV
 ---
 
 **Problem.** tools/doc_check.py's check_gate_parity matches a gate script by its path and not by the arguments it runs with, so a mode one gate runs and the other never does passes as covered: tools/pr_body_check.py --anchors ran only in make check from PL-73G8 until PL-3PH2, counted as covered in CI by pr-title.yml's --check, a different mode of the same script

@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-23
 payoff: a release cut is told on its own branch that the previous notes owe a tag-span pointer, instead of make check turning red on main for every session once the owner pushes the new tag
 verify: grep -q 'def test_the_newest_spans_strangers_are_reported_once_the_next_release_has_notes' tests/unit/test_doc_check.py
+reenters: PL-P669
 ---
 
 **Problem.** check_tag_span_covers_its_notes exempts the newest tag's span, not the newest cut's, so a release branch is never told the previous notes owe a tag-span pointer and main turns red only after the owner pushes the new tag

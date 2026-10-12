@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/checks.py
 added: 2026-09-22
 closed: 2026-09-23
 reason: No rule earned: shaped like its sibling rules (open items, from a capture-date cutover) it would have refused none of the seven node-id commands ever recorded - two written 2026-09-02 before either cutover, five in the commits that closed their items - and the one open instance, PL-ZLNN, leads with its grep and loses the trailing clause when started. Recorded as a member of PL-1P5V, whose recommended allowlist refuses the shape by default.
+reenters: PL-6TP8
 ---
 
 **Problem.** A verify: command naming a pytest node id (path::test) exits 4 before the work when the test is new and re-proves make check when it exists, and both the prerequisite rule and PL-Q8RQ's -k rule leave it alone: six commands have used the shape, one still open (PL-ZLNN)

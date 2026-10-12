@@ -59,19 +59,21 @@ page and decides which file a session reads.
    it in the one error it still raises about `pr`: a landed closure recording
    none.
 
-   **Act on what `bin/docket set --status done` prints about the items you
-   just unblocked.** It
-   names the items whose last recorded blocker this closure clears - the
-   reverse of `blocked-by`, derived rather than stored. Do not defer them to a
-   grooming pass: you are holding the context the judgment needs, and the pass
-   is what this replaced. Read each against the tree and either `bin/docket set
-   <id> --status ready` or write what is really holding it into `blocked-by`,
-   in this branch's commit. Of 13 items reached this way across the two passes
-   that preceded the print, 6 were genuinely startable and the rest were
-   already done inside another item, held by a condition nobody had declared,
-   or carrying a user-facing question written in since triage - so the reading
-   is a candidate list and never a verdict, which is why nothing promotes them
-   for you (`PL-PQC7`, `PL-6T44`).
+   **Move every item `bin/docket set --status done` says you just unblocked,
+   in this pull request.** It names the items whose last recorded blocker this
+   closure clears - the reverse of `blocked-by`, derived rather than stored -
+   and `bin/docket check` refuses each one left at `blocked`, so the pull
+   request cannot go green until all of them have left it (`PL-2349`). You are
+   holding the context the judgment needs, which a later grooming pass would
+   not be. Read each against the tree and either `bin/docket set <id> --status
+   ready` with its `--verify` and `--payoff` written for the end state, or
+   write what is really holding it into `blocked-by` - an item for the
+   condition, per `PL-0H5D` - in this branch's commit. Of 13 items reached
+   this way across the two passes that preceded the print, 6 were genuinely
+   startable and the rest were already done inside another item, held by a
+   condition nobody had declared, or carrying a user-facing question written
+   in since triage - so which way each moves is a judgment nothing makes for
+   you, and only leaving it `blocked` is refused (`PL-PQC7`, `PL-6T44`).
 
    **Two of them are worth more than the rest, and neither is visible from the
    id.** An item classed `safety` or `science` that also carries `anticipated`

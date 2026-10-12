@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-10
 payoff: fixture_id_check reads a front matter's edges, a quoted scalar's start and a settings.json hook command as their formats do, so a malformed id there is neither missed nor falsely reported
 verify: grep -q 'def test_the_front_matter_joins_find_its_edges_through_docket' tests/unit/test_fixture_id_check.py && grep -q 'def test_a_comma_ending_a_plain_scalar_opens_no_quoted_scalar' tests/unit/test_fixture_id_check.py && grep -q 'def test_a_settings_json_hook_command_is_read_decoded' tests/unit/test_fixture_id_check.py
+reenters: PL-KGYT
 ---
 
 **Problem.** fixture_id_check reads three forms beside its joins wrongly - _front_matter_joins finds a front matter's edges itself so a closing marker with trailing space is no close and a document-end marker is one, _opens_a_node takes a comma or bracket ending a plain scalar's text for a node opener, and scan_text reads .claude/settings.json raw so a JSON-escaped line continuation is not decoded - and a malformed fixture id is misread; latent
@@ -46,6 +47,8 @@ way, and no hook command holds the escape.
 comma form reports `PL-K7QXZ` where PyYAML reads `PL-K7QX\ Z`; and a
 `settings.json` hook command holding `\\\n` before `Z` reports nothing where
 bash joins `PL-K7QXZ`. None of the three forms stands in `.claude/`.
+
+**A fourth form, found 2026-10-12 by `PL-5DZ8`'s closing sweep.** `_opens_a_node` sees an anchor or tag ahead of the quote as no node opener, so `description: &a "PL-K7\` followed by `  QX"` is not joined and `PL-K7` is reported, where `docket.frontmatter._node_start` skips the anchor and reads a quoted scalar. The Done-when's "place a double-quoted scalar only where YAML opens one" covers it.
 
 **Why it matters.** Each form either hides a malformed id from the check or
 reports a well-formed one as malformed, and the first keeps a second reading

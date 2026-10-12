@@ -649,12 +649,13 @@ def promotable(items: list[Item]) -> list[Item]:
 
     `_startable` filters on `status` alone and never opens `blocked_by`, so an
     item stays out of the ranking until somebody grooms the status by hand -
-    however long ago the thing it waited for closed. `docket check` has derived
-    this same set all along and says so in an advisory. This exports the
-    reading so `docket next` can name the ids at the moment a session is
-    choosing, rather than leaving them to a command it has no reason to run:
-    on 2026-09-17 the head of the chain holding three more of v0.5.0's own
-    scope was invisible that way (`PL-6T44`).
+    however long ago the thing it waited for closed. `docket check` reads this
+    same set - an advisory until `PL-2349`, an error since, so the pull request
+    that closes a blocker moves what it released. This exports the reading so
+    `docket next` can name the ids at the moment a session is choosing, rather
+    than leaving them to a command it has no reason to run: on 2026-09-17 the
+    head of the chain holding three more of v0.5.0's own scope was invisible
+    that way (`PL-6T44`).
 
     **Candidates, never a verdict.** That every blocker has closed is a fact
     about the field; that nothing *else* holds the item is not, and the

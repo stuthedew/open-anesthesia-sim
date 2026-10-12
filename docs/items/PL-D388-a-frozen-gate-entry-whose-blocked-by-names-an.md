@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) and not
 added: 2026-10-03
 payoff: A frozen entry can leave what the gate is asked to clear only through a disposition its section records, so bin/docket wave cannot report Gate 2 clear while an entry like PL-VV6N sits undecided behind a prerequisite no list holds
 verify: grep -q 'def check_gate_prerequisites' tools/doc_check.py
+reenters: PL-WD5Z, PL-J6HP
 ---
 
 **Problem.** A frozen gate entry whose blocked-by names an item no list holds silently leaves what bin/docket wave asks the gate to clear: PL-VV6N sits under 'Cleared before v0.6.0 begins' behind PL-YVV4, so Gate 2 can read clear with it undecided, and nothing checks the 2026-08-30 rule that what an entry needs is let in

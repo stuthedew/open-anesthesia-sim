@@ -3,10 +3,12 @@ id: PL-QPN8
 title: src/anesthesia_sim/data/patients/reference_adult.json's Meybohm et al. 2021 note says its Tables 1-3 could not be read, but pmc.ncbi.nlm.nih.gov answered through the egress proxy on 2026-10-06, so read PMC7943506's tables and settle whether they list a blood or venous volume
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, docs
 touches: src/anesthesia_sim/data/patients/reference_adult.json
 added: 2026-10-06
+closed: 2026-10-11
+pr: 1424
 payoff: the stored venous pool's provenance note says what its source's tables actually list, instead of recording a gap that no longer has to exist
 verify: ! grep -qF 'Tables 1-3 could not be retrieved' src/anesthesia_sim/data/patients/reference_adult.json
 ---

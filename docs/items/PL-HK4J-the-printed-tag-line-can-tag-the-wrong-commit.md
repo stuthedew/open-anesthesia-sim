@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 payoff: a tag line run in a shallow clone stops instead of tagging the clone's oldest fetched commit as the release
 verify: grep -q 'def test_tag_line_refuses_a_shallow_clone' subprojects/docket/tests/test_release.py
+reenters: PL-QHCW
 ---
 
 **Problem.** The printed tag line can tag the wrong commit in a shallow clone: the oldest fetched commit reads as adding every file, so a cut older than the clone's depth resolves to that commit (release.tag_commands; cli._cut_seen_here and doc_check already refuse to name a cut there)

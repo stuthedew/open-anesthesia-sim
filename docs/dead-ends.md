@@ -42,8 +42,10 @@ arrives with slack rather than being forced on whoever trips the cap mid-task.
 Going over warns louder and still does not go red — a blocked commit on an
 unrelated task is how a session learns to raise the cap, which is the one
 repair that is never right. Only a structural fault fails: an entry citing an
-id that resolves to nothing, or one wrapped across two lines. Both are
-otherwise silent.
+id that resolves to nothing, one wrapped across two lines, or a bullet opening
+with a bolded title that is not in an entry's shape, `- **approach** — why`,
+with nothing between the closing `**` and the dash. All three are otherwise
+silent: the last is never emitted at all.
 
 **What does not belong here.** An item dropped as a duplicate, as superseded,
 or as out of scope. Those are ordinary queue outcomes and their `reason:` field
@@ -71,5 +73,5 @@ have to rediscover by building the thing.
 ## Process claims that did not survive checking
 
 - **Raising the apparatus capture bar on the self-generation rate** — refuted: the count never run came back 67% still-real findings. Name the number and count it before tightening anything. `PL-LKGL`
-- **Detecting duplicate captures by shared cited referents** (item ids, shas, `#NNN`, paths) — refuted 2026-09-16: fires on 84% of open items and ranks the true original in the top 3 for only 3 of 5 confirmed pairs; same-day narrowing is worse, 95%. This store is 86.1% cross-referenced, so referent overlap cannot separate a duplicate from an ordinary citation. Title terms are worse again. `PL-85NT`
+- **Detecting duplicate captures by shared cited referents (item ids, shas, `#NNN`, paths)** — refuted 2026-09-16: fires on 84% of open items and ranks the true original in the top 3 for only 3 of 5 confirmed pairs; same-day narrowing is worse, 95%. This store is 86.1% cross-referenced, so referent overlap cannot separate a duplicate from an ordinary citation. Title terms are worse again. `PL-85NT`
 - **A pull request template to make filing more reliable** — refuted 2026-09-20: the four-path search runs whether one exists or not, GitHub applies no template to an API-created body, and the harness reads one as layout and ignores its rules. 30 of 30 recent bodies already carry the id, the rationale and the verification claim. `PL-NDQD`

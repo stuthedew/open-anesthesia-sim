@@ -3,13 +3,16 @@ id: PL-QFFF
 title: tools/dead_ends.py's ENTRY pattern does not match docs/dead-ends.md line 74, whose bold title is followed by a parenthetical before its dash, so the session-start digest drops that dead end with nothing reported and shows 10 of the 11
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tools/dead_ends.py, tests/unit/test_dead_ends.py, docs/dead-ends.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-11
+pr: 1423
 payoff: every session starts with the whole dead-ends record, and an entry the tool cannot read fails make check instead of vanishing from the digest
 verify: grep -q 'def test_an_entry_the_pattern_cannot_read_is_refused' tests/unit/test_dead_ends.py
+reenters: PL-F5B9
 ---
 
 **Problem.** tools/dead_ends.py's ENTRY pattern does not match docs/dead-ends.md line 74, whose bold title is followed by a parenthetical before its dash, so the session-start digest drops that dead end with nothing reported and shows 10 of the 11
@@ -58,3 +61,14 @@ this is not that head's fact. The fact misread is which bullets of
 which the wrap refusal reads, and `ENTRY`, which `emit`, `budget` and the id
 check read, and nothing reports where they disagree. No head's `misread:`
 states it.
+
+**Done 2026-10-11 (`#1423`).** The entry was rewritten to the shape `ENTRY`
+reads - its parenthetical moved inside the bold title - rather than `ENTRY`
+widened to admit an aside. With `check` now refusing any bullet `OPENING`
+matches and `ENTRY` cannot read, the one shape is enforced and named in the
+error and in the file's preamble, so a second grammar would buy nothing a
+writer cannot get by moving two asterisks. A bullet already refused as wrapped
+is not also called unreadable: rejoined it may read, and
+`tests/unit/test_doc_check.py` pins the margin case's output as that one
+message. `emit` prints all eleven entries, 2,865 bytes, under the 3,200-byte
+nudge band; run against `origin/main`'s copy of the file, `check` names line 74.

@@ -14,6 +14,7 @@ closed: 2026-09-26
 pr: 1071
 payoff: a verify: command that proves nothing is refused as it is written rather than a make check later, so docket verify never holds one that would accept a branch that did none of the work
 verify: grep -q 'def test_set_refuses_a_verify_that_already_passes' subprojects/docket/tests/test_cli.py
+reenters: PL-1P5V, PL-6TP8
 ---
 
 **Problem.** bin/docket set writes a verify: command that already passes, because it validates without running the verify it is writing, so a grep that matches its own frontmatter line (PL-CBDX, 2026-09-25) is accepted and fails the next make check
