@@ -1174,12 +1174,17 @@ def test_the_two_agent_fills_iso_5360_makes_inseparable_stay_measured() -> None:
 
 
 def test_a_color_declared_in_the_view_is_refused(tmp_path: Path) -> None:
-    """The convention PL-2CS8 established, held by the tool rather than by habit."""
-    root = _repo(tmp_path, view=VIEW_SOURCE + '\nSTRAY = "#123456"\n')
+    """The convention PL-2CS8 established, held by the tool rather than by habit.
+
+    A `#RGB` is a color too, though not one this tool can measure, so it is
+    refused here rather than going unread (PL-PXT7).
+    """
+    root = _repo(tmp_path, view=VIEW_SOURCE + '\nSTRAY = "#123456"\nSHORT = "#0AF"\n')
 
     misplaced = contrast_check.check_colors_live_in_the_theme(root)
 
     assert any("STRAY" in message for message in misplaced)
+    assert any("SHORT" in message for message in misplaced)
     assert any("theme.py" in message for message in misplaced)
 
 
@@ -1487,9 +1492,12 @@ def test_a_string_holding_no_six_digit_colour_is_left_alone(tmp_path: Path) -> N
     `&#128512;` is a rich-text label's character reference rather than a
     color, a nine-character run is no six-digit color, and a docstring is
     prose; a stylesheet interpolating a theme constant is the form PL-2CS8
-    asks for.
+    asks for, and one joined to it with `+` that opens with an id selector
+    is a stylesheet rather than a color declared outside the theme.
     """
     view = VIEW_SOURCE + (
+        "\n"
+        'TRANSPORT_STYLE = "#transport { color: " + INK + "; }"\n'
         "\n"
         "def paint(w):\n"
         '    """Draw the label in #D9E2EC, which the theme declares."""\n'
@@ -1497,8 +1505,10 @@ def test_a_string_holding_no_six_digit_colour_is_left_alone(tmp_path: Path) -> N
         '    w.setText("Smile &#128512;")\n'
         '    w.setObjectName("run#D9E2EC1")\n'
     )
+    root = _repo(tmp_path, view=view)
 
-    assert contrast_check.check_colors_live_in_the_theme(_repo(tmp_path, view=view)) == ()
+    assert contrast_check.check_colors_live_in_the_theme(root) == ()
+    assert "TRANSPORT_STYLE" not in contrast_check.read_palette(root)
 
 
 def test_a_base_module_whose_path_git_would_quote_is_read(tmp_path: Path) -> None:

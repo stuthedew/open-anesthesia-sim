@@ -242,6 +242,12 @@ SHORTFALLS_SOURCE = Path("tools/contrast_check.py")
 #: Not inside a longer run of hex digits or a word, and not a character
 #: reference such as `&#128512;`, which a rich-text label can hold.
 HEX_COLOR_RE = re.compile(r"(?<![0-9A-Za-z_&])#[0-9A-Fa-f]{6}(?![0-9A-Za-z_])")
+#: A constant's whole value written as a hex color, of any length: what a
+#: name has to hold to be read as a color. Any length, so that a `#RGB` stays
+#: a color here and fails loudly where it is measured; the whole value, since
+#: a `+` also builds a stylesheet opening with an id selector,
+#: `"#transport { color: " + INK`, which is no color (PL-PXT7).
+HEX_VALUE_RE = re.compile(r"#[0-9A-Fa-f]+")
 #: A stylesheet rule for the disabled state: `:disabled`, or the same state
 #: negated, `:!enabled` (PL-PXT7). Qt reads a pseudo-state's name in any case,
 #: and only written straight after its `:` or `!`: measured on Qt 6.11.2, where
@@ -1306,7 +1312,7 @@ def palette_from_sources(sources: Iterable[tuple[Path, str]]) -> dict[str, str]:
                     palette.update(_collect_agent_schemes(value, palette))
                     continue
                 resolved = _string_value(value, palette)
-                if resolved is not None and resolved.startswith("#"):
+                if resolved is not None and HEX_VALUE_RE.fullmatch(resolved):
                     palette[target.id] = resolved
     return palette
 
@@ -1474,7 +1480,7 @@ def check_colors_live_in_the_theme(root: Path) -> tuple[str, ...]:
                 if not isinstance(target, ast.Name):
                     continue
                 resolved = _string_value(value, theme)
-                if resolved is not None and resolved.startswith("#"):
+                if resolved is not None and HEX_VALUE_RE.fullmatch(resolved):
                     reported.add(id(value))
                     offenders.append(
                         f"  {target.id} is declared in {module}; every color belongs in "
