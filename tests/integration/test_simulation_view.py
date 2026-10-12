@@ -1652,6 +1652,95 @@ def test_a_halt_is_shown_when_the_snapshot_itself_is_refused(
     assert run._start_button.isEnabled() is False
 
 
+def test_an_agent_change_on_a_halted_run_restates_the_halt(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    """A pick on a run halted by its own snapshot is answered by that halt, not a raise Qt prints.
+
+    `_handle_agent_change` reads the snapshot to decide between nothing, a
+    new case and a question, inside a slot; on a run whose snapshot refuses
+    (`PL-7DJK`) the read raised there, so the toolkit printed the traceback
+    and the pick was accepted with nothing on screen answering it: no
+    dialog, and the selector naming an agent the run is not of (`PL-V2HC`).
+    The read now halts the run on the raise - the halt it is already in,
+    whose first reason the controller keeps - and restates it, and the
+    selector is put back to the running agent, which the controller names
+    since the snapshot cannot. Reset stays the way out the banner names.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    view = _shown_view(application, controller)
+    view.render_tick()
+    _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
+    view.render_tick()
+    run = view.runs[0]
+    reason = (
+        "SimulationConfigurationError: alveolar partial_pressure_fraction of 1.0000001 is "
+        "outside 0 to 1"
+    )
+    assert run._status_text.text() == "Stopped — simulation error"
+    capfd.readouterr()
+
+    _select_agent(run, "desflurane")
+
+    assert "Traceback" not in capfd.readouterr().err
+    assert run._new_case_dialog is None
+    assert run._agent_dropdown.currentData() == "sevoflurane"
+    assert controller.agent_id == "sevoflurane"
+    status = controller.status()
+    assert status.failure_reason is not None
+    assert status.failure_reason.startswith(reason)
+    assert run._status_text.text() == "Stopped — simulation error"
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert notice.startswith(f"Simulation stopped — {reason}")
+    assert run._start_button.isEnabled() is False
+    assert run._reset_button.isEnabled() is True
+
+
+def test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    """The labels a dragged slider owes at once come from the snapshot; its refusal is the halt.
+
+    `_apply_setting` rewrites this run's own labels after a coalesced change
+    from a snapshot read once the setting has been applied, outside the gate
+    the setting went through, so on a paused run whose snapshot refuses
+    (`PL-7DJK`) the drag was accepted and the read raised out of the slot:
+    the dial moved, the status word read "Paused" over a run no frame could
+    draw, and the toolkit printed what nothing on screen said (`PL-V2HC`).
+    The read now halts the run and states the halt from the controller's
+    status - the first statement of it here, since a paused run draws no
+    frame to refuse.
+    """
+
+    controller = _paused_run_with_history()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    assert run._status_text.text() == "Paused"
+    _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
+    capfd.readouterr()
+
+    _set_fresh_gas_flow(run, 4.0)
+
+    assert "Traceback" not in capfd.readouterr().err
+    reason = (
+        "SimulationConfigurationError: alveolar partial_pressure_fraction of 1.0000001 is "
+        "outside 0 to 1"
+    )
+    status = controller.status()
+    assert controller.has_failed is True
+    assert status.failure_reason is not None
+    assert status.failure_reason.startswith(reason)
+    assert run._status_text.text() == "Stopped — simulation error"
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert notice.startswith(f"Simulation stopped — {reason}")
+    assert run._pause_button.isEnabled() is False
+    assert run._start_button.isEnabled() is False
+
+
 def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplication) -> None:
     """A Reset the core refuses stops the run through the failed-step path, and clears nothing.
 

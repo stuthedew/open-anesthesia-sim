@@ -522,6 +522,17 @@ class SimulationController:
 
         return self._failure_reason is not None
 
+    @property
+    def agent_id(self) -> str:
+        """The agent this run is of, read from the run's settings and from no compartment.
+
+        The snapshot carries the same id, so this is for a reader that cannot
+        have the snapshot: `RunView` puts the agent selector back to the
+        running agent on a run whose snapshot refuses (`PL-V2HC`).
+        """
+
+        return self._agent_id
+
     def fail(self, reason: str) -> None:
         """Halt the session because something raised, recording why.
 
@@ -675,7 +686,10 @@ class SimulationController:
         starts a new case, which is what `PL-R3KB` made that gesture mean.
 
         Raises:
-            SimulationConfigurationError: This run is a branch.
+            SimulationConfigurationError: This run is a branch; or the
+                snapshot the settings are carried over from refuses a value
+                (`snapshot`), read before the run is paused so that the
+                refusal changes nothing (`PL-V2HC`).
         """
 
         if self._opened_from is not None:
@@ -685,8 +699,8 @@ class SimulationController:
                 "new case, so change it on the run this branch came from or start a new one"
             )
 
-        self.pause()
         current = self.snapshot()
+        self.pause()
 
         self._forget_reached_marks()
         self._build_state(

@@ -3,11 +3,13 @@ id: PL-V2HC
 title: A halted run whose snapshot refuses cannot change agent: RunView._handle_agent_change and SimulationController.set_agent both read snapshot() while the selector is unlocked on a halted run, so the slot's raise is printed by Qt and the new-case dialog never opens; Reset is the one exit and the halt banner names it (found at PL-7DJK)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py, tests/integration/test_controller.py
 added: 2026-10-11
+closed: 2026-10-12
+pr: 1428
 payoff: a control used on a halted run answers with the halt already on screen, never by silently doing nothing
 verify: grep -q 'def test_an_agent_change_on_a_halted_run_restates_the_halt' tests/integration/test_simulation_view.py
 ---

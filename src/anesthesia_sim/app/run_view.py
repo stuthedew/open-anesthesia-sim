@@ -640,7 +640,34 @@ class RunView(QWidget):
 
         self._notice_text.set_notice(compared_run_notice(banner, self._run_name))
 
-    def _refresh_against_last_frame(self) -> None:
+    def _snapshot_for_a_control(self) -> SimulationSnapshot | None:
+        """Read this run's snapshot to answer a control, halting the run where the read refuses.
+
+        `_handle_agent_change` decides between nothing, a new case and a
+        question from the snapshot, and `_apply_setting` rewrites this run's
+        labels from it after a coalesced change; both run inside a slot,
+        where a raise is printed by the toolkit and otherwise lost
+        (`SimulationView.present` explains). On a run whose own snapshot
+        refuses a value - the halt `PL-7DJK` made visible - the read raised
+        there, so the control accepted the choice and nothing on screen
+        answered it (`PL-V2HC`). The raise is the halt the run is in, or is
+        about to be in: `_halt_run` states it from the controller's status,
+        which builds no compartment value, and a controller keeps the first
+        reason it was given, so a run already halted for this refusal
+        restates the same halt.
+
+        Returns:
+            The snapshot, or `None` once the run has been halted for the
+            raise and the halt is on screen.
+        """
+
+        try:
+            return self.snapshot()
+        except Exception as error:
+            self._halt_run(error)
+            return None
+
+    def _refresh_against_last_frame(self, snapshot: SimulationSnapshot) -> None:
         """Rewrite this run's own widgets now, against the frame still on screen.
 
         What a coalesced slider change owes at once is the view beside the
@@ -648,10 +675,13 @@ class RunView(QWidget):
         applied (`PL-018`); the frame itself waits for the render tick
         (`PL-R2YM`). Before the first presentation there is no frame to
         refresh against, and the first presentation writes everything.
+
+        Args:
+            snapshot: This run's state, read by `_snapshot_for_a_control`.
         """
 
         if self._frame is not None:
-            self.refresh(self.snapshot(), self._frame, self._run_index)
+            self.refresh(snapshot, self._frame, self._run_index)
 
     def present_halt(self) -> None:
         """Say this run has stopped, from its controller's status alone, with no frame drawn.
@@ -787,7 +817,10 @@ class RunView(QWidget):
         and the clearing of one, are the states in which the dial on screen
         and the simulation disagree, and neither may wait a tick
         (`PL-R2YM`). A coalesced change still rewrites this run's own
-        labels at once.
+        labels at once, from a snapshot read through
+        `_snapshot_for_a_control`: a run whose snapshot refuses is halted
+        and says so, where the raise used to escape the slot after the
+        setting had been applied (`PL-V2HC`).
 
         Args:
             apply: The controller call that applies the setting.
@@ -811,7 +844,12 @@ class RunView(QWidget):
         deferred = coalesce and settled_notice is None and self._rejected_setting_notice is None
 
         if deferred:
-            self._refresh_against_last_frame()
+            snapshot = self._snapshot_for_a_control()
+
+            if snapshot is None:
+                return
+
+            self._refresh_against_last_frame(snapshot)
 
         self.presentation_requested.emit(deferred)
 
@@ -946,7 +984,11 @@ class RunView(QWidget):
         switch discards the case (`PL-R3KB`). While that question is open a
         further selection is reverted and not answered: the open dialog
         names one agent, and its answer must start that agent and no other
-        (`PL-25KS`).
+        (`PL-25KS`). On a run whose snapshot refuses, the selection is
+        answered by the halt that refusal is, restated, and the selector is
+        put back to the agent the controller names, since the snapshot that
+        would name it is what refused (`PL-V2HC`); Reset is the way out the
+        halt banner names.
         """
 
         agent_id = self._agent_dropdown.itemData(index)
@@ -954,14 +996,14 @@ class RunView(QWidget):
         if agent_id is None:
             return
 
-        snapshot = self.snapshot()
+        snapshot = self._snapshot_for_a_control()
+
+        if snapshot is None:
+            self._show_running_agent(self.controller.agent_id)
+            return
 
         if self._pending_agent_id is not None:
-            with QSignalBlocker(self._agent_dropdown):
-                self._agent_dropdown.setCurrentIndex(
-                    self._agent_dropdown.findData(snapshot.agent_id)
-                )
-
+            self._show_running_agent(snapshot.agent_id)
             return
 
         if agent_id == snapshot.agent_id:
@@ -972,6 +1014,19 @@ class RunView(QWidget):
             return
 
         self._confirm_new_case(snapshot, agent_id)
+
+    def _show_running_agent(self, agent_id: str) -> None:
+        """Put the selector back on `agent_id`, the agent this run is of, without answering it.
+
+        The combo reports the reader's pick as a change before the handler
+        runs, so a pick that is not followed - one made while a question is
+        open, or on a run whose snapshot refuses - leaves the selector naming
+        an agent the run is not of until it is put back. Blocked, so that
+        putting it back is not read as a second pick.
+        """
+
+        with QSignalBlocker(self._agent_dropdown):
+            self._agent_dropdown.setCurrentIndex(self._agent_dropdown.findData(agent_id))
 
     def _start_new_case(self, agent_id: str) -> None:
         """Switch the run to `agent_id` through the setting gate.
@@ -991,9 +1046,7 @@ class RunView(QWidget):
         """
 
         self._pending_agent_id = agent_id
-
-        with QSignalBlocker(self._agent_dropdown):
-            self._agent_dropdown.setCurrentIndex(self._agent_dropdown.findData(snapshot.agent_id))
+        self._show_running_agent(snapshot.agent_id)
 
         question = new_case_question(
             snapshot, AGENT_DISPLAY_NAMES[agent_id], len(self.adjustments(snapshot))

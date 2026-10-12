@@ -1592,6 +1592,35 @@ def test_a_snapshot_whose_quotient_is_refused_names_the_compartment_and_the_stat
     )
 
 
+def test_set_agent_on_a_run_whose_snapshot_refuses_raises_before_it_changes_anything(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`set_agent` carries the settings over from the snapshot, so its refusal is `set_agent`'s.
+
+    The snapshot is read before the run is paused, so the refusal leaves the
+    run as it was - running, on its agent, nothing failed - as a refused
+    setting does everywhere else; and `agent_id` still answers, from the
+    settings record and no compartment, which is what the interface puts the
+    selector back to (`PL-V2HC`).
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=5.0)
+    _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^alveolar partial_pressure_fraction of 1\.0000001 is outside 0 to 1",
+    ):
+        controller.set_agent("desflurane")
+
+    assert controller.agent_id == "sevoflurane"
+    assert controller.status() == RunStatus(
+        is_running=True, supported_limit_reason=None, failure_reason=None
+    )
+
+
 def test_wash_in_is_formed_per_drawn_column() -> None:
     """The ratio is a property of the instant plotted, not of a recorded sample.
 
