@@ -3,15 +3,16 @@ id: PL-4S6C
 title: Nothing in the repository refuses a second reading of a fact it already answers, so one-answer closed spent three times on bounded sweeps (PL-PVW2, PL-KGYT, PL-5DZ8) and re-entered each time; make one source of truth for a shared fact a hard principle of the code, enforced where a check can decide it (project owner, 2026-10-12)
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: defect
 feature: one-answer
-touches: CLAUDE.md, .claude/rules/apparatus-standard.md, docs/resident-instructions.md, tools, tests/unit/test_fact_home_check.py, Makefile, .github/workflows/quality.yml, docket.toml, docs/items
+touches: CLAUDE.md, .claude/rules/apparatus-standard.md, docs/resident-instructions.md, tools, tests/unit/test_fact_home_check.py, Makefile, .github/workflows/quality.yml, docket.toml, docs/apparatus.md, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; recorded as a generator head by its own design round, 2026-10-12
 added: 2026-10-12
-payoff: a second reader of git, the GitHub API, the tree, the item store or a shell command outside that fact's home fails make check, so one-answer stops re-entering one tool at a time and a head's spent verdict holds
+payoff: a second reader of git, the tree, the GitHub API, the default branch or a shell command outside that fact's home, or a constant defined in two apparatus files, fails make check, so one-answer stops re-entering one tool at a time and a head's spent verdict holds
+verify: grep -q 'A shared fact has one source of truth' CLAUDE.md && grep -q 'fact_home_check' .claude/rules/apparatus-standard.md && grep -q 'python3 tools/fact_home_check.py' Makefile && grep -q 'python3 tools/fact_home_check.py' .github/workflows/quality.yml && grep -q 'tests/unit/test_fact_home_check.py' docket.toml
 root-cause-of: PL-PVW2, PL-KGYT, PL-5DZ8, PL-D23H
-generator: live - three heads stating this fact closed spent on an enumerated sweep and were re-entered (PL-PVW2 by six filings, PL-KGYT by five, PL-5DZ8 by PL-D23H on the day it closed, per bin/docket inflow 2026-10-12), and nothing in make check refuses a reader of git, the GitHub API, the tree, the item store or a shell command outside that fact's home, so the next tool that needs one writes its own
+generator: live - three heads stating this fact closed spent on an enumerated sweep and were re-entered (PL-PVW2 by six filings, PL-KGYT by five, PL-5DZ8 by PL-D23H on the day it closed, per bin/docket inflow 2026-10-12), and until this head's check lands nothing in make check refuses a reader of git, the tree, the GitHub API, the default branch or a shell command outside that fact's home, so the next tool that needs one writes its own
 misread: Which spelling of a repeated predicate is the answer, when tools, hooks and docket each spell it
 reenters: PL-5DZ8
 ---
@@ -43,16 +44,25 @@ and built none. So the repository has a rule every session may read and
 nothing that refuses the copy, and the record above is what that produces:
 cleanup, head by head, with the mechanism in place for the next.
 
-**The owner's words, 2026-10-12**, in the Ship v0.6.0 project chat, answering
-that finding: "I want this to be a hard coding principle. Shared facts should
-be one source of truth", and "Starting ASAP. That is a generator". *Hard*
-overrides `PL-HC8P`'s prose-not-check call for the decidable part: that call
-was a session's recommendation the owner agreed with, and the measurement
-that reopens it is the three re-entries above (project owner, 2026-10-12,
-over keeping the rule as prose alone). The judgment half - whether two
-readers read one fact where neither reaches a primitive a check can name -
-stays prose, as `CLAUDE.md` § "Prefer deterministic tooling over repeated
-model work" refuses to script it.
+**The owner's words, 2026-10-12**, in the Ship v0.6.0 project chat, in the
+order written: at 13:07Z, "I want this to be a hard coding principle. Shared
+facts should be one source of truth" and "Starting ASAP. That is a
+generator"; at 13:09Z, answering the coordinator's offer of a check, "I'm not
+saying we need to build a check, but this seems like critical
+context/instruction to follow"; at 13:10Z, "I'm not saying no check. I'm
+saying make sure this happens. However the best approach". The last two
+reached this thread after its first two replies, and the third was read for
+an hour as a decision against a check, which the fourth says it was not. Read
+together: the requirement is that the principle holds; the instruction is
+wanted in its own right, as context every session reads; and the approach
+that makes it hold is this session's to choose on the evidence and to
+recommend with its reason. *Hard* therefore reopens `PL-HC8P`'s
+prose-not-check call for the decidable part, on ordinary evidence: that call
+was a session's recommendation the owner agreed with, and the three
+re-entries above are the measurement. The judgment half - whether two readers
+read one fact where neither reaches a primitive a check can name - stays
+prose, as `CLAUDE.md` § "Prefer deterministic tooling over repeated model
+work" refuses to script it.
 
 **Measured 2026-10-12, on main at 98673556.**
 
@@ -63,7 +73,11 @@ model work" refuses to script it.
 - 81 string literals of a pattern, path or option shape are defined in two or
   more apparatus files: `--name-only` in nine, `merge-base` in eight,
   `docs/items` in seven, the GitHub API's URL and headers in four to six
-  tools, the same four cache-directory names in three tree walkers.
+  tools, the same four cache-directory names in three tree walkers. Read by
+  the rule the check applies - an upper-case module-level name bound in two
+  or more files, an alias of another module's name not counted - 31 names
+  are defined twice or more, `ID_RE` in three files where `store.ID_PATTERN`
+  is the record and `API` in three where `open_pull_requests.GITHUB_API` is.
 - Of the twelve members filed after a head said spent (`PL-KGYT`'s six,
   `PL-5DZ8`'s five, `PL-D23H`), eight reach git, the tree, the item store's
   files, a branch literal or a table another file already defines - the
@@ -96,10 +110,17 @@ model work" refuses to script it.
   sentence of § "Read the fact from its record" in
   `.claude/rules/apparatus-standard.md` is rewritten to name the check and
   keep the judgment half as prose.
-- *The hooks keep a second home.* `.claude/hooks/` cannot import docket
-  (`#1095` recorded why), so its one shared module, today `shell_split.py`,
-  is the home for what a hook reads of git and of a Bash command, and the
-  check names it as a home rather than refusing it.
+- *The hooks keep homes of their own.* `.claude/hooks/` cannot import docket
+  (`#1095` recorded why), so `shell_split.py`, its shared module, is the home
+  for how a hook reads a Bash command, and `_git` in `stop_hook_patch.py`,
+  the one hook that runs git, is the home for what a hook reads of git; the
+  check names both as homes rather than refusing them.
+- *Which files the repository holds is a fact with a home.* `tracked_files`
+  in `tools/workflow_paths_check.py` asks git, and walks only a tree that is
+  not a checkout; `PL-HNXS`, `PL-QJ5F`, `PL-2P5L` and `PL-9NZ3` are the
+  walks outside it. So a recursive walk is a reader the check names, with
+  that function as its home, and a listing of one directory is not: it reads
+  what a path holds, not what the repository holds.
 - *`PL-SNQR` and `PL-9NMR` are not members.* Each is one reader diverging
   from what it reads (GitHub's trailer group; bash's reserved words), not a
   second spelling, and `PL-9NMR`'s own generator check places it under
@@ -157,6 +178,28 @@ Coyne BD, *Hosp Pharm*, doi:10.1177/00185787231207995, as `PL-40SJ` cites
 it), and that check has held since 2026-10-03 with no member filed against
 a numeric copy.
 
+**Answered 2026-10-12.** By the owner's third and fourth messages above, the
+approach is this session's to choose: **A, beside the resident instruction**,
+built in this pull request. The reasons, one line each: the three heads
+guarded by prose alone re-entered, and the one check of this shape,
+`tools/literal_home_check.py`, has held since 2026-10-03 with no member filed
+against a numeric copy; a baseline that only shrinks is the property prose
+cannot have - a copy a member removes cannot return - and it is what makes a
+head's spent verdict hold; and the hierarchy of effectiveness above orders a
+forcing function over an instruction. Counted against it: none of the twelve
+post-close members was written after the write-time rule landed on
+2026-10-01 - each sweep found code that predated it - so no measurement says
+a resident instruction fails at write time, and the instruction alone might
+have held. The number that would have made A the wrong call, the next
+re-entries being second grammars inside one tool, was four of twelve. What A
+became in the build: the `docs/items` rule is dropped, since 48 literal sites
+are mostly messages and the store is reached through `docket.store`'s parser
+rather than a path; the walk rule names recursive walks only, with
+`tracked_files` as the home, as decided above; the hooks' homes are as
+decided above; B's rule is folded in as A described, with `ROOT` exempt
+because a tool's own location is the one fact it must read before it can
+import anything.
+
 **Decision needed.** Whether the pause this head re-engages stands until the
 check lands. **Recommendation: let it stand**, and build the check in the
 sitting that follows the answer, so the window is hours rather than a week:
@@ -167,22 +210,40 @@ alternative is the owner's word lifting it for Order items 32 and 34, which
 `CLAUDE.md` § "What this project is" provides for and this brief would
 record.
 
+**Answered 2026-10-12** by the answer above: it stands. The check lands in
+this pull request, in the sitting that answered, so the pause holds from the
+claim to the merge, hours; the owner's word lifted nothing under Order items
+32 and 34, and this brief records no lift.
+
 **Why it matters.** Three heads have said spent and been followed by members,
 so the store's own record says this fact is finished while it is not; each
 new second spelling costs an item and, at the moment a hook or a check is
 trusted, answers differently from docket's. A rule every session may read
 has been the only guard for eleven days, and the fact re-entered under it.
 
-**Done when.** Written for A; the decided form replaces this once the owner
-answers. `CLAUDE.md` § "Architecture and development discipline" carries the
-principle in one bullet and `docs/resident-instructions.md` records its
-cost; § "Read the fact from its record" in
-`.claude/rules/apparatus-standard.md` names the check and keeps the judgment
-half as prose; `make check` fails on a reader of git, the GitHub API, the
-tree, the item store or a shell command outside that fact's home, and on a
-name or table defined in two apparatus files; the baseline only shrinks;
-then `generator:` says spent and the head closes. `PL-5DZ8`'s 19 members
-drain the baseline and stay their own items.
+**Done when.** `tools/fact_home_check.py`, standard library only and parsing
+at the floor, reads every tracked Python file under `tools/`,
+`subprojects/docket/src/docket/` and `.claude/hooks/` through
+`tracked_files`, and refuses, outside the home it declares for each with the
+reason beside it: a `subprocess` call whose argv starts with `git` (home
+`docket.vcs`, and `_git` in `stop_hook_patch.py` for the hooks); a recursive
+walk - `os.walk`, `rglob`, a `**` glob (home `tracked_files`); the GitHub
+API's host (home `tools/open_pull_requests.py`); a `main` or `origin/main`
+literal (home `docket.vcs`); `shlex.split` or `shlex.shlex` (homes
+`docket.shell` and `shell_split.py`); and an upper-case module-level name
+defined in two files, `ROOT` exempt with its reason. Today's sites sit in a
+`BASELINE` keyed by file, rule and enclosing scope, never by line, that
+fails when it grows and when an entry goes stale. It runs bare in `make
+check` and in `quality.yml`'s floor section; `tests/unit/test_fact_home_check.py`
+pins each rule's refusal and pass and is in `docket.toml`'s `workflow_paths`;
+`docs/apparatus.md`'s map names it. `CLAUDE.md` § "Architecture and
+development discipline" carries the principle in one bullet, in the owner's
+terms, naming both checks and the pointer to the apparatus rule's three
+shapes; `docs/resident-instructions.md` records what it costs;
+§ "Read the fact from its record" in `.claude/rules/apparatus-standard.md`
+says the principle is resident and the check carries the decidable part;
+then `generator:` says spent and the head closes. `PL-5DZ8`'s 19 members and
+the four walkers drain the baseline and stay their own items.
 
 **Generator check.** The family head over `PL-PVW2`, `PL-KGYT` and
 `PL-5DZ8`, which state one fact in one wording that no head named at family
@@ -193,4 +254,5 @@ one above them - nothing refuses the copy, so each sweep's remainder
 re-enters. `PL-D23H` is its fourth member, a second reading filed the day
 `PL-5DZ8` closed, with `reenters: PL-R417` as its other cause. This head
 `reenters: PL-5DZ8`, whose spent verdict rested on the prose rule meeting a
-new reader.
+new reader - a path-scoped rule, which the resident one now precedes and the
+check now refuses where it can decide.
