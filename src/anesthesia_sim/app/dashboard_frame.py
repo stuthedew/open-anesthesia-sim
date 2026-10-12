@@ -48,7 +48,7 @@ from anesthesia_sim.app.chart_frame import (
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, format_adjustment
-from anesthesia_sim.app.controller import RunStatus, SimulationSnapshot
+from anesthesia_sim.app.controller import MarkForkPoint, RunStatus, SimulationSnapshot
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
@@ -423,10 +423,10 @@ FORK_NOTHING_SELECTED_TEXT: Final = "Select an instant to branch at"
 # The fork at a bookmark halt, which is a second control rather than a row in
 # the selector above (`PL-TYWQ`, project owner 2026-09-21, ratified, over the
 # single list that grows a row while the run is halted). The two offers have
-# different lifetimes: `fork_points_s` only grows and every instant in it stays
-# forkable, while this one is valid only while the trunk stands on the halt, so
-# a row that arrived and left would change the selector's membership under a
-# reader who had looked away - the stale-state case
+# different lifetimes: an entry in the selector stays forkable until the case
+# itself changes, while this one is valid only while the trunk stands on the
+# halt, so a row that arrived and left would change the selector's membership
+# under a reader who had looked away - the stale-state case
 # `.claude/rules/expert-review.md` names, and detectable only against a
 # remembered list. A control that is either there or not is detectable on
 # sight.
@@ -453,6 +453,18 @@ FORK_NOTHING_SELECTED_TEXT: Final = "Select an instant to branch at"
 # a measurement - but the clause it was chosen over is the one thing a rewrite
 # must not reintroduce.
 HALT_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}, stopped on your mark"
+# A time bookmark the trunk has passed, as an entry in the selector beside the
+# control events (`PL-W4XQ`). **The instant is `MarkForkPoint.fork_s`, the
+# instant the branch opens at, never the mark's typed value**: a mark lying
+# inside a step is reached at the step's end, so the two differ, and the entry
+# names the one the act takes for the reason the halt label above does. "On
+# your mark" follows that ratified label's wording, "stopped on your mark", and
+# like it refers to the mark without stating where the mark is. It carries no
+# mark's name either, for the reason the halt label gives: which marks is the
+# bookmark panel's row to state. These words are the project owner's
+# (2026-10-12, ratified, over a label stating the mark's typed instant or its
+# name), so a rewrite is put to them rather than made.
+MARK_FORK_LABEL_TEMPLATE: Final = "{instant}, on your mark"
 
 BOOKMARK_DIALOG_TITLE: Final = "Bookmarks"
 EDIT_BOOKMARKS_LABEL: Final = "Edit bookmarks"
@@ -1773,19 +1785,53 @@ def bookmark_panel(bookmarks: BookmarkSet, runs: Sequence[RunMarks]) -> Bookmark
 
 
 @dataclass(frozen=True, slots=True)
+class ForkPoint:
+    """One entry in the branch control's selector: where a branch would open, and its door.
+
+    A recorded control event and a time bookmark the trunk has passed are
+    listed together, because both stay on offer until the case itself
+    changes (`fork_offer` says why that puts them in one list). They are
+    taken through different doors, and `mark` is what says which.
+
+    **A mark's entry carries the mark, not an instant to fork at.** A branch
+    at a mark opens at the end of the step that reaches it, which is not in
+    general the instant the learner typed (`MarkForkPoint`). A caller taking
+    the entry hands `mark` back to `BranchedCase.fork_at_mark`, which finds
+    that step itself, so there is no float here for a caller to get wrong:
+    `instant_s` is what the entry is labelled and ordered by, never what a
+    mark's branch is asked for at.
+
+    Attributes:
+        instant_s: Where a branch taken here opens, in seconds of the case: a
+            keyframe of the trunk, or a passed mark's `MarkForkPoint.fork_s`.
+        label: What the selector shows for it: `format_elapsed` of
+            `instant_s`, inside `MARK_FORK_LABEL_TEMPLATE` for a mark.
+        mark: None for a recorded control event, taken through
+            `BranchedCase.fork_at` at `instant_s`; the time bookmark itself,
+            as the trunk holds it, for a passed mark, taken through
+            `BranchedCase.fork_at_mark`.
+    """
+
+    instant_s: CaseInstant
+    label: str
+    mark: TimeBookmark | None
+
+
+@dataclass(frozen=True, slots=True)
 class ForkOffer:
     """What the branch control offers this tick, and why it may offer nothing.
 
     Attributes:
-        points_s: The case instants a branch may be taken at, earliest
-            first, from `BranchedCase.fork_points_s`. They are the trunk's
-            keyframes: its opening at induction and every setting change the
-            model was actually stepped under. Anywhere else is refused by
-            `SimulationController.resumed_at` rather than approximated, so
-            the control offers this list and never a free instant.
-        labels: One label per instant, in the same order, rendered by
-            `format_elapsed` - the form the run clock and every bookmark row
-            use, so a learner reads one quantity one way wherever it appears.
+        points: What the selector offers, earliest first: every keyframe the
+            trunk holds - its opening at induction and every setting change
+            the model was actually stepped under, from
+            `BranchedCase.fork_points_s` - and every time bookmark it has
+            passed, from `BranchedCase.mark_fork_points`. Anywhere else is
+            refused by the case rather than approximated, so the control
+            offers this list and never a free instant. Each instant is
+            rendered by `format_elapsed` - the form the run clock and every
+            bookmark row use, so a learner reads one quantity one way
+            wherever it appears.
         locked: Whether the control is replaced by its reason. True while a
             comparison is already on the chart.
         lock_reason: What stands where the control stood, or the empty
@@ -1796,9 +1842,10 @@ class ForkOffer:
             exactly as much as it is spent on.
         halt_offered: Whether the second control - the fork at the bookmark
             halt the trunk is standing on - is on screen this tick. It
-            appears and disappears with the trunk's halt, where `points_s`
-            only grows, which is why it is a control of its own rather than
-            an entry in that list (`PL-TYWQ`).
+            appears and disappears with the trunk's halt, where an entry in
+            `points` stays until the case itself changes, which is why it is
+            a control of its own rather than an entry in that list
+            (`PL-TYWQ`).
         halt_label: What that control says, or the empty string while it is
             not offered. It names the instant the branch will open at and
             that the trunk stopped there on a mark; `HALT_FORK_LABEL_TEMPLATE`
@@ -1809,8 +1856,7 @@ class ForkOffer:
             reader can no longer see.
     """
 
-    points_s: tuple[CaseInstant, ...]
-    labels: tuple[str, ...]
+    points: tuple[ForkPoint, ...]
     locked: bool
     lock_reason: str
     halt_offered: bool
@@ -1845,18 +1891,35 @@ def comparing_fork_lock_text() -> str:
 def fork_offer(
     fork_points_s: Sequence[CaseInstant],
     *,
+    marks: Sequence[MarkForkPoint],
     comparing: bool,
     halt: BookmarkCrossing | None,
     refusal: str | None = None,
 ) -> ForkOffer:
     """What the branch control shows for one tick of the trunk.
 
-    Both doors to a fork are decided here, and they are two fields rather than
-    one list: `points_s` is every keyframe the trunk holds, and `halt_offered`
-    is the crossing it is standing on right now. `docs/ARCHITECTURE.md`
-    § "Where a branch may be taken" is why the model keeps them apart - a
-    bookmark records no keyframe, so a halt adds nothing to `fork_points_s` -
-    and `HALT_FORK_LABEL_TEMPLATE` is why the interface does too.
+    All three doors to a fork are decided here, in two fields. `points` holds
+    every keyframe the trunk holds, taken through `fork_at`, and every time
+    bookmark it has passed, taken through `fork_at_mark`, in one list by
+    instant; `halt_offered` is the crossing it is standing on right now,
+    taken through `fork_at_halt`.
+
+    **The passed marks share the keyframes' lifetime, and the halt does
+    not.** A mark joins the list when the trunk's clock reaches it or when
+    one is set behind the clock, and leaves only when the learner unmarks it
+    or the trunk starts over, as a keyframe stays until the case changes. So
+    the marks belong in the selector, while the halt, which ends at the next
+    step, stays a control of its own: a row that arrived and left as the run
+    moved would change the selector's membership under a reader who had
+    looked away (`PL-TYWQ`, project owner 2026-09-21, ratified).
+    `docs/ARCHITECTURE.md` § "Where a branch may be taken" is why the model
+    keeps a halt apart from the keyframes - a bookmark records no keyframe,
+    so a halt adds nothing to `fork_points_s` - and `HALT_FORK_LABEL_TEMPLATE`
+    is why the interface does too.
+
+    Earliest first, and a control event ahead of a mark at the same instant:
+    the order the two lists are given in, kept by a stable sort, so one case
+    always lists the same way.
 
     Induction is offered rather than filtered out. A fork at zero is a second
     management of the whole case, which is a comparison a learner may
@@ -1867,13 +1930,17 @@ def fork_offer(
     Args:
         fork_points_s: The trunk's keyframes, from
             `BranchedCase.fork_points_s`.
+        marks: The time bookmarks the trunk has passed, each with the instant
+            a branch taken there opens at, from `BranchedCase.mark_fork_points`.
+            Required rather than defaulted, so a caller states that the trunk
+            has passed none instead of leaving the third door off unseen.
         comparing: Whether a second run is already on the chart. The display
             is capped at `MAX_DISPLAYED_RUNS` and no run selector exists yet
             (`ROADMAP.md` § "Explicitly out of scope for v0.5.0"), so a
             second branch taken now would have to replace the shown one while
             the first went on living inside `BranchedCase` - state the screen
             does not carry, which is what the control is refused for. It
-            refuses both doors: a branch is a branch whichever one it came
+            refuses every door: a branch is a branch whichever one it came
             through, and a transient control the cap would reject on press is
             one this interface prevents rather than reports
             (`.claude/rules/expert-review.md`).
@@ -1890,18 +1957,28 @@ def fork_offer(
             press of a control the reader can no longer see.
 
     Returns:
-        The instants to offer and their labels, whether the halt fork is on
-        offer and what it says, or the reason none of it is.
+        The points to offer, each labelled and carrying the door it is taken
+        through, whether the halt fork is on offer and what it says, or the
+        reason none of it is.
     """
 
-    points = tuple(fork_points_s)
-    # The comparison cap refuses both doors, so it is applied once, here,
+    control_events = tuple(
+        ForkPoint(instant_s, format_elapsed(instant_s), None) for instant_s in fork_points_s
+    )
+    passed_marks = tuple(
+        ForkPoint(
+            point.fork_s,
+            MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(point.fork_s)),
+            point.bookmark,
+        )
+        for point in marks
+    )
+    # The comparison cap refuses every door, so it is applied once, here,
     # rather than by each field asking about it separately.
     offered_halt = None if comparing else halt
 
     return ForkOffer(
-        points_s=points,
-        labels=tuple(format_elapsed(instant_s) for instant_s in points),
+        points=tuple(sorted((*control_events, *passed_marks), key=lambda point: point.instant_s)),
         locked=comparing,
         lock_reason=comparing_fork_lock_text() if comparing else "",
         halt_offered=offered_halt is not None,
