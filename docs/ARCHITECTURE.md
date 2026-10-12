@@ -528,7 +528,12 @@ is a property of the display rather than of the model:
   the branch through `fork_at` or `fork_at_mark`;
   `dashboard_frame.fork_offer` decides what it shows and
   `qt_widgets.ForkPanel` draws it. A learner marks the decision point and
-  then forks there, which is the order the two panels are read in.
+  then forks there, which is the order the two panels are read in. Returning
+  to a mark forks rather than truncating: the trunk is kept and the change is
+  made on a branch drawn beside it, and a branch's own Reset is how a learner
+  tries something else from the same point (project owner, 2026-10-12,
+  ratified, over truncating the run at the mark after a confirm as Gas Man
+  does, `PL-ZW0J`).
 - **Two controls, because the doors to a fork have different lifetimes**
   (`PL-TYWQ`). The selector offers `BranchedCase.fork_points_s`, taken through
   `fork_at`, and every time bookmark the trunk has passed, from

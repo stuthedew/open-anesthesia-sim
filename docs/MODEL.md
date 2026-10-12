@@ -5042,9 +5042,10 @@ and what it does not:
   rewind, which returns to time zero keeping the recorded settings and plays
   them back as it runs (Philip JH, *Workbook for Gas Man®*, Med Man
   Simulations, appendix E, "Replaying Simulations", printed pages 186-87, as
-  read and quoted in `PL-W4XQ`). Whether returning to a mark should instead
-  take the trunk back and truncate it there, as that simulator does, is an open
-  question (`PL-ZW0J`), not a property of the model.
+  read and quoted in `PL-W4XQ`). Returning to a mark forks rather than taking
+  the trunk back and truncating it there as that simulator does (project owner,
+  2026-10-12, ratified, over truncating the run at the mark after a confirm,
+  `PL-ZW0J`): the run that happened stays on the axis beside the alternative.
 - **Its opening readouts are the canonical state's, not the ones the trunk
   showed when it stood there.** A running case displays its stepped live state,
   one propagation per step from the opening, and every branch opens from the

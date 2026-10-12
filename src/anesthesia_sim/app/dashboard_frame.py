@@ -461,7 +461,9 @@ HALT_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}, stopped on your mark"
 # your mark" follows that ratified label's wording, "stopped on your mark", and
 # like it refers to the mark without stating where the mark is. It carries no
 # mark's name either, for the reason the halt label gives: which marks is the
-# bookmark panel's row to state.
+# bookmark panel's row to state. These words are the project owner's
+# (2026-10-12, ratified, over a label stating the mark's typed instant or its
+# name), so a rewrite is put to them rather than made.
 MARK_FORK_LABEL_TEMPLATE: Final = "{instant}, on your mark"
 
 BOOKMARK_DIALOG_TITLE: Final = "Bookmarks"
