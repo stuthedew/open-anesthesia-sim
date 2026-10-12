@@ -528,7 +528,7 @@ def test_a_trailer_closing_a_prose_paragraph_is_the_bodys_own(body: str) -> None
     assert pr_body_check.normalise(paragraph) == body.split("\n")[0]
 
 
-def test_a_body_closing_with_its_own_trailer_paragraph_matches_a_squash_that_kept_it() -> None:
+def test_a_body_ending_with_its_own_trailer_paragraph_compares_equal() -> None:
     """`PL-SNQR`: GitHub's group follows the body's own, and only GitHub's is taken off.
 
     `normalise` strips one closing group, so the body lost its paragraph while

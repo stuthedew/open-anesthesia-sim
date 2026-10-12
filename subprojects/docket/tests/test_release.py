@@ -532,15 +532,14 @@ def test_a_code_span_is_read_inside_its_paragraph() -> None:
 
 
 def test_an_escaped_backtick_opens_no_code_span() -> None:
-    """`PL-T3GW`, `PL-CQC9`: CommonMark 0.31.2 § 2.4 reads an escaped backtick as text.
+    """`PL-T3GW`: CommonMark 0.31.2 § 2.4 reads an escaped backtick as text.
 
     The pattern asked only whether a backtick followed another, so the escaped
     one opened a span running to the next span's opener: two spans where
-    CommonMark reads one, and a title's placeholder between them copied
-    unescaped, where GitHub drops it as an HTML tag. An escaped backslash
-    escapes nothing after it, and a backslash inside a span is the span's.
+    CommonMark reads one. An escaped backslash escapes nothing after it, and a
+    backslash inside a span is the span's.
     """
-    from docket.release import code_spans, markdown_title, replace_code_spans
+    from docket.release import code_spans, replace_code_spans
 
     def contents(text: str) -> list[str]:
         return [span["content"] for span in code_spans(text)]
@@ -549,6 +548,17 @@ def test_an_escaped_backtick_opens_no_code_span() -> None:
     assert contents(r"\\`a` and \``b`") == ["a", "b"]
     assert contents(r"`a\` `b`") == ["a\\", "b"]
     assert replace_code_spans("", r"\`a` b `c`") == r"\`ac`"
+
+
+def test_a_backslash_escaped_backtick_opens_no_code_span_in_a_title() -> None:
+    """`PL-CQC9`: a placeholder after an escaped backtick is escaped, not taken for code.
+
+    The escaped backtick opened a span running to the code span's opener, so
+    the placeholder between them was copied unescaped into the notes bullet,
+    where GitHub drops it as an HTML tag.
+    """
+    from docket.release import markdown_title
+
     assert markdown_title(r"an escaped \` then refs/pull/<n>/head and `code`") == (
         r"an escaped \` then refs/pull/\<n>/head and `code`"
     )
