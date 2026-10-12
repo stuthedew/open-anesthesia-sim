@@ -393,13 +393,67 @@ def test_the_display_name_is_the_value_yaml_reads_on_the_keys_line(
     assert [job.check_name for job in rcc.reporting_jobs(directory)] == ["quality gate"]
 
 
-def test_a_quoted_display_name_holding_an_escape_is_refused(tmp_path: Path) -> None:
-    """YAML unquotes `''` to `'`, which a split at the colon left doubled (`PL-TMX9`)."""
+@pytest.mark.parametrize(
+    ("spelling", "name"),
+    [
+        ("'owner''s gate'", "owner's gate"),
+        ('"the \\"quality\\" gate"', 'the "quality" gate'),
+        ("don 't gate  # why", "don 't gate"),
+    ],
+)
+def test_a_display_name_is_read_as_docket_reads_yaml(
+    tmp_path: Path, spelling: str, name: str
+) -> None:
+    """The quotes, escapes and comment are `docket.frontmatter`'s to read (`PL-8MHZ`).
+
+    YAML unquotes `''` to `'`, which a split at the colon left doubled
+    (`PL-TMX9`), and which this reader then refused as an escape, with every
+    backslash; and taking a quote after any white space for one, it kept the
+    third's comment in the check name.
+    """
     directory = _workflows(
-        tmp_path, quality="on: pull_request\njobs:\n  checks:\n    name: 'owner''s gate'\n"
+        tmp_path, quality=f"on: pull_request\njobs:\n  checks:\n    name: {spelling}\n"
     )
-    with pytest.raises(rcc.Undecidable, match="holding an escape"):
+    assert [job.check_name for job in rcc.reporting_jobs(directory)] == [name]
+
+
+@pytest.mark.parametrize(
+    ("spelling", "why"),
+    [
+        ('"gate \\q"', "a quoted scalar YAML refuses"),
+        ("'gate' extra", "a quoted scalar followed by `extra`"),
+    ],
+)
+def test_a_display_name_yaml_refuses_is_refused(tmp_path: Path, spelling: str, why: str) -> None:
+    """`\\q` is no escape YAML defines, and text after the quote is no part of the name."""
+    directory = _workflows(
+        tmp_path, quality=f"on: pull_request\njobs:\n  checks:\n    name: {spelling}\n"
+    )
+    with pytest.raises(rcc.Undecidable, match=re.escape(why)):
         rcc.reporting_jobs(directory)
+
+
+def test_a_quoted_key_names_the_event_yaml_names() -> None:
+    """`"a\\"b":` was refused as an escape; read as YAML reads it, `\\x73` is `s` (`PL-8MHZ`)."""
+    assert _events('on:\n  "pull_reque\\x73t":\n') == {"pull_request"}
+
+
+def test_a_key_written_as_a_flow_collection_names_no_key() -> None:
+    """This named the key `[a]`, where `docket.frontmatter` names none (`PL-8MHZ`)."""
+    assert rcc._key("[a]: b", 1) is None
+
+
+@pytest.mark.parametrize(
+    ("on", "form"),
+    [
+        ("&anchor on: pull_request\n", "an anchor (`&`)"),
+        ("? on\n: pull_request\n", "an explicit key (`?`)"),
+    ],
+)
+def test_a_top_level_key_behind_an_indicator_is_refused(on: str, form: str) -> None:
+    """Either may be `on:` itself, so neither is passed over as no key (`PL-8MHZ`)."""
+    with pytest.raises(rcc.Undecidable, match=re.escape(form)):
+        _events(on)
 
 
 def test_steps_are_not_mistaken_for_jobs(tmp_path: Path) -> None:

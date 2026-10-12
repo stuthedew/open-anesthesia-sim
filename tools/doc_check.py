@@ -158,6 +158,11 @@ try:
     from docket.frontmatter import Unread as UnreadFrontMatter
     from docket.frontmatter import closing as frontmatter_closing
     from docket.frontmatter import keys as frontmatter_keys
+
+    # A block scalar's header, and whether a node is a plain scalar, are read
+    # where docket reads them (`PL-8MHZ`): this file spelt both beside them, and
+    # handed bash the command `|x`, a header YAML refuses, as a plain scalar.
+    from docket.frontmatter import plain as yaml_plain
     from docket.frontmatter import statements as frontmatter_statements
 
     # `instructions` is the one reading of a dated sentence: `_sentences` cuts a
@@ -181,7 +186,13 @@ try:
     # `front_matter_spans` is the item grammar's reading of where each field of
     # a brief's front matter ends, so a brief's readers take one at a time
     # (`PL-CZ28`).
-    from docket.model import CLOSED_STATUSES, SEMVER_PATTERN, Item, front_matter_spans
+    from docket.model import (
+        BLOCK_SCALAR_RE,
+        CLOSED_STATUSES,
+        SEMVER_PATTERN,
+        Item,
+        front_matter_spans,
+    )
 
     # `python` is the one reading of where a Python statement ends (`PL-R417`):
     # a test is defined by a `def` statement rather than by a line opening one,
@@ -1149,17 +1160,6 @@ WORKFLOW_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 # or a bare checkout run it. `lead` is everything before the key, so its length
 # is the key's column, which a value's lines are indented past.
 RUN_STEP_RE = re.compile(r"^(?P<lead>\s*-?\s*)run:\s*(?P<inline>.*)$")
-#: A block scalar's header (YAML 1.2.2 § 8.1.1): `|` for a literal block or `>`
-#: for a folded one, then an indentation indicator and a chomping indicator in
-#: either order, each optional, then an optional comment. `width` or `late` is
-#: the indentation indicator, whichever order it was written in.
-BLOCK_HEADER_RE = re.compile(
-    r"(?P<style>[|>])(?:(?P<width>[1-9])?[-+]?|[-+](?P<late>[1-9]))(?:[ \t]+#.*)?"
-)
-#: The characters that open a YAML node other than a plain scalar or a block
-#: scalar, where a `run:` value starts (§ 5.3): a quote, an anchor, alias or
-#: tag, a flow collection, or a reserved indicator.
-YAML_NODE_INDICATORS = frozenset("\"'&*![]{}%@`")
 
 # A token this check cannot resolve by reading the tree: a shell or GitHub
 # expansion, a glob whose intended match is not stated, a URL, or an action
@@ -6207,9 +6207,11 @@ def _run_script(
     them (§ 8.1.3, `PL-6P6H`); a plain scalar carried onto the lines after it,
     or one opening on the line after the key, which YAML folds the same way; a
     quoted scalar, which YAML unquotes; and an anchor, alias, tag or flow
-    collection. None is written in this repository's workflows, so each is
-    refused rather than folded, the cheaper answer `PL-R417` allows while no
-    workflow writes one.
+    collection, or any other node `docket.frontmatter.plain` says is no plain
+    scalar, such as `|x`, a header YAML refuses, which was handed to bash as
+    the command `|x` (`PL-8MHZ`). None is written in this repository's
+    workflows, so each is refused rather than folded, the cheaper answer
+    `PL-R417` allows while no workflow writes one.
     """
     line = first
     inline = step["inline"].strip()
@@ -6221,7 +6223,7 @@ def _run_script(
         for at, text in enumerate(lines[first:end], start=first)
         if text.strip() and not text.lstrip().startswith("#")
     ]
-    header = BLOCK_HEADER_RE.fullmatch(inline)
+    header = BLOCK_SCALAR_RE.fullmatch(inline)
     if header is not None and header["style"] == "|":
         body = lines[first:end]
         width = header["width"] or header["late"]
@@ -6250,7 +6252,7 @@ def _run_script(
             "before bash reads them, and this reader does not; write it as a literal block "
             "(`|`)",
         )
-    if inline[:1] in YAML_NODE_INDICATORS:
+    if inline and not yaml_plain(inline):
         form = "a quoted scalar" if inline[0] in "\"'" else f"a YAML node opening `{inline[0]}`"
         raise UnreadStatement(
             line,

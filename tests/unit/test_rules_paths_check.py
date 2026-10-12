@@ -225,3 +225,28 @@ def test_a_pattern_beginning_mid_segment_is_judged_on_its_directory(tmp_path: Pa
 def test_this_repository_passes_its_own_check() -> None:
     """The real tree, not only a fixture: the rule has to hold where it is enforced."""
     assert rules_paths_check.problems(ROOT) == []
+
+
+def test_a_doubled_single_quote_reads_as_docket_reads_it() -> None:
+    """`'it''s'` kept both quotes here, and `"a\\"b"` its backslash (`PL-8MHZ`).
+
+    `docket.frontmatter.unquote` is the one reading of a quoted scalar.
+    """
+    assert rules_paths_check.entries(["paths:", "  - '/it''s/**'", '  - "/a\\"b/**"']) == [
+        "/it's/**",
+        '/a"b/**',
+    ]
+
+
+@pytest.mark.parametrize(
+    ("item", "why"),
+    [
+        ('  - "/src/**" extra', "holds `extra` after its quoted glob"),
+        ('  - "/src/\\q"', "a quoted glob YAML refuses"),
+        ("  -", "holds no glob"),
+    ],
+)
+def test_a_glob_yaml_refuses_or_one_holding_nothing_is_unreadable(item: str, why: str) -> None:
+    """A tail after the quote was read into the glob, and a bare `-` named as no item."""
+    with pytest.raises(rules_paths_check.Unreadable, match=why):
+        rules_paths_check.entries(["paths:", item])

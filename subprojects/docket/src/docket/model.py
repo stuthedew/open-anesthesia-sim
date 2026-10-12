@@ -65,7 +65,16 @@ BLOCK_ENTRY_RE = re.compile(r"^[ \t]+-([ \t]|$)")
 # header; this format reads neither spelling, so the field is declined by name
 # rather than read with the header as the first word of its value, which is
 # how two `reason: >-` fields came to open with `>-` (`PL-LNDJ`).
-BLOCK_SCALAR_RE = re.compile(r"^[|>](?:[1-9]?[-+]?|[-+][1-9])(?:[ \t]+#.*)?$")
+#
+# The one spelling of the header (YAML 1.2.2 § 8.1.1), matched whole: `|` for a
+# literal block or `>` for a folded one, then an indentation indicator and a
+# chomping indicator in either order, each optional, then an optional comment.
+# `width` or `late` is the indentation indicator, whichever order it was written
+# in. `tools/doc_check.py` reads a workflow's `run:` header through it, where it
+# spelt the same grammar beside this one (`PL-8MHZ`).
+BLOCK_SCALAR_RE = re.compile(
+    r"(?P<style>[|>])(?:(?P<width>[1-9])?[-+]?|[-+](?P<late>[1-9]))(?:[ \t]+#.*)?"
+)
 
 PRIORITIES = ("P0", "P1", "P2", "P3")
 EFFORTS = ("S", "M", "L")
@@ -342,7 +351,7 @@ def _front_matter_pairs(
             block_lists.append(key)
             pairs.append((key, ""))
             continue
-        if BLOCK_SCALAR_RE.match(head):
+        if BLOCK_SCALAR_RE.fullmatch(head):
             block_scalars.append(key)
             pairs.append((key, ""))
             continue

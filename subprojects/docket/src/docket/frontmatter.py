@@ -6,7 +6,9 @@ then YAML, then a closing `---`. This is the one reading of it (`PL-R417`):
 `tools/doc_check.py` whether a rule declares one and each key's value as a
 statement of its own, `docket.instructions` each key's dated sentences,
 `docket.notes` where a notes file's Markdown begins, and
-`tools/fixture_id_check.py` which quoted scalar a line break is escaped in.
+`tools/fixture_id_check.py` which quoted scalar a line break is escaped in,
+and `tools/required_checks_check.py` and `tools/doc_check.py` a workflow's
+lines, keys and quoted scalars, and which node a value opens (`PL-8MHZ`).
 Each of those read the block its own way, a physical line at a time or as
 Markdown, where YAML 1.2.2 carries a value across lines: a quoted scalar to its
 closing quote (§ 7.3.1, § 7.3.2), a flow collection to its closing bracket
@@ -38,6 +40,15 @@ passing over one would hand on the key above it short. Where each value ends,
 and where each quoted scalar opens and closes, is held to PyYAML's reading over
 a generated corpus by `subprojects/docket/tests/test_frontmatter_reference.py`.
 
+**A line's own grammar is read here too, once** (`PL-8MHZ`): where its comment
+opens (`uncommented`), the key it opens (`key`), what a quoted scalar holds
+(`unquote`) and whether a node is a plain scalar (`plain`). The checks that read
+a workflow or a rule each spelt them beside this module, and parted on the
+first input one had not been written for: `[a, "b # c"]` lost its scalar's tail
+here, `don 't # x` kept its comment in `required_checks_check`, `"a\\"b":`
+named a key with its backslash here, and `'it''s'` kept both quotes in
+`rules_paths_check`.
+
 Not docket's own item front matter, which is not YAML: its grammar is
 `docket.model`'s. Standard library only, as the rest of the package is.
 """
@@ -58,6 +69,37 @@ INDICATORS = frozenset("-?:,[]{}#&*!|>'\"%@`")
 #: indented under it: a quoted scalar (§ 7.3.1, § 7.3.2) or a flow collection
 #: (§ 7.4).
 CLOSED_NODES = frozenset("'\"[{")
+#: What follows an indicator for it to be one rather than a plain scalar's first
+#: character, and what follows a key's `:` (§ 7.3.3, § 8.2.2).
+BLANKS = ("", " ", "\t")
+#: Each escape a double-quoted scalar may hold, by the character after its
+#: backslash, and what it stands for (YAML 1.2.2 § 5.7). A tab is escaped as
+#: `\t` or as a backslash before a literal tab.
+ESCAPES = {
+    "0": "\0",
+    "a": "\a",
+    "b": "\b",
+    "t": "\t",
+    "\t": "\t",
+    "n": "\n",
+    "v": "\v",
+    "f": "\f",
+    "r": "\r",
+    "e": "\x1b",
+    " ": " ",
+    '"': '"',
+    "/": "/",
+    "\\": "\\",
+    "N": "\x85",
+    "_": "\xa0",
+    "L": "\u2028",
+    "P": "\u2029",
+}
+#: The escapes that name a code point in hexadecimal, by how many digits follow.
+HEX_ESCAPES = {"x": 2, "u": 4, "U": 8}
+HEX_DIGITS = frozenset("0123456789abcdefABCDEF")
+#: The largest code point, past which a `\U` escape names no character.
+MAX_CODE_POINT = 0x10FFFF
 
 
 class Unread(ValueError):
@@ -159,7 +201,7 @@ def _keys(block: Sequence[str], quotes: list[Quoted]) -> tuple[Key, ...]:
             continue
         if block[index][:1] in (" ", "\t"):
             raise Unread(f"`{text}` is indented above the first key, so no value holds it")
-        opened = _key(block[index])
+        opened = key(block[index])
         if opened is None:
             raise Unread(f"`{text}` sits at the first column and opens no key")
         name, at = opened
@@ -239,7 +281,7 @@ def _value_end(block: Sequence[str], index: int, at: int, quotes: list[Quoted]) 
         while is_item(text[position:]):
             entry = position
             position = _skip_blanks(text, position + 1)
-        nested = _key(text[position:])
+        nested = _key_span(text[position:])
         if nested is not None:
             entry = position
             position = _skip_blanks(text, position + nested[1])
@@ -291,23 +333,136 @@ def closing_quote(text: str, start: int = 0) -> int:
 
 
 def uncommented(text: str) -> str:
-    """`text`, a node as a line holds it, without its comment (§ 6.6).
+    """`text`, a line or a node as a line holds it, without its comment (§ 6.6).
 
-    A comment opens at a `#` that opens the node or follows white space, and
-    never inside a quoted scalar opening it, so `"/src/**" # why` is the glob
-    `"/src/**"` and `"a # b"` is all scalar. A quoted scalar its line does not
-    close leaves the line as it is, since what follows is the scalar's.
+    A comment opens at a `#` that opens the text or follows white space, and
+    never inside a quoted scalar. A quote opens one only where a node can open
+    (§ 7.3): where the text opens; after a list entry's `-` or an explicit key's
+    `?` and the white space after it; after a key's `:` and the white space
+    after it; after an anchor or a tag (§ 6.9); and inside a flow collection
+    where `_flow_node` says (§ 7.4). Anywhere else it is a plain scalar's
+    character. So `"/src/**" # why` is the glob `"/src/**"`, `"a # b"` and
+    `[a, "b # c"]` are all node, and `don 't # x` is the plain scalar `don 't`
+    - the third lost its tail here when only a quote opening the text was
+    followed, and the fourth kept its comment in `required_checks_check`, which
+    took any quote after white space for one (`PL-8MHZ`). A quoted scalar its
+    line does not close leaves the line as it is, since what follows is the
+    scalar's.
     """
-    start = len(text) - len(text.lstrip(" \t"))
-    if text[start : start + 1] in ("'", '"'):
-        end = closing_quote(text, start)
-        if end < 0:
-            return text
-        start = end + 1
-    for index in range(start, len(text)):
-        if text[index] == "#" and (index == 0 or text[index - 1] in " \t"):
+    # Whether a node can open here, whether a quoted scalar or a collection
+    # closed just before it, and how many flow collections are open.
+    node, closed, depth = True, False, 0
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if _comment_at(text, index):
             return text[:index]
+        if node and char in ("'", '"'):
+            end = closing_quote(text, index)
+            if end < 0:
+                return text
+            index, node, closed = end + 1, False, True
+            continue
+        if node and char in "&!":
+            while index < len(text) and text[index] not in " \t":
+                index += 1
+            continue
+        indicator = text[index + 1 : index + 2] in BLANKS
+        if depth:
+            depth += (char in "[{") - (char in "]}")
+            node = _flow_node(text, index, node, closed)
+            closed = char in "]}" or (closed and char in " \t")
+        elif node and char in "[{":
+            depth, closed = 1, False
+        elif (char == ":" or (node and char in "-?")) and indicator:
+            node = True
+        else:
+            node = node and char in " \t"
+        index += 1
     return text
+
+
+def plain(text: str) -> bool:
+    """Whether the node `text` opens with, from its first character, is a plain scalar (§ 7.3.3).
+
+    Every indicator (§ 5.3) opens some other node, or none, except `-`, `?` and
+    `:` with something other than white space after them, which open a plain
+    scalar such as `-x`. So `|x` is no plain scalar but a block scalar's header
+    YAML refuses, which `doc_check` handed bash as the command `|x` while
+    `required_checks_check` refused it (`PL-8MHZ`).
+    """
+    return bool(text) and (
+        text[0] not in INDICATORS or (text[0] in "-?:" and text[1:2] not in BLANKS)
+    )
+
+
+def unquote(token: str) -> str:
+    """What the quoted scalar `token`, written whole on one line, holds (§ 7.3.1, § 7.3.2).
+
+    `token` carries its quotes. `''` is one quote in a single-quoted scalar, and
+    a backslash opens an escape in a double-quoted one, read as § 5.7 defines
+    it (`ESCAPES`, `HEX_ESCAPES`), so `'it''s'` holds `it's` and `"a\\"b"`
+    holds `a"b`. `rules_paths_check` kept both quotes of the first and the
+    backslash of the second, and `required_checks_check` refused every escape
+    (`PL-8MHZ`). Raises `Unread` naming an escape § 5.7 does not define, which
+    YAML refuses, and a `token` its last character does not close.
+
+    Not the item front matter's reading, which is not YAML: `docket.model`
+    reads two escapes there and keeps every other backslash as written.
+    """
+    if token[:1] not in ("'", '"') or closing_quote(token) != len(token) - 1:
+        raise Unread(f"`{token}` is not one quoted scalar that its last character closes")
+    body = token[1:-1]
+    if token[0] == "'":
+        return body.replace("''", "'")
+    out: list[str] = []
+    index = 0
+    while index < len(body):
+        if body[index] != "\\":
+            out.append(body[index])
+            index += 1
+            continue
+        code = body[index + 1 : index + 2]
+        if code in ESCAPES:
+            out.append(ESCAPES[code])
+            index += 2
+            continue
+        width = HEX_ESCAPES.get(code, 0)
+        digits = body[index + 2 : index + 2 + width]
+        if width and len(digits) == width and all(digit in HEX_DIGITS for digit in digits):
+            point = int(digits, 16)
+            if point <= MAX_CODE_POINT:
+                out.append(chr(point))
+                index += 2 + width
+                continue
+        raise Unread(
+            f"`{token}` holds `\\{code}{digits}`, which is no escape YAML 1.2.2 § 5.7 defines"
+        )
+    return "".join(out)
+
+
+def _comment_at(text: str, index: int) -> bool:
+    """Whether a comment opens at `text[index]`: a `#` opening it or after white space (§ 6.6)."""
+    return text[index] == "#" and (index == 0 or text[index - 1] in " \t")
+
+
+def _flow_node(text: str, position: int, node: bool, closed: bool) -> bool:
+    """Whether a node can open past `text[position]`, inside a flow collection (§ 7.4).
+
+    `node` is whether one could at it, and `closed` whether a quoted scalar or
+    a collection closed before it with only white space between. One can after
+    a bracket opening a collection or a `,`, and after a `:` that white space, a
+    flow indicator or the line's end follows, or that follows such a close, as
+    JSON writes a key (§ 7.4.2): PyYAML reads `{a:b}` as the one key `a:b`, and
+    `{"a":"b"}` as `a` holding `b`. White space keeps what came before, and any
+    other character is a plain scalar's.
+    """
+    char = text[position]
+    if char in "[{,":
+        return True
+    if char == ":":
+        return closed or text[position + 1 : position + 2] in (*BLANKS, *"[]{},")
+    return node and char in " \t"
 
 
 def _scan_quote(text: str, position: int, quote: str) -> int:
@@ -347,32 +502,43 @@ def _quote_end(
     return line, found
 
 
-def _key(line: str) -> tuple[str, int] | None:
+def key(line: str) -> tuple[str, int] | None:
     """The key `line` opens at its first column, and the index past its `:`.
 
     A plain or quoted scalar ended by a `:` that white space or the line's end
-    follows (§ 7.3, § 8.2.2). `None` where `line` opens none: a comment, an
-    indicator, or text no such `:` ends.
+    follows (§ 7.3, § 8.2.2), a quoted one read as `unquote` reads it, so `on :`
+    and `"on":` name the key `on` and `"a\\"b":` the key `a"b`, where this
+    reader named it `a\\"b` (`PL-8MHZ`). `None` where `line` opens none: a
+    comment, a node other than a plain or quoted scalar (`plain`), or text no
+    such `:` ends. Raises `Unread` where `unquote` does.
+    """
+    span = _key_span(line)
+    if span is None:
+        return None
+    name, colon = span
+    return (unquote(name) if name[:1] in ("'", '"') else name), colon
+
+
+def _key_span(line: str) -> tuple[str, int] | None:
+    """`key`, with a quoted key as written, its quotes kept, so that nothing is unquoted.
+
+    For reading inside a value, where what a key holds is its reader's to
+    decide and a key YAML refuses is passed over like the rest of the value.
     """
     if line[:1] in ("'", '"'):
         end = closing_quote(line)
         colon = end + 1
         while 0 < colon < len(line) and line[colon] in " \t":
             colon += 1
-        if (
-            end < 0
-            or line[colon : colon + 1] != ":"
-            or line[colon + 1 : colon + 2] not in ("", " ", "\t")
-        ):
+        if end < 0 or line[colon : colon + 1] != ":" or line[colon + 1 : colon + 2] not in BLANKS:
             return None
-        name = line[1:end]
-        return (name.replace("''", "'") if line[0] == "'" else name), colon + 1
-    if line[:1] in INDICATORS and not (line[:1] in "-?:" and line[1:2] not in ("", " ", "\t")):
+        return line[: end + 1], colon + 1
+    if not plain(line):
         return None
     for index, char in enumerate(line):
-        if char == "#" and line[index - 1] in " \t":
+        if _comment_at(line, index):
             return None
-        if char == ":" and line[index + 1 : index + 2] in ("", " ", "\t"):
+        if char == ":" and line[index + 1 : index + 2] in BLANKS:
             return line[:index].rstrip(), index + 1
     return None
 
@@ -397,33 +563,29 @@ def _past(block: Sequence[str], index: int, at: int, quotes: list[Quoted]) -> in
 def _flow_end(block: Sequence[str], index: int, at: int, quotes: list[Quoted]) -> int:
     """The index of the line closing the flow collection `block[index][at]` opens (§ 7.4).
 
-    A quote inside it opens a quoted scalar only where a node can open, after a
-    bracket, a `,` or a `:`, so the `'` in `[don't]` is a character, and a `#`
-    after white space comments out the rest of its line.
+    A quote inside it opens a quoted scalar only where a node can open, as
+    `_flow_node` says, so the `'` in `[don't]` is a character, and a `#` after
+    white space comments out the rest of its line. A line break is white space.
     """
     depth = 0
-    node = True
+    node, closed = True, False
     line, position = index, at
     while line < len(block):
         text = block[line]
         while position < len(text):
             char = text[position]
-            if char == "#" and (position == 0 or text[position - 1] in " \t"):
+            if _comment_at(text, position):
                 break
             if char in ("'", '"') and node:
                 line, position = _quote_end(block, line, position, quotes)
                 text = block[line]
-                node = False
-            elif char in "[{":
-                depth, node = depth + 1, True
-            elif char in "]}":
-                depth, node = depth - 1, False
+                node, closed = False, True
+            else:
+                depth += (char in "[{") - (char in "]}")
                 if depth == 0:
                     return line
-            elif char in ",:":
-                node = True
-            elif char not in " \t":
-                node = False
+                node = _flow_node(text, position, node, closed)
+                closed = char in "]}" or (closed and char in " \t")
             position += 1
         line, position = line + 1, 0
     raise Unread(
