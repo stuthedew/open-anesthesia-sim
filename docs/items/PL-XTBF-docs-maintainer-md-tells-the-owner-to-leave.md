@@ -3,11 +3,13 @@ id: PL-XTBF
 title: docs/maintainer.md tells the owner to leave auto-merge armed while a session fixes a held pull request's failed check, but bin/docket arm's hold tells that session to leave auto-merge off and disarm an armed one, so the fix may stall unarmed where the owner expects it to land
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: defect
 touches: docs/maintainer.md, subprojects/docket/src/docket/arming.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+payoff: a session repairing a held pull request the owner has armed leaves it armed, so the fix lands where the owner expects it instead of sitting green and unarmed
+verify: grep -qF 'armed it after reading' subprojects/docket/src/docket/arming.py
 ---
 
 **Problem.** Two instructions give a session opposite directions on the same
@@ -50,3 +52,20 @@ have read the fix.
 **Decision needed.** Whether an owner-armed held pull request stays armed through a repair push. **Recommended: it stays armed**, and the hold line excepts a pull request the owner armed after reading. The owner has read and armed it, `docs/maintainer.md` already accepts the repair landing unread, and the alternative costs a second read and a re-arm on every repair. The cost is a session's repair reaching `main` unread, which that document accepts. The exception is prose, not a computed branch: a session's GitHub calls are the owner's, so the code cannot tell who armed it.
 
 **Generator check.** The fact is whether an armed held pull request stays armed through a repair, stated oppositely by two documents; no head states it, and no instance has been observed. One-off.
+
+**Decided** (2026-10-12, in the first batched design round, a session's call):
+it stays armed, as recommended. The two carriers disagree about one decision
+rather than posing a new one. `docs/maintainer.md`'s sentence came in with
+`PL-6MW8` (`#977`, 2026-09-23), the decision `CLAUDE.md`'s base-merge bullet
+records as (project owner, 2026-09-23, ratified), and the hold line came later
+(`PL-KKHD`, 2026-10-03) without the exception, so the later carrier is the one
+out of step and the fix is to make it agree. Its blast radius is one printed
+line and one sentence of the owner's manual, which rule 14 of
+`.claude/rules/instruction-writing.md` makes a session's. The form: the hold
+line excepts a held pull request that is already armed - a session never arms
+a held pull request, so one that is armed was armed by the owner after
+reading, and the repair rides it, as `docs/maintainer.md` already says; where
+`arm` cannot read whether auto-merge is on, the printed line carries the
+exception as prose. A repair of two carriers that disagree is a defect in what
+exists, so the pause on new workflow mechanisms does not hold it. Reopening
+this is on ordinary evidence: a repair that landed unread and should not have.
