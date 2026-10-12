@@ -6,7 +6,7 @@ effort: S
 status: blocked
 classes: defect
 touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
-blocked-by: PL-74T0
+blocked-by: PL-8QMD
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
 ---
@@ -29,9 +29,16 @@ product lane" (`ROADMAP.md:5694`), and its one `touches` entry,
 named in `PL-QWF8`'s check - here the lane groups restating what `Item.lane`
 computes. `PL-74T0` records the head or refuses it as its cluster 2.
 
-**Blocked on `PL-74T0`.** Whether the groups are held to `Item.lane` by a
+[superseded 2026-10-11] **Blocked on `PL-74T0`.** Whether the groups are held to `Item.lane` by a
 check, or stop restating it now that `bin/docket gate` prints each lane
 (`PL-M26Q`), turns on whether cluster 2's head makes a frozen gate's entries
 one record, so a check built first could be work that head's fix removes.
 Moving `PL-TDBT` to the workflow group is due either way and rides whichever
 lands.
+
+**Generator check, revised 2026-10-11 by `PL-74T0`.** Not a member of the gate
+head `PL-8QMD`: the lane groups restate what `Item.lane` computes, which is
+`PL-G424`'s fact, the link between a document sentence and the tree fact it
+restates. It waits on `PL-8QMD` instead of `PL-74T0`, because the record that
+head decides on decides where a gate entry's lane is written, if anywhere.
+

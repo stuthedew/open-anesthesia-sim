@@ -3,10 +3,12 @@ id: PL-74T0
 title: Record or refuse generator heads for the three clusters 2026-10-03's captures fall into - PL-KGYT's fact past its sweep, a frozen gate's entries past PL-WD5Z, and the supported step guarded entry point by entry point - once pull requests 1306, 1308 and 1309 merge
 priority: P1
 effort: M
-status: ready
+status: done
 classes: housekeeping
 touches: docs/items
 added: 2026-10-03
+closed: 2026-10-11
+pr: 1419
 payoff: the day's three candidate root causes are each ranked as a generator or refused with a reason, so their next members are stopped at the source rather than fixed one at a time
 not-delegable: The deliverable is a judgment - whether each cluster's members misread one fact no head states - and a grep for the recorded fields would pass on a head recorded wrongly
 ---
@@ -107,3 +109,31 @@ items.
 **Generator check.** Work the project owner asked for: this item is the recording step for three candidate heads, answering their 2026-10-03 question whether that day's captures come from known failure modes, and it is a member of no cluster.
 
 **Third triage pass, 2026-10-05.** `PL-C45K` joins cluster 1: docket's lexer reads `$'...'` as a `$` and a single-quoted string where the hooks' `shell_split` reads it as bash does, so the two spellings of one shell grammar disagree again after `PL-KGYT` closed. Its own `**Generator check.**` carries the reasoning, and `PL-JNYL` is the merge that would end the pair.
+
+**Outcome, 2026-10-11.** All three are recorded as live heads; none is refused.
+Pull requests 1306, 1308 and 1309 had merged, as the brief required.
+
+1. **`PL-5DZ8`**, on `PL-KGYT`'s fact. Five members filed after that head
+   closed on 2026-10-01 - `PL-P72R`, `PL-Z8RS`, `PL-HNXS`, `PL-C45K`, and
+   `PL-YPLM` on 2026-10-10 - each from a module or a fact outside its
+   three-module sweep. `PL-PVW2` then `PL-KGYT` each closed `spent` on a
+   bounded sweep and were followed by members, so the head's done-when is a
+   sweep with no enumerated boundary. `PL-QJ5F` and `PL-2P5L` ride with
+   `PL-HNXS`, the same fact. `PL-JTCQ` is left to its own triage.
+2. **`PL-8QMD`**, on `PL-WD5Z`'s fact widened to every gate entry: `PL-18BD`,
+   `PL-D388`, `PL-JV5Q`, `PL-QWF8`. Live though nothing was filed after
+   2026-10-03, because the members arrive when a gate is frozen or read whole,
+   and Gate 3's freeze reads the same prose. It is `needs-decision`: the fix
+   reopens `PL-0H5D`'s and `PL-18BD`'s ratified group-heading choice.
+   `PL-J6HP`'s and `PL-WD5Z`'s `misread:` were rewritten to its family wording
+   so the three sort together. `PL-W9BK` stays out, on its own check;
+   `PL-Z64T` is `PL-G424`'s fact, re-blocked on `PL-8QMD`.
+3. **`PL-ZGYX`**, a fact no head stated: which values a quantity may take, and
+   whether a number in hand was checked. Twelve members, three of them filed
+   on 2026-10-11 after `parse-dont-validate`'s types landed. Holes in a checked
+   type's own construction and the interface's handling of a refusal stay out,
+   as other facts.
+
+Recording the three as `live` puts `CLAUDE.md`'s pause on new workflow
+mechanisms back in force, since no open item carried `generator: live` before.
+

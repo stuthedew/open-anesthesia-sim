@@ -1394,7 +1394,14 @@ def test_the_staleness_audit_reads_instruction_files_end_to_end(tmp_path: Path) 
     assert "CLAUDE.md:5" not in named
 
 
-def test_a_blocked_item_whose_blocker_closed_is_flagged_for_promotion() -> None:
+def test_a_blocked_item_whose_every_blocker_has_closed_is_an_error() -> None:
+    """`PL-2349`: an error, so the pull request closing the blocker moves it.
+
+    As an advisory it was named on every run and moved by nobody - `PL-R417`'s
+    closure left five items that way. Since `PL-0H5D` a condition `blocked-by`
+    cannot express gets an item of its own, so the state is always false, and
+    the message offers both honest exits rather than choosing one.
+    """
     done = _item("PL-B1B1", status="done", commit="abc1234", closed=TODAY, priority="", effort="")
     blocked = _item(
         "PL-C2C2",
@@ -1403,7 +1410,44 @@ def test_a_blocked_item_whose_blocker_closed_is_flagged_for_promotion() -> None:
         body="**Problem.** x\n**Why it matters.** y\n",
     )
 
-    assert _has(analyze([done, blocked], TODAY).advisories, "every blocker has closed")
+    report = analyze([done, blocked], TODAY)
+
+    assert _has(report.errors, "sits at `blocked` though every blocker has closed (PL-B1B1)")
+    assert _has(report.errors, "move it to `ready` with its `verify:` and `payoff:`")
+    assert _has(report.errors, "record what really holds it in `blocked-by`")
+    assert not _has(report.advisories, "every blocker has closed")
+
+
+def test_a_dropped_blocker_closes_as_a_done_one_does() -> None:
+    dropped = _item(
+        "PL-B1B1", status="dropped", reason="overtaken", closed=TODAY, priority="", effort=""
+    )
+    blocked = _item("PL-C2C2", status="blocked", blocked_by=("PL-B1B1",), body=BLOCKED_BODY)
+
+    assert _has(analyze([dropped, blocked], TODAY).errors, "every blocker has closed")
+
+
+def test_one_open_blocker_keeps_the_status_true() -> None:
+    """Every blocker, not any: one still open is a live block, and no error."""
+    done = _item("PL-B1B1", status="done", commit="abc1234", closed=TODAY, priority="", effort="")
+    blocked = _item(
+        "PL-C2C2", status="blocked", blocked_by=("PL-B1B1", "PL-D3D3"), body=BLOCKED_BODY
+    )
+
+    report = analyze([done, _item("PL-D3D3"), blocked], TODAY)
+
+    assert not _has(report.errors, "every blocker has closed")
+
+
+def test_a_blocker_the_store_cannot_place_is_a_typo_and_not_a_closure() -> None:
+    """Fail closed: an id naming nothing is `_check_references`' error alone,
+    never evidence that the blocker closed."""
+    blocked = _item("PL-C2C2", status="blocked", blocked_by=("PL-Z9Z9",), body=BLOCKED_BODY)
+
+    report = analyze([blocked], TODAY)
+
+    assert _has(report.errors, "blocked by PL-Z9Z9, which is not an item")
+    assert not _has(report.errors, "every blocker has closed")
 
 
 # --- `blocked-by` naming a milestone (`PL-W8XP`) -----------------------------
@@ -1595,13 +1639,29 @@ def test_no_roadmap_declines_the_milestone_half_rather_than_judging_it() -> None
 
 
 def test_an_item_only_blocker_still_reads_as_closed() -> None:
-    """The original advisory keeps its own wording; only the milestone case is new."""
+    """With a roadmap read, an item-only blocker is still the error - the
+    milestone half reaches only an item that names a milestone."""
     done = _item("PL-B1B1", status="done", commit="abc1234", closed=TODAY, priority="", effort="")
     blocked = _item("PL-C2C2", status="blocked", blocked_by=("PL-B1B1",), body=BLOCKED_BODY)
 
     report = analyze([done, blocked], TODAY, milestones=_milestones())
 
-    assert _has(report.advisories, "every blocker has closed")
+    assert _has(report.errors, "every blocker has closed")
+    assert not _has(report.advisories, "ready to promote")
+
+
+def test_a_scoped_milestone_and_a_closed_item_stay_advice() -> None:
+    """Milestone blockers keep their advisory (`PL-2349`'s Done-when): a
+    scoping round is no closure, so there is no pull request to refuse."""
+    done = _item("PL-B1B1", status="done", commit="abc1234", closed=TODAY, priority="", effort="")
+    blocked = _item(
+        "PL-C2C2", status="blocked", blocked_by=("PL-B1B1", "v0.5.0"), body=BLOCKED_BODY
+    )
+
+    report = analyze([done, blocked], TODAY, milestones=_milestones())
+
+    assert not _has(report.errors, "every blocker has closed")
+    assert _has(report.advisories, "v0.5.0 is scoped and every other blocker has closed")
 
 
 def test_a_milestone_blocker_survives_a_round_trip() -> None:

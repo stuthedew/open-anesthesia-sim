@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-10
 payoff: docket.markdown reads a table under a lazy header row as cmark-gfm does, or says plainly where it does not.
 verify: grep -q 'def test_a_lazy_header_row_over_a_delimiter_row_inside_a_container' subprojects/docket/tests/test_markdown_reference.py
+recurrences: 2026-10-12 PL-NNVJ
 ---
 
 **Problem.** docket.markdown does not take a lazy continuation line for a table's header row where the delimiter row under it sits inside the list item or block quote, so a table cmark-gfm renders inside the container is read as the paragraph above it going on; latent
