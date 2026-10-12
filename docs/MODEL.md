@@ -4688,7 +4688,8 @@ be misread as one of the others.
 - **Passed** — a time bookmark at or behind the run's own clock. Positional,
   and true however the clock came to be there: a step took the run past it, or
   the run was forked at the mark and opened standing on it, or the learner
-  marked an instant the case had already run past.
+  marked an instant the case had already run past. A passed mark on the trunk
+  is one a branch may be taken at (§ "What this requires of a branch").
 - **Reached** — a MAC target the run has halted on at least once. Historical,
   and a property of the run rather than of the mark, so it is cleared by a
   reset and by a change of agent, which begin a new run. A branch is the one
@@ -5002,6 +5003,60 @@ changes at 300 s and 600 s, forked at a bookmark of 655.3 s: 0 of 54 elements
 differ across the nine state entries at six probes out to an hour, and the
 trunk stays byte-identical to the same case built without the bookmark.
 
+**Returning to a marked instant the run has already passed is that fork taken
+late** (`PL-W4XQ`, 2026-10-12). A learner paused at three hours who marks the
+one-hour point and goes back to it asks for a fork at an instant the run holds
+no keyframe for and is not standing on, so neither earlier door reaches it. The
+construction above needs neither: the state at a reached instant is the run's
+definition evaluated there, and standing on a halt only ever named the fork. So
+`SimulationController.resumed_at_mark` takes the mark itself and forks with the
+bookmark fork's construction at the step that reached it. What that reproduces,
+and what it does not:
+
+- **It reproduces the case's state at the mark, element for element**, because
+  the branch opens from the canonical state there, inside the parent's own
+  stretch, and every later instant is one propagation from the same keyframe the
+  parent propagates from until the branch's own settings change. On the run in
+  `tests/integration/test_controller.py`, marked at 60 s after its clock reached
+  180 s, the branch agrees with its trunk at all 601 instants from the mark to a
+  minute past it.
+- **It is the branch the halt would have given.** A mark set before the run
+  passed it halts the run and is forked at the halt; the same mark set after the
+  clock went by is forked here, and the two branches' whole provenance -
+  stretch, fork state, step count, crossing - compares equal.
+- **It leaves the trunk the case it was.** Nothing is recorded where the mark
+  stands, which is what kept the bookmark fork from changing the run it marks.
+- **It does not open at the typed instant.** The fork is the end of the step
+  that reaches the mark, at or one step past it - 45.300000000000004 s for a
+  typed 45.3 s at the 0.1 s step, 45.4 s for a 45.35 s - which is the instant a
+  halt would have stopped on, found by the crossing rule itself
+  (`TimeBookmark.steps_to_reach`) rather than by rounding the typed value: 12 767
+  of the 36 001 one-decimal instants in the first hour are not a whole number of
+  steps in binary, and rounding would put a mark lying inside a step on the step
+  before it. The branch reads its mark as passed rather than as before it,
+  because it opens standing on the step that crossed it.
+- **It does not replay what the trunk did afterwards.** The branch continues
+  under the settings in force at the mark, with a control record of its own that
+  starts empty, until the learner changes something; the trunk's later changes
+  stay the trunk's. That is the difference from the reference simulator's
+  rewind, which returns to time zero keeping the recorded settings and plays
+  them back as it runs (Philip JH, *Workbook for Gas Man®*, Med Man
+  Simulations, appendix E, "Replaying Simulations", printed pages 186-87, as
+  read and quoted in `PL-W4XQ`). Whether returning to a mark should instead
+  take the trunk back and truncate it there, as that simulator does, is an open
+  question (`PL-ZW0J`), not a property of the model.
+- **Its opening readouts are the canonical state's, not the ones the trunk
+  showed when it stood there.** A running case displays its stepped live state,
+  one propagation per step from the opening, and every branch opens from the
+  canonical one. They agree to 4.9e-14 as a fraction over three hours of the
+  run in the item's measurement (2026-10-12) - ten orders below the 1e-4 a
+  two-decimal percent can show - so no reader can see the difference, and it is
+  the same for a fork at a control event or a halt.
+
+A mark still ahead of the clock is refused rather than reached: the case holds
+no state there yet, and a fork there would be a prediction drawn as a run. It
+is reached by running on, and the halt is then the fork.
+
 **So nothing is left over to bound, and there is nothing to show a learner**
 (`PL-Z3W6`, 2026-09-21). `ROADMAP.md`'s v0.5.0 definition of done asks this
 document for "the bound on any divergence that could not be eliminated", and on
@@ -5074,8 +5129,8 @@ what rules the chart's axis, what the supported run length is measured
 against, and what its run definition's segments and keyframes are stamped in —
 is the case's, measured from induction, and continues the parent's rather than
 restarting at the fork. `SimulationController.resumed_at()` opens the branch's
-definition at the fork instant, and `resumed_at_halt()` opens it at the
-keyframe at or before one — both on the case's own axis; `advance()` and
+definition at the fork instant, and `resumed_at_halt()` and `resumed_at_mark()`
+open it at the keyframe at or before one — all on the case's own axis; `advance()` and
 `drawn_window()` pass case time straight through to it. Nothing converts
 between frames anywhere, because there is only the one.
 
