@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: housekeeping
 feature: review-hold
+milestone: v0.5.24
 touches: subprojects/docket/src/docket/arming.py, docs/items/PL-KPM2-bin-docket-arm-holds-a-workflow-pull-request.md
 added: 2026-10-12
 closed: 2026-10-12

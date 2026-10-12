@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: convergence-visibility
+milestone: v0.5.24
 touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/trend.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docs/items, CLAUDE.md
 added: 2026-09-17
 closed: 2026-10-12

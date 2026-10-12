@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
+milestone: v0.5.24
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/instructions.py, tools/doc_check.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/tests/test_instructions.py, tests/unit/test_doc_check.py, docs/items/PL-2B0B-doc-check-reads-code-spans-citations-markers.md, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage in workflow group two
 added: 2026-10-06

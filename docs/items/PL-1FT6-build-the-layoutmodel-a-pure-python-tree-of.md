@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: feature
 feature: interface-areas
+milestone: v0.5.24
 touches: src/anesthesia_sim/layout/, tests/unit, tools/import_boundary_check.py, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/items/PL-L8RN-nothing-enforces-the-one-adapter-qsplitter.md
 added: 2026-09-16
 closed: 2026-10-12

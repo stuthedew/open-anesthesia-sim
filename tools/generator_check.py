@@ -82,6 +82,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.config import load as load_config  # noqa: E402
 from docket.lines import record_text, split_lines  # noqa: E402
 from docket.model import (  # noqa: E402
     CLOSED_STATUSES,
@@ -92,8 +93,6 @@ from docket.model import (  # noqa: E402
 )
 from docket.store import ID_PATTERN  # noqa: E402
 from docket.vcs import ITEM_FILE_RE, leading_ids  # noqa: E402
-
-ITEM_DIR = Path("docs/items")
 
 #: The floor for showing a cluster, and it is the recorded definition's own:
 #: `CLAUDE.md` calls a mechanism causing three or more items a generator, so a
@@ -213,7 +212,9 @@ def item_files(repo: Path) -> list[Path]:
     refuses (`PL-5QG4`).
     """
     return [
-        path for path in sorted((repo / ITEM_DIR).glob("*.md")) if ITEM_FILE_RE.match(path.name)
+        path
+        for path in sorted((repo / load_config(repo).items_dir).glob("*.md"))
+        if ITEM_FILE_RE.match(path.name)
     ]
 
 
@@ -225,17 +226,10 @@ def creation_parents(repo: Path) -> dict[str, set[str]]:
     no item had a parent, and every cluster's spawn count would then print as
     measured and zero (`PL-1PBV`).
     """
+    items_dir = load_config(repo).items_dir.strip("/")
     try:
         result = subprocess.run(
-            [
-                "git",
-                "log",
-                "--diff-filter=A",
-                "--name-only",
-                "--format=\x01%s",
-                "--",
-                str(ITEM_DIR),
-            ],
+            ["git", "log", "--diff-filter=A", "--name-only", "--format=\x01%s", "--", items_dir],
             capture_output=True,
             cwd=repo,
             check=False,
@@ -257,7 +251,7 @@ def creation_parents(repo: Path) -> dict[str, set[str]]:
         created = set()
         for line in split_lines(body):
             line = line.strip()
-            if not line.startswith(f"{ITEM_DIR}/"):
+            if not line.startswith(f"{items_dir}/"):
                 continue
             # Whose file it is, as `item_files` reads one. An id searched for
             # anywhere in the upper-cased name, underscores read as hyphens,

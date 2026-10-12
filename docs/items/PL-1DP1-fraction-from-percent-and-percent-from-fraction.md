@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, defect
 feature: parse-dont-validate
+milestone: v0.5.24
 touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md, tests/unit/test_concentration.py, tests/unit/test_formatting.py
 added: 2026-10-11
 closed: 2026-10-12

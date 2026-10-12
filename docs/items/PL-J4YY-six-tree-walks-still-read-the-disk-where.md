@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.24
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/grep.py, tools/workflow_paths_check.py, tools/fact_home_check.py, tools/glyph_check.py, tools/ignore_check.py, tools/doc_check.py, tests/unit/test_workflow_paths_check.py, tests/unit/test_fact_home_check.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_instructions.py, subprojects/docket/tests/test_portability.py, docs/items/PL-NNVJ-doc-check-roadmap-instructions-and-notes-copy.md, docs/apparatus.md, docs/WORKING_NOTES.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-12

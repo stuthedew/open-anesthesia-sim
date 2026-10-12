@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.5.24
 touches: subprojects/docket/README.md
 added: 2026-10-10
 closed: 2026-10-12

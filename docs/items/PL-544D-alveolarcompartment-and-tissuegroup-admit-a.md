@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, defect
 feature: parse-dont-validate
+milestone: v0.5.24
 touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/simulation.py, docs/MODEL.md, tests/unit/test_alveolar.py, tests/unit/test_tissue.py, tests/unit/test_uptake_system_failure.py, tests/integration/test_simulation_view.py, tests/integration/test_controller.py, docs/items/PL-19Y0-a-direct-write-to-a-checked-field-of.md
 added: 2026-10-11
 closed: 2026-10-12
