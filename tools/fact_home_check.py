@@ -47,8 +47,10 @@ whose tables spell the very literals the rules look for and whose baseline
 names a scope called `main`. A file not yet added to git is not read until it
 is, which is `tracked_files`'s trade and the one CI's run of this check
 closes. A home is the whole file unless a scope is
-named beside it, and the hooks keep homes of their own because they cannot
-import docket (`#1095`).
+named beside it. A hook can import docket - the Bash guards read it through
+`shell_split`, which puts its `src` on the path (`PL-JNYL`, `PL-ZXCN`) - but
+every guard pays its imports on every Bash call, so `stop_hook_patch.py`, which
+imports none of it, keeps a git home of its own.
 
 Standard library only and floor-parseable, like every tool under `tools/`,
 and it reads trees that are held to the floor themselves, so both gates run
@@ -115,8 +117,8 @@ HOMES: tuple[Home, ...] = (
         why=(
             "`_run_git` in `docket.vcs` is the one runner - it decodes a path as written, "
             "times out, and tells a silent repository from an empty answer - and every tool "
-            "reaches docket; a hook cannot (#1095), so `_git` in `stop_hook_patch.py` is the "
-            "hooks' one runner"
+            "reaches docket, as `push-check-guard.sh` does on a push (`PL-ZXCN`); `_git` in "
+            "`stop_hook_patch.py` is the runner of a hook that imports no docket"
         ),
         remedy="read git through `docket.vcs`, or through `stop_hook_patch._git` from a hook",
     ),
@@ -161,7 +163,8 @@ HOMES: tuple[Home, ...] = (
         where=((DOCKET + "shell.py", None), (HOOKS + "shell_split.py", None)),
         why=(
             "`docket.shell` reads a Bash command the way the hooks' guards must, and "
-            "`shell_split.py` is its copy for the hooks, which cannot import docket (#1095); "
+            "`shell_split.py` is the hooks' view of it, reading each command through "
+            "`docket.shell` (`PL-JNYL`); "
             "`shlex` splits by a simpler grammar, so a command it reads differently is read "
             "two ways by one repository (`PL-C45K`)"
         ),

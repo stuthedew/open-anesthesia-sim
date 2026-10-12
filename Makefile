@@ -215,10 +215,11 @@ check: sync
 # taken from the merge base, which a stale ref moves earlier and no later.
 #
 # `origin/main` stays a literal, read against `vcs.default_base` (`PL-9KLN`).
-# It is the ref that answers first there on any clone with a remote. No
-# `bin/docket` command prints that answer for `make` to pass, and
-# `.claude/hooks/push-check-guard.sh` hands a session this argv word for word
-# to re-run, so the two change together or not at all.
+# It is the ref that answers first there on any clone with a remote, and no
+# `bin/docket` command prints that answer for `make` to pass.
+# `.claude/hooks/push-check-guard.sh` asks `vcs.default_base` itself and hands
+# a session the argv it ran, which is this one wherever this literal is right
+# (`PL-ZXCN`).
 	bin/docket check --verify --verify-base origin/main
 # Bare `python3`, like the three lines after it: none of them reads project
 # source, so the 3.11 floor parser has nothing it cannot read, and a bare run is

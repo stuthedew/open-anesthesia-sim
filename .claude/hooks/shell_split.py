@@ -173,6 +173,12 @@ ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
 # not here, so a word bash expanded is expanded again (`PL-ZS13`).
 NEEDS_QUOTES = re.compile(r"[\s'\"\\&|;()<>#]")
 
+# What bash makes new words from after a guard has read these: a `$` opens a
+# parameter or a substitution, a backtick a substitution and a `{` a brace
+# expansion, so a word holding one is not yet the word the command is handed.
+# `no-prune-guard.sh` and `push-check-guard.sh` each held a copy (`PL-ZXCN`).
+EXPANDS = re.compile(r"[$`{]")
+
 
 class Grammar:
     """How one wrapper reads the words ahead of the command it runs, as GNU getopt reads them.

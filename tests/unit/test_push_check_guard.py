@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 from pathlib import Path
 
 import pytest
+from docket.gitargv import TAKES_A_WORD, subcommand_of
 
 REPO = Path(__file__).resolve().parents[2]
 HOOK = REPO / ".claude" / "hooks" / "push-check-guard.sh"
@@ -82,6 +84,8 @@ def project(tmp_path: Path) -> Path:
     _stub(tree)
     _git(tree, "add", "-A")
     _git(tree, "commit", "-q", "-m", "init")
+    # The default base `docket.vcs` names for the store check, as a clone has it.
+    _git(tree, "update-ref", "refs/remotes/origin/main", "HEAD")
     return tree
 
 
@@ -138,6 +142,69 @@ def test_a_push_whose_store_check_fails_is_refused(project: Path) -> None:
     assert "a cost line nobody needs at push time" not in reason
     assert "a grooming advisory nobody needs at push time" not in reason
     assert "doc_check" not in reason
+
+
+def test_the_store_check_compares_against_the_base_vcs_names(project: Path) -> None:
+    """`PL-ZXCN`: the base is `vcs.default_base`'s answer, where it was the literal `origin/main`.
+
+    On a clone whose default branch is `master`, the literal named a ref the
+    clone does not hold.
+    """
+    _git(project, "update-ref", "-d", "refs/remotes/origin/main")
+    _git(project, "update-ref", "refs/remotes/origin/master", "HEAD")
+    _stub(project, store=STORE_FAILS)
+    decision = _decision("git push", cwd=project, project=project)
+    assert decision is not None
+    rerun = "`bin/docket check --verify --verify-base origin/master --no-fetch` re-runs it"
+    assert rerun in decision["permissionDecisionReason"]
+
+
+#: A push behind each option git reads as its own that takes the next word, the
+#: value as a session might write it.
+OWN_OPTIONS = (
+    ("-C", "."),
+    ("-c", "push.default=current"),
+    ("--config-env", "core.editor=EDITOR"),
+    ("--namespace", "ns"),
+    ("--attr-source", "HEAD"),
+)
+#: The two that point git at a tree the guard does not follow, so a push behind
+#: either goes out unchecked, as the hook's header says.
+NOT_FOLLOWED = frozenset(("--git-dir", "--work-tree"))
+
+
+def test_every_option_git_reads_with_a_word_has_a_case_here() -> None:
+    assert {option for option, _ in OWN_OPTIONS} | NOT_FOLLOWED == TAKES_A_WORD
+
+
+@pytest.mark.parametrize(("option", "value"), OWN_OPTIONS)
+def test_git_own_options_read_as_vcs_reads_them(project: Path, option: str, value: str) -> None:
+    """`PL-ZXCN`: the guard finds the command past the table `docket.vcs` reads, `docket.gitargv`.
+
+    The guard held its own copy, of which `vcs.subcommand_of` read two entries,
+    so `git --git-dir /x/.git log` was `log` here and `/x/.git` in docket.
+    """
+    args = [option, value, "push"]
+    assert subcommand_of(args) == "push"
+    _stub(project, doc=DOC_FAILS)
+    decision = _decision(shlex.join(["git", *args]), cwd=project, project=project)
+    assert decision is not None, args
+    assert decision["permissionDecision"] == "deny"
+
+
+def test_a_tree_whose_path_holds_a_carriage_return_is_checked(tmp_path: Path) -> None:
+    """`PL-ZXCN`: what git prints is decoded as written, as `docket.vcs` decodes it.
+
+    Read in text mode, `rev-parse --show-toplevel` turned the `\\r` into a
+    line end, the tree it named held no checks, and the push went out unchecked.
+    """
+    tree = tmp_path / "pro\rject"
+    tree.mkdir()
+    _git(tree, "init", "-q")
+    _stub(tree, doc=DOC_FAILS)
+    _git(tree, "add", "-A")
+    _git(tree, "commit", "-q", "-m", "init")
+    assert _decision("git push", cwd=tree, project=tree) is not None
 
 
 def test_a_push_every_check_passes_goes_through(project: Path) -> None:
