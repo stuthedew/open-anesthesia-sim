@@ -1,10 +1,16 @@
 ---
 id: PL-2349
 title: A blocked item whose every recorded blocker has closed has no status to move to short of ready, which demands verify: and payoff:, so the session closing the blocker leaves status: blocked standing as a false claim - PL-R417's closure on 2026-10-11 left five that way, and PL-5XG1 and PL-ZYHX sat 15 and 8 days
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
 feature: blocked-means-blocked
-touches: subprojects/docket/src/docket/checks.py, .claude/skills/docket/modes/close-out.md
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/triage.md, docs/items/PL-JHHC-a-decision-whose-answer-adds-a-commit-to-a-pull.md, docs/items/PL-LNNL-no-check-reads-a-markdown-document-as.md, docs/items/PL-QFCR-arming-tooling-and-gate-write-this-repository-s.md, docs/items/PL-RLS3-record-the-2026-instruction-file-measurements.md, docs/items/PL-VF3C-port-the-2026-09-25-multi-session-stress.md
+deferred-from: v0.6.0 - filed after the gate froze, and a docket defect in how the queue records state, which the layout milestone does not clear
 added: 2026-10-11
+payoff: an item stops reading blocked the moment nothing blocks it, so released work reaches bin/docket next in the pull request that released it instead of waiting for a grooming pass
+verify: grep -q 'def test_a_blocked_item_whose_every_blocker_has_closed_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** A blocked item whose every recorded blocker has closed has no status to move to short of ready, which demands verify: and payoff:, so the session closing the blocker leaves status: blocked standing as a false claim - PL-R417's closure on 2026-10-11 left five that way, and PL-5XG1 and PL-ZYHX sat 15 and 8 days
@@ -75,7 +81,28 @@ at its word. Left false, the released work is invisible to `bin/docket next`
 for as long as nobody grooms it, and the advisory that names it repeats every
 run - the "earns its place every run" failure `CLAUDE.md` retires checks for.
 
-**Done when.** The decision above is recorded, and under (b): `bin/docket
-check` errors on a `blocked` item whose every item blocker has closed, with a
-test; close-out step 1 and the triage mode say a released item leaves
-`blocked` in the closing pull request; and no item on `main` is in that state.
+**Decided 2026-10-11: (b)** (project owner, 2026-10-11, ratified, over a
+fifth `unblocked` status and over keeping the advisory as it is): no new
+status; `bin/docket check` refuses a `blocked` item whose every item blocker
+has closed, and the pull request that closes a blocker moves what it released.
+
+**Generator check.** Read against `PL-6T44`'s head (closed 2026-09-20, misread
+"An item's current queue state"): this is the same fact from the writer's
+side, and not recorded as a live head - see **History** above for the count.
+
+**Done when.** `bin/docket check` reports an error, not an advisory, for an
+item at `status: blocked` whose `blocked-by` names only items and every one of
+them is `done` or `dropped`; the message says to move it to `ready` with its
+`verify:` and `payoff:`, or to record what really holds it in `blocked-by` (an
+item for the condition, per `PL-0H5D`). The existing promotion test becomes
+`test_a_blocked_item_whose_every_blocker_has_closed_is_an_error`. Milestone
+blockers keep their advisory. `bin/docket next`'s "Blocked on paper only" line
+and the close-time print in `bin/docket set` say the closing pull request moves
+them, since the check will now refuse it otherwise. Close-out step 1
+(`.claude/skills/docket/modes/close-out.md`) drops "candidate list ... nothing
+promotes them for you" framing only where it implies the item may be left, and
+says a released item leaves `blocked` in the closing pull request. The five
+items stale on 2026-10-11 - `PL-JHHC`, `PL-LNNL`, `PL-QFCR`, `PL-RLS3`,
+`PL-VF3C` - leave `blocked` in the same pull request, each to `ready` with its
+`verify:` and `payoff:` written for the end state, or to a real blocker, so
+`main` never carries the error.
