@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/ver
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
 closed: 2026-10-12
+pr: 1471
 payoff: git's exit status, output and silence mean one thing to every reader
 verify: grep -q 'def test_a_missing_blob_is_an_answer_as_vcs_reads_it' tests/unit/test_branch_id_check.py
 ---
