@@ -1413,9 +1413,9 @@ class _Lexer:
         runs, where that can move the end bash finds for it, `push_back`
         records where (`PL-54MD`). Bash reads a body its delimiter never ends
         to the end of the input, with a warning; here that is unreadable unless
-        the input is read
-        as `bash -c` reads it, so that a `<<` docket took for one leaves what
-        follows it declined rather than read as a body unannounced. Where no
+        the input is read as `bash -c` reads it, so that a `<<` docket took for
+        one leaves what follows it declined rather than read as a body
+        unannounced. Where no
         part of the delimiter was quoted, `joined`, bash expands the body once
         it has found where the body ends, and `expanded` reads the commands
         that expansion runs.
