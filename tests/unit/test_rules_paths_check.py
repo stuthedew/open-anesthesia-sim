@@ -222,6 +222,23 @@ def test_a_pattern_beginning_mid_segment_is_judged_on_its_directory(tmp_path: Pa
     assert rules_paths_check.problems(root) == []
 
 
+def test_a_rule_in_a_subdirectory_is_read(tmp_path: Path) -> None:
+    """`PL-9NZ3`: Claude Code discovers `.claude/rules/` recursively, so a nested rule loads.
+
+    The top-level glob never read one, while `doc_check` measured it as a
+    rule, so its `paths:` were held to nothing.
+    """
+    root = _rules(tmp_path)
+    nested = root / rules_paths_check.RULES_DIR / "sub"
+    nested.mkdir()
+    (nested / "freeze.md").write_text(_frontmatter("README.md"), encoding="utf-8")
+
+    (found,) = rules_paths_check.problems(root)
+
+    assert found.startswith(".claude/rules/sub/freeze.md:")
+    assert "any depth" in found
+
+
 def test_this_repository_passes_its_own_check() -> None:
     """The real tree, not only a fixture: the rule has to hold where it is enforced."""
     assert rules_paths_check.problems(ROOT) == []

@@ -96,6 +96,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "subprojects" / "do
 
 from docket.roadmap import section_table
 
+from workflow_paths_check import tracked_under
+
 #: The tree whose vocabulary is governed, relative to the repository root.
 CORE_TREE = "src/anesthesia_sim/core"
 
@@ -451,7 +453,8 @@ def _first_per_module(
 
 
 def _sources(root: Path) -> list[Path]:
-    return sorted((root / CORE_TREE).rglob("*.py"))
+    """Every Python file the repository holds under `CORE_TREE`, read from `tracked_files`."""
+    return tracked_under(root, CORE_TREE, ".py")
 
 
 def analyze(

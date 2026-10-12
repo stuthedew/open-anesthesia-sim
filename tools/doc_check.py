@@ -115,7 +115,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from functools import lru_cache, partial
 from itertools import zip_longest
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePath, PurePosixPath
 
 # `ROADMAP.md`'s release-train grammar lives in `docket`, which reasons about
 # project state for a living and reads the same table to report which beat of
@@ -292,6 +292,13 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 # reason: a line regex had taken a `run:` inside another block for a step.
 import required_checks_check
 
+# Which files the repository holds is `tracked_files`'s answer, and which of
+# them are rule files is `rules_paths_check`'s, so a checkout under
+# `.claude/worktrees/` is not read as this one and a nested rule is measured
+# only where it is also read (`PL-2P5L`, `PL-9NZ3`).
+from rules_paths_check import RULES_DIR, rule_files
+from workflow_paths_check import tracked_under
+
 # Documentation whose claims this tool holds to the tree. `CLAUDE.md` and the
 # docket skill are included because they cite paths as heavily as the docs
 # proper do, and a rule that names a file that no longer exists is a rule
@@ -323,7 +330,6 @@ DOC_GLOBS = (
 # `paths:` frontmatter, which defers it to the sessions that open a matching
 # file.
 RESIDENT_ROOTS = ("CLAUDE.md", ".claude/CLAUDE.md")
-RULES_DIR = ".claude/rules"
 SKILLS_DIR = ".claude/skills"
 WORKER_DOC = "docs/worker.md"
 # Instruction text a session loads only once something makes it load: a skill
@@ -1322,15 +1328,17 @@ def _expand_braces(token: str) -> list[str]:
     return expanded
 
 
-def _walk(directory: Path) -> Iterator[Path]:
-    """Yield every file under `directory`, skipping caches and virtualenvs."""
-    for child in sorted(directory.iterdir()):
-        if child.name in IGNORED_DIRS:
-            continue
-        if child.is_dir():
-            yield from _walk(child)
-        elif child.is_file():
-            yield child
+def _walk(root: Path, under: str | PurePath = "") -> Iterator[Path]:
+    """Yield every file the repository holds at or below `under`, skipping `IGNORED_DIRS`.
+
+    Read from `tracked_files`, so another checkout under `.claude/worktrees/` is
+    not read as this one: walking the disk, a broken quotation in a
+    worktree-isolated agent's copy failed this check in the main checkout
+    (`PL-2P5L`).
+    """
+    for path in tracked_under(root, under):
+        if not IGNORED_DIRS.intersection(path.relative_to(root).parts):
+            yield path
 
 
 def read_docs(root: Path) -> dict[Path, str]:
@@ -1424,7 +1432,7 @@ def _mapped_candidates(root: Path, tree_root: PurePosixPath) -> list[PurePosixPa
     base = root / tree_root
     return [
         tree_root / PurePosixPath(path.relative_to(base).as_posix())
-        for path in _walk(base)
+        for path in _walk(root, tree_root)
         if path.suffix in MAPPED_SUFFIXES and path.name not in UNMAPPED_NAMES
     ]
 
@@ -1633,7 +1641,7 @@ def check_provenance(root: Path, report: Report) -> None:
     data_root = root / PACKAGE_ROOT / "data"
     if not data_root.is_dir():
         return
-    for data_path in _walk(data_root):
+    for data_path in _walk(root, PACKAGE_ROOT / "data"):
         if data_path.suffix != ".json":
             continue
         relative = PurePosixPath(data_path.relative_to(root / PACKAGE_ROOT).as_posix())
@@ -1704,7 +1712,7 @@ def check_source_tiers(root: Path, report: Report) -> None:
     if not data_root.is_dir():
         return
 
-    for data_path in _walk(data_root):
+    for data_path in _walk(root, PACKAGE_ROOT / "data"):
         if data_path.suffix != ".json":
             continue
         relative = data_path.relative_to(root / PACKAGE_ROOT).as_posix()
@@ -7262,6 +7270,11 @@ def _measure_on_demand(name: str, text: str) -> ResidentFile | None:
 def measure_resident(root: Path) -> list[ResidentFile]:
     """Which instruction files load at launch in this working tree, and how big.
 
+    The rules are `rules_paths_check.rule_files`, at any depth, and the skills
+    the tracked files under `SKILLS_DIR`: a file not yet added to git is
+    measured once it is, which is the trade every reader of `tracked_files`
+    makes (`PL-9NZ3`).
+
     `SKILLS_DIR` is walked beside the rules, and contributes each skill's
     frontmatter rather than its file - see `_skill_description`. The dynamic
     half of the payload is not here but in `measure_digest`, because it is
@@ -7270,12 +7283,8 @@ def measure_resident(root: Path) -> list[ResidentFile]:
     """
     measured: list[ResidentFile] = []
     names = [name for name in RESIDENT_ROOTS if (root / name).is_file()]
-    for directory in (RULES_DIR, SKILLS_DIR):
-        found = root / directory
-        if found.is_dir():
-            names += sorted(
-                path.relative_to(root).as_posix() for path in found.rglob("*.md") if path.is_file()
-            )
+    for found in (rule_files(root), tracked_under(root, SKILLS_DIR, ".md")):
+        names += [path.relative_to(root).as_posix() for path in found]
     for name in names:
         row = _measure(name, (root / name).read_text(encoding="utf-8"))
         if row is not None:

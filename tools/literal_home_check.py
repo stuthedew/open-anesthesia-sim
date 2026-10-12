@@ -91,6 +91,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from workflow_paths_check import tracked_under
+
 #: The tree held to both rules.
 TREE = "src/anesthesia_sim"
 
@@ -350,8 +352,12 @@ class Report:
 
 
 def _sources(root: Path, tree: str) -> Iterator[Path]:
-    """Every Python file under the tree, in a stable order."""
-    yield from sorted((root / tree).rglob("*.py"))
+    """Every Python file the repository holds under the tree, in a stable order.
+
+    Read from `tracked_files`, so an untracked scratch module's numbers are not
+    counted as copies (`PL-9NZ3`).
+    """
+    yield from tracked_under(root, tree, ".py")
 
 
 def analyze(

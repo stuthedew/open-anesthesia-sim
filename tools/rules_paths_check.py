@@ -46,6 +46,13 @@ output would look authoritative and would not be. Both rules here ask only
 whether an entry is anchored and whether it points at anything, which the text
 and the tree answer by themselves.
 
+**Every rule file, at any depth.** Claude Code discovers the `.md` files under
+`.claude/rules/` recursively, so a rule in `.claude/rules/sub/` loads like any
+other ([memory](https://code.claude.com/docs/en/memory), read 2026-10-12).
+`rule_files` is the one reader of which files those are, and
+`tools/doc_check.py` measures the resident set through it, so a nested rule is
+never measured as resident here and left unread there (`PL-9NZ3`).
+
 Standard library only, like every tool here, so it runs in a bare checkout.
 """
 
@@ -62,7 +69,10 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.frontmatter import Unread, closing, closing_quote, keys, uncommented  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 
-RULES_DIR = Path(".claude") / "rules"
+from workflow_paths_check import tracked_under  # noqa: E402
+
+#: Where Claude Code reads project rules, relative to the repository root.
+RULES_DIR = ".claude/rules"
 
 #: The spelling that matches nothing, called out separately in the failure
 #: because "add a leading slash" reads as cosmetic against it.
@@ -248,10 +258,15 @@ def nearest_existing(root: Path, prefix: str) -> str:
     return "the repository root"
 
 
+def rule_files(root: Path) -> list[Path]:
+    """Every rule file the repository holds, at any depth under `RULES_DIR`, in path order."""
+    return tracked_under(root, RULES_DIR, ".md")
+
+
 def problems(root: Path) -> list[str]:
     """Every entry that is unanchored or dead, and every rule whose scope cannot be read."""
     found: list[str] = []
-    for path in sorted((root / RULES_DIR).glob("*.md")):
+    for path in rule_files(root):
         name = path.relative_to(root).as_posix()
         try:
             text = path.read_text(encoding="utf-8")
@@ -309,17 +324,17 @@ def main() -> int:
     if not found:
         declared = [
             entry
-            for path in sorted((args.root / RULES_DIR).glob("*.md"))
+            for path in rule_files(args.root)
             for entry in entries(frontmatter(path.read_text(encoding="utf-8")) or [])
         ]
         print(
             f"rules-paths: {len(declared)} declared path glob(s) across "
-            f"{RULES_DIR.as_posix()}, all anchored to the repository root and resolving"
+            f"{RULES_DIR}, all anchored to the repository root and resolving"
         )
         return 0
 
     print(
-        f"rules-paths: {len(found)} problem(s) in {RULES_DIR.as_posix()}.\n"
+        f"rules-paths: {len(found)} problem(s) in {RULES_DIR}.\n"
         + "".join(f"  {problem}\n" for problem in found)
         + "  A `paths:` entry decides which files load a rule, and it fails silently "
         "in both directions: without a leading `/` it also matches the same name at "
