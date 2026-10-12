@@ -39,3 +39,13 @@ banner's "unchanged" is true; a test in
 `tests/integration/test_controller.py` pins it. `PL-KFNP` is the root, and
 fixing it there makes this unreachable; this item stands for the case where
 the write stays admitted.
+
+**Re-scoped 2026-10-12, in `PL-KFNP`'s design round.** Neither answer to
+`PL-KFNP` makes this record unreachable: a tissue's or the venous pool's
+`set_blood_flow` still sets a compartment's flow past the patient's output,
+nothing in `src/` but `PatientCompartments._update_blood_flows` calls it, and
+a caller `mypy` does not read can. So the case this item stands for is a
+record reached that way, the fix above is unchanged by the answer, and it stays
+blocked on `PL-KFNP` because that build re-points `_with_stale_tissue_flows`
+in `tests/integration/test_controller.py`, the helper this item's test would
+use.
