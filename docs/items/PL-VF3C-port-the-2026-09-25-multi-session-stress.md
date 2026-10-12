@@ -7,8 +7,10 @@ status: blocked
 classes: test, infra
 feature: workflow-stress-2026-09
 touches: subprojects/docket/tests/test_multisession.py, subprojects/docket/tests/conftest.py
-blocked-by: PL-R417
+blocked-by: PL-5DZ8, PL-8QMD, PL-ZGYX
 added: 2026-09-25
+payoff: the distributed-state defects the 2026-09-25 harness reproduced are held by named tests in the docket suite, so the next regression in a claim or flight read fails CI instead of arriving as an item from whichever session trips it
+verify: grep -q 'def test_v1_' subprojects/docket/tests/test_multisession.py && grep -q 'def test_v8_' subprojects/docket/tests/test_multisession.py
 ---
 
 **Problem.** Port the 2026-09-25 multi-session stress harness into subprojects/docket/tests as a regression suite: each reproduced violation a named scenario test, the seeded random interleavings behind a slow marker, and a fake forge that can say merged and closed as well as open
@@ -17,7 +19,7 @@ The harness (`harness.py` in the evidence archive, one stdlib file) builds a bar
 
 **Why it matters.** Class B (distributed-state inference) is 26% of apparatus defect inflow and 12 of the 35 generator heads. A defect found by CI in bulk costs one fix; the same defect found by sessions arrives as one item per session that trips it.
 
-**Done when.** The scenario matrix runs under `pytest` in the docket suite with each V1-V8 reproduction as a named test (xfail until its item closes), and a seeded random run is available behind a marker.
+**Done when.** The scenario matrix runs under `pytest` in the docket suite with each V1-V8 reproduction as a named test, `test_v1_...` through `test_v8_...` (xfail until its item closes), and a seeded random run is available behind a marker.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
 
@@ -29,4 +31,6 @@ Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
 - For the design, once unblocked: with `-ra`, every xfail prints a summary line on every run until its item closes, which is a check firing without changing a decision.
 - **Generator check.** One-off. It is infrastructure proposed for the distributed-state heads' members (`PL-XBV4`, `PL-MB2W`, the claim-integrity items), not an instance of a misread fact.
 
-**The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it: `subprojects/docket/tests/test_multisession.py` does not exist yet. It stays `blocked` only because `ready` needs a `verify:` command and a `payoff:`, which `bin/docket set` refuses `ready` without and triage writes beside the work; `bin/docket check` names it ready to promote meanwhile.
+[superseded 2026-10-12: `PL-R417` no longer holds it; the pause it ended restarted with #1419's three live heads, below] **The pause ends with `PL-R417`, closed 2026-10-11 in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Nothing else holds it: `subprojects/docket/tests/test_multisession.py` does not exist yet. It stays `blocked` only because `ready` needs a `verify:` command and a `payoff:`, which `bin/docket set` refuses `ready` without and triage writes beside the work; `bin/docket check` names it ready to promote meanwhile.
+
+**Re-read 2026-10-12 under `PL-2349`**, whose check now refuses a `blocked` item whose every blocker has closed. `PL-R417`'s closure ended the generator pause on 2026-10-11, and `PL-74T0` restarted it the next day: #1419 (`febb37b4`) recorded `PL-5DZ8`, `PL-8QMD` and `PL-ZGYX` as live heads, and `bin/docket generators` marks all three still generating. Nothing else this brief names holds it, so it stays held by the pause, now blocked on those three - though the pause's own test is still `bin/docket generators` marking no head "still generating", not this list. The `verify:` and `payoff:` are written now, so the pull request that ends the pause can promote it in one write. The fault stands: `subprojects/docket/tests/test_multisession.py` does not exist. `verify:` reads the first and last of the eight reproductions, so the scenario tests are named after the archive's numbering, `test_v1_...` through `test_v8_...`; it was seen failing (exit 2, the file absent) on 2026-10-12.
