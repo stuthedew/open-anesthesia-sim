@@ -8,6 +8,7 @@ classes: docs
 touches: .claude/skills/docket/modes/design.md, .claude/skills/docket/modes/start.md
 added: 2026-10-12
 closed: 2026-10-12
+pr: 1441
 payoff: a build session that meets a question for the owner keeps building the rest of its batch, and the owner answers the lane's questions in one sitting
 verify: grep -qF 'A build that meets a decision sets the item aside and goes on' .claude/skills/docket/modes/design.md && grep -qF 'set aside and the batch goes on' .claude/skills/docket/modes/start.md
 ---

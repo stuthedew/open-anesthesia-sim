@@ -10,6 +10,7 @@ touches: docs/items/
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
 closed: 2026-10-12
+pr: 1441
 payoff: PL-B11M's record says what its no-model-id rule reaches, so no session re-raises the nine files on main that name a model deliberately
 verify: grep -qF 'governs attribution' docs/items/PL-B11M-detect-a-silent-model-fallback-last-served.md
 ---
