@@ -16,6 +16,7 @@ verify: grep -q 'def test_every_writer_refuses_a_value_the_reader_would_not_read
 root-cause-of: PL-0779, PL-LNDJ, PL-WJM4
 generator: spent - every front-matter writer now hands the file it would write to model._read_back, which reads it through the one reader and refuses before writing where a value would read back as anything else, so no writer states the grammar apart from its reader and a rule the reader gains reaches them unedited; the reader's own two misreadings (block-scalar header, loose closing fence) are fixed, and the docstrings name _fold rather than describe its extent
 misread: The item front-matter value grammar: where a field's value ends and which spellings it may take
+reenters: PL-9HD1
 ---
 
 **Problem.** `PL-9HD1` (closed 2026-09-21, `#826`) gave the front-matter value

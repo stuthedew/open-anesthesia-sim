@@ -13,6 +13,7 @@ added: 2026-09-24
 closed: 2026-09-26
 pr: 1068
 verify: grep -q 'The hard wrap (.PL-BZHX.) is now the plain-text form' tools/pr_body_check.py
+reenters: PL-WFFX
 ---
 
 **Problem.** The squash body on main arrives hard-wrapped at about 72 columns, which splits Markdown table rows and flattens nested lists in the permanent record: #993's table and sub-bullets are intact on GitHub and broken in a56c86c4

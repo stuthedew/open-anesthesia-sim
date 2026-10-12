@@ -14,6 +14,7 @@ closed: 2026-09-26
 pr: 1136
 payoff: a session whose branch someone else pushed to is told its claim's visibility is unknown and to run claim again, not that the claim is local, and a published claim is never withdrawn for a later one
 verify: grep -q 'def test_a_claim_under_a_commit_this_clone_has_not_fetched_is_not_reported_local' subprojects/docket/tests/test_claiming.py && grep -q 'def test_a_published_claim_under_a_commit_this_clone_has_not_fetched_is_not_withdrawn' subprojects/docket/tests/test_claiming.py
+reenters: PL-MT3R
 ---
 
 **Problem.** claim reads its own published claim as unpushed where the branch's tip on the remote is a commit this clone has not fetched, so after someone else pushes to the branch, claim --no-fetch exits 4 saying only this checkout can see a claim every clone can

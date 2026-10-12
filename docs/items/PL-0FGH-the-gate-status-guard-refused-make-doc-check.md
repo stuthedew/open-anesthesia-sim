@@ -14,6 +14,7 @@ closed: 2026-09-27
 pr: 1155
 payoff: a session that runs a gate and then an && chain with a pipe on a later step - make doc-check > log 2>&1 && git push | grep -v remote - is let through, as bash exits with the gate's status when it fails, so the && the refusal itself recommends is no longer refused once a later step is piped
 verify: grep -q 'def test_a_gate_before_and_skips_the_whole_pipeline_after_it' tests/unit/test_gate_status_guard.py
+reenters: PL-61FT
 ---
 
 **Problem.** The gate-status guard refused make doc-check > log 2>&1 && git add ... && git commit ... && git push ... | grep -v remote, reading the later git push pipeline's grep as doc-check's last stage, though | binds tighter than && so doc-check's status gated the chain (met in ordinary work 2026-09-27, evidence for PL-61FT)

@@ -14,6 +14,7 @@ closed: 2026-09-27
 pr: 1147
 payoff: a session whose pull request already squash-merged is told to restart instead of merging the base in, so its next capture is not stranded on a branch nothing will merge again
 verify: grep -q 'def test_a_merged_captures_only_branch_is_told_to_restart' subprojects/docket/tests/test_vcs.py
+reenters: PL-GHHW
 recurrences: 2026-09-26 PL-RLTK
 ---
 

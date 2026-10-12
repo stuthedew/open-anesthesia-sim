@@ -13,6 +13,7 @@ added: 2026-09-24
 closed: 2026-09-26
 pr: 1068
 verify: grep -q 'def test_recording_a_merged_pull_request_names_how_its_squash_copy_compares' tests/unit/test_pr_body_check.py
+reenters: PL-WFFX
 recurrences: 2026-09-25 PL-YYDT withdrawn 2026-09-25 PL-PNJF, 2026-09-26 PL-7VWK withdrawn 2026-09-26 PL-PNJF, 2026-09-26 PL-X2XP withdrawn 2026-09-26 PL-PNJF
 ---
 

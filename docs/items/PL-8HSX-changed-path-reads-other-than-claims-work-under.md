@@ -14,6 +14,7 @@ closed: 2026-09-25
 pr: 1034
 payoff: a delegated branch that adds or edits a core, data or MODEL.md file under a name git would quote fails the protected-path audit instead of passing as none touched
 verify: grep -q 'def test_a_non_ascii_protected_path_is_rejected' subprojects/docket/tests/test_verify.py
+reenters: PL-KR69
 ---
 
 **Problem.** Changed-path reads other than claims.work_under_record leave core.quotePath on, so git prints a non-ASCII path in quoted octal and verify's protected-path audit compares that form: a new src/anesthesia_sim/core/café.py passes as 'none touched'

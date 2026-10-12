@@ -14,6 +14,7 @@ closed: 2026-09-25
 pr: 1020
 payoff: a web session's first claim on a branch the harness made tracking main is written and pushed at once, instead of refused until the session repairs the branch's upstream by hand
 verify: grep -q 'def test_a_branch_tracking_the_default_branch_is_pushed_with_an_upstream_of_its_own' subprojects/docket/tests/test_claiming.py
+reenters: PL-4Q9B
 ---
 
 **Problem.** claim refuses the web harness's own branch shape: every session branch starts with branch.<name>.merge=refs/heads/main, so claim exits 1 with 'pushes to origin/main, and a claim names one branch' until the session pushes with -u or unsets the upstream, and nothing in .claude/ or the README says so

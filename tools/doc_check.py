@@ -3315,20 +3315,19 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     itself says what it is waiting for, and stops saying it when the wait is
     over.
 
-    It expires on the *promotion* rather than on the blocker closing, and that
-    gap is real rather than waved past. Nothing rewrites `status` when a blocker
-    closes; `bin/docket check`'s "every blocker has closed; it is ready to
-    promote" is what asks for it, and on 2026-09-16 it was asking for seven
-    items - `PL-W7H9`, `safety, anticipated` behind a `PL-8PSW` that is `done`,
-    among them. So the carve-out now outlives its hazard by one grooming pass
-    instead of indefinitely, and the advisory that closes that window already
-    runs on every `bin/docket check`.
+    It expires on the *promotion* rather than on the blocker closing. Nothing
+    rewrites `status` when a blocker closes; `bin/docket check` asked for it
+    in an advisory, and on 2026-09-16 that was asking for seven items -
+    `PL-W7H9`, `safety, anticipated` behind a `PL-8PSW` that is `done`, among
+    them. Since `PL-2349` the item-blocker case is an error instead, so the
+    carve-out lapses in the pull request that closes the blocker; a milestone
+    blocker's advisory still lets it outlive its hazard by one grooming pass.
 
     Resolving the blockers here directly would close the window outright, and
     was not built: it would put a second copy of `checks.py`'s resolution logic
     - item edges, milestone edges, `ships_with` - in the tool whose job is to
     read the store rather than reason about it, to buy a pass that an existing
-    advisory already covers. The conjunct is what `checks.py` spells, and
+    `bin/docket check` rule already covers. The conjunct is what `checks.py` spells, and
     agreeing with it is worth more here than being a pass quicker.
 
     The roadmap had already decided one of these by hand, which is what settles

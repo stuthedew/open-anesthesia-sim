@@ -26,6 +26,7 @@ from .checks import (
     SettingsSource,
     analyze,
     brief_contradictions,
+    stale_blocked_error,
     tier_entrances,
 )
 from .claims import (
@@ -53,6 +54,8 @@ from .concurrency import (
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
 from .duplicates import anchor, near_duplicates
+from .inflow import analyze as analyze_inflow
+from .inflow import missed as missed_inflow
 from .lines import split_lines
 from .model import (
     CLOSED_STATUSES,
@@ -1880,6 +1883,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("generator", "generator"),
     ("misread", "misread"),
     ("impairs-generators", "impairs_generators"),
+    ("reenters", "reenters"),
 )
 
 
@@ -2026,7 +2030,14 @@ def cmd_set(args: argparse.Namespace) -> int:
         # the whole store is clean would refuse the command on exactly the
         # days it is needed.
         already = set(analyze(items, today, config, milestones=milestones).errors)
-        introduced = [error for error in introduced if error not in already]
+        # Nor does an item this closure released: refusing the closure for
+        # it would leave the blocker open, and the released item could not
+        # honestly leave `blocked` before it closed. `_say_unblocked` names
+        # each one, and `check` holds the pull request until it has moved
+        # (`PL-2349`). The item written is never exempt - a write that makes
+        # its own status false is refused like any other.
+        released = {stale_blocked_error(c) for c in promotable(after) if c is not updated}
+        introduced = [e for e in introduced if e not in already and e not in released]
     if introduced:
         print(f"{item.identifier}: nothing was written; `docket check` would then report{raised}:")
         for error in introduced:
@@ -2169,6 +2180,11 @@ def _say_unblocked(
     user-facing question written in since triage. `PL-6T44` carries why a
     recomputed status must not override what an item declares - it would have
     put `PL-WZVZ`, unbuildable, into `P1` and onto the debt gate.
+
+    **Named, and not optional.** `docket check` refuses each one until it has
+    moved, so the print says the move belongs to this pull request: the
+    closure is let through for them, and the advisory that preceded the error
+    was named on every run and acted on by nobody (`PL-2349`).
     """
     if "status" not in changes or updated.status not in CLOSED_STATUSES:
         return
@@ -2180,10 +2196,12 @@ def _say_unblocked(
     for candidate in freed:
         print(f"  {candidate.identifier}  {candidate.title}")
     print(
-        "  Not promoted for you - a closed blocker is not evidence that nothing else "
-        "holds an item, and 7 of 13 measured this way were held by something the field "
-        "could not see. Read each against the tree, then `docket set <id> --status ready` "
-        "or write what is really holding it into `blocked-by`."
+        "  Move each in this pull request - `docket check` refuses a blocked item whose "
+        "every blocker has closed. Not promoted for you: a closed blocker is not evidence "
+        "that nothing else holds an item, and 7 of 13 measured this way were held by "
+        "something the field could not see. Read each against the tree, then `docket set "
+        "<id> --status ready` with its `--verify` and `--payoff`, or write what is really "
+        "holding it into `blocked-by` - an item for the condition, as `PL-0H5D` settled."
     )
 
 
@@ -3028,9 +3046,10 @@ def _say_promotable(items: list[Item]) -> None:
     """Name the blocked items whose every recorded blocker has since closed.
 
     `recommend` cannot offer them - `plan._startable` filters on `status` - and
-    `docket check` has named them in an advisory all along, which is a command
-    a session picking work has no reason to run. `next` prints the *number* of
-    advisories pending and not the ids, so on 2026-09-17 the one item that
+    `docket check` named them only in an advisory until `PL-2349` made it an
+    error, which is a command a session picking work has no reason to run.
+    `next` prints the *number* of advisories pending and not the ids, so on
+    2026-09-17 the one item that
     would have unblocked three more of v0.5.0's own scope was reachable only by
     reading `blocked-by` on five items and resolving each root by hand
     (`PL-6T44`).
@@ -3042,6 +3061,11 @@ def _say_promotable(items: list[Item]) -> None:
     Named, never ranked. `plan.promotable` carries the count that settled it -
     6 of 13 were genuinely startable, and ranking the other 7 would have put an
     unbuildable item into `P1` and onto the debt gate.
+
+    Since the error, a non-empty line means a closure reached this checkout
+    without its move: a branch mid-close-out, or two pull requests that each
+    passed alone, one closing a blocker and one adding the edge. So it says
+    whose move it is rather than offering it as a choice.
     """
     candidates = promotable(items)
     if not candidates:
@@ -3053,8 +3077,9 @@ def _say_promotable(items: list[Item]) -> None:
     print(
         "  Not ranked above - a closed blocker is not evidence that nothing else holds an "
         "item, and 7 of 13 measured this way were held by something the field could not "
-        "see. Read each against the tree, then `docket set <id> --status ready` or record "
-        "what is really holding it."
+        "see. `docket check` refuses the state, so the pull request that closed the "
+        "blocker moves each: `docket set <id> --status ready` with its `--verify` and "
+        "`--payoff`, or what is really holding it recorded in `blocked-by`."
     )
 
 
@@ -3895,6 +3920,9 @@ def cmd_release(args: argparse.Namespace) -> int:
         print(f"Partially advances: {', '.join(ready.partial_features)}")
     print(f"{current} -> {version}\n")
     print(notes)
+    missed = _missed_expectations(items, config, args.today or date.today())
+    if missed:
+        print(missed)
 
     if args.dry_run:
         print("Dry run: nothing was changed.")
@@ -4652,10 +4680,10 @@ def cmd_picks(args: argparse.Namespace) -> int:
 def cmd_trend(args: argparse.Namespace) -> int:
     """How the balance between the two halves of the project has moved.
 
-    The one command here that looks backwards. Everything else describes the
-    project as it stands, so "is the apparatus taking more of the work than it
-    used to" had no answer short of a session reading the store and the history
-    and classifying both by hand.
+    It looks backwards at closures, as `inflow` does at filings; everything else
+    describes the project as it stands, so "is the apparatus taking more of the
+    work than it used to" had no answer short of a session reading the store and
+    the history and classifying both by hand.
 
     Refuses without `workflow_paths`, exactly as the lane arguments to `next`
     do and for the same reason: with no boundary declared there are no halves,
@@ -4689,6 +4717,48 @@ def cmd_trend(args: argparse.Namespace) -> int:
         print()
     print(render.format_trend(report))
     return 0
+
+
+def cmd_inflow(args: argparse.Namespace) -> int:
+    """What the apparatus is still being handed, period by period.
+
+    `trend` reports what was closed; this reports what was filed, so "is the
+    accumulation slowing?" has an answer other than a session scripting it over
+    the whole store (`PL-WXKD`). It reads only the store, so it asks git
+    nothing. Refuses without `workflow_paths`, as `trend` does and for the same
+    reason: with no boundary declared, no filing is an apparatus filing.
+    """
+    _, items, config = _load(args)
+    if not config.workflow_paths:
+        print(
+            f"Cannot answer: no `workflow_paths` are declared in {CONFIG_NAME}, so "
+            "no filing can be told apart as apparatus work."
+        )
+        return 1
+    report = analyze_inflow(items, config, by=args.by, today=args.today or date.today())
+    print(render.format_inflow(report))
+    return 0
+
+
+def _missed_expectations(items: Sequence[Item], config: Config, today: date) -> str:
+    """What a cut says about apparatus inflow: the predictions it broke, or nothing.
+
+    Silent when every prediction holds, which is the report the owner asked
+    for - one that speaks when the trend is not the expected one (`PL-WXKD`).
+    A project declaring no `workflow_paths` has no apparatus to report on.
+    """
+    if not config.workflow_paths:
+        return ""
+    lines = missed_inflow(analyze_inflow(items, config, today=today), today)
+    if not lines:
+        return ""
+    return "\n".join(
+        [
+            "\nApparatus inflow missed a prediction pre-registered in PL-04KR; "
+            "`bin/docket inflow` has the table:",
+            *(f"  {line}" for line in lines),
+        ]
+    )
 
 
 def cmd_stranded(args: argparse.Namespace) -> int:
@@ -5601,6 +5671,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("--touches", "A.PY,B.PY"),
         ("--blocked-by", "PL-XXXX,vX.Y.Z"),
         ("--root-cause-of", "PL-XXXX,PL-YYYY,PL-ZZZZ"),
+        ("--reenters", "PL-XXXX"),
     ):
         setter.add_argument(
             flag, action="append", metavar=metavar, help="comma-separated; may be repeated"
@@ -5724,6 +5795,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="period length (default: %(default)s)",
     )
     trend_cmd.set_defaults(func=cmd_trend)
+    inflow_cmd = add("inflow", "what the apparatus has been handed, filing by period")
+    inflow_cmd.add_argument(
+        "--by",
+        choices=(BY_WEEK, BY_DAY),
+        default=BY_WEEK,
+        help="period length (default: %(default)s)",
+    )
+    inflow_cmd.set_defaults(func=cmd_inflow)
     return parser
 
 

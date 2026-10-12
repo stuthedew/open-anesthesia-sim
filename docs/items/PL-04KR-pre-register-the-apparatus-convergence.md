@@ -8,7 +8,7 @@ classes: infra, planning
 feature: convergence-visibility
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_trend.py, docs/items
 added: 2026-09-19
-verify: grep -q 'def test_the_re_entry_rate' subprojects/docket/tests/test_trend.py
+verify: grep -q '^### Checked at the third release' docs/items/PL-04KR-pre-register-the-apparatus-convergence.md
 recurrences: 2026-09-23 PL-02C4 withdrawn 2026-09-23 PL-02C4
 ---
 
@@ -30,7 +30,7 @@ counts and any product-to-workflow ratio — "I don't really care about the back
 so much and it doesn't help me to say that we have a bunch open still". Two
 causal signals instead:
 
-1. **Re-entry rate** — new workflow items landing on a path that a *closed* item
+[superseded 2026-10-11: re-entry is read from the triage-written `reenters:` field, not from paths; `PL-WXKD`] 1. **Re-entry rate** — new workflow items landing on a path that a *closed* item
    also touched, where the closure was within the preceding 30 days. Rising means
    fixes are not holding, which is the "patching rather than fixing upstream"
    case. **This is the signal that is currently structurally impossible to see**:
@@ -38,7 +38,7 @@ causal signals instead:
    in the very commit that closed the parent, median lag zero, nothing above zero.
    The existing attribution captures filed-while-working and never
    fix-did-not-hold.
-2. **Largest unexplained cluster** — open items sharing a mechanism with no
+[superseded 2026-10-11: sharing a mechanism is judgment and is not computed; `docket inflow` names a closed item three filings re-enter instead, `PL-WXKD`] 2. **Largest unexplained cluster** — open items sharing a mechanism with no
    `root-cause-of:` head above them. Growing means an unfound cause is
    accumulating instances. **27 on 2026-09-19** (`PL-G424`).
 
@@ -49,7 +49,7 @@ and open-backlog counts, because closures lag generation by weeks — 151 open
 items and 44 of 65 generator-explained items still open mean apparatus-heavy
 releases continue well after generation falls; and raw path recurrence, which
 `PL-WXKD` already refuted as arithmetic rather than regression at 90% on a
-surface of 117 apparatus files. The 30-day bound on signal 1 is what
+surface of 117 apparatus files. [superseded 2026-10-11: measured, 93-100% of every week's apparatus filings from 2026-08-31 name a path some item closed within the 30 days before, so the bound does not distinguish it; `PL-WXKD`] The 30-day bound on signal 1 is what
 distinguishes it from that refuted metric: "this path came back within 30 days of
 us closing something on it" is a statement about a fix, not about surface size.
 
@@ -157,7 +157,7 @@ once recorded fix-did-not-hold. That is not a low reading of re-entry; it is no
 reading at all, and it is the signal that would distinguish "we are patching
 instances" from "we are fixing causes".
 
-**Done when.** A command reports both signals over the store - re-entry rate on
+**Done when.** [superseded 2026-10-11 in part: the command is `bin/docket inflow`, which reports re-entry from `reenters:` rather than on the 30-day path bound and computes no cluster (`PL-WXKD`, project owner, ratified). What stands is the last two sentences: `bin/docket release` prints any prediction the last complete week broke, and each of the next three cuts' results is recorded here under a `### Checked at` heading, the third headed `### Checked at the third release`.] A command reports both signals over the store - re-entry rate on
 the 30-day bound, and the largest open cluster carrying no `root-cause-of:`
 head - with generator-campaign filings broken out separately and item-file
 paths excluded from the re-entry surface, which are the two ways the brief

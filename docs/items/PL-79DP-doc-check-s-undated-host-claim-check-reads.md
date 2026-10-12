@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-10
 payoff: make check stops refusing a true sentence that cites a Markdown project's URL beside a code block, so nobody rewords correct prose to get past the host-claim check
 verify: grep -q 'def test_block_as_markdown_s_noun_beside_a_host_is_no_host_claim' tests/unit/test_doc_check.py
+reenters: PL-GPJ7
 ---
 
 **Problem.** doc_check's undated host-claim check reads block as a refusal in its Markdown sense too, so a sentence holding a project's URL and 'its block reading' or 'a code block' is refused as an undated claim that the host was blocked; found writing PL-0C2S's test docstring

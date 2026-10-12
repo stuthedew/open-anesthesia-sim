@@ -12,6 +12,7 @@ closed: 2026-10-10
 pr: 1390
 payoff: The guard that stops a prune deleting the only copy of an unmerged item sees one inside an unquoted here-document substitution, which bash runs
 verify: grep -q 'def test_a_prune_in_an_unquoted_heredoc_substitution_is_refused' tests/unit/test_no_prune_guard.py
+reenters: PL-61FT
 recurrences: 2026-10-06 PL-X43T withdrawn 2026-10-06 PL-R417, 2026-10-06 PL-VJPH withdrawn 2026-10-06 PL-R417, 2026-10-06 PL-QSN5 withdrawn 2026-10-06 PL-R417, 2026-10-06 PL-1R9S withdrawn 2026-10-06 PL-R417
 ---
 

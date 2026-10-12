@@ -12,6 +12,7 @@ closed: 2026-10-06
 pr: 1385
 payoff: a make target documented after another command in a fence, as docs/worker.md writes the gate, is caught once it stops existing, and a correct one-line rule is no longer sent for rewriting
 verify: grep -q 'def test_a_make_command_chained_after_another_in_a_fence_is_read' tests/unit/test_doc_check.py && grep -q 'def test_a_rule_with_an_inline_recipe_carries_a_recipe' tests/unit/test_doc_check.py
+reenters: PL-61FT
 recurrences: 2026-10-06 PL-HR4V, 2026-10-06 PL-GSJ6 withdrawn 2026-10-06 PL-GSJ6, 2026-10-06 PL-HSB3 withdrawn 2026-10-06 PL-HSB3
 ---
 

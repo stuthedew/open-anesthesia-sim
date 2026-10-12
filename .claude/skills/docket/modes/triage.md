@@ -109,8 +109,11 @@ project can answer is `needs-decision`, and `bin/docket gate` counting it as
 debt is right - somebody can go and resolve it. A milestone not yet scoped is
 `status: blocked` with `blocked-by: v0.6.0`, and is not debt: only a scoping
 round resolves it, and working the item cannot bring one forward. `docket
-check` promotes it once that section carries its four subsections, and errors
-on a version the roadmap names nowhere. `PL-B9PY` is what the wrong one cost -
+check` advises that it is ready to promote once that section carries its four
+subsections - a session promotes it, with `bin/docket set <id> --status ready`
+after reading it against the tree - and errors on a version the roadmap names
+nowhere. An item blocker is stricter: once every one has closed, `check`
+refuses the item left `blocked` (`PL-2349`). `PL-B9PY` is what the wrong one cost -
 parked at `needs-decision`, counted into Gate 1 as resolvable, then two days
 hidden from `bin/docket next` after v0.5.0 was scoped. A patch track
 (`v0.5.x`) is not a version anything can wait on: it freezes no gate and takes
@@ -270,7 +273,12 @@ Sharing a file or a feature is not sharing a mechanism, so prefer the one-off
 over a weak cluster. Sharing a misread fact is sharing one, across any number
 of readers. Write the answer into the brief as one `**Generator check.**` line,
 naming the fact, and the head or the item where there is one. The reply is gone
-before a later session or `PL-04KR`'s re-entry reading looks for it.
+before a later session looks for it. **Where the answer is either of the first
+two, also record it as a field**: `bin/docket set <id> --reenters PL-XXXX`,
+naming the closed head or item whose fix should have covered this one.
+`bin/docket inflow` counts that field per period and names any closed item
+three filings re-enter - the three post-close instances above - and it reads
+nothing from the prose line (`PL-WXKD`).
 
 **On a grooming pass, compare the heads with each other** (`PL-5MYR`). The
 check above asks one item about the heads. Nothing else asks the heads about

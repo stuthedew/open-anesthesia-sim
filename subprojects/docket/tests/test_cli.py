@@ -6737,6 +6737,7 @@ NO_GIT_ARGV: tuple[tuple[str, ...], ...] = (
     ("status",),
     ("wave",),
     ("trend",),
+    ("inflow",),
     ("withdraw", "PL-B1B1", "PL-D4D4", "--because", "PL-D1D1"),
     ("set", "PL-B1B1", "--payoff", "a payoff"),
     ("new", "An idea captured under the flag"),
@@ -8651,6 +8652,49 @@ def test_closing_an_item_names_what_it_just_unblocked(
     # Still held by PL-B1B1, which is open, so closing this one released nothing.
     assert "PL-G3G3" not in out
     assert "Not promoted for you" in out
+
+
+def test_a_closure_is_not_refused_for_what_it_releases(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-2349`: `check` refuses a released item left `blocked`, and `set`
+    must not refuse the closure for it - the blocker could never close, and
+    the released item could not honestly move first. The print says the move
+    is this pull request's, and the store then reports the one error."""
+    store = _store(tmp_path, READY, BLOCKER, HELD)
+
+    assert (
+        _run("set", "PL-C1C1", "--status", "done", "--closed", "2026-08-24", "--items", str(store))
+        == 0
+    )
+
+    assert "Move each in this pull request" in capsys.readouterr().out
+    assert _run("check", "--items", str(store)) == 1
+    assert "sits at `blocked` though every blocker has closed (PL-C1C1)" in (
+        capsys.readouterr().out
+    )
+
+
+def test_a_write_that_makes_its_own_status_false_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The exemption reaches only the items a closure released, never the
+    item being written: pointing `blocked-by` at closed work is the falsehood
+    itself, and nothing else would stop it reaching the store."""
+    store = _store(tmp_path, READY, BLOCKER, HELD_TWICE)
+    assert (
+        _run("set", "PL-C1C1", "--status", "done", "--closed", "2026-08-24", "--items", str(store))
+        == 0
+    )
+    capsys.readouterr()
+
+    assert (
+        _run("set", "PL-G3G3", "--blocked-by", "PL-C1C1", "--overwrite", "--items", str(store)) == 1
+    )
+
+    out = capsys.readouterr().out
+    assert "PL-G3G3: nothing was written" in out
+    assert "every blocker has closed (PL-C1C1)" in out
 
 
 def test_closing_an_item_that_unblocks_nothing_says_nothing(
@@ -11031,6 +11075,7 @@ NOT_READ_COMMANDS = frozenset(
         "verify",
         "wave",
         "trend",
+        "inflow",
         "withdraw",
         "set",
         "new",
