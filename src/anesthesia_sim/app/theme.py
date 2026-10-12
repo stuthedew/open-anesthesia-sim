@@ -495,12 +495,20 @@ AGENT_SELECTOR_WIDTH = 180
 TIME_BASE_SELECTOR_WIDTH = 170
 PLAYBACK_RATE_SELECTOR_WIDTH = 150
 
-# The branch control's instant selector. Fixed for the reason the agent
-# selector is: its entries are the trunk's keyframes, so a running case adds
-# one on every setting change, and a control that resized as it filled would
-# move the button beside it under a reader's pointer. Narrower than the time
-# base's because its longest entry is a clock reading rather than a phrase.
-FORK_POINT_SELECTOR_WIDTH = 120
+# The branch control's selector. Fixed for the reason the agent selector is: its
+# entries are the trunk's keyframes and the marks it has passed, so a running
+# case adds one on every setting change and every mark its clock reaches, and a
+# control that resized as it filled would move the button beside it under a
+# reader's pointer. Its longest entry is a phrase rather than a clock reading -
+# `MARK_FORK_LABEL_TEMPLATE` around an instant late in the supported run - and
+# cut short it would lose the words that say it is a mark. Measured offscreen
+# on 2026-10-12, frame, padding and arrow included, the widest such entry needs
+# 199 px in the container's Inter at 12 px, and 213 px in the same face at
+# 13 px, the size the macOS system font draws at. This is 31 px over the first,
+# the headroom the playback-rate selector has over its own longest entry.
+# `test_the_branch_selector_draws_its_widest_entry_whole` holds it against the
+# font the selector is drawn in.
+FORK_POINT_SELECTOR_WIDTH = 230
 
 # The chip's inset. Slightly wider than the header badge's 6 because this one
 # carries two lines rather than one and sits among controls rather than under

@@ -89,6 +89,7 @@ from anesthesia_sim.app.dashboard_frame import (
     TIME_BOOKMARK_HEADING,
     BookmarkPanel,
     ForkOffer,
+    ForkPoint,
     MarkListing,
     NewCaseQuestion,
     Readout,
@@ -1082,25 +1083,30 @@ class BookmarksPanel(QWidget):
 
 
 class ForkPanel(QWidget):
-    """Where a learner takes a branch: which instant to open it at, and the button.
+    """Where a learner takes a branch: which point to open it at, and the button.
 
     Beside the marks rather than inside a `RunView`, for the reason the marks
-    are there: the instants it offers are the *case's* - the trunk's
-    keyframes - and a control duplicated into each displayed run would give a
-    branch one that can only refuse (`docs/ARCHITECTURE.md` § "Where new code
-    belongs").
+    are there: the points it offers are the *case's* - the trunk's keyframes
+    and the marks it has passed - and a control duplicated into each displayed
+    run would give a branch one that can only refuse (`docs/ARCHITECTURE.md`
+    § "Where new code belongs").
 
-    It decides nothing. Which instants are offered, how they are rendered and
+    It decides nothing. Which points are offered, how they are rendered and
     whether the control is shown at all are settled in
     `dashboard_frame.fork_offer`, where a test reads them without a display;
-    this writes the answer into widgets. The selector carries the instant as
-    `userData`, so the caller acts on the number the panel was given rather
-    than on the string a reader sees. It carries it as a plain `float`, and
-    `selected_instant_s` builds the `CaseInstant` again on the way out: Qt
-    holds a `float` subclass as an opaque Python object, which `findData`
-    matches only by identity, so an equal `CaseInstant` built anew is not
-    found (measured 2026-10-04, PySide6) and a selection kept across a
-    rebuilt list would be lost.
+    this writes the answer into widgets. **The panel keeps the `ForkPoint`s it
+    was given, in the selector's order, and answers with one of them**
+    (`selected_point`), so the caller acts on the point it was handed - a
+    keyframe's `CaseInstant`, or a mark itself - rather than on the string a
+    reader sees or on a value read back out of Qt. A selection kept across a
+    rebuilt list is found by `ForkPoint` equality in the new list, never by
+    `findData`: Qt holds a `float` subclass as an opaque Python object, which
+    `findData` matches only by identity, so an equal `CaseInstant` built anew
+    is not found (measured 2026-10-04, PySide6, `PL-CN5S`), and a control
+    event and a mark can stand at one instant, which no lookup by number
+    could tell apart. Each entry still carries its instant as a plain-`float`
+    `userData`, which is how the selector is read from outside, as a test
+    finds an entry by instant; nothing here acts on it.
 
     **Refused the way the transport refuses** (`PL-61WW`): `setDisabled`
     beside `setHidden` with one operand, and the reason standing where the
@@ -1114,17 +1120,20 @@ class ForkPanel(QWidget):
     the lock in the notice's colour would spend this interface's one alarm
     on a state that is working as intended.
 
-    **Two controls, because the two doors to a fork have different lifetimes**
-    (`PL-TYWQ`). The selector's instants only accumulate; the halt button's
-    instant is the one the trunk is standing on and is gone on the next step.
-    It is a row of its own below the selector, in the order a learner works -
-    mark the decision point, be stopped at it, branch there - and it takes no
-    instant from this panel at all: `BranchedCase.fork_at_halt` forks where the
-    trunk stands, so there is nothing here for a press to name wrongly.
+    **Two controls for three doors, because the doors have two lifetimes**
+    (`PL-TYWQ`). The selector's entries - the recorded control events and the
+    marks the trunk has passed - stay until the case itself changes; the halt
+    button's instant is the one the trunk is standing on and is gone on the
+    next step. It is a row of its own below the selector, in the order a
+    learner works - mark the decision point, be stopped at it, branch there -
+    and it takes no instant from this panel at all: `BranchedCase.fork_at_halt`
+    forks where the trunk stands, so there is nothing here for a press to name
+    wrongly.
 
     Attributes:
         heading_label: What the section is called.
-        point_selector: The instants a branch may be opened at.
+        point_selector: The points a branch may be opened at: the recorded
+            control events and the marks the trunk has passed.
         take_button: Takes the branch; `clicked` is connected by the view.
         halt_button: Takes the branch at the bookmark halt the trunk is
             standing on, and is on screen only while it is standing on one.
@@ -1152,6 +1161,9 @@ class ForkPanel(QWidget):
         self.lock_text.setHidden(True)
         self.notice = NoticeLabel(self)
         self._point_label = styled_label(FORK_POINT_LABEL, color=MUTED)
+        # The points the selector holds, entry for entry, in its order: what
+        # `selected_point` answers with and what `set_offer` compares against.
+        self._offered: tuple[ForkPoint, ...] = ()
 
         column = QVBoxLayout(self)
         column.setContentsMargins(0, 0, 0, 0)
@@ -1172,37 +1184,45 @@ class ForkPanel(QWidget):
         column.addLayout(halt_row)
         column.addWidget(self.notice)
 
-    def selected_instant_s(self) -> CaseInstant | None:
-        """The instant the selector stands on, or None while it offers none.
+    def selected_point(self) -> ForkPoint | None:
+        """The point the selector stands on, or None while it stands on none.
 
-        Built as a `CaseInstant` again here, because the selector holds each
-        entry's instant as a plain `float` (see this class's docstring);
-        every entry came from `ForkOffer.points_s`, so none is refused.
+        The `ForkPoint` the panel was given, read from what it keeps by the
+        selector's index rather than rebuilt from what Qt holds, so a mark
+        comes back as the mark and a keyframe as the `CaseInstant` it was
+        offered as (see this class's docstring).
         """
 
-        instant_s = self.point_selector.currentData()
+        index = self.point_selector.currentIndex()
 
-        return None if instant_s is None else CaseInstant(float(instant_s))
+        return None if index < 0 else self._offered[index]
 
     def set_offer(self, offer: ForkOffer) -> None:
         """Draw one tick's offer, keeping the reader's selection where it still exists.
 
         The entries are rebuilt only when they have changed, because a
-        running trunk records a keyframe on every setting change and a
-        selector rebuilt every frame would drop a reader's choice mid-click.
-        The rebuild is made under a `QSignalBlocker` so that repopulating the
-        control cannot be mistaken for a reader operating it.
+        running trunk adds one on every setting change and every mark its
+        clock reaches, and a selector rebuilt every frame would drop a
+        reader's choice mid-click. The rebuild is made under a
+        `QSignalBlocker` so that repopulating the control cannot be mistaken
+        for a reader operating it.
 
-        **A selection whose instant is no longer offered is cleared rather
-        than moved** (`PL-J12Z`). `findData` answers -1 for an instant that
-        has gone, and `setCurrentIndex(-1)` leaves nothing selected, so
-        `selected_instant_s` answers None and the button says so. Falling
-        back to the first entry would put *induction* under a reader who had
-        chosen a later decision point, and branch there on the next press -
-        a silently substituted default of exactly the kind `CLAUDE.md`'s
-        safety-critical standard refuses, and reachable without a reset: a
-        keyframe collapses when a dial is returned to its previous value at
-        the same instant, which is a learner changing their mind.
+        **A selection whose point is no longer offered is cleared rather than
+        moved, and a cleared one stays clear** (`PL-J12Z`). The point is
+        looked up by equality in the new list and `setCurrentIndex(-1)`
+        leaves nothing selected when it is not there, so `selected_point`
+        answers None and the button says so. Falling back to the first entry
+        would put *induction* under a reader who had chosen a later decision
+        point, and branch there on the next press - a silently substituted
+        default of exactly the kind `CLAUDE.md`'s safety-critical standard
+        refuses, and reachable without a reset: a keyframe collapses when a
+        dial is returned to its previous value at the same instant, which is
+        a learner changing their mind, and a mark leaves when it is unmarked.
+        Qt itself selects the first entry whenever an emptied selector is
+        refilled, which is why the index is set on every rebuild rather than
+        only where a selection survives. The first fill is the one exception,
+        and selects the first entry as a selector does: nobody has chosen
+        yet, so there is no choice to substitute for.
 
         **The halt button is shown or hidden whole, never emptied in place.**
         Its offer has no counterpart to the selection above for a reader to
@@ -1217,19 +1237,24 @@ class ForkPanel(QWidget):
             offer: `dashboard_frame.fork_offer`'s result this tick.
         """
 
-        if offer.points_s != self._offered_points_s():
-            selected_s = self.selected_instant_s()
+        if offer.points != self._offered:
+            selected = self.selected_point()
+            first_fill = not self._offered
 
             with QSignalBlocker(self.point_selector):
                 self.point_selector.clear()
 
-                for label, instant_s in zip(offer.labels, offer.points_s, strict=True):
-                    self.point_selector.addItem(label, userData=float(instant_s))
+                for point in offer.points:
+                    self.point_selector.addItem(point.label, userData=float(point.instant_s))
 
-                if selected_s is not None:
-                    self.point_selector.setCurrentIndex(
-                        self.point_selector.findData(float(selected_s))
-                    )
+                if first_fill:
+                    self.point_selector.setCurrentIndex(0)
+                elif selected in offer.points:
+                    self.point_selector.setCurrentIndex(offer.points.index(selected))
+                else:
+                    self.point_selector.setCurrentIndex(-1)
+
+            self._offered = offer.points
 
         self.point_selector.setDisabled(offer.locked)
         self.point_selector.setHidden(offer.locked)
@@ -1244,14 +1269,6 @@ class ForkPanel(QWidget):
         self.lock_text.setText(offer.lock_reason)
         self.lock_text.setHidden(not offer.locked)
         self.notice.set_notice(offer.refusal)
-
-    def _offered_points_s(self) -> tuple[float, ...]:
-        """The instants the selector currently holds, in the order it holds them."""
-
-        return tuple(
-            float(self.point_selector.itemData(index))
-            for index in range(self.point_selector.count())
-        )
 
 
 class BookmarkDialog(QDialog):
