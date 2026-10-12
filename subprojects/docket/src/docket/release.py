@@ -38,9 +38,10 @@ if TYPE_CHECKING:  # `roadmap` reads this module's version grammar, so the
     from .roadmap import ReservedVersion, UnreadEntry, Wave  # runtime import would close the cycle.
 
 #: The line a bump rewrites, and only that: what a project file declares is
-#: `version_in`'s to read, as TOML. `prepare_bump` reads its write back
-#: through `version_in`, so a declaration this cannot reach is refused there
-#: rather than a different line rewritten (`PL-3DD9`).
+#: `version_in`'s to read, as TOML. `prepare_bump` reads its write back as
+#: TOML, so a declaration this cannot reach, or a line it reaches that is not
+#: the declaration, is refused there rather than a different line rewritten
+#: (`PL-3DD9`, `PL-6KHQ`).
 VERSION_RE = re.compile(r'^(version\s*=\s*")([^"]+)(")', re.M)
 SEMVER_RE = re.compile(rf"^v?{SEMVER_PATTERN}$")
 
@@ -429,6 +430,17 @@ def version_in(text: str) -> str:
     return declared if isinstance(declared, str) else ""
 
 
+def _undeclared(text: str) -> dict[str, object]:
+    """The project file as TOML reads it, less the key `version_in` reads its version from."""
+    data = tomllib.loads(text)
+    project = data.get("project")
+    if isinstance(project, dict) and "version" in project:
+        data["project"] = {key: value for key, value in project.items() if key != "version"}
+    else:
+        data.pop("version", None)
+    return data
+
+
 def read_version(pyproject: Path) -> str:
     """The project's current version, or empty when there is none to read.
 
@@ -562,15 +574,19 @@ def prepare_bump(pyproject: Path, version: str) -> PreparedBump:
     disagree: the version may sit in a multi-line string the line does not
     match, or under `[project]` after another table's `version = "..."` line,
     which the substitution would have rewritten instead. The bumped text is
-    read back, and a file whose declared version did not become `version` is
-    refused naming why, before anything is stamped.
+    read back, and a file whose declared version did not become `version`, or
+    whose other values changed at all, is refused naming why, before anything
+    is stamped. The second half is what a resume needs: it asks for the version
+    the file already declares, so a first such line inside a multi-line string
+    ahead of the key was rewritten there, and the version alone read back as
+    asked (`PL-6KHQ`).
     """
     text = pyproject.read_text(encoding="utf-8")
     previous = version_in(text)
     if not previous:
         raise ValueError(f"{pyproject}: no version field to bump")
     bumped = VERSION_RE.sub(rf"\g<1>{version}\g<3>", text, count=1)
-    if version_in(bumped) != version:
+    if version_in(bumped) != version or _undeclared(bumped) != _undeclared(text):
         raise ValueError(
             f"{pyproject}: declares version {previous}, but not on its first"
             ' `version = "..."` line, which is the one line a bump rewrites;'

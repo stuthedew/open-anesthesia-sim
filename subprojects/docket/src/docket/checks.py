@@ -2938,6 +2938,17 @@ SEQUENCING_CUES = (
 CLOSED_PREREQUISITE_CUES = (*DECLARING_CUES, *SEQUENCING_CUES)
 
 
+#: A soft break and the whitespace either side of it, which the gaps below
+#: count as one character, the one space it renders as: CommonMark reads the
+#: line ending as a soft break and strips a paragraph continuation line's
+#: leading whitespace (0.31.2 § 6.8, § 4.8), where `_unmarked` leaves that
+#: indent, and a container's markers, as spaces. Counted a column at a time, a
+#: third-level list item's indent filled the 40-character gap between a cue
+#: and its id (`PL-BVBB`). Atomic, so a gap that fails does not retry it a
+#: space at a time.
+SOFT_BREAK = r"(?>[ \t]*\n[ \t]*)"
+
+
 def _cue_pattern(cues: tuple[str, ...]) -> re.Pattern[str]:
     """The cue, then the id within the same clause.
 
@@ -2950,10 +2961,12 @@ def _cue_pattern(cues: tuple[str, ...]) -> re.Pattern[str]:
     positives came from. A line break is not one: the item format wraps at 80
     columns, so a cue ending one line with its id on the next is one clause
     (`PL-WF35`), and `_prerequisite_matches` reads a statement at a time, which
-    is what keeps the window off a blank line and a block's start.
+    is what keeps the window off a blank line and a block's start. The break
+    and the indent around it count as one character of the gap (`SOFT_BREAK`).
     """
     return re.compile(
-        rf"\b(?:{'|'.join(cues)})\b(?:\.?\*\*)?[^.;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?",
+        rf"\b(?:{'|'.join(cues)})\b(?:\.?\*\*)?(?:{SOFT_BREAK}|[^.;:()\"|—\n]){{0,40}}?"
+        rf"`?({ID_PATTERN})`?",
         re.IGNORECASE,
     )
 
@@ -2972,6 +2985,9 @@ CLOSED_DEPENDENCY = _cue_pattern(CLOSED_PREREQUISITE_CUES)
 # real wait - and "not only depends on" states the prerequisite twice over.
 # One line break may fall between the two, where the prose wraps, and a blank
 # line may not: a paragraph ending on "no" says nothing about the next one.
+# Searched from the statement's start, since the pattern ends at the cue: a
+# look-back of 24 characters counted the indent of a wrapped line and never
+# reached the `not` ending the line above (`PL-BVBB`).
 NEGATED_CUE = re.compile(
     r"(?:\b(?:not|cannot|never|nothing|neither|nor|without|no(?:\s+longer)?)|n['’]t)"
     r"[*_]{0,2}(?:[ \t]+|[ \t]*\n[ \t]*)\Z",
@@ -2991,7 +3007,9 @@ NEGATED_CUE = re.compile(
 # declared and the second matched no cue - so an open prerequisite of a v0.4.1
 # item stayed invisible to `docket next` while the check reported clean.
 PROSE_DEPENDENCY_CONTINUATION = re.compile(
-    rf"\band\s+(?:(?:up)?on|by)\b(?:\.?\*\*)?[^.;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?", re.IGNORECASE
+    rf"\band\s+(?:(?:up)?on|by)\b(?:\.?\*\*)?(?:{SOFT_BREAK}|[^.;:()\"|—\n]){{0,40}}?"
+    rf"`?({ID_PATTERN})`?",
+    re.IGNORECASE,
 )
 
 # The same second blocker with no preposition repeated - "**Blocked by `PL-S6WW`
@@ -3001,7 +3019,8 @@ PROSE_DEPENDENCY_CONTINUATION = re.compile(
 # parenthetical between them is the gloss every id carries here (`PL-QS9H`'s
 # "**Sequenced after `PL-6580`** (strip ...) and `PL-F9TQ`").
 PROSE_DEPENDENCY_LIST = re.compile(
-    rf"(?:\.?\*\*)?(?:\s*\([^()]{{0,160}}\))?(?:\s*,\s*(?:and\s+)?|\s+and\s+)`?({ID_PATTERN})`?",
+    rf"(?:\.?\*\*)?(?:\s*\((?:{SOFT_BREAK}|[^()\n]){{0,160}}\))?"
+    rf"(?:\s*,\s*(?:and\s+)?|\s+and\s+)`?({ID_PATTERN})`?",
     re.IGNORECASE,
 )
 
@@ -3398,7 +3417,7 @@ def _prerequisite_matches(body: str, cue: re.Pattern[str]) -> list[re.Match[str]
         cued = [
             match
             for match in cue.finditer(text, start, end)
-            if not NEGATED_CUE.search(text, max(start, match.start() - 24), match.start())
+            if not NEGATED_CUE.search(text, start, match.start())
         ]
         if cued:
             cued += PROSE_DEPENDENCY_CONTINUATION.finditer(text, start, end)

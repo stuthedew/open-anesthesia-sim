@@ -283,6 +283,31 @@ def test_a_substitution_in_an_unquoted_body_is_a_command_it_runs() -> None:
     assert _words("cat <<EOF\n$(make\nEOF\nnext\n") == ["cat", "EOF", "next"]
 
 
+def test_a_nested_backquote_is_read_after_its_escapes_are_removed() -> None:
+    """Bash removes a backslash before a backquote, `$` or backslash first (`PL-BHS7`).
+
+    That is how backquotes nest: bash 5.2.21, with `p` printing its arguments
+    joined by colons, sets `x` to `bq` for the first command, having run the
+    inner `p bq`; read from the raw text, its body was `p` and two words each
+    holding an escaped backquote. An escaped `$` expands, two backslashes are
+    one, and inside double quotes an escaped `"` quotes, where outside them
+    it stays escaped. Each word's span still runs over what the command spells.
+    """
+    command = "x=`p \\`p bq\\``"
+    outer, inner = shell_words(command).substitutions
+
+    assert [token.text for token in outer[0].tokens if isinstance(token, Word)] == ["p", "`p bq`"]
+    assert [command[first:last] for first, last in inner[0].spans] == ["p", "bq"]
+    assert inner[0].text == "p bq"
+    assert flat_reading(command).substituted == (("p", "`p bq`"), ("p", "bq"))
+    assert shell_words("x=`p \\$HOME`").substitutions[0][0].tokens[1] == Word("$HOME")
+    assert shell_words("x=`p \\\\\\\\`").substitutions[0][0].tokens[1] == Word("\\", quoted=True)
+    assert _words('x="`p \\"q r\\"`"')[1:] == ["p", "q r"]
+    assert _words('x=`p \\"q r\\"`')[1:] == ["p", '"q', 'r"']
+    assert _words("x=`p '\\`p sq\\`'`")[1:] == ["p", "`p sq`"]
+    assert joined_text("x=`p \\$a\\\nb`")[0] == "x=`p \\$ab`"
+
+
 def test_the_hooks_read_input_that_ends_early_as_bash_c_reads_it() -> None:
     """The hooks' reading runs an unended body to the end and keeps a trailing backslash.
 

@@ -3,12 +3,14 @@ id: PL-63Y5
 title: docket's vcs._standing reads a ref copy's front matter through parse_front_matter in its closure arm, where a block list or block scalar arrives empty, and never asks block_list_keys, so a ref that reopened an item and wrote a field as a block answers behind - nothing stranded - while the removal arm declines the same copy; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1436
 payoff: stranded reports a ref that reopened a closed item with a block-written field, instead of calling it behind and hiding the edit
 verify: grep -q 'def test_a_ref_reopening_a_closed_item_with_a_block_field_is_ahead' subprojects/docket/tests/test_vcs.py
 ---
