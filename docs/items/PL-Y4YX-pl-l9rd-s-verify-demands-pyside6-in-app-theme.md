@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: qt-port
-touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/stylesheets.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/qt_chart.py, tests/unit/test_stylesheets.py, tests/integration/test_qt_widgets.py, tests/integration/test_simulation_view.py, tools/contrast_check.py, tools/agent_identity_check.py, docs/ARCHITECTURE.md, docs/MODEL.md, docs/items/PL-R7C4-src-anesthesia-sim-app-qt-widgets-py-and-tools.md
+touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/stylesheets.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/qt_chart.py, tests/unit/test_stylesheets.py, tests/unit/test_agent_identity_check.py, tests/integration/test_qt_widgets.py, tests/integration/test_simulation_view.py, tools/contrast_check.py, tools/agent_identity_check.py, docs/ARCHITECTURE.md, docs/MODEL.md, docs/items/PL-R7C4-src-anesthesia-sim-app-qt-widgets-py-and-tools.md
 added: 2026-09-16
 closed: 2026-10-12
 pr: 1442

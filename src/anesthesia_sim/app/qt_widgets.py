@@ -160,8 +160,8 @@ def styled_label(
 
     Args:
         text: What the label says.
-        color: A `theme.py` colour name's value; it reaches the label as a
-            stylesheet f-string, never as a literal.
+        color: A `theme.py` colour name's value; it reaches the label
+            through `foreground_stylesheet`, never as a literal.
         size_px: The theme's pixel size for this line, or None for the
             application default.
         bold: Whether the text is bold.

@@ -578,7 +578,7 @@ def test_a_call_colouring_of_an_identity_control_outside_the_writer_is_quiet(
 
 
 def test_a_scheme_local_handed_whole_to_a_helper_is_read(tmp_path: Path) -> None:
-    """`setStyleSheet(_text_stylesheet(scheme))`: the colour travels inside the local.
+    """`setStyleSheet(agent_text_stylesheet(scheme))`: the colour travels inside the local.
 
     The shipped writer colours every control this way, so a rule 2 that read
     only `scheme.fill` - the attribute access - would see a helper call as
@@ -590,7 +590,7 @@ def test_a_scheme_local_handed_whole_to_a_helper_is_read(tmp_path: Path) -> None
         '        self._start_button = QPushButton("Start")\n'
         '        scheme = AGENT_COLOR_SCHEMES["demoflurane"]\n'
         "        self._swatch = QLabel()\n"
-        "        self._swatch.setStyleSheet(_text_stylesheet(scheme))\n",
+        "        self._swatch.setStyleSheet(agent_text_stylesheet(scheme))\n",
     )
 
     found = agent_identity_check.problems(_module(tmp_path, "run_view.py", source))

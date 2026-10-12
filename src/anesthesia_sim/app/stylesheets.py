@@ -17,7 +17,8 @@ the string is written in Qt's selector vocabulary - `QComboBox
 QAbstractItemView`, `QSlider::handle:horizontal` - which is the toolkit's
 styling even where nothing imports it, while `theme.py` is read as values
 alone. The few bare pixel spacings inside the strings are the interim decision
-D9 accepts; `PL-L9RD` names the spacing scale that replaces them.
+D9 accepts; the interface pass, planned-milestone item 33 in `ROADMAP.md`,
+decides the spacing rhythm that replaces them.
 """
 
 from anesthesia_sim.app.theme import (
