@@ -36,6 +36,7 @@ from pydantic import ValidationError as PydanticValidationError
 from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import MacMultiple, Percent, require_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.validation import require_positive_finite
 
 
 @dataclass(frozen=True, slots=True)
@@ -220,6 +221,16 @@ class AgentParameters:
             ranges were checked when each was built, so nothing here checks
             them again; a MAC handed in as a fraction would be a divisor a
             hundred times too small for every MAC multiple shown (`PL-4R3W`).
+        SimulationConfigurationError: `mac_percent` is zero, the one non-positive
+            value a `Percent` holds, since it refuses a negative one when built.
+            The MAC is the divisor of every MAC multiple shown and of the
+            `1 MAC = x%` reference beside the chart, so the record refuses it
+            where it is built, through `core/validation.py`'s
+            `require_positive_finite`, rather than leaving `format_mac_reference`
+            to print `1 MAC = 0.0%` and the five formatters that divide by it
+            to refuse at draw time (`PL-0FJ8`). The loader's `PositivePercent`
+            refuses it first for a shipped file; this is the same refusal on a
+            record built any other way, `dataclasses.replace` included.
     """
 
     schema_version: int
@@ -242,6 +253,7 @@ class AgentParameters:
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )
         require_percent("mac_percent", self.mac_percent)
+        require_positive_finite("mac_percent", self.mac_percent)
 
     @property
     def vessel_rich_tissue_blood_partition_coefficient(self) -> float:

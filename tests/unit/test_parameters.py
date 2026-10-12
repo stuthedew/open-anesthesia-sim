@@ -3,6 +3,7 @@ import json
 import re
 from collections.abc import Callable
 from copy import deepcopy
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,7 @@ from pydantic import ValidationError as PydanticValidationError
 from anesthesia_sim.core import parameters as parameters_module
 from anesthesia_sim.core import patient as patient_module
 from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
+from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
@@ -300,6 +302,34 @@ def test_rejects_nonpositive_mac_percent() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="mac_percent"):
         parse_agent_parameters(payload)
+
+
+def test_an_agent_with_a_non_positive_mac_is_refused() -> None:
+    """`PL-0FJ8`: the record refuses the divisor, not only the loader.
+
+    `Percent` admits zero, since a dial reads it, so the payload's
+    `PositivePercent` above was the only thing keeping a zero MAC out of an
+    `AgentParameters`, and a record built any other way - `dataclasses.replace`
+    in a test or a notebook - carried it to `format_mac_reference`, which
+    printed `1 MAC sevoflurane = 0.0%`, and to the five formatters that divide
+    by it and refuse at draw time. A negative MAC never gets this far: `Percent`
+    refuses it when built, and holds minus zero as zero.
+    """
+
+    sevoflurane = load_sevoflurane_parameters()
+
+    with pytest.raises(SimulationConfigurationError, match="^mac_percent must be positive"):
+        replace(sevoflurane, mac_percent=Percent(0.0))
+
+    with pytest.raises(SimulationConfigurationError, match="^mac_percent must be positive"):
+        replace(sevoflurane, mac_percent=Percent(-0.0))
+
+    with pytest.raises(
+        SimulationConfigurationError, match="^mac_percent of -2.0 is outside 0 to 100"
+    ):
+        Percent(-2.0, name="mac_percent")
+
+    assert replace(sevoflurane, mac_percent=Percent(2.0)).mac_percent == 2.0
 
 
 def test_rejects_mac_percent_exceeding_max_delivered_concentration_percent() -> None:
