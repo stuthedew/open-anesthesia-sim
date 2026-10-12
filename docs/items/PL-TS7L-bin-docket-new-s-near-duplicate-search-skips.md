@@ -10,6 +10,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-03
 payoff: two captures of one defect filed the same day meet at the second capture, before either is triaged or built twice
 verify: grep -q 'def test_an_untriaged_item_without_touches_is_a_candidate' subprojects/docket/tests/test_duplicates.py
+reenters: PL-TZ7T
 ---
 
 **Problem.** bin/docket new's near-duplicate search skips every open item that declares no touches, so two untriaged captures of one defect never meet: PL-YZ17 was filed 2026-10-03 into a store already holding PL-5F76, the same 4.8e-304 s step overflow

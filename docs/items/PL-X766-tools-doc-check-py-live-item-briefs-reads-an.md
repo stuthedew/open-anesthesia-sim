@@ -14,6 +14,7 @@ closed: 2026-10-01
 pr: 1271
 payoff: the doc checks read an item's status the way docket does, so a quoted or wrapped value cannot put a closed brief under the live checks
 verify: ! grep -qF 'ITEM_STATUS_RE' tools/doc_check.py
+reenters: PL-PVW2
 ---
 
 **Problem.** tools/doc_check.py _live_item_briefs reads an item's status with its own ITEM_STATUS_RE instead of docket.model's parser, which it already reaches through _read_store

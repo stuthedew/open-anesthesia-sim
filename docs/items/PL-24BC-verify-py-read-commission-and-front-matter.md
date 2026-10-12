@@ -14,6 +14,7 @@ closed: 2026-10-01
 pr: 1271
 payoff: the next change to the item-file grammar reaches the audit's two readers of it without a second edit
 verify: ! grep -qF 'held_name.startswith(f"{item.identifier}-")' subprojects/docket/src/docket/verify.py
+reenters: PL-PVW2
 ---
 
 **Problem.** verify.py read_commission and front_matter_check find an item's file on the base by startswith(id-) rather than ITEM_FILE_RE and _items_at, a second spelling of the item-file grammar

@@ -18,6 +18,7 @@ verify: grep -q -- '--record' tools/pr_body_check.py
 root-cause-of: PL-Y1W0, PL-BZHX, PL-PNJF, PL-M7W1, PL-HZ0M
 generator: spent - the squash commit on main is the record of a pull request's body (PL-3PH2, superseding this item's per-pull-request record), and each way a merge path rewrites it - hard-wrapped, frozen when auto-merge is armed, replaced by a shorter message - is accepted as a property of that record rather than filed; the one rewrite that loses reasoning, an emptied body, is recovered at each release by tools/pr_body_check.py --recover, and the client that sent it, the GitHub iPhone app, is no longer a merge path (2026-09-22)
 misread: The squash commit's subject and body as the merge sends them, not as the pull request shows them
+reenters: PL-WFFX
 ---
 
 **Problem.** The squash commit on main is composed by whichever merge path lands it and nothing records the pull request's body at the merge, so each new way a path rewrites it - emptied, replaced, hard-wrapped, a subject frozen at arming - arrives as its own item: PL-WFFX's fact, reopened by three instances filed after it closed

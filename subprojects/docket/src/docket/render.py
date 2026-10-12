@@ -28,6 +28,7 @@ from .claims import CLAIM, DISPOSITION, LEASE_TERM, LIVE, NAMED, Hold, Holdings,
 from .concurrency import undeclared
 from .config import Config
 from .duplicates import Candidate
+from .inflow import UNBANDED, Inflow
 from .lines import split_lines
 from .model import (
     CLOSED_STATUSES,
@@ -3884,6 +3885,65 @@ def format_trend(report: Trend) -> str:
         f"{'Open now':<{_LABEL}}{_lane_counts(report.open_lanes)}",
         f"{report.top_band_name + ' band':<{_LABEL}}{_lane_counts(report.top_band)}",
     ]
+    return "\n".join(lines)
+
+
+_FILED, _PER_DAY, _REENTRY, _HEAD, _BAND, _NEW, _PER_ITEM = 7, 6, 10, 7, 5, 11, 7
+
+
+def format_inflow(report: Inflow) -> str:
+    """What the apparatus was handed, period by period, with no verdict.
+
+    Counts and rates of one thing each, side by side, for the reason
+    `format_trend` gives: a composite here would be the tool answering the
+    judgment half - whether the lane is converging - which is the reader's.
+    """
+    if not report.periods or report.anchor is None:
+        return "No filing names an apparatus path: there is no inflow to report."
+
+    bands = (*PRIORITIES, UNBANDED)
+    lines = [
+        f"{'period':<{_LABEL}}{'filed':>{_FILED}}{'/day':>{_PER_DAY}}"
+        f"{'re-entry':>{_REENTRY}}{'+head':>{_HEAD}}"
+        + "".join(f"{band:>{_BAND}}" for band in bands)
+        + f"{'new paths':>{_NEW}}{'/item':>{_PER_ITEM}}"
+    ]
+    for period in report.periods:
+        per_item = period.new_paths_per_item
+        lines.append(
+            f"{period.label:<{_LABEL}}{period.filed:>{_FILED}}{period.per_day:>{_PER_DAY}.1f}"
+            f"{period.reentries:>{_REENTRY}}{period.by_head:>{_HEAD}}"
+            + "".join(f"{period.priorities.get(band, 0):>{_BAND}}" for band in bands)
+            + f"{period.new_paths:>{_NEW}}"
+            + f"{'-' if per_item is None else f'{per_item:.2f}':>{_PER_ITEM}}"
+        )
+
+    window = "day" if report.by == BY_DAY else "7-day period"
+    left_out = " and ".join(report.excluded) or "nothing"
+    lines += [
+        "",
+        f"One row per {window}, anchored at {report.anchor.isoformat()}, the first apparatus",
+        "filing: an item whose `touches` name a path under workflow_paths, whatever its lane.",
+        f"Left out of that test, since every capture writes there: {left_out}.",
+        "  filed      filings no head explained when they arrived. /day divides by the",
+        "             days the period has, so a short final period compares with the rest.",
+        "  re-entry   of filed, those whose reenters: names a closed item whose fix should",
+        "             have covered them, as triage's generator check judged it.",
+        "  +head      filed while a head whose root-cause-of names them was open: a sweep's",
+        "             own filings, or new instances of a cause already found. Kept apart so",
+        "             a deliberate sweep does not read as regression.",
+        f"  {' '.join(PRIORITIES)} {UNBANDED}",
+        f"             `filed` by priority; {UNBANDED} is not yet triaged.",
+        "  new paths  apparatus paths no earlier filing named. /item divides by every",
+        "             apparatus filing in the period, +head included.",
+        "Each column counts one thing and none is a score: whether a row is the one",
+        "expected is the reader's call.",
+    ]
+    if report.reentered:
+        lines += ["", "Re-entered by three or more filings, a generator whose fix did not hold:"]
+        lines += [
+            f"  {closed}  by {', '.join(filed)}" for closed, filed in report.reentered.items()
+        ]
     return "\n".join(lines)
 
 

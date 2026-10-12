@@ -14,6 +14,7 @@ closed: 2026-09-25
 pr: 1017
 payoff: a close-out that rewrites the command proving its work can no longer turn that command's failure into ACCEPT
 verify: grep -q 'def test_a_rewritten_command_prints_the_commissioned_one_beside_it' subprojects/docket/tests/test_verify.py
+reenters: PL-KSV2
 ---
 
 **Problem.** verify --self runs whichever verify: command the branch holds, so a close-out can replace a failing commissioned command with a weaker passing one and ACCEPT; the only trace is the front-matter NOTE every close-out prints, the one PL-KSV2 found readers skim

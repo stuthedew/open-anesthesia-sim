@@ -135,6 +135,21 @@ def _share(workflow: float, product: float) -> float | None:
     return workflow / total if total else None
 
 
+def window_label(start: date, end: date) -> str:
+    """A window, with the year written once where both ends share it.
+
+    `2026-08-21..08-27` rather than the pair of full dates: the repeated
+    year is four characters of every row that carry no information, and
+    the table is read by scanning down a column.
+    """
+    if start == end:
+        return start.isoformat()
+    tail = end.isoformat()
+    if start.year == end.year:
+        tail = tail[len("2026-") :]
+    return f"{start.isoformat()}..{tail}"
+
+
 @dataclass(frozen=True)
 class Period:
     """One window of the history, on all three measures."""
@@ -154,18 +169,7 @@ class Period:
 
     @property
     def label(self) -> str:
-        """The window, with the year written once where both ends share it.
-
-        `2026-08-21..08-27` rather than the pair of full dates: the repeated
-        year is four characters of every row that carry no information, and
-        the table is read by scanning down a column.
-        """
-        if self.start == self.end:
-            return self.start.isoformat()
-        end = self.end.isoformat()
-        if self.start.year == self.end.year:
-            end = end[len("2026-") :]
-        return f"{self.start.isoformat()}..{end}"
+        return window_label(self.start, self.end)
 
     @property
     def is_empty(self) -> bool:

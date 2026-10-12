@@ -15,6 +15,7 @@ pr: 958
 payoff: no front-matter line - a wrapped reason, a recurrence, a generator's member list - can be dropped at docket check exit 0
 verify: grep -q 'def test_a_value_wrapped_at_column_zero_is_reported' subprojects/docket/tests/test_checks.py && grep -q 'def test_the_writers_continue_only_through_indented_lines' subprojects/docket/tests/test_model.py
 impairs-generators: model._front_matter_pairs passes over a column-zero line with no colon, so a root-cause-of: value wrapped at column zero loses its tail at docket check exit 0 - a head's member list reads short, and one at three members drops below the count that ranks it
+reenters: PL-9HD1
 ---
 
 **Problem.** model._front_matter_pairs passes over a front-matter line that is neither a field nor a continuation, with nothing reporting it, so a value wrapped at column zero loses its tail at docket check exit 0 and a recurrence docket new appends after one vanishes
