@@ -723,9 +723,16 @@ def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, 
     bullet carried on from the margin is declined onto `unread` and left out,
     since neither where it ends nor what it ends with can be read, and an empty
     one - a marker with nothing after it - holds no text and is passed over.
+
+    A bullet whose statement is a setext heading - its text over a `---` or
+    `===` line - has the heading's title lines for its text, and ends before
+    the underline, which belongs to the heading's block but not to its text
+    (CommonMark 0.31.2 § 4.3). Read whole, the underline joined the title and
+    `restate_references` appended a reference to it, which turned the heading
+    into a paragraph (`PL-703R`).
     """
     # A runtime import, since `roadmap` imports this module.
-    from .markdown import statement_lines
+    from .markdown import HEADING, read, statement_lines
     from .roadmap import document_entry_lines
 
     lines = text.split("\n")
@@ -735,10 +742,17 @@ def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, 
     ended = {entry.line - 1 for entry in declined}
     bullets: list[tuple[int, int, str]] = []
     for first, end in spans:
-        statement = next(statement_lines(lines[first:end]), None)
+        held = lines[first:end]
+        statement = next(statement_lines(held), None)
         if end in ended or statement is None:
             continue  # declined, or a marker with nothing after it, which holds no text
-        end = first + statement[1]
+        start, stop = statement
+        if any(
+            block.kind == HEADING and block.start == start and block.end - start > 1
+            for block in read(held).blocks
+        ):
+            stop -= 1  # a setext heading's underline, which is no part of its text
+        end = first + stop
         bullets.append((first, end, " ".join(line.strip() for line in lines[first:end])))
     return bullets
 
@@ -802,8 +816,9 @@ def restate_references(text: str, by_id: Mapping[str, Item]) -> tuple[str, tuple
 
     Each bullet is read whole, by `notes_bullets` (`PL-CL8R`): one wrapped onto
     an indented line takes its reference on its last line, where a reader
-    looks for it, and one carried on from the margin is left alone, since
-    where it ends was not read.
+    looks for it, a setext heading on its title's last line rather than its
+    underline (`PL-703R`), and one carried on from the margin is left alone,
+    since where it ends was not read.
 
     Returns the new text and the ids it repaired, so a caller can report the
     repair rather than a diff.

@@ -13,6 +13,7 @@ import pytest
 
 from docket.claims import SESSION_VARIABLE
 from docket.cli import main
+from docket.markdown import HEADING, PARAGRAPH, read
 from docket.model import RELEASE_TRAIN, Item, parse_item, render_item
 from docket.release import (
     SPAN_HEADING,
@@ -21,6 +22,7 @@ from docket.release import (
     below_current,
     is_untagged,
     milestones,
+    notes_bullets,
     notes_claims,
     notes_files,
     notes_ids,
@@ -683,6 +685,35 @@ def test_a_list_nested_under_a_bullet_is_not_its_text() -> None:
     bare = "- PL-2222 A title\n  - A note on it.\n"
     restated, repaired = restate_references(bare, {"PL-2222": _item("PL-2222")})
     assert (restated, repaired) == (text, ("PL-2222",))
+
+
+#: A bullet whose statement is a setext heading, as `PL-703R` reproduced it.
+SETEXT = (
+    "## v1.0.0 - 2026-10-10\n\n### defect\n\n"
+    "- PL-BCDF A title wrapped\n  {underline}\n- PL-GHJK B title — #12\n"
+)
+
+
+@pytest.mark.parametrize("underline", ["---", "==="])
+def test_a_setext_bullet_takes_its_reference_on_its_title_rather_than_its_underline(
+    underline: str,
+) -> None:
+    """`PL-703R`: a setext heading's text is its title lines, and the underline ends it.
+
+    Read whole, the underline joined the bullet's text and `restate_references`
+    appended the reference to it, after which the heading rendered as a
+    paragraph - a repair that changed what a shipped page renders.
+    """
+    text = SETEXT.format(underline=underline)
+
+    assert notes_bullets(text, [])[0] == (4, 5, "- PL-BCDF A title wrapped")
+    assert unreferenced(text) == ("PL-BCDF",)
+    restated, repaired = restate_references(text, {"PL-BCDF": _item("PL-BCDF")})
+    assert repaired == ("PL-BCDF",)
+    assert restated == text.replace("A title wrapped\n", "A title wrapped — #48\n")
+    assert unreferenced(restated) == ()
+    nested = [block.kind for block in read(restated.split("\n")).blocks if block.depth]
+    assert nested == [HEADING, PARAGRAPH]
 
 
 def test_a_bullet_carried_on_from_the_margin_is_declined_and_left_alone(tmp_path: Path) -> None:
