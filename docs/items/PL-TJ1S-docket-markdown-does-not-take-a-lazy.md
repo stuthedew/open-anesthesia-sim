@@ -6,12 +6,12 @@ effort: M
 status: ready
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/markdown.py, subprojects/docket/tests/test_markdown_reference.py
+touches: subprojects/docket/src/docket/markdown.py, subprojects/docket/tests/test_markdown_reference.py, docs/items/PL-TJ1S-docket-markdown-does-not-take-a-lazy.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
 payoff: docket.markdown reads a table under a lazy header row as cmark-gfm does, or says plainly where it does not.
 verify: grep -q 'def test_a_lazy_header_row_over_a_delimiter_row_inside_a_container' subprojects/docket/tests/test_markdown_reference.py
-recurrences: 2026-10-12 PL-NNVJ
+recurrences: 2026-10-12 PL-NNVJ withdrawn 2026-10-12 PL-TJ1S, 2026-10-12 PL-D23H withdrawn 2026-10-12 PL-TJ1S
 ---
 
 **Problem.** docket.markdown does not take a lazy continuation line for a table's header row where the delimiter row under it sits inside the list item or block quote, so a table cmark-gfm renders inside the container is read as the paragraph above it going on; latent
@@ -54,6 +54,12 @@ for a statement its format continues, the fact that head names. It is a shared
 reader's own gap: the paragraph is read past the point where cmark-gfm ends it.
 Latent, so an ordinary item under the head's spent ruling (re-checked
 2026-10-11).
+
+**Two recurrences recorded on this item are not it** (2026-10-12). `PL-NNVJ`
+is doc_check, roadmap, instructions and notes copying block readers
+`docket.markdown` already holds, and `PL-D23H` is doc_check reading a fence's
+lines short of a last line its container closes. Neither reads a lazy line as
+a table's header row, so both are withdrawn.
 
 **Why it matters.** Every block reader here takes `docket.markdown`'s reading,
 and the module promises cmark-gfm's for tables, so a docstring stating as

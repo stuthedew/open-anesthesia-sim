@@ -12,9 +12,13 @@ appendix "A parsing strategy" reads it: each line is matched against the
 containers still open, then read for the containers and the leaf block it
 opens, and a line that opens nothing carries the open paragraph on - lazily,
 where its containers did not match. A table is GitHub Flavored Markdown 0.29's
-(§ 4.10), read where cmark-gfm reads one: its header row is a paragraph line,
-not a lazy one, under which a delimiter row of as many cells opens the table,
-which then runs to a blank line or another block's start.
+(§ 4.10), read where cmark-gfm reads one: its header row is a line that would
+carry a paragraph on or open one, a lazy continuation line included, under
+which a delimiter row of as many cells, inside every container still open,
+opens the table in those containers and ends the paragraph above it; the table
+then runs to a blank line or another block's start. A lazy header row was once
+read as the paragraph going on, which cmarkgfm 2025.10.22 does not do
+(`PL-TJ1S`).
 
 `read` hands back every leaf block, as its kind, its span of lines and how many
 containers hold it, every list item the same way, and the column each line's
@@ -25,9 +29,11 @@ cannot disagree about where a block is. One inline reading is here too:
 brief's labels and sections and of a scope entry's bold lead (`PL-47NJ`).
 `subprojects/docket/tests/test_markdown_reference.py` holds it to
 markdown-it-py on every tracked Markdown file (`PL-0C2S`), with markdown-it-py
-set to cmark-gfm's reading in the one place the two part: a bare run of hyphens
-under a line holding a pipe, a setext underline to cmark-gfm and a one-column
-table's delimiter row to markdown-it-py.
+set to cmark-gfm's reading where a tracked file holds a form the two part on: a
+bare run of hyphens under a line holding a pipe, a setext underline to
+cmark-gfm and a one-column table's delimiter row to markdown-it-py. They part on
+a lazy header row too, which no tracked file holds, and a test there pins
+cmark-gfm's reading of it.
 
 Three departures, each deliberate:
 
@@ -98,8 +104,9 @@ class Item:
     end: int
     #: How many block quotes and list items hold it; 0 for a top-level item.
     depth: int
-    #: The first line carrying one of its paragraphs on from the margin - a lazy
-    #: continuation line (§ 5.2) with no indent at all - or -1 where none does.
+    #: The first line it holds from the margin - a lazy continuation line
+    #: (§ 5.2) with no indent at all, or a table's header row standing where
+    #: one would - or -1 where none does.
     lazy: int = -1
 
 
@@ -797,12 +804,20 @@ def _parse(
                 leaf.last = index
                 _touch(stack, index)
                 continue
-            if leaf is not None and not (held and _opens_table(lines, index, rest, stack)):
+            table = leaf is not None and _opens_table(lines, index, rest, stack)
+            if leaf is not None and (not table or not held):
                 for container in stack[matched:]:
                     if not container.quote and container.lazy < 0 and raw[:1] not in " \t":
                         container.lazy = index
-                leaf.last = index
                 _touch(stack, index)
+                if not table:
+                    leaf.last = index
+                    continue
+                # A lazy line over a delimiter row inside every container is
+                # the header row of a table those containers hold, as
+                # cmark-gfm reads it, and the paragraph ends above it (`PL-TJ1S`).
+                finish()
+                leaf = _Leaf(TABLE, index, len(stack))
                 continue
 
         if leaf is not None:
