@@ -3437,6 +3437,11 @@ def test_a_trunk_and_its_branch_agree_about_the_height_that_separated_them() -> 
     marked.start()
     _advance_until_halted(marked, limit_s=400.0)
 
+    # A height stops the run as an instant does, and the offer says so alike.
+    assert marked.here_fork_point == HereForkPoint(
+        marked.snapshot().elapsed_s, stopped_on_mark=True
+    )
+
     branch = marked.resumed_here()
     branch.start()
     _advance_for(branch, duration_s=300.0)

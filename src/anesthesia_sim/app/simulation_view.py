@@ -860,8 +860,8 @@ class SimulationView(QWidget):
         setting changes or the clock reaches a mark, and the panel has to
         follow; it keeps the reader's selection where that point is still
         offered. The fork at the paused point follows the same tick: it
-        appears on the frame the trunk stops on and is gone on the frame after
-        it steps.
+        appears on the frame the trunk stops on and is gone on the first frame
+        drawn after it starts.
 
         **The paused point and the marks are read from the trunk rather than
         from the displayed runs.** `BranchedCase.fork_here` and `fork_at_mark`

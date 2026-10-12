@@ -1124,7 +1124,7 @@ class ForkPanel(QWidget):
     (`PL-TYWQ`, `PL-Y2SL`). The selector's entries - the recorded control
     events and the marks the trunk has passed - stay until the case itself
     changes; the here button's instant is the one the paused trunk is standing
-    on and is gone on the next step. It is a row of its own below the
+    on and is gone once it starts. It is a row of its own below the
     selector, and it takes no instant from this panel at all:
     `BranchedCase.fork_here` forks where the trunk stands, so there is nothing
     here for a press to name wrongly.

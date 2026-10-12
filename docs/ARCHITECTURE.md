@@ -504,9 +504,9 @@ measurements, and `docs/MODEL.md` § "What this requires of a branch" records
 which of that section's two conditions the chosen route relaxes and what the
 relaxation costs.
 
-The paused point is a permission rather than a standing offer: it ends at the
-next step, and a running trunk offers none, because where it stands moves with
-every step. A failed trunk offers none either, a failure not being a pause,
+The paused point is a permission rather than a standing offer: it ends when
+the trunk starts again, because where a running trunk stands moves with every
+step. A failed trunk offers none either, a failure not being a pause,
 and nor does one standing at its opening, where `fork_at` already opens. That
 is why it is not a widened `fork_points_s` — such a list would change
 membership as the run moved, and a caller holding an instant from it could ask

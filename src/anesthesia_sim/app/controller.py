@@ -1673,7 +1673,7 @@ class SimulationController:
                 there.
         """
 
-        if step_count == 0:
+        if step_count == 0 or self._bookmarks.is_empty:
             return None
 
         before_s = self._instant_after(StepCount(step_count - 1))
@@ -2240,8 +2240,9 @@ class SimulationController:
         Args:
             state: A state vector in `governing_equations`' order: the live
                 system's, for a step `advance` is taking, or
-                `RunDefinition.state_at`'s, for one `resumed_at_mark` asks
-                about after the fact.
+                `RunDefinition.state_at`'s, for one `_crossing_ending_at`
+                asks about after the fact, for `resumed_here` and
+                `resumed_at_mark`.
 
         Raises:
             SimulationConfigurationError: If a compartment's quotient is
@@ -2524,7 +2525,7 @@ class BranchedCase:
         trunk's clock reaches it or when one is set behind the clock, and
         leaves only when the learner unmarks it or the trunk starts over - which
         is the lifetime of the keyframes beside it, and not `here_fork_point`'s,
-        which ends at the next step.
+        which ends when the trunk starts again.
         """
 
         return self._trunk.mark_fork_points
@@ -2534,8 +2535,8 @@ class BranchedCase:
         """Where the paused trunk stands, as `fork_here`'s place to branch, or None.
 
         The trunk's `SimulationController.here_fork_point`: None while it is
-        going, has failed or stands at its opening (`PL-Y2SL`). It ends at the
-        next step the trunk takes, where the entries in `fork_points_s` and
+        going, has failed or stands at its opening (`PL-Y2SL`). It ends when
+        the trunk starts again, where the entries in `fork_points_s` and
         `mark_fork_points` stay until the case changes.
         """
 

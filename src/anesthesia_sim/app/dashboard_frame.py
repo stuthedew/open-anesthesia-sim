@@ -1859,7 +1859,7 @@ class ForkOffer:
             exactly as much as it is spent on.
         here_offered: Whether the second control - the fork where the paused
             trunk stands - is on screen this tick. It appears when the trunk
-            stops and goes when it steps, where an entry in `points` stays
+            stops and goes when it starts, where an entry in `points` stays
             until the case itself changes, which is why it is a control of
             its own rather than an entry in that list (`PL-TYWQ`, `PL-Y2SL`).
         here_label: What that control says, or the empty string while it is
@@ -1926,7 +1926,7 @@ def fork_offer(
     when one is set behind the clock, and leaves only when the learner
     unmarks it or the trunk starts over, as a keyframe stays until the case
     changes. So the marks belong in the selector, while the paused point,
-    which ends at the next step, stays a control of its own: a row that
+    which ends when the trunk starts, stays a control of its own: a row that
     arrived and left as the run moved would change the selector's membership
     under a reader who had looked away (`HERE_FORK_LABEL_TEMPLATE` carries the
     two decisions). `docs/ARCHITECTURE.md` § "Where a branch may be taken" is
