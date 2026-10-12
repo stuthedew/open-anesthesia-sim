@@ -1059,6 +1059,89 @@ def test_a_suppression_re_added_after_removal_is_still_reported(tmp_path: Path) 
     assert any("@pytest.mark.xfail" in line for line in suppression.lines)
 
 
+def _two_tests(skipped: str, shape: str) -> str:
+    """Two tests, `skipped` carrying a skip as `shape`: a decorator, or a call in its body."""
+    blocks = []
+    for name, value in (("test_a", 1), ("test_b", 2)):
+        mark = (
+            '@pytest.mark.skip(reason="needs bash")\n' if (name, shape) == (skipped, "mark") else ""
+        )
+        call = '    pytest.skip("needs bash")\n' if (name, shape) == (skipped, "call") else ""
+        blocks.append(f"{mark}def {name}() -> None:\n{call}    assert {value} == {value}\n")
+    return "import pytest\n\n\n" + "\n\n".join(blocks)
+
+
+@pytest.mark.parametrize("shape", ["mark", "call"])
+def test_a_skip_decorator_moved_to_another_test_is_an_added_suppression(
+    tmp_path: Path, shape: str
+) -> None:
+    """`PL-W6ZD`: a suppression is compared with the definition it applies to.
+
+    Moved from `test_a` to `test_b` with nothing else changed, the marker was
+    one statement removed from the file and the same one added to it, and the
+    fold cancelled the two: the check said `none` while a test that ran no
+    longer did. A decorator is now counted in the definition it decorates, and
+    any other statement in the one holding it, so the move adds a suppression
+    to `test_b`. A call to `pytest.skip` in a test's body moves the same way.
+    """
+    root = _repo(tmp_path)
+    _work(root, "the base's tests", "tests/test_thing.py", _two_tests("test_a", shape))
+    _work(root, "PL-K7QX move the skip", "tests/test_thing.py", _two_tests("test_b", shape))
+
+    suppression = _check(verify(root, _item(), _config(), "HEAD~1"), "no suppression added")
+
+    assert not suppression.passed
+    assert suppression.detail == "1 line(s)"
+    assert any("needs bash" in line for line in suppression.lines)
+
+
+def test_a_test_moved_whole_with_its_skip_adds_no_suppression(tmp_path: Path) -> None:
+    """The other side of `PL-W6ZD`: the skip still applies to the test it applied to."""
+    root = _repo(tmp_path)
+    tests = _two_tests("test_a", "mark")
+    first, _, second = tests.removeprefix("import pytest\n\n\n").partition("\n\n")
+    _work(root, "the base's tests", "tests/test_thing.py", tests)
+    moved = f"import pytest\n\n\n{second}\n\n{first}"
+    _work(root, "PL-K7QX put test_b first", "tests/test_thing.py", moved)
+
+    suppression = _check(verify(root, _item(), _config(), "HEAD~1"), "no suppression added")
+
+    assert suppression.passed
+    assert suppression.detail == "none"
+
+
+def test_a_merge_commits_combined_diff_is_read_or_declined(tmp_path: Path) -> None:
+    """`PL-W6ZD`: a merge led by the item's id is read as the combined diff git writes.
+
+    `git show` writes a merge's patch as a combined diff, headed `diff --cc`
+    and prefixed in one column per parent, and the line reading took
+    `++xfail_strict = false`, a line neither parent held, for a `+++` header:
+    a configuration line the merge itself added passed. A line is now the
+    merge's where every column says so, as `_file_steps` reads a merge
+    against every parent at once, so one the other parent brought is that
+    parent's work and not charged.
+    """
+    root = _repo(tmp_path)
+    # No section header, so `configparser` refuses every copy and its lines are read.
+    _work(root, "configure it", "pytest.ini", "addopts = -q\n")
+    _git(root, "tag", "fork")
+    _git(root, "checkout", "-qb", "side")
+    _work(root, "the other parent's line", "pytest.ini", "addopts = -q\nside = -p no:xfail\n")
+    _git(root, "checkout", "-q", "-")
+    _work(root, "PL-K7QX the item's own work", "tests/test_thing.py", KEPT + "\n# more\n")
+    _git(root, "merge", "-q", "--no-commit", "--no-ff", "side")
+    (root / "pytest.ini").write_text("xfail_strict = false\naddopts = -q\nside = -p no:xfail\n")
+    _git(root, "commit", "-qam", "PL-K7QX: bring the other parent in")
+
+    report = verify(root, _item(touches=("tests", "pytest.ini")), _config(), "fork")
+
+    suppression = _check(report, "no suppression added")
+    assert not suppression.passed
+    assert suppression.lines[0] == "xfail_strict = false"
+    assert not any("side = " in line for line in suppression.lines)
+    assert suppression.lines[1].startswith("read line by line, not parsed: pytest.ini - ")
+
+
 def test_the_scope_detail_claims_no_commit_when_the_branch_has_none(tmp_path: Path) -> None:
     """The check that reports the scope may not invent a commit to report it in.
 
@@ -2670,6 +2753,34 @@ def test_each_change_to_an_item_file_has_to_be_a_sanctioned_kind(tmp_path: Path)
     neighbour.write_text(neighbour.read_text().replace("status: ready\n", "status: blocked\n"))
     _git(root, "commit", "-qam", "PL-K7QX and reopen it")
     assert sanctioned_queue_edit(root, "HEAD~2", ("HEAD~1", "HEAD"), path) == ""
+
+
+def test_an_uncommitted_edit_beside_a_sanctioned_queue_write_is_not_sanctioned(
+    tmp_path: Path,
+) -> None:
+    """`PL-W6ZD`: a kind is read off a commit's change, so an uncommitted change is none.
+
+    Read off the commits alone, a `pr:` write committed with a `status: done`
+    left uncommitted beside it answered `pr`, while `changed_paths` listed the
+    path from the working tree, so the status edit was read by nothing and the
+    audit passed it. The path is now outside `touches`, and the page says why,
+    as an uncommitted capture or record already was.
+    """
+    root = _repo(tmp_path)
+    items = root / "docs" / "items"
+    path = "docs/items/PL-B2B2-do-the-other.md"
+    neighbour = items / "PL-B2B2-do-the-other.md"
+    insert_field(items, parse_item(neighbour.read_text(), neighbour.name), "pr", "495")
+    (root / "tests" / "test_thing.py").write_text(KEPT + "\ndef test_more():\n    pass\n")
+    _git(root, "commit", "-qam", "PL-K7QX close it out, and record the pr the base was owed")
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == "pr"
+
+    neighbour.write_text(neighbour.read_text().replace("status: ready\n", "status: done\n"))
+
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == ""
+    check = _check(verify(root, _item(), _config(), "HEAD~1"), TOUCHES)
+    assert not check.passed, check
+    assert any(line.startswith(f"{path} - uncommitted") for line in check.lines), check.lines
 
 
 @pytest.mark.parametrize(
