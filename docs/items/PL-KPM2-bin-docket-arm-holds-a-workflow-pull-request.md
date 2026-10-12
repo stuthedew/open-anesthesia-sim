@@ -30,7 +30,7 @@ workflow lane. A product change keeps its hold, and so does a change crossing
 both lanes, which holds by its product path whatever else it changes. So the
 three workflow paths leave `READ_PATHS`, and nothing else does.
 
-**Asked, with a recommendation** (2026-10-12, open): whether `arming.py`
+**Asked, with a recommendation** (2026-10-12, answered below): whether `arming.py`
 itself, `GATE`, stays held. **Recommendation: keep it held.** It decides which
 pull requests wait for the owner, and it has been held since 2026-09-25 so that
 the gate cannot loosen itself (`PL-SQTR`): armed on green, a workflow pull
@@ -38,6 +38,11 @@ request could drop `src/` or `docs/MODEL.md` from the list and merge unread. It
 changed twice in the week to 2026-10-12, so the hold costs him little. Built on
 the recommendation until he answers; the pull request writing this rule changes
 `arming.py` and merges on his 2026-10-12 message either way.
+
+**Answered** (project owner, 2026-10-12, ratified, over arming a change to
+`arming.py` on green with the rest of the workflow lane): "Agree", in the
+Projects thread at 11:09Z, after `#1432` had merged, so `arming.py` stays on
+the read list. `PL-VKHD` wrote the answer into `arming.py`'s decision record.
 
 **Not `PL-XTBF`.** `docket new` matched this capture to it on the two paths
 they share. That item asks how a repair push treats a pull request the owner
