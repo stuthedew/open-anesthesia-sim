@@ -691,8 +691,13 @@ def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, 
 
     The indices are 0-based into `text.split("\\n")`, the end one past the
     last line of the bullet's text, and the text is the bullet's own paragraph,
-    its wrapped lines joined by a space. Read through
-    `roadmap.document_entry_lines`, section by section, and
+    each of its lines stripped and joined by a space - its first too, as
+    `notes_ids` reads it. A marker indented up to three spaces still opens a
+    top-level bullet (CommonMark 0.31.2 § 5.2), and with that indent kept
+    `NOTES_BULLET_RE` missed the bullet, so `unreferenced` and
+    `restate_references` passed by an id `notes_ids` claims (`PL-6531`).
+
+    Read through `roadmap.document_entry_lines`, section by section, and
     `markdown.statement_lines` within the bullet (`PL-CL8R`, `PL-R417`): an
     indented line carries a bullet's paragraph on, as CommonMark reads it
     (0.31.2 § 5.2), so a title wrapped before its reference is one bullet with
@@ -718,13 +723,7 @@ def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, 
         if end in ended or statement is None:
             continue  # declined, or a marker with nothing after it, which holds no text
         end = first + statement[1]
-        bullets.append(
-            (
-                first,
-                end,
-                " ".join([lines[first], *(line.strip() for line in lines[first + 1 : end])]),
-            )
-        )
+        bullets.append((first, end, " ".join(line.strip() for line in lines[first:end])))
     return bullets
 
 

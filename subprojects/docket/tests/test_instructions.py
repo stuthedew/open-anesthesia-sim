@@ -124,6 +124,29 @@ def test_a_date_inside_a_code_fence_is_skipped() -> None:
     assert parse("capture.md", text) == []
 
 
+def test_a_date_in_an_indented_code_block_or_an_html_block_dates_nothing() -> None:
+    """Each holds a literal or a comment as a fence does, so its date is no claim (`PL-KR6M`).
+
+    The body was read with every kind of block but a fence, so a worked example
+    indented four spaces, or a date in a comment, put an entry in the report
+    that nobody could honestly clear. It is read through `markdown.PROSE` now,
+    the one record of which blocks hold prose.
+    """
+    text = (
+        "A sentence (project owner, 2026-09-01) in prose.\n"
+        "\n"
+        "    Template: write the date as 2026-01-02 here.\n"
+        "\n"
+        "<div>\n"
+        "A date 2026-03-04 inside an HTML block.\n"
+        "</div>\n"
+        "\n"
+        "<!-- measured 2026-05-06 -->\n"
+    )
+
+    assert [(row.line, row.when) for row in parse("r.md", text)] == [(1, date(2026, 9, 1))]
+
+
 def test_a_date_after_a_closed_fence_is_read_again() -> None:
     """The fence toggles; it does not silence the rest of the file."""
     text = "```\n2026-01-01\n```\nMeasured 2026-09-04.\n"

@@ -299,6 +299,49 @@ def test_a_wrapper_runs_the_command_after_it(command: str, refused: bool) -> Non
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
 
 
+INTERPRETED = (
+    # `PL-6X0C`'s two reproductions, a scratch script handed a check or its
+    # test to read: the first verbatim from `#1392`, where it was met.
+    (
+        "uv run python guard_keys.py main_test_doc_check.py tests/unit/test_doc_check.py"
+        " | sed -n '1,5p'",
+        False,
+    ),
+    ("python3 scratch.py tools/glyph_check.py | head", False),
+    ("python3 scratch.py tools/dead_ends.py check | tail", False),
+    # The check itself, behind each kind of interpreter option: a flag, a run
+    # of flags, a value in the next word or glued on, and the end of options.
+    ("python3 tools/glyph_check.py | head", True),
+    ("python3 -u tools/glyph_check.py | head", True),
+    ("python3 -uI tools/glyph_check.py | head", True),
+    ("python3 -W error tools/glyph_check.py | head", True),
+    ("python3 -Werror tools/glyph_check.py | head", True),
+    ("python3 -X dev tools/glyph_check.py | head", True),
+    ("python3 --check-hash-based-pycs always tools/glyph_check.py | head", True),
+    ("python3 -- tools/glyph_check.py | head", True),
+    # A value that happens to be named like a check runs nothing.
+    ("python3 -W ignore scratch.py tools/glyph_check.py | head", False),
+    # A command, a module or stdin runs no script file, whatever follows.
+    ("python3 -c 'import sys' tools/glyph_check.py | head", False),
+    ("python3 -m json.tool tools/glyph_check.py | head", False),
+    ("python3 - tools/glyph_check.py < scratch.py | head", False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), INTERPRETED)
+def test_only_the_script_an_interpreter_runs_is_read_as_a_check(
+    command: str, refused: bool
+) -> None:
+    """Python runs its first argument past its own options and hands it the rest (`PL-6X0C`).
+
+    Any argument named like a check was read as the one it ran, so a scratch
+    script reading a check's own source or test was refused when piped, though
+    no check ran, and its remedy, `set -o pipefail`, was no help.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
 REDIRECTED = (
     # `PL-K9QL`'s reproductions, verbatim: ahead of the command, and among a
     # wrapper's words.

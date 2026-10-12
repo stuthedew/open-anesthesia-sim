@@ -715,6 +715,29 @@ def test_the_exclusion_heading_is_parsed_apart_from_required_scope() -> None:
     assert "PL-Z7LY" not in section.own_scope_ids
 
 
+@pytest.mark.parametrize(
+    "example",
+    ["    example: PL-BCDF", "```text\nexample: PL-BCDF\n```", "<!--\nexample: PL-BCDF\n-->"],
+    ids=["indented code block", "fence", "HTML block"],
+)
+def test_an_id_in_an_indented_code_block_is_not_read_as_excluded(example: str) -> None:
+    """`PL-MPJL`: an id quoted in a literal is an example, not an exclusion.
+
+    An indented code block holds a literal as a fence does (CommonMark 0.31.2
+    § 4.4), and the heading's ids were read from every line but a fence's or an
+    HTML block's, so an example quoted in one read as the milestone ruling real
+    work out. They are read from its prose blocks now, which `markdown.PROSE`
+    names once.
+    """
+    text = ROADMAP.replace(
+        "Forking, and horizontal panning of the chart (queue item PL-Z7LY).",
+        f"An example:\n\n{example}\n\n- PL-HJKM is out.",
+    )
+    section = next(one for one in parse_milestones(text) if one.version == (0, 4, 0))
+
+    assert section.excluded_ids == ("PL-HJKM",)
+
+
 #: v0.4.0's `Required scope` written the way the real file writes an entry: the
 #: member declared in the `(queue item ...)` slot after the bold title, and the
 #: item that re-briefed the entry cited in the prose beside it. Naming the id
@@ -808,6 +831,27 @@ def test_a_numbered_scope_entry_is_an_entry_like_a_bulleted_one() -> None:
 
     assert section.own_scope_ids == ("PL-MNPQ", "PL-RSTW")
     assert [entry.ids for entry in section.scope_entries] == [("PL-MNPQ",), ("PL-RSTW",)]
+
+
+def test_an_indented_code_block_is_no_part_of_an_entrys_text() -> None:
+    """`PL-KR6M`: an entry's text is its prose, and an indented code block in it is a literal.
+
+    The text is what `tools/doc_check.py` reads for a scope entry's exclusion
+    words and quotes in its errors, so a literal folded into it is read as the
+    entry's own words. Its ids were already read from prose alone; its text
+    left out a fence and an HTML block by a list of literal kinds that lacked
+    this one, and is now read from the prose blocks `markdown.PROSE` names.
+    """
+    text = ROADMAP.replace(
+        "A displayed clinical unit (queue item PL-MNPQ).",
+        "- Keep the model pure (queue item PL-MNPQ).\n\n      **literal** (queue item PL-F2F2)",
+    )
+    section = next(one for one in parse_milestones(text) if one.version == (0, 4, 0))
+
+    assert [entry.text for entry in section.scope_entries] == [
+        "Keep the model pure (queue item PL-MNPQ)."
+    ]
+    assert section.own_scope_ids == ("PL-MNPQ",)
 
 
 def test_an_id_a_scope_entry_names_only_in_prose_is_not_claimed() -> None:

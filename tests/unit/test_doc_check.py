@@ -1028,6 +1028,32 @@ def test_a_bare_section_mark_citation_that_resolves_is_quiet(tmp_path: Path) -> 
     assert not any("cites section" in e for e in _errors(_repo(tmp_path, readme=readme)))
 
 
+@pytest.mark.parametrize(
+    ("opening", "closing"),
+    [("    ", ""), ("<!-- ", " -->"), ("```text\n", "\n```")],
+    ids=["indented code block", "HTML comment", "fence"],
+)
+def test_a_section_cited_in_an_indented_code_block_or_a_comment_is_not_held(
+    tmp_path: Path, opening: str, closing: str
+) -> None:
+    """A literal or a comment is no claim about the tree, as a fence's is none (`PL-KR6M`).
+
+    The two section readers left out fences alone, so a worked example indented
+    four spaces, or a comment, quoting a section title failed `make check` for
+    citing a section no documentation file has, and one naming a heading
+    without the mark was told to take it. They read the blocks
+    `markdown.PROSE` names now.
+    """
+    readme = (
+        f'# Demo\n\n{opening}The rest is per § "Renamed limitations", as the model says.{closing}'
+        f'\n\n{opening}See "Known limitations" for what it omits.{closing}\n'
+    )
+    report = doc_check.analyze(_repo(tmp_path, readme=readme))
+
+    assert not any("cites section" in e for e in report.errors)
+    assert not any('write § "Known limitations"' in a for a in report.advisories)
+
+
 def test_a_marked_citation_after_its_source_document_is_left_to_containment(tmp_path: Path) -> None:
     """`` `doc.md` § "X" `` names its document; `check_quoted_sources` holds it by containment."""
     readme = '# Demo\n\nThe rest is in `docs/MODEL.md` § "Renamed limitations".\n'

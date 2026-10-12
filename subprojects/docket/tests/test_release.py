@@ -23,6 +23,7 @@ from docket.release import (
     milestones,
     notes_claims,
     notes_files,
+    notes_ids,
     notes_name,
     notes_version,
     outstanding_roadmap_edits,
@@ -671,6 +672,30 @@ def test_a_bullet_carried_on_from_the_margin_is_declined_and_left_alone(tmp_path
     declined: list[str] = []
     assert unreferenced_by_version(tmp_path, unread=declined) == {}
     assert declined == [f"docs/releases/v0.3.0.md line 2: {LAZY_ENTRY}"]
+
+
+@pytest.mark.parametrize("indent", [" ", "  ", "   "])
+def test_a_bullet_indented_one_to_three_spaces_is_read_as_notes_ids_reads_it(indent: str) -> None:
+    """`PL-6531`: a marker indented up to three spaces still opens a top-level bullet.
+
+    CommonMark 0.31.2 § 5.2 reads both lines below as items of one list, and
+    `notes_ids` claimed both ids, but the bullet's text kept its indent and
+    `NOTES_BULLET_RE` is anchored at the margin, so `unreferenced` and
+    `restate_references` passed the first by: a missing pull request link that
+    read as clean.
+    """
+    text = f"## Fixed\n\n{indent}- PL-BCDF a title with no reference\n- PL-HJKM another title\n"
+    store = {identifier: _item(identifier) for identifier in ("PL-BCDF", "PL-HJKM")}
+
+    assert notes_ids(text) == frozenset(store)
+    assert unreferenced(text) == ("PL-BCDF", "PL-HJKM")
+    restated, repaired = restate_references(text, store)
+    assert repaired == ("PL-BCDF", "PL-HJKM")
+    assert restated == (
+        f"## Fixed\n\n{indent}- PL-BCDF a title with no reference — #48\n"
+        "- PL-HJKM another title — #48\n"
+    )
+    assert unreferenced(restated) == ()
 
 
 # --- the pointer section, which is not a claim -------------------------------

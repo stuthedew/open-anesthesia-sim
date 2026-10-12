@@ -56,7 +56,7 @@ from pathlib import Path
 
 from .frontmatter import closing, statements
 from .lines import split_lines
-from .markdown import statement_lines
+from .markdown import PROSE, statement_lines
 from .roadmap import SENTENCE_BREAK
 
 ISO_DATE_RE = re.compile(r"\b(20\d{2})-(\d{2})-(\d{2})\b")
@@ -126,7 +126,7 @@ def _sentences(text: str) -> Iterator[tuple[int, int]]:
 
 
 def parse(name: str, text: str) -> list[Assertion]:
-    """The dated sentences of one instruction file, outside its fenced blocks.
+    """The dated sentences of one instruction file, in its prose.
 
     Dates inside a fence are skipped, and the reason is discharge rather than
     precision. This repository's `.claude/skills/docket/modes/capture.md` carries
@@ -141,6 +141,11 @@ def parse(name: str, text: str) -> list[Assertion]:
     a line's start opens none, and an opener nothing closes hides no date below
     it (`PL-92MY`).
 
+    An indented code block and an HTML block hold a literal or a comment as a
+    fence does, so the body is read through `markdown.PROSE`, the one record of
+    which blocks hold prose: read with every kind but a fence, a worked example
+    indented four spaces dated a rule nobody could clear (`PL-KR6M`).
+
     A YAML front matter is no Markdown, and is read a key at a time
     (`PL-2MLT`): read from the file's first line, the keys were one paragraph
     its closing `---` underlines as a setext heading (CommonMark 0.31.2 § 4.3),
@@ -152,7 +157,7 @@ def parse(name: str, text: str) -> list[Assertion]:
     fence = closing(lines)
     body = 0 if fence is None else fence + 1
     spans = [] if fence is None else [(1 + a, 1 + b) for a, b in statements(lines[1:fence])]
-    spans += statement_lines([""] * body + lines[body:])
+    spans += statement_lines([""] * body + lines[body:], PROSE)
     for first, end in spans:
         statement = "\n".join(lines[first:end])
         for start, stop in _sentences(statement):

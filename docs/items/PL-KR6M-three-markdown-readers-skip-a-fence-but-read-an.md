@@ -3,11 +3,13 @@ id: PL-KR6M
 title: Three Markdown readers skip a fence but read an indented code block as prose - docket.instructions.parse, which reads an HTML block too, docket.roadmap's LITERAL_BLOCKS, and doc_check's section-mark citation readers - so a template date in one is a dated assertion, a queue-items run in one declares, and a quoted title in one is refused as a missing section; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
-touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/instructions.py, tools/doc_check.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/tests/test_instructions.py, tests/unit/test_doc_check.py
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/instructions.py, tools/doc_check.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/tests/test_instructions.py, tests/unit/test_doc_check.py, docs/items/PL-2B0B-doc-check-reads-code-spans-citations-markers.md, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage in workflow group two
 added: 2026-10-06
+closed: 2026-10-12
+pr: 1434
 payoff: A worked example in an indented code block or an HTML comment is read as the literal it is - never as a dated rule, an entry's words or a missing section citation
 verify: grep -q 'def test_a_date_in_an_indented_code_block_or_an_html_block_dates_nothing' subprojects/docket/tests/test_instructions.py && grep -q 'def test_an_indented_code_block_is_no_part_of_an_entrys_text' subprojects/docket/tests/test_roadmap.py && grep -q 'def test_a_section_cited_in_an_indented_code_block_or_a_comment_is_not_held' tests/unit/test_doc_check.py
 root-cause-of: PL-2B0B, PL-MPJL, PL-XGYH

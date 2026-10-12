@@ -4766,11 +4766,13 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                     )
 
         # A fence or a code span holds a literal - an example, a command, the
-        # form being described - and a literal is not a claim about the tree.
+        # form being described - and a literal is not a claim about the tree. So
+        # do an indented code block and an HTML block, a literal or a comment,
+        # and the section readers read the blocks `PROSE` names (`PL-KR6M`).
         prose = without_fences(text)
         spans = [(span.start(), span.end()) for span in _statement_spans(text)]
 
-        for match in _statement_matches(CITATION_RE, prose):
+        for match in _statement_matches(CITATION_RE, prose, PROSE):
             # A code-spanned source directly before the mark says where the
             # section lives: a document, or an item brief no heading here
             # answers, and `check_quoted_sources` holds either by containment.
@@ -4795,7 +4797,7 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                     "section without the mark)"
                 )
 
-        for match in _statement_matches(UNMARKED_CITATION_RE, prose):
+        for match in _statement_matches(UNMARKED_CITATION_RE, prose, PROSE):
             before = prose[max(match.pos, match.start() - 200) : match.start() + 1]
             if (
                 _inside(match.start(), spans)
