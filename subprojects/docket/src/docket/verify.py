@@ -44,6 +44,7 @@ from typing import TypeVar
 from . import vcs
 from .arming import RECORDS
 from .config import Config
+from .gitargv import subcommand_of
 from .grep import Cache, Wrap, wrapped
 from .lines import file_text, record_text, split_lines
 from .model import (
@@ -2017,7 +2018,7 @@ def _git(args: list[str], root: Path) -> str:
     """
     # By the subcommand, not `args[0]`, which is `-c` for every read
     # `vcs.changed_path_args` builds.
-    command = f"`git {vcs.subcommand_of(args)}`"
+    command = f"`git {subcommand_of(args)}`"
     try:
         result = subprocess.run(
             ["git", *args],
