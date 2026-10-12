@@ -55,6 +55,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from . import vcs
 from .frontmatter import Unread, closing, key_statements, keys
 from .lines import split_lines
 from .markdown import PROSE, statement_lines
@@ -204,9 +205,17 @@ def _key_spans(block: Sequence[str]) -> list[tuple[int, int]]:
 def _markdown_under(root: Path, paths: Sequence[str]) -> list[str]:
     """Every `.md` at or beneath the named files and directories, once each.
 
-    A file entry is taken as it stands; a directory entry is walked. Sorted
-    and de-duplicated, so a project naming both a directory and a file inside
-    it reads that file once and the report comes out in a stable order.
+    A file entry is taken as it stands; a directory entry is read for the files
+    the repository holds beneath it, through `vcs.tracked_under`, so a scratch
+    note or another checkout there is not part of the instruction set
+    (`PL-J4YY`). A checkout git ran in and did not list is walked rather than
+    raised on, for the reason `_texts` gives: the walk can only over-read, and
+    a sentence it adds from an untracked file is named by its path. Sorted and
+    de-duplicated, so a project naming both a directory and a file inside it
+    reads that file once and the report comes out in a stable order.
+
+    `tools/doc_check.py` measures the on-demand instruction files through this
+    one copy rather than its own (`PL-NNVJ`).
     """
     names: list[str] = []
     for entry in paths:
@@ -216,8 +225,7 @@ def _markdown_under(root: Path, paths: Sequence[str]) -> list[str]:
         elif path.is_dir():
             names += (
                 found.relative_to(root).as_posix()
-                for found in path.rglob("*.md")
-                if found.is_file()
+                for found in vcs.tracked_under(root, entry, ".md", raise_unlisted=False)
             )
     return sorted(dict.fromkeys(names))
 

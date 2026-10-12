@@ -170,8 +170,11 @@ try:
     # inside a front matter's value, and `ISO_DATE_RE` is what counts as a date
     # in one. `check_host_claims` asks whether a sentence naming a host carries
     # a date, the question that module asks of an instruction, so the two
-    # cannot disagree about where a sentence ends.
-    from docket.instructions import ISO_DATE_RE, _sentences
+    # cannot disagree about where a sentence ends. Which Markdown files the
+    # instruction set holds is its reading too, from the files the repository
+    # tracks, so `measure_on_demand` sizes the set `docket check` ages rather
+    # than a second walk of the disk (`PL-NNVJ`, `PL-J4YY`).
+    from docket.instructions import ISO_DATE_RE, _markdown_under, _sentences
     from docket.lines import file_text, record_text, split_lines
 
     # `markdown` is the one reading of a document's blocks (`PL-R417`): where
@@ -2794,6 +2797,10 @@ def check_named_tests(root: Path, documents: Mapping[Path, str], report: Report)
     else is neither passed nor failed where such a file holds the name's text,
     and is an error as before where none does: no file defines a test without
     spelling its name.
+
+    The suite is the test files the repository holds, read from
+    `tracked_files`, so a scratch test a session has not added cannot resolve
+    a citation the suite does not hold (`PL-J4YY`).
     """
     seen: dict[tuple[Path, str], int] = {}
     for path, text in documents.items():
@@ -2814,7 +2821,7 @@ def check_named_tests(root: Path, documents: Mapping[Path, str], report: Report)
         if not directory.is_dir():
             continue
         searched = True
-        for path in sorted(directory.rglob("*.py")):
+        for path in tracked_under(root, relative, ".py"):
             text = path.read_text(encoding="utf-8-sig")
             try:
                 defined |= _defined_tests(text)
@@ -7352,22 +7359,6 @@ def measure_digest(root: Path) -> ResidentFile | None:
     return ResidentFile(
         f"{DIGEST_HOOK} (output)", len(result.stdout), len(split_lines(result.stdout))
     )
-
-
-def _markdown_under(root: Path, roots: Sequence[str]) -> list[str]:
-    """Every `.md` at or beneath the named files and directories, once each."""
-    names: list[str] = []
-    for entry in roots:
-        path = root / entry
-        if path.is_file():
-            names.append(entry)
-        elif path.is_dir():
-            names += (
-                found.relative_to(root).as_posix()
-                for found in path.rglob("*.md")
-                if found.is_file()
-            )
-    return sorted(dict.fromkeys(names))
 
 
 def measure_on_demand(root: Path) -> list[ResidentFile]:

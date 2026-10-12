@@ -48,6 +48,7 @@ ALLOWED_IMPORTS = {
     "random",
     "re",
     "shlex",
+    "shutil",
     "statistics",
     "subprocess",
     "sys",

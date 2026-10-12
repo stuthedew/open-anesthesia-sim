@@ -19,7 +19,7 @@ verify: grep -q 'def test_a_four_column_quote_marker_is_paragraph_text' tests/un
 - Table cells: `markdown.cells` and `_CELL_BREAK` beside `doc_check._cells` and `CELL_BREAK_RE`, the same regex; they agree.
 - List markers: `markdown._MARKER` beside `roadmap.ENTRY_MARKER_RE`; they agree on every line markdown opens an item on, and part on `* * *`, a thematic break.
 - A body with its front matter blanked: `doc_check._body_lines`, inline in `instructions` and in `notes`; they agree.
-- `_markdown_under`: a verbatim copy in `instructions` and `doc_check`; they agree, though doc_check's roots add `.claude/CLAUDE.md`.
+- [superseded 2026-10-12: `PL-J4YY` folded it, and `doc_check` imports `instructions`' copy, which reads the tracked-file list] `_markdown_under`: a verbatim copy in `instructions` and `doc_check`; they agree, though doc_check's roots add `.claude/CLAUDE.md`.
 
 **Why it matters.** Each copy is held to the others by nothing, so the first input they part on is answered one way by docket and another by the hook or check a session trusts at that moment; every pair below was read at both sites by the sweep, and the parting input is the sweep's reading, to re-confirm at start.
 

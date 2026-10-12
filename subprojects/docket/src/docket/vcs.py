@@ -36,6 +36,7 @@ from __future__ import annotations
 import ast
 import os
 import re
+import shutil
 import subprocess
 import time
 import urllib.parse
@@ -44,7 +45,7 @@ from collections import Counter
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
-from pathlib import Path
+from pathlib import Path, PurePath, PurePosixPath
 
 from . import markdown
 from .lines import ENCODING, file_text, record_text, split_lines
@@ -234,6 +235,80 @@ def listed_paths(listing: str) -> tuple[str, ...]:
     asks `answered` of the listing first.
     """
     return tuple(path for path in listing.split("\0") if path)
+
+
+#: Directories a checkout carries but does not author. Skipped by the walk that
+#: stands in for `git ls-files` in a tree that is not a checkout.
+SKIP_DIRS = frozenset(
+    {".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".ruff_cache"}
+)
+
+
+class Unlisted(Exception):
+    """Git ran in a checkout and did not say which files the repository holds."""
+
+
+def tracked_files(root: Path, *, raise_unlisted: bool = True) -> list[str]:
+    """Every file the repository tracks, as posix paths relative to `root`.
+
+    `git ls-files` where `root` is a checkout, because an untracked file - a
+    scratch script, a build product, a virtualenv, another checkout under
+    `.claude/worktrees/` - is not the repository's. Here, beside `_run_git`,
+    because which files the repository holds is git's fact, and the docket
+    package reads it as well as every tool (`PL-J4YY`); `workflow_paths_check`
+    re-exports it for the tools that imported it there.
+
+    A tree that is not a checkout, which is what the tests build, is walked
+    instead, skipping only `SKIP_DIRS`; that walk sees every file and stands in
+    for git rather than replacing it, and so does a checkout where git cannot
+    be launched at all, which is what every reader did before this list was
+    theirs (`PL-9NZ3`): the walk reads more than git would and never less, so
+    it can only over-report. Git running and not answering in a checkout -
+    an unreadable index, a refused repository, the timeout - raises `Unlisted`:
+    a tree a check could not list is one it cannot vouch for, and passing it
+    silently is the failure the check exists to stop. A reader that would
+    rather over-read than raise, as an advisory in this package must, passes
+    `raise_unlisted=False` and has that checkout walked too.
+
+    A tracked file deleted from the working tree and not yet staged is left
+    out, because git still lists it and every reader here opens what it is
+    given: the list is what the checkout holds, so a session that ran `rm`
+    before `make check` is not told a file it removed cannot be read.
+    """
+    if (root / ".git").exists():
+        listing = _run_git(["ls-files", "-z"], root)
+        if answered(listing):
+            return sorted(name for name in listed_paths(listing) if (root / name).is_file())
+        if raise_unlisted and shutil.which("git") is not None:
+            raise Unlisted(f"`git ls-files` did not answer in {root}")
+    found = []
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root)
+        if path.is_file() and not any(part in SKIP_DIRS for part in relative.parts):
+            found.append(relative.as_posix())
+    return found
+
+
+def tracked_under(
+    root: Path, tree: str | PurePath, suffix: str = "", *, raise_unlisted: bool = True
+) -> list[Path]:
+    """The files `tracked_files` lists below `tree` whose names end in `suffix`, as paths.
+
+    The filter every reader of one subtree shares, so each reads the files the
+    repository holds rather than whatever a walk of the disk finds there: an
+    untracked scratch module, or another checkout under `.claude/worktrees/`
+    (`PL-9NZ3`). An empty `tree` is the whole repository. Sorted as paths,
+    which is the order the walks it replaced yielded, so a report's order is
+    unchanged by the move.
+    """
+    prefix = PurePosixPath(tree).as_posix().strip("/")
+    if prefix == ".":
+        prefix = ""
+    return sorted(
+        root / name
+        for name in tracked_files(root, raise_unlisted=raise_unlisted)
+        if (not prefix or name.startswith(prefix + "/")) and name.endswith(suffix)
+    )
 
 
 def _asks_for_a_blob(args: list[str]) -> bool:

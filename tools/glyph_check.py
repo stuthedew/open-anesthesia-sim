@@ -80,6 +80,8 @@ import unicodedata
 from collections.abc import Iterator
 from pathlib import Path
 
+from workflow_paths_check import tracked_under
+
 ROOT = Path(__file__).resolve().parent.parent
 
 #: The Python trees whose string literals can reach a reader. `app/` draws
@@ -186,7 +188,11 @@ def offenders(text: str) -> list[str]:
 
 
 def problems(root: Path) -> list[str]:
-    """One message per string carrying a character nobody has confirmed renders."""
+    """One message per string carrying a character nobody has confirmed renders.
+
+    The files are the ones the repository holds, read from `tracked_files`, so
+    a scratch module a session has not added fails nothing (`PL-J4YY`).
+    """
     found: list[str] = []
 
     for tree in PYTHON_TREES:
@@ -194,7 +200,7 @@ def problems(root: Path) -> list[str]:
         if not base.is_dir():
             found.append(f"{tree.as_posix()}: does not exist, so this check measured nothing there")
             continue
-        for path in sorted(base.rglob("*.py")):
+        for path in tracked_under(root, tree, ".py"):
             for lineno, text in python_strings(path):
                 for character in offenders(text):
                     found.append(
@@ -208,7 +214,7 @@ def problems(root: Path) -> list[str]:
             f"{DATA_TREE.as_posix()}: does not exist, so this check measured nothing there"
         )
     else:
-        for path in sorted(data.rglob("*.json")):
+        for path in tracked_under(root, DATA_TREE, ".json"):
             payload = json.loads(path.read_text(encoding="utf-8"))
             for text in json_strings(payload):
                 for character in offenders(text):

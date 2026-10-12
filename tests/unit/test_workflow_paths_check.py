@@ -553,6 +553,21 @@ def test_a_clean_tree_counts_what_the_two_lists_place(
     ) in out
 
 
+def test_a_checkout_git_cannot_list_is_reported_rather_than_raised(tmp_path: Path) -> None:
+    """`PL-J4YY`: the list moved into `docket.vcs`, and its failure with it.
+
+    Git running and not answering is `vcs.Unlisted` now rather than a
+    `CalledProcessError`, and placement names it rather than vouching for a
+    tree nobody listed or stopping the run with a traceback.
+    """
+    root = _placed_repo(tmp_path, "tools/x.py", workflow_paths=("tools",), product_paths=("src",))
+    (root / ".git").write_text("not a gitdir\n", encoding="utf-8")
+
+    (problem,) = workflow_paths_check.placement_problems(root)
+    assert "the tracked files could not be listed" in problem
+    assert "did not answer" in problem
+
+
 def test_a_checkout_is_listed_by_git_rather_than_walked() -> None:
     """Untracked files are nobody's to place, so a checkout is read through `git ls-files`.
 
