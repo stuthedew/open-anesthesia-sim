@@ -20,6 +20,7 @@ on the command text alone.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -340,6 +341,62 @@ def test_only_the_script_an_interpreter_runs_is_read_as_a_check(
     """
     decision = _decision(command)
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+DRY_RUNS = (
+    # `PL-RC4S`'s reproduction, met in `PL-R417`'s link 23 sweep, and the other
+    # three spellings of the option.
+    ("make -f Makefile.copy --just-print check 2>&1 | tail", False),
+    ("make -n check | tail", False),
+    ("make --dry-run check | tail", False),
+    ("make --recon check | tail", False),
+    # make reads an option after a target, and inside a run of short ones.
+    ("make check -n | tail", False),
+    ("make -sn prebuild 2>&1 | tail -20", False),
+    ("make -nf Makefile check | tail", False),
+    # A `-n` that an option takes as its value, or that stands past `--`, is
+    # no option, and `-o -n` and `-W -n` run the gate.
+    ("make -o -n check | tail", True),
+    ("make --what-if -n check | tail", True),
+    ("make -fn check | tail", True),
+    ("make -j4n check | tail", True),
+    ("make -- -n check | tail", True),
+    # An assignment is a variable, never an option.
+    ("make CFLAGS=-n check | tail", True),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), DRY_RUNS)
+def test_a_make_dry_run_has_no_gate_status_to_lose(command: str, refused: bool) -> None:
+    """`make -n` prints each recipe and runs none, so its pipe loses no gate's status (`PL-RC4S`).
+
+    Read as any other `make check`, a dry run piped to `tail` was refused, and
+    its remedy, `set -o pipefail`, would have admitted it without making it any
+    more correct. GNU make 4.3 ran or skipped the recipe as each row says.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+def test_the_tracked_makefile_runs_no_recipe_under_a_dry_run() -> None:
+    """The admission above holds only while `-n` runs nothing in this `Makefile` (`PL-RC4S`).
+
+    GNU make runs a recipe line under `-n` where it opens with `+` or names
+    `$(MAKE)` (manual § 5.7.1), so a gate's status could arrive through such a
+    line, and the pipe a dry run is admitted with would lose it. A line that is
+    a sub-make alone hands it the `-n`, and it runs dry too.
+    """
+    makefile = (REPO / "Makefile").read_text(encoding="utf-8").replace("\\\n", " ")
+    recipes = [line[1:] for line in makefile.splitlines() if line.startswith("\t")]
+    assert recipes, "no recipe line read from the Makefile"
+    for recipe in recipes:
+        prefix = re.match(r"[\s@+-]*", recipe)
+        assert prefix is not None
+        assert "+" not in prefix.group(), f"runs under make -n: {recipe!r}"
+        if "$(MAKE)" in recipe or "${MAKE}" in recipe:
+            assert re.fullmatch(r"[\s@-]*\$[({]MAKE[)}](?:\s+\w[\w.-]*)*\s*", recipe), (
+                f"runs more than a sub-make under make -n: {recipe!r}"
+            )
 
 
 REDIRECTED = (
