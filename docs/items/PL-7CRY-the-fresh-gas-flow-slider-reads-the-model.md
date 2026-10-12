@@ -3,13 +3,16 @@ id: PL-7CRY
 title: The fresh gas flow slider reads the model envelope alone, so a machine profile declaring a narrower deliverable range would offer settings the circuit refuses
 priority: P3
 effort: S
-status: ready
+status: done
 classes: anticipated, defect
 feature: anesthesia-machine
-touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/core/circuit.py, tests/unit
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, docs/MODEL.md, tests/unit
 added: 2026-09-20
+closed: 2026-10-12
+pr: 1442
 payoff: stops the fresh gas flow slider offering settings the mounted machine cannot deliver, once any profile declares a deliverable range - an error the control can prevent rather than warn about
 verify: grep -q 'def test_the_fresh_gas_flow_control_narrows_to_a_declared_machine_range' tests/unit/test_dashboard_frame.py
+recurrences: 2026-10-12 PL-1KQ9 withdrawn 2026-10-12 PL-1KQ9
 ---
 
 **Problem.** The fresh gas flow slider reads the model envelope alone, so a machine profile declaring a narrower deliverable range would offer settings the circuit refuses
@@ -59,3 +62,21 @@ profile declaring a narrower range narrows the control.
 **Related.** `PL-8PS6` (the split this follows from, closed 2026-09-20),
 `PL-WZVZ` (make an inter-machine difference attributable, the display half of
 the machine abstraction), `PL-FG9D` (the machine abstraction itself).
+
+**Built, 2026-10-12.** The recommendation above:
+`BreathingCircuit.accepted_fresh_gas_flow_range_l_min` is the one statement of
+the intersection, and `_require_the_two_flow_claims_overlap` now tests that
+property for emptiness rather than restating the rule. The controller copies
+it onto `SimulationSnapshot.accepted_fresh_gas_flow_range_l_min`, as
+`max_delivered_concentration_percent` travels beside the vaporizer dial, and
+`setting_readouts` bounds the control by it, so `app/` composes nothing.
+`ParameterControl` lost its `minimum` and `maximum` fields, because two of the
+four ranges are now the run's rather than constants. One thing the brief did
+not anticipate: the slider steps at 0.1 L/min, so a declared end between two
+steps, a floor of 0.25 L/min, would have been offered as the nearest step,
+0.2 L/min, which the machine refuses. `offered_range` takes the step just
+inside each end instead, and a range holding no step raises rather than
+drawing a control whose only setting the run refuses. `app/controller.py`
+joins `touches` for the snapshot field, and `docs/MODEL.md` for the paragraph
+that said the control still read the envelope. Found and not fixed: a
+profile's opening flow off the same grid (`PL-1KQ9`).

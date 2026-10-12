@@ -3,11 +3,13 @@ id: PL-Y4YX
 title: PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: qt-port
-touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/qt_chart.py
+touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/stylesheets.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/qt_chart.py, tests/unit/test_stylesheets.py, tests/unit/test_agent_identity_check.py, tests/integration/test_qt_widgets.py, tests/integration/test_simulation_view.py, tools/contrast_check.py, tools/agent_identity_check.py, docs/ARCHITECTURE.md, docs/MODEL.md, docs/items/PL-R7C4-src-anesthesia-sim-app-qt-widgets-py-and-tools.md
 added: 2026-09-16
+closed: 2026-10-12
+pr: 1442
 verify: ! grep -q 'def _surface_stylesheet' src/anesthesia_sim/app/run_view.py && ! grep -q 'def _slider_stylesheet' src/anesthesia_sim/app/qt_widgets.py
 ---
 
@@ -152,3 +154,30 @@ Two things the build thread checks rather than assumes: `tools/agent_identity_ch
 Keep the no-toolkit rule; centralise the ten composers in one toolkit-free module beside `theme.py`, not inside it (project owner, 2026-10-03, ratified, over moving them into `theme.py` as strings, and over `theme.py` becoming the place the Qt styling layer is composed behind a toolkit import). Status moved to `ready` with this answer; the build thread names the module.
 
 The `verify:` asks that no `def ..._stylesheet` remain in `app/qt_widgets.py` or `app/run_view.py` once the composers have moved.
+
+**Built, 2026-10-12.** The module is `app/stylesheets.py`, and the ten
+composers moved into it under public names: `_panel_stylesheet`,
+`_slider_stylesheet`, `_outlined_button_stylesheet` and
+`_filled_button_stylesheet` lost their underscores, and `run_view`'s three
+became `agent_surface_stylesheet`, `agent_text_stylesheet` and
+`agent_selector_stylesheet`, since `selector_stylesheet` was already the view
+selectors'. Three were added for what call sites had written out:
+`foreground_stylesheet(color)` for the eight single-colour sites, and
+`page_stylesheet` and `scroll_area_stylesheet` for the page. `NewCaseDialog`'s
+two buttons were already the outlined and filled strings byte for byte, as
+was the chart column's panel, and `run_view._panel` was `panel_stylesheet`
+under `QFrame#` (which matches the same named frame as `QWidget#`). All 32
+`setStyleSheet` calls pass a composer now (the design round's 34 counted two
+docstring mentions), and `tests/unit/test_stylesheets.py` holds that by
+walking `app/`, with the module's import measured in a fresh interpreter to
+load no toolkit.
+
+Checked unchanged rather than assumed: the dashboard, a two-run comparison, a
+running desflurane run and both dialogs, rendered offscreen before and after,
+are identical pixel for pixel; `tools/contrast_check.py` and
+`tools/agent_identity_check.py` print the same line but for 19 modules read
+rather than 18, rule 2 still reading the 2 call-time agent colourings.
+`PL-R7C4`'s `touches:` and `verify:` were repointed at `app/stylesheets.py`,
+where `transport_button_stylesheet`'s docstring now is, since read at the old
+path its command would have passed with its work undone. The stale check name
+in that docstring moved verbatim, because correcting it is `PL-R7C4`'s.

@@ -3362,7 +3362,7 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
     ),
     "QSlider": (
         "the four setting sliders. Each draws no text - the value beside it is "
-        "a label of its own - and `_slider_stylesheet` declares the groove, "
+        "a label of its own - and `slider_stylesheet` declares the groove, "
         "the filled track and the handle, none of which is painted from the "
         "foreground role."
     ),

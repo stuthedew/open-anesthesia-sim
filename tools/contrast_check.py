@@ -960,7 +960,7 @@ EXEMPT: dict[str, tuple[Exemption, ...]] = {
             "PANEL",
             "the slider's unfilled groove",
             "a control with visible content needs no boundary of its hit area",
-            "the unfilled track of each `ParameterSlider` (`_slider_stylesheet`). The "
+            "the unfilled track of each `ParameterSlider` (`slider_stylesheet`). The "
             "criterion's Boundaries paragraph says in terms that a border or other "
             "indication of a control's hit area is not required where visible content "
             "identifies the control, and this one has two: the handle, a `PANEL` disc "

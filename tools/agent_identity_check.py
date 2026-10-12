@@ -91,7 +91,7 @@ this check, as they are to the toolkit.
    except the writer, whose body *is* the identity set and is read once by
    `identity_controls`. Reaching a table means naming one of
    `COLOR_TABLES` outright or a local bound from a subscript of one, and a
-   local handed whole to a helper - `setStyleSheet(_text_stylesheet(scheme))`
+   local handed whole to a helper - `setStyleSheet(agent_text_stylesheet(scheme))`
    - counts, since what the helper returns is the colour the local carries.
    Every class in every module is read, because the writer can only write its
    own class's attributes, so an agent-coloured control anywhere else is by
@@ -380,7 +380,7 @@ def _carries_agent_color(value: ast.expr, tracked: set[str]) -> bool:
     `AGENT_COLOR_SCHEMES[agent_id].fill` written inline,
     `scheme.foreground` where the local was bound from a subscript of the
     same table a few lines earlier, and `scheme` handed whole to a helper
-    that builds the stylesheet - `_text_stylesheet(scheme)` - which the Qt
+    that builds the stylesheet - `agent_text_stylesheet(scheme)` - which the Qt
     build does on every identity control (`PL-25KS`).
     """
     for node in ast.walk(value):

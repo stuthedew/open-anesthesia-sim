@@ -30,11 +30,11 @@ column to 1220 px on one unbreakable line of six checkboxes, pushing the
 sidebar off a 1400 px window. `FlowLayout` is the shape of Qt's documented
 Flow Layout example, and `qt_chart` lays every legend row in one.
 
-**Every colour is `app/theme.py`'s**, reaching a stylesheet as an f-string
-over the theme name (decision D10), so `tools/contrast_check.py`'s palette
-is the palette drawn. The few bare pixel spacings inside stylesheets are the
-interim decision D9 accepts; `PL-L9RD` names the spacing scale that replaces
-them.
+**Every colour is `app/theme.py`'s**, reaching a widget through a stylesheet
+`app/stylesheets.py` composes over the theme name (decision D10, `PL-Y4YX`),
+so `tools/contrast_check.py`'s palette is the palette drawn. A colour whose
+roles a stylesheet cannot reach is declared on the palette instead, by
+`declare_interface_colours`.
 """
 
 from __future__ import annotations
@@ -105,14 +105,20 @@ from anesthesia_sim.app.formatting import (
     format_elapsed,
 )
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
+from anesthesia_sim.app.stylesheets import (
+    filled_button_stylesheet,
+    foreground_stylesheet,
+    outlined_button_stylesheet,
+    panel_stylesheet,
+    selector_stylesheet,
+    slider_stylesheet,
+)
 from anesthesia_sim.app.theme import (
-    ACCENT,
     BOOKMARK_DIALOG_WIDTH,
     BOOKMARK_LIST_MAX_HEIGHT,
     BOOKMARK_ROW_SPACING,
     BOOKMARK_SECTION_SPACING,
     FORK_POINT_SELECTOR_WIDTH,
-    GRIDLINE,
     INK,
     MARK_ROW_BULLET,
     MARK_ROW_BULLET_SPACING,
@@ -126,7 +132,6 @@ from anesthesia_sim.app.theme import (
     NEW_CASE_DIALOG_WIDTH,
     PANEL,
     PANEL_PADDING,
-    PANEL_RADIUS,
     PARAMETER_QUALIFIER_SIZE,
     PRIMARY,
     WARNING,
@@ -155,8 +160,8 @@ def styled_label(
 
     Args:
         text: What the label says.
-        color: A `theme.py` colour name's value; it reaches the label as a
-            stylesheet f-string, never as a literal.
+        color: A `theme.py` colour name's value; it reaches the label
+            through `foreground_stylesheet`, never as a literal.
         size_px: The theme's pixel size for this line, or None for the
             application default.
         bold: Whether the text is bold.
@@ -169,7 +174,7 @@ def styled_label(
     """
 
     label = QLabel(text)
-    label.setStyleSheet(f"color: {color};")
+    label.setStyleSheet(foreground_stylesheet(color))
     label.setWordWrap(wrap)
     font = QFont(label.font())
 
@@ -187,136 +192,6 @@ def _advance_px(label: QLabel, text: str) -> int:
     """How wide `text` is in `label`'s font, in logical pixels."""
 
     return QFontMetrics(label.font()).horizontalAdvance(text)
-
-
-def _panel_stylesheet(object_name: str) -> str:
-    """The panel surface: PANEL, rounded, scoped to one widget so its children keep their own."""
-
-    return (
-        f"QWidget#{object_name} {{ background-color: {PANEL}; border-radius: {PANEL_RADIUS}px; }}"
-    )
-
-
-def _slider_stylesheet() -> str:
-    """The slider's track and thumb in the theme's colours.
-
-    The active track is `ACCENT`, the colour `PL-W8DQ` measures for it. Qt
-    paints a styled sub-page only inside a groove that is itself styled,
-    and a styled groove draws no thumb of its own, so all three parts are
-    given here: the unfilled track in `GRIDLINE`, the ruling colour, and
-    the thumb as a `PANEL` disc edged in `MUTED`.
-    """
-
-    return (
-        f"QSlider::groove:horizontal {{ background: {GRIDLINE}; height: 4px; "
-        f"border-radius: 2px; }} "
-        f"QSlider::sub-page:horizontal {{ background: {ACCENT}; border-radius: 2px; }} "
-        f"QSlider::handle:horizontal {{ background: {PANEL}; border: 1px solid {MUTED}; "
-        f"width: 14px; margin: -6px 0; border-radius: 8px; }}"
-    )
-
-
-def popup_stylesheet() -> str:
-    """The list a selector opens: PANEL fill, INK rows, a PRIMARY selection.
-
-    A combo box declares its *closed* surface in a stylesheet -
-    `selector_stylesheet` for the two view controls, the running agent's
-    ISO 5360 pair in `run_view` for the agent selector - and a stylesheet on
-    a widget makes everything inside it resolve from the application palette
-    rather than from the widget. The popup is a child item view, so it drew
-    the host appearance's surface however the selector itself was styled,
-    which is `PL-0NVN`.
-
-    **A rule rather than a palette on the view, because a palette there does
-    not survive the widget being laid out.** Setting one on
-    `QComboBox.view()` where the selector is built reads back correctly
-    until the selector is added to a layout, at which point the popup is
-    reparented, its palette re-resolves from the application's, and the
-    declaration is silently gone - measured, having first shipped that way.
-    A rule cannot be undone by reparenting, and this is Qt's own documented
-    idiom for the popup.
-
-    Per-item colour is untouched by it: the three agent rows carry their
-    ISO 5360 fill and foreground as `BackgroundRole` and `ForegroundRole`,
-    which the item delegate paints from the model over whatever the view's
-    own background is.
-    """
-
-    return (
-        f"QComboBox QAbstractItemView {{ background-color: {PANEL}; color: {INK}; "
-        f"selection-background-color: {PRIMARY}; selection-color: {PANEL}; }}"
-    )
-
-
-def selector_stylesheet() -> str:
-    """A combo box a reader reads rather than merely operates: PANEL fill, MUTED edge, INK text.
-
-    The playback-rate and time-base selectors name the rate the clock is
-    advancing at and how much of the run is on screen, which
-    `docs/MODEL.md` requires displayed (`PL-SN2C`), so their surface is set
-    here rather than left to the platform style: `tools/contrast_check.py`
-    measures INK on PANEL for the text and MUTED against each selector's own
-    surroundings for the border, and both claims hold only because the
-    colours are these.
-    """
-
-    return (
-        f"QComboBox {{ background-color: {PANEL}; color: {INK}; border: 1px solid {MUTED}; "
-        f"border-radius: {PANEL_RADIUS}px; padding: 4px 8px; }} " + popup_stylesheet()
-    )
-
-
-def transport_button_stylesheet() -> str:
-    """Start, Pause and Reset in both states: PANEL fill, MUTED edge, INK or MUTED label.
-
-    Declared rather than left to the platform style, which is what `PL-DHBX`
-    was: a button that sets no foreground takes one from Qt's palette
-    `ButtonText` role, and that role is the *host appearance's* value rather
-    than this interface's. Under macOS Dark it is near-white, while every
-    surface this interface draws around it stays the light theme's - so the
-    labels went to white-on-white and the run controls could not be read.
-
-    **Both states, because the project owner's screenshots showed the second
-    half failing the same way.** The first fix declared `:enabled` only and
-    left the disabled button whole to the platform, on `PL-NGF7`'s decision of
-    2026-09-16 and on WCAG 2.2 SC 1.4.3's exemption for text in an inactive
-    component. On `0.4.26+g22bc6d82` the disabled button was then the invisible
-    one - Start while running, Pause while paused - which is the cost that
-    decision's case did not carry: the platform's disabled grey is not merely
-    low-contrast under a dark host appearance, it is absent. An exemption from
-    a contrast *minimum* is not a licence for a control to disappear.
-
-    So the disabled label is `MUTED`, which is **5.00:1 on PANEL** and clears
-    SC 1.4.3's 4.5:1 for normal text outright. No exemption is claimed for it,
-    which matters here: SC 1.4.11's own inactive-component wording has never
-    been read at the source from this container (`PL-JX0Z`; `w3.org` was still
-    refused at the CONNECT on 2026-10-06), so nothing in this interface may rest
-    on it.
-
-    **The two states are not separated by colour alone.** `.claude/rules/ui-color.md`
-    judgment 2 asks for a second channel, and the row already carries one in
-    text: `_status_text` beside these three says "Running" or "Paused", which
-    is what decides which button is unavailable - `dashboard_frame.transport`
-    derives both from the same flag. A reader who cannot resolve INK from MUTED
-    reads the state from the word, not from the buttons.
-
-    The edge stays `MUTED` in both states. It is what identifies the control's
-    boundary - `PANEL` on `BACKGROUND` is 1.07:1, so the fill does not - and a
-    user-interface component needs SC 1.4.11's 3:1, which `MUTED` meets at
-    4.65:1 against the row behind it. Softening it for the disabled state would
-    have bought a second visual channel at the price of the boundary.
-
-    `tools/contrast_check.py` measures all three pairs, and
-    `check_disabled_states_are_the_style_s` is what requires that: a
-    `:disabled` rule is admitted only from a function a requirement cites.
-    """
-
-    return (
-        f"QPushButton {{ background-color: {PANEL}; border: 1px solid {MUTED}; "
-        f"border-radius: {PANEL_RADIUS}px; padding: 4px 12px; }} "
-        f"QPushButton:enabled {{ color: {INK}; }} "
-        f"QPushButton:disabled {{ color: {MUTED}; }}"
-    )
 
 
 #: The palette roles this interface declares, and the `app/theme.py` colour
@@ -639,7 +514,7 @@ class MetricPanel(QFrame):
 
         super().__init__(parent)
         self.setObjectName("metricPanel")
-        self.setStyleSheet(_panel_stylesheet(self.objectName()))
+        self.setStyleSheet(panel_stylesheet(self.objectName()))
         self.name_label = styled_label(readout.name, color=MUTED, size_px=METRIC_NAME_SIZE)
         self.qualifier_label = styled_label(
             readout.qualifier, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True
@@ -882,7 +757,7 @@ class ParameterSlider(QWidget):
         super().__init__(parent)
         self.setObjectName("parameterPanel")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.setStyleSheet(_panel_stylesheet(self.objectName()))
+        self.setStyleSheet(panel_stylesheet(self.objectName()))
         self._decimals = setting.decimals
         self.name_label = styled_label(setting.name, color=INK, bold=True)
         self.qualifier_label = styled_label(
@@ -891,7 +766,7 @@ class ParameterSlider(QWidget):
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setSingleStep(1)
         self.slider.setPageStep(1)
-        self.slider.setStyleSheet(_slider_stylesheet())
+        self.slider.setStyleSheet(slider_stylesheet())
         self.value_label = styled_label(setting.value_text, color=INK)
         self.secondary_label = styled_label(
             setting.secondary, color=MUTED, size_px=METRIC_SECONDARY_VALUE_SIZE
@@ -960,7 +835,7 @@ class NoticeLabel(QLabel):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setStyleSheet(f"color: {WARNING};")
+        self.setStyleSheet(foreground_stylesheet(WARNING))
         self.setWordWrap(True)
         font = QFont(self.font())
         font.setBold(True)
@@ -1039,16 +914,10 @@ class NewCaseDialog(QDialog):
         self.discard_button = QPushButton(question.discard_label)
         self.discard_button.setAutoDefault(False)
         self.discard_button.setDefault(False)
-        self.discard_button.setStyleSheet(
-            f"QPushButton {{ color: {INK}; background-color: {PANEL}; "
-            f"border: 1px solid {INK}; border-radius: {PANEL_RADIUS}px; padding: 6px 12px; }}"
-        )
+        self.discard_button.setStyleSheet(outlined_button_stylesheet())
         self.keep_button = QPushButton(question.keep_label)
         self.keep_button.setDefault(True)
-        self.keep_button.setStyleSheet(
-            f"QPushButton {{ color: {PANEL}; background-color: {PRIMARY}; "
-            f"border: 1px solid {PRIMARY}; border-radius: {PANEL_RADIUS}px; padding: 6px 12px; }}"
-        )
+        self.keep_button.setStyleSheet(filled_button_stylesheet())
 
         column = QVBoxLayout(self)
         column.setSpacing(NEW_CASE_DIALOG_SPACING)
@@ -1190,7 +1059,7 @@ class BookmarksPanel(QWidget):
         self.times = MarkListingLabel()
         self.targets = MarkListingLabel()
         self.edit_button = QPushButton(EDIT_BOOKMARKS_LABEL)
-        self.edit_button.setStyleSheet(_outlined_button_stylesheet())
+        self.edit_button.setStyleSheet(outlined_button_stylesheet())
         column = QVBoxLayout(self)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(BOOKMARK_SECTION_SPACING)
@@ -1271,12 +1140,12 @@ class ForkPanel(QWidget):
         self.point_selector.setFixedWidth(FORK_POINT_SELECTOR_WIDTH)
         self.point_selector.setStyleSheet(selector_stylesheet())
         self.take_button = QPushButton(TAKE_FORK_LABEL)
-        self.take_button.setStyleSheet(_outlined_button_stylesheet())
+        self.take_button.setStyleSheet(outlined_button_stylesheet())
         # The same outline as the button above, because it is the same kind of
         # act on the same case; what separates the two is that this one carries
         # its instant in its own label and is only sometimes there.
         self.halt_button = QPushButton("")
-        self.halt_button.setStyleSheet(_outlined_button_stylesheet())
+        self.halt_button.setStyleSheet(outlined_button_stylesheet())
         self.halt_button.setDisabled(True)
         self.halt_button.setHidden(True)
         self.lock_text = styled_label("", color=MUTED, wrap=True)
@@ -1477,7 +1346,7 @@ class BookmarkDialog(QDialog):
         self.notice = NoticeLabel()
         self.close_button = QPushButton(CLOSE_BOOKMARKS_LABEL)
         self.close_button.setDefault(True)
-        self.close_button.setStyleSheet(_filled_button_stylesheet())
+        self.close_button.setStyleSheet(filled_button_stylesheet())
         self.close_button.clicked.connect(self.accept)
 
         for button in (
@@ -1487,7 +1356,7 @@ class BookmarkDialog(QDialog):
             self.remove_target_button,
         ):
             button.setAutoDefault(False)
-            button.setStyleSheet(_outlined_button_stylesheet())
+            button.setStyleSheet(outlined_button_stylesheet())
 
         self._build_layout()
         self.set_reachable_height(DEFAULT_MAXIMUM_TARGET_MAC)
@@ -1640,29 +1509,6 @@ def _refill(widget: QListWidget, rows: Sequence[str]) -> None:
 
         if 0 <= selected < widget.count():
             widget.setCurrentRow(selected)
-
-
-def _outlined_button_stylesheet() -> str:
-    """The secondary action: INK on PANEL inside an INK border.
-
-    The same pair `NewCaseDialog`'s discard button draws, which
-    `tools/contrast_check.py` already measures, so these buttons declare no
-    colour of their own.
-    """
-
-    return (
-        f"QPushButton {{ color: {INK}; background-color: {PANEL}; "
-        f"border: 1px solid {INK}; border-radius: {PANEL_RADIUS}px; padding: 6px 12px; }}"
-    )
-
-
-def _filled_button_stylesheet() -> str:
-    """The primary action: PANEL on PRIMARY, as `NewCaseDialog`'s keep button draws."""
-
-    return (
-        f"QPushButton {{ color: {PANEL}; background-color: {PRIMARY}; "
-        f"border: 1px solid {PRIMARY}; border-radius: {PANEL_RADIUS}px; padding: 6px 12px; }}"
-    )
 
 
 def inert_splitter(orientation: Qt.Orientation, widgets: Sequence[QWidget]) -> QSplitter:

@@ -84,6 +84,7 @@ src/anesthesia_sim/
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; toolkit-independent
 │   ├── wash_in.py                  # F_A/F_I and the domain it holds on; toolkit-independent
 │   ├── theme.py                    # every display token: palette, cited ISO 5360 agent colors, type sizes, spacing, dash patterns; toolkit-independent
+│   ├── stylesheets.py              # every stylesheet a widget is given, composed from theme.py's tokens, so each visual decision is written once; toolkit-independent
 │   └── main.py                     # PySide6 entry point; builds the BranchedCase and opens the dashboard over its trunk; the window opens maximized (PL-Z4K6) over a sized, centred normal geometry (PL-005)
 └── data/                 # versioned, cited parameter files
     ├── agents/{sevoflurane,isoflurane,desflurane}.json
@@ -834,6 +835,15 @@ in it, or a line left behind after a deletion, fails `make check`.
   count, a marker for what the display cannot resolve → `app/formatting.py`,
   as a pure function with its own test, and with the reason recorded in
   `docs/MODEL.md` § "Displayed precision".
+- A new stylesheet, or a change to how a widget is styled → a function in
+  `app/stylesheets.py` returning the string, composed from `app/theme.py`'s
+  values, and called where `setStyleSheet` is; a new colour is a token in
+  `app/theme.py` first. Neither module imports the toolkit, and
+  `tests/unit/test_stylesheets.py` holds every `setStyleSheet` call under
+  `app/` to passing a composer (`PL-Y4YX`). A colour a widget paints from a
+  palette role - an entry's fill, a check box's indicator - is declared with
+  `qt_widgets.declare_interface_colours` instead, never a stylesheet
+  (`.claude/rules/ui-color.md`).
 - A new chart series, or a change to how one is drawn → what it *claims* in
   `app/chart_frame.py` and how pyqtgraph paints it in `app/qt_chart.py`, with
   a new *compartment* trace declared in `chart_frame.COMPARTMENT_TRACES`,

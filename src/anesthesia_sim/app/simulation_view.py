@@ -90,21 +90,24 @@ from anesthesia_sim.app.qt_widgets import (
     ForkPanel,
     freeze_splitter_handles,
     inert_splitter,
-    selector_stylesheet,
     styled_label,
 )
 from anesthesia_sim.app.run_view import RunView
+from anesthesia_sim.app.stylesheets import (
+    foreground_stylesheet,
+    page_stylesheet,
+    panel_stylesheet,
+    scroll_area_stylesheet,
+    selector_stylesheet,
+)
 from anesthesia_sim.app.theme import (
     APP_TITLE_SIZE,
-    BACKGROUND,
     GRIDLINE,
     INK,
     METRIC_QUALIFIER_SIZE,
     MUTED,
     PAGE_PADDING,
-    PANEL,
     PANEL_PADDING,
-    PANEL_RADIUS,
     SECTION_DIVIDER_HEIGHT,
     TIME_BASE_SELECTOR_WIDTH,
     WARNING,
@@ -396,7 +399,7 @@ class SimulationView(QWidget):
         page = QWidget()
         page.setObjectName(_PAGE_NAME)
         page.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        page.setStyleSheet(f"QWidget#{_PAGE_NAME} {{ background-color: {BACKGROUND}; }}")
+        page.setStyleSheet(page_stylesheet(_PAGE_NAME))
         column = QVBoxLayout(page)
         column.setContentsMargins(PAGE_PADDING, PAGE_PADDING, PAGE_PADDING, PAGE_PADDING)
         column.setSpacing(12)
@@ -437,7 +440,7 @@ class SimulationView(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet(f"QScrollArea {{ background-color: {BACKGROUND}; }}")
+        scroll.setStyleSheet(scroll_area_stylesheet())
         scroll.setWidget(page)
         outer = _spaced_column(self, 0)
         outer.addWidget(scroll)
@@ -458,10 +461,7 @@ class SimulationView(QWidget):
         panel = QWidget()
         panel.setObjectName(_CHART_COLUMN_NAME)
         panel.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        panel.setStyleSheet(
-            f"QWidget#{_CHART_COLUMN_NAME} {{ background-color: {PANEL}; "
-            f"border-radius: {PANEL_RADIUS}px; }}"
-        )
+        panel.setStyleSheet(panel_stylesheet(_CHART_COLUMN_NAME))
         column = QVBoxLayout(panel)
         column.setContentsMargins(PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, PANEL_PADDING)
         column.setSpacing(6)
@@ -876,7 +876,7 @@ class SimulationView(QWidget):
         divider = QFrame()
         divider.setFrameShape(QFrame.Shape.HLine)
         divider.setFixedHeight(SECTION_DIVIDER_HEIGHT)
-        divider.setStyleSheet(f"color: {GRIDLINE};")
+        divider.setStyleSheet(foreground_stylesheet(GRIDLINE))
 
         return divider
 

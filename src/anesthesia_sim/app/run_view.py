@@ -11,8 +11,8 @@ Every claim it displays is settled by `app/dashboard_frame.py` without a
 toolkit; this class calls those functions once per tick, in the order
 `refresh` fixes, and writes the results into widgets that decide nothing
 (`PL-25KS`, decision D2). No number is formatted here and no colour is
-declared here: colours are `app/theme.py`'s and reach a widget as f-strings
-over the theme names (decision D10).
+declared here: colours are `app/theme.py`'s and reach a widget through
+`app/stylesheets.py`'s composers (decision D10, `PL-Y4YX`).
 
 **Agent colour has one writer.** `_apply_agent_color_scheme` is the only
 method under `app/` that writes the ISO 5360 identity pair, and it writes
@@ -115,9 +115,15 @@ from anesthesia_sim.app.qt_widgets import (
     NoticeLabel,
     ParameterSlider,
     ReadoutRow,
-    popup_stylesheet,
-    selector_stylesheet,
     styled_label,
+)
+from anesthesia_sim.app.stylesheets import (
+    agent_selector_stylesheet,
+    agent_surface_stylesheet,
+    agent_text_stylesheet,
+    foreground_stylesheet,
+    panel_stylesheet,
+    selector_stylesheet,
     transport_button_stylesheet,
 )
 from anesthesia_sim.app.theme import (
@@ -129,13 +135,10 @@ from anesthesia_sim.app.theme import (
     INK,
     METRIC_QUALIFIER_SIZE,
     MUTED,
-    PANEL,
     PANEL_PADDING,
-    PANEL_RADIUS,
     PLAYBACK_RATE_SELECTOR_WIDTH,
     RUNNING_AGENT_DISPLAY_PADDING,
     WARNING,
-    AgentColorScheme,
 )
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -186,52 +189,12 @@ _HEADER_BADGE_NAME: Final = "agentHeaderBadge"
 _RUNNING_AGENT_DISPLAY_NAME: Final = "runningAgentDisplay"
 
 
-def _surface_stylesheet(object_name: str, scheme: AgentColorScheme) -> str:
-    """A frame filled in the agent's colour and edged in its foreground.
-
-    The edge is the channel that keeps a sevoflurane badge visible at all:
-    its fill is 1.27:1 against the page, so without a border the coloured
-    region a reader is meant to recognise loses its shape (`PL-GNN1`).
-    """
-
-    return (
-        f"QFrame#{object_name} {{ background-color: {scheme.fill}; color: {scheme.foreground}; "
-        f"border: 1px solid {scheme.foreground}; border-radius: {PANEL_RADIUS}px; }}"
-    )
-
-
-def _text_stylesheet(scheme: AgentColorScheme) -> str:
-    """A label in the agent's foreground over its fill."""
-
-    return f"color: {scheme.foreground}; background-color: {scheme.fill};"
-
-
-def _selector_stylesheet(scheme: AgentColorScheme) -> str:
-    """The agent selector in the running agent's pair, edged in its foreground.
-
-    The popup it opens is not in the agent's colours and does not vary with
-    the agent: it lists all three, each row carrying its own ISO 5360 fill
-    as item data, so the list's own surface is the interface's
-    (`popup_stylesheet`). Appending it here rather than setting it once at
-    construction is what makes it survive the selector being laid out
-    (`PL-0NVN`).
-    """
-
-    return (
-        f"QComboBox {{ background-color: {scheme.fill}; color: {scheme.foreground}; "
-        f"border: 1px solid {scheme.foreground}; border-radius: {PANEL_RADIUS}px; "
-        f"padding: 4px 8px; font-weight: bold; }} " + popup_stylesheet()
-    )
-
-
 def _panel(object_name: str) -> QFrame:
     """A PANEL-coloured, rounded frame scoped by name so its children keep their own colours."""
 
     frame = QFrame()
     frame.setObjectName(object_name)
-    frame.setStyleSheet(
-        f"QFrame#{object_name} {{ background-color: {PANEL}; border-radius: {PANEL_RADIUS}px; }}"
-    )
+    frame.setStyleSheet(panel_stylesheet(object_name))
 
     return frame
 
@@ -240,7 +203,7 @@ def _emphasised(label: QLabel, word: StatusWord) -> None:
     """Write a status word and the colour of its emphasis."""
 
     label.setText(word.text)
-    label.setStyleSheet(f"color: {_EMPHASIS_COLOR[word.emphasis]};")
+    label.setStyleSheet(foreground_stylesheet(_EMPHASIS_COLOR[word.emphasis]))
 
 
 class RunView(QWidget):
@@ -261,8 +224,10 @@ class RunView(QWidget):
     rearranges, and placing the same widgets again is what moves them
     (`.claude/rules/ui-areas.md`).
 
-    Refuses nothing at construction. What it refuses per tick is decided
-    by `dashboard_frame`: which setting values the core rejects, and how a
+    Refuses at construction only a first snapshot `setting_readouts` cannot
+    draw controls for, raising its `ValueError`; no shipped profile produces
+    one (`PL-7CRY`). What it refuses per tick is decided by
+    `dashboard_frame`: which setting values the core rejects, and how a
     raise is reported, are read from the exception and never guessed at
     (`PL-V6M0`, `PL-Y5WR`, `PL-YK2V`; see the module docstring).
 
@@ -571,6 +536,9 @@ class RunView(QWidget):
         Raises:
             IndexError: If `run_index` is not one of the frame's runs
                 (`dashboard_frame.off_scale_notice`).
+            ValueError: If `setting_readouts` refuses the snapshot: a
+                control with no step of its resolution inside the range the
+                run accepts (`PL-7CRY`), or a MAC that is not positive.
         """
 
         self._frame = frame
@@ -778,14 +746,14 @@ class RunView(QWidget):
         """
 
         scheme = AGENT_COLOR_SCHEMES[agent_id]
-        self._agent_header_badge.setStyleSheet(_surface_stylesheet(_HEADER_BADGE_NAME, scheme))
-        self._subtitle_text.setStyleSheet(_text_stylesheet(scheme))
+        self._agent_header_badge.setStyleSheet(agent_surface_stylesheet(_HEADER_BADGE_NAME, scheme))
+        self._subtitle_text.setStyleSheet(agent_text_stylesheet(scheme))
         self._running_agent_display.setStyleSheet(
-            _surface_stylesheet(_RUNNING_AGENT_DISPLAY_NAME, scheme)
+            agent_surface_stylesheet(_RUNNING_AGENT_DISPLAY_NAME, scheme)
         )
-        self._running_agent_text.setStyleSheet(_text_stylesheet(scheme))
-        self._running_agent_lock_text.setStyleSheet(_text_stylesheet(scheme))
-        self._agent_dropdown.setStyleSheet(_selector_stylesheet(scheme))
+        self._running_agent_text.setStyleSheet(agent_text_stylesheet(scheme))
+        self._running_agent_lock_text.setStyleSheet(agent_text_stylesheet(scheme))
+        self._agent_dropdown.setStyleSheet(agent_selector_stylesheet(scheme))
 
     def _sliders(self) -> tuple[ParameterSlider, ...]:
         """The four setting controls in `dashboard_frame.PARAMETER_CONTROLS` order."""
