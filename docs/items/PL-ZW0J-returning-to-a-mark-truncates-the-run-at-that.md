@@ -3,10 +3,11 @@ id: PL-ZW0J
 title: Returning to a mark truncates the run at that point after confirming intent, rather than forking, which is what Gas Man does and what the owner is leaning to
 priority: P2
 effort: M
-status: blocked
+status: needs-decision
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_controller.py
 blocked-by: PL-W4XQ
+deferred-from: v0.6.0 - blocked on PL-W4XQ when the gate froze and unblocked after it; the owner's call once both returns are in use, and not safety or science
 added: 2026-09-20
 ---
 
@@ -67,3 +68,28 @@ is asked to confirm, the run is truncated there, and continuing extends it with
 the alternate result; nothing the truncated run reports describes the discarded
 future; and `docs/ARCHITECTURE.md` states which of the two meanings of
 "returning to a mark" this build takes and why.
+
+**Unblocked 2026-10-12 by `PL-W4XQ`, and now the owner's to answer.** Both
+returns this item waited on exist: `PL-TYWQ` branches at the mark a run is
+standing on, and `PL-W4XQ` branches at any time bookmark the trunk has passed,
+from the same "From" selector as the control events. Both fork. So the thing to
+play with is in the build, and the question is no longer hypothetical.
+
+**Decision needed.** After using the two returns, should returning to a mark
+keep forking - the trunk stays, the change is made on a branch drawn beside it -
+or truncate the run there after a confirm, as Gas Man does?
+
+**Recommended: keep the fork, and reopen only if using it shows the friction
+the lean was about.** The worry behind the lean - trialling several things
+quickly without a pile of forks - is already met without discarding anything:
+a branch's own Reset returns it to its fork and leaves the comparison standing
+(`docs/ARCHITECTURE.md` § "How a learner takes one, and how a comparison
+ends"), so "try something else from the same point" is one press, and only one
+comparison is ever on screen. Truncation would spend the original future to buy
+that, and the comparison it discards is what v0.5.0 was named for. It also
+costs what the paragraph above lists - every per-run record would need a
+defined answer at the truncation point - which forking never pays. What would
+change this: finding, in use, that the two-run cap or the trunk Reset's
+"ends the comparison" is the thing in the way, which is a selector question
+(`ROADMAP.md` § "Explicitly out of scope for v0.5.0") rather than a reason to
+truncate.

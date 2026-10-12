@@ -3,11 +3,13 @@ id: PL-W4XQ
 title: A learner cannot rewind to a mark set behind the clock: resumed_at refuses any instant that is not a keyframe and resumed_at_halt needs the run to be standing on the crossing, so marking 1 h while paused at 3 h gives a mark nothing can return to
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature
 feature: scenario-branching
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_controller.py, tests/unit/test_bookmarks.py, tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_controller.py, tests/unit/test_bookmarks.py, tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py, docs/items/PL-ZW0J-returning-to-a-mark-truncates-the-run-at-that.md
 added: 2026-09-20
+closed: 2026-10-12
+pr: 1451
 payoff: makes a mark set behind the clock something a learner can return to, which is the act the owner described the feature for
 verify: grep -q 'def test_a_mark_set_behind_the_clock_can_be_returned_to' tests/integration/test_controller.py
 recurrences: 2026-09-21 PL-54V0
@@ -141,3 +143,14 @@ does not.
 
 `verify:` is the `grep` alone since 2026-10-12, as `PL-0HPV`'s reorder pass
 asked: `-k returning_to_a_mark` never selected the test the `grep` names.
+
+**Built 2026-10-12.** `resumed_at_mark`, `fork_at_mark` and `mark_fork_points`
+as above, and the branch control's selector lists each passed mark as
+"20m, on your mark". Measured the same day for `docs/MODEL.md`, on this brief's
+case at its own scale (a change at 30 min, stepped to 3 h): the stepped live
+compartment fractions a running trunk displays and the canonical states a branch
+opens from differ by at most 4.9e-14 as a fraction, at probes from 60 s to 3 h.
+Found while building it, and filed rather than fixed here: the halt door seeds
+its branch from the halt's recorded crossing, so a mark added inside the halting
+step reads as before that branch (`PL-2N43`); and the selector's width is a
+constant tuned to one face (`PL-NC0D`).
