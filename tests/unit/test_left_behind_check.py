@@ -27,12 +27,16 @@ from left_behind_check import (
     NO_NETWORK,
     NO_PERMISSION,
     NO_SUCH_REF,
+    PULL_MERGED,
+    PULL_OPEN,
+    UNREADABLE_ANSWER,
     Commit,
     Declined,
     Git,
-    PullRequest,
+    NewestPullRequest,
     Report,
     Verdict,
+    _stdout,
     check,
     github_lookup,
     lines,
@@ -58,7 +62,7 @@ class Forge:
         for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
             _git(self.work, "config", name, value)
         _git(self.work, "remote", "add", "origin", str(self.remote))
-        self.pulls: dict[str, PullRequest] = {}
+        self.pulls: dict[str, NewestPullRequest] = {}
         self.commit("seed.txt", "seed", "seed")
         _git(self.work, "push", "-q", "origin", "main")
 
@@ -75,19 +79,26 @@ class Forge:
         _git(self.work, "push", "-q", *(["--force"] if force else []), "origin", f"HEAD:{name}")
         _git(self.work, "fetch", "-q", "origin")
 
-    def merge(self, name: str, number: int) -> str:
-        """Freeze `refs/pull/<number>/head` at the branch's tip and squash it onto main."""
+    def merge(self, name: str, number: int, *, squash: bool = True) -> str:
+        """Freeze `refs/pull/<number>/head` at the branch's tip and merge it onto main.
+
+        A squash, as this repository merges, unless `squash` is false, which
+        merges with a merge commit and so puts the head itself on main.
+        """
         head = _git(self.work, "rev-parse", name)
         _git(self.remote, "update-ref", f"refs/pull/{number}/head", head)
         _git(self.work, "checkout", "-q", "main")
-        _git(self.work, "merge", "-q", "--squash", name)
-        _git(self.work, "commit", "-qm", f"{name} (#{number})")
+        if squash:
+            _git(self.work, "merge", "-q", "--squash", name)
+            _git(self.work, "commit", "-qm", f"{name} (#{number})")
+        else:
+            _git(self.work, "merge", "-q", "--no-ff", "-m", f"Merge #{number} from {name}", name)
         _git(self.work, "push", "-q", "origin", "main")
         _git(self.work, "checkout", "-q", name)
-        self.pulls[name] = PullRequest(number=number, state="closed", merged=True)
+        self.pulls[name] = NewestPullRequest(number=number, state=PULL_MERGED, head=head)
         return head
 
-    def lookup(self, branch: str) -> PullRequest | None:
+    def lookup(self, branch: str) -> NewestPullRequest | None:
         return self.pulls.get(branch)
 
     def verdict(self, branch: str, root: Path | None = None) -> Verdict:
@@ -213,7 +224,7 @@ def test_an_open_pull_request_covers_whatever_the_branch_carries(forge: Forge) -
     forge.branch("claude/open")
     forge.commit("a.txt", "work", "PL-0006: work")
     forge.push("claude/open")
-    forge.pulls["claude/open"] = PullRequest(number=8, state="open", merged=False)
+    forge.pulls["claude/open"] = NewestPullRequest(number=8, state=PULL_OPEN, head="0" * 40)
 
     assert forge.verdict("claude/open").clear == "#8 is open on it"
 
@@ -265,7 +276,7 @@ def test_the_default_branch_and_branches_already_on_it_are_not_looked_up(forge: 
     forge.push("claude/landed")
     asked: list[str] = []
 
-    def lookup(branch: str) -> PullRequest | None:
+    def lookup(branch: str) -> NewestPullRequest | None:
         asked.append(branch)
         return None
 
@@ -317,7 +328,7 @@ def test_a_failed_lookup_declines_the_whole_report(forge: Forge) -> None:
     forge.commit("a.txt", "work", "PL-0011: work")
     forge.push("claude/b")
 
-    def unreachable(branch: str) -> PullRequest | None:
+    def unreachable(branch: str) -> NewestPullRequest | None:
         raise Declined(f"{NO_NETWORK}: GitHub could not be reached")
 
     report = check(forge.work, lookup=unreachable)
@@ -383,11 +394,77 @@ def test_no_token_is_no_permission_rather_than_no_pull_request(
 def test_the_listing_is_read_as_the_newest_pull_request_or_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _answer(monkeypatch, b'[{"number": 793, "state": "closed", "merged_at": "2026-09-20"}]')
-    assert github_lookup("owner/repo", "main")("claude/b") == PullRequest(793, "closed", True)
+    _answer(
+        monkeypatch,
+        b'[{"number": 793, "state": "closed", "merged_at": "2026-09-20",'
+        b' "head": {"sha": "46620e20"}}]',
+    )
+    assert github_lookup("owner/repo", "main")("claude/b") == NewestPullRequest(
+        793, PULL_MERGED, "46620e20"
+    )
 
     _answer(monkeypatch, b"[]")
     assert github_lookup("owner/repo", "main")("claude/b") is None
+
+
+def test_an_entry_without_merged_at_is_declined_as_open_pull_requests_declines(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`PL-351H`: the parse here read it as "closed without merging", where `newest` refuses it.
+
+    A merge read as no merge clears a branch whose commits nothing will land,
+    so the one reading both share declines instead.
+    """
+    _answer(monkeypatch, b'[{"number": 793, "state": "closed", "head": {"sha": "46620e20"}}]')
+
+    with pytest.raises(Declined, match=f"^{UNREADABLE_ANSWER}"):
+        github_lookup("owner/repo", "main")("claude/b")
+
+
+def test_a_commit_after_a_merge_commit_merge_is_named_as_vcs_lists_it(forge: Forge) -> None:
+    """`PL-351H`: the merge-commit shape, where `vcs.carried_merge` answers None by design.
+
+    That None is the restart's - a merge commit puts the head on main, so a
+    branch restarted there cannot be told from one that never was - and not a
+    reading of the commit. `vcs.past_head` is the reading both share, and it
+    lists the commit this check reports.
+    """
+    from docket.vcs import carried_merge, past_head
+
+    forge.branch("claude/merged")
+    forge.commit("a.txt", "work", "PL-0012: work")
+    forge.push("claude/merged")
+    head = forge.merge("claude/merged", 12, squash=False)
+    lost = forge.commit("b.txt", "after", "PL-0012: pushed after the merge commit")
+    forge.push("claude/merged")
+
+    verdict = forge.verdict("claude/merged")
+
+    assert [commit.sha for commit in verdict.left] == [lost]
+    runner = _stdout(left_behind_check.git_runner(forge.work))
+    past = past_head(head, "origin/main", forge.work, ref=lost, runner=runner)
+    assert past is not None and [commit.sha for commit in past.carried] == [lost]
+    pull = forge.pulls["claude/merged"]
+    assert carried_merge(pull, "origin/main", forge.work, ref=lost, runner=runner) is None
+
+
+def test_a_git_that_failed_to_list_declines_rather_than_reading_no_commits(forge: Forge) -> None:
+    """`vcs.git_answer` reads git's exit, so a failed `log` is a silence, never an empty list."""
+    forge.branch("claude/late")
+    forge.commit("a.txt", "work", "PL-0013: work")
+    forge.push("claude/late")
+    forge.merge("claude/late", 13)
+    forge.commit("b.txt", "after", "PL-0013: pushed after")
+    forge.push("claude/late")
+    real = left_behind_check.git_runner(forge.work)
+
+    def failing_log(args: list[str]) -> Git:
+        return Git(128, "", "fatal: bad revision") if args[0] == "log" else real(args)
+
+    report = check(forge.work, run=failing_log, lookup=forge.lookup)
+
+    [verdict] = report.verdicts
+    assert verdict.declined.startswith(UNREADABLE_ANSWER) and verdict.left == ()
 
 
 def test_each_disagreement_with_vcs_orphaned_is_printed_and_the_ref_comparison_wins() -> None:
