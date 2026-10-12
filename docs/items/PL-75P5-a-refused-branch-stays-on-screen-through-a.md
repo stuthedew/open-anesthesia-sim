@@ -11,7 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-22
 payoff: a learner who resets after a refused branch stops seeing a refusal that names an instant the restarted case no longer holds
 verify: grep -q 'def test_a_refused_branch_does_not_survive_a_one_run_reset' tests/integration/test_simulation_view.py
-recurrences: 2026-10-12 PL-08SS
+recurrences: 2026-10-12 PL-08SS, 2026-10-12 PL-MMNX
 ---
 
 **Problem.** A refused branch stays on screen through a trunk Reset on a one-run dashboard, because _handle_case_restarted returns before it clears _fork_refusal: the banner names an instant the reset run no longer holds

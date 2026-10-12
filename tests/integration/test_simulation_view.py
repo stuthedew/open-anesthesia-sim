@@ -74,6 +74,7 @@ from anesthesia_sim.app.dashboard_frame import (
     CONTROL_TIMELINE_HEADING,
     FORK_NOTHING_SELECTED_TEXT,
     HALT_FORK_LABEL_TEMPLATE,
+    HERE_FORK_LABEL_TEMPLATE,
     INTERPRETATION_DISCLAIMER_TEXT,
     KEEP_CURRENT_CASE_TEMPLATE,
     MARK_STANDING_COMPARED_TEXT,
@@ -4895,7 +4896,7 @@ def test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis(application: QApp
     assert max(branch_times) <= max(trunk_times) + SIMULATION_STEP_S
 
 
-@pytest.mark.parametrize("door", ["keyframe", "halt", "mark"])
+@pytest.mark.parametrize("door", ["keyframe", "here", "mark"])
 def test_a_fork_from_the_default_selection_draws_one_frame(
     application: QApplication, door: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -4913,7 +4914,7 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
     reduces, through every door a branch is taken by.
     """
 
-    if door == "halt":
+    if door == "here":
         _, view = _halted_trunk_case(application)
     elif door == "mark":
         _, view, _ = _rewind_case(application)
@@ -4936,8 +4937,8 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
     monkeypatch.setattr(view, "_refresh_view", recording_assemble)
     presented = view.presented_frames
 
-    if door == "halt":
-        view._fork_panel.halt_button.click()
+    if door == "here":
+        view._fork_panel.here_button.click()
     elif door == "mark":
         _select_fork_entry(view, _BEHIND_MARK_LABEL)
         view._fork_panel.take_button.click()
@@ -5306,10 +5307,10 @@ def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on(application: QAp
     assert halt is not None
     halted_s = halt.instant_s
 
-    assert view._fork_panel.halt_button.isHidden() is False
+    assert view._fork_panel.here_button.isHidden() is False
     assert halted_s not in case.fork_points_s
 
-    view._fork_panel.halt_button.click()
+    view._fork_panel.here_button.click()
 
     assert len(view.runs) == 2
     assert len(case.branches) == 1
@@ -5324,7 +5325,7 @@ def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on(application: QAp
     assert view._fork_panel.notice.notice() is None
 
 
-def test_the_halt_fork_says_which_instant_it_will_open_the_branch_at(
+def test_the_fork_here_says_which_instant_it_will_open_the_branch_at(
     application: QApplication,
 ) -> None:
     """The label carries the halted instant, so a press is readable before it is made.
@@ -5340,11 +5341,11 @@ def test_the_halt_fork_says_which_instant_it_will_open_the_branch_at(
     halt = case.trunk.snapshot().bookmark_halt
     assert halt is not None
 
-    label = view._fork_panel.halt_button.text()
+    label = view._fork_panel.here_button.text()
 
     assert label == HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(halt.instant_s))
 
-    view._fork_panel.halt_button.click()
+    view._fork_panel.here_button.click()
 
     assert case.branches[0].snapshot().elapsed_s == pytest.approx(halt.instant_s)
 
@@ -5377,48 +5378,58 @@ def test_a_mark_inside_a_step_branches_where_the_run_stopped_not_where_it_was_ma
     assert halt.instant_s == pytest.approx(halted_s)
     assert halt.instant_s != pytest.approx(marked_s)
 
-    label = view._fork_panel.halt_button.text()
+    label = view._fork_panel.here_button.text()
 
     assert format_elapsed(halted_s) in label
     assert format_elapsed(marked_s) not in label
 
-    view._fork_panel.halt_button.click()
+    view._fork_panel.here_button.click()
 
     assert case.branches[0].snapshot().elapsed_s == pytest.approx(halted_s)
 
 
-def test_the_halt_fork_is_off_the_panel_until_the_trunk_stands_on_a_halt(
+def test_the_fork_here_is_on_the_panel_whenever_the_trunk_stops_and_off_it_while_it_goes(
     application: QApplication,
 ) -> None:
-    """A halt is a permission, so the control is absent rather than present and inert.
+    """`PL-Y2SL`: paused anywhere, the control is there; going, it is absent rather than inert.
 
-    Absent before the run reaches a mark, there while it stands on one, and
-    gone again on the next step. The selector does not follow it, which is
-    the point of making this a second control: a list that gained and lost a
-    row would change membership under a reader who had looked away, where a
-    control that is either there or not is detectable on sight. The mark the
-    run stopped on joins the selector when the clock reaches it, as a mark
-    the trunk has passed (`PL-W4XQ`), and the halt's ending does not take it
-    away again.
+    There on the paused trunk, gone once it starts, back with the halt's own
+    words when a mark stops it, gone again on the next step, and back with the
+    plain words when the learner pauses. The selector does not follow it,
+    which is the point of making this a second control: a list that gained
+    and lost a row would change membership under a reader who had looked
+    away, where a control that is either there or not is detectable on sight.
+    The mark the run stopped on joins the selector when the clock reaches it,
+    as a mark the trunk has passed (`PL-W4XQ`), and the halt's ending does not
+    take it away again.
     """
 
     case = _branched_case()
     view = _case_view(application, case)
+    button = view._fork_panel.here_button
     offered_before = list(_offered_fork_instants(view))
+    paused_s = case.trunk.snapshot().elapsed_s
 
-    assert view._fork_panel.halt_button.isHidden() is True
-    assert view._fork_panel.halt_button.isEnabled() is False
-    assert view._fork_panel.halt_button.text() == ""
+    assert button.isHidden() is False
+    assert button.isEnabled() is True
+    assert button.text() == HERE_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(paused_s))
 
     case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(_HALT_MARK_S)))
     case.trunk.start()
+    view.present(False)
+
+    assert button.isHidden() is True
+    assert button.isEnabled() is False
+    assert button.text() == ""
+
     _advance_to(case.trunk, _HALT_MARK_S)
     view.present(False)
 
     halt = case.trunk.snapshot().bookmark_halt
     assert halt is not None
-    assert view._fork_panel.halt_button.isHidden() is False
-    assert view._fork_panel.halt_button.isEnabled() is True
+    assert button.isHidden() is False
+    assert button.isEnabled() is True
+    assert button.text() == HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(halt.instant_s))
     offered_on_the_halt = list(_offered_fork_instants(view))
     assert offered_on_the_halt == [*offered_before, halt.instant_s]
 
@@ -5427,12 +5438,49 @@ def test_the_halt_fork_is_off_the_panel_until_the_trunk_stands_on_a_halt(
     view.present(False)
 
     assert case.trunk.snapshot().bookmark_halt is None
-    assert view._fork_panel.halt_button.isHidden() is True
-    assert view._fork_panel.halt_button.isEnabled() is False
+    assert button.isHidden() is True
+    assert button.isEnabled() is False
+    assert list(_offered_fork_instants(view)) == offered_on_the_halt
+
+    case.trunk.pause()
+    view.present(False)
+    paused_again_s = case.trunk.snapshot().elapsed_s
+
+    assert button.isHidden() is False
+    assert button.text() == HERE_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(paused_again_s))
     assert list(_offered_fork_instants(view)) == offered_on_the_halt
 
 
-def test_the_halt_fork_is_refused_with_the_rest_while_two_runs_are_shown(
+def test_a_paused_trunk_is_branched_where_it_stands_from_the_panel(
+    application: QApplication,
+) -> None:
+    """`PL-Y2SL` end to end: paused between keyframes, one press branches right there.
+
+    The trunk stands at 120 s, which is neither a keyframe nor a mark, so no
+    entry in the selector names it; the button does, and the branch it takes
+    opens at that instant and is drawn beside the trunk, which stays where it
+    stood.
+    """
+
+    case, view, _ = _rewind_case(application)
+    paused_s = case.trunk.snapshot().elapsed_s
+    button = view._fork_panel.here_button
+
+    assert paused_s not in _offered_fork_instants(view)
+    assert button.isHidden() is False
+    assert button.text() == HERE_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(paused_s))
+
+    button.click()
+
+    assert len(view.runs) == 2
+    assert len(case.branches) == 1
+    assert case.branches[0].began_at_s == paused_s
+    assert view.runs[1].controller is case.branches[0]
+    assert case.trunk.snapshot().elapsed_s == paused_s
+    assert view._fork_panel.notice.notice() is None
+
+
+def test_the_fork_here_is_refused_with_the_rest_while_two_runs_are_shown(
     application: QApplication,
 ) -> None:
     """The cap is on branches, not on the door a branch came through.
@@ -5449,43 +5497,68 @@ def test_the_halt_fork_is_refused_with_the_rest_while_two_runs_are_shown(
 
     assert len(view.runs) == 2
     assert case.trunk.snapshot().bookmark_halt is not None
-    assert view._fork_panel.halt_button.isHidden() is True
-    assert view._fork_panel.halt_button.isEnabled() is False
-    assert view._fork_panel.halt_button.text() == ""
+    assert view._fork_panel.here_button.isHidden() is True
+    assert view._fork_panel.here_button.isEnabled() is False
+    assert view._fork_panel.here_button.text() == ""
 
-    view._handle_halt_fork()
+    view._handle_here_fork()
 
     assert len(view.runs) == 2
     assert len(case.branches) == 1
     assert view._fork_panel.lock_text.text() == comparing_fork_lock_text()
 
 
-def test_a_halt_fork_the_case_refuses_is_reported_and_adds_no_run(
+def test_a_fork_here_the_case_refuses_is_reported_and_adds_no_run(
     application: QApplication,
 ) -> None:
-    """The halt can be cleared by something other than a step, so the press re-asks.
+    """The trunk can be started after the frame that drew the button, so the press re-asks.
 
-    Unmarking the instant a run is halted on clears the halt, which leaves the
-    case with no fork to take. `fork_at_halt` refuses rather than approximating
-    one, and the reason reaches the notice instead of being swallowed - the
-    panel's own frame is not proof that the fork is still there.
+    Where a running trunk stands moves with every step, so the case refuses
+    a fork there rather than taking one a step or a tick from the instant
+    the button named, and the reason reaches the notice instead of being
+    swallowed - the panel's own frame is not proof that the fork is still
+    there.
     """
 
     case, view = _halted_trunk_case(application)
-    mark = case.trunk.snapshot().bookmarks.time_bookmarks[0]
-    case.trunk.remove_time_bookmark(mark)
+    case.trunk.start()
 
-    assert case.trunk.snapshot().bookmark_halt is None
-
-    view._fork_panel.halt_button.click()
+    view._fork_panel.here_button.click()
 
     assert len(view.runs) == 1
     assert case.branches == ()
     notice = view._fork_panel.notice.notice()
     assert notice is not None
-    # It names what is missing rather than reporting a generic failure, so a
+    # It names what is wrong rather than reporting a generic failure, so a
     # reader who pressed a button that was there a moment ago learns why.
-    assert "not standing on a bookmark crossing" in notice
+    assert "is going" in notice
+
+
+def test_unmarking_the_mark_the_trunk_stopped_on_leaves_the_fork_here(
+    application: QApplication,
+) -> None:
+    """Unmarking ends the halt and not the pause, so the control stays and drops the mark.
+
+    The run stands where it stopped either way, and a learner who unmarks the
+    instant they stopped on can still branch at it; what changes is that no
+    mark stopped it there any more, so the label stops saying one did.
+    """
+
+    case, view = _halted_trunk_case(application)
+    halted_s = case.trunk.snapshot().elapsed_s
+    mark = case.trunk.snapshot().bookmarks.time_bookmarks[0]
+    case.trunk.remove_time_bookmark(mark)
+    view.present(False)
+
+    assert case.trunk.snapshot().bookmark_halt is None
+    assert view._fork_panel.here_button.text() == HERE_FORK_LABEL_TEMPLATE.format(
+        instant=format_elapsed(halted_s)
+    )
+
+    view._fork_panel.here_button.click()
+
+    assert len(case.branches) == 1
+    assert case.branches[0].began_at_s == halted_s
 
 
 def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApplication) -> None:
@@ -5507,7 +5580,7 @@ def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApp
             (CaseInstant(0.0), unkeyframed.instant_s, CaseInstant(60.0)),
             marks=(),
             comparing=False,
-            halt=None,
+            here=None,
         )
     )
     panel.point_selector.setCurrentIndex(panel.point_selector.findData(30.0))
@@ -5545,7 +5618,7 @@ def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
             case.fork_points_s,
             marks=(MarkForkPoint(unmarked, CaseInstant(300 * 0.1)),),
             comparing=False,
-            halt=None,
+            here=None,
         )
     )
     _select_fork_entry(view, f"{format_elapsed(30.0)}, on your mark")
@@ -6149,7 +6222,7 @@ def test_the_branch_selector_draws_its_widest_entry_whole(application: QApplicat
             (CaseInstant(0.0),),
             marks=(MarkForkPoint(TimeBookmark(instant), instant),),
             comparing=False,
-            halt=None,
+            here=None,
         )
     )
     _select_fork_entry(view, f"{hours}{minutes}{seconds}, on your mark")

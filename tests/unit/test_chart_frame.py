@@ -1531,7 +1531,7 @@ def test_a_bookmark_branch_is_marked_at_its_fork_and_not_at_its_definition_s_ope
 
     fork_s = trunk.snapshot().elapsed_s
     case = BranchedCase(trunk)
-    branch = case.fork_at_halt()
+    branch = case.fork_here()
 
     assert branch.run_segments[0].opening.instant_s == 30.0 < fork_s
 

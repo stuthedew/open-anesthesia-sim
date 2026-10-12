@@ -1,6 +1,6 @@
 ---
 id: PL-08SS
-title: SimulationView._handle_fork and _handle_halt_fork keep the branch in the case before add_run reads its snapshot, so a fork taken on a run whose snapshot refuses raises out of the slot and leaves a branch kept but never displayed, which Reset neither drops nor rebuilds (found at PL-V2HC's review)
+title: SimulationView._handle_fork and _handle_here_fork keep the branch in the case before add_run reads its snapshot, so a fork taken on a run whose snapshot refuses raises out of the slot and leaves a branch kept but never displayed, which Reset neither drops nor rebuilds (found at PL-V2HC's review)
 priority: P2
 effort: S
 status: ready
@@ -13,9 +13,9 @@ payoff: pressing Fork on a run that cannot be read ends in the halt on screen, i
 verify: grep -q 'def test_a_fork_on_a_run_whose_snapshot_refuses_keeps_no_branch' tests/integration/test_simulation_view.py
 ---
 
-**Problem.** SimulationView._handle_fork and _handle_halt_fork keep the branch in the case before add_run reads its snapshot, so a fork taken on a run whose snapshot refuses raises out of the slot and leaves a branch kept but never displayed, which Reset neither drops nor rebuilds (found at PL-V2HC's review)
+**Problem.** SimulationView._handle_fork and _handle_here_fork keep the branch in the case before add_run reads its snapshot, so a fork taken on a run whose snapshot refuses raises out of the slot and leaves a branch kept but never displayed, which Reset neither drops nor rebuilds (found at PL-V2HC's review)
 
-**Why it matters.** `BranchedCase.fork_at` (or `fork_at_halt`) builds the
+**Why it matters.** `BranchedCase.fork_at` (or `fork_here`) builds the
 branch from keyframes and keeps it in `BranchedCase.branches` before `add_run`
 reads the branch's `snapshot()` to draw it. On a run whose snapshot refuses a
 value (`PL-7DJK`), that read raises out of the slot, which the toolkit prints
