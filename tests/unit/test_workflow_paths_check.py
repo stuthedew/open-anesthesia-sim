@@ -46,6 +46,7 @@ from pathlib import Path
 
 import pytest
 import workflow_paths_check
+from docket.config import load as load_config
 from docket.model import LANE_PRODUCT, LANE_WORKFLOW, parse_item
 
 ROOT = Path(workflow_paths_check.__file__).resolve().parent.parent
@@ -740,3 +741,20 @@ def test_this_repository_covers_every_linter_config_it_carries() -> None:
     """
     assert workflow_paths_check.gate_problems(ROOT) == []
     assert len(workflow_paths_check.ruff_configs(ROOT)) == 3
+
+
+def test_settings_are_read_through_docket_config(tmp_path: Path) -> None:
+    """A top-level key, and an absent one, answer here as they do in `docket.config`.
+
+    The check read `data.get("docket", {})` bare, so a top-level
+    `workflow_paths` docket honours read as absent here, and an absent
+    `gate_paths` docket fills with its defaults read as empty (`PL-WCHF`).
+    """
+    (tmp_path / "docket.toml").write_text(
+        'workflow_paths = ["tools"]\nproduct_paths = ["src"]\n', encoding="utf-8"
+    )
+
+    assert workflow_paths_check.declared_workflow_paths(tmp_path) == ("tools",)
+    assert workflow_paths_check.declared_product_paths(tmp_path) == ("src",)
+    assert workflow_paths_check.declared_gate_paths(tmp_path) == load_config(tmp_path).gate_paths
+    assert workflow_paths_check.declared_gate_paths(tmp_path) != ()

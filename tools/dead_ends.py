@@ -100,13 +100,15 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
 
+from docket.config import load as load_config  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.roadmap import UnreadEntry, document_entry_lines  # noqa: E402
 from docket.store import ID_PATTERN  # noqa: E402
 from docket.vcs import ITEM_FILE_RE  # noqa: E402
 
 DEAD_ENDS = REPO / "docs" / "dead-ends.md"
-ITEMS = REPO / "docs" / "items"
+#: The store, where `docket.toml` puts it, as docket reads it (`PL-WCHF`).
+ITEMS = REPO / load_config(REPO).items_dir
 
 # Both budgets bind, and they bind in different directions: many short entries
 # trip the count, one essay trips the bytes. Neither fails the build; both
