@@ -141,6 +141,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import read_wash_in
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
+from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
@@ -320,6 +321,21 @@ def _stacked_sections(view: SimulationView) -> QSplitter:
 def _steps(run: RunView, ticks: int) -> None:
     for _ in range(ticks):
         run.step_tick()
+
+
+def _read_the_alveolar_quotient_as(monkeypatch: pytest.MonkeyPatch, quotient: float) -> None:
+    """Make every alveolar compartment answer `quotient` for its partial-pressure fraction.
+
+    The one route left to a quotient outside 0 to 1: no supported setting
+    reaches one (`core/concentration.py`), and since `PL-544D` an amount
+    written past the capacity is refused at the write, so the quotient is
+    replaced where `SimulationController.snapshot()` reads it rather than
+    reached through the stored amount.
+    """
+
+    monkeypatch.setattr(
+        AlveolarCompartment, "partial_pressure_fraction", property(lambda compartment: quotient)
+    )
 
 
 def _readout_value(run: RunView, quantity: RecordedQuantity) -> str:
@@ -1583,13 +1599,16 @@ def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
         assert run._start_button.isEnabled() is False
 
 
-def test_a_halt_is_shown_when_the_snapshot_itself_is_refused(application: QApplication) -> None:
+def test_a_halt_is_shown_when_the_snapshot_itself_is_refused(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A halt stated from a fresh snapshot is not stated at all when the snapshot is what refused.
 
-    `snapshot()` builds every compartment's fraction, so the alveolar amount
-    written past the compartment's capacity - the one route to a quotient
-    above 1, which no supported setting takes (`core/concentration.py`) -
-    refuses the snapshot and, through it, the frame. Before `PL-7DJK`,
+    `snapshot()` builds every compartment's fraction, so an alveolar quotient
+    above 1 - reached by replacing what the compartment answers, since no
+    supported setting takes one (`core/concentration.py`) and a write past the
+    capacity is refused since `PL-544D` - refuses the snapshot and, through
+    it, the frame. Before `PL-7DJK`,
     `present_halt` read a fresh snapshot for the status word, the transport
     and the banner, so the same refusal escaped the render tick with the
     controller failed and the screen reading "Running", Pause offered and no
@@ -1603,8 +1622,7 @@ def test_a_halt_is_shown_when_the_snapshot_itself_is_refused(application: QAppli
     view = _shown_view(application, controller)
     view.render_tick()
 
-    alveoli = controller._state.uptake_system.alveoli
-    alveoli.agent_amount_l = alveoli.gas_volume_l * 1.0000001
+    _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
 
     view.render_tick()
 

@@ -16,6 +16,7 @@ from anesthesia_sim.app.run_series import (
 )
 from anesthesia_sim.app.wash_in import is_wash_in
 from anesthesia_sim.core import uptake_system
+from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.concentration import (
     Fraction,
     MacMultiple,
@@ -1532,16 +1533,32 @@ def test_a_drawn_window_refuses_the_derived_ratio_as_a_compartment() -> None:
         window.compartment_fractions(RecordedSeries(agent_id, RecordedQuantity.WASH_IN_RATIO))
 
 
-def test_a_snapshot_whose_quotient_is_refused_names_the_compartment_and_the_status_answers() -> (
-    None
-):
+def _read_the_alveolar_quotient_as(monkeypatch: pytest.MonkeyPatch, quotient: float) -> None:
+    """Make every alveolar compartment answer `quotient` for its partial-pressure fraction.
+
+    The one route left to a quotient outside 0 to 1: no supported setting
+    reaches one (`core/concentration.py`), and since `PL-544D` an amount
+    written past the capacity is refused at the write, so the quotient is
+    replaced where `snapshot()` reads it rather than reached through the
+    stored amount.
+    """
+
+    monkeypatch.setattr(
+        AlveolarCompartment, "partial_pressure_fraction", property(lambda compartment: quotient)
+    )
+
+
+def test_a_snapshot_whose_quotient_is_refused_names_the_compartment_and_the_status_answers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """`snapshot()` builds each compartment's fraction under its name; `status()` builds none.
 
     The compartments hold amounts, and the quotient read from one carries no
     proof, so the snapshot builds the `Fraction` and refuses a quotient past
-    1 - reached here, as no supported setting reaches it
-    (`core/concentration.py`), by writing the alveolar amount past the
-    compartment's capacity. The refusal names the compartment as a step
+    1 - reached here by replacing the quotient the alveolar compartment
+    answers, since no supported setting reaches one (`core/concentration.py`)
+    and a write past the capacity is refused since `PL-544D`. The refusal
+    names the compartment as a step
     would (`run_series.COMPARTMENT_FRACTION_NAMES`), and `status()`, which
     the interface states the halt from, still answers for the same run; a
     snapshot is a `RunStatus` too, so what reads one reads either
@@ -1554,8 +1571,7 @@ def test_a_snapshot_whose_quotient_is_refused_names_the_compartment_and_the_stat
 
     assert isinstance(controller.snapshot(), RunStatus)
 
-    alveoli = controller._state.uptake_system.alveoli
-    alveoli.agent_amount_l = alveoli.gas_volume_l * 1.0000001
+    _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
 
     with pytest.raises(
         SimulationConfigurationError,

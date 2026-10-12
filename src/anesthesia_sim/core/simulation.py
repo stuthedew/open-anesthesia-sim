@@ -107,7 +107,7 @@ class SimulationState:
         # would pass `--strict` and fail at run time against the slots. Hidden,
         # `mypy` reads the dataclass's fields and their types as before, and
         # this is the runtime half for the callers it does not read; its lines
-        # are checked by their tests rather than by `mypy`, as the three
+        # are checked by their tests rather than by `mypy`, as the
         # compartments' guards are (`PL-LBQY`, found at review).
 
         def __setattr__(self, name: str, value: object) -> None:

@@ -1,3 +1,5 @@
+import copy
+from dataclasses import replace
 from math import exp, inf
 
 import pytest
@@ -55,6 +57,49 @@ def test_rejects_agent_amount_above_tissue_capacity() -> None:
             tissue_gas_partition_coefficient=2.0,
             agent_amount_l=4.1,
         )
+
+
+def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
+    """An assignment straight onto the amount meets the constructor's refusal, and writes nothing.
+
+    The tissue's counterpart of `tests/unit/test_alveolar.py`'s test of the
+    same name: until `PL-544D` `TissueGroup` guarded no write at all, so an
+    amount past `capacity_l` was stored and its quotient refused only when the
+    snapshot built the `Fraction`. The write is refused in the constructor's
+    own words and leaves the field holding what it held; `dataclasses.replace`
+    and a copy write through the same `__setattr__`; an amount at the capacity
+    itself is written.
+    """
+
+    tissue = _build_tissue()
+    tissue.set_partial_pressure_fraction(Fraction(0.4))
+    held = tissue.agent_amount_l
+    past_capacity = tissue.capacity_l * 1.0000001
+    refused = "^agent_amount_l exceeds the tissue capacity for a concentration fraction of 1$"
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        tissue.agent_amount_l = past_capacity
+
+    assert tissue.agent_amount_l == held
+
+    for not_an_amount in (-0.1, float("inf"), float("nan")):
+        with pytest.raises(SimulationConfigurationError, match="agent_amount_l"):
+            tissue.agent_amount_l = not_an_amount
+
+        assert tissue.agent_amount_l == held
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        replace(tissue, agent_amount_l=past_capacity)
+
+    smuggled = copy.copy(tissue)
+    object.__setattr__(smuggled, "agent_amount_l", past_capacity)
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        copy.copy(smuggled)
+
+    tissue.agent_amount_l = tissue.capacity_l
+
+    assert tissue.partial_pressure_fraction == 1.0
 
 
 def test_capacity_uses_volume_and_tissue_gas_coefficient() -> None:

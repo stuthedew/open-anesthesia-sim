@@ -3,11 +3,13 @@ id: PL-544D
 title: AlveolarCompartment and TissueGroup admit a direct write of agent_amount_l past the compartment's capacity, so the quotient the display reads can leave 0 to 1 while every setter refuses it: PL-7DJK's case 1 is reproduced by that write, and test_a_halt_is_shown_when_the_snapshot_itself_is_refused depends on it staying open
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, tests/unit/test_alveolar.py, tests/unit/test_tissue.py, tests/integration/test_simulation_view.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/simulation.py, docs/MODEL.md, tests/unit/test_alveolar.py, tests/unit/test_tissue.py, tests/integration/test_simulation_view.py, tests/integration/test_controller.py
 added: 2026-10-11
+closed: 2026-10-12
+pr: 1428
 payoff: an impossible above-one-atmosphere fraction is refused where it is written, instead of living in the model until the display refuses it
 verify: grep -q 'def test_an_agent_amount_past_capacity_is_refused_at_the_write' tests/unit/test_alveolar.py
 ---

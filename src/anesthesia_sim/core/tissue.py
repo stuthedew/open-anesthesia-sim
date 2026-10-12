@@ -5,6 +5,7 @@ independently of every other tissue group.
 
 from dataclasses import dataclass
 from math import exp, inf
+from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -57,12 +58,50 @@ class TissueGroup:
             "tissue_gas_partition_coefficient", self.tissue_gas_partition_coefficient
         )
         require_nonnegative_finite("blood_flow_l_min", self.blood_flow_l_min)
-        require_nonnegative_finite("agent_amount_l", self.agent_amount_l)
+        # The agent amount's range was required as the constructor wrote the
+        # field, by `__setattr__` below.
 
-        if self.agent_amount_l > self.capacity_l:
-            raise SimulationConfigurationError(
-                "agent_amount_l exceeds the tissue capacity for a concentration fraction of 1"
-            )
+    if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
+        # Hidden from `mypy` on purpose, as `AlveolarCompartment.__setattr__`
+        # is: a class that defines `__setattr__` is one `mypy` lets assign any
+        # attribute name, typed by the method's `value`, so with the guard in
+        # view a misspelt field written in `src/` would pass `--strict` and
+        # fail at run time against the slots. Hidden, `mypy` reads the
+        # dataclass's fields and their types as before, and this is the
+        # runtime half for the callers it does not read; its lines are checked
+        # by their tests rather than by `mypy` (`PL-LBQY`, found at review).
+
+        def __setattr__(self, name: str, value: object) -> None:
+            """Write a field, refusing an agent amount the tissue cannot hold.
+
+            The one place the amount is stored is this field, so the capacity
+            is held here, for the constructor, `set_partial_pressure_fraction`,
+            `advance`, a rollback and an assignment made past them alike, as
+            `AlveolarCompartment.__setattr__` explains (`PL-544D`). Nothing is
+            written when it is refused. The constructor writes the amount
+            before `__post_init__` has refused a bad volume or coefficient, so
+            a capacity that is not positive is left to that refusal, under the
+            parameter's own name, rather than read here as the amount
+            exceeding it.
+
+            Raises:
+                TypeError: `name` is `agent_amount_l` and `value` is not an
+                    `int` or a `float` (`require_nonnegative_finite`).
+                SimulationConfigurationError: `name` is `agent_amount_l` and
+                    `value` is negative, not finite, or more than `capacity_l`,
+                    the capacity at a fraction of one.
+            """
+
+            if name == "agent_amount_l":
+                require_nonnegative_finite(name, value)
+
+                if 0.0 < self.capacity_l < value:
+                    raise SimulationConfigurationError(
+                        "agent_amount_l exceeds the tissue capacity for a concentration "
+                        "fraction of 1"
+                    )
+
+            super().__setattr__(name, value)
 
     @property
     def capacity_l(self) -> float:
@@ -214,7 +253,10 @@ class TissueGroup:
         """Restore run state previously captured by `capture_state()`.
 
         Assigns the field directly, so that rolling back cannot itself
-        raise; see `BreathingCircuit.restore_state()`.
+        raise; see `BreathingCircuit.restore_state()`. The write still meets
+        `__setattr__`'s capacity check, which a captured amount passes: it
+        came off this tissue, whose volume and coefficient are parameters no
+        step moves.
         """
 
         self.agent_amount_l = state.agent_amount_l

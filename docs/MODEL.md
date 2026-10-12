@@ -5236,7 +5236,7 @@ it held; the dataclass constructor, `dataclasses.replace`, a copy and a pickle
 all write through it - the last two because each compartment is a `slots=True`
 dataclass, whose state a copy or a pickle restores one field at a time through
 `__setattr__` where a `__dict__` would be updated past it - so the constructors
-run no check of their own. The type is all the write checks. The circuit's setter still compares the flow against
+run no check of their own. The type is all the write checks of a flow. The circuit's setter still compares the flow against
 the machine's range before the write, and the patient's still recomputes the
 tissue flows after it, so a checked cardiac output written past the setter
 leaves the tissue flows stale, which `UptakeEquationSettings` refuses at the
@@ -5250,6 +5250,24 @@ flow against its own output and writes none, so the copy is refused and the
 original is left as it was. One made at the same output shares the original's
 compartments, so moving its output moves the original's flows with it
 (`PL-Z0T3`).
+
+**The alveolar and tissue agent amounts meet the compartment's capacity at
+the write, in the same `__setattr__`** (`PL-544D`). `set_partial_pressure_fraction`
+takes a `Fraction`, so no setter could store an amount past the capacity, but
+the field could: `alveoli.agent_amount_l = alveoli.gas_volume_l * 1.0000001`
+was accepted, and the quotient read from it - a partial pressure above one
+atmosphere - was refused only when `SimulationController.snapshot()` built the
+`Fraction` two layers later, which `PL-7DJK` made a visible halt. The relation
+between an amount and the volume holding it is the compartment's to check
+rather than any one quantity's (`.claude/rules/core-domain.md`), so
+`AlveolarCompartment` and `TissueGroup` check it where the amount is stored,
+for the constructor, the setter, a rollback and an assignment made past them
+alike, in the constructor's own words, and the field holds what it held. The
+constructor writes the amount before `__post_init__` has refused a bad volume,
+so a capacity that is not positive is left to that refusal under the volume's
+own name. No supported setting takes the write; the hole was the reproduction's
+own route to a refusing snapshot, which the tests now reach by replacing the
+quotient the snapshot reads.
 
 **Built from an `int` or a `float` and nothing else, with no sign at zero**
 (`PL-LLMN`). Until `PL-LLMN` each guard asked `math.isfinite` and then made
