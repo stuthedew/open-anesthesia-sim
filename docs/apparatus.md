@@ -406,7 +406,9 @@ proper — to the math syntax GitHub renders. Two failures, both silent:
 LaTeX's `\(...\)` and `\[...\]`, which CommonMark strips to bare
 parentheses before any math parser sees them, and an expression split across a
 source line break, which renders as literal text on both sides because inline
-math is parsed within a line. `docs/MODEL.md` carried 97 of the first and
+math is parsed within a line; the same rule reports one whose opening backtick
+a code span opened before it has claimed, which leaves its tail as literal text
+(`PL-9TZH`). `docs/MODEL.md` carried 97 of the first and
 three of the second, its whole symbol table among them. Fences, indented code
 blocks, code spans and well-formed expressions are blanked before either rule
 runs, so writing *about* the broken syntax is not writing it; an indented block
