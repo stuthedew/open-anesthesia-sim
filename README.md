@@ -1,3 +1,5 @@
+[![quality](https://github.com/stuthedew/open-anesthesia-sim/actions/workflows/quality.yml/badge.svg)](https://github.com/stuthedew/open-anesthesia-sim/actions/workflows/quality.yml)
+
 > [!WARNING]
 > # PRE-RELEASE
 > # Work in Progress
