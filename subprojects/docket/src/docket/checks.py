@@ -57,11 +57,12 @@ from .model import (
 from .notes import Thread
 from .plan import OfferedReport, promotable
 from .release import (
-    CODE_SPAN_RE,
     NOTES_DIR,
     SEMVER_RE,
+    code_spans,
     notes_name,
     reference,
+    replace_code_spans,
     unrecorded_milestones,
     version_key,
 )
@@ -187,7 +188,7 @@ def _paired(text: str) -> tuple[markdown.Emphasis, ...]:
     `*` CommonMark reads as no delimiter, a multiplication's, opens nothing
     (`PL-47NJ`).
     """
-    return markdown.emphasis(text, [found.span() for found in CODE_SPAN_RE.finditer(text)])
+    return markdown.emphasis(text, [found.span() for found in code_spans(text)])
 
 
 def _outermost(spans: Sequence[markdown.Emphasis]) -> Iterator[markdown.Emphasis]:
@@ -238,7 +239,7 @@ def _marks_recommendation(body: str) -> bool:
     text = _unmarked(body)
     for start, end in _statements(body):
         flat = " ".join(text[start:end].split())
-        prose = CODE_SPAN_RE.sub(_blanked, flat)
+        prose = replace_code_spans(_blanked, flat)
         if "Recommendation:" in prose or any(
             re.search(r"recommend", prose[span.start : span.end], re.IGNORECASE)
             for span in _paired(flat)
@@ -284,7 +285,7 @@ def _answered_beneath(body: str) -> str | None:
         elif QUESTION_LABEL.match(flat) or re.search("recommend", flat, re.IGNORECASE):
             labels.append((start, False, flat))
     for start, end in _statements(body):
-        text = CODE_SPAN_RE.sub(_blanked, unmarked[start:end])
+        text = replace_code_spans(_blanked, unmarked[start:end])
         labels.extend(
             (start + found.start(), False, found.group(0))
             for found in re.finditer("Recommendation:", text)
@@ -313,12 +314,12 @@ def _labels(body: str) -> Iterator[tuple[int, int, str]]:
     """
     starts = _line_starts(body)
     for heading in markdown.headings(split_lines(body), nested=True):
-        title = CODE_SPAN_RE.sub(_blanked, heading.title)
+        title = replace_code_spans(_blanked, heading.title)
         yield starts[heading.line], starts[heading.end], title
     unmarked = _unmarked(body)
     for start, end in _statements(body):
         text = unmarked[start:end]
-        words = CODE_SPAN_RE.sub(_blanked, text)
+        words = replace_code_spans(_blanked, text)
         for span in _outermost(_paired(text)):
             inner = words[span.start + span.width : span.end - span.width]
             yield start + span.start, start + span.end, inner
@@ -433,7 +434,7 @@ def _sections(body: str, marker: str) -> list[tuple[int, str]]:
             (heading.start(), len(scan) if line_end == -1 else line_end),
         )
         text = unmarked[first:last]
-        literals = [found.span() for found in CODE_SPAN_RE.finditer(text)]
+        literals = [found.span() for found in code_spans(text)]
         at = heading.start() - first
         if any(opens <= at < closes for opens, closes in literals):
             continue
@@ -3479,7 +3480,7 @@ def _standing(body: str, position: int) -> bool:
     start, end = _passage(body, position)
     if SUPERSEDED.search(body, start, end):
         return False
-    prose = CODE_SPAN_RE.sub("", body[start:position])
+    prose = replace_code_spans("", body[start:position])
     return prose.count('"') % 2 == 0 and prose.count("“") <= prose.count("”")
 
 

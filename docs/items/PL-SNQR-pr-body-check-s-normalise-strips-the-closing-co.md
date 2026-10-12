@@ -3,12 +3,14 @@ id: PL-SNQR
 title: pr_body_check's normalise strips the closing Co-authored-by paragraph a pull request body writes for itself, but on the squash side GitHub's appended group follows it and only that group is stripped, so --compare reports a faithful squash body as differing; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1464
 payoff: the read-back comparison no longer reports a faithful squash body as differing when the pull request body closes with its own trailer paragraph
 verify: grep -q 'def test_a_body_ending_with_its_own_trailer_paragraph_compares_equal' tests/unit/test_pr_body_check.py
 ---
