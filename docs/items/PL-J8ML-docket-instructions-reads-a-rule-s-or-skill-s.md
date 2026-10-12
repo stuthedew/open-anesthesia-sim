@@ -3,12 +3,14 @@ id: PL-J8ML
 title: docket.instructions reads a rule's or skill's front matter a line at a time, silently, wherever docket.frontmatter.keys declines any line of the block, so a key whose continued value keys could have delimited is cut into dated fragments; and it reads a sentence across the blank line inside a block-scalar value, so an older dated record is hidden behind a newer one; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/frontmatter.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_instructions.py
+touches: subprojects/docket/src/docket/frontmatter.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_instructions.py, subprojects/docket/tests/test_checks.py, tools/doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1447
 payoff: the instructions audit names a front matter it cannot read and dates a block-scalar record by its own sentence, so an old dated claim is neither split nor hidden behind a newer one
 verify: grep -q 'def test_a_front_matter_keys_cannot_read_is_reported_by_name' subprojects/docket/tests/test_instructions.py && grep -q 'def test_a_blank_line_inside_a_block_scalar_ends_a_sentence' subprojects/docket/tests/test_instructions.py
 ---
@@ -80,3 +82,24 @@ reader's decline, and proposes the type-level fix that would close them together
 the instructions report rather than read a line at a time, and a blank line
 inside a block-scalar value ends a sentence as a paragraph end does in the
 body; a test pins both forms above.
+
+**Fixed 2026-10-12** in `#1447`. `instructions.parse` reads a front matter's
+statements through `frontmatter.key_statements`, `statements` without its
+line-at-a-time fallback, so a block `keys` declines is read for no sentence;
+`instructions.unread_front_matter` names each such file with `keys`' reason,
+and `docket check` lists it under "Not checked" through `analyze`'s
+`unread_instructions`, as `unread_notes` carries a release-notes bullet the
+notes reader declined. Not a partial reading of the keys around the bad line:
+`keys` is the one reader of the grammar and refuses the block whole, and a
+second reader beside it is what `CLAUDE.md`'s single source of truth refuses.
+`_sentences` now ends a sentence at a blank line as well as at
+`SENTENCE_BREAK`, which `tools/doc_check.py`'s host-claim check shares, and a
+Markdown body statement never holds one. The two forms above are pinned by
+`test_a_front_matter_keys_cannot_read_is_reported_by_name` and
+`test_a_blank_line_inside_a_block_scalar_ends_a_sentence` (`>`, `|` and `>-`),
+and the report by
+`test_a_front_matter_the_reading_declined_is_named_as_not_checked`.
+`tools/fact_home_check.py` reads 107 second readers against a baseline of 107
+before and after: the fix removes no entry, since the only one in the files it
+changes is `instructions._markdown_under`'s walk, which it leaves alone, and it
+adds no reader.

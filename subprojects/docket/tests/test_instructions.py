@@ -11,7 +11,9 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from docket.instructions import Assertion, parse, read
+import pytest
+
+from docket.instructions import Assertion, parse, read, unread_front_matter
 
 TODAY = date(2026, 12, 1)
 
@@ -89,6 +91,58 @@ def test_a_paragraph_goes_on_past_a_line_opening_like_a_block() -> None:
     for opening in ("17) it", "| it", "<id> it"):
         rows = parse("r.md", f"Measured 2026-06-01, and the count reached\n{opening} 2026-11-20.\n")
         assert [(row.line, row.when) for row in rows] == [(2, date(2026, 11, 20))], opening
+
+
+def test_a_front_matter_keys_cannot_read_is_reported_by_name(tmp_path: Path) -> None:
+    """`PL-J8ML`: a block `docket.frontmatter.keys` declines is read for no sentence, and named.
+
+    Read a line at a time, the description continued onto its second line was
+    cut in two, and the half dated 2026-01-01 was reported stale though the
+    record was re-verified on the next line, with nothing saying a line went
+    unread. The body is read as ever.
+    """
+    text = (
+        "---\n"
+        "description: A rule (measured 2026-01-01, re-verified\n"
+        "  2026-10-04).\n"
+        "paths: a\n"
+        "stray line\n"
+        "---\n"
+        "\n"
+        "Measured 2026-09-05.\n"
+    )
+    _file(tmp_path, "rules/unread.md", text)
+    _file(tmp_path, "rules/read.md", "---\npaths: a\n---\n\nMeasured 2026-09-06.\n")
+
+    assert [(row.line, row.when) for row in parse("rules/unread.md", text)] == [
+        (8, date(2026, 9, 5))
+    ]
+    (named,) = unread_front_matter(tmp_path, ("rules",))
+    assert named.startswith("rules/unread.md - ")
+    assert "`stray line`" in named
+
+
+@pytest.mark.parametrize("indicator", [">", "|", ">-"])
+def test_a_blank_line_inside_a_block_scalar_ends_a_sentence(indicator: str) -> None:
+    """`PL-J8ML`: as a blank line ends one in the body, so an old record is not hidden.
+
+    YAML keeps the blank line as a line break (1.2.2 § 8.1), and read across it
+    the record in the first paragraph was dated by the second one's date, so
+    the older claim never reached the report. A line of spaces is as blank.
+    """
+    front = (
+        f"---\ndescription: {indicator}\n  Measured 2026-01-01\n  \n  Re-verified 2026-10-04\n---\n"
+    )
+    body = "Measured 2026-01-01\n\nRe-verified 2026-10-04\n"
+
+    assert [(row.line, row.when) for row in parse("r.md", front)] == [
+        (3, date(2026, 1, 1)),
+        (5, date(2026, 10, 4)),
+    ]
+    assert [(row.line, row.when) for row in parse("r.md", body)] == [
+        (1, date(2026, 1, 1)),
+        (3, date(2026, 10, 4)),
+    ]
 
 
 def test_the_line_number_is_where_the_reader_goes() -> None:

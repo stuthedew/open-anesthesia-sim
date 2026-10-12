@@ -1020,6 +1020,9 @@ def _complete_report(
         assertions=(
             instructions.read(root, config.instruction_paths) if config.instruction_paths else None
         ),
+        # The front matters that reading read no sentence of, named so the
+        # report does not look complete without them (`PL-J8ML`).
+        unread_instructions=instructions.unread_front_matter(root, config.instruction_paths),
         # Not read from the store at all, unlike everything above: it is which
         # policy the store was read *under*, which only the caller that
         # resolved it knows.

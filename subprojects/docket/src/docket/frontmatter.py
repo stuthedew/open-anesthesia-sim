@@ -179,11 +179,23 @@ def statements(block: Sequence[str]) -> list[tuple[int, int]]:
     so that none of their text is read with another's, and a record wrapped
     across two of them is read from its first line until the block is mended.
     Each is the index of its first line and one past its last.
+
+    `key_statements` is the same reading without that fallback, for a reader
+    that names a block it cannot split rather than reading around it
+    (`PL-J8ML`).
     """
     try:
-        spans = [(key.line, key.end) for key in keys(block)]
+        return key_statements(block)
     except Unread:
-        spans = []
+        return [(index, index + 1) for index, line in enumerate(block) if line.strip()]
+
+
+def key_statements(block: Sequence[str]) -> list[tuple[int, int]]:
+    """`statements` of a block `keys` can split: each key's value, and each comment between keys.
+
+    Raises `Unread` where `keys` does.
+    """
+    spans = [(key.line, key.end) for key in keys(block)]
     held = {index for first, end in spans for index in range(first, end)}
     alone = [(index, index + 1) for index, line in enumerate(block) if line.strip()]
     return sorted(spans + [span for span in alone if span[0] not in held])

@@ -12,7 +12,7 @@ from collections.abc import Callable, Iterator
 
 import pytest
 
-from docket.python import UNTOKENIZABLE, read_logical_lines, refusal
+from docket.python import UNTOKENIZABLE, places, read_logical_lines, refusal
 
 
 def test_an_error_token_is_a_refusal(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -56,3 +56,40 @@ def test_a_formatted_string_is_one_piece_cut_as_written() -> None:
         '"plain"',
     ]
     assert line.code == 'value = "" + ""'
+
+
+def test_a_statement_belongs_to_its_definition_and_a_decorator_to_the_one_it_decorates() -> None:
+    """`PL-W6ZD`: the definition the suppression fold counts each statement in.
+
+    A decorator of a stack, however many, belongs to the definition under it,
+    as `ast` holds it in that definition's node; a statement after a nested
+    definition closes belongs to the one around it again.
+    """
+    source = (
+        "import pytest\n"
+        "@pytest.mark.skip\n"
+        "@pytest.mark.parametrize('a', [1])\n"
+        "def test_a(a):\n"
+        "    assert a\n"
+        "class TestX:\n"
+        "    @staticmethod\n"
+        "    async def test_b():\n"
+        "        pytest.skip('b')\n"
+        "    pytestmark = pytest.mark.skip\n"
+        "after = 1\n"
+    )
+    lines = read_logical_lines(source)
+
+    assert places(lines) == (
+        "",
+        "test_a",
+        "test_a",
+        "test_a",
+        "test_a",
+        "TestX",
+        "TestX::test_b",
+        "TestX::test_b",
+        "TestX::test_b",
+        "TestX",
+        "",
+    )

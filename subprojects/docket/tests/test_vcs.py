@@ -493,6 +493,50 @@ def test_a_removal_no_statement_read_answered_leaves_its_path_outstanding(
     assert _superseded(HARNESS, BASE, (path,), ROOT, _removal_runner(path, base, ref)) == set()
 
 
+@pytest.mark.parametrize(
+    ("base", "ref", "superseded"),
+    [
+        ("## Allowed\n\nx\n\n## Refused\n\ny\n", "## Allowed\n\nx\n\ny\n", False),
+        ("## Allowed\n\n### On Sundays\n\nx\n", "## Allowed\n\nx\n", False),
+        ("Allowed\n---\n\nx\n\nRefused\n---\n\ny\n", "Allowed\n---\n\nx\n\ny\n", False),
+        ("- ## Allowed\n\n  x\n\n  ## Refused\n\n  y\n", "- ## Allowed\n\n  x\n\n  y\n", False),
+        ("## Allowed\n\nx\n\n## Refused\n\ny\n", "## Allowed\n\nx\n", True),
+        (
+            "## Allowed\n\nx\n\n## Unused\n\n## Refused\n\ny\n",
+            "## Allowed\n\nx\n\n## Refused\n\ny\n",
+            True,
+        ),
+    ],
+    ids=[
+        "a heading between two sections",
+        "a sub-heading",
+        "a setext heading",
+        "a heading a list item holds",
+        "a whole last section",
+        "a heading over no statement",
+    ],
+)
+def test_a_removed_heading_is_a_change_to_the_section_it_ended(
+    base: str, ref: str, superseded: bool
+) -> None:
+    """`PL-HLS1`: a statement is read under the headings whose sections hold it.
+
+    Every ref here only cuts lines. Cutting `## Refused` moves `y` into the
+    section above, a rule the base refused now allowed, and read without its
+    heading each statement the ref held was one the base held too, so the ref
+    read as holding nothing more and `stranded` dropped the edit. Cutting a
+    section whole, or a heading with nothing under it, moves nothing, and the
+    base still holds everything the ref holds.
+    """
+    path = "notes.md"
+    item = "---\nid: PL-0001\ntitle: On main\nstatus: ready\n---\n\n"
+
+    found = _superseded(HARNESS, BASE, (path,), ROOT, _removal_runner(path, base, ref))
+
+    assert found == ({path} if superseded else set())
+    assert _standing(item + base, item + ref) == ("behind" if superseded else "ahead")
+
+
 def test_tags_are_read_from_the_repository() -> None:
     read = tags(ROOT, runner=lambda args, root: "v0.1.0\nv0.2.0\n")
 
