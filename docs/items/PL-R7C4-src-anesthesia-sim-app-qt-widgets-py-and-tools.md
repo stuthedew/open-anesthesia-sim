@@ -13,6 +13,9 @@ verify: ! grep -qF 'inactive-component wording has never' src/anesthesia_sim/app
 
 **Problem.** src/anesthesia_sim/app/qt_widgets.py and tools/contrast_check.py say SC 1.4.11's inactive-component exception was never read at the source, but PL-JX0Z records the project owner supplying W3C's Understanding document for SC 1.4.11 on 2026-09-07; check whether that text carries the exception and correct both if it does
 
+The first sentence is in `src/anesthesia_sim/app/stylesheets.py` now; see
+"Moved, 2026-10-12" below.
+
 **Found 2026-10-06** while closing `PL-CLW5`, which dated both sentences'
 `w3.org` refusal (refused again at the CONNECT that day) and changed nothing
 else in them. `PL-JX0Z`'s 2026-09-07 answer quotes the Understanding

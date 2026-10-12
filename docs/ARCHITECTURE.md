@@ -840,7 +840,10 @@ in it, or a line left behind after a deletion, fails `make check`.
   values, and called where `setStyleSheet` is; a new colour is a token in
   `app/theme.py` first. Neither module imports the toolkit, and
   `tests/unit/test_stylesheets.py` holds every `setStyleSheet` call under
-  `app/` to passing a composer (`PL-Y4YX`).
+  `app/` to passing a composer (`PL-Y4YX`). A colour a widget paints from a
+  palette role - an entry's fill, a check box's indicator - is declared with
+  `qt_widgets.declare_interface_colours` instead, never a stylesheet
+  (`.claude/rules/ui-color.md`).
 - A new chart series, or a change to how one is drawn → what it *claims* in
   `app/chart_frame.py` and how pyqtgraph paints it in `app/qt_chart.py`, with
   a new *compartment* trace declared in `chart_frame.COMPARTMENT_TRACES`,

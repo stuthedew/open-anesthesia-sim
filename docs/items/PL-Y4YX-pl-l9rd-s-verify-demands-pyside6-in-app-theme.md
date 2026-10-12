@@ -164,9 +164,9 @@ became `agent_surface_stylesheet`, `agent_text_stylesheet` and
 selectors'. Three were added for what call sites had written out:
 `foreground_stylesheet(color)` for the eight single-colour sites, and
 `page_stylesheet` and `scroll_area_stylesheet` for the page. `NewCaseDialog`'s
-two buttons were already the outlined and filled strings byte for byte, and
-`run_view._panel` and the chart column were `panel_stylesheet` under another
-selector (`QFrame#` and `QWidget#` match the same named frame). All 32
+two buttons were already the outlined and filled strings byte for byte, as
+was the chart column's panel, and `run_view._panel` was `panel_stylesheet`
+under `QFrame#` (which matches the same named frame as `QWidget#`). All 32
 `setStyleSheet` calls pass a composer now (the design round's 34 counted two
 docstring mentions), and `tests/unit/test_stylesheets.py` holds that by
 walking `app/`, with the module's import measured in a fresh interpreter to
