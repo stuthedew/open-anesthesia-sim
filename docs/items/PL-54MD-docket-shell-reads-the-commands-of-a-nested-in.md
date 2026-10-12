@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_s
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by its own triage, 2026-10-12
 added: 2026-10-12
 closed: 2026-10-12
+pr: 1460
 payoff: a substitution a nested here-document's delimiter line closes inside an unquoted body is read as bash runs it - failed, cut short or run - so no reader of the shared lexer names a command bash never runs there
 verify: grep -q 'def test_a_substitution_bash_cuts_short_runs_what_bash_runs' subprojects/docket/tests/test_shell.py && grep -qF 'F) ; p x )' subprojects/docket/tests/test_shell.py
 reenters: PL-GJKN
