@@ -69,6 +69,7 @@ src/anesthesia_sim/
 │   ├── alveolar.py                # alveolar gas compartment
 │   ├── blood.py                   # venous blood compartment
 │   ├── tissue.py                  # one perfusion-limited tissue group
+│   ├── exponential_approach.py    # the first-order approach to a held input that blood.py and tissue.py advance their amount by: anchored at the amount held, bounded at the equilibrium, exact at zero flow
 │   ├── patient.py                 # PatientCompartments: VRG + muscle + fat + venous blood
 │   ├── governing_equations.py     # MODEL.md's balance equations as one system matrix
 │   ├── matrix_exponential.py      # exp(A dt) for a compartment system; no physiology in it
