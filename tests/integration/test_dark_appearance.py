@@ -41,7 +41,7 @@ declared role set and which this interface uses nowhere today.
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QColor, QImage, QPalette
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -53,6 +53,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QScrollArea,
+    QStyle,
+    QStyleOptionButton,
     QVBoxLayout,
     QWidget,
 )
@@ -197,17 +199,29 @@ def _undeclared(root: QWidget) -> list[str]:
     return reported
 
 
-def _colours(widget: QWidget, application: QApplication) -> list[str]:
-    """Every pixel of a rendered widget, as upper-case hex names."""
+def _colours(widget: QWidget, application: QApplication, area: QRect | None = None) -> list[str]:
+    """Every pixel of a rendered widget, or of `area` within it, as upper-case hex names."""
 
     application.processEvents()
-    image: QImage = widget.grab().toImage()
+    image: QImage = (widget.grab() if area is None else widget.grab(area)).toImage()
 
     return [
         image.pixelColor(x, y).name().upper()
         for y in range(image.height())
         for x in range(image.width())
     ]
+
+
+def _indicator(box: QCheckBox) -> QRect:
+    """Where `box`'s style draws its indicator, in the box's own coordinates."""
+
+    option = QStyleOptionButton()
+    box.initStyleOption(option)
+    indicator = box.style().subElementRect(QStyle.SubElement.SE_CheckBoxIndicator, option, box)
+
+    assert not indicator.isEmpty()
+
+    return indicator
 
 
 def _commonest(colours: list[str]) -> str:
@@ -454,15 +468,20 @@ def test_a_legend_checkbox_draws_its_indicator_in_the_theme(
     box.setChecked(drawn)
     dark_host.processEvents()
 
+    # The indicator's pixels alone. A bare box draws its label in the host's
+    # `WindowText`, the same white as PANEL, so wherever a glyph covers a whole
+    # pixel the label supplies the colour this looks for: 29 pixels of `bare`
+    # under Inter, 1 under DejaVu Sans, and none of them in the indicator
+    # (`PL-K9Z5`).
     assert box.palette().color(QPalette.ColorRole.Base).name().upper() == PANEL.upper()
-    assert PANEL.upper() in _colours(box, dark_host)
+    assert PANEL.upper() in _colours(box, dark_host, _indicator(box))
 
     # The vacuity guard: a box that declares nothing, in the same state.
     bare = _shown(QCheckBox("bare"), dark_host)
     bare.setChecked(drawn)
 
     assert bare.palette().color(QPalette.ColorRole.Base).name().upper() != PANEL.upper()
-    assert PANEL.upper() not in _colours(bare, dark_host)
+    assert PANEL.upper() not in _colours(bare, dark_host, _indicator(bare))
 
 
 # ------------------------------------------------------------- the selectors
