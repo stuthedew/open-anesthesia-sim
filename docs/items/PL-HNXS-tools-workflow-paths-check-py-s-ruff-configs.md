@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-03
 payoff: the linter-config check counts the configs the repository holds, so a subagent's nested checkout neither inflates its count nor fails make check
 verify: grep -q 'def test_ruff_configs_ignores_an_untracked_nested_checkout' tests/unit/test_workflow_paths_check.py
+recurrences: 2026-10-12 PL-9NZ3
 ---
 
 **Problem.** tools/workflow_paths_check.py's ruff_configs and tools/fixture_id_check.py walk the filesystem rather than git's tracked files, so a worktree-isolated subagent's checkout under .claude/worktrees/ fails make check (6 ruff configs found where 3 are tracked; malformed-id hits inside the agent's copy of docs/items), seen 2026-10-03 during PL-YZ17's review
