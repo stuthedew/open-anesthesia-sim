@@ -7360,6 +7360,38 @@ def _marker_opened_above(tmp_path: Path, kind: str) -> list[str]:
     return _split_marker_errors(_repo(tmp_path, model=model))
 
 
+#: A comment opened to set a paragraph and its marker aside, which the marker's
+#: own `-->` closes: `PL-7454`'s form.
+SET_ASIDE = "<!-- an old note, kept for the record:\n"
+#: What the citation check says of `tools/planned.py` once nothing marks it absent.
+UNMARKED_ABSENT = (
+    "README.md:6: cites `tools/planned.py`, which does not exist; a sentence naming it as "
+    "absent, planned, deleted or elsewhere says so under its paragraph: "
+    "<!-- absent: tools/planned.py -->"
+)
+
+
+def _marker_closing_a_comment(tmp_path: Path, kind: str) -> list[str]:
+    """Everything the check says of a marker set aside inside a comment its line closes."""
+    if kind == "absent":
+        readme = README + (
+            f"\nA `tools/planned.py` will do it.\n{SET_ASIDE}<!-- absent: tools/planned.py -->\n"
+        )
+        return _errors(_repo(tmp_path, readme=readme))
+    marker = MARKER.format("0.9") if kind == "provenance" else DERIVED.format("a figure", "0.9")
+    model = MODEL + f"\n{SET_ASIDE}The coefficient was 0.9.\n{marker}\n"
+    return _errors(_repo(tmp_path, model=model))
+
+
+def _split_marker_set_aside(tmp_path: Path) -> list[str]:
+    """A marker opened inside a comment and closed with it, which is the comment's."""
+    model = MODEL + (
+        f"\n{SET_ASIDE}The fraction was 0.5.\n<!-- provenance: data/agents/demo.json\n"
+        "blood_gas_partition_coefficient = 0.5 -->\n"
+    )
+    return _split_marker_errors(_repo(tmp_path, model=model))
+
+
 def _notes_claimed(tmp_path: Path, notes: str) -> dict[str, frozenset[str]]:
     """The ids `notes_by_version` reads from one release's notes, written as `notes`."""
     directory = tmp_path / "docs" / "releases"
@@ -7907,6 +7939,22 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda tmp_path: _marker_opened_above(tmp_path, "absent"),
         [SPLIT_MARKER_ERROR.format("README.md:7", "absent")],
     ),
+    # A marker line closing a comment opened above it is that comment's, and is
+    # read with it as nothing (`PL-7454`): held to its data file, it failed a
+    # correct document, and as `absent:` it was a claim about a hidden paragraph.
+    "markers, a marker closing a comment opened above it: provenance": (
+        lambda tmp_path: _marker_closing_a_comment(tmp_path, "provenance"),
+        [],
+    ),
+    "markers, a marker closing a comment opened above it: derived": (
+        lambda tmp_path: _marker_closing_a_comment(tmp_path, "derived"),
+        [],
+    ),
+    "markers, a marker closing a comment opened above it: absent": (
+        lambda tmp_path: _marker_closing_a_comment(tmp_path, "absent"),
+        [UNMARKED_ABSENT],
+    ),
+    "markers, a split marker inside a comment opened above it": (_split_marker_set_aside, []),
     # The Makefile (`PL-G2FY`), read through `_make_lines`: a recipe line keeps
     # the backslash-newline and loses the continuation's tab, any other line
     # becomes one, a comment included.
