@@ -6,7 +6,7 @@ it, and the interval held across drawn states as well. The compartments that
 call it are walked in `tests/unit/test_compartment_primitives.py`.
 """
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
 from math import exp, expm1, inf, log, ulp
 
 import pytest
@@ -22,9 +22,46 @@ FULL_APPROACH_TIME_CONSTANT_S = 1.0
 
 # The time constant the share-of-the-gap test steps against, and the step at
 # which the form switches anchor: ln 2 time constants, where `1 - exp(-dt/tau)`
-# is exactly a half.
+# is a half - exactly, on glibc 2.39 (measured 2026-10-12), and within an ulp
+# of it on any libm faithful to the last place, which is what is asserted.
 TIME_CONSTANT_S = 100.0
 SWITCH_STEP_S = log(2.0) * TIME_CONSTANT_S
+
+# States and step lengths, in time constants, the result is held against the
+# balance's solution taken to 40 digits. The first five are the states the
+# other tests use; the last two are where a form switching anchor at three
+# quarters of the gap, rather than a half, errs by 3.5 and 3.4 ulps at the two
+# longest of the step lengths named with them (searched 2026-10-12 over
+# 400,000 states of 1e-6 to 1,000 L): formed from the amount held there, its
+# term is three times its result. Nothing below a normal double: past about
+# 708 time constants the residual is subnormal and carries no precision.
+ACCURACY_STATES = (
+    pytest.param(0.0, 6.0, id="filling-from-empty"),
+    pytest.param(6.0, 0.0, id="washing-out-to-empty"),
+    pytest.param(6e-6, 6.0, id="filling-from-nearly-empty"),
+    pytest.param(6.0, 6e-6, id="washing-out-to-nearly-empty"),
+    pytest.param(1.98, 6.6000000000000005, id="vessel-rich-from-0.3"),
+    pytest.param(2.865236619137837, 1.0263801144272433e-06, id="searched-washout"),
+    pytest.param(199.0548618593574, 2.8869751106010743e-06, id="searched-muscle-washout"),
+)
+ACCURACY_LENGTHS_IN_TIME_CONSTANTS = (
+    0.01,
+    0.3,
+    0.5,
+    log(2.0),
+    0.75,
+    1.0,
+    1.3173995853597509,
+    1.343196842430155,
+    2.0,
+    5.0,
+    20.0,
+    40.0,
+)
+# Three ulps: the bound a form of four roundings owes under a libm faithful to
+# the last place, and two under one correctly rounded. Measured 2026-10-12 on
+# glibc 2.39, the worst case here is 1.6 ulps.
+ACCURACY_BOUND_ULPS = 3
 
 # Capacities two of the sevoflurane reference patient's tissue groups form, as
 # `TissueGroup.capacity_l` forms them, and fractions they can be loaded to from
@@ -91,26 +128,55 @@ def test_either_form_closes_the_textbook_share_of_the_gap(
     ((0.0, 6.0), (6.0, 0.0), (1.98, 6.6000000000000005), (6e-6, 6.0), (6.0, 6e-6)),
 )
 def test_the_two_forms_agree_where_the_anchor_switches(initial: float, equilibrium: float) -> None:
-    """At ln 2 time constants the gap closed is exactly a half, and the two forms agree.
+    """At ln 2 time constants the gap closed is a half, and the two forms agree.
 
     The switch is the arrangement's one free choice, placed where the term
-    each form adds is the same size, so that nothing jumps across it: the
-    form taken at the switch and the one taken past it agree to within an ulp
-    of the larger amount.
+    each form adds is the same size, so that nothing jumps across it: the two
+    forms agree there to within an ulp of the larger amount, and the result is
+    one of them. The half is asserted to within an ulp rather than exactly,
+    because exactly is a fact about one libm (`SWITCH_STEP_S`).
     """
 
     gap_closed = -expm1(-SWITCH_STEP_S / TIME_CONSTANT_S)
+    remaining = exp(-SWITCH_STEP_S / TIME_CONSTANT_S)
 
-    assert gap_closed == HALF_THE_GAP
-    assert exp(-SWITCH_STEP_S / TIME_CONSTANT_S) == HALF_THE_GAP
+    assert abs(gap_closed - HALF_THE_GAP) <= ulp(HALF_THE_GAP)
+    assert abs(remaining - HALF_THE_GAP) <= ulp(HALF_THE_GAP)
 
     from_the_amount = initial + (equilibrium - initial) * gap_closed
-    from_the_equilibrium = equilibrium + (initial - equilibrium) * HALF_THE_GAP
+    from_the_equilibrium = equilibrium + (initial - equilibrium) * remaining
+    approached = exponential_approach(initial, equilibrium, SWITCH_STEP_S, TIME_CONSTANT_S)
 
-    assert exponential_approach(initial, equilibrium, SWITCH_STEP_S, TIME_CONSTANT_S) == (
-        from_the_amount
-    )
+    assert approached in (from_the_amount, from_the_equilibrium)
     assert abs(from_the_amount - from_the_equilibrium) <= ulp(max(initial, equilibrium))
+
+
+@pytest.mark.parametrize("length_in_time_constants", ACCURACY_LENGTHS_IN_TIME_CONSTANTS)
+@pytest.mark.parametrize(("initial", "equilibrium"), ACCURACY_STATES)
+def test_the_result_is_within_three_ulps_of_the_balance_solution(
+    initial: float, equilibrium: float, length_in_time_constants: float
+) -> None:
+    """Against the balance's solution taken to 40 digits, at every state and length named above.
+
+    The four properties pinned above are exact facts at special points; this
+    is the accuracy everywhere between them, which the switch at a half is
+    what buys: a form switching at three quarters errs by 3.5 ulps at the
+    searched states, carrying a term three times its result. The bound admits
+    a switch anywhere up to a half, each of which is within it.
+    """
+
+    getcontext().prec = 40
+    step_s = length_in_time_constants
+    time_constant_s = 1.0
+    reference = (
+        Decimal(equilibrium) + (Decimal(initial) - Decimal(equilibrium)) * (-Decimal(step_s)).exp()
+    )
+
+    approached = exponential_approach(initial, equilibrium, step_s, time_constant_s)
+
+    assert abs(Decimal(approached) - reference) <= ACCURACY_BOUND_ULPS * Decimal(
+        ulp(float(reference))
+    )
 
 
 @pytest.mark.parametrize(("capacity_l", "loaded_fraction"), OVERSHOOTING_STATES)

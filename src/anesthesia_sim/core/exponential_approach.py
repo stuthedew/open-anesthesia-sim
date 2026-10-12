@@ -55,9 +55,10 @@ the subtraction can round exactly half an ulp of `M_eq` high, and the sum then
 rounds to the even neighbour, one ulp past the equilibrium. The sevoflurane
 reference patient's vessel-rich group has a capacity of `6.0 * 1.1`, which is
 6.6000000000000005 L, and from 9.6% of the fractions below a half it could be
-loaded to, a full approach so formed lands an ulp over that capacity; its 79.2
-L muscle group does from 1.6% (200,000 fractions drawn uniformly each,
-measured 2026-10-12). An ulp over capacity is a write
+loaded to, a full approach so formed lands an ulp over that capacity, and an
+ulp under it from 9.6% more; its 79.2 L muscle group does from 1.6% and 1.5%
+(200,000 fractions drawn uniformly each, measured 2026-10-12). An ulp over
+capacity is a write
 `TissueGroup.__setattr__` refuses, so a closed form so written and driven all
 the way to a fraction of one raised on its way in. Formed from the
 equilibrium, a full approach is `M_eq + (M(t) - M_eq) * 0.0` where
@@ -72,7 +73,10 @@ the 6 L; thirty leave 5.6e-13 L, carried to 2.3e-4 of itself; from 37.43 time
 constants `g` rounds to 1.0 and the sum is exactly 0.0, where forty leave
 2.5e-17 L. Formed from the equilibrium, the residual is the product `(M(t) -
 M_eq) exp(-dt/tau)`, within 7.5e-17 of itself at every one of those lengths
-(measured 2026-10-12 against a 40-digit reference). `docs/MODEL.md`'s
+and within 2e-16 at any length whose residual is a normal double, up to about
+708 time constants (measured 2026-10-12 against a 40-digit reference).
+`tests/unit/test_exponential_approach.py` holds the result to three ulps of
+that reference between the special points as well. `docs/MODEL.md`'s
 balances have no step at which a perfused compartment is exactly empty, and
 the closed form reports none.
 
