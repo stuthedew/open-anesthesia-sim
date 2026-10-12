@@ -3,12 +3,14 @@ id: PL-3YRT
 title: .claude/rules/apparatus-standard.md's paths: match none of the 35 apparatus tests under tests/unit/, so the apparatus test bar its section on tests states never loads when a session opens one
 priority: P3
 effort: M
-status: needs-decision
+status: ready
 classes: docs, infra
 feature: apparatus-test-bar
-touches: .claude/rules/apparatus-standard.md
+touches: .claude/rules/apparatus-standard.md, .claude/rules/where-new-code-goes.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-28 triage pass
 added: 2026-09-27
+payoff: a session editing an apparatus test under tests/unit/ is told which bar it is held to, instead of applying the simulator's by default
+verify: grep -qF 'apparatus-standard.md' .claude/rules/where-new-code-goes.md
 ---
 
 **Problem.** .claude/rules/apparatus-standard.md's paths: match none of the 35 apparatus tests under tests/unit/, so the apparatus test bar its section on tests states never loads when a session opens one
@@ -53,10 +55,39 @@ carrier of it. Not `tools/tests/`: `tools/` is held to the 3.11 floor and these
 tests run under 3.14. It moves 35 files and changes what `make check` and CI
 collect, so it is a refactor to weigh, not a session's call alone.
 
-**Done when.** Opening any apparatus test loads
-`.claude/rules/apparatus-standard.md`, by whichever route, and the rule selects
-them without listing them.
+**Done when.** Opening any test under `tests/` loads a rule that says which
+bar it is held to - by the import rule `tools/workflow_paths_check.py` and
+`docket.arming` apply, not by a list - and points the apparatus side at
+`.claude/rules/apparatus-standard.md` § "What a test on this side is for"; and
+that section says it reaches `tests/unit/` by that pointer.
 
 **Generator check.** An instance of `PL-G424`'s fact (a scope carrier restating
 the apparatus set): the gap `PL-21RC` names for `docs/maintainer.md`, one set of
 files later. `PL-8ZGY` records it as related, not a member.
+
+**Decided** (2026-10-12, in the first batched design round, a session's call):
+no move; one pointer where the tests already load a rule. Counted against
+`origin/main` at 919ad967: 42 test files under `tests/unit/` import no
+`anesthesia_sim` (the 35 above was the count on 2026-09-27), and 74 open items
+cite at least one of them, 80 citations in all. A move would turn every one of
+those into a path `tools/doc_check.py`'s `check_citations` holds a live brief
+to, so the moving pull request would carry 74 brief repairs beside
+`docket.toml`, `tools/workflow_paths_check.py`, `arming.py`'s test rule and the
+`Makefile` - for a `P3` gap whose failure direction is the safe one. That
+number refutes the recommendation above, under
+`.claude/rules/expert-review.md` § "Count what undoing it would cost, before
+taking the cheaper route".
+
+The cheapest carrier that loads for these files already exists:
+`.claude/rules/where-new-code-goes.md` has `/tests/**` in its `paths:` and is,
+by its own design, a file of pointers. One paragraph there says that which bar
+a test under `tests/` is held to is the import rule
+`tools/workflow_paths_check.py` and `docket.arming` already apply - importing
+`anesthesia_sim`, the simulator's standard in `CLAUDE.md`; importing none of
+it, `.claude/rules/apparatus-standard.md` § "What a test on this side is for",
+which does not load on this path by itself - and restates neither bar.
+`apparatus-standard.md`'s section then says it reaches `tests/unit/` by that
+pointer rather than by its own `paths:`. No fifth carrier of the set, no file
+moves, and the rule the section states finally loads where it is needed. It
+repairs a rule that never loads for the files it governs - a defect in what
+exists - so the pause on new workflow mechanisms does not hold it.
