@@ -238,15 +238,14 @@ set it when the session opens rather than toggling it.
 `tests/` outside `subprojects/` but for a test of the tooling (below),
 `docs/MODEL.md`, `src/anesthesia_sim/data/` or `README.md` - the paths where a
 wrong clinical value could reach the screen
-- or `.github/workflows/`, `.claude/hooks/` and
-`subprojects/docket/src/docket/arming.py`, which decide what merges and what
-is tagged and could loosen the rule (the Projects trial's instructions,
-2026-10-03, kind unrecorded, over holding every path outside `docs/items/`,
-`docs/pr-bodies/` and `subprojects/docket/`; the workflows and hooks project
-owner, 2026-10-03, ratified, over leaving them armed on green; built by
-`PL-KKHD`), and `subprojects/docket/src/docket/shell.py`, the lexer every
-guard hook reads a Bash call through since `PL-JNYL`, which records your
-answer. A session leaves a held pull
+- or `subprojects/docket/src/docket/arming.py`, which decides what merges and
+could loosen the rule (the Projects trial's instructions, 2026-10-03, kind
+unrecorded, over holding every path outside `docs/items/`, `docs/pr-bodies/`
+and `subprojects/docket/`; built by `PL-KKHD`). A workflow item needs no merge
+confirmation from you (project owner, 2026-10-12, `PL-KPM2`), so a change to
+`.github/workflows/`, `.claude/hooks/` or docket's lexer arms on green beside
+the rest of the workflow lane, where those had waited on your read since
+2026-10-03 and 2026-10-10. A session leaves a held pull
 request unarmed, asks for the read with the plain-language summary `arm`
 prints under the hold (`PL-8XQS`), and merges it on your word alone - "Merge
 it" - by the route § "Bring a stale base in when you merge, with Update
@@ -270,7 +269,8 @@ so (project owner, 2026-10-03, ratified, over holding them as before,
 `PL-KKHD`). `.github/workflows/` and `.claude/hooks/` joined the list, since
 `update-armed.yml`, `tag-release.yml` and `direct-merge-guard.sh` decide
 merges and tags as `arming.py` does, at about one read a day lately (project
-owner, 2026-10-03, ratified, over leaving them armed on green, `PL-KKHD`).
+owner, 2026-10-03, ratified, over leaving them armed on green, `PL-KKHD`), and
+left it on your rule of 2026-10-12 above.
 
 One answer of 2026-10-05. A test of the tooling under `tests/` - a file pytest
 collects that imports no `anesthesia_sim` - arms on green, as
