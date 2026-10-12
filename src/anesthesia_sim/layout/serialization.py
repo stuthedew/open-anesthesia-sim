@@ -28,15 +28,27 @@ naming the invariant and where it broke - `windows[0].tree.children[1]` - and
 nothing is repaired, rescaled or dropped. It is strict throughout, because
 nothing this code writes needs leniency and anything else deserves a person's
 reading: a key the schema does not have, a key given twice, `NaN` or
-`Infinity`, a fraction where a whole number belongs or the reverse, and `true`
-where a number belongs are each refused by name. **A View kind no View is
-registered under is not among them**: a tag of the right syntax loads, and is
-the registry's to report in its own Area (`LayoutModel.unknown_kinds`).
+`Infinity`, a fraction where a whole number belongs or the reverse, `true`
+where a number belongs, and a tree nested deeper than `TREE_DEPTH_MAXIMUM` are
+each refused by name. **A View kind no View is registered under is not among
+them**: a tag of the right syntax loads, and is the registry's to report in
+its own Area (`LayoutModel.unknown_kinds`).
+
+**The parse refuses nothing of its own.** A key given twice, `NaN` or
+`Infinity`, and a whole number longer than Python is set to read are kept
+where they stand and refused once the version has been read. A parse hook
+that refused one would be called with no idea where it stood, so its refusal
+could not name the place, and it would refuse a newer document as invalid
+before that document's version was read.
 
 **Versions.** `LAYOUT_SCHEMA_VERSION` is 1, the only version there has been. A
-document from a newer build raises `UnsupportedSchemaVersion` before anything
-else in it is read, since its body is free to follow rules this build does not
-know; one claiming a version below 1 is a format error. When the version first
+document from a newer build raises `UnsupportedSchemaVersion` whatever else it
+holds: no rule of this build's is applied to anything in it but its
+`schema_version`, since its body is free to follow rules this build does not
+know. One claiming a version below 1 is a format error, and so is text no
+version can be read from - text that is not JSON, or JSON nested past what the
+parser's stack holds, which on Python 3.14 with an 8 MB stack was measured
+between 50,000 and 100,000 levels on 2026-10-12. When the version first
 rises, `PL-SSQW` Q5 puts the step that reads the old one in
 `layout/migrations.py`, in the same change.
 """
@@ -44,6 +56,7 @@ rises, `PL-SSQW` Q5 puts the step that reads the old one in
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from typing import Final
 
 from anesthesia_sim.core.checked_number import shown
@@ -53,7 +66,16 @@ from anesthesia_sim.layout.exceptions import (
     UnsupportedSchemaVersion,
 )
 from anesthesia_sim.layout.model import LayoutModel
-from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, Window
+from anesthesia_sim.layout.tree import (
+    TREE_DEPTH_MAXIMUM,
+    Area,
+    AreaId,
+    Node,
+    Orientation,
+    Split,
+    ViewKind,
+    Window,
+)
 
 __all__ = [
     "LAYOUT_SCHEMA_VERSION",
@@ -70,6 +92,30 @@ LAYOUT_SCHEMA_VERSION: Final = 1
 
 # How far each level of a written document is indented.
 _INDENT: Final = 2
+
+
+@dataclass(frozen=True, slots=True)
+class _NonFinite:
+    """`NaN`, `Infinity` or `-Infinity` as written: kept by the parse, refused where it stands."""
+
+    written: str
+
+
+@dataclass(frozen=True, slots=True)
+class _LongInteger:
+    """A whole number longer than Python is set to read, kept by the parse as its digit count."""
+
+    digits: int
+
+
+class _RepeatedKeys(dict[str, object]):
+    """An object that gives a key more than once, kept by the parse with the keys it repeated."""
+
+    __slots__ = ("repeated",)
+
+    def __init__(self, read: dict[str, object], repeated: tuple[str, ...]) -> None:
+        super().__init__(read)
+        self.repeated = repeated
 
 
 def layout_to_dict(model: LayoutModel) -> dict[str, object]:
@@ -104,28 +150,42 @@ def layout_from_dict(body: object) -> LayoutModel:
     """Read a layout's body, as `layout_to_dict` writes it.
 
     Raises:
-        LayoutFormatError: the body does not describe a valid layout; the
-            message names the invariant and where in the body it broke.
+        LayoutFormatError: the body does not describe a valid layout - a tree
+            nested deeper than `TREE_DEPTH_MAXIMUM` among the ways it can
+            fail - and the message names the invariant and where in the body
+            it broke.
     """
 
     try:
         return _read_layout(body)
     except RecursionError:
+        # A backstop. The reader goes no deeper than the depth maximum, three
+        # frames a level, so only a caller that has left it less stack than
+        # that reaches this.
         raise LayoutFormatError(
-            "the layout is nested more deeply than can be read, which no layout a screen "
-            "shows comes near"
+            f"the layout: the stack ran out while it was being read, though no tree is read "
+            f"deeper than {TREE_DEPTH_MAXIMUM} splits: its caller left too little of it"
         ) from None
 
 
 def layout_from_json(text: str) -> LayoutModel:
     """Read a document holding one layout, as `layout_to_json` writes it.
 
+    The text is parsed once, by hooks that refuse nothing, and its
+    `schema_version` is read before any other rule of this build's is applied
+    to it. Only then are a key given twice, `NaN` or `Infinity`, and a whole
+    number too long to read refused where they stand, and the body read.
+
     Raises:
         TypeError: `text` is not a `str`.
-        UnsupportedSchemaVersion: a newer build wrote the document. Nothing
-            past its `schema_version` is read.
-        LayoutFormatError: the text is not JSON, or does not describe a valid
-            layout; the message names the invariant and where it broke.
+        UnsupportedSchemaVersion: a newer build wrote the document. Nothing in
+            it but its `schema_version` is held to this build's rules, so it is
+            reported as newer whatever its other fields hold.
+        LayoutFormatError: the text is not JSON, or is JSON nested past what
+            the parser's stack holds, so no version can be read from it; its
+            `schema_version` is missing, given twice, or not a whole number
+            from 1; or it does not describe a valid layout. The message names
+            the invariant and where it broke.
     """
 
     if not isinstance(text, str):
@@ -133,7 +193,7 @@ def layout_from_json(text: str) -> LayoutModel:
 
     try:
         document = json.loads(
-            text, object_pairs_hook=_object_without_repeats, parse_constant=_refuse_constant
+            text, object_pairs_hook=_object, parse_constant=_NonFinite, parse_int=_whole_number
         )
     except RecursionError:
         raise LayoutFormatError("the document is nested more deeply than can be read") from None
@@ -145,15 +205,7 @@ def layout_from_json(text: str) -> LayoutModel:
             f"the document: a layout document is an object, not {_json_kind(document)}"
         )
 
-    if "schema_version" not in document:
-        raise LayoutFormatError("the document: is missing 'schema_version'")
-
-    version = document["schema_version"]
-
-    if isinstance(version, bool) or not isinstance(version, int):
-        raise LayoutFormatError(
-            f"schema_version: a schema version is a whole number, not {_json_kind(version)}"
-        )
+    version = _read_version(document)
 
     if version > LAYOUT_SCHEMA_VERSION:
         raise UnsupportedSchemaVersion(version, LAYOUT_SCHEMA_VERSION)
@@ -162,6 +214,8 @@ def layout_from_json(text: str) -> LayoutModel:
         raise LayoutFormatError(
             f"schema_version: a schema version counts from 1, not {shown(version)}"
         )
+
+    _refuse_kept(document)
 
     return layout_from_dict(
         {key: value for key, value in document.items() if key != "schema_version"}
@@ -200,10 +254,17 @@ def _read_layout(body: object) -> LayoutModel:
 def _read_window(value: object, where: str) -> Window:
     fields = _fields(value, where, "a window", ("tree",))
 
-    return Window(_read_node(fields["tree"], f"{where}.tree"))
+    return Window(_read_node(fields["tree"], f"{where}.tree", 0))
 
 
-def _read_node(value: object, where: str) -> Node:
+def _read_node(value: object, where: str, enclosing: int) -> Node:
+    """The node at `where`, which `enclosing` splits hold.
+
+    A split past `TREE_DEPTH_MAXIMUM` is refused before its children are read,
+    so the reader recurses no deeper than the maximum, however deep the
+    document goes.
+    """
+
     if not isinstance(value, dict):
         raise LayoutFormatError(
             f"{where}: a node is an object naming an Area or a split, not {_json_kind(value)}"
@@ -229,9 +290,16 @@ def _read_node(value: object, where: str) -> Node:
         return Area(_read_area_id(fields["area"], f"{where}.area"), kind)
 
     if "split" in value:
+        if enclosing >= TREE_DEPTH_MAXIMUM:
+            raise LayoutFormatError(
+                f"{where}: the tree is nested more deeply than can be read: this split sits "
+                f"{enclosing + 1} deep, and a split sits at most {TREE_DEPTH_MAXIMUM} deep in a "
+                "window's tree"
+            )
+
         fields = _fields(value, where, "a split", ("split", "sizes", "children"))
 
-        return _read_split(fields, where)
+        return _read_split(fields, where, enclosing + 1)
 
     raise LayoutFormatError(
         f'{where}: a node names an Area with "area" or a split with "split", and this one '
@@ -239,7 +307,9 @@ def _read_node(value: object, where: str) -> Node:
     )
 
 
-def _read_split(fields: dict[str, object], where: str) -> Split:
+def _read_split(fields: dict[str, object], where: str, depth: int) -> Split:
+    """The split at `where`, which sits `depth` deep: its children are held by that many."""
+
     orientation = fields["split"]
     sizes = fields["sizes"]
     children = fields["children"]
@@ -267,7 +337,8 @@ def _read_split(fields: dict[str, object], where: str) -> Split:
         )
 
     read = tuple(
-        _read_node(child, f"{where}.children[{index}]") for index, child in enumerate(children)
+        _read_node(child, f"{where}.children[{index}]", depth)
+        for index, child in enumerate(children)
     )
 
     try:
@@ -307,25 +378,125 @@ def _fields(value: object, where: str, noun: str, keys: tuple[str, ...]) -> dict
     return dict(value)
 
 
-def _object_without_repeats(pairs: list[tuple[str, object]]) -> dict[str, object]:
-    """An object's pairs as a dict, refusing a key given twice rather than keeping the last."""
+def _object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """An object's pairs as a dict, noting a key given twice rather than keeping the last silently.
 
-    read: dict[str, object] = {}
+    Which of two values was meant cannot be known, so the key is refused, but
+    where the object stands rather than here, where it is not known.
+    """
 
-    for key, value in pairs:
-        if key in read:
+    read = dict(pairs)
+
+    if len(read) == len(pairs):
+        return read
+
+    seen: set[str] = set()
+    repeated: list[str] = []
+
+    for key, _ in pairs:
+        if key in seen and key not in repeated:
+            repeated.append(key)
+
+        seen.add(key)
+
+    return _RepeatedKeys(read, tuple(repeated))
+
+
+def _whole_number(digits: str) -> int | _LongInteger:
+    """A JSON integer as Python reads it, or how long it is when that is longer than Python reads.
+
+    Python refuses to convert a decimal string of more than
+    `sys.get_int_max_str_digits()` digits, a guard against a conversion whose
+    cost grows with the square of the length, and its refusal names no place;
+    the length is kept instead and refused where the number stands.
+    """
+
+    try:
+        return int(digits)
+    except ValueError:
+        return _LongInteger(len(digits.lstrip("-")))
+
+
+def _read_version(document: dict[str, object]) -> int:
+    """The document's `schema_version`, read before any other rule of this build's applies.
+
+    Raises:
+        LayoutFormatError: `schema_version` is missing, given twice, or not a
+            whole number this build can read; the message names the value.
+    """
+
+    if isinstance(document, _RepeatedKeys) and "schema_version" in document.repeated:
+        raise LayoutFormatError(
+            "the document: the key 'schema_version' is given twice, so which version wrote it "
+            "cannot be known"
+        )
+
+    if "schema_version" not in document:
+        raise LayoutFormatError("the document: is missing 'schema_version'")
+
+    version = document["schema_version"]
+
+    if isinstance(version, _LongInteger):
+        raise LayoutFormatError(
+            f"schema_version: {_json_value(version)} is longer than this build reads, so which "
+            "version wrote the document cannot be known"
+        )
+
+    if isinstance(version, bool) or not isinstance(version, int):
+        raise LayoutFormatError(
+            f"schema_version: a schema version is a whole number, not {_json_value(version)}"
+        )
+
+    return version
+
+
+def _refuse_kept(document: dict[str, object]) -> None:
+    """Refuse the first value the parse kept rather than refused, naming where it stands.
+
+    Walked in reading order with a list rather than by recursion, so a
+    document nested as deep as the parser reads is walked without a
+    `RecursionError`.
+
+    Raises:
+        LayoutFormatError: an object gives a key twice, a number is `NaN` or
+            `Infinity`, or a whole number is longer than this build reads.
+    """
+
+    pending: list[tuple[str, object]] = [("", document)]
+
+    while pending:
+        where, value = pending.pop()
+
+        if isinstance(value, _RepeatedKeys):
             raise LayoutFormatError(
-                f"the key {key!r} is given twice in one object, so which value was meant "
-                "cannot be known"
+                f"{where or 'the document'}: the key {value.repeated[0]!r} is given twice, so "
+                "which value was meant cannot be known"
             )
 
-        read[key] = value
+        if isinstance(value, _NonFinite):
+            raise LayoutFormatError(f"{where}: {value.written} is not a number a layout holds")
 
-    return read
+        if isinstance(value, _LongInteger):
+            raise LayoutFormatError(
+                f"{where}: {_json_value(value)} is longer than this build reads, so the "
+                "document is not JSON this build can read"
+            )
+
+        if isinstance(value, dict):
+            pending.extend(reversed([(_member(where, key), item) for key, item in value.items()]))
+        elif isinstance(value, list):
+            pending.extend(
+                reversed([(f"{where}[{index}]", item) for index, item in enumerate(value)])
+            )
 
 
-def _refuse_constant(name: str) -> object:
-    raise LayoutFormatError(f"{name} is not a number a layout holds")
+def _member(where: str, key: str) -> str:
+    """Where `key`'s value stands in the object at `where`, as a refusal names the place."""
+
+    if not key.isidentifier():
+        return f"{where}[{key!r}]"
+
+    return f"{where}.{key}" if where else key
 
 
 def _json_kind(value: object) -> str:
@@ -337,7 +508,7 @@ def _json_kind(value: object) -> str:
     if isinstance(value, bool):
         return "true or false"
 
-    if isinstance(value, int | float):
+    if isinstance(value, int | float | _NonFinite | _LongInteger):
         return "a number"
 
     if isinstance(value, str):
@@ -360,5 +531,11 @@ def _json_value(value: object) -> str:
 
     if isinstance(value, int | float | str):
         return shown(value)
+
+    if isinstance(value, _NonFinite):
+        return value.written
+
+    if isinstance(value, _LongInteger):
+        return f"a whole number of {value.digits:,} digits"
 
     return _json_kind(value)

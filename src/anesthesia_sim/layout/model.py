@@ -51,6 +51,7 @@ from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.layout.exceptions import InvalidLayout, LayoutRefused, NotInLayout
 from anesthesia_sim.layout.tree import (
     AREA_ID_MAXIMUM,
+    TREE_DEPTH_MAXIMUM,
     Area,
     AreaId,
     Node,
@@ -119,9 +120,9 @@ class _Segment:
 
     A row's handles are vertical lines and a column's horizontal ones, so
     `across` is a row handle's x and a column handle's y, and `start` and
-    `end` run along the line. `low` and `high` are the outer edges of the two
-    children the handle divides, which bound where it can move, and `extent`
-    is its split's length along the split's axis.
+    `end` run along the line. `low` and `high` are where the handle's split
+    begins and ends along its own axis, which `resize()` lays its children
+    out between.
     """
 
     orientation: Orientation
@@ -130,7 +131,6 @@ class _Segment:
     end: float
     low: float
     high: float
-    extent: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,8 +139,10 @@ class LayoutModel:
 
     Raises:
         TypeError: a field is not of its declared type.
-        InvalidLayout: the layout has no window; two Areas share an id; or
-            `next_area_id` is not above every id in use.
+        InvalidLayout: the layout has no window; a window's tree holds a split
+            deeper than `TREE_DEPTH_MAXIMUM`, which the message names with its
+            path; two Areas share an id; or `next_area_id` is not above every
+            id in use.
     """
 
     windows: tuple[Window, ...]
@@ -161,6 +163,18 @@ class LayoutModel:
 
         if not self.windows:
             raise InvalidLayout("a layout holds at least one window, the main window")
+
+        # Before anything below recurses through a tree, which one too deep
+        # would end in a `RecursionError` rather than in this refusal.
+        for index, window in enumerate(self.windows):
+            too_deep = _split_past_depth_maximum(window.tree)
+
+            if too_deep is not None:
+                raise InvalidLayout(
+                    f"window {index}'s tree holds a split {len(too_deep) + 1} deep, at path "
+                    f"{too_deep}, and a split sits at most {TREE_DEPTH_MAXIMUM} deep in a "
+                    "window's tree"
+                )
 
         allocated: set[AreaId] = set()
 
@@ -183,7 +197,11 @@ class LayoutModel:
 
     @classmethod
     def single_area(cls, view: ViewKind) -> LayoutModel:
-        """A layout of one window holding one Area, id 1, showing `view`."""
+        """A layout of one window holding one Area, id 1, showing `view`.
+
+        Raises:
+            TypeError: `view` was not built as a `ViewKind`.
+        """
 
         _require_view_kind(view)
 
@@ -226,9 +244,11 @@ class LayoutModel:
         `handle` and connected to it end to end, found by following them from
         one to the next as Blender's `screen_geom_select_connected_edge` does
         (`source/blender/editors/screen/screen_geometry.cc`, `blender/blender`
-        `main`, read 2026-10-12), so a drag moves them together. The result
-        includes `handle` and is ordered along the line, top to bottom or left
-        to right.
+        `main`, read 2026-10-12), so a drag moves them together. Each handle
+        is compared with the one that reached it rather than with `handle`,
+        so the border is the same set whichever of its handles it is asked
+        from. The result includes `handle` and is ordered along the line, top
+        to bottom or left to right.
 
         **It stops at the window's edge**, because each window has its own
         tree, and two windows' borders can be collinear on a screen and still
@@ -263,15 +283,20 @@ class LayoutModel:
         the new Area start from a copy of the source's state. Splitting an
         Area along the axis its split already divides adds a child to that
         split rather than nesting another, which is the one form a tree takes
-        (`layout/tree.py`).
+        (`layout/tree.py`); that split's sizes are rescaled to sum to one
+        first (`_summing_to_one`).
 
         Raises:
             TypeError: an argument is not of its declared type; `at` is not a
                 `float`.
             NotInLayout: no Area of this layout holds `area_id`.
             LayoutRefused: `at` does not lie strictly between 0 and 1, or is
-                so close to one end that a part would have no size; or this
-                layout has allocated the last id, `AREA_ID_MAXIMUM`.
+                so close to one end that a part would have no size; the cut
+                would nest a split deeper than `TREE_DEPTH_MAXIMUM`, which a
+                cut along the axis of the split holding the Area never does,
+                since it adds a child rather than a level; or `next_area_id`
+                has reached `AREA_ID_MAXIMUM`, which it cannot pass while it
+                stays above every id in use, so no id is left to hand out.
         """
 
         if not isinstance(orientation, Orientation):
@@ -290,8 +315,9 @@ class LayoutModel:
 
         if self.next_area_id == AREA_ID_MAXIMUM:
             raise LayoutRefused(
-                f"this layout cannot make another Area: its ids have reached {AREA_ID_MAXIMUM}, "
-                "the largest an Area id can be"
+                f"this layout cannot make another Area: the next id it would hand out, "
+                f"{self.next_area_id}, is the largest an Area id can be, and its counter, which "
+                "stays above every id in use, cannot pass it"
             )
 
         added = Area(self.next_area_id, source.view)
@@ -301,8 +327,9 @@ class LayoutModel:
 
         if parent is not None and isinstance(holder, Split) and holder.orientation is orientation:
             position = place.path[-1]
-            kept = holder.sizes[position] * at
-            given = holder.sizes[position] - kept
+            sizes = _summing_to_one(holder.sizes)
+            kept = sizes[position] * at
+            given = sizes[position] - kept
 
             if kept <= 0 or given <= 0:
                 raise LayoutRefused(
@@ -311,11 +338,21 @@ class LayoutModel:
 
             divided = Split(
                 orientation,
-                holder.sizes[:position] + (kept, given) + holder.sizes[position + 1 :],
+                sizes[:position] + (kept, given) + sizes[position + 1 :],
                 holder.children[:position] + (source, added) + holder.children[position + 1 :],
             )
             tree = _replaced(tree, parent.path, divided)
         else:
+            # The cut nests a split where the Area was, one level below the
+            # splits already above it.
+            depth = len(place.path) + 1
+
+            if depth > TREE_DEPTH_MAXIMUM:
+                raise LayoutRefused(
+                    f"a {orientation.value} split of Area {area_id} would sit {depth} deep, and "
+                    f"a split sits at most {TREE_DEPTH_MAXIMUM} deep in a window's tree"
+                )
+
             tree = _replaced(tree, place.path, Split(orientation, (at, 1 - at), (source, added)))
 
         return (
@@ -329,7 +366,8 @@ class LayoutModel:
         `keep` keeps its View; `remove` and its View leave the layout, and its
         id is not handed out again. Two Areas join only where they sit next to each other in one
         split, so the result is a rectangle the tree can hold; where the split
-        is left with one child it gives way to that child.
+        is left with one child it gives way to that child. The split's sizes
+        are rescaled to sum to one first (`_summing_to_one`).
 
         Raises:
             TypeError: an argument was not built as an `AreaId`.
@@ -368,7 +406,7 @@ class LayoutModel:
         holder = _split_at(tree, parent.path)
         keeping = kept.path[-1]
         removing = removed.path[-1]
-        sizes = list(holder.sizes)
+        sizes = list(_summing_to_one(holder.sizes))
         children = list(holder.children)
         sizes[keeping] += sizes[removing]
         del sizes[removing]
@@ -389,52 +427,63 @@ class LayoutModel:
 
         `position` is a fraction of the window: an x for a row's border and a y
         for a column's. Each handle moved changes only the two children it
-        divides, so every other Area keeps its size, which is how a border drag
-        behaves in Blender.
+        divides, so every Area outside them keeps its size, as a border drag
+        in Blender does. A split a handle moves is rescaled to sum to one first
+        (`_summing_to_one`), which changes nothing where its sizes already do;
+        a handle already at `position` is left exactly as it is, so a drag to
+        where a border lies returns an equal layout.
+
+        **Inside the two children it differs from Blender**, the second
+        difference beside the one `borders()` names. Each child keeps its own
+        proportions, so a border nested in one moves with it: in
+        `row[1, column[row[2, 4], 3]]`, dragging the root border from 0.5 to
+        0.25 widens Area 4 from 0.25 to 0.375 of the window and moves the
+        border between Areas 2 and 4, which lies on no moved line. Blender's
+        `area_move_apply_do` (`source/blender/editors/screen/screen_ops.cc`,
+        `blender/blender` `main`, read 2026-10-12) moves only the vertices
+        flagged on the dragged line, so a nested border keeps its place there.
+        Which a reader should get is `PL-5HSG`'s decision.
 
         Raises:
             TypeError: `handle` is not a `Handle`, or `position` not a `float`.
             NotInLayout: `handle` is not a border of this layout.
-            LayoutRefused: `position` would leave a child of one of the moved
-                handles with no size - it lies at or past a neighbouring border
-                or the edge of the split - or is not finite. `PL-K285` adds
-                minimum sizes, which clamp a drag before it gets here.
+            LayoutRefused: `position` is not finite, or would leave a child of
+                a moved handle with no size: it lies at or past a neighbouring
+                border or the edge of the split, or two handles of one split
+                lie on the line, and moving both to one place leaves the
+                children between them none. `PL-K285` adds minimum sizes,
+                which clamp a drag before it gets here.
         """
 
         _require_float("position", position)
 
         segments = self._segments_of(handle)
         tree = self.windows[handle.window].tree
-        resized: dict[tuple[int, ...], tuple[float, ...]] = {}
 
         if not math.isfinite(position):
             raise LayoutRefused(f"a border cannot move to {position!r}")
 
+        # The line's handles by the split each divides, since one split can
+        # hold two of them and every one is moved.
+        lines: dict[tuple[int, ...], list[Handle]] = {}
+
         for member in _chain(handle, segments):
-            segment = segments[member]
-            holder = _split_at(tree, member.path)
-            first, second = member.index, member.index + 1
-            squeezed: int | None
+            lines.setdefault(member.path, []).append(member)
 
-            if position <= segment.low:
-                squeezed = first
-            elif position >= segment.high:
-                squeezed = second
-            else:
-                # Inside the two children's span, so the split has an extent to divide by.
-                before = (position - segment.low) / segment.extent
-                after = holder.sizes[first] + holder.sizes[second] - before
-                squeezed = first if before <= 0 else second if after <= 0 else None
-                sizes = list(holder.sizes)
-                sizes[first] = before
-                sizes[second] = after
-                resized[member.path] = tuple(sizes)
+        resized: dict[tuple[int, ...], tuple[float, ...]] = {}
 
-            if squeezed is not None:
-                raise LayoutRefused(
-                    f"moving the border to {position!r} of the window would leave no room "
-                    f"for {_describe(holder.children[squeezed])}"
-                )
+        for path, members in lines.items():
+            if all(segments[member].across == position for member in members):
+                continue
+
+            span = segments[members[0]]
+            resized[path] = _moved(
+                _split_at(tree, path),
+                span.low,
+                span.high,
+                [member.index for member in members],
+                position,
+            )
 
         return LayoutModel(
             self._with_tree(handle.window, _with_sizes(tree, (), resized)), self.next_area_id
@@ -564,6 +613,103 @@ def _place_of_parent(place: _Place) -> _Place | None:
     return _Place(place.window, place.path[:-1]) if place.path else None
 
 
+def _split_past_depth_maximum(tree: Node) -> tuple[int, ...] | None:
+    """The path to the first split, in reading order, deeper than `TREE_DEPTH_MAXIMUM`, or `None`.
+
+    Walked with a list rather than by recursion, so a tree built in code too
+    deep to recurse through is refused here rather than by a `RecursionError`,
+    and the walk goes no further down any path than the first split past the
+    maximum.
+    """
+
+    pending: list[tuple[tuple[int, ...], Node]] = [((), tree)]
+
+    while pending:
+        path, node = pending.pop()
+
+        if isinstance(node, Split):
+            if len(path) >= TREE_DEPTH_MAXIMUM:
+                return path
+
+            pending.extend(
+                reversed([(path + (index,), child) for index, child in enumerate(node.children)])
+            )
+
+    return None
+
+
+def _summing_to_one(sizes: tuple[float, ...]) -> tuple[float, ...]:
+    """`sizes` divided by their exactly rounded sum: what an operation rebuilds a split from.
+
+    A split's sizes may miss a sum of one by up to `LAYOUT_SIZE_SUM_TOLERANCE`,
+    and a file this code did not write can hold such sizes, which the reader
+    accepts. Arithmetic on them can carry a sum just inside the tolerance to
+    just outside it, so an operation on a layout the reader accepted would
+    raise `InvalidLayout`: `PL-1FT6`'s review found a join doing so. Divided
+    by their sum first, the sizes miss one by a unit in the last place, the
+    operation's own rounding adds a unit or two, and no operation inherits
+    the last one's error. Where the sum is exactly one the division changes
+    nothing; elsewhere each size moves by at most the tolerance's share of it,
+    which nothing on a screen shows. This is chosen over a reader stricter
+    than the in-memory check, which would refuse to read back a layout held
+    in memory between the two bounds.
+    """
+
+    total = math.fsum(sizes)
+
+    return tuple(size / total for size in sizes)
+
+
+def _moved(
+    split: Split, low: float, high: float, indices: list[int], position: float
+) -> tuple[float, ...]:
+    """`split`'s sizes with its borders at `indices` moved to `position`.
+
+    `low` and `high` are where the split lies along its axis, in fractions of
+    the window. The sizes are rescaled to sum to one first
+    (`_summing_to_one`), and the two children the moved border divides are
+    given what lies either side of `position`; every other child keeps its
+    size as rescaled.
+
+    Raises:
+        LayoutRefused: a child would be left with no size: `position` lies at
+            or past a neighbouring border or the edge of the split, or
+            `indices` names two of the split's borders, and moving both to one
+            place leaves the children between them none.
+    """
+
+    sizes = list(_summing_to_one(split.sizes))
+    bounds = _boundaries(low, high, tuple(sizes))
+    first, last = min(indices), max(indices)
+    squeezed: tuple[Node, ...] = ()
+
+    if first != last:
+        squeezed = split.children[first + 1 : last + 1]
+    elif position <= bounds[first]:
+        squeezed = (split.children[first],)
+    elif position >= bounds[first + 2]:
+        squeezed = (split.children[first + 1],)
+    else:
+        # Inside the two children's span, so the split has an extent to divide by.
+        before = (position - bounds[first]) / (high - low)
+        after = sizes[first] + sizes[first + 1] - before
+
+        if before <= 0:
+            squeezed = (split.children[first],)
+        elif after <= 0:
+            squeezed = (split.children[first + 1],)
+
+        sizes[first], sizes[first + 1] = before, after
+
+    if squeezed:
+        raise LayoutRefused(
+            f"moving the border to {position!r} of the window would leave no room for "
+            f"{_describe(*squeezed)}"
+        )
+
+    return tuple(sizes)
+
+
 def _area_paths(node: Node, path: tuple[int, ...]) -> Iterator[tuple[tuple[int, ...], Area]]:
     if isinstance(node, Area):
         yield path, node
@@ -684,13 +830,7 @@ def _segments(window: int, tree: Node) -> dict[Handle, _Segment]:
 
         for index in range(len(node.children) - 1):
             segments[Handle(window, path, index)] = _Segment(
-                node.orientation,
-                bounds[index + 1],
-                start,
-                end,
-                bounds[index],
-                bounds[index + 2],
-                high - low,
+                node.orientation, bounds[index + 1], start, end, low, high
             )
 
         for index, child in enumerate(node.children):
@@ -705,38 +845,52 @@ def _segments(window: int, tree: Node) -> dict[Handle, _Segment]:
 
 
 def _chain(handle: Handle, segments: Mapping[Handle, _Segment]) -> tuple[Handle, ...]:
-    """The handles on `handle`'s line connected to it end to end, ordered along the line."""
+    """The handles on `handle`'s line connected to it end to end, ordered along the line.
 
-    seed = segments[handle]
-    on_line = [
-        candidate
-        for candidate, segment in segments.items()
-        if segment.orientation is seed.orientation
-        and abs(segment.across - seed.across) <= BORDER_ALIGNMENT_TOLERANCE
-    ]
+    Each candidate is compared with the handle that reached it, never with
+    `handle` itself: two handles within the tolerance of each other are on
+    one line whichever is asked from, so the line is the same set from every
+    handle on it, each one up to the tolerance off the one before. Handles of
+    one split share their span along the line and are ordered across it.
+    """
+
+    orientation = segments[handle].orientation
     chain = {handle}
     frontier = [handle]
 
     while frontier:
         reached = segments[frontier.pop()]
 
-        for candidate in on_line:
-            segment = segments[candidate]
-
-            if candidate not in chain and (
-                abs(segment.start - reached.end) <= BORDER_ALIGNMENT_TOLERANCE
-                or abs(reached.start - segment.end) <= BORDER_ALIGNMENT_TOLERANCE
+        for candidate, segment in segments.items():
+            if (
+                candidate not in chain
+                and segment.orientation is orientation
+                and abs(segment.across - reached.across) <= BORDER_ALIGNMENT_TOLERANCE
+                and (
+                    abs(segment.start - reached.end) <= BORDER_ALIGNMENT_TOLERANCE
+                    or abs(reached.start - segment.end) <= BORDER_ALIGNMENT_TOLERANCE
+                )
             ):
                 chain.add(candidate)
                 frontier.append(candidate)
 
-    return tuple(sorted(chain, key=lambda member: segments[member].start))
+    return tuple(
+        sorted(
+            chain,
+            key=lambda member: (
+                segments[member].start,
+                segments[member].across,
+                member.path,
+                member.index,
+            ),
+        )
+    )
 
 
-def _describe(node: Node) -> str:
-    """A node as a refusal names it: "Area 3", or "Areas 3, 4 and 5" for a split."""
+def _describe(*nodes: Node) -> str:
+    """Nodes as a refusal names them: "Area 3", or "Areas 3, 4 and 5" for a split or several."""
 
-    ids = [str(area.id) for area in areas_in(node)]
+    ids = [str(area.id) for node in nodes for area in areas_in(node)]
 
     if len(ids) == 1:
         return f"Area {ids[0]}"

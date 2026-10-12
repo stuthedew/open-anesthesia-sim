@@ -20,13 +20,19 @@ and together one, never pixels, so a file reads the same on any screen
 (`PL-HJPY` Q5). How small an Area may be is a property of the screen it is
 shown on, and is `PL-K285`'s.
 
-**A tree takes one form.** A split holds at least two children, and never a
-child split of its own orientation: a row inside a row is the same rectangle
-divided the same way as one wider row, and the model writes it as the wider
-row. With one form per arrangement, two Areas that sit next to each other in
-one split are exactly the pairs the tree can join, so whether a join is
-available never depends on how the tree happened to be built (`PL-3J2P`'s
-refusal, which the model in `layout/model.py` implements).
+**A tree takes one form, wherever no four Areas meet at a point.** A split
+holds at least two children, and never a child split of its own orientation: a
+row inside a row is the same rectangle divided the same way as one wider row,
+and the model writes it as the wider row. That leaves one tree per arrangement
+except where four Areas meet at a point. Elsewhere, two Areas that sit next to
+each other in one split are exactly the pairs the tree can join, however it
+was built (`PL-3J2P`'s refusal, which the model in `layout/model.py`
+implements). Where four Areas do meet at a point - a 2x2 grid - either of the
+two cuts through it can be the outer one, so the arrangement has two trees:
+which two Areas are siblings, and so whether a join is available, depends on
+which cut came first. Whether a join should re-slice such a junction is an
+open decision (`PL-G60V`). A window's tree also nests no deeper than
+`TREE_DEPTH_MAXIMUM`.
 
 **An Area is addressed by an id, a whole number from 1** that the layout
 allocates and never reuses, so state kept per Area id cannot be resurrected
@@ -58,6 +64,7 @@ from anesthesia_sim.layout.exceptions import InvalidLayout
 __all__ = [
     "AREA_ID_MAXIMUM",
     "LAYOUT_SIZE_SUM_TOLERANCE",
+    "TREE_DEPTH_MAXIMUM",
     "VIEW_KIND_MAXIMUM_LENGTH",
     "Area",
     "AreaId",
@@ -69,12 +76,27 @@ __all__ = [
     "areas_in",
 ]
 
-# The largest Area id, and so the last the layout can allocate: 2**53 - 1, the
-# top of the range of integers RFC 8259 section 6 names as the one every JSON
-# implementation agrees on exactly. An id is a key a saved file is read back
-# by, so one a reader could round to its neighbour is not an id. Allocation
-# runs in sequence from 1, so no layout reaches it by use.
+# The largest an Area id can be: 2**53 - 1, the top of the range of integers
+# RFC 8259 section 6 names as the one every JSON implementation agrees on
+# exactly. An id is a key a saved file is read back by, so one a reader could
+# round to its neighbour is not an id. It bounds the layout's counter too,
+# which stays above every id in use and so cannot pass it: the last id the
+# layout allocates is 2**53 - 2, and no Area ever holds this one. Allocation
+# runs in sequence from 1, so no layout reaches either by use.
 AREA_ID_MAXIMUM: Final = 2**53 - 1
+
+# The deepest a split may sit in a window's tree, the root split being one
+# deep: the most splits on any path from a window's tree down to an Area. A
+# path that deep alternates row and column at every level, since a split never
+# holds one of its own orientation, so 16 of its splits divide the window across
+# and 16 down it, each giving at least one Area a share of its own: 17 Areas
+# stand side by side along the path and 17 stacked, and the smallest of the
+# stacked is at most a seventeenth of the window's height, under 64 px of a
+# 1080 px screen. No workspace a screen shows comes near that. It also sits far below
+# the recursion ceiling: the reader recurses three frames a level and the
+# operations two, so a tree this deep costs about a hundred of the thousand
+# frames Python allows by default, wherever its caller stands (`PL-1FT6`).
+TREE_DEPTH_MAXIMUM: Final = 32
 
 # The longest a View kind tag may be, in characters (`PL-R1WQ` Q1). A tag is
 # an identifier a developer types once beside a factory and a file repeats
@@ -87,11 +109,14 @@ VIEW_KIND_MAXIMUM_LENGTH: Final = 40
 # and would admit "chart\n".
 _VIEW_KIND_TAG: Final = re.compile(rf"[a-z][a-z0-9_]{{0,{VIEW_KIND_MAXIMUM_LENGTH - 1}}}")
 
-# How far a split's sizes may sum from exactly one. Every operation divides a
-# size or adds two, each rounding to within one unit in the last place, so a
-# layout that has been split, joined and dragged millions of times is still
-# five orders of magnitude inside this. A file whose sizes miss one by more was
-# not written by this code, and is refused rather than rescaled.
+# How far a split's sizes may sum from exactly one. An operation rescales each
+# split it rebuilds to sum to one before working on it (`layout/model.py`), so
+# the most a split built by this code misses one by is the few units in the
+# last place one operation's rounding adds, which no later operation inherits.
+# A file can hold sizes anywhere inside this and is read as written, and one
+# whose sizes miss one by more was not written by this code, and is refused
+# rather than rescaled. The reader holds a file to the same bound as a split
+# built in code, so whatever the model holds it writes and reads back equal.
 LAYOUT_SIZE_SUM_TOLERANCE: Final = 1e-9
 
 
@@ -163,7 +188,13 @@ class Orientation(Enum):
 
 @dataclass(frozen=True, slots=True)
 class Area:
-    """A leaf of the tree: one View, of the kind named, at an id unique to its layout."""
+    """A leaf of the tree: one View, of the kind named, at an id unique to its layout.
+
+    Raises:
+        TypeError: `id` was not built as an `AreaId` - a bare `int`, or
+            `True`, would otherwise name an Area unchecked - or `view` as a
+            `ViewKind`.
+    """
 
     id: AreaId
     view: ViewKind
@@ -187,9 +218,9 @@ class Split:
         TypeError: a field is not of its declared type.
         InvalidLayout: the split holds fewer than two children; its sizes are
             not one per child; a size is not finite and above zero; the sizes
-            miss a sum of one by more than `LAYOUT_SIZE_SUM_TOLERANCE`; or a
-            child is a split of the same orientation, which the one form a
-            tree takes writes as part of this split.
+            miss a sum of one by more than `LAYOUT_SIZE_SUM_TOLERANCE`, which
+            the message names; or a child is a split of the same orientation,
+            which the one form a tree takes writes as part of this split.
     """
 
     orientation: Orientation
@@ -238,7 +269,10 @@ class Split:
         total = math.fsum(self.sizes)
 
         if abs(total - 1) > LAYOUT_SIZE_SUM_TOLERANCE:
-            raise InvalidLayout(f"a split's sizes sum to one, and these sum to {total!r}")
+            raise InvalidLayout(
+                f"a split's sizes sum to one, to within {LAYOUT_SIZE_SUM_TOLERANCE!r}, and these "
+                f"sum to {total!r}"
+            )
 
         for child in self.children:
             if isinstance(child, Split) and child.orientation is self.orientation:
@@ -256,7 +290,14 @@ type Node = Area | Split
 
 @dataclass(frozen=True, slots=True)
 class Window:
-    """One window's tree. `LayoutModel.windows[0]` is the main window (`PL-HJPY` Q1)."""
+    """One window's tree. `LayoutModel.windows[0]` is the main window (`PL-HJPY` Q1).
+
+    How deep the tree nests is checked by the `LayoutModel` holding it, against
+    `TREE_DEPTH_MAXIMUM`, not here.
+
+    Raises:
+        TypeError: `tree` is not an `Area` or a `Split`.
+    """
 
     tree: Node
 
