@@ -75,12 +75,15 @@ from anesthesia_sim.app.chart_frame import (
     ChartFrame,
     HoverTarget,
     TraceStyle,
-    compared_compartments,
     nearest_trace_point,
     nearest_wash_in_point,
     run_trace_style,
     trace_style,
     wash_in_axis_ticks,
+)
+from anesthesia_sim.app.compartment_selection import (
+    INITIAL_COMPARTMENT_SELECTION,
+    CompartmentSelection,
 )
 from anesthesia_sim.app.dashboard_frame import (
     BRANCH_POINT_LEGEND_LABEL,
@@ -97,7 +100,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import format_chart_time_label
 from anesthesia_sim.app.qt_widgets import FlowLayout, declare_interface_colours
-from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
+from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.stylesheets import foreground_stylesheet
 from anesthesia_sim.app.theme import (
     BAND_SWATCH_HEIGHT,
@@ -1541,11 +1544,20 @@ def _legend_entry(swatch: QWidget, label: QWidget) -> QWidget:
 class TraceLegend(QWidget):
     """The chart's three legend rows, of which the compartment row is also a control.
 
-    The compartment entry *is* the state: its box, its swatch and its label
-    are written from one flag, which is what makes the legend's agreement
-    with the plot a property of the code rather than of somebody's
-    diligence. Two lists of the same six compartments is exactly how a
-    legend comes to name a line the chart is not drawing.
+    **The legend shows a compartment selection and asks for changes to it;
+    it does not hold one** (`PL-VN6M`). The selection is a
+    `CompartmentSelection` its owner hands to `show_selection` - the
+    dashboard's, and the same value the plot's frame is assembled from - so
+    a layout that closes this widget, or shows a second one, leaves the
+    selection where it was. A reader's click is emitted as
+    `compartment_requested`, and the boxes move when the owner answers.
+
+    Every compartment entry is written from that one value - its box, its
+    swatch and its label - which is what makes the legend's agreement with
+    the plot a property of the code rather than of somebody's diligence. Two
+    lists of the same six compartments is exactly how a legend comes to name
+    a line the chart is not drawing, so no box keeps a state it was not
+    handed: a click nobody answers is undone.
 
     Each swatch is painted with the pen the chart draws that series with,
     so a dashed trace has a dashed swatch (`PL-THXF`) and the band is a
@@ -1559,12 +1571,14 @@ class TraceLegend(QWidget):
     which is colour, and the words are what switching it on will draw.
     """
 
-    visibility_changed = Signal()
-    """Emitted after a reader shows or hides a compartment, and only then.
+    compartment_requested = Signal(object, bool)
+    """Emitted when a reader shows or hides a compartment: the compartment, and whether to draw it.
 
-    Not for the selection `set_run_count` holds to the cap: that change is the
-    caller's, made while it changes the run set, and the frame it owes is the
-    caller's to draw once the run set is whole (`PL-B1R9`).
+    A request rather than a change: the boxes move when the selection's owner
+    answers it through `show_selection`. Never emitted for a selection that
+    arrives that way, even one that unchecks a box, because that change is
+    the owner's, and the frame it owes is the owner's to draw once its run
+    set is whole (`PL-B1R9`).
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -1656,14 +1670,23 @@ class TraceLegend(QWidget):
         run_record = _legend_row("Run record:", [_control_mark_entry()])
         run_record.addWidget(self._branch_entry)
         layout.addLayout(run_record)
-        self._run_count = 1
-        self._check_order: list[RecordedQuantity] = list(COMPARTMENT_QUANTITIES)
-        self._adjusting = False
-        self._refresh_compared_row()
+        # The selection last handed to `show_selection`, kept so the boxes can
+        # be written back to it after a request nobody answers: the owner's
+        # value as last shown, which nothing here changes.
+        self._selection: CompartmentSelection = INITIAL_COMPARTMENT_SELECTION
+        # True while the boxes are being written from a selection, so a box
+        # that toggles under that pass is repainted and not taken for a click.
+        self._showing = False
+        self.show_selection(INITIAL_COMPARTMENT_SELECTION)
 
     @property
     def shown(self) -> tuple[RecordedQuantity, ...]:
-        """The compartments currently checked, in table order."""
+        """The compartments currently checked, in table order.
+
+        What the boxes show, for a check that they show the selection they
+        were handed. Nothing reads the selection back from here: the
+        dashboard draws from its own (`PL-VN6M`).
+        """
 
         return tuple(
             style.quantity
@@ -1671,54 +1694,56 @@ class TraceLegend(QWidget):
             if self._boxes[style.quantity].isChecked()
         )
 
-    def set_shown(self, shown: Sequence[RecordedQuantity]) -> None:
-        """Check exactly these compartments, as a reader clicking would.
+    def show_selection(self, selection: CompartmentSelection) -> None:
+        """Show this selection: check exactly its compartments, and name its runs' curves.
 
-        Written as one act rather than six clicks: the cap is not applied
-        between the boxes, so a caller may pass a set that is briefly over it
-        without the legend unchecking something in the middle of the pass,
-        and the change is announced once rather than once per box.
+        The owner's answer to `compartment_requested`, and its way of telling
+        the legend that the run set has changed. The boxes are written from
+        `selection.shown`, which is exactly what a frame assembled from the
+        same selection draws, so the boxes a reader sees checked are the
+        curves on the plot.
 
-        A bulk set that is over the cap is reduced by
-        `compared_compartments` - the top of the compartment table - because
-        a set arriving whole carries no order of preference for this class to
-        read. `set_compartment_shown` is the one-at-a-time route, and it
-        keeps what was just asked for instead.
+        **Announces nothing, even where it unchecks a box** (`PL-B1R9`). The
+        change is the owner's, made while it changes the selection or the run
+        set, and the owner already owes the frame that draws it. Announced
+        from here, the cap a second run brings drew that frame early - from
+        inside `SimulationView._rename_runs`, before the wash-in legend or
+        either run had been told there were two runs - and the fork that
+        caused it then drew its own.
+
+        Args:
+            selection: The selection to show.
         """
 
-        self._check_exactly(shown)
-        self.visibility_changed.emit()
-
-    def _check_exactly(self, shown: Sequence[RecordedQuantity]) -> None:
-        """Check exactly these compartments, held to the cap, and rewrite the compare row.
-
-        `set_shown` without the announcement, which is how `set_run_count`
-        holds the selection to the cap without reporting the caller's own
-        change back to it as a reader's.
-        """
-
-        wanted = tuple(shown)
-
-        while True:
-            self._adjusting = True
-
-            try:
-                for quantity, box in self._boxes.items():
-                    box.setChecked(quantity in wanted)
-            finally:
-                self._adjusting = False
-
-            drawn, over = compared_compartments(self.shown, self._run_count)
-
-            if not over:
-                break
-
-            wanted = drawn
-
+        self._selection = selection
+        self._check_exactly(selection.shown)
+        self._branch_entry.setHidden(selection.run_count <= 1)
         self._refresh_compared_row()
 
+    def _check_exactly(self, shown: tuple[RecordedQuantity, ...]) -> None:
+        """Check exactly these compartments' boxes, without reading the change as a request."""
+
+        showing = self._showing
+        self._showing = True
+
+        try:
+            for quantity, box in self._boxes.items():
+                box.setChecked(quantity in shown)
+        finally:
+            self._showing = showing
+
+    @property
+    def _run_count(self) -> int:
+        """How many runs the selection this legend shows is drawn across."""
+
+        return self._selection.run_count
+
     def set_compartment_shown(self, quantity: RecordedQuantity, shown: bool) -> None:
-        """Show or hide one compartment, by exactly the route a reader's click takes.
+        """Show or hide one compartment, by the route a reader's click takes through the legend.
+
+        Which makes it a request: the box moves, `compartment_requested` is
+        emitted, and the box ends showing what the selection's owner answers
+        with - or what it showed before, where nobody answers.
 
         Args:
             quantity: Which compartment.
@@ -1734,53 +1759,6 @@ class TraceLegend(QWidget):
         """The pen one compartment's swatch is painted with."""
 
         return self._swatches[quantity]._pen
-
-    def set_run_count(self, run_count: int) -> None:
-        """Tell the legend how many runs are drawn, and hold the selection to the cap.
-
-        The cap is `chart_frame`'s and is applied there to what the chart
-        draws whatever route reached the selection. This is the same rule
-        arriving at the *control*, so that the boxes a reader sees checked
-        are the curves the plot is drawing: a legend left showing four
-        checked boxes against two curves is the disagreement this class
-        exists to make impossible.
-
-        **Announces nothing, even where it unchecks a box** (`PL-B1R9`). The
-        change is the caller's, made in the middle of changing its run set,
-        and the caller already owes the frame that draws the new run set.
-        Announced from here, it drew that frame early - from inside
-        `SimulationView._rename_runs`, before the wash-in legend or either run
-        had been told there were two runs - and the fork that caused it then
-        drew its own.
-
-        Args:
-            run_count: How many runs the dashboard is displaying.
-
-        Raises:
-            ValueError: If fewer than one run is given. A legend for no runs
-                would cap a selection against nothing.
-        """
-
-        if run_count < 1:
-            raise ValueError(f"a legend describes at least one run, not {run_count}")
-
-        if run_count == self._run_count:
-            return
-
-        self._run_count = run_count
-        drawn, over = compared_compartments(self.shown, run_count)
-
-        self._branch_entry.setHidden(run_count <= 1)
-
-        if over:
-            # Reduced to exactly what the chart will draw, rather than to some
-            # other pair this class chose: `compared_compartments` is the one
-            # rule, and a legend applying a second one is how a checked box
-            # comes to name a curve that is not on the plot. `_check_exactly`
-            # refreshes the compare row.
-            self._check_exactly(drawn)
-        else:
-            self._refresh_compared_row()
 
     @property
     def compared_marks(self) -> tuple[LegendMark, ...]:
@@ -1805,35 +1783,10 @@ class TraceLegend(QWidget):
 
         return LegendMark(BRANCH_POINT_LEGEND_LABEL, _branch_point_pen(), True)
 
-    def _drop_oldest_over_cap(self) -> None:
-        """Uncheck the longest-standing selections until the cap is met again.
-
-        The oldest rather than the newest, so the compartment a reader just
-        asked for is the one they get: a cap that refused the click instead
-        would leave them clicking a box that does not respond, which is the
-        worse of the two surprises. Only reached from a *check*, so it never
-        runs while a reader is putting compartments away.
-
-        It leaves the selection at or inside the cap, which is what makes
-        `compared_compartments` the identity on everything this legend hands
-        out afterwards - so the boxes and the curves cannot disagree.
-        """
-
-        if not compared_compartments(self.shown, self._run_count)[1]:
-            return
-
-        self._adjusting = True
-
-        try:
-            while compared_compartments(self.shown, self._run_count)[1]:
-                self._boxes[self._check_order[0]].setChecked(False)
-        finally:
-            self._adjusting = False
-
     def _refresh_compared_row(self) -> None:
         """Write one entry per drawn curve, and hide the rest of the pool."""
 
-        drawn, _ = compared_compartments(self.shown, self._run_count)
+        drawn = self._selection.shown
         entries = (
             []
             if self._run_count <= 1
@@ -1877,24 +1830,19 @@ class TraceLegend(QWidget):
         self._swatches[quantity].set_filled(checked)
         self._boxes[quantity].setStyleSheet(foreground_stylesheet(INK if checked else MUTED))
 
-        if quantity in self._check_order:
-            self._check_order.remove(quantity)
-
-        if checked:
-            self._check_order.append(quantity)
-
-        # A box this legend unchecked itself, holding the selection to the
-        # cap, reaches here too: it repaints and takes its place in the order,
-        # and the pass that unchecked it reports the change once rather than
-        # once per box.
-        if self._adjusting:
+        # A box written from a selection this legend was handed reaches here
+        # too, and is only repainted: that change is the owner's, not a request.
+        if self._showing:
             return
 
-        if checked:
-            self._drop_oldest_over_cap()
-
-        self._refresh_compared_row()
-        self.visibility_changed.emit()
+        self.compartment_requested.emit(quantity, checked)
+        # An owner connected directly has answered by now, and its answer has
+        # written the boxes already, so this changes nothing. Where nobody
+        # answered, it puts the clicked box back to the selection last shown,
+        # rather than leaving a box holding a state no selection gave it -
+        # which is where a legend begins to name a curve the plot is not
+        # drawing.
+        self._check_exactly(self._selection.shown)
 
 
 def _control_mark_entry() -> tuple[_LineSwatch, QLabel]:

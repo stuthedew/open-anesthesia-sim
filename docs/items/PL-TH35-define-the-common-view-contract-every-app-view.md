@@ -4,10 +4,10 @@ title: Define the common View contract every app/ view implements so any view is
 priority: P2
 effort: M
 status: blocked
-blocked-by: PL-1FT6
 classes: refactor, ux
 feature: interface-areas
 touches: src/anesthesia_sim/app, docs/ARCHITECTURE.md
+blocked-by: PL-W9P6
 added: 2026-09-16
 not-delegable: the deliverable is a contract to be agreed before it is coded, and no command can prove a protocol is the right one; the test arrives with the first two views written to it
 ---
@@ -231,3 +231,11 @@ one on every call, so placing it again moves it. In Qt's idiom a `build_`
 or `create_` name reads as a factory whose caller gets a new object to own.
 The contract should name what a view hands an area for what it is; `PL-KZR1`
 kept the prefix only so it is not renamed twice.
+
+## Blocked on `PL-W9P6`, 2026-10-12
+
+Set by `PL-1FT6`'s close-out. The model half of the area system exists; the
+adapter does not. Q1's pruning test reads each contract member's call site in
+the adapter, and § "Why it is blocked rather than ready" writes the contract
+with the area system rather than ahead of it, so the adapter is what this
+waits on.
