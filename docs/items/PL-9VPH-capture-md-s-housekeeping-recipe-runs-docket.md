@@ -3,14 +3,16 @@ id: PL-9VPH
 title: capture.md's housekeeping recipe runs docket new before it sets touches, on a clean tree, so the near-duplicate search has no paths and never runs: PL-4CPP duplicated PL-BYN2 at similarity 0.29 against the 0.15 floor
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: recurrence-signal
 touches: .claude/skills/docket/modes/capture.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-23
+closed: 2026-10-12
+pr: 1463
 payoff: an item filed by the housekeeping recipe meets the near-duplicate search, so a second filing of open work is caught at capture instead of by a later session reading both briefs
-verify: grep -qF 'bin/docket new --touches docs/items' .claude/skills/docket/modes/capture.md
+verify: grep -qF 'a title about one item names its id' .claude/skills/docket/modes/capture.md
 reenters: PL-TZ7T
 ---
 
@@ -60,3 +62,14 @@ declaring no paths. `PL-6SV4`, filed the same day as an unnoticed duplicate of
 `PL-VYK1`, is a second post-close instance through a different gap: the older
 item's `touches` predates a file move. A third would make `PL-TZ7T` a generator
 whose fix did not hold.
+
+**Closed by `PL-0HLS`'s key rather than by the done-when above, 2026-10-12
+(`#1463`).** Passing `--touches docs/items` to `new` would now find nothing,
+since the store directory stopped counting as a subject (`PL-SV0D`). A
+clean-tree capture meets the search through the item ids its title names
+instead, matched to the item files open items declare, and the recipe now says
+a title about one item names its id. `test_a_clean_tree_capture_meets_the_item_its_title_names`
+pins `PL-4CPP` and `PL-BYN2`, and
+`test_new_on_a_clean_tree_is_shown_the_item_its_title_names` the command. The
+`verify:` command is rewritten to grep the recipe's new sentence, since the
+commissioned one pins the line this design made inert.
