@@ -3,10 +3,12 @@ id: PL-F6H6
 title: v0.6.0's Required scope names neither PL-G60V nor PL-5HSG, though PL-W9P6 and PL-2KXB wait on them since #1448, so bin/docket wave reads eight gate entries as blocked by two items no section places
 priority: P2
 effort: S
-status: ready
+status: done
 classes: housekeeping
 touches: ROADMAP.md
 added: 2026-10-12
+closed: 2026-10-12
+pr: 1462
 payoff: v0.6.0's plan names every item its Required scope waits on, so wave and next read the two layout-model corrections as milestone work instead of work no section places
 verify: grep -q 'PL-G60V' ROADMAP.md && grep -q 'PL-5HSG' ROADMAP.md
 ---
