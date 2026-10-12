@@ -115,7 +115,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from functools import lru_cache, partial
 from itertools import zip_longest
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePath, PurePosixPath
 
 # `ROADMAP.md`'s release-train grammar lives in `docket`, which reasons about
 # project state for a living and reads the same table to report which beat of
@@ -303,6 +303,13 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 # reason: a line regex had taken a `run:` inside another block for a step.
 import required_checks_check
 
+# Which files the repository holds is `tracked_files`'s answer, and which of
+# them are rule files is `rules_paths_check`'s, so a checkout under
+# `.claude/worktrees/` is not read as this one and a nested rule is measured
+# only where it is also read (`PL-2P5L`, `PL-9NZ3`).
+from rules_paths_check import RULES_DIR, rule_files
+from workflow_paths_check import tracked_under
+
 # Documentation whose claims this tool holds to the tree. `CLAUDE.md` and the
 # docket skill are included because they cite paths as heavily as the docs
 # proper do, and a rule that names a file that no longer exists is a rule
@@ -334,7 +341,6 @@ DOC_GLOBS = (
 # `paths:` frontmatter, which defers it to the sessions that open a matching
 # file.
 RESIDENT_ROOTS = ("CLAUDE.md", ".claude/CLAUDE.md")
-RULES_DIR = ".claude/rules"
 SKILLS_DIR = ".claude/skills"
 WORKER_DOC = "docs/worker.md"
 # Instruction text a session loads only once something makes it load: a skill
@@ -1322,15 +1328,17 @@ def _expand_braces(token: str) -> list[str]:
     return expanded
 
 
-def _walk(directory: Path) -> Iterator[Path]:
-    """Yield every file under `directory`, skipping caches and virtualenvs."""
-    for child in sorted(directory.iterdir()):
-        if child.name in IGNORED_DIRS:
-            continue
-        if child.is_dir():
-            yield from _walk(child)
-        elif child.is_file():
-            yield child
+def _walk(root: Path, under: str | PurePath = "") -> Iterator[Path]:
+    """Yield every file the repository holds at or below `under`, skipping `IGNORED_DIRS`.
+
+    Read from `tracked_files`, so another checkout under `.claude/worktrees/` is
+    not read as this one: walking the disk, a broken quotation in a
+    worktree-isolated agent's copy failed this check in the main checkout
+    (`PL-2P5L`).
+    """
+    for path in tracked_under(root, under):
+        if not IGNORED_DIRS.intersection(path.relative_to(root).parts):
+            yield path
 
 
 def read_docs(root: Path) -> dict[Path, str]:
@@ -1424,7 +1432,7 @@ def _mapped_candidates(root: Path, tree_root: PurePosixPath) -> list[PurePosixPa
     base = root / tree_root
     return [
         tree_root / PurePosixPath(path.relative_to(base).as_posix())
-        for path in _walk(base)
+        for path in _walk(root, tree_root)
         if path.suffix in MAPPED_SUFFIXES and path.name not in UNMAPPED_NAMES
     ]
 
@@ -1633,7 +1641,7 @@ def check_provenance(root: Path, report: Report) -> None:
     data_root = root / PACKAGE_ROOT / "data"
     if not data_root.is_dir():
         return
-    for data_path in _walk(data_root):
+    for data_path in _walk(root, PACKAGE_ROOT / "data"):
         if data_path.suffix != ".json":
             continue
         relative = PurePosixPath(data_path.relative_to(root / PACKAGE_ROOT).as_posix())
@@ -1704,7 +1712,7 @@ def check_source_tiers(root: Path, report: Report) -> None:
     if not data_root.is_dir():
         return
 
-    for data_path in _walk(data_root):
+    for data_path in _walk(root, PACKAGE_ROOT / "data"):
         if data_path.suffix != ".json":
             continue
         relative = data_path.relative_to(root / PACKAGE_ROOT).as_posix()
@@ -7264,6 +7272,11 @@ def _measure_on_demand(name: str, text: str) -> ResidentFile | None:
 def measure_resident(root: Path) -> list[ResidentFile]:
     """Which instruction files load at launch in this working tree, and how big.
 
+    The rules are `rules_paths_check.rule_files`, at any depth, and the skills
+    the tracked files under `SKILLS_DIR`: a file not yet added to git is
+    measured once it is, which is the trade every reader of `tracked_files`
+    makes (`PL-9NZ3`).
+
     `SKILLS_DIR` is walked beside the rules, and contributes each skill's
     frontmatter rather than its file - see `_skill_description`. The dynamic
     half of the payload is not here but in `measure_digest`, because it is
@@ -7272,12 +7285,8 @@ def measure_resident(root: Path) -> list[ResidentFile]:
     """
     measured: list[ResidentFile] = []
     names = [name for name in RESIDENT_ROOTS if (root / name).is_file()]
-    for directory in (RULES_DIR, SKILLS_DIR):
-        found = root / directory
-        if found.is_dir():
-            names += sorted(
-                path.relative_to(root).as_posix() for path in found.rglob("*.md") if path.is_file()
-            )
+    for found in (rule_files(root), tracked_under(root, SKILLS_DIR, ".md")):
+        names += [path.relative_to(root).as_posix() for path in found]
     for name in names:
         row = _measure(name, (root / name).read_text(encoding="utf-8"))
         if row is not None:
@@ -7607,15 +7616,23 @@ HOST_RE = re.compile(
     r"(?![\w-])"
 )
 #: A word saying a host did not answer. `EGRESS_BLOCKED`, the proxy's own word,
-#: is spelt out because `\b` does not split a word at its `_`.
+#: is spelt out because `\b` does not split a word at its `_`. `block` and
+#: `blocks` are `HOST_BLOCK_RE`'s.
 HOST_REFUSAL_RE = re.compile(
-    rf"\b(?:block(?:s|ed|ing)?|refus(?:e|es|ed|al|als|ing)|den(?:y|ies|ied|ial)|unreachable"
+    rf"\b(?:block(?:ed|ing)|refus(?:e|es|ed|al|als|ing)|den(?:y|ies|ied|ial)|unreachable"
     rf"|EGRESS_BLOCKED|(?:cannot|can't|could{GAP}+not|couldn't){GAP}+(?:be{GAP}+)?reach(?:ed)?)\b",
     re.IGNORECASE,
 )
-#: Every stem `HOST_REFUSAL_RE` reads, so a source holding none of them, nor a
-#: host, is passed over unparsed: it cannot carry a claim in any comment or
-#: docstring however they are joined.
+#: `block` and `blocks`, which say a host was refused - an egress block, a
+#: policy that blocks it - and as often name a block of text: a code block, a
+#: fenced block, a YAML block. Across the tree on 2026-10-12, dated records
+#: included, four sentences named a host beside one of them and no other word
+#: of refusal, two of them claims and two blocks of text. So a sentence whose
+#: only refusal is one of them is an advisory rather than refused (`PL-79DP`).
+HOST_BLOCK_RE = re.compile(r"\bblocks?\b", re.IGNORECASE)
+#: Every stem `HOST_REFUSAL_RE` and `HOST_BLOCK_RE` read, so a source holding
+#: none of them, nor a host, is passed over unparsed: it cannot carry a claim in
+#: any comment or docstring however they are joined.
 HOST_REFUSAL_STEM_RE = re.compile(r"block|refus|den(?:y|i)|reach", re.IGNORECASE)
 #: Where a sentence records the day it was written rather than claiming the
 #: present: an item's brief, which `bin/docket show` prints under its `added:`
@@ -7655,17 +7672,19 @@ def _without_destinations(text: str) -> str:
 
 def _undated_host_claims(
     text: str, files_named: frozenset[str]
-) -> Iterator[tuple[int, tuple[str, ...]]]:
+) -> Iterator[tuple[int, tuple[str, ...], str | None]]:
     """Each sentence of `text` that names a host beside a refusal and carries no date.
 
-    As the index of the line its first host stands on, and the hosts it names.
-    `text` is read as Markdown, which is what a document is and what this tree
-    writes a docstring and a comment in: a fence is a literal and is passed
-    over, and a sentence goes on across a soft break. A YAML front matter is
-    read a key at a time (`_statements`), so a date in the next key dates no
-    claim, and no line of it opens a fence that hides the body's (`PL-WX79`). A
-    name that a file in the tree carries is that file, so a hook's `.sh` is
-    never a host.
+    As the index of the line its first host stands on, the hosts it names, and
+    the `block` or `blocks` that is its only word of refusal, which may name a
+    block of text instead (`HOST_BLOCK_RE`), or `None` where another word makes
+    it a claim. `text` is read as Markdown, which is what a document is and
+    what this tree writes a docstring and a comment in: a fence is a literal
+    and is passed over, and a sentence goes on across a soft break. A YAML
+    front matter is read a key at a time (`_statements`), so a date in the next
+    key dates no claim, and no line of it opens a fence that hides the body's
+    (`PL-WX79`). A name that a file in the tree carries is that file, so a
+    hook's `.sh` is never a host.
     """
     lines = split_lines(text)
     unlinked = split_lines(_without_destinations(text))
@@ -7676,10 +7695,16 @@ def _undated_host_claims(
             hosts = [
                 host for host in HOST_RE.finditer(sentence) if host.group(0) not in files_named
             ]
-            if not hosts or not HOST_REFUSAL_RE.search(sentence) or ISO_DATE_RE.search(sentence):
+            if not hosts or ISO_DATE_RE.search(sentence):
+                continue
+            if HOST_REFUSAL_RE.search(sentence):
+                block = None
+            elif found := HOST_BLOCK_RE.search(sentence):
+                block = found.group(0)
+            else:
                 continue
             line = first + statement.count("\n", 0, start + hosts[0].start())
-            yield line, tuple(dict.fromkeys(host.group(0) for host in hosts))
+            yield line, tuple(dict.fromkeys(host.group(0) for host in hosts)), block
 
 
 def _dedented(docstring: str) -> str:
@@ -7819,7 +7844,8 @@ def check_host_claims(root: Path, report: Report) -> None:
     `.claude/rules/citing-sources.md` already asks for the date. So a sentence
     naming a host beside a word of refusal - blocked, refused, denied,
     unreachable, or the proxy's `EGRESS_BLOCKED` - carries an ISO date, or is
-    refused.
+    refused. One whose only such word is `block` or `blocks`, which as often
+    names a code block or a YAML block, is an advisory instead (`PL-79DP`).
 
     Read wherever the tree writes prose a later session takes for the present:
     every Markdown file but the records `DATED_RECORDS` names, a Python file's
@@ -7835,8 +7861,17 @@ def check_host_claims(root: Path, report: Report) -> None:
     for path in paths:
         relative = path.relative_to(root)
         for row, text in _host_claim_texts(path, relative, report):
-            for line, hosts in _undated_host_claims(text, files_named):
+            for line, hosts, block in _undated_host_claims(text, files_named):
                 named = ", ".join(f"`{host}`" for host in hosts)
+                if block is not None:
+                    report.advisories.append(
+                        f"{relative}:{row + line} names {named} beside `{block}` in a "
+                        "sentence that carries no date: if it says the host was blocked, "
+                        "write the date it was probed in the same sentence (`PL-CLW5`); if "
+                        "it names a block of text, such as a code block, nothing to do "
+                        "(`PL-79DP`)"
+                    )
+                    continue
                 report.errors.append(
                     f"{relative}:{row + line} names {named} beside a refusal in a sentence "
                     "that carries no date: whether a host answers through the egress proxy "

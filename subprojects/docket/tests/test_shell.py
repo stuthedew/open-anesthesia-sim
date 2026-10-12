@@ -536,8 +536,12 @@ TIMED = re.compile(rb"(?m)^(?:real|user|sys) [0-9.]+\n")
 PROCESS_PATH = re.compile(r"/dev/fd/\d+")
 
 
-def _bash_runs(script: str) -> Counter[tuple[str, ...]]:
-    """Each command bash runs from `script`, as the words it was handed, counted."""
+def _bash_runs(script: str, *, warns: bool = False) -> Counter[tuple[str, ...]]:
+    """Each command bash runs from `script`, as the words it was handed, counted.
+
+    Bash prints nothing on standard error unless the script `warns`, as one
+    whose expansion fails does.
+    """
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory) / "script.sh"
         path.write_text(PROLOGUE + script, encoding="utf-8")
@@ -547,7 +551,10 @@ def _bash_runs(script: str) -> Counter[tuple[str, ...]]:
             timeout=60,
             check=False,
         )
-    assert (run.returncode, TIMED.sub(b"", run.stderr)) == (0, b""), (script, run.stderr)
+    if warns:
+        assert run.returncode == 0, (script, run.stderr)
+    else:
+        assert (run.returncode, TIMED.sub(b"", run.stderr)) == (0, b""), (script, run.stderr)
     return Counter(
         ("p", *(_handed_word(word) for word in record.split("\x1f")[:-1]))
         for record in run.stdout.decode().split("\x1e")[:-1]
@@ -867,8 +874,10 @@ def _simple(draw: st.DrawFn, depth: int, bodies: list[str] | None) -> str:
 def _here_document(draw: st.DrawFn, nested: bool) -> tuple[str, str]:
     """A `<<` or `<<-` and its delimiter, with the body and delimiter lines that end it.
 
-    A body's substitutions open no here-document of their own, which bash
-    5.2.21 refuses where the lexer reads one (`PL-GJKN`). Each runs `p body`,
+    A body's substitutions open no here-document of their own: where one
+    holds a line that opens with its delimiter and a `)`, bash 5.2.21 fails
+    the expansion with a warning the comparison refuses, so
+    `FAILED_EXPANSIONS` pins those forms (`PL-GJKN`). Each runs `p body`,
     which at the top level `script_lines` hands on as a piece of its own
     (`PL-55R2`).
     """
@@ -1324,3 +1333,59 @@ def test_script_lines_hands_a_here_document_body_s_substitutions_a_piece(
     """
     assert list(script_lines(script)) == pieces
     assert _lexer_runs_by_piece(script) == _bash_runs(script)
+
+
+#: Bodies whose expansion bash 5.2.21 fails, and the commands it runs from each
+#: script: the substitutions before the one that fails, and `p after`.
+FAILED_EXPANSIONS = [
+    # `PL-GJKN`'s form. At the top level `F)` ends `F`'s body and closes the
+    # substitution; here bash ends the body at it, warns, and finds no `)`.
+    ("p <<E\n$(p inner <<F\nF)\nE\np after\n", {("p", "after"): 1}),
+    # The rest of the line is not read as commands either.
+    ("p <<E\n$(p inner <<F\nFp x)\nE\np after\n", {("p", "after"): 1}),
+    # A delimiter line after it does not save it, quoted or a `<<-` alike.
+    ("p <<E\n$(p a <<IN\nIN)\nIN\np b)\nE\np after\n", {("p", "after"): 1}),
+    ("p <<E\n$(p a <<'IN'\nIN)\nIN\n)\nE\np after\n", {("p", "after"): 1}),
+    ("p <<E\n$(p a <<-IN\n\tIN)\n\tIN\n)\nE\np after\n", {("p", "after"): 1}),
+    # Inside a `${...}` it fails as well.
+    ("p <<E\n${x:-$(p inner <<F\nF)}\nE\np after\n", {("p", "after"): 1}),
+    # A substitution before the one that fails has run, and nothing after it
+    # in the body is expanded, whatever failed: an unclosed backquote too.
+    ("p <<E\n$(p y)\n$(p a <<IN\nIN)\nIN\n)\nE\np after\n", {("p", "y"): 1, ("p", "after"): 1}),
+    ("p <<E\n$(p a <<IN\nIN)\nIN\n) $(p z)\nE\np after\n", {("p", "after"): 1}),
+    ("p <<E\n`p a\n$(p z)\nE\np after\n", {("p", "after"): 1}),
+]
+
+
+@pytest.mark.parametrize(("script", "runs"), FAILED_EXPANSIONS)
+def test_a_body_s_expansion_fails_where_bash_s_does(
+    script: str, runs: dict[tuple[str, ...], int]
+) -> None:
+    """The lexer read `p inner` from `PL-GJKN`'s form, a command bash never runs.
+
+    It took `F)` for the end of `F`'s body, as inside a `$( )` at the top
+    level, and read on past a substitution that failed. Bash 5.2.21 expands
+    nothing in the body past one that fails. The command the here-document
+    is on is read as written, as `test_a_substitution_in_an_unquoted_body_is_a_command_it_runs`
+    reads `cat`, though bash does not run it once its input's expansion has
+    failed.
+    """
+    assert _bash_runs(script, warns=True) == Counter(runs)
+    assert _lexer_runs(script) == Counter(runs) + Counter({("p",): 1})
+    assert _lexer_runs_by_piece(script) == Counter(runs) + Counter({("p",): 1})
+
+
+@pytest.mark.parametrize(
+    "script",
+    ["p <<E\n$(p $(p deep <<F\nF)\n)\nE\np after\n", "p <<E\n`p $(p deep <<F\nF)`\nE\np after\n"],
+    ids=["inside the substitution", "inside a backquote"],
+)
+def test_a_substitution_nested_in_a_body_s_ends_a_body_as_at_the_top_level(script: str) -> None:
+    """One level further in, `F)` ends `F`'s body and closes the substitution (`PL-GJKN`).
+
+    Bash 5.2.21 warns, as it does for the form at the top level, and runs
+    every command, so the body's expansion stands and the lexer reads them
+    all.
+    """
+    assert _lexer_runs(script) == _bash_runs(script, warns=True)
+    assert _lexer_runs_by_piece(script) == _bash_runs(script, warns=True)

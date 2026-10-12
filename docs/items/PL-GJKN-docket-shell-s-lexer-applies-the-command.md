@@ -3,15 +3,17 @@ id: PL-GJKN
 title: docket.shell's lexer applies the command-substitution here-document end - a line opening with the delimiter and holding a closing parenthesis - inside an unquoted here-document's expanded body, where bash 5.2 does not end the nested body there, so docket reads a command bash never runs; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1454
 payoff: a substitution inside an unquoted here-document body is read as bash reads it, so no reader of the shared lexer names a command bash never runs
-verify: grep -q 'def test_a_heredoc_in_an_expanded_heredoc_body_ends_only_at_its_delimiter' subprojects/docket/tests/test_shell.py
-recurrences: 2026-10-12 PL-55R2 withdrawn 2026-10-12 PL-55R2, 2026-10-12 PL-3Z8B withdrawn 2026-10-12 PL-3Z8B, 2026-10-12 PL-V690 withdrawn 2026-10-12 PL-V690
+verify: grep -q 'def test_a_body_s_expansion_fails_where_bash_s_does' subprojects/docket/tests/test_shell.py && grep -q 'def test_a_substitution_nested_in_a_body_s_ends_a_body_as_at_the_top_level' subprojects/docket/tests/test_shell.py
+recurrences: 2026-10-12 PL-55R2 withdrawn 2026-10-12 PL-55R2, 2026-10-12 PL-3Z8B withdrawn 2026-10-12 PL-3Z8B, 2026-10-12 PL-V690 withdrawn 2026-10-12 PL-V690, 2026-10-12 PL-54MD withdrawn 2026-10-12 PL-54MD
 ---
 
 **Problem.** docket.shell's lexer applies the command-substitution here-document end - a line opening with the delimiter and holding a closing parenthesis - inside an unquoted here-document's expanded body, where bash 5.2 does not end the nested body there, so docket reads a command bash never runs; latent
@@ -61,6 +63,30 @@ disagree in the reader everything else trusts.
 for a statement its format continues, the fact that head names. The code is new
 in `#1390`. Re-read 2026-10-11: latent, so an ordinary item under that closed,
 spent head; found live, it would reopen it.
+
+**Route, measured 2026-10-12** against bash 5.2.21. The Done-when's first
+clause does not hold in bash: in a `$( )` read directly in an unquoted body,
+`${x:-$( )}` included, a line that opens with the nested delimiter and holds a
+`)` still ends the nested body, and bash then finds no `)` to close the
+substitution. It warns and fails the body's whole expansion even where a real
+delimiter line follows, for a quoted and a `<<-` delimiter alike, and expands
+nothing in the body past the failure, while a substitution before it runs. So
+the lexer reads that line as failing the expansion rather than as an ordinary
+body line. `_Frame` gains `expansion`, on the frame `_Lexer.expanded` pushes,
+and `fails`, on a `$( )` read directly inside one; `body` raises `_Unreadable`
+at such a line where `fails`; and `expanded` stops at the first substitution
+that fails instead of reading on. A `$( )` nested inside that one, or inside a
+backquote there, keeps the compatibility end, since bash honours it there and
+reading past it would miss commands bash runs. The outer command is still read,
+as `PL-P95F` pinned it, though bash runs it in none of these forms.
+`FAILED_EXPANSIONS` pins nine forms against bash, the reproduction above
+first, through `test_a_body_s_expansion_fails_where_bash_s_does`, by the whole
+script and by piece, and
+`test_a_substitution_nested_in_a_body_s_ends_a_body_as_at_the_top_level` pins
+the two nested forms. `verify:` had named a test for "ends only at its
+delimiter line" and now names these two. Found and left: one level down, where
+the outer `)` shares the line with the compatibility end, bash fails in ways
+these forms do not reach, filed as `PL-54MD`.
 
 **Done when.** Inside an expanded here-document body a nested here-document
 ends only at its delimiter line, and a substitution bash cannot close there is

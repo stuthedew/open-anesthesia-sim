@@ -228,6 +228,8 @@ from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
 
+from workflow_paths_check import tracked_under
+
 #: Every module under this tree is read; nothing under it is named by path.
 APP = Path("src/anesthesia_sim/app")
 #: The one module colors belong in (PL-2CS8), read first so that a name another
@@ -1237,14 +1239,15 @@ def app_modules(root: Path) -> tuple[Path, ...]:
     `INK` is known; the rest in path order, so a report reads the same way
     twice. Recursive, so a subpackage the port adds is read rather than
     skipped. Two named paths until PL-BXB2, which is how a color in a third
-    module was measured by nothing.
+    module was measured by nothing. Read from `tracked_files`, so it is the
+    modules the repository holds and not an untracked scratch file (`PL-9NZ3`).
 
     Raises:
         FileNotFoundError: The theme is not in the tree. Every color lives
             there (PL-2CS8), so a tree without it has nothing to measure and
             saying so beats reporting every requirement as missing.
     """
-    return _theme_first(path.relative_to(root) for path in (root / APP).rglob("*.py"))
+    return _theme_first(path.relative_to(root) for path in tracked_under(root, APP, ".py"))
 
 
 def _theme_first(modules: Iterable[Path]) -> tuple[Path, ...]:
