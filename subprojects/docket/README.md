@@ -4540,3 +4540,10 @@ both are ignored, and `doc_check` required a cited path to exist, so a citation
 to either resolved on a developer's machine and reddened CI. It now asks git
 whether `.gitignore` covers the path and stops requiring one it does, which is
 what `PL-F933` was open for.
+
+One of these tests runs bash itself. `subprojects/docket/tests/test_shell.py`
+hands generated scripts to the first `bash` on `PATH` and to `docket.shell`,
+and every command bash runs must be one the lexer reads, with the words bash
+handed it (`PL-C4XY`). It needs bash 5.2 or newer, the grammar the lexer reads,
+and fails by name on an older one rather than skipping, since a skipped
+comparison leaves the suite green having compared nothing.

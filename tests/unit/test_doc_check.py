@@ -7360,6 +7360,56 @@ def _marker_opened_above(tmp_path: Path, kind: str) -> list[str]:
     return _split_marker_errors(_repo(tmp_path, model=model))
 
 
+#: A comment opened to set a paragraph and its marker aside, which the marker's
+#: own `-->` closes: `PL-7454`'s form.
+SET_ASIDE = "<!-- an old note, kept for the record:\n"
+#: What the citation check says of `tools/planned.py` once nothing marks it absent.
+UNMARKED_ABSENT = (
+    "README.md:6: cites `tools/planned.py`, which does not exist; a sentence naming it as "
+    "absent, planned, deleted or elsewhere says so under its paragraph: "
+    "<!-- absent: tools/planned.py -->"
+)
+
+
+def _marker_closing_a_comment(tmp_path: Path, kind: str) -> list[str]:
+    """Everything the check says of a marker set aside inside a comment its line closes."""
+    if kind == "absent":
+        readme = README + (
+            f"\nA `tools/planned.py` will do it.\n{SET_ASIDE}<!-- absent: tools/planned.py -->\n"
+        )
+        return _errors(_repo(tmp_path, readme=readme))
+    marker = MARKER.format("0.9") if kind == "provenance" else DERIVED.format("a figure", "0.9")
+    model = MODEL + f"\n{SET_ASIDE}The coefficient was 0.9.\n{marker}\n"
+    return _errors(_repo(tmp_path, model=model))
+
+
+def _split_marker_set_aside(tmp_path: Path) -> list[str]:
+    """A marker opened inside a comment and closed with it, which is the comment's."""
+    model = MODEL + (
+        f"\n{SET_ASIDE}The fraction was 0.5.\n<!-- provenance: data/agents/demo.json\n"
+        "blood_gas_partition_coefficient = 0.5 -->\n"
+    )
+    return _split_marker_errors(_repo(tmp_path, model=model))
+
+
+@pytest.mark.parametrize(
+    ("kind", "expected"), [("provenance", []), ("derived", []), ("absent", [UNMARKED_ABSENT])]
+)
+def test_a_marker_line_closing_a_longer_comment_is_not_read_as_a_marker(
+    kind: str, expected: list[str], tmp_path: Path
+) -> None:
+    """A comment runs to the first line holding a `-->`, so a marker closing one is its (`PL-7454`).
+
+    Set aside with the paragraph it was about, a provenance or derived marker
+    was held to its data file and failed a correct document, and an absent
+    marker excused a path the page no longer showed. Read with the comment as
+    nothing, it leaves the hidden paragraph's path held to the tree again, and
+    a split marker inside such a comment is the comment's too.
+    """
+    assert _marker_closing_a_comment(tmp_path, kind) == expected
+    assert _split_marker_set_aside(tmp_path) == []
+
+
 def _notes_claimed(tmp_path: Path, notes: str) -> dict[str, frozenset[str]]:
     """The ids `notes_by_version` reads from one release's notes, written as `notes`."""
     directory = tmp_path / "docs" / "releases"

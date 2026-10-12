@@ -3,12 +3,14 @@ id: PL-703R
 title: docket release's notes_bullets takes a setext heading's whole block, underline included, for a release-notes bullet's text, so restate_references appends a pull request reference to the underline and the write destroys the heading; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1444
 payoff: Restating references can never append to a heading underline and change what a released notes page renders.
 verify: grep -q 'def test_a_setext_underline_in_a_bullet_is_not_its_text_and_takes_no_reference' subprojects/docket/tests/test_release.py
 ---

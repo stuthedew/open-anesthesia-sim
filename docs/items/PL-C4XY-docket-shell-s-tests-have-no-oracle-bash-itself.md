@@ -3,11 +3,13 @@ id: PL-C4XY
 title: docket.shell's tests have no oracle: bash itself could check the lexer's reading of generated commands
 priority: P3
 effort: M
-status: ready
+status: done
 classes: test
 feature: reader-checks
 touches: subprojects/docket/tests/test_shell.py
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1444
 payoff: a shell form the lexer misreads fails the pull request that first writes it, instead of waiting for an auditor's sweep after it merges
 verify: grep -q 'def test_the_lexer_reads_generated_commands_as_bash_does' subprojects/docket/tests/test_shell.py
 ---
