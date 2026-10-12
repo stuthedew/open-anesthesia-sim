@@ -387,6 +387,18 @@ def test_a_continuation_or_an_expansion_hides_no_prune(shape: str) -> None:
     assert _decision(command) is not None, f"{command!r} was allowed"
 
 
+# Each spells `git` through a quoting form `docket.shell` read as written,
+# `$"git"` as `$git` (`PL-V690`) and `$'\x67it'` with its escape kept
+# (`PL-48ZJ`); bash 5.2.21 runs the prune.
+QUOTED_COMMANDS = ('$"git" fetch --prune', "$'\\x67it' fetch --prune")
+
+
+@pytest.mark.parametrize("command", QUOTED_COMMANDS)
+def test_a_command_named_through_a_quoting_form_is_the_command_bash_runs(command: str) -> None:
+    """A locale string or an ANSI-C escape names the command bash reads from it."""
+    assert _decision(command) is not None, f"{command!r} was allowed"
+
+
 def test_a_here_document_beside_a_substitution_carried_across_lines_hides_no_prune() -> None:
     """A body waits for the end of the line its substitution closes on (`PL-QSN5`).
 

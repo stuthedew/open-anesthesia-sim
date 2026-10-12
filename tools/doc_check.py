@@ -5981,9 +5981,10 @@ def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
     (`PL-4ZDZ`); in a fence, only as a command's first word, the fence read as
     bash reads its lines, through docket's `shell.script_lines` (`PL-R417`):
     `make \\` over `check` is `make check`, which a line at a time read as
-    nothing. A fence bash cannot read - prose, output, another language - is
-    read a line at a time from the line where it stops being readable, as every
-    fence was before.
+    nothing, and a `$(make check)` in an unquoted here-document's body is the
+    command bash runs (`PL-55R2`). A fence bash cannot read - prose, output,
+    another language - is read a line at a time from the line where it stops
+    being readable, as every fence was before.
 
     A fenced line names a target wherever `make` heads one of the simple
     commands bash runs from it (`_simple_commands`), so `cd sub && make x`,
@@ -6062,9 +6063,12 @@ def workflow_commands(
     cut by docket's `shell.script_lines`: the lines a backslash, a quote or a
     substitution carries a command across are one line here, spelled as the
     workflow spells them, and a here-document's body and delimiter are no
-    line at all, being the input of the command before them. Read one line at
-    a time, as it was until `PL-Q9LK`, `drift.yml`'s `python3 - <<'PY'` body
-    was a run of commands, and a continued command was declined.
+    line at all, being the input of the command before them. A substitution
+    in the body of a delimiter with no quoted part is the exception, a line
+    of its own at the line it opens on, since bash expands that body and runs
+    it (`PL-55R2`). Read one line at a time, as it was until `PL-Q9LK`,
+    `drift.yml`'s `python3 - <<'PY'` body was a run of commands, and a
+    continued command was declined.
 
     YAML hands bash the body less its own indentation, which its first
     non-blank line sets, and keeps the rest: `x\\` over an indented `y` is

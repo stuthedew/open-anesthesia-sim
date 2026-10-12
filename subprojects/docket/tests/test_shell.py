@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import bisect
 import functools
+import os
 import re
 import shutil
 import subprocess
@@ -27,7 +28,15 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from docket.shell import Word, flat_reading, joined_text, script_lines, shell_words
+from docket.shell import (
+    FlatReading,
+    Operator,
+    Word,
+    flat_reading,
+    joined_text,
+    script_lines,
+    shell_words,
+)
 
 
 def _words(command: str) -> list[str]:
@@ -95,6 +104,14 @@ def _words(command: str) -> list[str]:
             ["cat <<EOF; x=$(echo a\necho b); next", "last"],
         ),
         ("cat <<A; x=$(cat <<B)\nbody-1\nB\nbody-2\nA\nnext\n", ["cat <<A; x=$(cat <<B)", "next"]),
+        # A substitution in an unquoted body is a piece of its own, in a body
+        # carried out of its substitution too, and one the delimiter line cuts,
+        # which bash 5.2.21 fails to expand, is none (`PL-55R2`).
+        (
+            "cat <<A; x=$(cat <<B)\n$(p b)\nB\n`p a`\nA\nnext\n",
+            ["cat <<A; x=$(cat <<B)", "$(p b)", "`p a`", "next"],
+        ),
+        ("cat <<EOF\n$(p a\nEOF\nnext\n", ["cat <<EOF", "next"]),
         # Inside a substitution a line that opens with the delimiter and holds a
         # `)` ends the body, and the rest of it is read; the bodies after it
         # take the lines after its own.
@@ -215,6 +232,72 @@ def test_a_test_bash_finds_unclosed_is_unreadable() -> None:
     assert shell_words("x=$([[ ( a ) ]]); echo b").clauses != ()
 
 
+#: Conditionals bash refuses, as `bash -n` says, for the lexer to refuse too.
+REFUSED_CONDITIONALS = [
+    *(
+        f"[[ a {operator} b ]]"
+        for operator in (";", "|", "&", ">>", "<<", "<<-", "<&", ">&", ">|", "&>", "&>>", "<>")
+    ),
+    *(f"[[ a {operator} b ]]" for operator in (";;", ";&", ";;&", "|&", "<<<")),
+    "[[ ( -n a ]]",
+    "[[ a ) ]]",
+    "[[ ( ) ]]",
+    "[[ x == (a) ]]",
+    "[[ x == a|b ]]",
+    "[[ x =~ a)b ]]",
+    "[[ x =~ a(b ]]",
+    "[[ x=~(x) ]]",
+    "[[ @(a) == x ]]",
+    "[[ ]]",
+    "[[ -n ]]",
+    "[[ a && ]]",
+    "[[ a b ]]",
+    "[[ a == b == c ]]",
+    "[[ 2<3 ]]",
+    "[[ a\n]]",
+    "[[ a ==\n b ]]",
+]
+
+
+def test_a_conditional_s_operators_are_its_own_words() -> None:
+    """Inside `[[ ]]` an `&&`, `||`, `(`, `)`, `<` and `>` is a word of the test (`PL-X1VN`).
+
+    Read as operators, `[[ -n a && -n b ]] && p x` was the clauses `[[ -n a`,
+    `-n b ]]` and `p x` to every reader, and `a < b` a read from a file `b`,
+    where bash 5.2.21 runs one conditional and `p x`. The word after `=~` is a
+    regular expression, its groups pairs and its `|` part of it, and the word
+    after `==`, `=` or `!=` a pattern, its extglob groups pairs. A `<(` is
+    still the process substitution it is, and what bash refuses is refused.
+    """
+    reading = shell_words("[[ -n a && -n b ]] && p x")
+    assert [clause.text for clause in reading.clauses] == ["[[ -n a && -n b ]]", "p x"]
+    flat = flat_reading("[[ -n a && -n b ]] && p x").tokens
+    assert flat == ("[[", "-n", "a", "&&", "-n", "b", "]]", "&&", "p", "x")
+    assert [isinstance(token, Operator) for token in flat] == [False] * 7 + [True] + [False] * 2
+    assert [type(token) for token in flat_reading("[[ ( -n a ) || a < b ]]").tokens] == [str] * 10
+    (clause,) = shell_words("[[ ( -n a ) || a < b ]]").clauses
+    assert clause.tokens == tuple(Word(text) for text in "[[ ( -n a ) || a < b ]]".split())
+    assert _words("[[ -e <(p x) ]]") == ["[[", "-e", "<(p x)", "]]", "p", "x"]
+
+    for test, words in (
+        ("x =~ ^(a|x)$", ["x", "=~", "^(a|x)$"]),
+        ("x =~ ( x )", ["x", "=~", "( x )"]),
+        ("x =~ y|x", ["x", "=~", "y|x"]),
+        ("x == @(a|x)*", ["x", "==", "@(a|x)*"]),
+        ("x != !(y)", ["x", "!=", "!(y)"]),
+        ('x == "a"\\ @(b)', ["x", "==", "a @(b)"]),
+        ("x == @(y|\nx)", ["x", "==", "@(y|\nx)"]),
+    ):
+        command = f"[[ {test} ]]"
+        assert _words(command) == ["[[", *words, "]]"], command
+        assert flat_reading(command).tokens == ("[[", *words, "]]"), command
+
+    for command in REFUSED_CONDITIONALS:
+        assert subprocess.run([_bash(), "-n", "-c", command], capture_output=True).returncode
+        assert shell_words(command).clauses == (), command
+        assert not flat_reading(command).complete, command
+
+
 @pytest.mark.parametrize(
     ("command", "words"),
     [
@@ -285,6 +368,64 @@ def test_an_ansi_c_quoted_string_ends_at_the_quote_bash_ends_it_at() -> None:
     assert (
         shell_words("echo $'a'").refusal == "carries an unquoted `$`, which no admitted shape uses"
     )
+
+
+def test_a_locale_string_reads_as_its_double_quoted_text() -> None:
+    """Bash reads `$"..."` as the double-quoted string it holds, in the C locale (`PL-V690`).
+
+    Read as a `$` and then a double-quoted string, `$"git"` was the word `$git`
+    to both views, so a guard looking for `git` passed it by, where bash 5.2.21
+    runs `git`. A substitution inside it still runs, and inside double quotes
+    `$"` opens no locale string: `"$"x""` is `$x`.
+    """
+    for command, words in (
+        ('p $"loc"', ["p", "loc"]),
+        ('p $"git" push', ["p", "git", "push"]),
+        ('a$"b"c', ["abc"]),
+        ('p $\\\n"a b"', ["p", "a b"]),
+        ('p "$"x""', ["p", "$x"]),
+    ):
+        assert _words(command) == words, command
+        assert flat_reading(command).tokens == tuple(words), command
+    assert shell_words('p $"loc"').clauses[0].tokens[1] == Word("loc", quoted=True)
+
+    assert _words('p $"$(p x)"') == ["p", "$(p x)", "p", "x"]
+    assert flat_reading('p $"$(p x)"') == flat_reading('p "$(p x)"')
+
+
+def test_arithmetic_is_one_word_that_runs_no_command() -> None:
+    """An arithmetic expansion, command or `for` is a word; a substitution in it runs (`PL-3Z8B`).
+
+    Read as two subshells or a substitution's body, each expression was a
+    command to both views: bash 5.2.21 runs `p 3` for `p $(( 1 + 2 ))` and no
+    command at all for `(( 1 + 2 ))`, where docket was handed `1 + 2`. Inside
+    one a `<<` is a shift and a newline a space, so neither opens a body or
+    ends a line, and `$(( $(p x) + 1 ))` still runs `p x`.
+    """
+    for command, tokens in (
+        ("p $(( 1 + 2 ))", ["p", "$(( 1 + 2 ))"]),
+        ("x=$((y + 1)); p x", ["x=$((y + 1))", ";", "p", "x"]),
+        ("(( 1 + 2 )) && p x", ["(( 1 + 2 ))", "&&", "p", "x"]),
+        (
+            "for ((i = 0; i < 1; i++)); do p $i; done",
+            ["for", "((i = 0; i < 1; i++))", ";", "do", "p", "$i", ";", "done"],
+        ),
+        ("(( x = 1 << 2 )) && p x", ["(( x = 1 << 2 ))", "&&", "p", "x"]),
+        ("((1 +\n2)) && p x", ["((1 +\n2))", "&&", "p", "x"]),
+    ):
+        assert _words(command) == [token for token in tokens if token not in (";", "&&")], command
+        assert shell_words(command).substitutions == (), command
+        assert flat_reading(command) == FlatReading(tuple(tokens), (), True), command
+    assert shell_words("(( 1 ))").clauses[0].tokens == (Word("(( 1 ))"),)
+    assert shell_words("(( 1 ))").refusal == "carries `(`, which no admitted shape uses"
+    assert [piece for piece, _ in script_lines("cat <<EOF; ((1 <<\n2))\nbody\nEOF\nnext\n")] == [
+        "cat <<EOF; ((1 <<\n2))",
+        "next",
+    ]
+
+    command = "p $(( $(p x) + 1 ))"
+    assert _words(command) == ["p", "$(( $(p x) + 1 ))", "p", "x"]
+    assert flat_reading(command) == FlatReading(("p", command[2:]), (("p", "x", ")"),), True)
 
 
 def test_a_substitution_in_an_unquoted_body_is_a_command_it_runs() -> None:
@@ -436,11 +577,12 @@ def _lexer_runs(script: str) -> Counter[tuple[str, ...]]:
     Its clauses and each substitution's are cut into simple commands where an
     operator ends one, and each is read as bash hands it over: a redirection
     and its target, a descriptor written against one, a `case` construct's own
-    words, a reserved word or an assignment at its head, and a `for` or `[[`
-    command's own words are no command's words; a word that is a substitution
-    or a parameter expansion, all of which expand to nothing here, is no word,
-    or an empty one in double quotes; and a process substitution is the path
-    bash hands over in its place.
+    words, a reserved word or an assignment at its head, and a `for`, `[[` or
+    `((` command's own words are no command's words; a word that is a
+    substitution or a parameter expansion, all of which expand to nothing here,
+    is no word, or an empty one in double quotes; an arithmetic expansion is
+    the `1` every one the generator draws comes to; and a process substitution
+    is the path bash hands over in its place.
     """
     reading = shell_words(script)
     assert reading.clauses, (script, reading.refusal)
@@ -488,13 +630,16 @@ def _handed(
         if token.case_syntax:
             continue
         if not words and not token.quoted:
-            if token.text in ("for", "[["):
+            if token.text in ("for", "[[") or token.text.startswith("(("):
                 return ()
             if timed and token.text == "-p":
                 continue
             timed = token.text == "time"
             if token.text in RESERVED or ASSIGNMENT.match(token.text):
                 continue
+        if script[start:end].lstrip('\\"').startswith("$(("):  # in quotes or backquotes too
+            words.append("1")
+            continue
         after = bisect.bisect_right(opened, start)
         held = after < len(opened) and opened[after] < end
         if held and token.text.startswith(("<(", ">(")):
@@ -528,19 +673,38 @@ SPECIAL = " \t;&|<>()$`'\"\\#*?[{}~"
 BODY = PLAIN + " ;&|<>()'\"#*"
 DELIMITERS = ("EOF", "'EOF'", '"EOF"', "E\\OF", "\\EOF", "END_1")
 COMMENT = PLAIN + " '\"\\$`()<#;&|"
+#: Escapes a `$'...'` replaces with printable ASCII, whatever follows them: each
+#: number takes all the digits it can, so a digit after it is a character.
+ANSI_C_ESCAPED = (
+    "\\x41",
+    "\\x7e",
+    "\\x{41}",
+    "\\101",
+    "\\060",
+    "\\u0041",
+    "\\U0000007e",
+    "\\'",
+    '\\"',
+    "\\\\",
+    "\\?",
+    "\\q",
+    "\\8",
+)
 
 
 def _word(draw: st.DrawFn) -> str:
     """A word bash hands over as written once its quotes are removed.
 
-    No `$` stands unescaped before a double quote, where it would open a
-    locale string the lexer misreads (`PL-V690`), and a `$'...'` holds no
-    backslash, whose escape the lexer keeps as written (`PL-48ZJ`).
+    A `$'...'` holds escapes whose result is printable ASCII with no NUL
+    (`PL-48ZJ`): one above 0x7f is the locale's, and a control character
+    could be a separator `p` records with.
     """
     parts: list[str] = []
     for _ in range(draw(st.integers(1, 4))):
         kind = draw(
-            st.sampled_from(("plain", "plain", "escaped", "single", "double", "ansi", "join", "#"))
+            st.sampled_from(
+                ("plain", "plain", "escaped", "single", "double", "locale", "ansi", "join", "#")
+            )
         )
         if kind == "plain":
             parts.append(draw(st.text(PLAIN, min_size=1, max_size=4)))
@@ -548,14 +712,20 @@ def _word(draw: st.DrawFn) -> str:
             parts.append("\\" + draw(st.sampled_from(sorted(SPECIAL + "ab\n"))))
         elif kind == "single":
             parts.append("'" + draw(st.text(PLAIN + ' ;&|<>()$`"\\#*?[{}~\n', max_size=5)) + "'")
-        elif kind == "double":
+        elif kind in ("double", "locale"):
             inside = st.one_of(
                 st.text(PLAIN + " ;&|<>()#*?[{}~'\n\t", min_size=1, max_size=3),
                 st.sampled_from(('\\"', "\\\\", "\\$", "\\`", "\\a", "\\\n", "\\;")),
             )
-            parts.append('"' + "".join(draw(st.lists(inside, max_size=4))) + '"')
+            # A `$"..."` is the double-quoted string it holds, in the C locale.
+            opening = '$"' if kind == "locale" else '"'
+            parts.append(opening + "".join(draw(st.lists(inside, max_size=4))) + '"')
         elif kind == "ansi":
-            parts.append("$'" + draw(st.text(PLAIN + ' ;&|<>()$`"#*?[{}~', max_size=4)) + "'")
+            inside = st.one_of(
+                st.text(PLAIN + ' ;&|<>()$`"#*?[{}~', min_size=1, max_size=3),
+                st.sampled_from(ANSI_C_ESCAPED),
+            )
+            parts.append("$'" + "".join(draw(st.lists(inside, max_size=4))) + "'")
         elif kind == "join":
             parts.append("\\\n")
         else:
@@ -568,7 +738,8 @@ def _word(draw: st.DrawFn) -> str:
     # `\&` for the `&` that ends a command: `if p a\&; then` loses its `;`.
     if text.endswith("\\&"):
         text += "w"
-    return text
+    # `"\$((` would spell an arithmetic expansion in backquotes, as `_handed` reads one.
+    return text.replace("\\$(", "\\$w(")
 
 
 def _backquoted(command: str, quoted: bool) -> str:
@@ -580,24 +751,79 @@ def _backquoted(command: str, quoted: bool) -> str:
 def _substitution(draw: st.DrawFn, depth: int, quoted: bool) -> str:
     """A command substitution, in `$( )` or backquotes, whose output is nothing."""
     if draw(st.booleans()):
-        # The space keeps `$(` from opening an arithmetic `$((`, whose body the
-        # lexer reads as a command (`PL-3Z8B`). Bash 5.2.21 reprints a `$( )`
-        # before it runs it, and drops the first `;` it prints after a
-        # here-document's body: `p <<EOF`, the body, then `p a; p b` runs
+        # The space keeps `$(` from opening an arithmetic `$((`, which
+        # `_handed` takes for one. Bash 5.2.21 reprints a `$( )` before it
+        # runs it, and drops the first `;` it prints after a here-document's
+        # body: `p <<EOF`, the body, then `p a; p b` runs
         # `p a p b`. So only the last command in one opens a here-document.
         return "$( " + _list(draw, depth + 1, lines=True, opens="last") + ")"
     return _backquoted(_simple(draw, depth + 1, bodies=None), quoted)
 
 
+#: Arithmetic expressions bash 5.2.21 evaluates to 1, each `SUB` a substitution
+#: expanding to nothing where the expression stays one without it: `1 + ` is a
+#: syntax error, and `1 + 0` is not (`PL-3Z8B`).
+ARITHMETIC = (
+    "1",
+    "2 - 1",
+    "(1 + 2) / 3",
+    "1 << 0",
+    "2#1",
+    "16#ff / 255",
+    "2 > 1",
+    "x = 1",
+    "1 +\n0",
+    '"1"',
+    "(1)",
+    "1 + 0SUB",
+    "SUB1",
+    "1 SUB",
+)
+
+
+def _arithmetic(draw: st.DrawFn, depth: int, where: str) -> str:
+    """An arithmetic expression that comes to 1, its parentheses spaced or not.
+
+    A substitution in it runs a simple command: bash 5.2.21 misreads a `case`
+    in its reprint of a `$( )` there, a syntax error inside `for (( ))` and
+    in `$(( ))` an expansion it runs as a command. `where` it stands decides
+    the rest. In an `expansion` it is a `$( )` of plain words, since bash
+    decides again whether one is arithmetic as it expands it, and miscounts a
+    backquote holding a backslash anywhere inside: `$((1 + 0`p \\\\(`))` runs
+    `1`, and so does `$((1 + 0$( p `p \\\\"`)))`. In a `for` it is a
+    backquote, since bash reads its `$( )` again from the reprint, where an
+    escaped blank before a `#` opens a comment: `for ((i = 1 + 0$( p a\\ #);
+    i < 2; i++))` is a syntax error. A `command` takes either.
+    """
+    expression = draw(st.sampled_from(ARITHMETIC))
+    if "SUB" in expression:
+        # Plain words at depth 2, but in a command, which reads them as drawn.
+        simple = _simple(draw, depth + 1 if where == "command" else 2, bodies=None)
+        forms = {
+            "expansion": (f"$( {simple})",),
+            "for": (_backquoted(simple, False),),
+            "command": (f"$( {simple})", _backquoted(simple, False)),
+        }[where]
+        expression = expression.replace("SUB", draw(st.sampled_from(forms)))
+    space = draw(st.sampled_from(("", " ")))
+    return space + expression + space
+
+
 def _argument(draw: st.DrawFn, depth: int) -> str:
-    """A word, or at shallow depth an expansion of one of the kinds bash expands to nothing."""
+    """A word, or at shallow depth an expansion: one of the kinds bash expands to nothing, or 1."""
     if depth >= 2 or draw(st.integers(0, 3)):
         return _word(draw)
-    kind = draw(st.sampled_from(("$()", '"$()"', "${}", '"${}"', "${:-}", '"${:-}"', "<()", ">()")))
+    kind = draw(
+        st.sampled_from(
+            ("$()", '"$()"', "${}", '"${}"', "${:-}", '"${:-}"', "<()", ">()", "$(())", '"$(())"')
+        )
+    )
     quoted = kind.startswith('"')
     if kind in ("<()", ">()"):
         return kind[0] + "( " + _list(draw, depth + 1, lines=False) + " )"
-    if ":-" in kind:
+    if "((" in kind:
+        inner = "$((" + _arithmetic(draw, depth, "expansion") + "))"
+    elif ":-" in kind:
         # Inside `${ }` a backquote's quotes are its own, in double quotes or not.
         inner = UNSET + ":-" + _substitution(draw, depth, quoted=False) + "}"
     elif "{" in kind:
@@ -643,14 +869,13 @@ def _here_document(draw: st.DrawFn, nested: bool) -> tuple[str, str]:
 
     A body's substitutions open no here-document of their own, which bash
     5.2.21 refuses where the lexer reads one (`PL-GJKN`). Each runs `p body`,
-    or at the top level `p top-body`, which no piece of `script_lines` holds
+    which at the top level `script_lines` hands on as a piece of its own
     (`PL-55R2`).
     """
     spelled = draw(st.sampled_from(DELIMITERS))
     delimiter = re.sub(r"['\"\\]", "", spelled)
     dash = draw(st.booleans())
     quoted = spelled != delimiter
-    runs = "p body" if nested else "p top-body"
     lines = draw(
         st.lists(
             st.one_of(
@@ -658,7 +883,7 @@ def _here_document(draw: st.DrawFn, nested: bool) -> tuple[str, str]:
                 st.sampled_from(
                     ("p x", "EOF ", " EOF", "EOFX", "# EOF", "\tEOF", "a\\", "a\\\\", "x)")
                 ),
-                st.sampled_from((f"$({runs})", f"`{runs}`", f"a $({runs}) b")),
+                st.sampled_from(("$(p body)", "`p body`", "a $(p body) b")),
             ),
             max_size=3,
         )
@@ -713,9 +938,19 @@ def _case(draw: st.DrawFn, depth: int, lines: bool) -> str:
     return f"case {subject} in{space}" + space.join(arms) + f"{space}esac"
 
 
-#: The compound commands a statement may be. No `(( ))`, whose expression the
-#: lexer reads as a command in two subshells (`PL-3Z8B`).
-COMPOUND = ("group", "subshell", "if", "time", "assign", "array", "case", "for", "test")
+#: The compound commands a statement may be.
+COMPOUND = (
+    "group",
+    "subshell",
+    "if",
+    "time",
+    "assign",
+    "array",
+    "case",
+    "for",
+    "test",
+    "arithmetic",
+)
 
 
 def _statement(
@@ -750,23 +985,88 @@ def _statement(
     if kind == "assign":
         return "v=" + _substitution(draw, depth, quoted=False)
     if kind == "array":
+        # On one line: bash 5.2.21 misreads a body waiting on a newline inside
+        # one. `cat <<EOF; a=(x` over `hello`, `EOF` and `y)` warns that the
+        # body ran to the end of the script, wanting `hello` and its newline.
         return (
             "a=(" + " ".join(_argument(draw, depth) for _ in range(draw(st.integers(0, 3)))) + ")"
         )
     if kind == "case":
         return _case(draw, depth, lines)
+    if kind == "arithmetic":
+        # True, as every drawn expression is, so the script's status stays 0.
+        return "((" + _arithmetic(draw, depth, "command") + "))"
     if kind == "for":
+        body = _list(draw, depth + 1, lines=False)
+        if draw(st.booleans()):
+            # The arithmetic `for`, its body run once. Its test runs on each
+            # pass, a substitution in it twice, so the drawn one is the first.
+            counted = _arithmetic(draw, depth, "for")
+            return f"for ((i = {counted}; i < 2; i++)); do {body}; done"
         listed = _substitution(draw, depth, quoted=False) + " 1" if draw(st.booleans()) else "1"
-        return f"for _ in {listed}; do {_list(draw, depth + 1, lines=False)}; done"
-    # A test of one term, since the lexer reads the `&&`, `||`, parentheses,
-    # `<` and `>` inside `[[ ]]` as operators (`PL-X1VN`).
-    test = draw(st.sampled_from(("-n x", "x == x", "-z SUB", "SUB == ''")))
-    if "SUB" in test:
-        test = test.replace("SUB", _substitution(draw, depth, quoted=False))
+        return f"for _ in {listed}; do {body}; done"
+    test = _condition(draw, depth, truth=True, room=2)
     # A newline inside `[[ ]]` starts the bodies a `<<` before it opened, so
     # one ends a line only where the bodies it would start are known to be none.
     closing = draw(st.sampled_from((" ]]", "\n]]"))) if bodies == [] else " ]]"
     return f"[[ {test}{closing}"
+
+
+#: Conditional tests bash 5.2.21 finds true, and those it finds false, each
+#: `SUB` a substitution expanding to nothing: string comparisons, a regular
+#: expression's groups and bars, and extglob groups after `==`, `=` and `!=`,
+#: a newline inside a group among them (`PL-X1VN`).
+TRUE_TESTS = (
+    "-n x",
+    "x == x",
+    "-z SUB",
+    "SUB == ''",
+    "a < b",
+    "b>a",
+    "x =~ ^(a|x)$",
+    "x =~ y|x",
+    "' x ' =~ ( x )",
+    "x =~ ((x))",
+    "x =~ (x|\ny)",
+    "x == @(a|x)",
+    "xy == @(a|x)*",
+    "x = @(x)",
+    "x != !(x)",
+    "x == +(x)",
+    "x != a@(b|c)",
+    "x == @(x|\ny)",
+    '"a b" == "a"\\ @(b)',
+)
+FALSE_TESTS = ("-z x", "x == y", "-n SUB", "SUB != ''", "b < a", "x =~ ^(a|y)$", "x != @(x)")
+
+
+def _condition(draw: st.DrawFn, depth: int, truth: bool, room: int) -> str:
+    """A conditional expression bash finds `truth`, every substitution in it run.
+
+    `&&` joins two terms after a true one and `||` after a false one, since
+    bash skips the other's right side and the substitutions in it, and each
+    side is a term so that no precedence decides what runs.
+    """
+    kind = draw(st.sampled_from(("term", "term", "&&", "||") if room else ("term",)))
+    if kind == "&&":
+        joined = draw(st.sampled_from((" && ", "&&")))
+        return _term(draw, depth, True, room - 1) + joined + _term(draw, depth, truth, room - 1)
+    if kind == "||":
+        # Spaced, since after `=~` a `|` is part of the regular expression.
+        return _term(draw, depth, False, room - 1) + " || " + _term(draw, depth, truth, room - 1)
+    return _term(draw, depth, truth, room)
+
+
+def _term(draw: st.DrawFn, depth: int, truth: bool, room: int) -> str:
+    """A test bash finds `truth`, or at shallow depth one negated with `!` or grouped."""
+    kind = draw(st.sampled_from(("test",) * 3 + (("!", "group") if room else ())))
+    if kind == "!":
+        return "! " + _term(draw, depth, not truth, room - 1)
+    if kind == "group":
+        grouped = draw(st.sampled_from(("( {} )", "({})")))
+        return grouped.format(_condition(draw, depth, truth, room - 1))
+    test = draw(st.sampled_from(TRUE_TESTS if truth else FALSE_TESTS))
+    return test.replace("SUB", _substitution(draw, depth, quoted=False)) if "SUB" in test else test
 
 
 #: What may stand between two statements on one line, each running both sides.
@@ -847,20 +1147,23 @@ def test_the_lexer_reads_generated_commands_as_bash_does(script: str) -> None:
     so bash itself is the reference: each script runs in bash 5.2 or newer,
     every command recording the words it was handed, and the lexer's reading
     of the same script is turned into the commands it says run. The two must
-    agree, whole and a piece of `script_lines` at a time but for `p top-body`,
-    which no piece holds (`PL-55R2`). Running the script compares what bash
-    does; `declare -f` would print bash's reprint of its parse instead, which
-    is where the faults the generator steers round live, and would want a
-    reader of its own.
+    agree, whole and a piece of `script_lines` at a time, a top-level body's
+    substitutions in pieces of their own (`PL-55R2`). Running the script
+    compares what bash does; `declare -f` would print bash's reprint of its
+    parse instead, which is where the faults the generator steers round live,
+    and would want a reader of its own.
 
     Hypothesis draws the scripts, derandomized, so a red run reproduces
     exactly: words in every quoting, continuations and comments; `$( )`,
     nested backquotes, `${...}` with a default, and process substitutions;
+    arithmetic expansions, a substitution inside some (`PL-3Z8B`);
     redirections, descriptors and a `{v}` among them, here-strings, and
     here-documents under every quoting of their delimiter, `<<-` too, inside
     substitutions as well; `;`, `&`, `&&`, `|`, `|&` and an operator a
     continuation splits; and groups, subshells, `if`, `time` and `time -p`,
-    assignments, arrays, `for`, `[[ ]]`, and `case` with `;;`, `;&` and `;;&`.
+    assignments, arrays, `for` and the arithmetic `for`, `(( ))`, `[[ ]]`
+    with `!`, groups, `&&`, `||`, `<`, `>`, `=~` and extglob patterns
+    (`PL-X1VN`), and `case` with `;;`, `;&` and `;;&`.
     The same generator, run unseeded over 10,000 scripts on 2026-10-12,
     disagreed with bash on none.
 
@@ -872,61 +1175,95 @@ def test_the_lexer_reads_generated_commands_as_bash_does(script: str) -> None:
     expected = _bash_runs(script)
 
     assert _lexer_runs(script) == expected, script
-    del expected[("p", "top-body")]
     assert _lexer_runs_by_piece(script) == expected, script
+
+
+#: A `$'...'` for every escape bash 5.2.21's `ansicstr` reads, each grammar at
+#: and past its edges: too many digits, too few, none, and values a byte or the
+#: C locale cannot hold.
+ANSI_C_WORDS = [
+    *(
+        f"$'{inside}'"
+        for inside in (
+            r"\x41",
+            r"\x414",
+            r"\x{4142}",
+            r"\x{41",
+            r"\x{}",
+            r"\x",
+            r"\xg",
+            r"\xff",
+            r"\1012",
+            r"\400",
+            r"\777",
+            r"\0101",
+            r"\8",
+            r"\q",
+            r"\cA",
+            r"\ca",
+            r"\c?",
+            r"\c\\",
+            r"\c\'",
+            r"\c\x",
+            r"\c",
+            r"a\c@b",
+            r"\e\E",
+            r"\a\b\f\n\r\t\v",
+            r"\'\"\?\\",
+            "A1",
+            "é",
+            r"\cé",
+            r"\é",
+            r"\U0001F600",
+            r"\uD800",
+            r"é",
+            r"\U000000e9",
+            r"\U00110000",
+            r"\U7FFFFFFF",
+            r"\U80000000",
+            r"\u",
+            r"\uq",
+            r"\U",
+            r"\u0",
+            r"A",
+            "a\\\nb",
+        )
+    ),
+    r"x$'a\0b'y",
+]
+
+
+@pytest.mark.parametrize("word", ANSI_C_WORDS)
+def test_an_ansi_c_word_reads_as_bash_reads_it_in_the_c_locale(word: str) -> None:
+    """A `$'...'` word is the bytes bash makes of it under `LC_ALL=C`, in both views (`PL-48ZJ`).
+
+    The lexer kept its escapes as written, so `$'\\x67it'` was a word no
+    guard took for `git`. Bash itself is the reference, printing the word
+    under the C locale, and the lexer's text must be those bytes once
+    encoded back with `surrogateescape`. A NUL ends the `$'...'` it stands
+    in and nothing more, as `x$'a\\0b'y` holds.
+    """
+    printed = subprocess.run(
+        [_bash(), "--norc", "--noprofile", "-c", f"printf %s {word}"],
+        capture_output=True,
+        env={"LC_ALL": "C", "PATH": os.environ["PATH"]},
+        timeout=60,
+        check=True,
+    ).stdout
+    (token,) = shell_words(word).clauses[0].tokens
+
+    assert isinstance(token, Word)
+    assert token.text.encode("utf-8", "surrogateescape") == printed
+    assert flat_reading(word).tokens == (token.text,)
 
 
 #: Where the lexer reads a script differently from bash today, each by the item
 #: that will make it bash's: the script, what bash runs, and what `shell_words`
 #: reads from it whole and a piece of `script_lines` at a time. The generator
 #: leaves each form out; the fix deletes its row and lets the generator draw it.
-KNOWN_DEPARTURES = [
-    pytest.param(
-        "p <<EOF\nbody $(p from-a-body) line\nEOF\np after\n",
-        {("p",): 1, ("p", "from-a-body"): 1, ("p", "after"): 1},
-        {("p",): 1, ("p", "from-a-body"): 1, ("p", "after"): 1},
-        {("p",): 1, ("p", "after"): 1},
-        id="PL-55R2",
-    ),
-    pytest.param(
-        "p $(( 1 + 2 ))\n",
-        {("p", "3"): 1},
-        {("p",): 1, ("1", "+", "2"): 1},
-        {("p",): 1, ("1", "+", "2"): 1},
-        id="PL-3Z8B-expansion",
-    ),
-    pytest.param(
-        "(( 1 + 2 )) && p x\n",
-        {("p", "x"): 1},
-        {("1", "+", "2"): 1, ("p", "x"): 1},
-        {("1", "+", "2"): 1, ("p", "x"): 1},
-        id="PL-3Z8B-command",
-    ),
-    pytest.param(
-        'p $"loc"\n', {("p", "loc"): 1}, {("p", "$loc"): 1}, {("p", "$loc"): 1}, id="PL-V690"
-    ),
-    pytest.param(
-        "[[ -n a && -n b ]] && p x\n",
-        {("p", "x"): 1},
-        {("-n", "b", "]]"): 1, ("p", "x"): 1},
-        {("-n", "b", "]]"): 1, ("p", "x"): 1},
-        id="PL-X1VN-and",
-    ),
-    pytest.param(
-        "[[ ( -n a ) ]] && p x\n",
-        {("p", "x"): 1},
-        {("-n", "a"): 1, ("]]",): 1, ("p", "x"): 1},
-        {("-n", "a"): 1, ("]]",): 1, ("p", "x"): 1},
-        id="PL-X1VN-parentheses",
-    ),
-    pytest.param(
-        "p $'\\x41' $'a\\'b'\n",
-        {("p", "A", "a'b"): 1},
-        {("p", "\\x41", "a\\'b"): 1},
-        {("p", "\\x41", "a\\'b"): 1},
-        id="PL-48ZJ",
-    ),
-]
+#: Empty since `PL-55R2` fixed the last of `PL-C4XY`'s, so pytest reports the
+#: test below as skipped, for an empty parameter set, until a departure is found.
+KNOWN_DEPARTURES: list[object] = []
 
 
 @pytest.mark.parametrize(("script", "bash", "whole", "pieces"), KNOWN_DEPARTURES)
@@ -944,3 +1281,46 @@ def test_each_known_departure_from_bash_reads_as_its_row_records(
     assert _bash_runs(script) == Counter(bash)
     assert _lexer_runs(script) == Counter(whole)
     assert _lexer_runs_by_piece(script) == Counter(pieces)
+
+
+#: Scripts whose here-document bodies hold a substitution, and the pieces
+#: `script_lines` cuts each into: every substitution bash 5.2.21 runs from a
+#: top-level body is a piece of its own, where it opens (`PL-55R2`).
+BODY_SUBSTITUTIONS = [
+    # `p from-a-body` was in no piece, so no reader taking one at a time saw it.
+    (
+        "p <<EOF\nbody $(p from-a-body) line\nEOF\np after\n",
+        [("p <<EOF", 0), ("$(p from-a-body)", 13), ("p after", 39)],
+    ),
+    # A backquote, and a `${...}` holding a substitution, run one; a bare
+    # `${...}`, an arithmetic expansion and an escaped `$` run none.
+    (
+        "p <<EOF\n`p a` ${x} ${y:-$(p b)} $((1)) \\$(p c)\nEOF\np next\n",
+        [("p <<EOF", 0), ("`p a`", 8), ("${y:-$(p b)}", 19), ("p next", 51)],
+    ),
+    # One carried across the body's lines is one piece.
+    ("p <<EOF\n$(p a\np b)\nEOF\np next\n", [("p <<EOF", 0), ("$(p a\np b)", 8), ("p next", 23)]),
+    # A quoted delimiter's body runs nothing.
+    ("p <<'EOF'\n$(p a)\nEOF\np next\n", [("p <<'EOF'", 0), ("p next", 21)]),
+    # A body a line's `[[ ]]` starts is in that line's piece, and read there.
+    (
+        "p <<EOF; [[\n$(p a)\nEOF\na == a ]]\np next\n",
+        [("p <<EOF; [[\n$(p a)\nEOF\na == a ]]", 0), ("p next", 33)],
+    ),
+]
+
+
+@pytest.mark.parametrize(("script", "pieces"), BODY_SUBSTITUTIONS)
+def test_script_lines_hands_a_here_document_body_s_substitutions_a_piece(
+    script: str, pieces: list[tuple[str, int]]
+) -> None:
+    """Bash expands the body of a delimiter with no quoted part, so a substitution there runs.
+
+    `PL-P95F` read each one into `shell_words`' reading of a script whole, and
+    `script_lines` still put the body in no piece, so `tools/doc_check.py`'s
+    readers that take a script a piece at a time saw none of them. Each is a
+    piece of its own now, spelled from its `$` or backquote, so the pieces
+    summed run what bash runs (`PL-55R2`).
+    """
+    assert list(script_lines(script)) == pieces
+    assert _lexer_runs_by_piece(script) == _bash_runs(script)
