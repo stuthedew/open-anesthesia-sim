@@ -119,7 +119,8 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.19 | Completed | **The release where a session stopped being able to merge a pull request itself, and a declared `touches` path started being checked against the tree.** Thirteen items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: nothing a learner can reach looks different, and v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `07f4da7` at v0.5.18 and here, and `tests/reference/` (`3613c87`), `docs/MODEL.md` (`1ec5a21`) and `README.md` (`3a8f16e`) with it; `.github/` moves only by `quality.yml` failing a contrast shortfall entry added in the change that introduces its colour (`PL-VJFQ`). `PL-S17R` refuses `merge_pull_request` with a hook naming the owner's Squash and merge; `PL-8JY7` and `PL-RWBV` have `docket check` advise on a `touches` path the tree no longer holds; `PL-SYG4` names the next free patch number where a reserved version held the release offer back; and `PL-GR0L` completes `fewer-red-runs`. **Seven are Gate 2 entries**, and the gate stands at 122 of 194 cleared; `PL-245B` and `PL-J3TV` shipped inside the v0.5.18 tag. | 13 items |
 | v0.5.20 | Completed | **The release where a release started being tagged by a workflow when its cut merges, so the release item and its one pull request became the whole release.** Five items, and a patch on both halves of § "Versioning decision"'s test: nothing a learner can reach looks different, and v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `07f4da7` at v0.5.19 and here, and `tests/reference/` (`3613c87`), `docs/MODEL.md` (`1ec5a21`) and `README.md` (`3a8f16e`) with it; `.github/` moves only by `tag-release.yml`, which tags each cut on its merge (`PL-2FY6`). `PL-WT9L` closed the v0.5.19 tag step, the last of its kind; `PL-MTHC` sends `claim` and `stranded` to the open pull request carrying an item; `PL-ZZHZ` aligns the skill's restart recipe with the branch sweep; and `PL-Q7V1` weighs both human fat-flow sources in the varying-perfusion note. **One is a Gate 2 entry**, `PL-Q7V1`, and the gate stands at 123 of 194 cleared. | 5 items |
 | v0.5.21 | Completed | **The release where the tools stopped respelling the facts `docket` already exports, and a run's record started holding the vaporizer setting as it was dialled.** Fifty-one items, and a patch on both halves of § "Versioning decision"'s test: nothing a learner can reach looks different, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, and the trajectories are bit-identical**: `core/` changes (`3be6a48` to `a4699af`) because `BreathingCircuit` and `UptakeEquationSettings` now hold the vaporizer dial in the percent it was set to and derive the fraction the equations read, by the same `fraction_from_percent` the interface applied before (`PL-NJPB`), and 7,290 sampled states across the three agents, twelve dial settings, three cardiac outputs and three fresh gas flows hash identically at both ends; `data/` (`2b4bd16`) and `README.md` (`3a8f16e`) resolve to the same trees. **It finishes four features**: `read-facts-through-docket`, whose eight items follow the six members `#1271` closed under the generator head `PL-KGYT`, so that item front matter, file names, versions, notes names, path containment, code spans and the remote's name are each read through the one spelling `docket` exports; `compaction-reset`, where `PL-NK5K`'s Compact Instructions steer every summary and `PL-YZY4` read the first ones and kept the section; `frame-cost-harness`, where `PL-WPDB` measures the two-run dashboard at 68.9 ms a frame against one run's 44.2 ms; and `commit-provenance`, which `PL-B11M` closes unbuilt. `PL-NXRJ` lets a session squash-merge a pull request already green and current while `main`'s protection binds admins. **Ten are Gate 2 entries**, and the gate stands at 133 of 194 cleared, from 123 at v0.5.20; `PL-9DYK` shipped inside the v0.5.20 tag, and `PL-WSJJ`, the v0.5.20 cut, ships in no release under `PL-KRS6`. | 51 items |
-| v0.5.22 | Completed / current baseline | **The release where the matrix exponential under every step started keeping the equations' constant 1 exactly 1, and a run handed a point past the 24-hour supported length started being refused where it is built.** Three items, the ready product-lane Gate 2 entries of `numerical-domain`, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, since the two new refusals and the new squaring cap sit past anything a supported input reaches, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, but the numerical method did, so the trajectories are bit-identical only on the path a run plays**: `core/` changes (`a4699af` to `aac50af`) because `matrix_exponential` writes an empty row of the system matrix as the identity's row before its squarings and refuses a propagator needing more than 32 of them (`PL-2MD9`), and because a `RunDefinition` or `SimulationState` handed a point past 24 hours is refused where it is built (`PL-73ZN`, `PL-BMY5`). Over 81 runs across the three agents, every one of 7,371 sampled states a run plays, and every readout formatted from them, is identical at both ends; the canonical path, the chart's drawn values and a branch, which opens from a canonical keyframe, move at the last bits, worst 2.8e-12 relative, and no concentration, MAC or hover value changes at the precision printed. What a learner can see change is a branch's accounting panel: its two residual lines, printed in exponent form, read different digits of the same floating-point noise, and a delivered amount sitting exactly on a 0.05 L tie can round the other way. `data/` (`2b4bd16`), `app/` (`70fe21e`), `tests/reference/` (`d655cc7`) and `README.md` (`3a8f16e`) resolve to the same trees. **All three are Gate 2 entries**, and the gate stands at 136 of 194 cleared, from 133 at v0.5.21; `PL-KXW1`, the cut, ships in no release under `PL-KRS6`. | 3 items |
+| v0.5.22 | Completed | **The release where the matrix exponential under every step started keeping the equations' constant 1 exactly 1, and a run handed a point past the 24-hour supported length started being refused where it is built.** Three items, the ready product-lane Gate 2 entries of `numerical-domain`, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, since the two new refusals and the new squaring cap sit past anything a supported input reaches, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, but the numerical method did, so the trajectories are bit-identical only on the path a run plays**: `core/` changes (`a4699af` to `aac50af`) because `matrix_exponential` writes an empty row of the system matrix as the identity's row before its squarings and refuses a propagator needing more than 32 of them (`PL-2MD9`), and because a `RunDefinition` or `SimulationState` handed a point past 24 hours is refused where it is built (`PL-73ZN`, `PL-BMY5`). Over 81 runs across the three agents, every one of 7,371 sampled states a run plays, and every readout formatted from them, is identical at both ends; the canonical path, the chart's drawn values and a branch, which opens from a canonical keyframe, move at the last bits, worst 2.8e-12 relative, and no concentration, MAC or hover value changes at the precision printed. What a learner can see change is a branch's accounting panel: its two residual lines, printed in exponent form, read different digits of the same floating-point noise, and a delivered amount sitting exactly on a 0.05 L tie can round the other way. `data/` (`2b4bd16`), `app/` (`70fe21e`), `tests/reference/` (`d655cc7`) and `README.md` (`3a8f16e`) resolve to the same trees. **All three are Gate 2 entries**, and the gate stands at 136 of 194 cleared, from 133 at v0.5.21; `PL-KXW1`, the cut, ships in no release under `PL-KRS6`. | 3 items |
+| v0.5.23 | Completed / current baseline | **The release where every flow, concentration, step and instant a run takes became a type only its own check can build, and the chart hover started answering the point under the pointer.** 203 items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, since every refusal the new types add sits on a route no interface control reaches and what a learner sees change is four defects fixed in what was already there, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, and every sampled state is bit-identical**: `core/` changes (`aac50af` to `d04a31b`) because the step (`PL-0GJC`), the three flows (`PL-0YYV`, `PL-HSFV`), the case instant and step count (`PL-CN5S`) and the concentration as a fraction and a percent (`PL-4R3W`) became checked types, built only through their range checks, and the settings record a run is built from now carries the vaporizer maximum (`PL-BBMG`). Over 81 runs across the three agents and a branch from each, all 9,882 sampled states, the 88,938 sampled elements of the canonical path and the chart's 15,846,273 drawn values are identical at both ends, as are all 21,128,364 hover strings, and three 24-hour runs land on 86,400 s with every hourly state identical. What a learner can see change is the hover answering the point under the pointer and letting go when it leaves (`PL-TCR5`, `PL-J0F7`, `PL-LTKL`), the accounting panel's two residual lines printing the power of ten each lies below (`PL-3PJZ`), and a run standing on the 24-hour limit reading as stopped there (`PL-5291`). `data/` (`2b4bd16` to `9f0c113`) changes in three source notes and a provenance gap, every number unchanged, and `README.md` (`3a8f16e`) resolves to the same tree. **It finishes twelve features, two of them the simulator's**, `late-washout-evidence` and `sidebar-panel-rebuild`, and closes seven generator heads, `PL-R417`'s 101 members the largest. **54 are Gate 2 entries**, and the gate stands at 194 of 222 cleared, from 136 of 194 at v0.5.22; `PL-0F33`, the cut, ships in no release under `PL-KRS6`. | 203 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -222,103 +223,160 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.22
+## Current baseline: v0.5.23
 
-v0.5.22 is the release where the matrix exponential under every step started
-keeping the constant 1 the equations carry exactly 1, and refusing a
-propagator it cannot compute to a stated bound, and where a run handed a point
-past the 24-hour supported length started being refused where it is built
-rather than at its next step. Three items, the three ready product-lane Gate 2
-entries of `numerical-domain`, and a patch on both halves of
-§ "Versioning decision"'s test: no capability boundary is crossed, because the
-two new refusals and the new squaring cap sit past anything a supported input
-reaches, and the next three minor numbers, v0.6.0 through v0.8.0, are given to
-milestone sections. All three are Gate 2 entries - `PL-2MD9`, `PL-73ZN` and
-`PL-BMY5` - and `bin/docket wave` puts the gate at 136 of 194 cleared at this
-cut, where v0.5.21 recorded 133 of 194: those three account for the whole of
-the difference. `numerical-domain` itself is not finished; the chain took its
-ready entries.
+v0.5.23 is the release where every flow, concentration, step and instant a run
+takes became a type that only its own check can build - `FreshGasFlow`,
+`AlveolarVentilation` and `CardiacOutput`, `Fraction` and `Percent`,
+`SimulationStep`, `CaseInstant` and `StepCount` - so a value outside its
+supported range is refused where it is made rather than wherever the next
+guard happened to sit, and where the chart hover started answering the point
+under the pointer and letting go when the pointer leaves. 203 items, and a
+patch on both halves of § "Versioning decision"'s test: no capability boundary
+is crossed, because every refusal the new types add sits on a route no
+interface control reaches and what a learner sees change is four defects fixed
+in what was already there, and the next three minor numbers, v0.6.0 through
+v0.8.0, are given to milestone sections. 54 are Gate 2 entries, and
+`bin/docket wave` puts the gate at 194 of 222 cleared at this cut, where
+v0.5.22 recorded 136 of 194: 31 of the 58 entries open then and 23 of the 28
+added since ship here, and four more were dropped with their reasons
+(`PL-162Y`, `PL-QV5Y`, `PL-B78T`, `PL-VV6N`), which accounts for the whole of
+the difference.
 
-**No equation, parameter or stored value moved, but the numerical method did,
-so the trajectories are bit-identical only on the path a run plays:**
+**No equation, parameter or stored value moved, and every sampled state is
+bit-identical at both ends:**
 
-| Tree | v0.5.21 | This cut | What moved |
+| Tree | v0.5.22 | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `6fe3f9d` | `0303070` | `core/`, below; `data/` (`2b4bd16`) and `app/` (`70fe21e`) are byte-identical |
-| `core/` | `a4699af` | `aac50af` | the propagator writes an empty row as the identity's row before its squarings and refuses one needing more than 32 (`PL-2MD9`); a run definition opened, or a state built, past 24 hours is refused where it is built (`PL-73ZN`, `PL-BMY5`) |
-| `tests/reference/` | `d655cc7` | `d655cc7` | nothing |
-| `docs/MODEL.md` | `5178eef` | `54a57a5` | § "Supported run length" records the two refusals at construction (`PL-73ZN`, `PL-BMY5`), and § "What is not bounded this way" records the squaring cap and the 1e-18 L case the accounting check let through (`PL-2MD9`) |
+| `src/` | `0303070` | `f52e008` | `core/`, `data/` and `app/`, below |
+| `core/` | `aac50af` | `d04a31b` | the checked types and their refusals, below; the settings record checks its flows and carries the vaporizer maximum (`PL-HSFV`, `PL-BBMG`); a 1 ms floor on the step (`PL-YZ17`); the 24-hour length's last step decided on the time it lands at (`PL-8H2R`); the circuit-alone closed form kept finite and nonnegative at a vanishing fresh gas flow (`PL-B26Y`, `PL-YT8N`); the chart's kept propagators (`PL-CNCF`); one named home for each number (`PL-40SJ`) |
+| `data/` | `2b4bd16` | `9f0c113` | prose only: the circle system's provenance gap and a source note say that `circuit_volume_l` is the assembled total, apparatus plus patient circuit (`PL-TBMX`), a desflurane note names a test that exists (`PL-DBGT`), and a reference-adult note dates its host probe (`PL-CLW5`); every number, boolean and key is unchanged |
+| `app/` | `70fe21e` | `229a9f4` | the hover (`PL-TCR5`, `PL-J0F7`, `PL-LTKL`), the residual lines (`PL-3PJZ`), the stop at 24 hours (`PL-5291`), the halt on a refused Reset or displayed fraction (`PL-M4M0`, `PL-7DJK`), the sidebar panels and run widgets built once (`PL-N67T`, `PL-KZR1`), and the checked types at each control and MAC divisor (`PL-W3Q5`) |
+| `tests/reference/` | `d655cc7` | `b4b0046` | every case builds its inputs as the checked types, a test holds the 1 ms floor (`PL-YZ17`), and the late-washout module gains the muscle-coefficient test (`PL-95NW`) and the model's modes against the fitted terms (`PL-921Y`); no expected value or tolerance moved |
+| `docs/MODEL.md` | `54a57a5` | `4d5cf74` | § "Supported input ranges" records the checked types and what each refuses; § "Supported run length" the stop on reaching 24 hours and its last step (`PL-5291`, `PL-8H2R`); § "Supported simulation step" the 1 ms floor (`PL-YZ17`); § "Displayed precision" the residual lines (`PL-3PJZ`); § "Reset behavior" the refused Reset (`PL-M4M0`); § "Reasonably foreseeable misuse, and the hazards the presentation carries" the halts a refused value shows (`PL-7DJK`, `PL-M4M0`); and the first-24-hours subsection the muscle and fat terms read like for like (`PL-95NW`, `PL-921Y`) |
 | `README.md` | `3a8f16e` | `3a8f16e` | nothing |
-| `.github/` | `c75a50a` | `c75a50a` | nothing |
+| `.github/` | `c75a50a` | `62e7f7c` | `quality.yml` runs `tools/literal_home_check.py` (`PL-40SJ`) and cites GitHub's own page, read on 2026-10-06, for a workflow-syntax claim (`PL-CLW5`); `drift.yml` reads its relaxed `requires-python` back through `tomllib` (`PL-FCQP`) |
 
 `core/` moved, so this cut re-ran the comparison rather than reading it off
-the diff, and this time the answer splits by path. One script, run on the
-v0.5.21 tag and on this cut, played 81 runs through `SimulationController` -
-the three agents, three pairs of dial settings each, three cardiac outputs and
-three fresh gas flows, with the dial changed at minute 30 and closed at 50,
-the fresh gas flow raised to 10 L/min at 60 and the cardiac output by 1 L/min
-at 70 - then took a branch from each at its minute-30 change and played it for
-30 minutes with the dial set back. Every value was compared as `float.hex()`.
+the diff. One script, run on the v0.5.22 tag and on this cut, played 81 runs
+through `SimulationController` - the three agents, three pairs of dial
+settings each, three cardiac outputs and three fresh gas flows, with the dial
+changed at minute 30 and closed at 50, the fresh gas flow raised to 10 L/min
+at 60 and the cardiac output by 1 L/min at 70 - then took a branch from each
+at its minute-30 change and played it for 30 minutes with the dial set back.
+It drew each run as the chart does, in a following window every five minutes
+and in fixed windows over the whole run, the change and the late washout, and
+it ran each agent's default case at the shipped 0.1 s step to the 24-hour
+supported length. Every value was compared as its exact bits.
 
-- **The path a run plays is bit-identical.** All 7,371 per-minute samples of
-  the 81 runs hash identically at both ends - `capture_state()`,
-  `state_vector()` and the whole snapshot - and so do the 139,968 readout
-  strings formatted from them. At the 0.1 s step the propagator takes no
-  squarings, even at the widest supported flows, and restoring its constant
-  row changed none of these samples.
-- **The canonical path moves at the last bits.** `RunDefinition.state_at`,
-  which every keyframe and a branch's opening state are taken from, differs
-  on 49,590 of 66,339 sampled elements, worst 2.8e-12 relative and 7.2e-11 L
-  absolute, both on the cumulative delivered amount: a propagator spanning a
-  long interval takes squarings, and those now start from an exact constant
-  row.
-- **The chart's drawn values move with it, and nothing printed from them
-  does.** `drawn_window` evaluates the definition across the axis, and its
-  states differ at the same scale, worst 2.8e-12 relative; formatted as the
-  hover box prints them, in percent and in multiples of MAC, none of 1,815,696
-  strings differs.
-- **A branch opens from a moved keyframe, and its accounting panel can show
-  it.** Its states differ by at most 2.6e-12 relative and its concentration and
-  MAC readouts are identical, but the panel's two residual lines, which print
-  the unaccounted amount and the absolute error in exponent form to show how
-  far below resolution the conservation check sits, read different digits of
-  the same noise on 1,885 of 2,511 samples (`5.601e-14 L` against
-  `5.609e-14 L`, none larger than 5.4e-11 L on either side), and a delivered
-  amount sitting exactly on a 0.05 L tie rounded the other way twice: 1.35 L
-  read `1.3 L` on the tag and `1.4 L` here, on a desflurane branch at 6% and
-  0.5 L/min. The two values agree to eleven figures. The script was a one-off
-  and is not kept.
+- **Every state a run plays is bit-identical.** All 9,882 per-minute samples,
+  7,371 on the 81 runs and 2,511 on their branches, hash identically at both
+  ends: `capture_state()`, `state_vector()` and every number in the snapshot.
+  The checked types are `float` and `int` subclasses whose arithmetic returns
+  the plain value, so the equations read the same numbers; this is what shows
+  it.
+- **So is every state derived from the run's record.** `RunDefinition.state_at`,
+  which every keyframe and a branch's opening state are taken from, is
+  identical on all 88,938 sampled elements, and `drawn_window` on all
+  15,846,273 drawn values at 1,760,697 instants, so the propagators `PL-CNCF`
+  now keeps between frames draw what forming them afresh drew. Formatted as
+  the hover box prints them, in percent and in multiples of MAC, none of
+  21,128,364 strings differs.
+- **Three 24-hour runs land on 86,400 s after 864,000 steps on both trees,
+  with all 26 hourly states identical.** What differs is when the run reads as
+  stopped: here the step that reaches 86,400 s leaves it stopped, with the
+  limit's reason in the snapshot (`PL-5291`), where on the tag it read as
+  running until the next step was refused. `start()` is refused afterwards on
+  both.
+- **The only readouts that differ are the two residual lines, by design.** Of
+  207,522 readout strings each tree's own formatters made from those samples,
+  19,764 differ, every one on the accounting panel's unaccounted and
+  absolute-error lines, which now print the power of ten each lies below:
+  `<1e-13 L` where the tag printed `1.510e-14 L`, and `0 L` for exactly zero
+  (`PL-3PJZ`). Every concentration, MAC multiple, amount, flow and elapsed-time
+  string is identical. The script was a one-off and is not kept.
 
-All three changes are in `core/`. `PL-2MD9` closes a guarantee
-`governing_equations.UNIT_STATE` stated and the implementation did not keep:
-the shift that makes the series nonnegative returned the constant row as
-1 + δ, and each squaring squared it, to 2.28e+222 at an alveolar volume of
-1e-19 L. `matrix_exponential` now writes each empty row as the identity's row
-after the decay and before the squarings, which then keep it to the last bit,
-and `MAXIMUM_SQUARINGS` refuses a propagator needing more than 32 squarings
-before any arithmetic, because restoring the row alone let 114 decades of
-alveolar volume that had been refused advance again with every other entry
-destroyed. The most any supported input needs is 19. Building it found the
-item's own premise wrong at 1e-18 L, where the shipped code had advanced three
-steps on a propagator about 100% wrong in every entry with the accounting
-passing; no shipped path reaches that volume, a fixed model parameter with no
-setter, and `docs/MODEL.md` § "What is not bounded this way" now says so.
-`PL-73ZN` and `PL-BMY5` close the far end of the 24-hour envelope: a
-`RunDefinition` opened past it, or a `SimulationState` built at a step count
-past it, is refused where it is built with `SimulationConfigurationError`,
-through `supported_ranges.require_supported_case_instant` and
-`require_supported_step_count`, where only the next step had refused it. Both
-run on every fork, with values the trunk's step-count guard has already
-bounded. The release item is `PL-KXW1`, whose `resource: release-train` keeps
-it out of every later release. All three carried their `pr:` number before the
-cut, so every bullet cites its pull request, and `tools/pr_body_check.py` found
-no squash commit that lost its body.
+The checked types are the release's core work, and the rule behind them is
+`.claude/rules/expert-review.md`'s *parse, don't validate* (project owner,
+2026-10-04): a quantity with a check of its own is checked once, by building a
+type only that check produces, and every signature past that point takes the
+type rather than re-checking a `float`. The step became one first
+(`PL-0GJC`), then the three flows (`PL-0YYV`, `PL-HSFV`), the case instant and
+step count (`PL-CN5S`) and the concentration as a fraction and a percent
+(`PL-4R3W`). The checks behind them stopped admitting what is not a number,
+such as `True` read as 1.0, a `Decimal` or an int past the float range, and a
+value built as another checked quantity, such as an instant built from a step
+count (`PL-LLMN`, `PL-LBQY`, `PL-7N8P`, `PL-3800`, `PL-979Z`, `PL-CX2C`,
+`PL-848D`, `PL-SWD1`). Two faults had run on 2026-10-04 through a settings
+record built in code, a cardiac output of 1000 L/min and 20% sevoflurane
+against an 8% maximum, because the record checked only that the tissue flows
+summed to the cardiac output and carried no vaporizer maximum; it now checks
+both (`PL-HSFV`, `PL-BBMG`). A count or step written onto a built state meets
+the constructor's refusals (`PL-8W1W`), and a value refused at the display or
+at a Reset halts the run visibly and names what was refused, rather than
+drawing half a frame or escaping the slot (`PL-7DJK`, `PL-M4M0`). By its own
+brief each fault sat on a route no interface control takes, so no learner
+using the shipped controls met one; what they close is the next caller's way
+around a guard. Seventeen of the items are `parse-dont-validate`'s, fifteen of
+them Gate 2 entries, and the feature is not finished: seven of its items stay
+open.
 
-None shipped inside v0.5.21's tag: `#1291` and `#1292` both merged after
-`4491f89`, the v0.5.21 cut where that tag sits. As at v0.5.21, anything that
-merges on `main` after this cut is written and before its pull request lands
-ships inside the v0.5.22 tag, is described in the next release, and takes a
-pointer in v0.5.22's notes at that release's cut.
+Four defects a learner could meet are fixed, all in `app/`. The chart hover
+answered the pointer's previous position and never re-answered a resting
+pointer while paused; it now answers the point under the pointer, running or
+paused (`PL-TCR5`), and a rendering test holds its box inside the plot at the
+window's right edge and the axis top, where it had never been looked at
+rendered (`PL-J0F7`). It also kept answering after the pointer left the plot,
+re-answering on every frame for a pointer that had gone, which triage classed
+`safety` as a stale reading shown as live; leaving now hides it (`PL-LTKL`).
+The accounting panel's two residual lines print the power of ten each lies
+below, because their four significant digits were floating-point noise, which
+moved by up to 3.6 times between v0.5.21 and v0.5.22 while only the order of
+magnitude carried information (`PL-3PJZ`). And a run standing on the 24-hour
+supported length reads as stopped there whichever route put it there, where a
+branch forked on 86,400 s had still offered Start (`PL-5291`).
+
+`docs/MODEL.md`'s first-24-hours subsection now reads the model's muscle and
+fat terms off its own curve, as the modes of its open-circuit system, which is
+how the fitted terms it is set against were read: the muscle term runs 1.89 to
+2.02 times as slow as the fitted one at 0.51 to 0.73 of its amplitude, where
+the isolated time constants had read 1.5 to 1.7 times (`PL-921Y`). Lowering
+the muscle tissue:gas coefficient until the isolated constant is the fitted
+one brings the open-circuit tail's peak from 2.17 to 3.92 hours to 0.62 to
+1.45, which shows that the slower return is what puts the peak of model over
+fit in hours 2 to 4 (`PL-95NW`). Both are evidence, and no stored coefficient
+changed.
+
+**It finishes twelve features, two of them the simulator's**:
+`late-washout-evidence`, with those two items, and `sidebar-panel-rebuild`,
+where the run's sidebar panels, transport row, readouts and controls are built
+once and every build call hands the same ones back, after a second call had
+silently stripped the accounting and control-change panels out of the sidebar
+(`PL-N67T`, `PL-KZR1`). The other ten are the apparatus's: `delegation`,
+`dev-tooling`, `docket-store`, `line-ends`, `owner-rules-in-repo`,
+`parallel-sessions`, `queue-hygiene`, `required-check-trigger-reading`,
+`verify-assertion-evidence` and `verify-command-meaning`. Seven generator heads
+close in it: `PL-R417`, whose 101 members were readers taking a physical line
+for a statement that continues across lines, `PL-4YVK`, `PL-848V`, `PL-CLW5`,
+`PL-HXJY`, `PL-PDVF`, and `PL-40SJ`, which gives each number in `src/` one
+named home and enforces it with `tools/literal_home_check.py`. Ten
+`interface-areas` items close in `#1395`, which adds v0.6.0's Required-scope
+entry 20 - every surface the milestone brings into existence has its look and
+its edge states decided before it is built - and records eight of those
+decisions, ratified: the corner split and join, the pixel budget on the 1366 px
+laptop reference, the unconditional region, the Area header, the Area's two
+failure states, the Workspace tab strip, the View chooser and the live
+splitter handle. The release item is `PL-0F33`, whose
+`resource: release-train` keeps it out of every later release. Every closure
+carried its `pr:` number before the cut, so all 203 bullets cite their pull
+requests, and `tools/pr_body_check.py` found no squash commit that lost its
+body.
+
+None shipped inside v0.5.22's tag: every pull request the notes cite merged
+after `1b50cfd`, the v0.5.22 cut where that tag sits. As at v0.5.22, anything
+that merges on `main` after this cut is written and before its pull request
+lands ships inside the v0.5.23 tag, is described in the next release, and
+takes a pointer in v0.5.23's notes at that release's cut.
 
 ## The plan
 
