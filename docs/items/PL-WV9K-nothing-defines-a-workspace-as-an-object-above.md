@@ -170,7 +170,7 @@ dialog". So what is left is the object: `Workspace` and `WorkspaceSet` in
 `src/anesthesia_sim/layout/`, pure Python, carrying Q1's members and Q2's
 operations, with the floor as `remove` raising `LastWorkspace` and each
 View's saved state held opaquely per Area id per kind. Q1's `next_area_id` is
-the layout's and is on `LayoutModel` already. `pinned_run` waits for a run
-identity, which is `PL-7Z84`'s and is blocked on this item, so it is added
-there. Nothing else open holds this; `PL-SSQW`'s store, `PL-KXTL`'s shipped
+the layout's and is on `LayoutModel` already. `pinned_run` is added by
+`PL-7Z84`, which supplies the run identity it holds and is itself blocked on
+this item. Nothing else open holds this; `PL-SSQW`'s store, `PL-KXTL`'s shipped
 set and `PL-50PZ` wait on it.
