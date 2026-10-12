@@ -1154,8 +1154,6 @@ MAKE_MENTION_RE = re.compile(r"\bmake\s+(?P<name>[a-z][\w.-]*)")
 # for a fence the lexer cannot read: prose, output, another language.
 FENCED_MAKE_RE = re.compile(r"^\s*make\s+(?P<name>[a-z][\w.-]*)")
 
-# Where CI's commands live. A workflow step names repository scripts by path
-# exactly as the documentation does, and nothing was holding it to them.
 # GitHub renders inline math from `$`...`$` (or `$...$`) and block math from a
 # `$$` fence. It does not recognise LaTeX's `\(...\)` or `\[...\]`: `(` and
 # `)` are ASCII punctuation, so CommonMark consumes the backslash as a
@@ -1184,6 +1182,8 @@ MATH_SPAN_RE = re.compile(r"\$(`+)(?:(?!\1).)*\1\$")
 MATH_EDGE_RE = re.compile(r"\$`|`\$")
 
 
+# Where CI's commands live. A workflow step names repository scripts by path
+# exactly as the documentation does, and nothing was holding it to them.
 WORKFLOW_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 
 # The line of a step's `run:` key, which `required_checks_check.steps` places:
