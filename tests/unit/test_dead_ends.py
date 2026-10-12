@@ -179,6 +179,31 @@ def test_an_entry_wrapped_onto_an_indented_line_is_read_whole_and_refused() -> N
     assert any("dead-ends.md:10: continuation" in p for p in dead_ends.check(text))
 
 
+def test_an_entry_carried_on_from_the_margin_is_not_emitted_short() -> None:
+    """`PL-DQ9C`: the digest names an entry the walker declined, rather than printing it short.
+
+    `entries` handed the walker an empty list for what it declines, so the
+    digest printed this entry ending at `holds is`, its retrieval id lost on
+    the declined line, and `budget` measured the shorter text, where `check`
+    refuses the same line by name.
+    """
+    text = PREAMBLE + (
+        "- **An index committed beside the items** - rejected: anything an index holds is\n"
+        "recomputable, and an index is one more thing two branches conflict over. `PL-KM3X`\n"
+    )
+    emitted = dead_ends.emitted(text)
+
+    assert dead_ends.entries(text) == []
+    assert "anything an index holds is" not in emitted
+    assert emitted.splitlines()[1:] == [
+        "- docs/dead-ends.md:9: not printed, since line 10 carries it on from the margin "
+        "and it would read short; read it in the file."
+    ]
+    assert any(
+        "dead-ends.md:10: continuation of the entry above" in p for p in dead_ends.check(text)
+    )
+
+
 @pytest.mark.parametrize(
     "unreadable",
     [

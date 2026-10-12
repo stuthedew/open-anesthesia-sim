@@ -226,16 +226,19 @@ FRONT_MATTER = "---"
 
 #: What GitHub appends to a squash body: `Co-authored-by` trailers, after a
 #: `---------` line or directly after a blank one - both shapes are on `main`.
-#: Anchored to the end and to the start of each line, so a trailer quoted
-#: inside the body, or named mid-sentence on its last line, is compared. Each
-#: trailer takes every line git folds into it, one led by a space or a tab
-#: (git 2.43.0's `Documentation/git-interpret-trailers.txt`: "each subsequent
-#: line starting with at least one whitespace, like the "folding" in RFC 822"),
-#: so a folded one is GitHub's rather than the body's (`PL-4ZVH`).
+#: Anchored to the end, and to a paragraph's start, as git reads a trailer
+#: block: a group "preceded by one or more empty (or whitespace-only) lines"
+#: (git 2.43.0's `Documentation/git-interpret-trailers.txt`), or opening a body
+#: whose subject's blank line went with the subject. So a trailer quoted inside
+#: the body, named mid-sentence on its last line, or closing a paragraph of
+#: prose is the body's, and is compared (`PL-QLQF`). Each trailer takes every
+#: line git folds into it, one led by a space or a tab (the same file: "each
+#: subsequent line starting with at least one whitespace, like the "folding" in
+#: RFC 822"), so a folded one is GitHub's rather than the body's (`PL-4ZVH`).
 APPENDED_TRAILER_RE = re.compile(
-    r"(?:^-{9}\n)?(?:^[ \t]*\n)*"
-    r"(?:^Co-authored-by: [^\n]*(?:\n[ \t]+\S[^\n]*)*(?:\n|\Z))+\s*\Z",
-    re.IGNORECASE | re.MULTILINE,
+    r"(?:\A|(?<=\n)[ \t]*\n)(?:-{9}\n(?:[ \t]*\n)+)?"
+    r"(?:Co-authored-by: [^\n]*(?:\n[ \t]+\S[^\n]*)*(?:\n|\Z))+\s*\Z",
+    re.IGNORECASE,
 )
 
 #: The attribution footer the claude.ai server appends to a pull request body,

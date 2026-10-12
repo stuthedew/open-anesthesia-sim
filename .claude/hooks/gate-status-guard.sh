@@ -140,7 +140,9 @@
 # `CLAUDE.md` refuses to script, and a wrong guess here blocks a session. The
 # `_check.py` suffix is the one pattern rather than a name, because 16 of
 # `tools/`'s 22 scripts carry it and a check added later would otherwise arrive
-# unguarded.
+# unguarded. Run through an interpreter, the check is its script - the first
+# argument past the interpreter's options - and never a file handed to that
+# script to read (`PL-6X0C`).
 #
 # **Guarding only `make check` was considered and refused.** It is the observed
 # instance; the fault is that a verification command's status can be discarded,
@@ -250,13 +252,46 @@ def strip_prefixes(tokens):
     return rest
 
 
+#: The interpreter options that take a value, glued to the flag or in the next
+#: word, and those that end the options and run no script file (`python3 --help`).
+VALUED = "WX"
+NO_SCRIPT = "cm"
+
+
 def check_script(arguments):
-    """The `tools/` check named in these arguments, or None."""
-    for index, token in enumerate(arguments):
-        if base(token).endswith("_check.py"):
-            return token
-        if base(token) == "dead_ends.py" and "check" in arguments[index + 1:]:
-            return token + " check"
+    """The `tools/` check an interpreter runs with these arguments, or None.
+
+    Only its script, the first argument past the interpreter options, which
+    Python runs and hands every later argument to (`PL-6X0C`): read as any
+    argument named like a check, a scratch script handed a check or its test
+    to read was refused as running it. `-c` and `-m` run no script file and
+    `-` reads one from stdin, so none of them runs a check here. `-W` and `-X`
+    take a value, as `--check-hash-based-pycs` does, and `--` ends the options.
+    """
+    index = 0
+    while index < len(arguments) and arguments[index].startswith("-") and arguments[index] != "-":
+        token = arguments[index]
+        index += 1
+        if token == "--":
+            break
+        if token == "--check-hash-based-pycs":
+            index += 1
+        if token.startswith("--"):
+            continue
+        for position, flag in enumerate(token[1:], 1):
+            if flag in NO_SCRIPT:
+                return None
+            if flag in VALUED:
+                if position == len(token) - 1:
+                    index += 1
+                break
+    if index >= len(arguments):
+        return None
+    script = arguments[index]
+    if base(script).endswith("_check.py"):
+        return script
+    if base(script) == "dead_ends.py" and "check" in arguments[index + 1:]:
+        return script + " check"
     return None
 
 

@@ -4437,7 +4437,9 @@ cleared.
 
 A date inside a code fence is skipped: a dated example command is a template
 rather than a claim, and an entry a reader cannot honestly clear is the one
-thing that stops the report reaching zero.
+thing that stops the report reaching zero. So is one in an indented code block
+or an HTML block, which holds a literal or a comment as a fence does: the body
+is read through `markdown.PROSE` (`PL-KR6M`).
 
 **Age is a proxy for staleness, not staleness.** A dated record does not go
 stale; a measured environmental fact does, and this cannot tell them apart.

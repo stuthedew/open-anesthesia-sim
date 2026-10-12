@@ -41,6 +41,13 @@ at the right extent. `PL-KR6M`, untriaged, names three section-mark readers
 that read an indented code block as prose; this is the same fault in the span,
 citation, marker and TeX readers.
 
+**Narrowed 2026-10-12 by `PL-KR6M`**, recorded at its triage as the `spent`
+head this item is a member of. `#1434` moves `check_citations`' two
+section-mark readers onto `markdown.PROSE`, so a section cited in an indented
+code block or an HTML comment is no longer held. The rest stands: the span,
+path-citation, marker, TeX, named-test and `Tags` readers, and the design half
+above.
+
 **Done when.** Each reader passes the kinds it reads to `statement_lines` (or
 blanks fences, indented code and HTML blocks first), so the forms above are
 read as GitHub renders them; a test pins each.

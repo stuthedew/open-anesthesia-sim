@@ -3,12 +3,14 @@ id: PL-DQ9C
 title: tools/dead_ends.py's entries passes an empty list for the list walker's unread entries, so the session-start digest prints a dead end carried on from the margin cut short, its retrieval id lost, where check refuses the same entry by name; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/dead_ends.py, tests/unit/test_dead_ends.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1434
 payoff: The session-start digest never prints a dead end cut short with its retrieval id lost; an entry the walker declines is named instead
 verify: grep -q 'def test_an_entry_carried_on_from_the_margin_is_not_emitted_short' tests/unit/test_dead_ends.py
 reenters: PL-F5B9
