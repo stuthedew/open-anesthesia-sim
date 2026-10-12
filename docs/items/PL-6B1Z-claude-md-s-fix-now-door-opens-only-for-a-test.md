@@ -3,11 +3,13 @@ id: PL-6B1Z
 title: CLAUDE.md's fix-now door opens only for a test-free fix inside the current item's touches, so a small defect found while working something else is filed, triaged and batched instead of fixed where it is found - 176 S defects filed in the two weeks to 2026-10-12, and the door named as taken in two pull-request bodies of about 1,440; the owner asks on 2026-10-12 to fix small defects in place whenever discovered
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: docs, session-cost
 touches: CLAUDE.md, .claude/skills/docket/modes/capture.md, .claude/rules/citation-drift.md, docs/WORKING_NOTES.md, docs/resident-instructions.md, tools/pr_body_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a rule change the owner asked for on 2026-10-12, classed by its own design round
 added: 2026-10-12
+payoff: a small defect found while building an item is fixed in its own commit where it is found, with its test, instead of becoming an item to triage, batch and carry through a pull request of its own
+verify: grep -q 'Or fix it in place, now' CLAUDE.md && ! grep -q 'It needs no new test' CLAUDE.md && grep -q 'The fix-now door, widened 2026-10-12' docs/resident-instructions.md
 ---
 
 **Problem.** CLAUDE.md's fix-now door opens only for a test-free fix inside the current item's touches, so a small defect found while working something else is filed, triaged and batched instead of fixed where it is found - 176 S defects filed in the two weeks to 2026-10-12, and the door named as taken in two pull-request bodies of about 1,440; the owner asks on 2026-10-12 to fix small defects in place whenever discovered
@@ -188,6 +190,16 @@ already put it; and it serves the owner's same-day ask that the workflow place
 never halt on his input, which (b) would undo one incidental fix at a time.
 (c) is the Fowler reading, and the floor is the reason this repository has
 never taken it.
+
+**Answered 2026-10-12: (a).** The door stops at the clinical floor and adds no
+read hold (project owner, 2026-10-12, ratified, "Floor and read holds" on the
+thread's decision card, over (b), taking a product fix on a workflow branch and
+holding the pull request for his read, and over (c), opening the clinical paths
+with a regression test). Recorded here and written into `CLAUDE.md` in the
+same sitting, as Order item 37 of the v0.6.0 Projects trial asked. Asked the
+same morning whether this thread decides what counts as small or leaves it to
+later, the owner was told it is decided here, as item 4 above, and raised no
+objection.
 
 **Done when.** `CLAUDE.md`'s fix-now bullet states the widened door in the
 decided form - the test the fix carries, the record that replaces locality,
