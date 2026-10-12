@@ -9,7 +9,8 @@ it wrong in either direction is a live failure. Size only ever *warns* - and
 warns at 80% of budget, before the decision is forced on whoever trips the cap
 mid-task - because a red gate on an unrelated commit is how a session learns to
 raise the cap, which is the one repair that is never right. A structural fault
-*does* fail, because a dangling id or a wrapped entry is silent otherwise. The
+*does* fail, because a dangling id, a wrapped entry or one the entry pattern
+cannot read is silent otherwise. The
 third case matters as much as either: a comfortable file must say nothing at
 all, or the advisory fires every run and trains a reader to skim past it.
 
@@ -176,6 +177,29 @@ def test_an_entry_wrapped_onto_an_indented_line_is_read_whole_and_refused() -> N
     text = PREAMBLE + "- **One shared\n  queue document** — rejected. `PL-D188`\n"
     assert dead_ends.entries(text) == [(9, "- **One shared queue document** — rejected. `PL-D188`")]
     assert any("dead-ends.md:10: continuation" in p for p in dead_ends.check(text))
+
+
+@pytest.mark.parametrize(
+    "unreadable",
+    [
+        "- **An approach** (an aside) — refuted. `PL-D188`\n",
+        "- **An approach**: refuted. `PL-D188`\n",
+        "- **An approach** refuted, with no dash at all\n",
+    ],
+)
+def test_an_entry_the_pattern_cannot_read_is_refused(unreadable: str) -> None:
+    """`PL-QFFF`: a bullet opening like an entry that `ENTRY` cannot read is named, not dropped.
+
+    `entries` keeps what `ENTRY` matches and discards the rest, so a one-line
+    bullet with an aside between its title and its dash left the digest with
+    nothing reported - the shipped file's line 74 did, from 2026-09-15 on.
+    """
+    text = PREAMBLE + unreadable
+
+    assert dead_ends.entries(text) == []
+    assert any(
+        p.startswith("docs/dead-ends.md:9: opens like an entry") for p in dead_ends.check(text)
+    )
 
 
 def test_a_following_bullet_or_heading_is_not_a_continuation() -> None:

@@ -4177,19 +4177,12 @@ def test_the_dialog_and_the_panel_list_one_set_of_rows(application: QApplication
     assert view._bookmarks_panel.times.text() == "\n".join(listed)
 
 
-# The narrow end of the sidebar's real width range: the window opens at 0.8 of
-# the screen's width with a 3:1 chart-to-sidebar split, which puts the sidebar
-# between about 300 and 380 px.
-_NARROW_SIDEBAR_WIDTH_PX = 300
-
-
 def test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it(application: QApplication) -> None:
     # `PL-FPY2`: the two rows `PL-LHBY`'s review measured wrapping at 350 px.
     # Joined into one label, the first row's continuation began at the margin
     # every row begins at, so `Run 2 reached` read as a mark of its own and
     # attached one run's answer to the wrong mark.
     listing = MarkListingLabel()
-    listing.setFixedWidth(_NARROW_SIDEBAR_WIDTH_PX)
     listing.set_listing(
         MarkListing(
             heading="MAC targets",
@@ -4200,10 +4193,20 @@ def test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it(application: QAp
             empty_text=NO_MAC_TARGETS_TEXT,
         )
     )
+    wrapped, below = listing.rows
+
+    # Both dimensions follow the row, not a sidebar width in pixels, because
+    # each was a bet on the font the host resolves for sans-serif (`PL-VCF0`).
+    # The width is half the row's own one-line advance, so the row wraps under
+    # any font. The height is the listing's height at that width, as the
+    # sidebar's layout gives it: a bare window opens at the height its size
+    # hint works out for a width of its own choosing, which under Inter at the
+    # sidebar's narrow end, 300 px, was 66 px against the 81 px the wrap needs.
+    width = wrapped.text_label.fontMetrics().horizontalAdvance(wrapped.text_label.text()) // 2
+    listing.resize(width, listing.heightForWidth(width))
     listing.show()
     application.processEvents()
 
-    wrapped, below = listing.rows
     continuation_x = wrapped.text_label.mapTo(listing, QPoint(0, 0)).x()
     next_row_x = below.bullet_label.mapTo(listing, QPoint(0, 0)).x()
 
