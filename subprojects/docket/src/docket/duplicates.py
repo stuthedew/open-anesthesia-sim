@@ -40,7 +40,7 @@ four duplicates fell through it by four different gaps (`PL-0HLS`):
 
 **The feature selects and is never counted.** A recurrence is evidence that a
 defect fired again, and two items one feature groups were grouped on purpose:
-probing each open item as a capture on 2026-10-12, the 20 that gained a
+probing each open item at `22a0b364` as a capture, the 18 that gained a
 candidate on the feature alone each gained a sibling - one cut made across
 `src/` and `tests/`, a check beside its instances - and none a second filing.
 So `anchor` records on a path or an item only, and the feature shows a reader
@@ -51,11 +51,11 @@ files candidates declare. Reading them from both titles is `PL-85NT`'s refuted
 referent key: on the same probes it showed a candidate for 16 titles with
 nothing else to search on, where this shows none.
 
-**What it cost, measured 2026-10-12** against the path-only key on the same
-store: the same 7 of `PL-TZ7T`'s 13 pairs in the top three at today's floor,
-either way round, and a candidate shown for 61 of the 303 open items probed
-with their own fields, against 42, every one of the 19 added by the feature.
-`PL-0HLS` carries the tables, and the bound on what no key can see.
+**What it cost**, against the path-only key: the same 7 of `PL-TZ7T`'s 13
+pairs in the top three at today's floor, either way round, and a candidate
+shown for 57 of the 304 open items at `22a0b364` probed with their own fields,
+against 40, every one of the 17 added by the feature. `PL-0HLS` carries the
+tables, and the bound on what no key can see.
 
 **It warns and never refuses.** The capture rule may not be made conditional on
 a similarity score: a near-duplicate that is genuinely a second instance is a
@@ -121,8 +121,8 @@ MIN_WORD = 3
 #: generator floor is what made the higher floor free. Re-measure both together
 #: if either moves.
 #:
-#: Re-read under `PL-0HLS`'s key on 2026-10-12, over the 303 open items probed
-#: with their own fields: 61 show a candidate (20%), against 42 (14%) for the
+#: Re-read under `PL-0HLS`'s key over the 304 open items at `22a0b364`, probed
+#: with their own fields: 57 show a candidate (19%), against 40 (13%) for the
 #: path-only key on the same store, so still under the 22% this was chosen at.
 DISPLAY_FLOOR = 0.15
 

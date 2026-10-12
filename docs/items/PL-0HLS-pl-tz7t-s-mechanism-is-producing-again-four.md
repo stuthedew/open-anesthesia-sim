@@ -102,9 +102,10 @@ capture's fields as it was filed:
 | open items at `22a0b364` shown a candidate, probed with their own fields | 40 of 304 (13%) | 57 of 304 (19%) |
 
 Two variants were measured and refused. Reading ids from both titles is
-`PL-85NT`'s refuted referent key: it showed a candidate for 47 probes at
-`22a0b364`, 16 of them titles with nothing else to search on, where reading the
-capture's title alone adds none to the path-only 40. Recording on the feature
+`PL-85NT`'s refuted referent key: at `22a0b364` it showed a candidate for 47
+probes against the path-only 40, and for 16 titles probed with nothing else to
+search on, where reading the capture's title alone adds none to the 40 and
+shows none of the 16. Recording on the feature
 was refused on the 18 probes the feature alone gave a candidate: every one a
 sibling its feature was written to group - one prose cut across `src/` and
 `tests/`, a check beside its instances, two readers of one fact - and none a
