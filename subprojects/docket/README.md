@@ -75,24 +75,30 @@ how ideas stop being written down. Several titles in one call, because
 interruptions rarely carry exactly one thought.
 
 **It says when the capture may already be in the store, and files it anyway.**
-An open item declaring a path this capture reaches, whose title is close to it,
-is printed underneath the new id with its status and the shared path. A warning
-rather than a refusal: the capture rule is unconditional, and a near-duplicate
-that is genuinely a second instance is a legitimate filing. The key is the
-declared path, with the title only ordering what the path selected — title
-closeness on its own catches none of the known duplicate pairs and finds the
-items *meant* to recur, the triage passes and release cuts, instead (`PL-TZ7T`
-carries the table; `duplicates.py` carries the floor and what it was measured
-against). A capture declaring no path — which is
-every capture, since `docket new` writes no `touches` — keys on what the
-working tree is changing instead: the branch's own commits and its uncommitted
-edits. A capture is made *while* working on the thing that produced it, so that
-is the best available guess, and it is the only one, since asking the session
-for a path is friction capture may not have. `PL-0KQP` is the miss it closes —
-nine of thirteen known duplicate pairs share a declared path and the key finds
-them, and all four misses are that one item, filed from a branch whose commits
+An open item sharing a subject with this capture, whose title is close to it,
+is printed underneath the new id with its status and what the two share. A
+warning rather than a refusal: the capture rule is unconditional, and a
+near-duplicate that is genuinely a second instance is a legitimate filing. The
+key is a subject both name, with the title only ordering what a subject
+selected — title closeness on its own catches none of the known duplicate
+pairs and finds the items *meant* to recur, the triage passes and release
+cuts, instead (`PL-TZ7T` carries the table; `duplicates.py` carries the floor
+and what it was measured against). A subject is a path outside the store, one
+item's file, which a capture also names by putting the item's id in its title,
+or the feature; the store directory is none of them, since every capturing
+branch changes it (`PL-0HLS`). A match is recorded on the item as a recurrence
+on a path or an item, and never on the feature alone, since items one feature
+groups were grouped on purpose. A capture declaring no path — which is most
+captures, since capture asks for nothing — keys on what the working tree is
+changing instead: the branch's own commits and its uncommitted edits. A capture
+is made *while* working on the thing that produced it, so that is the best
+available guess, and it is the only one, since asking the session for a path is
+friction capture may not have. `PL-0KQP` is the miss it closes — nine of
+thirteen known duplicate pairs share a declared path and the key finds them,
+and all four misses are that one item, filed from a branch whose commits
 touched the exact path the four items it duplicated declare. Where git answers
-nothing the search has no key, finds nothing, and the command behaves as it did
+nothing the search keys on what the capture names, an id in its title or its
+`--feature`; with neither it finds nothing, and the command behaves as it did
 before any of this existed; it does not fall back to that refuted title-only
 key.
 

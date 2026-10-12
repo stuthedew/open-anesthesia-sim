@@ -3,11 +3,13 @@ id: PL-SV0D
 title: bin/docket new recorded PL-DHGC as a recurrence of PL-JLBD on 2026-10-01 when the two shared only docs/items, a path every branch that files an item changes, so a capture can be counted toward an unrelated item's recurrences; it was withdrawn by hand
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/duplicates.py, subprojects/docket/tests/test_duplicates.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-12
+pr: 1463
 payoff: a recurrence on a head means the same mechanism came back, never that two captures both live in docs/items
 verify: grep -q 'def test_sharing_only_the_item_store_is_not_a_recurrence' subprojects/docket/tests/test_duplicates.py
 reenters: PL-TZ7T
@@ -22,3 +24,11 @@ reenters: PL-TZ7T
 **Reproduced 2026-10-01.** `subprojects/docket/src/docket/duplicates.py` selects on any shared `touches` path and names no exception for the store's own directory.
 
 **Generator check.** The fact is `PL-TZ7T`'s - whether an open item already describes the mechanism a new capture names - filed after that head closed: its matcher reads a shared store path as a shared mechanism. With `PL-TH7P` (2026-08-30) that is two post-close instances, below the three that count as a fix that did not hold.
+
+**Closed by `PL-0HLS`'s key, 2026-10-12 (`#1463`).** The store directory is no
+subject: `duplicates.shared_declared` compares no path inside the store on
+either side, so a capture whose only shared path is `docs/items` is neither
+shown nor recorded, while one item's file still is, compared by its id.
+`test_sharing_only_the_item_store_is_not_a_recurrence` pins `PL-DHGC` and
+`PL-JLBD`, a directory above the store on either side, and a shared module
+still selecting the pair.

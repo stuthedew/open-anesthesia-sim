@@ -3,11 +3,13 @@ id: PL-TS7L
 title: bin/docket new's near-duplicate search skips every open item that declares no touches, so two untriaged captures of one defect never meet: PL-YZ17 was filed 2026-10-03 into a store already holding PL-5F76, the same 4.8e-304 s step overflow
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/duplicates.py, subprojects/docket/tests/test_duplicates.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+closed: 2026-10-12
+pr: 1463
 payoff: two captures of one defect filed the same day meet at the second capture, before either is triaged or built twice
 verify: grep -q 'def test_an_untriaged_item_without_touches_is_a_candidate' subprojects/docket/tests/test_duplicates.py
 reenters: PL-TZ7T
@@ -56,3 +58,13 @@ closed on 2026-09-20: whether an open item already describes the mechanism a
 new capture names. The second post-close instance, after `PL-9VPH` (the
 capture side, filed 2026-09-23), so one short of the three that read as a fix
 that did not hold.
+
+**Closed by `PL-0HLS`'s key, 2026-10-12 (`#1463`).** An open item declaring no
+`touches` is a candidate, and the feature is a subject, so `PL-YZ17` meets
+`PL-5F76` on `numerical-domain` with the two titles as filed
+(`test_an_untriaged_capture_meets_an_untriaged_item`), and a capture with a
+path meets an untouched item the same way
+(`test_an_untriaged_item_without_touches_is_a_candidate`). Shown and not
+recorded: a match on the feature alone is never a recurrence, since `PL-0HLS`
+measured every such candidate across the store as a sibling the feature was
+written to group.
