@@ -699,25 +699,30 @@ ARITHMETIC = (
 )
 
 
-def _arithmetic(draw: st.DrawFn, depth: int, expansion: bool) -> str:
+def _arithmetic(draw: st.DrawFn, depth: int, where: str) -> str:
     """An arithmetic expression that comes to 1, its parentheses spaced or not.
 
     A substitution in it runs a simple command: bash 5.2.21 misreads a `case`
     in its reprint of a `$( )` there, a syntax error inside `for (( ))` and
-    in `$(( ))` an expansion it runs as a command. In a `$(( ))` it is a
-    `$( )` of plain words, since bash decides again whether one is arithmetic
-    as it expands it, and miscounts a backquote holding a backslash anywhere
-    inside: `$((1 + 0`p \\\\(`))` runs `1`, and so does
-    `$((1 + 0$( p `p \\\\"`)))`.
+    in `$(( ))` an expansion it runs as a command. `where` it stands decides
+    the rest. In an `expansion` it is a `$( )` of plain words, since bash
+    decides again whether one is arithmetic as it expands it, and miscounts a
+    backquote holding a backslash anywhere inside: `$((1 + 0`p \\\\(`))` runs
+    `1`, and so does `$((1 + 0$( p `p \\\\"`)))`. In a `for` it is a
+    backquote, since bash reads its `$( )` again from the reprint, where an
+    escaped blank before a `#` opens a comment: `for ((i = 1 + 0$( p a\\ #);
+    i < 2; i++))` is a syntax error. A `command` takes either.
     """
     expression = draw(st.sampled_from(ARITHMETIC))
     if "SUB" in expression:
-        if expansion:
-            substitution = f"$( {_simple(draw, 2, bodies=None)})"  # its words plain at depth 2
-        else:
-            simple = _simple(draw, depth + 1, bodies=None)
-            substitution = draw(st.sampled_from((f"$( {simple})", _backquoted(simple, False))))
-        expression = expression.replace("SUB", substitution)
+        # Plain words at depth 2, but in a command, which reads them as drawn.
+        simple = _simple(draw, depth + 1 if where == "command" else 2, bodies=None)
+        forms = {
+            "expansion": (f"$( {simple})",),
+            "for": (_backquoted(simple, False),),
+            "command": (f"$( {simple})", _backquoted(simple, False)),
+        }[where]
+        expression = expression.replace("SUB", draw(st.sampled_from(forms)))
     space = draw(st.sampled_from(("", " ")))
     return space + expression + space
 
@@ -735,7 +740,7 @@ def _argument(draw: st.DrawFn, depth: int) -> str:
     if kind in ("<()", ">()"):
         return kind[0] + "( " + _list(draw, depth + 1, lines=False) + " )"
     if "((" in kind:
-        inner = "$((" + _arithmetic(draw, depth, expansion=True) + "))"
+        inner = "$((" + _arithmetic(draw, depth, "expansion") + "))"
     elif ":-" in kind:
         # Inside `${ }` a backquote's quotes are its own, in double quotes or not.
         inner = UNSET + ":-" + _substitution(draw, depth, quoted=False) + "}"
@@ -906,13 +911,13 @@ def _statement(
         return _case(draw, depth, lines)
     if kind == "arithmetic":
         # True, as every drawn expression is, so the script's status stays 0.
-        return "((" + _arithmetic(draw, depth, expansion=False) + "))"
+        return "((" + _arithmetic(draw, depth, "command") + "))"
     if kind == "for":
         body = _list(draw, depth + 1, lines=False)
         if draw(st.booleans()):
             # The arithmetic `for`, its body run once. Its test runs on each
             # pass, a substitution in it twice, so the drawn one is the first.
-            counted = _arithmetic(draw, depth, expansion=False)
+            counted = _arithmetic(draw, depth, "for")
             return f"for ((i = {counted}; i < 2; i++)); do {body}; done"
         listed = _substitution(draw, depth, quoted=False) + " 1" if draw(st.booleans()) else "1"
         return f"for _ in {listed}; do {body}; done"
