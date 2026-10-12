@@ -807,6 +807,38 @@ which none does. The `hold` clause, `arm` printing the owner's list in every
 answer, which it does since `PL-KKHD` - the clause stays because a push is
 preceded by no read, as the row above on the claim shapes already found.
 
+## The fix-now door, widened 2026-10-12
+
+`PL-3MJH` built the door narrow on 2026-09-01: no new test, no file outside
+the current item's `touches`, no defensible alternative, two per branch. Two
+weeks of filings to 2026-10-12 showed what the narrowness cost - 176 S-effort
+defects filed, 37 of them incidental finds by ordinary sessions, and the door
+named as taken in two pull-request bodies of about 1,440 - and the project
+owner asked for small defects fixed in place whenever discovered (`PL-6B1Z`).
+The bullet now admits the fix's own regression test, replaces locality with a
+record (the fix's own commit under the current item's id, one line in the pull
+request body, `bin/docket verify --self` naming the file), keeps the defect
+test and the cap, and stops at the clinical floor and at adding a read hold.
+
+**The carrier test.** Unchanged from `PL-3MJH`'s: the rule fires when a
+session notices a defect mid-work, which no read precedes, so a `paths:` scope
+cannot carry it; whether something is a defect is judgment, so no check can
+decide it; and the whole point is that the decision is taken without loading
+the queue skill.
+
+**What was cut to pay for it.** Test 1, no new test, and the sentence that made
+the safety exclusion automatic through it, replaced by the explicit floor; test
+2's two sentences on what `verify --self` does, folded into the record
+paragraph; and the sentence pointing at the two widenings `PL-3MJH` refused,
+which this edit decides. The bullet still grows by about 1105 characters,
+because the floor and the read-hold line have to be said where test 1 used to
+imply them, and the fourth test and the record line say what locality used to
+make unnecessary.
+
+**What should retire it.** A check that could tell a defect from a choice,
+which none can and `CLAUDE.md` refuses to script; or the door falling back
+into disuse, which the pull-request bodies under `docs/pr-bodies` would show.
+
 ## The one-source-of-truth principle, added 2026-10-12
 
 `PL-4S6C` wrote one bullet into `CLAUDE.md` § "Architecture and development

@@ -3,12 +3,14 @@ id: PL-CM40
 title: No single command prints the refreshed picture a closing block needs - main's tip, whether this branch is contained in it, flight and stranded - so the rule has to name three
 priority: P3
 effort: S
-status: needs-decision
+status: ready
 classes: infra
 feature: refresh-before-reporting
-touches: subprojects/docket/src/docket/cli.py, .claude/rules/instruction-writing.md
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, .claude/rules/instruction-writing.md
 deferred-from: v0.6.0 - filed 2026-09-19 as blocked and never on the frozen list; a closing-block convenience, not safety or science, and its decision opened only when PL-QSGX closed on 2026-09-26
 added: 2026-09-19
+payoff: a closing block's refresh is one command, bin/docket branch, and rule 14 loses its three-command sentence
+verify: grep -q 'def test_branch_names_what_is_stranded' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** No single command prints the refreshed picture a closing block needs - main's tip, whether this branch is contained in it, flight and stranded - so the rule has to name three
@@ -39,3 +41,25 @@ rather than `needs-decision`.
 
 **Done when.** One command answers it, rule 14 names that command instead of
 three, and the resident character total goes down rather than up.
+
+**Decided** (2026-10-12, in the first batched design round, a session's call
+under rule 14): `bin/docket branch` is the home, and it gains one line. Checked
+against `origin/main` at 919ad967: since `PL-XBV4` every read command fetches
+once and dates its refs, so rule 14's `git fetch origin` is already redundant,
+and `branch` already prints three of the four facts - the branch's relation to
+the base after the fetch (current, behind, ahead), the ids still in flight on
+a branch (`render.py`'s rendering of the flight report for `branch`) and the
+refs it could not read. What it lacks is `stranded`'s answer. So `branch` adds
+one line from `vcs.stranded`'s report - how many items exist only on a branch,
+with their ids, or that none does - and rule 14 names `bin/docket branch`
+alone in place of "Three commands: `git fetch origin`, then `bin/docket
+flight` and `bin/docket stranded`", which is the resident cut that pays for
+it. A new command was the other option and loses on every count: a fifth
+command to remember, and `branch` already owns the fetch and the base
+reasoning. `flight` and `stranded` keep their full output for the reader who
+wants it.
+
+The pause on new workflow mechanisms holds this build while any open item
+carries `generator: live`: a line on an existing command is a new feature, not
+a defect fix. `PL-8QMD` is the one such head on 2026-10-12 and its pull request
+`#1439` is open, so the build starts once it merges, or on the owner's word.
