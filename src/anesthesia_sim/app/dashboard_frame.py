@@ -2350,13 +2350,16 @@ def compartment_cap_notice(frame: ChartFrame) -> str | None:
     Conditional text, fired by the state it explains and costing nothing
     otherwise (`.claude/rules/ui-reader.md`). It earns a sentence because it
     accounts for two things a reader would otherwise have to guess at: why
-    four traces left the chart when the second run arrived, and why a fifth
-    box will not stay checked. Neither is a label, a unit or an axis title.
+    four traces left the chart when the second run arrived, and why checking
+    a third box unchecks the longest-standing one
+    (`CompartmentSelection.with_compartment`). Neither is a label, a unit or
+    an axis title.
 
     It fires on the cap being *in force* rather than on a count of traces
-    removed, because the legend holds the selection inside the cap from the
-    moment the second run appears - so by the time a frame is assembled the
-    count is zero and the reader has still lost four curves.
+    removed, because the dashboard holds its compartment selection inside the
+    cap from the moment the second run appears
+    (`CompartmentSelection.with_run_count`) - so by the time a frame is
+    assembled the count is zero and the reader has still lost four curves.
 
     Args:
         frame: The frame drawn this tick.

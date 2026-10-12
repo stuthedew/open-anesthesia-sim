@@ -59,6 +59,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from anesthesia_sim.app.compartment_selection import (
+    INITIAL_COMPARTMENT_SELECTION,
+    CompartmentSelection,
+)
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import new_case_question
 from anesthesia_sim.app.qt_chart import TraceLegend
@@ -458,15 +462,21 @@ def test_a_legend_checkbox_draws_its_indicator_in_the_theme(
     Both states, because `PL-DHBX` shipped a fix for one state and left the
     other broken, and the project owner found it on his own screen.
 
-    The toggled state is set through the widget rather than at construction on
-    purpose: `_on_toggled` rewrites the box's stylesheet, and a stylesheet
-    write is one of the things that can reset a palette a widget was given.
+    The hidden state is reached through the widget rather than at
+    construction on purpose: `_on_toggled` rewrites the box's stylesheet as
+    the box is unchecked, and a stylesheet write is one of the things that
+    can reset a palette a widget was given. It arrives as a selection the
+    legend is handed, which is how its boxes move (`PL-VN6M`): a box set
+    directly, with nobody to answer the request, goes back to what it was
+    shown, and the hidden case would quietly test the drawn one.
     """
 
     legend = _shown(TraceLegend(), dark_host)
     box = legend.findChildren(QCheckBox)[0]
-    box.setChecked(drawn)
+    legend.show_selection(INITIAL_COMPARTMENT_SELECTION if drawn else CompartmentSelection((), 1))
     dark_host.processEvents()
+
+    assert box.isChecked() is drawn
 
     # The indicator's pixels alone. A bare box draws its label in the host's
     # `WindowText`, the same white as PANEL, so wherever a glyph covers a whole
