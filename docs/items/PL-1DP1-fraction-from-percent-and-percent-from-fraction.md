@@ -42,3 +42,36 @@ it is built, which is where its form is known.
 naming the constructor to use, with a test per direction, and every caller
 passes a checked value; or the decision to keep taking one is recorded in the
 module docstring with its reason.
+
+**Counted 2026-10-12, in the first batched design round, against
+`origin/main` at 919ad967** - the count the recommendation above asked for.
+Thirteen call sites under `src/` (the 14 above counted the two docstring
+mentions in `concentration.py` itself), and none hands a bare float as typed:
+`controller.py`, `governing_equations.py` and `circuit.py` convert a
+`delivered_concentration_percent: Percent`; `chart_frame.py`'s three convert
+from `fractions: Mapping[RecordedQuantity, tuple[Fraction, ...]]`;
+`formatting.py`'s two take `partial_pressure_fraction: Fraction`;
+`dashboard_frame.py` converts `axis_top_percent: Percent`;
+`control_timeline.py` wraps `Percent(value)`; `wash_in.py`'s floor wraps
+`Percent(CONCENTRATION_DISPLAY_RESOLUTION_PERCENT)`; `simulation_view.py`
+converts `max_delivered_concentration_percent: Percent`. `mypy --strict` runs
+over `src/` in `make check`, so a bare float at any call site it reads is
+refused before the code runs. The runtime gap is a caller it does not read - a
+test, a REPL, a value built dynamically - and refusing it costs two `require_`
+calls, two tests and the docstrings; no caller changes.
+
+**The recommendation stands: refuse it.** It goes to the owner on the same
+screen as the rest of this batch rather than being decided here, for the two
+reasons the brief gives: it reopens `PL-4R3W`'s deliberate choice (kind
+unrecorded, so on ordinary evidence, and `PL-SWD1` is that evidence), and it
+is a `safety`-classed concentration crossing, which the safety-critical
+standard reaches. The repository's own rules point one way:
+`.claude/rules/core-domain.md` § "A quantity with a check of its own is a
+type, checked once" has every signature past the check take the type, and
+`CLAUDE.md` prefers an obvious failure to a plausible wrong number where
+correctness cannot be established, which a number of unknown form is. The one
+argument for keeping it, from `concentration.py`'s module docstring - "a
+number nobody built carries no form to refuse it by" - is also the reason it
+cannot be converted safely. The count that would have changed this, a call
+site handing a bare float at runtime, came back zero. Joined this batch at the
+owner's "Add it" on the coordinator's card, 2026-10-12 12:31Z.
