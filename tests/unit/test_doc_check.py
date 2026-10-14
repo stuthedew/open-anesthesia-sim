@@ -2754,6 +2754,24 @@ def test_a_missing_tags_statement_is_an_error(tmp_path: Path) -> None:
     assert any('no "**Tags.**" statement' in message for message in errors)
 
 
+def test_a_tags_claim_inside_a_container_is_read() -> None:
+    """`PL-8NPN`: `TAGS_MARK_RE` read a claim at its line's first column alone.
+
+    In a block quote or a nested list item CommonMark renders the same bold
+    lead, and the claim was reported missing; an indented code block's is a
+    literal and stays unread.
+    """
+    assert doc_check._tags_region("> **Tags.** Each is tagged.\n\n## Next\n") == (
+        1,
+        "> **Tags.** Each is tagged.\n",
+    )
+    assert doc_check._tags_region("- top\n  - **Tags.** Each is tagged.\n\n## Next\n") == (
+        2,
+        "  - **Tags.** Each is tagged.\n",
+    )
+    assert doc_check._tags_region("Prose.\n\n    **Tags.** Each is tagged.\n") is None
+
+
 def test_a_checkout_git_cannot_answer_for_is_told_nothing(tmp_path: Path) -> None:
     """A tag-less clone is a normal checkout, and PL-J3ZK's own trap.
 
@@ -3809,6 +3827,72 @@ def test_gate_parity_reports_no_difference_once_a_make_check_line_is_declined(
     assert report.errors == []
     assert len(report.declined) == 1
     assert "`python3 tools/b_check.py 'unclosed` cannot be read" in report.declined[0]
+
+
+#: A `case` construct above an unclosed quote, which bash refuses only at the
+#: quote: read a line at a time, its word, arm and `esac` were commands (`PL-7CQ5`).
+UNREADABLE_CASE_STEP = (
+    '      - run: |\n          case "$M" in\n            check) make check ;;\n'
+    '          esac\n          echo "unterminated\n'
+)
+
+
+def test_a_bold_title_inside_a_container_is_a_citable_section_title() -> None:
+    """`PL-8NPN`: `MARKER_RE` read a bold title past a top-level bullet alone.
+
+    After an ordered marker, a nested bullet or a block quote's `>` CommonMark
+    renders the same bold lead, and a citation of it was refused as naming no
+    section. An indented code block's bold run is a literal and names none.
+    """
+    text = (
+        "1. **Ordered title.** Text.\n"
+        "- top\n"
+        "  - **Nested title.** Text.\n"
+        "\n"
+        "> **Quoted title.** Text.\n"
+        "\n"
+        "    **Code, not a title.** Text.\n"
+    )
+
+    assert doc_check._headings(text) == ["Ordered title", "Nested title", "Quoted title"]
+
+
+def test_a_step_one_pass_cannot_read_is_declined_whole() -> None:
+    """`PL-7CQ5`: the step is declined whole, at the line where the reading stops.
+
+    The fallback read each line alone and declined only the unreadable one, so
+    the commands `check`, `make check` and `esac` reached the gate-parity check
+    as what CI runs.
+    """
+    unread: list[doc_check.UnreadStatement] = []
+
+    runs = list(doc_check.workflow_runs(STEP_JOB + UNREADABLE_CASE_STEP, unread))
+
+    assert runs == []
+    assert [declined.line - STEP_JOB.count("\n") for declined in unread] == [5]
+    assert unread[0].why.startswith("this `run:` step's script cannot be read to its end")
+
+
+def test_gate_parity_declines_a_step_it_cannot_read_by_name(tmp_path: Path) -> None:
+    """`PL-7CQ5`: the decline names the step and stops the comparison, as any decline does."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py"],
+        workflows={"quality.yml": (GATING_WORKFLOW, ["python3 tools/a_check.py"])},
+    )
+    workflow = root / ".github" / "workflows" / "quality.yml"
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8") + UNREADABLE_CASE_STEP, encoding="utf-8"
+    )
+    report = doc_check.Report()
+
+    doc_check.check_gate_parity(root, report)
+
+    assert report.errors == []
+    assert [message.partition(": ")[0] for message in report.declined] == [
+        ".github/workflows/quality.yml:17"
+    ]
+    assert "step's script cannot be read to its end" in report.declined[0]
 
 
 def test_a_recorded_asymmetry_is_accepted(tmp_path: Path) -> None:
@@ -4897,6 +4981,40 @@ def test_math_broken_syntax_quoted_in_a_code_span_is_quiet(tmp_path: Path) -> No
     assert _math_errors(tmp_path / "repo", "docs/NOTE.md", body) == []
 
 
+def test_a_math_span_a_wrapped_code_span_claims_reports_its_debris(tmp_path: Path) -> None:
+    """A code span opened a line above closes on the math span's opening backtick.
+
+    CommonMark reads the code span across the line ending (0.31.2 § 6.1), so
+    the page shows `cmd --opt $` as code and the rest of the line as literal
+    text, a backtick and a dollar included. Math spans were blanked a line at a
+    time, before the code spans were read, so that debris went unreported
+    (`PL-9TZH`).
+    """
+    body = "The `cmd\n--opt $`x`$ here.\n"
+
+    errors = _math_errors(tmp_path / "repo", "docs/NOTE.md", body)
+
+    assert len(errors) == 1
+    assert errors[0].startswith("docs/NOTE.md:2 leaves ``$` unpaired")
+    assert "a backtick a code span opened before it has claimed" in errors[0]
+
+
+def test_dollars_in_two_code_spans_pair_as_no_math_span(tmp_path: Path) -> None:
+    """The dollar ending one span and the one opening the next bracket prose, not math.
+
+    A pattern for `$`...`$` read ahead of the code spans paired them and
+    blanked the prose between, so a TeX delimiter there went unchecked
+    (`PL-8NPN`). An inline expression is a code span with a `$` against each
+    of its runs, and neither span here is one.
+    """
+    body = "Run `echo $` and then \\(t\\) `$ cost`.\n"
+
+    errors = _math_errors(tmp_path / "repo", "docs/NOTE.md", body)
+
+    assert len(errors) == 2
+    assert all("writes math as" in error for error in errors)
+
+
 def test_without_code_reads_a_span_wrapped_across_lines() -> None:
     """A wrapped span is blanked whole, and the prose after its close stays prose.
 
@@ -5168,6 +5286,21 @@ def test_prose_about_some_entries_is_not_read_as_a_gate_count_heading(tmp_path: 
     correct.
     """
     assert not any("says 2 entries" in error for error in _gate_errors(tmp_path))
+
+
+def test_an_emphasised_note_stating_a_count_is_no_gate_group(tmp_path: Path) -> None:
+    """`PL-8NPN`: the count has to sit inside the emphasis the line opens with.
+
+    `GATE_GROUP_RE` ran past the closing `*` of `*Note.*`, so the sentence was
+    read as a group heading over three entries and the list failed its counts.
+    """
+    roadmap = GATE_ROADMAP.replace(
+        "- PL-HHHH (S) The fifth thing",
+        "- PL-HHHH (S) The fifth thing\n\n"
+        "*Note.* This list was frozen on 30 September - three entries were admitted later.",
+    )
+
+    assert _gate_errors(tmp_path, roadmap) == []
 
 
 def test_a_group_heading_stating_no_gate_count_is_passed_over(tmp_path: Path) -> None:
@@ -7038,7 +7171,8 @@ def _run_step(step: str) -> tuple[list[tuple[str, int]], list[tuple[int, str]]]:
 def _step_runs(step: str) -> list[tuple[str, ...]]:
     """The simple commands `workflow_runs` reads from `step` under `STEP_JOB`, as the gate does."""
     report, unread = doc_check.Report(), []
-    runs = list(doc_check.workflow_runs(STEP_JOB + step, "ci.yml", report, "unread", unread))
+    runs = list(doc_check.workflow_runs(STEP_JOB + step, unread))
+    doc_check._decline_steps(report, Path("ci.yml"), unread, "unread")
     assert not report.declined and not unread
     return runs
 
@@ -7616,6 +7750,31 @@ def _removed_heading_terms(tmp_path: Path, before: str, after: str) -> list[str]
     (root / "README.md").write_text(after, encoding="utf-8")
     terms = doc_check.changed_tokens(root, "HEAD", doc_check.read_docs(root), [])
     return sorted(terms["README.md"])
+
+
+def test_a_setext_heading_changed_from_outside_its_rows_is_a_removed_title(tmp_path: Path) -> None:
+    """`PL-F6T5`: a heading counted as removed only where the patch removed one of its rows.
+
+    A line added under `Keep Title` and the blank line above `Other Head`
+    removed retitle both - CommonMark reads `Keep Title now longer` and
+    `Text. Other Head` - while every row of each stays.
+    """
+    before = "Intro para.\n\nKeep Title\n==========\n\nText.\n\nOther Head\n----------\n"
+    after = "Intro para.\n\nKeep Title\nnow longer\n==========\n\nText.\nOther Head\n----------\n"
+
+    assert _removed_heading_terms(tmp_path, before, after) == ["Keep Title", "Other Head"]
+
+
+def test_a_document_the_base_does_not_have_lost_no_heading(tmp_path: Path) -> None:
+    """Asked about every changed document, the sweep reads no base copy of a new one."""
+    root = _repo(tmp_path)
+    _git_init(root)
+    (root / "docs" / "NEW.md").write_text("# New\n\nText.\n", encoding="utf-8")
+    subprocess.run(("git", "add", "docs/NEW.md"), cwd=root, check=True, capture_output=True)
+
+    terms = doc_check.changed_tokens(root, "HEAD", doc_check.read_docs(root), [])
+
+    assert terms.get("docs/NEW.md", set()) == set()
 
 
 #: A milestone with a `Required scope` and a frozen list, each filled by a case.
