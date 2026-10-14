@@ -113,7 +113,7 @@ import tokenize
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
-from functools import lru_cache, partial
+from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path, PurePath, PurePosixPath
 
@@ -182,7 +182,16 @@ try:
     # each statement ends, so a code span or a bold run is read within its own
     # (`PL-FP7J`, `PL-VQBY`), where an HTML block runs (`PL-GT0J`), and which
     # lines are a heading, so a `#` line inside a fence is none (`PL-T1X0`).
-    from docket.markdown import CODE, HTML, PROSE, TABLE, block_lines, statement_lines, unmarked
+    from docket.markdown import (
+        CODE,
+        HTML,
+        PROSE,
+        TABLE,
+        block_lines,
+        emphasis,
+        statement_lines,
+        unmarked,
+    )
     from docket.markdown import headings as read_headings
     from docket.markdown import read as read_blocks
     from docket.markdown import tables as read_tables
@@ -215,7 +224,6 @@ try:
         notes_bullets,
         notes_claims,
         notes_path,
-        replace_code_spans,
         version_in,
         version_key,
     )
@@ -925,15 +933,20 @@ DIRECTION_RE = re.compile(GAP + r"*(?:above|below)\b", re.IGNORECASE)
 #: the break would read the end of the window there (`PL-XW87`).
 MARKED_RE = re.compile(r"§{1,2}" + GAP + r"*(?=.\Z)", re.DOTALL)
 
-# A `**Bold.**` run opening a line, with or without a list bullet in front of
-# it. This repository subdivides long documents with these rather than with
-# deeper `#` levels, and then cites them by name exactly as it cites headings
-# - `docs/MODEL.md` alone carries 513 of them against 269 headings. Reading
-# only `#` lines therefore made a correct citation look stale, which is the
-# worse failure of the two: a reader sent to repair prose that was right. A
-# title wrapped across a soft break is still one title (`PL-R417`); `_headings`
-# hands it back on one line, as a citation of it is compared.
-MARKER_RE = re.compile(rf"^(?:[-*+]\s+)?\*\*(?P<title>(?:[^*\n]|{SOFT_BREAK})+?)\.?\*\*", re.M)
+# A `**Bold.**` run opening a statement, matched in text whose containers'
+# markers `_headings` has blanked, so the run after a list item's bullet or
+# number, at any depth, or a block quote's `>` is read as the one at a line's
+# start is. This repository subdivides long documents with these rather than
+# with deeper `#` levels, and then cites them by name exactly as it cites
+# headings - `docs/MODEL.md` alone carries 513 of them against 269 headings.
+# Reading only `#` lines therefore made a correct citation look stale, which
+# is the worse failure of the two: a reader sent to repair prose that was
+# right. Read past a top-level bullet alone, a title after an ordered marker,
+# a nested bullet or a `>` was no title, and a correct citation of one was
+# refused (`PL-8NPN`). A title wrapped across a soft break is still one title
+# (`PL-R417`); `_headings` hands it back on one line, as a citation of it is
+# compared.
+MARKER_RE = re.compile(rf"^[ \t]*\*\*(?P<title>(?:[^*\n]|{SOFT_BREAK})+?)\.?\*\*", re.M)
 
 # A citation that names its target document and then quotes it:
 # `` `docs/WORKING_NOTES.md`, "Splitting error outside the gate's operating
@@ -1030,7 +1043,7 @@ ITEM_SECTION_RE = re.compile(
 # is named in a bold sentence, and the decidable half of that is its count
 # against the names it gives; whether the omission is settled or an open
 # decision is not, and is left alone.
-TAGS_MARK_RE = re.compile(r"^\*\*Tags\.\*\*")
+TAGS_MARK_RE = re.compile(r"^[ \t]*\*\*Tags\.\*\*")
 UNTAGGED_CLAIM_RE = re.compile(
     rf"\*\*(?P<count>[A-Za-z]+|\d+){GAP}+versions?{GAP}+(?:are|is){GAP}+untagged\*\*", re.I
 )
@@ -1139,8 +1152,6 @@ MAKE_MENTION_RE = re.compile(r"\bmake\s+(?P<name>[a-z][\w.-]*)")
 # for a fence the lexer cannot read: prose, output, another language.
 FENCED_MAKE_RE = re.compile(r"^\s*make\s+(?P<name>[a-z][\w.-]*)")
 
-# Where CI's commands live. A workflow step names repository scripts by path
-# exactly as the documentation does, and nothing was holding it to them.
 # GitHub renders inline math from `$`...`$` (or `$...$`) and block math from a
 # `$$` fence. It does not recognise LaTeX's `\(...\)` or `\[...\]`: `(` and
 # `)` are ASCII punctuation, so CommonMark consumes the backslash as a
@@ -1157,18 +1168,18 @@ FENCED_MAKE_RE = re.compile(r"^\s*make\s+(?P<name>[a-z][\w.-]*)")
 # text in `docs/MODEL.md` is the failure an advisory would leave unread.
 TEX_DELIMITER_RE = re.compile(r"\\[()\[\]]")
 
-# A well-formed inline expression, `$`...`$`, allowing the longer backtick runs
-# CommonMark permits.
-MATH_SPAN_RE = re.compile(r"\$(`+)(?:(?!\1).)*\1\$")
-
-# The two halves of one that is not well-formed. Inline math is parsed within a
-# line, so an expression split by a line break renders as literal text on both
-# sides. Four in this repository were split that way, one of them already on
-# the correct delimiters and broken only by a paragraph reflow - which is why
-# the rule is worth keeping after the conversion rather than only during it.
+# The two halves of an inline expression, `$`...`$`, that is not well-formed:
+# what `_without_code` leaves, having blanked every one that is. Inline math is
+# parsed within a line, so an expression split by a line break renders as
+# literal text on both sides. Four in this repository were split that way, one
+# of them already on the correct delimiters and broken only by a paragraph
+# reflow - which is why the rule is worth keeping after the conversion rather
+# than only during it.
 MATH_EDGE_RE = re.compile(r"\$`|`\$")
 
 
+# Where CI's commands live. A workflow step names repository scripts by path
+# exactly as the documentation does, and nothing was holding it to them.
 WORKFLOW_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 
 # The line of a step's `run:` key, which `required_checks_check.steps` places:
@@ -2231,6 +2242,9 @@ ENTRY_COUNT_RE = re.compile(r"(?P<count>[\w-]+)\s+entries\b")
 # on the far side of the dash, where a heading puts it, which is what keeps a
 # paragraph *about* some entries - "Four entries added 2026-08-30 from an
 # outside review of the repository" - from being read as a heading over them.
+# And it has to sit inside the emphasis the line opens with, as CommonMark
+# pairs it: `*Note.* This list was frozen - three entries were admitted later`
+# is a paragraph whose emphasis closes before its count (`PL-8NPN`).
 #
 # `entry` is accepted beside `entries` so that a group holding exactly one can
 # be written in English (`PL-L0K3`). Requiring the plural left a post-freeze
@@ -2330,7 +2344,7 @@ def _gate_groups(lines: Sequence[str], section: MilestoneSection) -> Iterator[_G
         if not section.gate_line <= index < end or not lines[index].startswith("*"):
             continue  # what `GATE_GROUP_RE` opens with, so no other line is one
         heading = _normalized("\n".join(lines[index:stop]))
-        match = GATE_GROUP_RE.match(heading)
+        match = GATE_GROUP_RE.match(heading, 0, _opening_emphasis_end(heading))
         if match is None:
             continue
         stated = _count_word(match.group("entries"))
@@ -2343,6 +2357,18 @@ def _gate_groups(lines: Sequence[str], section: MilestoneSection) -> Iterator[_G
         following = headings[position + 1][0] if position + 1 < len(headings) else end + 1
         covered = tuple(entry for entry in section.gate_entries if line < entry.line < following)
         yield _GateGroup(line, heading, stated, stated_ids, covered)
+
+
+def _opening_emphasis_end(statement: str) -> int:
+    """Where the emphasis opening `statement` closes, as § 6.2 pairs it, or 0 where none opens it.
+
+    Its code spans are `_InlineReader`'s, so a delimiter inside one pairs with
+    nothing.
+    """
+    reader = _InlineReader(statement)
+    reader.read(0, len(statement))
+    spans = emphasis(statement, [span.span() for span in reader.spans])
+    return max((span.end for span in spans if span.start == 0), default=0)
 
 
 def _uncheckable_heading_counts(
@@ -3496,15 +3522,19 @@ def _tags_region(text: str) -> tuple[int, str] | None:
 
     The exception sentence has historically sat in a paragraph below the claim
     rather than inside it, so the region runs to the heading rather than to the
-    blank line. The mark opens a statement, as `statement_lines` reads one: a
-    `**Tags.**` a soft break carries onto a line's start is its paragraph's own
-    text (`PL-VQBY`). The heading that ends the region is one `markdown` reads,
-    so a shell sample's `# comment` inside a fence below the claim leaves the
-    exception sentence after it in the region (`PL-0Y7J`).
+    blank line. The mark opens a statement of prose, as `statement_lines`
+    reads one, read past its containers' markers, so a claim in a block quote
+    or a list item is read (`PL-8NPN`): a `**Tags.**` a soft break carries onto
+    a line's start is its paragraph's own text (`PL-VQBY`). The heading that
+    ends the region is one `markdown` reads, so a shell sample's `# comment`
+    inside a fence below the claim leaves the exception sentence after it in
+    the region (`PL-0Y7J`).
     """
     lines = split_lines(text)
+    blanked = unmarked(lines)
     start = next(
-        (first for first, _ in statement_lines(lines) if TAGS_MARK_RE.match(lines[first])), None
+        (first for first, _ in statement_lines(lines, PROSE) if TAGS_MARK_RE.match(blanked[first])),
+        None,
     )
     if start is None:
         return None
@@ -4529,11 +4559,15 @@ def _headings(text: str) -> list[str]:
     vertical range is denominated in MAC, and fixed.**` marker, and that
     citation is correct.
 
-    A marker opens a statement, as `statement_lines` reads one. A bold run a
-    soft break carries onto a line's start is its paragraph's own text, and was
-    read as a title of its own (`PL-VQBY`).
+    A marker opens a statement of prose, as `statement_lines` reads one, and
+    is read past its containers' markers (`PL-8NPN`). A bold run a soft break
+    carries onto a line's start is its paragraph's own text, and was read as a
+    title of its own (`PL-VQBY`); an indented code block's is a literal.
     """
-    markers = (MARKER_RE.match(text, start, end) for start, end in _statement_offsets(text))
+    blanked = _unmarked(text, _body_lines(split_lines(text)))
+    markers = (
+        MARKER_RE.match(blanked, start, end) for start, end in _statement_offsets(text, PROSE)
+    )
     return _hash_headings(text) + [_normalized(match["title"]) for match in markers if match]
 
 
@@ -6132,9 +6166,7 @@ def workflow_commands(
                 yield command.strip(), script[body.count("\n", 0, offset)][1]
 
 
-def workflow_runs(
-    text: str, where: Path | str, report: Report, unread: str, steps: list[UnreadStatement]
-) -> Iterator[tuple[str, ...]]:
+def workflow_runs(text: str, steps: list[UnreadStatement]) -> Iterator[tuple[str, ...]]:
     """Every simple command a workflow's `run:` steps execute, each as its words.
 
     Each step's script is read in one pass of docket's `shell.shell_words`,
@@ -6142,9 +6174,13 @@ def workflow_runs(
     patterns and its `esac` are no commands and the commands in its arms are
     (`PL-M3M4`). Taken from `workflow_commands`' lines, each read on its own,
     the arm `check) make check ;;` read as `check` and `make check`, a script
-    the merge gate never runs. A script that pass cannot read to its end is
-    read a line at a time as `workflow_commands` cuts it, each line it cannot
-    read declined at its own line through `_shell_reading`, naming `unread`.
+    the merge gate never runs.
+
+    A script that pass cannot read to its end is declined whole, on `steps`
+    at the line where the reading stops, and gives no commands. Read a line
+    at a time instead, as it was until `PL-7CQ5`, a `case` construct above
+    an unclosed quote gave `check`, `make check` and `esac` as commands, and
+    only the unreadable line was declined.
 
     A step `workflow_commands` declines goes on `steps`, as it would there.
     """
@@ -6153,10 +6189,18 @@ def workflow_runs(
         if reading.clauses:
             yield from _simple_commands(reading)
             continue
-        for command, offset in script_lines(body):
-            if command.strip():
-                line = script[body.count("\n", 0, offset)][1]
-                yield from _shell_commands(f"{where}:{line}", command.strip(), report, unread)
+        # `script_lines` hands the line where the reading stops on, with every
+        # line after it, as its last piece.
+        stop = script_lines(body)[-1][1]
+        steps.append(
+            UnreadStatement(
+                script[body.count("\n", 0, stop)][1],
+                "this `run:` step's script cannot be read to its end from this line - a "
+                "quote, a command substitution or a backslash runs past it, or a `<<` has "
+                "no delimiter - and none of the step was read, since a line of it read "
+                "alone can be a fragment of a command bash runs, such as a `case` arm",
+            )
+        )
 
 
 def _step_scripts(
@@ -6701,7 +6745,10 @@ def _without_code(text: str) -> list[str]:
 
     Blanking rather than deleting keeps the line numbering true. Well-formed
     math spans are blanked too: they are correct by construction, and what the
-    rules look for is the debris a malformed one leaves behind.
+    rules look for is the debris a malformed one leaves behind. One is a code
+    span on one line with a `$` against each of its runs, as GitHub reads
+    `$`...`$`, so it is found among the code spans rather than ahead of them
+    (`_blanked_code`).
 
     **An indented code block is code too**, by CommonMark's own definition: a
     run of lines indented four columns past their container, which cannot
@@ -6735,7 +6782,7 @@ def _without_code(text: str) -> list[str]:
     source = split_lines(text)
     code = _fenced_lines(text) | block_lines(_body_lines(source), (CODE,))
     lines = [
-        "" if index in code or not raw.strip() else MATH_SPAN_RE.sub(_spaces, raw.expandtabs(4))
+        "" if index in code or not raw.strip() else raw.expandtabs(4)
         for index, raw in enumerate(source)
     ]
     # A code span is blanked before either rule runs: `\(` inside one is a
@@ -6743,10 +6790,33 @@ def _without_code(text: str) -> list[str]:
     # snippet like `"$upstream..HEAD"` is not an unclosed expression. Each is
     # read within its statement, as `_statement_spans` reads one (`PL-FP7J`).
     for first, end in _statements(source):
-        prose = "\n".join(lines[first:end])
-        blanked = replace_code_spans(partial(_blanked_span, prose), prose)
-        lines[first:end] = blanked.split("\n")
+        lines[first:end] = _blanked_code("\n".join(lines[first:end])).split("\n")
     return lines
+
+
+def _blanked_code(prose: str) -> str:
+    """One statement's text with its code spans blank, and each inline expression's dollars.
+
+    An inline expression is a code span on one line with a `$` against each of
+    its runs. Read ahead of the code spans, a line at a time, a pattern for
+    `$`...`$` took a backtick a span opened on the line above had already
+    claimed for a well-formed expression, so the backtick and dollar the page
+    shows as literal text went unreported (`PL-9TZH`); and it paired the dollar
+    ending one span with the one opening the next, blanking the prose between
+    them as math (`PL-8NPN`). A dollar the expression before has taken opens
+    none.
+    """
+    kept: list[str] = []
+    done = 0
+    for span in code_spans(prose):
+        start, end = span.span()
+        blank = _blanked_span(prose, span)
+        expression = start > done and prose[start - 1] == "$" and prose[end : end + 1] == "$"
+        if expression and "\n" not in blank:
+            start, end, blank = start - 1, end + 1, f" {blank} "
+        kept += [prose[done:start], blank]
+        done = end
+    return "".join(kept) + prose[done:]
 
 
 def _blanked_span(prose: str, span: re.Match[str]) -> str:
@@ -6764,11 +6834,6 @@ def _blanked_span(prose: str, span: re.Match[str]) -> str:
     if prose[span.end() : span.end() + 1] == "$":
         blank = blank[:-run] + span["run"]
     return blank
-
-
-def _spaces(match: re.Match[str]) -> str:
-    """A match's text as as many spaces."""
-    return " " * len(match.group(0))
 
 
 #: A script, in one mode, that one gate runs and the other deliberately does
@@ -7083,13 +7148,12 @@ def check_gate_parity(root: Path, report: Report) -> None:
         if not gates:
             continue
         declined: list[UnreadStatement] = []
-        merge |= set(_gate_invocations(root, workflow_runs(text, where, report, unread, declined)))
+        merge |= set(_gate_invocations(root, workflow_runs(text, declined)))
         _decline_steps(report, where, declined, unread)
-    # A workflow, a step or a line of a script left unread on either side - a
-    # `check:` recipe's included - may hold a script that side runs, so a
-    # difference would not be a fact; the declines above say what went unread.
-    # Counting the declined steps alone passed over a recipe or script line
-    # `_shell_reading` declined (`PL-5M36`).
+    # A workflow, a step or a line of the `check:` recipe left unread may hold
+    # a script that side runs, so a difference would not be a fact; the
+    # declines above say what went unread. Counting the declined steps alone
+    # passed over a recipe line `_shell_reading` declined (`PL-5M36`).
     if len(report.declined) > declined_before or not local or not merge:
         return
     for invocation in sorted(local - merge):
@@ -7174,7 +7238,8 @@ def check_math_delimiters(root: Path, report: Report) -> None:
             for match in MATH_EDGE_RE.finditer(line):
                 report.errors.append(
                     f"{relative}:{number} leaves `{match.group(0)}` unpaired, so an inline "
-                    "expression is split across a line break and renders as literal text"
+                    "expression renders as literal text: one split across a line break, left "
+                    "open, or with a backtick a code span opened before it has claimed"
                 )
 
 
@@ -8048,6 +8113,8 @@ JSON_KEY_RE = re.compile(r'^[-+]\s*"(\w+)"\s*:')
 #: A `-U0` patch's hunk header: the rows it removes from the old file and adds
 #: to the new one, each a first row and a count that is 1 where it is left out.
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", re.MULTILINE)
+#: A patch's old-file header where the base has no such file.
+NEW_FILE_RE = re.compile(r"^--- /dev/null$", re.MULTILINE)
 #: The suffixes whose definitions are read as statements.
 PYTHON_SUFFIXES = (".py", ".pyi")
 
@@ -8309,9 +8376,9 @@ def _json_keys(value: object) -> set[str]:
 
 
 def _removed_headings(root: Path, base: str, relative: str, patch: str) -> set[str]:
-    """The title of each heading of a document's base copy that `patch` removed rows of.
+    """The title of each heading of a document's base copy that its working tree's copy lacks.
 
-    Read from `markdown.headings` over the base copy, as `_changed_definitions`
+    Read from `markdown.headings` over both copies, as `_changed_definitions`
     reads Python through statements, rather than from each removed line of the
     diff (`PL-B47B`): a setext heading spans its text and its underline
     (CommonMark 0.31.2 § 4.3), so a removed one left no `#` line, and a removed
@@ -8320,21 +8387,21 @@ def _removed_headings(root: Path, base: str, relative: str, patch: str) -> set[s
     one, and read whole it was reported removed whenever a key changed
     (`PL-WX79`). A title the working tree's copy still has as a heading - one
     moved, or a line reflowed - is not removed.
+
+    Any row `patch` touches can retitle one, which is why no row is asked
+    about: a setext heading's text is its paragraph's lines, so a line added
+    under it, or the blank line above it removed so the paragraph before joins
+    it (§ 4.8), changes its title while every row of it stays. Counted only
+    where the patch removed one of its rows, either change left the old title
+    off the list (`PL-F6T5`). A document the base does not have lost none.
     """
-    removed: set[int] = set()
-    for hunk in HUNK_RE.finditer(patch):
-        first, count = int(hunk.group(1)), int(hunk.group(2) or 1)
-        removed.update(range(first, first + count))
-    if not removed:
+    if HUNK_RE.search(patch) is None or NEW_FILE_RE.search(patch) is not None:
         return set()
     before = split_lines(_git_output(root, "show", f"{base}:{relative}").removeprefix("\ufeff"))
     after = (root / relative).read_bytes().decode("utf-8-sig")
     kept = {heading.title for heading in read_headings(_body_lines(split_lines(after)))}
     return {
-        heading.title
-        for heading in read_headings(_body_lines(before))
-        if heading.title not in kept
-        and any(row in removed for row in range(heading.line + 1, heading.end + 1))
+        heading.title for heading in read_headings(_body_lines(before)) if heading.title not in kept
     }
 
 

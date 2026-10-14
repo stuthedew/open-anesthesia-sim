@@ -3,12 +3,14 @@ id: PL-8NPN
 title: doc_check's title, group and math patterns misread within a line or a container - MARKER_RE and TAGS_MARK_RE read no bold title after an ordered marker, a nested bullet or a block quote, GATE_GROUP_RE reads a count past an opening emphasis run, and MATH_SPAN_RE pairs a dollar inside one code span with one inside another - so a citation is refused, a count misread, or prose blanked; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1472
 payoff: a bold title, a tags claim, a gate count and a math span are each read where CommonMark places them, so a correct section citation is not refused and no count or TeX span is checked against the wrong text
 verify: grep -q 'def test_a_bold_title_inside_a_container_is_a_citable_section_title' tests/unit/test_doc_check.py && grep -q 'def test_a_tags_claim_inside_a_container_is_read' tests/unit/test_doc_check.py && grep -q 'def test_an_emphasised_note_stating_a_count_is_no_gate_group' tests/unit/test_doc_check.py && grep -q 'def test_dollars_in_two_code_spans_pair_as_no_math_span' tests/unit/test_doc_check.py
 ---

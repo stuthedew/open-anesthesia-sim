@@ -3,12 +3,14 @@ id: PL-7CQ5
 title: doc_check's workflow_runs falls back to reading each script_lines piece alone wherever one shell_words pass cannot read a step's script to its end, so a case construct's arms are read as commands of their own with nothing declined but the one unreadable line, and check_gate_parity compares fragments; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-12
+pr: 1472
 payoff: a workflow step the shared lexer cannot read whole is declined by name, so gate parity never compares a case construct's fragments as commands CI runs
 verify: grep -q 'def test_a_step_one_pass_cannot_read_is_declined_whole' tests/unit/test_doc_check.py
 ---
