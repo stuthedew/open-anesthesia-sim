@@ -31,10 +31,11 @@ under a "Setting refused" banner. Any other exception stops the run:
 `SimulationDomainLimitError` as the supported run length, everything else as
 a failure, per `dashboard_frame.halt_disposition` (`PL-V6M0`, `PL-Y5WR`,
 `PL-YK2V`). A halted run says so from its controller's status - three
-facts no compartment value is built for - through `present_halt`, before
-any frame is attempted: the frame is the shared render path, and when that
-is what raised, a halt reported only through it would leave every status
-word reading "Paused" over a failed controller (`PL-25KS`); and a halt
+facts no compartment value is built for - and writes its dials from the
+settings it holds, through `present_halt`, before any frame is attempted:
+the frame is the shared render path, and when that is what raised, a halt
+reported only through it would leave every status word reading "Paused"
+over a failed controller (`PL-25KS`); and a halt
 stated from a fresh snapshot was not stated at all when the snapshot's own
 values were what refused (`PL-7DJK`).
 
@@ -64,7 +65,12 @@ from PySide6.QtWidgets import (
 
 from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.control_timeline import AdjustmentGrouping, ControlAdjustment
-from anesthesia_sim.app.controller import RunStatus, SimulationController, SimulationSnapshot
+from anesthesia_sim.app.controller import (
+    RunSettings,
+    RunStatus,
+    SimulationController,
+    SimulationSnapshot,
+)
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     ACCOUNTING_INITIAL_DETAIL_TEXT,
@@ -558,8 +564,7 @@ class RunView(QWidget):
         self._compartment_substance_text.setText(substance_heading(snapshot))
         self._readout_row.set_readouts(readouts(snapshot, self._playback_rate))
 
-        for slider, setting in zip(self._sliders(), setting_readouts(snapshot), strict=True):
-            slider.set_setting(setting)
+        self._write_settings(snapshot)
 
         panel = accounting(snapshot)
         _emphasised(self._agent_accounting_status_text, panel.status)
@@ -619,8 +624,9 @@ class RunView(QWidget):
         refuses a value - the halt `PL-7DJK` made visible - the read raised
         there, so the control accepted the choice and nothing on screen
         answered it (`PL-V2HC`). The raise is the halt the run is in, or is
-        about to be in: `_halt_run` states it from the controller's status,
-        which builds no compartment value, and a controller keeps the first
+        about to be in: `_halt_run` states it from the controller's status and
+        writes the dials from its settings, neither of which builds a
+        compartment value (`PL-85LJ`), and a controller keeps the first
         reason it was given, so a run already halted for this refusal
         restates the same halt.
 
@@ -664,6 +670,15 @@ class RunView(QWidget):
         exception (`PL-25KS`). `refresh` rewrites the same three on the next
         frame that can be drawn.
 
+        The four setting controls need no frame either, and are written here
+        from `SimulationController.settings()`, after the banner: a dial
+        dragged into a halt whose snapshot refuses has changed what the run
+        holds, and with no frame to follow, the value printed beside it stayed
+        the value before the drag, beside a dial standing at the new one
+        (`PL-85LJ`). They come last because `setting_readouts` can raise, for
+        a control that can offer no setting, and the three statements of the
+        halt are on screen before it does.
+
         They are written from `SimulationController.status()` and not from a
         snapshot, because the snapshot builds every compartment's fraction
         and a refusal of one of those is among the halts presented here:
@@ -678,6 +693,23 @@ class RunView(QWidget):
         _emphasised(self._status_text, status_word(status))
         self._write_transport(self._transport_lock(status))
         self._write_notice(halt_notice(status, refused_reset=self._refused_reset_notice))
+        self._write_settings(self.controller.settings())
+
+    def _write_settings(self, settings: RunSettings) -> None:
+        """Write the four setting controls from the settings in force.
+
+        From the snapshot a frame drew from, in `refresh`, or from
+        `SimulationController.settings()` in `present_halt`, where no frame
+        draws: either carries the agent and the four settings, and
+        `dashboard_frame.setting_readouts` builds the same readouts from
+        both, so a dial reads the same text whichever wrote it (`PL-85LJ`).
+
+        Args:
+            settings: The agent and the settings in force on the run.
+        """
+
+        for slider, setting in zip(self._sliders(), setting_readouts(settings), strict=True):
+            slider.set_setting(setting)
 
     def _transport_lock(self, status: RunStatus) -> Transport:
         """This run's transport enablement, with both facts `dashboard_frame` cannot read.
@@ -788,7 +820,9 @@ class RunView(QWidget):
         labels at once, from a snapshot read through
         `_snapshot_for_a_control`: a run whose snapshot refuses is halted
         and says so, where the raise used to escape the slot after the
-        setting had been applied (`PL-V2HC`).
+        setting had been applied (`PL-V2HC`), and has its dials written from
+        the settings the run holds, since no frame follows to write them
+        (`PL-85LJ`).
 
         Args:
             apply: The controller call that applies the setting.

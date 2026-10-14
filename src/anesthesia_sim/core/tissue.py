@@ -4,12 +4,13 @@ independently of every other tissue group.
 """
 
 from dataclasses import dataclass
-from math import exp, inf
+from math import inf
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.checked_number import require_a_number
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exponential_approach import exponential_approach
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
 
@@ -217,9 +218,10 @@ class TissueGroup:
         This tissue group's own closed form, and not how a run advances: the
         arterial fraction a run presents changes continuously, and the step
         that follows it is `AgentUptakeSystem.advance()`. The package
-        docstring in `core/__init__.py` states the distinction and the zero-
-        flow branch below; `docs/MODEL.md` § "Tissue uptake and return" is
-        the equation.
+        docstring in `core/__init__.py` states the distinction;
+        `core/exponential_approach.py` is the form the amount is advanced in,
+        exact at zero flow with no branch here; `docs/MODEL.md` § "Tissue
+        uptake and return" is the equation.
 
         Returns the signed change in tissue agent amount. A positive value
         represents uptake by the tissue. A negative value represents return
@@ -230,25 +232,23 @@ class TissueGroup:
                 which is what checks it against 0 to 1
                 (`core/concentration.py`).
             SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite. Both are checked before anything changes.
+                and finite. Both are checked before anything changes. Or the
+                amount held is already past the capacity, which only a write
+                past `__setattr__` can have stored: the amount advanced is
+                written through it, at zero flow too, where it is the amount
+                held, unchanged.
         """
 
         require_fraction("arterial_partial_pressure_fraction", arterial_partial_pressure_fraction)
         require_positive_finite("simulation_step_s", simulation_step_s)
 
-        if self.blood_flow_l_min == 0.0:
-            return 0.0
-
         initial_amount_l = self.agent_amount_l
-        fraction_remaining = exp(-simulation_step_s / self.time_constant_s)
-        initial_fraction = self.partial_pressure_fraction
-
-        next_fraction = (
-            arterial_partial_pressure_fraction
-            + (initial_fraction - arterial_partial_pressure_fraction) * fraction_remaining
+        self.agent_amount_l = exponential_approach(
+            initial_amount_l,
+            self.capacity_l * arterial_partial_pressure_fraction,
+            simulation_step_s,
+            self.time_constant_s,
         )
-
-        self.agent_amount_l = self.capacity_l * next_fraction
 
         return self.agent_amount_l - initial_amount_l
 

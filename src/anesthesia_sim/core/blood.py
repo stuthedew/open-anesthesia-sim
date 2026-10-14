@@ -4,10 +4,11 @@ arterial input, under this model's flow-limited arterial simplification.
 """
 
 from dataclasses import dataclass
-from math import exp, inf
+from math import inf
 
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exponential_approach import exponential_approach
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
 
@@ -104,8 +105,10 @@ class VenousBloodCompartment:
         This pool's own closed form, and not how a run advances: the tissue
         return a run presents changes continuously as the tissues fill, and
         the step that follows it is `AgentUptakeSystem.advance()`. The package
-        docstring in `core/__init__.py` states the distinction and the zero-
-        flow branch below; `docs/MODEL.md` § "Venous blood" is the equation.
+        docstring in `core/__init__.py` states the distinction;
+        `core/exponential_approach.py` is the form the amount is advanced in,
+        exact at zero flow with no branch here; `docs/MODEL.md` § "Venous
+        blood" is the equation.
 
         Returns the signed change in venous agent amount.
 
@@ -122,19 +125,13 @@ class VenousBloodCompartment:
         )
         require_positive_finite("simulation_step_s", simulation_step_s)
 
-        if self.blood_flow_l_min == 0.0:
-            return 0.0
-
         initial_amount_l = self.agent_amount_l
-        initial_fraction = self.partial_pressure_fraction
-        fraction_remaining = exp(-simulation_step_s / self.time_constant_s)
-
-        next_fraction = (
-            tissue_return_partial_pressure_fraction
-            + (initial_fraction - tissue_return_partial_pressure_fraction) * fraction_remaining
+        self.agent_amount_l = exponential_approach(
+            initial_amount_l,
+            self.capacity_l * tissue_return_partial_pressure_fraction,
+            simulation_step_s,
+            self.time_constant_s,
         )
-
-        self.agent_amount_l = self.capacity_l * next_fraction
 
         return self.agent_amount_l - initial_amount_l
 

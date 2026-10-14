@@ -69,6 +69,7 @@ src/anesthesia_sim/
 │   ├── alveolar.py                # alveolar gas compartment
 │   ├── blood.py                   # venous blood compartment
 │   ├── tissue.py                  # one perfusion-limited tissue group
+│   ├── exponential_approach.py    # the first-order approach to a held input that blood.py and tissue.py advance their amount by: formed from the amount held for a step closing up to half the gap and from the equilibrium beyond, exact at zero flow and at a full approach
 │   ├── patient.py                 # PatientCompartments: VRG + muscle + fat + venous blood
 │   ├── governing_equations.py     # MODEL.md's balance equations as one system matrix
 │   ├── matrix_exponential.py      # exp(A dt) for a compartment system; no physiology in it
@@ -349,6 +350,12 @@ both read it through `RunView._snapshot_for_a_control`, which halts the run on
 the raise and restates the halt from `status()`; `_handle_agent_change` then
 puts the agent selector back to the agent `SimulationController.agent_id`
 names, since the snapshot that would name it is what refused (`PL-V2HC`).
+The dials are written the same way: `present_halt` writes all four from
+`SimulationController.settings()`, a `RunSettings` the snapshot also extends,
+built from the agent and the settings the run holds and no compartment
+value, so a dial dragged into the halt reads the value the run holds beside
+it rather than the value before the drag, which only a frame would have
+rewritten (`PL-85LJ`).
 Neither timer
 stops on either halt — both are started once, when the window opens, and a
 halted run leaves them firing and finding nothing to do — so a run reset and

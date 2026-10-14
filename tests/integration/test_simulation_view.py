@@ -148,6 +148,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.wash_in import read_wash_in
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.alveolar import AlveolarCompartment
+from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
@@ -1809,6 +1810,76 @@ def test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it(
     assert notice.startswith(f"Simulation stopped — {reason}")
     assert run._pause_button.isEnabled() is False
     assert run._start_button.isEnabled() is False
+
+
+def test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    """The value printed beside a dial dragged into a halt is the value the dial and the run hold.
+
+    `_apply_setting` applies the setting, then the snapshot read that would
+    rewrite the labels halts the run instead and no frame draws, so the
+    value label - written only through `set_setting` - kept the value before
+    the drag beside a dial standing at the new one: "2.0 L/min" beside a
+    dial at 4.0 with the circuit holding 4.0, until Reset (`PL-85LJ`, found
+    at `PL-V2HC`'s review). The halt now writes every dial from
+    `SimulationController.settings()`, which builds no compartment value,
+    so the label, the dial and the run agree.
+    """
+
+    controller = _paused_run_with_history()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    dial = run._fresh_gas_flow_slider
+    assert dial.value_label.text() == "2.0 L/min"
+    _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
+    capfd.readouterr()
+
+    _set_fresh_gas_flow(run, 4.0)
+
+    assert "Traceback" not in capfd.readouterr().err
+    assert controller.has_failed is True
+    assert run._status_text.text() == "Stopped — simulation error"
+    assert controller.settings().fresh_gas_flow_l_min == 4.0
+    assert dial.value() == 4.0
+    assert dial.value_label.text() == "4.0 L/min"
+
+
+def test_a_halt_is_stated_before_its_dials_are_written(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The status word, the transport and the banner are on screen before a dial is written.
+
+    `present_halt` writes the dials through `dashboard_frame.setting_readouts`,
+    which raises for a control that can offer no setting - a fresh gas flow
+    range narrower than the dial's 0.1 L/min step, which no shipped machine
+    declares and the circuit refuses at build. Written before the banner,
+    that raise left the halt half stated, the status word and the transport
+    written and no banner, and escaped the slot (found at `PL-85LJ`'s
+    review). The dials come last, so the three statements of the halt are
+    on screen before the raise, which still escapes rather than hiding.
+    """
+
+    controller = _paused_run_with_history()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    monkeypatch.setattr(
+        BreathingCircuit,
+        "accepted_fresh_gas_flow_range_l_min",
+        property(lambda circuit: (0.21, 0.29)),
+    )
+    controller.fail("RuntimeError: step exploded")
+
+    with pytest.raises(ValueError, match="can offer no setting"):
+        run.present_halt()
+
+    assert run._status_text.text() == "Stopped — simulation error"
+    assert run._start_button.isEnabled() is False
+    assert run._pause_button.isEnabled() is False
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert "Simulation stopped" in notice
+    assert "step exploded" in notice
 
 
 def test_a_confirmation_answered_after_the_snapshot_refuses_restates_the_halt(

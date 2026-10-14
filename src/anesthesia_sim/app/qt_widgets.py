@@ -718,9 +718,11 @@ class ParameterSlider(QWidget):
     The slider spans `slider_position(minimum)` to `slider_position(maximum)`
     in steps of one count, and a count is the control's display resolution,
     so the value it emits and the value printed beside it are one number
-    (`PL-25KS`, decision D4). The value label is the snapshot's own text,
-    written by `set_setting`, so a refused setting leaves the control
-    reading what the simulation is actually running at.
+    (`PL-25KS`, decision D4). The value label is the text of the settings in
+    force, written by `set_setting` from the snapshot a frame drew from or,
+    on a halt no frame follows, from the controller's own settings
+    (`PL-85LJ`), so a refused setting, or a drag that halted the run, leaves
+    the control reading what the simulation is actually running at.
 
     The value label's width only grows: reserved from the text it is first
     given and widened when a longer one arrives, never narrowed, so the
