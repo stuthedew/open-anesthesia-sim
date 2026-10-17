@@ -280,34 +280,49 @@ set it when the session opens rather than toggling it.
   only, so make it before the first task. A thread can confirm it:
   `get_session` reads `environment_id` `env_01JWikdPctorEBXoFK7bJnCq`.
 
-## Read a simulator change before you arm it
+## What comes to you before it merges
 
-`bin/docket arm` holds a pull request for your read where it changes `src/`,
-`tests/` outside `subprojects/` but for a test of the tooling (below),
-`docs/MODEL.md`, `src/anesthesia_sim/data/` or `README.md` - the paths where a
-wrong clinical value could reach the screen
-- or `subprojects/docket/src/docket/arming.py`, which decides what merges and
-could loosen the rule (the Projects trial's instructions, 2026-10-03, kind
+**A pull request comes to you only for a real decision or a high-risk change,
+and housekeeping merges on green** (project owner, 2026-10-17, `PL-DKBG`). A
+real decision is one `.claude/skills/docket/modes/design.md` step 4 already
+makes yours. A high-risk change is one that changes a clinical value the
+simulator computes or displays, or what `docs/MODEL.md` says one means; a rule
+sessions run under that you did not ask for in your own words; or a change
+whose breakage CI would not show or a revert would not undo. For that one the
+ask gives the case for the change, its risks, and what was checked. `#1516` set
+this rule: the path list held it with nothing in it to decide.
+
+The session decides which a change is, and records it on a commit as
+`Owner-read: needed - <why>` or `Owner-read: not needed - <why>`. `bin/docket
+arm` reads that record. A change to `src/`, to a test under `tests/` that
+imports the simulator, to `docs/MODEL.md`, to `src/anesthesia_sim/data/` or to
+`README.md` holds until a record made after its newest change covers it. So a
+session that never judges holds the pull request rather than merging a
+clinical change unread. `not needed` arms it on green, with the reason in the
+pull request body. `needed` holds it for you on any path.
+`subprojects/docket/src/docket/arming.py` always waits on you, because it
+decides what merges without you and could loosen the rule (project owner,
+2026-10-12, ratified, `PL-VKHD`). A held pull request merges on your word
+alone - "Merge it" - by the route § "Bring a stale base in when you merge,
+with Update branch" describes.
+
+Before 2026-10-17 those simulator paths held for your read by themselves,
+whatever the change was (the Projects trial's instructions, 2026-10-03, kind
 unrecorded, over holding every path outside `docs/items/`, `docs/pr-bodies/`
 and `subprojects/docket/`; built by `PL-KKHD`). A workflow item needs no merge
 confirmation from you (project owner, 2026-10-12, `PL-KPM2`), so a change to
 `.github/workflows/`, `.claude/hooks/` or docket's lexer arms on green beside
 the rest of the workflow lane, where those had waited on your read since
-2026-10-03 and 2026-10-10. A session leaves a held pull
-request unarmed, asks for the read with the plain-language summary `arm`
-prints under the hold (`PL-8XQS`), and merges it on your word alone - "Merge
-it" - by the route § "Bring a stale base in when you merge, with Update
-branch" describes. Every other change arms on green: the store, the body
-records (`PL-979D`) and the queue's tooling as before (project owner,
+2026-10-03 and 2026-10-10. Every other change arms on green: the store, the
+body records (`PL-979D`) and the queue's tooling as before (project owner,
 2026-09-25, ratified, over holding every path outside `docs/items/`,
-`PL-SQTR`; built by `PL-K6B2`), and since 2026-10-03 `CLAUDE.md`, `ROADMAP.md`,
-`tools/`, the rest of `.claude/` and `.github/`, and everything else. `arm` names the paths
-outside the store it armed, so the session's report carries the reason the
-old hold would have given, and the session still holds a change it judges
-raises a question for you, whatever path it is on. The old hold fired on
-every change outside the store, and you confirmed on 2026-09-25 that those
-holds were being clicked through, so it was guarding nothing; `PL-CBDX` reads
-the diffs merged unread since 2026-09-23.
+`PL-SQTR`; built by `PL-K6B2`), and since 2026-10-03 `CLAUDE.md`,
+`ROADMAP.md`, `tools/`, the rest of `.claude/` and `.github/`, and everything
+else. `arm` names the paths outside the store it armed, so the session's report
+carries the reason. The hold before that fired on every change outside the
+store, and you confirmed on 2026-09-25 that those holds were being clicked
+through, so it was guarding nothing; `PL-CBDX` reads the diffs merged unread
+since 2026-09-23.
 
 Two answers of 2026-10-03, recorded so that the list reads as decided rather
 than defaulted. `ROADMAP.md` and `docs/WORKING_NOTES.md` arm on green, where
@@ -325,8 +340,8 @@ collects that imports no `anesthesia_sim` - arms on green, as
 `subprojects/docket/tests/` does: 16 of the 51 merges held for a read since
 2026-10-03 had been held by such tests alone, with nothing in them for you to
 judge (project owner, 2026-10-05, ratified, over keeping every change under
-`tests/` on the read list, `PL-552M`). A test of the simulator still waits, and
-so does a branch that drops a test's simulator import or deletes a simulator
+`tests/` on the read list, `PL-552M`). A test of the simulator still waits for
+the session's `Owner-read` record, and so does a branch that drops a test's simulator import or deletes a simulator
 test, because `arm` reads the file before and after the change. So do
 `tests/conftest.py` and every other file pytest does not collect, which serve
 the simulator's tests whatever they import, and any test `arm` could not read,

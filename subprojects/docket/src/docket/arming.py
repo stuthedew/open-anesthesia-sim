@@ -13,10 +13,12 @@ every later push while a pull request is open.
 
 **Five answers, and an exit status for each.**
 
-- `arm` (0): the net change a squash would land - `base...HEAD` - reaches
-  nothing on the owner's read list (`READ_PATHS`, a test of the tooling under
-  `tests/` aside) and leaves this module alone, which `arms_on_green` answers
-  path by path; no claim bound to this
+- `arm` (0): the net change a squash would land - `base...HEAD` - waits on
+  no read from the owner: it leaves this module alone, and either reaches no
+  simulator path (`READ_PATHS`, a test of the tooling under `tests/` aside,
+  which `arms_on_green` answers path by path) or carries the session's
+  `Owner-read: not needed - <why>` record on a commit since its newest change
+  there, and no record on it says `needed`; no claim bound to this
   branch is unreleased; HEAD holds every commit of the branch's copy on the
   remote; and the branch contains the base's tip. A path outside the store,
   the queue's own tooling, `subprojects/docket/`, and the pull requests'
@@ -27,11 +29,13 @@ every later push while a pull request is open.
   a draft, whichever push carried it, until the branch's own copy closes or
   blocks the item or the branch yields it: merged, the branch and its claim go
   together while the work goes on. A lapsed claim is unreleased too - it is
-  work nobody finished or handed back. A path on the owner's read list holds
-  it unarmed, and so does a change to this module, because that work waits on
-  a read rather than merging on green CI, and merges on the owner's word
-  alone. Once no claim holds it, that hold also says where the ask for the
-  read goes and what it carries (`READ_ASK`).
+  work nobody finished or handed back. A simulator path no `Owner-read`
+  record covers holds it until the session records whether the owner needs
+  to read it (`JUDGE_ASK`), so a judgment nobody made fails safe rather than
+  merging a clinical change unread. A record saying `needed`, and any change
+  to this module, hold it for the owner's read, and it merges on the owner's
+  word alone. Once no claim holds it, that hold also says where the ask goes
+  and what it carries (`READ_ASK`).
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
   brings the base in (`PL-S5MF`). So the base is brought in first.
@@ -116,7 +120,21 @@ has already merged; what went unread is said beside it.
   The import rule is the one `tools/workflow_paths_check.py` holds
   `docket.toml`'s `workflow_paths` to, spelt here and imported there, and it
   is read from the tree rather than from `workflow_paths`, which arms on
-  green: widening what arms still takes an edit the gate holds (`PL-0JGZ`).
+  green: widening what arms still takes an edit the gate holds (`PL-0JGZ`);
+- a pull request reaches the owner only for a real decision or a high-risk
+  change, and housekeeping merges on green (project owner, 2026-10-17: "Model
+  comes to me only when there is a real decision as discussed or making a
+  high risk change you want a second set of eyes on then you should present
+  the case for the change, the risks etc. but house keeping stuff I don't
+  need to sign off everything"; built by `PL-DKBG`). The read list had held
+  `#1516`'s measured figures and tightened tests exactly as it would a changed
+  equation, and its ask invented two points to judge. So the list no longer
+  holds by itself: a change to it waits for the session's recorded judgment,
+  `Owner-read: needed - <why>` or `not needed - <why>`, which `arm` reads
+  from the branch's commits, and only `needed` and this module wait on the
+  owner. Chosen over dropping the list and leaving the judgment to prose,
+  which fails open on a session that never makes it, and over keeping the
+  list and rewording the ask, which leaves housekeeping waiting on the owner.
 
 Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
 holds"): a triage pass moving statuses is the queue-only work auto-merge
@@ -136,6 +154,7 @@ from pathlib import Path, PurePosixPath
 
 from .claiming import _git
 from .claims import LAPSED, RELEASED, Hold, holdings
+from .lines import split_lines
 from .vcs import (
     REMOTE,
     MergedPullRequest,
@@ -171,30 +190,58 @@ EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, LANDED: 1, UNKNOWN: 2}
 SHOWN = 5
 
 #: What a `hold` for a read tells the session to put in the owner's ask, once
-#: no claim keeps the pull request a draft. The owner asked for it as the
-#: default for every pre-merge read on 2026-09-27, and only the Projects
-#: instructions carried it, so a session outside the Project asked for the
-#: read without one (`PL-8XQS`). It is said here, where the ask is decided,
-#: rather than in a resident rule every session pays for.
-#:
-#: It names the closing block's line because its first wording said what the
-#: ask *opens* with, and was followed to the letter: on 2026-10-03 three
-#: sessions opened the reply with the summary and closed it on a bare "read
-#: #N", the line the owner acts on, with housekeeping among the points
-#: (`PL-9KHK`). The points run most important first because the owner's need
-#: is not less to see but what matters in it made plain: "it's just hard to
-#: know what's important in long text" (project owner, 2026-10-03).
+#: no claim keeps the pull request a draft. It is said here, where the ask is
+#: decided, rather than in a resident rule every session pays for (`PL-8XQS`).
+#: It names the closing block's line, because a wording that said only what
+#: the ask opens with was followed to the letter: three sessions closed on a
+#: bare "read #N" (`PL-9KHK`). Its two forms are the owner's two reasons to
+#: be asked (2026-10-17, `PL-DKBG`). Its earlier form asked for "numbered
+#: points for the owner to judge" wherever a clinical value or a
+#: `docs/MODEL.md` statement changed, which contradicted the rule already in
+#: design.md step 4 and rule 14 of `.claude/rules/instruction-writing.md`: on
+#: `#1516` it produced a measured figure and an option the model's own run
+#: length ruled out as "points to judge". So it points at that rule now rather
+#: than stating a second one.
 READ_ASK = (
-    "  Ask for this read in the closing block's own line, never as 'read #N', and repeat that "
-    "line whole in every later reply that still waits on it, short enough to take in at a "
-    "glance: a plain-language summary, one sentence of what the change does, what was wrong "
-    "and what changed, in terms a clinician recognises; then numbered points for the owner "
-    "to judge, most important first and only what matters to them - a clinical value or a "
-    "docs/MODEL.md statement, what a learner sees, how sessions work, a departure from what "
-    "they asked for, a risk to what already works; then what needs no review, in one "
-    "clause, which is where housekeeping goes - tests, docstrings, filed items, audit notes, "
-    "the apparatus's internals. With no point to judge, say so and ask for the merge word "
-    "alone."
+    "  Ask for it in the closing block's own line, never as 'read #N', and repeat that line "
+    "whole in every later reply that still waits on it, short enough to take in at a "
+    "glance. For a real decision: the question, what the owner is deciding, each option "
+    "with what it costs, and the recommendation, one line each. For a high-risk change: "
+    "one plain sentence of what the change does, in terms a clinician recognises; then "
+    "the case for it and its risks, most important first - what could go wrong, for whom, "
+    "and what was checked to rule it out; then what needs no review, in one clause. A "
+    "question goes in only where .claude/skills/docket/modes/design.md step 4 makes it the "
+    "owner's. Where only the gate holds it and nothing in it carries a risk, say so in one "
+    "sentence and ask for the merge word alone."
+)
+
+#: The commit trailer a session records its judgment in: whether the owner
+#: needs to read the branch's change before it merges (project owner,
+#: 2026-10-17, `PL-DKBG`). Its value is `READ_NEEDED` or `READ_NOT_NEEDED`,
+#: then " - " and the reason, which the report and the pull request body
+#: carry. Git reads a trailer from a commit message's last paragraph alone.
+OWNER_READ = "Owner-read"
+READ_NEEDED = "needed"
+READ_NOT_NEEDED = "not needed"
+
+#: What a `hold` on a simulator path with no record tells the session. The
+#: test for a real decision is the design round's, so it is pointed at rather
+#: than restated, and the high-risk cases are the ones the owner's rule names
+#: in this repository's terms. What a learner can be misled by is the first,
+#: because the safety-critical standard in `CLAUDE.md` makes it so.
+JUDGE_ASK = (
+    "  Decide whether the owner needs to read it, and record the answer as a trailer in "
+    "the last paragraph of a commit made after the change, beside its Co-authored-by "
+    f"line: `{OWNER_READ}: {READ_NEEDED} - <why>` or `{OWNER_READ}: {READ_NOT_NEEDED} - "
+    "<why>`. It is needed for a real decision, one "
+    ".claude/skills/docket/modes/design.md step 4 makes the owner's, and for a high-risk "
+    "change: one that changes a clinical value the "
+    "simulator computes or displays, or what docs/MODEL.md says one means, beyond "
+    "restating what the change's own tests measure; one that changes a rule sessions run "
+    "under that the owner did not ask for in their own words; or one whose breakage CI "
+    "would not show or a revert would not undo. Anything else is housekeeping and not "
+    "needed: a refactor with its outputs pinned, a tightened test, a figure restated from "
+    "a measurement. Then ask again."
 )
 
 #: The queue's own tooling, which arms on green beside the store. The path is
@@ -233,9 +280,11 @@ PRODUCT_PACKAGE = "anesthesia_sim"
 #: of quietly turning a new test into a support module.
 TEST_FILE_PATTERNS = ("test_*.py", "*_test.py")
 
-#: The owner's read list, spelt as they spelt the rule (2026-10-03, `PL-KKHD`):
-#: a change reaching one of these waits on their read, the gate beside them,
-#: and everything else arms on green. A directory holds what is under it, a
+#: The simulator's paths, which were the owner's read list as they spelt it
+#: (2026-10-03, `PL-KKHD`). Since 2026-10-17 a change reaching one of these
+#: waits for the session's `OWNER_READ` record rather than for the owner,
+#: and only a record saying `READ_NEEDED`, or the gate, waits on them
+#: (`PL-DKBG`). A directory holds what is under it, a
 #: file is itself. `TESTS` is the simulator's, but for a test of the tooling
 #: (`tests_the_tooling`), which arms on green since the owner's answer of
 #: 2026-10-05. `src/anesthesia_sim/data/` lies under `src/` and is kept for
@@ -245,10 +294,10 @@ TEST_FILE_PATTERNS = ("test_*.py", "*_test.py")
 #: merge confirmation (`PL-KPM2`): what is left is the simulator's.
 READ_PATHS = ("src/", TESTS, "docs/MODEL.md", "src/anesthesia_sim/data/", "README.md")
 
-#: The list as the answers name it, the gate included.
+#: The simulator's paths as the answers name them.
 READ_LIST = (
     f"src/, {TESTS} but a test importing no {PRODUCT_PACKAGE}, docs/MODEL.md, "
-    "src/anesthesia_sim/data/, README.md and docket's arming.py"
+    "src/anesthesia_sim/data/ and README.md"
 )
 
 
@@ -308,7 +357,10 @@ def tests_the_tooling(path: str, sides: Iterable[str]) -> bool:
 
 
 def waits_on_read(path: str, tooling: Collection[str] = ()) -> bool:
-    """Whether a change to `path` waits on the owner's read: the read list, or the gate.
+    """Whether a change to `path` waits on a read: a simulator path, or the gate.
+
+    A simulator path waits for the session's `OWNER_READ` record, and the gate
+    for the owner (`PL-DKBG`); `arm` tells the two apart.
 
     `tooling` is the paths under `TESTS` that `tests_the_tooling` read as
     tests of the tooling, on both sides of the change, which arm on green. A
@@ -325,7 +377,10 @@ def waits_on_read(path: str, tooling: Collection[str] = ()) -> bool:
 
 
 def arms_on_green(path: str, tooling: Collection[str] = ()) -> bool:
-    """Whether a change to `path` may merge on green CI without the owner's read.
+    """Whether a change to `path` may merge on green CI without a recorded judgment.
+
+    A path this answers no to waits for the session's `OWNER_READ` record, or,
+    for `GATE`, for the owner (project owner, 2026-10-17, `PL-DKBG`).
 
     Everything but the owner's read list and `GATE` may (the Projects trial's
     instructions, 2026-10-03, kind unrecorded, over holding every path outside
@@ -366,11 +421,38 @@ def outside_the_store(path: str, items_dir: str) -> bool:
 
 
 @dataclass(frozen=True)
+class OwnerRead:
+    """A session's recorded judgment of whether the owner needs to read the branch.
+
+    `commit` carries the `OWNER_READ` trailer, `needed` is its answer, and
+    `why` is the reason the session gave, which the report repeats.
+    """
+
+    commit: str
+    needed: bool
+    why: str
+
+
+def parse_owner_read(value: str) -> tuple[bool, str] | None:
+    """`(needed, why)` from an `OWNER_READ` value, or `None` for one in neither form.
+
+    The form is `needed - <why>` or `not needed - <why>`, and the reason is
+    required, because a judgment with no reason cannot be audited.
+    """
+    word, dash, why = value.partition(" - ")
+    word = word.strip().lower()
+    if not dash or not why.strip() or word not in {READ_NEEDED, READ_NOT_NEEDED}:
+        return None
+    return word == READ_NEEDED, why.strip()
+
+
+@dataclass(frozen=True)
 class Verdict:
     """`arm`'s answer for `HEAD`, and what it rests on.
 
-    `claims` are the unreleased claims bound to this branch, `read` the paths
-    a merge would land on the owner's read list, `outside` the paths it would
+    `claims` are the unreleased claims bound to this branch, `read` the
+    simulator paths a merge would land, `record` the newest `OWNER_READ`
+    record that covers them (or, with none, the branch), `outside` the paths it would
     land outside the store, the tooling and the records that arm all the same
     and are named, `gate` whether it would change this module, and `behind`
     how many of the base's commits the branch lacks. `unpulled` is what the branch's copy on
@@ -386,6 +468,7 @@ class Verdict:
     items_dir: str = ""
     claims: tuple[Hold, ...] = ()
     read: tuple[str, ...] = ()
+    record: OwnerRead | None = None
     outside: tuple[str, ...] = ()
     gate: bool = False
     behind: int = 0
@@ -396,6 +479,16 @@ class Verdict:
     @property
     def code(self) -> int:
         return EXIT[self.answer]
+
+    @property
+    def unjudged(self) -> bool:
+        """Whether simulator paths change and no record says whether the owner must read them."""
+        return bool(self.read) and self.record is None
+
+    @property
+    def needs_owner(self) -> bool:
+        """Whether the pull request waits on the owner: the gate, or a record saying needed."""
+        return self.gate or (self.record is not None and self.record.needed)
 
     @property
     def lines(self) -> tuple[str, ...]:
@@ -415,18 +508,26 @@ class Verdict:
             )
         if self.answer == ARM:
             said = [
-                f"arm - {self.branch} changes nothing on the owner's read list ({READ_LIST}), "
-                f"holds no open claim, and contains {self.base}'s tip: mark its pull request "
-                "ready and arm it"
+                f"arm - {self.branch} waits on no read from the owner, holds no open claim, "
+                f"and contains {self.base}'s tip: mark its pull request ready and arm it"
             ]
+            if self.read and self.record is not None:
+                count = len(self.read)
+                noun = "path" if count == 1 else "paths"
+                said.append(
+                    f"  It changes {count} simulator {noun}, which the {OWNER_READ} record on "
+                    f"{self.record.commit[:12]} judges need no read: {self.record.why}. Say so "
+                    "in the pull request body, with the paths:"
+                )
+                said.append(f"  {self._shown(self.read)}")
             if self.outside:
                 count = len(self.outside)
                 noun = "path" if count == 1 else "paths"
                 said.append(
                     f"  It changes {count} {noun} outside {self._arming}, which arm on green "
-                    "under the owner's read list unless the change raises a question "
-                    "for them - this session's judgment, not this answer's - so name "
-                    f"{'it' if count == 1 else 'them'} in the report as the hold's reason:"
+                    "unless the change needs the owner's read - this session's judgment, "
+                    f"recorded as `{OWNER_READ}: {READ_NEEDED} - <why>`, not this answer's - "
+                    f"so name {'it' if count == 1 else 'them'} in the report:"
                 )
                 said.append(f"  {self._shown(self.outside)}")
             return tuple(said)
@@ -459,7 +560,7 @@ class Verdict:
                     "prints the commands."
                 )
             return (*said, *notes)
-        read = ", so its pull request waits on a read" if self.read or self.gate else ""
+        read = ", so its pull request waits on the owner's read" if self.needs_owner else ""
         said = [f"hold - {self.branch}: " + " and ".join(self._holding()) + read]
         if self.unpulled:
             said.append(f"  {self.unpulled}")
@@ -477,6 +578,8 @@ class Verdict:
             )
         )
         # A claim keeps the pull request a draft, which nobody is asked to read.
+        if self.unjudged and not self.claims:
+            said.append(JUDGE_ASK)
         if read and not self.claims:
             said.append(READ_ASK)
         return (*said, *notes)
@@ -494,15 +597,23 @@ class Verdict:
         return f"{shown}{f', and {more} more' if more > 0 else ''}"
 
     def _holding(self) -> list[str]:
-        """The one-clause reasons a `hold` names: claims, then the read list, then the gate."""
+        """The one-clause reasons a `hold` names: claims, the judgment, then the gate."""
         reasons = []
         if self.claims:
             keys = ", ".join(hold.key for hold in self.claims)
             reasons.append(f"a merge would erase its open claim on {keys}")
-        if self.read:
+        if self.unjudged:
             count = len(self.read)
             noun = "path" if count == 1 else "paths"
-            reasons.append(f"it changes {count} {noun} on the owner's read list")
+            reasons.append(
+                f"it changes {count} simulator {noun} and no {OWNER_READ} record on a commit "
+                "since its newest change there says whether the owner must read it"
+            )
+        if self.record is not None and self.record.needed:
+            reasons.append(
+                f"the {OWNER_READ} record on {self.record.commit[:12]} asks for the owner's "
+                f"read: {self.record.why}"
+            )
         if self.gate:
             reasons.append(f"it changes {GATE}, the gate itself")
         return reasons
@@ -626,6 +737,8 @@ def arm(
         )
     else:
         unread.append(f"git would not diff {name} against {base}, so what a merge lands is unknown")
+    record, misread = _owner_read(root, run, base, on_list)
+    unread.extend(misread)
 
     read = holdings(root, now=now, items_dir=items_dir, remote=heads, runner=ran)
     if not read.known:
@@ -659,19 +772,66 @@ def arm(
         items_dir=prefix.rstrip("/"),
         claims=claims,
         read=on_list,
+        record=record,
         outside=outside,
         gate=gate,
         behind=behind,
         unpulled=unpulled,
         unread=tuple(unread),
     )
-    if claims or on_list or gate:
+    if claims or found.unjudged or found.needs_owner:
         return found
     if unpulled or unread:
         return Verdict(UNKNOWN, branch=name, base=base, unpulled=unpulled, unread=tuple(unread))
     if behind:
         return Verdict(BEHIND, branch=name, base=base, items_dir=found.items_dir, behind=behind)
-    return Verdict(ARM, branch=name, base=base, items_dir=found.items_dir, outside=outside)
+    return Verdict(
+        ARM,
+        branch=name,
+        base=base,
+        items_dir=found.items_dir,
+        read=on_list,
+        record=record,
+        outside=outside,
+    )
+
+
+def _owner_read(
+    root: Path, run: Runner, base: str, paths: Sequence[str]
+) -> tuple[OwnerRead | None, tuple[str, ...]]:
+    """The newest `OWNER_READ` record that covers `paths`, and what went unread.
+
+    With `paths`, only a commit made since the newest one that changed them
+    counts, so a judgment cannot cover a change made after it. With none, any
+    commit of the branch counts, since a `needed` record holds a branch
+    whatever it changes. The newest commit carrying the trailer decides, and
+    its last value where it carries several. A value in neither form is said
+    and not read, so it covers nothing: a simulator change it was meant for
+    still holds, and anything else is `unknown` rather than armed.
+    """
+    span = ["HEAD", f"^{base}"]
+    if paths:
+        newest = run(["log", "-1", "--format=%H", f"{base}..HEAD", "--", *paths], root).strip()
+        if not newest:
+            return None, ()
+        parents = run(["rev-parse", f"{newest}^@"], root).split()
+        span.extend(f"^{parent}" for parent in parents)
+    fmt = f"--format=%H%x1f%(trailers:key={OWNER_READ},valueonly,unfold,separator=%x1e)"
+    listed = run(["log", fmt, *span, "--"], root)
+    for line in split_lines(listed):
+        commit, _, values = line.partition("\x1f")
+        said = [value for value in values.split("\x1e") if value.strip()]
+        if not said:
+            continue
+        parsed = parse_owner_read(said[-1])
+        if parsed is None:
+            return None, (
+                f"the {OWNER_READ} record on {commit[:12]} is neither "
+                f"'{READ_NEEDED} - <why>' nor '{READ_NOT_NEEDED} - <why>', so it was not read: "
+                f"{said[-1].strip()}",
+            )
+        return OwnerRead(commit=commit, needed=parsed[0], why=parsed[1]), ()
+    return None, ()
 
 
 def _tests_of_the_tooling(

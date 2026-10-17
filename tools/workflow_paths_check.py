@@ -44,8 +44,9 @@ written yet - the next `tools/` check's test will import `tools/`, not
 
 **The rule is spelt in `docket.arming` and imported here (`PL-552M`).**
 `bin/docket arm` reads the same import to let a test of the tooling under
-`tests/` merge on green while a test of the simulator waits on the owner's
-read (project owner, 2026-10-05, ratified). One spelling keeps the lane and
+`tests/` merge on green while a test of the simulator waits for the session's
+recorded judgment of whether the owner must read it (project owner,
+2026-10-05, ratified; 2026-10-17, `PL-DKBG`). One spelling keeps the lane and
 the read hold from disagreeing about a test file, and putting it in the module
 the merge gate holds for the owner's read means neither can be changed
 without that read.
