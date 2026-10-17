@@ -77,3 +77,12 @@ while the literal pattern no longer matches them (nine of the seventeen sites
 it matched on `main` at `b9b3c812`). Extend the check to those writes - a refused write on
 a built `TissueGroup` naming the group, and on the venous pool naming it -
 when this item is worked (found reviewing `PL-19Y0`).
+
+**What `PL-79PK` left for this item (2026-10-17).** `PL-79PK` pins, as anchored
+whole strings, every refusal a banner can show except the ones this item will
+reword. It leaves alone each guard call that passes one of the five bare names
+in the table above, and the `TissueGroup` and `VenousBloodCompartment`
+`__setattr__` refusals that name a bare field. Pinning those now would freeze
+a message that does not say which object refused. So when this item adds the
+owner prefixes, it also pins each reworded message as an anchored whole
+string, `match=r"^...$"`, in the tests it already touches.

@@ -3,11 +3,13 @@ id: PL-WMN7
 title: No unit test pins how PatientCompartments.from_parameters maps each agent's tissue:gas coefficients onto the three tissue groups, so unit-tier detection of a mis-mapping rests on golden numbers measured from the code's own output
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test
 feature: tests-detect-wrong-values
 touches: tests/unit/test_patient.py
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1513
 payoff: a tissue group built with another group's or another agent's partition coefficient fails a unit test checked against the data files, not against golden numbers taken from the code's own output
 verify: grep -q 'def test_each_tissue_group_takes_its_own_agents_coefficients' tests/unit/test_patient.py
 ---
@@ -70,3 +72,26 @@ perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above. Symbols re-checked against
 `9ea87a3c`.
+
+**Fail-before, 2026-10-17.** `test_each_tissue_group_takes_its_own_agents_coefficients`
+in `tests/unit/test_patient.py` runs once per agent: sevoflurane, desflurane
+and isoflurane. For each it builds the reference patient with
+`PatientCompartments.from_parameters` and asserts each group's name,
+tissue:gas, blood:gas and tissue:blood coefficients and perfusion fraction,
+and the venous pool's blood:gas coefficient. The coefficients and fractions
+are literals typed from the data files, and the test divides tissue:gas by
+blood:gas itself. It passes on the shipped code. Two mis-mappings were
+applied to `src/anesthesia_sim/core/patient.py` and the command
+`uv run pytest -q -p no:randomly tests/unit/test_patient.py` was run:
+
+- Probe P1, the vessel-rich and muscle tissue:gas coefficients swapped:
+  exit 1, with 3 failed and 14 passed. The sevoflurane case fails with
+  `assert [2.4, 1.1, 34.0] == [1.1, 2.4, 34.0]`.
+- Sevoflurane's blood:gas coefficient used for every agent
+  (`blood_gas = 0.65` in place of `agent.blood_gas_partition_coefficient`):
+  exit 1, with 2 failed and 15 passed. The desflurane case fails with
+  `assert [0.65, 0.65, 0.65] == [0.42, 0.42, 0.42]`.
+
+Both were reverted with `git checkout`. The brief recommended extending
+`test_builds_reference_patient_from_parameters`; the item's `verify:` names a
+new test, so the assertions went there, and the old test is unchanged.

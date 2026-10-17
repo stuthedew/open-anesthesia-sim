@@ -235,6 +235,40 @@ def test_a_refused_percent_is_named_as_it_was_built() -> None:
         Percent(150.0, name="delivered_concentration_percent")
 
 
+def test_a_refused_dial_setting_is_pinned_whole() -> None:
+    """The whole sentence the "Setting refused" banner shows for a dial past 100%.
+
+    The test above anchors only the start of the message, so the range and
+    the section it cites could change unseen (`PL-79PK`).
+    """
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        Percent(150.0, name="delivered_concentration_percent")
+
+    assert str(refusal.value) == (
+        "delivered_concentration_percent of 150.0 is outside 0 to 100, the range a percent "
+        'of one atmosphere takes (docs/MODEL.md, "Concentrations")'
+    )
+
+
+def test_a_refused_compartment_fraction_is_pinned_whole() -> None:
+    """The whole sentence a halt shows when a compartment's fraction leaves 0 to 1.
+
+    A step, a snapshot and a chart frame each build a compartment's fraction
+    under the compartment's name, and the "Simulation stopped" banner prints
+    the refusal word for word. The tests of those paths anchor only its start
+    (`PL-79PK`).
+    """
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        Fraction(1.0000001, name="alveolar partial_pressure_fraction")
+
+    assert str(refusal.value) == (
+        "alveolar partial_pressure_fraction of 1.0000001 is outside 0 to 1, the range a "
+        'fraction of one atmosphere takes (docs/MODEL.md, "Concentrations")'
+    )
+
+
 def test_neither_type_can_be_built_from_the_other() -> None:
     """Rebuilding a concentration as the other type is the conversion missed.
 
