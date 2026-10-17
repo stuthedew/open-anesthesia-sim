@@ -416,6 +416,55 @@ def test_the_type_refuses_what_is_not_a_number_and_holds_negative_zero_as_zero(
         assert built.hex() == (1.0).hex()
 
 
+_SUPPORTED_RANGE_SOURCE = (
+    "which is the domain this compartment model is claimed to represent a patient over "
+    '(docs/MODEL.md, "Supported input ranges")'
+)
+
+
+@pytest.mark.parametrize(
+    ("flow_type", "refused", "expected"),
+    [
+        (
+            FreshGasFlow,
+            10.5,
+            "fresh_gas_flow_l_min of 10.5 is outside the supported input range of 0.0 to "
+            f"10.0 L/min, {_SUPPORTED_RANGE_SOURCE}",
+        ),
+        (
+            AlveolarVentilation,
+            12.5,
+            "alveolar_ventilation_l_min of 12.5 is outside the supported input range of 0.0 "
+            f"to 12.0 L/min, {_SUPPORTED_RANGE_SOURCE}",
+        ),
+        (
+            CardiacOutput,
+            -1.0,
+            "cardiac_output_l_min of -1.0 is outside the supported input range of 0.0 to "
+            f"10.0 L/min, {_SUPPORTED_RANGE_SOURCE}",
+        ),
+    ],
+    ids=["fresh-gas-flow", "alveolar-ventilation", "cardiac-output"],
+)
+def test_a_setting_s_range_refusal_is_pinned_whole(
+    flow_type: Callable[[float], float], refused: float, expected: str
+) -> None:
+    """The whole sentence the "Setting refused" banner shows for each flow control.
+
+    `refused_setting_notice` prints a refusal word for word, so the sentence
+    is what a learner reads. The other tests here match a phrase of it, which
+    passes with the name, the value or the interval wrong (`PL-79PK`). The
+    interval in each expected sentence is typed from `docs/MODEL.md` §
+    "Supported input ranges": 0 to 10 L/min of fresh gas, 0 to 12 L/min of
+    alveolar ventilation and 0 to 10 L/min of cardiac output.
+    """
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        flow_type(refused)
+
+    assert str(refusal.value) == expected
+
+
 @pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
 def test_an_int_past_the_float_range_is_refused_against_the_interval(control: Control) -> None:
     """An `int` too large for a `float` is outside every interval here, and is refused as that.

@@ -1803,12 +1803,21 @@ def test_settings_are_read_of_a_run_whose_snapshot_refuses(monkeypatch: pytest.M
     compartment value, so a dial dragged into a halt can be written from
     what the run holds (`PL-85LJ`); a snapshot is a `RunSettings` too, so
     what reads one reads either.
+
+    The test sets each of the four settings to a value that differs from the
+    others and from its default, and expects back what it set. The shipped
+    fresh gas flow and alveolar ventilation are both 4.0 L/min, so with those
+    left equal a `settings()` that built the ventilation from the fresh gas
+    flow passed every test (`PL-5V5F`).
     """
 
     controller = SimulationController()
     controller.start()
     _advance_for(controller, duration_s=5.0)
-    controller.set_fresh_gas_flow(FreshGasFlow(4.0))
+    controller.set_fresh_gas_flow(FreshGasFlow(6.0))
+    controller.set_delivered_concentration_percent(Percent(3.0))
+    controller.set_alveolar_ventilation(AlveolarVentilation(5.5))
+    controller.set_cardiac_output(CardiacOutput(6.5))
     snapshot = controller.snapshot()
 
     assert isinstance(snapshot, RunSettings)
@@ -1820,7 +1829,10 @@ def test_settings_are_read_of_a_run_whose_snapshot_refuses(monkeypatch: pytest.M
 
     settings = controller.settings()
 
-    assert settings.fresh_gas_flow_l_min == 4.0
+    assert settings.fresh_gas_flow_l_min == 6.0
+    assert settings.delivered_concentration_percent == 3.0
+    assert settings.alveolar_ventilation_l_min == 5.5
+    assert settings.cardiac_output_l_min == 6.5
     assert settings == RunSettings(
         is_running=True,
         supported_limit_reason=None,
@@ -4652,3 +4664,107 @@ def test_a_run_at_the_supported_run_length_offers_no_place_to_branch_where_it_st
             trunk.resumed_here()
 
         assert "resumed_at_mark" in str(refusal.value)
+
+
+# --- Each branch refusal a learner can read, pinned whole (PL-79PK) -----------
+#
+# `SimulationView` shows a refused branch, and a refused agent change, word for
+# word in the "Setting refused" banner. The tests above match a phrase of each
+# message, which passes with the instant, the reason or the advice wrong. Each
+# expected sentence below is typed from the run the test builds: the two-change
+# trunk changes a setting at 30 s and 60 s and stops at 120 s, and the
+# paused-past-a-change trunk changes one at 30 s and stops at 180 s.
+
+
+def test_a_branch_s_agent_change_refusal_is_pinned_whole() -> None:
+    trunk = _trunk_with_two_changes()
+    branch = BranchedCase(trunk).fork_at(CaseInstant(60.0))
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        branch.set_agent("desflurane")
+
+    assert str(refusal.value) == (
+        "this run is a branch opened at 60.0 s, and a branch carries the agent of the case "
+        "it continues; changing agent begins a new case, so change it on the run this "
+        "branch came from or start a new one"
+    )
+
+
+def test_a_branch_at_no_keyframe_refusal_is_pinned_whole() -> None:
+    trunk = _trunk_with_two_changes()
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        trunk.resumed_at(CaseInstant(65.0))
+
+    assert str(refusal.value) == (
+        "this run holds no keyframe at 65.0 s, and resumed_at opens at one: the run's "
+        "opening or a recorded setting change, which this run holds at [0.0, 30.0, 60.0] s. "
+        "A marked instant is branched at with resumed_at_mark once the run has passed it, "
+        "and the instant a paused run stands at with resumed_here"
+    )
+
+
+def test_each_refusal_to_branch_where_a_run_stands_is_pinned_whole() -> None:
+    going = _trunk_with_two_changes()
+    going.start()
+    failed = _trunk_with_two_changes()
+    failed.fail("a step raised")
+    opening = SimulationController()
+    refusals = {}
+
+    for name, trunk in (("going", going), ("failed", failed), ("opening", opening)):
+        with pytest.raises(SimulationConfigurationError) as refusal:
+            trunk.resumed_here()
+
+        refusals[name] = str(refusal.value)
+
+    assert refusals == {
+        "going": (
+            "this run is going, so where it stands moves with every step and an instant read "
+            "off it is gone before it can be branched at; pause it, and resumed_here branches "
+            "where it then stands"
+        ),
+        "failed": (
+            "this run stopped at 120.0 s on a failure, not a pause (a step raised), so where "
+            "it stands is not a place to branch; a setting change or a mark it passed before "
+            "is still branched at with resumed_at or resumed_at_mark"
+        ),
+        "opening": (
+            "this run stands at its opening and has recorded nothing to branch from; "
+            "resumed_at opens a branch at the opening"
+        ),
+    }
+
+
+def test_the_refusal_to_branch_at_the_supported_run_length_is_pinned_whole(
+    trunk_stepped_onto_the_limit: SimulationController,
+) -> None:
+    """86,400 s is the supported run length `docs/MODEL.md` § "Supported run length" states."""
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        trunk_stepped_onto_the_limit.resumed_here()
+
+    assert str(refusal.value) == (
+        "this run stands at 86400.0 s, the supported run length, where no step is left to "
+        "take, so a branch opened where it stands could not be run; a setting change or a "
+        "mark it passed before is still branched at with resumed_at or resumed_at_mark"
+    )
+
+
+def test_each_refusal_to_branch_at_a_mark_is_pinned_whole() -> None:
+    trunk = _trunk_paused_past_a_change()
+    ahead = TimeBookmark(CaseInstant(600.0))
+    trunk.add_time_bookmark(ahead)
+
+    with pytest.raises(SimulationConfigurationError) as short_of_it:
+        trunk.resumed_at_mark(ahead)
+
+    with pytest.raises(SimulationConfigurationError) as unmarked:
+        trunk.resumed_at_mark(TimeBookmark(CaseInstant(60.0)))
+
+    assert str(short_of_it.value) == (
+        "this run's clock stands at 180.0 s, short of the mark at 600.0 s, so the case "
+        "holds no state there to branch from: a mark is branched at once the run has "
+        "passed it, or, standing on the step that crosses it, with resumed_here"
+    )
+    assert str(unmarked.value) == "no time bookmark stands at 60.0 s, so there is no mark there"

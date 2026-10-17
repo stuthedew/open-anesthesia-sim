@@ -731,6 +731,32 @@ def test_a_stale_record_met_at_step_time_is_a_failed_step_stated_in_litres_per_m
     assert system.capture_state() == before
 
 
+def test_a_failed_step_s_restated_refusal_is_pinned_whole() -> None:
+    """The whole failure reason the "Simulation stopped" banner shows for a failed step.
+
+    The test above matches phrases of it, which passes with the step, the
+    rollback clause or a flow wrong (`PL-79PK`). The step is the 0.1 s the
+    interface takes. The tissue flows are set from 6.0 L/min against a
+    cardiac output of 5.0 L/min, as above.
+    """
+
+    system = _sevoflurane_at_one_mac()
+    system.advance(SimulationStep(0.1))
+
+    for tissue in system.patient.tissues:
+        tissue.set_blood_flow(6.0 * tissue.perfusion_fraction)
+
+    with pytest.raises(SimulationNumericalError) as raised:
+        system.advance(SimulationStep(0.1))
+
+    assert str(raised.value) == (
+        "the simulation step of 0.1 s could not be completed and was rolled back, leaving "
+        "the state the last completed step produced: the tissue groups are perfused at "
+        "6.0 L/min in total but cardiac output is 5.0 L/min; the venous balance returns "
+        "what the tissues receive, so the two must agree"
+    )
+
+
 def test_simulation_time_does_not_advance_through_a_failed_step() -> None:
     """Elapsed time is part of the same transaction, by ordering.
 

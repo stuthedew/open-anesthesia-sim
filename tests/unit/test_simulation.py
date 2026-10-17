@@ -212,6 +212,39 @@ def test_reset_frees_the_step_so_a_fresh_run_may_take_a_different_one() -> None:
     assert state.elapsed_s == 0.05
 
 
+def test_a_run_reset_to_a_new_step_matches_a_fresh_run_at_that_step() -> None:
+    """A reset run taking a new step must stand where a fresh run would.
+
+    This is the route `advance()`'s own refusal recommends: "reset it to run
+    at a different step". `reset()` clears the compartments but leaves the
+    uptake system's cached propagator in place, so the run is correct only
+    while the cache key holds the step. Were the step left out of the key,
+    the reset run would take each 0.05 s step with the 0.1 s propagator. It
+    would then report 1.0 s of elapsed time for 2.0 s of physics, with an
+    alveolar fraction 3.9 times the fresh run's, and the accounting check
+    would still pass (`PL-4H4T`).
+
+    The expected state is a fresh run built at the new step, which never held
+    another step's propagator. Both runs start from empty compartments with
+    the same settings and take the same steps, so they must agree exactly.
+    """
+
+    reset_run = SimulationState()
+
+    for _ in range(10):
+        reset_run.advance(SimulationStep(0.1))
+
+    reset_run.reset()
+    fresh_run = SimulationState()
+
+    for _ in range(20):
+        reset_run.advance(SimulationStep(0.05))
+        fresh_run.advance(SimulationStep(0.05))
+
+    assert reset_run.elapsed_s == fresh_run.elapsed_s == 1.0
+    assert reset_run.uptake_system.capture_state() == fresh_run.uptake_system.capture_state()
+
+
 def test_a_count_that_is_not_whole_and_nonnegative_cannot_be_built() -> None:
     """Refused where the count is built, before any state holds it (`PL-CN5S`).
 

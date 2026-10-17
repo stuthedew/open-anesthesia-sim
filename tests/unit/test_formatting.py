@@ -646,6 +646,32 @@ def test_the_mac_awake_band_refuses_inputs_it_cannot_place_honestly() -> None:
         )
 
 
+def test_each_display_refusal_a_halt_can_show_is_pinned_whole() -> None:
+    """The whole sentence the "Simulation stopped" banner shows for each display refusal.
+
+    A frame that cannot be drawn halts the run and prints the refusal. The
+    tests above match a phrase of each, which passes with the value it names
+    missing (`PL-79PK`).
+    """
+
+    with pytest.raises(ValueError) as no_mac:
+        mac_multiple(Fraction(0.02), 0.0)
+
+    with pytest.raises(ValueError) as no_band:
+        mac_awake_band_percent(
+            fraction_of_mac=0.05, standard_deviation_fraction_of_mac=0.05, mac_percent=2.0
+        )
+
+    with pytest.raises(ValueError) as no_time:
+        format_elapsed(-1.0)
+
+    assert str(no_mac.value) == "mac_percent must be strictly positive, got 0.0"
+    assert str(no_band.value) == (
+        "the MAC-awake band's lower edge must be strictly positive, got 0.05 - 0.05"
+    )
+    assert str(no_time.value) == "duration must be finite and non-negative, got -1.0"
+
+
 def test_the_mac_awake_band_arguments_are_keyword_only() -> None:
     """A transposition the type system cannot catch, refused by the signature.
 
@@ -921,6 +947,47 @@ def test_the_discard_warning_counts_control_changes_in_agreeing_grammar(
     """
 
     assert expected in format_case_discard_warning("Sevoflurane", 60.0, control_change_count)
+
+
+@pytest.mark.parametrize(
+    ("agent", "elapsed_s", "control_change_count", "expected"),
+    [
+        (
+            "Sevoflurane",
+            60.0,
+            1,
+            "The current sevoflurane case — 1m of simulated time, 1 recorded control "
+            "change — will be discarded along with its chart history. This cannot be undone.",
+        ),
+        (
+            "Desflurane",
+            3725.0,
+            0,
+            "The current desflurane case — 1h2m5s of simulated time, 0 recorded control "
+            "changes — will be discarded along with its chart history. This cannot be undone.",
+        ),
+        (
+            "Isoflurane",
+            1234.5,
+            2,
+            "The current isoflurane case — 20m34.5s of simulated time, 2 recorded control "
+            "changes — will be discarded along with its chart history. This cannot be undone.",
+        ),
+    ],
+)
+def test_the_case_discard_warning_is_pinned_whole(
+    agent: str, elapsed_s: float, control_change_count: int, expected: str
+) -> None:
+    """The whole sentence, so a wrong plural cannot pass as a substring.
+
+    The grammar test above asserts `expected in warning`, and "1 recorded
+    control change" is a substring of "1 recorded control changes". So a
+    warning that dropped its singular form passed the whole suite (`PL-79PK`).
+    Each expected sentence here is typed out, with the clock reading worked
+    out by hand: 3725 s is 1 h 2 min 5 s, and 1234.5 s is 20 min 34.5 s.
+    """
+
+    assert format_case_discard_warning(agent, elapsed_s, control_change_count) == expected
 
 
 def test_the_discard_warning_says_the_loss_is_final() -> None:
