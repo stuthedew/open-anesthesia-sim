@@ -327,9 +327,10 @@ third run state, carried
 on the snapshot as `failure_reason` and rendered as "Stopped — simulation
 error" with a banner over the values: a halted run must never present as a
 pause, because a pause is a run that continues when asked and a halt is one
-that cannot. Both halts are read off `SimulationController.status()` as a
-`RunStatus`, which the snapshot extends, so `RunView.present_halt` states a
-halt without building any compartment value - the snapshot's own `Fraction`s
+that cannot. Both halts are carried by `RunStatus`, which the snapshot
+extends, and `RunView.present_halt` states one from
+`SimulationController.record()`, a `RunRecord` that extends it in turn,
+without building any compartment value - the snapshot's own `Fraction`s
 being among the values a halt can be for - and the banner it writes,
 `dashboard_frame.halt_notice`, says no frame of the stopped run has been drawn
 until `refresh` replaces it on the first frame that draws (`PL-7DJK`). The
@@ -347,15 +348,21 @@ control used on a run whose snapshot refuses meets the same halt rather than
 a raise the toolkit prints: `RunView._handle_agent_change` and the label
 rewrite a dragged slider owes at once both read the snapshot inside a slot, so
 both read it through `RunView._snapshot_for_a_control`, which halts the run on
-the raise and restates the halt from `status()`; `_handle_agent_change` then
+the raise and restates the halt from `record()`; `_handle_agent_change` then
 puts the agent selector back to the agent `SimulationController.agent_id`
 names, since the snapshot that would name it is what refused (`PL-V2HC`).
-The dials are written the same way: `present_halt` writes all four from
-`SimulationController.settings()`, a `RunSettings` the snapshot also extends,
-built from the agent and the settings the run holds and no compartment
-value, so a dial dragged into the halt reads the value the run holds beside
-it rather than the value before the drag, which only a frame would have
-rewritten (`PL-85LJ`).
+The dials are written the same way: `present_halt` writes all four from the
+same record's `RunSettings`, which the snapshot also extends, built from the
+agent and the settings the run holds and no compartment value, so a dial
+dragged into the halt reads the value the run holds beside it rather than
+the value before the drag, which only a frame would have rewritten
+(`PL-85LJ`). A run that stops itself inside its own step tick - on a mark, or
+on arriving at the supported run length - asks for no frame and needs none
+asked for: the render tick draws whenever a displayed run's `record()`
+differs from the one its view last wrote (`RunView.owes_a_frame`), or the run
+set from the one last drawn over, and each view stores the record where it
+writes it, `present_halt` included, so a frame that keeps failing is
+attempted once rather than every tick (`PL-X7D5`, `PL-T995`).
 Neither timer
 stops on either halt — both are started once, when the window opens, and a
 halted run leaves them firing and finding nothing to do — so a run reset and

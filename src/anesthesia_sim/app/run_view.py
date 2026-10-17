@@ -66,6 +66,7 @@ from PySide6.QtWidgets import (
 from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.control_timeline import AdjustmentGrouping, ControlAdjustment
 from anesthesia_sim.app.controller import (
+    RunRecord,
     RunSettings,
     RunStatus,
     SimulationController,
@@ -288,6 +289,10 @@ class RunView(QWidget):
         # once against the picture still on screen.
         self._frame: ChartFrame | None = None
         self._run_index = 0
+        # The run's record as this view last wrote it, by `refresh` or by
+        # `present_halt`; `None` until the first. The dashboard draws a frame
+        # whenever the controller's record differs from it (`owes_a_frame`).
+        self._written_record: RunRecord | None = None
         # Whether a second run is on the chart. The dashboard writes it
         # through `set_comparing`, because how many runs are displayed is its
         # fact and not this view's; it reaches the transport as the third
@@ -499,6 +504,22 @@ class RunView(QWidget):
 
         return self.controller.is_running
 
+    @property
+    def owes_a_frame(self) -> bool:
+        """Whether the run holds a record this view has not yet written.
+
+        True for a run nothing has written yet, and for one that changed
+        without a frame being asked for: one that halted on a mark or arrived
+        at the supported run length inside `step_tick` (`PL-T995`), which
+        changes `is_running` and nothing that asks for a frame. The
+        dashboard's render tick draws while any run owes one, so the screen
+        follows the run without each path that changes it having to ask
+        (`PL-X7D5`). Reading it builds no compartment value
+        (`SimulationController.record`).
+        """
+
+        return self.controller.record() != self._written_record
+
     def adjustments(self, snapshot: SimulationSnapshot) -> tuple[ControlAdjustment, ...]:
         """The run's control changes grouped into acts, regrouped only when the record changed.
 
@@ -549,6 +570,7 @@ class RunView(QWidget):
 
         self._frame = frame
         self._run_index = run_index
+        self._written_record = snapshot.run_record()
         run_frame = frame.runs[run_index]
         lock = self._transport_lock(snapshot)
 
@@ -624,9 +646,9 @@ class RunView(QWidget):
         refuses a value - the halt `PL-7DJK` made visible - the read raised
         there, so the control accepted the choice and nothing on screen
         answered it (`PL-V2HC`). The raise is the halt the run is in, or is
-        about to be in: `_halt_run` states it from the controller's status and
-        writes the dials from its settings, neither of which builds a
-        compartment value (`PL-85LJ`), and a controller keeps the first
+        about to be in: `_halt_run` states it, the dials included, from the
+        controller's record, which builds no compartment value (`PL-85LJ`,
+        `PL-X7D5`), and a controller keeps the first
         reason it was given, so a run already halted for this refusal
         restates the same halt.
 
@@ -658,7 +680,7 @@ class RunView(QWidget):
             self.refresh(snapshot, self._frame, self._run_index)
 
     def present_halt(self) -> None:
-        """Say this run has stopped, from its controller's status alone, with no frame drawn.
+        """Say this run has stopped, from its controller's record alone, with no frame drawn.
 
         The status word, the transport and the notice banner are the three
         widgets that state whether the run is going and why it is not, and
@@ -671,7 +693,7 @@ class RunView(QWidget):
         frame that can be drawn.
 
         The four setting controls need no frame either, and are written here
-        from `SimulationController.settings()`, after the banner: a dial
+        from the settings the run holds, after the banner: a dial
         dragged into a halt whose snapshot refuses has changed what the run
         holds, and with no frame to follow, the value printed beside it stayed
         the value before the drag, beside a dial standing at the new one
@@ -679,27 +701,34 @@ class RunView(QWidget):
         a control that can offer no setting, and the three statements of the
         halt are on screen before it does.
 
-        They are written from `SimulationController.status()` and not from a
-        snapshot, because the snapshot builds every compartment's fraction
-        and a refusal of one of those is among the halts presented here:
-        stated from a fresh snapshot, that halt raised out of this method
-        and was never stated, leaving the screen reading "Running" with
-        Pause offered over a failed controller (`PL-7DJK`). The banner is
-        `dashboard_frame.halt_notice`'s, which says no frame of the stopped
-        run has been drawn; the first frame that draws replaces it.
+        All of it is read once, from `SimulationController.record()` and not
+        from a snapshot, because the snapshot builds every compartment's
+        fraction and a refusal of one of those is among the halts presented
+        here: stated from a fresh snapshot, that halt raised out of this
+        method and was never stated, leaving the screen reading "Running"
+        with Pause offered over a failed controller (`PL-7DJK`). The banner
+        is `dashboard_frame.halt_notice`'s, which says no frame of the
+        stopped run has been drawn; the first frame that draws replaces it.
+
+        The record is stored as what this view last wrote before anything is
+        written. So the render tick, which draws
+        whenever a run's record differs from its view's (`owes_a_frame`),
+        does not retry every tick a frame that failed for a cause that is
+        still there: the halt is the statement of that record (`PL-X7D5`).
         """
 
-        status = self.controller.status()
-        _emphasised(self._status_text, status_word(status))
-        self._write_transport(self._transport_lock(status))
-        self._write_notice(halt_notice(status, refused_reset=self._refused_reset_notice))
-        self._write_settings(self.controller.settings())
+        record = self.controller.record()
+        self._written_record = record
+        _emphasised(self._status_text, status_word(record))
+        self._write_transport(self._transport_lock(record))
+        self._write_notice(halt_notice(record, refused_reset=self._refused_reset_notice))
+        self._write_settings(record)
 
     def _write_settings(self, settings: RunSettings) -> None:
         """Write the four setting controls from the settings in force.
 
         From the snapshot a frame drew from, in `refresh`, or from
-        `SimulationController.settings()` in `present_halt`, where no frame
+        `SimulationController.record()` in `present_halt`, where no frame
         draws: either carries the agent and the four settings, and
         `dashboard_frame.setting_readouts` builds the same readouts from
         both, so a dial reads the same text whichever wrote it (`PL-85LJ`).
@@ -1123,7 +1152,7 @@ class RunView(QWidget):
             self.controller.fail(reason)
 
     def _halt_run(self, error: BaseException) -> None:
-        """Halt the run, say so from its controller's status, then ask for the frame.
+        """Halt the run, say so from its controller's record, then ask for the frame.
 
         The halt comes first, so a presentation that fails cannot unwind it:
         `SimulationView.present` answers a frame it cannot draw by halting
