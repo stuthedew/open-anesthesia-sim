@@ -184,7 +184,6 @@ from __future__ import annotations
 import cmath
 import inspect
 import math
-import pickle
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from functools import cache
@@ -208,11 +207,6 @@ from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
-
-try:
-    import fcntl
-except ImportError:  # Windows, where `washout_curve` shares nothing between workers
-    fcntl = None
 
 # The supported run length, in the minutes the published coefficients are
 # stated in. A run of exactly this length is what `docs/MODEL.md` § "Supported
@@ -879,7 +873,7 @@ def _washout_curve(
 
 @pytest.fixture(scope="session")
 def washout_curve(
-    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
+    computed_once: Callable[[str, Callable[[], WashoutCurve]], WashoutCurve],
 ) -> Callable[..., WashoutCurve]:
     """`_washout_curve()`, computed once per pytest run however many xdist workers read it.
 
@@ -887,35 +881,9 @@ def washout_curve(
     `_washout_curve()`'s cache lives in one process, so every xdist worker
     that ran a test needing a curve used to compute it again: 18 computations
     of the 8 distinct curves (`PL-F08Y`). Now the first worker to need a
-    curve computes it under a lock and publishes it where every worker of the
-    run can read it, and a worker needing the same curve meanwhile waits on
-    the lock and reads what was published. Sending each curve's tests to one
-    worker with `--dist loadgroup` computes each curve once too, and was
-    measured and set aside: it slowed the rest of the suite by 8 to 11 s, and
-    the whole run by 19 s against this (`PL-F08Y` has the figures).
-
-    The directory is the run's own base temporary directory, the parent of
-    each worker's, which pytest makes afresh for every run and empties when
-    one is named with `--basetemp`. A curve published there cannot be served
-    to a later run built from different source, which is the hazard `PL-0MLZ`
-    closed for bytecode. For the same reason, whether to share turns on
-    `workerinput`, which xdist sets on a worker's own configuration, and not
-    on `PYTEST_XDIST_WORKER`, which a pytest started inside a worker would
-    inherit: that run's base directory's parent outlives it. A curve is
-    written whole and then renamed into place, and the lock is `flock`, which
-    the kernel releases if the worker holding it dies, so a crash leaves the
-    next worker to compute the curve rather than read half of one or wait for
-    ever.
-    Without xdist one process runs every test and its cache is the whole
-    story. Windows has no `fcntl`, so there each worker computes what it
-    needs, as every worker did before.
+    curve computes it, and every other worker of the run reads that result.
+    `tests/conftest.py`'s `computed_once` fixture says how.
     """
-
-    if fcntl is None or not hasattr(request.config, "workerinput"):
-        return _washout_curve
-
-    store = tmp_path_factory.getbasetemp().parent / "washout-curves"
-    store.mkdir(exist_ok=True)
 
     @cache
     def shared(
@@ -926,26 +894,19 @@ def washout_curve(
         elimination_duration_min: int = ELIMINATION_DURATION_MIN,
     ) -> WashoutCurve:
         name = (
-            f"{agent_id}, {condition}, {hepatic_elimination_rate_constant_per_min}, "
+            f"washout curve {agent_id}, {condition}, {hepatic_elimination_rate_constant_per_min}, "
             f"{muscle_tissue_gas_partition_coefficient}, {elimination_duration_min}"
         )
-        published = store / f"{name}.pickle"
-        with (store / f"{name}.lock").open("w") as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX)
-            if published.exists():
-                curve: WashoutCurve = pickle.loads(published.read_bytes())
-                return curve
-            curve = _washout_curve(
+        return computed_once(
+            name,
+            lambda: _washout_curve(
                 agent_id,
                 condition,
                 hepatic_elimination_rate_constant_per_min,
                 muscle_tissue_gas_partition_coefficient,
                 elimination_duration_min,
-            )
-            partial = store / f"{name}.partial"
-            partial.write_bytes(pickle.dumps(curve))
-            partial.replace(published)
-            return curve
+            ),
+        )
 
     return shared
 
