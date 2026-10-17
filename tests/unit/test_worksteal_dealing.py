@@ -11,6 +11,11 @@ otherwise the only sign would be a slower run.
 dropped from every part would never run in CI, and the combined coverage gate
 would notice only if that test was the one covering a line of `core/`. So the
 parts are held here to running every test exactly once.
+
+`computed_once_in` shares a costly computation between the workers
+(`PL-F08Y`, `PL-ZWQS`). A worker that read a half-written result, or that
+computed again what another had published, would fail or be slow only in CI,
+so both are held here in one process.
 """
 
 import argparse
@@ -160,3 +165,34 @@ def test_a_part_is_read_as_k_of_n() -> None:
 def test_a_part_outside_1_to_n_is_refused(text: str) -> None:
     with pytest.raises(argparse.ArgumentTypeError, match="is not K/N"):
         DEALING._part(text)
+
+
+@pytest.mark.skipif(DEALING.fcntl is None, reason="no fcntl, so computed_once shares nothing")
+def test_a_computation_published_once_is_read_by_every_later_caller(tmp_path: Path) -> None:
+    """The second caller gets the first caller's result and never runs its own computation."""
+
+    def never() -> list[int]:
+        raise AssertionError("computed again what was already published")
+
+    first = DEALING.computed_once_in(tmp_path, "run", lambda: [1, 2, 3])
+    second = DEALING.computed_once_in(tmp_path, "run", never)
+
+    assert first == second == [1, 2, 3]
+    assert second is not first
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["run.lock", "run.pickle"]
+
+
+@pytest.mark.skipif(DEALING.fcntl is None, reason="no fcntl, so computed_once shares nothing")
+def test_a_computation_that_fails_publishes_nothing_and_the_next_caller_computes(
+    tmp_path: Path,
+) -> None:
+    """A failure leaves no result to read, so the next caller runs the computation itself."""
+
+    def fails() -> int:
+        raise RuntimeError("the run broke")
+
+    with pytest.raises(RuntimeError, match="the run broke"):
+        DEALING.computed_once_in(tmp_path, "run", fails)
+
+    assert not (tmp_path / "run.pickle").exists()
+    assert DEALING.computed_once_in(tmp_path, "run", lambda: 7) == 7

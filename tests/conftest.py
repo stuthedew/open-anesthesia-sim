@@ -16,11 +16,11 @@ here should override that.
 
 **The order `--dist worksteal` deals** (`PL-4Z5Y`, `PL-K5VM`). A few tests
 compute something that takes about a sixth of the run: a 24-hour washout curve in
-`tests/reference/test_late_washout_against_published_fits.py`, computed once
-per run and shared between workers through its `washout_curve` fixture
-(`PL-F08Y`), and a controller stepped onto the 24-hour limit in
-`tests/integration/test_controller.py`, a module fixture built again in every
-worker that runs a test reading it. Where they ran was left to the scheduler,
+`tests/reference/test_late_washout_against_published_fits.py`, and a
+controller stepped onto the 24-hour limit in
+`tests/integration/test_controller.py`. Each is computed once per run and
+shared between workers through the `computed_once` fixture below (`PL-F08Y`,
+`PL-ZWQS`). Where they ran was left to the scheduler,
 and `worksteal` deals the collection out in contiguous slices at the start and
 steals only from the tail of a queue as other queues run dry. So every curve
 began in the last third of the run, and a slow CI runner waited about 70 s for
@@ -62,22 +62,27 @@ robin, so each module is split between the parts. The first part's job also
 runs the linters, `mypy` and the floor section, which took about 95 s of a slow
 runner's 621 s job on 2026-10-17. The tests that read a costly computation took
 about 22% of the suite's time, so giving all of them to the second part was
-expected to balance the two jobs. It did not. On the first run, 2026-10-17,
-the second part's pytest step took 462 s and the first part's whole job 299 s.
-With half the other tests, the second part's workers run out of work while one
-worker is still building the first controller run, and `worksteal` hands them
-the rest of the controller tests, so the runs are built again on other
-workers. A local profile showed four builds where the dealing expects two.
-`PL-ZWQS` holds the fix. `tools/main_ci_status.py`'s pytest line reads the
-parts' sum, so compare the two jobs' pytest steps in a run's log.
+expected to balance the two jobs. It did not at first. On the split's first
+run, 2026-10-17, the second part's pytest step took 462 s and the first part's
+whole job 299 s. With half the other tests, the second part's workers ran out
+of work while one worker was still building the first controller run.
+`worksteal` then handed them the rest of the controller tests, and each of
+those workers built the runs again, because a module fixture lives in one
+process. A local profile showed four builds where the dealing expects two. Now
+the controller runs are shared through `computed_once` as the curves are, so a
+worker handed a controller test waits for the run instead of building it
+again (`PL-ZWQS`). `tools/main_ci_status.py`'s pytest line reads the parts'
+sum, so compare the two jobs' pytest steps in a run's log.
 """
 
 from __future__ import annotations
 
 import argparse
 import os
-from collections.abc import Collection, Hashable, Sequence
+import pickle
+from collections.abc import Callable, Collection, Hashable, Sequence
 from itertools import islice
+from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING, Protocol
 
@@ -85,6 +90,11 @@ import pytest
 
 if TYPE_CHECKING:
     from xdist.workermanage import WorkerController
+
+try:
+    import fcntl
+except ImportError:  # Windows, where `computed_once` shares nothing between workers
+    fcntl = None
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -235,6 +245,67 @@ def _units(items: Sequence[pytest.Item]) -> list[tuple[tuple[pytest.Item, ...], 
         minutes = sum(cost for name, cost in module.MODULE_FIXTURE_MINUTES.items() if name in read)
         units.append((tuple(members), minutes))
     return units
+
+
+def computed_once_in[Value](store: Path, name: str, compute: Callable[[], Value]) -> Value:
+    """`compute()`, run by the first process to ask for `name` and read from `store` by the rest.
+
+    The first process to ask takes a lock on `name`, runs `compute()` and
+    publishes the pickled result in `store`. A process that asks meanwhile
+    waits on the lock and then reads what was published. The result is written
+    whole and then renamed into place. The lock is `flock`, which the kernel
+    releases if the process holding it dies. So a crash leaves the next process
+    to run `compute()`, rather than to read half a result or to wait for ever.
+    """
+
+    published = store / f"{name}.pickle"
+    with (store / f"{name}.lock").open("w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if published.exists():
+            value: Value = pickle.loads(published.read_bytes())
+            return value
+        value = compute()
+        partial = store / f"{name}.partial"
+        partial.write_bytes(pickle.dumps(value))
+        partial.replace(published)
+        return value
+
+
+@pytest.fixture(scope="session")
+def computed_once(
+    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
+) -> Callable[[str, Callable[[], object]], object]:
+    """Run a costly computation once per pytest run, however many xdist workers read it.
+
+    A test calls it with a name that is unique in the run and a function that
+    computes the value. Each worker then gets its own unpickled copy, as it
+    would from a module fixture built in that worker. This is what shares the
+    24-hour washout curves (`PL-F08Y`) and the two controller runs stepped
+    onto the 24-hour limit (`PL-ZWQS`). Sending each computation's tests to
+    one worker with `--dist loadgroup` would compute each once too. It was
+    measured for the curves and set aside: it slowed the rest of the suite by
+    8 to 11 s, and the whole run by 19 s against this (`PL-F08Y` has the
+    figures).
+
+    The store is a directory in the run's own base temporary directory, the
+    parent of each worker's. Pytest makes that directory afresh for every run
+    and empties it when one is named with `--basetemp`. So a value published
+    there cannot be served to a later run built from different source, which
+    is the hazard `PL-0MLZ` closed for bytecode. For the same reason, whether
+    to share turns on `workerinput`, which xdist sets on a worker's own
+    configuration, and not on `PYTEST_XDIST_WORKER`, which a pytest started
+    inside a worker would inherit: that run's base directory's parent outlives
+    it. Without xdist one process runs every test, so `compute()` runs once
+    anyway. Windows has no `fcntl`, so there each worker computes what it
+    needs.
+    """
+
+    if fcntl is None or not hasattr(request.config, "workerinput"):
+        return lambda _name, compute: compute()
+
+    store = tmp_path_factory.getbasetemp().parent / "computed-once"
+    store.mkdir(exist_ok=True)
+    return lambda name, compute: computed_once_in(store, name, compute)
 
 
 @pytest.hookimpl(optionalhook=True)

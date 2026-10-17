@@ -4439,9 +4439,10 @@ def test_a_case_refuses_a_mark_its_trunk_has_not_reached_and_keeps_nothing() -> 
 # whose last supported count lands exactly on 24 hours (`PL-8H2R`).
 #
 # Stepping a run to 24 hours costs about 30 s, so the two runs that do it are
-# built once per module and nothing below changes what another test reads of
-# them: a fork leaves its parent untouched, and the one dial moved on a stopped
-# run alters nothing a stopped run is asked about.
+# built once per pytest run and shared between xdist workers, and nothing below
+# changes what another test reads of them: a fork leaves its parent untouched,
+# and the one dial moved on a stopped run alters nothing a stopped run is asked
+# about.
 
 #: A height the fat group cannot reach at 1 MAC delivered, so the mark stays
 #: outstanding on every run below and its standing is the question.
@@ -4462,8 +4463,7 @@ def _step_onto_the_supported_run_length(controller: SimulationController) -> Non
         controller.advance(step)
 
 
-@pytest.fixture(scope="module")
-def trunk_stepped_onto_the_limit() -> SimulationController:
+def _stepped_onto_the_limit() -> SimulationController:
     """An unmarked trunk that took the last supported step and was never refused one."""
 
     controller = SimulationController()
@@ -4472,8 +4472,7 @@ def trunk_stepped_onto_the_limit() -> SimulationController:
     return controller
 
 
-@pytest.fixture(scope="module")
-def trunk_halted_on_a_mark_at_the_limit() -> SimulationController:
+def _halted_on_a_mark_at_the_limit() -> SimulationController:
     """A trunk halted by a time mark on 24:00:00, carrying a mark it never reached."""
 
     controller = SimulationController()
@@ -4486,10 +4485,31 @@ def trunk_halted_on_a_mark_at_the_limit() -> SimulationController:
     return controller
 
 
+@pytest.fixture(scope="module")
+def trunk_stepped_onto_the_limit(
+    computed_once: Callable[[str, Callable[[], SimulationController]], SimulationController],
+) -> SimulationController:
+    """An unmarked trunk that took the last supported step and was never refused one."""
+
+    return computed_once("controller trunk stepped onto the limit", _stepped_onto_the_limit)
+
+
+@pytest.fixture(scope="module")
+def trunk_halted_on_a_mark_at_the_limit(
+    computed_once: Callable[[str, Callable[[], SimulationController]], SimulationController],
+) -> SimulationController:
+    """A trunk halted by a time mark on 24:00:00, carrying a mark it never reached."""
+
+    return computed_once(
+        "controller trunk halted on a mark at the limit", _halted_on_a_mark_at_the_limit
+    )
+
+
 #: The two runs above, each with the simulated minutes it steps through.
 #: `tests/conftest.py` deals every test reading one back to back at the head
-#: of one xdist worker's first slice, so each is built once a run rather than
-#: in every worker handed one of its tests (`PL-K5VM`).
+#: of one xdist worker's first slice (`PL-K5VM`). Each run is built once per
+#: pytest run, and a worker that `worksteal` hands one of these tests reads the
+#: run through `computed_once` rather than building it again (`PL-ZWQS`).
 MODULE_FIXTURE_MINUTES = {
     fixture.name: MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_MINUTE
     for fixture in (trunk_stepped_onto_the_limit, trunk_halted_on_a_mark_at_the_limit)
