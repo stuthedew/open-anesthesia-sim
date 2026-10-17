@@ -3,12 +3,13 @@ id: PL-2D28
 title: Exploration subagents run on the session's own model, Opus 5.5 in this project's threads, because CLAUDE_CODE_SUBAGENT_MODEL never reaches the built-in Explore subagent and a cloud session applies none of the env block in .claude/settings.json: decide whether a project Explore agent pins a cheaper model, and whether the variable stays (found in PL-KLN5)
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: session-cost
 touches: .claude/settings.json, .claude/agents, docs/maintainer.md
 deferred-from: v0.6.0 - apparatus session-cost work: which model an exploration subagent runs on changes nothing the milestone ships
 added: 2026-10-17
 payoff: exploration subagents run on a model chosen for search rather than inherited by default, and the settings file stops claiming a lever it does not have
+verify: grep -q '^model: opus' .claude/agents/Explore.md && grep -qi 'not search' .claude/agents/Explore.md && ! grep -q CLAUDE_CODE_SUBAGENT_MODEL .claude/settings.json
 ---
 
 **Problem.** Exploration subagents run on the session's own model, Opus 5.5 in this project's threads, because CLAUDE_CODE_SUBAGENT_MODEL never reaches the built-in Explore subagent and a cloud session applies none of the env block in .claude/settings.json: decide whether a project Explore agent pins a cheaper model, and whether the variable stays (found in PL-KLN5)
@@ -52,7 +53,9 @@ The decision's kind is unrecorded, so ordinary evidence reopens it.
 **Routes, and the one recommended.**
 
 1. **A project `Explore` definition at `.claude/agents/Explore.md`.
-   Recommended.** The documentation says: "A user or project subagent named
+   Recommended, and taken.** [superseded 2026-10-17: the `model: haiku` in
+   the quotation below was this route's first form; the decision below pins
+   `model: opus`.] The documentation says: "A user or project subagent named
    `Explore` overrides the built-in and keeps its own `model` field, so define
    one with `model: haiku` to run exploration on a lower-cost model"
    (sub-agents page, Explore tab). A cloud session loads the repository's
@@ -132,7 +135,7 @@ which one?
 
 **Recommendation:** keep Explore on the session's model and effort, and
 cheapen no search by any route. Build the project Explore file anyway, with
-no `model` or `effort` line, for what it adds at any model: the report footer
+`model: opus` and no `effort` line, for what it adds at any model: the report footer
 naming the scope searched and not searched, and read-only tools. Remove the
 variable. Take the saving where it is free of recall: a lookup that is
 genuinely quick, one symbol or one path, is a Grep or Glob in the main
@@ -166,8 +169,32 @@ search for the same reason: its output enters the record. The earlier
 recommendations stay as the record of the round: Haiku 5.5 first, then Sonnet
 5.5 after the owner asked whether a miss is silent. The number that would
 return either: a measured excess miss rate on thorough searches under its
-line above, from about 20 searches with known answers per model. Not in the
-tree.
+line above, from `PL-G2D4`, the pre-registered measurement: 60 thorough
+searches per model by the rule of three, since 20 with no miss observed only
+bounds the rate at about 15 percent, above both lines; the union of leads
+across the three models as the reference; and Opus 5.5 at `medium` against
+`xhigh` as the effort arm. About $140 at most by the table below, repaid in
+weeks at the saving computed there. On estimates the choice is undetermined,
+so it stays at the status quo until `PL-G2D4` reports.
+
+**Decided** (project owner, 2026-10-17, ratified, over Haiku 5.5, Sonnet 5.5
+and a per-call cheaper model for quick lookups): keep Explore on the
+session's model and effort, cheapen no search by any route, build the
+project Explore file only for the scope footer and read-only tools, and
+remove the variable. Two corrections the owner specified in the same answer.
+First, the file writes `model: opus` rather than no `model` line: a
+definition without `model` falls through to the main conversation's model
+(sub-agents page, § "Choose a model", step 4), so in a Fable session it would
+run on Fable, while the built-in Explore there runs on the Opus model the
+`opus` alias resolves to (§ "Built-in subagents", Explore tab). In an Opus
+session the alias resolves to the session's own Opus model (§ "Choose a
+model", the family-alias note), so `model: opus` names the built-in's
+behaviour in both. No `effort` line is right, and the transcript probe
+stays. Second, the measurement is `PL-G2D4`, which pre-registers the sample
+size, the reference set and the effort arm, and not the 20-search set this
+brief first named; the choice between models is undetermined on estimates
+and stays at the status quo until `PL-G2D4` reports. The verify adds
+`grep -q '^model: opus'`.
 
 **Risks, likelihood and magnitude, per option.** Added 2026-10-17 at the
 owner's request. Where a figure is a measurement it names its source; where it
@@ -217,9 +244,9 @@ wrong edit, which `CLAUDE.md`'s rule to verify leads against the source,
 the test suite and the owner's read of `src/` each stand in front of; this
 session's estimate is that fewer than 1 miss in 10 gets past the first of
 those, and the floor catches most of the rest. The measurement that would
-replace these estimates is about 20 searches run on each model against known
-answers; it was not run, because it would cost more than several months of
-the saving. The per-call `model` override is the mitigation either way: a
+replace these estimates is `PL-G2D4`: 60 thorough searches per model, the
+union of their leads as the reference, about $140 at most and repaid in weeks
+of the saving. The per-call `model` override is the mitigation either way: a
 session can ask for Opus on one hard search, and the file sets a default and
 not a ceiling.
 
@@ -344,8 +371,9 @@ cache, since the subagent is its own conversation; changing the session's own
 session. The forgotten case under this default is a lookup
 over-thought, bounded; under a lower default it is a thorough search that
 skipped a search, with the tail. The number that would change it: an effort
-sweep on the same 20-search set, which is the documentation's own advice for
-Opus 5.5.
+sweep `PL-G2D4` pre-registers as its effort arm, Opus 5.5 at `medium`
+against `xhigh` on the same 60 searches, which is the documentation's own
+advice for Opus 5.5.
 
 *What reduces the silent class at any model.* The file's body requires the
 subagent to end every report with the scope it searched, the patterns and
@@ -385,25 +413,21 @@ returns them to the session's model, which raises local cost and matches the
 owner's recorded rule. This session cannot read a local machine, so that is
 the documentation's claim and not a measurement.
 
-**Done when.** With a yes: `.claude/agents/Explore.md` exists with
-no `model` line, so it inherits the session's model (or `model: sonnet`
-or `model: haiku`, if the owner picks one), no `effort` line, so it inherits the session's
-level, `omitClaudeMd: true`, read-only
-tools and a body that carries the thoroughness levels and requires each
-report to end with the scope searched and not searched; `CLAUDE_CODE_SUBAGENT_MODEL` is gone from `.claude/settings.json`;
-`docs/maintainer.md` § "Settings that make sessions cheaper" says what Explore
-runs on and no longer says the answer waits on this item; and the first
-session started after the merge records in this item the model its Explore
-subagent's transcript shows, read the way `PL-KLN5` read it, with
+**Done when.** `.claude/agents/Explore.md` exists with `model: opus`, no
+`effort` line, `omitClaudeMd: true`, read-only tools and a body that carries
+the thoroughness levels and requires each report to end with the scope
+searched and not searched; `CLAUDE_CODE_SUBAGENT_MODEL` is gone from
+`.claude/settings.json`; `docs/maintainer.md` § "Settings that make sessions
+cheaper" says, dated, that Explore runs on Opus by the owner's decision
+pending `PL-G2D4`, and no longer says the answer waits on this item; and the
+first session started after the merge records in this item the model its
+Explore subagent's transcript shows, read the way `PL-KLN5` read it, with
 `jq -r 'select(.type=="assistant") | .message.model'` over the subagent's
-transcript under `~/.claude/projects/`. With a no: the variable is removed,
-and `docs/maintainer.md` says, dated, that Explore runs on the session's model
-by the owner's decision.
+transcript under `~/.claude/projects/`.
 
-**Verify, to set when the item goes `ready`:**
-`test -f .claude/agents/Explore.md && grep -qi 'not search' .claude/agents/Explore.md && ! grep -q CLAUDE_CODE_SUBAGENT_MODEL .claude/settings.json`
-A `model:` check matching the owner's answer is added when the item goes
-`ready`.
+**Verify.** Set in the front matter at `ready`, 2026-10-17: the file exists
+with `model: opus` and the scope footer, and the variable is gone from the
+settings file.
 
 **Generator check.** Not a member of a head. It follows from `PL-KLN5`'s
 measurement of how Claude Code chooses a subagent's model, an external
