@@ -94,6 +94,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO
 from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 
@@ -112,10 +113,23 @@ def _advance(controller: SimulationController, seconds: float) -> None:
         controller.advance(_STEP_S)
 
 
-def _run_with_a_dial_change(agent_id: str = "sevoflurane") -> SimulationController:
-    """Ten minutes at 1 MAC, then a dial change, then ten more: a mark and a kink."""
+def _run_with_a_dial_change(
+    agent_id: str = "sevoflurane", *, switched_from: str | None = None
+) -> SimulationController:
+    """Ten minutes at 1 MAC, then a dial change, then ten more: a mark and a kink.
 
-    controller = SimulationController(agent_id=agent_id)
+    With `switched_from`, the controller first runs one minute of that agent
+    and is then switched to `agent_id`. The run is then the one the switch
+    built, not a fresh one (`PL-JPS2`).
+    """
+
+    controller = SimulationController(agent_id=switched_from or agent_id)
+
+    if switched_from is not None:
+        controller.start()
+        _advance(controller, 60.0)
+        controller.set_agent(agent_id)
+
     controller.start()
     _advance(controller, 600.0)
     controller.begin_control_adjustment()
@@ -304,13 +318,29 @@ def test_the_wash_in_axis_is_ruled_at_quarters_and_the_window_is_the_chart_s(
 def test_the_references_stand_at_the_running_agent_s_own_values_and_follow_it(
     application: QApplication,
 ) -> None:
+    """Each run is switched into its agent, and the chart draws that agent's own references.
+
+    The first two assertions hold the chart to the snapshot it was drawn from.
+    They cannot see a band that a switch left at the previous agent's values,
+    because the snapshot holds the same wrong values. So the last two take the
+    expected values from the agent's own data file and work out the band's
+    edges here (`PL-JPS2`).
+    """
+
     chart = _shown(application, ConcentrationChart(), 480)
 
-    for agent_id in ("sevoflurane", "desflurane"):
-        controller = _run_with_a_dial_change(agent_id)
+    for agent_id, switched_from in (
+        ("sevoflurane", "desflurane"),
+        ("desflurane", "sevoflurane"),
+        ("isoflurane", "sevoflurane"),
+    ):
+        controller = _run_with_a_dial_change(agent_id, switched_from=switched_from)
         snapshot = controller.snapshot()
         chart.draw(_frame(controller))
         mac_awake = snapshot.agent_mac_awake
+        own = load_agent_parameters(agent_id)
+        fraction = own.mac_awake.fraction_of_mac
+        spread = own.mac_awake.standard_deviation_fraction_of_mac
 
         assert chart.one_mac_line() == snapshot.agent_mac_percent
         assert chart.mac_awake_band() == pytest.approx(
@@ -319,6 +349,10 @@ def test_the_references_stand_at_the_running_agent_s_own_values_and_follow_it(
                 standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
                 mac_percent=snapshot.agent_mac_percent,
             )
+        )
+        assert chart.one_mac_line() == own.mac_percent
+        assert chart.mac_awake_band() == pytest.approx(
+            ((fraction - spread) * own.mac_percent, (fraction + spread) * own.mac_percent)
         )
 
 
