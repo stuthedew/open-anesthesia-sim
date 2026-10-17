@@ -3,11 +3,13 @@ id: PL-SW0B
 title: Record in docs/maintainer.md that apparatus and analysis sessions run at high effort on Opus 5.5, and correct its sentence calling high Claude Code's default, which Opus 5.5 changed to medium
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, session-cost
 feature: model-evidence
 touches: docs/maintainer.md
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1520
 payoff: the effort record matches what the owner runs and what Opus 5.5 defaults to, so a session that sets no level is not silently one step below the agreed split
 verify: ! grep -qF 'documented default is' docs/maintainer.md
 ---
