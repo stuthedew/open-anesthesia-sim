@@ -191,9 +191,9 @@ lineage as the data being compared against. Passing it shows this implementation
 reproduces its parameter set's intent, not that the parameter set is
 independently right. Beside it,
 `tests/reference/test_late_washout_against_published_fits.py` measures the
-first 24 hours of elimination against the same papers' published mean washout
-curves and records where the modelled tail runs above and below them; it asserts
-nothing about agreement, and `docs/MODEL.md` carries the reading.
+elimination, to the end of the supported 24 hours, against the same papers'
+published mean washout curves and records where the modelled tail runs above
+and below them; it asserts nothing about agreement, and `docs/MODEL.md` carries the reading.
 
 That last point generalizes, and it is why parameter provenance is graded
 rather than merely cited. `docs/MODEL.md` distinguishes a primary measurement

@@ -56,11 +56,11 @@ most useful thing in this module.** The wash-in comparison agrees for every
 agent and cohort, inside the published spread. The elimination comparison
 does not: at the shipped defaults the model holds more alveolar agent at five
 minutes than every cohort did, by +1.0 to +5.0 published SD. So what is
-asserted about elimination is a *regression* band around the model's own
+asserted about elimination is a *regression* pin on the model's own
 measured ratios, plus the claims that do hold — the published ordering, the
 direction of the disagreement, and independence from the delivered fraction.
-`test_five_minute_elimination_ratio_against_published_human_measurement`
-carries the measured table.
+`test_five_minute_elimination_ratio_regression_pin` carries the measured
+table.
 
 **Why the elimination comparison misses, measured rather than guessed.** It
 is largely apparatus, and the mechanism is a difference between the two
@@ -376,19 +376,22 @@ DELIVERED_PERCENT = 1.0
 # "reproduces the published mean" has said something this gate never tested.
 AGREEMENT_TOLERANCE_SD = 1.0
 
-# The elimination comparison does not agree, so this constant cannot mean what
-# `AGREEMENT_TOLERANCE_SD` means and is named apart from it. It is the width of
-# a *regression* band - the published SD, applied around the ratio this model
-# itself produces (`MODELLED_ELIMINATION_RATIOS`), so that a change moving
-# washout by more than one published standard deviation fails and has to be
-# explained. It asserts nothing whatever about agreement with Yasuda; the
-# distance from the published mean is measured and recorded in
-# `test_five_minute_elimination_ratio_against_published_human_measurement`,
-# and is between +1.0 and +5.0 SD.
-ELIMINATION_REGRESSION_TOLERANCE_SD = 1.0
+# The elimination comparison does not agree, so its assertions are regression
+# pins rather than agreement claims. Each holds the ratio this model itself
+# produces (`MODELLED_ELIMINATION_RATIOS`, `OPEN_CIRCUIT_ELIMINATION_RATIOS`)
+# to this absolute tolerance, so any change to washout fails and has to be
+# explained. The ratios are stored to four decimals, so rounding them moves
+# them by at most 5e-5, and 1e-4 leaves room for that and nothing a model
+# change would produce. Until `PL-RXW0` the pin was one published SD, a band
+# of 6% to 12% relative, which let desflurane's ratio drift by 12% while every
+# table quoting it went stale. It asserts nothing about agreement with Yasuda.
+# The distance from the published mean is measured in
+# `test_five_minute_elimination_ratio_regression_pin`, and is between +1.0 and
+# +5.0 SD.
+ELIMINATION_RATIO_PIN_TOLERANCE = 1e-4
 
 # What the shipped parameters produce at the reference operating point,
-# measured 2026-09-06 and pinned by the regression band above. These are model
+# measured 2026-09-06 and pinned to the tolerance above. These are model
 # outputs and are deliberately not fields of `PublishedMeasurement`: nothing
 # here was published, and a measured value sitting in a row of published ones
 # is how a later reader comes to cite a model output as a human measurement.
@@ -414,7 +417,7 @@ OPEN_CIRCUIT_ELIMINATION_RATIOS = {
 # `test_removing_the_rebreathing_circuit_is_what_moves_the_elimination_comparison`
 # carries the per-cohort table. The margin is wide deliberately: what is being
 # pinned is that the apparatus term is the large one, not its fourth digit,
-# which the regression bands above and below already hold.
+# which the regression pins above and below already hold.
 MINIMUM_APPARATUS_MOVEMENT_SD = 3.0
 
 
@@ -944,11 +947,14 @@ class OpenCircuitEliminationReading:
             inside the published spread at every supported flow and F_A0 is
             defined at the end of it.
         alveolar_fraction: F_A after `ELIMINATION_DURATION_S`.
-        peak_inspired_to_alveolar_ratio: the largest F_I/F_A this run reached
-            at any step boundary, which is how far from a true open circuit
-            the driver actually got.
+        peak_inspired_to_starting_alveolar_ratio: the largest ratio this run
+            reached of F_I at the end of a step to F_A at the start of the
+            same step, which is how far from a true open circuit the driver
+            actually got. The denominator is the starting F_A because that is
+            the value the bound in
             `test_the_open_circuit_driver_holds_the_inspired_fraction_near_zero`
-            is what reads it.
+            is stated against (`PL-RXW0`).
+            That test is what reads it.
         agent_accounting: the model's own conservation check at the end of the
             run, carried out rather than asserted here so that a failure can
             name the totals.
@@ -956,7 +962,7 @@ class OpenCircuitEliminationReading:
 
     alveolar_fraction_at_discontinuation: float
     alveolar_fraction: float
-    peak_inspired_to_alveolar_ratio: float
+    peak_inspired_to_starting_alveolar_ratio: float
     agent_accounting: AgentSimulationValidationResult
 
     @property
@@ -997,9 +1003,10 @@ def _eliminate_without_rebreathing(
 
     **It is an open circuit to within one step, not exactly.** Settings are
     held constant across a step, so within each one the circuit refills from
-    the alveoli and F_I rises from zero to at most `V_A * step /
-    circuit volume` of F_A - 1.1e-3 at the shipped step, against the 0.30 to
-    0.32 the same run settles at with rebreathing, and first-order in the
+    the alveoli and F_I rises from zero to at most `V_A * step / circuit
+    volume` of the F_A the step starts from - 1.1e-3 at the shipped step,
+    against the 0.30 to 0.32 the same run settles at with rebreathing, and
+    first-order in the
     step: measured 1.111e-3, 1.111e-4 and 5.555e-5 at steps of 0.1, 0.01 and
     0.005 s. What that residual is worth in the answer was measured the same
     way on 2026-09-07: sevoflurane's ratio moves from 0.154059 at the shipped
@@ -1039,21 +1046,21 @@ def _eliminate_without_rebreathing(
         system.set_fresh_gas_flow(FreshGasFlow(elimination_fresh_gas_flow_l_min))
 
     _discard_circuit_contents(system)
-    peak_inspired_to_alveolar_ratio = 0.0
+    peak_inspired_to_starting_alveolar_ratio = 0.0
 
     for _ in range(round(ELIMINATION_DURATION_S / SIMULATION_STEP_S)):
+        alveolar_fraction_at_step_start = system.alveoli.partial_pressure_fraction
         system.advance(SIMULATION_STEP_S)
-        peak_inspired_to_alveolar_ratio = max(
-            peak_inspired_to_alveolar_ratio,
-            system.circuit.inspired_partial_pressure_fraction
-            / system.alveoli.partial_pressure_fraction,
+        peak_inspired_to_starting_alveolar_ratio = max(
+            peak_inspired_to_starting_alveolar_ratio,
+            system.circuit.inspired_partial_pressure_fraction / alveolar_fraction_at_step_start,
         )
         _discard_circuit_contents(system)
 
     return OpenCircuitEliminationReading(
         alveolar_fraction_at_discontinuation=alveolar_fraction_at_discontinuation,
         alveolar_fraction=system.alveoli.partial_pressure_fraction,
-        peak_inspired_to_alveolar_ratio=peak_inspired_to_alveolar_ratio,
+        peak_inspired_to_starting_alveolar_ratio=peak_inspired_to_starting_alveolar_ratio,
         agent_accounting=system.agent_simulation_validation,
     )
 
@@ -1289,13 +1296,11 @@ def test_agreement_is_sensitive_to_ventilation_and_cardiac_output(agent_id: str)
 @pytest.mark.parametrize(
     "measurement", PUBLISHED_MEASUREMENTS, ids=[m.label for m in PUBLISHED_MEASUREMENTS]
 )
-def test_five_minute_elimination_ratio_against_published_human_measurement(
-    measurement: PublishedMeasurement,
-) -> None:
+def test_five_minute_elimination_ratio_regression_pin(measurement: PublishedMeasurement) -> None:
     """Compare the modelled 5-minute elimination against all four cohorts.
 
     **This comparison does not agree, and the assertion below is a regression
-    band rather than an agreement claim.** Measured 2026-09-06 at the shipped
+    pin rather than an agreement claim.** Measured 2026-09-06 at the shipped
     defaults, as distance from each cohort's mean in that cohort's own
     standard deviations:
 
@@ -1316,13 +1321,15 @@ def test_five_minute_elimination_ratio_against_published_human_measurement(
     the published protocol did not, and running the same five minutes through
     `_eliminate_without_rebreathing()` instead moves the same three agents to
     -0.15, +0.66 and -2.33 SD.
-    `test_five_minute_elimination_ratio_without_rebreathing_against_published_human_measurement`
+    `test_five_minute_elimination_ratio_without_rebreathing_regression_pin`
     is that comparison, and the condition it runs in is a diagnostic no
     setting of this simulator reaches.
 
     What is asserted here is therefore that the model still produces the
-    ratios in `MODELLED_ELIMINATION_RATIOS`, to within one published standard
-    deviation. That is worth asserting for the reason the wash-in comparison
+    ratios in `MODELLED_ELIMINATION_RATIOS`, to within
+    `ELIMINATION_RATIO_PIN_TOLERANCE`. The name says regression pin, because
+    the expected values are this model's own outputs and not the published
+    means. That is worth asserting for the reason the wash-in comparison
     is worth asserting - it is the only thing in this repository that looks
     at elimination against an outside number at all - and a change moving it
     is a change to re-measure and explain, in whichever direction it moves.
@@ -1336,13 +1343,13 @@ def test_five_minute_elimination_ratio_against_published_human_measurement(
     drift_sd = abs(ratio - modelled) / measurement.elimination_standard_deviation
     published_distance = measurement.elimination_distance_in_standard_deviations(ratio)
 
-    assert drift_sd <= ELIMINATION_REGRESSION_TOLERANCE_SD, (
-        f"{measurement.agent_id} eliminates to F_A/F_A0 {ratio:.4f} at 5 min against the "
+    assert abs(ratio - modelled) <= ELIMINATION_RATIO_PIN_TOLERANCE, (
+        f"{measurement.agent_id} eliminates to F_A/F_A0 {ratio:.5f} at 5 min against the "
         f"{modelled} this module measured on 2026-09-06, a drift of {drift_sd:.2f} published "
         f"SD; it now sits {published_distance:+.2f} SD from the {measurement.elimination_mean} "
         f"+/- {measurement.elimination_standard_deviation} measured in "
         f"{measurement.cohort_size} volunteers ({measurement.source}). Re-measure this "
-        f"module's tables and docs/MODEL.md's rather than widening the band"
+        f"module's tables and docs/MODEL.md's rather than widening the pin"
     )
 
 
@@ -1354,7 +1361,7 @@ def test_the_model_eliminates_more_slowly_than_every_published_cohort(
 ) -> None:
     """State the direction of the disagreement, so it cannot drift unnoticed.
 
-    The regression band above pins the magnitude and would fail on a move in
+    The regression pin above holds the magnitude and would fail on a move in
     either direction. This pins the sign, which is the part a reader of the
     model needs: the modelled alveolar fraction at five minutes of
     elimination is higher than every published cohort's, so a learner
@@ -1503,7 +1510,7 @@ def test_the_elimination_run_is_outside_the_displayed_wash_in_domain(agent_id: s
 @pytest.mark.parametrize(
     "measurement", PUBLISHED_MEASUREMENTS, ids=[m.label for m in PUBLISHED_MEASUREMENTS]
 )
-def test_five_minute_elimination_ratio_without_rebreathing_against_published_human_measurement(
+def test_five_minute_elimination_ratio_without_rebreathing_regression_pin(
     measurement: PublishedMeasurement,
 ) -> None:
     """Compare the same five minutes against all four cohorts, apparatus removed.
@@ -1542,17 +1549,17 @@ def test_five_minute_elimination_ratio_without_rebreathing_against_published_hum
     is not is the next test, and `docs/MODEL.md` "Desflurane's residual, and
     why the parameter file was not changed" carries the whole account.
 
-    **What is asserted here is a regression band, not the agreement above.**
+    **What is asserted here is a regression pin, not the agreement above.**
     Three rows landing inside the published spread is a result to state, not a
     tolerance to assert: pinning it as one would make a later model change
     that improved desflurane and moved sevoflurane to 1.1 SD look like a
     failure, and would let the same change go unnoticed if it moved
     sevoflurane from -0.15 to +0.95. So the assertion is that the driver still
-    produces `OPEN_CIRCUIT_ELIMINATION_RATIOS` to within one published SD, in
-    either direction, exactly as the shipped-condition comparison asserts its
-    own measured ratios. The distances above are re-derived and named in the
-    failure message, so a run that moves says how far it moved and against
-    what.
+    produces `OPEN_CIRCUIT_ELIMINATION_RATIOS` to within
+    `ELIMINATION_RATIO_PIN_TOLERANCE`, in either direction, exactly as the
+    shipped-condition comparison asserts its own measured ratios. The
+    distances above are re-derived and named in the failure message, so a
+    run that moves says how far it moved and against what.
     """
 
     ratio = _eliminate_without_rebreathing(measurement.agent_id).ratio
@@ -1560,14 +1567,14 @@ def test_five_minute_elimination_ratio_without_rebreathing_against_published_hum
     drift_sd = abs(ratio - modelled) / measurement.elimination_standard_deviation
     published_distance = measurement.elimination_distance_in_standard_deviations(ratio)
 
-    assert drift_sd <= ELIMINATION_REGRESSION_TOLERANCE_SD, (
-        f"{measurement.agent_id} eliminates into an open circuit to F_A/F_A0 {ratio:.4f} at "
+    assert abs(ratio - modelled) <= ELIMINATION_RATIO_PIN_TOLERANCE, (
+        f"{measurement.agent_id} eliminates into an open circuit to F_A/F_A0 {ratio:.5f} at "
         f"5 min against the {modelled} this module measured on 2026-09-07, a drift of "
         f"{drift_sd:.2f} published SD; it now sits {published_distance:+.2f} SD from the "
         f"{measurement.elimination_mean} +/- {measurement.elimination_standard_deviation} "
         f"measured in {measurement.cohort_size} volunteers ({measurement.source}). This is "
         f"the diagnostic condition, which no setting of the shipped simulator reaches; "
-        f"re-measure this module's tables and docs/MODEL.md's rather than widening the band"
+        f"re-measure this module's tables and docs/MODEL.md's rather than widening the pin"
     )
 
 
@@ -1600,7 +1607,7 @@ def test_removing_the_rebreathing_circuit_is_what_moves_the_elimination_comparis
     asserted at `MINIMUM_APPARATUS_MOVEMENT_SD` with a wide margin under the
     smallest measured value: what a reader needs from this test is that the
     apparatus term is several times the published spread, and the fourth digit
-    of it is already held by the regression bands on both conditions.
+    of it is already held by the regression pins on both conditions.
 
     Note what the table does *not* say. The movement exceeds the shipped gap
     for sevoflurane and desflurane and not for isoflurane, so "the apparatus
@@ -1874,8 +1881,11 @@ def test_the_apparatus_dead_space_moves_every_cohort_together() -> None:
         )
 
 
+@pytest.mark.parametrize("elimination_fresh_gas_flow_l_min", [None, 0.0])
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
-def test_the_open_circuit_driver_holds_the_inspired_fraction_near_zero(agent_id: str) -> None:
+def test_the_open_circuit_driver_holds_the_inspired_fraction_near_zero(
+    agent_id: str, elimination_fresh_gas_flow_l_min: float | None
+) -> None:
     """Show that the diagnostic is the condition it claims to be.
 
     A driver that only partly removed the rebreathing would produce numbers
@@ -1884,16 +1894,27 @@ def test_the_open_circuit_driver_holds_the_inspired_fraction_near_zero(agent_id:
     in this module would notice, because the ratio it produces is plausible
     either way.
 
-    The residual has a closed form. Settings are held constant across a step,
-    so between two discards the circuit refills from the alveoli at the
-    alveolar ventilation and F_I reaches at most `V_A * step / V_circuit` of
-    F_A, which is 1.11e-3 at the shipped 4 L/min, 0.1 s and 6 L. The bound is
-    computed here from the same parameter files the run uses rather than
-    written down, so a change to any of the three moves the assertion with it.
-    Measured 2026-09-07 at 1.111e-3 for all three agents, against the 0.30 to
-    0.32 the same runs settle at with rebreathing: the driver is about 280
-    times closer to an open circuit than the shipped condition is, and
-    first-order in the step, so a shorter step gets proportionally closer.
+    The residual has an upper bound. Settings are held constant across a
+    step, and each step starts with the circuit emptied. Within the step the
+    circuit fills from the alveoli at the alveolar ventilation, so
+    dF_I/dt <= (V_A / V_circuit) F_A(t). F_A does not rise during a washout,
+    so F_I at the end of the step is at most `V_A * step / V_circuit` of F_A
+    at the *start* of the step. That is 1.11e-3 at the shipped 4 L/min, 0.1 s
+    and 6 L. The bound is computed here from the same parameter files the run
+    uses rather than written down, so a change to any of the three moves the
+    assertion with it.
+
+    Until `PL-RXW0` the test divided by F_A at the end of the step, after F_A
+    had already fallen, and that ratio is not bounded by the same figure. It
+    passed at the 10 L/min the run keeps by 1.5e-4 to 4.8e-4 relative, and a
+    correct driver exceeded it at lower elimination flows: by a factor of
+    1.000911 to 1.001237 at 0 L/min (measured 2026-10-17). So the test also
+    runs at 0 L/min, the flow closest to the bound. Measured 2026-10-17 with
+    the starting F_A, the peak is 0.99785 to 0.99790 of the bound at the
+    run's own flow and 0.99924 to 0.99931 at 0 L/min. The driver is about 280
+    times closer to an open circuit than the shipped condition is, which
+    settles at 0.30 to 0.32, and the residual is first-order in the step, so
+    a shorter step gets proportionally closer.
     """
 
     patient_parameters = load_reference_adult_parameters()
@@ -1905,11 +1926,14 @@ def test_the_open_circuit_driver_holds_the_inspired_fraction_near_zero(agent_id:
         / circuit_volume_l
     )
 
-    peak = _eliminate_without_rebreathing(agent_id).peak_inspired_to_alveolar_ratio
+    peak = _eliminate_without_rebreathing(
+        agent_id, elimination_fresh_gas_flow_l_min=elimination_fresh_gas_flow_l_min
+    ).peak_inspired_to_starting_alveolar_ratio
 
     assert peak <= bound, (
-        f"{agent_id} reaches F_I/F_A of {peak:.3e} inside a step of the open-circuit "
-        f"diagnostic, above the {bound:.3e} that {SIMULATION_STEP_S} s of refilling at "
+        f"{agent_id} reaches an F_I of {peak:.6e} of the step's starting F_A inside a "
+        f"step of the open-circuit diagnostic, above the {bound:.6e} that "
+        f"{SIMULATION_STEP_S} s of refilling at "
         f"{patient_parameters.default_alveolar_ventilation_l_min} L/min into "
         f"{circuit_volume_l} L can produce; the driver is no longer an open circuit and "
         f"the numbers it produces are between the two conditions rather than at one of them"

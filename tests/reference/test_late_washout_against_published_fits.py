@@ -1,6 +1,6 @@
-"""Measure this model's first 24 hours of elimination against the mean
-five-compartment washout curves Yasuda et al. fitted to the volunteers the
-five-minute gate compares against.
+"""Measure this model's elimination, to the end of the supported 24 hours,
+against the mean five-compartment washout curves Yasuda et al. fitted to the
+volunteers the five-minute gate compares against.
 
 **This module is a measurement recorded beside a gate, and it is not a second
 gate.** `test_published_wash_in_and_elimination.py` compares five minutes of
@@ -29,19 +29,24 @@ rather than 1 at discontinuation, since they are means of per-subject fits, and
 normalising would raise every fitted value, and lower every ratio here, by 7 to
 10%. The model runs the same protocol as the gate - the shipped 30-minute
 wash-in at the reference operating point, `_configured_system()`'s, then the
-vaporizer closed - for 24 hours, the supported run length, at the shipped
-0.1 s step, sampled once a minute. Two conditions, exactly the gate's two:
+vaporizer closed - at the shipped 0.1 s step, sampled once a minute. The
+elimination lasts 23.5 hours. With the 30 minutes of wash-in that makes 24
+hours of case time, which is the supported run length, so the run ends where
+the model's claim ends (`test_the_run_ends_at_the_supported_run_length`).
+Two conditions, exactly the gate's two:
 *shipped*, the rebreathing circuit at 10 L/min, which is the tail the chart
 draws; and *open circuit*, `_discard_circuit_contents()` after every step,
 which no setting of the shipped simulator reaches and which every restatement
 of its numbers owes that sentence. The stated times are the papers' own
 sampling times inside the first day (*Anesth Analg* p. 317: 5, 30, 60, 120,
 240, 400, 600, 800 and 1400 min among them), where the fit passes near a
-measured sample rather than interpolating, plus 1440 min.
+measured sample rather than interpolating, plus 1410 min, the run's last
+minute.
 
-**The result, as model over fit at those times** (2026-09-27; the four cohorts
-in the order sevoflurane and isoflurane from *Anesth Analg*, desflurane and
-isoflurane from *Anesthesiology*):
+**The result, as model over fit at those times** (2026-09-27, and the
+1410-minute rows 2026-10-17; the four cohorts in the order sevoflurane and
+isoflurane from *Anesth Analg*, desflurane and isoflurane from
+*Anesthesiology*):
 
 | Minutes | Sevo, shipped | Iso, shipped | Des, shipped | Iso 2, shipped |
 | ---: | ---: | ---: | ---: | ---: |
@@ -54,7 +59,7 @@ isoflurane from *Anesthesiology*):
 | 600 | 0.74 | 0.78 | 0.56 | 0.86 |
 | 800 | 0.67 | 0.68 | 0.80 | 0.74 |
 | 1400 | 1.23 | 1.11 | 2.09 | 1.15 |
-| 1440 | 1.29 | 1.15 | 2.18 | 1.20 |
+| 1410 | 1.24 | 1.12 | 2.11 | 1.16 |
 
 | Minutes | Sevo, open | Iso, open | Des, open | Iso 2, open |
 | ---: | ---: | ---: | ---: | ---: |
@@ -67,10 +72,10 @@ isoflurane from *Anesthesiology*):
 | 600 | 0.47 | 0.48 | 0.37 | 0.53 |
 | 800 | 0.43 | 0.42 | 0.54 | 0.46 |
 | 1400 | 0.81 | 0.71 | 1.39 | 0.74 |
-| 1440 | 0.85 | 0.74 | 1.46 | 0.77 |
+| 1410 | 0.82 | 0.72 | 1.41 | 0.75 |
 
 **Read in three stretches, which the crossing hours mark.** In the shipped
-condition the modelled tail crosses the fitted curve four times in 24 hours.
+condition the modelled tail crosses the fitted curve four times in the run.
 It sits above it at five minutes, which is the apparatus term the gate
 records; falls below it from 6 to 13 minutes until 0.8 to 2.0 hours, by up to
 15 to 44% around 15 to 25 minutes; runs above it until 3.4 hours for desflurane
@@ -78,9 +83,9 @@ and 6.9 to 8.4 hours for the other three, by 12 to 52% at the widest; runs
 *below* it from there until 15.3 hours for desflurane and 20.7 to 21.8 hours
 for the others, by a third at the widest (0.67, 0.68 and 0.74 at 13 to 14
 hours) and by a half for desflurane (0.51 at 8 hours); and finishes above it,
-by 15 to 29% at 24 hours and by a factor of 2.2 for desflurane. With the
+by 12 to 24% at 23.5 hours and by a factor of 2.1 for desflurane. With the
 apparatus taken away the tail runs below the fitted curve from the third
-minute for the whole 24 hours in two cohorts and for most of them in the other
+minute for the whole run in two cohorts and for most of it in the other
 two, at a third to a half of it between 8 and 13 hours (0.34 to 0.46). The
 middle stretch is the answer the note asked for: the fourth compartment's term
 is the largest in every fitted curve from 1.8 to 3.1 hours until 20.7 to 29.4
@@ -102,8 +107,9 @@ at four hours is 24 to 60% lower
 (`test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`;
 `docs/MODEL.md` has the numbers). The late excess is the model's fat term,
 1.5 to 2.1 times the fitted fat term's small amplitude (0.028 to 0.080%, with
-SDs of 53 to 94% of the means), and it is still growing at 24 hours - the
-ratio rises between minutes 1400 and 1440 in every cohort - because the
+SDs of 53 to 94% of the means), and it is still growing when the run ends -
+the ratio rises between minutes 1400 and 1410 in every cohort and in both
+conditions - because the
 fitted curve is still falling on the fourth compartment's time constant while
 the model is already on its fat term's, 1.14 to 1.36 times every fitted fat
 time constant.
@@ -149,16 +155,16 @@ group, sited where the papers' own mammillary model sites hepatic elimination
 (*Anesth Analg* p. 318, "the second compartment (vessel-rich group; k20)"),
 run at that paper's fitted sevoflurane rate constant, k20 = 0.0094 min⁻¹
 (Table 3, p. 321; SD 0.0171, so the cohort could not tell it from zero). In
-this model it removes 7.8% of the 30-minute uptake by 24 hours in the shipped
-condition and 7.2% in the open circuit - above Kharasch's range, which makes
-it a bound. It lowers the shipped tail by 4.5% at five minutes and by 1.9 to
-2.9% from 30 minutes on, the open tail by 5.0% and then 1.3 to 1.8%
-(`test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent`).
+this model it removes 7.8% of the 30-minute uptake by the end of the run in
+the shipped condition and 7.1% in the open circuit - above Kharasch's range,
+which makes it a bound. It lowers the shipped tail by 4.5% at five minutes
+and by 1.9 to 2.9% from 30 minutes on, the open tail by 5.0% and then 1.3 to
+1.8% (`test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent`).
 So where the shipped model runs above the fitted curve, metabolism could
 account for about an eighth of the excess where it is widest - 2.8 of the
-20.4 points at four hours, 3.1 of the 28.6 at 24 - and where it runs below,
-metabolism widens the gap by the same few percent. The reason is where the sink looks: hepatic
-clearance sees the arterial partial pressure, which through the tail is the
+20.4 points at four hours, 3.0 of the 24.0 at 23.5 hours - and where it runs
+below, metabolism widens the gap by the same few percent. The reason is where
+the sink looks: hepatic clearance sees the arterial partial pressure, which through the tail is the
 alveolar one, and never the stores that feed it.
 
 **What a learner sees of it.** The departures above are in $`F_A/F_{A0}`$,
@@ -192,6 +198,7 @@ from typing import Literal, NamedTuple
 import numpy
 import pytest
 from test_published_wash_in_and_elimination import (
+    ELIMINATION_RATIO_PIN_TOLERANCE,
     MODELLED_ELIMINATION_RATIOS,
     OPEN_CIRCUIT_ELIMINATION_RATIOS,
     PUBLISHED_MEASUREMENTS,
@@ -205,13 +212,19 @@ from test_published_wash_in_and_elimination import (
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.supported_ranges import maximum_step_count
 from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-# The supported run length, in the minutes the published coefficients are
-# stated in. A run of exactly this length is what `docs/MODEL.md` § "Supported
-# run length" argues for, so the measurement ends where the claim does.
-ELIMINATION_DURATION_MIN = 1440
+# How long the elimination lasts, in the minutes the published coefficients
+# are stated in. The run is 30 minutes of wash-in and then 1410 minutes of
+# elimination, so it ends at 86,400 s of case time. That is the supported run
+# length, which `docs/MODEL.md` § "Supported run length" argues for, so the
+# measurement ends where the claim does
+# (`test_the_run_ends_at_the_supported_run_length`). Until 2026-10-17 the
+# elimination lasted 1440 minutes and the run went 30 minutes past that
+# length (`PL-RXW0`).
+ELIMINATION_DURATION_MIN = 1410
 
 # How long a run that varies the muscle group's coefficient eliminates for.
 # Six hours holds the stretch the variation asks about, hours 2 to 4, and the
@@ -220,16 +233,17 @@ ELIMINATION_DURATION_MIN = 1440
 MUSCLE_VARIATION_DURATION_MIN = 360
 
 # Once a minute is fine enough to place a crossing to the tenth of an hour
-# and coarse enough to keep 24 hours of samples small; every step in between
+# and coarse enough to keep a day of samples small; every step in between
 # is still the shipped 0.1 s, so nothing about the model is coarsened.
 SAMPLE_INTERVAL_S = 60.0
 STEPS_PER_SAMPLE = round(SAMPLE_INTERVAL_S / SIMULATION_STEP_S)
 
 # The papers' own sampling times inside the first day (*Anesth Analg* p. 317),
 # so the fitted curve is read where a measured sample constrained it rather
-# than between samples, with 1440 min added for the run-length boundary. The
-# 5-minute entry is the gate's own point and ties this module to it.
-STATED_MINUTES = (5, 30, 60, 120, 240, 400, 600, 800, 1400, 1440)
+# than between samples, with the run's last minute, 1410, added for the
+# run-length boundary. The 5-minute entry is the gate's own point and ties this
+# module to it.
+STATED_MINUTES = (5, 30, 60, 120, 240, 400, 600, 800, 1400, 1410)
 
 # Yasuda et al.'s fitted rate constant for hepatic elimination of sevoflurane
 # from the vessel-rich group, k20, mean 0.0094 ± 0.0171 min⁻¹ (*Anesth Analg*
@@ -381,6 +395,10 @@ MUSCLE_GROUP, FOURTH_COMPARTMENT, FAT_GROUP = 2, 3, 4
 class RecordedComparison:
     """What this module measured for one cohort in one condition, 2026-09-27.
 
+    The entry for the run's last minute, 1410, was measured on 2026-10-17, when
+    the run was shortened to end at the supported run length (`PL-RXW0`).
+    Every other entry is unchanged from 2026-09-27.
+
     Attributes:
         ratios: model over fit at each of `STATED_MINUTES`.
         crossing_hours: every hour at which model over fit passed through 1
@@ -398,35 +416,35 @@ class RecordedComparison:
 # to cite a model output as a human measurement.
 RECORDED_COMPARISONS: dict[tuple[str, Condition], RecordedComparison] = {
     ("sevoflurane/Anesth Analg 1991;72:316-24", "shipped"): RecordedComparison(
-        ratios=(1.201, 0.610, 0.808, 1.006, 1.204, 1.023, 0.737, 0.667, 1.225, 1.286),
+        ratios=(1.201, 0.610, 0.808, 1.006, 1.204, 1.023, 0.737, 0.667, 1.225, 1.240),
         crossing_hours=(0.13, 1.98, 6.88, 20.65),
     ),
     ("sevoflurane/Anesth Analg 1991;72:316-24", "open circuit"): RecordedComparison(
-        ratios=(0.795, 0.426, 0.576, 0.704, 0.815, 0.666, 0.468, 0.427, 0.806, 0.846),
+        ratios=(0.795, 0.426, 0.576, 0.704, 0.815, 0.666, 0.468, 0.427, 0.806, 0.816),
         crossing_hours=(0.05,),
     ),
     ("isoflurane/Anesth Analg 1991;72:316-24", "shipped"): RecordedComparison(
-        ratios=(1.329, 0.708, 0.872, 1.070, 1.255, 1.070, 0.777, 0.684, 1.106, 1.154),
+        ratios=(1.329, 0.708, 0.872, 1.070, 1.255, 1.070, 0.777, 0.684, 1.106, 1.118),
         crossing_hours=(0.17, 1.62, 7.33, 21.78),
     ),
     ("isoflurane/Anesth Analg 1991;72:316-24", "open circuit"): RecordedComparison(
-        ratios=(0.983, 0.509, 0.641, 0.766, 0.854, 0.686, 0.478, 0.423, 0.710, 0.742),
+        ratios=(0.983, 0.509, 0.641, 0.766, 0.854, 0.686, 0.478, 0.423, 0.710, 0.718),
         crossing_hours=(0.08,),
     ),
     ("desflurane/Anesthesiology 1991;74:489-98", "shipped"): RecordedComparison(
-        ratios=(1.109, 0.753, 0.927, 1.111, 0.881, 0.547, 0.562, 0.800, 2.086, 2.180),
+        ratios=(1.109, 0.753, 0.927, 1.111, 0.881, 0.547, 0.562, 0.800, 2.086, 2.110),
         crossing_hours=(0.10, 1.30, 3.38, 15.30),
     ),
     ("desflurane/Anesthesiology 1991;74:489-98", "open circuit"): RecordedComparison(
-        ratios=(0.638, 0.530, 0.647, 0.760, 0.582, 0.356, 0.373, 0.536, 1.394, 1.457),
+        ratios=(0.638, 0.530, 0.647, 0.760, 0.582, 0.356, 0.373, 0.536, 1.394, 1.410),
         crossing_hours=(0.03, 19.18),
     ),
     ("isoflurane/Anesthesiology 1991;74:489-98", "shipped"): RecordedComparison(
-        ratios=(1.417, 0.879, 1.077, 1.329, 1.521, 1.225, 0.857, 0.741, 1.150, 1.197),
+        ratios=(1.417, 0.879, 1.077, 1.329, 1.521, 1.225, 0.857, 0.741, 1.150, 1.161),
         crossing_hours=(0.22, 0.78, 8.42, 21.05),
     ),
     ("isoflurane/Anesthesiology 1991;74:489-98", "open circuit"): RecordedComparison(
-        ratios=(1.049, 0.632, 0.792, 0.952, 1.035, 0.785, 0.527, 0.457, 0.738, 0.769),
+        ratios=(1.049, 0.632, 0.792, 0.952, 1.035, 0.785, 0.527, 0.457, 0.738, 0.746),
         crossing_hours=(0.10, 2.45, 4.58),
     ),
 }
@@ -452,11 +470,13 @@ RECORDED_FIT_ABOVE_MEASUREMENT_AT_FIVE_MINUTES_SD: dict[str, float] = {
 FIVE_MINUTE_DISTANCE_TOLERANCE_SD = 0.02
 
 # The hepatic sink's outputs for sevoflurane: the share of the 30-minute
-# uptake it removes by 24 hours, and how far it lowers F_A/F_A0 at each of
-# `STATED_MINUTES` against the same run without it.
-RECORDED_METABOLISED_SHARE: dict[Condition, float] = {"shipped": 0.0780, "open circuit": 0.0715}
+# uptake it removes by the end of the run, and how far it lowers F_A/F_A0 at
+# each of `STATED_MINUTES` against the same run without it. The share and the
+# entry for 1410 minutes were measured on 2026-10-17, when the run was
+# shortened to end at the supported run length (`PL-RXW0`).
+RECORDED_METABOLISED_SHARE: dict[Condition, float] = {"shipped": 0.0779, "open circuit": 0.0714}
 RECORDED_TAIL_REDUCTIONS: dict[Condition, tuple[float, ...]] = {
-    "shipped": (0.0447, 0.0286, 0.0194, 0.0206, 0.0229, 0.0255, 0.0269, 0.0263, 0.0241, 0.0240),
+    "shipped": (0.0447, 0.0286, 0.0194, 0.0206, 0.0229, 0.0255, 0.0269, 0.0263, 0.0241, 0.0241),
     "open circuit": (
         0.0502,
         0.0177,
@@ -478,7 +498,7 @@ class RecordedMuscleVariation:
 
     Attributes:
         rise_as_stored: where model over fit peaks after its early dip on the
-            stored coefficient, as (hours, ratio), read from the 24-hour run.
+            stored coefficient, as (hours, ratio), read from the full-length run.
         rise_at_fitted_time_constant: the same peak with the muscle group's
             coefficient lowered until its isolated time constant is the fitted
             muscle term's.
@@ -662,7 +682,7 @@ RECORDED_APPARENT_MUSCLE_TIME_CONSTANTS_AT_FITTED_ISOLATED_MIN: dict[str, float]
 
 @dataclass(frozen=True, slots=True)
 class WashoutCurve:
-    """One elimination, sampled once a minute: 24 hours unless a run is shorter.
+    """One elimination, sampled once a minute: the whole run unless a run is shorter.
 
     A value object rather than the system, for the reason the gate's readings
     are: `_washout_curve()` is cached, and a returned system would be a shared
@@ -794,7 +814,7 @@ def _washout_curve(
     muscle_tissue_gas_partition_coefficient: float | None = None,
     elimination_duration_min: int = ELIMINATION_DURATION_MIN,
 ) -> WashoutCurve:
-    """Wash in as the gate does, then eliminate in one condition, for 24 hours by default.
+    """Wash in as the gate does, then eliminate in one condition, to the run's end by default.
 
     The wash-in is the shipped one whatever the condition, rebreathing and
     all, because that limb is inside the published spread at every supported
@@ -877,7 +897,7 @@ def washout_curve(
 ) -> Callable[..., WashoutCurve]:
     """`_washout_curve()`, computed once per pytest run however many xdist workers read it.
 
-    A curve is 864,000 steps after the wash-in, about 17 s on one core, and
+    A curve is 846,000 steps after the wash-in, about 17 s on one core, and
     `_washout_curve()`'s cache lives in one process, so every xdist worker
     that ran a test needing a curve used to compute it again: 18 computations
     of the 8 distinct curves (`PL-F08Y`). Now the first worker to need a
@@ -1177,9 +1197,36 @@ def test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio(
     )[agent_id]
     ratio = washout_curve(agent_id, condition).ratio_at(5)
 
-    assert abs(ratio - pinned) <= 1e-4, (
+    assert abs(ratio - pinned) <= ELIMINATION_RATIO_PIN_TOLERANCE, (
         f"{agent_id}, {condition}: F_A/F_A0 at five minutes of this run is {ratio:.5f}, "
         f"where the gate pins {pinned}; the two runs no longer share a protocol"
+    )
+
+
+def test_the_run_ends_at_the_supported_run_length() -> None:
+    """The wash-in and the elimination together take every step the supported run length allows.
+
+    `maximum_step_count` is the simulator's own count of the steps that fit
+    inside the supported run length, so the run is held to that count rather
+    than to a number of seconds written here. Fewer steps would end the run,
+    and its last stated minute, short of the boundary the module docstring
+    reads the tail at. More steps would carry the run past the span the model
+    is claimed to represent a patient over. `AgentUptakeSystem.advance` does
+    not refuse such a step by itself, so nothing else here would notice:
+    until 2026-10-17 the elimination lasted 1440 minutes, and the run went 30
+    minutes past the boundary (`PL-RXW0`).
+    """
+
+    wash_in_steps = round(WASH_IN_DURATION_S / SIMULATION_STEP_S)
+    elimination_steps = ELIMINATION_DURATION_MIN * STEPS_PER_SAMPLE
+    supported_steps = maximum_step_count(SIMULATION_STEP_S)
+
+    assert wash_in_steps + elimination_steps == supported_steps, (
+        f"the run takes {wash_in_steps} steps of wash-in and {elimination_steps} steps of "
+        f"elimination at {SIMULATION_STEP_S} s, {wash_in_steps + elimination_steps} in all, where "
+        f"the supported run length allows {supported_steps}. Set ELIMINATION_DURATION_MIN so "
+        "that the run ends at that boundary, then re-measure this module's tables and "
+        "docs/MODEL.md's"
     )
 
 
@@ -1242,7 +1289,7 @@ def test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours(
     about 20.7 to 29.4 hours. Those were computed by hand on 2026-09-26; this
     re-derives them from the published coefficients and checks that the term
     does lead at every stated time inside the window that lies within the
-    24 hours, so the sentence cannot outlive the arithmetic.
+    run, so the sentence cannot outlive the arithmetic.
     """
 
     overtakes_muscle_h = fit.hours_at_which_terms_are_equal(MUSCLE_GROUP, FOURTH_COMPARTMENT)
@@ -1546,7 +1593,8 @@ def test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent(
 
     share = with_sink.metabolised_share_of_uptake
     assert share >= KHARASCH_UPPER_METABOLISED_SHARE, (
-        f"{condition}: the sink removes {share:.1%} of the 30-minute uptake by 24 hours, below "
+        f"{condition}: the sink removes {share:.1%} of the 30-minute uptake by the end of the run, "
+        "below "
         f"the {KHARASCH_UPPER_METABOLISED_SHARE:.0%} that makes its effect a bound"
     )
     assert abs(share - RECORDED_METABOLISED_SHARE[condition]) <= METABOLISED_SHARE_TOLERANCE, (
