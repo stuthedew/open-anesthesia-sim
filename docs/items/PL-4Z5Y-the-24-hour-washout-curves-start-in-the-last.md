@@ -3,12 +3,14 @@ id: PL-4Z5Y
 title: The 24-hour washout curves start in the last third of the run, because worksteal deals the washout file to the first worker 522 tests deep, so a slow CI runner waits about 70 s for them after every other test has finished
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra, test
 feature: ci-cost
 touches: tests/reference/test_late_washout_against_published_fits.py, tests/conftest.py, tests/unit/test_worksteal_dealing.py, tests/integration/test_controller.py, docs/items/PL-K5VM-test-controller-py-s-two-module-scoped-24-hour.md, docs/items/PL-H9KW-quality-yml-s-pytest-step-now-takes-about-9.md, docket.toml, pyproject.toml
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
+closed: 2026-10-17
+pr: 1498
 payoff: a slow CI runner's pytest step falls by at least 30 s, and the washout curves stop being the last thing every run waits on
 verify: grep -q '^\*\*Trial read, ' docs/items/PL-4Z5Y-the-24-hour-washout-curves-start-in-the-last.md
 not-delegable: whether the trial stays is the slow CI runners' median pytest step over at least five runs after it merges, which no command can take beforehand
@@ -264,3 +266,81 @@ CI trial waits for the wider hook's local run in step 6 below.
   a line starting `**Trial read, `, which is what `verify:` looks for.
   `PL-H9KW` re-times CI and restates `quality.yml`'s `timeout-minutes`
   comment once this merges.
+
+**CI reading, 2026-10-17, before the A/B.** This is not the trial read. That
+line is written after the A/B below.
+
+- **Runs.** Taken as § "How the CI table was taken" says, over successful
+  pytest steps in runs created 2026-10-17 from 04:13 to 14:43 UTC. "Before"
+  means before both #1486 (06:31:36 UTC) and #1487 (06:41:01 UTC). Pytest
+  step medians, runs in brackets:
+
+  | Runner class | Before both | #1486 only | After both |
+  | --- | ---: | ---: | ---: |
+  | Slow | 543 s (25) | 503 s (4) | 506 s (19) |
+  | Mid (mypy 6 s) | 382 s (5) | - | 361 s (3) |
+  | Fast | 284 s (5) | - | 263 s (8) |
+
+  The four slow runs with #1486 and without #1487 are 39010237782,
+  39009553875, 39010253253 and 39010320002. The steps outside pytest did not
+  change (slow median 115 s before, 117 s after), so the after window did not
+  draw slower runners.
+- **What it says about the trial.** Read as written, the slow median fell
+  37 s, which clears the 30 s bar. But #1486, `PL-H9KW`'s shared `doc_check`
+  analysis, merged ten minutes before #1487. The four runs that carry only
+  #1486 already sit at 503 s. So most of the 37 s may be #1486's, and four
+  runs cannot say how much belongs to the dealing.
+- **The hook does run on CI.** Read from 15 job logs. The stretch from 99% to
+  100% fell from a median of 179 s to 38 s on slow runners, and from about
+  66 s to 20 s on fast ones. After the merge, a slow runner prints no
+  progress line for about the first 140 s, against about 40 s before, because
+  every worker opens on a long test.
+- **Why removing the tail buys little, inferred and not verified.** The tail
+  was not idle CPU. CI runs 8 workers on 4 vCPUs, so the CPUs are busy for
+  most of the run. The one log with #1486 and without #1487 still had a 145 s
+  tail and finished in 468 s. A Geekbench upload lists a GitHub
+  `ubuntu-latest` runner as 2 cores with 4 threads
+  (https://browser.geekbench.com/v6/cpu/baseline/18567769). If that holds,
+  two busy workers in the tail already use both physical cores. This
+  project's cloud containers report 4 cores with 1 thread each, which may be
+  why the local run gained 47 s.
+- **Next** (project owner, 2026-10-17, ratified, "agree with recs", over
+  scoring the trial on the combined 37 s). A draft pull request under this
+  id turns off only the dealing, and never merges. Its CI is re-run until it
+  has at least five slow-runner runs, and the trial is scored on the
+  dealing's own effect. The planned design runs pytest twice in each run,
+  hook on and hook off, with the order alternated by run attempt. The
+  difference is then taken on one runner, so the runner lottery cancels out.
+  That needs the job's timeout raised on the draft branch only.
+
+**Trial read, 2026-10-17: keep the dealing.** On slow runners it shortens the
+pytest step by a median of 40 s, which clears the 30 s bar.
+
+- **How it was taken.** Workflow run 39050928377, attempt 1, on commit
+  `3c59690f` of this item's branch. Eight jobs each ran `quality.yml`'s pytest
+  command twice on one runner: once with the dealing and once with it switched
+  off by `PL_4Z5Y_AB_DEALING=nohook`. Four jobs ran the dealing first and four
+  ran it second. Each arm's time is its step's time in the Actions API. Runner
+  classes are by the `mypy` step, as in § "How the CI table was taken". The
+  workflow and the switch were removed before this pull request merged.
+- **Result**, pytest step in seconds:
+
+  | Runner class | Pairs | With dealing, median | Without, median | Saved, median of pairs | Saved, range |
+  | --- | ---: | ---: | ---: | ---: | ---: |
+  | Slow (mypy 7 s or more) | 6 | 500.5 | 546.5 | 40 | 21 to 64 |
+  | Mid (mypy 6 s) | 1 | 409 | 447 | 38 | - |
+  | Fast (mypy 5 s or less) | 1 | 260 | 276 | 16 | - |
+
+  The dealing was faster in all 8 pairs. Taken with the dealing first, the
+  median saving was 40 s; taken second, 30 s. So the order moved the result by
+  about 5 s each way, and balancing it is why half the jobs ran each order.
+- **Against the earlier CI reading.** That reading credited most of the 37 s
+  fall to #1486, because four slow runs carrying only #1486 sat at 503 s. The
+  paired runs say otherwise: the dealing alone saves about 40 s on a slow
+  runner. Four runs from the runner lottery, whose slow class spans more than
+  60 s, were too few to separate the two changes. Comparing on one runner
+  removes that spread.
+- **The bar's other conditions hold.** Each curve is still computed once per
+  run, and no assertion, tolerance band or step in the washout file changed.
+
+**Closed 2026-10-17.** The dealing stays as built in #1487.
