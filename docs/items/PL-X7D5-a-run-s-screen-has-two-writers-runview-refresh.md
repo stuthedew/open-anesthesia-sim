@@ -3,15 +3,17 @@ id: PL-X7D5
 title: A run's screen has two writers - RunView.refresh from a drawn frame and RunView.present_halt from a hand-picked subset of controller state - and nothing owes a frame when the run changes outside present, so each widget missing from the subset, and each path that stops or changes a run without a frame, leaves the screen stating an old run: the cause of PL-1YDD, PL-DTJQ, PL-MMNX, PL-T995, PL-G3K7 and PL-0LG6 (found at the 2026-10-17 triage pass)
 priority: P1
 effort: L
-status: ready
+status: done
 classes: safety, refactor
 feature: every-control-restates-the-halt
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/ARCHITECTURE.md, docs/MODEL.md, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1492
 payoff: a halted or self-stopped run states itself on every widget as the controller holds it, and a widget added later is checked by default rather than remembered
 verify: grep -q 'def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one' tests/integration/test_simulation_view.py
-root-cause-of: PL-1YDD, PL-DTJQ, PL-MMNX, PL-T995, PL-G3K7, PL-0LG6, PL-85LJ
-generator: live - four reviews of the run view in ten days (PL-V2HC's, PL-85LJ's, PL-Y2SL's, PL-VN6M's) each found a widget or stop path the halt list or a frame request missed, and each widget added later is another
+root-cause-of: PL-1YDD, PL-DTJQ, PL-MMNX, PL-T995, PL-G3K7, PL-0LG6, PL-85LJ, PL-YHR3
+generator: spent - a RunView's run-state widgets now have one writer, RunView._write_statement, and a guard that compares every widget attribute by default, so a widget added later is checked without being listed; the residual is the dashboard's own panels, restated on a halt by hand in _halt_every_run, which handed this item PL-YHR3 while it was built and is PL-5JTH's to close
 misread: Which widgets state a run's current state, and that each is restated on every path that changes it
 ---
 
@@ -290,6 +292,42 @@ Four details were taken here that the design round placed later or left open:
   `supported_ranges.maximum_step_count`. The real timers cannot reach 24 h in
   a test, and stepping there first takes about 27 s.
 
+[superseded 2026-10-17: the second pull request is built, below.]
 What remains is the second pull request: `_write_statement` with the
 `RunStatement` builder, the four dashboard members, and the default-include
 guard. Until then this item stays `ready`, with its claim yielded.
+
+**Build, second pull request, 2026-10-17.** The second pull request builds
+half one and the dashboard members, and closes this item with `PL-1YDD`,
+`PL-DTJQ`, `PL-MMNX` and `PL-G3K7`:
+
+- **`dashboard_frame.run_statement`**, a pure builder of a frozen
+  `RunStatement`: the agent identity, the status word, the transport, the
+  control-change panel and the banner. The four dials are written beside it
+  from the same record, not carried in it, because `setting_readouts` can
+  raise and the halt has to be on screen first.
+- **`RunView._write_statement`**, the one writer of the run-state widgets.
+  `refresh` calls it after the frame widgets, and `present_halt` calls it
+  with `controller.record()`. It stores the record first, so a failing frame
+  is still attempted once.
+- **`SimulationView._restate_fork_panel`**, called by `_halt_every_run`, and
+  both legends told by `_refresh_view` once both plots draw.
+- **The default-include guard**,
+  `test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`,
+  with its `FRAME_WIDGETS` table of five entries held live in both
+  directions.
+
+Two details went beyond the design round's text, both on the same principle.
+The wash-in legend's run count moved to the frame with the trace legend's
+selection, since it had the same ahead-of-the-frame write. That changed one
+assertion in `PL-B1R9`'s guard,
+`test_a_fork_from_the_default_selection_draws_one_frame`, which now records
+the run names at assembly. And `PL-G3K7`'s Done when is rewritten to the
+legend-from-frame form, as planned.
+
+**What the guard does not reach.** It compares a `RunView`'s attributes. The
+dashboard's own panels that a halt must restate are restated by hand in
+`_halt_every_run`: the fork panel here, and the bookmark panel not yet. That
+one, found while this was built, is `PL-YHR3`, a member of this generator.
+The hand list at the dashboard is `PL-5JTH`, so `generator:` reads spent for
+the run view, with the residual named against the item that owns it.
