@@ -41,3 +41,11 @@ agree.
 
 **Done when.** A fork taken on a run whose snapshot refuses ends in the halt on
 screen with `case.branches` unchanged, shown by an integration test.
+
+**The Reset half landed under `PL-75P5` (2026-10-17).** Since `PL-75P5`,
+`_handle_case_restarted` rebuilds the case on every trunk Reset, with one run on
+screen too, so a branch this fork leaves behind is dropped by the next Reset
+instead of outliving it (`test_a_one_run_reset_leaves_a_case_with_no_branches`).
+The press itself is unchanged: it still keeps a branch it never draws and says
+nothing about it, so the brief above stands, minus "which Reset neither drops
+nor rebuilds".
