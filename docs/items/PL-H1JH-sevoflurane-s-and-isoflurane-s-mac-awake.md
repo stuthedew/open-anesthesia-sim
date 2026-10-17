@@ -3,11 +3,13 @@ id: PL-H1JH
 title: Sevoflurane's and isoflurane's MAC-awake fraction_of_mac and all three agents' standard_deviation_fraction_of_mac have no behavioural oracle or literal pin from the adopted primary source, so a 10% transcription error passes every data-dependent simulator test, and desflurane's one published check passes only by float rounding
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, science, test
 feature: tests-detect-wrong-values
 touches: tests/unit/test_parameters.py, tests/unit/test_formatting.py
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1506
 payoff: a transcription error in any MAC-awake fraction or spread fails a test that names the paper and table it came from, so the emergence band cannot drift from its source unnoticed
 verify: grep -q 'def test_mac_awake_matches_its_adopted_primary_source' tests/unit/test_parameters.py
 ---
@@ -97,3 +99,33 @@ perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above. Symbols re-checked against
 `9ea87a3c`.
+
+**Fail-before, 2026-10-17.** Two new tests hold the six values.
+`test_mac_awake_matches_its_adopted_primary_source` in
+`tests/unit/test_parameters.py` types each fraction and spread from Katoh et
+al. 1993, Chortkoff et al. 1995 and Rampil et al. 1991, each read as its
+PubMed abstract. Desflurane's spread is typed as `round(0.46 / 7.25, 3)`.
+`test_each_shipped_mac_awake_band_lands_at_its_published_values` in
+`tests/unit/test_formatting.py` checks each agent's band and line of text
+against literals worked out by hand. Both pass on the shipped files.
+
+Each of the six values was then changed by +10% and by -10% in its data file,
+one at a time. For each change a script rewrote the file, ran
+`uv run pytest -q -p no:cacheprovider` on the new and changed tests in
+`tests/unit/test_parameters.py` and `tests/unit/test_formatting.py`, and
+restored the file. All 12 runs exited 1, and each failed both new tests for
+the agent changed. Sevoflurane's fraction at 0.374 failed with
+`assert 0.374 == 0.34` and with the band `(0.648, 0.848)` against
+`(0.58, 0.78)`. Desflurane's spread at 0.0693 failed with
+`assert 0.0693 == 0.063`; before this item no test saw that change.
+
+The Song comparison in
+`test_the_mac_awake_band_uses_the_fraction_rather_than_a_published_percent`
+now asserts `abs(centre - 2.17) <= 0.25`, with 0.25% being Song et al.'s
+reported standard deviation, in place of the display resolution and a strict
+`<` that passed only by float rounding. Its docstring states that the
+comparison sees only an error in the fraction of more than about 11% low or
+12% high. Desflurane's fraction at ±10% still fails that test, through its
+`approx(2.16)` assertion. Because the comparison changed in place,
+`bin/docket verify --self` reports it as a removed assertion, which is the
+case `PL-K4R5` settles.

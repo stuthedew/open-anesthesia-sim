@@ -534,6 +534,14 @@ def test_the_mac_awake_band_uses_the_fraction_rather_than_a_published_percent() 
     This is what makes the fraction the stored form rather than a schema
     preference, so it is tested as a value the interface must not be able to
     produce.
+
+    The band is also compared with an independent measurement: Song et al.
+    2005's non-jaundiced control arm, in the population the 31-65 year
+    divisor describes. That comparison is coarse. Its tolerance is Song's
+    standard deviation, so it fails only when the stored fraction is more
+    than about 11% too low or 12% too high, outside 0.320-0.403 of MAC.
+    `test_mac_awake_matches_its_adopted_primary_source` in
+    `tests/unit/test_parameters.py` pins the fraction exactly (`PL-H1JH`).
     """
 
     desflurane = load_agent_parameters("desflurane")
@@ -547,15 +555,75 @@ def test_the_mac_awake_band_uses_the_fraction_rather_than_a_published_percent() 
     centre = (lower + upper) / 2.0
 
     assert centre == pytest.approx(2.16)
-    # Song et al.'s non-jaundiced control arm, measured in the population the
-    # 31-65 year divisor describes. The band lands on it to within the
-    # concentration readouts' own resolution.
-    assert abs(centre - 2.17) < CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+    # Song et al. 2005 (PMID 15731594), Abstract, read through PubMed on
+    # 2026-10-17: the control group's MAC-awake was "2.17 +/- 0.25%" (mean +/-
+    # SD). The centre lies within one of Song's standard deviations of that
+    # mean. The bound is not the display's resolution: 2.16 against 2.17 sits
+    # exactly on that bound in decimal arithmetic, and only float rounding
+    # passed a strict `<` there.
+    assert abs(centre - 2.17) <= 0.25
     # Chortkoff's absolute percent, which the stored fraction must not
     # reproduce: it belongs to a different population's MAC.
     assert centre != pytest.approx(2.60)
     # And the mistake of dividing that absolute percent by the stored MAC.
     assert mac_awake.fraction_of_mac != pytest.approx(2.60 / desflurane.mac_percent, abs=1e-3)
+
+
+@pytest.mark.parametrize(
+    ("agent_id", "band_percent", "reference_line"),
+    [
+        # 0.34 +/- 0.05 times 2.0%
+        (
+            "sevoflurane",
+            (0.58, 0.78),
+            "MAC-awake sevoflurane = 0.34 ×MAC (0.68%), band ±1 SD 0.58–0.78%",
+        ),
+        # 0.31 +/- 0.05 times 1.2%
+        (
+            "isoflurane",
+            (0.312, 0.432),
+            "MAC-awake isoflurane = 0.31 ×MAC (0.37%), band ±1 SD 0.31–0.43%",
+        ),
+        # 0.36 +/- 0.063 times 6.0%
+        (
+            "desflurane",
+            (1.782, 2.538),
+            "MAC-awake desflurane = 0.36 ×MAC (2.16%), band ±1 SD 1.78–2.54%",
+        ),
+    ],
+    ids=["sevoflurane", "isoflurane", "desflurane"],
+)
+def test_each_shipped_mac_awake_band_lands_at_its_published_values(
+    agent_id: str, band_percent: tuple[float, float], reference_line: str
+) -> None:
+    """A run's MAC-awake band and its line of text, checked against literals.
+
+    The run is built from the shipped data file, and each edge was worked out
+    by hand as the published mean minus or plus one standard deviation, times
+    the MAC the display divides by. The fractions are Katoh et al.'s and
+    Chortkoff et al.'s, and `test_mac_awake_matches_its_adopted_primary_source`
+    in `tests/unit/test_parameters.py` gives their locators. The MACs are De
+    Wolf et al.'s. The other band tests in this file compute their expected
+    band from the loaded file, so none of them can see a value that was wrong
+    when it was stored (`PL-H1JH`).
+    """
+
+    snapshot = SimulationController(agent_id=agent_id).snapshot()
+    mac_awake = snapshot.agent_mac_awake
+    band = mac_awake_band_percent(
+        fraction_of_mac=mac_awake.fraction_of_mac,
+        standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
+        mac_percent=snapshot.agent_mac_percent,
+    )
+    line = format_mac_awake_reference(
+        snapshot.agent_display_name,
+        fraction_of_mac=mac_awake.fraction_of_mac,
+        standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
+        mac_percent=snapshot.agent_mac_percent,
+    )
+
+    assert band == pytest.approx(band_percent)
+    assert line == reference_line
 
 
 def test_the_mac_awake_band_refuses_inputs_it_cannot_place_honestly() -> None:

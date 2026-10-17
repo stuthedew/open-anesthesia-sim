@@ -228,6 +228,99 @@ def test_desflurane_is_less_soluble_than_sevoflurane_which_is_less_soluble_than_
     )
 
 
+@pytest.mark.parametrize(
+    (
+        "agent_id",
+        "de_wolf_mac_percent",
+        "mapleson_age_40_mac_percent",
+        "recorded_deviation_percent",
+    ),
+    [
+        ("sevoflurane", 2.0, 1.80, 11.1),
+        ("isoflurane", 1.2, 1.17, 2.6),
+        ("desflurane", 6.0, 6.6, -9.1),
+    ],
+)
+def test_mac_matches_its_cited_source_and_its_recorded_mapleson_deviation(
+    agent_id: str,
+    de_wolf_mac_percent: float,
+    mapleson_age_40_mac_percent: float,
+    recorded_deviation_percent: float,
+) -> None:
+    """Each stored MAC equals its adopted source and lies where its notes say.
+
+    The first literal is De Wolf et al. 2012 (PMC3502091), Methods, first
+    paragraph: "MAC values that we used in our GasMan® simulations are:
+    desflurane 6%, sevoflurane 2%, isoflurane 1.2%." It was read as full text
+    from PubMed Central on 2026-10-17. Meybohm et al. 2021 (PMC7943506),
+    Table 1, read the same way on the same day, prints the same Gas Man set
+    with sevoflurane 2.1 and isoflurane 1.1. This test types De Wolf's
+    figures because De Wolf is the adopted authority. It cannot settle which
+    paper is right, and each agent file records the disagreement (`PL-0SG0`).
+
+    The second literal is Mapleson 1996 (PMID 8777094), Abstract, read
+    through PubMed on 2026-10-17: MAC at age 40 is "isoflurane, 1.17%; ...
+    sevoflurane, 1.80%; desflurane 6.6%". Nickalls and Mapleson 2003, Table 1
+    on printed page 171, read in the references corpus, prints the same three
+    values. The third literal is how far the stored MAC lies from that value,
+    in percent, as each agent file's Mapleson note records it. `docs/MODEL.md`
+    § "Delivery-limit and MAC parameters" turns that distance into the error
+    a displayed MAC multiple carries. So if a stored MAC changes, retyping
+    the first literal is not enough. The deviation then fails too, by more
+    than its half a percentage point of rounding, and the notes and that
+    disclosure have to change with it (`PL-FY35`).
+    """
+
+    mac_percent = load_agent_parameters(agent_id).mac_percent
+    deviation_percent = 100.0 * (mac_percent / mapleson_age_40_mac_percent - 1.0)
+
+    assert mac_percent == de_wolf_mac_percent
+    assert deviation_percent == pytest.approx(recorded_deviation_percent, abs=0.5)
+
+
+@pytest.mark.parametrize(
+    ("agent_id", "specified_maximum_percent"),
+    [
+        # The Dräger Vapor 2000 sevoflurane specification, "calibrated
+        # concentration range 0.2-8%", as sevoflurane.json's source entry quotes
+        # it. The gateway refused the cited page and draeger.com at CONNECT on
+        # 2026-10-17, so the specification itself was not read. Two readings in
+        # the references corpus agree with it: the Workbook for Gas Man, printed
+        # page 82, "Vaporizer settings above 5% are used with agents whose
+        # vaporizers are so-equipped, such as Sevoflurane at 8%", and Hendrickx
+        # and De Wolf in Modern Anesthetics, page 171, "starting with the maximum
+        # vaporizer setting of 8%".
+        ("sevoflurane", 8.0),
+        # Kelly and Kong 2011 (PMID 21749341). isoflurane.json's source entry
+        # reads it as both studied vaporizers being calibrated 0-5%. The
+        # abstract, read through PubMed on 2026-10-17, names the two models
+        # (Penlon Sigma Delta and Datex-Ohmeda Isotec 5) but not their scale.
+        # The full text is not in PubMed Central, and the publisher refused the
+        # request, so this 5% is the entry's reading and was not checked here.
+        ("isoflurane", 5.0),
+        # Johnston et al. 1994 (PMID 8067562), Abstract, read through PubMed on
+        # 2026-10-17: Tec 6 output "was analyzed at all integer dial settings
+        # from 1% to 18%".
+        ("desflurane", 18.0),
+    ],
+)
+def test_vaporizer_maximum_matches_its_cited_specification(
+    agent_id: str, specified_maximum_percent: float
+) -> None:
+    """Each agent's dial maximum equals the vaporizer its source describes.
+
+    The maximum is a device limit rather than a model parameter. It still
+    bounds the delivered-concentration control a learner turns. Each comment
+    above names the source, the locator and what was read. Two of the three
+    specifications could not be read from this environment, and their
+    comments say so (`PL-FY35`). `PL-L46W` is the item for reading them.
+    """
+
+    agent = load_agent_parameters(agent_id)
+
+    assert agent.max_delivered_concentration_percent == specified_maximum_percent
+
+
 def test_rejects_unknown_agent_id() -> None:
     with pytest.raises(SimulationConfigurationError, match="unknown agent_id"):
         load_agent_parameters("halothane")
@@ -584,6 +677,50 @@ def test_every_agent_carries_a_mac_awake_fraction_below_its_mac() -> None:
         assert 0.0 < mac_awake.fraction_of_mac - mac_awake.standard_deviation_fraction_of_mac
         assert mac_awake.fraction_of_mac + mac_awake.standard_deviation_fraction_of_mac < 1.0
         assert mac_awake.mac_reference_basis.strip()
+
+
+@pytest.mark.parametrize(
+    ("agent_id", "fraction_of_mac", "standard_deviation_fraction_of_mac"),
+    [
+        # Katoh et al. 1993, Abstract: "MAC-Awake values for sevoflurane and
+        # isoflurane obtained by slow washout were 0.34 +/- 0.05 and 0.31 +/-
+        # 0.05 (mean +/- SD), respectively, when MAC-Awake was expressed as a
+        # ratio to age-adjusted MAC."
+        ("sevoflurane", 0.34, 0.05),
+        ("isoflurane", 0.31, 0.05),
+        # Chortkoff et al. 1995, Abstract: desflurane's MAC-awake is "2.60% +/-
+        # 0.46%", which is "36% of MAC". The paper gives the spread only in
+        # percent, so the file stores it as a fraction of the MAC that the 36%
+        # is taken against, rounded to three decimals. That MAC is Rampil et
+        # al. 1991, Abstract: "7.25 +/- 0.0 (mean +/- SD) in the 18-30-yr age
+        # group".
+        ("desflurane", 0.36, round(0.46 / 7.25, 3)),
+    ],
+)
+def test_mac_awake_matches_its_adopted_primary_source(
+    agent_id: str, fraction_of_mac: float, standard_deviation_fraction_of_mac: float
+) -> None:
+    """Each stored MAC-awake fraction and spread equals its published value.
+
+    The expected values are typed from the adopted papers, not read from the
+    data files. A pin copied from a file catches a later edit but not a value
+    that was wrong when it was entered. Before this test, a 10% error in
+    sevoflurane's fraction passed all 1,654 data-dependent unit and
+    integration tests except `doc_check`'s comparison of the `docs/MODEL.md`
+    provenance table with the file, and that table was written from the
+    stored value. Only desflurane's fraction had a published check, and it
+    passed by float rounding (`PL-H1JH`).
+
+    Each paper was read as its PubMed abstract on 2026-10-17: Katoh et al.
+    (PMID 8214700), Chortkoff et al. (PMID 7574003) and Rampil et al. (PMID
+    2001020). None of the three is in PubMed Central or the references
+    corpus, so the abstract is the locator.
+    """
+
+    mac_awake = load_agent_parameters(agent_id).mac_awake
+
+    assert mac_awake.fraction_of_mac == fraction_of_mac
+    assert mac_awake.standard_deviation_fraction_of_mac == standard_deviation_fraction_of_mac
 
 
 def test_rejects_a_mac_awake_band_reaching_zero() -> None:
