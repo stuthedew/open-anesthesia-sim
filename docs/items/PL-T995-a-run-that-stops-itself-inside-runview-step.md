@@ -3,11 +3,13 @@ id: PL-T995
 title: A run that stops itself inside RunView.step_tick - a bookmark halt, or arrival at the supported run length - is never redrawn: step_tick requests no frame and render_tick draws only while a run runs or a frame is owed, so the screen keeps saying Running with a live Pause, a clock one step behind, and no Branch here button, until the learner presses something
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
 feature: every-control-restates-the-halt
-touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py
 added: 2026-10-12
+closed: 2026-10-17
+pr: 1483
 payoff: a run that stops on a mark or at the supported run length says so on screen at once, instead of reading Running with a live Pause until the learner presses something
 verify: grep -q 'def test_a_run_that_halts_on_a_mark_under_its_own_timers_is_redrawn' tests/integration/test_simulation_view.py
 ---
@@ -66,3 +68,27 @@ a sibling covers arrival at the supported run length through `step_tick`.
 tick is not running after it, `step_tick` asks for a coalesced frame
 (`presentation_requested(True)`), so `render_tick` owes and draws one; and a
 regression test driving the real timers rather than `present(False)`.
+
+**Fixed 2026-10-17 under `PL-X7D5`'s first pull request**, by that item's
+design-round answer rather than the candidate above: `step_tick` still requests
+no frame. `SimulationView.render_tick` now draws whenever a displayed run's
+`SimulationController.record()` differs from the record its `RunView` last
+wrote (`RunView.owes_a_frame`). A run that stops itself, on a mark or on
+arriving at the supported run length, changes its record and is drawn on the
+next render tick with no press. Two regression tests drive the real step and
+render timers:
+
+- `test_a_run_that_halts_on_a_mark_under_its_own_timers_is_redrawn` asserts
+  status "Paused", the clock at the mark, Pause disabled, Start enabled, and
+  "Branch here" shown on the halt's instant.
+- `test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_redrawn`
+  shortens the supported span to 60.5 s. It does this by monkeypatching
+  `supported_ranges.maximum_step_count`, the one count that both the
+  controller and the core read, since the timers cannot reach 24 h inside a
+  test.
+
+A third test, `test_a_frame_that_keeps_failing_is_attempted_once_not_every_tick`,
+holds the cost side. The record is stored wherever it is written,
+`present_halt` included, so a frame that raises is not attempted on every
+tick. On the tree before the fix, the first two tests fail with "Running"
+where the stopped run's status belongs.
