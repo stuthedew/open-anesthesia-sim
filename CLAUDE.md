@@ -206,8 +206,6 @@ is not optional.
 
 ## Architecture and development discipline
 
-- Keep scientific/simulation code independent of the UI toolkit.
-- Put no simulation calculations in UI callbacks.
 - Treat simulation time as explicit state, never wall-clock time.
 - Preserve deterministic results for identical inputs.
 - Add or update tests with every core behavior change.
@@ -229,7 +227,8 @@ is not optional.
   `.claude/rules/apparatus-standard.md` § "Read the fact from its record;
   where none exists, write one" has the three shapes a new reader takes.
 - Keep agent/model parameters in validated, versioned data files.
-- Do not add executable equations to data files.
+- Keep executable equations out of data files: the typed payloads in
+  `core/parameters.py` already refuse a formula where a number belongs.
 - Do not implement beyond the current milestone. `ROADMAP.md` is the
   authoritative version and milestone map. An out-of-milestone idea is
   recommended and its value explained, never silently implemented; it is

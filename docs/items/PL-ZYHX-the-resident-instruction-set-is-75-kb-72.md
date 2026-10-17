@@ -3,13 +3,15 @@ id: PL-ZYHX
 title: The resident instruction set is 75 KB, 72% process and 1.5% engineering discipline, and the architecture rules that hold are the ones with a check: decide whether the resident rules without one, the single-source-of-truth rule first, move to checks with their prose retired
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs, session-cost
 feature: friction-batch
-touches: CLAUDE.md, .claude/rules, docs/resident-instructions.md
+touches: CLAUDE.md, .claude/rules, docs/resident-instructions.md, docs/ARCHITECTURE.md, docs/apparatus.md, tools/import_boundary_check.py
 blocked-by: PL-40SJ, PL-YXFF
 deferred-from: v0.6.0 - a decision about how the resident instruction set carries engineering rules is not debt the layout milestone clears
 added: 2026-10-03
+closed: 2026-10-17
+pr: 1501
 payoff: the two architecture rules that kept recurring are carried by a check and by a rule that loads with app/, and the resident set shrinks by the prose they replace
 verify: ! grep -qF 'Put no simulation calculations in UI callbacks.' CLAUDE.md && ! grep -qF 'Keep scientific/simulation code independent of the UI toolkit.' CLAUDE.md && ! grep -qF 'Do not add executable equations to data files.' CLAUDE.md
 ---
@@ -31,3 +33,5 @@ verify: ! grep -qF 'Put no simulation calculations in UI callbacks.' CLAUDE.md &
 **Done when.** `CLAUDE.md` § "Architecture and development discipline" no longer carries "Keep scientific/simulation code independent of the UI toolkit", "Put no simulation calculations in UI callbacks" or "Do not add executable equations to data files". The first is retired under `docs/resident-instructions.md` § "When a resident rule is retired", with the ledger naming `tools/import_boundary_check.py` as what catches its failure; the second moves, in its own words, to a rule under `.claude/rules/` whose `paths:` is `src/anesthesia_sim/app/**`, with the ledger saying where it went; the third is reworded to point at the typed payloads of `core/parameters.py` that already refuse an expression. The edit names what it replaces, as every resident-set edit must, and `make check`'s resident character total falls by what left.
 
 **Generator check.** An instance of PL-LN69's fact - "whether each resident instruction changes session behaviour" - filed after that head closed as spent on 2026-09-21, and read against it rather than as a new head. Its reopening clause names an adherence failure traceable to resident *size*, which this is not: the bullets that hold and the two that recur sit in one section at one depth, and what separates them is a check, so the finding is about the carrier rather than the length. It asks for the disposition rule the resident set already states to be applied, not for the effect test the owner declined.
+
+**Built 2026-10-17.** As decided, in one rewrite of `CLAUDE.md` § "Architecture and development discipline". The toolkit bullet is retired: `tools/import_boundary_check.py` was observed refusing a staged one-line module under `core/` importing `PySide6` (56 modules read, 1 error, exit 1; 55 and 0 without it; its 70 tests passed) before the line was removed. The callback bullet is `.claude/rules/ui-calculations.md`, `paths: /src/anesthesia_sim/app/**`, in its own words, with where the line sits and what is checked around it. The data-file bullet reads "Keep executable equations out of data files: the typed payloads in `core/parameters.py` already refuse a formula where a number belongs", observed on `_AgentPayload`, which rejects `"0.65 * 1.1"` and `"0.65"` alike with "must be a number". `CLAUDE.md` shrinks by 23 characters (two lines of 65 and 50 out, the data-file line 49 to 141), `make check` reports the resident files 23 characters under `origin/main` (its printed total 91,081 to 91,054, the digest having moved 4 on its own), and the new rule adds 2,065 characters on demand. `docs/resident-instructions.md` gained two rows in § "What was routed out", a rewritten invariants block, a note on the refused path-scoping, and § "Two architecture bullets routed out and one reworded, 2026-10-17". `tools/import_boundary_check.py`, `docs/apparatus.md` and `docs/ARCHITECTURE.md` cited `CLAUDE.md` as the toolkit rule's source and now cite `docs/ARCHITECTURE.md` § "Layering"; `touches` widened to them. Swept for the three sentences and found nothing to change: `docs/machine-abstraction.md` (still true of the reworded bullet), `CONTRIBUTING.md` and `ROADMAP.md` § "Development rules for scientific milestones" (state the rules in their own words), `docs/worker.md` and `.claude/skills/` (no mention).

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: reset-aftermath
+milestone: v0.5.25
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py, docs/items/PL-75P5-a-refused-branch-stays-on-screen-through-a.md, docs/items/PL-08SS-simulationview-handle-fork-and-handle-halt-fork.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-22

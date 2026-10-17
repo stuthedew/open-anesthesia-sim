@@ -11,8 +11,9 @@ rules, and what this project deliberately does differently — see
 
 ## Layering
 
-The codebase is split into independent layers, enforced by import direction
-(never edit around this — see `CLAUDE.md`):
+The codebase is split into independent layers, enforced by import direction,
+which `tools/import_boundary_check.py` holds at every `make check` (never
+edit around this):
 
 ```text
 data/  --loaded by-->  core/  --read by-->  app/
@@ -49,10 +50,16 @@ data/  --loaded by-->  core/  --read by-->  app/
   `tools/doc_check.py`'s provenance walk, which can only see a constant that
   entered a data file.
 
-This mirrors the repository rules in `CLAUDE.md`: simulation code stays
-independent of the toolkit, no simulation calculations belong in UI callbacks, and
-model parameters live in validated, versioned data files rather than as
-executable code.
+Three rules rest on this layering, and this section is where the first is
+stated. Simulation code stays independent of the UI toolkit:
+`tools/import_boundary_check.py` refuses a toolkit import under `core/` and a
+`core/` import of `app/`, and the sentence was a `CLAUDE.md` bullet until
+`PL-ZYHX` retired it to that check on 2026-10-17. No simulation calculation
+belongs in a UI callback: `.claude/rules/ui-calculations.md` states that rule
+and loads with every file under `app/`. Model parameters live in validated,
+versioned data files and never as executable code: `CLAUDE.md`
+§ "Architecture and development discipline" keeps that rule, and the typed
+payloads in `core/parameters.py` refuse a formula where a number is expected.
 
 ## Package map
 

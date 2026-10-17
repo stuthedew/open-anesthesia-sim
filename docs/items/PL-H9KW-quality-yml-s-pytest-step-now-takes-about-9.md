@@ -3,11 +3,13 @@ id: PL-H9KW
 title: quality.yml's pytest step now takes about 9 minutes, about 82% of every checks run, up from 48 s on 2026-09-05 and 144-359 s on 2026-09-28 while test functions grew 29%, so a few slow tests are the likely cause; and the 15-minute timeout's comment still sizes it against a 3m44s job
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra, test
 feature: ci-cost
 touches: tests/unit/test_doc_check.py, .github/workflows/quality.yml
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1498
 payoff: every pull request's checks run finishes minutes sooner, and its timeout is sized against what the job now takes, so a slow runner reads as slow rather than as a red check
 verify: ! grep -qF 'twice the observed 3m44s' .github/workflows/quality.yml
 ---
@@ -156,3 +158,27 @@ pytest step's 99%-to-100% stretch is back near its late-September 73 s, no
 24-hour trunk is built more than once per run, no test is removed or skipped to
 get there, and the timeout comment states the job time it was sized against.
 The step's median is recorded against the 551 s baseline either way.
+
+**CI re-time, 2026-10-17 (step 5's reading).** Successful runs created after
+`031cf413` merged, up to 14:43 UTC. The runner classes are `PL-4Z5Y`'s.
+
+- **Pytest step medians.** 506 s on slow runners (19 runs), 361 s on mid
+  runners (3) and 263 s on fast runners (8), against the 551 s baseline.
+- **Whole `checks` job.** Median 621 s on slow runners and 352 s on fast
+  ones. The longest was 639 s.
+- **The tail.** The stretch from 99% to 100% was 25 to 43 s on five slow-run
+  logs (median 38 s) and 20 to 21 s on two fast-run logs, against 73 s in
+  late September. It includes the coverage combine.
+- **Trunk builds.** CI's log has no per-test lines, so the count of one build
+  per trunk is the local measurement in #1487 only.
+- **Left.** Restate the `timeout-minutes: 15` comment against these job
+  times, then close. `PL-4Z5Y` records how much of the fall belongs to #1486
+  rather than to the dealing.
+
+**Closed 2026-10-17.** `quality.yml`'s timeout comment now states the job
+times above and the margin they leave: 15 minutes is about 4 minutes, or 41%,
+over the longest run of 639 s. The limit itself stays at 15. Every point of
+the done-when holds, with one caveat. That each trunk is built once is the
+local measurement in #1487, because CI's log prints no per-test lines.
+`PL-T9X9`, filed today, is the change that would cut the job's time further:
+it splits the pytest step across two hosted jobs.

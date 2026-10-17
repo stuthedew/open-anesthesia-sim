@@ -91,6 +91,15 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/docket-branch-guard.sh\""
+          }
+        ]
+      },
+      {
         "matcher": "Read|Grep|Glob",
         "hooks": [
           {
@@ -105,6 +114,17 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/webfetch-quote-note.sh\""
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/docket-branch-guard.sh\""
           }
         ]
       }

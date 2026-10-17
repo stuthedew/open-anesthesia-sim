@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.25
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/checks.py, tools/doc_check.py, subprojects/docket/tests/test_release.py, tests/unit/test_doc_check.py, subprojects/docket/src/docket/picks.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_markdown_reference.py, docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
