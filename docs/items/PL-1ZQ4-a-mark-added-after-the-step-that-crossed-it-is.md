@@ -3,11 +3,13 @@ id: PL-1ZQ4
 title: A mark added after the step that crossed it is answered three ways: the trunk reads a late MAC target as not reached where a branch opened on that step reads it reached, a mark added to a branch after it opened is never asked of its opening step, and fork_at at a keyframe the trunk halted on opens on no crossing where fork_here opens on the halt's
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: safety, defect
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, docs/MODEL.md, tests/integration/test_controller.py
 added: 2026-10-12
+payoff: a mark reads the same on the trunk and on every branch whichever order it and the branch came in, so a learner never sees one mark reached and not reached at one instant
+verify: grep -q 'def test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run' tests/integration/test_controller.py
 ---
 
 **Problem.** A mark added after the step that crossed it is answered three ways: the trunk reads a late MAC target as not reached where a branch opened on that step reads it reached, a mark added to a branch after it opened is never asked of its opening step, and fork_at at a keyframe the trunk halted on opens on no crossing where fork_here opens on the halt's
@@ -111,8 +113,14 @@ extended to heights, and it keeps the counterfactual the mark door was built
 on. (b) would undo that door's "the branch the halt would have given" guarantee
 and the test that holds it.
 
-**Done when** (written for the recommended answer; rewritten if the owner
-chooses otherwise). `SimulationController`'s standings read a mark inside the
+**Answered 2026-10-17: (a)** (project owner, 2026-10-17, ratified, "agree with
+rec", over (b), MAC targets historical everywhere). One positional rule for
+every run and every order: a run reads a mark lying inside the step it opened
+on or stands on as crossed by that step, asked of the marks as they stand
+whenever the standings are read. The Done when below was written for this
+answer and stands as written.
+
+**Done when.** `SimulationController`'s standings read a mark inside the
 step a run opened on or stands on as crossed, asked of the marks as they stand
 at the read, on the trunk and on every branch, and `fork_at` at a keyframe the
 trunk is halted on opens on the same crossing `fork_here` does; all three cases
