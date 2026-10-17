@@ -3,14 +3,14 @@ id: PL-W9VC
 title: doc_check's _hash_comments reads a host claim's comments a physical line at a time, so a Makefile comment a backslash continues is read short, and a hash-led line inside a here-document, a multi-line quoted string, a YAML block scalar or a TOML multi-line string is read as a comment: an undated claim is missed or a dated one refused; latent
 priority: P3
 effort: S
-status: blocked
+status: ready
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 blocked-by: PL-PBNK
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
-payoff: a hash-led line that is a here-document's or a quoted string's content stops being read as a shell comment, so it no longer decides whether the host-claim gate refuses a sentence
+payoff: a hash-led line that is a here-document's, a quoted string's or a YAML block scalar's content stops being read as a comment, so it no longer decides whether the host-claim gate refuses a sentence, and a workflow's run scripts have their comments read as bash reads them
 verify: grep -q 'def test_a_hash_line_inside_a_here_document_or_a_quoted_string_is_no_comment' tests/unit/test_doc_check.py
 ---
 

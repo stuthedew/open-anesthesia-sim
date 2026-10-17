@@ -7725,10 +7725,15 @@ def dated_records(root: Path) -> tuple[str, ...]:
     return (load_docket_config(root).items_dir.strip("/") + "/", f"{NOTES_DIR}/", RECORDS)
 
 
-#: The formats that write a comment as a line opening `#`, by suffix and by
-#: name: YAML, the citation file's YAML among it, TOML, shell and make.
-HASH_COMMENTED_SUFFIXES = frozenset({".yml", ".yaml", ".cff", ".toml", ".sh"})
-HASH_COMMENTED_NAMES = frozenset({"Makefile"})
+#: The formats whose `#` comments the host-claim check reads, by suffix: YAML,
+#: the citation file's YAML among it, and shell. TOML and a Makefile write a
+#: comment the same way and are not read, since no committed version of either
+#: has held a host claim in one - this check's reading, run over the 312
+#: versions of the TOML, make and YAML files on 2026-10-17 - and reading their
+#: comments right would take a comment-preserving reader of each, which
+#: `tomllib` is not (`PL-PBNK`). YAML is kept on the same count: a workflow's
+#: comment held one until `#1387` (`PL-B3MK`).
+HASH_COMMENTED_SUFFIXES = frozenset({".yml", ".yaml", ".cff", ".sh"})
 #: A comment's marker - `#`, the `#:` that documents an attribute - and the one
 #: space after it, so what is left reads as the prose it is.
 COMMENT_MARK_RE = re.compile(r"^#+:?[ \t]?")
@@ -7881,7 +7886,7 @@ def _host_claim_texts(
     if posix.startswith(dated):
         return
     suffix = path.suffix
-    hashed = suffix in HASH_COMMENTED_SUFFIXES or path.name in HASH_COMMENTED_NAMES
+    hashed = suffix in HASH_COMMENTED_SUFFIXES
     if suffix not in (".md", ".py", ".json") and not hashed:
         return
     try:
@@ -7936,8 +7941,8 @@ def check_host_claims(root: Path, report: Report) -> None:
     Read wherever the tree writes prose a later session takes for the present:
     every Markdown file but the records `dated_records` names, a Python file's
     docstrings and comments, the `#` comments of the formats
-    `HASH_COMMENTED_SUFFIXES` and `HASH_COMMENTED_NAMES` name, and a JSON file's
-    strings, where a data file keeps its provenance notes. Whether a sentence is
+    `HASH_COMMENTED_SUFFIXES` names, and a JSON file's strings, where a data
+    file keeps its provenance notes. Whether a sentence is
     about a host at all is judgment, so what counts is narrow and written down:
     a host is what `HOST_RE` reads, and a name some file in the tree carries is
     that file.

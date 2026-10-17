@@ -10610,6 +10610,29 @@ def test_a_host_block_claim_outside_the_documents_is_refused(
     assert [error.split(" names ")[0] for error in errors] == [f"{name}:{line}"]
 
 
+def test_a_toml_or_makefile_comment_is_not_read_for_host_claims(tmp_path: Path) -> None:
+    """TOML and make write a comment as YAML does, and no claim has stood in either's (`PL-PBNK`).
+
+    Every committed version of the tree's TOML and Makefile was read on
+    2026-10-17 and none held one, so neither is read: reading their comments
+    right would take a comment-preserving reader of each, which no library
+    supplies, for a reach that has held nothing. A workflow's comment held a
+    real one until `#1387` (`PL-B3MK`), so YAML, read on the same count, is.
+    """
+    comment = "# `github.blog` is blocked by this container's proxy.\n"
+
+    errors = _host_claim_errors(
+        tmp_path,
+        {
+            "pyproject.toml": comment + "[project]\n",
+            "Makefile": comment + "all:\n\ttrue\n",
+            ".github/workflows/ci.yml": comment + "on: push\n",
+        },
+    )
+
+    assert [error.split(" names ")[0] for error in errors] == [".github/workflows/ci.yml:1"]
+
+
 @pytest.mark.parametrize(
     ("files", "why"),
     [
