@@ -3,11 +3,12 @@ id: PL-KLN5
 title: The env block in .claude/settings.json may not reach a cloud session: CLAUDE_CODE_SUBAGENT_MODEL was unset in the Bash shell of a one-repository session whose project hooks ran (2026-10-01), though the settings reference says env reaches every subprocess, so docs/maintainer.md's claim that it picks the exploration-subagent model is unverified
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: friction-batch
 touches: docs/maintainer.md, docs/items
 added: 2026-10-01
+closed: 2026-10-17
 payoff: docs/maintainer.md says truthfully which model exploration subagents run on in a cloud session, so the owner's cost lever is one that works
 verify: grep -qE '^\*\*Subagent model measured [0-9]{4}-[0-9]{2}-[0-9]{2}' docs/items/PL-KLN5*.md
 not-delegable: the deciding measurement reads a probe subagent's transcript, which the auto-mode classifier refused on 2026-10-01; it needs a session whose permission mode allows that read
@@ -53,3 +54,21 @@ is corrected or confirmed by it.
 **Reproduced 2026-10-01**, in a second one-repository cloud session whose hooks ran: `echo ${CLAUDE_CODE_SUBAGENT_MODEL:-}` printed nothing, while `.claude/settings.json` line 4 sets it to `haiku`.
 
 **Generator check.** The fact is which parts of `.claude/settings.json` take effect in a cloud session, an external behaviour nothing in the tree models. `PL-9DYK` and `PL-0MLZ` read the variable's absence as the file not loading; neither was filed because of it and `PL-9DYK`'s conclusion held on other evidence, so it is below a head's three and no head states it. Recorded so a third reading counts.
+
+**Subagent model measured 2026-10-17**, in the fifth thread of the friction
+batch. That is a Projects thread in a one-repository cloud session
+(`CLAUDE_CODE_ENTRYPOINT=remote_projects`,
+`CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST=1`). A `general-purpose` subagent started
+with no `model` ran on `claude-opus-5-5`, the parent's model. Every assistant
+entry of its transcript under `~/.claude/projects/` records that model, read
+with `jq -r 'select(.type=="assistant") | .message.model'`, and the auto-mode
+classifier allowed the read this time. `CLAUDE_CODE_SUBAGENT_MODEL` was also
+unset in the session's Bash shell. So the `haiku` in the `env` block does not
+reach a cloud session's subagents. The documentation adds that the variable
+never applies to the built-in Explore and Plan subagents, which run on the main
+conversation's model (https://code.claude.com/docs/en/sub-agents, "Choose a
+model", read 2026-10-17). `docs/maintainer.md` § "Settings that make sessions
+cheaper" now says both. Why the block does not apply is still untested, and the
+settings guide's trust step is one candidate. Whether exploration should run on
+a cheaper model is `PL-2D28`. The dated model-choice passage this read turned up
+is `PL-XJV3`.
