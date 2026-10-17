@@ -3663,6 +3663,54 @@ def test_a_gate_the_makefile_runs_and_ci_does_not_is_an_error(tmp_path: Path) ->
     assert any("only one of the two gates gates coverage" in m for m in _errors(root))
 
 
+# CI may split the run into parts on several runners and hold their combined
+# coverage to the threshold in a `coverage report` step (`PL-T9X9`). Each part
+# is the Makefile's line with the threshold flag replaced at its end.
+PART = GATE.replace(" --cov-fail-under=100", " --cov-report= --part {}")
+REPORT = "uv run coverage report --show-missing --fail-under=100"
+
+
+def _split(root: Path, *ci: str) -> Path:
+    """A repository whose Makefile runs `GATE` and whose workflow runs each of `ci`."""
+    (root / "Makefile").write_text(f".PHONY: check\ncheck:\n\t{GATE}\n", encoding="utf-8")
+    _with_workflow(
+        root,
+        "name: quality\n\non: [push, pull_request]\n\njobs:\n  checks:\n"
+        "    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v7.0.1\n"
+        + "".join(f"      - run: {command}\n" for command in ci),
+    )
+    return root
+
+
+def test_parts_that_fold_back_into_the_makefiles_gate_are_quiet(tmp_path: Path) -> None:
+    root = _split(_repo(tmp_path), PART.format("1/2"), PART.format("2/2"), REPORT)
+    assert _errors(root) == []
+
+
+@pytest.mark.parametrize(
+    "ci",
+    [
+        # A part that dropped a flag the Makefile keeps.
+        (PART.format("1/2"), PART.format("2/2").replace(" -n auto", ""), REPORT),
+        # A combined threshold below the Makefile's.
+        (PART.format("1/2"), PART.format("2/2"), REPORT.replace("=100", "=99")),
+    ],
+)
+def test_a_part_or_threshold_that_drifted_is_an_error(tmp_path: Path, ci: tuple[str, ...]) -> None:
+    errors = _errors(_split(_repo(tmp_path), *ci))
+    assert any("the coverage gate differs between the Makefile and CI" in m for m in errors)
+
+
+def test_parts_that_leave_one_out_are_an_error(tmp_path: Path) -> None:
+    errors = _errors(_split(_repo(tmp_path), PART.format("1/3"), PART.format("3/3"), REPORT))
+    assert any("not numbered 1 to 3 once each" in m for m in errors), errors
+
+
+def test_parts_whose_combined_coverage_nothing_holds_are_an_error(tmp_path: Path) -> None:
+    errors = _errors(_split(_repo(tmp_path), PART.format("1/2"), PART.format("2/2")))
+    assert any("no `uv run coverage report --fail-under` step" in m for m in errors), errors
+
+
 def test_a_repository_with_no_coverage_gate_at_all_is_left_alone(tmp_path: Path) -> None:
     # Absence of a gate is not this check's business - it holds two statements
     # to each other and says nothing about whether they should exist.

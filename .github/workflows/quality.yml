@@ -104,33 +104,27 @@ permissions:
   contents: read
 
 jobs:
-  # **This job's name is load-bearing outside the tree.** Branch protection
-  # matches a required status check by name, so renaming or removing a job here
-  # orphans the requirement: nothing reports it, and every pull request then
-  # waits forever on a check that cannot arrive - pending rather than failing,
-  # so it does not look like a break. `PL-D551` deleting the `floor` job did
-  # exactly that (`PL-KPP1`). Change a job name only together with that setting.
+  # The linters, the floor section, the tools, the verify replay and the first
+  # part of the test suite. The suite runs in two parts on two runners, because
+  # on a slow runner the one job that ran all of it took about 10 minutes, 506 s
+  # of them in pytest (`PL-T9X9`). `tests/conftest.py`'s module docstring says
+  # how `--part` splits the tests and why this part gets fewer of them.
   #
-  # **This is now checked rather than only written down** (`PL-XZD0`).
-  # `tools/required_checks_check.py` runs as a step in this job and reconciles
-  # the two lists in both directions - a required name nothing reports, and a
-  # reporting job nothing requires. Its docstring carries the decision and the
-  # measurement behind it; the note above `pr-title.yml`'s job key points at
-  # the same place rather than restating any of it.
-  checks:
+  # not-required: gated by `checks`, which needs this job and fails unless it succeeded
+  checks-part-1:
     runs-on: ubuntu-latest
     # The default is 360 minutes. `bin/docket check --verify` shells out to
     # every `ready` or `needs-decision` item's own `verify:` command - 216 of
     # them on 2026-09-22 - so a single item can introduce a hang that nothing
     # else here would bound (`PL-FSH9`).
     #
-    # 15 minutes is sized against this job's times on 2026-10-17: a median of
-    # 621 s (10m21s) on slow runners and 352 s on fast ones, and 639 s
-    # (10m39s) at the longest. That leaves about 4 minutes, 41% over the
-    # longest run, for a cold uv cache or a slower runner. A timeout that fires
-    # on a healthy run is a defect in the timeout rather than a saving, so
-    # re-time the job and restate these figures when the pytest step grows
-    # (`PL-H9KW`).
+    # 15 minutes was sized against the single job's times on 2026-10-17: a
+    # median of 621 s (10m21s) on slow runners and 352 s on fast ones, and
+    # 639 s (10m39s) at the longest. Each part now runs less than that job did,
+    # so the bound is loose until it is re-timed from the parts' own runs
+    # (`PL-T9X9`). A timeout that fires on a healthy run is a defect in the
+    # timeout rather than a saving, so re-time the job and restate these
+    # figures when the pytest step grows (`PL-H9KW`).
     timeout-minutes: 15
 
     steps:
@@ -264,11 +258,15 @@ jobs:
       # cache against 9.2 s straight after `uv run mypy`. Reversing the two
       # lines would triple its bill and prove nothing extra (`PL-PBP5`).
       - run: uv run python tools/ignore_check.py
-      # The same invocation as `make check`'s pytest line, and it has to stay
-      # the same: `core/` is at 100% of statements and branches, and this is
-      # what keeps it there. See the comment in the Makefile for why the
-      # threshold and the worker count are on the command line rather than in a
-      # config table, and for the measurements behind the width.
+      # `make check`'s pytest line, with `--cov-fail-under=100` replaced by
+      # `--cov-report= --part 1/2`, and it has to stay that way: `core/` is at
+      # 100% of statements and branches, and the two parts' coverage, combined
+      # in the `checks` job, is what keeps it there. Each part alone covers
+      # less, so neither checks the threshold, and `--cov-report=` keeps a
+      # part from printing a partial total that reads like a failure. See the
+      # comment in the Makefile for why the threshold and the worker count are
+      # on the command line rather than in a config table, and for the
+      # measurements behind the width.
       #
       # The width is computed here rather than pinned for the reason `-n auto`
       # was: it has to read this runner rather than carry one box's core count.
@@ -285,7 +283,16 @@ jobs:
       # only ever off there by association with it: `pytest-xdist` is a
       # declared dependency that job upgrades and was never running, so
       # `PL-55JM` put `-n auto --dist worksteal` on both of its pytest lines.
-      - run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
+      - run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-report= --part 1/2
+      # `.coverage` is a hidden file, which the action leaves out unless asked.
+      # One day is enough, since only this run's `checks` job reads it.
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: coverage-part-1
+          path: .coverage
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
       # Repeated from the floor section above, unlike the eight lines after
       # them. `branch_id_check.py` reads `git log` and the branch name, never
       # project source, so the 3.11 parser has nothing it cannot read
@@ -358,8 +365,8 @@ jobs:
       # A step rather than a job of its own, which is not a style preference:
       # a new job reports a new status check, which would itself have to be
       # added to the required list - the exact trap `PL-H8YD` records. As a
-      # step it inherits the requirement this job already carries, so the check
-      # that guards the list adds no entry to it.
+      # step it is gated by `checks`, which needs this job, so the check that
+      # guards the list adds no entry to it.
       #
       # `GITHUB_TOKEN` buys rate limit and nothing else. Every endpoint it
       # reads answers unauthenticated on a public repository, which is what
@@ -425,10 +432,12 @@ jobs:
       # line, including when the scope held nothing, so a narrowed answer can
       # never be read as a clean whole-store one.
       #
-      # Two steps rather than one job, deliberately: this job's name is
-      # load-bearing for branch protection (see the note on `checks:` above), so
-      # the alternative of splitting the sweep into a parallel job would have
-      # orphaned a required check as well as buying a second rounded-up minute.
+      # Two steps rather than a job of their own. When this was written, a
+      # parallel job would have needed a required check of its own and a
+      # second rounded-up minute. Since `PL-T9X9` a job needs only a
+      # `# not-required:` line and a place in `checks`'s `needs:` (see the
+      # note on `checks:` below), so its own setup, about 20 s, is the cost
+      # left to weigh.
       - name: verify replay, scoped to what this branch changed
         if: github.event_name == 'pull_request'
         # Through the environment rather than a `${{ }}` interpolation in the
@@ -454,3 +463,85 @@ jobs:
       # could never clear the failure it caused. One billable minute is the
       # correct price for that, and `PL-9HDH` is dropped saying so.
 
+  # The second part of the test suite, on a runner of its own. It runs every
+  # test that reads a costly computation, so each one is computed on one
+  # runner rather than on both (`tests/conftest.py`). Its steps are the first
+  # part's setup and pytest steps, with the same reasons, which are not
+  # repeated here.
+  #
+  # not-required: gated by `checks`, which needs this job and fails unless it succeeded
+  checks-part-2:
+    runs-on: ubuntu-latest
+    # The first part's bound, for the first part's reasons.
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Qt's system libraries, for the offscreen platform plugin
+        run: sudo apt-get update && sudo apt-get install -y libegl1
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+      - run: uv sync --locked --dev
+      - run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-report= --part 2/2
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: coverage-part-2
+          path: .coverage
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  # **This job's name is load-bearing outside the tree.** Branch protection
+  # matches a required status check by name, so renaming or removing a job here
+  # orphans the requirement: nothing reports it, and every pull request then
+  # waits forever on a check that cannot arrive - pending rather than failing,
+  # so it does not look like a break. `PL-D551` deleting the `floor` job did
+  # exactly that (`PL-KPP1`). Change a job name only together with that setting.
+  #
+  # **This is now checked rather than only written down** (`PL-XZD0`).
+  # `tools/required_checks_check.py` runs as a step in `checks-part-1` and reconciles
+  # the two lists in both directions - a required name nothing reports, and a
+  # reporting job nothing requires. Its docstring carries the decision and the
+  # measurement behind it; the note above `pr-title.yml`'s job key points at
+  # the same place rather than restating any of it.
+  #
+  # **It is now the job that gates the two parts** (`PL-T9X9`). It needs both,
+  # and runs `if: always()` so that it runs, and fails, when either part
+  # failed or was cancelled. Without that, a part's failure would skip this
+  # job, and a skipped job reports "Success", which lets a pull request merge
+  # even when the check is required
+  # (https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions).
+  # Then it combines the parts' coverage and holds `core/` to 100%.
+  # `tests/unit/test_quality_step_order.py` fails on a job this one does not
+  # need.
+  checks:
+    needs: [checks-part-1, checks-part-2]
+    if: always()
+    runs-on: ubuntu-latest
+    # About 30 s of work: setup, two downloads and two `coverage` commands.
+    timeout-minutes: 5
+
+    steps:
+      - name: both parts succeeded
+        env:
+          PART_1: ${{ needs.checks-part-1.result }}
+          PART_2: ${{ needs.checks-part-2.result }}
+        run: test "$PART_1" = success && test "$PART_2" = success
+      # The same checkout and environment the parts measured, so the source
+      # paths in their coverage data name files that exist here.
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+      - run: uv sync --locked --dev
+      # Each artifact is unpacked into a directory named after it.
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: coverage-part-*
+      - run: uv run coverage combine coverage-part-1/.coverage coverage-part-2/.coverage
+      # `make check`'s threshold, which `tools/doc_check.py`'s
+      # `check_coverage_gate` holds to the Makefile's `--cov-fail-under`.
+      - run: uv run coverage report --show-missing --fail-under=100

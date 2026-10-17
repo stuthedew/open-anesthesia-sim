@@ -1,4 +1,4 @@
-"""`tests/conftest.py`'s dealing of the costly tests, and its copy of how `--dist worksteal` deals.
+"""`tests/conftest.py`'s dealing of the costly tests, its copy of worksteal's, and its parts.
 
 The conftest moves the tests sharing each costly computation to where it
 predicts a worker's first slice begins (`PL-4Z5Y`, `PL-K5VM`). `deal` is held
@@ -6,8 +6,14 @@ here to what that move must keep, on plain values. The prediction copies
 arithmetic out of pytest-xdist's scheduler, an internal, so it is held to the
 installed scheduler too: a release that deals differently fails here, where
 otherwise the only sign would be a slower run.
+
+`part` picks the tests one of CI's two pytest jobs runs (`PL-T9X9`). A test it
+dropped from every part would never run in CI, and the combined coverage gate
+would notice only if that test was the one covering a line of `core/`. So the
+parts are held here to running every test exactly once.
 """
 
+import argparse
 import importlib.util
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -127,3 +133,30 @@ def test_the_predicted_slices_are_the_ones_worksteal_deals(tests: int, workers: 
         "worksteal's first slices are no longer the sizes tests/conftest.py predicts, "
         "so the costly tests no longer start at the head of a worker's slice"
     )
+
+
+@pytest.mark.parametrize("parts", [1, 2, 3])
+def test_the_parts_run_every_test_exactly_once(parts: int) -> None:
+    tests = list(range(23))
+    runs = [
+        test
+        for index in range(1, parts + 1)
+        for test in DEALING.part(tests, {3, 4, 17}, index, parts)
+    ]
+    assert sorted(runs) == tests
+
+
+def test_the_costly_tests_run_in_the_last_part_and_the_rest_alternate() -> None:
+    tests = list(range(10))
+    assert DEALING.part(tests, {0, 5}, 1, 2) == [1, 3, 6, 8]
+    assert DEALING.part(tests, {0, 5}, 2, 2) == [0, 2, 4, 5, 7, 9]
+
+
+def test_a_part_is_read_as_k_of_n() -> None:
+    assert DEALING._part("2/2") == (2, 2)
+
+
+@pytest.mark.parametrize("text", ["0/2", "3/2", "2", "1/0", "a/b", "-1/2", "1/2/3"])
+def test_a_part_outside_1_to_n_is_refused(text: str) -> None:
+    with pytest.raises(argparse.ArgumentTypeError, match="is not K/N"):
+        DEALING._part(text)
