@@ -51,6 +51,17 @@ about 35 s of pytest moved to part 2: 3,466 tests against 5,233. With runner
 noise near 80 s, one run can still land more than 30 s apart. Retune the one
 constant if the median drifts.
 
+**Runner speed sets the gap on a single run, so tuning stops here** (project
+owner, 2026-10-17, ratified, over closing `#1523` and keeping the even split).
+On `#1523`'s run (39080271618), `checks-part-1` took 186 s and `checks-part-2`
+426 s. Part 1's `doc_check` step took 15 s there and 26 to 27 s on the two runs
+before, so part 1 had a runner about 1.7 times faster. The single job's medians,
+621 s on slow runners and 352 s on fast ones, show the same spread. When one
+part gets a fast runner and the other a slow one, the parts finish 2 to 4
+minutes apart whatever the split. The 2-in-5 share is kept because it should
+help the median, by about 35 s. Judge it by the median of several runs on
+`main`, never by a single run.
+
 **What is left is the re-timing.** It needs five successful slow-runner runs
 on `main` after `#1519` merges, so no branch can do it. The timeouts, the
 `checks` job's 5 minutes and `PYTEST_BASELINE_S` stay as they are until then.
