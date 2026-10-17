@@ -3,11 +3,13 @@ id: PL-0M7K
 title: test_displayed_ordering_reverses_only_at_a_crossing in tests/reference/test_coupled_dynamics.py can fail only when the neighbouring absolute gate fails and never calls the shipped format_percent, yet its docstring and docs/MODEL.md's 'Displayed precision' cite it as evidence about the display path
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test, docs
 feature: tests-detect-wrong-values
 touches: tests/unit/test_formatting.py, tests/reference/test_coupled_dynamics.py, docs/MODEL.md
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1516
 payoff: the claim that displayed concentrations keep their order is held by a test of the shipped formatter, so docs/MODEL.md cites evidence that can fail on the display path
 verify: grep -q 'def test_format_percent_preserves_order' tests/unit/test_formatting.py
 ---
@@ -81,3 +83,35 @@ perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above. Symbols re-checked against
 `9ea87a3c`.
+
+**What was done.** `test_format_percent_preserves_order` in
+`tests/unit/test_formatting.py` is a derandomized Hypothesis property over
+2,000 pairs of fractions. Each fraction is drawn either from 0 to 1 or from
+within two units in the last place of a whole or half display count, which is
+where the rounding threshold between two readings sits. Three examples pin 0 against
+a value below the resolution, both sides of the "<0.01%" boundary, and a value
+below the resolution against 100%. Each reading is parsed back to a number,
+with "<0.01%" read as half the resolution.
+
+The reference test was kept rather than deleted, and now reads the shipped
+`format_percent` through `_displayed_percent`. Deleting it would have left
+`docs/MODEL.md`'s count of 1,485,000 pair comparisons without a test that
+re-measures it. Reading through the formatter costs about 3 s of serial time
+on its 15 cases (12.7 s before, 16.0 s after, measured 2026-10-17). With a
+temporary `== 0.0` assertion it still found no inversion at all. Its comments,
+its failure message and `docs/MODEL.md` § "Displayed precision" now say that
+it is a measurement, and that the absolute gate and the unit property are what
+hold the claim. `Fraction` joined `ALLOWED_PACKAGE_IMPORTS`, since it checks
+a range and solves nothing.
+
+**Fail-before.** The property is new, so it was run against a mutant
+formatter rather than against an earlier fix. The mutant shows every reading
+from 40% to below 100% 20 points lower, so it reorders readings while every
+pinned literal still holds. `uv run pytest -q -n auto -p no:randomly
+tests/unit tests/integration` gave 2 failed and 5659 passed. The failures were
+`test_format_percent_preserves_order`, with "Failing test case: first=0.5,
+second=0.375" ('37.50%' against '30.00%'), and `test_the_real_tree_passes` in
+`tests/unit/test_literal_home_check.py`, which counts the mutant's new
+literals and checks no behaviour. A first mutant, `percent % 10.0`, was also
+caught by `test_format_percent_uses_the_documented_display_resolution`, so it
+did not show what the property adds.

@@ -3,11 +3,13 @@ id: PL-GHT8
 title: PL-F5GN's oracle-independence check reads only the import names in test_coupled_dynamics.py, not what the oracle functions call, so an oracle built from AgentUptakeSystem.for_agent().equation_settings() passes it, and the late-washout module's second hand-written oracle is never checked
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test
 feature: tests-detect-wrong-values
 touches: tests/reference/test_coupled_dynamics.py
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1516
 payoff: an oracle quietly rebuilt from the code under test fails the independence check, so the reference tier keeps comparing the solver with something other than itself
 verify: grep -q 'def test_oracle_bodies_call_no_solver_from_core' tests/reference/test_coupled_dynamics.py
 ---
@@ -78,3 +80,26 @@ perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above. Symbols re-checked against
 `9ea87a3c`.
+
+**What was done.** `test_oracle_bodies_call_no_solver_from_core` in
+`tests/reference/test_coupled_dynamics.py` reads the oracle functions of both
+files: `_build_derivative`, `_rk4_step` and `_integrate_rk4` here, and
+`_open_circuit_system_per_min`, `_open_circuit_modes` and
+`_isolated_time_constants_min` in
+`tests/reference/test_late_washout_against_published_fits.py`. It follows
+every module-level helper, class and constant they refer to. An oracle may use
+the two parameter loaders, `math`, `cmath`, `numpy`, `Callable` and
+`dataclass`, and its own module's names. It may not use another imported
+name, import inside its body, read a dunder attribute or call a builtin that
+reaches a namespace by name. A missing root fails the check, so a rename
+cannot empty it. Five probes must each be refused: the three this item names,
+a helper that calls the solver, and an import inside the body. One allowed
+oracle must pass. The import check beside it is unchanged.
+
+**Fail-before.** The three probes this item names were run through the old
+check, `_package_imports(probe) <= ALLOWED_PACKAGE_IMPORTS`, with `uv run
+python` from `tests/reference/` on 2026-10-17. It returned `True` for each, so
+each passed. The new check returned "_build_derivative uses the imported name
+AgentUptakeSystem", "_build_derivative uses the imported name sys", and
+"_build_derivative reads the attribute __module__" for the third, with two
+more lines for `importlib` and `AgentUptakeSystem`.
