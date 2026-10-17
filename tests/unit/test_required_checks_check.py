@@ -832,18 +832,21 @@ def test_the_repository_is_read_from_a_token_bearing_origin(
 # --- end to end, against this repository's own workflows ---------------------
 
 
-def test_this_repository_reports_exactly_checks_and_pr_title() -> None:
+def test_this_repository_requires_exactly_checks_and_pr_title() -> None:
     """The tree half of the live reconciliation, asserted without a network.
 
     These two names are load-bearing outside the tree, which is why each job key
-    carries a comment saying so. Renaming one, or adding a third reporting job,
-    fails here as well as in CI - and here it fails in `make check`, before the
-    push.
+    carries a comment saying so. Renaming one, or adding a reporting job that
+    declares no exemption, fails here as well as in CI - and here it fails in
+    `make check`, before the push. The two parts of the test suite report too,
+    and are exempt because `checks` gates them (`PL-T9X9`).
     """
     jobs = rcc.reporting_jobs(ROOT / ".github" / "workflows")
-    assert sorted(job.check_name for job in jobs) == ["checks", "pr-title"]
-    assert {job.workflow for job in jobs} == {"quality.yml", "pr-title.yml"}
-    assert all(job.not_required is None for job in jobs)
+    required = [job for job in jobs if job.not_required is None]
+    assert sorted(job.check_name for job in required) == ["checks", "pr-title"]
+    assert {job.workflow for job in required} == {"quality.yml", "pr-title.yml"}
+    exempt = sorted(job.check_name for job in jobs if job.not_required is not None)
+    assert exempt == ["checks-part-1", "checks-part-2"]
 
 
 def test_off_a_pull_request_the_branch_is_docket_s(

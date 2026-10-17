@@ -776,13 +776,17 @@ class TestFetchRuns:
         ]
 
 
-def _pytest_step_name() -> str:
-    """The name GitHub gives `quality.yml`'s pytest step: `Run ` plus its `run:` line."""
-    prefix = "- run: " + main_ci_status.PYTEST_STEP_PREFIX.removeprefix("Run ")
+def _pytest_step_names() -> list[str]:
+    """The names GitHub gives `quality.yml`'s pytest steps: `Run ` plus each `run:` line.
+
+    A step with a `name:` of its own carries its `run:` on a line that does not
+    open the step, so the assertion below refuses it.
+    """
     lines = [line.strip() for line in _workflow().splitlines()]
-    matches = [line for line in lines if line.startswith(prefix)]
-    assert len(matches) == 1, f"quality.yml should have one step starting {prefix!r}"
-    return "Run " + matches[0].removeprefix("- run: ")
+    runs = [line for line in lines if "run: uv run pytest" in line]
+    assert runs, "quality.yml should run pytest"
+    assert all(line.startswith("- run: ") for line in runs), f"a pytest step is named: {runs}"
+    return ["Run " + line.removeprefix("- run: ") for line in runs]
 
 
 def _stamp(instant: datetime) -> str:
@@ -790,12 +794,12 @@ def _stamp(instant: datetime) -> str:
     return instant.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _timed_job(seconds: float, conclusion: str = "success") -> dict:
-    """A `checks` job whose pytest step took `seconds`, between two other steps."""
+def _timed_job(seconds: float, conclusion: str = "success", name: str = "checks-part-2") -> dict:
+    """A part's job whose pytest step took `seconds`, between two other steps."""
     start = datetime(2026, 10, 17, 16, 8, 21, tzinfo=UTC)
     end = start + timedelta(seconds=seconds)
     return {
-        "name": main_ci_status.CHECKS_JOB,
+        "name": name,
         "steps": [
             {
                 "name": "Run uv run mypy",
@@ -804,7 +808,7 @@ def _timed_job(seconds: float, conclusion: str = "success") -> dict:
                 "completed_at": _stamp(start),
             },
             {
-                "name": _pytest_step_name(),
+                "name": _pytest_step_names()[0],
                 "conclusion": conclusion,
                 "started_at": _stamp(start),
                 "completed_at": _stamp(end),
@@ -851,10 +855,16 @@ class TestPytestSeconds:
     def test_reads_the_time_between_the_steps_start_and_end(self) -> None:
         assert main_ci_status.pytest_seconds([_timed_job(523)]) == 523.0
 
-    def test_reads_only_the_checks_job(self) -> None:
-        other = _timed_job(9999) | {"name": "release"}
-        assert main_ci_status.pytest_seconds([other, _timed_job(523)]) == 523.0
-        assert main_ci_status.pytest_seconds([other]) is None
+    def test_sums_the_pytest_steps_of_the_parts(self) -> None:
+        """Each part's job runs one pytest step, so the suite's time is their sum (`PL-T9X9`)."""
+        first = _timed_job(300, name="checks-part-1")
+        assert main_ci_status.pytest_seconds([first, _timed_job(223)]) == 523.0
+
+    def test_a_job_with_no_pytest_step_adds_nothing(self) -> None:
+        gate = _timed_job(9999, name="checks")
+        gate["steps"] = [gate["steps"][0]]
+        assert main_ci_status.pytest_seconds([gate, _timed_job(523)]) == 523.0
+        assert main_ci_status.pytest_seconds([gate]) is None
 
     @pytest.mark.parametrize("conclusion", ["failure", "cancelled", "skipped", None])
     def test_a_step_that_did_not_end_in_success_has_no_time(self, conclusion: str | None) -> None:
@@ -881,6 +891,11 @@ class TestPytestSeconds:
         [[], ["not a dict"], [{"name": "checks", "steps": "not a list"}], [{"name": "checks"}]],
     )
     def test_returns_none_from_a_malformed_or_empty_payload(self, jobs: list) -> None:
+        assert main_ci_status.pytest_seconds(jobs) is None
+
+    def test_a_job_whose_steps_cannot_be_read_hides_nothing(self) -> None:
+        """It may hold a part's pytest step, so the sum without it would understate the suite."""
+        jobs = [_timed_job(523), {"name": "checks-part-1", "steps": "not a list"}]
         assert main_ci_status.pytest_seconds(jobs) is None
 
 
@@ -992,7 +1007,7 @@ class TestPytestTimeLine:
 
         monkeypatch.setattr(main_ci_status, "fetch_jobs", _jobs)
         assert main_ci_status.pytest_time_line("o/r", page) == main_ci_status.pytest_declined(
-            "run #1557 has no finished pytest step in its checks job"
+            "run #1557 has a pytest step that did not finish, or none that could be read"
         )
 
     def test_a_declined_line_gives_no_figure_but_the_baseline(self) -> None:
@@ -1071,15 +1086,13 @@ class TestMainWithThePytestLine:
 
 
 class TestThePytestStepMatchesTheWorkflow:
-    """The job and step names are strings GitHub derives from `quality.yml`; hold them to it.
+    """The pytest steps' names are strings GitHub derives from `quality.yml`; hold them to it.
 
-    A renamed job or a step given a `name:` would make every run read as having
-    no pytest step. The line would then decline at every session start, which
+    A pytest step given a `name:` would make every run read as having no pytest
+    step, or as having one part's. The line would then decline at every session start, which
     is honest but stops the check, so a test fails first.
     """
 
-    def test_the_checks_job_is_a_job_of_quality_yml(self) -> None:
-        assert f"\n  {main_ci_status.CHECKS_JOB}:\n" in _workflow()
-
-    def test_one_unnamed_step_runs_pytest_and_github_names_it_with_the_prefix(self) -> None:
-        assert _pytest_step_name().startswith(main_ci_status.PYTEST_STEP_PREFIX)
+    def test_every_pytest_step_is_unnamed_and_github_names_it_with_the_prefix(self) -> None:
+        names = _pytest_step_names()
+        assert all(name.startswith(main_ci_status.PYTEST_STEP_PREFIX) for name in names), names
