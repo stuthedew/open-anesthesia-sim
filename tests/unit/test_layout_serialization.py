@@ -5,8 +5,10 @@
 invariant that failed and where, nothing is repaired, and a document from a
 newer build is refused as newer rather than as invalid, because the two are
 answered differently. These hold each named failure to a refusal that says
-which it was. The file around a layout - where it lives, what is set aside,
-which generation is loaded - is `PL-SSQW`'s store and is not built yet.
+which it was. The Workspace set document - the one file the application
+writes, holding every Workspace with its layout and each View's saved state -
+is read by the same rules, and its tests are below the layout's. The file
+around it is `layout/store.py`'s, tested in `test_layout_store.py`.
 """
 
 import inspect
@@ -16,6 +18,7 @@ from collections.abc import Callable
 
 import pytest
 
+from anesthesia_sim.layout import migrations
 from anesthesia_sim.layout.exceptions import LayoutFormatError, UnsupportedSchemaVersion
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.serialization import (
@@ -24,6 +27,12 @@ from anesthesia_sim.layout.serialization import (
     layout_from_json,
     layout_to_dict,
     layout_to_json,
+    workspace_from_dict,
+    workspace_set_from_dict,
+    workspace_set_from_json,
+    workspace_set_to_dict,
+    workspace_set_to_json,
+    workspace_to_dict,
 )
 from anesthesia_sim.layout.tree import (
     TREE_DEPTH_MAXIMUM,
@@ -33,6 +42,13 @@ from anesthesia_sim.layout.tree import (
     Split,
     ViewKind,
     Window,
+)
+from anesthesia_sim.layout.workspace import (
+    Origin,
+    ShippedWorkspaceId,
+    Workspace,
+    WorkspaceName,
+    WorkspaceSet,
 )
 
 
@@ -441,3 +457,252 @@ def test_an_integer_too_long_to_read_is_a_format_error() -> None:
     assert "next_area_id: a whole number of 5,000 digits is longer than this build reads" in (
         refused(text)
     )
+
+
+# The Workspace set document, `PL-SSQW` Q2's one file.
+
+
+def workspace_body(**changes: object) -> dict[str, object]:
+    """A valid Workspace body over the two-Area layout, with any field replaced."""
+
+    written: dict[str, object] = {
+        "name": "Default",
+        "origin": "shipped:default",
+        "layout": {key: value for key, value in document().items() if key != "schema_version"},
+        "view_state": {"1": {"concentration_chart": {"zoom_s": [0.0, 900.0]}}},
+    }
+    written.update(changes)
+
+    return written
+
+
+def set_document(*workspaces: dict[str, object], active: int = 0, **changes: object) -> str:
+    written: dict[str, object] = {
+        "schema_version": LAYOUT_SCHEMA_VERSION,
+        "active": active,
+        "workspaces": list(workspaces) or [workspace_body()],
+    }
+    written.update(changes)
+
+    return json.dumps(written)
+
+
+def refused_set(text: str) -> str:
+    with pytest.raises(LayoutFormatError) as raised:
+        workspace_set_from_json(text)
+
+    return str(raised.value)
+
+
+def the_set() -> WorkspaceSet:
+    chart = ViewKind("concentration_chart")
+    layout = (
+        LayoutModel.single_area(chart)
+        .split(AreaId(1), Orientation.ROW, 0.7)[0]
+        .set_view(AreaId(2), ViewKind("agent_accounting"))
+    )
+    default = Workspace(
+        WorkspaceName("Default"),
+        Origin.shipped(ShippedWorkspaceId("default")),
+        layout,
+        {AreaId(1): {chart: {"zoom_s": [0.0, 900.0]}}, AreaId(2): {}},
+    )
+    induction = Workspace(WorkspaceName("Induction"), Origin.mine(), LayoutModel.single_area(chart))
+
+    return WorkspaceSet((default, induction), 1)
+
+
+class TestWorkspaceSetDocument:
+    def test_the_version_is_the_migrations_modules(self) -> None:
+        assert LAYOUT_SCHEMA_VERSION is migrations.LAYOUT_SCHEMA_VERSION
+
+    def test_a_set_round_trips_through_its_document(self) -> None:
+        text = workspace_set_to_json(the_set())
+        read = workspace_set_from_json(text)
+
+        assert read.workspaces == the_set()
+        assert read.written_at == LAYOUT_SCHEMA_VERSION
+        assert read.lossy == ()
+        assert workspace_set_to_json(read.workspaces) == text
+        assert text.endswith("\n")
+        assert workspace_set_from_dict(workspace_set_to_dict(the_set())) == the_set()
+
+    def test_the_document_has_the_illustrated_shape(self) -> None:
+        written = json.loads(workspace_set_to_json(the_set()))
+
+        assert written["schema_version"] == LAYOUT_SCHEMA_VERSION
+        assert written["active"] == 1
+        assert [each["name"] for each in written["workspaces"]] == ["Default", "Induction"]
+        assert written["workspaces"][0]["origin"] == "shipped:default"
+        assert written["workspaces"][1]["origin"] == "mine"
+        assert written["workspaces"][0]["layout"]["next_area_id"] == 3
+        assert written["workspaces"][0]["view_state"] == {
+            "1": {"concentration_chart": {"zoom_s": [0.0, 900.0]}},
+            "2": {},
+        }
+        assert written["workspaces"][1]["view_state"] == {}
+
+    def test_a_body_is_written_and_read_without_a_version(self) -> None:
+        body = workspace_to_dict(the_set().workspaces[0])
+
+        assert "schema_version" not in body
+        assert workspace_from_dict(body) == the_set().workspaces[0]
+
+        with pytest.raises(TypeError, match="not str"):
+            workspace_to_dict("Default")  # type: ignore[arg-type]
+
+        with pytest.raises(TypeError, match="not tuple"):
+            workspace_set_to_dict(())  # type: ignore[arg-type]
+
+    def test_a_newer_document_is_refused_as_newer_whatever_it_holds(self) -> None:
+        with pytest.raises(UnsupportedSchemaVersion) as raised:
+            workspace_set_from_json(
+                json.dumps({"schema_version": LAYOUT_SCHEMA_VERSION + 1, "tabs": "anything"})
+            )
+
+        assert (raised.value.found, raised.value.supported) == (
+            LAYOUT_SCHEMA_VERSION + 1,
+            LAYOUT_SCHEMA_VERSION,
+        )
+
+    @pytest.mark.parametrize(
+        ("text", "said"),
+        [
+            ("[]", "the document: a Workspace set document is an object, not a list"),
+            (set_document(schema_version=0), "schema_version: a schema version counts from 1"),
+            (
+                set_document(active=True),
+                "active: the active Workspace's position is a whole number, not true or false",
+            ),
+            (
+                set_document(active=2),
+                "the Workspace set: the active position is 2, and this set's positions run from 0",
+            ),
+            (
+                set_document(workspaces={}),
+                "workspaces: a set's Workspaces are a list, not an object",
+            ),
+            (
+                set_document(workspaces=[]),
+                "the Workspace set: a Workspace set holds at least one Workspace",
+            ),
+            (
+                set_document(workspace_body(), workspace_body()),
+                "the Workspace set: two Workspaces are named 'Default'",
+            ),
+            (
+                set_document(workspace_body(name="")),
+                "workspaces[0].name: a Workspace name is not empty",
+            ),
+            (
+                set_document(workspace_body(name=1)),
+                "workspaces[0].name: a Workspace's name is a string, not a number",
+            ),
+            (
+                set_document(workspace_body(origin="theirs")),
+                "workspaces[0].origin: an origin is written 'mine' or 'shipped:'",
+            ),
+            (
+                set_document(workspace_body(origin=None)),
+                "workspaces[0].origin: a Workspace's origin is a string, not null",
+            ),
+            (
+                set_document(workspace_body(colour="red")),
+                "workspaces[0]: has 'colour', which the schema does not",
+            ),
+            (
+                set_document(workspace_body(layout=[])),
+                "workspaces[0].layout: a layout is an object, not a list",
+            ),
+            (
+                set_document(workspace_body(view_state=[])),
+                "workspaces[0].view_state: a Workspace's view_state is an object keyed by Area id",
+            ),
+            (
+                set_document(workspace_body(view_state={"one": {}})),
+                "workspaces[0].view_state.one: view_state is keyed by Area id, a whole number",
+            ),
+            (
+                set_document(workspace_body(view_state={"0": {}})),
+                "workspaces[0].view_state['0']: an Area id is a whole number from 1",
+            ),
+            (
+                set_document(workspace_body(view_state={"01": {}})),
+                "workspaces[0].view_state['01']: view_state is keyed by Area id, a whole number "
+                "written as a string of digits with no sign and no leading zero, not '01'",
+            ),
+            (
+                set_document(workspace_body(view_state={"\uff11": {}})),
+                "view_state is keyed by Area id, a whole number written as a string of digits",
+            ),
+            (
+                set_document(workspace_body(view_state={"1" * 5000: {}})),
+                "view_state is keyed by Area id, a whole number written as a string of digits",
+            ),
+            (
+                set_document(workspace_body(view_state={"9": {}})),
+                "workspaces[0]: view_state names Area 9, which the layout does not hold",
+            ),
+            (
+                set_document(workspace_body(view_state={"1": []})),
+                "workspaces[0].view_state['1']: an Area's saved state is an object keyed by View",
+            ),
+            (
+                set_document(workspace_body(view_state={"1": {"Chart": {}}})),
+                "workspaces[0].view_state['1'].Chart: a View kind is a tag",
+            ),
+            (
+                set_document(workspace_body(view_state={"1": {"concentration_chart": 3}})),
+                "workspaces[0].view_state['1'].concentration_chart: a View's saved state is an",
+            ),
+        ],
+    )
+    def test_each_way_a_set_document_fails_is_refused_by_name_and_place(
+        self, text: str, said: str
+    ) -> None:
+        assert said in refused_set(text)
+
+    def test_a_layout_inside_a_workspace_is_placed_from_the_workspace(self) -> None:
+        layout = {key: value for key, value in document().items() if key != "schema_version"}
+        layout["windows"][0]["tree"]["children"][1]["view"] = "Agent"  # type: ignore[index]
+
+        bad_view = refused_set(set_document(workspace_body(layout=layout)))
+
+        layout["windows"][0]["tree"]["children"][1]["view"] = "agent_accounting"  # type: ignore[index]
+        layout["next_area_id"] = 2
+
+        bad_counter = refused_set(set_document(workspace_body(layout=layout)))
+
+        assert bad_view.startswith(
+            "workspaces[0].layout.windows[0].tree.children[1].view: a View kind is a tag"
+        )
+        assert bad_counter.startswith(
+            "workspaces[0].layout: next_area_id is 2 and an Area already holds the id 2"
+        )
+
+    def test_a_key_given_twice_anywhere_in_the_document_is_refused_where_it_stands(self) -> None:
+        text = set_document().replace('"active": 0', '"active": 0, "active": 1')
+
+        assert "the document: the key 'active' is given twice" in refused_set(text)
+
+    def test_a_body_with_a_key_that_is_not_a_string_is_refused_by_name(self) -> None:
+        with pytest.raises(
+            LayoutFormatError, match="keyed by Area id written as a string, not a number"
+        ):
+            workspace_from_dict(workspace_body(view_state={1: {}}))
+
+    def test_the_written_body_shares_nothing_with_the_workspace(self) -> None:
+        workspace = the_set().workspaces[0]
+        written = workspace_to_dict(workspace)
+        zoom = written["view_state"]["1"]["concentration_chart"]["zoom_s"]  # type: ignore[index]
+        zoom.append(1800.0)
+
+        assert workspace.state_of(AreaId(1), ViewKind("concentration_chart")) == {
+            "zoom_s": [0.0, 900.0]
+        }
+
+    def test_a_set_document_is_read_from_text(self) -> None:
+        with pytest.raises(
+            TypeError, match="a Workspace set document is read from a str, not dict"
+        ):
+            workspace_set_from_json({})  # type: ignore[arg-type]
