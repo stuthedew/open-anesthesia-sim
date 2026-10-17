@@ -30,7 +30,6 @@ from docket.roadmap import (
     RELEASE,
     SCOPE,
     UNPLACED,
-    UnreadEntry,
     baseline_heading,
     list_entry_lines,
     milestone_scope,
@@ -1481,19 +1480,17 @@ def _line_of(text: str, opening: str) -> int:
 def test_the_walker_declines_a_lazy_continuation_by_name() -> None:
     """An entry carried on from the margin is refused by name, never read short.
 
-    Without a list to put it on the walker raises before handing the entry
-    over; given one, it records the line and yields every entry as far as it
-    could read it, so the doubtful line costs the reader nothing it could read.
+    The walker returns the line beside every entry as far as it could read it,
+    so the doubtful line costs the reader nothing it could read. It used to
+    raise, or put the line on a list a caller could pass empty, which is how
+    `tools/dead_ends.py` set it aside unseen (`PL-DQ9C`, `PL-JTP1`).
     """
     lines = ["### Required scope", "", "- PL-BCDF **and**", "PL-GHJK (S) a pair", "- PL-KLMN"]
 
-    with pytest.raises(UnreadEntry) as raised:
-        list(list_entry_lines(lines, 1))
-    assert (raised.value.line, raised.value.why) == (4, LAZY_ENTRY)
-
-    unread: list[UnreadEntry] = []
-    assert list(list_entry_lines(lines, 1, unread)) == [(2, 3), (4, 5)]
+    spans, unread = list_entry_lines(lines, 1)
+    assert spans == ((2, 3), (4, 5))
     assert [entry.line for entry in unread] == [4]
+    assert unread[0].why == LAZY_ENTRY
 
 
 @pytest.mark.parametrize(
@@ -1521,10 +1518,10 @@ def test_a_lazy_line_opening_like_a_block_is_declined_too(follows: str) -> None:
     CommonMark reads each into the entry above, so the walker declines it as it
     declines any other lazy line, rather than ending the entry short.
     """
-    unread: list[UnreadEntry] = []
     lines = ["### Required scope", "", "- PL-BCDF (S) one entry", follows]
 
-    assert list(list_entry_lines(lines, 1, unread)) == [(2, 3)]
+    spans, unread = list_entry_lines(lines, 1)
+    assert spans == ((2, 3),)
     assert [entry.line for entry in unread] == [4]
 
 
@@ -1555,11 +1552,11 @@ def test_a_line_opening_a_block_of_its_own_ends_the_entry_unrefused(
     document that reads as written. A list of another marker or delimiter is
     an entry of its own (`PL-YSMD`).
     """
-    unread: list[UnreadEntry] = []
     lines = ["### Required scope", "", "- PL-BCDF (S) one entry", *follows.split("\n")]
 
-    assert list(list_entry_lines(lines, 1, unread)) == entries
-    assert unread == []
+    spans, unread = list_entry_lines(lines, 1)
+    assert list(spans) == entries
+    assert unread == ()
 
 
 @pytest.mark.parametrize(

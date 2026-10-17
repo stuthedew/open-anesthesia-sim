@@ -677,11 +677,11 @@ def test_unreferenced_by_version_reports_only_the_releases_with_a_gap(tmp_path: 
         "- PL-4444 Item PL-4444 — #12\n", encoding="utf-8"
     )
 
-    assert unreferenced_by_version(tmp_path) == {"v0.3.0": ("PL-2222",)}
+    assert unreferenced_by_version(tmp_path) == ({"v0.3.0": ("PL-2222",)}, ())
 
 
 def test_a_project_that_writes_no_notes_reports_nothing_rather_than_raising(tmp_path: Path) -> None:
-    assert unreferenced_by_version(tmp_path) == {}
+    assert unreferenced_by_version(tmp_path) == ({}, ())
 
 
 #: A bullet whose title wrapped onto an indented line before its reference.
@@ -739,7 +739,8 @@ def test_a_setext_underline_in_a_bullet_is_not_its_text_and_takes_no_reference(
     """
     text = SETEXT.format(underline=underline)
 
-    assert notes_bullets(text, [])[0] == (4, 5, "- PL-BCDF A title wrapped")
+    bullets, declined = notes_bullets(text)
+    assert (bullets[0], declined) == ((4, 5, "- PL-BCDF A title wrapped"), ())
     assert unreferenced(text) == ("PL-BCDF",)
     restated, repaired = restate_references(text, {"PL-BCDF": _item("PL-BCDF")})
     assert repaired == ("PL-BCDF",)
@@ -750,17 +751,24 @@ def test_a_setext_underline_in_a_bullet_is_not_its_text_and_takes_no_reference(
 
 
 def test_a_bullet_carried_on_from_the_margin_is_declined_and_left_alone(tmp_path: Path) -> None:
-    """Where it ends was not read, so it is named in neither direction (`PL-CL8R`)."""
-    unread: list[UnreadEntry] = []
-    assert unreferenced(LAZY, unread) == ()
-    assert [entry.line for entry in unread] == [2]
+    """Where it ends was not read, so it is named in neither direction (`PL-CL8R`).
+
+    The decline comes back beside the bullets rather than onto a list a caller
+    could pass empty or leave out, and `unreferenced`, reading one file, raises
+    it rather than answering from the file read short (`PL-JTP1`).
+    """
     assert restate_references(LAZY, {"PL-2222": _item("PL-2222")}) == (LAZY, ())
+    bullets, declined = notes_bullets(LAZY)
+    assert (bullets, [entry.line for entry in declined]) == ([], [2])
+    with pytest.raises(UnreadEntry, match=re.escape(f"line 2: {LAZY_ENTRY}")):
+        unreferenced(LAZY)
 
     (tmp_path / "docs" / "releases").mkdir(parents=True)
     (tmp_path / "docs" / "releases" / "v0.3.0.md").write_text(LAZY, encoding="utf-8")
-    declined: list[str] = []
-    assert unreferenced_by_version(tmp_path, unread=declined) == {}
-    assert declined == [f"docs/releases/v0.3.0.md line 2: {LAZY_ENTRY}"]
+    assert unreferenced_by_version(tmp_path) == (
+        {},
+        (f"docs/releases/v0.3.0.md line 2: {LAZY_ENTRY}",),
+    )
 
 
 @pytest.mark.parametrize("indent", [" ", "  ", "   "])
@@ -835,7 +843,7 @@ def test_a_pointed_bullet_is_not_reported_as_missing_a_reference(tmp_path: Path)
     notes.mkdir(parents=True)
     (notes / "v0.3.0.md").write_text(POINTED, encoding="utf-8")
 
-    assert unreferenced_by_version(tmp_path) == {"v0.3.0": ("PL-2222",)}
+    assert unreferenced_by_version(tmp_path) == ({"v0.3.0": ("PL-2222",)}, ())
 
 
 def test_restating_leaves_the_pointer_section_byte_for_byte() -> None:

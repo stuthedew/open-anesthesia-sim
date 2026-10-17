@@ -52,7 +52,6 @@ from docket.release import (
 )
 from docket.roadmap import (
     LAZY_ENTRY,
-    UnreadEntry,
     baseline_heading,
     document_entry_lines,
     parse_milestones,
@@ -7421,9 +7420,8 @@ def _cue_ids(body: str) -> list[str]:
 
 def _entry_spans(text: str) -> tuple[list[tuple[int, int]], list[int]]:
     """Each top-level list entry's span of lines, and the line of each one declined."""
-    unread: list[UnreadEntry] = []
-    spans = list(document_entry_lines(text.splitlines(), unread))
-    return spans, [entry.line for entry in unread]
+    spans, unread = document_entry_lines(text.splitlines())
+    return list(spans), [entry.line for entry in unread]
 
 
 def _fence_spans(text: str) -> list[tuple[int, int]]:

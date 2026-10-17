@@ -86,7 +86,8 @@ def store() -> tuple[dict[str, Path], set[str]]:
 
 
 def citations(path: Path, self_id: str) -> set[str]:
-    _fields, body = parse_front_matter(path.read_text(encoding="utf-8"))
+    # Set aside on purpose: only the body's citations are read here.
+    _fields, body, _declined = parse_front_matter(path.read_text(encoding="utf-8"))
     return set(ITEM_ID.findall(body)) - {self_id}
 
 

@@ -290,8 +290,8 @@ def _keys(block: Sequence[str], passed: _Passed) -> tuple[Key, ...]:
     return tuple(found)
 
 
-def statements(block: Sequence[str]) -> list[tuple[int, int]]:
-    """Each statement of `block`, a front matter's lines between its fences, in order.
+def statements(block: Sequence[str]) -> tuple[list[tuple[int, int]], Unread | None]:
+    """Each statement of `block`, a front matter's lines between its fences, and its decline.
 
     A key's value is one, ending where `keys` ends it, so what one key leaves
     open - a backtick, a quotation - pairs with nothing in the next, and a date
@@ -299,16 +299,20 @@ def statements(block: Sequence[str]) -> list[tuple[int, int]]:
     alone: a comment between keys, and each line of a block `keys` cannot split,
     so that none of their text is read with another's, and a record wrapped
     across two of them is read from its first line until the block is mended.
-    Each is the index of its first line and one past its last.
+    Each is the index of its first line and one past its last, in order.
 
+    The `Unread` naming why a block was read a line at a time comes back
+    second, and `None` where `keys` split it. The fallback was silent, so a
+    caller could not tell the two readings apart (`PL-JTP1`).
     `key_statements` is the same reading without that fallback, for a reader
     that names a block it cannot split rather than reading around it
     (`PL-J8ML`).
     """
     try:
-        return key_statements(block)
-    except Unread:
-        return [(index, index + 1) for index, line in enumerate(block) if line.strip()]
+        return key_statements(block), None
+    except Unread as refusal:
+        alone = [(index, index + 1) for index, line in enumerate(block) if line.strip()]
+        return alone, refusal
 
 
 def key_statements(block: Sequence[str]) -> list[tuple[int, int]]:

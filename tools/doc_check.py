@@ -3018,11 +3018,12 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
     lines = split_lines(text)
     for heading in read_headings(lines):
         if heading.level == family.level and heading.title == family.heading:
-            try:
-                for first, end in list_entry_lines(lines, heading.end):
-                    yield first + 1, "\n".join(lines[first:end])
-            except UnreadEntry as lazy:
+            spans, declined = list_entry_lines(lines, heading.end)
+            if declined:
+                lazy = declined[0]
                 raise UnreadStatement(lazy.line, lazy.why) from lazy
+            for first, end in spans:
+                yield first + 1, "\n".join(lines[first:end])
             return
 
 
@@ -4111,8 +4112,8 @@ def span_bullet(identifiers: Sequence[str], number: str, described: str) -> str:
 SPAN_BULLET_RE = re.compile(r"^- .+? - #(\d+) - described in .+$", re.M)
 
 
-def _pull_requests_named(text: str, unread: list[UnreadEntry]) -> frozenset[str]:
-    """The pull requests one notes file names as a reference, never as a substring.
+def _pull_requests_named(text: str) -> tuple[frozenset[str], tuple[UnreadEntry, ...]]:
+    """The pull requests a notes file names as a reference, not as a substring, and its declines.
 
     Two places name one, each in its writer's grammar: a claimed bullet's tail,
     ` — #N` as `release.reference` writes it and `release.REFERENCED_RE` reads
@@ -4125,25 +4126,28 @@ def _pull_requests_named(text: str, unread: list[UnreadEntry]) -> frozenset[str]
     Each bullet is read whole, through `release.notes_bullets` (`PL-CL8R`), so
     a reference after a title wrapped onto an indented line is named, where a
     line at a time read the title's first line and found none. A bullet carried
-    on from the margin is put on `unread`, by its line in the file, since what
+    on from the margin is returned second, by its line in the file, since what
     it ends with was not read.
     """
     claims, pointers = notes_claims(text)
+    bullets, declined = notes_bullets(claims)
     named = {
         reference.group(1).removeprefix("#")
-        for _, _, bullet in notes_bullets(claims, unread)
+        for _, _, bullet in bullets
         for _identifier, tail in NOTES_BULLET_RE.findall(bullet)
         if (reference := REFERENCED_RE.search(tail)) and reference.group(1).startswith("#")
     }
-    declined: list[UnreadEntry] = []
+    pointed, pointers_declined = notes_bullets(pointers)
     named.update(
         found.group(1)
-        for _, _, bullet in notes_bullets(pointers, declined)
+        for _, _, bullet in pointed
         if (found := SPAN_BULLET_RE.match(bullet)) is not None
     )
     # The pointer half's lines count from its heading; the file's from the top.
-    unread.extend(UnreadEntry(entry.line + claims.count("\n"), entry.why) for entry in declined)
-    return frozenset(named)
+    below = claims.count("\n")
+    return frozenset(named), declined + tuple(
+        UnreadEntry(entry.line + below, entry.why) for entry in pointers_declined
+    )
 
 
 @dataclass(frozen=True)
@@ -4294,7 +4298,7 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     # v0.3.0, and `PL-21GS`, stamped twelve releases later by v0.4.15.
     uncovered: dict[str, dict[tuple[str, str], list[Item]]] = {}
     named: dict[str, frozenset[str]] = {}
-    unread: dict[str, list[UnreadEntry]] = {}
+    unread: dict[str, tuple[UnreadEntry, ...]] = {}
     for item in sorted(store.items.values(), key=lambda entry: entry.identifier):
         # `done` rather than `CLOSED_STATUSES`: a dropped item shipped nothing,
         # so no release's notes owe it a line and its pull request is not a
@@ -4311,9 +4315,8 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
         if not notes.is_file():
             continue
         if version not in named:
-            unread[version] = []
-            named[version] = _pull_requests_named(
-                notes.read_text(encoding="utf-8"), unread[version]
+            named[version], unread[version] = _pull_requests_named(
+                notes.read_text(encoding="utf-8")
             )
         if item.pr in named[version]:
             continue
@@ -4780,7 +4783,14 @@ def _statements(
     body = statement_lines(_body_lines(lines), kinds)
     if fence is None or (kinds is not None and not PROSE & frozenset(kinds)):
         return list(body)
-    return [*((1 + a, 1 + b) for a, b in frontmatter_statements(lines[1:fence])), *body]
+    # Set aside on purpose: a block `keys` cannot split comes back a line at a
+    # time, every line kept, and is named where a reading of it decides
+    # anything - `tools/rules_paths_check.py` refuses a rule's, and `docket
+    # check` declines an instruction file's dated sentences by name. An item's
+    # front matter, and a pull request body record's, is `docket.model`'s
+    # grammar rather than YAML, a field to a line, which is the reading it gets.
+    spans, _declined = frontmatter_statements(lines[1:fence])
+    return [*((1 + a, 1 + b) for a, b in spans), *body]
 
 
 def _body_lines(lines: Sequence[str]) -> list[str]:

@@ -20,6 +20,7 @@ from docket.model import (
     LANE_WORKFLOW,
     LIST_FIELDS,
     MISREAD_LIMIT,
+    FrontMatterDeclines,
     Item,
     block_list_keys,
     block_scalar_keys,
@@ -75,14 +76,17 @@ def _item(**overrides: object) -> Item:
 
 
 def test_front_matter_splits_fields_from_body() -> None:
-    fields, body = parse_front_matter("---\nid: PL-001\ntitle: A thing\n---\n\nBody text.\n")
+    fields, body, declined = parse_front_matter(
+        "---\nid: PL-001\ntitle: A thing\n---\n\nBody text.\n"
+    )
 
     assert fields == {"id": "PL-001", "title": "A thing"}
     assert body.strip() == "Body text."
+    assert not declined
 
 
 def test_a_file_without_front_matter_yields_no_fields() -> None:
-    fields, body = parse_front_matter("# Just a heading\n")
+    fields, body, _declined = parse_front_matter("# Just a heading\n")
 
     assert fields == {}
     assert body == "# Just a heading\n"
@@ -860,6 +864,29 @@ def test_a_block_scalar_header_is_never_read_as_part_of_the_value() -> None:
         assert unread_front_matter_lines(text) == (), header
 
 
+def test_the_front_matter_reader_hands_back_what_it_declined_beside_the_fields() -> None:
+    """Each declined field arrives empty, so a caller holding only the fields could not tell.
+
+    `vcs._standing` read a ref's copy that way and never asked whether a block
+    had emptied it (`PL-63Y5`), so the declines come back in the result
+    (`PL-JTP1`).
+    """
+    text = (
+        "---\nid: PL-K7QX\ntitle: t\ntouches:\n  - a/b.py\nreason: >-\n  Folded.\n"
+        "stray\n---\nBody\n"
+    )
+
+    fields, body, declined = parse_front_matter(text)
+
+    assert (fields["touches"], fields["reason"], body) == ("", "", "Body\n")
+    assert declined == FrontMatterDeclines(("touches",), ("reason",), ("stray",))
+    assert str(declined) == (
+        "`touches` written as a block list, `reason` written as a block scalar, "
+        "`stray`, which no field reads"
+    )
+    assert not parse_front_matter("---\nid: PL-K7QX\n---\nBody\n")[2]
+
+
 def test_a_value_merely_opening_with_a_block_indicator_is_prose() -> None:
     """The header is the whole of the field's own line, or it is not one."""
     for value in ("> 5 minutes of washout", "|x| is the magnitude", ">-1 dB"):
@@ -877,16 +904,17 @@ def test_front_matter_closes_only_on_a_line_that_is_exactly_three_dashes() -> No
     """
     for stray in ("---y", "----", "--- "):
         text = f"---\nid: PL-K7QX\ntitle: t\n{stray}\nstatus: done\ntouches: a.py\n---\nBody\n"
-        fields, body = parse_front_matter(text)
+        fields, body, declined = parse_front_matter(text)
 
         assert fields["status"] == "done", stray
         assert fields["touches"] == "a.py", stray
         assert body == "Body\n", stray
         assert unread_front_matter_lines(text) == (stray,), stray
+        assert declined.lines == (stray,), stray
 
 
 def test_front_matter_still_closes_at_the_end_of_a_file_with_no_body() -> None:
-    fields, body = parse_front_matter("---\nid: PL-K7QX\ntitle: t\n---")
+    fields, body, _declined = parse_front_matter("---\nid: PL-K7QX\ntitle: t\n---")
 
     assert fields == {"id": "PL-K7QX", "title": "t"}
     assert body == ""
