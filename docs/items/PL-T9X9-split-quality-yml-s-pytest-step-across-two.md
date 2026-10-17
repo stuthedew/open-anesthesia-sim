@@ -137,6 +137,10 @@ The owner also agreed to file the two smaller levers above: `PL-STM6` skips the
 costly tests on pull requests that touch no simulator path, and `PL-JWBW` tries
 the arm64 runners.
 
+**Merged as built** (project owner, 2026-10-17, ratified, "agree with recs",
+over tabling the split after its first run saved about 2 minutes rather than
+4). Balancing the parts is tabled in `PL-ZWQS`.
+
 **As built.**
 
 - `checks-part-1` runs everything the one job ran, with pytest given
