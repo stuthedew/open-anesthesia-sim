@@ -3,14 +3,17 @@ id: PL-MMNX
 title: While frames keep failing on a paused trunk, the Branch here button stays live over the failed run: _halt_every_run restates the halt on each RunView but not on the fork panel, and a press is refused with the refusal swallowed by the next failing frame
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: every-control-restates-the-halt
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
+closed: 2026-10-17
+pr: 1492
 payoff: a paused trunk whose frames fail stops offering Branch here, so the fork panel no longer invites a branch the case will refuse beside a run every other control says has failed
 verify: grep -q 'def test_a_failing_frame_on_a_paused_trunk_withdraws_branch_here' tests/integration/test_simulation_view.py
+recurrences: 2026-10-17 PL-YHR3
 ---
 
 **Problem.** While frames keep failing on a paused trunk, the Branch here button stays live over the failed run: _halt_every_run restates the halt on each RunView but not on the fork panel, and a press is refused with the refusal swallowed by the next failing frame
@@ -66,3 +69,16 @@ a frame that draws; the restatement cannot itself raise out of the halt path.
 A regression test in `tests/integration/test_simulation_view.py`,
 `test_a_failing_frame_on_a_paused_trunk_withdraws_branch_here`, makes every
 frame fail on a paused case and asserts `here_button` is hidden afterwards.
+
+**Fixed 2026-10-17 under `PL-X7D5`'s second pull request.** `_halt_every_run`
+calls `SimulationView._restate_fork_panel` after every run's `present_halt`.
+It redraws the fork panel through `_refresh_fork_panel`, from the case's own
+answers, so "Branch here" is withdrawn on a failed trunk, where
+`here_fork_point` is `None`. Where those answers raise inside the halt path,
+the panel offers nothing rather than the last frame's offer. The regression
+test `test_a_failing_frame_on_a_paused_trunk_withdraws_branch_here` asserts
+`here_button` is hidden, and
+`test_a_fork_panel_the_case_cannot_restate_on_a_halt_offers_nothing` holds
+the guard. The keyframe selector's Branch button, noted above as outside this
+item, is unchanged by it. The bookmark panel has the same gap one panel over;
+it is `PL-YHR3`.

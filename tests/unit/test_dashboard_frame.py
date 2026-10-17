@@ -130,6 +130,7 @@ from anesthesia_sim.app.dashboard_frame import (
     refused_reset_exit,
     refused_setting_notice,
     run_label,
+    run_statement,
     setting_readouts,
     slider_position,
     slider_value,
@@ -153,6 +154,7 @@ from anesthesia_sim.app.formatting import (
     format_mac_reference,
     format_percent,
     format_playback_rate,
+    format_subtitle,
     format_supported_run_length,
     format_time_base,
     format_wash_in_ratio,
@@ -736,6 +738,73 @@ def test_a_halt_is_stated_from_the_run_status_alone() -> None:
     assert halt_notice(running) is None
 
 
+def test_a_run_is_stated_alike_from_its_record_and_from_the_snapshot_it_extends() -> None:
+    """One run states one thing whether a frame drew it or the controller's record is all there is.
+
+    `RunView._write_statement` is the one writer of the run-state widgets,
+    called with the snapshot a frame drew from and with
+    `SimulationController.record()` where none can draw (`PL-X7D5`). The
+    statement reads only what the two share, so a halt states every widget a
+    frame would, from the same functions the frame uses.
+    """
+
+    controller = _paused_run_with_history()
+    record = controller.record()
+    adjustments = group_adjustments(record.control_timeline)
+
+    from_snapshot, from_record = (
+        run_statement(
+            stated,
+            adjustments,
+            undrawn_control_marks=0,
+            is_branch=False,
+            comparing=False,
+            banner=None,
+        )
+        for stated in (controller.snapshot(), record)
+    )
+
+    assert from_snapshot == from_record
+    assert from_record.agent_id == "sevoflurane"
+    assert from_record.agent_name == "Sevoflurane"
+    assert from_record.subtitle == format_subtitle("Sevoflurane")
+    assert from_record.substance_heading == "Modelled concentrations: Sevoflurane"
+    assert from_record.status == status_word(record)
+    assert from_record.status.text == "Paused"
+    assert from_record.transport == transport(record)
+    assert from_record.timeline == timeline_panel(adjustments, 0)
+    assert from_record.timeline.entries != NO_CONTROL_CHANGES_TEXT
+    assert from_record.banner is None
+
+
+def test_a_run_statement_carries_the_locks_the_undrawn_marks_and_the_banner_it_is_given() -> None:
+    """What only the caller knows reaches the statement as given, and nothing is guessed for it.
+
+    Whether the run is a branch and whether a second run is drawn are the
+    view's facts, how many control marks went undrawn is the frame's, and
+    which banner wording applies turns on whether a frame drew, which only
+    the caller knows (`halt_notice`, `notice`).
+    """
+
+    record = _paused_run_with_history().record()
+    adjustments = group_adjustments(record.control_timeline)
+
+    statement = run_statement(
+        record,
+        adjustments,
+        undrawn_control_marks=3,
+        is_branch=True,
+        comparing=True,
+        banner="the banner the caller worded",
+    )
+
+    assert statement.transport == transport(record, is_branch=True, comparing=True)
+    assert statement.transport.selector_lock_reason == BRANCH_AGENT_LOCK_TEXT
+    assert statement.timeline == timeline_panel(adjustments, 3)
+    assert statement.timeline.overflow != ""
+    assert statement.banner == "the banner the caller worded"
+
+
 def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
     """Reset is the door every failure wording names; a refused Reset's banner names the repair.
 
@@ -1177,9 +1246,17 @@ def test_the_clock_panel_reads_in_the_chart_axis_form_past_an_hour() -> None:
 
 
 def test_the_readout_row_names_the_substance_its_numbers_belong_to() -> None:
-    """`PL-TCD1`: one frame, one vocabulary, following the agent."""
+    """`PL-TCD1`: one frame, one vocabulary, following the agent.
+
+    Stated from a snapshot and from the record a halt is written from alike,
+    since the heading names an agent and no compartment value (`PL-1YDD`).
+    """
 
     assert substance_heading(_snapshot()) == "Modelled concentrations: Sevoflurane"
+    assert (
+        substance_heading(SimulationController(agent_id="desflurane").record())
+        == "Modelled concentrations: Desflurane"
+    )
     assert (
         substance_heading(
             _snapshot(

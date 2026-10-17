@@ -17,10 +17,16 @@ in a caption is `app/dashboard_frame.py`'s; this class formats nothing and
 decides nothing a reader interprets.
 
 **Two cadences, kept apart** (decision D7). Each run's own timer steps it;
-this view's render timer draws, and only while a run is running or a
-coalesced slider change has left a frame owed (`PL-R2YM`). A frame that
-cannot be drawn halts every run, because a raise out of the shared render
-path is attributable to none of them. No wall clock is read anywhere.
+this view's render timer draws, and only while a run is running or a frame
+is owed: by a coalesced slider change (`PL-R2YM`), by a change to the run
+set, or by a run whose record differs from what its view last wrote
+(`PL-X7D5`). A frame that cannot be drawn halts every run, because a raise
+out of the shared render path is attributable to none of them. No wall
+clock is read anywhere.
+
+**The legend is a frame widget** (`PL-G3K7`). It is handed the selection a
+frame was assembled from once both plots have drawn it, so its boxes name
+the curves on the plot even where the frame a click asked for fails.
 
 **Hover is the chart's** (decision D6): `qt_chart` answers whenever the
 pointer is over a drawn point, running or paused, and the dashboard adds
@@ -227,11 +233,12 @@ class SimulationView(QWidget):
     """
 
     compartment_selection_changed = Signal(object)
-    """Emitted with the compartment selection each time this view sets it.
+    """Emitted with the selection a frame was assembled from, once both plots have drawn it.
 
-    On a reader's request, and on every change to the run set, which may
-    leave it as it was. Every legend showing this view's selection is
-    connected to it rather than called, so one that has been closed is
+    Not when the selection is set, by a reader's request or a change to the
+    run set: a frame that then failed left the legend naming curves the plot
+    was not drawing (`PL-G3K7`). Every legend showing this view's selection
+    is connected to it rather than called, so one that has been closed is
     simply no longer told, and a second is told the same (`PL-VN6M`).
     """
 
@@ -321,7 +328,6 @@ class SimulationView(QWidget):
         self._concentration_chart = ConcentrationChart()
         self._wash_in_chart = WashInChart()
         self._legend = TraceLegend()
-        # Before any run is placed, since placing one sets the selection.
         self.compartment_selection_changed.connect(self._legend.show_selection)
         self._wash_in_legend = WashInLegend()
         self._time_base_dropdown = QComboBox()
@@ -767,7 +773,7 @@ class SimulationView(QWidget):
         freeze_splitter_handles(self._sections)
 
     def _rename_runs(self) -> None:
-        """Hold the compartment selection to the run count, and tell both legends and every run.
+        """Hold the compartment selection to the run count, and tell every run.
 
         Said on every change to the run set rather than once at
         construction. A lone run is given no name, having nothing to be told
@@ -775,22 +781,21 @@ class SimulationView(QWidget):
         legend entries call them. The same count decides whether an agent
         selector may be used at all, because two runs share one MAC axis,
         and whether the compartment selection is held to the cap
-        (`CompartmentSelection.with_run_count`).
+        (`CompartmentSelection.with_run_count`). Neither legend is told here:
+        each names the curves a drawn frame drew, so each hears of the new
+        run set from the frame the change owes (`PL-G3K7`, `PL-0LG6`).
 
         **It draws nothing, and nothing it calls may** (`PL-B1R9`). A frame
         assembled before the last of these has been told is drawn from a run
         set half told that it has changed, so the frame the change owes is
         drawn by whatever changed the run set, once this returns: the press
-        that took a branch, the Reset that dropped one, or `main()` after the
-        window is shown. `TraceLegend.show_selection` announces nothing for
-        that reason, though the selection it is handed may have lost a
-        compartment to the cap.
+        that took a branch, the Reset that dropped one, `main()` after the
+        window is shown, or the render tick, which draws whenever the run
+        count differs from the one the last frame was drawn over (`PL-0LG6`).
         """
 
         comparing = len(self._runs) > 1
         self._compartment_selection = self._compartment_selection.with_run_count(len(self._runs))
-        self.compartment_selection_changed.emit(self._compartment_selection)
-        self._wash_in_legend.set_run_count(len(self._runs))
 
         for index, run in enumerate(self._runs):
             run.set_run_name(run_label(index) if comparing else None)
@@ -896,6 +901,35 @@ class SimulationView(QWidget):
         self._fork_refusal = None
         self.add_run(branch)
         self.present(False)
+
+    def _restate_fork_panel(self) -> None:
+        """Restate both branch controls from the case on a halt, and offer nothing if that raises.
+
+        `_refresh_fork_panel` is otherwise called only at the end of a frame,
+        so a halt whose frame failed left "Branch here" live over a trunk
+        every other control said had failed, and a press was refused with the
+        refusal lost to the next failing frame (`PL-MMNX`). The case answers
+        from the trunk's own state, and `BranchedCase.here_fork_point` is
+        None on a failed trunk, so the restatement needs no frame.
+
+        Guarded, because it runs inside the halt path, where a raise would
+        escape the render path's own guard into the toolkit. A case whose
+        answers raise is given an offer of nothing rather than left with the
+        last frame's.
+        """
+
+        try:
+            self._refresh_fork_panel()
+        except Exception:
+            self._fork_panel.set_offer(
+                fork_offer(
+                    (),
+                    marks=(),
+                    comparing=len(self._runs) > 1,
+                    here=None,
+                    refusal=self._fork_refusal,
+                )
+            )
 
     def _refresh_fork_panel(self) -> None:
         """Redraw both branch controls from the trunk's state this tick.
@@ -1013,7 +1047,10 @@ class SimulationView(QWidget):
         The frame is assembled for the wider of the two plots, so neither
         draws a chord wider than a pixel (`PL-GS3R`). The MAC-awake line is
         the reference run's, because the frame carries the band's edges and
-        not the published fraction it was drawn from.
+        not the published fraction it was drawn from. Both legends are told
+        what the frame drew once both plots have drawn it, and not before,
+        so where the frame fails they go on naming the curves still on the
+        plot (`PL-G3K7`).
 
         Raises:
             ValueError: If the runs have come to be on different agents
@@ -1023,6 +1060,7 @@ class SimulationView(QWidget):
         # Stored before anything can raise: a frame that fails over a new run
         # set is answered by the halt it raises, and is not retried every tick.
         self._drawn_run_count = len(self._runs)
+        selection = self._compartment_selection
         snapshots = tuple(run.snapshot() for run in self._runs)
         inputs = tuple(
             RunInput(run_label(index), run.controller, snapshot, run.adjustments(snapshot))
@@ -1031,13 +1069,15 @@ class SimulationView(QWidget):
         frame = assemble_chart_frame(
             inputs,
             self._time_base,
-            self._compartment_selection.shown,
+            selection.shown,
             plot_width_px=max(
                 self._concentration_chart.plot_width_px(), self._wash_in_chart.plot_width_px()
             ),
         )
         self._concentration_chart.draw(frame)
         self._wash_in_chart.draw(frame)
+        self.compartment_selection_changed.emit(selection)
+        self._wash_in_legend.set_run_count(len(frame.runs))
         self._time_axis_caption.setText(time_axis_caption(frame))
         self._mac_reference_text.setText(mac_reference_caption(frame))
         self._mac_awake_reference_text.setText(mac_awake_caption(snapshots[0]))
@@ -1277,17 +1317,19 @@ class SimulationView(QWidget):
         self.present(False)
 
     def _handle_compartment_request(self, quantity: RecordedQuantity, shown: bool) -> None:
-        """Answer a reader's click in the legend: change the selection, show it, and draw at once.
+        """Answer a reader's click in the legend: change the selection and draw at once.
 
-        The legend only asks (`PL-VN6M`). Its boxes and the frame drawn next
-        are both written from the selection this leaves, which is what keeps
-        the legend naming exactly the curves on the plot - a click over the
-        two-compartment cap included, where the selection rather than the
-        legend decides which compartment makes room.
+        The legend only asks (`PL-VN6M`). The frame drawn next is assembled
+        from the selection this leaves - a click over the two-compartment cap
+        included, where the selection rather than the legend decides which
+        compartment makes room - and the legend's boxes are written from the
+        same selection once that frame has drawn (`_refresh_view`). Where the
+        frame fails, nothing writes them, and the legend puts the clicked box
+        back to the selection it last showed, which is the frame still on
+        the plot (`PL-G3K7`).
         """
 
         self._compartment_selection = self._compartment_selection.with_compartment(quantity, shown)
-        self.compartment_selection_changed.emit(self._compartment_selection)
         self.present(False)
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.
@@ -1307,13 +1349,15 @@ class SimulationView(QWidget):
         """Stop every run for a raise out of the shared render path, say so, then try to draw.
 
         A raise the render loop meets is attributable to no run, so every
-        run stops. Each run states its halt from its controller's status,
+        run stops. Each run states its halt from its controller's record,
         which builds no compartment value, before the frame is attempted,
         because the frame is what just failed and may fail again for the
         same cause - two runs that have come to be on different agents, say,
         or a snapshot whose own values refuse - and a halt presented only
-        through it would never be seen (`PL-25KS`, `PL-7DJK`). A
-        presentation that fails afterwards cannot unwind the halt.
+        through it would never be seen (`PL-25KS`, `PL-7DJK`). The branch
+        controls are restated from the case for the same reason
+        (`_restate_fork_panel`, `PL-MMNX`). A presentation that fails
+        afterwards cannot unwind the halt.
         """
 
         for run in self._runs:
@@ -1321,6 +1365,8 @@ class SimulationView(QWidget):
 
         for run in self._runs:
             run.present_halt()
+
+        self._restate_fork_panel()
 
         try:
             self._refresh_view()

@@ -3,12 +3,14 @@ id: PL-1YDD
 title: RunView.present_halt writes the delivered dial's name from settings().agent_display_name while the subtitle, chip, substance heading, selector and colour scheme stay the last frame's, so a halt on the first frame after a successful set_agent would show two agents; no control reaches it today, since _start_new_case halts on a refused snapshot before set_agent (found reviewing PL-85LJ)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: every-control-restates-the-halt
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
+closed: 2026-10-17
+pr: 1492
 payoff: A run halted right after an agent change names one agent everywhere on screen, rather than the new agent on the dial and the old one in the header, chip and heading.
 verify: grep -q 'def test_a_halt_after_an_agent_change_names_one_agent' tests/integration/test_simulation_view.py
 ---
@@ -47,3 +49,13 @@ names one agent; `substance_heading` takes what both a snapshot and
 `tests/integration/test_simulation_view.py`, picks a new agent on a fresh
 run with the frame forced to fail and asserts the dial name, subtitle, chip,
 substance heading and selector all name the controller's agent.
+
+**Fixed 2026-10-17 under `PL-X7D5`'s second pull request.** `RunView.present_halt`
+now writes through `RunView._write_statement`, the one writer of a run's
+run-state widgets, from `SimulationController.record()`. The dial name, the
+subtitle, the chip, the substance heading, the selector and
+`_apply_agent_color_scheme` all come from the controller's agent, and
+`substance_heading` takes a `RunSettings`. The regression test
+`test_a_halt_after_an_agent_change_names_one_agent` repeats the reproduction
+and asserts that the dial name, subtitle, chip, heading, selector and all six
+identity colours name the controller's agent.

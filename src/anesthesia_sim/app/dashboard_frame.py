@@ -50,6 +50,7 @@ from anesthesia_sim.app.control_timeline import ControlAdjustment, format_adjust
 from anesthesia_sim.app.controller import (
     HereForkPoint,
     MarkForkPoint,
+    RunRecord,
     RunSettings,
     RunStatus,
     SimulationSnapshot,
@@ -69,6 +70,7 @@ from anesthesia_sim.app.formatting import (
     format_mac_reference,
     format_percent,
     format_playback_rate,
+    format_subtitle,
     format_supported_run_length,
     format_time_base,
     format_wash_in_ratio,
@@ -2026,17 +2028,106 @@ def _here_fork_label(here: HereForkPoint) -> str:
     return template.format(instant=format_elapsed(here.fork_s))
 
 
-def substance_heading(snapshot: SimulationSnapshot) -> str:
+def substance_heading(settings: RunSettings) -> str:
     """The heading naming the substance the six readouts belong to (`PL-TCD1`).
 
     Args:
-        snapshot: The run's state this tick.
+        settings: The run's agent and settings - the snapshot a frame drew
+            from, or the controller's record where no frame draws, which is
+            why it takes what both carry (`PL-1YDD`).
 
     Returns:
         The heading line.
     """
 
-    return COMPARTMENT_SUBSTANCE_TEMPLATE.format(agent=snapshot.agent_display_name)
+    return COMPARTMENT_SUBSTANCE_TEMPLATE.format(agent=settings.agent_display_name)
+
+
+@dataclass(frozen=True, slots=True)
+class RunStatement:
+    """What a run's screen states without a compartment value: every run-state widget but the dials.
+
+    `RunView._write_statement` is the one writer of these widgets. `refresh`
+    calls it with the snapshot a frame drew from, and `present_halt` with
+    `SimulationController.record()` where no frame can draw, so a widget
+    stated here reads the same on a drawn run and on a halted one in the same
+    state. Before this, the halt wrote a list of widgets chosen by hand, and
+    each widget the list missed went on stating the last frame's run
+    (`PL-X7D5`, `PL-1YDD`, `PL-DTJQ`).
+
+    The four dials are written beside it from the same record rather than
+    carried in it, because `setting_readouts` can raise, for a control that
+    can offer no setting, and everything here has to be on screen before it
+    does (`PL-85LJ`).
+
+    Attributes:
+        agent_id: The running agent, whose ISO 5360 pair
+            `RunView._apply_agent_color_scheme` writes and whose entry the
+            selector shows.
+        agent_name: The running agent's name, on the chip that replaces the
+            selector.
+        subtitle: The header badge's line naming the build and the agent.
+        substance_heading: The heading saying whose concentrations the
+            readouts are.
+        status: The status word.
+        transport: Which transport controls are usable, and why the
+            selector is locked.
+        timeline: The control-change panel.
+        banner: The notice banner's text before it is attributed to a run,
+            or None for no banner.
+    """
+
+    agent_id: str
+    agent_name: str
+    subtitle: str
+    substance_heading: str
+    status: StatusWord
+    transport: Transport
+    timeline: TimelinePanel
+    banner: str | None
+
+
+def run_statement(
+    record: RunRecord,
+    adjustments: Sequence[ControlAdjustment],
+    *,
+    undrawn_control_marks: int,
+    is_branch: bool,
+    comparing: bool,
+    banner: str | None,
+) -> RunStatement:
+    """Everything a run's screen states from its record alone, for `RunView._write_statement`.
+
+    Builds no compartment value, so a halt stated from it cannot raise for
+    the value it halted on (`PL-7DJK`).
+
+    Args:
+        record: The run's record: the snapshot a frame drew from, or
+            `SimulationController.record()` where none draws.
+        adjustments: `record.control_timeline` grouped into acts, as
+            `RunView.adjustments` groups it.
+        undrawn_control_marks: As `timeline_panel` takes it: the drawn
+            frame's count, or zero where no frame drew.
+        is_branch: As `transport` takes it.
+        comparing: As `transport` takes it.
+        banner: `notice`'s text where a frame drew, or `halt_notice`'s where
+            none has. The caller chooses, because only the caller knows
+            whether a frame drew.
+
+    Returns:
+        The statement.
+    """
+
+    return RunStatement(
+        agent_id=record.agent_id,
+        agent_name=record.agent_display_name,
+        subtitle=format_subtitle(record.agent_display_name),
+        substance_heading=substance_heading(record),
+        status=status_word(record),
+        transport=transport(record, is_branch=is_branch, comparing=comparing),
+        timeline=timeline_panel(adjustments, undrawn_control_marks),
+        banner=banner,
+    )
 
 
 def time_axis_caption(frame: ChartFrame) -> str:
@@ -2243,8 +2334,9 @@ def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
     one place that holds both.
 
     A lone run is given no name, having nothing to be told apart from - the
-    rule `SimulationView._rename_runs` applies to the run panels and to both
-    legends, so a single-run display is unchanged. The frame's run is read
+    rule `SimulationView._rename_runs` applies to the run panels, and both
+    legends to the frame they are told of, so a single-run display is
+    unchanged. The frame's run is read
     before that count is consulted, so an index addressing no run raises on
     a one-run frame too rather than returning a line that looks right.
 
@@ -2365,8 +2457,8 @@ def compared_panel_heading(heading: str, run: str | None) -> str:
         heading: The panel's own heading words.
         run: The run's name, from `run_label`, or `None` while one run is
             drawn - which is the rule `SimulationView._rename_runs` already
-            applies to the run panels and both legends, so a single-run
-            display gains no standing text.
+            applies to the run panels, and both legends to the frame they are
+            told of, so a single-run display gains no standing text.
 
     Returns:
         The heading unchanged while one run is drawn; the heading and then
