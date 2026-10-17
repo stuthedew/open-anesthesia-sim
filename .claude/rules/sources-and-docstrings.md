@@ -79,8 +79,9 @@ part of the value rather than as presentation.
 **Both are facts, not a license for commentary.** Each obligation above puts
 something in the docstring or the message that a reader cannot get anywhere
 else — which condition is refused, which value failed it. Neither is served by
-words around it, and `PL-XXBD` is the standing pass on comments that pad rather
-than communicate. Lee's eighth rule — a generated documentation site — is
+words around it. `.claude/rules/plain-writing.md` says how to word each
+sentence, and the `prose-quality` feature's items rewrite the existing text.
+Lee's eighth rule — a generated documentation site — is
 declined outright: there is no external API consumer to serve it to, and
 `tests/reference/` already does what its verification half asks for, against
 published data rather than against the code's own claims.

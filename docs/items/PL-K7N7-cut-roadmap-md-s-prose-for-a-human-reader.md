@@ -36,3 +36,12 @@ restating the one above it, no clause that adds nothing. Every recorded
 decision still states its reason. `make check` passes, so the release train,
 the current baseline and the release tags all still resolve, and `bin/docket
 wave` reports the same beat it reported before the edit.
+
+**Re-aimed 2026-10-17 by `PL-8ZTQ`.** A blind sample of 91 passages found that
+the main defect is compressed wording, not padding. Readers stumbled on
+dropped small words, ordinary words used in private senses, sentences carrying
+several claims, and unclear references. Padding blocked reading in none of
+them. So the work is to rewrite each awkward sentence as
+`.claude/rules/plain-writing.md` says, and to cut only text that repeats
+itself. Where this brief says to cut prose, read it that way. The rewritten
+text may come out longer.
