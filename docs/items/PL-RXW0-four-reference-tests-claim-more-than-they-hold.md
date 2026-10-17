@@ -1,9 +1,15 @@
 ---
 id: PL-RXW0
 title: Four reference tests claim more than they hold: two elimination tests named 'against published human measurement' are self-derived pins with 6-12% bands, the open-circuit residual's 'closed-form bound' is not a bound, the 24 h washout pins values past the supported run length, and the analytic circuit wash-in test takes tau from the code under test
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: test, docs
 feature: tests-detect-wrong-values
+touches: tests/reference/test_published_wash_in_and_elimination.py, tests/reference/test_late_washout_against_published_fits.py, docs/MODEL.md
 added: 2026-10-17
+payoff: no reference test is named or described as validation, a bound or an independent solution when it is a regression pin, so a reader does not over-trust what passed
+verify: ! grep -qF 'five_minute_elimination_ratio_against_published_human_measurement' tests/reference/test_published_wash_in_and_elimination.py
 ---
 
 **Problem.** Four reference tests claim more than they hold: two elimination tests named 'against published human measurement' are self-derived pins with 6-12% bands, the open-circuit residual's 'closed-form bound' is not a bound, the 24 h washout pins values past the supported run length, and the analytic circuit wash-in test takes tau from the code under test
