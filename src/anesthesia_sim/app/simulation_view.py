@@ -690,9 +690,25 @@ class SimulationView(QWidget):
         recorded run over an input to another one. Reset is the gesture a
         reader reaches for to start one run again, which is precisely the
         wrong place to put a surprise (`PL-LQ19`).
+
+        **The case and a standing fork refusal answer to the run that ended,
+        not to how many runs are drawn**, so both are cleared on every trunk
+        Reset, a one-run one included. A refusal names an instant of the run
+        that has just started over, so it goes as the setting refusal
+        `RunView._handle_reset` clears does (`PL-75P5`). The case is a record
+        of the trunk's run rather than of the display, so it is rebuilt
+        whatever is on screen: a branch it kept but never drew, which
+        `PL-08SS`'s fork leaves, would otherwise outlive the run it was taken
+        from. Only the layout waits for a second run to drop.
         """
 
-        if self._case is None or len(self._runs) == 1:
+        if self._case is None:
+            return
+
+        self._case = BranchedCase(self._runs[0].controller)
+        self._fork_refusal = None
+
+        if len(self._runs) == 1:
             return
 
         dropped = tuple(zip(self._runs[1:], self._slots[1:], strict=True))
@@ -702,10 +718,6 @@ class SimulationView(QWidget):
         for run, slots in dropped:
             self._remove_run(run, slots)
 
-        if self._case is not None:
-            self._case = BranchedCase(self._runs[0].controller)
-
-        self._fork_refusal = None
         self._restack_sections()
         self._rename_runs()
 
