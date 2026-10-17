@@ -1,14 +1,16 @@
 ---
 id: PL-KXTL
 title: Ship the three default Workspaces - the central-graph default, induction, and big-picture maintenance - as validated versioned JSON beside the other shipped parameter files
-status: blocked
-feature: interface-areas
-added: 2026-09-16
 priority: P2
 effort: S
-blocked-by: PL-WV9K, PL-SSQW
+status: ready
 classes: feature
+feature: interface-areas
 touches: src/anesthesia_sim/data/, tests/unit
+blocked-by: PL-WV9K, PL-SSQW
+added: 2026-09-16
+payoff: the three shipped Workspaces are validated JSON under data/workspaces/ that a first run loads through the reader's own reader, each carrying the provenance line the interface record asks for
+verify: grep -q 'shipped:default' src/anesthesia_sim/data/workspaces/default.json
 ---
 
 **Problem.** Ship the three default Workspaces - the central-graph default, induction, and big-picture maintenance - as validated versioned JSON beside the other shipped parameter files
