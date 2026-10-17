@@ -15,9 +15,9 @@ detect wrong values") ran `python3 tools/context_reading.py` at
 `spend -127,536`. Earlier in that session the harness had moved the
 session's working directory to `/home/user` and back. A spend below zero
 cannot be true, so the reading had no use for the budget check in
-`CLAUDE.md` § "Session and tool-use efficiency". The thread recorded this in
-`/mnt/project-files/v0.6.0/test-features.md` § "Handoff for link 2", and
-the link 2 thread filed it.
+`CLAUDE.md` § "Session and tool-use efficiency". The thread recorded this in the
+project's shared notes for the v0.6.0 test features (a file outside the
+repository), under "Handoff for link 2", and the link 2 thread filed it.
 
 **Likely cause (inferred, not verified).** The script takes the first
 request of the transcript it reads as the session's floor. A move of the

@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: test
 feature: tests-detect-wrong-values
-touches: tests/unit, docs/items/PL-2TZT-five-more-guard-names-in-core-are-passed.md
+touches: tests/unit, docs/items/PL-2TZT-five-more-guard-names-in-core-are-passed.md, docs/items/PL-PLT9-tools-context-reading-py-printed-a-negative.md
 added: 2026-10-17
 payoff: a refusal or warning a learner reads is asserted as a whole string, so a wrong plural or a changed sentence fails a test instead of passing as a substring
 verify: grep -q 'def test_the_case_discard_warning_is_pinned_whole' tests/unit/test_formatting.py
