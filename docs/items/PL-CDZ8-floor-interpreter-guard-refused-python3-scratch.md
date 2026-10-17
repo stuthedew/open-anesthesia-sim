@@ -10,6 +10,7 @@ touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpr
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-11
 closed: 2026-10-17
+pr: 1500
 payoff: a session running its own script with a tree path as an argument is let through, while a real floor parse of src or tests is still refused
 verify: grep -q 'def test_a_scripts_own_argument_naming_a_tree_is_left_alone' tests/unit/test_floor_interpreter_guard.py
 reenters: PL-61FT

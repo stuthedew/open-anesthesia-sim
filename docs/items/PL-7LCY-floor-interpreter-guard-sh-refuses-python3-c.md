@@ -10,6 +10,7 @@ touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpr
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
 closed: 2026-10-17
+pr: 1500
 payoff: a session reading a JSON parameter file under the data tree with a -c string is let through, since that parses no 3.14 source, while a -c string that compiles or runs a tree's Python is still refused
 verify: grep -q 'def test_a_c_string_reading_a_data_file_under_a_tree_is_left_alone' tests/unit/test_floor_interpreter_guard.py
 ---

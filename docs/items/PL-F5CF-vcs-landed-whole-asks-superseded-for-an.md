@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-05
 closed: 2026-10-17
+pr: 1500
 payoff: bin/docket branch and the session-start snapshot stop paying a git diff per ref and a git show pair per removals-only path for a set the landed-whole verdict never reads
 verify: grep -q 'def test_landed_whole_reads_no_supersession' subprojects/docket/tests/test_vcs.py
 ---
