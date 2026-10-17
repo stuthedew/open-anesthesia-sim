@@ -1,9 +1,17 @@
 ---
 id: PL-6JKB
 title: Nothing checks that a bug fix's regression test fails before the fix: a replay of 58 recent simulator bug-fix commits found every test reproduces its bug, but 16 of them (28%) cannot even be collected against the pre-fix code, so that protection rests on reasoning rather than on a run recorded when the fix merged
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: docs
 feature: test-effectiveness-measurement
+touches: .claude/rules/test-oracles.md
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1497
+payoff: a bug fix's regression test is shown to fail before the fix by a run recorded in its item, not by reasoning
+verify: grep -q 'Run a regression test against the code before the fix' .claude/rules/test-oracles.md
 ---
 
 **Problem.** Nothing checks that a bug fix's regression test fails before the fix: a replay of 58 recent simulator bug-fix commits found every test reproduces its bug, but 16 of them (28%) cannot even be collected against the pre-fix code, so that protection rests on reasoning rather than on a run recorded when the fix merged
@@ -70,13 +78,20 @@ hand-built variant.
 **Proposal.** When a bug fix is made, record its fail-before run in the item:
 the command run against the parent and the failing assertion's message. Where
 the test needs the fix's new API, record a variant that does not. This can be
-prose in the item, needing no new mechanism. A check or a `docket` field that
-enforced it would be a new workflow mechanism, which `CLAUDE.md` pauses while
-any open item carries `generator: live`, so building one is the project
-owner's call.
+prose in the item, needing no new mechanism.
 
-**Where.** `docs/items/` (the record), and wherever a fix's close-out is
-described, if the owner wants the practice written down.
+**Decision.** The project owner approved recording the fail-before run
+(project owner, 2026-10-17, ratified, over leaving that protection to one-off
+replays). It is prose in the item, with no new check or field. The capture
+said a check would fall under `CLAUDE.md`'s pause on new workflow mechanisms.
+That was wrong, because no workflow-lane head carried `generator: live` that
+day (`PL-3KMD`).
+
+**Generator check.** Not a member of any head: it records a practice the
+suite lacked, and no other item misreads the same fact.
+
+**Where.** `docs/items/` holds the record. `.claude/rules/test-oracles.md`
+states the practice, and loads when a session reads the simulator's tests.
 
 **Done when.** The project owner has decided whether a bug fix's fail-before
 run is recorded, and if so where.
