@@ -185,8 +185,5 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     workerinput = getattr(config, "workerinput", None)
     if workerinput is None or workerinput.get("dist") != "worksteal":
         return
-    # PL-4Z5Y's A/B switch, on its draft branch only. Removed before the pull request merges.
-    if os.environ.get("PL_4Z5Y_AB_DEALING") == "nohook":
-        return
 
     items[:] = deal(items, _units(items), workerinput["workercount"])
