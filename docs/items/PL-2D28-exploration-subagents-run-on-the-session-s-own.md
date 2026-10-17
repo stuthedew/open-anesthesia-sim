@@ -130,24 +130,32 @@ question above, this part still happens.
 **Decision needed.** Should exploration subagents run on a cheaper model, and
 which one?
 
-**Recommendation:** yes, Claude Haiku 5.5, as `model: haiku`. Three reasons.
-The documentation's own example for this exact override is `model: haiku`,
+**Recommendation:** yes, Claude Sonnet 5.5, as `model: sonnet`. Revised
+on 2026-10-17, later the same day, from Haiku 5.5. The owner asked whether a
+missed lead is silent, and the answer under *Silent misses* below is that it
+is, on every model, and that nothing deterministic catches one in prose or
+queue work. The arithmetic there puts each cheaper model's saving in that
+class within the error of its expected rework, so the model choice is decided
+by what a forgotten override costs: under a Sonnet default a session that
+forgets to ask for Haiku on a quick lookup forgoes about $0.19; under a Haiku
+default a session that forgets to ask for a stronger model on a design-round
+search takes a silent miss at roughly twice Sonnet's rate. The first failure
+is bounded and the second is not. The documentation still favours a cheaper
+model for subagent search: its example for this override is `model: haiku`,
 and the costs guide says "For simple subagent tasks, specify `model: haiku`
 in your subagent configuration" (https://code.claude.com/docs/en/costs,
-§ "Choose the right model"). Explore's output is leads that the session
-checks against the source by rule (`CLAUDE.md` § "Session and tool-use
-efficiency"), so a weak lead costs a verification and not a wrong commit. And
-the three reasons `docs/maintainer.md` § "Which model each flag means" gives
-for Sonnet over Haiku are about Haiku 4.5: Claude Haiku 5.5 is the current
-generation, has a 1M-token context window and takes the effort parameter
-(models overview, read 2026-10-17; `PL-XJV3` updates that passage). Claude
-Sonnet 5.5 is the hedge if lead quality worries you more than usage. It costs
-half of Opus 5.5 where Haiku costs a fortieth, so it gives up most of the
-saving. The owner's recorded preference, default to Opus whenever in doubt,
-was stated for delegated items, which carry fixes; search output is checked
-by construction. Either way the per-call `model` override stays, so a session
-that wants Opus for one hard search can ask for it. This replaces the
-capture's recommendation of Sonnet, whose reasons were Haiku 4.5's.
+§ "Choose the right model"); Sonnet 5.5 halves Opus 5.5's cost per run. The
+three reasons `docs/maintainer.md` § "Which model each flag means" gives for
+Sonnet over Haiku are about Haiku 4.5 and do not decide this (`PL-XJV3`
+updates that passage). The per-call `model` override stays either way: a
+session asks for `haiku` on a lookup it knows is quick and for `opus` on one
+hard search, and a literal-string search goes to Grep directly, which is
+exhaustive, so a subagent is for questions Grep cannot phrase. The number that
+would return this to Haiku 5.5: a measured excess miss rate on thorough
+searches no higher than Sonnet's, or a count showing Explore here mostly runs
+quick lookups. Neither is in the tree. This replaces the capture's
+recommendation of Sonnet, whose reasons were Haiku 4.5's, with the same
+answer for a different reason.
 
 **Risks, likelihood and magnitude, per option.** Added 2026-10-17 at the
 owner's request. Where a figure is a measurement it names its source; where it
@@ -203,6 +211,56 @@ the saving. The per-call `model` override is the mitigation either way: a
 session can ask for Opus on one hard search, and the file sets a default and
 not a ceiling.
 
+*Silent misses.* Added 2026-10-17 after the owner asked whether a missed
+lead is silent, whether anything checks that a search did an adequate job,
+and whether a miss carries downstream cost. It is silent. A subagent "returns
+only the summary" (sub-agents page, read 2026-10-17), nothing in Claude Code
+scores that summary, and the one built-in signal, the partial marking when a
+`maxTurns` limit stops a run, says the run was cut short and nothing about
+its quality. The session cannot see what it was not told, so a missed
+reference is invisible at the boundary on every model, Opus 5.5 included.
+`CLAUDE.md`'s rule to treat leads as things to verify against the source
+checks that what came back is true. It cannot check that nothing was left
+out. So the paragraph above was right about a wrong lead and too optimistic
+about a missed one: the first guard it names catches none of those.
+
+What catches a miss sits downstream and depends on what was missed. The
+escape figures are this session's estimates.
+
+| What the search missed | What catches it, deterministically | Estimated escape |
+| --- | --- | --- |
+| a caller or sibling in `src/anesthesia_sim/core/` | `make check`: mypy, pytest at 100% branch coverage of `core`, `tools/literal_home_check.py`, `tools/fact_home_check.py`; then the owner's read of `src/` | under 1 in 10 where the miss leaves the code inconsistent; higher where it leaves two independently valid copies |
+| a caller in `src/anesthesia_sim/app/` | mypy and the tests that exist; no coverage floor | about 1 in 3 |
+| a second statement of a fact in docs or rules, or a sentence the change makes stale | nothing: `tools/doc_check.py` checks that a cited path exists, not that the sentence is true | about 1 in 2; found later by a reader and filed |
+| a prior decision or related item, in a design round | `tools/dead_ends.py` for the recorded dead ends; otherwise the owner's memory | about 1 in 2; the magnitude is a reopened decision or a duplicate item, which spends the owner's attention |
+
+The store cannot say how often this has happened. 30 items mention a
+subagent and none attributes a defect to a missed lead (grep over
+`docs/items/`, 2026-10-17). That has two readings the store cannot separate:
+misses are rare, or a miss that escapes surfaces later as an ordinary defect
+and is never traced back. The second is the owner's point.
+
+*Expected cost per session, under the estimates above.* Take a session that
+runs one quick and one thorough search, and put a caught-late miss at $10 of
+a later session's turns. Opus 5.5 pays $1.34 for the two runs. Sonnet 5.5
+pays $0.67, and its excess misses on the thorough search cost $0.05 to $0.50
+in expectation (5 to 10 points of excess miss rate, times an escape of 1 in
+10 to 1 in 2, times $10), so it nets $0.17 to $0.62 of saving. Haiku 5.5 pays
+$0.04 and its excess misses cost $0.10 to $1.00, so it nets $0.30 to $1.20,
+with twice the variance and twice the rate of the one cost the arithmetic
+leaves out, a reopened decision put to the owner. Against sessions of $6 to
+$53, either saving is 1% to 10% of a session. So the dollars do not separate
+the options inside the error of the estimates; what a forgotten override
+costs does, and the recommendation above follows from that.
+
+*What reduces the silent class at any model.* The file's body requires the
+subagent to end every report with the scope it searched, the patterns and
+directories, and what it did not search. A "did not look there" miss then
+shows in two lines the session reads instead of in nothing. It does not catch
+a "looked and did not recognize" miss; only a stronger model or a second
+search does, which is what the per-call override is for. The build carries
+this requirement whatever model the owner picks.
+
 *Risks the file carries whatever model it names.* The file replaces the
 built-in Explore's prompt with ours. Estimate: roughly 1 in 3 that the first
 draft regresses something the built-in does, such as the thoroughness levels
@@ -234,9 +292,10 @@ owner's recorded rule. This session cannot read a local machine, so that is
 the documentation's claim and not a measurement.
 
 **Done when.** With a yes: `.claude/agents/Explore.md` exists with
-`model: haiku` (or `model: sonnet`, if the hedge is chosen),
+`model: sonnet` (or `model: haiku`, if the owner picks it),
 `omitClaudeMd: true`, read-only tools and a body that carries the thoroughness
-levels; `CLAUDE_CODE_SUBAGENT_MODEL` is gone from `.claude/settings.json`;
+levels and requires each report to end with the scope searched and not
+searched; `CLAUDE_CODE_SUBAGENT_MODEL` is gone from `.claude/settings.json`;
 `docs/maintainer.md` § "Settings that make sessions cheaper" says what Explore
 runs on and no longer says the answer waits on this item; and the first
 session started after the merge records in this item the model its Explore
@@ -247,7 +306,7 @@ and `docs/maintainer.md` says, dated, that Explore runs on the session's model
 by the owner's decision.
 
 **Verify, to set when the item goes `ready`:**
-`test -f .claude/agents/Explore.md && grep -q '^model: haiku' .claude/agents/Explore.md && ! grep -q CLAUDE_CODE_SUBAGENT_MODEL .claude/settings.json`
+`test -f .claude/agents/Explore.md && grep -Eq '^model: (sonnet|haiku)' .claude/agents/Explore.md && ! grep -q CLAUDE_CODE_SUBAGENT_MODEL .claude/settings.json`
 
 **Generator check.** Not a member of a head. It follows from `PL-KLN5`'s
 measurement of how Claude Code chooses a subagent's model, an external
