@@ -25,10 +25,12 @@ against it:
 
 The perturbation below writes fields directly rather than through their
 setters, deliberately: what is being measured is which fields a method
-writes, and a setter would reject most of the values used to measure it. A
-flow field is the exception that proves the rule the other way: the write
-itself refuses anything not built as the flow's type (`PL-LBQY`), so a flow is
-perturbed as its own type, one litre a minute up.
+writes, and most fields have no setter. The write itself refuses whatever
+the field's constructor would refuse (`PL-LBQY`, `PL-19Y0`), so each value
+written is one the field accepts: a checked type is built as its type again -
+a flow one litre a minute up, a percent or a fraction halved - and a plain
+number is halved, which the agent each compartment below is built holding
+leaves room for.
 """
 
 from collections.abc import Callable
@@ -176,7 +178,7 @@ COMPARTMENTS = (
 
 
 def _perturb(value: object) -> object:
-    """Return a value guaranteed to differ from the one given."""
+    """Return a value guaranteed to differ from the one given, which its field accepts."""
 
     if isinstance(value, str):
         return f"{value} (perturbed)"
@@ -186,8 +188,15 @@ def _perturb(value: object) -> object:
         # the write, so the perturbed flow is built as its type again.
         return type(value)(value + 1.0)
 
+    if isinstance(value, (Percent, Fraction)):
+        # Halved rather than raised: a fraction has no room above 1, and a
+        # vaporizer maximum of 100% none above 100. A dial of zero moves to
+        # 1%, under the halved maximum written after it.
+        return type(value)(value / 2.0 if value else 1.0)
+
     if isinstance(value, float):
-        return value + 1.0
+        # Halved for the same reason: a perfusion fraction has no room above 1.
+        return value / 2.0 if value else 1.0
 
     if isinstance(value, DeliverableFreshGasFlowRange):
         return DeliverableFreshGasFlowRange(
@@ -450,7 +459,7 @@ def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
             "delivered concentration percent",
         ),
         (
-            lambda s: setattr(s.circuit, "max_delivered_concentration_percent", 10.0),
+            lambda s: setattr(s.circuit, "max_delivered_concentration_percent", Percent(10.0)),
             "the vaporizer maximum, which no equation reads and the record carries (PL-BBMG)",
         ),
         (lambda s: setattr(s.patient.tissues[0], "volume_l", 9.0), "a tissue volume"),
