@@ -99,7 +99,9 @@ fixed, so the rate is accepted and the line made precise instead.
 
 **It also says when CI's pytest step has drifted from its baseline**
 (`PL-YY32`). The pytest step of `quality.yml`'s `checks` job took 48 s on
-2026-09-05, about 125 s in mid-September and about 500 s by 2026-10-17. Nothing
+2026-09-05, about 125 s in mid-September and about 500 s by 2026-10-17. Since
+`PL-T9X9` the suite runs in two parts, each the pytest step of its own job, and
+the step's time is the sum of the two. Nothing
 read the trend, and `PL-H9KW` was filed by feel a month in. So this script takes
 the step's median time over `main`'s newest `PYTEST_RUNS` successful runs and
 compares it with `PYTEST_BASELINE_S`. It prints a line only when the median
@@ -216,12 +218,11 @@ UNNAMED_STEP = "(a step whose name could not be read)"
 # the workflow whole; only the unnamed `run:` lines reach it.
 STEP_WIDTH = 70
 
-# The job in `quality.yml` that runs the suite, and the start of the name GitHub
-# gives the pytest step. That step has no `name:`, so GitHub names it `Run ` plus
-# its whole `run:` line. Only the start is matched, so a change to the flags
-# after it does not lose the step. `tests/unit/test_main_ci_status.py` holds both
-# to the workflow, so renaming the job or naming the step fails a test.
-CHECKS_JOB = "checks"
+# The start of the name GitHub gives each pytest step in `quality.yml`. The steps
+# have no `name:`, so GitHub names each `Run ` plus its whole `run:` line. Only
+# the start is matched, so a change to the flags after it does not lose a step.
+# `tests/unit/test_main_ci_status.py` holds it to the workflow, so naming a
+# pytest step fails a test.
 PYTEST_STEP_PREFIX = "Run uv run pytest"
 
 #: How many of `main`'s newest successful runs the pytest step's median is taken
@@ -490,15 +491,19 @@ def _instant(value: object) -> datetime | None:
 
 
 def pytest_seconds(jobs: list[object]) -> float | None:
-    """Return the pytest step's time in the `checks` job, or None where it cannot be read.
+    """Return the summed time of the run's pytest steps, or None where one cannot be read.
 
-    A step that did not end in `success` returns None too. A step that failed or
-    was cancelled stopped early, so its time would understate the suite.
+    Since `PL-T9X9` the suite runs in parts, one pytest step in each part's
+    job, so the sum is about what the one step took before the split. A run
+    from before the split has one step, and its time is read the same way. A
+    step that did not end in `success` returns None too. A step that failed or
+    was cancelled stopped early, so its time would understate the suite. A job
+    whose steps cannot be read returns None, since it may hold a pytest step.
     """
+    total = 0.0
+    found = False
     for job in jobs:
-        if not isinstance(job, dict) or job.get("name") != CHECKS_JOB:
-            continue
-        steps = job.get("steps")
+        steps = job.get("steps") if isinstance(job, dict) else None
         if not isinstance(steps, list):
             return None
         for step in steps:
@@ -513,8 +518,9 @@ def pytest_seconds(jobs: list[object]) -> float | None:
             completed = _instant(step.get("completed_at"))
             if started is None or completed is None:
                 return None
-            return (completed - started).total_seconds()
-    return None
+            total += (completed - started).total_seconds()
+            found = True
+    return total if found else None
 
 
 def pytest_declined(reason: str) -> str:
@@ -581,8 +587,8 @@ def pytest_time_line(slug: str, runs: list[object]) -> str | None:
         time = pytest_seconds(jobs)
         if time is None:
             return pytest_declined(
-                f"run #{run.get('run_number', '?')} has no finished pytest step in its "
-                f"{CHECKS_JOB} job"
+                f"run #{run.get('run_number', '?')} has a pytest step that did not finish, "
+                "or none that could be read"
             )
         seconds.append(time)
     return pytest_advisory(seconds, successful)

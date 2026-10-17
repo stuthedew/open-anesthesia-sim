@@ -3,13 +3,17 @@ id: PL-T9X9
 title: Split quality.yml's pytest step across two GitHub-hosted jobs, so a slow runner's checks job falls from about 10 minutes to about 6
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: infra
 feature: ci-cost
-touches: .github/workflows/quality.yml, tools/required_checks_check.py, tools/doc_check.py, tests/conftest.py, Makefile
+touches: .github/workflows/quality.yml, tools/required_checks_check.py, tools/doc_check.py, tools/main_ci_status.py, tests/conftest.py, Makefile, docs/apparatus.md, tests/unit/test_worksteal_dealing.py, tests/unit/test_main_ci_status.py, tests/unit/test_doc_check.py, tests/unit/test_quality_step_order.py, tests/unit/test_required_checks_check.py, tests/unit/test_tools_portability.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1508
 payoff: a slow runner's checks run takes about 6 minutes instead of about 10, so every pull request waits less and main moves less under an armed one
+verify: uv run pytest -q tests/unit/test_quality_step_order.py::test_checks_needs_every_other_job tests/unit/test_worksteal_dealing.py::test_the_parts_run_every_test_exactly_once tests/unit/test_required_checks_check.py::test_this_repository_requires_exactly_checks_and_pr_title tests/unit/test_doc_check.py::test_parts_that_fold_back_into_the_makefiles_gate_are_quiet
+recurrences: 2026-10-17 PL-ZWQS, 2026-10-17 PL-JWBW
 ---
 
 **Problem.** Split quality.yml's pytest step across two GitHub-hosted jobs, so a slow runner's checks job falls from about 10 minutes to about 6
@@ -127,15 +131,44 @@ against this job:
 So splitting is still the main lever. Test selection and an arm64 trial are
 separate, smaller changes that can follow it.
 
-**Decision needed, and recommended: build it.** `PL-4Z5Y`'s A/B is now
-scored, so building the split no longer changes the layout under an unread
-trial. The other route is to leave CI as one job and accept about 10 minutes
-per slow run.
+**Decided: build it** (project owner, 2026-10-17, ratified, "agree with
+recs", over leaving CI as one job and accepting about 10 minutes per slow run).
+The owner also agreed to file the two smaller levers above: `PL-STM6` skips the
+costly tests on pull requests that touch no simulator path, and `PL-JWBW` tries
+the arm64 runners.
 
-**Done when.** `quality.yml` runs pytest in two shard jobs and a combining job
-named `checks` that holds `core/` at 100%. Across at least five slow-runner
-runs, the median `checks` run takes at least 3 minutes less than the 621 s
-measured on 2026-10-17.
+**As built.**
+
+- `checks-part-1` runs everything the one job ran, with pytest given
+  `--part 1/2`. `checks-part-2` runs the setup and pytest with `--part 2/2`.
+  Each uploads its `.coverage` file as an artifact kept for one day.
+- `checks` needs both parts and runs `if: always()`. Its first step fails
+  unless both parts succeeded. Then it runs `coverage combine` on the two
+  files and `coverage report --show-missing --fail-under=100`.
+- The required checks are still `checks` and `pr-title`. Each part declares
+  `# not-required:`, and `tests/unit/test_quality_step_order.py` fails if
+  `checks` stops needing a job of the workflow.
+- `tests/conftest.py`'s `--part K/N` gives every test that reads a costly
+  computation to the last part, and deals the other tests round robin. This
+  replaces design point 5's tuned share. The linters' 95 s in part 1 is about
+  what the 46 costly tests cost a slow runner, about 110 s, so the parts
+  should finish close together with no number to re-tune as tests are added.
+  It also keeps each costly computation on one runner, so none is computed
+  twice. On 2026-10-17 the parts held 4,281 and 4,315 of the 8,596 tests,
+  and together exactly the full collection.
+- `tools/doc_check.py`'s `check_coverage_gate` puts the threshold back into
+  each part's line before comparing it with the Makefile's, and checks that
+  the parts are numbered 1 to N and that one `coverage report --fail-under`
+  holds them.
+- `tools/main_ci_status.py` sums the pytest steps of a run's jobs, so a run
+  from before the split and one after it are read the same way. The sum is
+  expected to sit a little above the 470 s baseline, inside its band.
+
+**Done when.** `quality.yml` runs pytest in two part jobs and a combining job
+named `checks` that holds `core/` at 100%. The timing check, a median `checks`
+run at least 3 minutes shorter than the 621 s measured on 2026-10-17 over five
+slow-runner runs, moved to `PL-ZWQS`, because it needs runs on `main` that
+exist only after this merges.
 
 **Generator check.** Work the owner asked for, not a defect: no reader
 misread a fact. The CI suite grew and one job carries all of it, which is a
