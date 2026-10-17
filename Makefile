@@ -435,11 +435,11 @@ fix:
 test:
 	uv run pytest -n auto --dist worksteal
 
-# Mutation-tests the functions the current branch changes against the
+# Runs mutmut on the functions the current branch changes, against the
 # simulator's unit tests, and prints each mutant they miss (`PL-Y1PS`). It is a
 # measurement and not a gate, so `make check` does not run it.
 # `docs/mutation-testing.md` says how to read the result. To mutate every
-# function instead, which takes over an hour:
+# function instead, which takes several hours:
 #
 #     make mutate ARGS=--all
 mutate:
