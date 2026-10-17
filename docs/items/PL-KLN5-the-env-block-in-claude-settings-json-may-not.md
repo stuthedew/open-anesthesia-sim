@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: docs
+feature: friction-batch
 touches: docs/maintainer.md, docs/items
 added: 2026-10-01
 payoff: docs/maintainer.md says truthfully which model exploration subagents run on in a cloud session, so the owner's cost lever is one that works
