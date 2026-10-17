@@ -3,12 +3,15 @@ id: PL-VCP4
 title: SimulationController._record_control_change builds the settings record after the setter has written, so on a run whose tissue flows no longer sum to the cardiac output every setting but the cardiac output is half applied: the compartment holds the new value and the dial reads it, the definition's open segment and the timeline keep the old one, and the banner says the simulation is unchanged and still running its previous setting (found reviewing PL-M4M0)
 priority: P1
 effort: S
-status: blocked
+status: done
 classes: safety, defect
 feature: cardiac-output-write-consistency
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
-blocked-by: PL-KFNP
 added: 2026-10-11
+closed: 2026-10-17
+pr: 1488
+payoff: a setting the core cannot record leaves its compartment, the run's definition and the timeline on the previous setting, so the banner's word that the simulation is unchanged is true
+verify: grep -q 'def test_a_setting_the_record_refuses_leaves_the_run_on_its_previous_setting' tests/integration/test_controller.py
 recurrences: 2026-10-12 PL-DTJQ
 ---
 
@@ -46,7 +49,40 @@ the write stays admitted.
 `set_blood_flow` still sets a compartment's flow past the patient's output,
 nothing in `src/` but `PatientCompartments._update_blood_flows` calls it, and
 a caller `mypy` does not read can. So the case this item stands for is a
-record reached that way, the fix above is unchanged by the answer, and it stays
-blocked on `PL-KFNP` because that build re-points `_with_stale_tissue_flows`
-in `tests/integration/test_controller.py`, the helper this item's test would
-use.
+record reached that way, the fix above is unchanged by the answer, and it
+waited on `PL-KFNP` because that build re-points `_with_stale_tissue_flows`
+in `tests/integration/test_controller.py`, the helper this item's test uses.
+The wait ended on 2026-10-17, when the two were built on one branch.
+
+**Outcome, 2026-10-17** (`#1488`). The fix takes the first form that the
+Done-when names. A setting that the record refuses leaves its compartment
+holding what it held. Each of `SimulationController`'s four setters passes
+`_record_control_change` a `restore` callback. The callback writes the
+previous value back through the same core setter. `_record_control_change`
+calls it when `equation_settings()` refuses, before the refusal is raised.
+Nothing is recorded, so the definition and the timeline still hold the
+previous setting. The restore cannot be refused, because the value it writes
+was in force a moment before.
+
+The second form builds the record before the setter writes, and it was not
+taken. A cardiac output change is the repair that the refused Reset's banner
+names (`PL-M4M0`). `set_cardiac_output` sets every compartment's blood flow
+from the new output. A record built before that write would refuse the repair
+itself.
+
+`test_a_setting_the_record_refuses_leaves_the_run_on_its_previous_setting`
+pins the fix for the fresh gas flow, the vaporizer dial and the ventilation.
+It then repairs the run with a cardiac output change and takes the same
+setting again, which is now recorded. On the old code the test fails with
+each compartment holding the new value: 3.0 against 4.0, 3.0 against 4.0, and
+8.0 against 6.0.
+
+**Found at review.** The banner's statement that the simulation is unchanged
+is now true when it is shown. The next step still halts on the same record,
+and the banner does not say so. That is recorded on `PL-HQF5`, whose fix
+removes the stale record. The cardiac output's restore also has a limit. A
+tissue's perfusion fraction can be changed on a built patient. The fractions
+then no longer sum to 1, and the record refuses every cardiac output change.
+The restore puts the previous output back, but it sets the flows from the
+changed fractions, so the flows do not return to what they were. No test
+covers the cardiac output's restore yet. Both gaps are recorded on `PL-Z0HN`.

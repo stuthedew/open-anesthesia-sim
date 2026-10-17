@@ -694,25 +694,30 @@ def test_a_stale_record_met_at_step_time_is_a_failed_step_stated_in_litres_per_m
     """A record the step cannot build is a failed step, in the unit the flows were set in.
 
     `_propagator_for` builds the settings record when a setting has moved
-    since the last step, and the record refuses tissue flows that no longer
-    sum to the cardiac output - what a checked output written onto the
-    patient past `set_cardiac_output` leaves, the one write the type-only
-    guard admits (`PL-LBQY`). It is restated like every other guard reached
-    inside a step, because a `SimulationConfigurationError` out of
-    `advance()` would promise a run still worth continuing
-    (`core/exceptions.py`) and this run is refused on every step after, and
-    at Reset; the step is rolled back like any other; and the two flows are
-    named in L/min, which is what every readout shows, as they were set: the
-    flows at an output set to 6.0 sum to 6.000000000000001, and the message
-    says 6.0 (`PL-M4M0`).
+    since the last step. The record refuses tissue flows that no longer sum
+    to the cardiac output. Setting a tissue's flow directly leaves them that
+    way, because a tissue group does not know which patient it belongs to
+    (`PL-HQF5`). Before `PL-KFNP`, this test reached the mismatch by
+    assigning the output to the patient directly, bypassing
+    `set_cardiac_output`, and the patient now refuses that. The refusal is
+    restated like every other guard reached inside a step, because a
+    `SimulationConfigurationError` out of `advance()` would promise a run
+    still worth continuing (`core/exceptions.py`) and this run is refused on
+    every step after, and at Reset; the step is rolled back like any other;
+    and the two flows are named in L/min, which is what every readout shows,
+    as they were set. The tissue flows set from 6.0 sum to 6.000000000000001,
+    and the message says 6.0 (`PL-M4M0`).
     """
 
     system = _sevoflurane_at_one_mac()
-    system.patient.set_cardiac_output(CardiacOutput(6.0))
     system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
     before = system.capture_state()
 
-    system.patient.cardiac_output_l_min = CardiacOutput(5.0)
+    for tissue in system.patient.tissues:
+        tissue.set_blood_flow(6.0 * tissue.perfusion_fraction)
+
+    assert sum(tissue.blood_flow_l_min for tissue in system.patient.tissues) == 6.000000000000001
+    assert system.patient.cardiac_output_l_min == 5.0
 
     with pytest.raises(SimulationNumericalError) as raised:
         system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))

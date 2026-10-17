@@ -1945,8 +1945,8 @@ def _run(
     shell: bool = False,
     timeout: float = 1800,
     env: dict[str, str] | None = None,
-) -> tuple[int, str]:
-    """Run a command, returning its exit status and combined output.
+) -> tuple[int, str, str]:
+    """Run a command, returning its exit status, its stdout and its stderr.
 
     What comes through here is a command recorded in the store - an item's
     `verify:` field, and the configured check command - run as written and
@@ -1955,10 +1955,10 @@ def _run(
     there is no untrusted input to guard against here; the guard that matters
     is review of what gets committed.
 
-    **Git does not come through here.** The output is stdout and stderr
-    together, so a git read that discarded the status had git's complaint
-    arrive as data: that is how a base that did not resolve came back from
-    `changed_paths` as three changed paths (`PL-9RFP`). Every git read goes
+    **Git does not come through here.** A git read that discarded the status
+    had git's complaint arrive as data: that is how a base that did not
+    resolve came back from `changed_paths` as three changed paths
+    (`PL-9RFP`). Every git read goes
     through `vcs.call_git` - `_git` where a failure ends the audit - so it is
     classified, decoded and bounded as `vcs` reads the same question
     (`PL-S9JK`).
@@ -1978,10 +1978,33 @@ def _run(
         # Ahead of the clause below rather than folded into it: `TimeoutExpired`
         # is a `SubprocessError`, so the ordering is the whole of what keeps a
         # killed command distinguishable from a failed one.
-        return TIMED_OUT, str(error)
+        return TIMED_OUT, "", str(error)
     except (OSError, subprocess.SubprocessError) as error:
-        return 1, str(error)
-    return result.returncode, (result.stdout or "") + (result.stderr or "")
+        return 1, "", str(error)
+    return result.returncode, result.stdout or "", result.stderr or ""
+
+
+#: How many lines of each stream `failure_evidence` keeps.
+EVIDENCE_LINES = 4
+
+
+def failure_evidence(stdout: str, stderr: str) -> tuple[str, ...]:
+    """The last few non-blank lines of a failed command's stdout, then of its stderr.
+
+    Each stream keeps its own tail. A check writes its finding to stdout - pytest's
+    `FAILED` line, a ruff or mypy report - and what runs around the check writes
+    to stderr: `make check` runs `uv sync` before pytest, and `make` reports the
+    exit status after it. While the two streams were joined and the last four
+    lines kept, stderr filled three of them, and the one stdout line kept was
+    pytest's count, so a REJECT for a failing test never named the test
+    (`PL-P66B`). Filtering out the `uv` lines would not have done it: any stderr
+    written before the failure takes the same place.
+    """
+    return tuple(
+        line
+        for stream in (stdout, stderr)
+        for line in [part for part in split_lines(stream) if part.strip()][-EVIDENCE_LINES:]
+    )
 
 
 #: Raised by `_git`; `vcs`'s, so a reader of `verify` and one of `vcs` catch one class.
@@ -2794,7 +2817,7 @@ def commissioned_result(root: Path, base: str, commission: Commission, correctio
     working command for another, which is a different thing for a reviewer to
     look at than one that fails.
     """
-    status, _output = _run([commission.verify], root, shell=True, env=_command_env())
+    status, _stdout, _stderr = _run([commission.verify], root, shell=True, env=_command_env())
     if status == 0:
         result = "passes on this tree"
     elif status == TIMED_OUT:
@@ -3409,8 +3432,8 @@ def _check_item(
         )
         return report
 
-    status, output = _run([item.verify], root, shell=True, env=_command_env())
-    lines = () if status == 0 else tuple(split_lines(output.strip())[-4:])
+    status, out, err = _run([item.verify], root, shell=True, env=_command_env())
+    lines = () if status == 0 else failure_evidence(out, err)
     # A rejection either way, and for opposite reasons, so the report says
     # which. "The command failed" sends a reviewer to look for the missing
     # work; "the command selected no test" sends them to the command, which is
@@ -3463,12 +3486,12 @@ def project_check(root: Path, config: Config) -> Check:
     which is a property of the tree. Every report a batch produces carries the
     same result because it is the same result.
     """
-    status, output = _run([config.check_command], root, shell=True)
+    status, out, err = _run([config.check_command], root, shell=True)
     return Check(
         "the project's own checks pass",
         status == 0,
         config.check_command,
-        () if status == 0 else tuple(split_lines(output.strip())[-4:]),
+        () if status == 0 else failure_evidence(out, err),
     )
 
 
@@ -3958,7 +3981,7 @@ def already_passing(
             # entry cannot change an exit status.
             env = {**child, "COVERAGE_FILE": str(Path(scratch) / f"coverage.{item.identifier}")}
             started = time.monotonic()
-            status, _ = _run([item.verify], root, shell=True, timeout=timeout, env=env)
+            status, _, _ = _run([item.verify], root, shell=True, timeout=timeout, env=env)
             # Wall clock rather than CPU: what a session waits through is the
             # question, and it is measured under the pool's own contention
             # rather than standalone for the same reason. `dominant` reads the

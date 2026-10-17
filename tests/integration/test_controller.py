@@ -1,4 +1,5 @@
 import dataclasses
+from collections.abc import Callable
 
 import pytest
 
@@ -67,16 +68,21 @@ def _advance_for(controller: SimulationController, duration_s: float) -> None:
 
 
 def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
-    """Write a checked cardiac output onto the patient past `set_cardiac_output`.
+    """Set each tissue's blood flow from `cardiac_output_l_min`, bypassing the patient.
 
-    The one write the type-only guard admits (`PL-LBQY`), and nothing in the
-    application makes it: the setter recomputes the tissue flows, and this
-    leaves them at the old output, which the settings record a run's
-    definition opens on refuses - at the next step, and at Reset (`PL-M4M0`).
+    A tissue group does not know which patient it belongs to, so its own
+    `set_blood_flow` accepts a flow that the patient's cardiac output does not
+    give it (`PL-HQF5`). Nothing in the application makes that call except
+    the patient's setter. The patient keeps its output. The settings record
+    that a run's definition opens on then refuses the tissue flows, because
+    they no longer sum to the output. It refuses them at the next step and at
+    Reset (`PL-M4M0`). Before `PL-KFNP`, this helper assigned the output to
+    the patient directly, bypassing `set_cardiac_output`, and the patient now
+    refuses that.
     """
 
-    patient = controller._state.uptake_system.patient
-    patient.cardiac_output_l_min = CardiacOutput(cardiac_output_l_min)
+    for tissue in controller._state.uptake_system.patient.tissues:
+        tissue.set_blood_flow(cardiac_output_l_min * tissue.perfusion_fraction)
 
 
 def test_default_controller_starts_with_sevoflurane() -> None:
@@ -1441,6 +1447,75 @@ def test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was() -> None:
     assert len(segments) == 3
     for field in COMPARTMENT_SNAPSHOT_FIELDS:
         assert getattr(after, field) == getattr(before, field)
+
+
+@pytest.mark.parametrize(
+    ("change", "setting"),
+    [
+        (
+            lambda controller: controller.set_fresh_gas_flow(FreshGasFlow(3.0)),
+            "fresh_gas_flow_l_min",
+        ),
+        (
+            lambda controller: controller.set_delivered_concentration_percent(Percent(3.0)),
+            "delivered_concentration_percent",
+        ),
+        (
+            lambda controller: controller.set_alveolar_ventilation(AlveolarVentilation(8.0)),
+            "alveolar_ventilation_l_min",
+        ),
+    ],
+    ids=["fresh-gas-flow", "delivered-concentration", "alveolar-ventilation"],
+)
+def test_a_setting_the_record_refuses_leaves_the_run_on_its_previous_setting(
+    change: Callable[[SimulationController], None], setting: str
+) -> None:
+    """A setting that its compartment accepted and the settings record refused is written back.
+
+    A compartment checks only its own value, but the settings record checks
+    the fields against each other. On a run whose tissue flows were set
+    directly on the tissues, the record refuses every setting except the
+    cardiac output, and it does so after the setter has written the new
+    value. Before `PL-VCP4`, the compartment kept the new value and the dial
+    showed it. The open segment of the run's definition and the timeline
+    kept the old value, and the banner said that the simulation was
+    unchanged and still running its previous setting. Now the previous value
+    is written back before the error is raised, so the banner is right. A
+    cardiac output change repairs the mismatch instead of being refused,
+    because it sets every compartment's flow from the new output. After it,
+    the setting that was refused before is accepted.
+    """
+
+    controller = SimulationController()
+    _run_with_two_changes(controller)
+    _with_stale_tissue_flows(controller, 6.0)
+    before = controller.snapshot()
+    segments = controller.run_segments
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="perfused at 6.0 L/min in total but cardiac output is 5.0 L/min",
+    ):
+        change(controller)
+
+    after = controller.snapshot()
+
+    assert getattr(after, setting) == getattr(before, setting)
+    assert getattr(segments[-1].settings, setting) == getattr(before, setting)
+    assert controller.run_segments == segments
+    assert after.control_timeline == before.control_timeline
+    assert after.is_running is True
+    assert controller.has_failed is False
+
+    controller.set_cardiac_output(CardiacOutput(6.0))
+    change(controller)
+
+    repaired = controller.snapshot()
+
+    assert repaired.cardiac_output_l_min == 6.0
+    assert getattr(repaired, setting) != getattr(before, setting)
+    assert getattr(controller.run_segments[-1].settings, setting) == getattr(repaired, setting)
+    assert len(repaired.control_timeline) == len(before.control_timeline) + 2
 
 
 def test_changing_agent_starts_the_run_definition_over() -> None:
