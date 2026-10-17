@@ -49,3 +49,47 @@ members fail loudly, not a reader that misreads where a statement ends.
 **Done when.** Each shared reader that declines a statement returns the
 decline in a type its callers must unpack, and none of the six callers can
 drop one without a type error.
+
+**Handoff 2026-10-17, for the thread that takes it up.** Claimed on
+`claude/workflow-group-ten-nraxmr`, in draft `#1475` beside `PL-NWZM`,
+`PL-PBNK`, `PL-W9VC` and `PL-Q8LJ`, which it closes; nothing of this item is
+built. The thread stopped for length, not for the work. What it read, on the
+branch once `origin/main` at `e0541fba` came in:
+
+- **The six members are closed** (`#1431` to `#1472`), each caller fixed where
+  it stood, so what is left is the type change alone. `tools/dead_ends.py`'s
+  `_bullets` now passes a list and carries each declined line out with its
+  bullet, so the `[]` the reproduction names there is gone; the one in
+  `docket.release.notes_ids` stands, there on purpose.
+- **The readers.** `docket.roadmap`'s `list_entry_lines(lines, start,
+  unread=None)` and `document_entry_lines(lines, unread=None)` share
+  `_entries`, which raises the `UnreadEntry` where no list was passed and
+  appends it where one was; `docket.release.notes_bullets(text, unread)` reads
+  through the second. `docket.frontmatter.statements` reads a line at a time
+  where `key_statements` raises `Unread` (`PL-J8ML`), and
+  `docket.model.parse_front_matter` leaves block lists, block scalars and
+  unread lines to `block_list_keys`, `block_scalar_keys` and
+  `unread_front_matter_lines` beside it. Which readers in `vcs`, `verify` and
+  `instructions`, which the touches name, decline at all was not read.
+- **The callers.** Of the walker: `roadmap`'s `_gate_entries` and
+  `_scope_entries` pass their list on, `release.notes_ids` passes `[]`,
+  `release.notes_bullets` and `tools/dead_ends.py`'s `_bullets` pass their
+  own, and `tools/doc_check.py`'s `_list_members` passes none and turns the
+  raise into `UnreadStatement`. Of `notes_bullets`: `release.unreferenced`
+  passes `[]` where its own caller passed nothing, `release.restate_references`
+  passes `[]`, and `tools/doc_check.py`'s `_pull_requests_named` passes its
+  own. `parse_front_matter(` stands 16 times in the source, tools and hooks
+  and 6 times in the tests.
+- **The route it planned.** A reader that declines returns its result and its
+  declines together, so a caller that drops them fails the strict `mypy` run,
+  and a caller that sets them aside on purpose, as `notes_ids` does, unpacks
+  them into a name that says so beside a comment saying why. Removing the
+  `None` defaults alone is cheaper and leaves `[]` legal, which is the case
+  the verify names.
+- **What the branch changed under it.** `PL-W9VC` added
+  `docket.frontmatter.comments` and `block_content` and a private `_Passed`
+  record threaded through `frontmatter`'s walk, and moved `BLOCK_SCALAR_RE`
+  from `docket.model` into `docket.frontmatter`.
+- **The trap.** `bin/docket verify --self` refuses an existing test assertion
+  changed in place unless the base names it in `falsifies:`, so keep each old
+  asserted text where the new shape allows.
