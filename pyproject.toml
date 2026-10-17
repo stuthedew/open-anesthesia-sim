@@ -246,3 +246,11 @@ strict = true
 [[tool.mypy.overrides]]
 module = ["pyqtgraph", "pyqtgraph.*"]
 ignore_missing_imports = true
+
+# pytest-xdist ships neither stubs nor `py.typed` either. Only `tests/` imports
+# it - `tests/conftest.py` names the worker its controller-side hook is handed,
+# and `tests/unit/test_worksteal_dealing.py` drives its scheduler (`PL-4Z5Y`) -
+# and `tools/ignore_check.py`'s pass over `tests/` refuses an unresolved import.
+[[tool.mypy.overrides]]
+module = ["xdist", "xdist.*"]
+ignore_missing_imports = true
