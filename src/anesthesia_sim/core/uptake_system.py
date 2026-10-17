@@ -367,11 +367,14 @@ class AgentUptakeSystem:
     def restore_state(self, state: AgentUptakeSystemState) -> None:
         """Restore state previously captured by `capture_state()`.
 
-        Every compartment restores by direct field assignment, so this
-        cannot raise. That is a requirement rather than an accident: it
-        runs while a failure is already being handled, and a rollback that
-        could fail partway would leave exactly the partial state it exists
-        to prevent.
+        No compartment's restore can refuse what `capture_state()` captured,
+        so this cannot raise: the alveolar compartment, the venous pool and
+        each tissue group write their amount past their write guards, and the
+        circuit and the validator write theirs through guards that cannot
+        refuse a captured state (`PL-19Y0`). That is a requirement rather
+        than an accident: it runs while a failure is already being handled,
+        and a rollback that could fail partway would leave exactly the
+        partial state it exists to prevent.
         """
 
         self.circuit.restore_state(state.circuit)

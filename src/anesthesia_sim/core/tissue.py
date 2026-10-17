@@ -7,12 +7,16 @@ from dataclasses import dataclass
 from math import inf
 from typing import TYPE_CHECKING
 
-from anesthesia_sim.core.checked_number import require_a_number
+from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.exponential_approach import exponential_approach
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
-from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
+from anesthesia_sim.core.validation import (
+    require_nonnegative_finite,
+    require_positive_finite,
+    require_room_for_the_agent_held,
+)
 
 PERFUSION_FRACTION_UPPER_BOUND = 1.0
 
@@ -43,26 +47,6 @@ class TissueGroup:
     blood_flow_l_min: float = 0.0
     agent_amount_l: float = 0.0
 
-    def __post_init__(self) -> None:
-        if not self.name.strip():
-            raise SimulationConfigurationError("name must be a nonempty string")
-
-        require_positive_finite("volume_l", self.volume_l)
-        require_positive_finite("perfusion_fraction", self.perfusion_fraction)
-
-        if self.perfusion_fraction > PERFUSION_FRACTION_UPPER_BOUND:
-            raise SimulationConfigurationError("perfusion_fraction must not exceed 1")
-
-        require_positive_finite(
-            "blood_gas_partition_coefficient", self.blood_gas_partition_coefficient
-        )
-        require_positive_finite(
-            "tissue_gas_partition_coefficient", self.tissue_gas_partition_coefficient
-        )
-        require_nonnegative_finite("blood_flow_l_min", self.blood_flow_l_min)
-        # The agent amount's range was required as the constructor wrote the
-        # field, by `__setattr__` below.
-
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
         # Hidden from `mypy` on purpose, as `AlveolarCompartment.__setattr__`
         # is: a class that defines `__setattr__` is one `mypy` lets assign any
@@ -74,37 +58,87 @@ class TissueGroup:
         # by their tests rather than by `mypy` (`PL-LBQY`, found at review).
 
         def __setattr__(self, name: str, value: object) -> None:
-            """Write a field, refusing an agent amount the tissue cannot hold.
+            """Write a field, refusing a value the tissue's constructor would refuse.
 
-            The one place the amount is stored is this field, so the capacity
-            is held here, for the constructor, `set_partial_pressure_fraction`,
-            `advance` and an assignment made past them alike, as
-            `AlveolarCompartment.__setattr__` explains (`PL-544D`);
-            `restore_state` is the one write made past it, and says why.
-            Nothing is written when it is refused. The constructor writes the
-            amount before `__post_init__` has refused a bad volume or
-            coefficient, so each is required to be a number here first, under
-            its own name (`require_a_number`), and a capacity that is not
-            positive is then left to that refusal, under the parameter's own
-            name, rather than read here as the amount exceeding it.
+            Each field is stored in one place, its slot, so its check is made
+            here, for the constructor, the setters, `advance` and an assignment
+            made past them alike, as `BreathingCircuit.__setattr__` explains
+            (`PL-LBQY`, `PL-19Y0`); `restore_state` is the one write made past
+            it, and says why. Nothing is written when a value is refused, and
+            the constructor makes no check of its own.
+
+            The tissue's partial pressure is its agent amount divided by its
+            capacity, the volume times the tissue:gas coefficient, so the three
+            are held together: an amount above the capacity is refused, and so
+            is a volume or a coefficient too small for the amount already held,
+            which would put the partial pressure above one atmosphere with the
+            amount's own check never consulted (`PL-544D`, found at review;
+            `require_room_for_the_agent_held`). The constructor writes the
+            amount last, after both factors have passed their own checks, so a
+            factor is held to the amount only once there is one. The relations
+            the patient holds between a tissue's blood flow, its perfusion
+            fraction and the cardiac output are the patient's, not this
+            record's (`PatientCompartments`).
 
             Raises:
-                TypeError: `name` is `agent_amount_l` and `value`, `volume_l`
-                    or `tissue_gas_partition_coefficient` is not an `int` or a
-                    `float` (`require_nonnegative_finite`, `require_a_number`).
-                SimulationConfigurationError: `name` is `agent_amount_l` and
-                    `value` is negative, not finite, or more than `capacity_l`,
-                    the capacity at a fraction of one.
+                TypeError: `name` is `name` and `value` is not a `str`, or the
+                    value written to any other field is not an `int` or a
+                    `float` (`require_a_number`).
+                SimulationConfigurationError: the name is blank; the volume, a
+                    partition coefficient or the perfusion fraction is not
+                    positive and finite, or the perfusion fraction is above 1;
+                    the blood flow or the agent amount is negative or not
+                    finite; or the agent amount would be more than the tissue
+                    holds at a partial pressure of one atmosphere, whichever of
+                    the amount, the volume and the tissue:gas coefficient is
+                    the one written.
             """
 
-            if name == "agent_amount_l":
-                require_nonnegative_finite(name, value)
-                require_a_number("volume_l", self.volume_l)
-                require_a_number(
-                    "tissue_gas_partition_coefficient", self.tissue_gas_partition_coefficient
-                )
+            if name == "name":
+                if not isinstance(value, str):
+                    raise TypeError(
+                        f"name of {shown(value)} has type {type(value).__name__}, not str"
+                    )
 
-                if 0.0 < self.capacity_l < value:
+                if not value.strip():
+                    raise SimulationConfigurationError("name must be a nonempty string")
+            elif name == "volume_l":
+                require_positive_finite(name, value)
+
+                if hasattr(self, "agent_amount_l"):
+                    require_room_for_the_agent_held(
+                        name,
+                        value,
+                        value * self.tissue_gas_partition_coefficient,
+                        self.agent_amount_l,
+                        f"{self.name} tissue",
+                        "Tissue compartments",
+                    )
+            elif name == "perfusion_fraction":
+                require_positive_finite(name, value)
+
+                if value > PERFUSION_FRACTION_UPPER_BOUND:
+                    raise SimulationConfigurationError("perfusion_fraction must not exceed 1")
+            elif name == "blood_gas_partition_coefficient":
+                require_positive_finite(name, value)
+            elif name == "tissue_gas_partition_coefficient":
+                require_positive_finite(name, value)
+
+                if hasattr(self, "agent_amount_l"):
+                    require_room_for_the_agent_held(
+                        name,
+                        value,
+                        self.volume_l * value,
+                        self.agent_amount_l,
+                        f"{self.name} tissue",
+                        "Tissue compartments",
+                    )
+            elif name == "blood_flow_l_min":
+                require_nonnegative_finite(name, value)
+            elif name == "agent_amount_l":
+                require_nonnegative_finite(name, value)
+
+                if value > self.capacity_l:
                     raise SimulationConfigurationError(
                         "agent_amount_l exceeds the tissue capacity for a concentration "
                         "fraction of 1"
@@ -192,9 +226,15 @@ class TissueGroup:
         )
 
     def set_blood_flow(self, blood_flow_l_min: float) -> None:
-        """Change tissue blood flow without changing stored agent."""
+        """Change tissue blood flow without changing stored agent.
 
-        require_nonnegative_finite("blood_flow_l_min", blood_flow_l_min)
+        Raises:
+            TypeError: the flow is not an `int` or a `float`.
+            SimulationConfigurationError: the flow is negative or not finite.
+                Both are the write's own, in `__setattr__`, and nothing is
+                written when it is refused.
+        """
+
         self.blood_flow_l_min = blood_flow_l_min
 
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
@@ -265,9 +305,10 @@ class TissueGroup:
         gives: the amount came off this tissue, a rollback refused partway
         would replace the step's own error and leave the compartments restored
         after this one holding the failed step, and a volume or coefficient
-        written under the held amount in the meantime (`PL-19Y0`) is left to
-        the quotient the snapshot builds, which refuses it visibly (`PL-7DJK`;
-        `PL-544D`, found at review).
+        moved under the held amount in the meantime, which since `PL-19Y0`
+        only a write past its own guard can make, is left to the quotient the
+        snapshot builds, which refuses it visibly (`PL-7DJK`; `PL-544D`, found
+        at review).
         """
 
         object.__setattr__(self, "agent_amount_l", state.agent_amount_l)

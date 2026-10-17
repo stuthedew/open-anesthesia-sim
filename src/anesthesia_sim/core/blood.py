@@ -5,12 +5,17 @@ arterial input, under this model's flow-limited arterial simplification.
 
 from dataclasses import dataclass
 from math import inf
+from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.exponential_approach import exponential_approach
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
-from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
+from anesthesia_sim.core.validation import (
+    require_nonnegative_finite,
+    require_positive_finite,
+    require_room_for_the_agent_held,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,16 +38,85 @@ class VenousBloodCompartment:
     blood_flow_l_min: float
     agent_amount_l: float = 0.0
 
-    def __post_init__(self) -> None:
-        require_positive_finite("volume_l", self.volume_l)
-        require_positive_finite(
-            "blood_gas_partition_coefficient", self.blood_gas_partition_coefficient
-        )
-        require_nonnegative_finite("blood_flow_l_min", self.blood_flow_l_min)
-        require_nonnegative_finite("agent_amount_l", self.agent_amount_l)
+    if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
+        # Hidden from `mypy` on purpose, as `AlveolarCompartment.__setattr__`
+        # is: a class that defines `__setattr__` is one `mypy` lets assign any
+        # attribute name, typed by the method's `value`, so with the guard in
+        # view a misspelt field written in `src/` would pass `--strict` and
+        # fail at run time against the slots. Hidden, `mypy` reads the
+        # dataclass's fields and their types as before, and this is the
+        # runtime half for the callers it does not read; its lines are checked
+        # by their tests rather than by `mypy` (`PL-LBQY`, found at review).
 
-        if self.agent_amount_l > self.capacity_l:
-            raise SimulationConfigurationError("agent_amount_l exceeds venous blood capacity")
+        def __setattr__(self, name: str, value: object) -> None:
+            """Write a field, refusing a value the pool's constructor would refuse.
+
+            Each field is stored in one place, its slot, so its check is made
+            here, for the constructor, the setters, `advance` and an assignment
+            made past them alike, as `BreathingCircuit.__setattr__` explains
+            (`PL-LBQY`, `PL-19Y0`); `restore_state` is the one write made past
+            it, and says why. Nothing is written when a value is refused, and
+            the constructor makes no check of its own. Until `PL-19Y0` the
+            constructor was the only check, so an amount past the capacity
+            written onto a built pool was stored and read back as a fraction of
+            1.0000001.
+
+            The pool's partial pressure is its agent amount divided by its
+            capacity, the volume times the blood:gas coefficient, so the three
+            are held together: an amount above the capacity is refused, and so
+            is a volume or a coefficient too small for the amount already held
+            (`require_room_for_the_agent_held`). The constructor writes the
+            amount last, after both factors have passed their own checks, so a
+            factor is held to the amount only once there is one. The relation
+            the patient holds between this pool's blood flow and the cardiac
+            output is the patient's, not this record's (`PatientCompartments`).
+
+            Raises:
+                TypeError: `value` is not an `int` or a `float`
+                    (`require_a_number`).
+                SimulationConfigurationError: the volume or the partition
+                    coefficient is not positive and finite; the blood flow or
+                    the agent amount is negative or not finite; or the agent
+                    amount would be more than the pool holds at a partial
+                    pressure of one atmosphere, whichever of the amount, the
+                    volume and the coefficient is the one written.
+            """
+
+            if name == "volume_l":
+                require_positive_finite(name, value)
+
+                if hasattr(self, "agent_amount_l"):
+                    require_room_for_the_agent_held(
+                        name,
+                        value,
+                        value * self.blood_gas_partition_coefficient,
+                        self.agent_amount_l,
+                        "venous blood",
+                        "Blood compartments",
+                    )
+            elif name == "blood_gas_partition_coefficient":
+                require_positive_finite(name, value)
+
+                if hasattr(self, "agent_amount_l"):
+                    require_room_for_the_agent_held(
+                        name,
+                        value,
+                        self.volume_l * value,
+                        self.agent_amount_l,
+                        "venous blood",
+                        "Blood compartments",
+                    )
+            elif name == "blood_flow_l_min":
+                require_nonnegative_finite(name, value)
+            elif name == "agent_amount_l":
+                require_nonnegative_finite(name, value)
+
+                if value > self.capacity_l:
+                    raise SimulationConfigurationError(
+                        "agent_amount_l exceeds venous blood capacity"
+                    )
+
+            super().__setattr__(name, value)
 
     @property
     def capacity_l(self) -> float:
@@ -79,9 +153,15 @@ class VenousBloodCompartment:
         return SECONDS_PER_MINUTE * self.volume_l / self.blood_flow_l_min
 
     def set_blood_flow(self, blood_flow_l_min: float) -> None:
-        """Change blood flow without changing stored agent."""
+        """Change blood flow without changing stored agent.
 
-        require_nonnegative_finite("blood_flow_l_min", blood_flow_l_min)
+        Raises:
+            TypeError: the flow is not an `int` or a `float`.
+            SimulationConfigurationError: the flow is negative or not finite.
+                Both are the write's own, in `__setattr__`, and nothing is
+                written when it is refused.
+        """
+
         self.blood_flow_l_min = blood_flow_l_min
 
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
@@ -117,7 +197,11 @@ class VenousBloodCompartment:
                 `Fraction`, which is what checks it against 0 to 1
                 (`core/concentration.py`).
             SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite. Both are checked before anything changes.
+                and finite. Both are checked before anything changes. Or the
+                amount held is already past the capacity, which only a write
+                past `__setattr__` can have stored: the amount advanced is
+                written through it, at zero flow too, where it is the amount
+                held, unchanged.
         """
 
         require_fraction(
@@ -143,11 +227,14 @@ class VenousBloodCompartment:
     def restore_state(self, state: VenousBloodCompartmentState) -> None:
         """Restore run state previously captured by `capture_state()`.
 
-        Assigns the field directly, so that rolling back cannot itself
-        raise; see `BreathingCircuit.restore_state()`.
+        Writes the slot past `__setattr__`, so that rolling back cannot
+        itself raise, for the reasons `AlveolarCompartment.restore_state`
+        gives: the amount came off this pool, and a rollback refused partway
+        would replace the step's own error and leave the compartments restored
+        after this one holding the failed step (`PL-544D`, `PL-19Y0`).
         """
 
-        self.agent_amount_l = state.agent_amount_l
+        object.__setattr__(self, "agent_amount_l", state.agent_amount_l)
 
     def reset(self) -> None:
         """Clear venous agent while preserving parameters."""

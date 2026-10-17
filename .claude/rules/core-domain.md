@@ -28,8 +28,9 @@ code must establish before it produces a number.
 **The shape is `src/anesthesia_sim/core/tissue.py`.** Read it end-to-end before
 adding or changing a compartment. It is the fullest instance of the pattern: a
 frozen `TissueGroupState` carrying only what a step can change, and saying why
-each parameter is excluded from it; a `__post_init__` refusing every field
-through the named guards in `src/anesthesia_sim/core/validation.py`; properties
+each parameter is excluded from it; a `__setattr__` refusing every field at
+every write, the constructor's included, through the named guards in
+`src/anesthesia_sim/core/validation.py` (`PL-19Y0`); properties
 that carry the equation and cite the `docs/MODEL.md` section defining it; an
 `advance()` whose docstring separates this compartment's own closed form from how
 a run actually steps, and names both conditions it raises on.
@@ -77,8 +78,8 @@ pattern rather than exceptions to it:
   carries no proof, and is checked where it becomes a guarded parameter, by
   building the type there.
 
-**Where it stops.** A frozen record whose constructor refuses its own fields is
-already a parsed type for them — `tissue.py`'s `__post_init__` above — and a
+**Where it stops.** A record that refuses its own fields at every write is
+already a parsed type for them — `tissue.py`'s `__setattr__` above — and a
 relation between fields, such as tissue flows summing to cardiac output, belongs
 to the record holding them rather than to any one quantity. What the principle
 refuses is one quantity's own check made again by each record or function that
