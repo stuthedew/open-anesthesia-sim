@@ -28,19 +28,31 @@ interface acts on:
   reads. Not a `LayoutFormatError`, because `PL-SSQW` Q5 answers the two
   differently: an invalid file is set aside and the session saves on, a newer
   one is left untouched and the session saves nothing.
+- `LastWorkspace` - a `LayoutRefused`: removing the Workspace would leave the
+  set with none, which `ROADMAP.md` item 34's floor refuses by the type.
+- `NotInWorkspaceSet` - a position the Workspace set does not hold: the
+  caller's error, as `NotInLayout` is.
+- `WorkspaceFileError` - the store could not write, copy or set aside a file.
+  The message names the path and the operating system's reason, so the action
+  that asked for the write can report both where it was invoked.
 """
 
 from __future__ import annotations
+
+from pathlib import PurePath
 
 from anesthesia_sim.core.checked_number import shown
 
 __all__ = [
     "InvalidLayout",
+    "LastWorkspace",
     "LayoutError",
     "LayoutFormatError",
     "LayoutRefused",
     "NotInLayout",
+    "NotInWorkspaceSet",
     "UnsupportedSchemaVersion",
+    "WorkspaceFileError",
 ]
 
 
@@ -62,11 +74,12 @@ class NotInLayout(LayoutError):
 
 
 class InvalidLayout(LayoutError):
-    """Raised when a value built in code cannot be part of a layout.
+    """Raised when a value built in code cannot be part of a layout or of a Workspace set.
 
-    Each message names the invariant the value broke. Reading a serialized
-    layout raises `LayoutFormatError` instead, with the place in the document
-    where the invariant broke.
+    Each message names the invariant the value broke: a split whose sizes do
+    not sum to one, two Workspaces of one name, a migration table with a gap in
+    it. Reading a serialized layout raises `LayoutFormatError` instead, with the
+    place in the document where the invariant broke.
     """
 
 
@@ -95,3 +108,33 @@ class UnsupportedSchemaVersion(LayoutError):
         )
         self.found = found
         self.supported = supported
+
+
+class LastWorkspace(LayoutRefused):
+    """Raised when removing a Workspace would leave the set with none.
+
+    `ROADMAP.md` item 34 adopts Blender's refusal to delete the last
+    workspace as "a floor it enforces structurally rather than by warning",
+    and `PL-WV9K` Q2 (project owner, 2026-09-27, ratified) puts it in the
+    type: the set is a value and is unchanged. The interface also disables
+    the action for a lone Workspace, so this is never the first thing a
+    reader meets.
+    """
+
+
+class NotInWorkspaceSet(LayoutError):
+    """Raised when a position names no Workspace this set holds."""
+
+
+class WorkspaceFileError(LayoutError):
+    """Raised when the store could not write, copy or set aside a file.
+
+    `PL-SSQW` Q6: a failed save is reported where the reader asked for it,
+    with the path and the operating system's reason, and the session
+    continues. The error that was raised is kept as `error`.
+    """
+
+    def __init__(self, doing: str, path: PurePath, error: OSError) -> None:
+        super().__init__(f"could not {doing} {path}: {error}")
+        self.path = path
+        self.error = error

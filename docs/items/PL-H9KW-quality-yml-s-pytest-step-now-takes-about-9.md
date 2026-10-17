@@ -77,31 +77,63 @@ stops a session (`CLAUDE.md`).
 **Where.** `.github/workflows/quality.yml` (the pytest step and the `checks`
 job's timeout comment); whichever test modules the measurement names.
 
-**Next steps, revised 2026-10-17 by the diagnosis above.** Steps 1 and 2 of
-the capture's list (measure; compare to the late-September base) are done.
+**Measured and decided later on 2026-10-17.**
 
-1. Read the no-coverage timing, started 2026-10-17 into
-   `nocov.log` in the session's scratchpad. If it is gone, rerun `uv run
-   pytest -n 8 --dist worksteal -q` and compare against the 349 s with
-   coverage: a large gap makes coverage's tracer a lead of its own.
-2. Build each 24-hour trunk once per run and share it across workers: the
-   first worker builds it under an `flock` and publishes the pickle in
-   `tmp_path_factory.getbasetemp().parent`, others read it, as `washout_curve`
-   does. That mechanism must live in one shared test helper both fixtures
-   import, not a second copy beside `washout_curve` (`CLAUDE.md` § "A shared
-   fact has one source of truth"). `PL-4Z5Y` is editing the washout file, so
-   extract after it merges, or write the helper and move `washout_curve` onto it
-   once it has.
-3. If `PL-4Z5Y`'s deal-first hook lands, add the two trunk fixtures' first
-   tests to what it deals first, so the builds start with the run rather than
-   at 207 s.
-4. Have `test_doc_check.py`'s three whole-repository tests share one analysis
-   per run (about 100 test-seconds).
-5. Re-time CI and restate the `timeout-minutes: 15` comment against the new
-   measured job time.
+- **Coverage is not a lead.** The same run without `--cov` took 371 s against
+  349 s with it, so the tracer is not where the time goes.
+- **The trunks go to `PL-4Z5Y`** (project owner, 2026-10-17, ratified, over
+  `PL-H9KW` extending `PL-4Z5Y`'s dealing hook in a second pull request after it
+  merges). `PL-4Z5Y`'s hook in `tests/reference/conftest.py` deals each washout
+  curve's first test to the head of a worksteal slice. It now also deals the six
+  tests requesting `trunk_stepped_onto_the_limit` or
+  `trunk_halted_on_a_mark_at_the_limit`, back to back at the head of one slice.
+  Two reasons: it is the same mechanism in that item's unmerged file, and with
+  only the curves dealt the trunk test would still end the run, hiding
+  `PL-4Z5Y`'s own gain. That session was told on 2026-10-17 and records it in
+  `PL-4Z5Y`.
+- **Step 2 below is dropped as a result.** Run back to back at a slice head,
+  the six tests build each trunk once per run, at the start: pytest keeps a
+  module-scoped fixture alive across consecutive tests from its module, and
+  worksteal steals only from a queue's tail (`steal_from.pending[-num_steal:]`
+  in pytest-xdist 3.8.0's `xdist/scheduler/worksteal.py`). Sharing the trunk
+  across workers would then buy nothing, and would be a second mechanism. This
+  is inferred, so a timestamped run after `PL-4Z5Y` merges checks it.
+- **Corroborated independently.** The friction-batch session measured the
+  same suite (wall 293 s against 240 s perfectly balanced). It found
+  `test_controller.py` at 266 s, of which 230 s was three per-worker trunk
+  rebuilds (51, 94 and 85 s), and `test_doc_check.py` at 164 s. It suggested
+  ordering the whole collection longest-first from a recorded durations file.
+  The bound is Graham RL, "Bounds on multiprocessing timing anomalies," SIAM J
+  Appl Math 1969;17(2):416-429: LPT is within 4/3 - 1/(3m) of the optimal
+  makespan, against 2 - 1/m for an arbitrary list order. Not taken now:
+  dealing the two expensive clusters first removes the measured tail without a
+  durations file to keep current. Revisit if the 99%-to-100% stretch stays well
+  above 73 s after `PL-4Z5Y` merges.
+- **One whole-repository `doc_check` analysis is about 59 s**, profiled on
+  2026-10-17. A `checks` job runs it five times: the two `doc_check.py check`
+  steps in `quality.yml`, plus the three tests below. Within one analysis the
+  item store is read seven times, which is filed separately under `ci-cost`.
 
-These are on the owner's read list (`tests/`), so the pull request holds for
-their read.
+**Next steps, revised again 2026-10-17.**
+
+1. ~~No-coverage timing~~: done, above.
+2. ~~Share each trunk across workers~~: dropped, above.
+3. ~~Deal the trunk tests first~~: moved to `PL-4Z5Y`, above.
+4. Have `test_doc_check.py`'s three whole-repository tests
+   (`test_this_repository_is_clean`,
+   `test_this_repository_reports_its_own_resident_total`,
+   `test_this_repository_measures_its_own_skill_on_demand`) share one analysis
+   per process. The change is written and was set aside in this session's
+   container: a `functools.cache`-decorated `_this_repository()` helper
+   returning `doc_check.analyze(Path(doc_check.__file__).resolve().parent.parent)`,
+   defined above the first of the three, and called by all three in place of
+   their own `analyze` calls. It also drops the third test's unused `tmp_path`
+   and adds `from functools import cache`. Measured: the three pass together in
+   29 s, one 27 s analysis and two under 5 ms. `ruff format` and `ruff check`
+   pass. `test_doc_check.py` is a test of the tooling, not on the owner's read
+   list, so its pull request arms on green.
+5. After `PL-4Z5Y` merges: re-time CI against the done-when below, and restate
+   the `timeout-minutes: 15` comment against the new measured job time.
 
 **Done when.** On at least five successful CI runs after the change, the
 pytest step's 99%-to-100% stretch is back near its late-September 73 s, no
