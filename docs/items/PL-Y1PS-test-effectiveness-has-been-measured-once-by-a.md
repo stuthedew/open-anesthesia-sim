@@ -1,9 +1,15 @@
 ---
 id: PL-Y1PS
 title: Test effectiveness has been measured once, by a one-off mutation run whose recipe and baseline live nowhere durable, so it cannot be re-run or compared: record the mutmut 3.8.0 configuration, its pitfalls and the 2026-10-17 baseline (2619 mutants, 279 unit-tier survivors, about 88% killed), and propose diff-scoped mutation rather than whole-tree runs
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: infra
 feature: test-effectiveness-measurement
+touches: Makefile, pyproject.toml
 added: 2026-10-17
+payoff: the functions a pull request changes can be mutation-tested in minutes and compared with the 2026-10-17 baseline, so whether the tests catch a wrong value is measured rather than assumed
+verify: grep -q 'mutmut' Makefile
 ---
 
 **Problem.** Test effectiveness has been measured once, by a one-off mutation run whose recipe and baseline live nowhere durable, so it cannot be re-run or compared: record the mutmut 3.8.0 configuration, its pitfalls and the 2026-10-17 baseline (2619 mutants, 279 unit-tier survivors, about 88% killed), and propose diff-scoped mutation rather than whole-tree runs
@@ -23,6 +29,12 @@ workflow mechanisms. That was wrong: the pause applies only while a
 workflow-lane head carries `generator: live`, and on 2026-10-17 the only head
 that `bin/docket generators` marked still generating was `PL-X7D5`, a
 product-lane head (`PL-3KMD`).
+
+**Why it matters.** The 2026-10-17 run is the only measurement of how many
+injected faults this suite catches. Without a recorded recipe nobody can run
+it again, so no later change to the tests can be shown to have helped. A
+diff-scoped run would also put the question to each pull request while its
+author still has the change in mind.
 
 **Why mutation testing alone is not enough.** The audit's answer to the
 owner's question was no, for four measured reasons. A high mutation score
@@ -169,6 +181,9 @@ functions a pull request changes.
 **Related.** `PL-79PK` (the message-only survivors), `PL-ZH1F` and `PL-4H4T`
 (the two real gaps that matter), `PL-0Z0F` (ready; perturbing
 `supported_ranges` constants on a schedule, the constant-side counterpart).
+
+**Generator check.** Not a member of any head. It proposes a measurement the
+project never had, and no reader misread a recorded fact.
 
 **Provenance.** A read-only test-effectiveness audit on 2026-10-17 found this.
 The audit ran mutation testing with mutmut 3.8.0 over `core/` and four

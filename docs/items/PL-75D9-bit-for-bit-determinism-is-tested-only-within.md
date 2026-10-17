@@ -1,9 +1,15 @@
 ---
 id: PL-75D9
 title: Bit-for-bit determinism is tested only within one interpreter process, and CI never randomizes test order, so hash-seed-dependent iteration or a new order dependence between tests would pass every gate
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra
 feature: test-effectiveness-measurement
+touches: tests/integration/test_cross_process_determinism.py, .github/workflows/drift.yml, pyproject.toml
 added: 2026-10-17
+payoff: a run gives bit-identical results in a second process with a different hash seed, and a new order dependence between tests turns a weekly run red with the seed that reproduces it
+verify: grep -rq 'PYTHONHASHSEED' tests/integration && grep -q 'randomly' .github/workflows/drift.yml
 ---
 
 **Problem.** Bit-for-bit determinism is tested only within one interpreter process, and CI never randomizes test order, so hash-seed-dependent iteration or a new order dependence between tests would pass every gate
@@ -86,6 +92,9 @@ head carried `generator: live` that day (`PL-3KMD`).
 
 **Done when.** A test compares a run across processes with different hash
 seeds, and a scheduled job runs the suite in a randomized order.
+
+**Generator check.** Not a member of any head. Both properties hold today; the
+gap is a test and a job that were never written, not a fact a reader misread.
 
 **Provenance.** A read-only test-effectiveness audit on 2026-10-17 found this.
 The audit ran mutation testing with mutmut 3.8.0 over `core/` and four
