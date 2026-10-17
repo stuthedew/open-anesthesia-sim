@@ -11,6 +11,10 @@ payoff: it is known whether the free arm64 runners avoid the slow x64 ones, whic
 not-delegable: the end state is a measurement of CI runs on GitHub, which no local command can take
 ---
 
+**Tabled** (project owner, 2026-10-17: "I want low hanging fruit. Not a new
+headache to trouble shoot for two minutes savings"). Its payoff is unknown and it risks floating-point differences in the reference tests. Pick it up only if
+CI time becomes a problem again.
+
 **Problem.** About 63% of the x64 runners `quality.yml` drew on 2026-10-17
 were slow ones, which took 1.9 times as long over pytest (506 s against
 263 s). GitHub's Linux arm64 runners, `ubuntu-24.04-arm`, are free on a public

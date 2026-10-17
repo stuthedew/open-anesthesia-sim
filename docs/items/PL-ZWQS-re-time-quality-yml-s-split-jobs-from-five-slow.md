@@ -1,7 +1,7 @@
 ---
 id: PL-ZWQS
 title: Balance quality.yml's two test parts, whose controller runs are built again when worksteal moves their tests to idle workers, then re-time the split jobs' timeouts and the pytest baseline
-priority: P2
+priority: P3
 effort: M
 status: ready
 feature: ci-cost
@@ -10,6 +10,10 @@ added: 2026-10-17
 payoff: a slow runner's quality run takes about 6 minutes instead of about 8, and its timeouts and drift baseline match what the split jobs take
 not-delegable: the end state is a measurement of CI runs on GitHub, which no local command can take
 ---
+
+**Tabled** (project owner, 2026-10-17: "I want low hanging fruit. Not a new
+headache to trouble shoot for two minutes savings"). The split already saves about 2 minutes, and balancing the parts is the troubleshooting the owner declined, so this drops from P2 to P3. Pick it up only if
+CI time becomes a problem again.
 
 **Problem.** `PL-T9X9` split `quality.yml`'s pytest step into two jobs,
 `checks-part-1` and `checks-part-2`, and made `checks` the job that combines

@@ -11,6 +11,10 @@ payoff: a pull request that touches no simulator code waits about a minute less 
 not-delegable: the design names the paths that count as simulator code, a judgment, and its end state is a measurement of CI runs
 ---
 
+**Tabled** (project owner, 2026-10-17: "I want low hanging fruit. Not a new
+headache to trouble shoot for two minutes savings"). It saves about a minute per run and needs a design round on which paths count as simulator code. Pick it up only if
+CI time becomes a problem again.
+
 **Problem.** 46 tests read a costly computation: the readers of the 8
 washout curves in `tests/reference/test_late_washout_against_published_fits.py`
 and of the two controller runs in `tests/integration/test_controller.py`. In a
