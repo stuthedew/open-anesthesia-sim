@@ -3,11 +3,13 @@ id: PL-QJXS
 title: No test compares an agent-switched run with a fresh run of the new agent, so a set_agent that keeps the previous agent's patient compartments passes the whole suite while a run labelled Desflurane computes with sevoflurane's blood:gas 0.65 and shows alveolar 2.95% (0.49 xMAC) at 5 min against 3.59% (0.60 xMAC)
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, test
 feature: tests-detect-wrong-values
-touches: tests/integration/test_controller.py
+touches: tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1499
 payoff: a run switched to another agent is proved to compute with that agent alone, so a value shown under a correct agent name but computed from the previous agent fails the suite
 verify: grep -q 'def test_an_agent_switch_runs_exactly_as_a_fresh_run_of_that_agent' tests/integration/test_controller.py
 ---
@@ -97,3 +99,33 @@ perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above. Symbols re-checked against
 `9ea87a3c`.
+
+**Done, 2026-10-17.** Three tests compare a switched run with a run built
+directly with the new agent and the same settings, using `==` on the whole
+snapshot:
+
+- `test_an_agent_switch_runs_exactly_as_a_fresh_run_of_that_agent` and
+  `test_a_switched_run_branches_as_a_fresh_run_of_that_agent_does` in
+  `tests/integration/test_controller.py`, over all six ordered agent pairs.
+  The previous agent's run has non-default circuit, flows and cardiac output,
+  all different from each other, 90 s of uptake and a dial change before the
+  switch.
+- `test_an_agent_chosen_in_the_selector_runs_as_a_fresh_run_of_that_agent` in
+  `tests/integration/test_simulation_view.py`, through the selector and the
+  new-case dialog.
+
+`test_each_agents_alveolar_readout_at_five_minutes_is_pinned_as_displayed` in
+`tests/unit/test_dashboard_frame.py` pins each agent's alveolar readout after
+5 minutes on a fresh default run: sevoflurane '0.98%' and '0.49 ×MAC',
+isoflurane '0.42%' and '0.35 ×MAC', desflurane '3.59%' and '0.60 ×MAC'. The
+desflurane values match the audit's measurement. They pin the model's own
+output and are not a comparison with measured data.
+
+With injection I9 applied to `_build_state`, `uv run pytest -q
+tests/integration/test_controller.py -k 'agent_switch_runs_exactly or
+switched_run_branches'` failed all 12 cases. The first test failed on the
+opening segment, with `blood_gas_partition_coefficient=0.65` against 0.42 for
+sevoflurane to desflurane. The branch test failed with
+`SimulationConfigurationError: a branch at 0.0 s would be rebuilt from values
+this run did not hold there`. The selector test failed on the snapshot
+comparison.
