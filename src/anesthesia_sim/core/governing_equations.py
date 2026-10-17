@@ -171,7 +171,10 @@ The stored flows summed carry the float's noise in their last digits -
 6.000000000000001 L/min at an output set to 6.0 - which is precision no dial
 set and a banner must not claim. The comparison above is untouched by it:
 only the figure the message prints is rounded, to a microlitre per minute,
-three orders below any dial step and nine above the noise (`PL-M4M0`).
+three orders below any dial step and nine above the noise (`PL-M4M0`). The
+patient's refusal of a cardiac output that its blood flows do not match
+rounds the two flows it names to the same places, for the same reason
+(`PatientCompartments._require_rewrite_perfused_at`, `PL-KFNP`).
 """
 
 

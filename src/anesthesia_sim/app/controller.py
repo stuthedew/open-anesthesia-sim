@@ -2121,10 +2121,10 @@ class SimulationController:
         Raises:
             SimulationConfigurationError: If the settings record the run's
                 definition opens on cannot be built from what the
-                compartments hold - tissue flows that no longer sum to the
-                cardiac output, which a tissue's own flow set past its patient
-                leaves (`PL-HQF5`), since the patient's output refuses a write
-                past `set_cardiac_output` (`PL-KFNP`). Raised before anything is
+                compartments hold. That happens when the tissue flows no
+                longer sum to the cardiac output, for example after a
+                tissue's blood flow was set directly on the tissue
+                (`PL-HQF5`). Raised before anything is
                 cleared, so the run is exactly as it was: still running if it
                 was, its state, definition, timeline and any recorded failure
                 untouched. The interface halts the run on it
@@ -2252,19 +2252,25 @@ class SimulationController:
         reached, the exception reaches the interface, and the run - which
         the core left untouched - keeps a timeline that says so.
 
-        **A value its compartment accepted can still be refused here**
-        (`PL-VCP4`). A compartment checks its own field, and the settings
-        record checks the fields together, so tissue flows set past their
-        patient (`PL-HQF5`) leave every other setting's change refused when
-        the record is built, after the setter has written. `restore` writes
-        the previous value back through the same setter before the refusal is
-        raised, so the compartment, the definition and the timeline all hold
-        the setting in force before, and the interface's word that the
-        simulation is unchanged is true. It cannot be refused in turn, since
-        the value it writes was in force. The cardiac output's write is the
-        repair instead - `set_cardiac_output` perfuses every compartment at
-        the output written, so its record builds - and its `restore`
-        perfuses them at the previous output.
+        **The settings record can refuse a value that its compartment
+        accepted** (`PL-VCP4`). A compartment checks only its own field, but
+        the record checks the fields against each other. Suppose a tissue's
+        blood flow was set directly on the tissue, so that the tissue flows
+        no longer sum to the cardiac output (`PL-HQF5`). Then building the
+        record fails for every setting except the cardiac output, and it
+        fails after the setter has already written the new value. So
+        `restore` writes the previous value back through the same setter
+        before the error is raised. The compartment, the run's definition
+        and the timeline then all hold the previous setting, and the
+        interface is right to say that the simulation is unchanged.
+        `restore` cannot fail, because it writes a value that was in force.
+
+        A cardiac output change repairs that mismatch instead of failing on
+        it, because `set_cardiac_output` sets every compartment's flow from
+        the new output. The record can still refuse one when the tissues'
+        perfusion fractions no longer sum to 1 (`PL-Z0HN`). Its `restore`
+        then puts the previous output back, but it sets the flows from the
+        changed fractions, so the flows are not the ones that were in force.
 
         Both values are read off the compartment that holds them rather
         than taken from the caller's argument. The core rejects an
@@ -2291,8 +2297,8 @@ class SimulationController:
         if new_value == previous_value:
             return
 
-        # Built before anything is recorded, because it is the one thing here
-        # the core can refuse, above.
+        # Build the record before recording anything, because building it is
+        # the only step here that the core can refuse (see the docstring).
         try:
             settings = self._state.uptake_system.equation_settings()
         except SimulationConfigurationError:

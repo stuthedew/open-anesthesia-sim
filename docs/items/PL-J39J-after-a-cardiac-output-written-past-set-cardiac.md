@@ -36,7 +36,7 @@ disagree in, the cardiac output readout states the disagreement rather than
 one of the two figures, or `PL-KFNP` makes the state unreachable; a test in
 `tests/integration/test_simulation_view.py` pins whichever is chosen.
 
-**Re-scoped 2026-10-12, in `PL-KFNP`'s design round.** [superseded 2026-10-17: the route this names was measured in `PL-KFNP`'s build, and the readout it reaches is true of the values beside it, below] Neither answer to
+**Re-scoped 2026-10-12, in `PL-KFNP`'s design round.** [superseded 2026-10-17: `PL-KFNP`'s build measured this route. The readout it reaches matches the values beside it, as the outcome below explains.] Neither answer to
 `PL-KFNP` makes this state unreachable: a tissue's or the venous pool's
 `set_blood_flow` still sets a compartment's flow past the patient's output,
 nothing in `src/` but `PatientCompartments._update_blood_flows` calls it, and
@@ -48,22 +48,27 @@ re-points `_with_stale_tissue_flows` in
 `tests/integration/test_simulation_view.py`, the helper this item's test
 would use.
 
-**Outcome, 2026-10-17** (`#1488`): closed by the Done-when's second form,
-`PL-KFNP` making the state unreachable, which the re-scope above said it
-would not. Its reasoning was that the route left shows the output the dial
-was set to beside values computed at flows that do not sum to it, and
-measured, it does not. A tissue's own `set_blood_flow` moves no output, so
-the patient keeps the one its last completed step ran at, and the record at
-the stale flows is refused when the next step builds it, before any step
-runs at them. The readout, the dial, the compartment values and the run's
-definition, which the chart is drawn from, all state 5.0, the output those
-values were computed at; only flows no step ever ran at say 6.0, and the
-banner's sentence names them. No disagreement is left for the readout to
-state, and stating one would put a second figure beside a true one.
+**Outcome, 2026-10-17** (`#1488`). The item closes by the second form that
+its Done-when names, because `PL-KFNP` makes the state unreachable. The
+re-scope above said it would not. Its reason was that the remaining route
+shows the output the dial was set to beside values computed at flows that do
+not sum to it. Measured, the route does not do that. A tissue's own
+`set_blood_flow` changes no output, so the patient keeps the output that its
+last completed step ran at. The next step builds a record at the stale flows,
+and that record is refused before any step runs at them. The readout, the
+dial, the compartment values and the run's definition all state 5.0, the
+output those values were computed at. The chart is drawn from the definition.
+Only the tissue flows disagree. They sum to 6.0, and no step ever ran at
+them. The banner's sentence names them. No disagreement is left for the
+readout to state, and stating one would put a second figure beside a true
+one. The clinical review of `#1488` confirmed this. Its readouts equalled the
+chart's last point to within 5e-15.
+
 `test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_last_step_ran_at`
-pins the halt at the step and the refused Reset after it, with the refusal
-of the route this item found; it fails before `PL-KFNP` (DID NOT RAISE). The
-half of that route nothing refuses - flows moved between tissues with their
-sum kept, where the readouts and the chart do disagree - is not this
-readout's: the output shown is the sum the run stepped at. It is
-`PL-HQF5`'s, recorded there.
+pins the halt at the step and the refused Reset after it. It also pins that a
+cardiac output written past `set_cardiac_output`, the route this item found,
+is refused. It fails before `PL-KFNP` with DID NOT RAISE. The settings record
+does not refuse the other half of the remaining route, flows moved between
+tissues with their sum unchanged. There the readouts and the chart do
+disagree, but not about the cardiac output, because the output shown is the
+sum the run stepped at. That half is recorded on `PL-HQF5`.

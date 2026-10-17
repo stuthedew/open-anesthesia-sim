@@ -47,13 +47,16 @@ what sets the band below `PL-KFNP`'s.
 **Why it matters.** A compartment's blood flow is not a fact of its own: it is
 the patient's cardiac output times the tissue's `perfusion_fraction`, which the
 same `TissueGroup` already stores, and for the venous pool it is the cardiac
-output itself. Stored a second time beside both, it is held equal only by
-`PatientCompartments.__post_init__`'s `_require_perfused_at` at construction and
-by `UptakeEquationSettings` at each step for the tissues, and for the pool by
-nothing after construction, as measured above. `PL-KFNP` closes the patient's
-side of the door; this is the compartments' side, and while it stands
-`PL-VCP4` and `PL-J39J` stay reachable through it (`PL-KFNP`'s design round
-re-scoped both to a record reached this way).
+output itself. The flow is stored a second time beside both, and only checks
+keep the copies equal. `PatientCompartments._compartment_not_perfused_at`
+checks every copy when the patient is built and when its output is assigned.
+`UptakeEquationSettings` checks the tissues' copies at each step. Between
+those moments a copy can disagree. No step reads the pool's copy, as measured
+above. `PL-KFNP` refuses a write to the patient's output that the
+compartments do not follow. This item removes the converse, a write to a
+compartment's flow that the patient's output does not follow. `PL-KFNP`'s
+design round re-scoped `PL-VCP4` and `PL-J39J` to a record reached this way,
+and `#1488` closed both.
 
 **Whose decision, and the answer.** The title asks whether a compartment's
 blood flow stays a field of its own that a caller can set. That is not the
@@ -76,7 +79,7 @@ and `blood.py`, ten in `patient.py` and two in `uptake_system.py`, and each
 test added before this lands is one more to re-point. So it is decided here:
 derive it.
 
-**Sequenced after `PL-KFNP`.** [superseded 2026-10-17: `PL-KFNP` closed in `#1488` with the helpers re-pointed as below, so nothing is left to wait on] That item's decided build re-points the two
+**Sequenced after `PL-KFNP`.** [superseded 2026-10-17: `PL-KFNP` closed in `#1488`. Its build re-pointed the helpers as this paragraph describes, so nothing is left to wait on.] That item's decided build re-points the two
 `_with_stale_tissue_flows` helpers and
 `test_a_stale_record_met_at_step_time_is_a_failed_step_stated_in_litres_per_minute`
 to reach the stale record through a tissue's `set_blood_flow`, the route this
@@ -85,18 +88,70 @@ method that no longer exists, so it waits on `PL-KFNP`.
 
 **Reproduced 2026-10-17, a third half, in `PL-KFNP`'s build.** The tissue
 half halts at the next step only when the flows stop summing to the output.
-Moved between tissues with the sum kept, nothing refuses them: on
-`SimulationController()` at its 5.0 L/min output, 50 steps of 0.1 s, then
-`vessel_rich` at 4.3 and `muscle` at 0.4 L/min where the patient's fractions
-give 3.8 and 0.9, `equation_settings()` builds, 3,000 more steps run with no
-failure, and at 305 s the stepped alveolar fraction is 0.010472 where the
-run's definition, which still holds the flows recorded at the start, gives
-0.009889. The readouts are the steps' and the chart is the definition's, so
-the two disagree on screen, and both are computed at a perfusion the patient
-does not state. No shipped input reaches it, as for the other halves, but
-this one is a wrong displayed value rather than a halt or an unread copy,
-which is the case the triage pass's "not safety or science" did not see.
-`docs/MODEL.md` § "Supported input ranges" now says so.
+The settings record does not refuse flows moved between tissues with their
+sum unchanged. The measurement used `SimulationController()` at its 5.0 L/min
+output. After 50 steps of 0.1 s, `vessel_rich` was set to 4.3 L/min and
+`muscle` to 0.4 L/min, where the patient's fractions give 3.8 and 0.9.
+`equation_settings()` then builds, and 3,000 more steps run with no failure.
+At 305 s the stepped alveolar fraction is 0.010472, and the run's definition
+gives 0.009889. The readouts come from the steps and the chart comes from the
+definition, so the two disagree on screen. Only the readouts are computed at
+a perfusion that the patient does not state. The definition still holds the
+flows recorded at the start, 3.8, 0.9 and 0.3 L/min, which are the patient's
+fractions times 5.0. No shipped input reaches this half, as for the other
+halves. But this half puts a wrong value on screen, where the others halt the
+run or leave a copy that nothing reads. The triage pass's "not safety or
+science" did not see this case. `docs/MODEL.md` § "Supported input ranges"
+now describes it.
+
+**Found 2026-10-17 by the reviews of `#1488`.** The clinical and state
+reviews measured six more effects of stale flows. Deriving the flows removes
+each of them.
+
+- **A setting refused on a stale record is shown as if the run goes on.** In
+  the review's run, the tissue flows summed to 6.0 L/min against an output of
+  5.0. A fresh gas flow change from 4.0 to 3.0 L/min was then refused and
+  written back (`PL-VCP4`). The status stayed "Running", and the banner said
+  that the simulation was unchanged and still running its previous setting.
+  The banner named neither the refused setting nor the repair, which is a
+  cardiac output change. The next tick halted the run on the same record.
+  Reset halts at once on the same refusal (`PL-M4M0`). The vaporizer dial and
+  the ventilation behave the same way. On a paused run the notice stays up,
+  with Start enabled.
+- **The refused Reset's advice now points at a figure that no step ran at.**
+  The halted run's banner offers Reset, and the same record refuses Reset.
+  The refused Reset's text says that the two figures must agree, and to
+  change the setting that it names. The natural reading is to set the cardiac
+  output to the 6.0 L/min sum. Before `PL-KFNP`, the same text pointed back to
+  the original 5.0. In fact any cardiac output change repairs the run.
+- **A later setting change keeps the readouts and the chart apart.** After
+  flows are moved with their sum unchanged, a fresh gas flow change builds a
+  record that holds the moved flows. The definition starts its new segment
+  from its own state at that moment, which is the chart's state and not the
+  readouts'. Sixty seconds after a change at 305 s, the readout gave F_A
+  1.153% and the chart gave 1.112%. The record also dates the perfusion change
+  to the setting change. In another run the steps took the moved flows at
+  5 s, and the record dated them to 55 s.
+- **A fork opens at the chart's state.** Before any later setting change, a
+  fork opens at the chart's state and not at the readouts'. In the review's
+  run the trunk's readout gave F_A 0.558%, and the branch opened at 0.551%.
+  After a later setting change, the fork is refused, because the branch would
+  be rebuilt from flows that the run did not hold (`_disagreements_with`).
+- **Reset adopts the moved flows.** After Reset, the readouts and the chart
+  agree again. They agree on a perfusion of 4.3, 0.4 and 0.3 L/min, which no
+  data file states, and nothing on screen shows it.
+- **A cardiac output change to the same value reverses the disagreement.**
+  Once a later setting change has recorded the moved flows, the definition
+  holds 4.3, 0.4 and 0.3 L/min. Setting the cardiac output to its current
+  5.0 L/min then sets the compartments back to 3.8, 0.9 and 0.3 L/min.
+  `_record_control_change` records nothing for an unchanged value. The steps
+  and the chart then disagree the other way round.
+
+**Recommended.** Class this item `safety`, because its third half puts a
+wrong value on screen. `CLAUDE.md`'s clinical-output standard counts that as
+a safety failure. A `safety` class pins the item to `P1` and voids the reason
+that its `deferred-from:` line gives. So the triage pass should settle the
+priority and the gate placement in the same change.
 
 **Done when.** No compartment stores a blood flow that can disagree with its
 patient's cardiac output: `TissueGroup.blood_flow_l_min`,
@@ -104,8 +159,9 @@ patient's cardiac output: `TissueGroup.blood_flow_l_min`,
 gone. Every flow a run, a settings record or a closed form reads is formed
 from `PatientCompartments.cardiac_output_l_min` (times the tissue's
 `perfusion_fraction`, and unscaled for the pool) where it is read.
-`_update_blood_flows` and `_require_perfused_at` go with the copies they kept
-equal. Whether each compartment's standalone closed form (`advance`,
+`_update_blood_flows` and `_compartment_not_perfused_at` go with the copies they
+kept equal, and so do the constructor's and the assignment's refusals that use
+it. Whether each compartment's standalone closed form (`advance`,
 `time_constant_s`) takes the flow as an argument or reads it from its patient
 is the build's call. Displayed and pinned values do not move: the reference
 suite passes unchanged and a run at each agent's defaults is bit-identical
@@ -114,8 +170,8 @@ before and after. The tests that reached the stale record (`PL-M4M0`'s and
 `UptakeEquationSettings` built with disagreeing flows, or are retired with a
 reason where the record they built can no longer exist. `docs/MODEL.md`'s
 account of tissue and venous flow, and § "Supported input ranges" on the ways
-a flow gets in, say so. `PL-VCP4` and `PL-J39J` are re-read against the result
-and closed or dropped where their premise has gone. And
+a flow gets in, say so. `PL-VCP4` and `PL-J39J` closed in
+`#1488`, and their tests use the helpers named above. And
 `test_a_compartment_blood_flow_is_the_patients_output_and_nothing_else` in
 `tests/unit/test_patient.py` pins that changing the output moves every
 compartment's flow and that no write moves one alone.

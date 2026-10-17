@@ -68,15 +68,17 @@ def _advance_for(controller: SimulationController, duration_s: float) -> None:
 
 
 def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
-    """Perfuse each tissue group at its share of `cardiac_output_l_min`, past its patient.
+    """Set each tissue's blood flow from `cardiac_output_l_min`, bypassing the patient.
 
-    A tissue group does not know its patient, so its own `set_blood_flow`
-    takes a flow the patient's cardiac output does not give it (`PL-HQF5`),
-    and nothing in the application calls it but the patient's setter. The
-    patient keeps its output, and the settings record a run's definition
-    opens on refuses tissue flows that no longer sum to it - at the next step,
-    and at Reset (`PL-M4M0`). Until `PL-KFNP` this wrote the output onto the
-    patient past `set_cardiac_output`, which the patient's write now refuses.
+    A tissue group does not know which patient it belongs to, so its own
+    `set_blood_flow` accepts a flow that the patient's cardiac output does not
+    give it (`PL-HQF5`). Nothing in the application makes that call except
+    the patient's setter. The patient keeps its output. The settings record
+    that a run's definition opens on then refuses the tissue flows, because
+    they no longer sum to the output. It refuses them at the next step and at
+    Reset (`PL-M4M0`). Before `PL-KFNP`, this helper assigned the output to
+    the patient directly, bypassing `set_cardiac_output`, and the patient now
+    refuses that.
     """
 
     for tissue in controller._state.uptake_system.patient.tissues:
@@ -1468,19 +1470,20 @@ def test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was() -> None:
 def test_a_setting_the_record_refuses_leaves_the_run_on_its_previous_setting(
     change: Callable[[SimulationController], None], setting: str
 ) -> None:
-    """A setting its compartment accepted and the record refused is written back.
+    """A setting that its compartment accepted and the settings record refused is written back.
 
-    A compartment checks its own value and the settings record checks the
-    fields together, so on a run whose tissue flows were set past their
-    patient every setting but the cardiac output is refused when the record
-    is built, after its setter has written. Until `PL-VCP4` the compartment
-    kept the new value, which the dial read, while the definition's open
-    segment and the timeline kept the old one, under a banner saying the
-    simulation was unchanged and still running its previous setting. The
-    previous value is written back before the refusal is raised, so that is
-    true. The cardiac output's write is the repair rather than a refusal: it
-    perfuses every compartment at the output written, after which the
-    setting refused before is taken.
+    A compartment checks only its own value, but the settings record checks
+    the fields against each other. On a run whose tissue flows were set
+    directly on the tissues, the record refuses every setting except the
+    cardiac output, and it does so after the setter has written the new
+    value. Before `PL-VCP4`, the compartment kept the new value and the dial
+    showed it. The open segment of the run's definition and the timeline
+    kept the old value, and the banner said that the simulation was
+    unchanged and still running its previous setting. Now the previous value
+    is written back before the error is raised, so the banner is right. A
+    cardiac output change repairs the mismatch instead of being refused,
+    because it sets every compartment's flow from the new output. After it,
+    the setting that was refused before is accepted.
     """
 
     controller = SimulationController()

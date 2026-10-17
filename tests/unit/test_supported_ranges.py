@@ -495,23 +495,26 @@ def test_a_bare_float_written_onto_a_compartment_is_refused_at_the_write(control
 
 
 def test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_write() -> None:
-    """A checked output the compartments are not perfused at is refused, not stored stale.
+    """A checked cardiac output that the compartments' flows do not match is refused, not stored.
 
-    The test above holds every flow to its type at the write, and the type
-    was all the patient's write checked: `CardiacOutput(10.0)` written onto a
-    patient perfused at 5.0 L/min was stored, every compartment's flow stayed
-    at its share of 5.0, and the settings record refused the pair only where
-    it was next built, at the next step and at Reset (`PL-M4M0`). A rewrite
-    now meets the relation the constructor checks, against the value
-    written, in the constructor's words, which name `set_cardiac_output`;
-    the field and every flow hold what they held, so the record built after
-    is the one the setter last left and the run steps on. What is held is
-    the relation and not the writer, so a rewrite to the output the
-    compartments stand at is admitted. The setter perfuses the compartments
-    before it writes, and refuses a type before it moves anything. The
-    constructor, `dataclasses.replace`, a copy and a pickle write the output
-    before any compartment, so their first write is held to the type alone,
-    and each still builds the patient (`PL-KFNP`).
+    The test above checks the type of every flow at the write. Before
+    `PL-KFNP`, the type was all that the patient's write checked. So a
+    `CardiacOutput(6.0)` assigned to a patient perfused at 5.0 L/min was
+    stored, and every compartment's flow stayed at its share of 5.0. The
+    settings record refused the mismatch only when it was next built, at the
+    next step or at Reset (`PL-M4M0`). Now the assignment is checked against
+    the compartments' flows, as the constructor checks them. The message
+    names the refused output, the output that the patient keeps and
+    `set_cardiac_output`, and it states the flows without float noise. The
+    field and every flow keep their values, so the record built afterwards is
+    the one that the setter last left, and the run steps on. Every
+    compartment is checked, and the comparison is exact. The check is on the
+    values and not on the caller, so an assignment of an output that the
+    flows already match is accepted. The setter sets the flows before it
+    writes the field, and it refuses a wrong type before it changes anything.
+    The constructor, `dataclasses.replace`, a copy and a pickle write the
+    output before any compartment exists, so their first write is checked for
+    its type alone, and each still builds the patient (`PL-KFNP`).
     """
 
     system = AgentUptakeSystem.default()
@@ -522,13 +525,14 @@ def test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_writ
     settings = system.equation_settings()
 
     with pytest.raises(SimulationConfigurationError) as raised:
-        patient.cardiac_output_l_min = CardiacOutput(10.0)
+        patient.cardiac_output_l_min = CardiacOutput(6.0)
 
     assert str(raised.value) == (
-        "vessel_rich is perfused at 3.8 L/min, but this patient's cardiac output of 10.0 L/min "
-        'gives it 7.6 L/min (docs/MODEL.md, "Tissue groups"): compartments perfused at another '
-        "output are another patient's, as a dataclasses.replace copy's are, so copy a patient "
-        "whole with copy.deepcopy and change its output with set_cardiac_output"
+        "a cardiac output of 6.0 L/min was refused, because the compartments' blood flows do "
+        "not match it. The vessel_rich compartment receives 3.8 L/min, but 6.0 L/min would "
+        "give it 4.56 L/min. The patient keeps its cardiac output of 5.0 L/min. Change the "
+        "output with set_cardiac_output, which sets every compartment's blood flow from the "
+        'new output (docs/MODEL.md, "Tissue groups")'
     )
     assert patient.cardiac_output_l_min is held
     assert [tissue.blood_flow_l_min for tissue in patient.tissues] == flows
@@ -536,10 +540,24 @@ def test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_writ
     assert system.equation_settings() == settings
     system.advance(SimulationStep(0.1))
 
+    with pytest.raises(SimulationConfigurationError, match="would give it"):
+        patient.cardiac_output_l_min = CardiacOutput(nextafter(float(held), inf))
+
     rewritten = CardiacOutput(float(held))
     patient.cardiac_output_l_min = rewritten
 
     assert patient.cardiac_output_l_min is rewritten
+
+    patient.fat.set_blood_flow(0.2)
+
+    with pytest.raises(
+        SimulationConfigurationError, match=r"The fat compartment receives 0\.2 L/min"
+    ):
+        patient.cardiac_output_l_min = CardiacOutput(float(held))
+
+    assert patient.cardiac_output_l_min is rewritten
+
+    patient.fat.set_blood_flow(flows[2])
 
     with pytest.raises(TypeError, match="not built as CardiacOutput"):
         patient.set_cardiac_output(10.0)  # type: ignore[arg-type]

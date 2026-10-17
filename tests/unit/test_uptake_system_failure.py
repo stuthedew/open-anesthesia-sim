@@ -694,18 +694,19 @@ def test_a_stale_record_met_at_step_time_is_a_failed_step_stated_in_litres_per_m
     """A record the step cannot build is a failed step, in the unit the flows were set in.
 
     `_propagator_for` builds the settings record when a setting has moved
-    since the last step, and the record refuses tissue flows that no longer
-    sum to the cardiac output - what a tissue's own flow set past its patient
-    leaves, since a tissue group does not know its patient (`PL-HQF5`). Until
-    `PL-KFNP` the route here was the output written onto the patient past
-    `set_cardiac_output`, which the patient's write now refuses. It is
+    since the last step. The record refuses tissue flows that no longer sum
+    to the cardiac output. Setting a tissue's flow directly leaves them that
+    way, because a tissue group does not know which patient it belongs to
+    (`PL-HQF5`). Before `PL-KFNP`, this test reached the mismatch by
+    assigning the output to the patient directly, bypassing
+    `set_cardiac_output`, and the patient now refuses that. The refusal is
     restated like every other guard reached inside a step, because a
     `SimulationConfigurationError` out of `advance()` would promise a run
     still worth continuing (`core/exceptions.py`) and this run is refused on
     every step after, and at Reset; the step is rolled back like any other;
     and the two flows are named in L/min, which is what every readout shows,
-    as they were set: the tissue flows set at their shares of 6.0 sum to
-    6.000000000000001, and the message says 6.0 (`PL-M4M0`).
+    as they were set. The tissue flows set from 6.0 sum to 6.000000000000001,
+    and the message says 6.0 (`PL-M4M0`).
     """
 
     system = _sevoflurane_at_one_mac()
