@@ -5715,7 +5715,7 @@ named here, for the reason beat 3 gives.
 - PL-W54S (M) Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
 - PL-JSY5 (S) docs/MODEL.md's readout-row rung and its educational-disclaimer line both assume one window's width and one always-on-screen surface, which the area system makes false
 
-**Cleared before v0.6.0 begins unless deferred, the product lane - 90 entries**
+**Cleared before v0.6.0 begins unless deferred, the product lane - 91 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-0FJ8 (S) A MAC divisor's positivity is checked in five app/formatting.py functions and by nothing that holds it: AgentParameters admits Percent(0.0) built directly, only the loader's PositivePercent refuses one, and format_mac_reference checks nothing, directly or through another
@@ -5785,6 +5785,7 @@ named here, for the reason beat 3 gives.
 - PL-SPN6 (S) Three compartments now raise the same 'partial_pressure_fraction must be between 0 and 1', so a refused step no longer says which one refused
 - PL-SQJ1 (M) Playback delivers 73-91% of the rate the dropdown displays: 300x measured at 220x, 1x at 0.9x, so the clock on screen runs slower than its label
 - PL-SWD1 (S) fraction_from_percent and percent_from_fraction take the other type silently - percent_from_fraction(Percent(0.5)) is a Percent of 50.0 and fraction_from_percent(Fraction(0.5)) a Fraction of 0.005 - because the arithmetic runs first and the constructor's swapped-type check sees a plain float; refuse a Percent where a Fraction is handed in and the reverse, as the constructors do, before converting (found reviewing PL-LLMN)
+- PL-SWY5 (S) Esper et al. 2015 (Anesth Analg 120:45-50), the primary blood:gas measurement Meybohm et al. 2021's Table 1 footnote says Gas Man's coefficients differ from, is cited in none of the three agent files beside the adopted De Wolf blood:gas values (found closing PL-0SG0; read 2026-10-12 from PMC7943506's XML record, footnote and reference 54)
 - PL-T4FK (S) docs/MODEL.md line 2350 wraps '+ brain + liver' to the margin, so CommonMark renders it as a bullet reading 'brain + liver is 3,820 of 6,480 ml/min - 59.0%', which gives the kidney + heart + brain + liver sum to two organs (the wrapped-marker shape PL-DSMK fixed in ROADMAP.md)
 - PL-T995 (S) A run that stops itself inside RunView.step_tick - a bookmark halt, or arrival at the supported run length - is never redrawn: step_tick requests no frame and render_tick draws only while a run runs or a frame is owed, so the screen keeps saying Running with a live Pause, a clock one step behind, and no Branch here button, until the learner presses something
 - PL-TBMX (S) circuit_volume_l means apparatus plus patient circuit, so a real machine profile storing a published apparatus figure would understate the circuit time constant by about 40%
