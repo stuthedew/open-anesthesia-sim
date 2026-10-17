@@ -81,8 +81,8 @@ than measured.
 
 **Candidate approaches.**
 
-1. **Deal the curves out first.** A `pytest_collection_modifyitems` hook in
-   `tests/reference/conftest.py` moves the first test to read each curve to the
+1. **Deal the curves out first.** A `pytest_collection_modifyitems` hook, now
+   in `tests/conftest.py`, moves the first test to read each curve to the
    head of a different worker's first slice, computed the way `worksteal` deals
    them, from `config.workerinput["workercount"]` on a worker. Every curve then
    starts near the start of the run, in the worker's own process, so coverage
@@ -142,16 +142,17 @@ were no longer the only tail: `PL-K5VM`'s 24-hour controller builds take over
 the tail, and the dealing makes them longer.
 
 - **What was built.**
-  - `tests/reference/conftest.py`'s `pytest_collection_modifyitems` takes
-    each curve's first reader, longest curve first, and moves it to the head
-    of the slice with the least to compute so far. Slice sizes come from
+  - A conftest under `tests/reference/`, its hook now in `tests/conftest.py`,
+    took each curve's first reader, longest curve first, and moved it to the
+    head of the slice with the least to compute so far, in
+    `pytest_collection_modifyitems`. Slice sizes came from
     `first_slice_sizes`.
   - `CURVES_READ`, in the test module, says which curves each test reads,
     in order. The metabolism test now reads its sink curve first, since
     nothing else reads that curve. No assertion, tolerance band or step
     changed.
-  - `tests/unit/test_reference_conftest.py` holds `first_slice_sizes` to
-    the installed `WorkStealingScheduling`.
+  - A unit test, now `tests/unit/test_worksteal_dealing.py`, held
+    `first_slice_sizes` to the installed `WorkStealingScheduling`.
   - A worker cannot see the `--dist` mode itself: xdist's `setup_config`
     sets its `config.option.dist` to `no`. So `tests/conftest.py`'s
     `pytest_configure_node` passes the mode in `workerinput`. The first
