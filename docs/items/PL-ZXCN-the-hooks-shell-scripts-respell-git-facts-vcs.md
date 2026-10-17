@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.25
 touches: .claude/hooks/no-prune-guard.sh, .claude/hooks/push-check-guard.sh, .claude/hooks/docket-digest.sh, .claude/hooks/shell_split.py, subprojects/docket/src/docket/gitargv.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_gitargv.py, tools/doc_check.py, tools/fact_home_check.py, Makefile, docs/apparatus.md, tests/unit/test_push_check_guard.py, tests/unit/test_no_prune_guard.py, tests/unit/test_shell_reader.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12

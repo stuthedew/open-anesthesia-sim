@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.5.25
 touches: .claude/rules/plain-writing.md, CLAUDE.md, .claude/rules/sources-and-docstrings.md, .claude/rules/where-new-code-goes.md, docs/resident-instructions.md, tests/unit/test_doc_check.py, docs/items/PL-1K5X-cut-the-padded-comments-and-docstrings-across.md, docs/items/PL-FDMJ-cut-the-padded-comments-and-docstrings-across.md, docs/items/PL-TPS7-cut-the-prose-in-docs-architecture-md-and-docs.md, docs/items/PL-BZR4-cut-docs-model-md-s-prose-for-a-human-reader.md, docs/items/PL-K7N7-cut-roadmap-md-s-prose-for-a-human-reader.md, docs/items/PL-Y55Q-re-measure-whether-prose-written-under-the.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a writing rule the owner asked for on 2026-10-17, classed by its own design round
 added: 2026-10-17

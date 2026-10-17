@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: interface-areas
+milestone: v0.5.25
 touches: docs/ARCHITECTURE.md, src/anesthesia_sim/layout/, tests/unit
 added: 2026-09-16
 closed: 2026-10-17

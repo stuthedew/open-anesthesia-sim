@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.25
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/verify.py, subprojects/docket/README.md, tools/branch_id_check.py, tools/pr_body_check.py, tools/left_behind_check.py, tools/pr_title_check.py, tools/generator_check.py, tools/doc_check.py, tools/contrast_check.py, tools/fact_home_check.py, tests/unit/test_branch_id_check.py, tests/unit/test_doc_check.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_vcs.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12

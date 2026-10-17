@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science
 feature: provenance
+milestone: v0.5.25
 touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md
 added: 2026-10-11
 closed: 2026-10-12

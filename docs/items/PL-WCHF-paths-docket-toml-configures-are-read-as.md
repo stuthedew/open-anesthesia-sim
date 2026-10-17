@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.25
 touches: tools/branch_sweep.py, tools/pr_title_check.py, tools/generator_check.py, tools/dead_ends.py, tools/item_reads.py, tools/doc_check.py, tools/tag_release.py, tools/workflow_paths_check.py, tools/pr_body_check.py, .claude/hooks/item_read_log.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/arming.py, tests/unit/test_workflow_paths_check.py, tests/unit/test_config_paths.py, tests/unit/test_item_read_log.py, tests/unit/test_doc_check.py, tools/fact_home_check.py, docket.toml
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
