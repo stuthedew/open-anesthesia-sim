@@ -5863,14 +5863,21 @@ def landed_whole(
     the verdict needs is already written and tested next door, and the project
     owner's decision of 2026-09-12 requires them rather than the unqualified
     "the landed side is non-empty" the item's own brief asserted: two documented
-    shapes satisfy that and neither is a merge. So the pipeline is reused whole
+    shapes satisfy that and neither is a merge. So the pipeline is reused
     - `_Landings` for the content split, the one test of whether the base took
     a change that every reader of that fact shares (`PL-927J`, `PL-RLTK`),
-    `_superseded` to drop paths the base's tip no longer needs (`PL-XLQ5`),
     and `_commits_by_landing` for the unit test that a squash takes commits
     whole where convergence scatters files inside them (`PL-JHJ3`, `PL-5TRV`)
     and for its refusal to read a queue-only annotation as merge evidence
     (`PL-JBRC`).
+
+    **`orphaned`'s `_superseded` step is left out, because the verdict cannot
+    read its result** (`PL-F5CF`). `_superseded` only removes paths from the
+    outstanding half. `_landing_split` puts each path in exactly one half, so
+    a commit with every path outstanding never has every path landed, and the
+    whole-commit verdict reads the landed half alone. Asking it would cost a
+    `git diff` per ref and a pair of `git show` calls per removals-only path,
+    for a set this function throws away.
 
     **Where it differs from `orphaned`, and why.** That report wants a branch
     whose work the base took only *part* of, so it requires a commit left
@@ -5904,13 +5911,13 @@ def landed_whole(
     split = _Landings(base, root, run).split(ref)
     if split is None:
         return False
-    landed, outstanding = split
+    landed, _ = split
     if not landed:
         return False
-    superseded = _superseded(ref, base, outstanding, root, run)
-    outstanding = tuple(path for path in outstanding if path not in superseded)
+    # No outstanding set: the whole-commit verdict reads the landed half alone,
+    # and the commits it would list as left behind are discarded here.
     _, took_one_whole = _commits_by_landing(
-        ref, base, frozenset(landed), frozenset(outstanding), root, run, items_dir.strip("/") + "/"
+        ref, base, frozenset(landed), frozenset(), root, run, items_dir.strip("/") + "/"
     )
     return took_one_whole
 

@@ -3,12 +3,14 @@ id: PL-7LCY
 title: floor-interpreter-guard.sh refuses python3 -c reading a JSON parameter file under src/anesthesia_sim/data/, because it matches the tree name in the command text rather than whether 3.14 source is parsed, so correct read-only work is refused (a false refusal, the opposite direction to PL-61FT's spelling gaps)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: friction-batch
 touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpreter_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-10-17
+pr: 1500
 payoff: a session reading a JSON parameter file under the data tree with a -c string is let through, since that parses no 3.14 source, while a -c string that compiles or runs a tree's Python is still refused
 verify: grep -q 'def test_a_c_string_reading_a_data_file_under_a_tree_is_left_alone' tests/unit/test_floor_interpreter_guard.py
 ---

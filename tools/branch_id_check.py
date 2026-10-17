@@ -105,7 +105,9 @@ refusals go unasked and the output says so, as the walk above does.
 
 `--hint PATH` is the first-edit hook's half of the same question: the line to
 add before an edit to PATH, where PATH is work outside the queue and the
-branch claims nothing.
+branch claims nothing. `--hint-changed` asks the same question of every file
+the checkout has changed. The hook asks it after a Bash call, because a Bash
+command names no path (`PL-RXFK`).
 
 Standard library only, like every tool here, so it runs in a bare checkout.
 """
@@ -116,6 +118,7 @@ import argparse
 import os
 import re
 import sys
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -150,6 +153,7 @@ from docket.vcs import (  # noqa: E402
     default_base,
     leading_ids,
     resolved,
+    working_paths,
 )
 
 #: What `make release` writes and `git tag -a vX.Y.Z` marks. Anchored, so a
@@ -166,10 +170,11 @@ COMMIT_FORMAT = "--format=%p\x1f%s"
 #: so one spelling.
 CLAIMS_NOTHING = "this branch claims nothing: `bin/docket claim <id>`"
 
-#: `--hint`'s exit status where PATH is not work outside the queue - an item
-#: file, or a file outside this checkout - so nothing was asked and the hook
-#: asks again at the next edit. Not 1, which a Python failure also exits with:
-#: a check that cannot run is asked once, not before every edit.
+#: The exit status of `--hint` and `--hint-changed` where no path is work
+#: outside the queue - an item file, or a file outside this checkout - so
+#: nothing was asked and the hook asks again at the next edit or Bash call.
+#: Not 1, which a Python failure also exits with: a check that cannot run is
+#: asked once, not before every edit.
 NOT_ASKED = 3
 
 
@@ -417,23 +422,29 @@ def check_claims(
     return refusals, notes
 
 
-def hint(path: str, now: datetime) -> int:
-    """`--hint PATH`: the line the first-edit hook adds before an edit to PATH.
-
-    Prints `CLAIMS_NOTHING` where PATH is in this checkout and outside the queue
-    and the branch claims nothing, from the same reader the refusal uses. Exits
-    `NOT_ASKED` where PATH is not work outside the queue, so the hook asks again
-    at the next edit. Silent wherever the answer is not a clear "nothing": a
-    hint that is wrong trains a session to skip the one that is right.
-    """
-    config = load_config(ROOT)
+def _is_work(path: str, config: Config) -> bool:
+    """Whether PATH is in this checkout and outside the queue."""
     target = Path(path)
     try:
         relative = (target if target.is_absolute() else Path.cwd() / target).resolve()
         inside = relative.relative_to(ROOT).as_posix()
     except (OSError, ValueError):
-        return NOT_ASKED
-    if in_queue(inside, config):
+        return False
+    return not in_queue(inside, config)
+
+
+def hint(paths: Sequence[str], now: datetime) -> int:
+    """The line the first-edit hook adds where work begins, if it has one.
+
+    Prints `CLAIMS_NOTHING` where one of PATHS is in this checkout and outside
+    the queue and the branch claims nothing, from the same reader the refusal
+    uses. Exits `NOT_ASKED` where none of PATHS is work outside the queue, so
+    the hook asks again at the next edit or Bash call. Silent wherever the answer is not a
+    clear "nothing": a hint that is wrong trains a session to skip the one that
+    is right.
+    """
+    config = load_config(ROOT)
+    if not any(_is_work(path, config) for path in paths):
         return NOT_ASKED
     name = branch_name()
     if not name or name == "HEAD" or not in_agent_namespace(name):
@@ -455,6 +466,22 @@ def hint(path: str, now: datetime) -> int:
             f"only the queue ({_queue_named(config)}), owes none."
         )
     return 0
+
+
+def hint_changed(now: datetime) -> int:
+    """`--hint-changed`: `hint` asked of every file this checkout has changed.
+
+    The hook asks this after a Bash call, which names no path (`PL-RXFK`). The
+    files come from `vcs.working_paths`, which already records what a checkout
+    has changed: the branch's commits since its base, the uncommitted changes
+    and the untracked files. Where git did not answer, it prints nothing and
+    returns 0, so the hook spends its question: a check that cannot run is
+    asked once, not after every call.
+    """
+    changed = working_paths(ROOT, runner=_runner)
+    if not changed.known:
+        return 0
+    return hint([str(ROOT / path) for path in changed.paths], now)
 
 
 def _instant(text: str) -> datetime:
@@ -483,11 +510,18 @@ def main() -> int:
         metavar="PATH",
         help="print the first-edit hook's line for an edit to PATH, if it has one",
     )
+    parser.add_argument(
+        "--hint-changed",
+        action="store_true",
+        help="print the same line for the files this checkout has changed, if it has one",
+    )
     args = parser.parse_args()
 
     now = args.now or datetime.now(UTC)
     if args.hint is not None:
-        return hint(args.hint, now)
+        return hint([args.hint], now)
+    if args.hint_changed:
+        return hint_changed(now)
 
     base = args.base or default_base(ROOT, runner=_runner)
     if not resolved(base):
