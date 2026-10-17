@@ -41,7 +41,7 @@ from pathlib import Path
 import branch_id_check
 import pytest
 from docket.claims import Holdings
-from docket.vcs import SILENT, _run_git, answered, leading_ids
+from docket.vcs import SILENT, WorkingPaths, _run_git, answered, leading_ids
 
 #: The items the fake store holds, in both copies: every id the tests below
 #: expect to attribute work. `PL-SN2T`'s two reproductions are not among them.
@@ -712,4 +712,47 @@ def test_the_hint_is_silent_once_the_branch_claims(
     _commit(record, "PL-K7QX: start", "10:00", claim="PL-K7QX claude/some-session-a1b2c3")
 
     assert _run(monkeypatch, "--hint", str(record / "src" / "work.py")) == 0
+    assert capsys.readouterr().out == ""
+
+
+def test_the_hint_asks_where_any_one_path_is_work(
+    record: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # One Bash call can write an item file and a work file, and that call is work.
+    _branch(record, "claude/some-session-a1b2c3")
+    item = str(record / "docs" / "items" / "PL-K7QX-the-work.md")
+    work = str(record / "src" / "work.py")
+
+    assert branch_id_check.hint([item, work], branch_id_check._instant(NOW)) == 0
+    assert branch_id_check.CLAIMS_NOTHING in capsys.readouterr().out
+
+
+def test_the_changed_files_hint_reads_what_the_checkout_changed(
+    record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # A Bash command names no path, so the hook asks of every file the checkout
+    # has changed (`PL-RXFK`), and a change to the queue alone asks nothing.
+    _branch(record, "claude/some-session-a1b2c3")
+    item = record / "docs" / "items" / "PL-K7QX-the-work.md"
+    item.write_text(item.read_text(encoding="utf-8") + "\nmore\n", encoding="utf-8")
+
+    assert _run(monkeypatch, "--hint-changed") == branch_id_check.NOT_ASKED
+    assert capsys.readouterr().out == ""
+
+    (record / "src").mkdir()
+    (record / "src" / "work.py").write_text("x", encoding="utf-8")
+
+    assert _run(monkeypatch, "--hint-changed") == 0
+    assert branch_id_check.CLAIMS_NOTHING in capsys.readouterr().out
+
+
+def test_the_changed_files_hint_spends_the_question_where_git_did_not_answer(
+    record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # A check that cannot run is asked once, so it returns 0 and says nothing.
+    _branch(record, "claude/some-session-a1b2c3")
+    unanswered = WorkingPaths(declined="git timed out")
+    monkeypatch.setattr(branch_id_check, "working_paths", lambda *_a, **_k: unanswered)
+
+    assert _run(monkeypatch, "--hint-changed") == 0
     assert capsys.readouterr().out == ""

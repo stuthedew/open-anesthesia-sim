@@ -1,17 +1,25 @@
 #!/usr/bin/env bash
 # PreToolUse hook on Bash: refuse a bare `python3` aimed at the 3.14 trees.
 #
-# **What it promises** (`PL-61FT`). A bare interpreter, on its own or behind a
-# wrapper `shell_split.WRAPPERS` names, handed `src` or `tests` in any path
-# form - `src`, `src/`, `./src`, an absolute path, a file below it - as an
-# argument or as a file redirected onto its input, or either tree written with
-# its slash inside a `-c` string; or `compileall` or `py_compile` run on `.`.
-# Outside it: an interpreter named by path, which is the deliberate spelling,
-# and a tree reached through a `cd`, by `find -exec` or as a list on standard
-# input, or named with no slash inside a `-c` string, where the word is as
-# likely code as a path (`PL-R5N0`), each a known gap and not a defect - a row
-# of `KNOWN_GAPS` in `tests/unit/test_floor_interpreter_guard.py`, held to the
-# verdict it gets today, and filed as an item only once a session is seen
+# **What it promises** (`PL-61FT`). It refuses a bare interpreter, on its own
+# or behind a wrapper `shell_split.WRAPPERS` names, that is handed `src` or
+# `tests` in any path form: `src`, `src/`, `./src`, an absolute path, or a file
+# below it. It reads a tree there as parsed when it is the script the
+# interpreter runs, one of the interpreter's own options, a word after a module
+# run with `-m` or after a `-c` string, or a file redirected onto the
+# interpreter's input. It also refuses `compileall` or `py_compile` run with
+# `-m` on `.`. Inside a `-c` string it reads only a tree written with its
+# slash, and only a path that names a directory or Python source: a last part
+# with no suffix, or one ending in `.py`, `.pyi` or `.pyw`. Code that opens
+# `src/anesthesia_sim/data/agents/sevoflurane.json` parses no 3.14 source
+# (`PL-7LCY`). The words after a script are that script's own `argv`, which the
+# interpreter never parses, so it does not read them (`PL-CDZ8`).
+# Outside the promise: an interpreter named by path, which is the deliberate
+# spelling, and a tree reached through a `cd`, by `find -exec` or as a list on
+# standard input, or named with no slash inside a `-c` string, where the word is
+# as likely code as a path (`PL-R5N0`). Each is a known gap and not a defect: a
+# row of `KNOWN_GAPS` in `tests/unit/test_floor_interpreter_guard.py`, held to
+# the verdict it gets today, and filed as an item only once a session is seen
 # writing it. A false refusal is worked when a session meets one, and never
 # probed for.
 #
@@ -126,6 +134,13 @@ GUARDED = re.compile(r"(?<![\w-])(?<!subprojects/docket/)(?:src|tests)/")
 TREE = re.compile(r"(?:.*/)?(?<!subprojects/docket/)(?:src|tests)")
 # A whole-tree parse reaches both without naming either.
 WHOLE_TREE = ("compileall", "py_compile")
+# A tree path inside a `-c` string, read to where the path ends: at a blank, a
+# quote, or the punctuation that code puts around a string (`PL-7LCY`).
+CODE_PATH = re.compile(GUARDED.pattern + r"[^\s\x27\x22`,;()\[\]]*")
+# A file that is not Python source: a last part with a suffix of letters or
+# digits other than `py`, `pyi` or `pyw`. A directory, a name with no suffix and
+# a glob such as `*.*` may be source, so they are read as a parse.
+NOT_SOURCE = re.compile(r"[^/]\.(?!pyw?$|pyi$)[A-Za-z0-9]+$")
 
 # What a redirection onto standard input hands the interpreter: a file it reads,
 # or with `<<<` the text itself.
@@ -140,19 +155,34 @@ for segment, _ in cut:
     rest = shell_split.program_words(segment)
     if not rest or not INTERPRETER.match(rest[0]):
         continue
+    arguments = rest[1:]
+    kind, operand, after = shell_split.python_operand(arguments)
+    # The words the interpreter parses, or hands a module or a `-c` string that
+    # may. The words after a script are its `argv`, which the interpreter never
+    # parses, so they are left out (`PL-CDZ8`). A `-c` string is the last word
+    # before its `argv`, and the paths in it are read below.
+    if kind == "file":
+        read = arguments[:after]
+    elif kind == "-c":
+        read = arguments[: after - 1] + arguments[after:]
+    else:
+        read = arguments
     # A redirection is no argument, since bash lifts it out wherever it
     # stands, so a guarded path the interpreter only writes to is not read. A
     # file redirected onto its standard input is the script it parses, so that
     # is read beside the arguments (`PL-K9QL`).
-    arguments = rest[1:] + [
+    read += [
         word
         for descriptor, operator, word in shell_split.redirections(segment)
         if descriptor in ("", "0") and operator in READS
     ]
-    if any(GUARDED.search(argument) or TREE.fullmatch(argument) for argument in arguments):
+    if any(GUARDED.search(word) or TREE.fullmatch(word) for word in read):
         offender = " ".join(rest)
         break
-    if any(a in WHOLE_TREE for a in arguments) and "." in arguments:
+    if kind == "-c" and any(not NOT_SOURCE.search(path) for path in CODE_PATH.findall(operand)):
+        offender = " ".join(rest)
+        break
+    if kind == "-m" and operand in WHOLE_TREE and "." in arguments[after:]:
         offender = " ".join(rest)
         break
 

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: test
 feature: reader-checks
+milestone: v0.5.25
 touches: tests/unit/test_doc_check.py
 added: 2026-10-10
 closed: 2026-10-12

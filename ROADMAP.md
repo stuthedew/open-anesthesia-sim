@@ -121,7 +121,8 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.21 | Completed | **The release where the tools stopped respelling the facts `docket` already exports, and a run's record started holding the vaporizer setting as it was dialled.** Fifty-one items, and a patch on both halves of § "Versioning decision"'s test: nothing a learner can reach looks different, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, and the trajectories are bit-identical**: `core/` changes (`3be6a48` to `a4699af`) because `BreathingCircuit` and `UptakeEquationSettings` now hold the vaporizer dial in the percent it was set to and derive the fraction the equations read, by the same `fraction_from_percent` the interface applied before (`PL-NJPB`), and 7,290 sampled states across the three agents, twelve dial settings, three cardiac outputs and three fresh gas flows hash identically at both ends; `data/` (`2b4bd16`) and `README.md` (`3a8f16e`) resolve to the same trees. **It finishes four features**: `read-facts-through-docket`, whose eight items follow the six members `#1271` closed under the generator head `PL-KGYT`, so that item front matter, file names, versions, notes names, path containment, code spans and the remote's name are each read through the one spelling `docket` exports; `compaction-reset`, where `PL-NK5K`'s Compact Instructions steer every summary and `PL-YZY4` read the first ones and kept the section; `frame-cost-harness`, where `PL-WPDB` measures the two-run dashboard at 68.9 ms a frame against one run's 44.2 ms; and `commit-provenance`, which `PL-B11M` closes unbuilt. `PL-NXRJ` lets a session squash-merge a pull request already green and current while `main`'s protection binds admins. **Ten are Gate 2 entries**, and the gate stands at 133 of 194 cleared, from 123 at v0.5.20; `PL-9DYK` shipped inside the v0.5.20 tag, and `PL-WSJJ`, the v0.5.20 cut, ships in no release under `PL-KRS6`. | 51 items |
 | v0.5.22 | Completed | **The release where the matrix exponential under every step started keeping the equations' constant 1 exactly 1, and a run handed a point past the 24-hour supported length started being refused where it is built.** Three items, the ready product-lane Gate 2 entries of `numerical-domain`, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, since the two new refusals and the new squaring cap sit past anything a supported input reaches, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, but the numerical method did, so the trajectories are bit-identical only on the path a run plays**: `core/` changes (`a4699af` to `aac50af`) because `matrix_exponential` writes an empty row of the system matrix as the identity's row before its squarings and refuses a propagator needing more than 32 of them (`PL-2MD9`), and because a `RunDefinition` or `SimulationState` handed a point past 24 hours is refused where it is built (`PL-73ZN`, `PL-BMY5`). Over 81 runs across the three agents, every one of 7,371 sampled states a run plays, and every readout formatted from them, is identical at both ends; the canonical path, the chart's drawn values and a branch, which opens from a canonical keyframe, move at the last bits, worst 2.8e-12 relative, and no concentration, MAC or hover value changes at the precision printed. What a learner can see change is a branch's accounting panel: its two residual lines, printed in exponent form, read different digits of the same floating-point noise, and a delivered amount sitting exactly on a 0.05 L tie can round the other way. `data/` (`2b4bd16`), `app/` (`70fe21e`), `tests/reference/` (`d655cc7`) and `README.md` (`3a8f16e`) resolve to the same trees. **All three are Gate 2 entries**, and the gate stands at 136 of 194 cleared, from 133 at v0.5.21; `PL-KXW1`, the cut, ships in no release under `PL-KRS6`. | 3 items |
 | v0.5.23 | Completed | **The release where every flow, concentration, step and instant a run takes became a type only its own check can build, and the chart hover started answering the point under the pointer.** 214 items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, since every refusal the new types add sits on a route no interface control reaches and what a learner sees change is four defects fixed in what was already there, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, and every sampled state is bit-identical**: `core/` changes (`aac50af` to `0e9255d`) because the step (`PL-0GJC`), the three flows (`PL-0YYV`, `PL-HSFV`), the case instant and step count (`PL-CN5S`) and the concentration as a fraction and a percent (`PL-4R3W`) became checked types, built only through their range checks, the settings record a run is built from now carries the vaporizer maximum (`PL-BBMG`), and the agent record refuses a zero MAC (`PL-0FJ8`). Over 81 runs across the three agents and a branch from each, all 9,882 sampled states, the 88,938 sampled elements of the canonical path and the chart's 15,846,273 drawn values are identical at both ends, as are all 21,128,364 hover strings, and three 24-hour runs land on 86,400 s with every hourly state identical. What a learner can see change is the hover answering the point under the pointer and letting go when it leaves (`PL-TCR5`, `PL-J0F7`, `PL-LTKL`), the accounting panel's two residual lines printing the power of ten each lies below (`PL-3PJZ`), and a run standing on the 24-hour limit reading as stopped there (`PL-5291`). `data/` (`2b4bd16` to `7540b37`) changes in three source notes and a provenance gap, every number unchanged, and `README.md` (`3a8f16e`) resolves to the same tree. **It finishes fourteen features, three of them the simulator's**, `late-washout-evidence`, `sidebar-panel-rebuild` and `platform-palette`, and closes eight generator heads, `PL-R417`'s 101 members the largest. **57 are Gate 2 entries**, and the gate stands at 197 of 222 cleared, from 136 of 194 at v0.5.22; `PL-0F33`, the cut, ships in no release under `PL-KRS6`. | 214 items |
-| v0.5.24 | Completed / current baseline | **The release where a learner can branch wherever a paused run stands and at a mark the run has already passed, and where nothing in the repository may read a shared fact a second time beside the module that owns it.** 79 items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, since each new fork is v0.5.0's bookmark fork taken at an instant the case has reached, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, and every sampled state is bit-identical**: `core/` changes (`0e9255d` to `a0e4719`) because the alveolar and tissue agent amounts are held to the compartment's capacity where they are written (`PL-544D`), the two concentration crossings refuse a bare `float` (`PL-1DP1`) and the circuit states once the fresh gas flow range it accepts (`PL-7CRY`). Over 81 runs across the three agents and a branch from each, all 9,720 sampled states, 7,371 canonical states, 23,328 drawn windows and 155,520 readout strings are identical at both ends, as are three 24-hour runs, the snapshot differing only by the new accepted-range field. What a learner can see change is the two new places to branch (`PL-Y2SL`, `PL-2N43`, `PL-W4XQ`) and a control on a halted run restating the halt (`PL-V2HC`); `data/` (`7540b37`) and `tests/reference/` (`b4b0046`) resolve to the same trees, and `README.md` gains the quality badge. **It finishes five features, one of them the simulator's**, `qt-port`, and closes five generator heads spent, `PL-ZGYX`, `PL-4S6C`, `PL-8QMD`, `PL-0HLS` and `PL-KR6M`. **Eleven are Gate 2 entries**, and the gate stands at 204 of 229 cleared, from 197 of 222 at v0.5.23; `PL-9F3H`, the cut, ships in no release under `PL-KRS6`. | 79 items |
+| v0.5.24 | Completed | **The release where a learner can branch wherever a paused run stands and at a mark the run has already passed, and where nothing in the repository may read a shared fact a second time beside the module that owns it.** 79 items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, since each new fork is v0.5.0's bookmark fork taken at an instant the case has reached, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, and every sampled state is bit-identical**: `core/` changes (`0e9255d` to `a0e4719`) because the alveolar and tissue agent amounts are held to the compartment's capacity where they are written (`PL-544D`), the two concentration crossings refuse a bare `float` (`PL-1DP1`) and the circuit states once the fresh gas flow range it accepts (`PL-7CRY`). Over 81 runs across the three agents and a branch from each, all 9,720 sampled states, 7,371 canonical states, 23,328 drawn windows and 155,520 readout strings are identical at both ends, as are three 24-hour runs, the snapshot differing only by the new accepted-range field. What a learner can see change is the two new places to branch (`PL-Y2SL`, `PL-2N43`, `PL-W4XQ`) and a control on a halted run restating the halt (`PL-V2HC`); `data/` (`7540b37`) and `tests/reference/` (`b4b0046`) resolve to the same trees, and `README.md` gains the quality badge. **It finishes five features, one of them the simulator's**, `qt-port`, and closes five generator heads spent, `PL-ZGYX`, `PL-4S6C`, `PL-8QMD`, `PL-0HLS` and `PL-KR6M`. **Eleven are Gate 2 entries**, and the gate stands at 204 of 229 cleared, from 197 of 222 at v0.5.23; `PL-9F3H`, the cut, ships in no release under `PL-KRS6`. | 79 items |
+| v0.5.25 | Completed / current baseline | **The release where a run that stops itself is drawn stopped at once, where every widget of a halted run states the run the controller holds, where a cardiac output that the blood flows do not match is refused when it is written, and where the saved Workspace set exists as code.** 39 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: each new refusal sits on a route that no interface control takes, and each screen change corrects what an existing screen shows. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and every state a run plays is bit-identical**: `core/` changed (`a0e4719` to `60697e5`) because every checked field of the five run records refuses a bad value when it is written (`PL-19Y0`), the patient refuses a cardiac output that its blood flows do not match (`PL-KFNP`), and the tissue and venous closed forms, which the stepped model does not call, keep the sign of their gradient (`PL-XWFP`). Over 81 runs across the three agents, each with two branches, all 6,561,000 steps, 11,178 sampled states, 11,178 canonical states, 2,187 drawn windows and 19,447,290 formatted strings are identical at both ends, as are three 24-hour runs. `data/` changed only in three agents' source notes (`PL-0SG0`), and `tests/reference/` only in docstrings and in a table that orders the test workers' work (`PL-4Z5Y`). A learner can see a run that halts on a mark or at the supported length drawn stopped at once (`PL-T995`). A halted run's screen now has one writer, so every widget states the run the controller holds (`PL-X7D5`). The four members it closes, and `PL-85LJ`'s dial label, were reachable only through a fault that no supported setting produces. A one-run Reset also clears a refused branch (`PL-75P5`). **It finishes no feature, and closes two generator heads spent**, `PL-KFNP` and `PL-X7D5`. **Nine are Gate 2 entries**, and the gate stands at 213 of 234 cleared, from 204 of 229 at v0.5.24. `PL-TT19`, the cut, ships in no release under `PL-KRS6`. | 39 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -224,126 +225,161 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.24
+## Current baseline: v0.5.25
 
-v0.5.24 is the release where a learner can branch wherever a paused run
-stands and at a mark the run has already passed, and where nothing in the
-repository may read a shared fact a second time beside the module that owns
-it. 79 items, and a patch on both halves of § "Versioning decision"'s test: no
-capability boundary is crossed, because each new fork is the bookmark fork
-v0.5.0 already makes, taken at an instant the case has reached, and the next
-three minor numbers, v0.6.0 through v0.8.0, are given to milestone sections.
-Eleven are Gate 2 entries, and `bin/docket wave` puts the gate at 204 of 229
-cleared at this cut, against 197 of 222 at the v0.5.23 tag: seven entries were
-placed on the list since, and 25 stay open, as at that tag.
+v0.5.25 is the release where a run that stops itself is drawn stopped at once,
+and where every widget of a halted run states the run that the controller
+holds. It also refuses a cardiac output that the blood flows do not match when
+the value is written, and it builds the saved Workspace set as code. It has 39
+items, and it is a patch on both halves of § "Versioning decision"'s test. No
+capability boundary is crossed, because each new refusal sits on a route that
+no interface control takes, and each screen change corrects what an existing
+screen shows. The next three minor numbers, v0.6.0 through v0.8.0, are given
+to milestone sections. Nine of the items are Gate 2 entries. `bin/docket wave`
+puts the gate at 213 of 234 cleared at this cut, against 204 of 229 at the
+v0.5.24 tag. Five entries were placed on the list since that tag (`PL-1ZQ4`,
+`PL-HQF5`, `PL-SWY5`, `PL-T995` and `PL-X7D5`), and 21 stay open, against 25.
 
-**No equation, parameter or stored value moved, and every sampled state is bit-identical at both ends:**
+**No equation, parameter or stored value changed, and every state a run plays is bit-identical at both ends:**
 
-| Tree | v0.5.23 | This cut | What moved |
+| Tree | v0.5.24 | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `1723f26` | `70aeab9` | `core/` and `app/`, below |
-| `core/` | `0e9255d` | `a0e4719` | the alveolar and tissue agent amounts held to the compartment's capacity at the write (`PL-544D`); the two concentration crossings refuse a bare `float` (`PL-1DP1`); the circuit states the fresh gas flow range it accepts once (`PL-7CRY`); comments elsewhere |
-| `data/` | `7540b37` | `7540b37` | nothing |
-| `app/` | `9c58727` | `fbbc170` | branching where a paused run stands and at a passed mark (`PL-Y2SL`, `PL-2N43`, `PL-W4XQ`, `PL-54V0`, `PL-8XMV`); a control on a halted run restating the halt (`PL-V2HC`, `PL-RBMK`); the fresh gas flow slider bounded by what the mounted machine accepts (`PL-7CRY`); every stylesheet composed in one toolkit-free module (`PL-Y4YX`); the compartment selection held outside the legend (`PL-VN6M`) |
-| `tests/reference/` | `b4b0046` | `b4b0046` | nothing |
-| `docs/MODEL.md` | `4d5cf74` | `89f13c9` | § "What this requires of a branch" records the fork at a passed mark and where a paused run stands, and what each does and does not reproduce (`PL-W4XQ`, `PL-Y2SL`, `PL-2N43`); the capacity guard at the write (`PL-544D`); the fresh gas flow control's range (`PL-7CRY`); the crossings' refusal (`PL-1DP1`); the halted-run controls in the misuse table (`PL-V2HC`) |
-| `README.md` | `3a8f16e` | `24ff03d` | the quality workflow's badge (`#1450`) |
-| `.github/` | `62e7f7c` | `f888460` | `quality.yml` runs `tools/fact_home_check.py` (`PL-4S6C`) |
+| `src/` | `70aeab9` | `ada5e66` | `core/`, `data/`, `app/` and `layout/`, below |
+| `core/` | `a0e4719` | `60697e5` | every checked field of the five run records refuses a bad value when it is written (`PL-19Y0`); the patient refuses a cardiac output that its blood flows do not match (`PL-KFNP`); the tissue and venous closed forms keep the sign of their gradient, through the new `core/exponential_approach.py` (`PL-XWFP`) |
+| `data/` | `7540b37` | `c49fb36` | the three agents' De Wolf source notes record Meybohm et al. 2021's figures for 1 MAC (`PL-0SG0`); every stored value is unchanged |
+| `app/` | `fbbc170` | `3b03e6f` | a frame is owed whenever a run's record or the run set changes (`PL-T995`, `PL-0LG6`); one writer, `RunView._write_statement`, states a run on a drawn frame and on a halt alike (`PL-X7D5`, `PL-1YDD`, `PL-DTJQ`); a halt writes all four dials from the settings in force (`PL-85LJ`) and restates the fork panel (`PL-MMNX`); the legend is written from the frame drawn (`PL-G3K7`); a refused setting is written back before the refusal is shown (`PL-VCP4`); a one-run Reset clears a refused branch (`PL-75P5`) |
+| `layout/` | `2a9e81d` | `c065b9e` | the Workspace set, and the file it is saved to (`PL-WV9K`, `PL-SSQW`) |
+| `tests/reference/` | `b4b0046` | `8665426` | docstrings (`PL-19Y0`) and a table that orders the test workers' work (`PL-4Z5Y`); no assertion or tolerance changed |
+| `docs/MODEL.md` | `89f13c9` | `53bbd1d` | § "Supported input ranges" records that every checked field is checked at every write, a machine's range among them (`PL-19Y0`), and that a cardiac output the blood flows do not match is refused (`PL-KFNP`); § "Source hierarchy" records that the two tier-3 descriptions of Gas Man disagree on the MAC (`PL-0SG0`); the misuse table gains the label beside a dial dragged into a halt (`PL-85LJ`), and it and § "Reset behavior" name the route to stale blood flows that remains (`PL-KFNP`, `PL-HQF5`) |
+| `README.md` | `24ff03d` | `24ff03d` | nothing |
+| `.github/` | `f888460` | `f888460` | nothing |
 
-`core/` moved, so this cut re-ran the comparison rather than reading it off
-the diff. One script, run on the v0.5.23 tag and on this cut, played 81 runs
-through `SimulationController` - the three agents, three dial settings each,
-three cardiac outputs and three fresh gas flows, with the dial doubled at
-minute 30 and closed at 50, the fresh gas flow raised to 10 L/min at 60 and
-the cardiac output by 1 L/min at 70 - then took a branch from each at minute
-30 with the dial set back and played it for 30 minutes. It drew each run as
-the chart does, in a following window every five minutes and in three fixed
-windows, and it ran each agent's default case at the shipped 0.1 s step to the
-24-hour supported length. Every value was compared as its exact bits.
+`core/` moved, so this cut measured the trajectories rather than reading them
+off the diff. One script ran on the v0.5.24 tag and on this cut. It played 81
+runs through `SimulationController`: the three agents, each at three fresh gas
+flows (0.5, 2 and 8 L/min), three cardiac outputs (2.5, 5 and 8 L/min) and
+three alveolar ventilations (2, 4.5 and 9 L/min), with the dial at 1 MAC. Each
+run carried a time bookmark at minute 40 and a 0.5 MAC target on the
+vessel-rich group, and it resumed after every halt. The cardiac output fell by
+a fifth at minute 20, the dial closed at minute 45, the fresh gas flow doubled
+at minute 60 to at most 10 L/min, and the ventilation rose by 1 L/min at
+minute 75. The script took two branches from each run. One opened at the
+minute-45 keyframe with the dial at 2 MAC and played for 30 minutes. The other
+opened at the passed bookmark with the dial closed and played for 15 minutes.
+It drew each run as the chart does, in a 30-minute following window every five
+minutes. It also ran each agent's default case at the shipped 0.1 s step to
+the 24-hour supported length. Every value was compared as its exact bits.
 
-- **Every state a run plays is bit-identical.** All 9,720 per-minute samples,
-  7,290 on the 81 runs and 2,430 on their branches, hash identically at both
-  ends in `capture_state()` and `state_vector()`, and every number in the
-  snapshot agrees. The snapshot differs in one field only: it now carries
-  `accepted_fresh_gas_flow_range_l_min`, 0 to 10 L/min on the shipped
-  profile, which the fresh gas flow slider reads (`PL-7CRY`).
+- **Every state a run plays is bit-identical.** The script hashed the
+  `state_vector()` bits after each of the 6,561,000 steps on the runs and
+  their branches, and the hashes agree at both ends. All 11,178 per-minute
+  samples agree in `capture_state()`, in `state_vector()` and in every field
+  of the snapshot. So do the 271 snapshots taken where a mark halted a run.
+  The snapshot has the same fields at both ends.
 - **So is every state derived from the run's record.** `RunDefinition.state_at`
-  is identical at all 7,371 sampled instants, and `drawn_window` on all 23,328
-  windows drawn, every compartment trace included. Formatted by the app's own
-  formatters, in percent, multiples of MAC, litres, flows and elapsed time,
-  none of 155,520 readout strings differs.
-- **Three 24-hour runs land on 86,400 s after 864,000 steps on both trees**,
-  stopped there on both, with all 72 hourly states identical but for the same
-  new field. The script was a one-off and is not kept.
+  is identical at all 11,178 sampled instants. `drawn_window` is identical on
+  all 2,187 windows drawn, which hold 1,601,046 columns of every compartment
+  trace. The app's own formatters give the same strings at both ends. None of
+  the 234,738 readout strings made from the samples differs, in percent,
+  multiples of MAC, litres, flows and elapsed time. None of the 19,212,552
+  hover-box strings made from the drawn columns differs either.
+- **Three 24-hour runs stop at 86,400 s after 864,000 steps on both trees.**
+  Every step's state is identical, and so are all 72 hourly samples. The
+  script is not kept in the repository.
 
-**What a learner can reach that they could not before is two places to
-branch.** A paused trunk can be branched where it stands, on a halt or
-anywhere else, from the canonical state at that instant, where it could be
-branched only on a mark it stopped at or a setting changed there (`PL-Y2SL`,
-`PL-2N43`). And a mark set behind the clock - the one-hour point marked while
-paused at three hours - can be returned to, as a fork taken late rather than
-as the trunk cut back, so the run that happened stays on the axis beside the
-alternative (`PL-W4XQ`; returning by truncation was put to the project owner
-and refused, `PL-ZW0J`). `docs/MODEL.md` records what each reproduces: the
-case's state at that instant element for element, the branch a halt there
-would have given, and a trunk left as it was. The fork lands on the end of the
-step that reaches the mark, as a halt would, and opens on the canonical state
-rather than the stepped one the trunk displayed, which agree to 4.9e-14 as a
-fraction over three hours, ten orders below what a two-decimal percent shows.
+**What a learner can see change is a stop drawn at once.** A run that halted
+on a mark, or arrived at the supported run length inside its own step tick,
+kept saying Running until the learner pressed something. It showed a live
+Pause, a clock one step behind and no Branch here button (`PL-T995`). The
+render tick now draws whenever a run's record or the run set changes, so the
+halt is drawn on the next tick. That was `PL-X7D5`'s first pull request, which
+also closes `PL-0LG6`.
 
-Three refusals moved to where the value is made, each on a route no shipped
-control takes. The alveolar and tissue agent amounts are held to the
-compartment's capacity where the amount is written, where a direct assignment
-had stored a partial pressure above one atmosphere for the snapshot to refuse
-two layers later (`PL-544D`). The two crossings between a fraction and a
-percent refuse a bare `float`, where `percent_from_fraction(0.5)` had been 50%
-whether the 0.5 was a fraction or a 0.5% dial (`PL-1DP1`). And the agent
-selector and sliders on a halted run whose snapshot refuses restate the halt
-rather than raising inside a Qt slot (`PL-V2HC`). With them `PL-ZGYX`, the
-generator head for a quantity still checked by hand where no checked type
-holds it, closes spent after a sweep that filed every remaining way in as a
-member; six members stay open as ordinary items. The fresh gas flow slider
-now offers the circuit's accepted range, which is the model's envelope
-narrowed by the mounted machine's, so a profile declaring a narrower
-deliverable range is never offered a flow it refuses; the shipped profile
-declares none, so nothing displayed changes (`PL-7CRY`).
+**A halted run now states itself on every widget.** `PL-X7D5` is the generator
+head behind the screens that went on stating an old run after a halt, and it
+closes spent. A run's screen had two writers. `RunView.refresh` wrote every
+widget from a drawn frame, and `RunView.present_halt` wrote a list of widgets
+chosen by hand when no frame could draw. Each widget missing from that list
+kept the last frame's run. Now one method, `RunView._write_statement`, writes
+the agent identity, the status word, the transport, the control-change panel,
+the banner and the dials, and both paths call it. A test compares each of a
+run view's widgets on a drawn run and after a halt, by default, so a widget
+added later is checked without being listed. This closes four members. A
+halted run names one agent (`PL-1YDD`), and its control-change panel lists the
+record that the run holds (`PL-DTJQ`). A paused trunk whose frames keep
+failing withdraws Branch here (`PL-MMNX`). When a legend click's frame fails,
+the legend keeps naming the curves that the plot draws (`PL-G3K7`). A dial
+dragged into a halt also keeps its label on the value that the dial and the
+run hold (`PL-85LJ`). A learner reaches none of these five states today,
+because each needs a fault that no supported setting produces. The dashboard's
+own panels are still restated on a halt from a list kept by hand. The bookmark
+panel, which that list misses, is `PL-YHR3`, and the list itself is `PL-5JTH`.
+Separately, a Reset on a one-run dashboard now clears a refused branch, whose
+banner had named an instant that the reset run no longer holds (`PL-75P5`).
 
-The first interface-areas code lands here, under v0.6.0's Required-scope
-entries 1 and 9, started once Gate 2 had cleared on 2026-10-12 (`#1446`); the
-seven entries placed on the list since are what stands open now. `PL-1FT6` builds the layout model, a pure-Python tree of splits
-and areas with versioned JSON serialization, and `PL-VN6M` moves the
-compartment selection out of the legend widget into a model an area system
-can own. Nothing a learner sees is laid out by either yet.
+**Two refusals moved to where a value is written.** Each sits on a route that
+no shipped control takes. Every checked field of the circuit, the alveolar
+compartment, the tissue groups, the venous pool and the validator now meets
+its constructor's checks when it is assigned. So a test or a notebook can no
+longer store a 50% sevoflurane dial, a zero circuit volume or an inverted
+fresh gas flow range (`PL-19Y0`). A volume or partition coefficient is also
+checked against the agent that its compartment already holds. The patient now
+refuses a cardiac output assigned past `set_cardiac_output` unless every
+compartment's blood flow already matches it (`PL-KFNP`). Before, that write
+left every tissue at the old flows, and the next step or Reset refused the
+run's record. A setting that the record refuses is now written back through
+its own setter before the refusal is shown, so the banner's statement that the
+simulation is unchanged is true (`PL-VCP4`). `PL-J39J` closes because its
+state can no longer be reached: a halted screen showed the written output
+beside values computed at the old one. `PL-KFNP` is the generator head behind
+`PL-M4M0`, `PL-VCP4` and `PL-J39J`, and it closes spent. Setting a tissue's
+blood flow directly on the tissue can still leave stale flows. That is
+`PL-HQF5`, which was classed `safety` on 2026-10-17 and added to Gate 2 after
+the gate froze.
 
-**It finishes five features, one of them the simulator's**: `qt-port`, whose
-last item composes every stylesheet in `app/stylesheets.py`, a module with no
-toolkit import, where `PL-L9RD`'s `verify:` had demanded PySide6 in
-`app/theme.py` against that file's own invariant (`PL-Y4YX`). The other four
-are the apparatus's: `agent-worktrees`, `bash-guard-bound`,
-`host-reachability` and `shell-reads-as-bash`, the last five departures of
-docket's shell lexer from bash (`PL-55R2`, `PL-3Z8B`, `PL-V690`, `PL-X1VN`,
-`PL-48ZJ`). Five generator heads close spent: `PL-ZGYX` above; `PL-4S6C`,
-which makes one source of truth for a shared fact a hard principle in
-`CLAUDE.md` and enforces its decidable half with `tools/fact_home_check.py`;
-`PL-8QMD`, which moves every gate entry's disposition onto its
-`deferred-from:` field; `PL-0HLS`, `bin/docket new`'s duplicate search keyed
-on a shared path, item or feature and never on the store directory; and
-`PL-KR6M`, three Markdown readers that skipped a fence but read an indented
-code block as prose. CLAUDE.md's fix-in-place rule widens to any small defect a session
-finds while building an item, at most two a branch (`PL-6B1Z`). The release
-item is `PL-9F3H`, whose `resource: release-train` keeps it out of every later
-release. Every closure carried its `pr:` number before the cut, so all 79
-bullets cite their pull requests, and `tools/pr_body_check.py`
-found one squash commit that lost its body, `#1450`'s, which GitHub holds
-none for either and `docs/pr-bodies/1450.md` records as nothing to recover.
+**Two changes affect no run.** The tissue and venous compartments' own closed
+forms are what tests, notebooks and reference cases call to check the stepped
+model. They now advance through `core/exponential_approach.py`, which anchors
+each step at the nearer end of the gap (`PL-XWFP`). So the reported change has
+the sign of the gradient, and the amount never crosses its equilibrium. Before,
+at admitted flows from 1e-30 to 3e-13 L/min, they could report uptake as a
+return as low as -3.2e-18 L. The stepped model uses `AgentUptakeSystem.advance()`
+instead, which is why every run above is unchanged. And the three agent files
+now record that Meybohm et al. 2021's Table 1 prints Gas Man 4.2's 1 MAC as
+2.1% sevoflurane and 1.1% isoflurane. The files store De Wolf et al. 2012's
+2.0% and 1.2% for the same program, and every partition coefficient that the
+two papers print agrees (`PL-0SG0`).
 
-One shipped inside v0.5.23's tag: `#1420` (`PL-WXKD`) merged after that
-release's cut was written and before its pull request landed at `36e5e87`,
-where the tag sits, so v0.5.23's notes now point here for it; every other pull
-request the notes cite merged after that commit. As at v0.5.23, anything
-that merges on `main` after this cut is written and before its pull request
-lands ships inside the v0.5.24 tag, is described in the next release, and
-takes a pointer in v0.5.24's notes at that release's cut.
+**Two more of v0.6.0's Required-scope entries land as code**, entries 11 and
+12, on `PL-1FT6`'s layout model. `PL-WV9K` defines a Workspace: a name, an
+origin, a layout and each View's saved state. Workspaces are held in an
+ordered set with unique names and one active Workspace. `PL-SSQW` builds the
+file the set is saved to, with its schema version, a table of migration steps
+and a previous generation kept as a copy. Nothing in `app/` uses either yet,
+so a learner sees no change and the application writes no file.
+
+The other 22 items are the apparatus's. Twelve are members of `one-answer`.
+Among them, `PL-S9JK` makes `vcs.call_git` the one place git runs, and
+`PL-WCHF` makes the tools read the paths that `docket.toml` configures through
+`docket.config`. `PL-8ZTQ` adds `.claude/rules/plain-writing.md`, a rule for
+plain prose that every session loads. `PL-KBVW` narrows the pause on new
+workflow mechanisms to workflow-lane generator heads. It also adds a fourth
+test for friction worth raising at once: a measured cost paid on every run,
+session or commit. `PL-P66B` makes a failed `bin/docket verify` name the
+failing test. `PL-K5VM` deals the six tests of `test_controller.py`'s two
+24-hour runs to one test worker, so each run is built once rather than in
+every worker. The release item is `PL-TT19`, whose `resource: release-train`
+keeps it out of every later release. Every closure carried its `pr:` number
+before the cut, so all 39 bullets cite their pull requests.
+`tools/pr_body_check.py` found no squash commit that lost its body.
+
+One item shipped inside v0.5.24's tag. `#1467` (`PL-ZXCN`) merged after that
+release's cut was written and before its pull request landed at `06aa1f4`,
+where the tag sits. So v0.5.24's notes now point here for it, and every other
+pull request these notes cite merged after that commit. As at v0.5.24,
+anything that merges on `main` after this cut is written and before its pull
+request lands ships inside the v0.5.25 tag. It is described in the next
+release, and v0.5.25's notes take a pointer to it at that release's cut.
 
 ## The plan
 
@@ -5728,7 +5764,7 @@ named here, for the reason beat 3 gives.
 - PL-W54S (M) Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
 - PL-JSY5 (S) docs/MODEL.md's readout-row rung and its educational-disclaimer line both assume one window's width and one always-on-screen surface, which the area system makes false
 
-**Cleared before v0.6.0 begins unless deferred, the product lane - 92 entries**
+**Cleared before v0.6.0 begins unless deferred, the product lane - 98 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-0FJ8 (S) A MAC divisor's positivity is checked in five app/formatting.py functions and by nothing that holds it: AgentParameters admits Percent(0.0) built directly, only the loader's PositivePercent refuses one, and format_mac_reference checks nothing, directly or through another
@@ -5759,6 +5795,7 @@ named here, for the reason beat 3 gives.
 - PL-921Y (S) docs/MODEL.md's first-24-hours subsection compares the model's isolated muscle time constant with Yasuda's fitted one, which is an apparent constant read off the whole washout curve; read the same way, off the eigenvalues of the model's open-circuit system, the model's muscle term runs 1.9 to 2.0 times the fitted one at about half its amplitude (measured 2026-10-03), not 1.5 to 1.7
 - PL-95NW (M) Test whether the model's slower muscle return explains the open-circuit washout tail's closest approach to Yasuda's fitted mean curves over hours 2 to 4, by varying the muscle tissue:gas coefficient in the late-washout module; docs/MODEL.md's first-24-hours subsection records that reading as inferred from the isolated time constants and not tested (PL-KK1Q)
 - PL-979Z (M) CaseInstant and the three flow types are built from another checked quantity silently - CaseInstant(StepCount(600)) is an instant of 600 s, CaseInstant(FreshGasFlow(5.0)) one of 5 s and FreshGasFlow(CaseInstant(5.0)) a flow of 5 L/min - because require_a_number admits every int and float subclass and only the stored-value checks (require_case_instant, _require_built) name a swapped quantity; refuse another checked quantity at the constructor, as Fraction refuses a Percent (found reviewing PL-7N8P)
+- PL-9YHR (L) The published-data gates cannot resolve most stored parameters - fat tissue:gas x2 and x0.5, fat volume x2, muscle tissue:gas x1.5 and vessel-rich tissue:gas x0.8 each pass every Yasuda-tied assertion, and only 6 of 25 simulation-affecting x1.10 perturbations fail one - while the gate's resolving power is recorded only for alveolar ventilation and cardiac output
 - PL-B26Y (S) BreathingCircuit.advance_fresh_gas reports a nan exhaust at an admitted fresh-gas flow below about 2e-306 L/min, because the circuit's time constant overflows to inf there and its zero-flow branch tests == 0.0 only; core/__init__.py says the branch agrees with the general path bit for bit at the smallest denormal, which holds for the fraction and not for the exhaust
 - PL-BBMG (M) RunDefinition accepts a delivered concentration above the agent's vaporizer maximum - 20% sevoflurane against an 8% maximum ran on 2026-10-04 - because UptakeEquationSettings carries no agent and no vaporizer maximum, so a run built from a settings record bounds the dial only at 100%, and the BreathingCircuit that refuses it is never built
 - PL-BMY5 (S) SimulationState can be constructed already past the supported run length, and only the next advance refuses it
@@ -5767,11 +5804,13 @@ named here, for the reason beat 3 gives.
 - PL-CZTR (S) ResumePoint.elapsed_s is the fork instant on the case's axis and should be named fork_instant_s, now that the definition's own instants are instant_s
 - PL-DBGT (S) desflurane.json points at 'the five other candidates ruled out' in a MODEL.md table that now has nine rows, and names tests/reference/test_published_wash_in.py, which does not exist
 - PL-FPY2 (M) A wrapped mark row's continuation can be a whole clause naming a run, so it reads as a row of its own and binds to the wrong mark
+- PL-H1JH (M) Sevoflurane's and isoflurane's MAC-awake fraction_of_mac and all three agents' standard_deviation_fraction_of_mac have no behavioural oracle or literal pin from the adopted primary source, so a 10% transcription error passes every data-dependent simulator test, and desflurane's one published check passes only by float rounding
 - PL-H8QP (S) The two for_agent reads-the-file tests cannot fail when for_agent() stops reading a data file, because the core defaults equal the files' values, so docs/MODEL.md's claim that they catch it holds only for the fresh gas flow
 - PL-HBH2 (S) docs/MODEL.md's fat-perfusion note weighs the stored fat flow against Heinonen's PET adipose perfusion alone, though Yasuda 1991's two human washout fits put the fat group's time constant (1,340-2,130 min) and flow (2.1-2.4 mL/100 mL/min) where the stored parameters already sit (1,496-2,603 min, 2.07), so its 'would over-estimate fat loading' reading may be one-sided
 - PL-HGB6 (S) docs/machine-abstraction.md says circuit_volume_l is apparatus-plus-circuit where the shipped profile says apparatus alone, so a profile author following the design document would store an assembled total the code does not expect
 - PL-HNWX (M) SUPPORTED_SCHEMA_VERSION is one global constant across agents, patients and machines, so a machine-only schema bump drags three agent files and the patient file with it
 - PL-HQF5 (M) After PL-KFNP a tissue group's or the venous pool's blood flow is still settable past its patient's cardiac output through TissueGroup.set_blood_flow and VenousBloodCompartment.set_blood_flow, which nothing in src/ but PatientCompartments._update_blood_flows calls, so the record PatientCompartments.__post_init__ refuses stays reachable by a caller mypy does not read and halts only at the next step or at Reset (PL-M4M0); decide whether a compartment's blood flow stays a field of its own that a caller can set (found in PL-KFNP's design round)
+- PL-JPS2 (S) Both MAC-awake band tests take their expected band from the snapshot under test, so a band left at the previous agent's values after an agent switch passes the whole suite and the chart would draw sevoflurane's 0.34 x MAC band under desflurane's name
 - PL-KFNP (M) PatientCompartments.__setattr__'s type-only guard (PL-LBQY) admits a checked CardiacOutput written past set_cardiac_output and leaves every tissue's blood flow at the old output, a record the core refuses wherever it is next built; root cause of PL-M4M0 and the two items filed beside it, so decide whether the write keeps the relation through set_cardiac_output or is refused outright, which PL-LBQY's three options did not weigh (found reviewing PL-M4M0)
 - PL-HSFV (S) RunDefinition propagates an UptakeEquationSettings whose flows are outside the supported ranges - cardiac output 1000 L/min, a hundred times the supported maximum, ran on 2026-10-04 - because the settings record checks only that the tissue flows sum to cardiac output, and the range guards run only in the compartments' constructors and setters, which a run built from a settings record never calls
 - PL-J0F7 (S) The Qt chart's hover box was never looked at rendered: its placement flips near the window's right edge and the axis top, and nothing has confirmed the flip lands the box inside the plot or that INK on PANEL in a pg.TextItem is what is painted
@@ -5791,9 +5830,11 @@ named here, for the reason beat 3 gives.
 - PL-N67T (S) RunView.build_sidebar_panels constructs fresh panels on every call and reparents the run's live labels into them, so a second call silently strips the accounting and control-change panels out of the sidebar
 - PL-NC62 (S) resumed_at's settings-mismatch refusal blames the control timeline whatever the cause, so a patient or agent mismatch would be misdiagnosed
 - PL-Q7V1 (S) ROADMAP.md's varying-perfusion note ('Also unsupported at rest, one layer down', under planned milestone item 35) reads the stored fat flow as 'that far out' against Heinonen alone, where PL-HBH2 records that Yasuda 1991's washout fits put it at or a little above the stored figure
+- PL-QJXS (S) No test compares an agent-switched run with a fresh run of the new agent, so a set_agent that keeps the previous agent's patient compartments passes the whole suite while a run labelled Desflurane computes with sevoflurane's blood:gas 0.65 and shows alveolar 2.95% (0.49 xMAC) at 5 min against 3.59% (0.60 xMAC)
 - PL-QPN8 (S) src/anesthesia_sim/data/patients/reference_adult.json's Meybohm et al. 2021 note says its Tables 1-3 could not be read, but pmc.ncbi.nlm.nih.gov answered through the egress proxy on 2026-10-06, so read PMC7943506's tables and settle whether they list a blood or venous volume
 - PL-QW19 (S) default_fresh_gas_flow_l_min is a required field no manufacturer publishes, so the first real machine profile must invent an unsourced number or cannot be written
 - PL-QYBW (M) The chart's percent axis is scaled by the alveolar peak, so the slow compartments are compressed into 1-2 px and two runs' fat curves cannot be told apart by pointing
+- PL-R0NL (L) Wash-in is compared with published human data at one instant, 30 minutes, so the first 15 minutes of the F_A/F_I rise, the phase the simulator most displays, are compared against nothing published and a doubled FRC that moves F_A/F_I at 1 min by -0.118 passes every gate
 - PL-RBMK (S) _apply_to_every_run documents a two-phase write it does not implement: it applies in a loop and catches, so the docstring promises atomicity the code cannot give
 - PL-SM5V (M) A run's settings cannot be recovered from RunSegment.settings: the L/min to L/s conversion does not round-trip for 7 of 101 cardiac outputs
 - PL-SPN6 (S) Three compartments now raise the same 'partial_pressure_fraction must be between 0 and 1', so a refused step no longer says which one refused
@@ -5822,6 +5863,7 @@ named here, for the reason beat 3 gives.
 - PL-YT8N (S) BreathingCircuit.advance_fresh_gas reports a negative exhaust, as low as -3.3e-16 L, at admitted flows from 1e-15 to 1e-6 L/min, because 1 - exp(-dt/tau) loses its digits to cancellation when dt/tau is small; the exhaust it integrates cannot be negative (found fixing PL-B26Y)
 - PL-Z0T3 (S) dataclasses.replace() on PatientCompartments rewrites the tissue and venous flows of the original it shares those sub-objects with, because __post_init__ calls _update_blood_flows on them: a running system is left perfusing at the twin's cardiac output while its snapshot reports the old one, until the next step's tissue-sum check halts the run (found reviewing #1350)
 - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
+- PL-ZH1F (S) RunDefinition.record_change's dial-moved-back branch is tested only on two-segment runs, the one size where segments[:-1] and segments[:1] agree, so a mutant that silently deletes every later stretch (state_at 600 s alveolar 0.01246 against 0.01867) survives all 5734 simulator tests
 
 **Cleared before v0.6.0 begins unless deferred, the workflow lane - 116 entries**
 
@@ -6033,6 +6075,16 @@ admitting a zero MAC, which `format_mac_reference` prints as `1 MAC sevoflurane
 taking a bare float as either form. `PL-QPN8` (`science`, 2026-10-11) is the
 reference adult's Meybohm et al. 2021 note, whose tables can now be read at the
 source. The triage pass that classed them placed all five in the product lane.
+`PL-QJXS`, `PL-JPS2`, `PL-ZH1F` and `PL-H1JH` (`safety`, 2026-10-17) are the
+test-effectiveness audit's safety findings: no test compares an agent-switched
+run with a fresh run of the new agent; both MAC-awake band tests read their
+expected band from the snapshot under test; the dial-moved-back branch of
+`RunDefinition.record_change` is tested only on two-segment runs; and the
+MAC-awake fractions and spreads carry no pin from their primary source.
+`PL-9YHR` and `PL-R0NL` (`science`, 2026-10-17) are its validation findings: the
+published-data gates cannot resolve most stored parameters, and wash-in is
+compared with published human data at 30 minutes alone. The triage pass that
+classed them placed all six in the product lane.
 
 `PL-YVV4` (`planning`, filed 2026-09-13) was let in on 2026-10-03 and sits in
 the workflow lane with `PL-VV6N`, which waits on it. It was in the store at the

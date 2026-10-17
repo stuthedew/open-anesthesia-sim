@@ -1,9 +1,15 @@
 ---
 id: PL-4H4T
 title: No test changes the step size within one uptake system, so a propagator cache key that loses the step survives the whole suite, and SimulationState.reset() followed by a different step would reuse the old exp(A*dt) with accounting still passing
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: test
 feature: tests-detect-wrong-values
+touches: tests/unit/test_matrix_exponential.py, tests/unit/test_simulation.py
 added: 2026-10-17
+payoff: a propagator cache that reuses the old step's exp(A dt) after a step change fails a test, so a reset followed by a new step size cannot advance the run by the wrong time
+verify: grep -q 'def test_a_step_size_change_within_one_system_obeys_the_semigroup_property' tests/unit/test_matrix_exponential.py
 ---
 
 **Problem.** No test changes the step size within one uptake system, so a propagator cache key that loses the step survives the whole suite, and SimulationState.reset() followed by a different step would reuse the old exp(A*dt) with accounting still passing

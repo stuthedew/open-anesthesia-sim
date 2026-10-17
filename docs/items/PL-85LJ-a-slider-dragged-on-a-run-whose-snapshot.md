@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, defect
 feature: every-control-restates-the-halt
+milestone: v0.5.25
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py, tests/integration/test_controller.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-10-12
 closed: 2026-10-12

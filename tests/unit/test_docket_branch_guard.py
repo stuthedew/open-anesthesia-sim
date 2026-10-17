@@ -7,7 +7,9 @@ line has to travel in the JSON form a session can actually read, the hook must
 not grant the permission it is attached to, it must ask once per session rather
 than once per edit, and it must say nothing when there is nothing to say. The
 claim question (`PL-J9S0`) adds the same three at a different moment: the
-first edit that is work, which a capture's edit is not.
+first edit that is work, which a capture's edit is not. After a Bash call
+(`PL-RXFK`) the hook reads the tree instead of a path, and a clean tree, or one
+changing only the queue, has to spend nothing.
 
 Real git and a local `file://` remote, so nothing here touches a network.
 """
@@ -67,6 +69,11 @@ def _clone_of_a_moved_remote(
     # which failed three tests here on the project owner's Mac while CI stayed
     # green (`PL-Y6W9`). `test_docket_digest_hook.py` carries the full account.
     (work / "bin" / "python3").symlink_to(sys.executable)
+    # A real checkout tracks `bin/` and `tools/`, so the stand-ins here are kept
+    # out of what the tree has changed, which the hook reads after a Bash call.
+    exclude = work / ".git" / "info" / "exclude"
+    exclude.parent.mkdir(exist_ok=True)
+    exclude.write_text("/bin/\n/tools/\n", encoding="utf-8")
     return work
 
 
@@ -89,6 +96,28 @@ def _run_guard(
     payload: dict[str, object] = {"session_id": session, "tool_name": "Edit", "cwd": str(root)}
     if target is not None:
         payload["tool_input"] = {"file_path": str(target)}
+    return subprocess.run(
+        ["bash", str(HOOK)],
+        cwd=root,
+        input=json.dumps(payload),
+        env=_guard_env(root, tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def _run_after_bash(
+    root: Path, tmp_path: Path, event: str = "PostToolUse"
+) -> subprocess.CompletedProcess[str]:
+    """The hook as the harness runs it after a Bash call, whose payload names no path."""
+    payload = {
+        "session_id": "s1",
+        "hook_event_name": event,
+        "tool_name": "Bash",
+        "tool_input": {"command": "python3 -c 'edit the file'"},
+        "cwd": str(root),
+    }
     return subprocess.run(
         ["bash", str(HOOK)],
         cwd=root,
@@ -259,3 +288,87 @@ def test_branch_guard_keeps_the_claim_question_past_a_capture(tmp_path: Path) ->
 
     assert capture.stdout == ""
     assert "this branch claims nothing" in later.stdout
+
+
+def _write(root: Path, path: str) -> None:
+    (root / path).parent.mkdir(parents=True, exist_ok=True)
+    (root / path).write_text("x", encoding="utf-8")
+
+
+def test_branch_guard_says_to_claim_after_the_first_bash_edit_that_is_work(tmp_path: Path) -> None:
+    """An edit made through Bash is asked what an Edit-tool edit is, once (`PL-RXFK`)."""
+    (tmp_path / "markers").mkdir()
+    work = _clone_of_a_moved_remote(tmp_path, branch="claude/some-session-a1b2c3")
+    _with_the_check(work)
+    _write(work, "src/work.py")
+
+    first = _run_after_bash(work, tmp_path)
+    again = _run_after_bash(work, tmp_path)
+
+    payload = json.loads(first.stdout)["hookSpecificOutput"]
+    assert payload["hookEventName"] == "PostToolUse"
+    assert "behind origin/main" in payload["additionalContext"]
+    assert "this branch claims nothing: `bin/docket claim <id>`" in payload["additionalContext"]
+    assert "permissionDecision" not in payload
+    assert again.stdout == ""
+
+
+def test_a_bash_call_that_leaves_the_tree_clean_spends_nothing(tmp_path: Path) -> None:
+    """A read-only command is not where work begins, so both questions wait for one that is."""
+    (tmp_path / "markers").mkdir()
+    work = _clone_of_a_moved_remote(tmp_path, branch="claude/some-session-a1b2c3")
+    _with_the_check(work)
+
+    clean = _run_after_bash(work, tmp_path)
+    _write(work, "src/work.py")
+    later = _run_after_bash(work, tmp_path)
+
+    assert clean.stdout == ""
+    assert "behind origin/main" in later.stdout
+    assert "this branch claims nothing" in later.stdout
+
+
+def test_a_bash_call_writing_only_the_queue_keeps_the_claim_question(tmp_path: Path) -> None:
+    """A capture made through Bash owes no claim, so it must not spend the question."""
+    (tmp_path / "markers").mkdir()
+    work = _clone_of_a_moved_remote(tmp_path, moved=False, branch="claude/some-session-a1b2c3")
+    _with_the_check(work)
+    _write(work, "docs/items/PL-K7QX-x.md")
+
+    capture = _run_after_bash(work, tmp_path)
+    _write(work, "src/work.py")
+    later = _run_after_bash(work, tmp_path)
+
+    assert capture.stdout == ""
+    assert "this branch claims nothing" in later.stdout
+
+
+def test_a_failed_bash_call_answers_under_its_own_event(tmp_path: Path) -> None:
+    """A command that edits and then fails a check fires `PostToolUseFailure` instead."""
+    (tmp_path / "markers").mkdir()
+    work = _clone_of_a_moved_remote(tmp_path, branch="claude/some-session-a1b2c3")
+    _with_the_check(work)
+    _write(work, "src/work.py")
+
+    result = _run_after_bash(work, tmp_path, event="PostToolUseFailure")
+
+    payload = json.loads(result.stdout)["hookSpecificOutput"]
+    assert payload["hookEventName"] == "PostToolUseFailure"
+    assert "this branch claims nothing" in payload["additionalContext"]
+
+
+def test_the_hook_runs_after_every_bash_call_and_before_every_edit() -> None:
+    """The wiring is what the tests above cannot see: a hook nothing runs asks nothing."""
+    hooks = json.loads((REPO / ".claude" / "settings.json").read_text(encoding="utf-8"))["hooks"]
+    command = 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/docket-branch-guard.sh"'
+
+    def matchers(event: str) -> set[str]:
+        return {
+            entry.get("matcher", "")
+            for entry in hooks.get(event, [])
+            if any(hook.get("command") == command for hook in entry["hooks"])
+        }
+
+    assert matchers("PreToolUse") == {"Edit|Write|MultiEdit|NotebookEdit"}
+    assert matchers("PostToolUse") == {"Bash"}
+    assert matchers("PostToolUseFailure") == {"Bash"}
