@@ -4,6 +4,7 @@ accounting identity documented on `AgentSimulationValidator`.
 """
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.exceptions import AgentSimulationValidationError
 from anesthesia_sim.core.validation import require_nonnegative_finite
@@ -11,6 +12,10 @@ from anesthesia_sim.core.validation import require_nonnegative_finite
 AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L = 1e-12
 AGENT_ACCOUNTING_RELATIVE_TOLERANCE = 1e-9
 MINIMUM_RELATIVE_SCALE_L = 1e-15
+
+#: The three totals `AgentSimulationValidator.__setattr__` holds to
+#: nonnegative and finite, which are all of its fields.
+_ACCOUNTING_TOTALS = frozenset({"initial_agent_l", "delivered_agent_l", "exhausted_agent_l"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,10 +64,39 @@ class AgentSimulationValidator:
     delivered_agent_l: float = 0.0
     exhausted_agent_l: float = 0.0
 
-    def __post_init__(self) -> None:
-        require_nonnegative_finite("initial_agent_l", self.initial_agent_l)
-        require_nonnegative_finite("delivered_agent_l", self.delivered_agent_l)
-        require_nonnegative_finite("exhausted_agent_l", self.exhausted_agent_l)
+    if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
+        # Hidden from `mypy` on purpose, as `AlveolarCompartment.__setattr__`
+        # is: a class that defines `__setattr__` is one `mypy` lets assign any
+        # attribute name, typed by the method's `value`, so with the guard in
+        # view a misspelt field written in `src/` would pass `--strict` and
+        # fail at run time against the slots. Hidden, `mypy` reads the
+        # dataclass's fields and their types as before, and this is the
+        # runtime half for the callers it does not read; its lines are checked
+        # by their tests rather than by `mypy` (`PL-LBQY`, found at review).
+
+        def __setattr__(self, name: str, value: object) -> None:
+            """Write a total, refusing one the validator's constructor would refuse.
+
+            Each total is stored in one place, its slot, so its check is made
+            here, for the constructor, `record_external_agent_transfer`,
+            `reset`, `restore_state` and an assignment made past them alike, as
+            `BreathingCircuit.__setattr__` explains (`PL-LBQY`, `PL-19Y0`).
+            Nothing is written when a value is refused, and the constructor
+            makes no check of its own. A total is held to no other, so no write
+            order matters, and a sum that overflows to an infinity is refused
+            where it is written rather than carried into the identity above.
+
+            Raises:
+                TypeError: `value` is not an `int` or a `float`
+                    (`require_a_number`).
+                SimulationConfigurationError: `value` is negative or not
+                    finite.
+            """
+
+            if name in _ACCOUNTING_TOTALS:
+                require_nonnegative_finite(name, value)
+
+            super().__setattr__(name, value)
 
     def record_external_agent_transfer(
         self, delivered_agent_l: float, exhausted_agent_l: float
@@ -159,8 +193,11 @@ class AgentSimulationValidator:
     def restore_state(self, state: AgentSimulationValidatorState) -> None:
         """Restore run state previously captured by `capture_state()`.
 
-        Assigns the fields directly, so that rolling back cannot itself
-        raise; see `BreathingCircuit.restore_state()`.
+        Assigns the fields through `__setattr__`, which cannot refuse a state
+        `capture_state()` produced: each total passed the same check when it
+        was written, and a total is held to nothing else that could have moved
+        since. So rolling back cannot itself raise; see
+        `BreathingCircuit.restore_state()`.
         """
 
         self.initial_agent_l = state.initial_agent_l
@@ -168,9 +205,15 @@ class AgentSimulationValidator:
         self.exhausted_agent_l = state.exhausted_agent_l
 
     def reset(self, initial_agent_l: float = 0.0) -> None:
-        """Begin a new accounting period."""
+        """Begin a new accounting period.
 
-        require_nonnegative_finite("initial_agent_l", initial_agent_l)
+        Raises:
+            TypeError: `initial_agent_l` is not an `int` or a `float`.
+            SimulationConfigurationError: `initial_agent_l` is negative or not
+                finite. Both are the write's own, in `__setattr__`, made
+                before either other total is cleared, so nothing changes when
+                it is refused.
+        """
 
         self.initial_agent_l = initial_agent_l
         self.delivered_agent_l = 0.0
