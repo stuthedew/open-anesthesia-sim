@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: defect
+feature: friction-batch
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
