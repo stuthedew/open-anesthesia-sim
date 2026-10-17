@@ -3,11 +3,13 @@ id: PL-VCP4
 title: SimulationController._record_control_change builds the settings record after the setter has written, so on a run whose tissue flows no longer sum to the cardiac output every setting but the cardiac output is half applied: the compartment holds the new value and the dial reads it, the definition's open segment and the timeline keep the old one, and the banner says the simulation is unchanged and still running its previous setting (found reviewing PL-M4M0)
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
 feature: cardiac-output-write-consistency
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
 added: 2026-10-11
+closed: 2026-10-17
+pr: 1488
 payoff: a setting the core cannot record leaves its compartment, the run's definition and the timeline on the previous setting, so the banner's word that the simulation is unchanged is true
 verify: grep -q 'def test_a_setting_the_record_refuses_leaves_the_run_on_its_previous_setting' tests/integration/test_controller.py
 recurrences: 2026-10-12 PL-DTJQ
@@ -51,3 +53,21 @@ record reached that way, the fix above is unchanged by the answer, and it
 waited on `PL-KFNP` because that build re-points `_with_stale_tissue_flows`
 in `tests/integration/test_controller.py`, the helper this item's test uses.
 The wait ended on 2026-10-17, when the two were built on one branch.
+
+**Outcome, 2026-10-17** (`#1488`): the first of the Done-when's two forms, a
+setting the record refuses leaving its compartment holding what it held.
+Each of `SimulationController`'s four setters hands `_record_control_change`
+a `restore` that writes the previous value back through the same core
+setter; it is called when `equation_settings()` refuses, before the refusal
+is raised, and nothing is recorded, so the definition and the timeline
+already hold the previous setting. The restore cannot be refused, since the
+value it writes was in force. The second form, building the record before
+the setter writes, was not taken: the cardiac output's write is the repair
+the refused Reset's banner names (`PL-M4M0`), since `set_cardiac_output`
+perfuses every compartment at the output written, and a record built before
+that write would refuse the repair itself.
+`test_a_setting_the_record_refuses_leaves_the_run_on_its_previous_setting`
+pins it for the fresh gas flow, the dial and the ventilation, then the
+cardiac output's repair and the refused setting taken after it; it fails on
+the old code with each compartment holding the new value (3.0 against 4.0,
+3.0 against 4.0, 8.0 against 6.0).

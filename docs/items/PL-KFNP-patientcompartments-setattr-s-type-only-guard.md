@@ -3,11 +3,13 @@ id: PL-KFNP
 title: PatientCompartments.__setattr__'s type-only guard (PL-LBQY) admits a checked CardiacOutput written past set_cardiac_output and leaves every tissue's blood flow at the old output, a record the core refuses wherever it is next built; root cause of PL-M4M0 and the two items filed beside it, so decide whether the write keeps the relation through set_cardiac_output or is refused outright, which PL-LBQY's three options did not weigh (found reviewing PL-M4M0)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, defect
 feature: cardiac-output-write-consistency
-touches: src/anesthesia_sim/core/patient.py, tests/unit/test_supported_ranges.py, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_uptake_system_failure.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/app/controller.py, tests/unit/test_supported_ranges.py, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_uptake_system_failure.py, docs/MODEL.md
 added: 2026-10-11
+closed: 2026-10-17
+pr: 1488
 payoff: a cardiac output the compartments were never perfused at cannot be stored on the patient through that write, so no readout, record or Reset can state a run the model never ran because of it
 verify: grep -q 'def test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_write' tests/unit/test_supported_ranges.py
 root-cause-of: PL-M4M0, PL-VCP4, PL-J39J
@@ -177,3 +179,32 @@ reopened, and the count the round took - no caller in the tree wants the
 redistribution - made it the obvious call rule 14 says is never offered.
 Filed as `PL-JZV8` from this round, so the next capture does not label
 an extension of a ratified mechanism a reopening of the decision.
+
+**Outcome, 2026-10-17** (`#1488`). Built as the design round decided.
+`PatientCompartments.__setattr__` runs `_require_perfused_at` on a rewrite of
+`cardiac_output_l_min`, with `hasattr(self, name)` on the slot the whole
+condition, so a write past `set_cardiac_output` is refused in the
+constructor's words, which name `set_cardiac_output`, and the field and every
+flow hold what they held; a rewrite to the output the compartments stand at
+is admitted. `set_cardiac_output` requires the type, perfuses the
+compartments at the new output, then writes the field, and
+`_update_blood_flows` takes the output it perfuses at.
+`test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_write`
+pins the refusal's words, the unchanged flows and record, the next step, the
+consistent rewrite, a bare float refused with nothing moved, the setter, and
+`replace`, `copy.copy`, `copy.deepcopy` and a pickle still writing the output
+first; it fails on the old code (DID NOT RAISE). The two
+`_with_stale_tissue_flows` helpers and the unit test reach the stale record
+through a tissue's `set_blood_flow`, and the figures they assert moved with
+the route: flows summing to 6.0 against an output of 5.0, where it was an
+output of 6.0 against flows summing to 5.0. `docs/MODEL.md` § "Supported
+input ranges", § "Reset" and the hazard table, and the docstrings of
+`AgentUptakeSystem.advance` and `SimulationController.reset`, name the route
+left and what the patient's write meets instead. `PL-VCP4` and `PL-J39J`
+close beside it; `PL-HQF5` loses its last blocker and is set `ready`.
+
+**Found in the build, recorded on `PL-HQF5`.** The route left has a half
+nothing refuses: flows moved between tissues with their sum kept build a
+record, the run steps at them while its definition holds the flows last
+recorded, and the readouts and the chart disagree. `PL-HQF5`'s fix removes it
+with the rest of the door.

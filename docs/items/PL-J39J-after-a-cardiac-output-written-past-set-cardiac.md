@@ -3,11 +3,13 @@ id: PL-J39J
 title: After a cardiac output written past set_cardiac_output halts the run, at the next step or at the Reset PL-M4M0 refuses, the cardiac output readout and dial show the written output beside compartment values and a chart computed at the old flows, under a banner saying the values shown are the last completed step; only the banner's own sentence names both figures (found reviewing PL-M4M0)
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
 feature: cardiac-output-write-consistency
 touches: src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py
 added: 2026-10-11
+closed: 2026-10-17
+pr: 1488
 payoff: a halted run's cardiac output readout and dial show the output the values beside them were computed at, so no figure on screen states a run the model never ran
 verify: grep -q 'def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_last_step_ran_at' tests/integration/test_simulation_view.py
 ---
@@ -45,3 +47,23 @@ unchanged by the answer. It stays blocked on `PL-KFNP` because that build
 re-points `_with_stale_tissue_flows` in
 `tests/integration/test_simulation_view.py`, the helper this item's test
 would use.
+
+**Outcome, 2026-10-17** (`#1488`): closed by the Done-when's second form,
+`PL-KFNP` making the state unreachable, which the re-scope above said it
+would not. Its reasoning was that the route left shows the output the dial
+was set to beside values computed at flows that do not sum to it, and
+measured, it does not. A tissue's own `set_blood_flow` moves no output, so
+the patient keeps the one its last completed step ran at, and the record at
+the stale flows is refused when the next step builds it, before any step
+runs at them. The readout, the dial, the compartment values and the run's
+definition, which the chart is drawn from, all state 5.0, the output those
+values were computed at; only flows no step ever ran at say 6.0, and the
+banner's sentence names them. No disagreement is left for the readout to
+state, and stating one would put a second figure beside a true one.
+`test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_last_step_ran_at`
+pins the halt at the step and the refused Reset after it, with the refusal
+of the route this item found; it fails before `PL-KFNP` (DID NOT RAISE). The
+half of that route nothing refuses - flows moved between tissues with their
+sum kept, where the readouts and the chart do disagree - is not this
+readout's: the output shown is the sum the run stepped at. It is
+`PL-HQF5`'s, recorded there.

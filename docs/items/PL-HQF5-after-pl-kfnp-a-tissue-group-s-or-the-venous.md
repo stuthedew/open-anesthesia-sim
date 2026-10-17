@@ -3,11 +3,10 @@ id: PL-HQF5
 title: After PL-KFNP a tissue group's or the venous pool's blood flow is still settable past its patient's cardiac output through TissueGroup.set_blood_flow and VenousBloodCompartment.set_blood_flow, which nothing in src/ but PatientCompartments._update_blood_flows calls, so the record PatientCompartments.__post_init__ refuses stays reachable by a caller mypy does not read and halts only at the next step or at Reset (PL-M4M0); decide whether a compartment's blood flow stays a field of its own that a caller can set (found in PL-KFNP's design round)
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: defect, refactor
 feature: cardiac-output-write-consistency
 touches: src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md, tests/unit/test_patient.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_compartment_primitives.py, tests/unit/test_state_capture.py, tests/unit/test_uptake_system_failure.py, tests/integration/test_controller.py, tests/integration/test_simulation_view.py
-blocked-by: PL-KFNP
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
 payoff: a tissue's or the venous pool's blood flow can no longer disagree with the patient's cardiac output, so no record the core refuses, and no silent second copy of the output, can be built
@@ -77,12 +76,27 @@ and `blood.py`, ten in `patient.py` and two in `uptake_system.py`, and each
 test added before this lands is one more to re-point. So it is decided here:
 derive it.
 
-**Sequenced after `PL-KFNP`.** That item's decided build re-points the two
+**Sequenced after `PL-KFNP`.** [superseded 2026-10-17: `PL-KFNP` closed in `#1488` with the helpers re-pointed as below, so nothing is left to wait on] That item's decided build re-points the two
 `_with_stale_tissue_flows` helpers and
 `test_a_stale_record_met_at_step_time_is_a_failed_step_stated_in_litres_per_minute`
 to reach the stale record through a tissue's `set_blood_flow`, the route this
 item removes. Built first, this would leave `PL-KFNP`'s Done-when naming a
 method that no longer exists, so it waits on `PL-KFNP`.
+
+**Reproduced 2026-10-17, a third half, in `PL-KFNP`'s build.** The tissue
+half halts at the next step only when the flows stop summing to the output.
+Moved between tissues with the sum kept, nothing refuses them: on
+`SimulationController()` at its 5.0 L/min output, 50 steps of 0.1 s, then
+`vessel_rich` at 4.3 and `muscle` at 0.4 L/min where the patient's fractions
+give 3.8 and 0.9, `equation_settings()` builds, 3,000 more steps run with no
+failure, and at 305 s the stepped alveolar fraction is 0.010472 where the
+run's definition, which still holds the flows recorded at the start, gives
+0.009889. The readouts are the steps' and the chart is the definition's, so
+the two disagree on screen, and both are computed at a perfusion the patient
+does not state. No shipped input reaches it, as for the other halves, but
+this one is a wrong displayed value rather than a halt or an unread copy,
+which is the case the triage pass's "not safety or science" did not see.
+`docs/MODEL.md` § "Supported input ranges" now says so.
 
 **Done when.** No compartment stores a blood flow that can disagree with its
 patient's cardiac output: `TissueGroup.blood_flow_l_min`,
