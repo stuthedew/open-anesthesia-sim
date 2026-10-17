@@ -159,7 +159,26 @@ drafted it.
 ## Match effort to the standard the work is held to
 
 Effort is the owner's lever for the same reason model choice is: a session
-cannot change its own. Claude Code's documented default is `high`.
+cannot change its own.
+
+A session that sets no level runs at its model's default. Opus 5.5, Sonnet 5.5
+and Haiku 5.5 default to `medium`, and most older models default to `high`.
+Each model calibrates the scale separately, so one level name does not mean the
+same amount of reasoning on two models. Anthropic reports that "Opus 5.5 at
+`medium` matches or exceeds Opus 5 at `high` on coding and knowledge-work
+evaluations" (Claude Code docs, *Model configuration*, section "Adjust effort
+level", https://code.claude.com/docs/en/model-config, read 2026-10-17).
+
+**On Opus 5.5, apparatus sessions open at `high`, and so do analysis and design
+rounds about the apparatus** (project owner, 2026-10-17, ratified, over
+recording `xhigh` as the uniform level, `PL-SW0B`). On 2026-10-17 six of the
+seven sessions in this repository ran at `xhigh`, which matches neither half of
+the split below. On Anthropic's SWE-bench Pro subset, Opus 5.5 solved 95.3% of
+tasks at `high` for $0.29 each and 96.7% at `xhigh` for $0.74 each. That is 1.4
+points for about 2.5 times the cost, and the page calls its figures directional
+(*Optimizing for cost and intelligence*,
+https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence,
+read 2026-10-17). The simulator half of the split is unchanged.
 
 **Open apparatus sessions at `high` and simulator sessions at `max`** (project
 owner, 2026-09-19, ratified, over running every session at `max`). The split
