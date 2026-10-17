@@ -9,6 +9,7 @@ agreement is routed to where it fires — `.claude/skills/docket/SKILL.md` for
 the queue workflows, `.claude/rules/instruction-writing.md` for the shape of a
 reply, `.claude/rules/expert-review.md` for the standard every approach is
 judged against (resident too, since an approach is chosen in a reply),
+`.claude/rules/plain-writing.md` for how a sentence is worded (resident too),
 `.claude/rules/core-domain.md` and `.claude/rules/apparatus-standard.md` for
 the bars that apply to particular parts of the tree, and
 `docs/maintainer.md` for what only the project owner can act on. Nothing was
@@ -50,18 +51,21 @@ rather than a ratio — no ratio is tracked or enforced. `PL-04KR` (the
 pre-registered apparatus-convergence baseline) holds its numbers and
 predictions; `bin/docket release` names any that break (`PL-WXKD`).
 
-**While any open item carries `generator: live`, no new workflow mechanism is
-built** (project owner, 2026-09-22, ratified, over adding them under standing
-approval and ratified recommendations while six closed generator heads were
-still producing, which is how at least nine mechanisms and their tails arrived
-on 09-20 and 09-21, `PL-KVDK`). **It holds apparatus work unrelated to fixing
+**While any open workflow-lane item carries `generator: live`, no new workflow
+mechanism is built** (project owner, 2026-09-22, ratified, over adding them
+under standing approval and ratified recommendations while six closed generator
+heads were still producing, which is how at least nine mechanisms and their
+tails arrived on 09-20 and 09-21, `PL-KVDK`; narrowed to the workflow lane - a
+head whose `touches` lie in `workflow_paths`, the lane `Item.lane` reads - by
+the project owner, 2026-10-17, ratified, over binding on a head of either lane,
+after `PL-X7D5`, a run-view defect, froze `PL-ZYHX`, `PL-KBVW`). **It holds apparatus work unrelated to fixing
 the generators: new features and housekeeping** (project owner, 2026-09-23). A
 new command, check, field or rule of that kind, or a re-specification of the
 generator rule, is captured and not built, nor offered as the answer to a
 finding. Work on the generators is what the pause is for, and needs no lift:
 fixing a live generator, a defect in what exists, or the machinery that finds
-and ranks generators, including what a head records (`PL-5MYR`). The pause ends when no open item carries `generator: live` — no
-head that `bin/docket generators` marks "still generating". Not `next`'s
+and ranks generators, including what a head records (`PL-5MYR`). The pause ends when no open workflow-lane item carries `generator: live` — no
+head in that lane that `bin/docket generators` marks "still generating". Not `next`'s
 generator tier, which leaves out whatever is in flight, blocked or untriaged,
 and counts `impairs-generators:` items the rule does not name (`PL-CT07`). A
 request from the project owner lifts it for that request, and the session says
@@ -651,12 +655,17 @@ deviating from a described deliverable, not acting without one.
   Some process findings are paid again by every remaining piece of work. Say so
   in the reply that finds it, with a recommendation to do it first — recording
   it and moving on is not enough, because the owner cannot act on what only
-  reached the queue. A finding earns that interruption on any one of three
+  reached the queue. A finding earns that interruption on any one of four
   tests and on nothing else: it **gives a wrong answer silently**, so a check
   passes while the guarantee it stands for is void; it **is being routed
-  around**, a warning or advisory firing so routinely that nobody reads it; or
+  around**, a warning or advisory firing so routinely that nobody reads it;
   it **sits upstream of everything**, in the store or the gate that every other
-  command reads from. The tests are properties, not enthusiasm: work that is
+  command reads from; or it **is paid on every run, session or commit, at a
+  measured cost** - seconds per CI run, tokens per turn, a step per release -
+  so each day it waits for its band pays it again (project owner, 2026-10-17,
+  ratified, over the three tests as they stood: `PL-4Z5Y` waited 20 days at
+  about 15 minutes of CI a day, `PL-KBVW`). The tests are properties, not
+  enthusiasm: work that is
   merely valuable, cleaner or more interesting makes no remaining item cheaper
   and waits for the roadmap.
 

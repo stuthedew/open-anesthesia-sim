@@ -1,9 +1,9 @@
 # What loads before a session has read anything, and why
 
 These files reach every session at launch, before a prompt has been read and
-before any tool has run: `CLAUDE.md`, `.claude/rules/instruction-writing.md` and
-`.claude/rules/expert-review.md`, the two rules carrying no `paths:`
-frontmatter and so loading unconditionally. `make check` prints what they
+before any tool has run: `CLAUDE.md`, `.claude/rules/instruction-writing.md`,
+`.claude/rules/expert-review.md` and `.claude/rules/plain-writing.md`, the
+three rules carrying no `paths:` frontmatter and so loading unconditionally. `make check` prints what they
 total. Claude Code documents both facts — "Rules without a `paths` field are loaded unconditionally
 and apply to all files", and "target under 200 lines per CLAUDE.md file. Longer
 files consume more context and reduce adherence"
@@ -22,8 +22,9 @@ The test is **adherence**, not prose quality. Nobody reads these files for
 pleasure; the question is whether each rule fires at the moment a session needs
 it, at the lowest resident cost. Wordiness is therefore a symptom and never the
 defect, and the fix is *routing* — moving a rule to the cheapest carrier that
-still delivers it — rather than rewriting. `PL-XXBD` and `PL-3VKZ` hold the
-prose-quality standard, deliberately apart from this one.
+still delivers it — rather than rewriting. `.claude/rules/plain-writing.md`
+holds the prose-quality standard, deliberately apart from this one, and the
+`prose-quality` feature's items apply it to the existing text.
 
 `CLAUDE.md` § "A behavior change takes effect in the session that asks for it"
 holds the four dispositions, cheapest first: a check or script; a skill; a
@@ -879,3 +880,79 @@ resident set.
 can decide; what stays resident is the principle the owner asked for as an
 instruction, which no check can carry. It shrinks if the judgment half ever
 becomes decidable, and goes if the owner withdraws the principle.
+
+## The plain-writing rule, added 2026-10-17
+
+`PL-8ZTQ` added `.claude/rules/plain-writing.md`, a third rule with no
+`paths:`. It says how a sentence is worded: whole sentences, words in their
+everyday sense, one point per sentence, reasons stated in words, and new prose
+written plainly even where the code around it is dense. The project owner
+asked for it on 2026-10-17: "How do we make the default doc writing style more
+human readable repo wide going forward?"
+
+**The carrier test.** The moment is any write of prose. A docstring edit
+follows a read of its file, but an item brief, a commit message, a pull
+request body and a reply follow no read, so a `paths:` scope would miss the
+texts the owner reads most. No check can carry it: the cheap counts tested
+against blind ratings did not separate awkward text from plain, and
+readability is the judgment half that `CLAUDE.md` refuses to script. A skill
+has no trigger at a write. Subagents load the resident rules, so the rule
+reaches them too. `tests/unit/test_doc_check.py` fails if the file gains a
+`paths:` scope.
+
+**Why nothing is cut.** No resident sentence said how to word a sentence. The
+only prose guidance was the anti-padding paragraph in the path-scoped
+`.claude/rules/sources-and-docstrings.md`, which this rule does not repeat. It
+is text the owner asked for, and `CLAUDE.md`'s preamble gained one line
+pointing at it: 4,180 characters for the rule and 78 for the pointer, by the
+count `make check` applies to the resident set.
+
+**What should retire it.** Nothing in sight. `PL-Y55Q` measures whether
+sessions follow it, and a failing result adds a review step rather than
+removing the rule. It goes if the owner withdraws it.
+
+## The pause's lane clause and the fourth friction test, amended 2026-10-17
+
+`PL-KBVW` amended two blocks that were already resident rather than adding one.
+In § "What this project is", the generator pause now binds while an open
+*workflow-lane* item carries `generator: live` - a head whose `touches` lie in
+`workflow_paths`, the lane `Item.lane` reads - where it bound on a head of
+either lane. In § "The queue, and how the project owner works", the
+compounding-friction bullet lists a fourth test beside its three: a cost paid
+on every run, session or commit, at a measured figure. Both were put to the
+project owner on ordinary evidence and ratified on 2026-10-17;
+`docs/WORKING_NOTES.md` § "Decided: the friction batch goes ahead of product
+work" carries the measurements.
+
+**The carrier test.** Each stays under the test the block it amends already
+passed. The pause fires when a session meets a finding and is deciding whether
+to build the mechanism that answers it, which no read precedes, so the clause
+saying which heads bind it has to sit beside the rule: a session holding the
+unamended sentence read `PL-X7D5`, a run-view defect under
+`src/anesthesia_sim/app/`, as a pause on apparatus housekeeping, which is what
+held `PL-ZYHX` after the owner had decided yes on it. The friction bullet fires
+before the session would have any reason to load the `docket` skill, as the
+group above names it, and a test the bullet does not list is a ground the
+finding session never has: `PL-4Z5Y`'s cost was measured in its own brief and
+it still waited 20 days, because none of the three tests reached a cost paid
+per run. Neither clause is decidable by a check: which lane a head is in is
+read by `Item.lane` already, but whether the pause applies is asked at the
+moment of a finding, by the session, and whether a cost is measured and
+recurring is the judgment the bullet asks for.
+
+**What was replaced, and why nothing else is cut.** The pause's "any open
+item" became "any open workflow-lane item", in its opening sentence and in the
+sentence that says when the pause ends, and its ratification clause records
+what it was narrowed over; the friction bullet's "three tests" became "four",
+and the new test carries its own decision record. 297 characters net on the
+pause block and 328 on the friction bullet, 625 in all, by the count `make
+check` applies to the resident set. Nothing else in either block is
+superseded: the decision records they carry are what a later session reopens
+them on, and the pause's `PL-CT07` and `PL-6Q9L` sentences describe the
+mechanism as narrowed without change.
+
+**What should retire it.** The lane clause goes with the pause itself, when
+the owner ends the rule. The fourth test shrinks if a ranking term ever carries
+the measured cost: `docs/WORKING_NOTES.md` records the `saves:` field that was
+deferred and the inflow at which it is built, and the bullet would then name
+the field rather than describe the property.

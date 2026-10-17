@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: ready
 classes: docs, session-cost
+feature: friction-batch
 touches: CLAUDE.md, .claude/rules, docs/resident-instructions.md
 blocked-by: PL-40SJ, PL-YXFF
 deferred-from: v0.6.0 - a decision about how the resident instruction set carries engineering rules is not debt the layout milestone clears

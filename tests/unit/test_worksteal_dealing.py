@@ -1,0 +1,129 @@
+"""`tests/conftest.py`'s dealing of the costly tests, and its copy of how `--dist worksteal` deals.
+
+The conftest moves the tests sharing each costly computation to where it
+predicts a worker's first slice begins (`PL-4Z5Y`, `PL-K5VM`). `deal` is held
+here to what that move must keep, on plain values. The prediction copies
+arithmetic out of pytest-xdist's scheduler, an internal, so it is held to the
+installed scheduler too: a release that deals differently fails here, where
+otherwise the only sign would be a slower run.
+"""
+
+import importlib.util
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from typing import cast
+
+import pytest
+from xdist.scheduler.worksteal import WorkStealingScheduling
+from xdist.workermanage import WorkerController
+
+CONFTEST = Path(__file__).parents[1] / "conftest.py"
+
+
+def _conftest() -> ModuleType:
+    """The conftest loaded under a name of its own, since every conftest is `conftest`."""
+
+    spec = importlib.util.spec_from_file_location("tests_conftest", CONFTEST)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+DEALING = _conftest()
+
+
+def _slices(dealt: list[int], workers: int) -> list[list[int]]:
+    """`dealt` cut where worksteal will cut it into the workers' first slices."""
+
+    slices: list[list[int]] = []
+    for size in DEALING.first_slice_sizes(len(dealt), workers):
+        start = sum(len(dealt_slice) for dealt_slice in slices)
+        slices.append(dealt[start : start + size])
+    return slices
+
+
+def test_each_unit_runs_back_to_back_at_the_head_of_a_slice() -> None:
+    units = [((5, 6, 7), 3.0), ((20,), 1.0), ((33, 2), 2.0)]
+
+    slices = _slices(DEALING.deal(list(range(40)), units, 8), 8)
+
+    heads = [tuple(dealt_slice[: len(members)]) for members, _ in units for dealt_slice in slices]
+    assert all(members in heads for members, _ in units)
+
+
+def test_dealing_keeps_every_test_once_and_the_rest_in_their_order() -> None:
+    units = [((5, 6, 7), 3.0), ((20,), 1.0), ((33, 2), 2.0)]
+    in_a_unit = {test for members, _ in units for test in members}
+
+    dealt = DEALING.deal(list(range(40)), units, 8)
+
+    assert sorted(dealt) == list(range(40))
+    assert [test for test in dealt if test not in in_a_unit] == [
+        test for test in range(40) if test not in in_a_unit
+    ]
+
+
+def test_the_trunks_sit_alone_at_the_head_of_their_slice() -> None:
+    """The suite's own shape: six tests sharing two 24-hour runs, sixteen curve openers.
+
+    The six cost two 24-hour runs, more than any one slice's share of the
+    whole, so no curve joins them: the worker building the runs starts on
+    nothing else.
+    """
+
+    trunks = (100, 101, 102, 103, 104, 105)
+    curves = [((200 + index,), 1440.0) for index in range(8)]
+    curves += [((300 + index,), 360.0) for index in range(8)]
+    units = [*curves, (trunks, 2880.0)]
+
+    slices = _slices(DEALING.deal(list(range(8265)), units, 8), 8)
+
+    (theirs,) = [dealt_slice for dealt_slice in slices if dealt_slice[0] in trunks]
+    in_a_unit = {test for members, _ in units for test in members}
+    assert tuple(theirs[: len(trunks)]) == trunks
+    assert not in_a_unit & set(theirs[len(trunks) :])
+
+
+def test_units_longer_than_their_slice_leave_the_order_alone() -> None:
+    assert DEALING.deal(list(range(16)), [((3, 4, 5), 1.0)], 8) == list(range(16))
+
+
+def test_a_unit_naming_a_test_outside_the_collection_is_refused() -> None:
+    with pytest.raises(RuntimeError, match="skip or repeat a test"):
+        DEALING.deal(list(range(16)), [((99,), 1.0)], 8)
+
+
+class _Worker:
+    """What `WorkStealingScheduling` asks of a worker before any test has run."""
+
+    shutting_down = False
+
+    def __init__(self, index: int) -> None:
+        self.gateway = SimpleNamespace(id=f"gw{index}")
+        self.dealt: list[int] = []
+
+    def send_runtest_some(self, indices: list[int]) -> None:
+        self.dealt.extend(indices)
+
+
+@pytest.mark.parametrize(("tests", "workers"), [(8265, 8), (40, 8), (17, 3), (16, 8)])
+def test_the_predicted_slices_are_the_ones_worksteal_deals(tests: int, workers: int) -> None:
+    config = cast(pytest.Config, SimpleNamespace(getvalue=lambda name: [f"{workers}*popen"]))
+    scheduler = WorkStealingScheduling(config)
+    nodes = [_Worker(index) for index in range(workers)]
+    collection = [f"test_{index}" for index in range(tests)]
+    for node in nodes:
+        scheduler.add_node(cast(WorkerController, node))
+    for node in nodes:
+        scheduler.add_node_collection(cast(WorkerController, node), collection)
+    scheduler.schedule()
+
+    slices = sorted((node.dealt for node in nodes), key=lambda dealt: dealt[:1])
+    assert [index for dealt in slices for index in dealt] == list(range(tests)), (
+        "worksteal no longer deals the collection out in contiguous slices from the front"
+    )
+    assert [len(dealt) for dealt in slices] == DEALING.first_slice_sizes(tests, workers), (
+        "worksteal's first slices are no longer the sizes tests/conftest.py predicts, "
+        "so the costly tests no longer start at the head of a worker's slice"
+    )

@@ -5,11 +5,13 @@ priority: P2
 effort: S
 status: ready
 classes: defect
+feature: arm-follows-owner
 touches: docs/maintainer.md, subprojects/docket/src/docket/arming.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
 payoff: a session repairing a held pull request the owner has armed leaves it armed, so the fix lands where the owner expects it instead of sitting green and unarmed
 verify: grep -qF 'armed it after reading' subprojects/docket/src/docket/arming.py
+recurrences: 2026-10-17 PL-8TPV
 ---
 
 **Problem.** Two instructions give a session opposite directions on the same
