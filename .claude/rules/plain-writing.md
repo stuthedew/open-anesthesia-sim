@@ -8,8 +8,8 @@ each point.
 
 Write all prose that a person will read in plain English: docstrings, comments,
 error messages, documents, rules, item briefs, commit messages, pull request
-bodies and replies. Write for a careful newcomer, someone who knows anesthesia
-or Python but has not read this repository. They should understand each
+titles and bodies, and replies. Write for a careful newcomer, someone who knows
+anesthesia or Python but has not read this repository. They should understand each
 sentence the first time they read it.
 
 1. **Write whole sentences.** Keep the small words that show how a sentence
@@ -40,6 +40,16 @@ sentence the first time they read it.
 8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
    it.
 
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. Do not
+describe the hoped-for effect in loose words instead of the change. When a
+branch closes several items, name what they change together.
+
 **Match the code around you, not its prose.** Copy the structure, naming and
 idiom of the code you are working in. Much of the existing prose here breaks
 the points above, so do not copy its sentences. Write each sentence you add or
@@ -54,7 +64,7 @@ docstring, an error message or a displayed value must give, and
 `.claude/rules/instruction-writing.md` decides the shape of a reply. Code,
 commands, paths and quoted output stay exactly as they are.
 
-## Two examples from this repository
+## Three examples from this repository
 
 Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
 agent held."
@@ -72,3 +82,14 @@ during the step. The same volume of circuit gas leaves through the exhaust.
 Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
 constants, dt/tau. The code does not compute tau first, because tau overflows
 to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+
+The project owner judged three versions of one pull request title, on
+`#1523`, on 2026-10-17:
+
+- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
+  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
+  2 and the 5 count.
+- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
+  same time". It describes a hoped-for effect and does not say what changed.
+- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
+  It names the change, what it changes and why.

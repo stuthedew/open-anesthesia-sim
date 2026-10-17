@@ -928,6 +928,27 @@ count `make check` applies to the resident set.
 sessions follow it, and a failing result adds a review step rather than
 removing the rule. It goes if the owner withdraws it.
 
+## Pull request titles, added 2026-10-17
+
+`PL-VGDX` added one paragraph and three examples to the resident
+`.claude/rules/plain-writing.md`. The paragraph says that a pull request title,
+after the ids the `pr-title` check requires, is a short phrase naming the
+change, what it changes and why, in names a reader already knows. The project
+owner asked for it on 2026-10-17, after a title read "give the first CI part 2
+of every 5 ordinary tests", and judged that title's two later versions as too
+conversational and as plain.
+
+**The carrier test.** It stays under the test the rule already passed: a title
+is written when a pull request opens or is retitled, and no read precedes
+that. The `docket` skill's start mode now points at it, but a session retitling
+at close-out does not reload that mode. `tools/pr_title_check.py` cannot carry
+it: whether a title is plain is judgment, which `CLAUDE.md` refuses to script.
+
+**Why nothing is cut.** No resident sentence said what a title's words after
+its ids are for, so there was nothing to replace. The paragraph and examples
+add about 1,400 characters to the resident set, by the count `make check`
+applies.
+
 ## The pause's lane clause and the fourth friction test, amended 2026-10-17
 
 `PL-KBVW` amended two blocks that were already resident rather than adding one.

@@ -3,13 +3,15 @@ id: PL-VGDX
 title: Pull request titles are written in the building session's own vocabulary, such as "give the first CI part 2 of every 5 ordinary tests", so the owner cannot tell from a title what will change once it merges
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: .claude/rules/plain-writing.md, .claude/skills/docket/modes/start.md, docs/resident-instructions.md
 added: 2026-10-17
-payoff: a pull request's title says in everyday words what will be different once it merges, so the owner can tell what a pull request does without opening it
-verify: grep -q 'A pull request title says what will change once it merges' .claude/rules/plain-writing.md && grep -q 'give the first CI part 2 of every 5' .claude/rules/plain-writing.md && grep -q 'per `.claude/rules/plain-writing.md`' .claude/skills/docket/modes/start.md && grep -q 'Pull request titles, added 2026-10-17' docs/resident-instructions.md
+closed: 2026-10-17
+pr: 1524
+payoff: a pull request's title names the change plainly and briefly, so the owner can tell what a pull request does without opening it
+verify: grep -q 'A pull request title names the change plainly and briefly' .claude/rules/plain-writing.md && grep -q 'give the first CI part 2 of every 5 ordinary tests' .claude/rules/plain-writing.md && grep -q 'rebalance the CI test split to offset' .claude/rules/plain-writing.md && grep -q 'Pull request titles, added 2026-10-17' docs/resident-instructions.md
 ---
 
 **Problem.** Pull request titles are written in the building session's own vocabulary, such as "give the first CI part 2 of every 5 ordinary tests", so the owner cannot tell from a title what will change once it merges
