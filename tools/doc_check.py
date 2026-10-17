@@ -188,6 +188,7 @@ try:
     # lines are a heading, so a `#` line inside a fence is none (`PL-T1X0`).
     from docket.markdown import (
         CODE,
+        FENCE,
         HTML,
         PROSE,
         TABLE,
@@ -4550,6 +4551,25 @@ def _comparable(text: str) -> str:
     return _normalized(text).translate(TYPOGRAPHY).casefold()
 
 
+def _comparable_statements(text: str) -> str:
+    """The document `text` as `_comparable` reads it, one statement to a line, and each fence.
+
+    A quotation is one line once `_normalized`, so it stands in this only
+    where one statement holds it, a soft break inside one crossed. A heading
+    and the paragraph under it, or two paragraphs, are two (CommonMark 0.31.2
+    § 4.2, § 4.8), so a quotation spliced across them is words no reader of
+    the file meets together, which a test of containment in the whole file
+    collapsed into one string passed (`PL-Q8LJ`). A fence is no statement, but
+    its words are the file's, so each is one too, read whole.
+    """
+    lines = split_lines(text)
+    blocks = read_blocks(_body_lines(lines)).blocks
+    fences = [(block.start, block.end) for block in blocks if block.kind == FENCE]
+    return "\n".join(
+        _comparable("\n".join(lines[first:end])) for first, end in [*_statements(lines), *fences]
+    )
+
+
 def _headings(text: str) -> list[str]:
     """Every title a citation may name: headings and `**Bold.**` markers.
 
@@ -5485,7 +5505,9 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
 
     Case, dash style and quote style are folded, because a passage copied by
     hand settles on one of the forms this project writes and the passage is
-    still there either way. An elided quotation is skipped outright: one
+    still there either way. The words must stand in one statement of the file,
+    as `_comparable_statements` reads it, so a splice across a heading and its
+    paragraph is not in it (`PL-Q8LJ`). An elided quotation is skipped outright: one
     written with an ellipsis cannot be found verbatim, and declining to
     answer beats a false error.
 
@@ -5512,7 +5534,9 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
         if cited not in bodies:
             target = root / cited
             bodies[cited] = (
-                _comparable(target.read_text(encoding="utf-8")) if target.is_file() else None
+                _comparable_statements(target.read_text(encoding="utf-8"))
+                if target.is_file()
+                else None
             )
         return bodies[cited]
 

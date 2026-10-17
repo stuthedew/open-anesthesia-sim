@@ -3,12 +3,13 @@ id: PL-Q8LJ
 title: doc_check's check_quoted_sources tests a quotation against the cited file collapsed into one string, so a quotation spliced from a heading and the paragraph under it, or from two paragraphs, passes as words the file holds; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-17
 payoff: a claiming citation passes only on words one block of the cited file holds together, so a splice across a heading or a paragraph break cannot stand in for a quotation
 verify: grep -q 'def test_a_quotation_spliced_across_a_heading_and_its_paragraph_is_not_in_the_file' tests/unit/test_doc_check.py
 ---
@@ -60,3 +61,11 @@ Latent, so an ordinary item under `PL-R417`'s spent head.
 **Done when.** A quotation passes only where one statement of the cited file
 holds it (a soft break inside that statement still crossed), with a test on
 the form above.
+
+**Built 2026-10-17.** `check_quoted_sources` tests a quotation against
+`_comparable_statements`: each statement of the cited file, as
+`docket.markdown.statement_lines` and the front matter's reader cut it, on a
+line of its own, and each fence read whole, since a fence is no statement but
+its words are the file's. The form above is refused; a quotation wrapped across
+a soft break and one of a fence's lines still pass, and all of the tree's
+quotations still pass.

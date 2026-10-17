@@ -1411,6 +1411,38 @@ def test_a_docstring_citation_is_reported_on_its_own_line(tmp_path: Path) -> Non
     assert any("thing.py:5: quotes docs/MODEL.md" in e for e in _errors(root))
 
 
+def test_a_quotation_spliced_across_a_heading_and_its_paragraph_is_not_in_the_file(
+    tmp_path: Path,
+) -> None:
+    """A quotation is held to one statement of its source, a soft break still crossed (`PL-Q8LJ`).
+
+    A heading and the paragraph under it are two blocks (CommonMark 0.31.2
+    § 4.2, § 4.8), so no reader of the file meets their words together; the
+    containment test ran over the whole file collapsed into one string, and the
+    splice passed as words the file holds. A quotation wrapped across a
+    paragraph's soft break still passes, and so does one of a fence's lines.
+    """
+    root = _repo(
+        tmp_path,
+        readme=(
+            "# Demo\n\n"
+            '`docs/SRC.md`\'s "Known limitations The model ignores shunt" is the source.\n\n'
+            '`docs/SRC.md`\'s "ignores shunt and dead space" is the source.\n\n'
+            '`docs/SRC.md`\'s "make check" is the source.\n'
+        ),
+    )
+    (root / "docs" / "SRC.md").write_text(
+        "## Known limitations\n\nThe model ignores shunt\nand dead space.\n\n"
+        "```sh\nmake check\n```\n",
+        encoding="utf-8",
+    )
+
+    assert _quotation_findings(root) == [
+        'README.md:3: quotes docs/SRC.md as "Known limitations The model ignores shunt", '
+        "which is not in that file"
+    ]
+
+
 def test_a_quoted_source_inside_a_fence_is_not_a_citation(tmp_path: Path) -> None:
     """An item showing a broken citation must not be an error for showing it."""
     root = _repo(tmp_path)
