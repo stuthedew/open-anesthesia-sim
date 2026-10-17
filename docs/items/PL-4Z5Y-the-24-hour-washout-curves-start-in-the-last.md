@@ -9,7 +9,7 @@ feature: ci-cost
 touches: tests/reference/test_late_washout_against_published_fits.py, tests/reference/conftest.py, tests/conftest.py, tests/unit/test_reference_conftest.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
-payoff: a slow CI runner's pytest step falls from 280 s toward 240 s, and the washout curves stop being the last thing every run waits on
+payoff: a slow CI runner's pytest step falls by at least 30 s, and the washout curves stop being the last thing every run waits on
 verify: grep -q '^\*\*Trial read, ' docs/items/PL-4Z5Y-the-24-hour-washout-curves-start-in-the-last.md
 not-delegable: whether the trial stays is the slow CI runners' median pytest step over at least five runs after it merges, which no command can take beforehand
 ---
@@ -69,7 +69,9 @@ tests". They do run in parallel. They start late.
 to date, so every minute of `checks` is also a minute for `main` to move under
 an armed pull request.
 
-**Done when.** On at least five slow-runner runs, the median pytest step is 240
+**Done when.** [superseded 2026-10-17: the suite has grown from 5,614 tests
+to 8,265 since, so the 280 s and 240 s below no longer describe it; the
+trial's own bar, a fall of at least 30 s, is the one that holds.] On at least five slow-runner runs, the median pytest step is 240
 s or less, against 280 s now. Each curve is still computed once per run, and no
 assertion, tolerance band or step in the file changes. 240 s is the no-file
 baseline, 189 s, plus about what the 8 curves' own CPU must add on 4 vCPUs.
@@ -133,3 +135,70 @@ it merges. If it does not, revert it and record the numbers here.
 - **Which worker ran each washout test locally.** A scratch plugin passed with
   `-p` appends `time.time()`, `PYTEST_XDIST_WORKER` and the node id from
   `pytest_runtest_logstart` and `pytest_runtest_logfinish`.
+
+**Built 2026-10-17, as the trial, and slower here.** The hook is built and
+working. It makes this container's run slower, not faster, because the curves
+were no longer the only tail: `PL-K5VM`'s 24-hour controller builds take over
+the tail, and the dealing makes them longer.
+
+- **What was built.**
+  - `tests/reference/conftest.py`'s `pytest_collection_modifyitems` takes
+    each curve's first reader, longest curve first, and moves it to the head
+    of the slice with the least to compute so far. Slice sizes come from
+    `first_slice_sizes`.
+  - `CURVES_READ`, in the test module, says which curves each test reads,
+    in order. The metabolism test now reads its sink curve first, since
+    nothing else reads that curve. No assertion, tolerance band or step
+    changed.
+  - `tests/unit/test_reference_conftest.py` holds `first_slice_sizes` to
+    the installed `WorkStealingScheduling`.
+  - A worker cannot see the `--dist` mode itself: xdist's `setup_config`
+    sets its `config.option.dist` to `no`. So `tests/conftest.py`'s
+    `pytest_configure_node` passes the mode in `workerinput`. The first
+    hook-on run was missing this, never dealt, and counts as the second
+    baseline below.
+- **Measured here.** CI's own pytest command, 8 workers on 4 vCPUs, with
+  each test timestamped per worker by the scratch plugin described above:
+
+  | Run | Run length | 98% done | Washout tests first start | 24-h controller builds |
+  | --- | ---: | ---: | ---: | ---: |
+  | No hook | 311.2 s | 188.1 s | 89 s | 4 |
+  | No hook | 316.6 s | 187.4 s | 89 s | 4 |
+  | Hook | 339.6 s | 232.3 s | 25.6 s | 6 |
+  | Hook, rest reordered | 354.1 s | 274.3 s | 25.1 s | 7 |
+
+  The last row had the rest of the collection reordered by a second scratch
+  plugin, meant to deal every test of 10 s or more first. It ran before the
+  hook instead of after it, so this row is a hook-on run whose slices differ
+  from CI's. It is not a replicate, and it is not the heavier dealing it
+  was meant to test.
+- **What the hook did.** All 8 workers opened on a different 24-hour curve
+  at 25.6 s, and the last curve finished by about 95 s. In the baseline they
+  ran from 89 s to 301 s. So the washout tail is gone. In its place is
+  `test_controller.py`'s six supported-run-length tests and their two
+  module-scoped 24-hour builds. The hook shifts the slice boundaries, and
+  stealing then splits those six tests over three or four workers, each of
+  which rebuilds what it needs. The tables are in `PL-K5VM`.
+- **CI before-figure, not yet taken.** Only 5 successful `quality.yml` runs
+  have come since 2026-10-15: fast runners at 258, 269 and 286 s, one slow
+  run (39002948586) at 553 s, and one unclassed at 376 s. One slow run is no
+  median. Whoever takes the reading pulls at least five slow-runner runs
+  from before the merge and five from after, the way the CI table above was
+  taken.
+
+**Decision needed, and recommended: hold the trial until `PL-K5VM` lands, and
+do not run it on CI now.** On this tree the hook is slower in both hook-on
+runs, by 23 to 43 s, so the keep criterion of a fall of at least 30 s would
+likely fail. That would cost at least five slow-runner runs plus a revert pull
+request. Holding means:
+
+1. Status goes to `blocked`, `blocked-by: PL-K5VM`.
+2. This branch reverts the hook, its unit test, `tests/conftest.py`'s
+   `pytest_configure_node`, the `CURVES_READ` table, the metabolism test's
+   reordering and the `docket.toml` entry, then lands only this record. The
+   code comes back from the pull request's head ref, commit `8eb2e974`.
+3. Once the controller builds are shared, one run without the hook and one
+   with it, on the same command, decide whether the CI trial runs at all.
+
+The other route is to run the trial on CI now, as decided 2026-09-28.
+Nothing measured here says it would pass.
