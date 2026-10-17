@@ -3,12 +3,14 @@ id: PL-JYX9
 title: docket check's stale-open-thread advisory fires on every run on docs/WORKING_NOTES.md's desflurane thread, its own documented permanent false fire, so it never changes a decision
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: friction-batch
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
+closed: 2026-10-17
+pr: 1491
 payoff: make check stops printing stale-thread lines on every run, and the advisory meets the one session that can act on it
 verify: grep -q 'def test_stale_threads_are_named_only_where_the_notes_file_changed' subprojects/docket/tests/test_checks.py
 ---

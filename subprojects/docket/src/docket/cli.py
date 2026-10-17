@@ -1007,6 +1007,9 @@ def _complete_report(
         # `notes_file` hands `None`, which leaves the stale-thread advisory
         # unraised rather than computed against an empty parse.
         threads=notes.read(root / config.notes_file) if config.notes_file else None,
+        # Whether this branch has changed that file, so the stale-thread
+        # advisory meets the session writing it and no other (`PL-JYX9`).
+        notes_changed=_notes_changed(root, config, git),
         # The dated lines of the instruction set, for the staleness advisory.
         # A read of about twenty small markdown files, and only where the
         # project names them: `instruction_paths` empty hands `None`, which
@@ -2556,6 +2559,24 @@ def _since_filed(args: argparse.Namespace, item: Item, root: Path, config: Confi
         else since_filed(root, item.touches, item.added, runner=git)
     )
     return render.format_since_filed(report, args.today or date.today(), config.recheck_after_days)
+
+
+def _notes_changed(root: Path, config: Config, git: GitRunner | None) -> bool | None:
+    """Whether this branch has changed the notes file, or `None` where git cannot say.
+
+    One read of the paths the branch changed against its base, committed or
+    not, so a session editing the file meets the stale-thread advisory at the
+    `make check` before its commit. `None` under `--no-git`, where no notes
+    file is configured, and where the base does not resolve: `analyze` then
+    reads the file as it did before `PL-JYX9`, since nothing says it is
+    unchanged.
+    """
+    if not config.notes_file or git is None:
+        return None
+    try:
+        return config.notes_file in changed_paths(root, default_base(root, runner=git))
+    except GitUnanswered:
+        return None
 
 
 def _notes_threads(root: Path, config: Config, identifier: str) -> tuple[notes.Thread, ...]:

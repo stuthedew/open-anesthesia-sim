@@ -4440,7 +4440,15 @@ with the reader.
 
 A notes file usually carries a policy that a resolved thread is deleted rather
 than left stale, and nothing reads it. `docket check` raises **one grooming
-advisory** naming each `##` section where both of these hold:
+advisory** naming each `##` section where both of these hold, **and only on a
+branch that has changed the notes file**, committed or not, against its base.
+The decision the advisory serves is whether to re-head or delete a spent thread,
+and a session takes it when it writes the file, so the line meets that session
+and prints on no other run (`PL-JYX9`). Where git cannot say what the branch
+changed - `--no-git`, or a base that does not resolve - the file is read and the
+advisory fires as before, since nothing then says the file is unchanged. Before
+this it fired on every run for 24 days without changing a decision, which
+`CLAUDE.md` calls a defect in the check:
 
 1. the heading's own leading word says the thread is open - `Open thread:`,
    `Open:`, as against `Settled:`, `Decided:`, `Measured`, `Built`, `Shelved`,
