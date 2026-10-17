@@ -3,11 +3,13 @@ id: PL-ZH1F
 title: RunDefinition.record_change's dial-moved-back branch is tested only on two-segment runs, the one size where segments[:-1] and segments[:1] agree, so a mutant that silently deletes every later stretch (state_at 600 s alveolar 0.01246 against 0.01867) survives all 5734 simulator tests
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, test
 feature: tests-detect-wrong-values
 touches: tests/unit/test_run_definition.py
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1506
 payoff: a dial moved and moved back within one step can no longer delete the earlier stretches of a run without a test failing, so the chart trace and branch states stay computed under the settings the case was under
 verify: grep -q 'def test_a_change_undone_at_one_instant_keeps_every_earlier_stretch' tests/unit/test_run_definition.py
 ---
@@ -86,3 +88,15 @@ perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above. Symbols re-checked against
 `9ea87a3c`.
+
+**Fail-before, 2026-10-17.** `test_a_change_undone_at_one_instant_keeps_every_earlier_stretch`
+in `tests/unit/test_run_definition.py` builds the three stretches above,
+records 3% again at the 20 s instant, and asserts the two stretches that
+remain. It then runs the definition to 600 s and compares its state with a
+second definition that was never given the 5% change. It passes on the
+shipped code. With the audit's mutant applied by
+`sed -i 's/self\._segments = self\._segments\[:-1\]/self._segments = self._segments[:+1]/' src/anesthesia_sim/core/run_definition.py`,
+the command `uv run pytest -q -p no:cacheprovider tests/unit/test_run_definition.py -k change_undone`
+exits 1 with one test failed and one passed. The failure is
+`assert [(0.0, 2.0)] == [(0.0, 2.0), (10.0, 3.0)]`. The mutant was then
+reverted with `git checkout`.

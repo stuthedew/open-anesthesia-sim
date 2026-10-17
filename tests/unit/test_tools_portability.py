@@ -267,8 +267,8 @@ def test_the_ci_floor_job_pins_the_declared_floor() -> None:
     no longer supports, and the new floor guarded by nothing - the same drift
     the formatter-target check above exists to catch, one layer out.
 
-    Exactly one pin, deliberately: the `checks` job sets no `python-version`
-    input, because doing so would set `UV_PYTHON` and override
+    Exactly one pin, deliberately: no job sets a `python-version` input on
+    `setup-uv`, because doing so would set `UV_PYTHON` and override
     `.python-version`. A second pin appearing anywhere in this file means that
     invariant has been broken or a third job has arrived unexamined, and either
     is worth stopping for.

@@ -3,11 +3,13 @@ id: PL-FY35
 title: The MAC and maximum-delivered literal pins in tests/unit/test_parameters.py carry no source locator, and nothing cross-checks a stored MAC against a second source such as Mapleson 1996's age-40 values, which the agent files' own notes already record
 priority: P2
 effort: M
-status: ready
+status: done
 classes: test
 feature: tests-detect-wrong-values
 touches: tests/unit/test_parameters.py
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1506
 payoff: each stored MAC and vaporizer maximum is pinned by a test that names its source, and a MAC that drifts from Mapleson 1996 by more than its recorded deviation fails
 verify: grep -q 'def test_mac_matches_its_cited_source_and_its_recorded_mapleson_deviation' tests/unit/test_parameters.py
 ---
@@ -82,3 +84,26 @@ perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above. Symbols re-checked against
 `9ea87a3c`.
+
+**Fail-before, 2026-10-17.**
+`test_mac_matches_its_cited_source_and_its_recorded_mapleson_deviation` in
+`tests/unit/test_parameters.py` types De Wolf et al. 2012's MACs (Methods,
+first paragraph, read as full text from PubMed Central), Mapleson 1996's
+age-40 MACs (Abstract, read through PubMed) and the deviations the agent
+files record. `test_vaporizer_maximum_matches_its_cited_specification` types
+the three dial maxima beside their sources. Both pass on the shipped files.
+
+Each MAC and each maximum was then changed by +10% and by -10%, one at a
+time, as `PL-H1JH`'s record describes. All 12 runs exited 1. Sevoflurane's
+MAC at 2.2 failed with `assert 2.2 == 2.0`, and also failed `PL-H1JH`'s
+literal band test, since the band is a fraction of the MAC. Sevoflurane's
+maximum at 8.8 failed with `assert 8.8 == 8.0`. The deviation assertion
+catches a change that retypes the first literal too. With sevoflurane's MAC
+and its literal both set to Meybohm et al.'s 2.1, it failed with
+`assert 16.666666666666675 == 11.1 ± 0.5`.
+
+Two maxima could not be read at their source. The gateway refused the
+Dräger page and www.draeger.com at CONNECT on 2026-10-17, and Kelly and
+Kong 2011's abstract does not state the scale, its full text being outside
+PubMed Central. Their pins name the source and say what was read instead.
+`PL-L46W` holds the reading.
