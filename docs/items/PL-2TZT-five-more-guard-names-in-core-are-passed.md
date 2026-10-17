@@ -68,3 +68,12 @@ tests pin an owner rather than a bare parameter name.
 finds ten bare call sites across `alveolar.py`, `blood.py`, `circuit.py` and
 `tissue.py`, as the table says. The `verify:` extends that pattern to all eight
 names above, so it passes only when none is left bare.
+
+**Since `PL-19Y0` (2026-10-17) the `verify:` above no longer proves Done
+when.** `TissueGroup` and `VenousBloodCompartment` now check every field in
+`__setattr__`, as `require_*(name, value)` with `name` the bare field name, so
+their refusals still read `volume_l must be positive and finite` with no owner
+while the literal pattern no longer matches them (nine of the seventeen sites
+it matched on `main` at `b9b3c812`). Extend the check to those writes - a refused write on
+a built `TissueGroup` naming the group, and on the venous pool naming it -
+when this item is worked (found reviewing `PL-19Y0`).

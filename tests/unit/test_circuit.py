@@ -1,5 +1,8 @@
+import copy
 import json
+import pickle
 import re
+from dataclasses import astuple, replace
 from importlib.resources import files
 from math import exp, inf, nan
 
@@ -12,11 +15,15 @@ from anesthesia_sim.core.circuit import (
     DeliverableFreshGasFlowRange,
 )
 from anesthesia_sim.core.concentration import Fraction, Percent
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exceptions import (
+    AgentSimulationValidationError,
+    SimulationConfigurationError,
+)
 from anesthesia_sim.core.parameters import (
     load_reference_circle_system_parameters,
     parse_breathing_circuit_parameters,
 )
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -263,14 +270,15 @@ def test_a_volume_whose_fraction_is_refused_leaves_the_circuit_unchanged() -> No
     """The fraction a new volume gives is built before either field is written.
 
     Since `PL-4R3W` building it is a check, so it can refuse - though only for
-    a fraction already held that no setter would have accepted, which the
-    direct write below stands in for. Built after the volume was written, a
+    a fraction already held that no write would have accepted, which the
+    write past `__setattr__` below stands in for: since `PL-19Y0` the field's
+    own write refuses a bare `nan`. Built after the volume was written, a
     refusal there left the volume moved and the fraction not, the partial
     state the docstring rules out.
     """
 
     circuit = BreathingCircuit(circuit_volume_l=6.0)
-    circuit.inspired_partial_pressure_fraction = nan  # type: ignore[assignment]
+    object.__setattr__(circuit, "inspired_partial_pressure_fraction", nan)
 
     with pytest.raises(
         SimulationConfigurationError,
@@ -291,6 +299,240 @@ def test_a_circuit_volume_exactly_equal_to_its_agent_is_accepted() -> None:
 
     assert circuit.inspired_partial_pressure_fraction == pytest.approx(1.0)
     assert circuit.agent_amount_l == pytest.approx(2.0)
+
+
+def _a_circuit_holding_agent() -> BreathingCircuit:
+    """A circuit holding agent at a 2% dial under an 8% vaporizer, on a machine declaring a range.
+
+    Declared, unlike every shipped profile, so that a write can be held to the
+    machine's range as well as to the model's envelope.
+    """
+
+    return BreathingCircuit(
+        fresh_gas_flow_l_min=FreshGasFlow(4.0),
+        delivered_concentration_percent=Percent(2.0),
+        inspired_partial_pressure_fraction=Fraction(0.01),
+        max_delivered_concentration_percent=Percent(8.0),
+        deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
+            minimum_l_min=0.5, maximum_l_min=8.0
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "error", "message"),
+    [
+        pytest.param(
+            "circuit_volume_l",
+            0.0,
+            SimulationConfigurationError,
+            "^circuit_volume_l must be positive and finite$",
+            id="zero-volume",
+        ),
+        pytest.param(
+            "circuit_volume_l",
+            nan,
+            SimulationConfigurationError,
+            "^circuit_volume_l must be positive and finite$",
+            id="nan-volume",
+        ),
+        pytest.param(
+            "circuit_volume_l",
+            True,
+            TypeError,
+            "^circuit_volume_l of True has type bool",
+            id="bool-volume",
+        ),
+        pytest.param(
+            "fresh_gas_flow_l_min",
+            4.0,
+            TypeError,
+            "^fresh_gas_flow_l_min of 4.0 was not built as FreshGasFlow",
+            id="bare-flow",
+        ),
+        pytest.param(
+            "fresh_gas_flow_l_min",
+            FreshGasFlow(9.0),
+            SimulationConfigurationError,
+            "^fresh_gas_flow_l_min of 9.0 is outside what this machine can deliver, "
+            "0.5 to 8.0 L/min",
+            id="flow-the-machine-cannot-set",
+        ),
+        pytest.param(
+            "delivered_concentration_percent",
+            0.5,
+            TypeError,
+            "^delivered_concentration_percent of 0.5 was not built as Percent",
+            id="bare-dial",
+        ),
+        pytest.param(
+            "delivered_concentration_percent",
+            Percent(50.0),
+            SimulationConfigurationError,
+            r"^delivered_concentration_percent exceeds the vaporizer maximum "
+            r"\(50% requested, 8% maximum\)$",
+            id="dial-past-the-vaporizer-maximum",
+        ),
+        pytest.param(
+            "inspired_partial_pressure_fraction",
+            1.5,
+            TypeError,
+            "^inspired_partial_pressure_fraction of 1.5 was not built as Fraction",
+            id="bare-fraction-past-one",
+        ),
+        pytest.param(
+            "inspired_partial_pressure_fraction",
+            Percent(1.0),
+            TypeError,
+            "^inspired_partial_pressure_fraction of 1.0 is a Percent, not a Fraction",
+            id="percent-for-a-fraction",
+        ),
+        pytest.param(
+            "max_delivered_concentration_percent",
+            10.0,
+            TypeError,
+            "^max_delivered_concentration_percent of 10.0 was not built as Percent",
+            id="bare-maximum",
+        ),
+        pytest.param(
+            "max_delivered_concentration_percent",
+            Percent(0.0),
+            SimulationConfigurationError,
+            "^max_delivered_concentration_percent must be positive and finite$",
+            id="zero-maximum",
+        ),
+        pytest.param(
+            "max_delivered_concentration_percent",
+            Percent(1.0),
+            SimulationConfigurationError,
+            r"^delivered_concentration_percent exceeds the vaporizer maximum "
+            r"\(2% requested, 1% maximum\)$",
+            id="maximum-under-the-dial",
+        ),
+        pytest.param(
+            "deliverable_fresh_gas_flow_range",
+            DeliverableFreshGasFlowRange(minimum_l_min=20.0, maximum_l_min=30.0),
+            SimulationConfigurationError,
+            "^this machine can deliver no fresh gas flow the model is claimed over",
+            id="range-outside-the-envelope",
+        ),
+        pytest.param(
+            "deliverable_fresh_gas_flow_range",
+            DeliverableFreshGasFlowRange(minimum_l_min=5.0, maximum_l_min=8.0),
+            SimulationConfigurationError,
+            "^fresh_gas_flow_l_min of 4.0 is outside what this machine can deliver, "
+            "5.0 to 8.0 L/min",
+            id="range-excluding-the-flow-held",
+        ),
+        pytest.param(
+            "deliverable_fresh_gas_flow_range",
+            (0.5, 8.0),
+            TypeError,
+            r"^deliverable_fresh_gas_flow_range of \(0.5, 8.0\) has type tuple",
+            id="range-as-a-tuple",
+        ),
+        pytest.param(
+            "fresh_gas_flow",
+            FreshGasFlow(2.0),
+            AttributeError,
+            "^'BreathingCircuit' object has no attribute 'fresh_gas_flow'",
+            id="misspelt-field",
+        ),
+    ],
+)
+def test_a_direct_write_is_held_to_the_constructors_checks(
+    field: str, value: object, error: type[Exception], message: str
+) -> None:
+    """An assignment past the constructor and the setters is refused as they refuse it.
+
+    Each case but the bare flow (`PL-LBQY`) and the misspelt field was
+    accepted on a built circuit until `PL-19Y0`, for a snapshot to copy and the
+    readout beside the control to show: a sevoflurane dial of 50% against its
+    8% vaporizer, a bare-float dial, a zero circuit volume, an inspired
+    fraction of 1.5, and a machine range sharing no flow with the model's
+    envelope, which left `accepted_fresh_gas_flow_range_l_min` inverted at
+    (20.0, 10.0) (`PL-HJ7L`). A relation is refused from either side: the dial
+    above the maximum and the maximum under the dial, the flow outside the
+    machine's range and the range excluding the flow held. A name that is no
+    field passes the guard to the slots, which refuse it, so a misspelt write
+    cannot leave the flow it meant unchanged while appearing to succeed.
+    Nothing is written when a value is refused.
+    """
+
+    circuit = _a_circuit_holding_agent()
+    held = astuple(circuit)
+
+    with pytest.raises(error, match=message):
+        setattr(circuit, field, value)
+
+    assert astuple(circuit) == held
+
+
+def test_a_copy_of_a_circuit_is_held_to_the_same_checks() -> None:
+    """`replace`, a copy and a pickle each write through `__setattr__`, refusing what it refuses.
+
+    `dataclasses.replace` builds a new circuit through its constructor's
+    writes, and a copy and a pickle of a `slots=True` dataclass restore its
+    fields one at a time through `__setattr__`, in field order. The dial is
+    written before the maximum, so the maximum's write is the one that refuses
+    a dial planted past the guard, in the dial's own words (`PL-19Y0`).
+    """
+
+    circuit = _a_circuit_holding_agent()
+    past_the_maximum = (
+        r"^delivered_concentration_percent exceeds the vaporizer maximum "
+        r"\(50% requested, 8% maximum\)$"
+    )
+
+    with pytest.raises(SimulationConfigurationError, match=past_the_maximum):
+        replace(circuit, delivered_concentration_percent=Percent(50.0))
+
+    smuggled = copy.copy(circuit)
+    object.__setattr__(smuggled, "delivered_concentration_percent", Percent(50.0))
+
+    with pytest.raises(SimulationConfigurationError, match=past_the_maximum):
+        copy.copy(smuggled)
+
+    with pytest.raises(SimulationConfigurationError, match=past_the_maximum):
+        pickle.loads(pickle.dumps(smuggled))
+
+
+def _a_sevoflurane_run_stepped_60_s() -> AgentUptakeSystem:
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+
+    for _ in range(600):
+        system.advance(SimulationStep(0.1))
+
+    return system
+
+
+def test_a_volume_written_past_set_circuit_volume_is_refused_by_the_next_steps_accounting() -> None:
+    """A volume's write checks what its constructor checks; conserving the agent is the setter's.
+
+    The circuit holds its agent as a fraction of its volume, so a volume
+    written straight onto the field moves the agent with it: halved on a run
+    stepped 60 s, it left half the agent the circuit held. No constructor
+    refuses a positive volume, so its write does not either (`PL-19Y0`), and
+    the step after it halts on the accounting identity and is rolled back
+    rather than carrying the lost agent forward. `set_circuit_volume` is the
+    write that conserves the agent, and the same step after it passes.
+    """
+
+    written_past = _a_sevoflurane_run_stepped_60_s()
+    before = written_past.capture_state()
+
+    written_past.circuit.circuit_volume_l = 3.0
+
+    with pytest.raises(AgentSimulationValidationError, match="^Agent accounting validation failed"):
+        written_past.advance(SimulationStep(0.1))
+
+    assert written_past.capture_state() == before
+
+    conserved = _a_sevoflurane_run_stepped_60_s()
+
+    conserved.circuit.set_circuit_volume(3.0)
+
+    assert conserved.advance(SimulationStep(0.1)).agent_accounting.passes_validation
 
 
 def test_a_bare_circuit_starts_with_the_vaporizer_off() -> None:
