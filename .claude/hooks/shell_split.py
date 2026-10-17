@@ -64,6 +64,12 @@ looks for a program named `set` and finds none (`PL-9RSP`). Each is read bare,
 because a `command` named by path is a program, and `command` by the grammar
 `WRAPPERS` holds for it, so the two readers cannot disagree about its options.
 
+**And what a Python interpreter runs**, by `python_operand`: the script, the
+module, the `-c` string or standard input, and where the words that program
+is handed start. The gate guard asks it which script runs, and the floor guard
+asks it which words Python itself parses, so the two cannot disagree about
+Python's options (`PL-6X0C`, `PL-CDZ8`).
+
 **Last, how to spell a command back so that bash runs it again**, by
 `command_line`, for a guard that prints one to be run: spelled from the
 program's name alone, the gate guard's remedy for `python3 tools/doc_check.py
@@ -152,6 +158,59 @@ SEPARATORS = {
 # A Python interpreter, named bare or by its basename: `python`, `python3`,
 # `python3.11`. The floor and gate guards both ask it (`PL-Y3TZ`).
 PYTHON = re.compile(r"^python(?:3(?:\.\d+)?)?$")
+
+# The options a Python interpreter reads ahead of what it runs (`python3
+# --help`). `-W` and `-X` take a value, glued on or in the next word, and
+# `--check-hash-based-pycs` takes one in the next word. `-c` and `-m` end the
+# options and take what they run in the same two ways: a string of code, or a
+# module.
+PYTHON_VALUED = "WX"
+PYTHON_RUNS = "cm"
+
+
+def python_operand(arguments: list[str]) -> tuple[str, str, int]:
+    """What a Python interpreter given `arguments` runs, and where the words it passes on start.
+
+    Returns a kind, an operand and an index into `arguments`. The kind is `-c`
+    for a string of code, `-m` for a module, `-` for a script read from standard
+    input, `file` for a script named by path, and an empty string where the
+    options use up every word, which also reads standard input. The operand is
+    the code, the module or the script's path, and is empty for the last two
+    kinds. The index is that of the first word Python hands what it runs as
+    `sys.argv[1:]`. Python never parses those words itself, so the floor and
+    gate guards both read an invocation through this (`PL-6X0C`, `PL-CDZ8`).
+    `--` ends the options, so the word after it is a script even when it starts
+    with `-`, unless it is `-` itself.
+    """
+    index = 0
+    while index < len(arguments):
+        token = arguments[index]
+        if not token.startswith("-") or token == "-":
+            break
+        index += 1
+        if token == "--":
+            break
+        if token == "--check-hash-based-pycs":
+            index += 1
+        if token.startswith("--"):
+            continue
+        for position, flag in enumerate(token[1:], 1):
+            glued = token[position + 1 :]
+            if flag in PYTHON_RUNS:
+                if glued:
+                    return "-" + flag, glued, index
+                operand = arguments[index] if index < len(arguments) else ""
+                return "-" + flag, operand, index + 1
+            if flag in PYTHON_VALUED:
+                if not glued:
+                    index += 1
+                break
+    if index >= len(arguments):
+        return "", "", len(arguments)
+    if arguments[index] == "-":
+        return "-", "", index + 1
+    return "file", arguments[index], index + 1
+
 
 # What makes bash read a word written bare as something else: a blank splits
 # it, a quote or a backslash is read as quoting, an operator character ends it,
