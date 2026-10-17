@@ -3,11 +3,13 @@ id: PL-4H4T
 title: No test changes the step size within one uptake system, so a propagator cache key that loses the step survives the whole suite, and SimulationState.reset() followed by a different step would reuse the old exp(A*dt) with accounting still passing
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test
 feature: tests-detect-wrong-values
 touches: tests/unit/test_matrix_exponential.py, tests/unit/test_simulation.py
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1513
 payoff: a propagator cache that reuses the old step's exp(A dt) after a step change fails a test, so a reset followed by a new step size cannot advance the run by the wrong time
 verify: grep -q 'def test_a_step_size_change_within_one_system_obeys_the_semigroup_property' tests/unit/test_matrix_exponential.py
 ---
@@ -84,3 +86,25 @@ perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above. Symbols re-checked against
 `9ea87a3c`.
+
+**Fail-before, 2026-10-17.** Two tests. In
+`tests/unit/test_matrix_exponential.py`,
+`test_a_step_size_change_within_one_system_obeys_the_semigroup_property`
+steps two sevoflurane systems 600 times at 0.1 s, then steps one of them
+twice at 0.05 s and the other once at 0.1 s, and compares their state
+vectors at `rel=1e-12`. In `tests/unit/test_simulation.py`,
+`test_a_run_reset_to_a_new_step_matches_a_fresh_run_at_that_step` takes ten
+0.1 s steps, resets, takes twenty 0.05 s steps, and compares the elapsed time
+and `capture_state()` with a fresh run that took only the twenty. Both pass
+on the shipped code, where the worst relative difference in the first is
+5.4e-16. With the audit's mutant applied by
+`sed -i 's/key = self._propagator_cache_key(simulation_step_s)/key = self._propagator_cache_key(None)/' src/anesthesia_sim/core/uptake_system.py`,
+the command `uv run pytest -q -p no:randomly tests/unit/test_matrix_exponential.py::test_a_step_size_change_within_one_system_obeys_the_semigroup_property tests/unit/test_simulation.py::test_a_run_reset_to_a_new_step_matches_a_fresh_run_at_that_step`
+exits 1 with both failed. The first fails with
+`comparison failed. Mismatched elements: 6 / 9` and
+`Max relative difference: 0.0044518725238513746`; its alveolar fraction is
+0.003342337705568135 against 0.0033364819833999622. The second fails with
+`Differing attributes: ['circuit', 'alveoli', 'patient', 'agent_simulation_validator']`;
+under the mutant the reset run's alveolar fraction is 1.1310605640318981e-05
+against the fresh run's 2.8943041009819916e-06, 3.9 times too high, while both
+report 1.0 s. The mutant was then reverted with `git checkout`.
