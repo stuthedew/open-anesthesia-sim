@@ -684,9 +684,9 @@ def _configured_system(
     which cannot be asked without running a coefficient the data files do not
     hold. It is applied before any step, where the group's stored amount is
     zero and no propagator has been built for the old value, and it goes
-    through `dataclasses.replace` rather than an attribute write so that
-    `TissueGroup.__post_init__` validates the new coefficient exactly as it
-    validates a shipped one. Every other caller leaves it `None` and gets the
+    through `dataclasses.replace`, whose constructor checks the new
+    coefficient exactly as it checks a shipped one. Every other caller leaves
+    it `None` and gets the
     shipped parameter set.
     """
 
