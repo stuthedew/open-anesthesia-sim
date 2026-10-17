@@ -207,9 +207,11 @@ set it when the session opens rather than toggling it.
   model question is undetermined on estimates: a cheaper model pays only if
   its excess miss rate on a thorough search is below about 1 in 20 for Sonnet
   5.5 and about 1 in 11 for Haiku 5.5, and `PL-G2D4` is the pre-registered
-  measurement that would settle it. Until it reports, Opus stays. `PL-PTHZ`
-  records the model the first session started after the definition merged
-  reads from its Explore transcript.
+  measurement that would settle it. Until it reports, Opus stays. A cloud
+  session loads this definition. In an Opus 5.5 cloud session started after
+  it merged, the Explore subagent's transcript records the definition's own
+  system prompt. Every turn ran on `claude-opus-5-5` at the session's effort
+  level (measured 2026-10-17, `PL-PTHZ`).
 - `CLAUDE_CODE_SUBAGENT_MODEL` is set nowhere in this repository. It left the
   `env` block of `.claude/settings.json` on 2026-10-17 (`PL-2D28`). It never
   chose the model for the built-in Explore and Plan subagents, which run on
