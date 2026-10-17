@@ -3,11 +3,13 @@ id: PL-X7D5
 title: A run's screen has two writers - RunView.refresh from a drawn frame and RunView.present_halt from a hand-picked subset of controller state - and nothing owes a frame when the run changes outside present, so each widget missing from the subset, and each path that stops or changes a run without a frame, leaves the screen stating an old run: the cause of PL-1YDD, PL-DTJQ, PL-MMNX, PL-T995, PL-G3K7 and PL-0LG6 (found at the 2026-10-17 triage pass)
 priority: P1
 effort: L
-status: needs-decision
+status: ready
 classes: safety, refactor
 feature: every-control-restates-the-halt
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 added: 2026-10-17
+payoff: a halted or self-stopped run states itself on every widget as the controller holds it, and a widget added later is checked by default rather than remembered
+verify: grep -q 'def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one' tests/integration/test_simulation_view.py
 root-cause-of: PL-1YDD, PL-DTJQ, PL-MMNX, PL-T995, PL-G3K7, PL-0LG6, PL-85LJ
 generator: live - four reviews of the run view in ten days (PL-V2HC's, PL-85LJ's, PL-Y2SL's, PL-VN6M's) each found a widget or stop path the halt list or a frame request missed, and each widget added later is another
 misread: Which widgets state a run's current state, and that each is restated on every path that changes it
@@ -51,17 +53,44 @@ built from the controller without a snapshot, and written by both `refresh`
 and `present_halt` through one method, so a widget is added to the record or
 is not on screen; and every path that changes a run's state outside `present`
 - a self-stop in `step_tick`, `add_run`, a request that changes the selection
-- asks for a coalesced frame, so the record is restated on the next tick. The
+- asks for a coalesced frame, so the record is restated on the next tick.
+[superseded 2026-10-17: the frame request per path was replaced by the design
+round's half two, answered below - `render_tick` compares each run's record
+and the run count against what was last written; and the fork offer is
+restated by `_halt_every_run` at the dashboard rather than carried in the
+per-run record.] The
 alternative, keeping the two writers and a test that enumerates the widgets,
 catches an omission only where the test's list is itself complete, which is
 the list that has already failed. The choice is internal structure and is the
 design round's to take; it reaches every member's code, so the round puts the
 size and the risk of breaking the run view to the owner before building.
 
-**Done when.** The decided shape is built; each open member closes under it
-with the regression test its brief names; and a test drives a halt, a
-self-stop and a failed frame through the app's real timers and reads every
-widget the record carries against the controller.
+**Done when.** The shape answered below is built, in its two pull requests,
+and four things hold:
+
+- **The frame owed by a change.** `SimulationView.render_tick` draws whenever
+  a displayed run's `SimulationController.record()` or the run count differs
+  from what was last written. `PL-T995` (both its cases) and `PL-0LG6` close
+  under it in the first pull request, each with the regression test its brief
+  names. A frame that keeps failing is attempted once, not every tick.
+- **One writer for the run-state widgets.** `RunView._write_statement` writes
+  them from a pure `dashboard_frame.run_statement`. `refresh` and
+  `present_halt` both call it, and `present_halt` calls it with
+  `controller.record()`. The halt statement is on screen before the one write
+  that can raise.
+- **The dashboard's members.** `_halt_every_run` restates the fork panel,
+  guarded, and the legend is handed the drawn frame's selection. `PL-1YDD`,
+  `PL-DTJQ`, `PL-MMNX` and `PL-G3K7` close under these, each with its named
+  regression test. `PL-G3K7`'s Done when is rewritten to the legend-from-frame
+  form when it is claimed.
+- **The default-include guard.**
+  `test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`
+  in `tests/integration/test_simulation_view.py` compares every widget
+  attribute of a `RunView` drawn by a frame with one halted with every frame
+  failing, in equal states. The only exceptions are a `FRAME_WIDGETS` table,
+  each entry named against its reason and held live in both directions.
+
+The halt passage in `docs/ARCHITECTURE.md` describes the new shape.
 
 **Generator check.** A generator: one fact - which widgets state a run's
 current state, and that each is restated on every path that changes it -
@@ -218,3 +247,16 @@ included. The alternative is to fix each member as its own brief says (each
 `S`). That is about 150 lines in all, but it is the hand-kept list this item
 was recorded to end, and the four reviews that found the members are the
 evidence it does not hold.
+
+**Answered 2026-10-17, both questions as recommended** (project owner,
+2026-10-17, ratified, "Agree with recs"):
+
+1. **The refactor**, in two pull requests, chosen over the six members fixed
+   one at a time as their briefs say.
+2. **The `render_tick` comparison** of each run's record and the run count,
+   chosen over the marked recommendation's frame request on every path that
+   changes a run outside `present`.
+
+The Done when above is written for these answers. The build claims this item
+afresh and starts with the first pull request, half two: `PL-T995` and
+`PL-0LG6`.
