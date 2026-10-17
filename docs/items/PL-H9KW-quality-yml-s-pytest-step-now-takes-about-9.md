@@ -131,19 +131,14 @@ one fact misread by several readers. No head's `misread:` states it.
 1. ~~No-coverage timing~~: done, above.
 2. ~~Share each trunk across workers~~: dropped, above.
 3. ~~Deal the trunk tests first~~: moved to `PL-4Z5Y`, above.
-4. Have `test_doc_check.py`'s three whole-repository tests
-   (`test_this_repository_is_clean`,
-   `test_this_repository_reports_its_own_resident_total`,
-   `test_this_repository_measures_its_own_skill_on_demand`) share one analysis
-   per process. The change is written and was set aside in this session's
-   container: a `functools.cache`-decorated `_this_repository()` helper
-   returning `doc_check.analyze(Path(doc_check.__file__).resolve().parent.parent)`,
-   defined above the first of the three, and called by all three in place of
-   their own `analyze` calls. It also drops the third test's unused `tmp_path`
-   and adds `from functools import cache`. Measured: the three pass together in
-   29 s, one 27 s analysis and two under 5 ms. `ruff format` and `ruff check`
-   pass. `test_doc_check.py` is a test of the tooling, not on the owner's read
-   list, so its pull request arms on green.
+4. ~~Share one `doc_check` analysis among `test_doc_check.py`'s three
+   whole-repository tests~~: done 2026-10-17. They are
+   `test_this_repository_is_clean`,
+   `test_this_repository_reports_its_own_resident_total` and
+   `test_this_repository_measures_its_own_skill_on_demand`. All three now call
+   a `functools.cache`-decorated `_this_repository()`, so each process analyses
+   the tree once. Measured: the three pass together in 29 s, one 27 s analysis
+   and two calls under 5 ms, and the module's 893 tests pass in 63 s.
 5. After `PL-4Z5Y` merges: re-time CI against the done-when below, and restate
    the `timeout-minutes: 15` comment against the new measured job time.
 
