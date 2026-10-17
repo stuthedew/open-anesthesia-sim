@@ -31,8 +31,10 @@ ten in the YAML front matter of `.claude/rules/` files, and one each in
 interrupt a paragraph would have to tell the other 31 apart.
 
 **Why it matters.** Each passage renders as a paragraph that stops short and
-a bullet that opens on a conjunction. The costly one is `docs/maintainer.md`
-§ "Read a simulator change before you arm it", the owner's statement of which
+a bullet that opens on a conjunction. The costly one was the `docs/maintainer.md`
+section on what `bin/docket arm` holds [superseded 2026-10-17: `PL-DKBG`
+rewrote it as § "What comes to you before it merges", and its passage no
+longer wraps], the owner's statement of which
 pull requests `bin/docket arm` holds for their read: rendered, the paragraph
 ends at "the paths where a wrong clinical value could reach the screen", and
 `.github/workflows/`, `.claude/hooks/`, `arming.py` and the account of how a
