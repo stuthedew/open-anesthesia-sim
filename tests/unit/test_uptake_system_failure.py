@@ -634,8 +634,9 @@ def test_a_capacity_written_under_a_held_amount_is_rolled_back_past_the_guard() 
 
     `PL-544D` holds the alveolar and tissue amounts to the compartment's
     capacity at the write, and a rollback is a write. Through the guard, a
-    capacity moved under a held amount - a direct write no setting makes,
-    `PL-19Y0` - had `restore_state` refused at fat after the circuit, the
+    capacity moved under a held amount - which since `PL-19Y0` only a write
+    past the volume's own guard can make - had `restore_state` refused at fat
+    after the circuit, the
     alveoli and two tissue groups were restored, and the venous pool, restored
     after fat, left holding the failed step under a configuration error that
     had replaced the step's own (found at review, 2026-10-12, on a run at 8%
@@ -645,8 +646,8 @@ def test_a_capacity_written_under_a_held_amount_is_rolled_back_past_the_guard() 
     refuse depends on the parameter set - at ordinary loads it gives fat a
     time constant shorter than the step, and the fraction written is back in
     range - while the rollback's requirement does not. The volume is written
-    past any guard it has or gets, since what is under test is the rollback
-    and not the route; the state left is the one the step began from, with
+    past its own guard, since what is under test is the rollback and not the
+    route; the state left is the one the step began from, with
     fat over capacity as it already was, for the snapshot's `Fraction` to
     refuse.
     """

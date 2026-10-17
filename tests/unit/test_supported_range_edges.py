@@ -27,8 +27,9 @@ guard wherever it takes that type, under any name and on any class, so
 `UptakeEquationSettings`'s three flows are drawn at their edges, in the record
 a run is built from and the way in `PL-HSFV` went through (`PL-51B7`). A
 constructor counts where it checks or computes - written by hand, or a
-dataclass's with a `__post_init__` - and not where it only stores, as
-`app/controller.py`'s `ResumePoint` does. An instant a run is only *read* at -
+dataclass's with a `__post_init__` or with a `__setattr__` of its own, which
+checks each field as the constructor writes it (`PL-19Y0`) - and not where it
+only stores, as `app/controller.py`'s `ResumePoint` does. An instant a run is only *read* at -
 `state_at` and `segment_at`, which the run's own opening and reach bound - is a
 plain `float` and behind no guard here; and a collection of instants, which a
 function is handed whole, is handed the one in `TYPICAL`.
@@ -235,7 +236,29 @@ def _checks_or_computes(owner: type, name: str) -> bool:
     if name != "__init__":
         return not name.startswith("_")
 
-    return not dataclasses.is_dataclass(owner) or hasattr(owner, "__post_init__")
+    return (
+        not dataclasses.is_dataclass(owner)
+        or hasattr(owner, "__post_init__")
+        or _checks_every_write(owner)
+    )
+
+
+def _checks_every_write(owner: type) -> bool:
+    """Whether a dataclass's constructor checks through a `__setattr__` of its own.
+
+    `PL-19Y0` moved five records' checks out of `__post_init__` and into the
+    write, which the constructor makes like any other, and read for a
+    `__post_init__` alone their constructors left the draw with nothing
+    failing: `BreathingCircuit`'s fresh gas flow and `AlveolarCompartment`'s
+    ventilation among them. The `__setattr__` a frozen dataclass is given
+    refuses every write after construction and checks nothing, so it does not
+    count, and a frozen dataclass cannot define its own.
+    """
+
+    return (
+        "__setattr__" in vars(owner)
+        and not typing.cast(typing.Any, owner).__dataclass_params__.frozen
+    )
 
 
 def _callables() -> Iterator[tuple[type | None, Function]]:

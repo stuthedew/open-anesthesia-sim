@@ -1,9 +1,10 @@
-"""Shared numeric-range guards used by every core compartment's
-`__post_init__` and setters, so invalid state is rejected at the same
-boundary everywhere instead of trusted or coerced silently. One of them,
-`require_within_vaporizer_maximum`, is a relation between two values rather
-than a property of one, and is here for the same reason: the two records that
-hold the pair refuse it in one sentence (`PL-BBMG`).
+"""Shared numeric-range guards used by every core compartment's field
+writes and setters, so invalid state is rejected at the same boundary
+everywhere instead of trusted or coerced silently. Two of them,
+`require_within_vaporizer_maximum` and `require_room_for_the_agent_held`,
+are relations between values rather than properties of one, and are here for
+the same reason: the records that hold each pair refuse it in one sentence
+(`PL-BBMG`, `PL-19Y0`).
 
 A concentration's own range is not here. A fraction's 0 to 1 and a percent's 0
 to 100 were checked by guards in this module, at each of the twelve places a
@@ -177,4 +178,42 @@ def require_within_vaporizer_maximum(
             f"{name} exceeds the vaporizer maximum "
             f"({delivered_concentration_percent:g}% requested, "
             f"{max_delivered_concentration_percent:g}% maximum)"
+        )
+
+
+def require_room_for_the_agent_held(
+    name: str,
+    value: float,
+    capacity_l: float,
+    agent_amount_l: float,
+    compartment: str,
+    section: str,
+) -> None:
+    """Refuse a volume or partition coefficient too small for the agent its compartment holds.
+
+    A compartment's partial pressure is the agent it holds divided by its
+    capacity, the agent it would hold at a partial pressure of one atmosphere:
+    its volume, times its partition coefficient where it is blood or tissue
+    (`docs/MODEL.md` § "Tissue compartments" gives the tissue's). Shrinking
+    either factor under a fixed amount raises the partial pressure, and below
+    the amount held it puts it above one atmosphere. Each compartment refuses
+    an amount written above its capacity, and until `PL-19Y0` nothing refused
+    the converse: an alveolar volume of 1e-6 L written under 0.098 L of
+    sevoflurane completed the next step and propagated a partial pressure near
+    98,000 atmospheres into every other compartment (`PL-544D`, found at
+    review). So the alveolar compartment, the venous pool and each tissue
+    group call this as either factor is written, with the capacity that
+    writing `value` would leave, which only the caller knows how to form.
+
+    Raises:
+        SimulationConfigurationError: `agent_amount_l` is above `capacity_l`.
+            The message names the value written, the agent held, and the room
+            the value would leave for it.
+    """
+
+    if agent_amount_l > capacity_l:
+        raise SimulationConfigurationError(
+            f"{name} of {shown(value)} is too small for the {agent_amount_l!r} L of agent "
+            f"the {compartment} holds: it would leave room for {capacity_l!r} L at a "
+            f'partial pressure of one atmosphere (docs/MODEL.md, "{section}")'
         )

@@ -283,10 +283,12 @@ different treatment:
   anything. Raised by the guards in `core/validation.py`, by the checked
   types' constructors (`Fraction` and `Percent` in `core/concentration.py`,
   and those in `core/supported_ranges.py` and `core/simulation_step.py`), by
-  compartment constructors and setters, and by the parameter-file loaders.
+  compartment constructors and setters, by a compartment field written
+  directly, whose record checks every write in `__setattr__` (`PL-19Y0`), and
+  by the parameter-file loaders.
   The view's `_apply_setting` catches it, restores the control from the
   snapshot, and says the setting was refused; the run is untouched and keeps
-  going. A setter, or a compartment's flow field written directly, handed a
+  going. A setter, or a compartment field written directly, handed a
   value not built as its type raises `TypeError` instead, a programming error
   rather than a refused setting; so does a checked type built from what it is
   not built from - a `bool`, a `Decimal` or a string for any of them, a

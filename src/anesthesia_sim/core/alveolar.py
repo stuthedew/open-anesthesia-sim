@@ -15,11 +15,14 @@ accepted a `bool` where `parameters.py` refuses one (`PL-LKRP`).
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from anesthesia_sim.core.checked_number import require_a_number
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, require_alveolar_ventilation
-from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
+from anesthesia_sim.core.validation import (
+    require_nonnegative_finite,
+    require_positive_finite,
+    require_room_for_the_agent_held,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,11 +67,6 @@ class AlveolarCompartment:
     alveolar_ventilation_l_min: AlveolarVentilation = AlveolarVentilation(4.0)
     agent_amount_l: float = 0.0
 
-    def __post_init__(self) -> None:
-        # The ventilation's type and the agent amount's range were required as
-        # the constructor wrote each field, by `__setattr__` below.
-        require_positive_finite("gas_volume_l", self.gas_volume_l)
-
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
         # Hidden from `mypy` on purpose. A class that defines `__setattr__` is
         # one `mypy` lets assign any attribute name, typed by the method's
@@ -80,49 +78,62 @@ class AlveolarCompartment:
         # by their tests rather than by `mypy` (`PL-LBQY`, found at review).
 
         def __setattr__(self, name: str, value: object) -> None:
-            """Write a field, refusing a ventilation not built as an `AlveolarVentilation`
-            and an agent amount the compartment cannot hold.
+            """Write a field, refusing a value the compartment's constructor would refuse.
 
-            The one place a ventilation is stored on the compartment is this
-            field, so its type is required here, for the constructor, the setter
-            and an assignment made past both alike, as `BreathingCircuit.__setattr__`
-            explains (`PL-LBQY`). The agent amount is held to the compartment's
-            capacity here for the same reason. The relation between the amount
-            and the volume holding it is the compartment's to check rather than
-            any one quantity's (`.claude/rules/core-domain.md`), and until
-            `PL-544D` the constructor and `set_partial_pressure_fraction` each
-            made it while an assignment made past both did not, so an amount
-            past the capacity - a partial pressure above one atmosphere - was
-            stored, and refused only when `SimulationController.snapshot()`
-            built the fraction two layers later (`PL-7DJK`). Nothing is written
-            when either is refused. `restore_state` is the one write of the
-            amount made past this, and says why.
+            Each field is stored in one place, its slot, so its check is made
+            here, for the constructor, the setters and an assignment made past
+            them alike, as `BreathingCircuit.__setattr__` explains (`PL-LBQY`,
+            `PL-19Y0`). Nothing is written when a value is refused, and the
+            constructor makes no check of its own. `restore_state` is the one
+            write of the amount made past this, and says why.
 
-            The constructor writes the amount before `__post_init__` has
-            refused a bad volume, so the volume is required to be a number
-            here first, under its own name (`require_a_number`), and a
-            capacity that is not positive is then left to that refusal, under
-            the same name, rather than read here as the amount exceeding it.
+            The alveolar partial pressure is the agent amount divided by the
+            gas volume, so the two are held together, by whichever is written
+            second: an amount above the volume is refused, and so is a volume
+            too small for the amount already held. That relation is the
+            compartment's to check rather than either quantity's
+            (`.claude/rules/core-domain.md`). Until `PL-544D` the constructor
+            and `set_partial_pressure_fraction` each made it while an
+            assignment made past both did not, so an amount past the volume - a
+            partial pressure above one atmosphere - was stored, and refused
+            only when `SimulationController.snapshot()` built the fraction two
+            layers later (`PL-7DJK`). Until `PL-19Y0` a volume too small for
+            the amount held was written the same way: 1e-6 L under 0.098 L of
+            sevoflurane completed the next step and propagated a partial
+            pressure near 98,000 atmospheres into every other compartment
+            (`PL-544D`, found at review). The constructor writes the volume
+            first, so it is held to the amount only once there is one.
 
             Raises:
-                TypeError: `name` is `alveolar_ventilation_l_min` and `value` was
-                    not built as an `AlveolarVentilation`
-                    (`require_alveolar_ventilation`); or `name` is
-                    `agent_amount_l` and `value`, or the `gas_volume_l` it is
-                    held to, is not an `int` or a `float`
-                    (`require_nonnegative_finite`, `require_a_number`).
-                SimulationConfigurationError: `name` is `agent_amount_l` and
-                    `value` is negative, not finite, or more than
-                    `gas_volume_l`, the capacity at a fraction of one.
+                TypeError: `name` is `alveolar_ventilation_l_min` and `value`
+                    was not built as an `AlveolarVentilation`
+                    (`require_alveolar_ventilation`); or the volume or the
+                    amount is not an `int` or a `float` (`require_a_number`).
+                SimulationConfigurationError: the volume is not positive and
+                    finite; the amount is negative or not finite; or the
+                    amount would be more than `gas_volume_l`, what the
+                    compartment holds at a partial pressure of one atmosphere,
+                    whichever of the two is the one written.
             """
 
-            if name == "alveolar_ventilation_l_min":
+            if name == "gas_volume_l":
+                require_positive_finite(name, value)
+
+                if hasattr(self, "agent_amount_l"):
+                    require_room_for_the_agent_held(
+                        name,
+                        value,
+                        value,
+                        self.agent_amount_l,
+                        "alveolar compartment",
+                        "Gas compartments",
+                    )
+            elif name == "alveolar_ventilation_l_min":
                 require_alveolar_ventilation(value)
             elif name == "agent_amount_l":
                 require_nonnegative_finite(name, value)
-                require_a_number("gas_volume_l", self.gas_volume_l)
 
-                if 0.0 < self.gas_volume_l < value:
+                if value > self.gas_volume_l:
                     raise SimulationConfigurationError(
                         "agent_amount_l exceeds the alveolar capacity for a concentration "
                         "fraction of 1"
@@ -185,11 +196,12 @@ class AlveolarCompartment:
         back exactly: a rollback refused partway would replace the step's own
         error and leave the compartments restored after this one holding the
         failed step (`AgentUptakeSystem.restore_state`). The one way the guard
-        could refuse it is a volume written under the held amount in the
-        meantime, which no setting does (`PL-19Y0`); the state restored is
-        then the one the step began from, over capacity as it already was,
-        and the quotient the snapshot builds from it is what refuses it,
-        visibly (`PL-7DJK`; `PL-544D`, found at review).
+        could refuse it is a volume moved under the held amount in the
+        meantime, which since `PL-19Y0` only a write past the volume's own
+        guard can make; the state restored is then the one the step began
+        from, over capacity as it already was, and the quotient the snapshot
+        builds from it is what refuses it, visibly (`PL-7DJK`; `PL-544D`,
+        found at review).
         """
 
         object.__setattr__(self, "agent_amount_l", state.agent_amount_l)

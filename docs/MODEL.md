@@ -5317,10 +5317,12 @@ it held; the dataclass constructor, `dataclasses.replace`, a copy and a pickle
 all write through it - the last two because each compartment is a `slots=True`
 dataclass, whose state a copy or a pickle restores one field at a time through
 `__setattr__` where a `__dict__` would be updated past it - so the constructors
-run no check of their own. The type is all the write checks of a flow. The circuit's setter still compares the flow against
-the machine's range before the write, and the patient's still recomputes the
-tissue flows after it, so a checked cardiac output written past the setter
-leaves the tissue flows stale, which `UptakeEquationSettings` refuses at the
+run no check of their own. The type is all the write checks of a flow but
+one relation, the machine's range, which the circuit's write has compared the
+fresh gas flow against since `PL-19Y0`, below. The patient's setter still
+recomputes the tissue flows after the write, so a checked cardiac output
+written past the setter leaves the tissue flows stale, which
+`UptakeEquationSettings` refuses at the
 next step, as the `SimulationNumericalError` that `advance()` restates every
 guard reached inside a step as, and at Reset, which
 `SimulationController.reset()` refuses before it clears anything, the
@@ -5347,15 +5349,47 @@ constructor's own words, and the field holds what it held. A rollback is the
 one write made past the guard: `restore_state` puts back what the compartment
 held when the step began, and a rollback that could itself raise would replace
 the step's own error and leave the compartments restored after it holding the
-failed step (§ "Step atomicity"), so a capacity written under a held amount in
-the meantime - a direct write no setting makes, `PL-19Y0` - is left to the
-quotient the snapshot builds from the restored state, which refuses it visibly
-(`PL-7DJK`). The constructor writes the amount before `__post_init__` has
-refused a bad volume, so the volume is required to be a number there first,
-under its own name, and a capacity that is not positive is left to
-`__post_init__`'s refusal under the same name. No supported setting takes the
-write; the hole was the reproduction's own route to a refusing snapshot, which
-the tests now reach by replacing the quotient the snapshot reads.
+failed step (§ "Step atomicity"), so a capacity moved under a held amount in
+the meantime - which since `PL-19Y0` only a write past the capacity's own
+guard can make - is left to the quotient the snapshot builds from the restored
+state, which refuses it visibly (`PL-7DJK`). Until `PL-19Y0` the constructor
+wrote the amount before `__post_init__` had refused a bad volume, so the
+amount's guard required the volume to be a number and left a capacity that
+was not positive to that refusal; each field's own write now checks it first,
+and the stand-in is gone. No supported setting takes the write; the hole was
+the reproduction's own route to a refusing snapshot, which the tests now reach
+by replacing the quotient the snapshot reads.
+
+**Every checked field of the five run records meets its constructor's checks
+at the write** (`PL-19Y0`, on the mechanism `PL-LBQY` gave the flows). Until
+`PL-19Y0` an assignment past the constructor and the setters met only the
+flows' type and the alveolar and tissue amounts' capacity, so on a sevoflurane
+run a dial of `Percent(50.0)` against its 8% vaporizer, a bare-`float` dial, a
+zero circuit volume, an inspired fraction of 1.5, a perfusion fraction of 7, a
+negative tissue volume and a venous amount past its capacity were each stored,
+for the snapshot to copy and the readouts to show. `BreathingCircuit`,
+`AlveolarCompartment`, `TissueGroup`, `VenousBloodCompartment` and
+`AgentSimulationValidator` now check every field in `__setattr__`, the
+constructor's writes included, so none of their constructors runs a check of
+its own, and nothing is written when a value is refused. A relation between
+two fields is checked by whichever of the two is written second: the dial
+against the vaporizer's maximum, the fresh gas flow against the machine's
+range, the machine's range against the model's envelope - a range reassigned
+on a built circuit to 20 to 30 L/min had left
+`accepted_fresh_gas_flow_range_l_min` inverted at 20 to 10 (`PL-HJ7L`) - and
+each compartment's agent amount against its capacity. A volume or partition
+coefficient now meets that last relation too: one too small for the agent the
+compartment holds is refused, as `set_circuit_volume` refuses a circuit volume
+too small for its agent (`require_room_for_the_agent_held`,
+`core/validation.py`). The circuit holds its agent as a fraction of its
+volume, so a circuit volume written past `set_circuit_volume` cannot overfill
+it and is not refused at the write; it moves the agent with the volume, and the
+next step halts on the agent the accounting identity finds missing
+(§ "Mass-balance identity"), rolled back. The venous pool rolls back past its
+guard for the reason the alveolar and tissue amounts do; the circuit and the
+validator roll back through theirs, which cannot refuse a state
+`capture_state()` produced, since nothing their captured values are held to
+can have moved since.
 
 **Built from an `int` or a `float` and nothing else, with no sign at zero**
 (`PL-LLMN`). Until `PL-LLMN` each guard asked `math.isfinite` and then made
@@ -5501,7 +5535,8 @@ Separating them means a machine profile can narrow what a run will accept and
 can never widen it.
 
 **A machine that overlaps the envelope nowhere is refused when the circuit is
-built**, by `BreathingCircuit.__post_init__`, rather than discovered one
+built**, and when its range is reassigned on a built one, by the check the
+range's write makes (`PL-19Y0`), rather than discovered one
 refused setting at a time: every flow such a profile can deliver is outside
 the envelope and every flow the model supports is outside its range, so each
 individual refusal would be correct while none of them said that the pair is

@@ -38,6 +38,7 @@ from dataclasses import dataclass
 from math import expm1, inf
 from typing import TYPE_CHECKING
 
+from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.core.concentration import (
     Fraction,
     Percent,
@@ -115,6 +116,129 @@ class DeliverableFreshGasFlowRange:
                 "deliverable_fresh_gas_flow_range has a minimum above its maximum "
                 f"({self.minimum_l_min} L/min minimum, {self.maximum_l_min} L/min maximum)"
             )
+
+
+def _accepted_fresh_gas_flow_range_l_min(
+    machine_range: DeliverableFreshGasFlowRange | None,
+) -> tuple[float, float]:
+    """The model's envelope narrowed to `machine_range`, or the envelope alone where it is `None`.
+
+    `BreathingCircuit.accepted_fresh_gas_flow_range_l_min` reads it for the
+    range the circuit holds, and `_require_the_two_flow_claims_overlap` for a
+    range about to be written, so the intersection is stated once.
+    """
+
+    if machine_range is None:
+        return (MINIMUM_FRESH_GAS_FLOW_L_MIN, MAXIMUM_FRESH_GAS_FLOW_L_MIN)
+
+    return (
+        max(MINIMUM_FRESH_GAS_FLOW_L_MIN, machine_range.minimum_l_min),
+        min(MAXIMUM_FRESH_GAS_FLOW_L_MIN, machine_range.maximum_l_min),
+    )
+
+
+def _require_a_machine_range(machine_range: object) -> None:
+    """Refuse a machine range not built as a `DeliverableFreshGasFlowRange`, or `None`.
+
+    The range's constructor is what checks its two ends, so holding one is the
+    proof, as a `Percent` is of a dial. Anything else - a tuple of the two
+    flows, say - was refused until `PL-19Y0` only by the first attribute read
+    of it, in Python's words rather than the simulator's.
+
+    Raises:
+        TypeError: `machine_range` is neither `None` nor a
+            `DeliverableFreshGasFlowRange`. A programming error in the caller
+            rather than a refused setting, as `require_a_number` says
+            (`core/checked_number.py`).
+    """
+
+    if machine_range is not None and not isinstance(machine_range, DeliverableFreshGasFlowRange):
+        raise TypeError(
+            f"deliverable_fresh_gas_flow_range of {shown(machine_range)} has type "
+            f"{type(machine_range).__name__}, not DeliverableFreshGasFlowRange or None: build "
+            "it from the machine profile's two flows, which its constructor checks "
+            "(core/circuit.py)"
+        )
+
+
+def _require_the_two_flow_claims_overlap(
+    machine_range: DeliverableFreshGasFlowRange | None,
+) -> None:
+    """Reject a machine that can deliver no flow the model is claimed over.
+
+    Checked where the range is written, the constructor's write included,
+    rather than discovered one refused setting at a time. A profile whose
+    flowmeters start above `MAXIMUM_FRESH_GAS_FLOW_L_MIN` cannot be simulated
+    at all: every flow it can set is outside the model's envelope and every
+    flow the model supports is outside its own range, so each individual
+    refusal would be correct and none of them would say that the pair is the
+    problem. The test is that the intersection
+    (`_accepted_fresh_gas_flow_range_l_min`) is empty, so the rule is written
+    once.
+
+    Raises:
+        SimulationConfigurationError: the machine's declared range and the
+            model's envelope do not overlap. Nothing is written.
+    """
+
+    if machine_range is None:
+        return
+
+    lowest_accepted, highest_accepted = _accepted_fresh_gas_flow_range_l_min(machine_range)
+
+    if lowest_accepted > highest_accepted:
+        raise SimulationConfigurationError(
+            "this machine can deliver no fresh gas flow the model is claimed over: "
+            f"it delivers {machine_range.minimum_l_min} to "
+            f"{machine_range.maximum_l_min} L/min and the model supports "
+            f"{MINIMUM_FRESH_GAS_FLOW_L_MIN} to {MAXIMUM_FRESH_GAS_FLOW_L_MIN} L/min "
+            f'(docs/MODEL.md, "Supported input ranges")'
+        )
+
+
+def _require_deliverable_flow(
+    fresh_gas_flow_l_min: FreshGasFlow, machine_range: DeliverableFreshGasFlowRange | None
+) -> None:
+    """Reject a fresh gas flow the machine in front of the patient cannot set.
+
+    The second of the two bounds on this control, and the flow arrives
+    inside the first: a `FreshGasFlow` was checked against the *model's*
+    envelope when it was built, and this is the *machine's* range. They
+    are enforced separately and refuse in their own words so that a reader
+    of the refusal can tell which claim was violated — a flow this machine
+    cannot reach is a fact about the device, and one outside the envelope
+    is a statement that the model is not claimed to represent a patient
+    there. Merging them would let a wider flowmeter silently widen the
+    second (`PL-8PS6`).
+
+    A profile that declares no range bounds nothing here, which is the
+    shipped behavior: `reference_circle_system` records an unknown rather
+    than a number, so the envelope alone binds, exactly as it did before
+    this field existed.
+
+    Rejecting rather than clamping, for the reason
+    `require_within_vaporizer_maximum` gives in `core/validation.py`: a
+    silently clamped flow would simulate, display and chart a value the
+    caller did not ask for.
+
+    Raises:
+        SimulationConfigurationError: the flow is outside the machine's
+            declared deliverable range. Nothing is written.
+    """
+
+    if machine_range is None:
+        return
+
+    if not machine_range.minimum_l_min <= fresh_gas_flow_l_min <= machine_range.maximum_l_min:
+        raise SimulationConfigurationError(
+            f"fresh_gas_flow_l_min of {fresh_gas_flow_l_min} is outside what this "
+            f"machine can deliver, {machine_range.minimum_l_min} to "
+            f"{machine_range.maximum_l_min} L/min; the model's supported input range "
+            f"of {MINIMUM_FRESH_GAS_FLOW_L_MIN} to {MAXIMUM_FRESH_GAS_FLOW_L_MIN} L/min "
+            f"is not what refused it (the machine's range is declared in its "
+            f"data/machines/ profile, the model's in docs/MODEL.md, "
+            f'"Supported input ranges")'
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -222,13 +346,13 @@ class BreathingCircuit:
     past 1, which `Fraction` refuses where it is built;
     `core/concentration.py` records that as the type's limit (`PL-4R3W`).
 
-    Each percent and fraction field is checked for its type when the circuit
-    is built and when it is set, and not for its range: a `Percent` or a
-    `Fraction` was checked against 0 to 100 or 0 to 1 when it was built, so
-    holding one is the proof (`PL-4R3W`). The fresh gas flow is checked for
-    its type at every write to its field, in `__setattr__`, so an assignment
-    made past the constructor and the setter is refused as they refuse it
-    (`PL-LBQY`).
+    Every field is checked at every write to it, in `__setattr__`, the
+    constructor's writes included, so an assignment made past the constructor
+    and the setters is refused as they refuse it (`PL-LBQY`, `PL-19Y0`). A
+    percent, a fraction or a flow is checked for its type and not for its
+    range: a `Percent`, a `Fraction` or a `FreshGasFlow` was checked against
+    its range when it was built, so holding one is the proof (`PL-4R3W`,
+    `PL-0YYV`).
 
     `deliverable_fresh_gas_flow_range` is the machine's counterpart of that
     dial maximum, and carries its `None` the same way: "no machine range
@@ -253,25 +377,6 @@ class BreathingCircuit:
     max_delivered_concentration_percent: Percent = Percent(100.0)
     deliverable_fresh_gas_flow_range: DeliverableFreshGasFlowRange | None = None
 
-    def __post_init__(self) -> None:
-        # The fresh gas flow's type was required as the constructor wrote the
-        # field, by `__setattr__` below; what is left to check of it here is
-        # the machine's range.
-        require_positive_finite("circuit_volume_l", self.circuit_volume_l)
-        self._require_the_two_flow_claims_overlap()
-        self._require_deliverable_flow(self.fresh_gas_flow_l_min)
-        require_percent(
-            "max_delivered_concentration_percent", self.max_delivered_concentration_percent
-        )
-        require_positive_finite(
-            "max_delivered_concentration_percent", self.max_delivered_concentration_percent
-        )
-        require_percent("delivered_concentration_percent", self.delivered_concentration_percent)
-        self._require_deliverable(self.delivered_concentration_percent)
-        require_fraction(
-            "inspired_partial_pressure_fraction", self.inspired_partial_pressure_fraction
-        )
-
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
         # Hidden from `mypy` on purpose. A class that defines `__setattr__` is
         # one `mypy` lets assign any attribute name, typed by the method's
@@ -279,37 +384,77 @@ class BreathingCircuit:
         # would pass `--strict` and fail at run time against the slots - on
         # the classes that define one alone. Hidden, `mypy` reads the
         # dataclass's fields and their types as before, and this is the
-        # runtime half for the callers it does not read; its three lines are
-        # checked by their tests rather than by `mypy` (`PL-LBQY`, found at
-        # review).
+        # runtime half for the callers it does not read; its lines are checked
+        # by their tests rather than by `mypy` (`PL-LBQY`, found at review).
 
         def __setattr__(self, name: str, value: object) -> None:
-            """Write a field, refusing a fresh gas flow that was not built as a `FreshGasFlow`.
+            """Write a field, refusing a value the circuit's constructor would refuse.
 
-            The one place a flow is stored on the circuit is this field, so this
-            is where its type is required, for every writer at once: the
-            constructor, `set_fresh_gas_flow`, and an assignment made past both by
-            a caller `mypy` does not read - a test, a notebook, a value typed
-            `Any`. Until `PL-LBQY` that assignment was caught only when the next
-            step rebuilt the settings, after a snapshot had copied the bare
-            `float` and the readout beside the slider had shown it, and a Reset in
-            the meantime left the run paused at it with no notice. A copy, a
-            pickle and `dataclasses.replace` write through it too, because this is
-            a `slots=True` dataclass, whose state a copy or a pickle restores one
-            field at a time through `__setattr__`; a `__dict__` would be updated
-            past it. Nothing is written when it is refused, so the field holds
-            what it held. The
-            machine's range is not checked here: it is a relation the setter and
-            the constructor hold, and `PL-BBMG` records why the dial's bound is
-            not either.
+            Each field is stored in one place, its slot, so its check is made
+            here, for every writer at once: the constructor, the setters, and an
+            assignment made past both by a caller `mypy` does not read - a test,
+            a notebook, a value typed `Any`. Until `PL-LBQY` that assignment met
+            no check, and until `PL-19Y0` only the fresh gas flow's type, so a
+            sevoflurane dial of `Percent(50.0)` past its 8% maximum, a zero
+            circuit volume and an inspired fraction of `1.5` were each stored,
+            for a snapshot to copy and the readout beside the control to show. A
+            copy, a pickle and `dataclasses.replace` write through it too,
+            because this is a `slots=True` dataclass, whose state a copy or a
+            pickle restores one field at a time through `__setattr__`; a
+            `__dict__` would be updated past it. Nothing is written when a value
+            is refused, so the field holds what it held, and the constructor
+            makes no check of its own.
+
+            A relation between two fields is the circuit's, which holds both
+            (`PL-BBMG`), and is checked by whichever of the two is written
+            second: the dial against the vaporizer's maximum, and the flow
+            against the machine's range, which is checked against the model's
+            envelope as it is written (`PL-8PS6`). The constructor writes the
+            dial before the maximum and the flow before the range, so each is
+            held to its partner once the partner is set, and the partner's own
+            write checks the pair. The circuit holds its agent as a fraction of
+            its volume, so a volume written here moves the agent with it, and
+            the next step halts on the agent the accounting finds missing;
+            `set_circuit_volume` is the write that conserves the agent.
 
             Raises:
-                TypeError: `name` is `fresh_gas_flow_l_min` and `value` was not
-                    built as a `FreshGasFlow` (`require_fresh_gas_flow`).
+                TypeError: `value` was not built as the field's type - a
+                    `FreshGasFlow`, a `Percent`, a `Fraction`, or a
+                    `DeliverableFreshGasFlowRange` or `None` - or a volume is
+                    not an `int` or a `float`.
+                SimulationConfigurationError: the volume or the vaporizer
+                    maximum is not positive and finite; the dial is above the
+                    maximum, written as either; the flow is outside the
+                    machine's range, written as either; or the machine's range
+                    overlaps the model's envelope nowhere.
             """
 
-            if name == "fresh_gas_flow_l_min":
+            if name == "circuit_volume_l":
+                require_positive_finite(name, value)
+            elif name == "fresh_gas_flow_l_min":
                 require_fresh_gas_flow(value)
+
+                if hasattr(self, "deliverable_fresh_gas_flow_range"):
+                    _require_deliverable_flow(value, self.deliverable_fresh_gas_flow_range)
+            elif name == "delivered_concentration_percent":
+                require_percent(name, value)
+
+                if hasattr(self, "max_delivered_concentration_percent"):
+                    require_within_vaporizer_maximum(
+                        name, value, self.max_delivered_concentration_percent
+                    )
+            elif name == "inspired_partial_pressure_fraction":
+                require_fraction(name, value)
+            elif name == "max_delivered_concentration_percent":
+                require_percent(name, value)
+                require_positive_finite(name, value)
+                require_within_vaporizer_maximum(
+                    "delivered_concentration_percent", self.delivered_concentration_percent, value
+                )
+            elif name == "deliverable_fresh_gas_flow_range":
+                _require_a_machine_range(value)
+                _require_the_two_flow_claims_overlap(value)
+                _require_deliverable_flow(self.fresh_gas_flow_l_min, value)
 
             super().__setattr__(name, value)
 
@@ -317,8 +462,9 @@ class BreathingCircuit:
     def accepted_fresh_gas_flow_range_l_min(self) -> tuple[float, float]:
         """The lowest and highest fresh gas flow this circuit accepts, in L/min.
 
-        The intersection the module docstring names, stated once: the model's
-        envelope in `core/supported_ranges.py`, narrowed to the machine's
+        The intersection the module docstring names, stated once
+        (`_accepted_fresh_gas_flow_range_l_min`): the model's envelope in
+        `core/supported_ranges.py`, narrowed to the machine's
         `deliverable_fresh_gas_flow_range` where its profile declares one, and
         the envelope alone where it declares none. Both ends are inclusive,
         as both claims are. A flow inside it is one `set_fresh_gas_flow`
@@ -329,116 +475,12 @@ class BreathingCircuit:
         flow the mounted machine cannot set, inviting a refusal the control
         could have made unreachable.
 
-        `_require_the_two_flow_claims_overlap` refuses a circuit whose two
-        claims share no flow, so on a built circuit the first end is never
-        above the second - unless `deliverable_fresh_gas_flow_range` has been
-        reassigned since, past that check, which nothing under `src/` does
-        (`PL-HJ7L`).
+        A range that shares no flow with the envelope is refused wherever it
+        is written, by `_require_the_two_flow_claims_overlap`, so the first
+        end is never above the second (`PL-HJ7L`, `PL-19Y0`).
         """
 
-        machine_range = self.deliverable_fresh_gas_flow_range
-
-        if machine_range is None:
-            return (MINIMUM_FRESH_GAS_FLOW_L_MIN, MAXIMUM_FRESH_GAS_FLOW_L_MIN)
-
-        return (
-            max(MINIMUM_FRESH_GAS_FLOW_L_MIN, machine_range.minimum_l_min),
-            min(MAXIMUM_FRESH_GAS_FLOW_L_MIN, machine_range.maximum_l_min),
-        )
-
-    def _require_the_two_flow_claims_overlap(self) -> None:
-        """Reject a machine that can deliver no flow the model is claimed over.
-
-        Checked once, when the circuit is built, rather than discovered one
-        refused setting at a time. A profile whose flowmeters start above
-        `MAXIMUM_FRESH_GAS_FLOW_L_MIN` cannot be simulated at all: every flow
-        it can set is outside the model's envelope and every flow the model
-        supports is outside its own range, so each individual refusal would be
-        correct and none of them would say that the pair is the problem. The
-        test is that `accepted_fresh_gas_flow_range_l_min`, the intersection,
-        is empty, so the rule is written once.
-
-        Raises:
-            SimulationConfigurationError: the machine's declared range and the
-                model's envelope do not overlap. Nothing is built.
-        """
-
-        machine_range = self.deliverable_fresh_gas_flow_range
-
-        if machine_range is None:
-            return
-
-        lowest_accepted, highest_accepted = self.accepted_fresh_gas_flow_range_l_min
-
-        if lowest_accepted > highest_accepted:
-            raise SimulationConfigurationError(
-                "this machine can deliver no fresh gas flow the model is claimed over: "
-                f"it delivers {machine_range.minimum_l_min} to "
-                f"{machine_range.maximum_l_min} L/min and the model supports "
-                f"{MINIMUM_FRESH_GAS_FLOW_L_MIN} to {MAXIMUM_FRESH_GAS_FLOW_L_MIN} L/min "
-                f'(docs/MODEL.md, "Supported input ranges")'
-            )
-
-    def _require_deliverable_flow(self, fresh_gas_flow_l_min: FreshGasFlow) -> None:
-        """Reject a fresh gas flow the machine in front of the patient cannot set.
-
-        The second of the two bounds on this control, and the flow arrives
-        inside the first: a `FreshGasFlow` was checked against the *model's*
-        envelope when it was built, and this is the *machine's* range. They
-        are enforced separately and refuse in their own words so that a reader
-        of the refusal can tell which claim was violated — a flow this machine
-        cannot reach is a fact about the device, and one outside the envelope
-        is a statement that the model is not claimed to represent a patient
-        there. Merging them would let a wider flowmeter silently widen the
-        second (`PL-8PS6`).
-
-        A profile that declares no range bounds nothing here, which is the
-        shipped behavior: `reference_circle_system` records an unknown rather
-        than a number, so the envelope alone binds, exactly as it did before
-        this field existed.
-
-        Rejecting rather than clamping, for the reason
-        `require_within_vaporizer_maximum` gives in `core/validation.py`: a
-        silently clamped flow would simulate, display and chart a value the
-        caller did not ask for.
-
-        Raises:
-            SimulationConfigurationError: the flow is outside the machine's
-                declared deliverable range. Nothing is written when it is
-                refused.
-        """
-
-        machine_range = self.deliverable_fresh_gas_flow_range
-
-        if machine_range is None:
-            return
-
-        if not machine_range.minimum_l_min <= fresh_gas_flow_l_min <= machine_range.maximum_l_min:
-            raise SimulationConfigurationError(
-                f"fresh_gas_flow_l_min of {fresh_gas_flow_l_min} is outside what this "
-                f"machine can deliver, {machine_range.minimum_l_min} to "
-                f"{machine_range.maximum_l_min} L/min; the model's supported input range "
-                f"of {MINIMUM_FRESH_GAS_FLOW_L_MIN} to {MAXIMUM_FRESH_GAS_FLOW_L_MIN} L/min "
-                f"is not what refused it (the machine's range is declared in its "
-                f"data/machines/ profile, the model's in docs/MODEL.md, "
-                f'"Supported input ranges")'
-            )
-
-    def _require_deliverable(self, delivered_concentration_percent: Percent) -> None:
-        """Reject a concentration the vaporizer in use cannot produce.
-
-        The guard is `require_within_vaporizer_maximum` in
-        `core/validation.py`, shared with the `UptakeEquationSettings` record
-        a run is built from so that the two refuse in one sentence
-        (`PL-BBMG`); it carries why the dial is rejected rather than clamped.
-        This reads the maximum off the circuit, which owns it.
-        """
-
-        require_within_vaporizer_maximum(
-            "delivered_concentration_percent",
-            delivered_concentration_percent,
-            self.max_delivered_concentration_percent,
-        )
+        return _accepted_fresh_gas_flow_range_l_min(self.deliverable_fresh_gas_flow_range)
 
     @property
     def delivered_partial_pressure_fraction(self) -> Fraction:
@@ -519,10 +561,10 @@ class BreathingCircuit:
         when the flow was built as a `FreshGasFlow`, so a flow outside both is
         refused there, against the envelope: it is the stronger statement of
         the two, and the one that holds whichever machine is mounted. What
-        reaches this is checked against the machine's range alone - after its
-        type, which the write below requires too, is required here first, so
-        that a value of the wrong type is refused in the simulator's words
-        rather than by the comparison with the machine's range.
+        reaches this is checked by the write itself, in `__setattr__`: its
+        type first, so that a value of the wrong type is refused in the
+        simulator's words rather than by the comparison with the machine's
+        range, and then the machine's range.
 
         Raises:
             SimulationConfigurationError: the flow is outside what this
@@ -531,12 +573,13 @@ class BreathingCircuit:
                 `FreshGasFlow`. Nothing is written when it is refused.
         """
 
-        require_fresh_gas_flow(fresh_gas_flow_l_min)
-        self._require_deliverable_flow(fresh_gas_flow_l_min)
         self.fresh_gas_flow_l_min = fresh_gas_flow_l_min
 
     def set_delivered_concentration_percent(self, delivered_concentration_percent: Percent) -> None:
         """Set the vaporizer dial in the percent it reads, rejecting what it cannot deliver.
+
+        Both refusals are the write's own, in `__setattr__`, so an assignment
+        made past this setter meets them too (`PL-19Y0`).
 
         Raises:
             TypeError: the dial was not built as a `Percent`, which is what
@@ -548,8 +591,6 @@ class BreathingCircuit:
                 when it is refused.
         """
 
-        require_percent("delivered_concentration_percent", delivered_concentration_percent)
-        self._require_deliverable(delivered_concentration_percent)
         self.delivered_concentration_percent = delivered_concentration_percent
 
     def set_inspired_partial_pressure_fraction(
@@ -561,7 +602,8 @@ class BreathingCircuit:
         holds a fraction. `AgentUptakeSystem` is that caller: the governing
         equations carry the gas phase as fractions, so going through the
         amount would multiply by the volume and divide by it again for
-        nothing.
+        nothing. The fraction's type is required by the write itself, in
+        `__setattr__`.
 
         Raises:
             TypeError: the fraction was not built as a `Fraction`, which is
@@ -569,7 +611,6 @@ class BreathingCircuit:
                 Nothing is written when it is refused.
         """
 
-        require_fraction("inspired_partial_pressure_fraction", inspired_partial_pressure_fraction)
         self.inspired_partial_pressure_fraction = inspired_partial_pressure_fraction
 
     def set_agent_amount(self, agent_amount_l: float) -> None:

@@ -1,3 +1,8 @@
+import copy
+import pickle
+from dataclasses import astuple, replace
+from math import inf, nan
+
 import pytest
 
 from anesthesia_sim.core.agent_simulation_validation import (
@@ -10,6 +15,7 @@ from anesthesia_sim.core.agent_simulation_validation import (
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     AnesthesiaSimulationError,
+    SimulationConfigurationError,
     SimulationExecutionError,
     SimulationNumericalError,
 )
@@ -195,6 +201,92 @@ def test_reset_clears_recorded_external_agent() -> None:
     assert validator.initial_agent_l == 0.2
     assert validator.delivered_agent_l == 0.0
     assert validator.exhausted_agent_l == 0.0
+
+
+@pytest.mark.parametrize("total", ["initial_agent_l", "delivered_agent_l", "exhausted_agent_l"])
+@pytest.mark.parametrize(
+    ("value", "error", "message"),
+    [
+        pytest.param(
+            -0.1, SimulationConfigurationError, " must be nonnegative and finite$", id="negative"
+        ),
+        pytest.param(
+            nan, SimulationConfigurationError, " must be nonnegative and finite$", id="nan"
+        ),
+        pytest.param(
+            inf, SimulationConfigurationError, " must be nonnegative and finite$", id="infinite"
+        ),
+        pytest.param("1", TypeError, " of '1' has type str", id="str"),
+        pytest.param(True, TypeError, " of True has type bool", id="bool"),
+    ],
+)
+def test_a_direct_write_is_held_to_the_constructors_checks(
+    total: str, value: object, error: type[Exception], message: str
+) -> None:
+    """An assignment past the constructor is refused as the constructor refuses it.
+
+    Until `PL-19Y0` the three totals were checked in `__post_init__` alone, so
+    a negative or infinite total written onto a built validator was stored and
+    every later check of the identity read it. Nothing is written when a value
+    is refused.
+    """
+
+    validator = AgentSimulationValidator(
+        initial_agent_l=0.31, delivered_agent_l=0.79, exhausted_agent_l=0.17
+    )
+    held = astuple(validator)
+
+    with pytest.raises(error, match=f"^{total}{message}"):
+        setattr(validator, total, value)
+
+    assert astuple(validator) == held
+
+
+def test_a_total_that_overflows_is_refused_where_it_is_written() -> None:
+    """A running total past the largest float is refused at its write, not carried as an infinity.
+
+    `record_external_agent_transfer` checks each transfer it is handed, and
+    until `PL-19Y0` nothing checked the sum it stored: two of 1.7e308 L made
+    an infinity. Nothing a run delivers comes near it; the write holds the
+    total to what its constructor holds it to, and leaves it as it was.
+    """
+
+    validator = AgentSimulationValidator()
+    validator.record_external_agent_transfer(delivered_agent_l=1.7e308, exhausted_agent_l=0.0)
+
+    with pytest.raises(
+        SimulationConfigurationError, match="^delivered_agent_l must be nonnegative and finite$"
+    ):
+        validator.record_external_agent_transfer(delivered_agent_l=1.7e308, exhausted_agent_l=0.0)
+
+    assert validator.delivered_agent_l == 1.7e308
+
+
+def test_a_copy_of_the_validator_is_held_to_the_same_checks() -> None:
+    """`replace`, a copy and a pickle each write through `__setattr__`, refusing what it refuses.
+
+    `dataclasses.replace` builds a new validator through its constructor's
+    writes, and a copy and a pickle restore the totals one at a time through
+    `__setattr__`, so a total planted past the guard is refused when either is
+    made (`PL-19Y0`).
+    """
+
+    validator = AgentSimulationValidator(
+        initial_agent_l=0.31, delivered_agent_l=0.79, exhausted_agent_l=0.17
+    )
+    refused = "^exhausted_agent_l must be nonnegative and finite$"
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        replace(validator, exhausted_agent_l=-0.17)
+
+    smuggled = copy.copy(validator)
+    object.__setattr__(smuggled, "exhausted_agent_l", -0.17)
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        copy.copy(smuggled)
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        pickle.loads(pickle.dumps(smuggled))
 
 
 def test_the_accounting_tolerances_are_the_documented_release_tolerances() -> None:

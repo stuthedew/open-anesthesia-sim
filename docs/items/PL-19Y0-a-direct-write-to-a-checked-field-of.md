@@ -3,11 +3,13 @@ id: PL-19Y0
 title: A direct write to a checked field of BreathingCircuit, VenousBloodCompartment, TissueGroup, AlveolarCompartment or AgentSimulationValidator skips every check its constructor and setters make: a sevoflurane dial of Percent(50.0) past its 8% vaporizer maximum, a bare-float dial, a zero circuit volume, an inspired fraction of 1.5 and a venous agent amount past capacity are each accepted; only the three flows are guarded (PL-LBQY), and PL-544D covers the alveolar and tissue agent amount alone (found sweeping PL-ZGYX)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/agent_simulation_validation.py, tests/unit/test_circuit.py, tests/unit/test_blood.py, tests/unit/test_tissue.py, tests/unit/test_alveolar.py, tests/unit/test_agent_simulation_validation.py
+touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/core-domain.md, tests/unit/test_circuit.py, tests/unit/test_blood.py, tests/unit/test_tissue.py, tests/unit/test_alveolar.py, tests/unit/test_agent_simulation_validation.py, tests/unit/test_state_capture.py, tests/unit/test_supported_range_edges.py, tests/unit/test_uptake_system_failure.py, tests/reference/test_late_washout_against_published_fits.py, tests/reference/test_published_wash_in_and_elimination.py
 added: 2026-10-11
+closed: 2026-10-17
+pr: 1480
 payoff: a test or notebook can no longer set a 50% sevoflurane dial, a zero circuit volume or an inverted flow range that the screen would then show as if the model had accepted it
 verify: grep -q 'def test_a_direct_write_is_held_to_the_constructors_checks' tests/unit/test_circuit.py && grep -q 'def test_a_direct_write_is_held_to_the_constructors_checks' tests/unit/test_blood.py && grep -q 'def test_a_direct_write_is_held_to_the_constructors_checks' tests/unit/test_tissue.py && grep -q 'def test_a_direct_write_is_held_to_the_constructors_checks' tests/unit/test_alveolar.py && grep -q 'def test_a_direct_write_is_held_to_the_constructors_checks' tests/unit/test_agent_simulation_validation.py
 ---

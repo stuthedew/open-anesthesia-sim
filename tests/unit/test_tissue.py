@@ -1,6 +1,7 @@
 import copy
-from dataclasses import replace
-from math import exp, inf
+import pickle
+from dataclasses import astuple, replace
+from math import exp, inf, nan
 
 import pytest
 
@@ -98,6 +99,197 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
         copy.copy(smuggled)
 
     tissue.agent_amount_l = tissue.capacity_l
+
+    assert tissue.partial_pressure_fraction == 1.0
+
+
+TOO_SMALL_FOR_THE_AGENT_HELD = (
+    r"^{field} of 0.5 is too small for the 2.0 L of agent the test tissue holds: it would "
+    r"leave room for 1.0 L at a partial pressure of one atmosphere \(docs/MODEL.md, "
+    r'"Tissue compartments"\)$'
+)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "error", "message"),
+    [
+        pytest.param(
+            "name",
+            "",
+            SimulationConfigurationError,
+            "^name must be a nonempty string$",
+            id="empty-name",
+        ),
+        pytest.param(
+            "name",
+            "  ",
+            SimulationConfigurationError,
+            "^name must be a nonempty string$",
+            id="blank-name",
+        ),
+        pytest.param("name", 5, TypeError, "^name of 5 has type int, not str$", id="int-name"),
+        pytest.param(
+            "volume_l",
+            0.0,
+            SimulationConfigurationError,
+            "^volume_l must be positive and finite$",
+            id="zero-volume",
+        ),
+        pytest.param(
+            "volume_l",
+            -1.0,
+            SimulationConfigurationError,
+            "^volume_l must be positive and finite$",
+            id="negative-volume",
+        ),
+        pytest.param(
+            "volume_l",
+            nan,
+            SimulationConfigurationError,
+            "^volume_l must be positive and finite$",
+            id="nan-volume",
+        ),
+        pytest.param("volume_l", "2", TypeError, "^volume_l of '2' has type str", id="str-volume"),
+        pytest.param(
+            "volume_l",
+            0.5,
+            SimulationConfigurationError,
+            TOO_SMALL_FOR_THE_AGENT_HELD.format(field="volume_l"),
+            id="volume-under-the-agent-held",
+        ),
+        pytest.param(
+            "perfusion_fraction",
+            0.0,
+            SimulationConfigurationError,
+            "^perfusion_fraction must be positive and finite$",
+            id="zero-perfusion-fraction",
+        ),
+        pytest.param(
+            "perfusion_fraction",
+            7.0,
+            SimulationConfigurationError,
+            "^perfusion_fraction must not exceed 1$",
+            id="perfusion-fraction-above-one",
+        ),
+        pytest.param(
+            "perfusion_fraction",
+            nan,
+            SimulationConfigurationError,
+            "^perfusion_fraction must be positive and finite$",
+            id="nan-perfusion-fraction",
+        ),
+        pytest.param(
+            "blood_gas_partition_coefficient",
+            0.0,
+            SimulationConfigurationError,
+            "^blood_gas_partition_coefficient must be positive and finite$",
+            id="zero-blood-gas-coefficient",
+        ),
+        pytest.param(
+            "blood_gas_partition_coefficient",
+            inf,
+            SimulationConfigurationError,
+            "^blood_gas_partition_coefficient must be positive and finite$",
+            id="infinite-blood-gas-coefficient",
+        ),
+        pytest.param(
+            "tissue_gas_partition_coefficient",
+            0.0,
+            SimulationConfigurationError,
+            "^tissue_gas_partition_coefficient must be positive and finite$",
+            id="zero-tissue-gas-coefficient",
+        ),
+        pytest.param(
+            "tissue_gas_partition_coefficient",
+            0.5,
+            SimulationConfigurationError,
+            TOO_SMALL_FOR_THE_AGENT_HELD.format(field="tissue_gas_partition_coefficient"),
+            id="tissue-gas-coefficient-under-the-agent-held",
+        ),
+        pytest.param(
+            "blood_flow_l_min",
+            -1.0,
+            SimulationConfigurationError,
+            "^blood_flow_l_min must be nonnegative and finite$",
+            id="negative-blood-flow",
+        ),
+        pytest.param(
+            "blood_flow_l_min",
+            inf,
+            SimulationConfigurationError,
+            "^blood_flow_l_min must be nonnegative and finite$",
+            id="infinite-blood-flow",
+        ),
+        pytest.param(
+            "blood_flow_l_min",
+            True,
+            TypeError,
+            "^blood_flow_l_min of True has type bool",
+            id="bool-blood-flow",
+        ),
+        pytest.param(
+            "volume",
+            1.0,
+            AttributeError,
+            "^'TissueGroup' object has no attribute 'volume'",
+            id="misspelt-field",
+        ),
+    ],
+)
+def test_a_direct_write_is_held_to_the_constructors_checks(
+    field: str, value: object, error: type[Exception], message: str
+) -> None:
+    """An assignment past the constructor and the setters is refused as they refuse it.
+
+    Until `PL-19Y0` only the agent amount was checked at the write
+    (`PL-544D`), so `perfusion_fraction = 7.0` and `volume_l = -1.0` were each
+    accepted on a built tissue. A volume or a tissue:gas coefficient is also
+    held to the agent the tissue holds, since either shrinks the capacity the
+    partial pressure is the amount over: 0.5 under the 2.0 L held would put
+    this tissue at two atmospheres. A name that is no field passes the guard
+    to the slots, which refuse it, so a misspelt write cannot leave the field
+    it meant unchanged while appearing to succeed. Nothing is written when a
+    value is refused.
+    """
+
+    tissue = _build_tissue()
+    tissue.set_partial_pressure_fraction(Fraction(0.5))
+    held = astuple(tissue)
+
+    with pytest.raises(error, match=message):
+        setattr(tissue, field, value)
+
+    assert astuple(tissue) == held
+
+
+def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() -> None:
+    """The capacity bound is closed, and `replace`, a copy and a pickle meet the same checks.
+
+    A volume giving a capacity equal to the agent held is a partial pressure
+    of exactly one atmosphere, and is written. `dataclasses.replace` builds a
+    new tissue through its constructor's writes, and a copy and a pickle
+    restore the fields one at a time through `__setattr__`, so a perfusion
+    fraction planted past the guard is refused when either is made rather than
+    carried into the new tissue (`PL-19Y0`).
+    """
+
+    tissue = _build_tissue()
+    tissue.set_partial_pressure_fraction(Fraction(0.5))
+    refused = "^perfusion_fraction must not exceed 1$"
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        replace(tissue, perfusion_fraction=7.0)
+
+    smuggled = copy.copy(tissue)
+    object.__setattr__(smuggled, "perfusion_fraction", 7.0)
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        copy.copy(smuggled)
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        pickle.loads(pickle.dumps(smuggled))
+
+    tissue.volume_l = 1.0
 
     assert tissue.partial_pressure_fraction == 1.0
 
@@ -249,13 +441,15 @@ def test_rejects_invalid_tissue_volume(invalid_value: float) -> None:
 
 @pytest.mark.parametrize("factor", ["volume_l", "tissue_gas_partition_coefficient"])
 def test_a_capacity_factor_that_is_not_a_number_is_refused_under_its_own_name(factor: str) -> None:
-    """The amount's write reads both factors of the capacity first, and names the one refused.
+    """Each factor of the capacity refuses a non-number by its own name, at its own write.
 
     The tissue's counterpart of `tests/unit/test_alveolar.py`'s test of the
-    same shape: `capacity_l` multiplies the volume by the coefficient, so
-    without `require_a_number` on each a `str` in either came back as the
-    multiplication's own `TypeError`, naming neither (`PL-544D`, found at
-    review). The message is `__post_init__`'s own, byte for byte.
+    same shape: `capacity_l` multiplies the volume by the coefficient, and
+    while the amount's write read both before `__post_init__` had checked
+    them, a `str` in either came back as the multiplication's own
+    `TypeError`, naming neither, unless a `require_a_number` on each stood in
+    (`PL-544D`, found at review). Since `PL-19Y0` each factor's own write
+    checks it first.
     """
 
     fields: dict[str, object] = dict(
@@ -275,10 +469,10 @@ def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> No
     """`restore_state` writes what the tissue held, whatever the capacity has become.
 
     The tissue's counterpart of `tests/unit/test_alveolar.py`'s test of the
-    same name (`PL-544D`, found at review): the volume is written past any
-    guard it has or gets (`PL-19Y0`), the rollback writes the captured amount
-    past the capacity guard, and the restored state is the one the step began
-    from, over capacity, for the snapshot's `Fraction` to refuse.
+    same name (`PL-544D`, found at review): the volume is written past its own
+    guard, which since `PL-19Y0` refuses it, the rollback writes the captured
+    amount past the capacity guard, and the restored state is the one the step
+    began from, over capacity, for the snapshot's `Fraction` to refuse.
     """
 
     tissue = _build_tissue()
