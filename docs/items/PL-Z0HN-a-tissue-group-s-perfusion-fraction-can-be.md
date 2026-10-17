@@ -1,10 +1,16 @@
 ---
 id: PL-Z0HN
 title: A tissue group's perfusion fraction can be changed on a built patient, and nothing checks that the fractions still sum to 1, so every later cardiac output change is refused, and its restore moves the tissue flows under a banner that says nothing changed (found reviewing PL-VCP4)
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: safety, defect
 feature: cardiac-output-write-consistency
 touches: src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/app/controller.py, tests/unit/test_patient.py, tests/integration/test_controller.py, docs/MODEL.md
 added: 2026-10-17
+payoff: a perfusion fraction can no longer be changed on a built patient, so the tissue flows cannot drift from the cardiac output under a banner that says nothing changed
+verify: grep -q 'def test_a_perfusion_fraction_written_on_a_built_patient_is_refused' tests/unit/test_patient.py
+reenters: PL-KFNP
 ---
 
 **Problem.** `TissueGroup.__setattr__` accepts a new `perfusion_fraction` on a
@@ -54,3 +60,14 @@ green (5717 passed). The other three setters' restores are tested by
 fractions summing to something other than 1, or a cardiac output change on such
 a patient is refused before anything moves. A test pins the choice, and a test
 reaches the cardiac output's restore or the item says why nothing can.
+
+**Route chosen at triage, 2026-10-17: refuse the write.** The first route is
+taken, as `PL-KFNP` did for the cardiac output. It removes the invalid state,
+which this project prefers to warning about it (`.claude/rules/expert-review.md`,
+"Favor interfaces that prevent errors"). The second route leaves the fractions
+wrong and only stops one of their consequences. `PL-HQF5` asks the same question
+for the blood flows, and its answer should not contradict this one.
+
+**Generator check.** A re-entry of `PL-KFNP`'s mechanism at a sibling field: a
+value on a built patient that takes part in the perfusion relation can be
+written past the check in `PatientCompartments.__post_init__`.

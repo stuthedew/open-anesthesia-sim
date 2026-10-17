@@ -1,9 +1,15 @@
 ---
 id: PL-XJV3
 title: docs/maintainer.md's model choice is dated 2026-09-19 and names Fable 5.1, Opus 5, Sonnet 5 and Haiku 4.5 but not Opus 5.5, Sonnet 5.5 or Haiku 5.5, so its strongest-model and delegable answers and its three reasons against Haiku may no longer hold; the owner moved hard work to Opus 5.5 on 2026-10-14 (found in PL-KLN5)
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: model-evidence
 touches: docs/maintainer.md
 added: 2026-10-17
+payoff: the owner and sessions choose models for hard and delegated work from the current model list, not from one a generation old
+verify: ! grep -qF 'As of 2026-09-19 the strongest available model' docs/maintainer.md
 ---
 
 **Problem.** docs/maintainer.md's model choice is dated 2026-09-19 and names Fable 5.1, Opus 5, Sonnet 5 and Haiku 4.5 but not Opus 5.5, Sonnet 5.5 or Haiku 5.5, so its strongest-model and delegable answers and its three reasons against Haiku may no longer hold; the owner moved hard work to Opus 5.5 on 2026-10-14 (found in PL-KLN5)
@@ -28,3 +34,12 @@ pull request bodies names these model ids (`grep`, 2026-10-17).
 
 **Generator check.** Not a member of a head. The fact is Anthropic's list of
 current models, which only this one dated passage records, so it is one item.
+
+**Why it matters.** Sessions and the owner read this passage to decide which
+model takes a hard item and which takes a delegated one. Its reasons against
+Haiku describe Haiku 4.5, so they may wrongly rule out a current model, or keep
+a model the owner has moved away from.
+
+**Done when.** The passage is dated after 2026-10-17, names the current models
+from the models page with their prices, and says whether each of its three
+reasons against Haiku still holds for Haiku 5.5.

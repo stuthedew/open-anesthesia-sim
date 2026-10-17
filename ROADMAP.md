@@ -5546,6 +5546,15 @@ day (project owner, 2026-10-17, ratified, "Agree", over leaving it a `P2`
 defect deferred from this gate). It is product-lane work and is listed in that
 group.
 
+**`PL-Z0HN` joined this list on 2026-10-17, after the freeze, under the
+exception that admits a `safety` finding whenever it is made.** It was filed
+the same day by the state review of `#1488`. A tissue group's perfusion fraction
+can be written on a built patient, and nothing checks that the fractions still
+sum to 1. The next cardiac output change is then refused, and its restore moves
+every tissue flow under a banner saying the simulation is unchanged. The triage
+pass of 2026-10-17 classed it `safety`, because the screen states a run the
+model is not running. It is product-lane work and is listed in that group.
+
 **Two kinds of group, and only the second is a precondition.** The first is
 debt inside this milestone's own Required scope, cleared *by* it per § "Debt
 inside the milestone's own scope" - the test is whether `Required scope` below
@@ -5766,7 +5775,7 @@ named here, for the reason beat 3 gives.
 - PL-W54S (M) Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
 - PL-JSY5 (S) docs/MODEL.md's readout-row rung and its educational-disclaimer line both assume one window's width and one always-on-screen surface, which the area system makes false
 
-**Cleared before v0.6.0 begins unless deferred, the product lane - 98 entries**
+**Cleared before v0.6.0 begins unless deferred, the product lane - 99 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-0FJ8 (S) A MAC divisor's positivity is checked in five app/formatting.py functions and by nothing that holds it: AgentParameters admits Percent(0.0) built directly, only the loader's PositivePercent refuses one, and format_mac_reference checks nothing, directly or through another
@@ -5863,6 +5872,7 @@ named here, for the reason beat 3 gives.
 - PL-Y4YX (S) PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
 - PL-YD2V (S) Supported run length and the validation section's caveat 4 bound the slow tail on metabolism and fat flow alone, but the fourth compartment this model lacks is the largest term in Yasuda 1991's measured washouts from about hour 2-3 to hour 21-29, inside the 24 h envelope, and neither passage says so
 - PL-YT8N (S) BreathingCircuit.advance_fresh_gas reports a negative exhaust, as low as -3.3e-16 L, at admitted flows from 1e-15 to 1e-6 L/min, because 1 - exp(-dt/tau) loses its digits to cancellation when dt/tau is small; the exhaust it integrates cannot be negative (found fixing PL-B26Y)
+- PL-Z0HN (M) A tissue group's perfusion fraction can be changed on a built patient, and nothing checks that the fractions still sum to 1, so every later cardiac output change is refused, and its restore moves the tissue flows under a banner that says nothing changed (found reviewing PL-VCP4)
 - PL-Z0T3 (S) dataclasses.replace() on PatientCompartments rewrites the tissue and venous flows of the original it shares those sub-objects with, because __post_init__ calls _update_blood_flows on them: a running system is left perfusing at the twin's cardiac output while its snapshot reports the old one, until the next step's tissue-sum check halts the run (found reviewing #1350)
 - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
 - PL-ZH1F (S) RunDefinition.record_change's dial-moved-back branch is tested only on two-segment runs, the one size where segments[:-1] and segments[:1] agree, so a mutant that silently deletes every later stretch (state_at 600 s alveolar 0.01246 against 0.01867) survives all 5734 simulator tests

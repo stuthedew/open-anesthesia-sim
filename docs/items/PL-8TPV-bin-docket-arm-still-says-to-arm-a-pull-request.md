@@ -1,10 +1,16 @@
 ---
 id: PL-8TPV
 title: bin/docket arm still says to arm a pull request after the owner switches its auto-merge off to let another one merge first, so its session can re-arm it against the owner's choice
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
 feature: arm-follows-owner
 touches: subprojects/docket/src/docket/arming.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
+payoff: a pull request the owner holds back by switching auto-merge off stays off, so sessions stop merging work out of the order the owner chose
+verify: grep -q 'def test_an_owner_disarm_is_not_rearmed' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket arm still says to arm a pull request after the owner switches its auto-merge off to let another one merge first, so its session can re-arm it against the owner's choice
@@ -45,3 +51,17 @@ records the fact". The session that builds this chooses the route.
 `bin/docket arm` tells a session to switch off auto-merge that the owner
 switched on after reading the pull request. Both items carry the feature
 `arm-follows-owner`. Only two items share the cause, so it is not a generator.
+
+**Why it matters.** The owner switches auto-merge off to decide the order in
+which pull requests merge. A session that turns it back on, or merges once CI
+passes, overrides that choice and merges work the owner had held back.
+
+**Done when.** After the owner switches auto-merge off on a pull request,
+`bin/docket arm` no longer tells its session to arm it, and says why. A pull
+request that nobody has switched off is still armed when `arm` clears it. A test
+pins both cases.
+
+**Generator check.** Not a member of a head. The fact is "who last changed a
+pull request's auto-merge setting", which nothing records. `PL-XTBF` misreads
+the same fact in the other direction. Two items share it, which is below the
+three a generator needs.

@@ -1,9 +1,14 @@
 ---
 id: PL-5HM5
 title: The bookmark dialog's refusal of a repeated MAC target names the crossing by a Python repr, '(<RecordedQuantity.VESSEL_RICH: 'vessel_rich'>, 0.8)', and the repeated-instant refusal names its instant with no unit
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: ux
 touches: src/anesthesia_sim/app/bookmarks.py, tests/unit/test_bookmarks.py
 added: 2026-10-17
+payoff: a learner who marks the same MAC target or instant twice is told which mark in the dialog's own words, not in a Python repr or a unitless number
+verify: grep -q 'def test_the_repeated_mac_target_refusal_is_pinned_whole' tests/unit/test_bookmarks.py
 ---
 
 **Problem.** The bookmark dialog's refusal of a repeated MAC target names the crossing by a Python repr, '(\<RecordedQuantity.VESSEL_RICH: 'vessel_rich'>, 0.8)', and the repeated-instant refusal names its instant with no unit
@@ -40,3 +45,8 @@ test changes with the fix. It left the MAC-target message unpinned.
 
 **Suggested triage.** Product lane, P3, effort S; class `ux`. It reaches a
 learner only after they repeat a mark.
+
+**Done when.** Both refusals name their key in the reader's terms: the instant
+with its unit in seconds, and the MAC target as its multiple and compartment, as
+`without_mac_target` does. Both messages are pinned whole in
+`tests/unit/test_bookmarks.py`.
