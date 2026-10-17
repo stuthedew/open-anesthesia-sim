@@ -879,3 +879,49 @@ resident set.
 can decide; what stays resident is the principle the owner asked for as an
 instruction, which no check can carry. It shrinks if the judgment half ever
 becomes decidable, and goes if the owner withdraws the principle.
+
+## The pause's lane clause and the fourth friction test, amended 2026-10-17
+
+`PL-KBVW` amended two blocks that were already resident rather than adding one.
+In § "What this project is", the generator pause now binds while an open
+*workflow-lane* item carries `generator: live` - a head whose `touches` lie in
+`workflow_paths`, the lane `Item.lane` reads - where it bound on a head of
+either lane. In § "The queue, and how the project owner works", the
+compounding-friction bullet lists a fourth test beside its three: a cost paid
+on every run, session or commit, at a measured figure. Both were put to the
+project owner on ordinary evidence and ratified on 2026-10-17;
+`docs/WORKING_NOTES.md` § "Decided: the friction batch goes ahead of product
+work" carries the measurements.
+
+**The carrier test.** Each stays under the test the block it amends already
+passed. The pause fires when a session meets a finding and is deciding whether
+to build the mechanism that answers it, which no read precedes, so the clause
+saying which heads bind it has to sit beside the rule: a session holding the
+unamended sentence read `PL-X7D5`, a run-view defect under
+`src/anesthesia_sim/app/`, as a pause on apparatus housekeeping, which is what
+held `PL-ZYHX` after the owner had decided yes on it. The friction bullet fires
+before the session would have any reason to load the `docket` skill, as the
+group above names it, and a test the bullet does not list is a ground the
+finding session never has: `PL-4Z5Y`'s cost was measured in its own brief and
+it still waited 20 days, because none of the three tests reached a cost paid
+per run. Neither clause is decidable by a check: which lane a head is in is
+read by `Item.lane` already, but whether the pause applies is asked at the
+moment of a finding, by the session, and whether a cost is measured and
+recurring is the judgment the bullet asks for.
+
+**What was replaced, and why nothing else is cut.** The pause's "any open
+item" became "any open workflow-lane item", in its opening sentence and in the
+sentence that says when the pause ends, and its ratification clause records
+what it was narrowed over; the friction bullet's "three tests" became "four",
+and the new test carries its own decision record. 297 characters net on the
+pause block and 328 on the friction bullet, 625 in all, by the count `make
+check` applies to the resident set. Nothing else in either block is
+superseded: the decision records they carry are what a later session reopens
+them on, and the pause's `PL-CT07` and `PL-6Q9L` sentences describe the
+mechanism as narrowed without change.
+
+**What should retire it.** The lane clause goes with the pause itself, when
+the owner ends the rule. The fourth test shrinks if a ranking term ever carries
+the measured cost: `docs/WORKING_NOTES.md` records the `saves:` field that was
+deferred and the inflow at which it is built, and the bullet would then name
+the field rather than describe the property.
