@@ -12,7 +12,7 @@ what one drawn frame reads (`PL-RD3B`). Neither imports this module, so a
 reader of either is not reading the boundary as well.
 """
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, fields, replace
 from math import isfinite
 
@@ -2126,37 +2126,47 @@ class SimulationController:
     # argument.
 
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: FreshGasFlow) -> None:
-        circuit = self._state.uptake_system.circuit
-        previous_value = circuit.fresh_gas_flow_l_min
-        self._state.uptake_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
+        system = self._state.uptake_system
+        previous_value = system.circuit.fresh_gas_flow_l_min
+        system.set_fresh_gas_flow(fresh_gas_flow_l_min)
         self._record_control_change(
-            ControlInput.FRESH_GAS_FLOW, previous_value, circuit.fresh_gas_flow_l_min
+            ControlInput.FRESH_GAS_FLOW,
+            previous_value,
+            system.circuit.fresh_gas_flow_l_min,
+            restore=lambda: system.set_fresh_gas_flow(previous_value),
         )
 
     def set_delivered_concentration_percent(self, delivered_concentration_percent: Percent) -> None:
-        circuit = self._state.uptake_system.circuit
-        previous_value = circuit.delivered_concentration_percent
-        self._state.uptake_system.set_delivered_concentration_percent(
-            delivered_concentration_percent
-        )
+        system = self._state.uptake_system
+        previous_value = system.circuit.delivered_concentration_percent
+        system.set_delivered_concentration_percent(delivered_concentration_percent)
         self._record_control_change(
-            ControlInput.DELIVERED, previous_value, circuit.delivered_concentration_percent
+            ControlInput.DELIVERED,
+            previous_value,
+            system.circuit.delivered_concentration_percent,
+            restore=lambda: system.set_delivered_concentration_percent(previous_value),
         )
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: AlveolarVentilation) -> None:
-        alveoli = self._state.uptake_system.alveoli
-        previous_value = alveoli.alveolar_ventilation_l_min
-        self._state.uptake_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
+        system = self._state.uptake_system
+        previous_value = system.alveoli.alveolar_ventilation_l_min
+        system.set_alveolar_ventilation(alveolar_ventilation_l_min)
         self._record_control_change(
-            ControlInput.ALVEOLAR_VENTILATION, previous_value, alveoli.alveolar_ventilation_l_min
+            ControlInput.ALVEOLAR_VENTILATION,
+            previous_value,
+            system.alveoli.alveolar_ventilation_l_min,
+            restore=lambda: system.set_alveolar_ventilation(previous_value),
         )
 
     def set_cardiac_output(self, cardiac_output_l_min: CardiacOutput) -> None:
-        patient = self._state.uptake_system.patient
-        previous_value = patient.cardiac_output_l_min
-        self._state.uptake_system.set_cardiac_output(cardiac_output_l_min)
+        system = self._state.uptake_system
+        previous_value = system.patient.cardiac_output_l_min
+        system.set_cardiac_output(cardiac_output_l_min)
         self._record_control_change(
-            ControlInput.CARDIAC_OUTPUT, previous_value, patient.cardiac_output_l_min
+            ControlInput.CARDIAC_OUTPUT,
+            previous_value,
+            system.patient.cardiac_output_l_min,
+            restore=lambda: system.set_cardiac_output(previous_value),
         )
 
     def begin_control_adjustment(self) -> None:
@@ -2182,7 +2192,12 @@ class SimulationController:
         self._open_adjustment_control = None
 
     def _record_control_change(
-        self, control: ControlInput, previous_value: float, new_value: float
+        self,
+        control: ControlInput,
+        previous_value: float,
+        new_value: float,
+        *,
+        restore: Callable[[], None],
     ) -> None:
         """Record one setting change, after the core has accepted it.
 
@@ -2190,6 +2205,20 @@ class SimulationController:
         refused setting record nothing: the core raises before this line is
         reached, the exception reaches the interface, and the run - which
         the core left untouched - keeps a timeline that says so.
+
+        **A value its compartment accepted can still be refused here**
+        (`PL-VCP4`). A compartment checks its own field, and the settings
+        record checks the fields together, so tissue flows set past their
+        patient (`PL-HQF5`) leave every other setting's change refused when
+        the record is built, after the setter has written. `restore` writes
+        the previous value back through the same setter before the refusal is
+        raised, so the compartment, the definition and the timeline all hold
+        the setting in force before, and the interface's word that the
+        simulation is unchanged is true. It cannot be refused in turn, since
+        the value it writes was in force. The cardiac output's write is the
+        repair instead - `set_cardiac_output` perfuses every compartment at
+        the output written, so its record builds - and its `restore`
+        perfuses them at the previous output.
 
         Both values are read off the compartment that holds them rather
         than taken from the caller's argument. The core rejects an
@@ -2216,12 +2245,20 @@ class SimulationController:
         if new_value == previous_value:
             return
 
+        # Built before anything is recorded, because it is the one thing here
+        # the core can refuse, above.
+        try:
+            settings = self._state.uptake_system.equation_settings()
+        except SimulationConfigurationError:
+            restore()
+            raise
+
         # The definition first, because it is the run: the timeline below records
         # the acts a reader sees, and every branch under it is about how those
         # acts are grouped and displayed. Both are fed from here rather than
         # from the four setters, because this is the one place that means "the
         # core accepted a setting change".
-        self._run_definition.record_change(self._state.uptake_system.equation_settings())
+        self._run_definition.record_change(settings)
 
         if control is not self._open_adjustment_control:
             self._adjustment_count += 1
