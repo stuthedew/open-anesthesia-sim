@@ -182,12 +182,13 @@ and Kharasch ED, *Biotransformation of sevoflurane*, Anesth Analg
 from __future__ import annotations
 
 import cmath
+import inspect
 import math
 import pickle
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from functools import cache
-from typing import Literal
+from typing import Literal, NamedTuple
 
 import numpy
 import pytest
@@ -1572,8 +1573,11 @@ def test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent(
     checked across the removals too, as it is for the open-circuit discards.
     """
 
-    without = washout_curve("sevoflurane", condition)
+    # The sink's curve first: no other test reads it, so the worker
+    # `tests/conftest.py` starts this test on computes it at once
+    # rather than waiting on the curve without it (`PL-4Z5Y`).
     with_sink = washout_curve("sevoflurane", condition, HEPATIC_ELIMINATION_RATE_CONSTANT_PER_MIN)
+    without = washout_curve("sevoflurane", condition)
 
     assert with_sink.agent_accounting.passes_validation, (
         f"{condition}: the sink broke the model's agent accounting: {with_sink.agent_accounting}"
@@ -1611,3 +1615,67 @@ def test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent(
         f"{condition}: the widest departure from the fitted curve after five minutes is "
         f"{widest_departure:.2f}, no longer the 20 to 50% the sink's few percent is read against"
     )
+
+
+class CurveRead(NamedTuple):
+    """One `washout_curve` call with every argument named: the curve it reads."""
+
+    agent_id: str
+    condition: Condition
+    hepatic_elimination_rate_constant_per_min: float
+    muscle_tissue_gas_partition_coefficient: float | None
+    elimination_duration_min: int
+
+
+def _read(*arguments: object) -> CurveRead:
+    """A call's arguments as `_washout_curve()` binds them, its own defaults filled in."""
+
+    bound = inspect.signature(_washout_curve).bind(*arguments)
+    bound.apply_defaults()
+    return CurveRead(**bound.arguments)
+
+
+#: For each test that reads a curve, the `washout_curve` calls it makes, in
+#: the order it makes them, from the test's own parameters. `tests/conftest.py`
+#: reads it to start each curve at the head of a different xdist worker's first
+#: slice, rather than 522 tests into the first worker's (`PL-4Z5Y`). A call
+#: left out of this table, or out of order, costs speed alone: whichever test
+#: reads a curve first computes it, wherever it runs.
+CURVES_READ: dict[Callable[..., None], Callable[..., tuple[CurveRead, ...]]] = {
+    test_the_first_24_hours_of_elimination_against_the_published_mean_curves: (
+        lambda fit, condition: (_read(fit.agent_id, condition),)
+    ),
+    test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio: (
+        lambda agent_id, condition: (_read(agent_id, condition),)
+    ),
+    test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4: (
+        lambda fit, condition: (
+            _read(fit.agent_id, condition),
+            _read(
+                fit.agent_id,
+                condition,
+                0.0,
+                _muscle_coefficient_at_the_fitted_time_constant(fit),
+                MUSCLE_VARIATION_DURATION_MIN,
+            ),
+        )
+    ),
+    test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones: (
+        lambda fit: (
+            _read(fit.agent_id, "open circuit"),
+            _read(
+                fit.agent_id,
+                "open circuit",
+                0.0,
+                _muscle_coefficient_at_the_fitted_time_constant(fit),
+                MUSCLE_VARIATION_DURATION_MIN,
+            ),
+        )
+    ),
+    test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent: (
+        lambda condition: (
+            _read("sevoflurane", condition, HEPATIC_ELIMINATION_RATE_CONSTANT_PER_MIN),
+            _read("sevoflurane", condition),
+        )
+    ),
+}
