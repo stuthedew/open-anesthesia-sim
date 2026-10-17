@@ -130,13 +130,24 @@ question above, this part still happens.
 **Decision needed.** Should exploration subagents run on a cheaper model, and
 which one?
 
-**Recommendation:** keep Explore on the session's model by default, and
-build the project Explore file anyway, with no `model` line, for what it adds
-at any model: the report footer naming the scope searched and not searched,
-read-only tools, and the per-call `model: haiku` override, which a session
-passes only for a lookup it knows is quick, with `effort: medium`. Remove
-the variable. The same reasoning sets effort, under *Effort* below. Revised a
-third time on 2026-10-17, from Sonnet 5.5, after the owner asked whether the
+**Recommendation:** keep Explore on the session's model and effort, and
+cheapen no search by any route. Build the project Explore file anyway, with
+no `model` or `effort` line, for what it adds at any model: the report footer
+naming the scope searched and not searched, and read-only tools. Remove the
+variable. Take the saving where it is free of recall: a lookup that is
+genuinely quick, one symbol or one path, is a Grep or Glob in the main
+session, which is exhaustive, and never an Explore call at all. A per-call
+cheaper model and lower effort for "quick lookups" was recommended earlier
+on 2026-10-17 and withdrawn the same day, when the owner asked whether it
+survived the test that withdrew the cheaper defaults. It does not. The
+session judges a search quick before running it, so the judgment is made by
+the one party that does not yet know what the search will find; a wrong
+judgment is a thorough search run cheap, which is the tail; the upside of a
+right one is about $0.50 per lookup; and Explore exists for broad searches,
+so the class of quick Explore calls is small and ill-defined. A rule with a
+bounded, small, infrequent upside and the tail as its failure is the same
+shape the cheaper defaults had. The same reasoning sets effort, under
+*Effort* below. Revised a third time on 2026-10-17, from Sonnet 5.5, after the owner asked whether the
 cost of an escaped miss counts only the fix. It had: the arithmetic under
 *Silent misses* priced an escaped miss at one later fix, $10, and nothing for
 the work done under the wrong result before it was found. *The tail of an
@@ -323,13 +334,14 @@ ranking. It raises every bounded forgotten-case figure, the quick lookup at
 Opus 5.5 included, to perhaps $0.60.
 
 Recommendation on effort, by the same rule as the model: no `effort` line in
-the file, so a thorough search inherits the session's level, and a quick
-lookup passes `effort: medium` with `model: haiku`, which is Haiku 5.5's own
-documented starting level; `low` is the level the documentation says skips
+the file, so every search inherits the session's level, and no per-call
+lowering, for the reason given under *Recommendation*. Were a per-call
+lowering ever taken on a measurement, `medium` is Haiku 5.5's own documented
+starting level and `low` is the level the documentation says skips
 searches. A per-subagent effort does not touch the main session's prompt
 cache, since the subagent is its own conversation; changing the session's own
 `/effort` part-way does, so the lever belongs on the subagent and not on the
-session. The forgotten case under this default is a quick lookup
+session. The forgotten case under this default is a lookup
 over-thought, bounded; under a lower default it is a thorough search that
 skipped a search, with the tail. The number that would change it: an effort
 sweep on the same 20-search set, which is the documentation's own advice for
