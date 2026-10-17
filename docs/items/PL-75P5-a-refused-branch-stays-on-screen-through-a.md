@@ -3,15 +3,17 @@ id: PL-75P5
 title: A refused branch stays on screen through a trunk Reset on a one-run dashboard, because _handle_case_restarted returns before it clears _fork_refusal: the banner names an instant the reset run no longer holds
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: reset-aftermath
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, docs/MODEL.md, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py, docs/items/PL-75P5-a-refused-branch-stays-on-screen-through-a.md, docs/items/PL-08SS-simulationview-handle-fork-and-handle-halt-fork.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-22
+closed: 2026-10-17
+pr: 1476
 payoff: a learner who resets after a refused branch stops seeing a refusal that names an instant the restarted case no longer holds
 verify: grep -q 'def test_a_refused_branch_does_not_survive_a_one_run_reset' tests/integration/test_simulation_view.py
-recurrences: 2026-10-12 PL-08SS, 2026-10-12 PL-MMNX
+recurrences: 2026-10-12 PL-08SS withdrawn 2026-10-17 PL-75P5, 2026-10-12 PL-MMNX withdrawn 2026-10-17 PL-75P5
 ---
 
 **Problem.** A refused branch stays on screen through a trunk Reset on a one-run dashboard, because _handle_case_restarted returns before it clears _fork_refusal: the banner names an instant the reset run no longer holds
@@ -55,3 +57,31 @@ holds it.
 **Premise re-read 2026-09-22 (`PL-14QR`, triage).** `_handle_case_restarted` still returns at
 `if self._case is None or len(self._runs) == 1:`, which comes before its
 `self._fork_refusal = None`. The order the brief describes stands.
+
+**Re-confirmed and fixed 2026-10-17.** The guard still stood as the re-read
+above found it. The judgment the brief asked for came back with one more step
+there by position: the case rebuild. `BranchedCase(trunk)` answers to the run
+that ended, as the refusal does, and the `case` property's docstring already
+says the case is replaced whenever the trunk starts over - yet with one run on
+screen it was skipped, so a branch the case kept without drawing (`PL-08SS`'s
+fork) outlived the Reset. `_handle_case_restarted` now returns early only for a
+dashboard with no case; it rebuilds the case and clears `_fork_refusal` on every
+trunk Reset, and only the layout work - dropping runs, restacking, renaming -
+waits for a second run. The refusal test is the one `verify:` names and goes
+through a real refusal, an offered instant with no keyframe, rather than a
+patched `fork_at`. A second test,
+`test_a_one_run_reset_leaves_a_case_with_no_branches`, holds the rebuild. Both
+failed on the old guard and pass on the new one. `RunView` needed no change, and
+`docs/MODEL.md` makes no statement about what a trunk Reset does to the fork
+panel, so neither file moved. Rebuilding the case on a one-run Reset goes
+past the refusal the brief named (project owner, 2026-10-17, ratified, over
+clearing only the refusal).
+
+**The two recurrence matches are withdrawn: neither is this mechanism filed
+again.** `PL-MMNX` is `_halt_every_run` not restating a halt on the fork panel,
+which is the `every-control-restates-the-halt` group's mechanism and shares
+nothing with this guard but the panel. `PL-08SS`'s own defect is ordering -
+the case keeping a branch before `add_run` has read the snapshot that draws it -
+and that is still open. It met this guard only in its Reset half, which the
+case rebuild above closes. Two items touching one guard is below the generator
+count in any case, so nothing is recorded as `root-cause-of:`.
