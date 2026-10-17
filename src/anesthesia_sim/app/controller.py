@@ -12,7 +12,7 @@ what one drawn frame reads (`PL-RD3B`). Neither imports this module, so a
 reader of either is not reading the boundary as well.
 """
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, fields, replace
 from math import isfinite
 
@@ -2121,10 +2121,10 @@ class SimulationController:
         Raises:
             SimulationConfigurationError: If the settings record the run's
                 definition opens on cannot be built from what the
-                compartments hold - tissue flows that no longer sum to the
-                cardiac output, which a checked output written onto the
-                patient past `set_cardiac_output` leaves, the one write the
-                type-only guard admits (`PL-LBQY`). Raised before anything is
+                compartments hold. That happens when the tissue flows no
+                longer sum to the cardiac output, for example after a
+                tissue's blood flow was set directly on the tissue
+                (`PL-HQF5`). Raised before anything is
                 cleared, so the run is exactly as it was: still running if it
                 was, its state, definition, timeline and any recorded failure
                 untouched. The interface halts the run on it
@@ -2172,37 +2172,47 @@ class SimulationController:
     # argument.
 
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: FreshGasFlow) -> None:
-        circuit = self._state.uptake_system.circuit
-        previous_value = circuit.fresh_gas_flow_l_min
-        self._state.uptake_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
+        system = self._state.uptake_system
+        previous_value = system.circuit.fresh_gas_flow_l_min
+        system.set_fresh_gas_flow(fresh_gas_flow_l_min)
         self._record_control_change(
-            ControlInput.FRESH_GAS_FLOW, previous_value, circuit.fresh_gas_flow_l_min
+            ControlInput.FRESH_GAS_FLOW,
+            previous_value,
+            system.circuit.fresh_gas_flow_l_min,
+            restore=lambda: system.set_fresh_gas_flow(previous_value),
         )
 
     def set_delivered_concentration_percent(self, delivered_concentration_percent: Percent) -> None:
-        circuit = self._state.uptake_system.circuit
-        previous_value = circuit.delivered_concentration_percent
-        self._state.uptake_system.set_delivered_concentration_percent(
-            delivered_concentration_percent
-        )
+        system = self._state.uptake_system
+        previous_value = system.circuit.delivered_concentration_percent
+        system.set_delivered_concentration_percent(delivered_concentration_percent)
         self._record_control_change(
-            ControlInput.DELIVERED, previous_value, circuit.delivered_concentration_percent
+            ControlInput.DELIVERED,
+            previous_value,
+            system.circuit.delivered_concentration_percent,
+            restore=lambda: system.set_delivered_concentration_percent(previous_value),
         )
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: AlveolarVentilation) -> None:
-        alveoli = self._state.uptake_system.alveoli
-        previous_value = alveoli.alveolar_ventilation_l_min
-        self._state.uptake_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
+        system = self._state.uptake_system
+        previous_value = system.alveoli.alveolar_ventilation_l_min
+        system.set_alveolar_ventilation(alveolar_ventilation_l_min)
         self._record_control_change(
-            ControlInput.ALVEOLAR_VENTILATION, previous_value, alveoli.alveolar_ventilation_l_min
+            ControlInput.ALVEOLAR_VENTILATION,
+            previous_value,
+            system.alveoli.alveolar_ventilation_l_min,
+            restore=lambda: system.set_alveolar_ventilation(previous_value),
         )
 
     def set_cardiac_output(self, cardiac_output_l_min: CardiacOutput) -> None:
-        patient = self._state.uptake_system.patient
-        previous_value = patient.cardiac_output_l_min
-        self._state.uptake_system.set_cardiac_output(cardiac_output_l_min)
+        system = self._state.uptake_system
+        previous_value = system.patient.cardiac_output_l_min
+        system.set_cardiac_output(cardiac_output_l_min)
         self._record_control_change(
-            ControlInput.CARDIAC_OUTPUT, previous_value, patient.cardiac_output_l_min
+            ControlInput.CARDIAC_OUTPUT,
+            previous_value,
+            system.patient.cardiac_output_l_min,
+            restore=lambda: system.set_cardiac_output(previous_value),
         )
 
     def begin_control_adjustment(self) -> None:
@@ -2228,7 +2238,12 @@ class SimulationController:
         self._open_adjustment_control = None
 
     def _record_control_change(
-        self, control: ControlInput, previous_value: float, new_value: float
+        self,
+        control: ControlInput,
+        previous_value: float,
+        new_value: float,
+        *,
+        restore: Callable[[], None],
     ) -> None:
         """Record one setting change, after the core has accepted it.
 
@@ -2236,6 +2251,26 @@ class SimulationController:
         refused setting record nothing: the core raises before this line is
         reached, the exception reaches the interface, and the run - which
         the core left untouched - keeps a timeline that says so.
+
+        **The settings record can refuse a value that its compartment
+        accepted** (`PL-VCP4`). A compartment checks only its own field, but
+        the record checks the fields against each other. Suppose a tissue's
+        blood flow was set directly on the tissue, so that the tissue flows
+        no longer sum to the cardiac output (`PL-HQF5`). Then building the
+        record fails for every setting except the cardiac output, and it
+        fails after the setter has already written the new value. So
+        `restore` writes the previous value back through the same setter
+        before the error is raised. The compartment, the run's definition
+        and the timeline then all hold the previous setting, and the
+        interface is right to say that the simulation is unchanged.
+        `restore` cannot fail, because it writes a value that was in force.
+
+        A cardiac output change repairs that mismatch instead of failing on
+        it, because `set_cardiac_output` sets every compartment's flow from
+        the new output. The record can still refuse one when the tissues'
+        perfusion fractions no longer sum to 1 (`PL-Z0HN`). Its `restore`
+        then puts the previous output back, but it sets the flows from the
+        changed fractions, so the flows are not the ones that were in force.
 
         Both values are read off the compartment that holds them rather
         than taken from the caller's argument. The core rejects an
@@ -2262,12 +2297,20 @@ class SimulationController:
         if new_value == previous_value:
             return
 
+        # Build the record before recording anything, because building it is
+        # the only step here that the core can refuse (see the docstring).
+        try:
+            settings = self._state.uptake_system.equation_settings()
+        except SimulationConfigurationError:
+            restore()
+            raise
+
         # The definition first, because it is the run: the timeline below records
         # the acts a reader sees, and every branch under it is about how those
         # acts are grouped and displayed. Both are fed from here rather than
         # from the four setters, because this is the one place that means "the
         # core accepted a setting change".
-        self._run_definition.record_change(self._state.uptake_system.equation_settings())
+        self._run_definition.record_change(settings)
 
         if control is not self._open_adjustment_control:
             self._adjustment_count += 1
