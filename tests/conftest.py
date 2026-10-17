@@ -12,8 +12,30 @@ unrelated to coverage (`PL-YCWZ`'s pre-port survey, 2026-09-14).
 `setdefault`, not assignment: a developer running the suite on a desktop with
 a display may set the variable themselves to watch a test render, and nothing
 here should override that.
+
+`pytest_configure_node` hands each xdist worker the `--dist` mode dealing to
+it, because a worker's own `config.option.dist` reads `no` - pytest-xdist's
+`setup_config` sets it so - and `tests/reference/conftest.py` mirrors one
+mode's dealing and has to know it is that mode (`PL-4Z5Y`). It is here rather
+than beside its reader because it runs on the controller, which collects
+nothing and so never loads a conftest below this one.
 """
 
+from __future__ import annotations
+
 import os
+from typing import TYPE_CHECKING
+
+import pytest
+
+if TYPE_CHECKING:
+    from xdist.workermanage import WorkerController
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+
+@pytest.hookimpl(optionalhook=True)
+def pytest_configure_node(node: WorkerController) -> None:
+    """Record the controller's `--dist` mode where a worker can read it."""
+
+    node.workerinput["dist"] = node.config.getoption("dist")

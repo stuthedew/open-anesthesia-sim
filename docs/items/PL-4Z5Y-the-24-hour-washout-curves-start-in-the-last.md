@@ -6,11 +6,11 @@ effort: S
 status: ready
 classes: infra, test
 feature: ci-cost
-touches: tests/reference/test_late_washout_against_published_fits.py, tests/reference/conftest.py
+touches: tests/reference/test_late_washout_against_published_fits.py, tests/reference/conftest.py, tests/conftest.py, tests/unit/test_reference_conftest.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
 payoff: a slow CI runner's pytest step falls from 280 s toward 240 s, and the washout curves stop being the last thing every run waits on
-verify: grep -q 'def pytest_collection_modifyitems' tests/reference/conftest.py
+verify: grep -q '^\*\*Trial read, ' docs/items/PL-4Z5Y-the-24-hour-washout-curves-start-in-the-last.md
 not-delegable: whether the trial stays is the slow CI runners' median pytest step over at least five runs after it merges, which no command can take beforehand
 ---
 
