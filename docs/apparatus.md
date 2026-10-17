@@ -282,8 +282,9 @@ itself. `_StrictPayload`'s docstring says that the `_...Payload`/public-
 dataclass pairs exist so the rest of `core/` never imports Pydantic;
 `docs/MODEL.md` "The reproducibility guarantee" says that a run is a function of
 its inputs and of the number of steps taken and of nothing else — so the run
-loop reads no clock; and `CLAUDE.md`'s first architecture rule keeps simulation
-code independent of the UI toolkit, which `ROADMAP.md` § "Completed: v0.4.26 - the
+loop reads no clock; and `docs/ARCHITECTURE.md` § "Layering" keeps simulation
+code independent of the UI toolkit (a `CLAUDE.md` bullet until `PL-ZYHX`
+retired it to this tool on 2026-10-17), which `ROADMAP.md` § "Completed: v0.4.26 - the
 interface moves to Qt" turned into a figure — exactly three modules imported
 Flet — and reasoned from while the port ran; and `docs/ARCHITECTURE.md`
 § "Layering" says the

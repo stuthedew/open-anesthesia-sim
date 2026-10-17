@@ -53,6 +53,8 @@ preceded by a read.
 | "Restarting a branch that carries nothing of its own is a reset rather than a merge" | a clause of the base-merge bullet, § "The queue" | `bin/docket branch`'s restart line, from `format_branch_state` in `subprojects/docket/src/docket/render.py`, pinned by `test_the_branch_state_line_prints_the_command_for_each_state` in `subprojects/docket/tests/test_vcs.py` | Dropped when `PL-6MW8` rewrote the bullet for strict up-to-date checks. The rewritten rule is about open pull requests, and a branch with nothing of its own has none. `bin/docket branch` prints the restart command at the moment it applies, which was confirmed by running its test before the clause was removed. The fuller restart recipe was routed out earlier, in this table's row on how to restart a merged branch. |
 | "Run pytest, Ruff, and the configured type checker before finishing" | 70 characters, § "Architecture and development discipline" | nothing — it stays resident, once | A de-duplication rather than a routing. Twenty-seven lines below, equally resident, § "Session and tool-use efficiency" states the same rule more precisely: it names `mypy` rather than "the configured type checker", and adds when to run it in full and what to use while iterating. Nothing was in the deleted line that is not in the surviving one (`PL-4H01`). |
 | Which claim shapes hold a captures-only pull request unarmed, and the five decisions behind them | 1,095 characters of `CLAUDE.md`'s commit-and-push bullet, from "A claim on the branch leaves it unarmed" to "merge half the work" | `bin/docket arm`, from `subprojects/docket/src/docket/arming.py`, whose docstring now carries the decision records, pinned by the `test_arm_` tests in `subprojects/docket/tests/test_cli.py` | A claim is a recorded fact since `PL-3FYK`, so whether one rides a branch is read from the tree instead of recognized by each session from a catalog of shapes - and each shape the catalog missed had been an item (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`). What stays resident, at 520 characters, is the trigger - ask before arming and before every later push - and what each answer does to the pull request, because a push is preceded by no read. The same pass rewrote three sentences, in the housekeeping and naming bullets and in rule 14, that described every in-flight guard as matching commit subjects, which the claim record ends (`PL-MB2W` § "Deleted"); net across both files, 709 fewer characters (`PL-DDYD`). |
+| "Keep scientific/simulation code independent of the UI toolkit" | 65 characters with its newline, § "Architecture and development discipline" | `tools/import_boundary_check.py`: `PySide6`, `pyqtgraph`, `numpy` and `anesthesia_sim.app` permitted in no module under `core/`, and `flet` and `flet_charts` in none under `src/`, pinned by `tests/unit/test_import_boundary_check.py` | Retired under § "When a resident rule is retired", below. Its failure is an import, which the check reads from the tracked tree at every `make check` and in CI, where the sentence fired only when a session remembered it. Observed firing on 2026-10-17, before the line was removed: with a staged one-line module under `core/` holding `from PySide6 import QtWidgets`, the tool reported 56 modules read and 1 error naming that line and exited 1; without it, 55 modules and 0 errors; its 70 tests passed. The check, `docs/apparatus.md` and `docs/ARCHITECTURE.md` cited `CLAUDE.md` as the rule's source, which the 2026-09-16 correction below had warned would strand the citation, so all three now cite `docs/ARCHITECTURE.md` § "Layering", the section that states the layering the boundaries enforce (`PL-ZYHX`). |
+| "Put no simulation calculations in UI callbacks" | 50 characters with its newline, § "Architecture and development discipline" | `.claude/rules/ui-calculations.md`, loaded by `paths: /src/anesthesia_sim/app/**` | A callback is written only with a file under `app/` open, so the rule reaches the one moment it binds, every time, which is the promise the refused path-scoping of every invariant to `src/**` could not make. It stays prose there, because whether an expression is a simulation calculation is the judgment half no check decides, and the rule now also says where the line sits, `docs/ARCHITECTURE.md` § "Layering", and what is checked around it (`PL-ZYHX`). |
 
 Net: 548 resident lines to 541, and 39613 characters to 38845. Both units are
 here because they answer different questions and `PL-QV1F` made characters the
@@ -277,36 +279,48 @@ resident at all — so what replaced it states the true rule and points at the
 one document that decides it, which takes more words than a false absolute
 did. No block arrived or left, and the routing argument above is untouched.
 
-**Fires before a first write, which no read precedes.** The seven architecture
-invariants — simulation code independent of the UI toolkit, no calculation in a
-UI callback, simulation time as explicit state, deterministic results, tests
-with every core behavior change, validated versioned parameter files, no
-executable equations in data — plus the milestone bound and the quality suite.
-Three of them are *also* enforced by a check (`tools/import_boundary_check.py`
-confines the UI toolkit and the numerics arriving with it out of `core/`, and
-both Flet distributions out of `src/` entirely; the wall clock and the process
-generator out of `core/`; and Pydantic to one module), and the checks are cited
-from `CLAUDE.md` rather than replacing it: the check fails at `make check`,
-after the code is written, and the invariant is cheaper to hold before.
-`import_boundary_check.py` also cites `CLAUDE.md` as the source of the rule, so
-deleting the line would strand the citation.
+**Fires before a first write, which no read precedes.** The architecture
+invariants that stay: simulation time as explicit state, deterministic results,
+tests with every core behavior change, validated versioned parameter files and
+no executable equation in them, plus the milestone bound and the quality suite.
+The list had seven until 2026-10-17, and the one-source principle beside them
+has its own entry below. Two left that day (`PL-ZYHX`, decided 2026-10-03), and
+§ "What was routed out" records where: simulation code independent of the UI
+toolkit is retired, because `tools/import_boundary_check.py` catches its
+failure, an import, at `make check`; and no calculation in a UI callback loads
+with `app/`, the one place a callback is written. The data-file bullet stayed
+and was reworded to name the typed payloads in `core/parameters.py`, which
+refuse a formula where a number belongs; what is left of it to hold is that no
+field is added for an evaluator to read, and no check decides that. Of the
+rules that stay, the wall-clock one is also guarded by the same check, which
+confines `time`, `datetime`, `random`, `secrets` and `uuid` out of `core/`, and
+it stays resident because it is wider than the import: a real duration passed
+in from `app/` must not reach the run either, and no import shows that. The
+same check confines Pydantic to `core/parameters.py`, the seam the data-file
+bullets rest on. The determinism and test bullets have no check that catches
+the whole of their failure, so the argument that a check fails at `make check`,
+after the code is written, where the invariant is cheaper to hold before, still
+carries them.
 
 *Corrected 2026-09-16, +10 characters, no routing change (`PL-Y88W`).* The
-first of the seven invariants read "independent of Flet" until `PL-3SQT` took
-both Flet distributions out of `pyproject.toml`, the port being complete. The
-name had outlived the rule twice over. `import_boundary_check.py` cites
-`CLAUDE.md` as this rule's authority for holding `PySide6`, `pyqtgraph` and
-`numpy` out of `core/` (`PL-9KDK`) while restating it in three of its own
-comments as "independent of the UI toolkit" — so the cited source stood
-narrower than the boundary built on it. And the count in this block said *two*
-invariants had a check behind them when that boundary had already made it
-three, which mattered more than the wording: this file is what § "When a
-resident rule is retired" reads to decide whether a rule still has a carrier,
-so the undercount was an error in the instrument rather than in the prose.
+toolkit invariant, then the first of seven here, read "independent of Flet"
+until `PL-3SQT` took both Flet distributions out of `pyproject.toml`, the port
+being complete. The name had outlived the rule twice over.
+`import_boundary_check.py` cited `CLAUDE.md` as this rule's authority for
+holding `PySide6`, `pyqtgraph` and `numpy` out of `core/` (`PL-9KDK`) while
+restating it in three of its own comments as "independent of the UI toolkit" —
+so the cited source stood narrower than the boundary built on it. And the count
+in this block said *two* invariants had a check behind them when that boundary
+had already made it three, which mattered more than the wording: this file is
+what § "When a resident rule is retired" reads to decide whether a rule still
+has a carrier, so the undercount was an error in the instrument rather than in
+the prose.
 Both are corrected above. The invariant is now named by what it is rather than
 by the toolkit of the day, which is `PL-YVM1`'s rule for version numbers one
 category over, and is the wording the enforcing tool had already chosen. No
-block arrived or left.
+block arrived or left. The bullet itself left on 2026-10-17, as the paragraph
+above records, and the check and `docs/ARCHITECTURE.md` § "Layering" carry
+the wording now.
 
 **Fires before the session would have any reason to load the `docket` skill.**
 The two working modes, capture, housekeeping-filed-first, capture-intent-by-
@@ -356,7 +370,10 @@ correctly, from a sentence whose scope was three sentences away.
   practice it would fire — almost every session touching the simulator reads a
   matching file first. "Almost" is the objection: these are safety-architecture
   invariants, and a trigger that usually fires is the wrong trade for eight
-  lines.
+  lines. Reopened for one of them on 2026-10-03 and done on 2026-10-17
+  (`PL-ZYHX`): the callback rule alone moved to `/src/anesthesia_sim/app/**`,
+  where the trigger always fires, because a callback is written only with an
+  `app/` file open. The rest stay, on this bullet's argument.
 - **A check that fails when a resident block has no row in this file.** It is
   decidable, and it would keep this ledger honest. Refused because it would key
   on bold-lead prose, which gets reworded often enough that the check would
@@ -956,3 +973,58 @@ the owner ends the rule. The fourth test shrinks if a ranking term ever carries
 the measured cost: `docs/WORKING_NOTES.md` records the `saves:` field that was
 deferred and the inflow at which it is built, and the bullet would then name
 the field rather than describe the property.
+
+## Two architecture bullets routed out and one reworded, 2026-10-17
+
+`PL-ZYHX` applied § "When a resident rule is retired" to `CLAUDE.md`
+§ "Architecture and development discipline" (project owner, 2026-10-03,
+ratified, over leaving resident prose as the carrier for an engineering rule a
+check could carry). The item measured on 2026-10-03 that the three architecture
+bullets with a check behind them held with no violation in the tree, while the
+two without one were the two the owner had named as recurring. What separates a
+rule that holds from one that recurs is its carrier, not its length, so the
+disposition rule this file already states was applied to the section.
+
+**What left, and where it went.** "Keep scientific/simulation code independent
+of the UI toolkit" is retired: `tools/import_boundary_check.py` catches its
+failure, an import, at every `make check` and in CI, and the table in § "What
+was routed out" records the observation. "Put no simulation calculations in UI
+callbacks" is routed to `.claude/rules/ui-calculations.md`, which loads with
+any file under `src/anesthesia_sim/app/`. "Do not add executable equations to
+data files" stays, reworded to "Keep executable equations out of data files",
+and names the typed payloads in `core/parameters.py` that refuse a formula
+where a number belongs (observed 2026-10-17: `_AgentPayload` rejects
+`"0.65 * 1.1"` and `"0.65"` alike with "must be a number", since its numeric
+fields take a number and nothing else).
+
+**The carrier test, per rule.** An import is decidable, and the check reads the
+tree before a merge, where the sentence fired only when a session remembered
+it; this file's 2026-09-16 entry had already counted the rule as enforced and
+kept it for the citation the tool made to `CLAUDE.md`, which this edit
+re-points. A callback is written with a file under `app/` open, so a `paths:`
+scope reaches that moment every time, which is the case the refused
+path-scoping of all seven invariants did not have; its judgment half, what
+counts as a calculation, stays prose in the new rule. The data-file rule's
+decidable half is the payloads' own, and its judgment half, whether to add a
+field for an evaluator to read, is taken in a design round before any file is
+open, so it stays resident, one bullet, beside the one-source principle.
+
+**What was replaced, and the cost.** `CLAUDE.md` lost two lines, 65 and 50
+characters with their newlines, and its data-file line grew from 49 to 141, so
+the file shrinks by 23 characters, 54,009 to 53,986, and `make check` reports
+the resident instruction files 23 characters under `origin/main`. Its printed
+total moved from 91,081 to 91,054, because the session-start digest it also
+counts moved by 4 on its own. The new rule adds 2,065 characters to the
+on-demand set, by the same count. The three
+documents that cited `CLAUDE.md` as the toolkit rule's source now cite
+`docs/ARCHITECTURE.md` § "Layering": `tools/import_boundary_check.py`, in its
+docstring and three boundary reasons, `docs/apparatus.md`, and
+`docs/ARCHITECTURE.md` itself, whose § "Layering" is the prose home of the
+rule.
+
+**What should retire the rest.** The wall-clock bullet goes the day a check
+catches a real duration reaching the run, and not only a clock import; the
+determinism bullet when a check, rather than the reference tests, compares two
+runs of one input; the test bullet when a gate demands a test for every changed
+`core/` path; and the data-file bullet when no evaluator can be added without
+failing a check, which none decides today.
