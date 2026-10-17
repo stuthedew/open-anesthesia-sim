@@ -11,6 +11,7 @@ blocked-by: PL-40SJ, PL-YXFF
 deferred-from: v0.6.0 - a decision about how the resident instruction set carries engineering rules is not debt the layout milestone clears
 added: 2026-10-03
 closed: 2026-10-17
+pr: 1501
 payoff: the two architecture rules that kept recurring are carried by a check and by a rule that loads with app/, and the resident set shrinks by the prose they replace
 verify: ! grep -qF 'Put no simulation calculations in UI callbacks.' CLAUDE.md && ! grep -qF 'Keep scientific/simulation code independent of the UI toolkit.' CLAUDE.md && ! grep -qF 'Do not add executable equations to data files.' CLAUDE.md
 ---
