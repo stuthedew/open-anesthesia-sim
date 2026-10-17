@@ -29,6 +29,12 @@ from pathlib import Path
 import dead_ends
 import pytest
 
+# Marked whole for CI's item-only fast path (`PL-DXD4`). `dead_ends.check` and
+# `known_ids` list the real store, and three tests run the tool over this
+# checkout, which reads it too. The few tests that only parse an entry are
+# marked with the rest, which costs the fast path a few milliseconds.
+pytestmark = pytest.mark.reads_item_store
+
 REPO = Path(__file__).resolve().parents[2]
 
 PREAMBLE = """# Dead ends
