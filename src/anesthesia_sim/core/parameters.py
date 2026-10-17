@@ -964,8 +964,8 @@ class _BreathingCircuitPayload(_StrictPayload):
     statement its author made rather than one a schema default made for them.
     Nothing here compares it against `core/supported_ranges.py` either: a
     machine whose range does not overlap the model's envelope is refused by
-    `BreathingCircuit.__post_init__`, which is the one place that holds both
-    claims (`PL-8PS6`).
+    `BreathingCircuit` wherever the range is written, the one place that holds
+    both claims (`PL-8PS6`, `PL-19Y0`).
     """
 
     schema_version: MachineSchemaVersion

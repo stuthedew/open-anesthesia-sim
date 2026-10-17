@@ -817,8 +817,8 @@ def _washout_curve(
     group's slow return is what fills hours 2 to 4 (`PL-95NW`). It is applied
     as `_configured_system()` applies its own override, before any step, where
     the group's stored amount is zero and no propagator has been built, and
-    through `dataclasses.replace` so that `TissueGroup.__post_init__` validates
-    it exactly as it validates a shipped one. The group's blood flow, already
+    through `dataclasses.replace`, whose constructor checks it exactly as it
+    checks a shipped one. The group's blood flow, already
     set from the cardiac output, is carried over unchanged.
     """
 
