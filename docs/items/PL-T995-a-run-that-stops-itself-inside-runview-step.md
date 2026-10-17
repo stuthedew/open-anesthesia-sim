@@ -1,8 +1,15 @@
 ---
 id: PL-T995
 title: A run that stops itself inside RunView.step_tick - a bookmark halt, or arrival at the supported run length - is never redrawn: step_tick requests no frame and render_tick draws only while a run runs or a frame is owed, so the screen keeps saying Running with a live Pause, a clock one step behind, and no Branch here button, until the learner presses something
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: safety, defect
+feature: every-control-restates-the-halt
+touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py
 added: 2026-10-12
+payoff: a run that stops on a mark or at the supported run length says so on screen at once, instead of reading Running with a live Pause until the learner presses something
+verify: grep -q 'def test_a_run_that_halts_on_a_mark_under_its_own_timers_is_redrawn' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** A run that stops itself inside RunView.step_tick - a bookmark halt, or arrival at the supported run length - is never redrawn: step_tick requests no frame and render_tick draws only while a run runs or a frame is owed, so the screen keeps saying Running with a live Pause, a clock one step behind, and no Branch here button, until the learner presses something

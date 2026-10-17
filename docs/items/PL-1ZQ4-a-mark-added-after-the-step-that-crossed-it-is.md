@@ -1,8 +1,12 @@
 ---
 id: PL-1ZQ4
 title: A mark added after the step that crossed it is answered three ways: the trunk reads a late MAC target as not reached where a branch opened on that step reads it reached, a mark added to a branch after it opened is never asked of its opening step, and fork_at at a keyframe the trunk halted on opens on no crossing where fork_here opens on the halt's
-status: untriaged
+priority: P1
+effort: M
+status: needs-decision
+classes: safety, defect
 feature: scenario-branching
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, docs/MODEL.md, tests/integration/test_controller.py
 added: 2026-10-12
 ---
 
