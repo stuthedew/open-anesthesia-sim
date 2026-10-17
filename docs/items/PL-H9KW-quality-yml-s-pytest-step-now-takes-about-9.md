@@ -1,9 +1,16 @@
 ---
 id: PL-H9KW
 title: quality.yml's pytest step now takes about 9 minutes, about 82% of every checks run, up from 48 s on 2026-09-05 and 144-359 s on 2026-09-28 while test functions grew 29%, so a few slow tests are the likely cause; and the 15-minute timeout's comment still sizes it against a 3m44s job
-status: untriaged
+priority: P2
+effort: S
+status: blocked
+classes: infra, test
 feature: ci-cost
+touches: tests/unit/test_doc_check.py, .github/workflows/quality.yml
+blocked-by: PL-4Z5Y
 added: 2026-10-17
+payoff: every pull request's checks run finishes minutes sooner, and its timeout is sized against what the job now takes, so a slow runner reads as slow rather than as a red check
+verify: ! grep -qF 'twice the observed 3m44s' .github/workflows/quality.yml
 ---
 
 **Problem.** quality.yml's pytest step now takes about 9 minutes, about 82% of every checks run, up from 48 s on 2026-09-05 and 144-359 s on 2026-09-28 while test functions grew 29%, so a few slow tests are the likely cause; and the 15-minute timeout's comment still sizes it against a 3m44s job
@@ -77,6 +84,12 @@ stops a session (`CLAUDE.md`).
 **Where.** `.github/workflows/quality.yml` (the pytest step and the `checks`
 job's timeout comment); whichever test modules the measurement names.
 
+**Generator check.** A one-off (triaged 2026-10-17). The fact is a test's own
+CI cost, which nothing records per test, so a slow one is found only when
+somebody times the step. But the store's other members are the washout curves
+twice over (`PL-F08Y`, done, and `PL-4Z5Y`), so it is one set of tests, not
+one fact misread by several readers. No head's `misread:` states it.
+
 **Measured and decided later on 2026-10-17.**
 
 - **Coverage is not a lead.** The same run without `--cov` took 371 s against
@@ -119,21 +132,19 @@ job's timeout comment); whichever test modules the measurement names.
 1. ~~No-coverage timing~~: done, above.
 2. ~~Share each trunk across workers~~: dropped, above.
 3. ~~Deal the trunk tests first~~: moved to `PL-4Z5Y`, above.
-4. Have `test_doc_check.py`'s three whole-repository tests
-   (`test_this_repository_is_clean`,
-   `test_this_repository_reports_its_own_resident_total`,
-   `test_this_repository_measures_its_own_skill_on_demand`) share one analysis
-   per process. The change is written and was set aside in this session's
-   container: a `functools.cache`-decorated `_this_repository()` helper
-   returning `doc_check.analyze(Path(doc_check.__file__).resolve().parent.parent)`,
-   defined above the first of the three, and called by all three in place of
-   their own `analyze` calls. It also drops the third test's unused `tmp_path`
-   and adds `from functools import cache`. Measured: the three pass together in
-   29 s, one 27 s analysis and two under 5 ms. `ruff format` and `ruff check`
-   pass. `test_doc_check.py` is a test of the tooling, not on the owner's read
-   list, so its pull request arms on green.
+4. ~~Share one `doc_check` analysis among `test_doc_check.py`'s three
+   whole-repository tests~~: done 2026-10-17. They are
+   `test_this_repository_is_clean`,
+   `test_this_repository_reports_its_own_resident_total` and
+   `test_this_repository_measures_its_own_skill_on_demand`. All three now call
+   a `functools.cache`-decorated `_this_repository()`, so each process analyses
+   the tree once. Measured: the three pass together in 29 s, one 27 s analysis
+   and two calls under 5 ms, and the module's 893 tests pass in 63 s.
 5. After `PL-4Z5Y` merges: re-time CI against the done-when below, and restate
-   the `timeout-minutes: 15` comment against the new measured job time.
+   the `timeout-minutes: 15` comment against the new measured job time. This is
+   all that is left, which is why the item is `blocked` on `PL-4Z5Y`. The timed
+   run also checks the inferred claim in the dropped step 2: each trunk is
+   built once.
 
 **Done when.** On at least five successful CI runs after the change, the
 pytest step's 99%-to-100% stretch is back near its late-September 73 s, no
