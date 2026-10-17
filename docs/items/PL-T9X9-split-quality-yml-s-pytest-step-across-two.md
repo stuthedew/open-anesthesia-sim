@@ -156,6 +156,15 @@ the arm64 runners.
   It also keeps each costly computation on one runner, so none is computed
   twice. On 2026-10-17 the parts held 4,281 and 4,315 of the 8,596 tests,
   and together exactly the full collection.
+- **The balance was wrong, measured on the first CI run** (run 39062849281,
+  2026-10-17). `checks-part-1` took 299 s, `checks-part-2` 487 s, of which
+  its pytest step was 462 s, and `checks` 10 s. The run took 499 s from the
+  first job's start to the end of `checks`, against the single job's 621 s
+  slow-runner median. A local profile found the cause: with half the other
+  tests, part 2's workers run out of work while one worker is still building
+  the first controller run, and `worksteal` hands them the remaining
+  controller tests, so the runs were built four times instead of twice
+  (setups of 101 s, 57 s, 57 s and 30 s). `PL-ZWQS` holds the fix.
 - `tools/doc_check.py`'s `check_coverage_gate` puts the threshold back into
   each part's line before comparing it with the Makefile's, and checks that
   the parts are numbered 1 to N and that one `coverage report --fail-under`

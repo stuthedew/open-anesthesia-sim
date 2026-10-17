@@ -1,13 +1,13 @@
 ---
 id: PL-ZWQS
-title: Re-time quality.yml's split jobs from five slow-runner runs after PL-T9X9 merges: their timeout-minutes, main_ci_status's pytest baseline, and whether the two parts finish within about 20 s of each other
-priority: P3
-effort: S
+title: Balance quality.yml's two test parts, whose controller runs are built again when worksteal moves their tests to idle workers, then re-time the split jobs' timeouts and the pytest baseline
+priority: P2
+effort: M
 status: ready
 feature: ci-cost
-touches: .github/workflows/quality.yml, tools/main_ci_status.py
+touches: .github/workflows/quality.yml, tools/main_ci_status.py, tests/conftest.py, tests/integration/test_controller.py
 added: 2026-10-17
-payoff: quality.yml's timeouts and the pytest drift line's baseline match what the split jobs actually take
+payoff: a slow runner's quality run takes about 6 minutes instead of about 8, and its timeouts and drift baseline match what the split jobs take
 not-delegable: the end state is a measurement of CI runs on GitHub, which no local command can take
 ---
 
@@ -27,7 +27,31 @@ their coverage. Three things in the tree were sized before the split ran on
   part 2. On a slow runner the two parts were estimated to finish within about
   20 s of each other.
 
-**Why it matters.** A timeout that is too loose lets a hung step hold a runner
+**The parts are not balanced, measured 2026-10-17.** On the split's first CI
+run (run 39062849281), `checks-part-1` took 299 s and `checks-part-2` 487 s,
+462 s of it in pytest, so the run took 499 s instead of the estimated 350 to
+400 s. A local profile of part 2 (`--durations=25`, 4-core container) found
+four setups of the controller runs in `tests/integration/test_controller.py`,
+101 s, 57 s, 57 s and 30 s, where `tests/conftest.py`'s dealing expects two.
+`worksteal` lets an idle worker take tests from the end of a busy worker's
+queue. With half the other tests, part 2's workers run out of work while one
+worker is still building the first controller run, so they take the remaining
+controller tests and build the runs again. The full suite kept them busy long
+enough that this did not happen. Three routes, none measured yet:
+
+- Share the controller runs between workers, as the washout curves are shared
+  (`PL-F08Y`), so a test that moved to another worker reads the run instead
+  of building it. This changes `tests/integration/test_controller.py`, on the
+  owner's read list, and the runs may hold state a test changes.
+- Give the part holding the controller tests about two thirds of the other
+  tests, so its workers stay busy until the runs are built. This adds a tuned
+  share that drifts as tests are added.
+- Pin the six tests to one worker with an `xdist_group` mark under
+  `--dist loadgroup`. The dealing from `PL-4Z5Y` is built for `worksteal`, so
+  this changes how every test is scheduled.
+
+**Why it matters.** The imbalance costs about 3 minutes of every run, and it
+is paid on every push to every pull request. A timeout that is too loose lets a hung step hold a runner
 for 15 minutes. A baseline a few percent off narrows the band the drift line
 reads. Parts that finish far apart lose part of the saving.
 

@@ -60,11 +60,16 @@ runs. Every test that reads a costly computation runs in the last part, so each
 computation runs on one runner and not on both. The other tests are dealt round
 robin, so each module is split between the parts. The first part's job also
 runs the linters, `mypy` and the floor section, which took about 95 s of a slow
-runner's 621 s job on 2026-10-17. The 46 tests that read a costly computation
-took about 22% of the suite's time, about 110 s of that runner's 506 s. So
-giving all of them to the second part balances the two jobs to within about
-20 s. If the parts drift apart, `tools/main_ci_status.py`'s pytest line still
-reads their sum, so compare the two jobs' pytest steps in a run's log.
+runner's 621 s job on 2026-10-17. The tests that read a costly computation took
+about 22% of the suite's time, so giving all of them to the second part was
+expected to balance the two jobs. It did not. On the first run, 2026-10-17,
+the second part's pytest step took 462 s and the first part's whole job 299 s.
+With half the other tests, the second part's workers run out of work while one
+worker is still building the first controller run, and `worksteal` hands them
+the rest of the controller tests, so the runs are built again on other
+workers. A local profile showed four builds where the dealing expects two.
+`PL-ZWQS` holds the fix. `tools/main_ci_status.py`'s pytest line reads the
+parts' sum, so compare the two jobs' pytest steps in a run's log.
 """
 
 from __future__ import annotations
