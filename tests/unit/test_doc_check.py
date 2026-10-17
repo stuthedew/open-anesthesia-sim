@@ -4532,6 +4532,9 @@ def test_this_repository_reports_its_own_resident_total() -> None:
     assert ".claude/rules/apparatus-standard.md" not in measured
     assert ".claude/rules/instruction-writing.md" in measured
     assert ".claude/rules/expert-review.md" in measured
+    # No read comes before a brief, a commit or a reply, so a `paths:` scope
+    # would silently stop the plain-writing rule reaching them (`PL-8ZTQ`).
+    assert ".claude/rules/plain-writing.md" in measured
 
 
 # Two payloads reach every session at launch and are resent on every turn, and

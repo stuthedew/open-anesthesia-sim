@@ -37,3 +37,12 @@ restating the one above it, no clause that adds nothing, no section that could
 be a sentence. Every equation, unit, assumption, limitation and provenance note
 still says what it said. `make check` passes, so no citation, provenance-table
 row, package-map entry or math block was broken by the edit.
+
+**Re-aimed 2026-10-17 by `PL-8ZTQ`.** A blind sample of 91 passages found that
+the main defect is compressed wording, not padding. Readers stumbled on
+dropped small words, ordinary words used in private senses, sentences carrying
+several claims, and unclear references. Padding blocked reading in none of
+them. So the work is to rewrite each awkward sentence as
+`.claude/rules/plain-writing.md` says, and to cut only text that repeats
+itself. Where this brief says to cut prose, read it that way. The rewritten
+text may come out longer.

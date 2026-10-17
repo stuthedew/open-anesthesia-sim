@@ -9,6 +9,7 @@ agreement is routed to where it fires — `.claude/skills/docket/SKILL.md` for
 the queue workflows, `.claude/rules/instruction-writing.md` for the shape of a
 reply, `.claude/rules/expert-review.md` for the standard every approach is
 judged against (resident too, since an approach is chosen in a reply),
+`.claude/rules/plain-writing.md` for how a sentence is worded (resident too),
 `.claude/rules/core-domain.md` and `.claude/rules/apparatus-standard.md` for
 the bars that apply to particular parts of the tree, and
 `docs/maintainer.md` for what only the project owner can act on. Nothing was
