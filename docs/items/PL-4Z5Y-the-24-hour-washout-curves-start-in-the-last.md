@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: infra, test
 feature: ci-cost
-touches: tests/reference/test_late_washout_against_published_fits.py, tests/conftest.py, tests/unit/test_worksteal_dealing.py, tests/integration/test_controller.py, docs/items/PL-K5VM-test-controller-py-s-two-module-scoped-24-hour.md, docket.toml, pyproject.toml
+touches: tests/reference/test_late_washout_against_published_fits.py, tests/conftest.py, tests/unit/test_worksteal_dealing.py, tests/integration/test_controller.py, docs/items/PL-K5VM-test-controller-py-s-two-module-scoped-24-hour.md, docs/items/PL-H9KW-quality-yml-s-pytest-step-now-takes-about-9.md, docket.toml, pyproject.toml
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
 payoff: a slow CI runner's pytest step falls by at least 30 s, and the washout curves stop being the last thing every run waits on

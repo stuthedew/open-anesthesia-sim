@@ -83,7 +83,7 @@ job's timeout comment); whichever test modules the measurement names.
   349 s with it, so the tracer is not where the time goes.
 - **The trunks go to `PL-4Z5Y`** (project owner, 2026-10-17, ratified, over
   `PL-H9KW` extending `PL-4Z5Y`'s dealing hook in a second pull request after it
-  merges). `PL-4Z5Y`'s hook in `tests/reference/conftest.py` deals each washout
+  merges). `PL-4Z5Y`'s hook, now in `tests/conftest.py`, deals each washout
   curve's first test to the head of a worksteal slice. It now also deals the six
   tests requesting `trunk_stepped_onto_the_limit` or
   `trunk_halted_on_a_mark_at_the_limit`, back to back at the head of one slice.
