@@ -20,8 +20,9 @@ A compartment reaching for `time`, `datetime`, `random`, `secrets` or `uuid`
 breaks that promise by an amount the machine chooses rather than the model.
 
 **The UI toolkit, and the numerics that arrive with it, out of `core/`; the
-toolkit the interface left, out of everything.** `CLAUDE.md`'s first
-architecture rule keeps simulation code independent of the toolkit. `PySide6`,
+toolkit the interface left, out of everything.** `docs/ARCHITECTURE.md` §
+"Layering" keeps simulation code independent of the toolkit, a rule that was a
+`CLAUDE.md` bullet until `PL-ZYHX` retired it to this check. `PySide6`,
 `pyqtgraph` and `numpy` - the three packages the Qt port (`ROADMAP.md` §
 "v0.4.26 - the interface moves to Qt") brought in - are permitted in no module
 under `core/`, declared before any of them existed in the tree so that the
@@ -259,7 +260,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
             "the port is complete and nothing under `src/` may import Flet: `PL-25KS` "
             "moved the dashboard to PySide6 and deleted the last module importing this "
             "package, and `PL-7SVX`'s rule - landed with that port - is that it does not "
-            "come back. `CLAUDE.md`'s first architecture rule keeps simulation code "
+            'come back. `docs/ARCHITECTURE.md` § "Layering" keeps simulation code '
             "independent of the UI toolkit, and the interface has left this one. While "
             'the port ran, `ROADMAP.md` § "v0.4.26 - the interface moves to Qt" reasoned '
             "from the count of modules importing Flet, and this entry named them: its "
@@ -286,8 +287,9 @@ BOUNDARIES: tuple[Boundary, ...] = (
         allowed=(),
         why=(
             'the toolkit the interface moves to (`ROADMAP.md` § "v0.4.26 - the interface '
-            'moves to Qt"), held to the same rule as the one it replaces: `CLAUDE.md` keeps '
-            "simulation code independent of the UI toolkit, and a compartment that imports "
+            'moves to Qt"), held to the same rule as the one it replaces: '
+            '`docs/ARCHITECTURE.md` § "Layering" keeps simulation code independent of the '
+            "UI toolkit, and a compartment that imports "
             "a widget library has taken a dependency on a display it does not have. "
             "Declared before the first `PySide6` import exists in the tree, so the port's "
             "first commit is measured against it rather than the rule being written after "
@@ -329,7 +331,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
             "is read by `app/`, and the model knows nothing of what displays it. A "
             "compartment importing from the interface has taken a dependency on the "
             "display, and on whatever the interface module itself imports, which "
-            "`CLAUDE.md`'s first architecture rule keeps out of simulation code. "
+            "that layering keeps out of simulation code. "
             "`PL-X9KD` cut one such route, the displayed decimal count reaching back into "
             "`core/`; a comment in `tests/unit/test_formatting.py` credited this tool with "
             "the rule while it read only root packages and declared none (PL-YXFF)"
