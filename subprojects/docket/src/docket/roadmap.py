@@ -61,10 +61,10 @@ SENTENCE_BREAK = re.compile(r"[.!?][*`)\]]*\s")
 class UnreadEntry(Exception):
     """A list entry the walker found continued in a form it does not read (`PL-MFVV`).
 
-    Raised, or put on the caller's list, rather than handing the entry over
-    read short. What an entry *is* is answered once, by `list_entry_lines`, so
-    its decline is answered there too, and every reader of the walker passes it
-    on rather than testing the line itself.
+    Returned beside the entries the walker read, rather than handing the entry
+    over read short. What an entry *is* is answered once, by `list_entry_lines`,
+    so its decline is answered there too, and every reader of the walker passes
+    it on rather than testing the line itself.
     """
 
     def __init__(self, line: int, why: str) -> None:
@@ -594,35 +594,18 @@ def _scope_ids(entries: Sequence[GateEntry], scope_ids: Iterable[str]) -> tuple[
     return _deduped([identifier for entry in entries for identifier in entry.ids] + list(scope_ids))
 
 
-def list_entries(
-    lines: Sequence[str], start: int, unread: list[UnreadEntry] | None = None
-) -> Iterator[tuple[int, str]]:
-    """Each top-level list entry under one `###` heading, as (line, joined text).
+def _entry_text(lines: Sequence[str], first: int, end: int, prose: Collection[int]) -> str:
+    """An entry's span of `lines` joined into one line, less its marker: the lines of its prose.
 
-    `start` is the heading's line number, so reading begins on the line after
-    it and stops at the next heading of the same depth or shallower - the same
-    bound `_subsection_ids` uses, for the same reason.
-
-    Every line of the entry is folded into its text, less its marker, because
-    an entry routinely wraps and a phrase split across the break would be
-    invisible to every reader of this - the declaration slot included, where a
-    pair of ids can wrap between them. A nested list and a later paragraph fold
-    in too, since CommonMark reads both as the entry's (`PL-YSMD`); a fence, an
+    The text a `GateEntry` and a `ScopeEntry` carry. Every line of the entry is
+    folded in, because an entry routinely wraps and a phrase split across the
+    break would be invisible to a reader of the text - the declaration slot
+    `tools/doc_check.py`'s exclusion advisory searches included, where a pair
+    of ids can wrap between them. A nested list and a later paragraph fold in
+    too, since CommonMark reads both as the entry's (`PL-YSMD`); a fence, an
     indented code block and an HTML block inside it do not, holding a literal or
     a comment, so only its prose blocks are read (`PL-KR6M`).
-
-    One walker and three readers - the frozen list, `Required scope`, and the
-    exclusion advisory in `tools/doc_check.py` - because what an entry *is* is
-    one question, and it was answered in three places that could drift. An
-    entry it cannot read whole is declined by the walker, through `unread`.
     """
-    prose = markdown.block_lines(lines, markdown.PROSE)
-    for first, end in list_entry_lines(lines, start, unread):
-        yield first + 1, _entry_text(lines, first, end, prose)
-
-
-def _entry_text(lines: Sequence[str], first: int, end: int, prose: Collection[int]) -> str:
-    """An entry's span of `lines` joined into one line, less its marker: the lines of its prose."""
     marker = ENTRY_MARKER_RE.match(lines[first])
     parts = [lines[first][marker.end() if marker else 0 :].strip()] if first in prose else []
     parts.extend(lines[index].strip() for index in range(first + 1, end) if index in prose)
@@ -667,15 +650,27 @@ class _Prose:
 
 
 def list_entry_lines(
-    lines: Sequence[str], start: int, unread: list[UnreadEntry] | None = None
-) -> Iterator[tuple[int, int]]:
-    """The walker `list_entries` reads, as each entry's span of `lines`.
+    lines: Sequence[str], start: int
+) -> tuple[tuple[tuple[int, int], ...], tuple[UnreadEntry, ...]]:
+    """Each top-level list entry under one `###` heading, as its span of `lines`, and each declined.
 
-    Each pair is the 0-based index of the entry's own line and the index one
+    `start` is the heading's line number, so reading begins on the line after
+    it and stops at the next heading of the same depth or shallower - the same
+    bound `_subsection_ids` uses, for the same reason.
+
+    Each span is the 0-based index of the entry's own line and the index one
     past its last line. A reader that needs an entry as written - its line
     breaks kept, so a name wrapped inside a code span is read whole rather than
     joined with a space no test name holds (`PL-6SRZ`) - slices `lines` with
-    it, and what an entry *is* stays answered once.
+    it, and one that needs it joined takes `_entry_text`, so what an entry *is*
+    stays answered once.
+
+    One walker and its readers - the frozen list (`_gate_entries`), `Required
+    scope` (`_scope_entries`) and the list-shaped families of
+    `tools/doc_check.py`'s bound check (`_list_members`), and through
+    `document_entry_lines` a release's notes and `docs/dead-ends.md` - because
+    what an entry *is* is one question, and it was answered in three places
+    that could drift.
 
     An entry is a top-level list item as `markdown` reads one (`PL-YSMD`): any
     bullet or ordered marker, an item opening on an empty marker line, its later
@@ -688,41 +683,47 @@ def list_entry_lines(
     carries on the entry's paragraph (§ 5.2), so its words - a gate entry's
     second id, a scope entry's declaration - belong to the entry. Here that line
     is as often a blank line forgotten before a new paragraph, so neither
-    reading can be assumed. The walker raises `UnreadEntry` naming the line, or,
-    where the caller passes `unread`, puts it there and ends the entry before
-    it, so one doubtful line costs the reader nothing it could read.
+    reading can be assumed. The walker ends the entry before that line and
+    returns an `UnreadEntry` naming it, second, so one doubtful line costs the
+    reader nothing it could read.
+
+    The declines come back in the result rather than raised or put on a list
+    the caller may pass, because a list a caller could pass empty, or leave
+    out, type-checked: `tools/dead_ends.py` passed one empty and printed an
+    entry cut short (`PL-DQ9C`). Unpacked, a caller holds both, or names the
+    one it sets aside, and the strict `mypy` run refuses one that iterates
+    the result as entries (`PL-JTP1`).
     """
     end = _subsection_end(lines, start)
-    found = (item for item in markdown.read(lines).items if start <= item.start < end)
-    yield from _entries(found, unread)
+    return _entries(item for item in markdown.read(lines).items if start <= item.start < end)
 
 
 def document_entry_lines(
-    lines: Sequence[str], unread: list[UnreadEntry] | None = None
-) -> Iterator[tuple[int, int]]:
+    lines: Sequence[str],
+) -> tuple[tuple[tuple[int, int], ...], tuple[UnreadEntry, ...]]:
     """`list_entry_lines` over a whole document: every top-level entry under every heading.
 
     For a document that is a list in sections - a release's notes,
     `docs/dead-ends.md` - so that each is read by the one walker (`PL-R417`).
     """
-    yield from _entries(markdown.read(lines).items, unread)
+    return _entries(markdown.read(lines).items)
 
 
 def _entries(
-    items: Iterable[markdown.Item], unread: list[UnreadEntry] | None
-) -> Iterator[tuple[int, int]]:
-    """Each top-level item's span, an item carried on from the margin declined as above."""
+    items: Iterable[markdown.Item],
+) -> tuple[tuple[tuple[int, int], ...], tuple[UnreadEntry, ...]]:
+    """Each top-level item's span, and each item carried on from the margin, declined as above."""
+    spans: list[tuple[int, int]] = []
+    declined: list[UnreadEntry] = []
     for item in items:
         if item.depth:
             continue
         if item.lazy < 0:
-            yield item.start, item.end
+            spans.append((item.start, item.end))
             continue
-        lazy = UnreadEntry(item.lazy + 1, LAZY_ENTRY)
-        if unread is None:
-            raise lazy
-        unread.append(lazy)
-        yield item.start, item.lazy
+        declined.append(UnreadEntry(item.lazy + 1, LAZY_ENTRY))
+        spans.append((item.start, item.lazy))
+    return tuple(spans), tuple(declined)
 
 
 def _subsection_declared_ids(lines: Sequence[str], start: int, prose: _Prose) -> tuple[str, ...]:
@@ -766,9 +767,9 @@ def _declared_ids(text: str) -> tuple[str, ...]:
 
 
 def _gate_entries(
-    lines: Sequence[str], start: int, unread: list[UnreadEntry], prose: _Prose
-) -> tuple[GateEntry, ...]:
-    """Read the list entries under a gate heading, ignoring its prose.
+    lines: Sequence[str], start: int, prose: _Prose
+) -> tuple[tuple[GateEntry, ...], tuple[UnreadEntry, ...]]:
+    """Read the list entries under a gate heading, ignoring its prose, and the walker's declines.
 
     An entry is a top-level list entry that opens with an item id. The prose
     around it - why the list was frozen, how many were done on some past date,
@@ -784,18 +785,19 @@ def _gate_entries(
     """
     prose_lines = markdown.block_lines(lines, markdown.PROSE)
     entries: list[GateEntry] = []
-    for first, end in list_entry_lines(lines, start, unread):
+    spans, declined = list_entry_lines(lines, start)
+    for first, end in spans:
         ids = leading_ids(next(prose.within(first, end), ""))
         if ids:
             text = _entry_text(lines, first, end, prose_lines)
             entries.append(GateEntry(line=first + 1, ids=ids, text=text))
-    return tuple(entries)
+    return tuple(entries), declined
 
 
 def _scope_entries(
-    lines: Sequence[str], start: int, unread: list[UnreadEntry], prose: _Prose
-) -> tuple[ScopeEntry, ...]:
-    """Read the entries of a `Required scope` list, declarations and all.
+    lines: Sequence[str], start: int, prose: _Prose
+) -> tuple[tuple[ScopeEntry, ...], tuple[UnreadEntry, ...]]:
+    """Read a `Required scope` list's entries, declarations and all, and the walker's declines.
 
     Every entry, including one declaring nothing: an empty `ids` is exactly
     what `tools/doc_check.py` fails on, so dropping those here would leave the
@@ -805,20 +807,21 @@ def _scope_entries(
     """
     prose_lines = markdown.block_lines(lines, markdown.PROSE)
     entries: list[ScopeEntry] = []
-    for first, end in list_entry_lines(lines, start, unread):
+    spans, declined = list_entry_lines(lines, start)
+    for first, end in spans:
         statements = list(prose.within(first, end))
         ids = _deduped(identifier for text in statements for identifier in _declared_ids(text))
         text = _entry_text(lines, first, end, prose_lines)
         entries.append(
             ScopeEntry(line=first + 1, ids=ids, text=text, lead=statements[0] if statements else "")
         )
-    return tuple(entries)
+    return tuple(entries), declined
 
 
 def _section_end(lines: Sequence[str], start: int) -> int:
     """Where a milestone's own `##` section stops.
 
-    `list_entries` above stops at the next `###` too, which is what one
+    `list_entry_lines` above stops at the next `###` too, which is what one
     subsection's own extent wants and the wrong bound for a sweep across the
     sibling subsections beside it.
     """
@@ -844,10 +847,9 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
         if version is None:
             return
         heading_line, heading_title = gate or (0, "")
-        unread: list[UnreadEntry] = []
-        entries = _gate_entries(lines, heading_line, unread, prose) if gate else ()
+        entries, gate_unread = _gate_entries(lines, heading_line, prose) if gate else ((), ())
         own_scope = _subsection_declared_ids(lines, scope, prose) if scope else ()
-        scope_entries = _scope_entries(lines, scope, unread, prose) if scope else ()
+        scope_entries, scope_unread = _scope_entries(lines, scope, prose) if scope else ((), ())
         found.append(
             MilestoneSection(
                 line=line_number,
@@ -862,7 +864,7 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
                 own_scope_ids=own_scope,
                 excluded_ids=_deduped(_subsection_ids(lines, excluded)) if excluded else (),
                 scope_entries=scope_entries,
-                unread=tuple(unread),
+                unread=gate_unread + scope_unread,
             )
         )
 

@@ -53,7 +53,6 @@ from docket.release import (
 )
 from docket.roadmap import (
     LAZY_ENTRY,
-    UnreadEntry,
     baseline_heading,
     document_entry_lines,
     parse_milestones,
@@ -1422,6 +1421,38 @@ def test_a_docstring_citation_is_reported_on_its_own_line(tmp_path: Path) -> Non
         encoding="utf-8",
     )
     assert any("thing.py:5: quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_quotation_spliced_across_a_heading_and_its_paragraph_is_not_in_the_file(
+    tmp_path: Path,
+) -> None:
+    """A quotation is held to one statement of its source, a soft break still crossed (`PL-Q8LJ`).
+
+    A heading and the paragraph under it are two blocks (CommonMark 0.31.2
+    § 4.2, § 4.8), so no reader of the file meets their words together; the
+    containment test ran over the whole file collapsed into one string, and the
+    splice passed as words the file holds. A quotation wrapped across a
+    paragraph's soft break still passes, and so does one of a fence's lines.
+    """
+    root = _repo(
+        tmp_path,
+        readme=(
+            "# Demo\n\n"
+            '`docs/SRC.md`\'s "Known limitations The model ignores shunt" is the source.\n\n'
+            '`docs/SRC.md`\'s "ignores shunt and dead space" is the source.\n\n'
+            '`docs/SRC.md`\'s "make check" is the source.\n'
+        ),
+    )
+    (root / "docs" / "SRC.md").write_text(
+        "## Known limitations\n\nThe model ignores shunt\nand dead space.\n\n"
+        "```sh\nmake check\n```\n",
+        encoding="utf-8",
+    )
+
+    assert _quotation_findings(root) == [
+        'README.md:3: quotes docs/SRC.md as "Known limitations The model ignores shunt", '
+        "which is not in that file"
+    ]
 
 
 def test_a_quoted_source_inside_a_fence_is_not_a_citation(tmp_path: Path) -> None:
@@ -7403,9 +7434,8 @@ def _cue_ids(body: str) -> list[str]:
 
 def _entry_spans(text: str) -> tuple[list[tuple[int, int]], list[int]]:
     """Each top-level list entry's span of lines, and the line of each one declined."""
-    unread: list[UnreadEntry] = []
-    spans = list(document_entry_lines(text.splitlines(), unread))
-    return spans, [entry.line for entry in unread]
+    spans, unread = document_entry_lines(text.splitlines())
+    return list(spans), [entry.line for entry in unread]
 
 
 def _fence_spans(text: str) -> list[tuple[int, int]]:
@@ -10622,6 +10652,115 @@ def test_a_host_block_claim_outside_the_documents_is_refused(
     errors = _host_claim_errors(tmp_path, {name: body})
 
     assert [error.split(" names ")[0] for error in errors] == [f"{name}:{line}"]
+
+
+def test_a_toml_or_makefile_comment_is_not_read_for_host_claims(tmp_path: Path) -> None:
+    """TOML and make write a comment as YAML does, and no claim has stood in either's (`PL-PBNK`).
+
+    Every committed version of the tree's TOML and Makefile was read on
+    2026-10-17 and none held one, so neither is read: reading their comments
+    right would take a comment-preserving reader of each, which no library
+    supplies, for a reach that has held nothing. A workflow's comment held a
+    real one until `#1387` (`PL-B3MK`), so YAML, read on the same count, is.
+    """
+    comment = "# `github.blog` is blocked by this container's proxy.\n"
+
+    errors = _host_claim_errors(
+        tmp_path,
+        {
+            "pyproject.toml": comment + "[project]\n",
+            "Makefile": comment + "all:\n\ttrue\n",
+            ".github/workflows/ci.yml": comment + "on: push\n",
+        },
+    )
+
+    assert [error.split(" names ")[0] for error in errors] == [".github/workflows/ci.yml:1"]
+
+
+#: An undated host claim, written as a `#` comment, with no quote to pair with a script's.
+HASH_CLAIM = "# `github.blog` is blocked by the egress proxy."
+
+
+def test_a_hash_line_inside_a_here_document_or_a_quoted_string_is_no_comment(
+    tmp_path: Path,
+) -> None:
+    """A shell script's comments are those bash discards, read through `docket.shell` (`PL-W9VC`).
+
+    A `#`-led line in a here-document's body is input bash hands the command,
+    and one inside a quoted string is the string's, so neither is a claim to
+    date; read a physical line at a time, each was refused as an undated one.
+    A comment after a command is one, which that reading never read. Where the
+    script stops being readable, the comments above that line are read and the
+    rest are declined by name.
+    """
+    report = _host_claim_report(
+        tmp_path,
+        {
+            "tools/demo.sh": (
+                f"cat <<EOF\n{HASH_CLAIM}\nEOF\n"
+                f"echo 'a\n{HASH_CLAIM}\nb'\n"
+                f"echo done  {HASH_CLAIM}\n"
+                f"{HASH_CLAIM}\n"
+                f"echo 'never closed\n{HASH_CLAIM}\n"
+            )
+        },
+    )
+
+    assert [error.split(" names ")[0] for error in report.errors] == [
+        "tools/demo.sh:7",
+        "tools/demo.sh:8",
+    ]
+    assert [entry.split(": ")[0] for entry in report.declined] == ["tools/demo.sh:9"]
+
+
+def test_a_hash_line_inside_a_yaml_block_or_quoted_scalar_is_no_comment(tmp_path: Path) -> None:
+    """A YAML file's comments are the ones `docket.frontmatter.comments` places (`PL-W9VC`).
+
+    A `#`-led line in a block scalar's content or a quoted scalar's is text YAML
+    hands its reader, so it is no claim to date; a comment after a value is one.
+    """
+    errors = _host_claim_errors(
+        tmp_path,
+        {
+            "CITATION.cff": (
+                f"abstract: >\n  Text.\n  {HASH_CLAIM}\n"
+                f"title: 'A\n  {HASH_CLAIM}\n  B'\n"
+                f"version: 1  {HASH_CLAIM}\n"
+            )
+        },
+    )
+
+    assert [error.split(" names ")[0] for error in errors] == ["CITATION.cff:7"]
+
+
+def test_a_workflow_run_script_has_its_comments_read_as_bash_reads_them(tmp_path: Path) -> None:
+    """A `run:` script is a block scalar's content, so its comments are bash's (`PL-W9VC`).
+
+    Read as YAML they are no comments at all, so a claim in one is read through
+    `docket.shell`, where a here-document's body is none either. A comment after
+    an inline `run:` value is YAML's, which hands bash the value without it, so
+    it is read once rather than as both.
+    """
+    workflow = (
+        "on: push\n"
+        "jobs:\n"
+        "  check:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        f"      {HASH_CLAIM}\n"
+        "      - run: |\n"
+        f"          {HASH_CLAIM}\n"
+        "          cat <<EOF\n"
+        f"          {HASH_CLAIM}\n"
+        "          EOF\n"
+        f"      - run: make check  {HASH_CLAIM}\n"
+    )
+
+    report = _host_claim_report(tmp_path, {".github/workflows/ci.yml": workflow})
+
+    rows = sorted(int(error.split(" names ")[0].rsplit(":", 1)[1]) for error in report.errors)
+    assert rows == [6, 8, 12]
+    assert report.declined == []
 
 
 @pytest.mark.parametrize(

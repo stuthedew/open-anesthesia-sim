@@ -102,7 +102,7 @@ sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_config  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
-from docket.roadmap import UnreadEntry, document_entry_lines  # noqa: E402
+from docket.roadmap import document_entry_lines  # noqa: E402
 from docket.store import ID_PATTERN  # noqa: E402
 from docket.vcs import ITEM_FILE_RE  # noqa: E402
 
@@ -155,8 +155,7 @@ def _bullets(text: str) -> list[tuple[int, int, str, int]]:
     unread.
     """
     lines = split_lines(text)
-    unread: list[UnreadEntry] = []
-    spans = list(document_entry_lines(lines, unread))
+    spans, unread = document_entry_lines(lines)
     declined = {lazy.line for lazy in unread}
     bullets: list[tuple[int, int, str, int]] = []
     for first, end in spans:

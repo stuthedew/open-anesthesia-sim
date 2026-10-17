@@ -4772,19 +4772,6 @@ _BEHIND = "behind"
 _EQUAL = "equal"
 
 
-def _declines_a_line(text: str) -> bool:
-    """Whether the fold declines a line of a copy's front matter, as `_markdown_statements` does.
-
-    A block list, a block scalar or a line no field reads, each of which
-    `_front_matter_pairs` returns beside the fields rather than in them.
-    """
-    parsed = _front_matter_pairs(text)
-    if parsed is None:
-        return False
-    _pairs, block_lists, block_scalars, unread, _body = parsed
-    return bool(block_lists or block_scalars or unread)
-
-
 def _standing(base_text: str, ref_text: str) -> str:
     """Whether a ref's copy of one item carries anything the base's copy does not.
 
@@ -4850,10 +4837,10 @@ def _standing(base_text: str, ref_text: str) -> str:
     """
     if base_text == ref_text:
         return _EQUAL
-    if _declines_a_line(base_text) or _declines_a_line(ref_text):
+    base_fields, base_body, base_declined = parse_front_matter(base_text)
+    ref_fields, ref_body, ref_declined = parse_front_matter(ref_text)
+    if base_declined or ref_declined:
         return _AHEAD
-    base_fields, base_body = parse_front_matter(base_text)
-    ref_fields, ref_body = parse_front_matter(ref_text)
     held = set(split_lines(base_body))
     if any(line.strip() and line not in held for line in split_lines(ref_body)):
         return _AHEAD
