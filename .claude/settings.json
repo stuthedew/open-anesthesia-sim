@@ -1,8 +1,5 @@
 {
   "subagentPromptCacheTtl": "1h",
-  "env": {
-    "CLAUDE_CODE_SUBAGENT_MODEL": "haiku"
-  },
   "permissions": {
     "allow": [
       "Read",
