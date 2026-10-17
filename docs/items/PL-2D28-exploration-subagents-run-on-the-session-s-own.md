@@ -149,6 +149,90 @@ by construction. Either way the per-call `model` override stays, so a session
 that wants Opus for one hard search can ask for it. This replaces the
 capture's recommendation of Sonnet, whose reasons were Haiku 4.5's.
 
+**Risks, likelihood and magnitude, per option.** Added 2026-10-17 at the
+owner's request. Where a figure is a measurement it names its source; where it
+is this session's estimate it says so and names what would measure it.
+
+*Cost per Explore run, API-equivalent, from the pricing page read 2026-10-17
+(1-hour cache writes, because `subagentPromptCacheTtl` is `1h`; cache hits at
+5% of base on Opus 5.5 and Sonnet 5.5, 10% on Haiku 5.5; Haiku 5.5 priced per
+request by prompt length, with a higher tier above 100,000 tokens). The run
+shapes are assumptions: a light run grows from 25K to 40K tokens of context
+over 6 turns, a medium one to 90K over 12, a heavy one to 150K over 20, each
+turn emitting 400 output tokens.*
+
+| Run shape | Opus 5.5 | Sonnet 5.5 | Haiku 5.5 |
+| --- | --- | --- | --- |
+| light | $0.40 | $0.20 | $0.011 |
+| medium | $0.94 | $0.47 | $0.027 |
+| heavy | $1.69 | $0.85 | $0.14 |
+
+Sessions seen today cost $6 to $53 API-equivalent each (`list_sessions`,
+2026-10-17), so two medium runs on Opus 5.5 are between 4% and 30% of a
+session. On the owner's subscription the saving is usage against the weekly
+limit rather than dollars; the published docs give no per-model weighting, and
+third-party guides agree cheaper models draw down more slowly but disagree on
+the ratio, so the price ratio is the only authoritative measure.
+
+*Break-even.* A worse lead costs a redo: one more search at the session's
+model plus the session turns around it, about $1.50 for a medium run. Haiku
+5.5 saves about $0.92 per medium run, so it stays cheaper unless more than
+about 6 runs in 10 need a redo; Sonnet 5.5 saves about $0.47, so it stays
+cheaper unless more than about 3 in 10 do. No plausible miss rate reaches
+either line, so the question is not cost. It is how often a worse lead is
+tolerable and what happens when one is not noticed.
+
+*Quality risk, per model.* No benchmark measures codebase search, and
+Anthropic's model pages give positioning only: Haiku 5.5 "is built for
+high-volume, latency-sensitive work such as classification, routing,
+extraction, and subagent tasks"; Sonnet 5.5 "offers the best combination of
+speed and intelligence"; Opus 5.5 "is built for long-running agentic coding
+and knowledge work" (each model's overview page, read 2026-10-17). This
+session's estimate, not a measurement: on a "very thorough" search, Haiku 5.5
+returns a noticeably worse set of leads than Opus 5.5 in roughly 1 run in 5 to
+1 in 10, mostly by missing an indirect reference; Sonnet 5.5 in roughly 1 in
+10 to 1 in 20; on a "quick" lookup the difference is near zero for both. The
+magnitude of a noticed miss is a redo. The magnitude of an unnoticed one is a
+wrong edit, which `CLAUDE.md`'s rule to verify leads against the source,
+the test suite and the owner's read of `src/` each stand in front of; this
+session's estimate is that fewer than 1 miss in 10 gets past the first of
+those, and the floor catches most of the rest. The measurement that would
+replace these estimates is about 20 searches run on each model against known
+answers; it was not run, because it would cost more than several months of
+the saving. The per-call `model` override is the mitigation either way: a
+session can ask for Opus on one hard search, and the file sets a default and
+not a ceiling.
+
+*Risks the file carries whatever model it names.* The file replaces the
+built-in Explore's prompt with ours. Estimate: roughly 1 in 3 that the first
+draft regresses something the built-in does, such as the thoroughness levels
+or the output shape; magnitude small, fixed by editing the file, and the next
+session picks the edit up. Whether a cloud session loads `.claude/agents/`
+is documented as yes; given that the `env` block's documented behaviour did
+not hold here, estimate roughly 1 in 10 that this does not either; magnitude
+zero, since the result is the status quo, and the first session's probe shows
+it. Heavy runs on Haiku 5.5 cross the 100,000-token tier and pay five times
+its base rate; certain for heavy runs, and the run still costs a twelfth of
+Opus 5.5.
+
+*The refused routes are not equivalent to these.* `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`
+moves every subagent, teammate and workflow agent with certainty, review and
+fix subagents included, and silently: the largest magnitude in the set, which
+is why it is refused and not weighed. A prose rule to pass `model: haiku` per
+call would be skipped on roughly 1 call in 4, on the measured analogue that
+the session-rename rule is followed about three times in four
+(`.claude/skills/docket/modes/start.md`); the magnitude is forgone saving
+only. The variable on the cloud environment would move `general-purpose`
+subagents with certainty and Explore not at all.
+
+*Removing the variable.* In cloud sessions it changes nothing, on four
+measurements. In a local session whose folder is trusted, the documentation
+says the variable has applied since 2026-08-23, so `general-purpose`
+subagents there have run on Haiku without a per-item judgment; removing it
+returns them to the session's model, which raises local cost and matches the
+owner's recorded rule. This session cannot read a local machine, so that is
+the documentation's claim and not a measurement.
+
 **Done when.** With a yes: `.claude/agents/Explore.md` exists with
 `model: haiku` (or `model: sonnet`, if the hedge is chosen),
 `omitClaudeMd: true`, read-only tools and a body that carries the thoroughness
