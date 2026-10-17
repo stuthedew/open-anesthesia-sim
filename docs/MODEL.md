@@ -3663,10 +3663,12 @@ their means when `PL-8ZJQ` raised `venous_pool_volume_l` to 1.222 L):
 | Desflurane | n=8 | 0.1626 | 0.14 ± 0.02 | +1.13 SD |
 | Isoflurane | n=8 | 0.3227 | 0.22 ± 0.02 | +5.13 SD |
 
-So the assertion on these values is a **regression** band — the published
-standard deviation applied around the model's own measured ratio — which
-claims nothing about agreement and exists so that a change moving washout by
-more than one published SD fails and has to be explained. The claims the test
+So the assertion on these values is a **regression** pin. It holds the
+model's own measured ratio to $`1\times10^{-4}`$ absolute, claims nothing
+about agreement, and exists so that any change to washout fails and has to be
+explained. Its failure message still states the distance from each published
+mean. Until `PL-RXW0` the pin was one published SD wide, a band of 6% to 12%
+relative. The claims the test
 does make about elimination, and that hold, are the published ordering by
 solubility (desflurane leaves fastest, then sevoflurane, then isoflurane),
 independence from the delivered fraction, and the sign of the departure.
@@ -3738,7 +3740,7 @@ between 1 and 10 L/min.
 
 Neither condition validates the elimination a user watches, and no test claims
 that it does. The elimination this simulator runs is the rebreathing one, and
-what is asserted about it is the regression band above.
+what is asserted about it is the regression pin above.
 
 #### Desflurane's residual, and why the parameter file was not changed
 
@@ -10168,7 +10170,7 @@ A release is complete only when:
 - v0.0.2 circuit reference tests still pass;
 - unit, integration, invariant, and independent reference tests pass;
 - the published wash-in validation passes for every agent and cohort (the
-  elimination comparison in the same module is a regression band, not an
+  elimination comparison in the same module is a regression pin, not an
   agreement claim, and is deliberately not a release gate);
 - mass balance closes within the documented tolerance;
 - supported step sizes pass convergence and nonnegativity tests;

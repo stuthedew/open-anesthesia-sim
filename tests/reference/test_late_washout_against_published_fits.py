@@ -193,6 +193,7 @@ from typing import Literal, NamedTuple
 import numpy
 import pytest
 from test_published_wash_in_and_elimination import (
+    ELIMINATION_RATIO_PIN_TOLERANCE,
     MODELLED_ELIMINATION_RATIOS,
     OPEN_CIRCUIT_ELIMINATION_RATIOS,
     PUBLISHED_MEASUREMENTS,
@@ -1216,7 +1217,7 @@ def test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio(
     )[agent_id]
     ratio = washout_curve(agent_id, condition).ratio_at(5)
 
-    assert abs(ratio - pinned) <= 1e-4, (
+    assert abs(ratio - pinned) <= ELIMINATION_RATIO_PIN_TOLERANCE, (
         f"{agent_id}, {condition}: F_A/F_A0 at five minutes of this run is {ratio:.5f}, "
         f"where the gate pins {pinned}; the two runs no longer share a protocol"
     )
