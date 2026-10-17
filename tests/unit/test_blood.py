@@ -177,6 +177,40 @@ def test_an_amount_at_capacity_is_written_and_a_copy_is_held_to_it_too() -> None
     assert venous.partial_pressure_fraction == 1.0
 
 
+def test_a_coefficient_is_held_to_the_agent_through_the_capacity_it_leaves() -> None:
+    """The room a blood:gas coefficient leaves is the volume times it, not the coefficient alone.
+
+    A 2 L pool at half its 1.3 L capacity holds 0.65 L. A coefficient of 0.4
+    leaves 0.8 L of room and is written, though 0.4 alone is under the agent
+    held; 0.3 leaves 0.6 L and is refused (`PL-19Y0`).
+    """
+
+    venous = VenousBloodCompartment(
+        volume_l=2.0, blood_gas_partition_coefficient=0.65, blood_flow_l_min=5.0
+    )
+    venous.set_partial_pressure_fraction(Fraction(0.5))
+
+    venous.blood_gas_partition_coefficient = 0.4
+
+    assert venous.capacity_l == pytest.approx(0.8)
+
+    with pytest.raises(SimulationConfigurationError, match=r"leave room for 0\.6 L "):
+        venous.blood_gas_partition_coefficient = 0.3
+
+
+def test_a_refused_blood_flow_leaves_the_flow_as_it_was() -> None:
+    """`set_blood_flow` refuses through the write's own guard, and writes nothing (`PL-19Y0`)."""
+
+    venous = _build_venous_blood()
+
+    with pytest.raises(
+        SimulationConfigurationError, match="^blood_flow_l_min must be nonnegative and finite$"
+    ):
+        venous.set_blood_flow(-1.0)
+
+    assert venous.blood_flow_l_min == 5.0
+
+
 def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> None:
     """`restore_state` writes what the pool held, whatever the capacity has become.
 

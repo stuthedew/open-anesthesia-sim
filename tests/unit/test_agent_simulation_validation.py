@@ -289,6 +289,28 @@ def test_a_copy_of_the_validator_is_held_to_the_same_checks() -> None:
         pickle.loads(pickle.dumps(smuggled))
 
 
+@pytest.mark.parametrize("initial_agent_l", [-0.1, nan, inf])
+def test_a_refused_reset_changes_nothing(initial_agent_l: float) -> None:
+    """`reset` writes the new initial total first, so its refusal clears neither other total.
+
+    The check is the write's own since `PL-19Y0`, and `reset` makes none of
+    its own: a reset that cleared the two transfer totals before writing the
+    one it refuses would leave a validator describing no accounting period.
+    """
+
+    validator = AgentSimulationValidator(
+        initial_agent_l=0.31, delivered_agent_l=0.79, exhausted_agent_l=0.17
+    )
+    held = astuple(validator)
+
+    with pytest.raises(
+        SimulationConfigurationError, match="^initial_agent_l must be nonnegative and finite$"
+    ):
+        validator.reset(initial_agent_l)
+
+    assert astuple(validator) == held
+
+
 def test_the_accounting_tolerances_are_the_documented_release_tolerances() -> None:
     """The guard's three sensitivity constants are the ones the model documents.
 

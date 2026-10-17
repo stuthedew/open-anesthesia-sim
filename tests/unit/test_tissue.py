@@ -265,8 +265,11 @@ def test_a_direct_write_is_held_to_the_constructors_checks(
 def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() -> None:
     """The capacity bound is closed, and `replace`, a copy and a pickle meet the same checks.
 
-    A volume giving a capacity equal to the agent held is a partial pressure
-    of exactly one atmosphere, and is written. `dataclasses.replace` builds a
+    A volume or a tissue:gas coefficient giving a capacity equal to the agent
+    held is a partial pressure of exactly one atmosphere, and is written; the
+    coefficient's capacity is formed with the volume, not the blood:gas
+    coefficient, which this tissue holds at a quarter of its tissue:gas
+    one. `dataclasses.replace` builds a
     new tissue through its constructor's writes, and a copy and a pickle
     restore the fields one at a time through `__setattr__`, so a perfusion
     fraction planted past the guard is refused when either is made rather than
@@ -292,6 +295,24 @@ def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() 
     tissue.volume_l = 1.0
 
     assert tissue.partial_pressure_fraction == 1.0
+
+    tissue.volume_l = 2.0
+    tissue.tissue_gas_partition_coefficient = 1.0
+
+    assert tissue.partial_pressure_fraction == 1.0
+
+
+def test_a_refused_blood_flow_leaves_the_flow_as_it_was() -> None:
+    """`set_blood_flow` refuses through the write's own guard, and writes nothing (`PL-19Y0`)."""
+
+    tissue = _build_tissue()
+
+    with pytest.raises(
+        SimulationConfigurationError, match="^blood_flow_l_min must be nonnegative and finite$"
+    ):
+        tissue.set_blood_flow(-1.0)
+
+    assert tissue.blood_flow_l_min == 1.0
 
 
 def test_capacity_uses_volume_and_tissue_gas_coefficient() -> None:

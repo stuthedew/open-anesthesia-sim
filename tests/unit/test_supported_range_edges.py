@@ -91,7 +91,9 @@ from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import SIMULATION_TICK_INTERVAL_S
 from anesthesia_sim.app.playback import PlaybackRate
 from anesthesia_sim.core import simulation_step, supported_ranges
+from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
 from anesthesia_sim.core.alveolar import AlveolarCompartment
+from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.exceptions import AnesthesiaSimulationError
 from anesthesia_sim.core.governing_equations import UptakeEquationSettings
@@ -110,6 +112,7 @@ from anesthesia_sim.core.supported_ranges import (
     StepCount,
     describe_count,
 )
+from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 GUARD_MODULES = (supported_ranges, simulation_step)
@@ -716,3 +719,25 @@ def test_each_guard_admits_only_what_its_functions_compute(guard: Function) -> N
         _check(guard, values, step)
 
     drawn()
+
+
+def test_the_records_that_check_every_write_are_drawn() -> None:
+    """A constructor that checks through its record's `__setattr__` is drawn like a `__post_init__`.
+
+    Read for a `__post_init__` alone, the draw lost the five constructors
+    `PL-19Y0` moved into the write and every edge test still passed, so
+    nothing but this says `_checks_every_write` is doing its work (found by
+    `PL-19Y0`'s mutation review). `SimulationState` has checked in its
+    `__setattr__` since `PL-8W1W`.
+    """
+
+    drawn = {owner for owner, function in CALLABLES if function.__name__ == "__init__"}
+
+    assert {
+        AgentSimulationValidator,
+        AlveolarCompartment,
+        BreathingCircuit,
+        SimulationState,
+        TissueGroup,
+        VenousBloodCompartment,
+    } <= drawn
