@@ -74,6 +74,7 @@ __all__ = [
     "ViewKind",
     "Window",
     "areas_in",
+    "is_tag",
 ]
 
 # The largest an Area id can be: 2**53 - 1, the top of the range of integers
@@ -104,10 +105,21 @@ TREE_DEPTH_MAXIMUM: Final = 32
 # can never be mistaken for prose.
 VIEW_KIND_MAXIMUM_LENGTH: Final = 40
 
-# `PL-R1WQ` Q1's syntax: lowercase snake case, beginning with a letter. Matched
-# whole with `fullmatch`, because `$` also matches before a trailing newline
-# and would admit "chart\n".
-_VIEW_KIND_TAG: Final = re.compile(rf"[a-z][a-z0-9_]{{0,{VIEW_KIND_MAXIMUM_LENGTH - 1}}}")
+# `PL-R1WQ` Q1's syntax: lowercase snake case, beginning with a letter, at any
+# length - each kind of tag bounds its own. Matched whole with `fullmatch`,
+# because `$` also matches before a trailing newline and would admit "chart\n".
+_TAG: Final = re.compile(r"[a-z][a-z0-9_]*")
+
+
+def is_tag(text: str) -> bool:
+    """Whether `text` is a tag: lowercase letters, digits and underscores, beginning with a letter.
+
+    The one grammar every tag in the package shares - a View kind, a shipped
+    Workspace's id - so a second copy of it cannot drift from this one.
+    """
+
+    return _TAG.fullmatch(text) is not None
+
 
 # How far a split's sizes may sum from exactly one. An operation rescales each
 # split it rebuilds to sum to one before working on it (`layout/model.py`), so
@@ -166,7 +178,7 @@ class ViewKind(str):
         if not isinstance(tag, str):
             raise TypeError(f"a View kind is a str, not {type(tag).__name__}")
 
-        if _VIEW_KIND_TAG.fullmatch(tag) is None:
+        if not is_tag(tag) or len(tag) > VIEW_KIND_MAXIMUM_LENGTH:
             raise InvalidLayout(
                 f"a View kind is a tag of lowercase letters, digits and underscores, "
                 f"beginning with a letter and at most {VIEW_KIND_MAXIMUM_LENGTH} long, "
