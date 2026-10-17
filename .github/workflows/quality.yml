@@ -122,10 +122,15 @@ jobs:
     # The default is 360 minutes. `bin/docket check --verify` shells out to
     # every `ready` or `needs-decision` item's own `verify:` command - 216 of
     # them on 2026-09-22 - so a single item can introduce a hang that nothing
-    # else here would bound. 15 rather than
-    # twice the observed 3m44s: a cold uv cache and a slow runner both stretch
-    # the honest case, and a timeout that fires on a healthy run is a defect
-    # in the timeout rather than a saving. `PL-FSH9`.
+    # else here would bound (`PL-FSH9`).
+    #
+    # 15 minutes is sized against this job's times on 2026-10-17: a median of
+    # 621 s (10m21s) on slow runners and 352 s on fast ones, and 639 s
+    # (10m39s) at the longest. That leaves about 4 minutes, 41% over the
+    # longest run, for a cold uv cache or a slower runner. A timeout that fires
+    # on a healthy run is a defect in the timeout rather than a saving, so
+    # re-time the job and restate these figures when the pytest step grows
+    # (`PL-H9KW`).
     timeout-minutes: 15
 
     steps:
