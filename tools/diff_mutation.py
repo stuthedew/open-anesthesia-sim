@@ -75,6 +75,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.arming import imports_product, is_test_file  # noqa: E402
+from docket.lines import split_lines  # noqa: E402
 from docket.vcs import (  # noqa: E402
     GitUnanswered,
     default_base,
@@ -342,7 +343,7 @@ def statuses(root: Path) -> dict[str, str]:
     listing = _mutmut(root, "results", "--all", "true")
     if listing.returncode:
         raise Refusal(f"`mutmut results` exited {listing.returncode}: {listing.stderr.strip()}")
-    return {m[1]: m[2] for line in listing.stdout.splitlines() if (m := RESULT_RE.match(line))}
+    return {m[1]: m[2] for line in split_lines(listing.stdout) if (m := RESULT_RE.match(line))}
 
 
 def recorded_exit_codes(root: Path, paths: Iterable[str]) -> dict[str, int]:
@@ -365,7 +366,7 @@ def _test_files(root: Path, name: str) -> list[str]:
     listing = _mutmut(root, "tests-for-mutant", name)
     if listing.returncode:
         raise Refusal(f"`mutmut tests-for-mutant {name}` exited {listing.returncode}")
-    return sorted({line.partition("::")[0] for line in listing.stdout.splitlines() if line})
+    return sorted({line.partition("::")[0] for line in split_lines(listing.stdout) if line})
 
 
 def _pytest_in_mutants(root: Path, files: Sequence[str], mutant: str) -> int | None:
@@ -422,7 +423,7 @@ def settle(root: Path, found: Mapping[str, str], codes: Mapping[str, int]) -> di
 
 
 def _tail(log: Path, lines: int = 30) -> str:
-    return "\n".join(log.read_text(encoding="utf-8", errors="replace").splitlines()[-lines:])
+    return "\n".join(split_lines(log.read_text(encoding="utf-8", errors="replace"))[-lines:])
 
 
 def counts(found: Iterable[str]) -> str:
