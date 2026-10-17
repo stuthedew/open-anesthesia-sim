@@ -45,6 +45,7 @@ from docket.verify import (
     items_reading,
     landed_workers,
     never_fails,
+    project_check,
     reaches_outside_tree,
     reads_check_output,
     reenters_verify,
@@ -1187,6 +1188,53 @@ def test_a_failing_project_check_is_rejected(tmp_path: Path) -> None:
     )
     report = verify(root, _item(), _config(check_command="false"), "HEAD~1")
     assert not report.passed
+
+
+def test_a_failing_project_check_s_evidence_names_the_failing_test(tmp_path: Path) -> None:
+    """stderr written before and after the finding no longer pushes it out of the evidence.
+
+    `make check` writes `uv sync`'s two lines to stderr before pytest runs and
+    make's error after it, so the four joined lines a failed check kept were the
+    count, the two sync lines and the error, and never the `FAILED` line
+    (`PL-P66B`). Each stream keeps its own tail now, stdout's first, so the
+    `uv` lines stay and the test is named all the same.
+    """
+    command = (
+        "echo 'Resolved 26 packages in 1ms' >&2; "
+        "echo 'Checked 26 packages in 0.62ms' >&2; "
+        "echo '=== short test summary info ==='; "
+        "echo 'FAILED tests/test_x.py::test_y - AssertionError'; "
+        "echo '1 failed, 6062 passed in 196.28s'; "
+        "echo 'make: *** [Makefile:58: check] Error 1' >&2; "
+        "exit 2"
+    )
+    check = project_check(tmp_path, _config(check_command=command))
+    assert not check.passed
+    assert check.lines == (
+        "=== short test summary info ===",
+        "FAILED tests/test_x.py::test_y - AssertionError",
+        "1 failed, 6062 passed in 196.28s",
+        "Resolved 26 packages in 1ms",
+        "Checked 26 packages in 0.62ms",
+        "make: *** [Makefile:58: check] Error 1",
+    )
+
+
+def test_a_failing_verify_command_s_evidence_keeps_its_stdout(tmp_path: Path) -> None:
+    """An item's own `verify:` command is read the same way as the project check."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\n\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    command = "echo before >&2; echo 'FAILED tests/test_thing.py::test_b'; echo after >&2; exit 1"
+    report = verify(root, _item(verify=command), _config(), "HEAD~1")
+    [check] = [check for check in report.checks if check.name == "`verify:` command passes"]
+    # The first line says the command differs from the one the item file at the
+    # base commissions; the evidence follows it.
+    assert check.lines[-3:] == ("FAILED tests/test_thing.py::test_b", "before", "after")
 
 
 def test_an_item_with_no_verify_command_cannot_be_verified(tmp_path: Path) -> None:
