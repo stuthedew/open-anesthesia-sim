@@ -82,10 +82,10 @@ Two modes:
 - `check`       full report. Errors exit non-zero and gate `make check`;
                 advisories are informational and never fail a build.
 - `candidates`  diff-scoped. Prints the documentation lines that mention
-                anything the working tree changed, so close-out reads a
-                short list instead of grepping five documents by hand.
-                Exits non-zero, having swept nothing, where git cannot
-                read the diff against `--base`.
+                anything the working tree changed since HEAD forked from
+                `--base`, so close-out reads a short list instead of
+                grepping five documents by hand. Exits non-zero, having
+                swept nothing, where git cannot read that diff.
 
 Standard library only, and no import of the application package, so this
 runs in a bare checkout exactly as it runs in CI. The one exception is
@@ -111,6 +111,7 @@ import sys
 import textwrap
 import tokenize
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from decimal import Decimal
 from functools import lru_cache
@@ -222,7 +223,9 @@ try:
         code_spans,
         notes_bullets,
         notes_claims,
+        notes_files,
         notes_path,
+        notes_version,
         version_in,
         version_key,
     )
@@ -2442,6 +2445,13 @@ class _Store:
     items: Mapping[str, Item]
 
 
+#: The store each root's run has read so far, while `analyze` runs, and `None`
+#: outside a run. `_read_store` explains why.
+_RUN_STORES: ContextVar[dict[Path, _Store | None] | None] = ContextVar(
+    "doc_check_run_stores", default=None
+)
+
+
 def _read_store(root: Path) -> _Store | None:
     """The queue, or `None` where the store cannot answer.
 
@@ -2463,7 +2473,27 @@ def _read_store(root: Path) -> _Store | None:
     nothing where nothing had been read at all. That is the distinction
     `Report.declined` exists to keep, so unifying the read resolves it this
     way rather than the other.
+
+    **Read once in each `analyze` run** (`PL-LYH3`). Five checks call it
+    directly, and three more reach it through `_live_item_briefs`. Each read
+    parsed every item file: 16,289 `parse_item` calls for 2,327 items in one
+    analysis of this repository on 2026-10-17, 2.0 s of a 32.4 s run. So inside
+    a run the first read is kept in `_RUN_STORES` and returned to every later
+    caller. That is safe because nothing in this tool writes to the store.
+    Outside a run, as when a test calls one check on its own, every call reads
+    the disk again.
     """
+    stores = _RUN_STORES.get()
+    if stores is not None and root in stores:
+        return stores[root]
+    store = _load_store(root)
+    if stores is not None:
+        stores[root] = store
+    return store
+
+
+def _load_store(root: Path) -> _Store | None:
+    """The queue as the disk holds it now. `_read_store` is the reader to call."""
     try:
         config = load_docket_config(root)
     except (OSError, ValueError):  # pragma: no cover - a config that will not parse
@@ -4164,7 +4194,8 @@ class _TagSpans:
     #: own commit where it added the notes, as it should, and otherwise the one
     #: the tag's history says did (`PL-QHCW`).
     cut: Mapping[str, str]
-    #: The newest release version reachable here, whose span is not judged.
+    #: The newest release version reachable here, whose span is judged only
+    #: once the tree holds a newer release's notes.
     newest: str
 
 
@@ -4250,12 +4281,15 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     it from the commit that added the notes file makes the exemption a fact
     about the tree rather than a reading of prose.
 
-    The newest tag's span is the second. Its strangers are described in a
-    release that has not been cut yet, so a pointer naming one cannot be
-    written and requiring it would turn `make check` red on a state nobody can
-    clear - the failure `PL-8HJ2` removed and `check_tags` stays silent on for
-    the same reason. The span is judged from the next cut onward, when the
-    release that describes the work exists and can be named.
+    The newest tag's span is the second, until the tree holds a newer
+    release's notes. Before then its strangers are described in a release
+    that has not been cut, so a pointer naming one cannot be written, and
+    requiring it would turn `make check` red on a state nobody can clear - the
+    failure `PL-8HJ2` removed and `check_tags` stays silent on for the same
+    reason. The cut that writes the next notes names that release, so the span
+    is judged from the cut onward, on the cut's own branch (`PL-JLYG`). Judged
+    from the next tag instead, it was skipped at the v0.5.6 cut and turned
+    `main` red for every session once the owner pushed the tag.
 
     **What it cannot see, and says nothing about.** A closure whose squash
     subject carries no `(#N)` is invisible to the span read: 85 of this store's
@@ -4290,6 +4324,10 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
         )
         return
 
+    written = notes_files(root)
+    newest_waits = not written or version_key(notes_version(written[-1].name)) <= version_key(
+        spans.newest
+    )
     commit_of = {number: commit for commit, number in spans.pull_request.items()}
     # Version -> (pull request, the release describing it) -> the items it
     # carried. One line per pull request is what the reader wants, and the
@@ -4309,7 +4347,11 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
         if commit is None:
             continue
         version = spans.version.get(commit)
-        if version is None or version == spans.newest or spans.cut.get(version) == commit:
+        if (
+            version is None
+            or (newest_waits and version == spans.newest)
+            or spans.cut.get(version) == commit
+        ):
             continue
         notes = root / notes_path(version)
         if not notes.is_file():
@@ -8065,7 +8107,20 @@ def check_host_claims(root: Path, report: Report) -> None:
 
 
 def analyze(root: Path) -> Report:
-    """Run every mechanical documentation check over a checkout."""
+    """Run every mechanical documentation check over a checkout.
+
+    The checks share one read of the item store for the whole run, which
+    `_read_store` explains (`PL-LYH3`).
+    """
+    run = _RUN_STORES.set({})
+    try:
+        return _analyze(root)
+    finally:
+        _RUN_STORES.reset(run)
+
+
+def _analyze(root: Path) -> Report:
+    """`analyze`'s checks, in the order they report."""
     report = Report()
     documents = read_docs(root)
     if not documents:
@@ -8583,19 +8638,44 @@ def _more_specific(candidate: str, incumbent: str, distinctive: bool) -> bool:
     return (distinctive, len(candidate)) > (is_distinctive(incumbent), len(incumbent))
 
 
+def _diff_from(root: Path, base: str) -> tuple[str, str]:
+    """The commit the sweep diffs from, and the words its output names it by.
+
+    The diff starts at `git merge-base BASE HEAD`, the commit where the two
+    histories last met (`PL-X229`). Every reader in `changed_tokens` diffed
+    from the base itself, so a base that had gained commits since the fork
+    listed their files as this branch's: 11 files and 184 lines where the
+    branch had changed one file, named on 13 lines. The words are the base's
+    name alone where the merge base is the base's own commit, as with the
+    default `HEAD`, so only uncommitted changes are read then, as before.
+    Where the two histories share no commit, git's answer is "no merge base",
+    and the diff is from the base's own tree, which the words say. A base git
+    cannot read raises `GitUnanswered`.
+    """
+    fork = _git_output(root, "merge-base", base, "HEAD").strip()
+    if not fork:
+        return base, f"{base}'s own tree, since it shares no history with HEAD"
+    if fork == _git_output(root, "rev-parse", "--verify", f"{base}^{{commit}}").strip():
+        return fork, base
+    return fork, f"{base} from its merge base with HEAD, {fork[:8]}"
+
+
 def format_candidates(root: Path, base: str) -> str:
     """Print the documentation lines a close-out sweep would grep for.
 
-    Raises `GitUnanswered` where the diff cannot be read, which `main` reports
-    as a sweep that did not happen rather than one that found nothing.
+    The diff runs from where HEAD forked from `base` to the working tree, as
+    `_diff_from` decides. Raises `GitUnanswered` where the diff cannot be
+    read, which `main` reports as a sweep that did not happen rather than one
+    that found nothing.
     """
+    fork, against = _diff_from(root, base)
     documents = read_docs(root)
     unread: list[str] = []
-    tokens = changed_tokens(root, base, documents, unread)
+    tokens = changed_tokens(root, fork, documents, unread)
     if not tokens:
-        return f"No changes against {base}; nothing to sweep."
+        return f"No changes against {against}; nothing to sweep."
 
-    lines = [f"Documentation to review for the diff against {base}:", ""]
+    lines = [f"Documentation to review for the diff against {against}:", ""]
     total = 0
     narrowed: set[str] = set()
     spans: dict[Path, list[re.Match[str]]] = {}
@@ -8670,7 +8750,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("mode", choices=("check", "candidates"))
     parser.add_argument("--root", type=Path, default=None, help="path to the repository")
-    parser.add_argument("--base", default="HEAD", help="candidates mode: revision to diff against")
+    parser.add_argument(
+        "--base",
+        default="HEAD",
+        help="candidates mode: diff from where HEAD forked from this revision",
+    )
     args = parser.parse_args(argv)
 
     root = (args.root or Path(__file__).resolve().parent.parent).resolve()

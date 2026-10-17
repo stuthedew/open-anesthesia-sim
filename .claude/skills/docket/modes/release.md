@@ -197,7 +197,10 @@ baseline section — release prose that says what the release was *for*, which
 nothing generates. `bin/docket release` names each statement that is now
 stale, with its line number. Make those edits, then run `make check`: that is
 what proves they landed, and running it any earlier fails on edits nobody has
-been asked for yet.
+been asked for yet. On a cut it can also ask for pointer lines in the previous
+release's notes, for a closing pull request inside that release's tag span
+that its notes never name. The error prints each line and the heading it goes
+under (`PL-JLYG`).
 
 **Recover any pull request body a merge dropped, in the same pull request**
 (`PL-3PH2`). The squash commit's body on `main` is the record of each pull
