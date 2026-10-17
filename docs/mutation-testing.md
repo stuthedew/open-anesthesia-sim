@@ -27,7 +27,10 @@ must come from, and that rule applies whatever the score.
   five minutes on a four-core container. Half of that time went on finding
   which tests reach which function.
 - `make mutate ARGS=--all` mutates every function and prints the kill rate of
-  each module. Use it to measure a new baseline.
+  each module. Use it to measure a new baseline. It is slow: on 2026-10-17 it
+  reached 1,058 of 2,498 mutants in about 75 minutes on a four-core container,
+  because a mutant that makes a test loop run long holds a worker until its
+  time limit.
 - `make mutate ARGS="--base origin/main"` compares the branch with a named
   branch instead of the default branch.
 
