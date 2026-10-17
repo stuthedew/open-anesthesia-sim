@@ -3,13 +3,13 @@ id: PL-SSQW
 title: Decide the saved-workspace file - where it lives, how it is written, what a first run with no file does, and what a build does with a schema_version it does not support
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: planning
 feature: interface-areas
-touches: docs/ARCHITECTURE.md
-blocked-by: PL-WV9K
+touches: docs/ARCHITECTURE.md, src/anesthesia_sim/layout/, tests/unit
 added: 2026-09-16
 recurrences: 2026-09-20 PL-ZW0J
+verify: grep -q 'def test_a_newer_file_is_left_untouched_and_the_session_saves_nothing' tests/unit/test_layout_store.py
 ---
 
 **Problem.** Decide the saved-workspace file - where it lives, how it is written, what a first run with no file does, and what a build does with a schema_version it does not support
