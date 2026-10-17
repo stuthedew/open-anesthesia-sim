@@ -24,7 +24,8 @@ almost exactly the same volume as `src/`'s ~4,600, which is what makes the
 
 **Why it matters.** The standard is **human readability**: a person opening the
 file should reach the point faster and understand more. Wordiness is the defect
-and cutting it is the fix. This is deliberately *not* the standard `PL-JK0M`
+and cutting it is the fix. [superseded 2026-10-17: the defect is compressed wording; see
+the re-aim note below] This is deliberately *not* the standard `PL-JK0M`
 applies to the agent-facing instruction files.
 
 **The qualifier, which is what a test docstring is for.** A test's prose says
@@ -50,3 +51,12 @@ below it, no docstring paragraph repeating its own first sentence. Every
 statement of what a test defends, every reference citation and every tolerance
 rationale is still on the page. `make check` passes, with the
 suite still green at 100% core coverage and no test lost.
+
+**Re-aimed 2026-10-17 by `PL-8ZTQ`.** A blind sample of 91 passages found that
+the main defect is compressed wording, not padding. Readers stumbled on
+dropped small words, ordinary words used in private senses, sentences carrying
+several claims, and unclear references. Padding blocked reading in none of
+them. So the work is to rewrite each awkward sentence as
+`.claude/rules/plain-writing.md` says, and to cut only text that repeats
+itself. Where this brief says to cut prose, read it that way. The rewritten
+text may come out longer.

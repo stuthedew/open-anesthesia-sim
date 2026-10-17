@@ -26,7 +26,7 @@ is owed to a tenth of it.
 
 **Why it matters.** The standard is **human readability**, and that is the
 whole of it: a person opening the file should reach the point faster and
-understand more. Wordiness is the defect and cutting it is the fix. This is
+understand more. Wordiness is the defect and cutting it is the fix. [superseded 2026-10-17: the defect is compressed wording; see the re-aim note below] This is
 deliberately *not* the standard `PL-JK0M` applies to the agent-facing
 instruction files, where cutting a rule for being wordy is the forbidden
 outcome.
@@ -44,3 +44,15 @@ where it was padded, cut: nothing restating the line below it, no docstring
 paragraph repeating its own first sentence, no clause that adds nothing. Every
 *why* is still on the page - each provenance note, unit, cited equation and
 reason-a-value-is-what-it-is, in the same file it was in. `make check` passes.
+
+**Re-aimed 2026-10-17 by `PL-8ZTQ`.** A blind sample of 91 passages found that
+the main defect is compressed wording, not padding. Readers stumbled on
+dropped small words, ordinary words used in private senses, sentences carrying
+several claims, and unclear references. Padding blocked reading in none of
+them. So the work is to rewrite each awkward sentence as
+`.claude/rules/plain-writing.md` says, and to cut only text that repeats
+itself. Where this brief says to cut prose, read it that way. The rewritten
+text may come out longer.
+
+Start with the code the rules name as the instance to read first, such as
+`src/anesthesia_sim/core/tissue.py`, because sessions copy it.
