@@ -1679,6 +1679,41 @@ def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
     assert _settings_by_control(snapshot)[ControlInput.DELIVERED].secondary == "1.00 ×MAC"
 
 
+@pytest.mark.parametrize(
+    ("agent_id", "fraction_text", "mac_multiple_text"),
+    [
+        ("sevoflurane", "0.98%", "0.49 ×MAC"),
+        ("isoflurane", "0.42%", "0.35 ×MAC"),
+        ("desflurane", "3.59%", "0.60 ×MAC"),
+    ],
+)
+def test_each_agents_alveolar_readout_at_five_minutes_is_pinned_as_displayed(
+    agent_id: str, fraction_text: str, mac_multiple_text: str
+) -> None:
+    """The alveolar readout's text after 5 minutes at each agent's own 1 MAC (`PL-QJXS`).
+
+    The end-to-end test above takes its expected text from the formatter it
+    tests, so a wrong value that is formatted correctly passes it. These
+    strings were read from the display on 2026-10-17, on a fresh run at the
+    data files' default settings. They pin the model's own output, so they
+    catch a later change to the calculation, the agent's data or the
+    formatting. They are not a comparison with measured data, which is what
+    `tests/reference/` holds.
+    """
+
+    controller = SimulationController(agent_id=agent_id)
+    controller.start()
+
+    for _ in range(3000):
+        controller.advance(SIMULATION_STEP_S)
+
+    snapshot = controller.snapshot()
+    _, value, secondary = _readouts_by_name(snapshot)["Alveolar"]
+
+    assert snapshot.elapsed_s == 300.0
+    assert (value, secondary) == (fraction_text, mac_multiple_text)
+
+
 def test_the_delivered_dial_is_held_in_percent_and_read_as_a_fraction() -> None:
     """The dial's percent is what is held, and the model reads its fraction (`PL-NJPB`)."""
 
