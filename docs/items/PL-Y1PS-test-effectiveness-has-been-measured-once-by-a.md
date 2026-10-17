@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: infra
 feature: test-effectiveness-measurement
-touches: Makefile, pyproject.toml
+touches: Makefile, pyproject.toml, uv.lock, .gitignore, tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation-testing.md, docs/apparatus.md, docket.toml, .claude/rules/test-oracles.md, .claude/skills/docket/modes/close-out.md
 added: 2026-10-17
 payoff: the functions a pull request changes can be mutation-tested in minutes and compared with the 2026-10-17 baseline, so whether the tests catch a wrong value is measured rather than assumed
 verify: grep -q 'mutmut' Makefile

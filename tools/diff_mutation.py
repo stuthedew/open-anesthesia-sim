@@ -103,10 +103,17 @@ RESULT_RE = re.compile(r"^\s+(\S+): (.+)$")
 RAISED = 255
 #: What a run of whole test files under one mutant says, by pytest's exit
 #: status. Under `-x` a test module that raises while it is imported stops the
-#: run with status 1, as a failed test does, and without `-x` it gives 2.
-RERUN_STATUS = {0: "survived", 1: "killed", 2: "killed"}
+#: run with status 1, as a failed test does. Any other status, such as 2 for an
+#: interrupted run, is reported as it is, because it says nothing about the
+#: mutant.
+RERUN_STATUS = {0: "survived", 1: "killed"}
 #: How long that run may take before its mutant is reported as a timeout.
 RERUN_TIMEOUT_S = 900
+#: Why a run whose results list is empty is refused rather than reported.
+UNREAD = (
+    "Its output may have changed shape, and a report built from it would call every "
+    "function untested."
+)
 #: The order the report counts statuses in. Others follow, sorted.
 STATUS_ORDER = ("killed", "survived", "timeout", "no tests")
 #: The last line of every report, because no run reaches the slower test trees.
@@ -224,9 +231,11 @@ def units(path: str, source: str) -> list[Unit]:
 def changed_rows(patch: str) -> set[int] | None:
     """The working-tree lines that a `-U0` patch changes, or `None` where the whole file is new.
 
-    A hunk that only deletes lines names the line after which they stood, so
-    that line and the next both count. Either may fall in the function that
-    lost the lines, and counting one function too many costs only its mutants.
+    A file that git does not track has no patch at all, so an empty patch also
+    means a new file. A hunk that only deletes lines names the line after
+    which they stood, so that line and the next both count. Either may fall in
+    the function that lost the lines, and counting one function too many costs
+    only its mutants.
     """
     if not patch or doc_check.NEW_FILE_RE.search(patch):
         return None
@@ -399,6 +408,10 @@ def settle(root: Path, found: Mapping[str, str], codes: Mapping[str, int]) -> di
             settled[name] = "unsettled, its test files fail with no mutant applied"
         return settled
     for name in raised:
+        if not files[name]:
+            # pytest given no file runs the whole of `testpaths`.
+            settled[name] = "unsettled, mutmut names no test for it"
+            continue
         code = _pytest_in_mutants(root, files[name], name)
         settled[name] = (
             "timeout"
@@ -497,6 +510,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if is_mutated(name, table)
             ]
             found = statuses(root)
+            if not found:
+                raise Refusal(f"mutmut ran, but `mutmut results` listed no mutant. {UNREAD}")
             print(report_all(settle(root, found, recorded_exit_codes(root, files))))
             return 0
         base = args.base or default_base(root)
@@ -514,11 +529,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if code:
             raise Refusal(f"mutmut exited {code}. The end of {log}:\n{_tail(log)}")
+        found = statuses(root)
+        if not any(fnmatch.fnmatch(name, unit.pattern) for name in found for unit in change.units):
+            # mutmut exits 0 only when a pattern matched a mutant.
+            raise Refusal(
+                "mutmut ran, but `mutmut results` listed no mutant of the changed functions. "
+                + UNREAD
+            )
         codes = recorded_exit_codes(root, {unit.path for unit in change.units})
-        print(report_branch(root, change, settle(root, statuses(root), codes)))
+        print(report_branch(root, change, settle(root, found, codes)))
         return 0
     except (Refusal, GitUnanswered, OSError, SyntaxError, ValueError, KeyError) as error:
-        print(f"diff_mutation: no answer: {error!r}", file=sys.stderr)
+        reason = str(error) if isinstance(error, Refusal) else repr(error)
+        print(f"diff_mutation: no answer: {reason}", file=sys.stderr)
         return 1
 
 

@@ -64,4 +64,5 @@ test that imports `anesthesia_sim` is the simulator's, which is the rule
 
 A high mutation score does not replace any of this. mutmut never changes the
 data files or module-level constants, and a mutant cannot show whether an
-expected value is right. `PL-Y1PS` holds the mutation recipe and its baseline.
+expected value is right. `docs/mutation-testing.md` holds the mutation recipe
+and its baselines.
