@@ -232,9 +232,12 @@ PYTEST_RUNS = 5
 
 #: The pytest step's time, in seconds, that the median is compared with. It is
 #: the median of the step's time over `main`'s 100 successful push runs from #4906
-#: to #5440 (2026-10-11 06:07Z to 2026-10-17 16:07Z), which was 471.5 s. That is
-#: the time before `PL-H9KW`'s fix, so whoever lands that fix measures this again
-#: the same way: the median over at least the last 100 successful push runs.
+#: to #5440 (2026-10-11 06:07Z to 2026-10-17 16:07Z), which was 471.5 s. The
+#: last 16 of those runs came after `PL-H9KW`'s two test-time changes merged
+#: (#1486 and #1487). Their median was 502.5 s, 1.07 times this baseline, so those
+#: changes left the step inside the band. When a change moves the step's time on
+#: purpose, measure this again the same way: the median over at least the newest
+#: 100 successful push runs.
 PYTEST_BASELINE_S = 470
 
 #: The band, as fractions of `PYTEST_BASELINE_S`, inside which the line stays
