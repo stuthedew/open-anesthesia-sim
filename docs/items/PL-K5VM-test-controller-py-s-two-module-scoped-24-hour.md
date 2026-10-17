@@ -5,6 +5,7 @@ status: done
 feature: ci-cost
 added: 2026-10-17
 closed: 2026-10-17
+pr: 1487
 verify: uv run pytest -q tests/unit/test_worksteal_dealing.py
 ---
 
