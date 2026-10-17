@@ -134,7 +134,8 @@ which one?
 build the project Explore file anyway, with no `model` line, for what it adds
 at any model: the report footer naming the scope searched and not searched,
 read-only tools, and the per-call `model: haiku` override, which a session
-passes only for a lookup it knows is quick. Remove the variable. Revised a
+passes only for a lookup it knows is quick, with `effort: medium`. Remove
+the variable. The same reasoning sets effort, under *Effort* below. Revised a
 third time on 2026-10-17, from Sonnet 5.5, after the owner asked whether the
 cost of an escaped miss counts only the fix. It had: the arithmetic under
 *Silent misses* priced an escaped miss at one later fix, $10, and nothing for
@@ -288,6 +289,52 @@ search at an excess miss rate of about 1 in 20 and Haiku 5.5 at about 1 in
 to 1 in 10. On a quick lookup the excess is near zero and the whole saving
 is kept: about $0.39 per lookup for Haiku 5.5 against Opus 5.5.
 
+*Effort.* Added 2026-10-17 after the owner asked whether the same reasoning
+decides an effort level. It does, and effort is the lever the cost tables
+above leave out. Effort steers adaptive thinking and "affects all tokens in
+the response", thinking, text and tool calls, and "lower effort also means
+fewer and terser tool calls" (platform effort page,
+https://platform.claude.com/docs/en/build-with-claude/effort, read
+2026-10-17). For a search subagent, fewer tool calls is fewer searches, and
+the Haiku 5.5 guidance on that page says it outright: at `low`, in long agent
+prompts, "the model is more likely to skip a search, stop early, or skip a
+check". So effort sits on the same axis as the miss rate above, and more
+directly than the model does. A subagent runs at the session's effort level
+unless its definition or the call sets one (sub-agents page, the `effort`
+field, and the model-config page § "Adjust effort level"). This session runs
+at `xhigh`, read from `CLAUDE_EFFORT` in its own shell, so Explore here runs
+Opus 5.5 at `xhigh` today, two levels above that model's own default of
+`medium`. The documentation gives Opus 5.5 no level for search and says to
+run an effort sweep on your own evals. The Opus 4.7 guidance, a different
+model, names `xhigh` as the starting point for "exploratory tasks such as
+repeated tool calling, detailed web search, and knowledge-base search", with
+"meaningfully higher token usage than `high`".
+
+What the tables leave out: they price 400 output tokens a turn and no
+thinking. Output is priced at five times input on every model here, and at
+`xhigh` the volume is not small. This session's own transcript, Fable 5.1 at
+`xhigh` on a design conversation and so a proxy only, shows a median of about
+1,900 and a mean of about 2,900 output tokens per assistant message over 172
+messages. A twelve-turn Explore run at that volume on Opus 5.5 adds about
+$0.70 to the $0.94 in the table; at `medium` an unmeasured fraction of that.
+The term scales every model's figure by about the same ratio, because output
+prices sit in the same 40:20:1 ratio as input prices, so it changes no
+ranking. It raises every bounded forgotten-case figure, the quick lookup at
+Opus 5.5 included, to perhaps $0.60.
+
+Recommendation on effort, by the same rule as the model: no `effort` line in
+the file, so a thorough search inherits the session's level, and a quick
+lookup passes `effort: medium` with `model: haiku`, which is Haiku 5.5's own
+documented starting level; `low` is the level the documentation says skips
+searches. A per-subagent effort does not touch the main session's prompt
+cache, since the subagent is its own conversation; changing the session's own
+`/effort` part-way does, so the lever belongs on the subagent and not on the
+session. The forgotten case under this default is a quick lookup
+over-thought, bounded; under a lower default it is a thorough search that
+skipped a search, with the tail. The number that would change it: an effort
+sweep on the same 20-search set, which is the documentation's own advice for
+Opus 5.5.
+
 *What reduces the silent class at any model.* The file's body requires the
 subagent to end every report with the scope it searched, the patterns and
 directories, and what it did not search. A "did not look there" miss then
@@ -328,7 +375,8 @@ the documentation's claim and not a measurement.
 
 **Done when.** With a yes: `.claude/agents/Explore.md` exists with
 no `model` line, so it inherits the session's model (or `model: sonnet`
-or `model: haiku`, if the owner picks one), `omitClaudeMd: true`, read-only
+or `model: haiku`, if the owner picks one), no `effort` line, so it inherits the session's
+level, `omitClaudeMd: true`, read-only
 tools and a body that carries the thoroughness levels and requires each
 report to end with the scope searched and not searched; `CLAUDE_CODE_SUBAGENT_MODEL` is gone from `.claude/settings.json`;
 `docs/maintainer.md` § "Settings that make sessions cheaper" says what Explore
