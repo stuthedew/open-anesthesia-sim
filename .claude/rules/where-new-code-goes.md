@@ -23,7 +23,10 @@ directions. This file only says to go and read it.
 
 ## Then read one existing instance end-to-end before writing yours
 
-Not a survey — one canonical instance, read whole, and yours written to match.
+Not a survey — one canonical instance, read whole, and yours written to match
+its structure and naming. Do not copy its prose: write yours as
+`.claude/rules/plain-writing.md` says, even where the instance's sentences are
+dense.
 The instances are named where each pattern is written rather than listed here:
 `.claude/rules/core-domain.md` names the compartment,
 `.claude/rules/sources-and-docstrings.md` names the shape of a function that
