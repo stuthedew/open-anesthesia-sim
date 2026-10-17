@@ -3171,6 +3171,51 @@ def test_a_confirmed_agent_change_starts_the_new_case(application: QApplication)
     assert run._new_case_dialog is None
 
 
+def test_an_agent_chosen_in_the_selector_runs_as_a_fresh_run_of_that_agent(
+    application: QApplication,
+) -> None:
+    """A switch made through the selector computes with the new agent alone (`PL-QJXS`).
+
+    `tests/integration/test_controller.py` compares `set_agent` with a fresh
+    run of the new agent for every pair of agents. This test takes the path a
+    reader takes: the selector, the new-case dialog and a presented frame. So
+    a view that changed agent by some route other than `set_agent`, or wrote
+    a control's old value into the new run, fails here.
+
+    The expected run is built directly with desflurane and the same four
+    settings, each different from its default. The comparison is exact,
+    because both runs take the same steps from the same state.
+    """
+
+    settings = {
+        "circuit_volume_l": 4.5,
+        "fresh_gas_flow_l_min": FreshGasFlow(2.5),
+        "alveolar_ventilation_l_min": AlveolarVentilation(5.5),
+        "cardiac_output_l_min": CardiacOutput(6.5),
+    }
+    controller = SimulationController(agent_id="sevoflurane", **settings)
+    controller.start()
+    _advance_to(controller, 90.0)
+    controller.pause()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+
+    _select_agent(run, "desflurane")
+    dialog = run._new_case_dialog
+    assert dialog is not None
+    dialog.discard_button.click()
+    view.present(False)
+
+    fresh = SimulationController(agent_id="desflurane", **settings)
+
+    for each in (controller, fresh):
+        each.start()
+        _advance_to(each, 300.0)
+
+    assert fresh.snapshot().alveolar_partial_pressure_fraction > 0.0
+    assert controller.snapshot() == fresh.snapshot()
+
+
 def test_the_dismissal_that_follows_a_confirmed_switch_does_not_undo_it(
     application: QApplication,
 ) -> None:
