@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: safety, refactor
 feature: every-control-restates-the-halt
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/ARCHITECTURE.md, docs/MODEL.md, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 added: 2026-10-17
 payoff: a halted or self-stopped run states itself on every widget as the controller holds it, and a widget added later is checked by default rather than remembered
 verify: grep -q 'def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one' tests/integration/test_simulation_view.py
@@ -260,3 +260,36 @@ evidence it does not hold.
 The Done when above is written for these answers. The build claims this item
 afresh and starts with the first pull request, half two: `PL-T995` and
 `PL-0LG6`.
+
+**Build, first pull request, 2026-10-17.** The first pull request is built
+and up for the owner's read. `PL-T995` and `PL-0LG6` close under it. It
+adds four things:
+
+- **`RunRecord(RunSettings)`** in `app/controller.py`, which carries
+  `control_timeline`. `SimulationSnapshot` now inherits that field rather
+  than declaring it.
+- **`SimulationController.record()`**, built from no compartment value.
+- **`RunView.owes_a_frame`**, which compares `record()` with the record the
+  view last wrote.
+- **The new `render_tick` condition.** It draws while a run runs, while a
+  frame is owed, while the run count differs from the count last drawn, or
+  while any run owes a frame.
+
+Four details were taken here that the design round placed later or left open:
+
+- `present_halt` reads `controller.record()` once and writes from it. The
+  Done when puts that in the second pull request's `_write_statement`. It is
+  taken now so that the record stored is exactly the one written.
+- `RunRecord.run_record()` projects a snapshot onto its record. Dataclass
+  equality compares like classes only, so a `SimulationSnapshot` never
+  equals the `RunRecord` it extends.
+- The run count is stored at the top of `_refresh_view`, at the attempt
+  rather than on success, so a failing frame is not retried every tick.
+  `refresh` and `present_halt` store the record the same way.
+- The supported-run-length test shortens the span by monkeypatching
+  `supported_ranges.maximum_step_count`. The real timers cannot reach 24 h in
+  a test, and stepping there first takes about 27 s.
+
+What remains is the second pull request: `_write_statement` with the
+`RunStatement` builder, the four dashboard members, and the default-include
+guard. Until then this item stays `ready`, with its claim yielded.
