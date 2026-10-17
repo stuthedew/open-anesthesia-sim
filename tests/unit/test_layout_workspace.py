@@ -168,8 +168,11 @@ class TestWorkspace:
 
         assert copy == {"zoom": [0.0, 15.0], "series": ["vrg", "muscle"]}
 
-        copy["zoom"] = []  # type: ignore[index]
-        copy["series"].append("fat")  # type: ignore[union-attr]
+        assert copy is not None
+        series = copy["series"]
+        assert isinstance(series, list)
+        copy["zoom"] = []
+        series.append("fat")
 
         assert kept.state_of(ONE, CHART) == {"zoom": [0.0, 15.0], "series": ["vrg", "muscle"]}
 

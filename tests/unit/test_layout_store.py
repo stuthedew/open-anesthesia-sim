@@ -77,10 +77,6 @@ MINE = WorkspaceSet(
 LATER = MINE.rename(1, WorkspaceName("Wash-in"))
 
 
-def running_as_root() -> bool:
-    return getattr(os, "geteuid", lambda: -1)() == 0
-
-
 def a_store(directory: Path) -> WorkspaceStore:
     return WorkspaceStore(directory, clock=lambda: MOMENT)
 
@@ -333,7 +329,7 @@ def test_a_failed_replace_leaves_the_current_file_and_removes_the_temporary(
 
         real_replace(source, target)
 
-    monkeypatch.setattr(store_module.os, "replace", refuse_the_current_file)
+    monkeypatch.setattr(os, "replace", refuse_the_current_file)
 
     with pytest.raises(WorkspaceFileError, match="could not replace") as raised:
         store.save(LATER)
@@ -375,7 +371,7 @@ def test_a_directory_that_refuses_to_sync_has_still_saved(
     def refuse(descriptor: int) -> None:
         raise OSError(22, "Invalid argument")
 
-    monkeypatch.setattr(store_module.os, "fsync", refuse)
+    monkeypatch.setattr(os, "fsync", refuse)
 
     with pytest.raises(WorkspaceFileError, match="could not write"):
         store.save(LATER)
@@ -386,7 +382,7 @@ def test_a_directory_that_refuses_to_sync_has_still_saved(
 
         real_fsync(descriptor)
 
-    monkeypatch.setattr(store_module.os, "fsync", refuse_directories)
+    monkeypatch.setattr(os, "fsync", refuse_directories)
 
     assert store.save(LATER) == tmp_path / WORKSPACES_FILE_NAME
     assert (tmp_path / WORKSPACES_FILE_NAME).read_text(encoding="utf-8") == workspace_set_to_json(
@@ -406,51 +402,60 @@ def test_a_file_that_is_not_utf8_is_invalid_and_set_aside(tmp_path: Path) -> Non
     assert loaded.set_aside.read_bytes() == b"\xff\xfe not text"
 
 
-@pytest.mark.skipif(running_as_root(), reason="root reads a file whatever its mode says")
-def test_an_unreadable_file_turns_saving_off_and_is_left_as_it_is(tmp_path: Path) -> None:
+def test_an_unreadable_file_turns_saving_off_and_is_left_as_it_is(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A permission refusal, injected rather than set by mode bits, which root is not bound by."""
+
     path = tmp_path / WORKSPACES_FILE_NAME
-    path.write_text(workspace_set_to_json(MINE), encoding="utf-8")
-    path.chmod(0)
+    text = workspace_set_to_json(MINE)
+    path.write_text(text, encoding="utf-8")
+    real_read_text = Path.read_text
+
+    def refuse_the_current_file(self: Path, *arguments: object, **options: object) -> str:
+        if self.name == WORKSPACES_FILE_NAME:
+            raise PermissionError(13, "Permission denied", str(self))
+
+        return real_read_text(self, *arguments, **options)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(Path, "read_text", refuse_the_current_file)
     store = a_store(tmp_path)
 
-    try:
-        loaded = store.load(SHIPPED)
+    loaded = store.load(SHIPPED)
 
-        assert (loaded.workspaces, loaded.source, loaded.writable) == (
-            SHIPPED,
-            Source.SHIPPED,
-            False,
-        )
-        assert loaded.notice is not None
-        assert "could not be read" in loaded.notice
+    assert (loaded.workspaces, loaded.source, loaded.writable) == (SHIPPED, Source.SHIPPED, False)
+    assert loaded.notice is not None
+    assert "could not be read" in loaded.notice and "Permission denied" in loaded.notice
 
-        with pytest.raises(LayoutRefused, match="saving is off"):
-            store.save(MINE)
+    with pytest.raises(LayoutRefused, match="saving is off"):
+        store.save(MINE)
 
-        assert entries(tmp_path) == [WORKSPACES_FILE_NAME]
-    finally:
-        path.chmod(0o600)
+    assert entries(tmp_path) == [WORKSPACES_FILE_NAME]
+    assert real_read_text(path, encoding="utf-8") == text
 
 
-@pytest.mark.skipif(running_as_root(), reason="root writes to a directory whatever its mode says")
 def test_an_unwritable_directory_is_reported_at_save_and_leaves_nothing_behind(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """The write refused, injected rather than set by mode bits, which root is not bound by."""
+
     store = saved(tmp_path, MINE)
-    tmp_path.chmod(0o500)
+    pending = tmp_path / PENDING_FILE_NAME
 
-    try:
-        with pytest.raises(WorkspaceFileError, match="could not write") as raised:
-            store.save(LATER)
+    def refuse(path: Path, text: str) -> None:
+        raise PermissionError(13, "Permission denied", str(path))
 
-        assert raised.value.path == tmp_path / WORKSPACES_FILE_NAME
-        assert isinstance(raised.value.error, OSError)
-        assert PENDING_FILE_NAME not in entries(tmp_path)
-        assert (tmp_path / WORKSPACES_FILE_NAME).read_text(
-            encoding="utf-8"
-        ) == workspace_set_to_json(MINE)
-    finally:
-        tmp_path.chmod(0o700)
+    monkeypatch.setattr(store_module, "_write_synced", refuse)
+
+    with pytest.raises(WorkspaceFileError, match="could not write") as raised:
+        store.save(LATER)
+
+    assert raised.value.path == pending
+    assert isinstance(raised.value.error, PermissionError)
+    assert entries(tmp_path) == [WORKSPACES_FILE_NAME]
+    assert (tmp_path / WORKSPACES_FILE_NAME).read_text(encoding="utf-8") == workspace_set_to_json(
+        MINE
+    )
 
 
 def test_a_directory_that_cannot_be_created_is_reported_at_save(tmp_path: Path) -> None:
