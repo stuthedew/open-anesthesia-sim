@@ -36,6 +36,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QAbstractButton,
     QAbstractItemView,
+    QAbstractSlider,
     QAbstractSpinBox,
     QApplication,
     QComboBox,
@@ -87,6 +88,7 @@ from anesthesia_sim.app.dashboard_frame import (
     MAX_DISPLAYED_RUNS,
     NEW_CASE_CARRYOVER_TEMPLATE,
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
+    NO_CONTROL_CHANGES_TEXT,
     NO_MAC_TARGETS_TEXT,
     NO_TIME_BOOKMARKS_TEXT,
     NO_TRACES_SHOWN_TEXT,
@@ -107,6 +109,8 @@ from anesthesia_sim.app.dashboard_frame import (
     MarkListing,
     comparing_fork_lock_text,
     fork_offer,
+    halt_notice,
+    notice,
     run_label,
     slider_position,
 )
@@ -121,6 +125,7 @@ from anesthesia_sim.app.formatting import (
     format_mac_reference,
     format_percent,
     format_playback_rate,
+    format_subtitle,
     format_time_base,
     format_wash_in_ratio,
     mac_multiple,
@@ -2052,6 +2057,233 @@ def test_a_halt_is_stated_before_its_dials_are_written(
     assert "step exploded" in notice
 
 
+def _failing_assembly(*args: object, **kwargs: object) -> NoReturn:
+    """Stands in for `assemble_chart_frame` where every frame is to fail."""
+
+    raise RuntimeError("this frame could not be assembled")
+
+
+def test_a_halt_after_an_agent_change_names_one_agent(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A run halted on the first frame after an agent change names that agent everywhere.
+
+    A run that has recorded nothing switches agent at once on a pick, so the
+    frame that follows is the first to show the new agent. With it failing,
+    `present_halt` is the only writer, and it wrote the dials and nothing of
+    the agent's identity: "Delivered desflurane" under a subtitle, a chip
+    and a heading still naming sevoflurane, in sevoflurane's colours
+    (`PL-1YDD`). It now writes every identity widget from the controller's
+    record.
+    """
+
+    controller = SimulationController()
+    run = _shown_view(application, controller).runs[0]
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    scheme = AGENT_COLOR_SCHEMES["desflurane"]
+
+    _select_agent(run, "desflurane")
+
+    assert controller.agent_id == "desflurane"
+    assert controller.has_failed is True
+    assert run._status_text.text() == STATUS_FAILED_TEXT
+    assert run._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
+    assert run._subtitle_text.text() == format_subtitle("Desflurane")
+    assert run._running_agent_text.text() == "Desflurane"
+    assert run._compartment_substance_text.text() == "Modelled concentrations: Desflurane"
+    assert run._agent_dropdown.currentData() == "desflurane"
+
+    for control in _identity_controls(run):
+        assert scheme.fill in control.styleSheet(), control
+        assert scheme.foreground in control.styleSheet(), control
+
+
+def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The control-change panel of a run halted by a drag lists the changes the run holds.
+
+    `_paused_run_with_history` leaves the fresh gas flow change it records
+    open, so dragging the dial back to where it started takes that change off
+    the record. On a run whose snapshot refuses, the drag halts the run and
+    no frame draws, and the panel went on listing the change the run no
+    longer held (`PL-DTJQ`). The halt now writes the panel from the
+    controller's record, with no undrawn marks, since no frame drew.
+    """
+
+    controller = _paused_run_with_history()
+    run = _shown_view(application, controller).runs[0]
+    assert run._control_timeline_text.text() != NO_CONTROL_CHANGES_TEXT
+    _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
+
+    _set_fresh_gas_flow(run, 4.0)
+
+    assert controller.has_failed is True
+    assert run._status_text.text() == STATUS_FAILED_TEXT
+    assert controller.record().control_timeline == ()
+    assert run._control_timeline_text.text() == NO_CONTROL_CHANGES_TEXT
+    assert run._control_timeline_overflow_text.isHidden() is True
+
+
+#: The widget attributes of a `RunView` that may read differently on a run
+#: drawn by a frame and on the same run halted with every frame failing, each
+#: against the reason it may. Every other widget attribute - one added later
+#: included - is held by the test below to read alike on both, which is what
+#: makes `RunView._write_statement` the one writer of a run's state rather
+#: than a list somebody has to keep: a widget left out of it reads the last
+#: frame's run on a halt, and fails there (`PL-X7D5`).
+#:
+#: Held live in both directions, as `FOREGROUND_NOT_DECLARED` is: an entry
+#: naming no widget attribute fails, and so does one whose widget reads alike
+#: on the two runs, since nothing then needs the exemption. The accounting
+#: panel's status and detail lines are frame widgets and are not listed for
+#: that reason: both runs below read "Valid", so the comparison holds them
+#: like any other widget.
+FRAME_WIDGETS: dict[str, str] = {
+    "_readout_row": (
+        "the readouts and the clock they were read with, from the compartment "
+        "values of the snapshot a frame drew from. The clock stays with its "
+        "readouts, so no row pairs one instant's clock with another's values."
+    ),
+    "_agent_amounts_text": (
+        "the accounting panel's amounts, which are the snapshot's mass balance "
+        "and so compartment values."
+    ),
+    "_off_scale_text": (
+        "which drawn traces are above the plot, read from the points the frame "
+        "drew (`dashboard_frame.off_scale_notice`)."
+    ),
+    "_wash_in_state_text": (
+        "what the wash-in plot shows, from the snapshot's alveolar and inspired "
+        "fractions and the frame's undrawn stretches."
+    ),
+    "_notice_text": (
+        "the banner. `_write_statement` writes it on both paths, worded for "
+        "whether a frame drew: `halt_notice` says no frame of the stopped run "
+        "has, and `notice` says the values shown are the last completed step. "
+        "The test below holds each to its own wording."
+    ),
+}
+
+
+def _widget_attributes(run: RunView) -> dict[str, QWidget]:
+    """Every widget a `RunView` holds as an attribute, by name, and each of a tuple of them."""
+
+    widgets: dict[str, QWidget] = {}
+
+    for name, value in vars(run).items():
+        if isinstance(value, QWidget):
+            widgets[name] = value
+        elif isinstance(value, tuple) and value and all(isinstance(v, QWidget) for v in value):
+            widgets.update({f"{name}[{index}]": item for index, item in enumerate(value)})
+
+    return widgets
+
+
+def _widget_state(widget: QWidget) -> tuple[object, ...]:
+    """What a reader can see of one widget, its children apart."""
+
+    state: list[object] = [
+        type(widget).__name__,
+        widget.isHidden(),
+        widget.isEnabled(),
+        widget.styleSheet(),
+    ]
+
+    if isinstance(widget, QLabel | QAbstractButton):
+        state.append(widget.text())
+
+    if isinstance(widget, QComboBox):
+        state.extend((widget.currentIndex(), widget.currentText()))
+
+    if isinstance(widget, QAbstractSlider):
+        state.extend((widget.minimum(), widget.maximum(), widget.value()))
+
+    return tuple(state)
+
+
+def _stated(widget: QWidget, attributes: set[int]) -> tuple[tuple[object, ...], ...]:
+    """One widget attribute as a reader sees it, with every widget under it no attribute names.
+
+    A combo box's popup is left out: it is the toolkit's, and it shows
+    what the combo's own entries say.
+    """
+
+    states = [_widget_state(widget)]
+
+    if isinstance(widget, QComboBox):
+        return tuple(states)
+
+    for child in widget.children():
+        if isinstance(child, QWidget) and id(child) not in attributes:
+            states.extend(_stated(child, attributes))
+
+    return tuple(states)
+
+
+def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A halt states the run on every widget a frame would, by default rather than by a list.
+
+    The run is drawn, then changed in every way a run-state widget states,
+    with every frame failing, so the halt is the only writer of what the
+    screen says: a new agent, which is a new case with no control changes,
+    its delivered dial renamed and the run failed by the frame. That screen
+    is compared, widget attribute by widget attribute, with the same run once
+    a frame draws it - one state, written once by `present_halt` and once by
+    `refresh`. Before `_write_statement`, the halt wrote four widgets and a
+    dial row, and the agent identity and the control-change panel went on
+    stating the run the last frame drew (`PL-1YDD`, `PL-DTJQ`, `PL-X7D5`).
+
+    Every widget attribute is compared unless `FRAME_WIDGETS` names it, so a
+    widget added to `RunView` later is held here without being listed.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    _advance(controller, 600.0)
+    controller.pause()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    assert run._off_scale_text.isHidden() is False, "no trace is above the axis to go stale"
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    _select_agent(run, "desflurane")
+    dialog = run._new_case_dialog
+    assert dialog is not None
+    dialog.discard_button.click()
+
+    assert controller.agent_id == "desflurane"
+    assert controller.has_failed is True
+    attributes = _widget_attributes(run)
+    named = {id(widget) for widget in attributes.values()}
+    halted = {name: _stated(widget, named) for name, widget in attributes.items()}
+    halted_banner = run._notice_text.notice()
+
+    monkeypatch.undo()
+    view.present(False)
+
+    drawn = {name: _stated(widget, named) for name, widget in attributes.items()}
+    differing = {name for name in attributes if halted[name] != drawn[name]}
+
+    assert sorted(set(FRAME_WIDGETS) - set(attributes)) == [], (
+        "FRAME_WIDGETS names a widget RunView no longer holds - remove the entry"
+    )
+    assert sorted(differing - set(FRAME_WIDGETS)) == [], (
+        "these widgets read differently on a halted run and on the same run drawn: write "
+        "them in RunView._write_statement, or name them in FRAME_WIDGETS with the reason "
+        "only a frame can state them"
+    )
+    assert sorted(set(FRAME_WIDGETS) - differing) == [], (
+        "these widgets read alike on a halted run and a drawn one now, so their exemption "
+        "is stale - remove the entry"
+    )
+    assert halted_banner == halt_notice(controller.record())
+    assert run._notice_text.notice() == notice(controller.snapshot(), None)
+
+
 def test_a_confirmation_answered_after_the_snapshot_refuses_restates_the_halt(
     application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
 ) -> None:
@@ -3346,6 +3578,36 @@ def test_a_legend_click_draws_one_frame_over_the_cap_too(application: QApplicati
     assert frame is not None
     assert frame.visible == view.compartment_selection.shown
     assert RecordedQuantity.FAT in frame.visible
+
+
+def test_a_legend_click_whose_frame_fails_keeps_the_legend_on_the_frame_drawn(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The legend names the curves on the plot even when the frame a click asked for fails.
+
+    A click set the selection, handed it to the legend and then asked for a
+    frame, so where that frame failed to assemble the boxes showed the new
+    selection over a plot still drawing the old one: fat unchecked beside a
+    fat trace (`PL-G3K7`). The legend is now handed the selection a frame was
+    assembled from once both plots have drawn it, and a box nobody answers
+    goes back to the selection the legend last showed.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    view = _shown_view(application, controller)
+    drawn = view._concentration_chart.frame
+    assert drawn is not None
+    assert RecordedQuantity.FAT in drawn.visible
+    presented = view.presented_frames
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    _set_trace_shown(application, view, RecordedQuantity.FAT, False)
+
+    assert controller.has_failed is True
+    assert view.presented_frames == presented
+    assert view._concentration_chart.frame is drawn
+    assert view._legend.shown == drawn.visible
 
 
 def test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it(
@@ -5201,7 +5463,7 @@ def test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis(application: QApp
 def test_a_fork_from_the_default_selection_draws_one_frame(
     application: QApplication, door: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """One press, one frame, assembled once both legends and both runs know there are two.
+    """One press, one frame, assembled once both runs know there are two, and telling both legends.
 
     The default selection is wider than `COMPARED_COMPARTMENT_CAP`, so the
     second run reduces it (`CompartmentSelection.with_run_count`), and the
@@ -5210,6 +5472,9 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
     inside `_rename_runs` - while the wash-in legend still counted one run and
     neither run had been named - before the press drew its own: two
     assemblies for one discrete action where `PL-R2YM` says one (`PL-B1R9`).
+    Both legends are now told what a frame drew once it has drawn
+    (`PL-G3K7`), so the frame is assembled with each run named and is what
+    brings both legends to two runs.
     `test_taking_a_fork_redraws_the_chart_without_prompting` holds the count
     from a selection the cap leaves alone; this holds it from one the cap
     reduces, through every door a branch is taken by.
@@ -5226,13 +5491,11 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
         "the default selection is inside the cap, so the press has nothing to reduce"
     )
 
-    told: list[tuple[int, tuple[str, ...]]] = []
+    told: list[tuple[str, ...]] = []
     assemble = view._refresh_view
 
     def recording_assemble() -> None:
-        told.append(
-            (view._wash_in_legend._run_count, tuple(run._run_name_text.text() for run in view.runs))
-        )
+        told.append(tuple(run._run_name_text.text() for run in view.runs))
         assemble()
 
     monkeypatch.setattr(view, "_refresh_view", recording_assemble)
@@ -5249,9 +5512,10 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
     assert len(view.runs) == 2
     assert len(view._legend.shown) == COMPARED_COMPARTMENT_CAP, "the cap reduced nothing"
     assert view.presented_frames == presented + 1, "one press drew other than one frame"
-    assert told == [(2, (run_label(0), run_label(1)))], (
+    assert told == [(run_label(0), run_label(1))], (
         "the frame was assembled before the run set had been told it had grown"
     )
+    assert view._wash_in_legend._run_count == 2, "the frame did not tell the wash-in legend"
 
 
 def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
@@ -5833,6 +6097,65 @@ def test_a_fork_here_the_case_refuses_is_reported_and_adds_no_run(
     # It names what is wrong rather than reporting a generic failure, so a
     # reader who pressed a button that was there a moment ago learns why.
     assert "is going" in notice
+
+
+def test_a_failing_frame_on_a_paused_trunk_withdraws_branch_here(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A paused trunk whose frame fails stops offering a branch where it stands.
+
+    "Branch here" is offered at every pause (`PL-Y2SL`), and the panel was
+    redrawn only at the end of a frame, so with every frame failing the trunk
+    read "Stopped - simulation error" beside a live "Branch here: 1m", and a
+    press was refused by the case with the refusal lost to the next failing
+    frame (`PL-MMNX`). The halt now restates the panel from the case, which
+    offers no fork on a failed trunk.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    here = view._fork_panel.here_button
+    assert here.isHidden() is False, "the paused trunk offers no branch here to withdraw"
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.present(False)
+
+    assert case.trunk.has_failed is True
+    assert case.here_fork_point is None
+    assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
+    assert here.isHidden() is True
+    assert here.isEnabled() is False
+
+
+def test_a_fork_panel_the_case_cannot_restate_on_a_halt_offers_nothing(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    """A halt whose fork panel raises when restated withdraws the panel and still stands.
+
+    The restatement runs inside the halt path, where a raise would escape the
+    render path's guard into the toolkit and leave the halt's retry undone,
+    so it is guarded, and a panel it cannot restate offers nothing rather
+    than the last frame's offer (`PL-MMNX`).
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    assert view._fork_panel.point_selector.count() > 0
+
+    def unanswerable(case: BranchedCase) -> NoReturn:
+        raise RuntimeError("the case could not say where its trunk stands")
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    monkeypatch.setattr(BranchedCase, "here_fork_point", property(unanswerable))
+    capfd.readouterr()
+
+    view.present(False)
+
+    assert "Traceback" not in capfd.readouterr().err
+    assert case.trunk.has_failed is True
+    assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
+    assert view._fork_panel.here_button.isHidden() is True
+    assert view._fork_panel.point_selector.count() == 0
 
 
 def test_unmarking_the_mark_the_trunk_stopped_on_leaves_the_fork_here(

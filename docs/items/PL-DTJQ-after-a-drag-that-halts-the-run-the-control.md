@@ -3,12 +3,14 @@ id: PL-DTJQ
 title: After a drag that halts the run, the control-change panel lists the pre-drag record while the run holds a different one: _control_timeline_text is written only in refresh, from snapshot.control_timeline and the frame's undrawn marks, and no frame of a run whose snapshot refuses draws (found reviewing PL-85LJ)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: every-control-restates-the-halt
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
+closed: 2026-10-17
+pr: 1492
 payoff: After a drag halts the run, the control-change panel lists the changes the run actually holds, not the record from before the drag.
 verify: grep -q 'def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds' tests/integration/test_simulation_view.py
 ---
@@ -40,3 +42,12 @@ for the dials - with no undrawn marks, since no frame draws. A test,
 `test_a_drag_that_halts_the_run_lists_the_record_the_run_holds` in
 `tests/integration/test_simulation_view.py`, repeats the reproduction above
 and asserts the panel lists what the controller's record holds.
+
+**Fixed 2026-10-17 under `PL-X7D5`'s second pull request.** `present_halt`
+writes the control-change panel through `RunView._write_statement`, from
+`record().control_timeline` with no undrawn marks. `record()`, built in
+`PL-X7D5`'s first pull request, is the accessor the Done when asks for, so
+`controller.py` is unchanged here. The regression test
+`test_a_drag_that_halts_the_run_lists_the_record_the_run_holds` repeats the
+reproduction and asserts that the panel reads "No settings changed yet in
+this run." once the drag has taken the change off the record.

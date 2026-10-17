@@ -3,12 +3,14 @@ id: PL-G3K7
 title: When a frame fails to draw after a legend click, the legend shows the selection the failed frame was assembled from while the chart keeps the last frame drawn, so the boxes name curves the plot is not drawing
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: interface-areas
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
+closed: 2026-10-17
+pr: 1492
 payoff: The legend always names the curves the plot is drawing, even when the frame a click asked for fails to draw.
 verify: grep -q 'def test_a_legend_click_whose_frame_fails_keeps_the_legend_on_the_frame_drawn' tests/integration/test_simulation_view.py
 ---
@@ -25,6 +27,8 @@ one. The boxes then name curves the plot is not drawing - the disagreement
 itself announced. Before `PL-VN6M` the boxes moved on the click itself, with
 the same result.
 
+[superseded 2026-10-17: `PL-X7D5`'s design round made the legend a frame
+widget instead, and the Done when below is rewritten to that.]
 **Recommendation:** `present` reports whether it drew, and
 `_handle_compartment_request` puts the previous selection back (and hands it
 down again) when it did not, so the legend always names the frame on
@@ -50,13 +54,24 @@ runs on different agents - so `defect`/`ux` at `P2` rather than the
 `safety`/`P1` the paragraph above invokes; the halt banner is also on
 screen in the one state that reaches it.
 
-**Done when.** The Recommendation above, which is the one clearly correct
-answer and needs no owner decision: `SimulationView.present` reports whether
-it drew, and `_handle_compartment_request` restores the previous selection
-and hands it down again when it did not, so the legend always names the
-frame on screen. A test,
+**Done when.** The legend is a frame widget, the form `PL-X7D5`'s design
+round chose over the Recommendation above (project owner, 2026-10-17,
+ratified, "Agree with recs"): `SimulationView._refresh_view` tells the legend
+the selection the frame was assembled from, once both plots have drawn, and
+`_handle_compartment_request` only sets the selection and asks for a frame.
+Where that frame fails, nothing writes the boxes, so the legend keeps naming
+the frame on screen. A test,
 `test_a_legend_click_whose_frame_fails_keeps_the_legend_on_the_frame_drawn`
 in `tests/integration/test_simulation_view.py`, forces
 `assemble_chart_frame` to raise on the click's frame and asserts the
 legend's `shown` equals the selection the last drawn frame was assembled
 from.
+
+**Fixed 2026-10-17 under `PL-X7D5`'s second pull request**, in the rewritten
+form above. `compartment_selection_changed` is emitted from `_refresh_view`
+with the selection the frame was assembled from, after both plots draw, and
+`_handle_compartment_request` no longer emits it. Where the clicked frame
+fails, the legend's existing rule puts the clicked box back to the selection
+last shown, which is the frame still on the plot. The regression test
+`test_a_legend_click_whose_frame_fails_keeps_the_legend_on_the_frame_drawn`
+asserts that the legend's `shown` equals the drawn frame's `visible`.
