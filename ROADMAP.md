@@ -122,7 +122,7 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.22 | Completed | **The release where the matrix exponential under every step started keeping the equations' constant 1 exactly 1, and a run handed a point past the 24-hour supported length started being refused where it is built.** Three items, the ready product-lane Gate 2 entries of `numerical-domain`, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, since the two new refusals and the new squaring cap sit past anything a supported input reaches, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, but the numerical method did, so the trajectories are bit-identical only on the path a run plays**: `core/` changes (`a4699af` to `aac50af`) because `matrix_exponential` writes an empty row of the system matrix as the identity's row before its squarings and refuses a propagator needing more than 32 of them (`PL-2MD9`), and because a `RunDefinition` or `SimulationState` handed a point past 24 hours is refused where it is built (`PL-73ZN`, `PL-BMY5`). Over 81 runs across the three agents, every one of 7,371 sampled states a run plays, and every readout formatted from them, is identical at both ends; the canonical path, the chart's drawn values and a branch, which opens from a canonical keyframe, move at the last bits, worst 2.8e-12 relative, and no concentration, MAC or hover value changes at the precision printed. What a learner can see change is a branch's accounting panel: its two residual lines, printed in exponent form, read different digits of the same floating-point noise, and a delivered amount sitting exactly on a 0.05 L tie can round the other way. `data/` (`2b4bd16`), `app/` (`70fe21e`), `tests/reference/` (`d655cc7`) and `README.md` (`3a8f16e`) resolve to the same trees. **All three are Gate 2 entries**, and the gate stands at 136 of 194 cleared, from 133 at v0.5.21; `PL-KXW1`, the cut, ships in no release under `PL-KRS6`. | 3 items |
 | v0.5.23 | Completed | **The release where every flow, concentration, step and instant a run takes became a type only its own check can build, and the chart hover started answering the point under the pointer.** 214 items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, since every refusal the new types add sits on a route no interface control reaches and what a learner sees change is four defects fixed in what was already there, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, and every sampled state is bit-identical**: `core/` changes (`aac50af` to `0e9255d`) because the step (`PL-0GJC`), the three flows (`PL-0YYV`, `PL-HSFV`), the case instant and step count (`PL-CN5S`) and the concentration as a fraction and a percent (`PL-4R3W`) became checked types, built only through their range checks, the settings record a run is built from now carries the vaporizer maximum (`PL-BBMG`), and the agent record refuses a zero MAC (`PL-0FJ8`). Over 81 runs across the three agents and a branch from each, all 9,882 sampled states, the 88,938 sampled elements of the canonical path and the chart's 15,846,273 drawn values are identical at both ends, as are all 21,128,364 hover strings, and three 24-hour runs land on 86,400 s with every hourly state identical. What a learner can see change is the hover answering the point under the pointer and letting go when it leaves (`PL-TCR5`, `PL-J0F7`, `PL-LTKL`), the accounting panel's two residual lines printing the power of ten each lies below (`PL-3PJZ`), and a run standing on the 24-hour limit reading as stopped there (`PL-5291`). `data/` (`2b4bd16` to `7540b37`) changes in three source notes and a provenance gap, every number unchanged, and `README.md` (`3a8f16e`) resolves to the same tree. **It finishes fourteen features, three of them the simulator's**, `late-washout-evidence`, `sidebar-panel-rebuild` and `platform-palette`, and closes eight generator heads, `PL-R417`'s 101 members the largest. **57 are Gate 2 entries**, and the gate stands at 197 of 222 cleared, from 136 of 194 at v0.5.22; `PL-0F33`, the cut, ships in no release under `PL-KRS6`. | 214 items |
 | v0.5.24 | Completed | **The release where a learner can branch wherever a paused run stands and at a mark the run has already passed, and where nothing in the repository may read a shared fact a second time beside the module that owns it.** 79 items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, since each new fork is v0.5.0's bookmark fork taken at an instant the case has reached, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, and every sampled state is bit-identical**: `core/` changes (`0e9255d` to `a0e4719`) because the alveolar and tissue agent amounts are held to the compartment's capacity where they are written (`PL-544D`), the two concentration crossings refuse a bare `float` (`PL-1DP1`) and the circuit states once the fresh gas flow range it accepts (`PL-7CRY`). Over 81 runs across the three agents and a branch from each, all 9,720 sampled states, 7,371 canonical states, 23,328 drawn windows and 155,520 readout strings are identical at both ends, as are three 24-hour runs, the snapshot differing only by the new accepted-range field. What a learner can see change is the two new places to branch (`PL-Y2SL`, `PL-2N43`, `PL-W4XQ`) and a control on a halted run restating the halt (`PL-V2HC`); `data/` (`7540b37`) and `tests/reference/` (`b4b0046`) resolve to the same trees, and `README.md` gains the quality badge. **It finishes five features, one of them the simulator's**, `qt-port`, and closes five generator heads spent, `PL-ZGYX`, `PL-4S6C`, `PL-8QMD`, `PL-0HLS` and `PL-KR6M`. **Eleven are Gate 2 entries**, and the gate stands at 204 of 229 cleared, from 197 of 222 at v0.5.23; `PL-9F3H`, the cut, ships in no release under `PL-KRS6`. | 79 items |
-| v0.5.25 | Completed / current baseline | **The release where a run that stops itself is drawn stopped at once, where a cardiac output that the blood flows do not match is refused when it is written, and where the saved Workspace set exists as code.** 34 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: each new refusal sits on a route that no interface control takes, and the redraw corrects what an existing screen shows. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and every state a run plays is bit-identical**: `core/` changed (`a0e4719` to `60697e5`) because every checked field of the five run records refuses a bad value when it is written (`PL-19Y0`), the patient refuses a cardiac output that its blood flows do not match (`PL-KFNP`), and the tissue and venous closed forms, which the stepped model does not call, keep the sign of their gradient (`PL-XWFP`). Over 81 runs across the three agents, each with two branches, all 6,561,000 steps, 11,178 sampled states, 11,178 canonical states, 2,187 drawn windows and 19,447,290 formatted strings are identical at both ends, as are three 24-hour runs. `data/` changed only in three agents' source notes (`PL-0SG0`), and `tests/reference/` only in docstrings and in a table that orders the test workers' work (`PL-4Z5Y`). A learner can see three changes: a run that halts on a mark or at the supported length is drawn stopped at once (`PL-T995`), a dial dragged into a halt keeps its label (`PL-85LJ`), and a one-run Reset clears a refused branch (`PL-75P5`). **It finishes no feature, and closes one generator head spent**, `PL-KFNP`. **Eight are Gate 2 entries**, and the gate stands at 212 of 233 cleared, from 204 of 229 at v0.5.24. `PL-TT19`, the cut, ships in no release under `PL-KRS6`. | 34 items |
+| v0.5.25 | Completed / current baseline | **The release where a run that stops itself is drawn stopped at once, where every widget of a halted run states the run the controller holds, where a cardiac output that the blood flows do not match is refused when it is written, and where the saved Workspace set exists as code.** 39 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: each new refusal sits on a route that no interface control takes, and each screen change corrects what an existing screen shows. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and every state a run plays is bit-identical**: `core/` changed (`a0e4719` to `60697e5`) because every checked field of the five run records refuses a bad value when it is written (`PL-19Y0`), the patient refuses a cardiac output that its blood flows do not match (`PL-KFNP`), and the tissue and venous closed forms, which the stepped model does not call, keep the sign of their gradient (`PL-XWFP`). Over 81 runs across the three agents, each with two branches, all 6,561,000 steps, 11,178 sampled states, 11,178 canonical states, 2,187 drawn windows and 19,447,290 formatted strings are identical at both ends, as are three 24-hour runs. `data/` changed only in three agents' source notes (`PL-0SG0`), and `tests/reference/` only in docstrings and in a table that orders the test workers' work (`PL-4Z5Y`). A learner can see a run that halts on a mark or at the supported length drawn stopped at once (`PL-T995`). A halted run's screen now has one writer, so every widget states the run the controller holds (`PL-X7D5`). The four members it closes, and `PL-85LJ`'s dial label, were reachable only through a fault that no supported setting produces. A one-run Reset also clears a refused branch (`PL-75P5`). **It finishes no feature, and closes two generator heads spent**, `PL-KFNP` and `PL-X7D5`. **Nine are Gate 2 entries**, and the gate stands at 213 of 234 cleared, from 204 of 229 at v0.5.24. `PL-TT19`, the cut, ships in no release under `PL-KRS6`. | 39 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -228,25 +228,26 @@ sevoflurane build as v0.0.3 is superseded by this roadmap.
 ## Current baseline: v0.5.25
 
 v0.5.25 is the release where a run that stops itself is drawn stopped at once,
-where a cardiac output that the blood flows do not match is refused when it is
-written, and where the saved Workspace set exists as code. It has 34 items,
-and it is a patch on both halves of § "Versioning decision"'s test. No
+and where every widget of a halted run states the run that the controller
+holds. It also refuses a cardiac output that the blood flows do not match when
+the value is written, and it builds the saved Workspace set as code. It has 39
+items, and it is a patch on both halves of § "Versioning decision"'s test. No
 capability boundary is crossed, because each new refusal sits on a route that
-no interface control takes, and the redraw corrects what an existing screen
-shows. The next three minor numbers, v0.6.0 through v0.8.0, are given to
-milestone sections. Eight of the items are Gate 2 entries. `bin/docket wave`
-puts the gate at 212 of 233 cleared at this cut, against 204 of 229 at the
-v0.5.24 tag. Four entries were placed on the list since that tag (`PL-1ZQ4`,
-`PL-SWY5`, `PL-T995` and `PL-X7D5`), and 21 stay open, against 25.
+no interface control takes, and each screen change corrects what an existing
+screen shows. The next three minor numbers, v0.6.0 through v0.8.0, are given
+to milestone sections. Nine of the items are Gate 2 entries. `bin/docket wave`
+puts the gate at 213 of 234 cleared at this cut, against 204 of 229 at the
+v0.5.24 tag. Five entries were placed on the list since that tag (`PL-1ZQ4`,
+`PL-HQF5`, `PL-SWY5`, `PL-T995` and `PL-X7D5`), and 21 stay open, against 25.
 
 **No equation, parameter or stored value changed, and every state a run plays is bit-identical at both ends:**
 
 | Tree | v0.5.24 | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `70aeab9` | `f1ba722` | `core/`, `data/`, `app/` and `layout/`, below |
+| `src/` | `70aeab9` | `ada5e66` | `core/`, `data/`, `app/` and `layout/`, below |
 | `core/` | `a0e4719` | `60697e5` | every checked field of the five run records refuses a bad value when it is written (`PL-19Y0`); the patient refuses a cardiac output that its blood flows do not match (`PL-KFNP`); the tissue and venous closed forms keep the sign of their gradient, through the new `core/exponential_approach.py` (`PL-XWFP`) |
 | `data/` | `7540b37` | `c49fb36` | the three agents' De Wolf source notes record Meybohm et al. 2021's figures for 1 MAC (`PL-0SG0`); every stored value is unchanged |
-| `app/` | `fbbc170` | `70de6b6` | a frame is owed whenever a run's record or the run set changes (`PL-T995`, `PL-0LG6`, `PL-X7D5`); a halt writes all four dials from the settings in force (`PL-85LJ`); a refused setting is written back before the refusal is shown (`PL-VCP4`); a one-run Reset clears a refused branch (`PL-75P5`) |
+| `app/` | `fbbc170` | `3b03e6f` | a frame is owed whenever a run's record or the run set changes (`PL-T995`, `PL-0LG6`); one writer, `RunView._write_statement`, states a run on a drawn frame and on a halt alike (`PL-X7D5`, `PL-1YDD`, `PL-DTJQ`); a halt writes all four dials from the settings in force (`PL-85LJ`) and restates the fork panel (`PL-MMNX`); the legend is written from the frame drawn (`PL-G3K7`); a refused setting is written back before the refusal is shown (`PL-VCP4`); a one-run Reset clears a refused branch (`PL-75P5`) |
 | `layout/` | `2a9e81d` | `c065b9e` | the Workspace set, and the file it is saved to (`PL-WV9K`, `PL-SSQW`) |
 | `tests/reference/` | `b4b0046` | `8665426` | docstrings (`PL-19Y0`) and a table that orders the test workers' work (`PL-4Z5Y`); no assertion or tolerance changed |
 | `docs/MODEL.md` | `89f13c9` | `53bbd1d` | § "Supported input ranges" records that every checked field is checked at every write, a machine's range among them (`PL-19Y0`), and that a cardiac output the blood flows do not match is refused (`PL-KFNP`); § "Source hierarchy" records that the two tier-3 descriptions of Gas Man disagree on the MAC (`PL-0SG0`); the misuse table gains the label beside a dial dragged into a halt (`PL-85LJ`), and it and § "Reset behavior" name the route to stale blood flows that remains (`PL-KFNP`, `PL-HQF5`) |
@@ -291,12 +292,30 @@ on a mark, or arrived at the supported run length inside its own step tick,
 kept saying Running until the learner pressed something. It showed a live
 Pause, a clock one step behind and no Branch here button (`PL-T995`). The
 render tick now draws whenever a run's record or the run set changes, so the
-halt is drawn on the next tick. That is `PL-X7D5`'s first pull request, which
-also closes `PL-0LG6`; the head itself stays open and generating. A dial
-dragged into a halt now keeps the label beside it on the value that the dial
-and the run hold (`PL-85LJ`). And a Reset on a one-run dashboard now clears a
-refused branch, whose banner had named an instant that the reset run no longer
-holds (`PL-75P5`).
+halt is drawn on the next tick. That was `PL-X7D5`'s first pull request, which
+also closes `PL-0LG6`.
+
+**A halted run now states itself on every widget.** `PL-X7D5` is the generator
+head behind the screens that went on stating an old run after a halt, and it
+closes spent. A run's screen had two writers. `RunView.refresh` wrote every
+widget from a drawn frame, and `RunView.present_halt` wrote a list of widgets
+chosen by hand when no frame could draw. Each widget missing from that list
+kept the last frame's run. Now one method, `RunView._write_statement`, writes
+the agent identity, the status word, the transport, the control-change panel,
+the banner and the dials, and both paths call it. A test compares each of a
+run view's widgets on a drawn run and after a halt, by default, so a widget
+added later is checked without being listed. This closes four members. A
+halted run names one agent (`PL-1YDD`), and its control-change panel lists the
+record that the run holds (`PL-DTJQ`). A paused trunk whose frames keep
+failing withdraws Branch here (`PL-MMNX`). When a legend click's frame fails,
+the legend keeps naming the curves that the plot draws (`PL-G3K7`). A dial
+dragged into a halt also keeps its label on the value that the dial and the
+run hold (`PL-85LJ`). A learner reaches none of these five states today,
+because each needs a fault that no supported setting produces. The dashboard's
+own panels are still restated on a halt from a list kept by hand. The bookmark
+panel, which that list misses, is `PL-YHR3`, and the list itself is `PL-5JTH`.
+Separately, a Reset on a one-run dashboard now clears a refused branch, whose
+banner had named an instant that the reset run no longer holds (`PL-75P5`).
 
 **Two refusals moved to where a value is written.** Each sits on a route that
 no shipped control takes. Every checked field of the circuit, the alveolar
@@ -314,7 +333,9 @@ simulation is unchanged is true (`PL-VCP4`). `PL-J39J` closes because its
 state can no longer be reached: a halted screen showed the written output
 beside values computed at the old one. `PL-KFNP` is the generator head behind
 `PL-M4M0`, `PL-VCP4` and `PL-J39J`, and it closes spent. Setting a tissue's
-blood flow directly on the tissue can still leave stale flows (`PL-HQF5`).
+blood flow directly on the tissue can still leave stale flows. That is
+`PL-HQF5`, which was classed `safety` on 2026-10-17 and added to Gate 2 after
+the gate froze.
 
 **Two changes affect no run.** The tissue and venous compartments' own closed
 forms are what tests, notebooks and reference cases call to check the stepped
@@ -349,7 +370,7 @@ failing test. `PL-K5VM` deals the six tests of `test_controller.py`'s two
 24-hour runs to one test worker, so each run is built once rather than in
 every worker. The release item is `PL-TT19`, whose `resource: release-train`
 keeps it out of every later release. Every closure carried its `pr:` number
-before the cut, so all 34 bullets cite their pull requests.
+before the cut, so all 39 bullets cite their pull requests.
 `tools/pr_body_check.py` found no squash commit that lost its body.
 
 One item shipped inside v0.5.24's tag. `#1467` (`PL-ZXCN`) merged after that

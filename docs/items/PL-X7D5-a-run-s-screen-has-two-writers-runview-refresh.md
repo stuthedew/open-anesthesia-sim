@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: safety, refactor
 feature: every-control-restates-the-halt
+milestone: v0.5.25
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/ARCHITECTURE.md, docs/MODEL.md, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 added: 2026-10-17
 closed: 2026-10-17
