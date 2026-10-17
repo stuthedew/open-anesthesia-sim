@@ -1082,6 +1082,54 @@ def test_a_change_undone_before_a_step_runs_leaves_no_segment() -> None:
     assert definition.segments[0].opening.instant_s == 0.0
 
 
+def test_a_change_undone_at_one_instant_keeps_every_earlier_stretch() -> None:
+    """Undoing a change drops only the stretch that change opened.
+
+    The docstring's rule is that when a second change at an instant already
+    opened returns to the previous stretch's settings, "the stretch goes
+    entirely". The stretch is the one opened at that instant, and no earlier
+    one. This run has three stretches before the undo. With two, the wrong
+    slice `segments[:1]` keeps the same list as the right one,
+    `segments[:-1]`, and every earlier test of this branch used two
+    (`PL-ZH1F`).
+
+    Neither expected value is read from the definition under test. The
+    stretches are literals, and the state is a second definition that was
+    never given the 5% change.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    system.set_delivered_concentration_percent(Percent(2.0))
+    opening_settings = system.equation_settings()
+    opening_state = system.state_vector()
+    undone = RunDefinition(opening_settings, opening_state, opened_at_s=CaseInstant(0.0))
+    never_changed = RunDefinition(opening_settings, opening_state, opened_at_s=CaseInstant(0.0))
+
+    for definition in (undone, never_changed):
+        definition.advance_to(CaseInstant(10.0))
+    system.set_delivered_concentration_percent(Percent(3.0))
+    for definition in (undone, never_changed):
+        definition.record_change(system.equation_settings())
+        definition.advance_to(CaseInstant(20.0))
+    system.set_delivered_concentration_percent(Percent(5.0))
+    undone.record_change(system.equation_settings())
+
+    assert len(undone.segments) == 3
+
+    system.set_delivered_concentration_percent(Percent(3.0))
+    undone.record_change(system.equation_settings())
+
+    assert [
+        (segment.opening.instant_s, segment.settings.delivered_concentration_percent)
+        for segment in undone.segments
+    ] == [(0.0, 2.0), (10.0, 3.0)]
+
+    for definition in (undone, never_changed):
+        definition.advance_to(CaseInstant(600.0))
+
+    assert undone.state_at(600.0) == never_changed.state_at(600.0)
+
+
 def test_the_first_stretch_is_kept_even_when_a_change_returns_to_it() -> None:
     """There is no earlier stretch to fold the opening one back into.
 
