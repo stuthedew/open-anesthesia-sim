@@ -3,11 +3,12 @@ id: PL-GHT8
 title: PL-F5GN's oracle-independence check reads only the import names in test_coupled_dynamics.py, not what the oracle functions call, so an oracle built from AgentUptakeSystem.for_agent().equation_settings() passes it, and the late-washout module's second hand-written oracle is never checked
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test
 feature: tests-detect-wrong-values
 touches: tests/reference/test_coupled_dynamics.py
 added: 2026-10-17
+closed: 2026-10-17
 payoff: an oracle quietly rebuilt from the code under test fails the independence check, so the reference tier keeps comparing the solver with something other than itself
 verify: grep -q 'def test_oracle_bodies_call_no_solver_from_core' tests/reference/test_coupled_dynamics.py
 ---
