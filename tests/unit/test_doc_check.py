@@ -1889,6 +1889,75 @@ def test_candidates_mode_says_it_could_not_read_the_diff(
     assert "nothing to sweep" not in unresolved
 
 
+def test_candidates_ignores_what_the_base_gained_after_the_fork(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A base that moved on after the fork adds nothing to the list (`PL-X229`).
+
+    The sweep diffed the base's own tree against the working tree. So a run
+    with `--base origin/main` after `main` had gained two merges listed their
+    files as this branch's: 11 files and 184 lines, where the branch had
+    changed one file, named on 13 lines. Here the base gains a data-file change
+    and a function in the module this branch also edits. The second pins the
+    per-file patch, which read the base's function as one this branch removed.
+    """
+    readme = README + "\nThe `gained_on_base` helper came later.\n"
+    root = _repo(tmp_path, readme=readme)
+    _git_init(root)
+    module = root / "src" / "anesthesia_sim" / "core" / "thing.py"
+    data = root / "src" / "anesthesia_sim" / "data" / "agents" / "demo.json"
+
+    def git(*args: str) -> None:
+        subprocess.run(("git", *args), cwd=root, check=True, capture_output=True)
+
+    git("checkout", "-qb", "base")
+    module.write_text("def gained_on_base() -> None:\n    return None\n", encoding="utf-8")
+    data.write_text(json.dumps({**DATA, "display_name": "Revised"}, indent=4), encoding="utf-8")
+    git("commit", "-qam", "the base moves on after the fork")
+    git("checkout", "-q", "-")
+    module.write_text("def advance_thing() -> None:\n    return None\n", encoding="utf-8")
+    git("commit", "-qam", "this branch's own change")
+
+    assert doc_check.main(["candidates", "--root", str(root), "--base", "base"]) == 0
+    output = capsys.readouterr().out
+    assert "README.md:3  (thing.py)" in output
+    assert "gained_on_base" not in output
+    assert "demo.json" not in output
+
+    # The default base is HEAD, whose merge base with HEAD is itself, so only
+    # what is not yet committed is read, as before.
+    assert doc_check.main(["candidates", "--root", str(root)]) == 0
+    assert "No changes against HEAD; nothing to sweep." in capsys.readouterr().out
+
+
+def test_candidates_says_when_the_base_shares_no_history_with_head(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """With no merge base, the diff is from the base's own tree, and the output says so."""
+    root = _repo(tmp_path)
+    _git_init(root)
+    branch = subprocess.run(
+        ("git", "symbolic-ref", "--short", "HEAD"),
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    for command in (
+        ("checkout", "-q", "--orphan", "unrelated"),
+        ("commit", "-qm", "a root commit of its own"),
+        ("checkout", "-q", branch),
+    ):
+        subprocess.run(("git", *command), cwd=root, check=True, capture_output=True)
+    module = root / "src" / "anesthesia_sim" / "core" / "thing.py"
+    module.write_text("def advance_thing() -> None:\n    return None\n", encoding="utf-8")
+
+    assert doc_check.main(["candidates", "--root", str(root), "--base", "unrelated"]) == 0
+    output = capsys.readouterr().out
+    assert "against unrelated's own tree, since it shares no history with HEAD:" in output
+    assert "README.md:3  (thing.py)" in output
+
+
 # --- which terms enter the candidate search, and how they are matched -------
 #
 # `candidates` is judged by the ratio, not by recall alone: a list that is

@@ -82,10 +82,10 @@ Two modes:
 - `check`       full report. Errors exit non-zero and gate `make check`;
                 advisories are informational and never fail a build.
 - `candidates`  diff-scoped. Prints the documentation lines that mention
-                anything the working tree changed, so close-out reads a
-                short list instead of grepping five documents by hand.
-                Exits non-zero, having swept nothing, where git cannot
-                read the diff against `--base`.
+                anything the working tree changed since HEAD forked from
+                `--base`, so close-out reads a short list instead of
+                grepping five documents by hand. Exits non-zero, having
+                swept nothing, where git cannot read that diff.
 
 Standard library only, and no import of the application package, so this
 runs in a bare checkout exactly as it runs in CI. The one exception is
@@ -8624,19 +8624,44 @@ def _more_specific(candidate: str, incumbent: str, distinctive: bool) -> bool:
     return (distinctive, len(candidate)) > (is_distinctive(incumbent), len(incumbent))
 
 
+def _diff_from(root: Path, base: str) -> tuple[str, str]:
+    """The commit the sweep diffs from, and the words its output names it by.
+
+    The diff starts at `git merge-base BASE HEAD`, the commit where the two
+    histories last met (`PL-X229`). Every reader in `changed_tokens` diffed
+    from the base itself, so a base that had gained commits since the fork
+    listed their files as this branch's: 11 files and 184 lines where the
+    branch had changed one file, named on 13 lines. The words are the base's
+    name alone where the merge base is the base's own commit, as with the
+    default `HEAD`, so only uncommitted changes are read then, as before.
+    Where the two histories share no commit, git's answer is "no merge base",
+    and the diff is from the base's own tree, which the words say. A base git
+    cannot read raises `GitUnanswered`.
+    """
+    fork = _git_output(root, "merge-base", base, "HEAD").strip()
+    if not fork:
+        return base, f"{base}'s own tree, since it shares no history with HEAD"
+    if fork == _git_output(root, "rev-parse", "--verify", f"{base}^{{commit}}").strip():
+        return fork, base
+    return fork, f"{base} from its merge base with HEAD, {fork[:8]}"
+
+
 def format_candidates(root: Path, base: str) -> str:
     """Print the documentation lines a close-out sweep would grep for.
 
-    Raises `GitUnanswered` where the diff cannot be read, which `main` reports
-    as a sweep that did not happen rather than one that found nothing.
+    The diff runs from where HEAD forked from `base` to the working tree, as
+    `_diff_from` decides. Raises `GitUnanswered` where the diff cannot be
+    read, which `main` reports as a sweep that did not happen rather than one
+    that found nothing.
     """
+    fork, against = _diff_from(root, base)
     documents = read_docs(root)
     unread: list[str] = []
-    tokens = changed_tokens(root, base, documents, unread)
+    tokens = changed_tokens(root, fork, documents, unread)
     if not tokens:
-        return f"No changes against {base}; nothing to sweep."
+        return f"No changes against {against}; nothing to sweep."
 
-    lines = [f"Documentation to review for the diff against {base}:", ""]
+    lines = [f"Documentation to review for the diff against {against}:", ""]
     total = 0
     narrowed: set[str] = set()
     spans: dict[Path, list[re.Match[str]]] = {}
@@ -8711,7 +8736,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("mode", choices=("check", "candidates"))
     parser.add_argument("--root", type=Path, default=None, help="path to the repository")
-    parser.add_argument("--base", default="HEAD", help="candidates mode: revision to diff against")
+    parser.add_argument(
+        "--base",
+        default="HEAD",
+        help="candidates mode: diff from where HEAD forked from this revision",
+    )
     args = parser.parse_args(argv)
 
     root = (args.root or Path(__file__).resolve().parent.parent).resolve()
