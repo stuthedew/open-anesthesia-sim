@@ -52,8 +52,23 @@ that trial. Until it runs, the default stays where `PL-2D28` leaves it.
   default does not change before the result.
 - *Burden*: one dedicated session. No working session runs paired searches.
 
+- *Effort arm*, added 2026-10-17 after `PL-2D28` recorded that effort sits
+  on the same axis as the model: lower effort means fewer and terser tool
+  calls, and for a search subagent fewer tool calls is fewer searches
+  (platform effort page, https://platform.claude.com/docs/en/build-with-claude/effort,
+  read by `PL-2D28` on 2026-10-17). Run the same 60 searches on Opus 5.5 at
+  `medium`, its documented default, beside the `xhigh` runs the model arm
+  already makes, so the arm costs at most about $56 more. Record both the
+  saving per run, which `PL-2D28` could not price because the output-token
+  term at `medium` is unmeasured, and the excess miss rate of `medium`
+  against `xhigh`. The decision rule has the same break-even form as the
+  model lines, computed from the measured saving: `medium` pays only if its
+  excess miss rate is below the saving per run divided by the expected cost
+  of an escape, which `PL-2D28` puts at about $35 at an escape rate of 3 in
+  10. No `effort` line goes into the Explore file before the result.
+
 **Done when.** The per-search records and the three models' excess miss rates
-with their bounds are recorded here, `PL-2D28` cites them, and the model
+with their bounds, and the effort arm's, are recorded here, `PL-2D28` cites them, and the model
 review has issued its decision on the Explore default.
 
 **Generator check.** Not a member of a head. It follows from `PL-2D28`'s
