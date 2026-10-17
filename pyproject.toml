@@ -138,6 +138,11 @@ dev = [
     # `type: ignore` in the test trees (`PL-R417`).
     "types-pyyaml>=6.0.12.20260906",
 ]
+# mutmut, for `make mutate` and nothing else, so `uv sync` leaves it out and no
+# test or check depends on it (`PL-Y1PS`). Pinned exactly, because
+# `tools/diff_mutation.py` builds mutmut's mutant names and reads the output of
+# `mutmut results`, and a new release may change either.
+mutation = ["mutmut==3.8.0"]
 
 # uv resolves `.python-version` against the interpreter list baked into the
 # binary at build time, so an older uv silently maps a bare `3.14` onto the
@@ -154,6 +159,44 @@ addopts = "-ra"
 # `tools/` holds repo tooling that is not part of the shipped package, and
 # `subprojects/docket/` is a standalone package this repository also uses.
 pythonpath = ["tools", ".claude/hooks", "subprojects/docket/src"]
+
+# Mutation testing (`PL-Y1PS`). `make mutate` runs `tools/diff_mutation.py`,
+# which mutates the functions the current branch changes, or every function
+# with `--all`. `docs/mutation-testing.md` explains how to read a survivor and
+# records the baseline.
+[tool.mutmut]
+source_paths = ["src/"]
+# The clinical model, and the four presentation modules that compute a value
+# the interface displays. The rest of `app/` is Qt widget code, which the unit
+# tests do not reach.
+only_mutate = [
+    "src/anesthesia_sim/core/*",
+    "src/anesthesia_sim/app/formatting.py",
+    "src/anesthesia_sim/app/chart_time_base.py",
+    "src/anesthesia_sim/app/wash_in.py",
+    "src/anesthesia_sim/app/run_series.py",
+]
+# pytest reads its test files from `mutants/selected-tests.txt`, which
+# `tools/diff_mutation.py` writes before each run: every test file under
+# `tests/unit/` that imports the simulator. The deselected test lists each
+# module's functions to check its guards, so under mutmut it also calls the
+# mutant copies of those functions and fails on them.
+pytest_add_cli_args_test_selection = [
+    "@selected-tests.txt",
+    "--deselect",
+    "tests/unit/test_supported_range_edges.py::test_each_guard_admits_only_what_its_functions_compute",
+]
+# The default, `fork`, imports each test module once, unmutated, and then forks
+# a process for each mutant. A test whose expected value is computed when its
+# module is imported then kills a mutant that the same real defect would pass.
+# `forkserver` with no warm-up imports the test modules again for each mutant.
+# The default warm-up, `collect`, would import them unmutated once more.
+process_isolation = "forkserver"
+forkserver_warmup = "none"
+# The tests import `tools/doc_check.py` and `docket`, and read `docs/MODEL.md`.
+# mutmut 3.8.0 fails to copy a file whose directory it has not created, so
+# `docs/` is copied whole.
+also_copy = ["tools/", "subprojects/docket/src/", "docs/"]
 # The application's target, not the whole repository's. `tools/ruff.toml` and
 # `subprojects/docket/ruff.toml` extend this file and override
 # `target-version` to the bare-`python3` floor, because both trees are run by

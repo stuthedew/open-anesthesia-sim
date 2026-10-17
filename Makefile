@@ -1,4 +1,4 @@
-.PHONY: sync check fix test run prebuild docket doc-check pr-title release
+.PHONY: sync check fix test mutate run prebuild docket doc-check pr-title release
 
 # Exported to every recipe below rather than written into a pytest line, so that
 # `check_coverage_gate`'s string comparison between the `check` target and
@@ -434,6 +434,16 @@ fix:
 # one, which now shares neither the width nor the threshold (`PL-D3M2`).
 test:
 	uv run pytest -n auto --dist worksteal
+
+# Mutation-tests the functions the current branch changes against the
+# simulator's unit tests, and prints each mutant they miss (`PL-Y1PS`). It is a
+# measurement and not a gate, so `make check` does not run it.
+# `docs/mutation-testing.md` says how to read the result. To mutate every
+# function instead, which takes over an hour:
+#
+#     make mutate ARGS=--all
+mutate:
+	uv run --group mutation python tools/diff_mutation.py $(ARGS)
 
 # Named for the store it validates. `make check` runs `bin/docket check` too;
 # this target exists so a session can validate the store on its own, after
