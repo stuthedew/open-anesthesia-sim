@@ -2076,9 +2076,9 @@ class SimulationController:
             SimulationConfigurationError: If the settings record the run's
                 definition opens on cannot be built from what the
                 compartments hold - tissue flows that no longer sum to the
-                cardiac output, which a checked output written onto the
-                patient past `set_cardiac_output` leaves, the one write the
-                type-only guard admits (`PL-LBQY`). Raised before anything is
+                cardiac output, which a tissue's own flow set past its patient
+                leaves (`PL-HQF5`), since the patient's output refuses a write
+                past `set_cardiac_output` (`PL-KFNP`). Raised before anything is
                 cleared, so the run is exactly as it was: still running if it
                 was, its state, definition, timeline and any recorded failure
                 untouched. The interface halts the run on it

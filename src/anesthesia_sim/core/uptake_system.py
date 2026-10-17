@@ -279,9 +279,9 @@ class AgentUptakeSystem:
         restated with the rest.** `_advance_step` builds the record through
         `_propagator_for` when a setting has moved since the last step, and
         the record refuses tissue flows that no longer sum to the cardiac
-        output - what a checked output written onto the patient past
-        `set_cardiac_output` leaves, the one write the type-only guard admits
-        (`PL-LBQY`). It is not refused before the step as a
+        output - what a tissue's own flow set past its patient leaves
+        (`PL-HQF5`), since the patient's output refuses a write past
+        `set_cardiac_output` (`PL-KFNP`). It is not refused before the step as a
         `SimulationConfigurationError`, because that type promises the caller
         a run still worth continuing (`core/exceptions.py`), and a run whose
         record cannot be built is not one: the same record is refused on
