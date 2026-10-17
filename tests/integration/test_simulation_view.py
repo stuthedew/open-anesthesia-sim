@@ -5797,6 +5797,67 @@ def test_resetting_the_trunk_ends_the_comparison(application: QApplication) -> N
     assert view._fork_panel.notice.notice() is None
 
 
+def test_a_refused_branch_does_not_survive_a_one_run_reset(application: QApplication) -> None:
+    """`PL-75P5`: a refusal names an instant of the run the trunk's Reset has just ended.
+
+    The one-run case is every case before a learner branches, and the guard
+    that spares a one-run dashboard its layout work once returned before the
+    refusal was cleared, so the banner went on reporting an instant the
+    restarted run, standing at induction, does not hold.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    panel = view._fork_panel
+    panel.set_offer(
+        fork_offer(
+            (CaseInstant(0.0), CaseInstant(30.0), CaseInstant(60.0)),
+            marks=(),
+            comparing=False,
+            here=None,
+        )
+    )
+    panel.point_selector.setCurrentIndex(panel.point_selector.findData(30.0))
+    panel.take_button.click()
+
+    assert len(view.runs) == 1
+    refusal = panel.notice.notice()
+    assert refusal is not None
+    assert "30" in refusal
+
+    view.runs[TRUNK_RUN_INDEX]._reset_button.click()
+    _settle(application)
+
+    assert view.runs[TRUNK_RUN_INDEX].snapshot().elapsed_s == 0.0
+    assert view._fork_refusal is None
+    assert panel.notice.notice() is None
+
+
+def test_a_one_run_reset_leaves_a_case_with_no_branches(application: QApplication) -> None:
+    """The case is a record of the trunk's run, so its Reset rebuilds it whatever is drawn.
+
+    A branch the case keeps without the dashboard drawing it is what a fork
+    whose drawing raised leaves (`PL-08SS`). Built here by forking the case
+    directly, it must not outlive the trunk's Reset as a branch of a run that
+    no longer exists, merely because one run was on screen.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    case.fork_at(CaseInstant(60.0))
+
+    assert len(view.runs) == 1
+    assert len(case.branches) == 1
+
+    view.runs[TRUNK_RUN_INDEX]._reset_button.click()
+    _settle(application)
+
+    assert view.case is not None
+    assert view.case is not case
+    assert view.case.trunk is view.runs[TRUNK_RUN_INDEX].controller
+    assert view.case.branches == ()
+
+
 def test_resetting_a_branch_leaves_the_comparison_standing(application: QApplication) -> None:
     """A branch's Reset returns it to its fork; only the trunk's is a new case.
 
