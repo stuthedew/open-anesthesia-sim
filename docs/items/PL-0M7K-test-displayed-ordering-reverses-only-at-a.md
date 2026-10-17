@@ -9,6 +9,7 @@ feature: tests-detect-wrong-values
 touches: tests/unit/test_formatting.py, tests/reference/test_coupled_dynamics.py, docs/MODEL.md
 added: 2026-10-17
 closed: 2026-10-17
+pr: 1516
 payoff: the claim that displayed concentrations keep their order is held by a test of the shipped formatter, so docs/MODEL.md cites evidence that can fail on the display path
 verify: grep -q 'def test_format_percent_preserves_order' tests/unit/test_formatting.py
 ---
