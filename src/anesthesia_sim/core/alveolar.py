@@ -99,10 +99,12 @@ class AlveolarCompartment:
             only when `SimulationController.snapshot()` built the fraction two
             layers later (`PL-7DJK`). Until `PL-19Y0` a volume too small for
             the amount held was written the same way: 1e-6 L under 0.098 L of
-            sevoflurane completed the next step and propagated a partial
-            pressure near 98,000 atmospheres into every other compartment
-            (`PL-544D`, found at review). The constructor writes the volume
-            first, so it is held to the amount only once there is one.
+            sevoflurane began the next step at a partial pressure near 98,000
+            atmospheres and ended it with every fraction plausible and wrong
+            and the accounting passing (`PL-544D`, found at review;
+            `require_room_for_the_agent_held` has the figures). The
+            constructor writes the volume first, so it is held to the amount
+            only once there is one.
 
             Raises:
                 TypeError: `name` is `alveolar_ventilation_l_min` and `value`

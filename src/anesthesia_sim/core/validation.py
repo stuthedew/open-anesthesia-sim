@@ -199,11 +199,13 @@ def require_room_for_the_agent_held(
     the amount held it puts it above one atmosphere. Each compartment refuses
     an amount written above its capacity, and until `PL-19Y0` nothing refused
     the converse: an alveolar volume of 1e-6 L written under 0.098 L of
-    sevoflurane completed the next step and propagated a partial pressure near
-    98,000 atmospheres into every other compartment (`PL-544D`, found at
-    review). So the alveolar compartment, the venous pool and each tissue
-    group call this as either factor is written, with the capacity that
-    writing `value` would leave, which only the caller knows how to form.
+    sevoflurane was accepted, and the next step began from an alveolar partial
+    pressure near 98,000 atmospheres and ended with every fraction plausible
+    and wrong - inspired 6.71% where an ordinary step reads 5.81% - and the
+    accounting passing (`PL-544D`, found at review; measured 2026-10-17). So
+    the alveolar compartment, the venous pool and each tissue group call this
+    as either factor is written, with the capacity that writing `value` would
+    leave, which only the caller knows how to form.
 
     Raises:
         SimulationConfigurationError: `agent_amount_l` is above `capacity_l`.
