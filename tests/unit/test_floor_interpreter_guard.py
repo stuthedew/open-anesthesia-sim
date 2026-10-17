@@ -336,6 +336,83 @@ def test_a_bare_tree_name_is_a_floor_parse(command: str, refused: bool) -> None:
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
 
 
+IN_A_C_STRING = (
+    # `PL-7LCY`'s two reproductions, with the rest of each script cut. Code that
+    # opens a data file parses no 3.14 source.
+    (
+        'python3 -c "import json; '
+        "d=json.load(open('src/anesthesia_sim/data/agents/sevoflurane.json')); print(d)\"",
+        False,
+    ),
+    (
+        'python3 -c "import json; '
+        "d=json.load(open('src/anesthesia_sim/data/patients/reference_adult.json')); print(d)\"",
+        False,
+    ),
+    (
+        "python3 -c \"import glob; print(glob.glob('src/anesthesia_sim/data/agents/*.json'))\"",
+        False,
+    ),
+    ("python3 -Bc \"import json; json.load(open('src/anesthesia_sim/data/x.json'))\"", False),
+    # A directory, a Python file, or a name with no suffix may be source.
+    ("python3 -c \"import compileall; compileall.compile_dir('src/', quiet=1)\"", True),
+    ("python3 -c \"import os; print(os.listdir('src/anesthesia_sim/data'))\"", True),
+    ("python3 -c \"import glob; print(glob.glob('tests/**/*.*'))\"", True),
+    ("python3 -c\"import ast; ast.parse(open('src/a.py').read())\"", True),
+    # One path that may be source is enough, whatever else the code opens.
+    (
+        "python3 -c \"import ast, json; json.load(open('src/x.json')); "
+        "ast.parse(open('src/a.py').read())\"",
+        True,
+    ),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), IN_A_C_STRING)
+def test_a_c_string_reading_a_data_file_under_a_tree_is_left_alone(
+    command: str, refused: bool
+) -> None:
+    """Inside a `-c` string, only a path that may be Python source is a parse (`PL-7LCY`).
+
+    The guard refused any tree path it found in the code, so reading a JSON
+    parameter file under `src/anesthesia_sim/data/` was refused with the PEP 758
+    explanation, though the code parses no Python. A directory, a `.py` file
+    and a name with no suffix are still refused.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+AFTER_THE_OPERAND = (
+    # `PL-CDZ8`'s reproduction: the tree is only text the script is handed.
+    ('python3 /tmp/x/guard.py "see tests/unit/test_doc_check.py"', False),
+    ("python3 -u /tmp/x/guard.py src/anesthesia_sim/app_metadata.py", False),
+    ("python3 -- /tmp/x/guard.py tests", False),
+    # The script itself, an option of the interpreter, a module's words and the
+    # words after a `-c` string are still read.
+    ("python3 src/anesthesia_sim/app_metadata.py /tmp/x", True),
+    ("python3 -W ignore src/a.py", True),
+    ("python3 -m compileall tests/unit/", True),
+    ("python3 -m py_compile src/anesthesia_sim/app_metadata.py", True),
+    ("python3 -c 'import sys' src/a.py", True),
+    # A module glued to `-m` runs on the words after it, as a spaced one does.
+    ("python3 -mcompileall .", True),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), AFTER_THE_OPERAND)
+def test_a_scripts_own_argument_naming_a_tree_is_left_alone(command: str, refused: bool) -> None:
+    """The words after a script are its `argv`, which the interpreter never parses (`PL-CDZ8`).
+
+    The guard read every word after the interpreter, so a scratch script handed
+    a tree path as text was refused as a floor parse. A tree handed to the
+    interpreter itself, to a module run with `-m`, or after a `-c` string is
+    still refused.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
 # Why each spelling below is outside the promise the hook's header opens with,
 # naming what found it.
 THROUGH_CD = (

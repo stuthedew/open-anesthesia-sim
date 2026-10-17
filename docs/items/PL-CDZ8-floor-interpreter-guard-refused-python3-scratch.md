@@ -3,12 +3,14 @@ id: PL-CDZ8
 title: floor-interpreter-guard refused python3 <scratch>/guard.py with a string argument naming tests/unit/test_doc_check.py, where nothing parsed that tree - the tree name was only text in an argument; kin of PL-7LCY and possibly a post-close instance of PL-61FT (met by the 2026-10-11 triage pass's batch A)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: friction-batch
-touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpreter_guard.py
+touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpreter_guard.py, .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-11
+closed: 2026-10-17
+pr: 1500
 payoff: a session running its own script with a tree path as an argument is let through, while a real floor parse of src or tests is still refused
 verify: grep -q 'def test_a_scripts_own_argument_naming_a_tree_is_left_alone' tests/unit/test_floor_interpreter_guard.py
 reenters: PL-61FT

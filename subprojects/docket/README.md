@@ -435,8 +435,8 @@ that way. The verdict is read from the content instead, by `vcs.landed_whole`,
 which reuses `orphaned`'s narrowed reading whole rather than re-deriving it -
 the whole-commit test and the queue-only exclusion both travel with it. It is
 asked only where the counts would otherwise say "merge", so the other four
-states pay none of its three git calls, and it is ordered below the rewritten
-case, which a content comparison cannot tell it from.
+states pay none of its four git calls. It is ordered below the rewritten case,
+which a content comparison cannot tell it from.
 
 **Content cannot see every merge, so the forge's word comes first where the
 project names a way to ask it** (`PL-8BR0`). `landed_whole` refuses a commit

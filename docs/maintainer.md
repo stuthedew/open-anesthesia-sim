@@ -192,10 +192,23 @@ set it when the session opens rather than toggling it.
   instead of the 0.1x cache-read rate. The 1-hour write costs 2x rather than
   1.25x and pays back after two cache reads, which any subagent doing real work
   clears many times over.
-- `CLAUDE_CODE_SUBAGENT_MODEL` picks the model for exploration subagents.
-  `CLAUDE.md` tells sessions to delegate broad codebase search to them; a
-  small, fast model is appropriate, because their transcripts stay out of the
-  main context and what they return is verified against the source anyway.
+- `CLAUDE_CODE_SUBAGENT_MODEL` is set to `haiku` in the `env` block of
+  `.claude/settings.json`, but it does not choose the model for exploration
+  subagents. The built-in Explore and Plan subagents ignore it and run on the
+  main conversation's model. The variable is only a default for a subagent
+  that nothing else gives a model, such as `general-purpose`
+  ([subagents](https://code.claude.com/docs/en/sub-agents), "Choose a
+  model", read 2026-10-17). In a cloud session it does not do even that. On
+  2026-10-17 a `general-purpose` subagent started with no model in a Projects
+  thread ran on `claude-opus-5-5`, its parent's model, as its transcript's
+  `message.model` records. The variable was also unset in that session's Bash
+  shell, as it was in three other cloud sessions on 2026-10-01 and 2026-10-17
+  (`PL-KLN5`). The settings guide says most `env` values wait until the folder
+  is trusted ([settings](https://code.claude.com/docs/en/settings), "A
+  committed key doesn't reach teammates"). That is one possible cause, and
+  nobody has tested it. So in a cloud session every subagent runs on the
+  session's own model. Whether exploration should run on a cheaper model, and
+  whether this variable should stay, waits on your answer in `PL-2D28`.
 - **A session asking you to type `/compact` is resetting at its budget**
   (project owner, 2026-09-25, ratified, over pasting a handoff prompt into a
   new session, `PL-YJG1`). It pushes everything first, so what the summary
