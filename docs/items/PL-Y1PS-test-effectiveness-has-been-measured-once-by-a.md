@@ -12,10 +12,17 @@ added: 2026-10-17
 effectiveness with mutation testing, the pitfalls it hit, and the numbers it
 got, so that a later session can re-run it and compare. It also carries one
 proposal: run mutation on what a pull request changes rather than on the
-whole tree. `CLAUDE.md` pauses building new workflow mechanisms while any open
-item carries `generator: live`. So this item records the recipe and the
-proposal; whether to build a command, a make target or a CI job from it is
-the project owner's call.
+whole tree, as a measurement rather than a score to reach.
+
+**Decision.** The project owner approved diff-scoped mutation as a
+measurement (project owner, 2026-10-17, ratified, over leaving the recipe as a
+one-off record and over a whole-tree mutation score as a target). Where the
+recipe lives, and whether it runs as a make target or a CI job, is this item's
+design work. The capture said this fell under `CLAUDE.md`'s pause on new
+workflow mechanisms. That was wrong: the pause applies only while a
+workflow-lane head carries `generator: live`, and on 2026-10-17 the only head
+that `bin/docket generators` marked still generating was `PL-X7D5`, a
+product-lane head (`PL-3KMD`).
 
 **Why mutation testing alone is not enough.** The audit's answer to the
 owner's question was no, for four measured reasons. A high mutation score
@@ -156,8 +163,8 @@ code under review.
 mutmut is ever added.
 
 **Done when.** The recipe and this baseline are recorded where a session can
-run them from, and the project owner has decided whether to build
-diff-scoped mutation.
+run them from, and a diff-scoped mutation run reports the survivors in the
+functions a pull request changes.
 
 **Related.** `PL-79PK` (the message-only survivors), `PL-ZH1F` and `PL-4H4T`
 (the two real gaps that matter), `PL-0Z0F` (ready; perturbing

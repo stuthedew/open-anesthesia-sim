@@ -3,11 +3,13 @@ id: PL-3KMD
 title: Write the testing practice the project owner ratified on 2026-10-17 into a path-scoped rule on the simulator's tests, so a session writing a test takes its expected value from outside the code under test, and close PL-6JKB with it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: tests-detect-wrong-values
 touches: .claude/rules/test-oracles.md, docs/items/PL-Y1PS-test-effectiveness-has-been-measured-once-by-a.md, docs/items/PL-6JKB-nothing-checks-that-a-bug-fix-s-regression-test.md, docs/items/PL-75D9-bit-for-bit-determinism-is-tested-only-within.md
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1497
 payoff: a session writing a simulator test takes its expected value from outside the code under test, so the next gap like an agent switch that keeps the old agent's compartments is caught when the test is written
 verify: grep -q 'fresh run' .claude/rules/test-oracles.md && grep -q '/tests/reference/' .claude/rules/test-oracles.md && ! grep -q 'pauses building new workflow mechanisms' docs/items/PL-Y1PS-test-effectiveness-has-been-measured-once-by-a.md
 ---

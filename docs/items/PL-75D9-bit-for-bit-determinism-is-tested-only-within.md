@@ -76,12 +76,16 @@ a mutation run, which uses a fixed order.
    opt-outs on two command lines alone would shuffle every other invocation,
    including sessions' own `uv run pytest` runs.
 
-The first is simulator test work. The second is a new CI mechanism, which
-`CLAUDE.md` pauses while any open item carries `generator: live`, so it is the
-project owner's call.
+The first is simulator test work. The second is a CI job.
+
+**Decision.** The project owner approved both (project owner, 2026-10-17,
+ratified, over leaving determinism across processes and independence of test
+order to one-off audits). The capture said the job fell under `CLAUDE.md`'s
+pause on new workflow mechanisms. That was wrong, because no workflow-lane
+head carried `generator: live` that day (`PL-3KMD`).
 
 **Done when.** A test compares a run across processes with different hash
-seeds, and the project owner has decided on the randomized-order job.
+seeds, and a scheduled job runs the suite in a randomized order.
 
 **Provenance.** A read-only test-effectiveness audit on 2026-10-17 found this.
 The audit ran mutation testing with mutmut 3.8.0 over `core/` and four
