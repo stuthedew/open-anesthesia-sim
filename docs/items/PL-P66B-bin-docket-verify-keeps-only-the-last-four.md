@@ -3,12 +3,14 @@ id: PL-P66B
 title: bin/docket verify keeps only the last four lines of a failed make check, which after a pytest failure are its count, uv's two sync lines and make's error, so a REJECT for a failing test never names the test and the session re-runs the suite or reads .pytest_cache to learn it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, session-cost
 feature: friction-batch
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-17
+pr: 1491
 payoff: a REJECT from bin/docket verify names the test or finding that failed, so a red gate costs a read rather than a second three-minute make check
 verify: grep -q 'def test_a_failing_project_check_s_evidence_names_the_failing_test' subprojects/docket/tests/test_verify.py
 ---

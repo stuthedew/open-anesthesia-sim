@@ -3713,9 +3713,28 @@ def _clipped(title: str, limit: int = STALE_HEADING_CHARS) -> str:
 
 
 def _check_stale_open_threads(
-    report: Report, threads: tuple[Thread, ...] | None, config: Config
+    report: Report,
+    threads: tuple[Thread, ...] | None,
+    config: Config,
+    notes_changed: bool | None = None,
 ) -> None:
     """Name a notes-file thread the file itself calls open, whose items have all closed.
+
+    **Only on a branch that has changed the notes file.** The decision this
+    advisory serves is whether to re-head or delete a thread whose items have
+    all closed, and a session takes that decision when it writes the notes
+    file: at a close-out's docs sweep, or at the session end where
+    `CLAUDE.md`'s capture rule sends it. So `notes_changed` False keeps this
+    silent, and the line meets the one session that can act on it. It fired
+    on every run for 24 days without changing a decision, which `CLAUDE.md`
+    calls a defect in the check, and the rule for an advisory nobody acts on
+    is to route it to the moment the decision is taken before retiring it
+    (project owner, 2026-10-01, ratified, `PL-1XZD`; routed by `PL-JYX9`).
+    `None` means nobody could say whether the file changed - no git, or a
+    base that does not resolve - and the advisory fires as it always did,
+    since nothing then says the file is unchanged. What retires it after this:
+    a branch that changed the notes file with this line in its output and the
+    stale threads it named still standing afterwards.
 
     Two clauses, and the advisory needs both. The heading's own leading word
     has to say the thread is open, and every `PL-` id the section cites -
@@ -3743,7 +3762,7 @@ def _check_stale_open_threads(
     a thread is spent, and claiming otherwise would be the apparatus handing
     over a partial reading as a complete one.
     """
-    if not threads:
+    if not threads or notes_changed is False:
         return
     status = {item.identifier: item.status for item in report.items}
     stale = [
@@ -3879,6 +3898,7 @@ def _groom(
     threads: tuple[Thread, ...] | None = None,
     assertions: tuple[Assertion, ...] | None = None,
     unread_instructions: Sequence[str] = (),
+    notes_changed: bool | None = None,
 ) -> None:
     """Detect the conditions that make a grooming pass worth someone's time."""
     # Grooming rather than close-out, and that placement is the decision
@@ -3886,7 +3906,7 @@ def _groom(
     # about hygiene, where a reader has the file open and the judgment in
     # hand, instead of on every close-out, where one permanent false fire
     # costs the whole advisory block its reader.
-    _check_stale_open_threads(report, threads, config)
+    _check_stale_open_threads(report, threads, config, notes_changed)
     _check_stale_instructions(report, assertions, config, today, unread_instructions)
     stale = [
         item
@@ -4318,6 +4338,7 @@ def analyze(
     unreferenced: dict[str, tuple[str, ...]] | None = None,
     unread_notes: Sequence[str] = (),
     threads: tuple[Thread, ...] | None = None,
+    notes_changed: bool | None = None,
     assertions: tuple[Assertion, ...] | None = None,
     unread_instructions: Sequence[str] = (),
     settings_source: SettingsSource | None = None,
@@ -4418,7 +4439,17 @@ def analyze(
     _check_records(report, records)
     _check_written(report, written, settings, today)
     _check_lost(report, lost)
-    _groom(report, today, settings, ids, milestones, threads, assertions, unread_instructions)
+    _groom(
+        report,
+        today,
+        settings,
+        ids,
+        milestones,
+        threads,
+        assertions,
+        unread_instructions,
+        notes_changed=notes_changed,
+    )
     # Said once, for both advisories above that read `offered`, and said even
     # where neither fired: an unread ref might carry the item that would have
     # been named, so silence there is the same partial answer as a wrong name.

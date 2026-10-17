@@ -1318,6 +1318,27 @@ def test_a_stale_open_thread_is_unraised_where_no_notes_file_was_read() -> None:
     assert not _has(report.advisories, "thread(s) the heading calls open")
 
 
+def test_stale_threads_are_named_only_where_the_notes_file_changed() -> None:
+    """The advisory meets the one session that can act on it (`PL-JYX9`).
+
+    Re-heading or deleting a spent thread is decided when a session writes the
+    notes file, so a branch that leaves the file alone gets no line and a
+    branch that changed it gets the line. A caller that could not say - no
+    git, or a base that does not resolve - gets the line too, since nothing
+    then says the file is unchanged.
+    """
+    threads = (_thread("Open thread: the chart - PL-B1B1", about=("PL-B1B1",)),)
+    store = [_closed("PL-B1B1")]
+
+    unchanged = analyze(store, TODAY, NOTES_FILE, threads=threads, notes_changed=False)
+    changed = analyze(store, TODAY, NOTES_FILE, threads=threads, notes_changed=True)
+    unknown = analyze(store, TODAY, NOTES_FILE, threads=threads, notes_changed=None)
+
+    assert not _has(unchanged.advisories, "the chart")
+    assert _has(changed.advisories, "the chart")
+    assert _has(unknown.advisories, "the chart")
+
+
 def test_a_stale_open_thread_is_read_from_the_notes_file_itself(tmp_path: Path) -> None:
     """Both clauses, end to end, against the heading shapes the file really uses.
 
