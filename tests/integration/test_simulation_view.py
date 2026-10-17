@@ -3837,8 +3837,9 @@ def test_the_mac_axis_and_references_follow_the_agent(application: QApplication)
     assert chart.axis_ticks("right")[-1][0] == pytest.approx(6.0)
 
     _select_agent(view.runs[0], "desflurane")
-    snapshot = controller.snapshot()
-    mac_awake = snapshot.agent_mac_awake
+    # Read from desflurane's own file, not from the switched run's snapshot,
+    # which would agree with a band the switch failed to rebuild (`PL-JPS2`).
+    mac_awake = load_agent_parameters("desflurane").mac_awake
 
     assert view._mac_reference_text.text() == format_mac_reference("Desflurane", 6.0)
     assert view._mac_awake_reference_text.text() == format_mac_awake_reference(
@@ -3850,6 +3851,46 @@ def test_the_mac_axis_and_references_follow_the_agent(application: QApplication)
     assert chart.one_mac_line() == 6.0
     assert chart.axis_ticks("right")[-1][1] == "3.0"
     assert chart.axis_ticks("right")[-1][0] == pytest.approx(18.0)
+
+
+@pytest.mark.parametrize(
+    ("previous_agent_id", "agent_id"),
+    [
+        (previous, chosen)
+        for previous in AGENT_DATA_FILENAMES
+        for chosen in AGENT_DATA_FILENAMES
+        if previous != chosen
+    ],
+)
+def test_the_mac_awake_band_after_a_switch_is_the_new_agents_own(
+    application: QApplication, previous_agent_id: str, agent_id: str
+) -> None:
+    """After a switch, the band and its line of text use the chosen agent's own values.
+
+    A switch keeps the controller. So a band the switch failed to rebuild
+    would still hold the previous agent's fraction and spread, and the
+    snapshot would agree with the chart. The expected values therefore come
+    from the chosen agent's data file, and the test works out the band's
+    edges itself (`PL-JPS2`). After a switch from sevoflurane, such a fault
+    would draw desflurane's band at 1.74-2.34% instead of 1.78-2.54%.
+    """
+
+    view = _shown_view(application, SimulationController(agent_id=previous_agent_id))
+    _select_agent(view.runs[0], agent_id)
+    own = load_agent_parameters(agent_id)
+    fraction = own.mac_awake.fraction_of_mac
+    spread = own.mac_awake.standard_deviation_fraction_of_mac
+
+    assert view.runs[0].controller.agent_id == agent_id
+    assert view._concentration_chart.mac_awake_band() == pytest.approx(
+        ((fraction - spread) * own.mac_percent, (fraction + spread) * own.mac_percent)
+    )
+    assert view._mac_awake_reference_text.text() == format_mac_awake_reference(
+        own.display_name,
+        fraction_of_mac=fraction,
+        standard_deviation_fraction_of_mac=spread,
+        mac_percent=own.mac_percent,
+    )
 
 
 def test_a_recorded_change_is_marked_on_the_chart_at_its_own_time(
