@@ -193,7 +193,9 @@ policy, every case returned in `Loaded` with its notice). `docs/ARCHITECTURE.md`
 against `tmp_path`.
 
 **Two readings taken past the ratified text, both the implementing session's
-call and recorded here so they can be reopened on ordinary evidence:**
+call (project owner, 2026-10-17, ratified, over the literal reading of the
+first-run rule and of Q3, named in each), so each is reopened on ordinary
+evidence:**
 
 - *No current file, but a previous generation that reads.* The design's first-run
   rule says no file means the shipped set, nothing said. Read literally it
@@ -207,7 +209,8 @@ call and recorded here so they can be reopened on ordinary evidence:**
   file to `.previous` and then replaces, so the directory always holds a
   current file; a torn `.previous` is validated before it is ever used.
 
-Two more decisions of the same weight: a file that is not UTF-8 text is
+Two more decisions the session took, which the owner's read of `#1481` did
+not name and which stand on the same footing: a file that is not UTF-8 text is
 *invalid* (set aside) rather than *unreadable* (saving off), since it was read
 and is not a document; and a previous generation a newer build wrote turns
 saving off, because the second save after it would overwrite it. Wiring the

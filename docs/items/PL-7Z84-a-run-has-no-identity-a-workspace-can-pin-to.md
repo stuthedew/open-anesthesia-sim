@@ -41,3 +41,9 @@ So a run's identity today is *index in this dashboard's drawing order*, held by 
 ## Area-model audit (PL-BNYF)
 
 **Disposition: `missing-prereq`.** Filed 2026-09-16 by the area-model queue audit (`PL-BNYF`), which swept 49 open and untriaged items and seven gap lenses against `ROADMAP.md` item 34, `docs/interface-provenance.md` and `.claude/rules/ui-areas.md`. Each candidate was checked against the store before it was filed, so a gap an existing item already covers is not here.
+
+**Ranked `P1` on 2026-10-17**, when `PL-WV9K` closed and this item went
+`ready`: `bin/docket check` refuses a `safety`-classed item below `P1` once it
+is startable, so the band is the gate's rule rather than a weighing, and the
+owner agreed to it on the read of `#1481` (project owner, 2026-10-17,
+ratified, over leaving it `P2` and blocked).
