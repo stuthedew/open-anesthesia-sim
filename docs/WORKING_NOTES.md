@@ -2390,6 +2390,10 @@ as the fourth compounding-friction test (over the three as they stood). Build
 `PL-YY32`, the digest line comparing CI's pytest step to its baseline, which the
 narrowing lets through since `PL-X7D5` is product-lane.
 
+**`PL-LYH3` joined the batch after `PL-YY32`** on 2026-10-17, by the previous
+session's call during the owner's pause check. It makes one documentation
+analysis read the item store once instead of seven times.
+
 **Deferred, with the number that would change it.** A `saves:` field and a
 ratio line in `next` - Smith's rule (Naval Res. Logist. Q. 1956;3:59-66) and
 Reinertsen's weighted shortest job first - is built if, a month after the batch
