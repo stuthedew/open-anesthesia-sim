@@ -13,12 +13,15 @@ This closes the loop from the other end. Rather than making every branch pay to
 prevent the red, one HTTP call at session start reports it once it exists.
 
 **It speaks only when there is something to act on.** A green `main` prints
-nothing, and so does every failure of this script's own — no network, no remote,
-a remote that is not GitHub, a rate-limited or malformed response. `CLAUDE.md`
-is explicit that a check firing every run without changing a decision is a
-defect in the check, and this one is read at the top of every session, where a
-routine line would train a reader to skim exactly the region a real advisory
-appears in.
+nothing while CI's pytest step time stays inside its band (below). A checkout
+with no remote, or with a remote that is not GitHub, prints nothing either,
+because it has no Actions API to read. `CLAUDE.md` is explicit that a check
+firing every run without changing a decision is a defect in the check, and this
+one is read at the top of every session, where a routine line would train a
+reader to skim exactly the region a real advisory appears in. When the API
+cannot be read, because there is no network or the response is rate-limited or
+malformed, the verdict lines stay silent and the pytest line says that it could
+not compare the time (`PL-YY32`).
 
 Two consequences of that rule are worth stating, because both look like gaps:
 
@@ -40,8 +43,8 @@ Two consequences of that rule are worth stating, because both look like gaps:
   `main` prints nothing.
 - **Silence is not a green tree.** It means "no failing verdict, and no
   cancelled run newer than the verdict, was readable from here", which is also
-  what an offline container gets. The line exists to surface a red nobody would
-  otherwise see, never to certify a green one.
+  what a checkout with no GitHub remote gets. The line exists to surface a red
+  nobody would otherwise see, never to certify a green one.
 
 **The line names the failing step, and that is the whole of what `PL-T83R`
 changed.** Attributed over all 819 completed `main` push runs from 2026-08-22
@@ -94,6 +97,25 @@ time to green, not the count. Suppressing the class would have cost every one
 of the 93 findings, all of which were real and all of which somebody later
 fixed, so the rate is accepted and the line made precise instead.
 
+**It also says when CI's pytest step has drifted from its baseline**
+(`PL-YY32`). The pytest step of `quality.yml`'s `checks` job took 48 s on
+2026-09-05, about 125 s in mid-September and about 500 s by 2026-10-17. Nothing
+read the trend, and `PL-H9KW` was filed by feel a month in. So this script takes
+the step's median time over `main`'s newest `PYTEST_RUNS` successful runs and
+compares it with `PYTEST_BASELINE_S`. It prints a line only when the median
+falls outside `PYTEST_BAND`. Above the band, something has slowed the suite.
+Below it, the baseline is out of date, and a baseline set too high cannot catch
+the next slowdown. The comments on those three constants give the measurements
+behind them.
+
+The step's time is in each run's jobs payload, not in the list of runs, so this
+line costs `PYTEST_RUNS` more requests at every session start. They are sent at
+once, on threads, so they add about the time of one, which was 0.6 s from a
+cloud container on 2026-10-17. Every other request here
+is paid only when a line will print, but the median is itself the reading, so
+it cannot wait for one. When any of the reads fails, the line says so and gives
+no figure, because a figure from an earlier read could be out of date.
+
 Standard library only, and parsing at the 3.11 floor `tools/ruff.toml` sets, so
 a bare checkout with no virtualenv can run it — from the session-start hook, or
 by hand at any moment, which is the half a hook alone cannot give: `main` can
@@ -104,9 +126,12 @@ from __future__ import annotations
 
 import http.client
 import json
+import statistics
 import subprocess
 import sys
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from pathlib import Path
 
 # This file's own repository, not the caller's working directory: the hook runs
@@ -190,6 +215,37 @@ UNNAMED_STEP = "(a step whose name could not be read)"
 # complete is worse than one that says it was cut. 70 keeps every named step in
 # the workflow whole; only the unnamed `run:` lines reach it.
 STEP_WIDTH = 70
+
+# The job in `quality.yml` that runs the suite, and the start of the name GitHub
+# gives the pytest step. That step has no `name:`, so GitHub names it `Run ` plus
+# its whole `run:` line. Only the start is matched, so a change to the flags
+# after it does not lose the step. `tests/unit/test_main_ci_status.py` holds both
+# to the workflow, so renaming the job or naming the step fails a test.
+CHECKS_JOB = "checks"
+PYTEST_STEP_PREFIX = "Run uv run pytest"
+
+#: How many of `main`'s newest successful runs the pytest step's median is taken
+#: over. Each run costs a request. Over the 100 runs `PYTEST_BASELINE_S` was
+#: measured on, a median of three would have reached the band's lower bound once,
+#: at 0.50, while a median of five never went below 0.59 (`PL-YY32`).
+PYTEST_RUNS = 5
+
+#: The pytest step's time, in seconds, that the median is compared with. It is
+#: the median of the step's time over `main`'s 100 successful push runs from #4906
+#: to #5440 (2026-10-11 06:07Z to 2026-10-17 16:07Z), which was 471.5 s. That is
+#: the time before `PL-H9KW`'s fix, so whoever lands that fix measures this again
+#: the same way: the median over at least the last 100 successful push runs.
+PYTEST_BASELINE_S = 470
+
+#: The band, as fractions of `PYTEST_BASELINE_S`, inside which the line stays
+#: silent. About a third of runs land on a runner that finishes the step in about
+#: 0.57 of the others' time. The job payload names no machine type, so that cause
+#: is inferred. Over the same 100 runs, the median of five consecutive runs ranged
+#: from 0.59 to 1.16 times 471.5 s, so the line would have stayed silent on all 96
+#: such windows. Read on every fourth run against a baseline set on 2026-09-16,
+#: the upper bound would have fired on 2026-09-23, at run #2879. `PL-H9KW` was
+#: filed 24 days later.
+PYTEST_BAND = (0.5, 1.3)
 
 
 def repo_slug(remote_url: str) -> str | None:
@@ -420,6 +476,115 @@ def unjudged_advisory(cancelled: dict[str, object], verdict: dict[str, object] |
     )
 
 
+def _instant(value: object) -> datetime | None:
+    """Parse a timestamp from the API, or return None when the payload has none."""
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def pytest_seconds(jobs: list[object]) -> float | None:
+    """Return the pytest step's time in the `checks` job, or None where it cannot be read.
+
+    A step that did not end in `success` returns None too. A step that failed or
+    was cancelled stopped early, so its time would understate the suite.
+    """
+    for job in jobs:
+        if not isinstance(job, dict) or job.get("name") != CHECKS_JOB:
+            continue
+        steps = job.get("steps")
+        if not isinstance(steps, list):
+            return None
+        for step in steps:
+            if not isinstance(step, dict):
+                continue
+            name = step.get("name")
+            if not isinstance(name, str) or not name.startswith(PYTEST_STEP_PREFIX):
+                continue
+            if step.get("conclusion") != "success":
+                return None
+            started = _instant(step.get("started_at"))
+            completed = _instant(step.get("completed_at"))
+            if started is None or completed is None:
+                return None
+            return (completed - started).total_seconds()
+    return None
+
+
+def pytest_declined(reason: str) -> str:
+    """Return the line for a pytest time that could not be compared. It never gives a figure."""
+    return (
+        f"CI's pytest step time was not compared with its {PYTEST_BASELINE_S} s baseline, "
+        f"because {reason}."
+    )
+
+
+def pytest_advisory(seconds: list[float], runs: list[dict[str, object]]) -> str | None:
+    """Return the line for the pytest step's median, or None while it sits inside the band.
+
+    `seconds` holds the step's time in each of `runs`, which are newest first.
+    The band's bounds are inside it, so a median exactly on one is silent.
+    """
+    median = statistics.median(seconds)
+    ratio = median / PYTEST_BASELINE_S
+    low, high = PYTEST_BAND
+    if low <= ratio <= high:
+        return None
+    if ratio > high:
+        action = (
+            "Find what slowed it. If the change is meant, measure a new PYTEST_BASELINE_S "
+            "as its comment in tools/main_ci_status.py says."
+        )
+    else:
+        action = (
+            "Measure a new PYTEST_BASELINE_S as its comment in tools/main_ci_status.py "
+            "says, or the band cannot catch the next slowdown."
+        )
+    newest, oldest = runs[0], runs[-1]
+    return (
+        f"CI's pytest step has drifted from its baseline. Its median over main's last "
+        f"{len(runs)} successful runs (#{newest.get('run_number', '?')} back to "
+        f"#{oldest.get('run_number', '?')}) is {median:.0f} s, which is {ratio:.2f} times "
+        f"the {PYTEST_BASELINE_S} s baseline and outside the band of {low} to {high} times. "
+        f"{action} {newest.get('html_url', '')}"
+    )
+
+
+def pytest_time_line(slug: str, runs: list[object]) -> str | None:
+    """Return the pytest line for this page of runs, or None while the median is in the band.
+
+    It reads the newest `PYTEST_RUNS` runs that concluded `success`, so the
+    pytest step ran to its end in every one. With fewer, it declines rather than
+    take the median of a smaller set, so the figure always means the same thing.
+    """
+    successful = [
+        run for run in runs if isinstance(run, dict) and run.get("conclusion") == "success"
+    ][:PYTEST_RUNS]
+    if len(successful) < PYTEST_RUNS:
+        return pytest_declined(
+            f"only {len(successful)} of main's last {len(runs)} completed runs succeeded, "
+            f"and the median needs {PYTEST_RUNS}"
+        )
+    try:
+        with ThreadPoolExecutor(max_workers=PYTEST_RUNS) as pool:
+            payloads = list(pool.map(lambda run: fetch_jobs(slug, run.get("id")), successful))
+    except NETWORK_FAILURES as error:
+        return pytest_declined(f"the Actions API could not be read ({error})")
+    seconds: list[float] = []
+    for run, jobs in zip(successful, payloads, strict=True):
+        time = pytest_seconds(jobs)
+        if time is None:
+            return pytest_declined(
+                f"run #{run.get('run_number', '?')} has no finished pytest step in its "
+                f"{CHECKS_JOB} job"
+            )
+        seconds.append(time)
+    return pytest_advisory(seconds, successful)
+
+
 def fetch_runs(slug: str) -> list[object]:
     """Fetch recent completed `quality.yml` runs on the default branch.
 
@@ -481,33 +646,41 @@ def main() -> int:
 
     try:
         runs = fetch_runs(slug)
-    except NETWORK_FAILURES:
+    except NETWORK_FAILURES as error:
+        # The verdict lines stay silent, as they always have offline. The pytest
+        # line says it could not compare, so its silence still means "inside the
+        # band" (`PL-YY32`).
+        print(pytest_declined(f"the Actions API could not be read ({error})"))
         return 0
 
     run = pick_run(runs)
 
     # First, because it is about a newer commit than any verdict line below it,
-    # and whatever that verdict is: under a green one it is the only line.
+    # and whatever that verdict is: under a green one it is the only verdict line.
     cancelled = pick_unjudged(runs)
     if cancelled is not None:
         print(unjudged_advisory(cancelled, run))
 
-    if run is None:
-        return 0
+    if run is not None:
+        # Asked only once the verdict is known to be a failure, and swallowed
+        # separately from the fetch above: by this point `main` is red and the
+        # reader is owed that whether or not the attribution can be read.
+        steps: tuple[tuple[str, str], ...] = ()
+        if run.get("conclusion") != "success":
+            try:
+                steps = step_conclusions(fetch_jobs(slug, run.get("id")))
+            except NETWORK_FAILURES:
+                steps = ()
 
-    # Asked only once the verdict is known to be a failure, and swallowed
-    # separately from the fetch above: by this point `main` is red and the
-    # reader is owed that whether or not the attribution can be read.
-    steps: tuple[tuple[str, str], ...] = ()
-    if run.get("conclusion") != "success":
-        try:
-            steps = step_conclusions(fetch_jobs(slug, run.get("id")))
-        except NETWORK_FAILURES:
-            steps = ()
+        line = advisory(run, steps)
+        if line is not None:
+            print(line)
 
-    line = advisory(run, steps)
-    if line is not None:
-        print(line)
+    # Last, because a slow suite matters less than a red `main` or a commit with
+    # no verdict.
+    time_line = pytest_time_line(slug, runs)
+    if time_line is not None:
+        print(time_line)
     return 0
 
 
