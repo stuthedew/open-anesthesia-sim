@@ -431,8 +431,8 @@ deviating from a described deliverable, not acting without one.
      `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/` or `docs/MODEL.md`,
      or any finding the safety-critical standard reaches, is filed: the item is
      what ranks it `P1`, offers it to the strongest model and stands as its
-     provenance. A fix on the owner's read list (the arm bullet below names it)
-     is taken only where the branch already carries a hold for a read, so a fix
+     provenance. A fix that needs the owner's read (the arm bullet below says
+     which) is taken only where the branch already waits on that read, so a fix
      never turns a pull request that would merge on green into one that waits
      on the owner (project owner, 2026-10-12, ratified, over holding the pull
      request for the read, and over opening the clinical paths with a
@@ -587,16 +587,16 @@ deviating from a described deliverable, not acting without one.
   moves past it first (`PL-S5MF`). **Whether it arms is `bin/docket arm`'s
   answer, asked before arming and before every later push while a pull request
   is open.** `arm`: mark it ready and arm it, and name in the report the paths
-  outside the store it armed, unless the change raises a question for the
-  owner, which is your call and holds it. `hold`, for a claim or a path on the
-  owner's read list - `src/`, `tests/` but a test of the tooling, `docs/MODEL.md`,
-  `src/anesthesia_sim/data/`, `README.md` and docket's `arming.py` - leave it
-  unarmed, disarming it before the push that brings the hold or green CI merges
-  half the work, a draft while the hold is a claim, and once no claim holds it ask
-  for the read as `arm` says; it merges on the owner's word alone (the Projects trial's
-  instructions, 2026-10-03, kind unrecorded, over holding every path outside
-  the store, `PL-KKHD`). Workflow items need no merge confirmation (project
-  owner, 2026-10-12, `PL-KPM2`). `behind N`: bring `origin/main` in
+  outside the store it armed. **The owner reads only a real decision or a
+  high-risk change, and housekeeping merges on green** (project owner,
+  2026-10-17, `PL-DKBG`). Which one a change is stays your call, recorded as an
+  `Owner-read:` trailer that `arm` prints the form and the test for. `hold`, for
+  a claim, a simulator change no such record covers, a record saying `needed`,
+  or docket's `arming.py` - leave it unarmed, disarming it before the push that
+  brings the hold or green CI merges half the work, a draft while the hold is a
+  claim, and once no claim holds it record the judgment or ask as `arm` says;
+  a pull request held for the owner merges on their word alone. Workflow items
+  need no merge confirmation (project owner, 2026-10-12, `PL-KPM2`). `behind N`: bring `origin/main` in
   and ask again. `subprojects/docket/src/docket/arming.py` carries the rules
   and the decisions behind them (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`, `PL-3FYK`,
   `PL-H14W`). **`main` red for a reason outside the item, or the same check
