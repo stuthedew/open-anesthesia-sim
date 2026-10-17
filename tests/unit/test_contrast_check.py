@@ -891,6 +891,7 @@ def test_every_requirement_names_a_symbol_that_exists() -> None:
     assert contrast_check.check_citations(REPO_ROOT) == ()
 
 
+@pytest.mark.reads_item_store
 def test_every_known_shortfall_names_an_item_that_exists() -> None:
     """A shortfall excused by an id nobody filed is an excuse, not a plan."""
     filed = {

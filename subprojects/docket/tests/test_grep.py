@@ -14,6 +14,8 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from docket.grep import Wrap, read_grep, wrapped
 from docket.shell import shell_words
 
@@ -177,6 +179,7 @@ def test_a_comment_carried_onto_the_next_line_is_read_as_one_outside_markdown(
     assert wrapped(tmp_path, "grep -qF 'own run x = 1' tool.py") == ()
 
 
+@pytest.mark.reads_item_store
 def test_globs_and_recursion_read_the_files_grep_reads(tmp_path: Path) -> None:
     """A glob is the shell's; `-r` walks as GNU grep walks, filters and links included."""
     _write(tmp_path, "docs/items/PL-K7QX-a-title.md", WRAPPED)

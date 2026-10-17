@@ -122,6 +122,7 @@ def _first_difference(found: Reading, expected: Reading) -> str:
     return f"docket {found[at : at + 1]}, markdown-it-py {expected[at : at + 1]}"
 
 
+@pytest.mark.reads_item_store
 def test_every_tracked_document_reads_as_markdown_it_py_reads_it() -> None:
     listed = subprocess.run(
         ["git", "ls-files", "-z", "--", "*.md"], cwd=ROOT, capture_output=True, check=True

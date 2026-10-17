@@ -48,6 +48,8 @@ docket claim PL-K7QX --over claude/x --reason "..."   # ...taking it over from a
 docket yield PL-K7QX         # end this branch's claim without closing the item
 docket arm                   # whether this branch's pull request may be armed: arm,
                              # hold, behind N, landed or unknown, exiting 0, 1, 1, 1 or 2
+docket ci-scope --base origin/main   # items or full: whether this branch changed item
+                             # files alone, for CI's item-only fast path
 docket branch                # where this branch stands against the default one
 docket flight                # which items a branch is already carrying
 docket stranded              # work that exists only on a branch
@@ -2270,6 +2272,27 @@ one moment tags are certainly to hand: it refuses to cut the next release while
 the current one is untagged. No tag step is filed as an item any more, so `status` no longer reads item
 titles for a tag the clone holds: the `[TAGGED: vX.Y.Z exists - close it]` mark
 it drew on one (`PL-53Y6`) went with the step (`PL-2FY6`).
+
+### Whether a branch changed item files alone: `docket ci-scope`
+
+`docket ci-scope --base REF` prints `items` when every path the branch changed
+against `REF`, committed or not, is under the store. Otherwise it prints `full`.
+Either answer comes with its reason. A CI job uses the answer to skip the steps
+that no item file can change (`PL-DXD4`). `--github-output PATH` also appends
+`scope=items` or `scope=full` to that file, which is how a GitHub Actions step
+hands a value to the steps after it.
+
+The changed paths are the ones the scoped verify replay reads, against the same
+base, so the replay and the fast path judge one diff. An item moved out of the
+store is a path outside it, because the diff reads a rename as a deletion and
+an addition.
+
+Every reading that cannot show the diff is item files alone answers `full`. That
+covers a branch that changed nothing, a base git cannot resolve, `--no-git`, and
+a store outside the repository. `full` skips nothing, so a wrong `full` costs a
+slower run, where a wrong `items` would skip a check. The command exits 0 for
+either answer. It fails only where it cannot write the output file, and a failed
+step fails its job.
 
 ## The item format
 
