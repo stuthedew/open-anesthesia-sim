@@ -192,23 +192,37 @@ set it when the session opens rather than toggling it.
   instead of the 0.1x cache-read rate. The 1-hour write costs 2x rather than
   1.25x and pays back after two cache reads, which any subagent doing real work
   clears many times over.
-- `CLAUDE_CODE_SUBAGENT_MODEL` is set to `haiku` in the `env` block of
-  `.claude/settings.json`, but it does not choose the model for exploration
-  subagents. The built-in Explore and Plan subagents ignore it and run on the
-  main conversation's model. The variable is only a default for a subagent
-  that nothing else gives a model, such as `general-purpose`
-  ([subagents](https://code.claude.com/docs/en/sub-agents), "Choose a
-  model", read 2026-10-17). In a cloud session it does not do even that. On
-  2026-10-17 a `general-purpose` subagent started with no model in a Projects
-  thread ran on `claude-opus-5-5`, its parent's model, as its transcript's
-  `message.model` records. The variable was also unset in that session's Bash
-  shell, as it was in three other cloud sessions on 2026-10-01 and 2026-10-17
-  (`PL-KLN5`). The settings guide says most `env` values wait until the folder
-  is trusted ([settings](https://code.claude.com/docs/en/settings), "A
-  committed key doesn't reach teammates"). That is one possible cause, and
-  nobody has tested it. So in a cloud session every subagent runs on the
-  session's own model. Whether exploration should run on a cheaper model, and
-  whether this variable should stay, waits on your answer in `PL-2D28`.
+- Exploration subagents run on Opus, by the project owner's decision of
+  2026-10-17 (ratified, over Haiku 5.5, Sonnet 5.5 and a per-call cheaper
+  model for quick lookups; `PL-2D28` carries the case). The project's own
+  Explore definition, `.claude/agents/Explore.md`, writes `model: opus`, no
+  `effort` line, `omitClaudeMd: true` and the read-only tools Read, Grep and
+  Glob. In an Opus session the `opus` alias resolves to the session's own
+  model. In a Fable session on a Claude subscription it resolves to the Opus
+  model the alias points to. That is what the built-in Explore did in both
+  ([subagents](https://code.claude.com/docs/en/sub-agents), "Choose a model"
+  and "Built-in subagents", read 2026-10-17), so the file changes no model.
+  What it adds is a report footer naming what was searched and what was not,
+  and the narrow tool set. A search runs at the session's effort level. The
+  model question is undetermined on estimates: a cheaper model pays only if
+  its excess miss rate on a thorough search is below about 1 in 20 for Sonnet
+  5.5 and about 1 in 11 for Haiku 5.5, and `PL-G2D4` is the pre-registered
+  measurement that would settle it. Until it reports, Opus stays. `PL-PTHZ`
+  records the model the first session started after the definition merged
+  reads from its Explore transcript.
+- `CLAUDE_CODE_SUBAGENT_MODEL` is set nowhere in this repository. It left the
+  `env` block of `.claude/settings.json` on 2026-10-17 (`PL-2D28`). It never
+  chose the model for the built-in Explore and Plan subagents, which run on
+  the main conversation's model. It was a default for a subagent that nothing
+  else gives a model, such as `general-purpose` (subagents page, "Choose a
+  model", read 2026-10-17). In a cloud session it did not do even that: it
+  was unset in the Bash shell of four cloud sessions on 2026-10-01 and
+  2026-10-17, and a `general-purpose` subagent started with no model ran on
+  its parent's model (`PL-KLN5`, `PL-2D28`). In a local session whose folder
+  is trusted it would have put every `general-purpose` subagent on Haiku with
+  no per-item judgment, which § "Which model each flag means" refuses. So a
+  subagent that names no model runs on the session's own model, and a cheaper
+  one is asked for per call.
 - **A session asking you to type `/compact` is resetting at its budget**
   (project owner, 2026-09-25, ratified, over pasting a handoff prompt into a
   new session, `PL-YJG1`). It pushes everything first, so what the summary
