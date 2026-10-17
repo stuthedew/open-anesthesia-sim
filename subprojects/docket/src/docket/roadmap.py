@@ -594,35 +594,18 @@ def _scope_ids(entries: Sequence[GateEntry], scope_ids: Iterable[str]) -> tuple[
     return _deduped([identifier for entry in entries for identifier in entry.ids] + list(scope_ids))
 
 
-def list_entries(
-    lines: Sequence[str], start: int, unread: list[UnreadEntry] | None = None
-) -> Iterator[tuple[int, str]]:
-    """Each top-level list entry under one `###` heading, as (line, joined text).
+def _entry_text(lines: Sequence[str], first: int, end: int, prose: Collection[int]) -> str:
+    """An entry's span of `lines` joined into one line, less its marker: the lines of its prose.
 
-    `start` is the heading's line number, so reading begins on the line after
-    it and stops at the next heading of the same depth or shallower - the same
-    bound `_subsection_ids` uses, for the same reason.
-
-    Every line of the entry is folded into its text, less its marker, because
-    an entry routinely wraps and a phrase split across the break would be
-    invisible to every reader of this - the declaration slot included, where a
-    pair of ids can wrap between them. A nested list and a later paragraph fold
-    in too, since CommonMark reads both as the entry's (`PL-YSMD`); a fence, an
+    The text a `GateEntry` and a `ScopeEntry` carry. Every line of the entry is
+    folded in, because an entry routinely wraps and a phrase split across the
+    break would be invisible to a reader of the text - the declaration slot
+    `tools/doc_check.py`'s exclusion advisory searches included, where a pair
+    of ids can wrap between them. A nested list and a later paragraph fold in
+    too, since CommonMark reads both as the entry's (`PL-YSMD`); a fence, an
     indented code block and an HTML block inside it do not, holding a literal or
     a comment, so only its prose blocks are read (`PL-KR6M`).
-
-    One walker and three readers - the frozen list, `Required scope`, and the
-    exclusion advisory in `tools/doc_check.py` - because what an entry *is* is
-    one question, and it was answered in three places that could drift. An
-    entry it cannot read whole is declined by the walker, through `unread`.
     """
-    prose = markdown.block_lines(lines, markdown.PROSE)
-    for first, end in list_entry_lines(lines, start, unread):
-        yield first + 1, _entry_text(lines, first, end, prose)
-
-
-def _entry_text(lines: Sequence[str], first: int, end: int, prose: Collection[int]) -> str:
-    """An entry's span of `lines` joined into one line, less its marker: the lines of its prose."""
     marker = ENTRY_MARKER_RE.match(lines[first])
     parts = [lines[first][marker.end() if marker else 0 :].strip()] if first in prose else []
     parts.extend(lines[index].strip() for index in range(first + 1, end) if index in prose)
@@ -669,13 +652,25 @@ class _Prose:
 def list_entry_lines(
     lines: Sequence[str], start: int, unread: list[UnreadEntry] | None = None
 ) -> Iterator[tuple[int, int]]:
-    """The walker `list_entries` reads, as each entry's span of `lines`.
+    """Each top-level list entry under one `###` heading, as its span of `lines`.
+
+    `start` is the heading's line number, so reading begins on the line after
+    it and stops at the next heading of the same depth or shallower - the same
+    bound `_subsection_ids` uses, for the same reason.
 
     Each pair is the 0-based index of the entry's own line and the index one
     past its last line. A reader that needs an entry as written - its line
     breaks kept, so a name wrapped inside a code span is read whole rather than
     joined with a space no test name holds (`PL-6SRZ`) - slices `lines` with
-    it, and what an entry *is* stays answered once.
+    it, and one that needs it joined takes `_entry_text`, so what an entry *is*
+    stays answered once.
+
+    One walker and its readers - the frozen list (`_gate_entries`), `Required
+    scope` (`_scope_entries`) and the list-shaped families of
+    `tools/doc_check.py`'s bound check (`_list_members`), and through
+    `document_entry_lines` a release's notes and `docs/dead-ends.md` - because
+    what an entry *is* is one question, and it was answered in three places
+    that could drift.
 
     An entry is a top-level list item as `markdown` reads one (`PL-YSMD`): any
     bullet or ordered marker, an item opening on an empty marker line, its later
@@ -818,7 +813,7 @@ def _scope_entries(
 def _section_end(lines: Sequence[str], start: int) -> int:
     """Where a milestone's own `##` section stops.
 
-    `list_entries` above stops at the next `###` too, which is what one
+    `list_entry_lines` above stops at the next `###` too, which is what one
     subsection's own extent wants and the wrong bound for a sweep across the
     sibling subsections beside it.
     """

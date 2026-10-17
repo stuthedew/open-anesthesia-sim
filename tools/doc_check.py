@@ -2990,10 +2990,10 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
 
     Continuation lines are folded into the entry they open, because a member of
     this shape routinely wraps and an entity named on a bullet's second line is
-    named by that bullet. Its walker is borrowed rather than rewritten for the
-    reason `list_entries` gives: what a list entry *is* is one question, and a
-    fourth answer to it would be a fourth thing to keep true. The entry comes
-    back with its line breaks, through `list_entry_lines`, because a test name
+    named by that bullet. Its walker, `list_entry_lines`, is borrowed rather
+    than rewritten for the reason that walker gives: what a list entry *is* is
+    one question, and a fourth answer to it would be a fourth thing to keep
+    true. The entry comes back with its line breaks, because a test name
     wrapped inside a code span is read whole only where the break is still
     there to read; joined with a space, it named nothing (`PL-6SRZ`).
 
@@ -3007,7 +3007,7 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
     Its bound is the next heading at depth three or shallower, so a family
     whose list is closed by a `####` heading would read that subsection's
     bullets as its own. No family is laid out that way today; one that is
-    belongs in `list_entries` as a depth argument rather than in a second
+    belongs in `list_entry_lines` as a depth argument rather than in a second
     walker here.
 
     The family's heading is one `markdown` reads, as its walker's bound is, so
