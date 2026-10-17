@@ -3,11 +3,13 @@ id: PL-RXW0
 title: Four reference tests claim more than they hold: two elimination tests named 'against published human measurement' are self-derived pins with 6-12% bands, the open-circuit residual's 'closed-form bound' is not a bound, the 24 h washout pins values past the supported run length, and the analytic circuit wash-in test takes tau from the code under test
 priority: P3
 effort: M
-status: ready
+status: done
 classes: test, docs
 feature: tests-detect-wrong-values
-touches: tests/reference/test_published_wash_in_and_elimination.py, tests/reference/test_late_washout_against_published_fits.py, docs/MODEL.md
+touches: tests/reference/test_published_wash_in_and_elimination.py, tests/reference/test_late_washout_against_published_fits.py, tests/reference/test_circuit_wash_in_closed_form.py, docs/MODEL.md, README.md
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1516
 payoff: no reference test is named or described as validation, a bound or an independent solution when it is a regression pin, so a reader does not over-trust what passed
 verify: ! grep -qF 'five_minute_elimination_ratio_against_published_human_measurement' tests/reference/test_published_wash_in_and_elimination.py && grep -q '^ELIMINATION_DURATION_MIN = 1410$' tests/reference/test_late_washout_against_published_fits.py
 ---
@@ -101,9 +103,8 @@ adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above. Symbols re-checked against
 `9ea87a3c`.
 
-**Progress, 2026-10-17 (branch `claude/tests-detect-wrong-values-link-2-gonkg6`, pull request #1516).**
-Fixes 1 and 2 are done and pushed. Fix 3 is measured and not yet written in.
-Fix 4 is not started. The `verify:` line now also names fix 3, since the
+**Done, 2026-10-17 (branch `claude/tests-detect-wrong-values-link-2-gonkg6`, pull request #1516).**
+All four fixes are done. The `verify:` line also names fix 3, since the
 rename alone made it pass while three of the four fixes were open.
 
 1. *Done.* The two tests are now
@@ -126,44 +127,40 @@ rename alone made it pass while three of the four fixes were open.
    (`uv run python` with the module's own driver, 2026-10-17), so the old
    assertion fails there. The new metric is 0.99924 to 0.99931 of the bound at
    0 L/min and 0.99785 to 0.99790 at the run's own 10 L/min.
-3. *Measured, not written in.* Next steps, in order:
-   - Set `ELIMINATION_DURATION_MIN = 1410` and replace 1440 with 1410 in
-     `STATED_MINUTES` in `tests/reference/test_late_washout_against_published_fits.py`.
-     Fix the comment above the constant: the run is 30 min of wash-in and
-     1410 min of elimination, which ends at the supported 86,400 s of case
-     time. The 1400-minute entry is the papers' own sample and stays.
-   - Replace the last entry of each `RECORDED_COMPARISONS` ratio tuple with
-     these 1410-minute values, measured 2026-10-17 with `_washout_curve(...,
-     1410)`. Shipped: sevoflurane 1.240, isoflurane (Anesth Analg) 1.118,
-     desflurane 2.110, isoflurane (Anesthesiology) 1.161. Open circuit: 0.816,
-     0.718, 1.410, 0.746. Every other entry and every crossing hour is
-     unchanged.
-   - In `RECORDED_TAIL_REDUCTIONS` the last entry is 0.0241 (shipped) and
-     0.0155 (open circuit). `RECORDED_METABOLISED_SHARE` becomes 0.0779 and
-     0.0714, both inside the 0.002 tolerance of the old values.
-   - Restate the module docstring and `docs/MODEL.md` (§ "The first 24 hours
-     of elimination against the published mean curves" and the run-length
-     paragraph near "That result does not move the 24 hours"). The 1440 rows
-     become 1410 rows with the values above, rounded to two decimals:
-     shipped 1.24, 1.12, 2.11, 1.16 and open 0.82, 0.72, 1.41, 0.75. The
-     crossing table's "At 24 h" column becomes "At 23.5 h" with 1.24, 1.12,
-     2.11 and 1.16. "By 15 to 29% at 24 hours and by a factor of 2.2 for
-     desflurane" becomes "by 12 to 24% at 23.5 hours and by a factor of 2.1
-     for desflurane". "Rises between minutes 1400 and 1440" becomes "1400 and
-     1410"; model over fit still rises there in every cohort and condition.
-     The metabolism sentence "3.1 of the 28.6 at 24" becomes "3.0 of the 24.0
-     at 23.5 hours", and "7.8% ... by 24 hours" becomes "7.8% ... by the end of
-     the run". Say that the run is 30 minutes of wash-in and 23.5 hours of
-     elimination, so it ends at the supported run length. The supported run
-     length itself does not change, and nor do the test names or section
-     headings that say "24 hours".
-   - Re-run the whole late-washout module.
-   - This changes clinical prose in `docs/MODEL.md`, so the read request on
-     #1516 names it as a point for the project owner.
-4. *Not started.* Leave `tests/reference/test_circuit_wash_in.py` unchanged.
-   Optionally add, in a new file, a test whose time constant is the literal
-   60.0 s with its arithmetic in a comment.
-
-Then close the item, run `bin/docket record 1516`, `make check` and
-`bin/docket verify --self`, and finish #1516 as PL-0M7K and PL-GHT8 are
-finished there.
+3. *Done.* `ELIMINATION_DURATION_MIN` is 1410 and the last entry of
+   `STATED_MINUTES` is 1410, so the run is 30 minutes of wash-in and 1410
+   minutes of elimination and ends at 86,400 s of case time. The last entry of
+   each `RECORDED_COMPARISONS` ratio tuple, the last entries of
+   `RECORDED_TAIL_REDUCTIONS` and `RECORDED_METABOLISED_SHARE` now hold the
+   1410-minute values. They were measured twice on 2026-10-17 with
+   `_washout_curve(..., 1410)`, once by the thread that stopped for length and
+   once by the one that finished. The second run also reproduced every
+   1440-minute value the module held, so the protocol had not changed. Every
+   other entry and every crossing hour is unchanged. Model over fit still
+   rises between minutes 1400 and 1410 in every cohort and in both conditions.
+   The module docstring and `docs/MODEL.md` § "The first 24 hours of
+   elimination against the published mean curves" and § "Supported run
+   length" restate the figures: the late excess is 12 to 24% at 23.5 hours and
+   a factor of 2.1 for desflurane, where it read 15 to 29% at 24 hours and a
+   factor of 2.2. The open-circuit metabolised share is 7.1%, where it read
+   7.2%; the recorded 0.0715 had been rounded up from 0.07147. The metabolism
+   sentence reads 3.0 of the 24.0 points at 23.5 hours. The supported run
+   length, the test names and the section headings are unchanged.
+   A new test, `test_the_run_ends_at_the_supported_run_length`, holds the
+   run's step count to `maximum_step_count` from `core/supported_ranges.py`,
+   the simulator's own count of the steps the supported run length allows.
+   *Fail-before:* with `ELIMINATION_DURATION_MIN` set back to 1440 the test
+   fails, because 18,000 steps of wash-in and 864,000 of elimination make
+   882,000 against the 864,000 allowed (`uv run python` with the module
+   imported and the constant patched, 2026-10-17). The whole late-washout
+   module passes: 41 passed in 137.71 s with `pytest -n 4`.
+4. *Done.* `tests/reference/test_circuit_wash_in.py` is unchanged. A new file,
+   `tests/reference/test_circuit_wash_in_closed_form.py`, runs the same
+   circuit (6.0 L, 6.0 L/min, 8%) against F_D (1 - e^(-t/tau_C)) with
+   tau_C = 60.0 s and F_D = 0.08 written as literals, the arithmetic in a
+   comment. *Fail-before:* with `SECONDS_PER_MINUTE` in `core/circuit.py`
+   patched to 30.0, a unit error that both `time_constant_s` and
+   `advance_fresh_gas` share, the preserved analytic test passes at all four
+   times and the new test fails at all four. At 60 s the patched circuit holds
+   0.0691732 against the closed form's 0.0505696 (`uv run python` calling
+   both test functions, 2026-10-17).

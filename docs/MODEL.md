@@ -3701,8 +3701,8 @@ the rebreathing taken away: after each step of the elimination it discards
 whatever the patient exhaled into the circuit and records it as exhausted
 agent, which is what collecting the whole expirate does. That holds $`F_I`$ at
 zero to within one step of refilling — at most $`\dot V_A \Delta t / V_C`$ of
-$`F_A`$, or 1.1 × 10⁻³ at the shipped ventilation, step and circuit volume,
-against the 0.30 to 0.32 the same run settles at with rebreathing. **It is a
+$`F_A`$ at the start of the step, or 1.1 × 10⁻³ at the shipped ventilation,
+step and circuit volume, against the 0.30 to 0.32 the same run settles at with rebreathing. **It is a
 test-only driver, and no fresh gas flow, dial position or patient setting of
 the shipped simulator reaches the condition it creates.** `PL-W21J` weighed a
 supported non-rebreathing mode against the driver and the project owner chose
@@ -4259,9 +4259,13 @@ at discontinuation, being means of per-subject fits, and normalising them would
 raise every fitted value, and lower every ratio below, by 7 to 10%
 (`test_the_published_coefficients_sum_below_one_at_discontinuation`). The model
 runs the gate's own protocol - the shipped 30-minute wash-in at the reference
-operating point, then the vaporizer closed - for 24 hours, the supported run
-length, at the shipped 0.1 s step, sampled once a minute, and its fifth minute
-is held to the gate's pinned five-minute ratios to four decimals
+operating point, then the vaporizer closed - at the shipped 0.1 s step,
+sampled once a minute. The elimination lasts 23.5 hours, so the 30 minutes of
+wash-in and the elimination together end at the supported run length of 24
+hours (`test_the_run_ends_at_the_supported_run_length`). Until 2026-10-17 the
+elimination lasted 24 hours, and the run went 30 minutes past that length
+(`PL-RXW0`). The run's fifth minute is held to the gate's pinned five-minute
+ratios to four decimals
 (`test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio`),
 so the tables are a continuation of the gate's comparison rather than a second
 protocol. Two conditions, exactly the gate's two: *shipped*, the rebreathing
@@ -4269,12 +4273,14 @@ circuit at 10 L/min, which is the tail the chart draws; and *open circuit*, the
 test-only driver that discards the circuit's contents after every step, which
 no setting of the shipped simulator reaches. The stated times are the papers'
 own sampling times inside the first day (*Anesth Analg* p. 317), where the fit
-passes near a measured sample rather than interpolating, plus 1440 min.
+passes near a measured sample rather than interpolating, plus 1410 min, the
+run's last minute.
 
 **The result, as model over fit.** Cohorts in the order sevoflurane and
 isoflurane from *Anesth Analg*, desflurane and isoflurane from *Anesthesiology*
 (`test_the_first_24_hours_of_elimination_against_the_published_mean_curves`
-holds every entry to 1%, and every crossing hour below to 0.1 h):
+holds every entry to 1%, and every crossing hour below to 0.1 h; the 1410-minute
+rows were measured on 2026-10-17 and the rest on 2026-09-27):
 
 | Minutes | Sevoflurane, shipped | Isoflurane, shipped | Desflurane, shipped | Isoflurane (second study), shipped |
 | ---: | ---: | ---: | ---: | ---: |
@@ -4287,7 +4293,7 @@ holds every entry to 1%, and every crossing hour below to 0.1 h):
 | 600 | 0.74 | 0.78 | 0.56 | 0.86 |
 | 800 | 0.67 | 0.68 | 0.80 | 0.74 |
 | 1400 | 1.23 | 1.11 | 2.09 | 1.15 |
-| 1440 | 1.29 | 1.15 | 2.18 | 1.20 |
+| 1410 | 1.24 | 1.12 | 2.11 | 1.16 |
 
 | Minutes | Sevoflurane, open circuit | Isoflurane, open circuit | Desflurane, open circuit | Isoflurane (second study), open circuit |
 | ---: | ---: | ---: | ---: | ---: |
@@ -4300,20 +4306,20 @@ holds every entry to 1%, and every crossing hour below to 0.1 h):
 | 600 | 0.47 | 0.48 | 0.37 | 0.53 |
 | 800 | 0.43 | 0.42 | 0.54 | 0.46 |
 | 1400 | 0.81 | 0.71 | 1.39 | 0.74 |
-| 1440 | 0.85 | 0.74 | 1.46 | 0.77 |
+| 1410 | 0.82 | 0.72 | 1.41 | 0.75 |
 
 The hours at which the shipped tail crosses the fitted curve, and where it
 stands between them:
 
-| Cohort | Below from | Above from | Below from | Above from | Widest below, middle stretch | At 24 h |
+| Cohort | Below from | Above from | Below from | Above from | Widest below, middle stretch | At 23.5 h |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Sevoflurane | 0.13 h | 1.98 h | 6.88 h | 20.65 h | 0.67 at 12.9 h | 1.29 |
-| Isoflurane | 0.17 h | 1.62 h | 7.33 h | 21.78 h | 0.68 at 13.5 h | 1.15 |
-| Desflurane | 0.10 h | 1.30 h | 3.38 h | 15.30 h | 0.51 at 8.1 h | 2.18 |
-| Isoflurane (second study) | 0.22 h | 0.78 h | 8.42 h | 21.05 h | 0.74 at 13.7 h | 1.20 |
+| Sevoflurane | 0.13 h | 1.98 h | 6.88 h | 20.65 h | 0.67 at 12.9 h | 1.24 |
+| Isoflurane | 0.17 h | 1.62 h | 7.33 h | 21.78 h | 0.68 at 13.5 h | 1.12 |
+| Desflurane | 0.10 h | 1.30 h | 3.38 h | 15.30 h | 0.51 at 8.1 h | 2.11 |
+| Isoflurane (second study) | 0.22 h | 0.78 h | 8.42 h | 21.05 h | 0.74 at 13.7 h | 1.16 |
 
 In the open circuit the tail falls below the fitted curve between the second
-and the sixth minute and stays there for the whole 24 hours for sevoflurane and
+and the sixth minute and stays there for the whole run for sevoflurane and
 the first study's isoflurane; desflurane rises back above it at 19.18 h, and
 the second study's isoflurane sits above it between 2.45 and 4.58 h, by 5% at
 most. Between 8 and 13 hours the open-circuit tail is a third to a half of the
@@ -4326,8 +4332,8 @@ to 25 minutes. It runs above it until 3.4 hours for desflurane and 6.9 to 8.4
 hours for the other three, by 12 to 52% at the widest. It runs *below* it from
 there until 15.3 hours for desflurane and 20.7 to 21.8 hours for the others,
 by a third at the widest, near 13 hours, and by a half for desflurane, near 8.
-And it finishes above it, by 15 to 29% at 24 hours and by a factor of 2.2 for
-desflurane. The middle stretch is the answer the intertissue-diffusion note
+And it finishes above it, by 12 to 24% at 23.5 hours and by a factor of 2.1
+for desflurane. The middle stretch is the answer the intertissue-diffusion note
 asked for: the fourth compartment's term is the largest in every fitted curve
 from 1.8 to 3.1 hours until 20.7 to 29.4 hours
 (`test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours`
@@ -4398,9 +4404,10 @@ desflurane never opens
 (`test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`).
 
 The late excess is the model's larger and slower fat term, and it is still
-growing at 24 hours - the ratio rises between minutes 1400 and 1440 in every
-cohort - because the fitted curve is still falling on the fourth compartment's
-time constant while the model is already on its fat term's.
+growing when the run ends - the ratio rises between minutes 1400 and 1410 in
+every cohort and in both conditions - because the fitted curve is still falling
+on the fourth compartment's time constant while the model is already on its fat
+term's.
 
 **Three things bound how sharply any of that may be read.**
 
@@ -4443,15 +4450,15 @@ compartment (vessel-rich group; k20)", *Anesth Analg* p. 318 - and runs at that
 paper's fitted sevoflurane rate constant, k20 = 0.0094 min⁻¹ (Table 3, p. 321;
 SD 0.0171, so the cohort could not tell it from zero), through the
 administration as well as the elimination, since a human's does. In this model
-it removes 7.8% of the 30-minute uptake by 24 hours in the shipped condition and
-7.2% in the open circuit - above Kharasch's range, which is what makes its
-effect a bound. It lowers the shipped tail by 4.5% at five minutes and by 1.9 to
+it removes 7.8% of the 30-minute uptake by the end of the run in the shipped
+condition and 7.1% in the open circuit - above Kharasch's range, which is what
+makes its effect a bound. It lowers the shipped tail by 4.5% at five minutes and by 1.9 to
 2.9% from 30 minutes on, and the open tail by 5.0% and then 1.3 to 1.8%
 (`test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent`). So
 where the shipped model runs above the fitted curve, metabolism could account
 for about an eighth of the excess where it is widest - 2.8 of the 20.4 points at
-four hours, 3.1 of the 28.6 at 24 - and where it runs below, metabolism widens
-the gap by the same few percent. The reason is where the sink looks: hepatic
+four hours, 3.0 of the 24.0 at 23.5 hours - and where it runs below, metabolism
+widens the gap by the same few percent. The reason is where the sink looks: hepatic
 clearance sees the arterial partial pressure, which through the tail is the
 alveolar one, and never the stores that feed it. The model's own conservation
 identity is checked across the removals, which are recorded as exhausted agent
@@ -5734,15 +5741,15 @@ administration until about 20.7 to 29.4 hours, most of the span a run is
 supported for; the intertissue-diffusion note under § "Known limitations"
 has the coefficients and the arithmetic. All else equal, a tail without that
 store falls faster than the measured one from about the third hour of
-elimination, and measured against the published mean curves over the whole 24
-hours it does (§ "The first 24 hours of elimination against the published mean
-curves", `PL-KK1Q`): the shipped tail runs below them by about a third from
+elimination, and measured against the published mean curves over the whole
+supported run it does (§ "The first 24 hours of elimination against the
+published mean curves", `PL-KK1Q`): the shipped tail runs below them by about a third from
 about the seventh hour until about the twenty-first - from 3.4 to 15.3 hours,
 and by half, for desflurane - above them by a fifth to a half over the hours
 before, while the rebreathing circuit and the muscle group's slow return hold
 it up, and above them again at
-24 hours by 15 to 29%, or a factor of 2.2 for desflurane, as this model's fat
-group returns more than the fitted fat term; with the apparatus taken away the
+23.5 hours of elimination by 12 to 24%, or a factor of 2.1 for desflurane, as
+this model's fat group returns more than the fitted fat term; with the apparatus taken away the
 tissue return alone is a third to a half of the mean curve between hours 8
 and 13. **That result does not move the 24 hours** (project owner, 2026-09-27,
 ratified, over shortening or extending the span on the measured departures).
