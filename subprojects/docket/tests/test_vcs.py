@@ -3053,10 +3053,10 @@ def _landed_runner(
     """A git holding a branch position *and* the content behind it.
 
     `_branch_runner` answers the counts and nothing else, which is all the four
-    original states needed. This one also answers the three reads the landing
+    original states needed. This one also answers the two reads the landing
     verdict makes: the blobs the base wrote since the fork (`adds` and
-    `on_base` together decide the split), the two-dot numstat, and the commit
-    walk (`commits`, as subject and paths, newest first).
+    `on_base` together decide the split), and the commit walk (`commits`, as
+    subject and paths, newest first).
 
     `adds` is `(blob oid, path)` for each path the branch introduces since its
     fork point; `on_base` names the oids the base wrote since then, which is
@@ -3076,10 +3076,6 @@ def _landed_runner(
             return "\n".join(f"{oid} {path}" for oid, path in adds if oid in on_base)
         if args[0] == "diff" and "--raw" in args:
             return _raw(adds, args)
-        if args[0] == "diff" and "--numstat" in args:
-            # Every outstanding path still differs from the base's tip, which
-            # is what a branch genuinely carrying work looks like.
-            return ""
         if args[:2] == ["log", "--topo-order"]:
             return divergence
         if args[0] == "log" and "--raw" in args:
@@ -3848,6 +3844,40 @@ def test_a_squash_of_the_branch_is_landed_after_the_base_edits_it(tmp_path: Path
     repo.commit("a later edit to the same file", work_txt="work, revised\n")
 
     assert landed_whole("main", repo.root, _run_git, ref="topic") is True
+
+
+def test_landed_whole_reads_no_supersession(tmp_path: Path) -> None:
+    """The verdict reads only the landed half, so the other half costs no git call (`PL-F5CF`).
+
+    The branch has one commit the base took whole, one the base never took, and
+    one note the base extended. The note's change from the base only removes
+    lines, so `_superseded` would read both copies of it with `git show`. The
+    verdict does not depend on that answer, so `landed_whole` must not ask.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", seed_txt="seed\n")
+    repo.git("switch", "-qc", "topic")
+    repo.commit("PL-K7QX the work", work_txt="work\n")
+    repo.commit("PL-K7QX a note", note_md="One paragraph.\n")
+    repo.commit("PL-K7QX more work", more_txt="more\n")
+    repo.git("switch", "-q", "main")
+    repo.git("checkout", "topic", "--", "work.txt")
+    repo.git("commit", "-qm", "PL-K7QX the work (#1)")
+    repo.commit("the base extends the note", note_md="One paragraph.\n\nAnother paragraph.\n")
+    asked: list[list[str]] = []
+
+    def recording(args: list[str], root: Path) -> str:
+        asked.append(args)
+        return _run_git(args, root)
+
+    # The premise: the note is a removals-only path, which `_superseded` reads
+    # with a pair of `git show` calls before it drops it from the outstanding half.
+    assert _superseded("topic", "main", ("note.md",), repo.root, recording) == {"note.md"}
+    assert [args[0] for args in asked].count("show") == 2
+    asked.clear()
+
+    assert landed_whole("main", repo.root, recording, ref="topic") is True
+    assert not [args for args in asked if args[0] == "show" or "--numstat" in args]
 
 
 def test_a_squashed_rename_is_read_as_written_by_the_base(tmp_path: Path) -> None:

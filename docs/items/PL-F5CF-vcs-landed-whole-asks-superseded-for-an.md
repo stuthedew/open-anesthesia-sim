@@ -3,12 +3,13 @@ id: PL-F5CF
 title: vcs.landed_whole asks _superseded for an outstanding set nothing reads: _commits_by_landing's whole-commit verdict reads only the landed side, so each landed_whole call pays a git diff per ref, and since PL-F7Z6 a git show per removals-only path, for no answer; found building PL-F7Z6
 priority: P3
 effort: S
-status: ready
+status: done
 classes: perf
 feature: friction-batch
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-05
+closed: 2026-10-17
 payoff: bin/docket branch and the session-start snapshot stop paying a git diff per ref and a git show pair per removals-only path for a set the landed-whole verdict never reads
 verify: grep -q 'def test_landed_whole_reads_no_supersession' subprojects/docket/tests/test_vcs.py
 ---
