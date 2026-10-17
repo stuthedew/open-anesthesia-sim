@@ -10,6 +10,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/WORKING_NOTES.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
 closed: 2026-10-17
+pr: 1504
 payoff: each whole-repository documentation check parses the item store once instead of seven times, about 1.7 s less per analysis and 5 to 8.5 s less per CI checks job
 verify: grep -q 'def test_one_analysis_reads_the_item_store_once' tests/unit/test_doc_check.py
 ---
