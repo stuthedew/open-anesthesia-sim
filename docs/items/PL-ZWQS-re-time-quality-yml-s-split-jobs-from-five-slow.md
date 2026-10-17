@@ -29,6 +29,21 @@ committed `.test_durations` file that `--store-durations` writes. It was set
 aside because it would replace `tests/conftest.py`'s dealing of the costly
 tests, and because its durations file goes stale and must be regenerated.
 
+**The parts are balanced, measured 2026-10-17** (`#1519`, run 39077752143).
+The two 24-hour controller runs now go through `tests/conftest.py`'s
+`computed_once` fixture, as the washout curves do, so a worker that `worksteal`
+hands a controller test reads the run instead of building it again. An
+instrumented local run built each run once. On CI, `checks-part-1` took 324 s,
+206 s of it in pytest, and `checks-part-2` took 307 s, 278 s of it in pytest.
+The parts finished 17 s apart, against 188 s before. The whole run, from the
+first job's start to the end of `checks`, took 343 s, against 499 s on the
+split's first run and the single job's 621 s median. One run is one runner, so
+this is not yet the five-run median that "Done when" asks for.
+
+**What is left is the re-timing.** It needs five successful slow-runner runs
+on `main` after `#1519` merges, so no branch can do it. The timeouts, the
+`checks` job's 5 minutes and `PYTEST_BASELINE_S` stay as they are until then.
+
 **Problem.** `PL-T9X9` split `quality.yml`'s pytest step into two jobs,
 `checks-part-1` and `checks-part-2`, and made `checks` the job that combines
 their coverage. Three things in the tree were sized before the split ran on
