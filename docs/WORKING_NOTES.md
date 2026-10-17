@@ -2398,8 +2398,8 @@ On 2026-10-17 roughly 10-15 of 303 did, and 109 of 303 carried no `payoff:`.
 
 **Test ordering, measured 2026-10-17** with CI's flags on 4 cores at `-n 8`:
 wall 293 s against 240 s if the 1,923 test-seconds were balanced; washout fits
-541 s (28%), `test_controller` 266 s of which 230 s is three per-worker
-rebuilds of two module-scoped 24-hour fixtures from `PL-5291`, `test_doc_check`
+541 s (28%), `tests/integration/test_controller.py` 266 s of which 230 s is three per-worker
+rebuilds of two module-scoped 24-hour fixtures from `PL-5291`, `tests/unit/test_doc_check.py`
 164 s. `PL-H9KW`'s session holds that work; the recommendation passed to it:
 share the 24-hour trunk once per run as `PL-F08Y` did, then order the whole
 collection longest-first from a durations record (Graham, SIAM J. Appl. Math.
