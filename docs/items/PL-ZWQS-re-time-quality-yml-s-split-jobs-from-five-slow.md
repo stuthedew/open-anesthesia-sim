@@ -60,7 +60,7 @@ before, so part 1 had a runner about 1.7 times faster. The single job's medians,
 part gets a fast runner and the other a slow one, the parts finish 2 to 4
 minutes apart whatever the split. The 2-in-5 share is kept because it should
 help the median, by about 35 s. Judge it by the median of several runs on
-`main`, never by a single run.
+`main`, never by a single run. The owner approved merging `#1523` on 2026-10-17.
 
 **What is left is the re-timing.** It needs five successful slow-runner runs
 on `main` after `#1519` merges, so no branch can do it. The timeouts, the
