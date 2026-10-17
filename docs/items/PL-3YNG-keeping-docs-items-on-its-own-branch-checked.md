@@ -1,8 +1,10 @@
 ---
 id: PL-3YNG
 title: Keeping docs/items on its own branch, checked out as a worktree inside the project, would end item-only pull requests but break closure-with-the-work and per-commit provenance: analysed 2026-10-17, recommended against
-status: untriaged
+status: dropped
 added: 2026-10-17
+closed: 2026-10-17
+reason: the owner agreed with the recommendation to drop it, 2026-10-17; recorded as a dead end
 ---
 
 **Problem.** Keeping docs/items on its own branch, checked out as a worktree inside the project, would end item-only pull requests but break closure-with-the-work and per-commit provenance: analysed 2026-10-17, recommended against
@@ -35,3 +37,7 @@ part of a move to Dolt storage (https://github.com/steveyegge/beads/blob/main/CH
 **Recommendation: drop it, and add a line to `docs/dead-ends.md` citing this
 item.** Awaiting the owner's word; the CI-time motive behind it is `PL-H9KW`
 and `PL-DXD4`.
+
+**Answered 2026-10-17: dropped, and recorded in `docs/dead-ends.md` under
+"Store and queue design"** (project owner, 2026-10-17, ratified, over keeping
+`docs/items/` on a branch of its own checked out as a worktree).
