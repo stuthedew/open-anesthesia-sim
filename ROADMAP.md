@@ -192,8 +192,10 @@ own account of what it was for is untouched; it is written after the tag, which
 is the one time a notes file is edited and is safe because a tagged release is
 never re-cut. Two spans are exempt and neither for quiet: a release's own cut
 pull request, which is inside its own span by construction and stamped by the
-next release every time, and the newest tag's span, whose pointer would have to
-name a release nobody has cut yet. The claim this makes is navigation only, and
+next release every time, and the newest tag's span until the next release's
+notes exist, since before then its pointer would have to name a release nobody
+has cut. The cut that writes those notes is asked for the pointer on its own
+branch (`PL-JLYG`). The claim this makes is navigation only, and
 it falls the moment either mechanism behind it changes - the tag going on the
 merge commit, or the notes being rendered at the cut.
 

@@ -3,12 +3,14 @@ id: PL-X229
 title: tools/doc_check.py candidates diffs --base against the working tree rather than from the merge base, so run with --base origin/main after main has moved it lists every file main changed since the fork as this branch's candidates, and the close-out docs sweep is handed other branches' documentation to review
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: doc-consistency-checks
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-22
+closed: 2026-10-17
+pr: 1504
 payoff: the close-out docs sweep lists only the documentation this branch's own change could have made stale - 13 lines rather than 184 in the reproduction - so a session reads it instead of skimming past other branches' work
 verify: grep -q 'def test_candidates_ignores_what_the_base_gained_after_the_fork' tests/unit/test_doc_check.py
 ---
