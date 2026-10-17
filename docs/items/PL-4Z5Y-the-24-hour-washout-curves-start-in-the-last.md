@@ -264,3 +264,49 @@ CI trial waits for the wider hook's local run in step 6 below.
   a line starting `**Trial read, `, which is what `verify:` looks for.
   `PL-H9KW` re-times CI and restates `quality.yml`'s `timeout-minutes`
   comment once this merges.
+
+**CI reading, 2026-10-17, before the A/B.** This is not the trial read. That
+line is written after the A/B below.
+
+- **Runs.** Taken as § "How the CI table was taken" says, over successful
+  pytest steps in runs created 2026-10-17 from 04:13 to 14:43 UTC. "Before"
+  means before both #1486 (06:31:36 UTC) and #1487 (06:41:01 UTC). Pytest
+  step medians, runs in brackets:
+
+  | Runner class | Before both | #1486 only | After both |
+  | --- | ---: | ---: | ---: |
+  | Slow | 543 s (25) | 503 s (4) | 506 s (19) |
+  | Mid (mypy 6 s) | 382 s (5) | - | 361 s (3) |
+  | Fast | 284 s (5) | - | 263 s (8) |
+
+  The four slow runs with #1486 and without #1487 are 39010237782,
+  39009553875, 39010253253 and 39010320002. The steps outside pytest did not
+  change (slow median 115 s before, 117 s after), so the after window did not
+  draw slower runners.
+- **What it says about the trial.** Read as written, the slow median fell
+  37 s, which clears the 30 s bar. But #1486, `PL-H9KW`'s shared `doc_check`
+  analysis, merged ten minutes before #1487. The four runs that carry only
+  #1486 already sit at 503 s. So most of the 37 s may be #1486's, and four
+  runs cannot say how much belongs to the dealing.
+- **The hook does run on CI.** Read from 15 job logs. The stretch from 99% to
+  100% fell from a median of 179 s to 38 s on slow runners, and from about
+  66 s to 20 s on fast ones. After the merge, a slow runner prints no
+  progress line for about the first 140 s, against about 40 s before, because
+  every worker opens on a long test.
+- **Why removing the tail buys little, inferred and not verified.** The tail
+  was not idle CPU. CI runs 8 workers on 4 vCPUs, so the CPUs are busy for
+  most of the run. The one log with #1486 and without #1487 still had a 145 s
+  tail and finished in 468 s. A Geekbench upload lists a GitHub
+  `ubuntu-latest` runner as 2 cores with 4 threads
+  (https://browser.geekbench.com/v6/cpu/baseline/18567769). If that holds,
+  two busy workers in the tail already use both physical cores. This
+  project's cloud containers report 4 cores with 1 thread each, which may be
+  why the local run gained 47 s.
+- **Next** (project owner, 2026-10-17, ratified, "agree with recs", over
+  scoring the trial on the combined 37 s). A draft pull request under this
+  id turns off only the dealing, and never merges. Its CI is re-run until it
+  has at least five slow-runner runs, and the trial is scored on the
+  dealing's own effect. The planned design runs pytest twice in each run,
+  hook on and hook off, with the order alternated by run attempt. The
+  difference is then taken on one runner, so the runner lottery cancels out.
+  That needs the job's timeout raised on the draft branch only.

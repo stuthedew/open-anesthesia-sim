@@ -156,3 +156,19 @@ pytest step's 99%-to-100% stretch is back near its late-September 73 s, no
 24-hour trunk is built more than once per run, no test is removed or skipped to
 get there, and the timeout comment states the job time it was sized against.
 The step's median is recorded against the 551 s baseline either way.
+
+**CI re-time, 2026-10-17 (step 5's reading).** Successful runs created after
+`031cf413` merged, up to 14:43 UTC. The runner classes are `PL-4Z5Y`'s.
+
+- **Pytest step medians.** 506 s on slow runners (19 runs), 361 s on mid
+  runners (3) and 263 s on fast runners (8), against the 551 s baseline.
+- **Whole `checks` job.** Median 621 s on slow runners and 352 s on fast
+  ones. The longest was 639 s.
+- **The tail.** The stretch from 99% to 100% was 25 to 43 s on five slow-run
+  logs (median 38 s) and 20 to 21 s on two fast-run logs, against 73 s in
+  late September. It includes the coverage combine.
+- **Trunk builds.** CI's log has no per-test lines, so the count of one build
+  per trunk is the local measurement in #1487 only.
+- **Left.** Restate the `timeout-minutes: 15` comment against these job
+  times, then close. `PL-4Z5Y` records how much of the fall belongs to #1486
+  rather than to the dealing.
