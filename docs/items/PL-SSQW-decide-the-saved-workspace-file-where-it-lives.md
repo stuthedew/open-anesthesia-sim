@@ -3,12 +3,14 @@ id: PL-SSQW
 title: Decide the saved-workspace file - where it lives, how it is written, what a first run with no file does, and what a build does with a schema_version it does not support
 priority: P2
 effort: M
-status: blocked
+status: done
 classes: planning
 feature: interface-areas
-touches: docs/ARCHITECTURE.md
-blocked-by: PL-WV9K
+touches: docs/ARCHITECTURE.md, src/anesthesia_sim/layout/, tests/unit
 added: 2026-09-16
+closed: 2026-10-17
+pr: 1481
+verify: grep -q 'def test_a_newer_file_is_left_untouched_and_the_session_saves_nothing' tests/unit/test_layout_store.py
 recurrences: 2026-09-20 PL-ZW0J
 ---
 
@@ -157,10 +159,11 @@ the same day:** the owner chose reading A in `PL-WV9K` § "Answers
 2026-09-27" (reopening loads the saved default, no last-state section), so
 Q3, Q4 and Q6 stand as worded and the file holds one `WorkspaceSet`.
 
-## Blocked on `PL-WV9K`, 2026-10-12
+## Built in two parts: the document reader on 2026-10-12, the rest on 2026-10-17
 
-Set by `PL-1FT6`'s close-out. Two parts of this are built at the level of one
-layout document. `layout_from_json` refuses a newer `schema_version` with
+[superseded 2026-10-17: the wait on `PL-WV9K` ended when both were built on one
+branch, `#1481`.] Set by `PL-1FT6`'s close-out. Two parts of this were built
+at the level of one layout document. `layout_from_json` refuses a newer `schema_version` with
 `UnsupportedSchemaVersion` before it reads the body, and an invalid document
 with `LayoutFormatError` naming the invariant and where
 (`src/anesthesia_sim/layout/serialization.py`, tested with no `QApplication`
@@ -171,3 +174,46 @@ Q2: the file holds one `WorkspaceSet`, whose invariants are the set's, and that
 object is `PL-WV9K`'s. The store, the atomic write, `layout/migrations.py`
 with its empty table and the `docs/ARCHITECTURE.md` user-state entry wait on
 it.
+
+## Closed 2026-10-17, with `PL-WV9K`, in `#1481`
+
+The rest landed on `PL-WV9K`'s `WorkspaceSet`, built on the same branch:
+`layout/workspace.py` (the set), `layout/migrations.py` (Q5's hook, with
+`LAYOUT_SCHEMA_VERSION` moved there so the version and the steps that bridge
+the versions before it are one record), the set document in
+`layout/serialization.py` (Q2's one file, `view_state` keyed by Area id then
+View kind), and `layout/store.py` (Q1's directory taken rather than resolved,
+with `user_data_directory` applying the `ANESTHESIA_SIM_USER_DIR` override;
+Q3's atomic save; Q4's first run that writes nothing; Q5 and Q6's load
+policy, every case returned in `Loaded` with its notice). `docs/ARCHITECTURE.md`
+§ "User state: the saved Workspaces" is Q8's record. Tests are
+`tests/unit/test_layout_workspace.py`, `test_layout_migrations.py`,
+`test_layout_store.py` and the set-document half of
+`test_layout_serialization.py`, all with no `QApplication` and the store's
+against `tmp_path`.
+
+**Two readings taken past the ratified text, both the implementing session's
+call (project owner, 2026-10-17, ratified, over the literal reading of the
+first-run rule and of Q3, named in each), so each is reopened on ordinary
+evidence:**
+
+- *No current file, but a previous generation that reads.* The design's first-run
+  rule says no file means the shipped set, nothing said. Read literally it
+  loads the shipped set silently the launch after an invalid file was set
+  aside and not saved over, with the reader's rescued work still in
+  `workspaces.json.previous`. The store loads the previous generation instead,
+  with a notice saying that "Save as default" keeps it. Nothing is written.
+- *The previous generation is a copy, not a rename.* Q3's "rename the current
+  file to `.previous`, then replace" leaves an instant with no current file,
+  which a crash there turns into a first run. The store copies the current
+  file to `.previous` and then replaces, so the directory always holds a
+  current file; a torn `.previous` is validated before it is ever used.
+
+Two more decisions the session took, which the owner's read of `#1481` did
+not name and which stand on the same footing: a file that is not UTF-8 text is
+*invalid* (set aside) rather than *unreadable* (saving off), since it was read
+and is not a document; and a previous generation a newer build wrote turns
+saving off, because the second save after it would overwrite it. Wiring the
+store into the application, and `app/main.py` setting the organization and
+application names Q1 needs before it asks Qt for the directory, is the
+adapter's (`PL-W9P6`), and nothing under `app/` calls the store yet.

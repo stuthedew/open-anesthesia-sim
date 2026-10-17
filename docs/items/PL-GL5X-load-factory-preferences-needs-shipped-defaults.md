@@ -3,12 +3,14 @@ id: PL-GL5X
 title: Load Factory Preferences needs shipped defaults to be a restorable artifact, but today's display defaults are Final constants in app/formatting.py with no factory state to return to
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: feature
-blocked-by: PL-SSQW
 feature: preferences-store
 touches: src/anesthesia_sim/data/, tests/unit
+blocked-by: PL-SSQW
 added: 2026-09-16
+payoff: shipped default preferences exist as a validated versioned artifact a reset restores from, loading through the reader's own path, with a check that refuses a settable key with no factory value
+verify: grep -q 'factory' Makefile
 ---
 
 **Problem.** Load Factory Preferences needs shipped defaults to be a restorable artifact, but today's display defaults are Final constants in app/formatting.py with no factory state to return to
@@ -62,7 +64,7 @@ path. Three mechanisms nobody owns, all of them on the preferences side:
 The factory artifact also needs its own `schema_version`, on the same terms as
 every other shipped data file.
 
-**Blocked on `PL-SSQW`**, which decides the file location, the atomic write and
+[superseded 2026-10-17: `PL-SSQW` is done, in `#1481`, and the file location and the atomic write are `layout/store.py`'s to reuse.] **Blocked on `PL-SSQW`**, which decided the file location, the atomic write and
 the older/newer/invalid schema policy for the Workspace file. A preferences
 section inherits all three or deliberately diverges from them, and either way it
 cannot be settled first. `PL-MQHN` settled the store question it depended on:

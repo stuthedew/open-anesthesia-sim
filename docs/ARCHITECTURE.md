@@ -32,8 +32,11 @@ data/  --loaded by-->  core/  --read by-->  app/
   `PL-1FT6`). It imports no toolkit, which `tools/import_boundary_check.py`
   enforces, so every operation is tested with no `QApplication`, and of
   `core/` it reads only `core/checked_number.py`'s naming of a refused value.
-  The adapter that builds the widget tree from it is `PL-W9P6`'s, and until it
-  lands nothing in `app/` reads the package.
+  Its `store.py` is the one module in the package, and the first under `src/`,
+  that writes outside the tree: the reader's saved Workspaces, under § "User
+  state: the saved Workspaces" below. The adapter that builds the widget tree
+  from it is `PL-W9P6`'s, and until it lands nothing in `app/` reads the
+  package.
 - **`data/`** holds versioned, schema-validated parameter files (JSON) with
   citations, in three kinds — the agent, the patient, and the machine in front
   of them. Every scientific constant a shipped run uses comes from one of them:
@@ -100,7 +103,10 @@ src/anesthesia_sim/
 ├── layout/               # the area layout as a value: which View occupies which part of each window - no toolkit dependency (PL-C842, PL-1FT6)
 │   ├── tree.py                     # the values a layout is built from - AreaId, ViewKind, Area, Split, Window - each refusing what could not be one, and the one form a tree takes
 │   ├── model.py                    # LayoutModel: every window's tree; split, join, resize, swap and set_view, each returning a new layout; the borders() line a drag moves
-│   ├── serialization.py            # the layout as JSON: the body a Workspace holds, and a versioned document holding one on its own
+│   ├── serialization.py            # the layout, a Workspace and the set of them as JSON: each body, and the versioned documents - the set's is the file the application writes
+│   ├── workspace.py                # Workspace and WorkspaceSet: a named layout with each View's saved state per Area and kind, and the ordered set a reader works in; removing the last Workspace is refused by the type (PL-WV9K)
+│   ├── migrations.py               # LAYOUT_SCHEMA_VERSION, and the steps that read a set document an older build wrote, each one version; the table is empty at version 1 and the chain is checked at import (PL-SSQW Q5)
+│   ├── store.py                    # WorkspaceStore: the reader's workspaces.json - the atomic save on "Save as default", and what a launch does with a file that is missing, older, newer, invalid or unreadable, none of it silent (PL-SSQW)
 │   └── exceptions.py               # what the package refuses, and what each refusal means to a caller
 └── data/                 # versioned, cited parameter files
     ├── agents/{sevoflurane,isoflurane,desflurane}.json
@@ -718,6 +724,54 @@ parameter under the patient would say something false about where it came
 from, which is why `PL-4YY1` added a third directory rather than a field to
 `reference_adult.json`.
 
+## User state: the saved Workspaces
+
+The application writes one thing outside its own tree: the reader's saved
+Workspaces, as a single JSON document holding the whole `WorkspaceSet` - every
+Workspace with its layout and each View's saved state, their order, and the
+active one - under one `schema_version`. `layout/store.py` owns it, and the
+decisions are `PL-SSQW`'s (project owner, 2026-09-27, ratified) and `PL-WV9K`
+Q4's (project owner, 2026-09-27, specified). This entry replaces the
+measurement `PL-CNJ1` took on 2026-09-15, that nothing under `src/` wrote to
+disk; that was true until this store landed.
+
+- **Where.** The directory Qt reports for `QStandardPaths.AppDataLocation` once
+  the entry point has set the organization and application names, which
+  `app/main.py` does not yet do: macOS `~/Library/Application Support/<App>`,
+  Windows `%APPDATA%\<Org>\<App>` (Roaming, since the file holds no window
+  geometry and sizes are fractions), Linux `~/.local/share/<App>`. The store
+  takes a directory and resolves none; `store.user_data_directory` applies the
+  one override, the `ANESTHESIA_SIM_USER_DIR` environment variable, for a
+  headless or portable run, and a test passes `tmp_path`. Wiring it into the
+  application is the adapter's (`PL-W9P6`): nothing under `app/` calls the
+  store yet.
+- **When.** Only on the reader's "Save as default", like Blender's startup
+  file; nothing is written on a change, nothing before the first save, and a
+  first run leaves no trace. The save writes a temporary file beside the
+  target, `fsync`s it, copies the current file to `workspaces.json.previous`
+  so one prior generation survives, and `os.replace`s the target, so a torn
+  current file arrives only through a crash mid-replace. A failed save raises
+  `WorkspaceFileError` naming the path and the reason, reported where the
+  action was invoked.
+- **What a launch does with the file**, by its `schema_version` and whether it
+  reads, all of it returned in `store.Loaded` for the interface to show:
+  *none* - the shipped set, nothing said; *older* - migrated in memory by
+  `layout/migrations.py`, one step per version, the reader told only where a
+  step was lossy, the pre-migration file kept once as `workspaces.v<N>.json`
+  at the next save; *newer* - refused and left untouched, the shipped set
+  shown, saving off for the session, a notice naming the file and both
+  versions; *unreadable* - as newer; *invalid at a version this build reads*
+  - set aside unchanged as `workspaces.invalid-<UTC time>.json`, the previous
+  generation loaded where it validates and the shipped set otherwise, the
+  notice saying which, saving on. A View kind no View is registered under is
+  not a file error: the file loads and that Area shows `PL-R1WQ`'s failure
+  state. `core/parameters.py`'s one-version rule is right for files that ship
+  with the code and wrong for one the reader wrote, which is why this policy is
+  decided rather than inherited.
+- **The shipped set** the store falls back to is `PL-KXTL`'s, under
+  `data/workspaces/`, read by the same reader as the learner's file.
+  <!-- absent: data/workspaces/ -->
+
 ## Dependencies
 
 **Three declared runtime dependencies**, in `pyproject.toml`:
@@ -792,7 +846,9 @@ in it, or a line left behind after a deletion, fails `make check`.
   validator, a parameter loader, the controller, the displayed-value
   formatters, what the dashboard claims per tick with no toolkit loaded, in
   `test_dashboard_frame.py`, and the area layout's every operation and
-  refusal, in `test_layout_model.py` and `test_layout_serialization.py`).
+  refusal, in `test_layout_model.py`, `test_layout_serialization.py`,
+  `test_layout_workspace.py`, `test_layout_migrations.py` and
+  `test_layout_store.py`, the last against `tmp_path`).
 - **`tests/integration/`** — components wired together as the app assembles
   them (e.g. controller driving a full `AgentUptakeSystem`), the Qt chart
   drawn headless against a real run (`test_qt_chart.py`), which reads the
