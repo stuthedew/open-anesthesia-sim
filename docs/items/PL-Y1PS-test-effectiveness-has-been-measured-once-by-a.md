@@ -1,12 +1,8 @@
 ---
 id: PL-Y1PS
 title: Test effectiveness has been measured once, by a one-off mutation run whose recipe and baseline live nowhere durable, so it cannot be re-run or compared: record the mutmut 3.8.0 configuration, its pitfalls and the 2026-10-17 baseline (2619 mutants, 279 unit-tier survivors, about 88% killed), and propose diff-scoped mutation rather than whole-tree runs
-priority: P3
-effort: S
-status: needs-decision
-classes: test, infra
+status: untriaged
 feature: test-effectiveness-measurement
-deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
 ---
 
@@ -155,44 +151,13 @@ doi:10.1109/TSE.2021.3107634). A whole-tree run here costs hours and produces
 mostly message noise. A diff-scoped run would cost minutes and ask about the
 code under review.
 
-**Why it matters.** The audit found 54 real gaps that the suite could not
-see, and every finding in its capture came from a method this file records.
-Without the recipe and the baseline, the next measurement starts from nothing
-and cannot say whether the suite got better or worse.
-
 **Where.** A recipe location to be decided, for example a section in
 `docs/` or a commented `[tool.mutmut]` table; `pyproject.toml`'s dev group if
 mutmut is ever added.
 
-**Done when.** The project owner has decided whether to build diff-scoped
-mutation, and the recipe and this baseline are recorded where that answer
-puts them. This file is already a durable record, since `docs/items/` is
-committed, so until the answer the recipe stays here.
-
-**Decision needed.** Whether to build diff-scoped mutation testing: a command
-or CI job that mutates the functions a pull request changes and reports the
-survivors at review. And, if not, whether a session re-runs this whole-tree
-recipe at a fixed point, such as each milestone release.
-
-The capture said the generator pause makes this the owner's call. The pause
-applies only while an open workflow-lane item carries `generator: live`, and
-on 2026-10-17 the one live head, `PL-X7D5`, is in the product lane
-(`bin/docket generators`). The question is still the owner's for another
-reason: it adds a dependency (mutmut is in neither `pyproject.toml` nor
-`uv.lock`) and CI time on every pull request, which is the increase in
-complexity `CLAUDE.md` puts to the owner.
-
-**Recommendation:** do not build diff-scoped mutation now. Re-run this recipe
-once per milestone release instead, by a session, and compare the real-gap
-survivors with this baseline. Build the diff-scoped run only if a re-run finds
-more than about ten new real-gap survivors, not counting message-only ones,
-since the last baseline. The reasons are measured. The checks job already
-takes about 11 minutes per pull request (`PL-DXD4`). Petrovic et al. report
-that developers first rated 85% of reported mutants unproductive until
-suppression rules were tuned, and 174 of this baseline's 279 survivors change
-only message text. And every real gap this run found is now an item, so the
-next run measures what new work adds. The regression-test replay that
-`PL-6JKB` reported belongs in the same re-run.
+**Done when.** The recipe and this baseline are recorded where a session can
+run them from, and the project owner has decided whether to build
+diff-scoped mutation.
 
 **Related.** `PL-79PK` (the message-only survivors), `PL-ZH1F` and `PL-4H4T`
 (the two real gaps that matter), `PL-0Z0F` (ready; perturbing
@@ -206,8 +171,3 @@ simulator suite (at `25ef454b`). It also used fault injection, stored-value
 perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above.
-
-**Generator check.** A one-off. The fact misread is that the suite's power to
-detect a fault had been measured, and no generator head states it. Nothing in
-the store re-enters it; `touches` stays unset until the decision names where
-the recipe lives.

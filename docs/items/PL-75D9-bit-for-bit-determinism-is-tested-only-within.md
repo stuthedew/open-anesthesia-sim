@@ -1,15 +1,9 @@
 ---
 id: PL-75D9
 title: Bit-for-bit determinism is tested only within one interpreter process, and CI never randomizes test order, so hash-seed-dependent iteration or a new order dependence between tests would pass every gate
-priority: P3
-effort: S
-status: ready
-classes: test
+status: untriaged
 feature: test-effectiveness-measurement
-touches: tests/integration/test_sevo_controller.py
 added: 2026-10-17
-payoff: a set-ordered or id-ordered sum entering the model fails a test, so two learners' runs of one case cannot differ in their last bits
-verify: grep -q 'def test_a_run_is_bit_identical_across_hash_seeds' tests/integration/test_sevo_controller.py
 ---
 
 **Problem.** Bit-for-bit determinism is tested only within one interpreter process, and CI never randomizes test order, so hash-seed-dependent iteration or a new order dependence between tests would pass every gate
@@ -82,16 +76,12 @@ a mutation run, which uses a fixed order.
    opt-outs on two command lines alone would shuffle every other invocation,
    including sessions' own `uv run pytest` runs.
 
-[superseded 2026-10-17: the triage pass moved the randomized-order job, step 2,
-to `PL-WM8D` at `needs-decision`, so this item is step 1 alone.] The first is
-simulator test work. The second is a new CI mechanism, which
+The first is simulator test work. The second is a new CI mechanism, which
 `CLAUDE.md` pauses while any open item carries `generator: live`, so it is the
 project owner's call.
 
-**Done when.** A test runs one fixed case with several changes in two
-subprocesses with different `PYTHONHASHSEED` values and once in process, and
-asserts that the six fractions and both accumulators are bit-identical across
-all three.
+**Done when.** A test compares a run across processes with different hash
+seeds, and the project owner has decided on the randomized-order job.
 
 **Provenance.** A read-only test-effectiveness audit on 2026-10-17 found this.
 The audit ran mutation testing with mutmut 3.8.0 over `core/` and four

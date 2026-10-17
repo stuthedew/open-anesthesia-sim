@@ -3,12 +3,14 @@ id: PL-WM8D
 title: Decide whether CI runs the suite in a randomized order on a schedule: pytest-randomly in the dev group, -p no:randomly in pyproject's addopts, and a weekly drift.yml run seeded by the date, split from PL-75D9
 priority: P3
 effort: S
-status: needs-decision
+status: dropped
 classes: test, infra
 feature: test-effectiveness-measurement
 touches: pyproject.toml, uv.lock, .github/workflows/drift.yml
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
+closed: 2026-10-17
+reason: A duplicate. The project owner approved PL-75D9's randomized-order job as part of PL-75D9 on 2026-10-17 (recorded on #1497), which this split had not seen, so the job stays in PL-75D9.
 ---
 
 **Problem.** CI never runs the suite in a randomized order, so a test that
