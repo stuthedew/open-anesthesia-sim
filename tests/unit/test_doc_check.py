@@ -18,6 +18,7 @@ import sys
 import textwrap
 import tomllib
 from collections.abc import Callable, Iterator, Mapping, Sequence
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -288,10 +289,22 @@ def test_clean_repository_reports_nothing(tmp_path: Path) -> None:
     assert _errors(_repo(tmp_path)) == []
 
 
+@cache
+def _this_repository() -> doc_check.Report:
+    """The real tree's report, analysed once in each process that asks for it.
+
+    Three tests read the real tree, and one analysis of it took 46 to 51 s in
+    an eight-worker run on four cores, so analysing it for each was about 150
+    test-seconds of CI's pytest step (`PL-H9KW`). Each reads the report and
+    none changes it.
+    """
+
+    return doc_check.analyze(Path(doc_check.__file__).resolve().parent.parent)
+
+
 def test_this_repository_is_clean() -> None:
     """The real tree must satisfy its own checker, not only a fixture."""
-    root = Path(doc_check.__file__).resolve().parent.parent
-    assert doc_check.analyze(root).errors == []
+    assert _this_repository().errors == []
 
 
 # --- package map ------------------------------------------------------------
@@ -4554,8 +4567,7 @@ def test_this_repository_reports_its_own_resident_total() -> None:
     `CLAUDE.md` requires it to stay out of the resident set (`PL-6SBB`), so it
     cannot drift into it the way `expert-review.md` did (`PL-WWDT`).
     """
-    root = Path(doc_check.__file__).resolve().parent.parent
-    resident = doc_check.analyze(root).resident
+    resident = _this_repository().resident
 
     assert resident is not None
     measured = {row.name: row for row in resident.files}
@@ -4822,10 +4834,9 @@ def test_the_two_totals_are_reported_separately_and_never_summed(tmp_path: Path)
     assert "instructions loaded on demand:" in rendered
 
 
-def test_this_repository_measures_its_own_skill_on_demand(tmp_path: Path) -> None:
+def test_this_repository_measures_its_own_skill_on_demand() -> None:
     """Run against the real tree: the `docket` skill is the text this was built for."""
-    root = Path(doc_check.__file__).resolve().parent.parent
-    on_demand = doc_check.analyze(root).on_demand
+    on_demand = _this_repository().on_demand
 
     assert on_demand is not None
     measured = {row.name: row for row in on_demand.files}
