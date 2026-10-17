@@ -1,9 +1,11 @@
 ---
 id: PL-K5VM
 title: test_controller.py's two module-scoped 24-hour controller runs are rebuilt in every xdist worker that runs one of their six tests: 4 builds where 2 would do on main, 6 and 7 under PL-4Z5Y's dealing, 33 to 133 s each, and they set the run's tail
-status: untriaged
+status: done
 feature: ci-cost
 added: 2026-10-17
+closed: 2026-10-17
+verify: uv run pytest -q tests/unit/test_worksteal_dealing.py
 ---
 
 **Problem.** test_controller.py's two module-scoped 24-hour controller runs are rebuilt in every xdist worker that runs one of their six tests: 4 builds where 2 would do on main, 6 and 7 under PL-4Z5Y's dealing, 33 to 133 s each, and they set the run's tail
@@ -60,3 +62,10 @@ back to back at the head of one worker's first slice, so each trunk is built
 once per run. Candidate (1)'s flock is not built. `PL-H9KW`'s brief, on its
 pull request #1479, holds the same finding, reached independently.
 `PL-4Z5Y`'s brief has the steps.
+
+**Built 2026-10-17, in `PL-4Z5Y`'s branch: 2 builds.** `tests/conftest.py`
+deals the six tests as one unit at the head of one worker's first slice,
+named by `test_controller.py`'s `MODULE_FIXTURE_MINUTES`. On CI's own pytest
+command here, both trunks were built once, on one worker, from 25.1 s, and
+the run took 264.0 s against the 309 and 315 s baselines above. `PL-4Z5Y`'s
+brief has the run.

@@ -51,6 +51,7 @@ from anesthesia_sim.core.supported_ranges import (
     require_supported_run_length,
 )
 from anesthesia_sim.core.tissue import TissueGroup
+from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 
 
 def _advance_for(controller: SimulationController, duration_s: float) -> None:
@@ -4276,6 +4277,16 @@ def trunk_halted_on_a_mark_at_the_limit() -> SimulationController:
     _step_onto_the_supported_run_length(controller)
 
     return controller
+
+
+#: The two runs above, each with the simulated minutes it steps through.
+#: `tests/conftest.py` deals every test reading one back to back at the head
+#: of one xdist worker's first slice, so each is built once a run rather than
+#: in every worker handed one of its tests (`PL-K5VM`).
+MODULE_FIXTURE_MINUTES = {
+    fixture.name: MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_MINUTE
+    for fixture in (trunk_stepped_onto_the_limit, trunk_halted_on_a_mark_at_the_limit)
+}
 
 
 def _the_reason_the_refused_step_would_give(run: SimulationController) -> str:

@@ -1574,7 +1574,7 @@ def test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent(
     """
 
     # The sink's curve first: no other test reads it, so the worker
-    # `tests/reference/conftest.py` starts this test on computes it at once
+    # `tests/conftest.py` starts this test on computes it at once
     # rather than waiting on the curve without it (`PL-4Z5Y`).
     with_sink = washout_curve("sevoflurane", condition, HEPATIC_ELIMINATION_RATE_CONSTANT_PER_MIN)
     without = washout_curve("sevoflurane", condition)
@@ -1636,11 +1636,11 @@ def _read(*arguments: object) -> CurveRead:
 
 
 #: For each test that reads a curve, the `washout_curve` calls it makes, in
-#: the order it makes them, from the test's own parameters. `tests/reference/
-#: conftest.py` reads it to start each curve at the head of a different xdist
-#: worker's first slice, rather than 522 tests into the first worker's
-#: (`PL-4Z5Y`). A call left out of this table, or out of order, costs speed
-#: alone: whichever test reads a curve first computes it, wherever it runs.
+#: the order it makes them, from the test's own parameters. `tests/conftest.py`
+#: reads it to start each curve at the head of a different xdist worker's first
+#: slice, rather than 522 tests into the first worker's (`PL-4Z5Y`). A call
+#: left out of this table, or out of order, costs speed alone: whichever test
+#: reads a curve first computes it, wherever it runs.
 CURVES_READ: dict[Callable[..., None], Callable[..., tuple[CurveRead, ...]]] = {
     test_the_first_24_hours_of_elimination_against_the_published_mean_curves: (
         lambda fit, condition: (_read(fit.agent_id, condition),)
