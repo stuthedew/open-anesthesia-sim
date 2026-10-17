@@ -73,7 +73,9 @@ patched `fork_at`. A second test,
 `test_a_one_run_reset_leaves_a_case_with_no_branches`, holds the rebuild. Both
 failed on the old guard and pass on the new one. `RunView` needed no change, and
 `docs/MODEL.md` makes no statement about what a trunk Reset does to the fork
-panel, so neither file moved.
+panel, so neither file moved. Rebuilding the case on a one-run Reset goes
+past the refusal the brief named (project owner, 2026-10-17, ratified, over
+clearing only the refusal).
 
 **The two recurrence matches are withdrawn: neither is this mechanism filed
 again.** `PL-MMNX` is `_halt_every_run` not restating a halt on the fork panel,
