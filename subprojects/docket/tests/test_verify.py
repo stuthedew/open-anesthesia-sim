@@ -1584,6 +1584,43 @@ def test_a_base_holding_no_store_at_all_is_refused_rather_than_read_as_new(tmp_p
     assert "no item store at HEAD~2:docs/queue" in _check(report, FRONT_MATTER).detail
 
 
+def test_an_edit_inside_a_block_the_reader_declines_is_refused_rather_than_unchanged(
+    tmp_path: Path,
+) -> None:
+    """A declined block arrives empty on both sides, so the edit compared as no change.
+
+    `touches` widened inside a block list read as `PASS  item front matter
+    unchanged`, and the commission read from that copy as a whole one
+    (`PL-4DM0`'s shape, `PL-JTP1`).
+    """
+    root = _repo(tmp_path)
+    block = _stored("PL-K7QX", "Do the thing").replace(
+        "verify: true\n", "verify: true\ntouches:\n  - tests/test_thing.py\n"
+    )
+    _work(root, "PL-K7QX write touches as a block", "docs/items/PL-K7QX-do-the-thing.md", block)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    _work(
+        root,
+        "PL-K7QX widen it",
+        "docs/items/PL-K7QX-do-the-thing.md",
+        block.replace("  - tests/test_thing.py\n", "  - tests/test_thing.py\n  - src/core.py\n"),
+    )
+
+    report = verify(root, _item(), _config(), "HEAD~2")
+
+    assert not report.passed
+    assert _check(report, FRONT_MATTER).detail == (
+        "HEAD~2's copy declines `touches` written as a block list, "
+        "so the front matter could not be compared"
+    )
+    assert any("commissioned it could not be read" in check.detail for check in report.checks)
+
+
 def test_a_base_with_nothing_between_it_and_head_is_not_a_pass(tmp_path: Path) -> None:
     """An empty diff must never read as verified work.
 

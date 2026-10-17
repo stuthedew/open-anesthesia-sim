@@ -34,6 +34,7 @@ from docket.shell import (
     Operator,
     Reserved,
     Word,
+    comments,
     flat_reading,
     joined_text,
     script_lines,
@@ -353,6 +354,31 @@ def test_joined_text_removes_each_backslash_newline_bash_removes(script: str, jo
 
     assert text == joined
     assert "".join(script[at] for at in origin) == text
+
+
+@pytest.mark.parametrize(
+    ("script", "found", "stop"),
+    [
+        # A here-document's body and a quoted string hold a `#`-led line as text.
+        ("cat <<EOF\n# body\nEOF\n# comment\n", ["# comment"], None),
+        ("echo 'a\n# quoted\nb' # after\n", ["# after"], None),
+        # One in a substitution's body is the command's, a backquote's read once
+        # its backslashes are gone, and one in an array assignment is bash's.
+        ("x=$(echo a # inner\n)\n", ["# inner"], None),
+        ("x=`echo \\$HOME # c`\n", ["# c"], None),
+        ("a=(x # c\n y)\n", ["# c"], None),
+        # An expansion bash fails runs nothing, so what it held is no comment.
+        ("cat <<EOF\n$(echo a # c\nEOF\n", [], None),
+        # From the line that stops reading on, none is given.
+        ("# one\necho 'open\n# two\n", ["# one"], 6),
+    ],
+)
+def test_comments_are_what_bash_discards(script: str, found: list[str], stop: int | None) -> None:
+    """Each comment as bash 5.2.21 reads the script, and where reading stopped (`PL-W9VC`)."""
+    spans, stopped = comments(script)
+
+    assert [script[start:end] for start, end in spans] == found
+    assert stopped == stop
 
 
 def test_an_ansi_c_quoted_string_ends_at_the_quote_bash_ends_it_at() -> None:

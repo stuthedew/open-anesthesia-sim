@@ -8,7 +8,8 @@ statement of its own, `docket.instructions` each key's dated sentences,
 `docket.notes` where a notes file's Markdown begins, and
 `tools/fixture_id_check.py` which quoted scalar a line break is escaped in,
 and `tools/required_checks_check.py` and `tools/doc_check.py` a workflow's
-lines, keys and quoted scalars, and which node a value opens (`PL-8MHZ`).
+lines, keys and quoted scalars, and which node a value opens (`PL-8MHZ`), and
+`tools/doc_check.py` where a YAML file's comments open (`comments`, `PL-W9VC`).
 Each of those read the block its own way, a physical line at a time or as
 Markdown, where YAML 1.2.2 carries a value across lines: a quoted scalar to its
 closing quote (§ 7.3.1, § 7.3.2), a flow collection to its closing bracket
@@ -42,7 +43,9 @@ a generated corpus by `subprojects/docket/tests/test_frontmatter_reference.py`.
 
 **A line's own grammar is read here too, once** (`PL-8MHZ`): where its comment
 opens (`uncommented`), the key it opens (`key`), what a quoted scalar holds
-(`unquote`) and whether a node is a plain scalar (`plain`). The checks that read
+(`unquote`), whether a node is a plain scalar (`plain`), and a block scalar's
+header (`BLOCK_SCALAR_RE`), with where the content under it ends
+(`block_content`, `PL-W9VC`). The checks that read
 a workflow or a rule each spelt them beside this module, and parted on the
 first input one had not been written for: `[a, "b # c"]` lost its scalar's tail
 here, `don 't # x` kept its comment in `required_checks_check`, `"a\\"b":`
@@ -55,8 +58,9 @@ Not docket's own item front matter, which is not YAML: its grammar is
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 #: The line that opens a front matter, and the line that closes it.
 FENCE = "---"
@@ -100,6 +104,16 @@ HEX_ESCAPES = {"x": 2, "u": 4, "U": 8}
 HEX_DIGITS = frozenset("0123456789abcdefABCDEF")
 #: The largest code point, past which a `\U` escape names no character.
 MAX_CODE_POINT = 0x10FFFF
+#: A block scalar's header, matched whole (§ 8.1.1): `|` for a literal block or
+#: `>` for a folded one, then an indentation indicator and a chomping indicator
+#: in either order, each optional, then an optional comment. `width` or `late`
+#: is the indentation indicator, whichever order it was written in. The one
+#: spelling: `docket.model` declines an item field holding one through it, and
+#: `tools/doc_check.py` reads a workflow's `run:` header through it, where it
+#: spelt the same grammar beside this one (`PL-8MHZ`).
+BLOCK_SCALAR_RE = re.compile(
+    r"(?P<style>[|>])(?:(?P<width>[1-9])?[-+]?|[-+](?P<late>[1-9]))(?:[ \t]+#.*)?"
+)
 
 
 class Unread(ValueError):
@@ -165,6 +179,16 @@ def closing(lines: Sequence[str]) -> int | None:
     return None
 
 
+@dataclass
+class _Passed:
+    """What a reading of a block passes on the way to each key's end."""
+
+    #: Each quoted scalar a value holds, which `quoted` hands back.
+    quotes: list[Quoted] = field(default_factory=list)
+    #: Each comment, as its line and its `#`'s column, which `comments` hands back.
+    comments: list[tuple[int, int]] = field(default_factory=list)
+
+
 def keys(block: Sequence[str]) -> tuple[Key, ...]:
     """Each top-level key of `block`, a front matter's lines between its fences, in order.
 
@@ -173,7 +197,7 @@ def keys(block: Sequence[str]) -> tuple[Key, ...]:
     line that opens no key, an indented line above the first key, and a quoted
     scalar or flow collection that nothing in the block closes.
     """
-    return _keys(block, [])
+    return _keys(block, _Passed())
 
 
 def quoted(block: Sequence[str]) -> tuple[Quoted, ...]:
@@ -185,18 +209,73 @@ def quoted(block: Sequence[str]) -> tuple[Quoted, ...]:
     line, as an implicit key must (§ 8.2.2), and is not one of them. Raises
     `Unread` where `keys` does.
     """
-    quotes: list[Quoted] = []
-    _keys(block, quotes)
-    return tuple(quotes)
+    passed = _Passed()
+    _keys(block, passed)
+    return tuple(passed.quotes)
 
 
-def _keys(block: Sequence[str], quotes: list[Quoted]) -> tuple[Key, ...]:
-    """`keys`, adding each quoted scalar a value holds to `quotes` on the way."""
+def comments(block: Sequence[str]) -> tuple[tuple[int, int], ...]:
+    """Where each comment in `block` opens, as its line's index and its `#`'s column, in order.
+
+    A comment opens at a `#` that opens its line or follows white space,
+    outside every scalar (§ 6.6), so the walk `keys` takes finds each one: a
+    quoted scalar's lines and a block scalar's content hold a `#` as text,
+    which a reading a physical line at a time took for a comment (§ 7.3,
+    `block_content`, `PL-W9VC`), and a flow collection holds one wherever white
+    space comes before it (§ 7.4). A line YAML refuses, deeper than the node
+    holding a block scalar and short of its content, is passed over as `keys`
+    passes it. Raises `Unread` where `keys` does.
+    """
+    passed = _Passed()
+    _keys(block, passed)
+    return tuple(sorted(set(passed.comments)))
+
+
+def block_content(
+    block: Sequence[str], line: int, holder: int, header: str
+) -> tuple[int, int] | None:
+    """Where the content of the block scalar `header` opens on `block[line]` sits, and its end.
+
+    `holder` is the column of the node holding the scalar - the key whose
+    value it is, or the list entry's `-` - which its content sits past: by the
+    header's indentation indicator, or, without one, as deep as the first line
+    holding anything other than spaces, as PyYAML 6.0's
+    `scan_block_scalar_indentation` reads it, a line of spaces before it as
+    deep as its spaces (§ 8.1.1.1). The content runs to the first line holding
+    anything short of that indentation, a `#` included, since a comment less
+    indented than the content ends it and every comment after that is one at
+    any depth (§ 8.1.1.2, `l-trail-comments`). The end is that line's index,
+    or the block's length. `None` where `header`, a node as `_node` reads it,
+    is none YAML reads (`docket.model.BLOCK_SCALAR_RE`).
+    """
+    form = BLOCK_SCALAR_RE.fullmatch(header)
+    if form is None:
+        return None
+    width = form["width"] or form["late"]
+    if width:
+        indent = holder + int(width)
+    else:
+        indent = holder + 1
+        for text in block[line + 1 :]:
+            spaces = len(text) - len(text.lstrip(" "))
+            indent = max(indent, spaces)
+            if spaces < len(text):
+                break
+    end = line + 1
+    while end < len(block) and not block[end][:indent].strip(" "):
+        end += 1
+    return indent, end
+
+
+def _keys(block: Sequence[str], passed: _Passed) -> tuple[Key, ...]:
+    """`keys`, adding each quoted scalar a value holds and each comment to `passed` on the way."""
     found: list[Key] = []
     index = 0
     while index < len(block):
         text = block[index].strip()
         if not text or text.startswith("#"):
+            if text:
+                passed.comments.append((index, block[index].index("#")))
             index += 1
             continue
         if block[index][:1] in (" ", "\t"):
@@ -205,14 +284,14 @@ def _keys(block: Sequence[str], quotes: list[Quoted]) -> tuple[Key, ...]:
         if opened is None:
             raise Unread(f"`{text}` sits at the first column and opens no key")
         name, at = opened
-        end = _value_end(block, index, at, quotes)
+        end = _value_end(block, index, at, passed)
         found.append(Key(name, block[index][at:], index, end))
         index = end
     return tuple(found)
 
 
-def statements(block: Sequence[str]) -> list[tuple[int, int]]:
-    """Each statement of `block`, a front matter's lines between its fences, in order.
+def statements(block: Sequence[str]) -> tuple[list[tuple[int, int]], Unread | None]:
+    """Each statement of `block`, a front matter's lines between its fences, and its decline.
 
     A key's value is one, ending where `keys` ends it, so what one key leaves
     open - a backtick, a quotation - pairs with nothing in the next, and a date
@@ -220,16 +299,20 @@ def statements(block: Sequence[str]) -> list[tuple[int, int]]:
     alone: a comment between keys, and each line of a block `keys` cannot split,
     so that none of their text is read with another's, and a record wrapped
     across two of them is read from its first line until the block is mended.
-    Each is the index of its first line and one past its last.
+    Each is the index of its first line and one past its last, in order.
 
+    The `Unread` naming why a block was read a line at a time comes back
+    second, and `None` where `keys` split it. The fallback was silent, so a
+    caller could not tell the two readings apart (`PL-JTP1`).
     `key_statements` is the same reading without that fallback, for a reader
     that names a block it cannot split rather than reading around it
     (`PL-J8ML`).
     """
     try:
-        return key_statements(block)
-    except Unread:
-        return [(index, index + 1) for index, line in enumerate(block) if line.strip()]
+        return key_statements(block), None
+    except Unread as refusal:
+        alone = [(index, index + 1) for index, line in enumerate(block) if line.strip()]
+        return alone, refusal
 
 
 def key_statements(block: Sequence[str]) -> list[tuple[int, int]]:
@@ -243,7 +326,7 @@ def key_statements(block: Sequence[str]) -> list[tuple[int, int]]:
     return sorted(spans + [span for span in alone if span[0] not in held])
 
 
-def _value_end(block: Sequence[str], index: int, at: int, quotes: list[Quoted]) -> int:
+def _value_end(block: Sequence[str], index: int, at: int, passed: _Passed) -> int:
     """The index past the last line of the value of the key `block[index]` opens at column 0.
 
     The value is every line indented under the key, and every `- ` item at its
@@ -253,28 +336,43 @@ def _value_end(block: Sequence[str], index: int, at: int, quotes: list[Quoted]) 
     collection opening there is followed to its close, a first-column line
     included. A block scalar's lines and a plain scalar's continuation lines,
     indented past the entry that opens it (§ 8.1.1, § 7.3.3), are text, and
-    are read for nothing.
+    are read for nothing but a comment: none in a block scalar's content
+    (`block_content`), and one at a `#` after white space in a plain scalar's
+    line, which no plain scalar holds (§ 7.3.3). Each comment the value holds
+    is added to `passed`.
     """
     node = _node(block[index], at)
     bare = not node
     # Lines indented past `literal` are a scalar's text; None while none is open.
     literal = None if bare or node[0] in CLOSED_NODES else 0
+    # The index past a block scalar's content while one is open, and 0 while a
+    # plain scalar is, whose lines may hold a comment.
+    content = _block_end(block, index, 0, node)
     # The column of the entry holding nothing on its line, whose node opens below it.
     holder = 0
-    line = _past(block, index, at, quotes)
+    line = _past(block, index, at, passed)
     last = line - 1
     while line < len(block):
         text = block[line]
-        content = text.strip()
+        stripped = text.strip()
         indent = len(text) - len(text.lstrip(" \t"))
-        if not content or (indent == 0 and content.startswith("#")):
+        if not stripped or (indent == 0 and stripped.startswith("#")):
+            if stripped:
+                passed.comments.append((line, 0))
             line += 1
             continue
         if indent == 0 and not (bare and is_item(text)):
             break
         last = line
         line += 1
-        if content.startswith("#") or (literal is not None and indent > literal):
+        if literal is not None and indent > literal:
+            if last >= content and (not content or stripped.startswith("#")):
+                opens = next((at for at in range(indent, len(text)) if _comment_at(text, at)), None)
+                if opens is not None:
+                    passed.comments.append((last, opens))
+            continue
+        if stripped.startswith("#"):
+            passed.comments.append((last, indent))
             continue
         literal = None
         entry, position = holder, indent
@@ -287,13 +385,29 @@ def _value_end(block: Sequence[str], index: int, at: int, quotes: list[Quoted]) 
             position = _skip_blanks(text, position + nested[1])
         opened = _node(text, position)
         if opened[:1] in CLOSED_NODES:
-            last = _past(block, last, position, quotes) - 1
+            last = _past(block, last, position, passed) - 1
             line = last + 1
-        elif opened:
+            continue
+        _past(block, last, position, passed)
+        if opened:
             literal = entry
+            content = _block_end(block, last, entry, opened)
         else:
             holder = entry
     return last + 1
+
+
+def _block_end(block: Sequence[str], line: int, holder: int, node: str) -> int:
+    """The index past a block scalar's content where `node`, on `block[line]`, is its header.
+
+    0 where `node` opens none. Where it is a header YAML refuses, such as
+    `|x`, the block's length, so that the lines indented past `holder` are
+    passed over as the text `keys` reads them as, holding no comment.
+    """
+    if node[:1] not in ("|", ">"):
+        return 0
+    content = block_content(block, line, holder, node)
+    return len(block) if content is None else content[1]
 
 
 def _skip_blanks(text: str, position: int) -> int:
@@ -543,29 +657,37 @@ def _key_span(line: str) -> tuple[str, int] | None:
     return None
 
 
-def _past(block: Sequence[str], index: int, at: int, quotes: list[Quoted]) -> int:
+def _past(block: Sequence[str], index: int, at: int, passed: _Passed) -> int:
     """The index past the line on which the node opening at `block[index][at:]` ends.
 
     The next line, unless the node is a quoted scalar or a flow collection that
     line does not close, which is followed to its close across the lines below.
     An anchor or a tag before the node names it and changes nothing in it
-    (§ 6.9). Each quoted scalar followed is added to `quotes`.
+    (§ 6.9). Each quoted scalar followed is added to `passed`, and so is the
+    comment on the line the node ends on, past its end.
     """
     text = block[index]
     at = _node_start(text, at)
     if text[at : at + 1] in ("'", '"'):
-        return _quote_end(block, index, at, quotes)[0] + 1
-    if text[at : at + 1] in ("[", "{"):
-        return _flow_end(block, index, at, quotes) + 1
+        index, close = _quote_end(block, index, at, passed.quotes)
+    elif text[at : at + 1] in ("[", "{"):
+        index, close = _flow_end(block, index, at, passed)
+    else:
+        close = at - 1
+    rest = block[index][close + 1 :]
+    kept = uncommented(rest)
+    if len(kept) < len(rest):
+        passed.comments.append((index, close + 1 + len(kept)))
     return index + 1
 
 
-def _flow_end(block: Sequence[str], index: int, at: int, quotes: list[Quoted]) -> int:
-    """The index of the line closing the flow collection `block[index][at]` opens (§ 7.4).
+def _flow_end(block: Sequence[str], index: int, at: int, passed: _Passed) -> tuple[int, int]:
+    """The line and column of the bracket closing the flow collection `block[index][at]` opens.
 
     A quote inside it opens a quoted scalar only where a node can open, as
     `_flow_node` says, so the `'` in `[don't]` is a character, and a `#` after
-    white space comments out the rest of its line. A line break is white space.
+    white space comments out the rest of its line, which is added to `passed`
+    (§ 7.4). A line break is white space.
     """
     depth = 0
     node, closed = True, False
@@ -575,15 +697,16 @@ def _flow_end(block: Sequence[str], index: int, at: int, quotes: list[Quoted]) -
         while position < len(text):
             char = text[position]
             if _comment_at(text, position):
+                passed.comments.append((line, position))
                 break
             if char in ("'", '"') and node:
-                line, position = _quote_end(block, line, position, quotes)
+                line, position = _quote_end(block, line, position, passed.quotes)
                 text = block[line]
                 node, closed = False, True
             else:
                 depth += (char in "[{") - (char in "]}")
                 if depth == 0:
-                    return line
+                    return line, position
                 node = _flow_node(text, position, node, closed)
                 closed = char in "]}" or (closed and char in " \t")
             position += 1

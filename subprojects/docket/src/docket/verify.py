@@ -49,6 +49,7 @@ from .lines import ENCODING, file_text, split_lines
 from .model import (
     CLOSED_STATUSES,
     WITHDRAWN_MARKER,
+    FrontMatterDeclines,
     Item,
     _front_matter_pairs,
     _split_list,
@@ -2483,7 +2484,10 @@ def _captured(text: str) -> bool:
     untriaged` line inside a fence is prose, as it is to every other reader of
     the item, and the file is at whatever its front matter says (`PL-24MT`).
     """
-    fields, _body = parse_front_matter(text)
+    # Set aside on purpose: a `status:` written as a block arrives empty, which
+    # reads as no capture, and a capture declining any other field is one
+    # `docket check` refuses by name.
+    fields, _body, _declined = parse_front_matter(text)
     return fields.get("status") == "untriaged"
 
 
@@ -2502,7 +2506,7 @@ def _declines(
     each form by name as well, so this costs a well-formed store nothing.
     """
     _pairs, block_lists, block_scalars, unread, _body = parsed
-    return bool(block_lists or block_scalars or unread)
+    return bool(FrontMatterDeclines(block_lists, block_scalars, unread))
 
 
 def _pr_recorded(before: str, after: str) -> bool:
@@ -2595,7 +2599,10 @@ def _added_record(root: Path, base: str, path: str) -> bool:
     text = vcs.call_git(["show", f"HEAD:{path}"], root).answer
     if not text:
         return False
-    fields, _ = parse_front_matter(text)
+    # Set aside on purpose: a field written as a block arrives empty, so a
+    # `pr:` or a date written as one makes the file no record here, which
+    # leaves it outside `touches` like any other path.
+    fields, _body, _declined = parse_front_matter(text)
     number = name.removesuffix(".md")
     dated = any(fields.get(key, "").strip() for key in ("recovered", "recorded"))
     return fields.get("pr", "").strip() == number and dated
@@ -2741,7 +2748,9 @@ def read_commission(root: Path, base: str, items_dir: str, item: Item) -> Commis
     before = _listed_copy(root, f"{base}:{items_dir}/{was}")
     if before is None:
         return Commission(unread=f"{base}:{items_dir}/{was} could not be read")
-    fields, _ = parse_front_matter(before)
+    fields, _body, declined = parse_front_matter(before)
+    if declined:
+        return Commission(unread=f"{base}:{items_dir}/{was} declines {declined}")
     return Commission(fields=fields)
 
 
@@ -2898,8 +2907,19 @@ def front_matter_check(
             advisory=advisory,
             commission=True,
         )
-    old, _ = parse_front_matter(before)
-    new, _ = parse_front_matter(after)
+    old, _body, was_declined = parse_front_matter(before)
+    new, _body, now_declined = parse_front_matter(after)
+    if was_declined or now_declined:
+        # A declined block arrives empty on both sides, so an edit inside it
+        # compared as no change (`PL-4DM0`'s shape, `PL-JTP1`).
+        copy, declined = (base, was_declined) if was_declined else ("this checkout", now_declined)
+        return Check(
+            name,
+            False,
+            f"{copy}'s copy declines {declined}, so the front matter could not be compared",
+            advisory=advisory,
+            commission=True,
+        )
     changed = tuple(sorted(k for k in set(old) | set(new) if old.get(k) != new.get(k)))
     detail = ", ".join(changed) if changed else "unchanged"
     if changed and advisory:
