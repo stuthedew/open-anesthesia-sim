@@ -1,5 +1,6 @@
 import dataclasses
 from collections.abc import Callable
+from itertools import permutations
 
 import pytest
 
@@ -39,7 +40,11 @@ from anesthesia_sim.core.exceptions import (
     SimulationNumericalError,
 )
 from anesthesia_sim.core.governing_equations import DELIVERED_AGENT_L, EXHAUSTED_AGENT_L, STATE_SIZE
-from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.parameters import (
+    AGENT_DATA_FILENAMES,
+    load_agent_parameters,
+    load_reference_adult_parameters,
+)
 from anesthesia_sim.core.run_definition import RunDefinition, RunSegment
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import (
@@ -273,6 +278,121 @@ def test_set_agent_starts_fresh_preserving_flow_settings_but_not_concentration()
     assert snapshot.delivered_partial_pressure_fraction == pytest.approx(0.06)
     assert snapshot.alveolar_ventilation_l_min == 5.5
     assert snapshot.cardiac_output_l_min == 6.0
+
+
+_ORDERED_AGENT_PAIRS = tuple(permutations(AGENT_DATA_FILENAMES, 2))
+"""Every switch a learner can make: each agent to each other agent, both ways."""
+
+
+def _run_with_non_default_settings(agent_id: str) -> SimulationController:
+    """A paused run of `agent_id` whose four carried settings are not the defaults.
+
+    The data files give a 6.0 L circuit, 4.0 L/min of fresh gas, 4.0 L/min of
+    alveolar ventilation and 5.0 L/min of cardiac output. Each value here
+    differs from its default and from the other three. So a switch that drops
+    a setting, or puts one setting's value in another's place, builds a run
+    that differs from a fresh run with these settings.
+    """
+
+    return SimulationController(
+        agent_id=agent_id,
+        circuit_volume_l=4.5,
+        fresh_gas_flow_l_min=FreshGasFlow(2.5),
+        alveolar_ventilation_l_min=AlveolarVentilation(5.5),
+        cardiac_output_l_min=CardiacOutput(6.5),
+    )
+
+
+def _switched_after_a_run_of(previous_agent_id: str, new_agent_id: str) -> SimulationController:
+    """A run of `previous_agent_id` that has taken up agent, then switched to `new_agent_id`.
+
+    Before the switch the run has taken 90 s of uptake into every compartment,
+    with the dial moved to 1.5 times the previous agent's MAC at 60 s. So
+    the compartments hold agent, the dial is off its default and the timeline
+    holds a change. A switch that kept any of these would show it.
+    """
+
+    run = _run_with_non_default_settings(previous_agent_id)
+    run.start()
+    _advance_for(run, duration_s=60.0)
+    run.set_delivered_concentration_percent(
+        Percent(1.5 * load_agent_parameters(previous_agent_id).mac_percent)
+    )
+    _advance_for(run, duration_s=30.0)
+    assert run.snapshot().stored_agent_l > 0.0
+
+    run.set_agent(new_agent_id)
+
+    return run
+
+
+@pytest.mark.parametrize(("previous_agent_id", "new_agent_id"), _ORDERED_AGENT_PAIRS)
+def test_an_agent_switch_runs_exactly_as_a_fresh_run_of_that_agent(
+    previous_agent_id: str, new_agent_id: str
+) -> None:
+    """A switched run computes with the new agent alone (`PL-QJXS`).
+
+    The expected run is built directly with the new agent and the same four
+    settings, so the expected values do not come from the run under test.
+    Every field of the snapshot is compared: the agent and its references, the
+    settings, the six partial-pressure fractions, the delivered and exhausted
+    amounts and the accounting. The equation settings and the opening state are
+    compared before either run takes a step.
+
+    A switch from sevoflurane to desflurane that kept sevoflurane's
+    compartments passed every other test. Its run, labelled desflurane, showed
+    an alveolar fraction of 2.95% (0.49 ×MAC) at 5 minutes, where a fresh
+    desflurane run shows 3.59% (0.60 ×MAC).
+
+    The comparison is exact, not within a tolerance. Both runs take the same
+    steps from the same state, and the simulator is deterministic.
+    """
+
+    switched = _switched_after_a_run_of(previous_agent_id, new_agent_id)
+    fresh = _run_with_non_default_settings(new_agent_id)
+
+    assert switched.run_segments == fresh.run_segments
+    assert switched.snapshot() == fresh.snapshot()
+
+    for run in (switched, fresh):
+        run.start()
+        _advance_for(run, duration_s=300.0)
+
+    assert fresh.snapshot().alveolar_partial_pressure_fraction > 0.0
+    assert switched.snapshot() == fresh.snapshot()
+
+
+@pytest.mark.parametrize(("previous_agent_id", "new_agent_id"), _ORDERED_AGENT_PAIRS)
+def test_a_switched_run_branches_as_a_fresh_run_of_that_agent_does(
+    previous_agent_id: str, new_agent_id: str
+) -> None:
+    """A branch of a switched run is the same as a branch of a fresh run (`PL-QJXS`).
+
+    A branch rebuilds its agent and patient from the data files. Before it
+    opens, `_branch_from` refuses a branch whose rebuilt settings differ from
+    the settings of the run it comes from. So a switch that kept the previous
+    agent's patient is refused here, with the coefficient that differs named.
+    A switch that is right gives the branch that a fresh run of the new agent
+    gives.
+    """
+
+    branches = []
+
+    for run in (
+        _switched_after_a_run_of(previous_agent_id, new_agent_id),
+        _run_with_non_default_settings(new_agent_id),
+    ):
+        run.start()
+        _advance_for(run, duration_s=120.0)
+        run.pause()
+        branch = run.resumed_at(CaseInstant(0.0))
+        branch.start()
+        _advance_for(branch, duration_s=60.0)
+        branches.append(branch)
+
+    switched_branch, fresh_branch = branches
+
+    assert switched_branch.snapshot() == fresh_branch.snapshot()
 
 
 def test_set_agent_rejects_unknown_agent_id() -> None:
