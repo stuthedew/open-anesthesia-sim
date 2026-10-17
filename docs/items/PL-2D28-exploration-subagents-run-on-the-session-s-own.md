@@ -3,13 +3,16 @@ id: PL-2D28
 title: Exploration subagents run on the session's own model, Opus 5.5 in this project's threads, because CLAUDE_CODE_SUBAGENT_MODEL never reaches the built-in Explore subagent and a cloud session applies none of the env block in .claude/settings.json: decide whether a project Explore agent pins a cheaper model, and whether the variable stays (found in PL-KLN5)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: session-cost
 touches: .claude/settings.json, .claude/agents, docs/maintainer.md
 deferred-from: v0.6.0 - apparatus session-cost work: which model an exploration subagent runs on changes nothing the milestone ships
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1510
 payoff: exploration subagents run on a model chosen for search rather than inherited by default, and the settings file stops claiming a lever it does not have
 verify: grep -q '^model: opus' .claude/agents/Explore.md && grep -qi 'not search' .claude/agents/Explore.md && ! grep -q CLAUDE_CODE_SUBAGENT_MODEL .claude/settings.json
+recurrences: 2026-10-17 PL-PTHZ
 ---
 
 **Problem.** Exploration subagents run on the session's own model, Opus 5.5 in this project's threads, because CLAUDE_CODE_SUBAGENT_MODEL never reaches the built-in Explore subagent and a cloud session applies none of the env block in .claude/settings.json: decide whether a project Explore agent pins a cheaper model, and whether the variable stays (found in PL-KLN5)
@@ -423,7 +426,24 @@ pending `PL-G2D4`, and no longer says the answer waits on this item; and the
 first session started after the merge records in this item the model its
 Explore subagent's transcript shows, read the way `PL-KLN5` read it, with
 `jq -r 'select(.type=="assistant") | .message.model'` over the subagent's
-transcript under `~/.claude/projects/`.
+transcript under `~/.claude/projects/`. [superseded 2026-10-17: the probe
+cannot run before the merge, and a closed brief is a record rather than a
+live assertion, so it is `PL-PTHZ`'s, filed at the build.]
+
+**Built** (2026-10-17). `.claude/agents/Explore.md` carries `name: Explore`,
+`model: opus`, `omitClaudeMd: true`, `tools: Read, Grep, Glob` and no
+`effort` line. Its body states the three thoroughness levels, where this
+tree keeps what, the report shape, and the two closing lines `Searched:` and
+`Not searched:`. The tool set is the narrow one this brief named, not the
+built-in's, which also allows Bash: a question that needs git history or a
+`bin/docket` command reads a fact the project records elsewhere, and the
+file tells the agent to name the command for the main conversation to run
+rather than guess. Bash is one line to add if `PL-G2D4` or `PL-PTHZ` shows
+the narrow set losing recall. The `env` block left `.claude/settings.json`
+whole, since the variable was its only key. `docs/maintainer.md` § "Settings
+that make sessions cheaper" now carries two dated bullets, one for the
+decision and one for the variable's removal, and no longer says the answer
+waits on this item.
 
 **Verify.** Set in the front matter at `ready`, 2026-10-17: the file exists
 with `model: opus` and the scope footer, and the variable is gone from the
