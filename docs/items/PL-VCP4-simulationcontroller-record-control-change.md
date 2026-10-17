@@ -3,12 +3,13 @@ id: PL-VCP4
 title: SimulationController._record_control_change builds the settings record after the setter has written, so on a run whose tissue flows no longer sum to the cardiac output every setting but the cardiac output is half applied: the compartment holds the new value and the dial reads it, the definition's open segment and the timeline keep the old one, and the banner says the simulation is unchanged and still running its previous setting (found reviewing PL-M4M0)
 priority: P1
 effort: S
-status: blocked
+status: ready
 classes: safety, defect
 feature: cardiac-output-write-consistency
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
-blocked-by: PL-KFNP
 added: 2026-10-11
+payoff: a setting the core cannot record leaves its compartment, the run's definition and the timeline on the previous setting, so the banner's word that the simulation is unchanged is true
+verify: grep -q 'def test_a_setting_the_record_refuses_leaves_the_run_on_its_previous_setting' tests/integration/test_controller.py
 recurrences: 2026-10-12 PL-DTJQ
 ---
 
@@ -46,7 +47,7 @@ the write stays admitted.
 `set_blood_flow` still sets a compartment's flow past the patient's output,
 nothing in `src/` but `PatientCompartments._update_blood_flows` calls it, and
 a caller `mypy` does not read can. So the case this item stands for is a
-record reached that way, the fix above is unchanged by the answer, and it stays
-blocked on `PL-KFNP` because that build re-points `_with_stale_tissue_flows`
-in `tests/integration/test_controller.py`, the helper this item's test would
-use.
+record reached that way, the fix above is unchanged by the answer, and it
+waited on `PL-KFNP` because that build re-points `_with_stale_tissue_flows`
+in `tests/integration/test_controller.py`, the helper this item's test uses.
+The wait ended on 2026-10-17, when the two were built on one branch.

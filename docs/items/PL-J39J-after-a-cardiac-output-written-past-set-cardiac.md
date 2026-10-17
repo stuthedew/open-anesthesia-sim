@@ -3,12 +3,13 @@ id: PL-J39J
 title: After a cardiac output written past set_cardiac_output halts the run, at the next step or at the Reset PL-M4M0 refuses, the cardiac output readout and dial show the written output beside compartment values and a chart computed at the old flows, under a banner saying the values shown are the last completed step; only the banner's own sentence names both figures (found reviewing PL-M4M0)
 priority: P1
 effort: S
-status: blocked
+status: ready
 classes: safety, defect
 feature: cardiac-output-write-consistency
 touches: src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py
-blocked-by: PL-KFNP
 added: 2026-10-11
+payoff: a halted run's cardiac output readout and dial show the output the values beside them were computed at, so no figure on screen states a run the model never ran
+verify: grep -q 'def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_last_step_ran_at' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** After a cardiac output written past set_cardiac_output halts the run, at the next step or at the Reset PL-M4M0 refuses, the cardiac output readout and dial show the written output beside compartment values and a chart computed at the old flows, under a banner saying the values shown are the last completed step; only the banner's own sentence names both figures (found reviewing PL-M4M0)
@@ -33,7 +34,7 @@ disagree in, the cardiac output readout states the disagreement rather than
 one of the two figures, or `PL-KFNP` makes the state unreachable; a test in
 `tests/integration/test_simulation_view.py` pins whichever is chosen.
 
-**Re-scoped 2026-10-12, in `PL-KFNP`'s design round.** Neither answer to
+**Re-scoped 2026-10-12, in `PL-KFNP`'s design round.** [superseded 2026-10-17: the route this names was measured in `PL-KFNP`'s build, and the readout it reaches is true of the values beside it, below] Neither answer to
 `PL-KFNP` makes this state unreachable: a tissue's or the venous pool's
 `set_blood_flow` still sets a compartment's flow past the patient's output,
 nothing in `src/` but `PatientCompartments._update_blood_flows` calls it, and
