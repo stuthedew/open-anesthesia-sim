@@ -9,6 +9,7 @@ feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, CLAUDE.md, docs/maintainer.md, docs/resident-instructions.md, tools/workflow_paths_check.py, docs/items/PL-N7LK-four-apparatus-documents-wrap-a-spaced-hyphen.md
 added: 2026-10-17
 closed: 2026-10-17
+pr: 1522
 payoff: a pull request reaches the owner only for a real decision or a high-risk change, with the case and its risks, and housekeeping merges on green
 verify: grep -q 'def test_arm_holds_a_simulator_change_until_an_owner_read_record_covers_it' subprojects/docket/tests/test_cli.py && grep -q 'OWNER_READ = "Owner-read"' subprojects/docket/src/docket/arming.py
 ---
