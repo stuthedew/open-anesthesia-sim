@@ -7,6 +7,7 @@ from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
+    load_agent_parameters,
     load_reference_adult_parameters,
     load_sevoflurane_parameters,
 )
@@ -58,6 +59,54 @@ def test_builds_reference_patient_from_parameters() -> None:
     assert patient.fat.volume_l == 14.5
     assert patient.venous_blood.volume_l == 1.222
     assert patient.total_perfusion_fraction == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize(
+    ("agent_id", "blood_gas", "tissue_gas"),
+    [
+        # Each agent's blood:gas coefficient and its vessel-rich, muscle and
+        # fat tissue:gas coefficients, typed from the agent's data file under
+        # src/anesthesia_sim/data/agents/ on 2026-10-17. The files' `sources`
+        # notes say where each value comes from.
+        ("sevoflurane", 0.65, (1.1, 2.4, 34.0)),
+        ("desflurane", 0.42, (0.54, 0.97, 13.0)),
+        ("isoflurane", 1.3, (2.1, 4.5, 70.0)),
+    ],
+)
+def test_each_tissue_group_takes_its_own_agents_coefficients(
+    agent_id: str, blood_gas: float, tissue_gas: tuple[float, float, float]
+) -> None:
+    """Each tissue group is built with its own coefficient for the running agent.
+
+    `PatientCompartments.from_parameters` maps an agent's three tissue:gas
+    coefficients onto the three groups. Before this test, only golden numbers
+    measured from the code's own output caught a group built with another
+    group's coefficient, so a mapping that was wrong when they were measured
+    would have been certified (`PL-WMN7`). Here the expected values are typed
+    from the data files. All three agents are checked, so a mapping that read
+    one agent's values for every agent fails too.
+
+    The tissue:blood coefficient is the tissue:gas coefficient divided by the
+    blood:gas one, since `docs/MODEL.md` § "Tissue compartments" writes a
+    tissue's capacity both as V x tissue:blood x blood:gas and as
+    V x tissue:gas. The test does that division itself. The perfusion
+    fractions are the reference adult's, typed from
+    src/anesthesia_sim/data/patients/reference_adult.json.
+    """
+
+    patient = PatientCompartments.from_parameters(
+        agent=load_agent_parameters(agent_id), patient=load_reference_adult_parameters()
+    )
+    groups = (patient.vessel_rich, patient.muscle, patient.fat)
+
+    assert [group.name for group in groups] == ["vessel_rich", "muscle", "fat"]
+    assert [group.tissue_gas_partition_coefficient for group in groups] == list(tissue_gas)
+    assert [group.blood_gas_partition_coefficient for group in groups] == [blood_gas] * 3
+    assert [group.tissue_blood_partition_coefficient for group in groups] == [
+        coefficient / blood_gas for coefficient in tissue_gas
+    ]
+    assert [group.perfusion_fraction for group in groups] == [0.76, 0.18, 0.06]
+    assert patient.venous_blood.blood_gas_partition_coefficient == blood_gas
 
 
 def test_allocates_cardiac_output_to_tissues() -> None:
