@@ -10633,6 +10633,92 @@ def test_a_toml_or_makefile_comment_is_not_read_for_host_claims(tmp_path: Path) 
     assert [error.split(" names ")[0] for error in errors] == [".github/workflows/ci.yml:1"]
 
 
+#: An undated host claim, written as a `#` comment, with no quote to pair with a script's.
+HASH_CLAIM = "# `github.blog` is blocked by the egress proxy."
+
+
+def test_a_hash_line_inside_a_here_document_or_a_quoted_string_is_no_comment(
+    tmp_path: Path,
+) -> None:
+    """A shell script's comments are those bash discards, read through `docket.shell` (`PL-W9VC`).
+
+    A `#`-led line in a here-document's body is input bash hands the command,
+    and one inside a quoted string is the string's, so neither is a claim to
+    date; read a physical line at a time, each was refused as an undated one.
+    A comment after a command is one, which that reading never read. Where the
+    script stops being readable, the comments above that line are read and the
+    rest are declined by name.
+    """
+    report = _host_claim_report(
+        tmp_path,
+        {
+            "tools/demo.sh": (
+                f"cat <<EOF\n{HASH_CLAIM}\nEOF\n"
+                f"echo 'a\n{HASH_CLAIM}\nb'\n"
+                f"echo done  {HASH_CLAIM}\n"
+                f"{HASH_CLAIM}\n"
+                f"echo 'never closed\n{HASH_CLAIM}\n"
+            )
+        },
+    )
+
+    assert [error.split(" names ")[0] for error in report.errors] == [
+        "tools/demo.sh:7",
+        "tools/demo.sh:8",
+    ]
+    assert [entry.split(": ")[0] for entry in report.declined] == ["tools/demo.sh:9"]
+
+
+def test_a_hash_line_inside_a_yaml_block_or_quoted_scalar_is_no_comment(tmp_path: Path) -> None:
+    """A YAML file's comments are the ones `docket.frontmatter.comments` places (`PL-W9VC`).
+
+    A `#`-led line in a block scalar's content or a quoted scalar's is text YAML
+    hands its reader, so it is no claim to date; a comment after a value is one.
+    """
+    errors = _host_claim_errors(
+        tmp_path,
+        {
+            "CITATION.cff": (
+                f"abstract: >\n  Text.\n  {HASH_CLAIM}\n"
+                f"title: 'A\n  {HASH_CLAIM}\n  B'\n"
+                f"version: 1  {HASH_CLAIM}\n"
+            )
+        },
+    )
+
+    assert [error.split(" names ")[0] for error in errors] == ["CITATION.cff:7"]
+
+
+def test_a_workflow_run_script_has_its_comments_read_as_bash_reads_them(tmp_path: Path) -> None:
+    """A `run:` script is a block scalar's content, so its comments are bash's (`PL-W9VC`).
+
+    Read as YAML they are no comments at all, so a claim in one is read through
+    `docket.shell`, where a here-document's body is none either. A comment after
+    an inline `run:` value is YAML's, which hands bash the value without it, so
+    it is read once rather than as both.
+    """
+    workflow = (
+        "on: push\n"
+        "jobs:\n"
+        "  check:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        f"      {HASH_CLAIM}\n"
+        "      - run: |\n"
+        f"          {HASH_CLAIM}\n"
+        "          cat <<EOF\n"
+        f"          {HASH_CLAIM}\n"
+        "          EOF\n"
+        f"      - run: make check  {HASH_CLAIM}\n"
+    )
+
+    report = _host_claim_report(tmp_path, {".github/workflows/ci.yml": workflow})
+
+    rows = sorted(int(error.split(" names ")[0].rsplit(":", 1)[1]) for error in report.errors)
+    assert rows == [6, 8, 12]
+    assert report.declined == []
+
+
 @pytest.mark.parametrize(
     ("files", "why"),
     [

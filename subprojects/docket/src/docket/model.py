@@ -25,6 +25,12 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import PurePosixPath
 
+# A field's own line holding only a YAML block-scalar header is declined by name
+# rather than read with the header as the first word of its value, which is how
+# two `reason: >-` fields came to open with `>-` (`PL-LNDJ`); the header's one
+# spelling is the YAML reader's.
+from .frontmatter import BLOCK_SCALAR_RE
+
 # Front matter is a `---` fenced block of `key: value` lines at the top of the
 # file. Deliberately not YAML: a real YAML parser is a dependency, and the
 # subset that is actually wanted here - scalars and comma-separated lists - is
@@ -59,22 +65,6 @@ CONTINUATION_RE = re.compile(r"^[ \t]+\S")
 # after the dash is what makes it one; `-value` is an ordinary word.
 BLOCK_ENTRY_RE = re.compile(r"^[ \t]+-([ \t]|$)")
 
-# A field's own line holding only a YAML block-scalar header - `>`, `|`, either
-# with a chomping indicator, an indentation indicator or both, and perhaps a
-# comment. YAML reads the value from the lines below and none of it from the
-# header; this format reads neither spelling, so the field is declined by name
-# rather than read with the header as the first word of its value, which is
-# how two `reason: >-` fields came to open with `>-` (`PL-LNDJ`).
-#
-# The one spelling of the header (YAML 1.2.2 § 8.1.1), matched whole: `|` for a
-# literal block or `>` for a folded one, then an indentation indicator and a
-# chomping indicator in either order, each optional, then an optional comment.
-# `width` or `late` is the indentation indicator, whichever order it was written
-# in. `tools/doc_check.py` reads a workflow's `run:` header through it, where it
-# spelt the same grammar beside this one (`PL-8MHZ`).
-BLOCK_SCALAR_RE = re.compile(
-    r"(?P<style>[|>])(?:(?P<width>[1-9])?[-+]?|[-+](?P<late>[1-9]))(?:[ \t]+#.*)?"
-)
 
 PRIORITIES = ("P0", "P1", "P2", "P3")
 EFFORTS = ("S", "M", "L")

@@ -3,13 +3,14 @@ id: PL-W9VC
 title: doc_check's _hash_comments reads a host claim's comments a physical line at a time, so a Makefile comment a backslash continues is read short, and a hash-led line inside a here-document, a multi-line quoted string, a YAML block scalar or a TOML multi-line string is read as a comment: an undated claim is missed or a dated one refused; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/src/docket/shell.py, subprojects/docket/src/docket/frontmatter.py, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_shell.py, subprojects/docket/tests/test_frontmatter_reference.py
 blocked-by: PL-PBNK
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-17
 payoff: a hash-led line that is a here-document's, a quoted string's or a YAML block scalar's content stops being read as a comment, so it no longer decides whether the host-claim gate refuses a sentence, and a workflow's run scripts have their comments read as bash reads them
 verify: grep -q 'def test_a_hash_line_inside_a_here_document_or_a_quoted_string_is_no_comment' tests/unit/test_doc_check.py
 ---
@@ -85,6 +86,30 @@ host-claim check's reach into YAML, TOML and Makefile comments, where none of
 its 31 claims sits. Done first, it leaves this item the shell forms - the
 here-document and the multi-line quoted string - so this is `blocked` on it
 rather than built for formats that are about to stop being read.
+
+**Re-scoped 2026-10-17, when `PL-PBNK` closed.** It retired the TOML and
+Makefile reach and kept YAML's, since a workflow comment held a real claim
+until `#1387` (`PL-B3MK`). So the Makefile continuation and the TOML
+multi-line string went with the reach, and this item kept the shell forms and
+the YAML ones: a block scalar's content and a multi-line quoted scalar, with a
+workflow's `run:` scripts, block scalars themselves, read as bash reads them.
+
+**Built 2026-10-17.** A shell script's comments are `docket.shell.comments`',
+the lexer's own record of each comment it discards, so a here-document's body
+and a quoted string hold none and a comment after a command is read; a script
+it cannot read to its end is read to that line and declined from it by name. A
+YAML file's are `docket.frontmatter.comments`', placed on the walk `keys`
+already takes, which `test_frontmatter_reference.py` holds to PyYAML: a `#`
+opens one exactly where rewriting the text after it leaves the document PyYAML
+composes unchanged, over the reference corpus with a trailing comment after a
+block scalar, a comment in a flow collection and one on a plain scalar's
+continuation line added to it. Where a block scalar's content ends is
+`docket.frontmatter.block_content`, which `_run_script` now reads too rather
+than its own reckoning, and the header's grammar moved there from
+`docket.model`. A workflow's `run:` scripts are read through `_step_scripts`
+and `docket.shell.comments`. On the tree, the nine `#` lines in
+`.github/workflows/drift.yml`'s `run:` blocks are now read as bash's comments
+and every other one as YAML's, with no error and nothing declined.
 
 **Generator check.** A member of `PL-R417`: the reader takes a physical line
 for a statement its format continues, the fact that head names. The code is new
