@@ -186,7 +186,7 @@ the tail, and the dealing makes them longer.
   from before the merge and five from after, the way the CI table above was
   taken.
 
-[superseded 2026-10-17: answered in `PL-H9KW`'s session, below] **Decision needed, and recommended: hold the trial until `PL-K5VM` lands, and
+[answered 2026-10-17, below] **Decision needed, and recommended: hold the trial until `PL-K5VM` lands, and
 do not run it on CI now.** On this tree the hook is slower in both hook-on
 runs, by 23 to 43 s, so the keep criterion of a fall of at least 30 s would
 likely fail. That would cost at least five slow-runner runs plus a revert pull
@@ -215,6 +215,13 @@ cross-worker sharing step on the strength of it. It keeps two things, which
 stay out of this item: `test_doc_check.py`'s three whole-repository tests
 sharing one analysis, and re-timing CI and restating `quality.yml`'s
 `timeout-minutes` comment once this merges.
+
+**Answered 2026-10-17, in this session: hold the CI trial** (project owner,
+2026-10-17, ratified, "agree with recs", over running the current hook on CI
+now). Taken with the answer above, the trunks are fixed by this item's own
+wider dealing rather than by `PL-K5VM`'s sharing. So steps 1 and 2 of the
+hold do not apply: the hook is not reverted and the item is not blocked. The
+CI trial waits for the wider hook's local run in step 6 below.
 
 **Next steps, for the session that builds it.** This session reset for
 length before building this.
