@@ -27,8 +27,9 @@ guard wherever it takes that type, under any name and on any class, so
 `UptakeEquationSettings`'s three flows are drawn at their edges, in the record
 a run is built from and the way in `PL-HSFV` went through (`PL-51B7`). A
 constructor counts where it checks or computes - written by hand, or a
-dataclass's with a `__post_init__` - and not where it only stores, as
-`app/controller.py`'s `ResumePoint` does. An instant a run is only *read* at -
+dataclass's with a `__post_init__` or with a `__setattr__` of its own, which
+checks each field as the constructor writes it (`PL-19Y0`) - and not where it
+only stores, as `app/controller.py`'s `ResumePoint` does. An instant a run is only *read* at -
 `state_at` and `segment_at`, which the run's own opening and reach bound - is a
 plain `float` and behind no guard here; and a collection of instants, which a
 function is handed whole, is handed the one in `TYPICAL`.
@@ -90,7 +91,9 @@ from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import SIMULATION_TICK_INTERVAL_S
 from anesthesia_sim.app.playback import PlaybackRate
 from anesthesia_sim.core import simulation_step, supported_ranges
+from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
 from anesthesia_sim.core.alveolar import AlveolarCompartment
+from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.exceptions import AnesthesiaSimulationError
 from anesthesia_sim.core.governing_equations import UptakeEquationSettings
@@ -109,6 +112,7 @@ from anesthesia_sim.core.supported_ranges import (
     StepCount,
     describe_count,
 )
+from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 GUARD_MODULES = (supported_ranges, simulation_step)
@@ -235,7 +239,29 @@ def _checks_or_computes(owner: type, name: str) -> bool:
     if name != "__init__":
         return not name.startswith("_")
 
-    return not dataclasses.is_dataclass(owner) or hasattr(owner, "__post_init__")
+    return (
+        not dataclasses.is_dataclass(owner)
+        or hasattr(owner, "__post_init__")
+        or _checks_every_write(owner)
+    )
+
+
+def _checks_every_write(owner: type) -> bool:
+    """Whether a dataclass's constructor checks through a `__setattr__` of its own.
+
+    `PL-19Y0` moved five records' checks out of `__post_init__` and into the
+    write, which the constructor makes like any other, and read for a
+    `__post_init__` alone their constructors left the draw with nothing
+    failing: `BreathingCircuit`'s fresh gas flow and `AlveolarCompartment`'s
+    ventilation among them. The `__setattr__` a frozen dataclass is given
+    refuses every write after construction and checks nothing, so it does not
+    count, and a frozen dataclass cannot define its own.
+    """
+
+    return (
+        "__setattr__" in vars(owner)
+        and not typing.cast(typing.Any, owner).__dataclass_params__.frozen
+    )
 
 
 def _callables() -> Iterator[tuple[type | None, Function]]:
@@ -693,3 +719,25 @@ def test_each_guard_admits_only_what_its_functions_compute(guard: Function) -> N
         _check(guard, values, step)
 
     drawn()
+
+
+def test_the_records_that_check_every_write_are_drawn() -> None:
+    """A constructor that checks through its record's `__setattr__` is drawn like a `__post_init__`.
+
+    Read for a `__post_init__` alone, the draw lost the five constructors
+    `PL-19Y0` moved into the write and every edge test still passed, so
+    nothing but this says `_checks_every_write` is doing its work (found by
+    `PL-19Y0`'s mutation review). `SimulationState` has checked in its
+    `__setattr__` since `PL-8W1W`.
+    """
+
+    drawn = {owner for owner, function in CALLABLES if function.__name__ == "__init__"}
+
+    assert {
+        AgentSimulationValidator,
+        AlveolarCompartment,
+        BreathingCircuit,
+        SimulationState,
+        TissueGroup,
+        VenousBloodCompartment,
+    } <= drawn

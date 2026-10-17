@@ -3,12 +3,14 @@ id: PL-WV9K
 title: Nothing defines a Workspace as an object above PL-C842's layout tree - the named set, the tab lifecycle with item 34's last-workspace floor, and where a learner's own presets are kept
 priority: P2
 effort: M
-status: ready
+status: done
 classes: planning
 feature: interface-areas
 touches: src/anesthesia_sim/layout/, tests/unit, docs/ARCHITECTURE.md, ROADMAP.md
 blocked-by: PL-1FT6
 added: 2026-09-16
+closed: 2026-10-17
+pr: 1481
 payoff: a Workspace and the ordered set of them exist as objects the tab strip, the store and run pinning can address, and removing the last one is refused by the type rather than by a dialog
 verify: grep -q 'def test_the_last_workspace_cannot_be_removed' tests/unit/test_layout_workspace.py
 ---
