@@ -369,11 +369,11 @@ def _snapshot(
         agent_mac_percent=Percent(agent_mac_percent),
         agent_mac_awake=agent_mac_awake,
         circuit_volume_l=6.0,
-        fresh_gas_flow_l_min=FreshGasFlow(4.0),
+        fresh_gas_flow_l_min=FreshGasFlow(3.0),
         accepted_fresh_gas_flow_range_l_min=accepted_fresh_gas_flow_range_l_min,
-        delivered_concentration_percent=Percent(8.0),
-        alveolar_ventilation_l_min=AlveolarVentilation(4.0),
-        cardiac_output_l_min=CardiacOutput(5.0),
+        delivered_concentration_percent=Percent(2.5),
+        alveolar_ventilation_l_min=AlveolarVentilation(5.5),
+        cardiac_output_l_min=CardiacOutput(6.5),
         inspired_partial_pressure_fraction=Fraction(compartments[RecordedQuantity.CIRCUIT]),
         alveolar_partial_pressure_fraction=Fraction(compartments[RecordedQuantity.ALVEOLAR]),
         mixed_venous_partial_pressure_fraction=Fraction(
@@ -1108,10 +1108,41 @@ def test_refresh_view_formats_every_concentration_metric() -> None:
     assert by_name["Vessel-rich group"][1] == "0.79%"
     assert by_name["Muscle"][1] == "0.32%"
     assert by_name["Fat"][1] == "0.01%"
-    assert settings[ControlInput.FRESH_GAS_FLOW].value_text == "4.0 L/min"
-    assert settings[ControlInput.DELIVERED].value_text == "8.00%"
-    assert settings[ControlInput.ALVEOLAR_VENTILATION].value_text == "4.0 L/min"
-    assert settings[ControlInput.CARDIAC_OUTPUT].value_text == "5.0 L/min"
+    assert settings[ControlInput.FRESH_GAS_FLOW].value_text == "3.0 L/min"
+    assert settings[ControlInput.DELIVERED].value_text == "2.50%"
+    assert settings[ControlInput.ALVEOLAR_VENTILATION].value_text == "5.5 L/min"
+    assert settings[ControlInput.CARDIAC_OUTPUT].value_text == "6.5 L/min"
+
+
+def test_the_snapshot_fixture_settings_are_all_distinct() -> None:
+    """No two of the fixture's settings in one unit share a value.
+
+    A readout that showed one setting's number under another setting's label
+    passes any test in which the two settings are equal. The shipped defaults
+    put the fresh gas flow and the alveolar ventilation both at 4.0 L/min.
+    This fixture once did the same, so swapping the two in `setting_readouts`
+    passed every unit test (`PL-5V5F`). Its dial also sat at sevoflurane's
+    8.0% vaporizer maximum.
+
+    The flows share litres per minute, and the dial, its maximum and the MAC
+    share percent. A swap inside either group is the one a reader could not
+    see from the unit, so the values inside each group must differ.
+    """
+
+    snapshot = _snapshot()
+    flows_l_min = (
+        snapshot.fresh_gas_flow_l_min,
+        snapshot.alveolar_ventilation_l_min,
+        snapshot.cardiac_output_l_min,
+    )
+    percents = (
+        snapshot.delivered_concentration_percent,
+        snapshot.max_delivered_concentration_percent,
+        snapshot.agent_mac_percent,
+    )
+
+    assert len(set(flows_l_min)) == len(flows_l_min), flows_l_min
+    assert len(set(percents)) == len(percents), percents
 
 
 def test_metric_placeholders_match_the_formatter_before_a_run() -> None:
@@ -1652,9 +1683,9 @@ def test_the_dial_is_readable_in_the_unit_its_compartments_are() -> None:
 
     delivered = _settings_by_control(_snapshot())[ControlInput.DELIVERED]
 
-    assert delivered.value_text == format_percent(Fraction(0.08))
-    assert delivered.secondary == format_mac_multiple(Fraction(0.08), Percent(2.0))
-    assert delivered.secondary == "4.00 ×MAC"
+    assert delivered.value_text == format_percent(Fraction(0.025))
+    assert delivered.secondary == format_mac_multiple(Fraction(0.025), Percent(2.0))
+    assert delivered.secondary == "1.25 ×MAC"
 
 
 def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:

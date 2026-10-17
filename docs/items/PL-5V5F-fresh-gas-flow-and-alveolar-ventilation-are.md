@@ -3,11 +3,13 @@ id: PL-5V5F
 title: Fresh gas flow and alveolar ventilation are both 4.0 L/min in the shipped defaults and in test_dashboard_frame's _snapshot fixture, so swapping the two settings in dashboard_frame.setting_readouts passes the whole unit tier and building settings()'s ventilation from the fresh gas flow passes every test
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test
 feature: tests-detect-wrong-values
 touches: tests/unit/test_dashboard_frame.py, tests/integration/test_controller.py
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1513
 payoff: a readout that shows the fresh gas flow under the ventilation label, or the reverse, fails a test instead of passing on two equal 4.0 L/min values
 verify: grep -q 'def test_the_snapshot_fixture_settings_are_all_distinct' tests/unit/test_dashboard_frame.py
 ---
@@ -91,3 +93,41 @@ perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above. Symbols re-checked against
 `9ea87a3c`.
+
+**Fail-before, 2026-10-17.** `_snapshot` in `tests/unit/test_dashboard_frame.py`
+now sets a fresh gas flow of 3.0 L/min, ventilation 5.5, cardiac output 6.5
+and a dial of 2.5%, so each differs from the others and the dial differs from
+the 8.0% maximum. `test_refresh_view_formats_every_concentration_metric` and
+`test_the_dial_is_readable_in_the_unit_its_compartments_are` pin the new
+readouts ("3.0 L/min", "2.50%", "5.5 L/min", "6.5 L/min", "1.25 ×MAC").
+The new `test_the_snapshot_fixture_settings_are_all_distinct` checks that the
+three flows differ from each other, and that the dial, its maximum and the MAC
+do. With the fixture's old values restored by hand it fails with
+`AssertionError: (4.0, 4.0, 5.0)` and `assert 2 == 3`.
+
+- Probe P2, applied by swapping the two values in the `flows` dict in
+  `setting_readouts` (`src/anesthesia_sim/app/dashboard_frame.py`). The command
+  `uv run pytest -q -p no:randomly tests/unit` exits 1, with 1 failed and
+  5110 passed. The failure is
+  `test_refresh_view_formats_every_concentration_metric`, with
+  `AssertionError: assert '5.5 L/min' == '3.0 L/min'`.
+- Probe P7, applied by building `settings()`'s `alveolar_ventilation_l_min`
+  from `circuit.fresh_gas_flow_l_min` (`src/anesthesia_sim/app/controller.py`).
+  `test_settings_are_read_of_a_run_whose_snapshot_refuses` now sets all four
+  settings to distinct values (6.0 L/min, 3.0%, 5.5 L/min and 6.5 L/min) and
+  asserts each as a literal. The command
+  `uv run pytest -q -p no:randomly tests/integration/test_controller.py::test_settings_are_read_of_a_run_whose_snapshot_refuses`
+  exits 1 with `AssertionError: assert 6.0 == 5.5`.
+
+Both probes were reverted with `git checkout`.
+
+**The second instance the brief suspected is not a gap.** Swapping the dial and
+its maximum in `setting_readouts` (the readout's value read from
+`max_delivered_concentration_percent`, and the offered range's top from
+`delivered_concentration_percent`) fails
+`test_the_slider_tracks_the_dial_maximum_and_the_chart_no_longer_does` with
+the old fixture and the new one alike. That test sets desflurane's 18%
+maximum while the fixture's dial stays at its own value, so the two differ
+there even when the default fixture's did not. Run 2026-10-17 over
+`test_dashboard_frame.py`, `test_control_timeline.py` and `test_chart_frame.py`:
+1 failed and 240 passed on the old fixture, 1 failed and 241 passed on the new.

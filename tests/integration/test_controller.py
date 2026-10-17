@@ -1803,12 +1803,21 @@ def test_settings_are_read_of_a_run_whose_snapshot_refuses(monkeypatch: pytest.M
     compartment value, so a dial dragged into a halt can be written from
     what the run holds (`PL-85LJ`); a snapshot is a `RunSettings` too, so
     what reads one reads either.
+
+    The test sets each of the four settings to a value that differs from the
+    others and from its default, and expects back what it set. The shipped
+    fresh gas flow and alveolar ventilation are both 4.0 L/min, so with those
+    left equal a `settings()` that built the ventilation from the fresh gas
+    flow passed every test (`PL-5V5F`).
     """
 
     controller = SimulationController()
     controller.start()
     _advance_for(controller, duration_s=5.0)
-    controller.set_fresh_gas_flow(FreshGasFlow(4.0))
+    controller.set_fresh_gas_flow(FreshGasFlow(6.0))
+    controller.set_delivered_concentration_percent(Percent(3.0))
+    controller.set_alveolar_ventilation(AlveolarVentilation(5.5))
+    controller.set_cardiac_output(CardiacOutput(6.5))
     snapshot = controller.snapshot()
 
     assert isinstance(snapshot, RunSettings)
@@ -1820,7 +1829,10 @@ def test_settings_are_read_of_a_run_whose_snapshot_refuses(monkeypatch: pytest.M
 
     settings = controller.settings()
 
-    assert settings.fresh_gas_flow_l_min == 4.0
+    assert settings.fresh_gas_flow_l_min == 6.0
+    assert settings.delivered_concentration_percent == 3.0
+    assert settings.alveolar_ventilation_l_min == 5.5
+    assert settings.cardiac_output_l_min == 6.5
     assert settings == RunSettings(
         is_running=True,
         supported_limit_reason=None,
