@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, infra
 feature: friction-batch
+milestone: v0.5.25
 touches: CLAUDE.md, docs/resident-instructions.md
 added: 2026-10-17
 closed: 2026-10-17

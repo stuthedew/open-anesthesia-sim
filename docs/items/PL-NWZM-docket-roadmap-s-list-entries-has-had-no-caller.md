@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: refactor
+milestone: v0.5.25
 touches: subprojects/docket/src/docket/roadmap.py, tools/doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10

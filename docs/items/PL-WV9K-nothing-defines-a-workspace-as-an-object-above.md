@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: interface-areas
+milestone: v0.5.25
 touches: src/anesthesia_sim/layout/, tests/unit, docs/ARCHITECTURE.md, ROADMAP.md
 blocked-by: PL-1FT6
 added: 2026-09-16

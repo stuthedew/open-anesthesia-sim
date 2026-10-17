@@ -3,6 +3,7 @@ id: PL-K5VM
 title: test_controller.py's two module-scoped 24-hour controller runs are rebuilt in every xdist worker that runs one of their six tests: 4 builds where 2 would do on main, 6 and 7 under PL-4Z5Y's dealing, 33 to 133 s each, and they set the run's tail
 status: done
 feature: ci-cost
+milestone: v0.5.25
 added: 2026-10-17
 closed: 2026-10-17
 pr: 1487
