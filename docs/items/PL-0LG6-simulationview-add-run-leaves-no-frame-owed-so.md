@@ -3,12 +3,14 @@ id: PL-0LG6
 title: SimulationView.add_run leaves no frame owed, so a caller that does not present afterwards leaves the plot on the old run set while the legend already names the new one; both fork handlers present at once, so no shipped path reaches it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: presentation-safety
-touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-17
+pr: 1483
 payoff: a run added to the dashboard is drawn on the next tick whoever adds it, so the plot can never lag the legend that names it
 verify: grep -q 'def test_a_run_added_to_a_paused_dashboard_is_drawn_on_the_next_tick' tests/integration/test_simulation_view.py
 ---
@@ -48,3 +50,18 @@ one `render_tick`, and finds both runs in the drawn frame; and taking a branch
 still draws exactly one frame.
 
 **Reproduced 2026-10-01.** `add_run` in `src/anesthesia_sim/app/simulation_view.py` makes no `present` call: an awk over the method matches only its docstring and its `return`.
+
+**Fixed 2026-10-17 under `PL-X7D5`'s first pull request**, by that item's
+design-round answer rather than the candidate above: `add_run` still makes no
+`present` call. `SimulationView.render_tick` draws when the run count differs
+from the count last drawn. That count, `_drawn_run_count`, is stored at the top
+of `_refresh_view`, at the attempt, so a failing frame is not retried. A run
+added since holds no written record, so it also owes a frame through
+`RunView.owes_a_frame`, and the count covers a run's removal.
+
+The regression test, `test_a_run_added_to_a_paused_dashboard_is_drawn_on_the_next_tick`,
+adds a branch to a paused dashboard without presenting and finds no frame
+drawn. It then runs one `render_tick` and finds both runs in the drawn frame,
+with the branch's trace drawn, and finds that a second tick draws nothing.
+Finally it finds that taking a branch still draws exactly one frame. On the
+tree before the fix it fails at the first tick, which drew no frame.

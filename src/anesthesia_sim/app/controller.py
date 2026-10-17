@@ -131,8 +131,9 @@ class RunSettings(RunStatus):
     what lets `RunView.present_halt` write every dial from what the run
     holds: a dial dragged into a halt otherwise kept the value before the
     drag printed beside it, since no frame followed to rewrite it
-    (`PL-85LJ`). `SimulationSnapshot` extends it, so a frame that drew reads
-    the settings off the snapshot it drew from.
+    (`PL-85LJ`). `RunRecord` extends it, and `SimulationSnapshot` extends
+    that, so a frame that drew reads the settings off the snapshot it drew
+    from.
     """
 
     agent_id: str
@@ -182,11 +183,46 @@ class RunSettings(RunStatus):
 
 
 @dataclass(frozen=True, slots=True)
-class SimulationSnapshot(RunSettings):
+class RunRecord(RunSettings):
+    """What the run holds and has been given: its settings, and every change made to them.
+
+    `SimulationController.record()` builds one from no compartment value, as
+    `status()` and `settings()` do, so it can be read of any run on every
+    render tick. That is what it is for: `SimulationView.render_tick` draws a
+    frame whenever a displayed run's record differs from the one its view
+    last wrote, so a run that changes without a frame being asked for - one
+    that halts on a mark or arrives at the supported run length inside
+    `RunView.step_tick` - is redrawn on the next tick, without that path
+    having to remember to ask (`PL-X7D5`, `PL-T995`). `SimulationSnapshot`
+    extends it, so a frame that drew states the record it drew from.
+    """
+
+    control_timeline: tuple[ControlChange, ...]
+    """Every setting change this run has seen, oldest first.
+
+    Empty for a run nobody has touched, and cleared with the rest of the
+    run by `reset()` and by a change of agent. A setting the core refused
+    is absent: it never took effect, so it is not part of the run.
+    """
+
+    def run_record(self) -> RunRecord:
+        """This record and nothing a subclass adds: what a snapshot states of its run's record.
+
+        Dataclass equality compares like classes only, so a snapshot never
+        equals the record it extends. A view stores this to compare against
+        `SimulationController.record()` later.
+        """
+
+        return RunRecord(**{field.name: getattr(self, field.name) for field in fields(RunRecord)})
+
+
+@dataclass(frozen=True, slots=True)
+class SimulationSnapshot(RunRecord):
     """Read-only simulation data exposed to the user interface.
 
-    A `RunSettings` with everything else the interface draws: the run-state
-    fields and the settings come first, inherited, and the rest follows.
+    A `RunRecord` with everything else the interface draws: the run-state
+    fields, the settings and the setting changes come first, inherited, and
+    the rest follows.
     Built by keyword in `SimulationController.snapshot()` and nowhere else
     in `src/`, so the field order is nothing a caller relies on.
     """
@@ -252,20 +288,13 @@ class SimulationSnapshot(RunSettings):
     unaccounted_agent_l: float
     agent_accounting_absolute_error_l: float
     agent_accounting_passes_validation: bool
-    control_timeline: tuple[ControlChange, ...]
-    """Every setting change this run has seen, oldest first.
-
-    Empty for a run nobody has touched, and cleared with the rest of the
-    run by `reset()` and by a change of agent. A setting the core refused
-    is absent: it never took effect, so it is not part of the run.
-    """
     bookmarks: BookmarkSet
     """The instants and the heights this run is marked at, in two collections.
 
-    The opposite kind of thing to `control_timeline` above, and travelling
-    beside it so the difference is visible: the timeline is a record of what
-    was done to the run, and this is the set of questions still being asked of
-    it. Nothing here has happened yet, and nothing here changes a run.
+    The opposite kind of thing to `control_timeline`, which `RunRecord`
+    carries: the timeline is a record of what was done to the run, and this
+    is the set of questions still being asked of it. Nothing here has
+    happened yet, and nothing here changes a run.
 
     It survives what the timeline does not — `reset()` and `set_agent` both
     keep it, for the reason they keep the settings — and a branch opens
@@ -834,6 +863,23 @@ class SimulationController:
             cardiac_output_l_min=system.patient.cardiac_output_l_min,
         )
 
+    def record(self) -> RunRecord:
+        """The settings in force and every change made to them, built from no compartment value.
+
+        Read on every render tick of every displayed run: `SimulationView`
+        compares it against the record the run's view last wrote and draws a
+        frame where the two differ (`PL-X7D5`). So it builds nothing
+        `settings()` does not and reads the timeline the controller holds,
+        which means it cannot raise for a value a frame would refuse.
+        """
+
+        settings = self.settings()
+
+        return RunRecord(
+            **{field.name: getattr(settings, field.name) for field in fields(RunSettings)},
+            control_timeline=self._control_timeline,
+        )
+
     def snapshot(self) -> SimulationSnapshot:
         """Build a fresh, read-only view of current simulation state.
 
@@ -844,7 +890,7 @@ class SimulationController:
                 (`run_series.COMPARTMENT_FRACTION_NAMES`), because the
                 compartment holds an amount and the quotient read from it
                 carries no proof; the interface halts the run on the refusal
-                and states the halt from `status()`, which cannot raise it
+                and states the halt from `record()`, which cannot raise it
                 (`PL-7DJK`). No supported setting reaches it
                 (`core/concentration.py`).
         """

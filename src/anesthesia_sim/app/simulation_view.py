@@ -313,6 +313,9 @@ class SimulationView(QWidget):
         self._compartment_selection = INITIAL_COMPARTMENT_SELECTION
         self._frame: ChartFrame | None = None
         self._render_pending = False
+        # How many runs the last frame attempted was drawn over; `render_tick`
+        # draws when the run set has changed since (`PL-0LG6`).
+        self._drawn_run_count = 0
         self.presented_frames = 0
 
         self._concentration_chart = ConcentrationChart()
@@ -974,11 +977,27 @@ class SimulationView(QWidget):
     def render_tick(self) -> None:
         """Draw a frame if a run is running or one is owed; halt every run if drawing fails.
 
+        A frame is owed when a change asked for one (`present(True)`), when
+        the run set differs from the one the last frame was drawn over, and
+        when a run's record differs from the one its view last wrote
+        (`RunView.owes_a_frame`). The last two are read from the runs rather
+        than asked for by whatever changed them, so a run that stops itself
+        inside its own step tick is redrawn within one tick (`PL-T995`), a
+        run added without a frame is drawn on the next (`PL-0LG6`), and a
+        path added later is covered without being named (`PL-X7D5`).
+
         The pending flag is cleared before the frame is drawn, so a frame
-        that raises cannot leave the change that asked for it owed forever.
+        that raises cannot leave the change that asked for it owed forever;
+        the run count and each run's record are stored where they are
+        written, the halt included, so neither can either.
         """
 
-        if not any(run.is_running for run in self._runs) and not self._render_pending:
+        if (
+            not any(run.is_running for run in self._runs)
+            and not self._render_pending
+            and len(self._runs) == self._drawn_run_count
+            and not any(run.owes_a_frame for run in self._runs)
+        ):
             return
 
         self._render_pending = False
@@ -1001,6 +1020,9 @@ class SimulationView(QWidget):
                 since construction (`assemble_chart_frame`).
         """
 
+        # Stored before anything can raise: a frame that fails over a new run
+        # set is answered by the halt it raises, and is not retried every tick.
+        self._drawn_run_count = len(self._runs)
         snapshots = tuple(run.snapshot() for run in self._runs)
         inputs = tuple(
             RunInput(run_label(index), run.controller, snapshot, run.adjustments(snapshot))

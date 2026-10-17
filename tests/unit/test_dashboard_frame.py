@@ -704,11 +704,11 @@ def test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_
 def test_a_halt_is_stated_from_the_run_status_alone() -> None:
     """The three halt widgets are settled by a `RunStatus`, which no compartment value is built for.
 
-    `present_halt` reads `SimulationController.status()` rather than a
+    `present_halt` reads `SimulationController.record()` rather than a
     snapshot, because the snapshot's own `Fraction`s are among the values a
     halt can be for (`PL-7DJK`). So `status_word`, `transport` and
-    `halt_notice` each answer a bare status - and a snapshot is one, which
-    is what keeps every frame-drawing caller unchanged.
+    `halt_notice` each answer a bare status - and a record and a snapshot
+    are each one, which is what keeps every frame-drawing caller unchanged.
     """
 
     limit = "this run has reached 86400 s of simulated time"

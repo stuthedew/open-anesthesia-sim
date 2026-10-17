@@ -25,6 +25,12 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import PurePosixPath
 
+# A field's own line holding only a YAML block-scalar header is declined by name
+# rather than read with the header as the first word of its value, which is how
+# two `reason: >-` fields came to open with `>-` (`PL-LNDJ`); the header's one
+# spelling is the YAML reader's.
+from .frontmatter import BLOCK_SCALAR_RE
+
 # Front matter is a `---` fenced block of `key: value` lines at the top of the
 # file. Deliberately not YAML: a real YAML parser is a dependency, and the
 # subset that is actually wanted here - scalars and comma-separated lists - is
@@ -59,22 +65,6 @@ CONTINUATION_RE = re.compile(r"^[ \t]+\S")
 # after the dash is what makes it one; `-value` is an ordinary word.
 BLOCK_ENTRY_RE = re.compile(r"^[ \t]+-([ \t]|$)")
 
-# A field's own line holding only a YAML block-scalar header - `>`, `|`, either
-# with a chomping indicator, an indentation indicator or both, and perhaps a
-# comment. YAML reads the value from the lines below and none of it from the
-# header; this format reads neither spelling, so the field is declined by name
-# rather than read with the header as the first word of its value, which is
-# how two `reason: >-` fields came to open with `>-` (`PL-LNDJ`).
-#
-# The one spelling of the header (YAML 1.2.2 § 8.1.1), matched whole: `|` for a
-# literal block or `>` for a folded one, then an indentation indicator and a
-# chomping indicator in either order, each optional, then an optional comment.
-# `width` or `late` is the indentation indicator, whichever order it was written
-# in. `tools/doc_check.py` reads a workflow's `run:` header through it, where it
-# spelt the same grammar beside this one (`PL-8MHZ`).
-BLOCK_SCALAR_RE = re.compile(
-    r"(?P<style>[|>])(?:(?P<width>[1-9])?[-+]?|[-+](?P<late>[1-9]))(?:[ \t]+#.*)?"
-)
 
 PRIORITIES = ("P0", "P1", "P2", "P3")
 EFFORTS = ("S", "M", "L")
@@ -366,8 +356,40 @@ def _front_matter_pairs(
     )
 
 
-def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
-    """Split a document into its front-matter fields and its body.
+@dataclass(frozen=True)
+class FrontMatterDeclines:
+    """What `_front_matter_pairs` read no value from, handed back beside the fields.
+
+    A block list and a block scalar arrive in the fields as their key with an
+    empty value, and a line no field reads arrives in none, so a caller holding
+    the fields alone reads a value nobody wrote: `vcs._standing` compared a
+    ref's copy that way and never asked whether a block had emptied it
+    (`PL-63Y5`). False where nothing was declined, which is `docket check`'s
+    one passing case, since it refuses all three by name.
+    """
+
+    #: List fields written as a YAML block list (`block_list_keys`).
+    block_lists: tuple[str, ...] = ()
+    #: Fields written with a YAML block-scalar header (`block_scalar_keys`).
+    block_scalars: tuple[str, ...] = ()
+    #: Lines no field reads, as written (`unread_front_matter_lines`).
+    lines: tuple[str, ...] = ()
+
+    def __bool__(self) -> bool:
+        return bool(self.block_lists or self.block_scalars or self.lines)
+
+    def __str__(self) -> str:
+        return ", ".join(
+            [
+                *(f"`{key}` written as a block list" for key in self.block_lists),
+                *(f"`{key}` written as a block scalar" for key in self.block_scalars),
+                *(f"`{line.strip()}`, which no field reads" for line in self.lines),
+            ]
+        )
+
+
+def parse_front_matter(text: str) -> tuple[dict[str, str], str, FrontMatterDeclines]:
+    """Split a document into its front-matter fields, its body, and what the reading declined.
 
     A file with no front matter yields no fields rather than an error; the
     caller decides whether that is a malformed item or simply not one.
@@ -378,13 +400,19 @@ def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
     reported instead of taken. Do not "fix" this by keeping the first instead:
     either choice picks a winner, and picking one silently is the defect
     (`PL-BR4G`). A list field written as a block list arrives empty for the
-    same reason and is reported the same way, by `block_list_keys`.
+    same reason, as a block scalar does, and both are named in the third
+    element with the lines no field reads (`FrontMatterDeclines`).
+
+    The declines come back in the result rather than from readers beside it,
+    so a caller that unpacks the fields holds them too, and the strict `mypy`
+    run refuses one that unpacks two (`PL-JTP1`). One that sets them aside
+    names them so, beside a comment saying why.
     """
     parsed = _front_matter_pairs(text)
     if parsed is None:
-        return {}, text
-    pairs, _block_lists, _block_scalars, _unread, body = parsed
-    return dict(pairs), body
+        return {}, text, FrontMatterDeclines()
+    pairs, block_lists, block_scalars, unread, body = parsed
+    return dict(pairs), body, FrontMatterDeclines(block_lists, block_scalars, unread)
 
 
 @dataclass(frozen=True)
@@ -1610,7 +1638,7 @@ def parse_item(text: str, path: str = "") -> Item:
     cannot come to disagree about which keys exist or which hold a list
     (`PL-DHGC`).
     """
-    fields, body = parse_front_matter(text)
+    fields, body, declined = parse_front_matter(text)
     lists = {name: _split_list(fields.get(name, "")) for name in LIST_FIELDS}
     return Item(
         identifier=fields.get("id", ""),
@@ -1644,9 +1672,9 @@ def parse_item(text: str, path: str = "") -> Item:
         path=path,
         unknown_fields=tuple(sorted(set(fields) - set(FIELD_ORDER))),
         duplicate_fields=repeated_front_matter_keys(text),
-        block_list_fields=block_list_keys(text),
-        block_scalar_fields=block_scalar_keys(text),
-        unread_lines=unread_front_matter_lines(text),
+        block_list_fields=declined.block_lists,
+        block_scalar_fields=declined.block_scalars,
+        unread_lines=declined.lines,
     )
 
 

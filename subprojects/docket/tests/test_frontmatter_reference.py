@@ -31,6 +31,14 @@ PyYAML's scanner reads, each opening and closing where PyYAML's does, so that a
 quote opening a block scalar's line or a plain scalar's continuation line,
 which the corpus draws, is none (`PL-S4JL`).
 
+And the comments `comments` places must be the ones PyYAML reads, where no
+reader keeps one: a `#` opens a comment exactly where the text from it to its
+line's end can be written otherwise and PyYAML still loads the same document,
+so a `#` in a block scalar's content or a quoted scalar's line opens none, and
+one after a block scalar's content opens one at any depth (`PL-W9VC`). The
+corpus draws those, a comment in a flow collection and on a plain scalar's
+continuation line among them.
+
 Two more corpora hold a line's own grammar to PyYAML's scanner (`PL-8MHZ`):
 `uncommented` must end a line where PyYAML's last token on it ends, over lines
 whose quotes stand where a node opens and where it does not, and `unquote` must
@@ -48,7 +56,7 @@ import yaml
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from docket.frontmatter import keys, quoted, uncommented, unquote
+from docket.frontmatter import comments, keys, quoted, uncommented, unquote
 
 LETTERS = "abcdefghijklmnopqrstuvwxyz"
 #: A word of a plain scalar in a block, which may hold no `: ` and no ` #`.
@@ -119,6 +127,7 @@ def _flow(draw: st.DrawFn, column: int) -> list[str]:
     lines = [" " * column + ("{" if mapping else "[")]
     for index, entry in enumerate(entries):
         if index and draw(st.booleans()):
+            lines[-1] += draw(AFTER)
             lines.append(" " * draw(CARRIED))
         lines[-1] += entry + ("," if index < len(entries) - 1 else "")
     lines[-1] += ("}" if mapping else "]") + draw(AFTER)
@@ -130,8 +139,7 @@ def _plain(draw: st.DrawFn, column: int, holder: int) -> list[str]:
     lines = [" " * column + draw(WORDS)]
     for _ in range(draw(st.integers(0, 2))):
         lines.append(" " * (holder + draw(st.integers(1, 3))) + draw(CONTINUED))
-    if len(lines) == 1:
-        lines[0] += draw(AFTER)
+    lines[-1] += draw(AFTER)
     return lines
 
 
@@ -144,6 +152,10 @@ def _block_scalar(draw: st.DrawFn, holder: int) -> list[str]:
         lines.append(" " * (indent + deeper) + draw(BLOCK_TEXT))
         if draw(st.integers(0, 4)) == 0:
             lines.append("")
+    if draw(st.integers(0, 2)) == 0:
+        # A comment short of the content ends it, and one after that is one at any depth.
+        lines.append(" " * draw(st.integers(0, indent - 1)) + "# trail")
+        lines.append(" " * (indent + draw(DEEPER)) + "# deeper")
     return lines
 
 
@@ -291,6 +303,47 @@ def test_quoted_places_each_quoted_scalar_where_pyyaml_does(block: list[str]) ->
     found = [(at.quote, at.line, at.column, at.end_line, at.end_column) for at in quoted(block)]
 
     assert found == expected, "\n".join(block)
+
+
+def _shape(node: yaml.Node) -> object:
+    """What PyYAML composed, less where it stands: each node's tag, style and value."""
+    if isinstance(node, yaml.ScalarNode):
+        return node.tag, node.style, node.value
+    if isinstance(node, yaml.SequenceNode):
+        return node.tag, tuple(_shape(item) for item in node.value)
+    return node.tag, tuple((_shape(key), _shape(value)) for key, value in node.value)
+
+
+def _composed(block: list[str]) -> object:
+    """The document PyYAML composes from `block`, as `_shape` reads it, or `None` if it refuses."""
+    try:
+        return _shape(yaml.compose("\n".join(block) + "\n", Loader=yaml.SafeLoader))
+    except yaml.YAMLError:
+        return None
+
+
+def _pyyaml_comments(block: list[str]) -> list[tuple[int, int]]:
+    """Each comment PyYAML reads in `block`, as its line and its `#`'s column.
+
+    PyYAML keeps no comment, so each `#` is tried: one opens a comment where
+    writing other text from it to its line's end leaves the document PyYAML
+    composes as it was, and none earlier on its line does.
+    """
+    document = _composed(block)
+    assert document is not None, "the strategy drew no YAML"
+    found = []
+    for line, text in enumerate(block):
+        for column in (at for at, char in enumerate(text) if char == "#"):
+            if _composed([*block[:line], text[:column] + "#zq", *block[line + 1 :]]) == document:
+                found.append((line, column))
+                break
+    return found
+
+
+@settings(derandomize=True, database=None, deadline=None, max_examples=1000)
+@given(front_matters())
+def test_comments_places_each_comment_where_pyyaml_reads_one(block: list[str]) -> None:
+    assert list(comments(block)) == _pyyaml_comments(block), "\n".join(block)
 
 
 #: What opens a line before its node: nothing, a list entry, an explicit key, or a key.

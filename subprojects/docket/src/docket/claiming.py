@@ -562,7 +562,10 @@ def _branch(
         if not path:
             absent.append(key)
             continue
-        fields, _ = parse_front_matter(run(["show", f"HEAD:{path}"], root))
+        # Set aside on purpose: a `status:` written as a block arrives empty,
+        # so it releases nothing here, as it releases nothing in `claims`, and
+        # `docket check` refuses the form by name.
+        fields, _body, _declined = parse_front_matter(run(["show", f"HEAD:{path}"], root))
         status = fields.get("status", "").strip()
         if status in RELEASING_STATUSES:
             problems.append(

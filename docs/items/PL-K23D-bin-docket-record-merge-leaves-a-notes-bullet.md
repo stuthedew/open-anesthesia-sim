@@ -22,6 +22,12 @@ verify: grep -q 'def test_record_merge_names_a_notes_bullet_it_declined_to_resta
 
 **Why it matters.** `_restate_notes` is "the only supported route" to a shipped bullet missing its number, so its report reads as the whole of what the notes owed: a session that runs `record --merge` and reads it takes the notes as repaired while one bullet still has no route back to its change, and learns otherwise only if it also runs `check`. The decline exists and is dropped on the way: `restate_references` hands `notes_bullets` a throwaway list, where `unreferenced_by_version` passes `check` the same record. That is a partial answer rounded off as whole, the failure `.claude/rules/apparatus-standard.md` names as its floor.
 
+**Since 2026-10-17** (`PL-JTP1`, `#1475`): `notes_bullets` returns its
+declines beside the bullets instead of putting them on a list the caller
+passes, and `restate_references` unpacks them into `_declined` beside a
+comment naming this item, so the throwaway list above is that name now and
+the route is unchanged: return it from `restate_references`.
+
 **Generator check.** A one-off: one function drops the decline record another returns, so the report rounds a partial answer off as whole, the floor in `.claude/rules/apparatus-standard.md`, which no head's `misread:` states as a fact.
 
 **Done when.** `bin/docket record N --merge SHA`, and its `--dry-run`, names each notes bullet it declined to restate, by file and line with the walker's reason, beside the bullets it restated: the record `notes_bullets` writes reaches `_restate_notes` through `restate_references` instead of a discarded list, and the declined bullet is still left byte for byte as it was. `test_record_merge_names_a_notes_bullet_it_declined_to_restate` in `subprojects/docket/tests/test_cli.py` runs `record --merge` over a notes file holding a bullet carried on from the margin and asserts both.

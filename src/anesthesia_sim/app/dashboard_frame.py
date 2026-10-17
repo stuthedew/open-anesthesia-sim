@@ -1011,7 +1011,7 @@ class SettingReadout:
     the reader dragged it: a refused setting must not leave a control
     reading one value while the simulation runs at another, because the
     control is a display of model state as much as an input to it. On a
-    halt it is written from `SimulationController.settings()` first, since
+    halt it is written from `SimulationController.record()` first, since
     no frame may follow, for the same reason (`PL-85LJ`).
 
     Attributes:
@@ -1051,7 +1051,7 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
 
     Args:
         settings: The agent and the four settings in force: the snapshot a
-            frame drew from, or `SimulationController.settings()` on a run
+            frame drew from, or `SimulationController.record()` on a run
             whose snapshot refuses, where no frame draws (`PL-85LJ`).
 
     Returns:

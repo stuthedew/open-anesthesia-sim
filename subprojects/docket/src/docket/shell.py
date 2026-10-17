@@ -19,7 +19,10 @@ of a delimiter with no quoted part is a command bash runs (`PL-P95F`), so it
 is a piece of its own (`PL-55R2`).
 `tools/fixture_id_check.py` takes `joined_text`, a script as bash reads it once
 each backslash-newline it removes is gone (`PL-WG6S`), in a `.sh` file and a
-fenced shell sample alike (`PL-HKR5`).
+fenced shell sample alike (`PL-HKR5`). And `tools/doc_check.py`'s host-claim
+check takes `comments`, where a script's comments open, in a `.sh` file and a
+workflow's `run:` step alike, so a `#`-led line in a here-document's body or a
+quoted string is none (`PL-W9VC`).
 
 **The guard hooks read a command here too** (`PL-JNYL`). Their
 `.claude/hooks/shell_split.py` held a second lexer of the same grammar, and
@@ -715,6 +718,8 @@ class _Lexer:
         #: Every other span bash discards before it runs anything - a comment, a
         #: here-document's body - for the hooks' spelling of a substitution.
         self.removed: list[tuple[int, int]] = []
+        #: The comments among them, each from its `#` to the end of its line.
+        self.comments: list[tuple[int, int]] = []
         #: Where reading jumps past the bodies read after a compatibility end,
         #: from the start of the line after the one it ended on.
         self.jumps: dict[int, int] = {}
@@ -840,6 +845,7 @@ class _Lexer:
                         raise _Unreadable("has an unclosed command substitution")
                     end = stop
                 self.removed.append((index, end))
+                self.comments.append((index, end))
                 index = end  # a comment runs to the end of its line
             elif char == "'":
                 end = command.find("'", index + 1, stop)
@@ -1185,6 +1191,7 @@ class _Lexer:
             self.substituted += inner.substituted
             self.joins += [starts[join + 1] - 1 for join in inner.joins]
             self.removed += [(starts[first], starts[last]) for first, last in inner.removed]
+            self.comments += [(starts[first], starts[last]) for first, last in inner.comments]
             self.bodies += [(starts[at], self.placed(found, starts)) for at, found in inner.bodies]
             if inner.refusal is not None:
                 self.refuse(inner.refusal)
@@ -1339,6 +1346,7 @@ class _Lexer:
                 end = command.find("\n", at, stop)
                 end = stop if end < 0 else end
                 self.removed.append((at, end))
+                self.comments.append((at, end))
                 at = end
                 continue
             blank = False
@@ -1538,6 +1546,7 @@ class _Lexer:
                 continue
             bodies, substituted, joins = len(self.bodies), len(self.substituted), len(self.joins)
             removed, frames, nested = len(self.removed), len(self.frames), self.nested
+            comments = len(self.comments)
             introducer, jumps, expansions = self.introducer, dict(self.jumps), len(self.expansions)
             # Its own reading: a here-document it leaves unended is not carried out.
             self.frames.append(_Frame(compat=False, expansion=True))
@@ -1546,6 +1555,7 @@ class _Lexer:
             except (_Unreadable, _Cut) as stopped:
                 del self.bodies[bodies:], self.substituted[substituted:], self.joins[joins:]
                 del self.removed[removed:], self.frames[frames:], self.expansions[expansions:]
+                del self.comments[comments:]
                 self.nested, self.introducer, self.jumps = nested, introducer, jumps
                 if isinstance(stopped, _Unreadable):
                     return
@@ -1797,3 +1807,29 @@ def joined_text(script: str) -> tuple[str, tuple[int, ...]]:
     removed = {at + step for at in joins for step in (0, 1)}
     kept = tuple(at for at in range(len(script)) if at not in removed)
     return "".join(script[at] for at in kept), kept
+
+
+def comments(script: str) -> tuple[tuple[tuple[int, int], ...], int | None]:
+    """Each comment bash discards in the script, as its span, and where reading stopped.
+
+    A comment opens at a `#` that no word is in progress at, outside every
+    quote, and runs to the end of its line (Bash Reference Manual §3.1.3
+    "Comments"), so a `#`-led line in the body of a here-document (§3.6.6) or
+    inside a quoted string (§3.1.2) is the text it is, which a reading a
+    physical line at a time took for a comment (`PL-W9VC`). One in a
+    substitution's body is a comment of the command bash runs there, in a
+    here-document's body too where bash expands it. Each span runs from the
+    `#` to the newline ending its line, which is not in it.
+
+    Read as `script_lines` reads a script, so where the script stops being
+    readable, the second is the offset of the line it stops on, and no comment
+    from there on is given, since where one opens there turns on what could not
+    be read; it is `None` where the script reads to its end.
+    """
+    lexer = _Lexer(script, bash_c=False)
+    try:
+        lexer.read(0, len(script), closes=False, flat=[])
+    except _Unreadable:
+        stop = lexer.breaks[-1][1] if lexer.breaks else 0
+        return tuple(span for span in sorted(lexer.comments) if span[0] < stop), stop
+    return tuple(sorted(lexer.comments)), None

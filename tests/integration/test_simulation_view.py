@@ -24,12 +24,15 @@ with no size has no pixels for the hover to measure against.
 
 import importlib
 import re
-from collections.abc import Iterator, Sequence
+import time
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import replace
+from typing import NoReturn
 
 import pytest
 from PySide6.QtCore import QEvent, QPoint, Qt
 from PySide6.QtGui import QBrush, QColor, QPalette
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QAbstractButton,
     QAbstractItemView,
@@ -51,6 +54,7 @@ from PySide6.QtWidgets import (
 
 from anesthesia_sim.app import control_timeline as control_timeline_module
 from anesthesia_sim.app import run_view as run_view_module
+from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app import theme
 from anesthesia_sim.app.bookmarks import MacTarget, MarkStanding, TimeBookmark
 from anesthesia_sim.app.chart_frame import (
@@ -96,6 +100,8 @@ from anesthesia_sim.app.dashboard_frame import (
     SIMULATION_TICK_INTERVAL_S,
     START_NEW_CASE_TEMPLATE,
     STATUS_FAILED_TEXT,
+    STATUS_PAUSED_TEXT,
+    STATUS_SUPPORTED_LIMIT_TEXT,
     TRUNK_RUN_INDEX,
     ForkPoint,
     MarkListing,
@@ -147,6 +153,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import read_wash_in
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
+from anesthesia_sim.core import supported_ranges as supported_ranges_module
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
@@ -1673,6 +1680,164 @@ def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
         assert run._start_button.isEnabled() is False
 
 
+# ------------------------------------------ a run that stops itself (PL-T995)
+#
+# Driven through the dashboard's own timers and the Start button, because a
+# test that steps the controller and presents by hand draws the very frame
+# this path never asked for.
+
+#: How long a real-timer test waits for what it is waiting on before failing
+#: rather than hanging: ample beside the half second of play each one needs.
+_REAL_TIMER_BUDGET_S = 10.0
+
+#: Half a second of 1x play past the 60 s `_branched_case` pauses at, so the
+#: step timer reaches it in five ticks.
+_TIMED_STOP_S = 60.5
+
+
+def _render_ticks(view: SimulationView) -> list[None]:
+    """A list the dashboard's render timer appends to each time it fires, after `render_tick`."""
+
+    fired: list[None] = []
+    view._render_timer.timeout.connect(lambda: fired.append(None))
+
+    return fired
+
+
+def _run_the_timers_until(condition: Callable[[], bool], what: str) -> None:
+    """Let the dashboard's own timers fire until `condition` holds, or fail naming `what`."""
+
+    deadline = time.monotonic() + _REAL_TIMER_BUDGET_S
+
+    while not condition():
+        if time.monotonic() > deadline:
+            raise AssertionError(
+                f"{_REAL_TIMER_BUDGET_S:g} s of the real timers passed without {what}"
+            )
+
+        QTest.qWait(10)
+
+
+def _play_until_it_stops(view: SimulationView, trunk: SimulationController) -> None:
+    """Press Start, let the timers play until the trunk stops itself, then one render tick more."""
+
+    ticks = _render_ticks(view)
+    view.start_simulation_timer()
+
+    try:
+        view.runs[0]._start_button.click()
+        _run_the_timers_until(lambda: not trunk.is_running, "the trunk stopping itself")
+        ticks.clear()
+        _run_the_timers_until(lambda: bool(ticks), "a render tick after the trunk stopped")
+    finally:
+        view.stop_timers()
+
+
+def test_a_run_that_halts_on_a_mark_under_its_own_timers_is_redrawn(
+    application: QApplication,
+) -> None:
+    """A halt inside `step_tick` asks for no frame, and the next render tick draws one anyway.
+
+    The halt changes the run's record, which the tick compares against what
+    the run's view last wrote (`PL-X7D5`). Before that the tick drew only
+    while a run ran or a frame was owed, so the screen read "Running" with
+    Pause offered, the clock a step short and no offer to branch where the
+    run stood, until the learner pressed something (`PL-T995`).
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(_TIMED_STOP_S), "the decision point"))
+
+    _play_until_it_stops(view, case.trunk)
+
+    halt = case.trunk.snapshot().bookmark_halt
+    assert halt is not None, "the trunk stopped, but not on its mark"
+    run = view.runs[0]
+    stood_at = format_elapsed(halt.instant_s)
+
+    assert run._status_text.text() == STATUS_PAUSED_TEXT
+    assert run._readout_row.panels[_CLOCK_INDEX].value_label.text() == stood_at
+    assert run._pause_button.isEnabled() is False
+    assert run._start_button.isEnabled() is True
+    assert view._fork_panel.here_button.isHidden() is False
+    assert view._fork_panel.here_button.text() == HALT_FORK_LABEL_TEMPLATE.format(instant=stood_at)
+
+
+def test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_redrawn(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The other stop `step_tick` makes without a raise, drawn the same way.
+
+    `SimulationController.advance` halts a run on the step that lands it on
+    the supported run length and raises nothing, so `RunView._halt_run`, the
+    one branch of `step_tick` that asked for a frame, is never reached
+    (`PL-T995`). The span is shortened to end half a second past the trunk's
+    pause, because the timers would take a day to reach the real one and
+    stepping a run to a step short of it takes about 27 s. `maximum_step_count`
+    is the one count the controller and the core both read the span from, so
+    the two agree on the shortened one; where a run stops on the real span is
+    `test_a_run_standing_on_the_supported_run_length_reads_as_stopped_from_the_arriving_step`'s.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    last_step = round(_TIMED_STOP_S / SIMULATION_STEP_S)
+    monkeypatch.setattr(
+        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
+    )
+
+    _play_until_it_stops(view, case.trunk)
+
+    assert case.trunk.has_reached_supported_limit is True
+    run = view.runs[0]
+
+    assert run._status_text.text() == STATUS_SUPPORTED_LIMIT_TEXT
+    assert run._readout_row.panels[_CLOCK_INDEX].value_label.text() == format_elapsed(_TIMED_STOP_S)
+    assert run._pause_button.isEnabled() is False
+    assert run._start_button.isEnabled() is False
+    assert run._notice_text.notice() is not None
+
+
+def test_a_frame_that_keeps_failing_is_attempted_once_not_every_tick(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The halt stores the record it states, so the comparison does not re-halt the run every tick.
+
+    A frame that raises halts every run, and the halt is then what the screen
+    states. Were a run's record stored only where a frame draws, the failed
+    run would differ from its view's record on every tick after, and the
+    tick would assemble, fail and halt again five times a second for as long
+    as the dashboard stood (`PL-X7D5`). The two attempts are the tick's and
+    the one retry `SimulationView._halt_every_run` makes.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    attempts: list[None] = []
+
+    def failing_assembly(*args: object, **kwargs: object) -> NoReturn:
+        attempts.append(None)
+        raise RuntimeError("this frame could not be assembled")
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", failing_assembly)
+    ticks = _render_ticks(view)
+    view.start_simulation_timer()
+
+    try:
+        case.trunk.start()
+        _run_the_timers_until(lambda: case.trunk.has_failed, "the failing frame halting the run")
+        attempted = len(attempts)
+        ticks.clear()
+        _run_the_timers_until(lambda: len(ticks) >= 5, "five render ticks after the halt")
+    finally:
+        view.stop_timers()
+
+    assert attempted == 2
+    assert len(attempts) == attempted, "the failed frame was attempted again on a later tick"
+    assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
+
+
 def test_a_halt_is_shown_when_the_snapshot_itself_is_refused(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1686,7 +1851,7 @@ def test_a_halt_is_shown_when_the_snapshot_itself_is_refused(
     `present_halt` read a fresh snapshot for the status word, the transport
     and the banner, so the same refusal escaped the render tick with the
     controller failed and the screen reading "Running", Pause offered and no
-    banner. The three are now written from `SimulationController.status()`,
+    banner. The three are now written from `SimulationController.record()`,
     which no compartment value is built for, and the banner says no frame of
     the stopped run could be drawn rather than that a step was rolled back.
     """
@@ -1826,7 +1991,7 @@ def test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial(
     the drag beside a dial standing at the new one: "2.0 L/min" beside a
     dial at 4.0 with the circuit holding 4.0, until Reset (`PL-85LJ`, found
     at `PL-V2HC`'s review). The halt now writes every dial from
-    `SimulationController.settings()`, which builds no compartment value,
+    `SimulationController.record()`, which builds no compartment value,
     so the label, the dial and the run agree.
     """
 
@@ -6014,6 +6179,48 @@ def test_a_branch_added_while_the_dashboard_runs_gets_its_own_step_timer(
         assert view.runs[1]._step_timer.isActive() is True
     finally:
         view.stop_timers()
+
+
+def test_a_run_added_to_a_paused_dashboard_is_drawn_on_the_next_tick(
+    application: QApplication,
+) -> None:
+    """`add_run` draws nothing, and the next render tick draws the run it added.
+
+    A caller of the public method that did not present afterwards left the
+    plot on the old run set while both legends already named the new one,
+    because the tick drew only while a run ran or a frame was owed
+    (`PL-0LG6`). The tick now reads the run set and the new run's unwritten
+    record itself (`PL-X7D5`). A branch taken through the control still
+    draws exactly once: its press draws the frame, and the tick after it
+    finds nothing owed.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    presented = view.presented_frames
+
+    view.add_run(case.fork_at(CaseInstant(60.0)))
+
+    assert view.presented_frames == presented, "add_run drew a frame of its own"
+
+    view.render_tick()
+
+    assert view.presented_frames == presented + 1
+    assert view._frame is not None
+    assert len(view._frame.runs) == 2
+    assert view._concentration_chart.drawn_points(BRANCH_RUN_INDEX, RecordedQuantity.ALVEOLAR)[0]
+
+    view.render_tick()
+
+    assert view.presented_frames == presented + 1, "a frame drawn for nothing owed"
+
+    taken = _case_view(application, _branched_case())
+    presented = taken.presented_frames
+
+    _take_fork(taken, 60.0)
+    taken.render_tick()
+
+    assert taken.presented_frames == presented + 1
 
 
 def test_adding_a_third_run_is_refused(application: QApplication) -> None:
