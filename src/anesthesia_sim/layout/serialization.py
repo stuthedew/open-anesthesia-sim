@@ -16,11 +16,27 @@ gains later is a field rather than a change of shape.
 
 **The body carries no version; a document does.** `layout_to_dict` and
 `layout_from_dict` write and read the layout alone - `next_area_id` and
-`windows` - which is what a Workspace object holds beside its own fields in
-`PL-HJPY`'s file, under the one `schema_version` at the top of that file
-(`PL-SSQW` Q2). `layout_to_json` and `layout_from_json` write and read a
+`windows` - which is what a Workspace holds under `"layout"` beside its own
+fields, in the one document the application writes (`PL-SSQW` Q2):
+
+    {"schema_version": 1,
+     "active": 0,
+     "workspaces": [{"name": "Default",
+                     "origin": "shipped:default",
+                     "layout": {"next_area_id": 3, "windows": [...]},
+                     "view_state": {"1": {"concentration_chart": {...}}}}]}
+
+`workspace_set_to_json` and `workspace_set_from_json` write and read that
+document, holding a whole `WorkspaceSet` - its order, its active Workspace and
+the floor that it is never empty are properties of the set, which a directory
+of files could not state. `workspace_to_dict` and `workspace_from_dict` write
+and read one Workspace's body, and `layout_to_json` and `layout_from_json` a
 document holding one layout on its own, with `schema_version` beside the body.
-A body never carries a version of its own, so a file holding several has one.
+A body never carries a version of its own, so a document holding several has
+one. `view_state` is keyed by Area id, written as the string a JSON object key
+is - the digits alone, as `str` writes the number - then by View kind, and each
+entry is the JSON object the View handed over, held and written as the JSON it
+is (`PL-WV9K` Q1).
 
 **Reading refuses, and says what it refused** (`PL-SSQW` Q5, ratified). Every
 way a document can fail to describe a valid layout raises `LayoutFormatError`
@@ -41,16 +57,18 @@ that refused one would be called with no idea where it stood, so its refusal
 could not name the place, and it would refuse a newer document as invalid
 before that document's version was read.
 
-**Versions.** `LAYOUT_SCHEMA_VERSION` is 1, the only version there has been. A
-document from a newer build raises `UnsupportedSchemaVersion` whatever else it
-holds: no rule of this build's is applied to anything in it but its
+**Versions.** `LAYOUT_SCHEMA_VERSION` is `layout/migrations.py`'s, with the
+steps that read the versions before it; it is 1, the only version there has
+been. A document from a newer build raises `UnsupportedSchemaVersion` whatever
+else it holds: no rule of this build's is applied to anything in it but its
 `schema_version`, since its body is free to follow rules this build does not
 know. One claiming a version below 1 is a format error, and so is text no
 version can be read from - text that is not JSON, or JSON nested past what the
 parser's stack holds, which on Python 3.14 with an 8 MB stack was measured
-between 50,000 and 100,000 levels on 2026-10-12. When the version first
-rises, `PL-SSQW` Q5 puts the step that reads the old one in
-`layout/migrations.py`, in the same change.
+between 50,000 and 100,000 levels on 2026-10-12. A set document from an older
+build is migrated, step by step, before it is read; a document holding one
+layout on its own is read at the current version only, since the only
+documents of that shape travel with the build that wrote them.
 """
 
 from __future__ import annotations
@@ -65,8 +83,10 @@ from anesthesia_sim.layout.exceptions import (
     LayoutFormatError,
     UnsupportedSchemaVersion,
 )
+from anesthesia_sim.layout.migrations import LAYOUT_SCHEMA_VERSION, migrate
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.tree import (
+    AREA_ID_MAXIMUM,
     TREE_DEPTH_MAXIMUM,
     Area,
     AreaId,
@@ -76,19 +96,22 @@ from anesthesia_sim.layout.tree import (
     ViewKind,
     Window,
 )
+from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
 
 __all__ = [
     "LAYOUT_SCHEMA_VERSION",
+    "ReadWorkspaceSet",
     "layout_from_dict",
     "layout_from_json",
     "layout_to_dict",
     "layout_to_json",
+    "workspace_from_dict",
+    "workspace_set_from_dict",
+    "workspace_set_from_json",
+    "workspace_set_to_dict",
+    "workspace_set_to_json",
+    "workspace_to_dict",
 ]
-
-# The version of the layout's serialized form this build writes, and the
-# newest it reads. Raised by the change that alters the shape, together with
-# the migration that reads the version before it (`PL-SSQW` Q5).
-LAYOUT_SCHEMA_VERSION: Final = 1
 
 # How far each level of a written document is indented.
 _INDENT: Final = 2
@@ -188,8 +211,204 @@ def layout_from_json(text: str) -> LayoutModel:
             the invariant and where it broke.
     """
 
+    document, version = _parse(text, "a layout document")
+    _check_version(version)
+
+    if version != LAYOUT_SCHEMA_VERSION:
+        raise LayoutFormatError(
+            f"schema_version: a document holding one layout on its own is read at version "
+            f"{LAYOUT_SCHEMA_VERSION} only, and this one was written at {version}; the file a "
+            "reader saves is a Workspace set document, which is migrated"
+        )
+
+    _refuse_kept(document)
+
+    return layout_from_dict(_body_of(document))
+
+
+def workspace_to_dict(workspace: Workspace) -> dict[str, object]:
+    """A Workspace's body: plain values `json.dumps` writes and `workspace_from_dict` reads back.
+
+    Raises:
+        TypeError: `workspace` is not a `Workspace`.
+    """
+
+    if not isinstance(workspace, Workspace):
+        raise TypeError(f"a Workspace is a Workspace, not {type(workspace).__name__}")
+
+    return {
+        "name": str(workspace.name),
+        "origin": workspace.origin.written(),
+        "layout": layout_to_dict(workspace.layout),
+        "view_state": {
+            str(int(area_id)): {
+                str(kind): json.loads(json.dumps(dict(state)))
+                for kind, state in sorted(kinds.items())
+            }
+            for area_id, kinds in sorted(workspace.view_state.items())
+        },
+    }
+
+
+def workspace_from_dict(body: object, where: str = "the Workspace") -> Workspace:
+    """Read a Workspace's body, as `workspace_to_dict` writes it, standing at `where`.
+
+    Raises:
+        LayoutFormatError: the body does not describe a valid Workspace: a
+            name a tab could not show, an origin in neither written form, a
+            layout that does not read, or a `view_state` keyed by anything
+            but an Area the layout holds and a View kind, or holding anything
+            but an object per kind. The message names the invariant and where
+            it broke.
+    """
+
+    fields = _fields(body, where, "a Workspace", ("name", "origin", "layout", "view_state"))
+    name = fields["name"]
+    origin = fields["origin"]
+
+    if not isinstance(name, str):
+        raise LayoutFormatError(
+            f"{where}.name: a Workspace's name is a string, not {_json_kind(name)}"
+        )
+
+    if not isinstance(origin, str):
+        raise LayoutFormatError(
+            f"{where}.origin: a Workspace's origin is a string, not {_json_kind(origin)}"
+        )
+
+    try:
+        read_name = WorkspaceName(name)
+    except InvalidLayout as error:
+        raise LayoutFormatError(f"{where}.name: {error}") from None
+
+    try:
+        read_origin = Origin.from_written(origin)
+    except InvalidLayout as error:
+        raise LayoutFormatError(f"{where}.origin: {error}") from None
+
+    layout = _read_layout(fields["layout"], f"{where}.layout", f"{where}.layout")
+    view_state = _read_view_state(fields["view_state"], f"{where}.view_state")
+
+    try:
+        return Workspace(read_name, read_origin, layout, view_state)
+    except InvalidLayout as error:
+        raise LayoutFormatError(f"{where}: {error}") from None
+
+
+def workspace_set_to_dict(workspaces: WorkspaceSet) -> dict[str, object]:
+    """A set's body: plain values `json.dumps` writes and `workspace_set_from_dict` reads back.
+
+    Raises:
+        TypeError: `workspaces` is not a `WorkspaceSet`.
+    """
+
+    if not isinstance(workspaces, WorkspaceSet):
+        raise TypeError(f"a Workspace set is a WorkspaceSet, not {type(workspaces).__name__}")
+
+    return {
+        "active": workspaces.active,
+        "workspaces": [workspace_to_dict(workspace) for workspace in workspaces.workspaces],
+    }
+
+
+def workspace_set_from_dict(body: object) -> WorkspaceSet:
+    """Read a set's body, as `workspace_set_to_dict` writes it.
+
+    Raises:
+        LayoutFormatError: the body does not describe a valid set - no
+            Workspaces, two of one name, an active position outside it, or a
+            Workspace that does not read - and the message names the
+            invariant and where in the body it broke.
+    """
+
+    fields = _fields(body, "the Workspace set", "a Workspace set", ("active", "workspaces"))
+    active = fields["active"]
+    workspaces = fields["workspaces"]
+
+    if isinstance(active, bool) or not isinstance(active, int):
+        raise LayoutFormatError(
+            f"active: the active Workspace's position is a whole number, not {_json_value(active)}"
+        )
+
+    if not isinstance(workspaces, list):
+        raise LayoutFormatError(
+            f"workspaces: a set's Workspaces are a list, not {_json_kind(workspaces)}"
+        )
+
+    read = tuple(
+        workspace_from_dict(workspace, f"workspaces[{index}]")
+        for index, workspace in enumerate(workspaces)
+    )
+
+    try:
+        return WorkspaceSet(read, active)
+    except InvalidLayout as error:
+        raise LayoutFormatError(f"the Workspace set: {error}") from None
+
+
+def workspace_set_to_json(workspaces: WorkspaceSet) -> str:
+    """The document holding `workspaces`, at `LAYOUT_SCHEMA_VERSION`, ending in a newline.
+
+    Raises:
+        TypeError: `workspaces` is not a `WorkspaceSet`.
+    """
+
+    document = {"schema_version": LAYOUT_SCHEMA_VERSION, **workspace_set_to_dict(workspaces)}
+
+    return json.dumps(document, indent=_INDENT, allow_nan=False) + "\n"
+
+
+@dataclass(frozen=True, slots=True)
+class ReadWorkspaceSet:
+    """What reading a set document gives: the set, the version it was written at, what was lost."""
+
+    workspaces: WorkspaceSet
+    written_at: int
+    lossy: tuple[str, ...]
+
+
+def workspace_set_from_json(text: str) -> ReadWorkspaceSet:
+    """Read a set document, as `workspace_set_to_json` writes it, migrating an older one first.
+
+    The text is parsed once, by hooks that refuse nothing, and its
+    `schema_version` is read before any other rule of this build's is applied
+    to it. A document written at an older version is brought to this one by
+    `layout/migrations.py`'s steps, and `lossy` carries what each lossy step
+    says it could not keep; `written_at` is the version found, so the store
+    knows to keep the pre-migration file.
+
+    Raises:
+        TypeError: `text` is not a `str`.
+        UnsupportedSchemaVersion: a newer build wrote the document. Nothing in
+            it but its `schema_version` is held to this build's rules.
+        LayoutFormatError: the text is not JSON, or is JSON nested past what
+            the parser's stack holds, so no version can be read from it; its
+            `schema_version` is missing, given twice, not a whole number from
+            1, or older than any step reads; or it does not describe a valid
+            set. The message names the invariant and where it broke.
+    """
+
+    document, version = _parse(text, "a Workspace set document")
+    _check_version(version)
+    _refuse_kept(document)
+
+    migrated = migrate(_body_of(document), version)
+
+    return ReadWorkspaceSet(workspace_set_from_dict(migrated.body), version, migrated.lossy)
+
+
+def _parse(text: str, noun: str) -> tuple[dict[str, object], int]:
+    """`text` as a document - an object with a `schema_version` - and that version.
+
+    Raises:
+        TypeError: `text` is not a `str`.
+        LayoutFormatError: the text is not JSON, is nested past what the
+            parser reads, is not an object, or has no version that can be
+            read; `noun` names the kind of document the message asked for.
+    """
+
     if not isinstance(text, str):
-        raise TypeError(f"a layout document is read from a str, not {type(text).__name__}")
+        raise TypeError(f"{noun} is read from a str, not {type(text).__name__}")
 
     try:
         document = json.loads(
@@ -201,11 +420,18 @@ def layout_from_json(text: str) -> LayoutModel:
         raise LayoutFormatError(f"the document is not JSON this build can read: {error}") from None
 
     if not isinstance(document, dict):
-        raise LayoutFormatError(
-            f"the document: a layout document is an object, not {_json_kind(document)}"
-        )
+        raise LayoutFormatError(f"the document: {noun} is an object, not {_json_kind(document)}")
 
-    version = _read_version(document)
+    return document, _read_version(document)
+
+
+def _check_version(version: int) -> None:
+    """Refuse a version this build does not read: newer as newer, below 1 as a format error.
+
+    Raises:
+        UnsupportedSchemaVersion: `version` is above `LAYOUT_SCHEMA_VERSION`.
+        LayoutFormatError: `version` is below 1.
+    """
 
     if version > LAYOUT_SCHEMA_VERSION:
         raise UnsupportedSchemaVersion(version, LAYOUT_SCHEMA_VERSION)
@@ -215,11 +441,70 @@ def layout_from_json(text: str) -> LayoutModel:
             f"schema_version: a schema version counts from 1, not {shown(version)}"
         )
 
-    _refuse_kept(document)
 
-    return layout_from_dict(
-        {key: value for key, value in document.items() if key != "schema_version"}
-    )
+def _body_of(document: dict[str, object]) -> dict[str, object]:
+    """The document without its `schema_version`: the body a reader of one shape reads."""
+
+    return {key: value for key, value in document.items() if key != "schema_version"}
+
+
+def _read_view_state(value: object, where: str) -> dict[AreaId, dict[ViewKind, dict[str, object]]]:
+    """The `view_state` at `where`: Area id keys as JSON wrote them, View kind keys, and objects.
+
+    Whether each Area is one the layout holds is the Workspace's check, which
+    `workspace_from_dict` reports at the Workspace.
+    """
+
+    if not isinstance(value, dict):
+        raise LayoutFormatError(
+            f"{where}: a Workspace's view_state is an object keyed by Area id, not "
+            f"{_json_kind(value)}"
+        )
+
+    read: dict[AreaId, dict[ViewKind, dict[str, object]]] = {}
+
+    for key, kinds in value.items():
+        if not isinstance(key, str):
+            raise LayoutFormatError(
+                f"{where}: view_state is keyed by Area id written as a string, not "
+                f"{_json_kind(key)}"
+            )
+
+        place = _member(where, key)
+
+        if not _is_written_area_id(key):
+            raise LayoutFormatError(
+                f"{place}: view_state is keyed by Area id, a whole number written as a string "
+                f"of digits with no sign and no leading zero, not {key!r}"
+            )
+
+        area_id = _read_area_id(int(key), place)
+
+        if not isinstance(kinds, dict):
+            raise LayoutFormatError(
+                f"{place}: an Area's saved state is an object keyed by View kind, not "
+                f"{_json_kind(kinds)}"
+            )
+
+        states: dict[ViewKind, dict[str, object]] = {}
+
+        for tag, state in kinds.items():
+            try:
+                kind = ViewKind(tag)
+            except InvalidLayout as error:
+                raise LayoutFormatError(f"{_member(place, tag)}: {error}") from None
+
+            if not isinstance(state, dict):
+                raise LayoutFormatError(
+                    f"{_member(place, tag)}: a View's saved state is an object, not "
+                    f"{_json_kind(state)}"
+                )
+
+            states[kind] = dict(state)
+
+        read[area_id] = states
+
+    return read
 
 
 def _node_to_dict(node: Node) -> dict[str, object]:
@@ -233,22 +518,27 @@ def _node_to_dict(node: Node) -> dict[str, object]:
     }
 
 
-def _read_layout(body: object) -> LayoutModel:
-    fields = _fields(body, "the layout", "a layout", ("next_area_id", "windows"))
-    next_area_id = _read_area_id(fields["next_area_id"], "next_area_id")
+def _read_layout(body: object, where: str = "the layout", at: str = "") -> LayoutModel:
+    """The layout at `where`, whose members a refusal places under `at` - bare, for a document."""
+
+    fields = _fields(body, where, "a layout", ("next_area_id", "windows"))
+    next_area_id = _read_area_id(fields["next_area_id"], _member(at, "next_area_id"))
     windows = fields["windows"]
 
     if not isinstance(windows, list):
         raise LayoutFormatError(
-            f"windows: a layout's windows are a list, not {_json_kind(windows)}"
+            f"{_member(at, 'windows')}: a layout's windows are a list, not {_json_kind(windows)}"
         )
 
-    read = tuple(_read_window(window, f"windows[{index}]") for index, window in enumerate(windows))
+    read = tuple(
+        _read_window(window, f"{_member(at, 'windows')}[{index}]")
+        for index, window in enumerate(windows)
+    )
 
     try:
         return LayoutModel(read, next_area_id)
     except InvalidLayout as error:
-        raise LayoutFormatError(f"the layout: {error}") from None
+        raise LayoutFormatError(f"{where}: {error}") from None
 
 
 def _read_window(value: object, where: str) -> Window:
@@ -488,6 +778,23 @@ def _refuse_kept(document: dict[str, object]) -> None:
             pending.extend(
                 reversed([(f"{where}[{index}]", item) for index, item in enumerate(value)])
             )
+
+
+def _is_written_area_id(key: str) -> bool:
+    """Whether `key` is an Area id as `workspace_to_dict` writes one: `str` of the number, exactly.
+
+    ASCII digits only - `str.isdecimal` admits every script's digits and
+    `int` reads them - no longer than the largest id, which keeps `int` under
+    the digit limit it refuses past, and with no leading zero, so one id has
+    one key and two keys cannot name one Area.
+    """
+
+    return (
+        key.isascii()
+        and key.isdecimal()
+        and len(key) <= len(str(AREA_ID_MAXIMUM))
+        and str(int(key)) == key
+    )
 
 
 def _member(where: str, key: str) -> str:

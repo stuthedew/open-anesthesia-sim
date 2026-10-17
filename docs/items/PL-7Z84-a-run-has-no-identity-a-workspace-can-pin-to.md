@@ -1,14 +1,16 @@
 ---
 id: PL-7Z84
 title: A run has no identity a workspace can pin to - the dashboard addresses runs by their position in its own drawing order, and ROADMAP item 34 commits a workspace to pinning which run it shows
-priority: P2
+priority: P1
 effort: M
-status: blocked
+status: ready
 classes: safety, anticipated
 feature: interface-areas
-blocked-by: PL-WV9K
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md
+blocked-by: PL-WV9K
 added: 2026-09-16
+payoff: a run carries an identity stable across serialization and drawing order, a Workspace pins one by it, and a pinned run that is absent shows a named state rather than another run
+verify: grep -q 'pinned_run' src/anesthesia_sim/layout/workspace.py
 ---
 
 **Problem.** A run has no identity a workspace can pin to - the dashboard addresses runs by their position in its own drawing order, and ROADMAP item 34 commits a workspace to pinning which run it shows
@@ -39,3 +41,9 @@ So a run's identity today is *index in this dashboard's drawing order*, held by 
 ## Area-model audit (PL-BNYF)
 
 **Disposition: `missing-prereq`.** Filed 2026-09-16 by the area-model queue audit (`PL-BNYF`), which swept 49 open and untriaged items and seven gap lenses against `ROADMAP.md` item 34, `docs/interface-provenance.md` and `.claude/rules/ui-areas.md`. Each candidate was checked against the store before it was filed, so a gap an existing item already covers is not here.
+
+**Ranked `P1` on 2026-10-17**, when `PL-WV9K` closed and this item went
+`ready`: `bin/docket check` refuses a `safety`-classed item below `P1` once it
+is startable, so the band is the gate's rule rather than a weighing, and the
+owner agreed to it on the read of `#1481` (project owner, 2026-10-17,
+ratified, over leaving it `P2` and blocked).
