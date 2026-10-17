@@ -1,13 +1,12 @@
 ---
 id: PL-HQF5
 title: After PL-KFNP a tissue group's or the venous pool's blood flow is still settable past its patient's cardiac output through TissueGroup.set_blood_flow and VenousBloodCompartment.set_blood_flow, which nothing in src/ but PatientCompartments._update_blood_flows calls, so the record PatientCompartments.__post_init__ refuses stays reachable by a caller mypy does not read and halts only at the next step or at Reset (PL-M4M0); decide whether a compartment's blood flow stays a field of its own that a caller can set (found in PL-KFNP's design round)
-priority: P2
+priority: P1
 effort: M
 status: ready
-classes: defect, refactor
+classes: defect, refactor, safety
 feature: cardiac-output-write-consistency
 touches: src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md, tests/unit/test_patient.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_compartment_primitives.py, tests/unit/test_state_capture.py, tests/unit/test_uptake_system_failure.py, tests/integration/test_controller.py, tests/integration/test_simulation_view.py
-deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
 payoff: a tissue's or the venous pool's blood flow can no longer disagree with the patient's cardiac output, so no record the core refuses, and no silent second copy of the output, can be built
 verify: grep -q 'def test_a_compartment_blood_flow_is_the_patients_output_and_nothing_else' tests/unit/test_patient.py
@@ -152,6 +151,14 @@ wrong value on screen. `CLAUDE.md`'s clinical-output standard counts that as
 a safety failure. A `safety` class pins the item to `P1` and voids the reason
 that its `deferred-from:` line gives. So the triage pass should settle the
 priority and the gate placement in the same change.
+
+**Answered 2026-10-17: classed `safety`** (project owner, 2026-10-17,
+ratified, "Agree", over leaving it a `P2` defect deferred from Gate 2). The
+project owner agreed with the recommendation above at 14:30Z (09:30 CDT), in
+the thread for `#1488`. The item is now `P1`, and its `deferred-from:` line is
+removed. It is on v0.6.0's frozen list, under the exception that admits a
+`safety` finding whenever it is made (`ROADMAP.md` § "Debt gate: the frozen
+list").
 
 **Done when.** No compartment stores a blood flow that can disagree with its
 patient's cardiac output: `TissueGroup.blood_flow_l_min`,
