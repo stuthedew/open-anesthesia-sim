@@ -1,9 +1,15 @@
 ---
 id: PL-H9KW
 title: quality.yml's pytest step now takes about 9 minutes, about 82% of every checks run, up from 48 s on 2026-09-05 and 144-359 s on 2026-09-28 while test functions grew 29%, so a few slow tests are the likely cause; and the 15-minute timeout's comment still sizes it against a 3m44s job
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: infra, test
 feature: ci-cost
+touches: tests/unit/test_doc_check.py, .github/workflows/quality.yml
 added: 2026-10-17
+payoff: every pull request's checks run finishes minutes sooner, and its timeout is sized against what the job now takes, so a slow runner reads as slow rather than as a red check
+verify: ! grep -qF 'twice the observed 3m44s' .github/workflows/quality.yml
 ---
 
 **Problem.** quality.yml's pytest step now takes about 9 minutes, about 82% of every checks run, up from 48 s on 2026-09-05 and 144-359 s on 2026-09-28 while test functions grew 29%, so a few slow tests are the likely cause; and the 15-minute timeout's comment still sizes it against a 3m44s job
@@ -76,6 +82,12 @@ stops a session (`CLAUDE.md`).
 
 **Where.** `.github/workflows/quality.yml` (the pytest step and the `checks`
 job's timeout comment); whichever test modules the measurement names.
+
+**Generator check.** A one-off (triaged 2026-10-17). The fact is a test's own
+CI cost, which nothing records per test, so a slow one is found only when
+somebody times the step. But the store's other members are the washout curves
+twice over (`PL-F08Y`, done, and `PL-4Z5Y`), so it is one set of tests, not
+one fact misread by several readers. No head's `misread:` states it.
 
 **Measured and decided later on 2026-10-17.**
 
