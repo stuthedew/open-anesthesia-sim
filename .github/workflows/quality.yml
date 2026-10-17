@@ -126,6 +126,9 @@ jobs:
     # timeout rather than a saving, so re-time the job and restate these
     # figures when the pytest step grows (`PL-H9KW`).
     timeout-minutes: 15
+    # The fast path's answer, for the `checks` job below (`PL-DXD4`).
+    outputs:
+      scope: ${{ steps.scope.outputs.scope }}
 
     steps:
       # `fetch-depth: 0` rather than the action's default of 1, because three
@@ -196,6 +199,41 @@ jobs:
         with:
           python-version: '3.11'
 
+      # **The item-only fast path** (`PL-DXD4`). A pull request that changes
+      # only item files cannot change what ruff, mypy or `ignore_check.py`
+      # find, nor the result of most tests. Before `PL-T9X9` split the suite
+      # across two jobs, the full suite took 8m33s of the one job's 10m23s on
+      # run 39062070913. So this step asks `bin/docket ci-scope` whether every
+      # path the pull request changed is under the store, and writes
+      # `scope=items` or `scope=full` as its output. On `items`, ruff, mypy,
+      # `ignore_check.py` and both parts of the suite are skipped, with the
+      # coverage the parts upload and `checks` combines. The second part runs
+      # only the tests marked `reads_item_store` instead. The root
+      # `conftest.py` fails any test that reads the store without that marker,
+      # so the marked set keeps up with the tests.
+      #
+      # Every other step still runs on `items`. Some of them read the store.
+      # The others took about 9 seconds together on that run. They were
+      # measured not to read the store on 2026-10-17, but nothing about what
+      # they are guarantees it, so skipping them could miss a tool that starts
+      # reading it. ruff, mypy and `ignore_check.py` read only Python files,
+      # and no item file is one.
+      #
+      # The step runs before any project command, so nothing has written into
+      # the checkout yet. It runs under the floor's interpreter, which is all
+      # `bin/docket` needs. The skipped steps test `!= 'items'` rather than
+      # `== 'full'`, so a missing or empty answer runs the whole job. A push to
+      # `main` never runs this step, so its answer is empty there and every
+      # step runs. `main`'s own run is therefore the backstop for anything the
+      # fast path wrongly skipped. `tests/unit/test_quality_step_order.py`
+      # holds both events to this in all three jobs.
+      - name: which steps this pull request needs
+        id: scope
+        if: github.event_name == 'pull_request'
+        env:
+          SCOPE_BASE: origin/${{ github.base_ref }}
+        run: bin/docket ci-scope --base "$SCOPE_BASE" --github-output "$GITHUB_OUTPUT"
+
       - run: python3 tools/doc_check.py check
       # Beside `doc_check` because it imports it and asks the notation half of
       # its question, which is the order the Makefile runs them in too. Both
@@ -245,10 +283,13 @@ jobs:
 
       - run: uv sync --locked --dev
       - run: uv run ruff format --check .
+        if: steps.scope.outputs.scope != 'items'
       - run: uv run ruff check .
+        if: steps.scope.outputs.scope != 'items'
       # No paths: `[tool.mypy] files` in pyproject.toml names what the gate
       # covers, and says why `tests/` is not in it.
       - run: uv run mypy
+        if: steps.scope.outputs.scope != 'items'
       # The other half of that answer, and it has to run *after* the line above
       # rather than in the floor section, for two separate reasons. It shells
       # out to mypy, so it needs the virtualenv the floor section exists to
@@ -258,6 +299,7 @@ jobs:
       # cache against 9.2 s straight after `uv run mypy`. Reversing the two
       # lines would triple its bill and prove nothing extra (`PL-PBP5`).
       - run: uv run python tools/ignore_check.py
+        if: steps.scope.outputs.scope != 'items'
       # `make check`'s pytest line, with `--cov-fail-under=100` replaced by
       # `--cov-report= --part 1/2`, and it has to stay that way: `core/` is at
       # 100% of statements and branches, and the two parts' coverage, combined
@@ -284,9 +326,11 @@ jobs:
       # declared dependency that job upgrades and was never running, so
       # `PL-55JM` put `-n auto --dist worksteal` on both of its pytest lines.
       - run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-report= --part 1/2
+        if: steps.scope.outputs.scope != 'items'
       # `.coverage` is a hidden file, which the action leaves out unless asked.
       # One day is enough, since only this run's `checks` job reads it.
       - uses: actions/upload-artifact@v7.0.2
+        if: steps.scope.outputs.scope != 'items'
         with:
           name: coverage-part-1
           path: .coverage
@@ -474,11 +518,29 @@ jobs:
     runs-on: ubuntu-latest
     # The first part's bound, for the first part's reasons.
     timeout-minutes: 15
+    # The fast path's answer, for `checks` (`PL-DXD4`).
+    outputs:
+      scope: ${{ steps.scope.outputs.scope }}
 
     steps:
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
+      # The first part's question, asked again here. A job can read another
+      # job's outputs only once that job has finished, so waiting for the
+      # first part's answer would run the two parts one after the other. Both
+      # parts diff the same merge commit, from where its branch meets the
+      # base, so they give the same answer even if the base moves between
+      # their checkouts. `checks` takes the fast path only where both said
+      # `items`. Nothing has written into the checkout yet. The runner's own
+      # `python3` runs `bin/docket`, since this job sets up no floor
+      # interpreter.
+      - name: which steps this pull request needs
+        id: scope
+        if: github.event_name == 'pull_request'
+        env:
+          SCOPE_BASE: origin/${{ github.base_ref }}
+        run: bin/docket ci-scope --base "$SCOPE_BASE" --github-output "$GITHUB_OUTPUT"
       - name: Qt's system libraries, for the offscreen platform plugin
         run: sudo apt-get update && sudo apt-get install -y libegl1
       - uses: astral-sh/setup-uv@v9.0.0
@@ -486,7 +548,19 @@ jobs:
           enable-cache: true
       - run: uv sync --locked --dev
       - run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-report= --part 2/2
+        if: steps.scope.outputs.scope != 'items'
+      # The fast path's part of the suite, in place of both parts on a pull
+      # request that changes only item files. It runs here rather than in the
+      # first part, which already runs the tools that read the store, so the
+      # two jobs take about the same time. No coverage, because no file under
+      # `core/` changed. Named, so that `tools/main_ci_status.py`, which times
+      # the unnamed pytest steps as the suite, leaves it out: on `main` this
+      # step is skipped, and a skipped pytest step stops that time being read.
+      - name: the tests that read the item store
+        if: steps.scope.outputs.scope == 'items'
+        run: uv run pytest -n auto -m reads_item_store
       - uses: actions/upload-artifact@v7.0.2
+        if: steps.scope.outputs.scope != 'items'
         with:
           name: coverage-part-2
           path: .coverage
@@ -523,6 +597,13 @@ jobs:
     runs-on: ubuntu-latest
     # About 30 s of work: setup, two downloads and two `coverage` commands.
     timeout-minutes: 5
+    # `true` when both parts took the item-only fast path (`PL-DXD4`). Then
+    # neither part measured coverage, so every step after the first is
+    # skipped. Any other pair of answers runs them, including the empty pair a
+    # push to `main` gives. Where the parts disagree, `coverage combine` fails
+    # on the part whose data is missing.
+    env:
+      ITEMS_ONLY: ${{ needs.checks-part-1.outputs.scope == 'items' && needs.checks-part-2.outputs.scope == 'items' }}
 
     steps:
       - name: both parts succeeded
@@ -533,15 +614,21 @@ jobs:
       # The same checkout and environment the parts measured, so the source
       # paths in their coverage data name files that exist here.
       - uses: actions/checkout@v7.0.1
+        if: env.ITEMS_ONLY != 'true'
       - uses: astral-sh/setup-uv@v9.0.0
+        if: env.ITEMS_ONLY != 'true'
         with:
           enable-cache: true
       - run: uv sync --locked --dev
+        if: env.ITEMS_ONLY != 'true'
       # Each artifact is unpacked into a directory named after it.
       - uses: actions/download-artifact@v8.0.2
+        if: env.ITEMS_ONLY != 'true'
         with:
           pattern: coverage-part-*
       - run: uv run coverage combine coverage-part-1/.coverage coverage-part-2/.coverage
+        if: env.ITEMS_ONLY != 'true'
       # `make check`'s threshold, which `tools/doc_check.py`'s
       # `check_coverage_gate` holds to the Makefile's `--cov-fail-under`.
       - run: uv run coverage report --show-missing --fail-under=100
+        if: env.ITEMS_ONLY != 'true'

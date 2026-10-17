@@ -13,6 +13,7 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+import pytest
 from docket.checks import analyze
 from docket.config import load
 from docket.roadmap import milestone_states
@@ -21,6 +22,7 @@ from docket.store import read_items
 REPO = Path(__file__).resolve().parents[2]
 
 
+@pytest.mark.reads_item_store
 def test_this_repository_records_a_disposition_for_every_open_debt_item() -> None:
     """The real tree, not only a fixture - moved here from `test_doc_check.py`.
 

@@ -6968,6 +6968,7 @@ NO_GIT_ARGV: tuple[tuple[str, ...], ...] = (
     ("claim", "PL-B1B1"),
     ("yield", "PL-B1B1"),
     ("arm",),
+    ("ci-scope", "--base", "main"),
 )
 
 
@@ -11321,6 +11322,125 @@ def test_next_and_the_digest_say_what_holds_each_item_they_leave_out(
     )
 
 
+# --- ci-scope: whether a branch changed item files alone (`PL-DXD4`) ---------
+
+
+def _ci_scope(root: Path, output: Path, *extra: str) -> int:
+    store = str(root / "docs" / "items")
+    return main(["ci-scope", "--items", store, "--github-output", str(output), *extra])
+
+
+def test_ci_scope_answers_items_for_a_branch_that_changed_item_files_alone(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An edit, a new item and an uncommitted edit, all under the store, answer `items`.
+
+    The claim is an empty commit, so it changes no path and leaves the answer
+    alone. The uncommitted edit counts because `verify.changed_paths` reads the
+    working tree as well as the commits.
+    """
+    root, git = _arm_repo(tmp_path)
+    _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
+    _commit_file(git, root, "docs/items/PL-B1B1-held.md", _item_document("PL-B1B1") + "x\n", ARM_T0)
+    _commit_file(git, root, "docs/items/PL-H5H5-new.md", _item_document("PL-H5H5"), ARM_T0)
+    (root / "docs" / "items" / "PL-C2C2-other.md").write_text("edited\n", encoding="utf-8")
+    output = tmp_path / "github-output"
+
+    assert _ci_scope(root, output, "--base", "origin/main") == 0
+
+    assert capsys.readouterr().out == (
+        "items - all 3 changed paths against origin/main are under docs/items\n"
+    )
+    assert output.read_text(encoding="utf-8") == "scope=items\n"
+
+
+def _committed_outside(root: Path, git: Callable[..., str]) -> None:
+    (root / "tools").mkdir()
+    _commit_file(git, root, "tools/check.py", "checked = True\n", ARM_T0)
+
+
+def _uncommitted_outside(root: Path, git: Callable[..., str]) -> None:
+    (root / "docs" / "PL-D3D3-drafted.md").write_text("edited\n", encoding="utf-8")
+
+
+def _untracked_outside(root: Path, git: Callable[..., str]) -> None:
+    (root / "notes.md").write_text("new\n", encoding="utf-8")
+
+
+def _beside_the_store(root: Path, git: Callable[..., str]) -> None:
+    _commit_file(git, root, "docs/items-archive.md", "next to the store, not in it\n", ARM_T0)
+
+
+def _moved_out_of_the_store(root: Path, git: Callable[..., str]) -> None:
+    git("mv", "docs/items/PL-C2C2-other.md", "docs/PL-C2C2-other.md")
+    git("commit", "-qm", "move an item out", when=ARM_T0)
+
+
+@pytest.mark.parametrize(
+    ("change", "first_outside"),
+    [
+        (_committed_outside, "tools/check.py"),
+        (_uncommitted_outside, "docs/PL-D3D3-drafted.md"),
+        (_untracked_outside, "notes.md"),
+        (_beside_the_store, "docs/items-archive.md"),
+        (_moved_out_of_the_store, "docs/PL-C2C2-other.md"),
+    ],
+    ids=["committed", "uncommitted", "untracked", "beside-the-store", "moved-out"],
+)
+def test_ci_scope_answers_full_for_a_diff_reaching_past_the_store(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    change: Callable[[Path, Callable[..., str]], None],
+    first_outside: str,
+) -> None:
+    """One path outside the store, however the branch holds it, answers `full`.
+
+    Each case also edits an item, so the answer cannot come from the item
+    edit alone. `docs/items-archive.md` shares the store's spelling up to the
+    slash, which a bare string prefix would read as inside it. A move out of
+    the store is a deletion inside it and an addition outside it, because
+    `changed_paths` reads renames as two paths.
+    """
+    root, git = _arm_repo(tmp_path)
+    _commit_file(git, root, "docs/items/PL-B1B1-held.md", _item_document("PL-B1B1") + "x\n", ARM_T0)
+    change(root, git)
+    output = tmp_path / "github-output"
+
+    assert _ci_scope(root, output, "--base", "origin/main") == 0
+
+    assert capsys.readouterr().out == (
+        f"full - 1 changed path outside docs/items, the first {first_outside}\n"
+    )
+    assert output.read_text(encoding="utf-8") == "scope=full\n"
+
+
+def test_ci_scope_answers_full_where_it_cannot_show_item_files_alone(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """No change, a base git cannot resolve, and `--no-git` each answer `full`.
+
+    Each is a reading that cannot show the diff is item files alone, so each
+    takes the answer that skips no step. An empty diff is in that set because a
+    branch that changed nothing has no item-only diff to shorten the run for.
+    """
+    root, _ = _arm_repo(tmp_path)
+    output = tmp_path / "github-output"
+
+    assert _ci_scope(root, output, "--base", "origin/main") == 0
+    assert _ci_scope(root, output, "--base", "origin/no-such-branch") == 0
+    assert _ci_scope(root, output, "--base", "origin/main", "--no-git") == 0
+
+    said = capsys.readouterr().out.splitlines()
+    assert said[0] == "full - this branch changed nothing against origin/main"
+    assert said[1].startswith(
+        "full - what this branch changed against origin/no-such-branch could not be read: "
+    )
+    assert said[-1] == (
+        "full - `--no-git` asks git nothing, and only git can say what a branch changed"
+    )
+    assert output.read_text(encoding="utf-8") == "scope=full\n" * 3
+
+
 # --- one snapshot per read command (PL-XBV4) --------------------------------
 
 #: The commands that answer from the refs. Each is run by
@@ -11344,8 +11464,9 @@ READ_ARGV: tuple[tuple[str, ...], ...] = (
 )
 
 #: Read commands that read the refs as they are and say nothing about it:
-#: `check` alone, for the reason `cli._snapshot` gives.
-NO_FETCH_COMMANDS = frozenset({"check"})
+#: `check`, for the reason `cli._snapshot` gives, and `ci-scope`, which diffs
+#: against the base its caller names and has already fetched.
+NO_FETCH_COMMANDS = frozenset({"check", "ci-scope"})
 
 #: Commands that are not read commands here: they write, and fetch through
 #: `claiming`'s own checks (`claim`, `yield`, `arm`, `new --resource`), read

@@ -5278,6 +5278,69 @@ def cmd_arm(args: argparse.Namespace) -> int:
     return verdict.code
 
 
+#: `ci-scope`'s two answers, as the workflow's step output carries them.
+SCOPE_ITEMS = "items"
+SCOPE_FULL = "full"
+
+
+def cmd_ci_scope(args: argparse.Namespace) -> int:
+    """Whether this branch changed item files alone, for CI's item-only fast path.
+
+    `quality.yml` asks this on a pull request and skips the steps that no item
+    file can change when the answer is `items` (`PL-DXD4`). The answer is
+    `items` only when every path the branch changed against `--base`,
+    committed or not, lies under the store. Every other reading answers
+    `full`: a path outside the store, a branch that changed nothing, a diff git
+    could not produce, `--no-git`, and a store git cannot address. `full` runs
+    every step, so a reading that cannot show the diff is item files alone
+    takes the answer that skips nothing.
+
+    The changed paths are `verify.changed_paths`, the read behind the scoped
+    verify replay, against the same base. So the replay and the fast path judge
+    one diff. The store is the one `docket.toml` names.
+
+    Prints the answer and the reason for it. With `--github-output`, it also
+    appends `scope=<answer>` to that file, which is how a GitHub Actions step
+    hands a value to the steps after it. Exits 0 for either answer, because the
+    answer is the output: a failing step would fail the job that this command
+    exists to shorten.
+    """
+    answer, why = _ci_scope(_invocation(args), args.base)
+    print(f"{answer} - {why}")
+    if args.github_output is not None:
+        with args.github_output.open("a", encoding="utf-8") as output:
+            output.write(f"scope={answer}\n")
+    return 0
+
+
+def _ci_scope(inv: Invocation, base: str) -> tuple[str, str]:
+    """`ci-scope`'s answer and the reason for it, for `cmd_ci_scope` to print."""
+    if inv.git is None:
+        return SCOPE_FULL, "`--no-git` asks git nothing, and only git can say what a branch changed"
+    if not inv.tracked:
+        return SCOPE_FULL, (
+            "the store is not below the repository root, so no path can be told apart from it"
+        )
+    try:
+        paths = changed_paths(inv.root, base)
+    except GitUnanswered as silence:
+        return SCOPE_FULL, f"what this branch changed against {base} could not be read: {silence}"
+    if not paths:
+        return SCOPE_FULL, f"this branch changed nothing against {base}"
+    outside = [path for path in paths if not is_under(path, (inv.tracked,))]
+    if outside:
+        count = len(outside)
+        return SCOPE_FULL, (
+            f"{count} changed path{'' if count == 1 else 's'} outside {inv.tracked}, "
+            f"the first {outside[0]}"
+        )
+    count = len(paths)
+    return SCOPE_ITEMS, (
+        f"all {count} changed path{'' if count == 1 else 's'} against {base} are under "
+        f"{inv.tracked}"
+    )
+
+
 def cmd_record(args: argparse.Namespace) -> int:
     """Write a pull request number onto the closures a branch, or a merge, introduced.
 
@@ -5664,6 +5727,24 @@ def build_parser() -> argparse.ArgumentParser:
     yield_cmd.set_defaults(func=cmd_yield)
     arm_cmd = add("arm", "whether this branch's pull request may be armed for auto-merge")
     arm_cmd.set_defaults(func=cmd_arm)
+    ci_scope_cmd = add(
+        "ci-scope", "whether this branch changed item files alone, for CI's item-only fast path"
+    )
+    ci_scope_cmd.add_argument(
+        "--base",
+        required=True,
+        metavar="REF",
+        help="the ref the branch is compared with, as `check --verify-base` takes it",
+    )
+    ci_scope_cmd.add_argument(
+        "--github-output",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="also append `scope=items` or `scope=full` to this file, the step-output file "
+        "GitHub Actions names in GITHUB_OUTPUT",
+    )
+    ci_scope_cmd.set_defaults(func=cmd_ci_scope)
 
     record = add(
         "record", "write a pull request number onto the closures a branch, or a merge, introduced"
