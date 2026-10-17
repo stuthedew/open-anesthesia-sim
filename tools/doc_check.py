@@ -150,6 +150,13 @@ try:
     from docket.fences import blocks, fenced_lines
     from docket.fences import without_fences as blank_fences
 
+    # A block scalar's header, and whether a node is a plain scalar, are read
+    # where docket reads them (`PL-8MHZ`): this file spelt both beside them, and
+    # handed bash the command `|x`, a header YAML refuses, as a plain scalar.
+    # Where a block scalar's content ends, and where a YAML file's comments
+    # open, are its readings too (`PL-W9VC`).
+    from docket.frontmatter import BLOCK_SCALAR_RE, block_content, uncommented
+
     # `frontmatter` is the one reading of a rule's or a skill's YAML front
     # matter (`PL-R417`): where it closes, and where each key's value ends, so a
     # line opening `paths:` inside another key's quoted value is no key
@@ -158,11 +165,8 @@ try:
     # `paths:` through it too.
     from docket.frontmatter import Unread as UnreadFrontMatter
     from docket.frontmatter import closing as frontmatter_closing
+    from docket.frontmatter import comments as yaml_comments
     from docket.frontmatter import keys as frontmatter_keys
-
-    # A block scalar's header, and whether a node is a plain scalar, are read
-    # where docket reads them (`PL-8MHZ`): this file spelt both beside them, and
-    # handed bash the command `|x`, a header YAML refuses, as a plain scalar.
     from docket.frontmatter import plain as yaml_plain
     from docket.frontmatter import statements as frontmatter_statements
 
@@ -184,6 +188,7 @@ try:
     # lines are a heading, so a `#` line inside a fence is none (`PL-T1X0`).
     from docket.markdown import (
         CODE,
+        FENCE,
         HTML,
         PROSE,
         TABLE,
@@ -199,13 +204,7 @@ try:
     # `front_matter_spans` is the item grammar's reading of where each field of
     # a brief's front matter ends, so a brief's readers take one at a time
     # (`PL-CZ28`).
-    from docket.model import (
-        BLOCK_SCALAR_RE,
-        CLOSED_STATUSES,
-        SEMVER_PATTERN,
-        Item,
-        front_matter_spans,
-    )
+    from docket.model import CLOSED_STATUSES, SEMVER_PATTERN, Item, front_matter_spans
 
     # `python` is the one reading of where a Python statement ends (`PL-R417`):
     # a test is defined by a `def` statement rather than by a line opening one,
@@ -257,8 +256,10 @@ try:
     # (`PL-PVW2`). A CI step's line and a Makefile recipe line are read through
     # it rather than a split of this tool's own, which cut inside quotes and
     # read `python3 "tools/my file.py"` as `tools/my` (`PL-CWBJ`), and a step's
-    # script is cut into those lines by the same reading (`PL-Q9LK`).
+    # script is cut into those lines by the same reading (`PL-Q9LK`), as are a
+    # script's comments, which the host-claim check reads (`PL-W9VC`).
     from docket.shell import REDIRECTIONS, Reading, Word, script_lines, shell_words
+    from docket.shell import comments as shell_comments
     from docket.store import ID_PATTERN, read_items
 
     # Reading `git tag` is a second borrowing, for the same reason as the first.
@@ -2990,10 +2991,10 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
 
     Continuation lines are folded into the entry they open, because a member of
     this shape routinely wraps and an entity named on a bullet's second line is
-    named by that bullet. Its walker is borrowed rather than rewritten for the
-    reason `list_entries` gives: what a list entry *is* is one question, and a
-    fourth answer to it would be a fourth thing to keep true. The entry comes
-    back with its line breaks, through `list_entry_lines`, because a test name
+    named by that bullet. Its walker, `list_entry_lines`, is borrowed rather
+    than rewritten for the reason that walker gives: what a list entry *is* is
+    one question, and a fourth answer to it would be a fourth thing to keep
+    true. The entry comes back with its line breaks, because a test name
     wrapped inside a code span is read whole only where the break is still
     there to read; joined with a space, it named nothing (`PL-6SRZ`).
 
@@ -3007,7 +3008,7 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
     Its bound is the next heading at depth three or shallower, so a family
     whose list is closed by a `####` heading would read that subsection's
     bullets as its own. No family is laid out that way today; one that is
-    belongs in `list_entries` as a depth argument rather than in a second
+    belongs in `list_entry_lines` as a depth argument rather than in a second
     walker here.
 
     The family's heading is one `markdown` reads, as its walker's bound is, so
@@ -3017,11 +3018,12 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
     lines = split_lines(text)
     for heading in read_headings(lines):
         if heading.level == family.level and heading.title == family.heading:
-            try:
-                for first, end in list_entry_lines(lines, heading.end):
-                    yield first + 1, "\n".join(lines[first:end])
-            except UnreadEntry as lazy:
+            spans, declined = list_entry_lines(lines, heading.end)
+            if declined:
+                lazy = declined[0]
                 raise UnreadStatement(lazy.line, lazy.why) from lazy
+            for first, end in spans:
+                yield first + 1, "\n".join(lines[first:end])
             return
 
 
@@ -4110,8 +4112,8 @@ def span_bullet(identifiers: Sequence[str], number: str, described: str) -> str:
 SPAN_BULLET_RE = re.compile(r"^- .+? - #(\d+) - described in .+$", re.M)
 
 
-def _pull_requests_named(text: str, unread: list[UnreadEntry]) -> frozenset[str]:
-    """The pull requests one notes file names as a reference, never as a substring.
+def _pull_requests_named(text: str) -> tuple[frozenset[str], tuple[UnreadEntry, ...]]:
+    """The pull requests a notes file names as a reference, not as a substring, and its declines.
 
     Two places name one, each in its writer's grammar: a claimed bullet's tail,
     ` — #N` as `release.reference` writes it and `release.REFERENCED_RE` reads
@@ -4124,25 +4126,28 @@ def _pull_requests_named(text: str, unread: list[UnreadEntry]) -> frozenset[str]
     Each bullet is read whole, through `release.notes_bullets` (`PL-CL8R`), so
     a reference after a title wrapped onto an indented line is named, where a
     line at a time read the title's first line and found none. A bullet carried
-    on from the margin is put on `unread`, by its line in the file, since what
+    on from the margin is returned second, by its line in the file, since what
     it ends with was not read.
     """
     claims, pointers = notes_claims(text)
+    bullets, declined = notes_bullets(claims)
     named = {
         reference.group(1).removeprefix("#")
-        for _, _, bullet in notes_bullets(claims, unread)
+        for _, _, bullet in bullets
         for _identifier, tail in NOTES_BULLET_RE.findall(bullet)
         if (reference := REFERENCED_RE.search(tail)) and reference.group(1).startswith("#")
     }
-    declined: list[UnreadEntry] = []
+    pointed, pointers_declined = notes_bullets(pointers)
     named.update(
         found.group(1)
-        for _, _, bullet in notes_bullets(pointers, declined)
+        for _, _, bullet in pointed
         if (found := SPAN_BULLET_RE.match(bullet)) is not None
     )
     # The pointer half's lines count from its heading; the file's from the top.
-    unread.extend(UnreadEntry(entry.line + claims.count("\n"), entry.why) for entry in declined)
-    return frozenset(named)
+    below = claims.count("\n")
+    return frozenset(named), declined + tuple(
+        UnreadEntry(entry.line + below, entry.why) for entry in pointers_declined
+    )
 
 
 @dataclass(frozen=True)
@@ -4293,7 +4298,7 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     # v0.3.0, and `PL-21GS`, stamped twelve releases later by v0.4.15.
     uncovered: dict[str, dict[tuple[str, str], list[Item]]] = {}
     named: dict[str, frozenset[str]] = {}
-    unread: dict[str, list[UnreadEntry]] = {}
+    unread: dict[str, tuple[UnreadEntry, ...]] = {}
     for item in sorted(store.items.values(), key=lambda entry: entry.identifier):
         # `done` rather than `CLOSED_STATUSES`: a dropped item shipped nothing,
         # so no release's notes owe it a line and its pull request is not a
@@ -4310,9 +4315,8 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
         if not notes.is_file():
             continue
         if version not in named:
-            unread[version] = []
-            named[version] = _pull_requests_named(
-                notes.read_text(encoding="utf-8"), unread[version]
+            named[version], unread[version] = _pull_requests_named(
+                notes.read_text(encoding="utf-8")
             )
         if item.pr in named[version]:
             continue
@@ -4550,6 +4554,25 @@ def _comparable(text: str) -> str:
     return _normalized(text).translate(TYPOGRAPHY).casefold()
 
 
+def _comparable_statements(text: str) -> str:
+    """The document `text` as `_comparable` reads it, one statement to a line, and each fence.
+
+    A quotation is one line once `_normalized`, so it stands in this only
+    where one statement holds it, a soft break inside one crossed. A heading
+    and the paragraph under it, or two paragraphs, are two (CommonMark 0.31.2
+    § 4.2, § 4.8), so a quotation spliced across them is words no reader of
+    the file meets together, which a test of containment in the whole file
+    collapsed into one string passed (`PL-Q8LJ`). A fence is no statement, but
+    its words are the file's, so each is one too, read whole.
+    """
+    lines = split_lines(text)
+    blocks = read_blocks(_body_lines(lines)).blocks
+    fences = [(block.start, block.end) for block in blocks if block.kind == FENCE]
+    return "\n".join(
+        _comparable("\n".join(lines[first:end])) for first, end in [*_statements(lines), *fences]
+    )
+
+
 def _headings(text: str) -> list[str]:
     """Every title a citation may name: headings and `**Bold.**` markers.
 
@@ -4760,7 +4783,14 @@ def _statements(
     body = statement_lines(_body_lines(lines), kinds)
     if fence is None or (kinds is not None and not PROSE & frozenset(kinds)):
         return list(body)
-    return [*((1 + a, 1 + b) for a, b in frontmatter_statements(lines[1:fence])), *body]
+    # Set aside on purpose: a block `keys` cannot split comes back a line at a
+    # time, every line kept, and is named where a reading of it decides
+    # anything - `tools/rules_paths_check.py` refuses a rule's, and `docket
+    # check` declines an instruction file's dated sentences by name. An item's
+    # front matter, and a pull request body record's, is `docket.model`'s
+    # grammar rather than YAML, a field to a line, which is the reading it gets.
+    spans, _declined = frontmatter_statements(lines[1:fence])
+    return [*((1 + a, 1 + b) for a, b in spans), *body]
 
 
 def _body_lines(lines: Sequence[str]) -> list[str]:
@@ -5485,7 +5515,9 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
 
     Case, dash style and quote style are folded, because a passage copied by
     hand settles on one of the forms this project writes and the passage is
-    still there either way. An elided quotation is skipped outright: one
+    still there either way. The words must stand in one statement of the file,
+    as `_comparable_statements` reads it, so a splice across a heading and its
+    paragraph is not in it (`PL-Q8LJ`). An elided quotation is skipped outright: one
     written with an ellipsis cannot be found verbatim, and declining to
     answer beats a false error.
 
@@ -5512,7 +5544,9 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
         if cited not in bodies:
             target = root / cited
             bodies[cited] = (
-                _comparable(target.read_text(encoding="utf-8")) if target.is_file() else None
+                _comparable_statements(target.read_text(encoding="utf-8"))
+                if target.is_file()
+                else None
             )
         return bodies[cited]
 
@@ -6267,7 +6301,9 @@ def _run_script(
     indented past it, which is everything the value can span. Two forms are
     read, the two this repository's workflows write:
 
-    - **A plain scalar on the key's line** is the command. Nothing after it may
+    - **A plain scalar on the key's line** is the command, less a comment after
+      it, which YAML reads as none of the value (§ 6.6), so `run: echo 'x # y'`
+      hands bash `echo 'x` (`PL-W9VC`). Nothing after it may
       carry it on: YAML folds a plain scalar's following, deeper lines into it
       as one line (YAML 1.2.2 § 7.3.3), so `run: python3 x.py` over an indented
       `--flag` is `python3 x.py --flag` to bash, where the line alone was half
@@ -6276,7 +6312,8 @@ def _run_script(
       may carry a chomping indicator, an indentation indicator - the content
       then sits that many columns past the key rather than where its first line
       does - and a comment (§ 8.1.1); each was read as the command before. It
-      ends at the first line indented less than its content (§ 8.1.1.1), which
+      ends at the first line indented less than its content (§ 8.1.1.1), where
+      `docket.frontmatter.block_content` ends it (`PL-W9VC`), which
       a sibling key like `shell:` is: read to the next line no deeper than the
       step's dash, as it was, that key became a line of the script. Only a
       comment may stand between the two, deeper than the key and short of the
@@ -6296,10 +6333,9 @@ def _run_script(
     `PL-R417` allows while no workflow writes one.
     """
     line = first
-    inline = step["inline"].strip()
-    if inline.startswith("#"):
-        # A comment, so the value is whatever the lines after the key hold.
-        inline = ""
+    # Less its comment, which YAML reads as none of the value (§ 6.6); where the
+    # key's line holds only a comment, the value is whatever the lines after it hold.
+    inline = uncommented(step["inline"]).strip()
     after = [
         (at, text)
         for at, text in enumerate(lines[first:end], start=first)
@@ -6308,16 +6344,10 @@ def _run_script(
     header = BLOCK_SCALAR_RE.fullmatch(inline)
     if header is not None and header["style"] == "|":
         body = lines[first:end]
-        width = header["width"] or header["late"]
-        margin = (
-            len(step["lead"]) + int(width)
-            if width
-            else next((_indent(text) for text in body if text.strip()), 0)
-        )
-        stop = next(
-            (at for at, text in enumerate(body) if text.strip() and _indent(text) < margin),
-            len(body),
-        )
+        # The key's line is `first - 1`, and the key's column the step's lead.
+        content = block_content(lines, first - 1, len(step["lead"]), inline)
+        assert content is not None, "a header `BLOCK_SCALAR_RE` matched"
+        margin, stop = content[0], content[1] - first
         for at, text in enumerate(body[stop:], start=first + 1 + stop):
             if text.strip() and not text.lstrip().startswith("#"):
                 raise UnreadStatement(
@@ -7725,10 +7755,17 @@ def dated_records(root: Path) -> tuple[str, ...]:
     return (load_docket_config(root).items_dir.strip("/") + "/", f"{NOTES_DIR}/", RECORDS)
 
 
-#: The formats that write a comment as a line opening `#`, by suffix and by
-#: name: YAML, the citation file's YAML among it, TOML, shell and make.
-HASH_COMMENTED_SUFFIXES = frozenset({".yml", ".yaml", ".cff", ".toml", ".sh"})
-HASH_COMMENTED_NAMES = frozenset({"Makefile"})
+#: The YAML files whose comments the host-claim check reads, by suffix, the
+#: citation file among them, each through `docket.frontmatter.comments`, and a
+#: workflow's `run:` scripts through `docket.shell.comments`, as a shell
+#: script's are (`PL-W9VC`). TOML and a Makefile write a comment the same way
+#: and are not read, since no committed version of either has held a host claim
+#: in one - this check's reading, run over the 312 versions of the TOML, make
+#: and YAML files on 2026-10-17 - and reading their comments right would take a
+#: comment-preserving reader of each, which `tomllib` is not (`PL-PBNK`). YAML
+#: is kept on the same count: a workflow's comment held one until `#1387`
+#: (`PL-B3MK`).
+YAML_SUFFIXES = frozenset({".yml", ".yaml", ".cff"})
 #: A comment's marker - `#`, the `#:` that documents an attribute - and the one
 #: space after it, so what is left reads as the prose it is.
 COMMENT_MARK_RE = re.compile(r"^#+:?[ \t]?")
@@ -7802,57 +7839,114 @@ def _dedented(docstring: str) -> str:
     return head.lstrip() + newline + textwrap.dedent(body)
 
 
-def _python_comments(source: bytes) -> Iterator[tuple[int, str]]:
-    """Each comment in `source`, as the row it opens on and its text.
+def _comment_runs(found: Iterable[tuple[int, str, bool]]) -> Iterator[tuple[int, str]]:
+    """Each run of the comments in `found`, as the row it opens on and its text.
 
-    Read from bytes, as Python reads source, so a byte-order mark or a coding
-    cookie is honoured. Comments standing alone on consecutive rows are one
-    text, since that is how this tree wraps a paragraph of comment; one after
-    code stands alone. Raises one of `UNTOKENIZABLE` where the tokenizer refuses
-    `source`, an error token included, as `docket.python` does, so every
-    interpreter refuses the same files.
+    `found` holds each comment in order, as its row, its text from its `#`, and
+    whether it stands alone on its row. Comments standing alone on consecutive
+    rows are one text, since that is how this tree wraps a paragraph of
+    comment; one after code stands alone. Each loses its marker
+    (`COMMENT_MARK_RE`).
     """
     run: list[str] = []
     first = last = 0
-    for token in tokenize.tokenize(io.BytesIO(source).readline):
-        if token.type == tokenize.ERRORTOKEN:
-            raise tokenize.TokenError(f"an error token at {token.string!r}", token.start)
-        if token.type != tokenize.COMMENT:
-            continue
-        row, column = token.start
-        text = COMMENT_MARK_RE.sub("", token.string)
-        if token.line[:column].strip():
+    for row, comment, alone in found:
+        text = COMMENT_MARK_RE.sub("", comment)
+        if run and not (alone and row == last + 1):
+            yield first, "\n".join(run)
+            run = []
+        if not alone:
             yield row, text
-            continue
-        if run and row == last + 1:
+        elif run:
             run.append(text)
         else:
-            if run:
-                yield first, "\n".join(run)
             run, first = [text], row
         last = row
     if run:
         yield first, "\n".join(run)
 
 
-def _hash_comments(text: str) -> Iterator[tuple[int, str]]:
-    """Each run of lines that hold a `#` comment alone, as its first row and its text.
+def _python_comments(source: bytes) -> Iterator[tuple[int, str]]:
+    """Each run of comment in `source`, as `_comment_runs` reads them.
 
-    A comment after a value or a command is not read: where one opens turns on
-    the quoting before it, which each of these formats spells its own way.
+    Read from bytes, as Python reads source, so a byte-order mark or a coding
+    cookie is honoured. Raises one of `UNTOKENIZABLE` where the tokenizer
+    refuses `source`, an error token included, as `docket.python` does, so
+    every interpreter refuses the same files.
     """
-    run: list[str] = []
-    first = 0
-    for row, line in enumerate(split_lines(text), 1):
-        stripped = line.lstrip()
-        if stripped.startswith("#"):
-            first = first if run else row
-            run.append(COMMENT_MARK_RE.sub("", stripped))
-        elif run:
-            yield first, "\n".join(run)
-            run = []
-    if run:
-        yield first, "\n".join(run)
+
+    def found() -> Iterator[tuple[int, str, bool]]:
+        for token in tokenize.tokenize(io.BytesIO(source).readline):
+            if token.type == tokenize.ERRORTOKEN:
+                raise tokenize.TokenError(f"an error token at {token.string!r}", token.start)
+            if token.type == tokenize.COMMENT:
+                row, column = token.start
+                yield row, token.string, not token.line[:column].strip()
+
+    yield from _comment_runs(found())
+
+
+def _spanned_comments(
+    text: str, spans: Iterable[tuple[int, int]]
+) -> Iterator[tuple[int, str, bool]]:
+    """Each comment at `spans` in `text`, as its line's index, its text and whether it is alone."""
+    for start, end in spans:
+        opening = text.rfind("\n", 0, start) + 1
+        yield text.count("\n", 0, start), text[start:end], not text[opening:start].strip()
+
+
+def _script_comments(
+    relative: Path, text: str, report: Report, rows: Sequence[int]
+) -> Iterator[tuple[int, str]]:
+    """Each run of comment in the shell script `text`, its rows those of `rows`, as bash reads it.
+
+    Read through `docket.shell.comments`, so a `#`-led line in a here-document's
+    body or a quoted string is none (`PL-W9VC`). `rows` holds the row each line
+    of `text` stands on in `relative`, by its index. Where the script cannot be
+    read to its end, that row is named in `report.declined`, and no comment
+    from it on is read.
+    """
+    spans, stop = shell_comments(text)
+    found = [(rows[row], comment, alone) for row, comment, alone in _spanned_comments(text, spans)]
+    yield from _comment_runs(found)
+    if stop is not None:
+        report.declined.append(
+            f"{relative}:{rows[text.count(chr(10), 0, stop)]}: this script cannot be read to "
+            "its end from this line - a quote, a substitution or a backslash runs past it, "
+            "or a `<<` has no delimiter - so no host claim in a comment from it on was checked"
+        )
+
+
+def _yaml_comments(relative: Path, text: str, report: Report) -> Iterator[tuple[int, str]]:
+    """Each run of comment in the YAML file `text`, and in its `run:` steps' scripts if a workflow.
+
+    The file's are `docket.frontmatter.comments`', so a `#`-led line in a block
+    scalar's content or a quoted scalar is none; a workflow's `run:` script is
+    such a block, and its comments are bash's, read as `_script_comments` reads
+    a script's (`PL-W9VC`). What could not be read is named in
+    `report.declined`: the file, or a step `_step_scripts` declines.
+    """
+    lines = split_lines(text)
+    try:
+        placed = yaml_comments(lines)
+    except UnreadFrontMatter as error:
+        report.declined.append(
+            f"{relative}: {error}, so no host claim in a comment of it was checked"
+        )
+        return
+    yield from _comment_runs(
+        (index + 1, lines[index][column:], not lines[index][:column].strip())
+        for index, column in placed
+    )
+    if not any(PurePosixPath(relative.as_posix()).match(glob) for glob in WORKFLOW_GLOBS):
+        return
+    unread: list[UnreadStatement] = []
+    for body, script in _step_scripts(text, unread):
+        yield from _script_comments(relative, body, report, [row for _, row in script])
+    report.declined += [
+        f"{relative}:{step.line}: {step.why}, so no host claim in its script's comments was checked"
+        for step in unread
+    ]
 
 
 def _json_strings(text: str) -> Iterator[tuple[int, str]]:
@@ -7881,8 +7975,7 @@ def _host_claim_texts(
     if posix.startswith(dated):
         return
     suffix = path.suffix
-    hashed = suffix in HASH_COMMENTED_SUFFIXES or path.name in HASH_COMMENTED_NAMES
-    if suffix not in (".md", ".py", ".json") and not hashed:
+    if suffix not in (".md", ".py", ".json", ".sh") and suffix not in YAML_SUFFIXES:
         return
     try:
         data = path.read_bytes()
@@ -7896,8 +7989,11 @@ def _host_claim_texts(
     text = data.decode("utf-8", errors="replace")
     if suffix == ".md":
         yield 1, text
-    elif hashed:
-        yield from _as_passages(_hash_comments(text))
+    elif suffix == ".sh":
+        rows = range(1, text.count("\n") + 2)
+        yield from _as_passages(_script_comments(relative, text, report, rows))
+    elif suffix in YAML_SUFFIXES:
+        yield from _as_passages(_yaml_comments(relative, text, report))
     elif suffix == ".json":
         yield from _as_passages(_json_strings(text))
     elif HOST_RE.search(text) and HOST_REFUSAL_STEM_RE.search(text):
@@ -7935,9 +8031,10 @@ def check_host_claims(root: Path, report: Report) -> None:
 
     Read wherever the tree writes prose a later session takes for the present:
     every Markdown file but the records `dated_records` names, a Python file's
-    docstrings and comments, the `#` comments of the formats
-    `HASH_COMMENTED_SUFFIXES` and `HASH_COMMENTED_NAMES` name, and a JSON file's
-    strings, where a data file keeps its provenance notes. Whether a sentence is
+    docstrings and comments, a shell script's comments and a YAML file's
+    (`YAML_SUFFIXES`), a workflow's `run:` scripts' among them, each read as
+    its own grammar places them (`PL-W9VC`), and a JSON file's strings, where a
+    data file keeps its provenance notes. Whether a sentence is
     about a host at all is judgment, so what counts is narrow and written down:
     a host is what `HOST_RE` reads, and a name some file in the tree carries is
     that file.

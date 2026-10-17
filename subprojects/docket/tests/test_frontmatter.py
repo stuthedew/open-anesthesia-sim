@@ -15,6 +15,7 @@ from docket.frontmatter import (
     key,
     keys,
     plain,
+    statements,
     uncommented,
     unquote,
 )
@@ -76,6 +77,16 @@ def test_a_quoted_key_is_read_without_its_quotes() -> None:
 def test_a_block_it_cannot_split_is_refused_naming_the_line(text: str, named: str) -> None:
     with pytest.raises(Unread, match=named.replace("[", r"\[").replace("*", r"\*")):
         keys(text.split("\n"))
+
+
+def test_statements_hands_back_why_it_read_a_block_a_line_at_a_time() -> None:
+    """The fallback was silent, so a caller could not tell the two readings apart (`PL-JTP1`)."""
+    spans, declined = statements(['description: "a record', '  wrapped"', "", "# why", "b: 1"])
+    assert (spans, declined) == ([(0, 2), (3, 4), (4, 5)], None)
+
+    spans, declined = statements(["a: 1", "not a key", "  b"])
+    assert spans == [(0, 1), (1, 2), (2, 3)]
+    assert str(declined) == "`not a key` sits at the first column and opens no key"
 
 
 @pytest.mark.parametrize(

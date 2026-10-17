@@ -3,11 +3,13 @@ id: PL-NWZM
 title: docket roadmap's list_entries has had no caller since the Markdown batch of 2026-10-10, and its docstring and three others still describe it as the walker three readers share
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 touches: subprojects/docket/src/docket/roadmap.py, tools/doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
+closed: 2026-10-17
+pr: 1475
 payoff: The list walker's docstrings point at the functions that run, with no dead walker beside them to fix by mistake.
 verify: ! grep -q 'def list_entries(' subprojects/docket/src/docket/roadmap.py && ! grep -qF 'reason `list_entries` gives' tools/doc_check.py
 ---

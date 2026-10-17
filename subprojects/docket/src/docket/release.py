@@ -345,7 +345,11 @@ def notes_ids(text: str) -> frozenset[str]:
 
     lines = text.split("\n")
     claimed: set[str] = set()
-    for first, end in document_entry_lines(lines, []):
+    # Set aside on purpose: the walker ends a declined bullet before the line
+    # carrying it on, so its span still holds the id leading it, which is all
+    # a claim is read from.
+    spans, _declined = document_entry_lines(lines)
+    for first, end in spans:
         bullet = " ".join(line.strip() for line in lines[first:end])
         if (leader := NOTES_ENTRY_RE.match(bullet)) is not None:
             claimed.add(leader.group(1))
@@ -733,8 +737,8 @@ REFERENCED_RE = re.compile(r" — (#\d+|`[0-9a-f]{7,40}`)$")
 NOTES_BULLET_RE = re.compile(rf"{NOTES_ENTRY_RE.pattern}(.*)$", re.M)
 
 
-def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, str]]:
-    """Each top-level bullet of a notes file's text, as (first line, end, joined text).
+def notes_bullets(text: str) -> tuple[list[tuple[int, int, str]], tuple[UnreadEntry, ...]]:
+    """Each top-level bullet of a notes file, as (first line, end, joined text), and each declined.
 
     The indices are 0-based into `text.split("\\n")`, the end one past the
     last line of the bullet's text, and the text is the bullet's own paragraph,
@@ -751,9 +755,10 @@ def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, 
     one reference, where a line at a time read it as none and a writer appended
     a second. A list nested under the bullet is the bullet's but not its text,
     which the reference ends - `PL-QYBW`'s in v0.5.9's notes carries one. A
-    bullet carried on from the margin is declined onto `unread` and left out,
-    since neither where it ends nor what it ends with can be read, and an empty
-    one - a marker with nothing after it - holds no text and is passed over.
+    bullet carried on from the margin is left out and its decline returned
+    second, as the walker returns it, since neither where it ends nor what it
+    ends with can be read (`PL-JTP1`), and an empty one - a marker with nothing
+    after it - holds no text and is passed over.
 
     A bullet whose statement is a setext heading - its text over a `---` or
     `===` line - has the heading's title lines for its text, and ends before
@@ -767,9 +772,7 @@ def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, 
     from .roadmap import document_entry_lines
 
     lines = text.split("\n")
-    declined: list[UnreadEntry] = []
-    spans = list(document_entry_lines(lines, declined))
-    unread += declined
+    spans, declined = document_entry_lines(lines)
     ended = {entry.line - 1 for entry in declined}
     bullets: list[tuple[int, int, str]] = []
     for first, end in spans:
@@ -785,28 +788,38 @@ def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, 
             stop -= 1  # a setext heading's underline, which is no part of its text
         end = first + stop
         bullets.append((first, end, " ".join(line.strip() for line in lines[first:end])))
-    return bullets
+    return bullets, declined
 
 
-def unreferenced(text: str, unread: list[UnreadEntry] | None = None) -> tuple[str, ...]:
+def unreferenced(text: str) -> tuple[str, ...]:
     """The ids one notes file names with no route back to the change that made them.
 
     Each bullet read whole, by `notes_bullets`. One it declines is named in
-    neither direction - its reference is unread, not missing - and goes onto
-    `unread` where the caller passes a list.
+    neither direction - its reference is unread, not missing - so the first is
+    raised rather than the file answered short. This took an optional list to
+    put them on, and given none dropped them (`PL-JTP1`);
+    `unreferenced_by_version`, which reads a directory, hands them back.
     """
+    bullets, declined = notes_bullets(text)
+    if declined:
+        raise declined[0]
+    return _unreferenced_in(bullets)
+
+
+def _unreferenced_in(bullets: list[tuple[int, int, str]]) -> tuple[str, ...]:
+    """The ids `bullets`, as `notes_bullets` reads them, name with no reference after them."""
     return tuple(
         identifier
-        for _, _, bullet in notes_bullets(text, [] if unread is None else unread)
+        for _, _, bullet in bullets
         for identifier, tail in NOTES_BULLET_RE.findall(bullet)
         if not REFERENCED_RE.search(tail)
     )
 
 
 def unreferenced_by_version(
-    root: Path, notes_dir: str = NOTES_DIR, unread: list[str] | None = None
-) -> dict[str, tuple[str, ...]]:
-    """Which items each cut release's notes name without saying where they landed.
+    root: Path, notes_dir: str = NOTES_DIR
+) -> tuple[dict[str, tuple[str, ...]], tuple[str, ...]]:
+    """Which items each cut release's notes name without saying where they landed, and declines.
 
     The companion to `notes_by_version`, reading the same files for the other
     half of what a bullet records. That one answers *which* items a release
@@ -815,18 +828,19 @@ def unreferenced_by_version(
 
     Releases whose bullets all carry a reference are absent rather than empty,
     so a healthy project reports `{}` and the caller has nothing to filter. A
-    bullet `notes_bullets` declines is named on `unread`, where the caller
-    passes a list, as the file and line it could not read.
+    bullet `notes_bullets` declines comes back second, as the file and line it
+    could not read, rather than onto a list the caller could leave out
+    (`PL-JTP1`).
     """
     found: dict[str, tuple[str, ...]] = {}
+    unread: list[str] = []
     for path in notes_files(root, notes_dir):
         claims, _ = notes_claims(path.read_text(encoding="utf-8"))
-        declined: list[UnreadEntry] = []
-        if missing := unreferenced(claims, declined):
+        bullets, declined = notes_bullets(claims)
+        if missing := _unreferenced_in(bullets):
             found[path.stem] = missing
-        if unread is not None:
-            unread += (f"{notes_dir}/{path.name} {entry}" for entry in declined)
-    return found
+        unread += (f"{notes_dir}/{path.name} {entry}" for entry in declined)
+    return found, tuple(unread)
 
 
 def restate_references(text: str, by_id: Mapping[str, Item]) -> tuple[str, tuple[str, ...]]:
@@ -857,7 +871,11 @@ def restate_references(text: str, by_id: Mapping[str, Item]) -> tuple[str, tuple
     repaired: list[str] = []
     claims, pointer = notes_claims(text)
     lines = claims.split("\n")
-    for _, end, bullet in notes_bullets(claims, []):
+    # Dropped, not settled: a bullet carried on from the margin is left alone
+    # here, as it should be, but `record --merge` reports none it left, which
+    # `PL-K23D` is open to carry out to that report. `docket check` names it.
+    bullets, _declined = notes_bullets(claims)
+    for _, end, bullet in bullets:
         found = NOTES_BULLET_RE.match(bullet)
         if found is None or REFERENCED_RE.search(found.group(2)):
             continue

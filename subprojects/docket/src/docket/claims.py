@@ -1396,7 +1396,10 @@ def _fields_at(
     path = _copy(ref, items_dir, root, run, copies).get(key, "")
     if not path:
         return {}
-    fields, _ = parse_front_matter(run(["show", f"{ref}:{path}"], root))
+    # Set aside on purpose: a field written as a block arrives empty, so a
+    # `status:` written as one releases no claim read from it, and `docket
+    # check` refuses the form by name on the branch that writes it.
+    fields, _body, _declined = parse_front_matter(run(["show", f"{ref}:{path}"], root))
     return {name: value.strip() for name, value in fields.items()}
 
 

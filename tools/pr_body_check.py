@@ -637,7 +637,10 @@ def parse_record(text: str) -> tuple[dict[str, str], str] | None:
     `docket.model` reads an item's: a value continued on an indented line is
     read whole, as `docket verify` reads the same file (`PL-4ZVH`).
     """
-    header, body = parse_front_matter(text.replace("\r\n", "\n"))
+    # Set aside on purpose: a field written as a block arrives empty, and the
+    # anchor check, the one reader of a record's fields, says so of an empty
+    # `commit:` rather than passing it.
+    header, body, _declined = parse_front_matter(text.replace("\r\n", "\n"))
     if not header:
         return None
     #: The one blank line `_write` puts after the front matter, and no more, so
