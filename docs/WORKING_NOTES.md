@@ -2345,3 +2345,62 @@ that only shrinks: 107 sites when it landed, 91 once `PL-351H` read pull-request
 rest, and `PL-J4YY` drained the six walks no item named, moving the list into
 `docket.vcs` and naming `docket.grep`'s model of `grep -r` a walk home of its own. The pause on new workflow mechanisms, re-engaged by this
 head, ends when its pull request merges.
+
+## Decided: the friction batch goes ahead of product work, and a measured recurring cost is a ground for offering work first (2026-10-17)
+
+**(project owner, 2026-10-17, ratified**, over leaving the ten items below to
+rank on their `P2` and `P3` bands beneath every placed item, and over building a
+ratio-ranking field now.) A *sequencing* decision like the one of 2026-09-19:
+no priority changed, because `docket check` pins `P1` to `safety` and `science`.
+Prompted by `PL-4Z5Y` (deal the washout curves out first), which waited 20 days
+while CI paid about 70 s on 13 of every 30 runs - about 15 minutes a day at the
+312 commits `main` took in those 20 days, roughly five hours in all (inferred
+from the brief's own sample and `git log origin/main`).
+
+**Why the queue did not offer it.** `docket next` sorts by band, placement and
+feature-nearest-done; effort is a filter, `payoff:` is prose, and nothing counts
+how often a cost recurs. Product focus sends unprompted sessions to `next
+product`, and the three compounding-friction tests in `CLAUDE.md` do not reach
+"paid every run with a measured cost". The larger gap is detection: the `checks`
+job's pytest step grew from 144-359 s on 2026-09-28 to about 9 minutes by
+2026-10-17 and no tool said so; `PL-H9KW` was filed by feel.
+
+**The batch, ten items.** Seven carry `feature: friction-batch`; `PL-X229`,
+`PL-JLYG` and `PL-RXFK` keep the features they had and are members by this note.
+
+- `PL-P66B` - a red `bin/docket verify` names the failing test instead of costing a second three-minute run.
+- `PL-X229` - the close-out docs sweep lists this branch's 13 lines, not other branches' 184.
+- `PL-JYX9` - the stale-thread advisory stops firing on every `make check` (three threads today).
+- `PL-F5CF` - session start stops paying git calls for a set the verdict never reads.
+- `PL-JLYG` - a release no longer turns `main` red for every session once the tag lands.
+- `PL-7LCY` and `PL-CDZ8` - the interpreter-guard hook stops refusing a JSON data read every science item makes; one session takes both.
+- `PL-RXFK` - auto-mode sessions get the claim hint at their first Bash edit, not from CI a push later.
+- `PL-ZYHX` - the resident set, 79,929 characters on 2026-10-17 against 60,199 on 2026-09-19, shrinks by the prose a check now carries; decided yes 2026-10-03.
+- `PL-KLN5` - whether the subagent model setting reaches a cloud session; a second data point on 2026-10-17: a scan subagent reported running on the parent model with `settings.json` requesting `haiku`, unverified from the parent.
+
+**Sequencing.** `PL-X229` and `PL-JLYG` share `tools/doc_check.py` with `#1475`
+(`PL-Q8LJ`, `PL-W9VC`): land after it merges, or resolve against it. Nothing in
+flight on 2026-10-17 claimed any of the ten (`bin/docket flight`, `list_sessions`).
+
+**Three decisions recorded on `PL-KBVW`, all ratified 2026-10-17.** Narrow the
+generator pause to heads whose `touches` sit in `workflow_paths` (over the
+pause binding while a head of either lane is live: `PL-X7D5`, a run-view defect,
+had frozen `PL-ZYHX`). Add a measured cost paid on every run, session or commit
+as the fourth compounding-friction test (over the three as they stood). Build
+`PL-YY32`, the digest line comparing CI's pytest step to its baseline, which the
+narrowing lets through since `PL-X7D5` is product-lane.
+
+**Deferred, with the number that would change it.** A `saves:` field and a
+ratio line in `next` - Smith's rule (Naval Res. Logist. Q. 1956;3:59-66) and
+Reinertsen's weighted shortest job first - is built if, a month after the batch
+drains, more than about five new open items carry a measured per-run cost.
+On 2026-10-17 roughly 10-15 of 303 did, and 109 of 303 carried no `payoff:`.
+
+**Test ordering, measured 2026-10-17** with CI's flags on 4 cores at `-n 8`:
+wall 293 s against 240 s if the 1,923 test-seconds were balanced; washout fits
+541 s (28%), `tests/integration/test_controller.py` 266 s of which 230 s is three per-worker
+rebuilds of two module-scoped 24-hour fixtures from `PL-5291`, `tests/unit/test_doc_check.py`
+164 s. `PL-H9KW`'s session holds that work; the recommendation passed to it:
+share the 24-hour trunk once per run as `PL-F08Y` did, then order the whole
+collection longest-first from a durations record (Graham, SIAM J. Appl. Math.
+1969;17:416-429, bound 4/3 - 1/(3m) against 2 - 1/m for list order).
