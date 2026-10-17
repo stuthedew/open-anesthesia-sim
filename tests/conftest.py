@@ -5,7 +5,8 @@ the process when no display is attached - which is every CI runner and every
 web-container session. `offscreen` is the platform plugin the Qt build's
 tests render under, so it is set here, before any `PySide6` import, rather
 than on the pytest command line: `tools/doc_check.py`'s `check_coverage_gate`
-holds the `Makefile`'s pytest line and `quality.yml`'s to string equality, and
+holds the `Makefile`'s pytest line and `quality.yml`'s to string equality, once
+it has put the threshold back into each of CI's two parts, and
 an environment prefix on either would break that comparison for a reason
 unrelated to coverage (`PL-YCWZ`'s pre-port survey, 2026-09-14).
 
@@ -52,12 +53,30 @@ which pytest-xdist's `setup_config` sets to `no`, so `pytest_configure_node`
 records the controller's mode in each worker's `workerinput`. That hook runs on
 the controller, which collects nothing and so never loads a conftest below this
 one; the dealing sits beside it because it deals two test trees.
+
+**The parts CI runs the suite in** (`PL-T9X9`). `quality.yml` runs the suite
+in two jobs, each on its own runner, and `--part K/N` picks the tests one job
+runs. Every test that reads a costly computation runs in the last part, so each
+computation runs on one runner and not on both. The other tests are dealt round
+robin, so each module is split between the parts. The first part's job also
+runs the linters, `mypy` and the floor section, which took about 95 s of a slow
+runner's 621 s job on 2026-10-17. The tests that read a costly computation took
+about 22% of the suite's time, so giving all of them to the second part was
+expected to balance the two jobs. It did not. On the first run, 2026-10-17,
+the second part's pytest step took 462 s and the first part's whole job 299 s.
+With half the other tests, the second part's workers run out of work while one
+worker is still building the first controller run, and `worksteal` hands them
+the rest of the controller tests, so the runs are built again on other
+workers. A local profile showed four builds where the dealing expects two.
+`PL-ZWQS` holds the fix. `tools/main_ci_status.py`'s pytest line reads the
+parts' sum, so compare the two jobs' pytest steps in a run's log.
 """
 
 from __future__ import annotations
 
+import argparse
 import os
-from collections.abc import Hashable, Sequence
+from collections.abc import Collection, Hashable, Sequence
 from itertools import islice
 from types import ModuleType
 from typing import TYPE_CHECKING, Protocol
@@ -129,8 +148,55 @@ def deal[Test: Hashable](
     return dealt
 
 
-def _units(items: Sequence[pytest.Item]) -> list[tuple[tuple[pytest.Item, ...], float]]:
-    """Each costly computation the collection's modules name, as the tests it is dealt with."""
+def part[Test: Hashable](
+    tests: Sequence[Test], costly: Collection[Test], index: int, parts: int
+) -> list[Test]:
+    """The tests that part `index` of `parts` runs, in their order in `tests`.
+
+    Parts are numbered from 1. Every test in `costly` runs in the last part.
+    The other tests are dealt round robin, so the i-th of them, counting from
+    0, runs in part i mod `parts` + 1. Every test runs in exactly one part.
+    """
+
+    chosen: list[Test] = []
+    dealt = 0
+    for test in tests:
+        if test in costly:
+            if index == parts:
+                chosen.append(test)
+            continue
+        if dealt % parts == index - 1:
+            chosen.append(test)
+        dealt += 1
+    return chosen
+
+
+def _part(text: str) -> tuple[int, int]:
+    """Parse `--part K/N` into (K, N), refusing a K outside 1 to N."""
+
+    index, _, parts = text.partition("/")
+    if not (index.isdigit() and parts.isdigit() and 1 <= int(index) <= int(parts)):
+        raise argparse.ArgumentTypeError(
+            f"{text!r} is not K/N with 1 <= K <= N, such as 1/2 for the first of two parts"
+        )
+    return int(index), int(parts)
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Add `--part K/N`, which runs one of the parts CI splits the suite into."""
+
+    parser.addoption(
+        "--part",
+        type=_part,
+        metavar="K/N",
+        help="run only part K of N, as each of quality.yml's two pytest jobs does",
+    )
+
+
+def _costly_reads(
+    items: Sequence[pytest.Item],
+) -> tuple[dict[pytest.Function, tuple[_CurveRead, ...]], dict[ModuleType, list[pytest.Function]]]:
+    """The tests that read a costly computation: each curve's readers, and each module's group."""
 
     reads: dict[pytest.Function, tuple[_CurveRead, ...]] = {}
     groups: dict[ModuleType, list[pytest.Function]] = {}
@@ -142,6 +208,13 @@ def _units(items: Sequence[pytest.Item]) -> list[tuple[tuple[pytest.Item, ...], 
             reads[item] = curves_read[item.function](**item.callspec.params)
         if getattr(item.module, "MODULE_FIXTURE_MINUTES", {}).keys() & set(item.fixturenames):
             groups.setdefault(item.module, []).append(item)
+    return reads, groups
+
+
+def _units(items: Sequence[pytest.Item]) -> list[tuple[tuple[pytest.Item, ...], float]]:
+    """Each costly computation the collection's modules name, as the tests it is dealt with."""
+
+    reads, groups = _costly_reads(items)
 
     # A test that reads the curve first opens it; failing one, the first to read it at all.
     openers: dict[_CurveRead, pytest.Function] = {}
@@ -173,14 +246,24 @@ def pytest_configure_node(node: WorkerController) -> None:
 
 @pytest.hookimpl(trylast=True)
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """Move each costly computation's tests to the head of a worker's first slice.
+    """Keep the part `--part` names, then deal each costly computation to a worker's first slice.
 
     `trylast`, so that the order dealt is the one every other hook has finished
     with. Every worker runs this on the same collection and gets the same
     answer, which xdist requires of a collection before it schedules any; the
     costs are summed in table order, never a set's, so no worker's hash seed
-    can round them differently.
+    can round them differently. The part is chosen before the dealing, so the
+    dealing places only the units this part runs.
     """
+
+    chosen = config.getoption("part")
+    if chosen is not None:
+        reads, groups = _costly_reads(items)
+        costly = set(reads).union(*groups.values())
+        kept = part(items, costly, *chosen)
+        kept_set = set(kept)
+        config.hook.pytest_deselected(items=[item for item in items if item not in kept_set])
+        items[:] = kept
 
     workerinput = getattr(config, "workerinput", None)
     if workerinput is None or workerinput.get("dist") != "worksteal":

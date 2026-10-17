@@ -6598,6 +6598,15 @@ def _decline_steps(
 # run (`PL-22Z3`).
 COVERAGE_GATE_MARK = "--cov-fail-under"
 
+# How CI's pytest line marks itself as one part of the coverage run (`PL-T9X9`).
+# It is the Makefile's line with ` --cov-fail-under=N` replaced by these flags
+# at its end, and `--cov-report=` keeps the part from printing its own partial
+# total.
+COVERAGE_PART = re.compile(r" --cov-report= --part (?P<index>\d+)/(?P<parts>\d+)$")
+
+# The command that holds the parts' combined coverage to the threshold.
+COVERAGE_REPORT = re.compile(r"^uv run coverage report\b.* --fail-under=(?P<threshold>\S+)$")
+
 
 def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
     """Every command a Makefile recipe hands the shell, with the line it opens on.
@@ -6680,6 +6689,13 @@ def check_coverage_gate(root: Path, report: Report) -> None:
     a time, the Makefile's first fragment was compared with CI's whole command
     (`PL-G2FY`).
 
+    CI may run the suite in parts, on several runners, and hold their combined
+    coverage to the threshold in a `coverage report` step (`PL-T9X9`). Each
+    part's line is then the Makefile's with `--cov-fail-under=N` replaced by
+    `COVERAGE_PART`'s flags, so `_coverage_parts` puts the threshold back
+    before the comparison. The rule stays exact: a part compares equal only if
+    the rest of its line is the Makefile's, character for character.
+
     Silent where neither file names the mark, so a checkout that has not
     adopted a coverage gate is not failed for the absence of one; declined
     where `_make_lines` declines the Makefile, since its side is then unknown.
@@ -6704,20 +6720,32 @@ def check_coverage_gate(root: Path, report: Report) -> None:
             )
             return
     remote: list[tuple[str, str]] = []
+    parts: list[tuple[re.Match[str], str]] = []
+    thresholds: list[tuple[str, str]] = []
     steps: list[UnreadStatement] = []
     for path in workflows:
         relative = path.relative_to(root)
         unread: list[UnreadStatement] = []
-        remote += [
-            (command, f"{relative}:{line}")
-            for command, line in workflow_commands(path.read_text(encoding="utf-8"), unread)
-            if COVERAGE_GATE_MARK in command
-        ]
+        for command, line in workflow_commands(path.read_text(encoding="utf-8"), unread):
+            origin = f"{relative}:{line}"
+            if COVERAGE_GATE_MARK in command:
+                remote.append((command, origin))
+            elif part := COVERAGE_PART.search(command):
+                parts.append((part, origin))
+            elif threshold := COVERAGE_REPORT.search(command):
+                thresholds.append((threshold["threshold"], origin))
         _decline_steps(report, relative, unread, "the coverage gate was not compared")
         steps += unread
     # A step CI's side could not read may be the coverage run, so neither
     # "absent" nor "differs" would be a fact; the declines above say why.
-    if steps or (not local and not remote):
+    if steps:
+        return
+    if parts:
+        folded = _coverage_parts(parts, thresholds, report)
+        if folded is None:
+            return
+        remote += folded
+    if not local and not remote:
         return
     # Reported before the comparison, because "the sets differ" is the wrong
     # sentence for a gate that is missing from one side entirely - and an
@@ -6735,6 +6763,48 @@ def check_coverage_gate(root: Path, report: Report) -> None:
             "the coverage gate differs between the Makefile and CI, so the local "
             f"gate and the merge gate are not asking the same question - {where}"
         )
+
+
+def _coverage_parts(
+    parts: Sequence[tuple[re.Match[str], str]],
+    thresholds: Sequence[tuple[str, str]],
+    report: Report,
+) -> list[tuple[str, str]] | None:
+    """CI's parts as the one coverage run they split, or None after reporting an error.
+
+    The parts must be numbered 1 to N, once each, or some tests would run in
+    no part. One threshold must hold their combined coverage, since without
+    it no CI step enforces one. Each part then folds back into its line with
+    `--cov-fail-under=` that threshold, for the comparison with the Makefile.
+    """
+    numbers = sorted((int(found["index"]), int(found["parts"])) for found, _ in parts)
+    count = numbers[0][1]
+    if numbers != [(index, count) for index in range(1, count + 1)]:
+        where = ", ".join(
+            f"{origin}: part {found['index']}/{found['parts']}" for found, origin in parts
+        )
+        report.errors.append(
+            f"CI runs the coverage run in parts that are not numbered 1 to {count} once each, "
+            f"so some tests may run in no part - {where}"
+        )
+        return None
+    distinct = {threshold for threshold, _ in thresholds}
+    if len(distinct) != 1:
+        found_at = ", ".join(f"{origin}: `--fail-under={value}`" for value, origin in thresholds)
+        report.errors.append(
+            "CI runs the coverage run in parts, and "
+            + (
+                f"its `coverage report` steps disagree on the threshold - {found_at}"
+                if distinct
+                else "no `uv run coverage report --fail-under` step holds their combined coverage"
+            )
+        )
+        return None
+    threshold = distinct.pop()
+    return [
+        (found.string[: found.start()] + f" {COVERAGE_GATE_MARK}={threshold}", origin)
+        for found, origin in parts
+    ]
 
 
 #: A `ruff check` invocation, however it is prefixed: the two words, one after

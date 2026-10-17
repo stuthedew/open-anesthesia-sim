@@ -177,7 +177,10 @@ check: sync
 # `tools/doc_check.py`'s `check_coverage_gate` already held this line and the
 # one in `.github/workflows/quality.yml` to the same string; it now collapses
 # Make's `$$` first, so the escape below is not read as a drift (`PL-D3M2`,
-# `PL-VZ8P`).
+# `PL-VZ8P`). Since `PL-T9X9`, CI runs this line in two parts on two runners.
+# Each part replaces `--cov-fail-under=100` with `--cov-report= --part K/2`, and
+# CI's `checks` job holds the parts' combined coverage to 100%. The check puts
+# the threshold back into each part's line before it compares them.
 	uv run pytest -n $$(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
 # The store validation, and since `PL-0HPV` the replay of the `verify:`
 # commands this branch can have changed: the items it edited, and the open
