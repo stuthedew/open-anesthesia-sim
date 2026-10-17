@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science, defect
 feature: numerical-domain
+milestone: v0.5.25
 touches: src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/__init__.py, src/anesthesia_sim/core/exponential_approach.py, tests/unit/test_compartment_primitives.py, tests/unit/test_exponential_approach.py, docs/ARCHITECTURE.md
 added: 2026-10-11
 closed: 2026-10-12

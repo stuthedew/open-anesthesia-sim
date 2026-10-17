@@ -1,9 +1,15 @@
 ---
 id: PL-0M7K
 title: test_displayed_ordering_reverses_only_at_a_crossing in tests/reference/test_coupled_dynamics.py can fail only when the neighbouring absolute gate fails and never calls the shipped format_percent, yet its docstring and docs/MODEL.md's 'Displayed precision' cite it as evidence about the display path
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: test, docs
 feature: tests-detect-wrong-values
+touches: tests/unit/test_formatting.py, tests/reference/test_coupled_dynamics.py, docs/MODEL.md
 added: 2026-10-17
+payoff: the claim that displayed concentrations keep their order is held by a test of the shipped formatter, so docs/MODEL.md cites evidence that can fail on the display path
+verify: grep -q 'def test_format_percent_preserves_order' tests/unit/test_formatting.py
 ---
 
 **Problem.** test_displayed_ordering_reverses_only_at_a_crossing in tests/reference/test_coupled_dynamics.py can fail only when the neighbouring absolute gate fails and never calls the shipped format_percent, yet its docstring and docs/MODEL.md's 'Displayed precision' cite it as evidence about the display path

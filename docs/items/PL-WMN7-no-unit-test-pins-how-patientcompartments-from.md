@@ -1,9 +1,15 @@
 ---
 id: PL-WMN7
 title: No unit test pins how PatientCompartments.from_parameters maps each agent's tissue:gas coefficients onto the three tissue groups, so unit-tier detection of a mis-mapping rests on golden numbers measured from the code's own output
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: test
 feature: tests-detect-wrong-values
+touches: tests/unit/test_patient.py
 added: 2026-10-17
+payoff: a tissue group built with another group's or another agent's partition coefficient fails a unit test checked against the data files, not against golden numbers taken from the code's own output
+verify: grep -q 'def test_each_tissue_group_takes_its_own_agents_coefficients' tests/unit/test_patient.py
 ---
 
 **Problem.** No unit test pins how PatientCompartments.from_parameters maps each agent's tissue:gas coefficients onto the three tissue groups, so unit-tier detection of a mis-mapping rests on golden numbers measured from the code's own output

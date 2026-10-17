@@ -1,9 +1,15 @@
 ---
 id: PL-5V5F
 title: Fresh gas flow and alveolar ventilation are both 4.0 L/min in the shipped defaults and in test_dashboard_frame's _snapshot fixture, so swapping the two settings in dashboard_frame.setting_readouts passes the whole unit tier and building settings()'s ventilation from the fresh gas flow passes every test
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: test
 feature: tests-detect-wrong-values
+touches: tests/unit/test_dashboard_frame.py, tests/integration/test_controller.py
 added: 2026-10-17
+payoff: a readout that shows the fresh gas flow under the ventilation label, or the reverse, fails a test instead of passing on two equal 4.0 L/min values
+verify: grep -q 'def test_the_snapshot_fixture_settings_are_all_distinct' tests/unit/test_dashboard_frame.py
 ---
 
 **Problem.** Fresh gas flow and alveolar ventilation are both 4.0 L/min in the shipped defaults and in test_dashboard_frame's _snapshot fixture, so swapping the two settings in dashboard_frame.setting_readouts passes the whole unit tier and building settings()'s ventilation from the fresh gas flow passes every test

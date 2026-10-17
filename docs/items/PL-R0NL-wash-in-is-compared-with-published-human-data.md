@@ -1,9 +1,15 @@
 ---
 id: PL-R0NL
 title: Wash-in is compared with published human data at one instant, 30 minutes, so the first 15 minutes of the F_A/F_I rise, the phase the simulator most displays, are compared against nothing published and a doubled FRC that moves F_A/F_I at 1 min by -0.118 passes every gate
-status: untriaged
+priority: P1
+effort: L
+status: ready
+classes: science, test
 feature: validation-resolving-power
+touches: tests/reference/test_published_wash_in_and_elimination.py, docs/references, docs/MODEL.md
 added: 2026-10-17
+payoff: the first minutes of the wash-in curve, the phase the simulator shows most, are checked against published human data rather than against nothing
+verify: grep -q 'def test_early_wash_in_matches_published_human_measurement' tests/reference/test_published_wash_in_and_elimination.py
 ---
 
 **Problem.** Wash-in is compared with published human data at one instant, 30 minutes, so the first 15 minutes of the F_A/F_I rise, the phase the simulator most displays, are compared against nothing published and a doubled FRC that moves F_A/F_I at 1 min by -0.118 passes every gate

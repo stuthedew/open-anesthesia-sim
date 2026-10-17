@@ -1,9 +1,15 @@
 ---
 id: PL-JPS2
 title: Both MAC-awake band tests take their expected band from the snapshot under test, so a band left at the previous agent's values after an agent switch passes the whole suite and the chart would draw sevoflurane's 0.34 x MAC band under desflurane's name
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: safety, test
 feature: tests-detect-wrong-values
+touches: tests/integration/test_simulation_view.py, tests/integration/test_qt_chart.py
 added: 2026-10-17
+payoff: the MAC-awake band a learner reads emergence against is checked against each agent's own published values after a switch, not against the snapshot it came from
+verify: grep -q 'def test_the_mac_awake_band_after_a_switch_is_the_new_agents_own' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** Both MAC-awake band tests take their expected band from the snapshot under test, so a band left at the previous agent's values after an agent switch passes the whole suite and the chart would draw sevoflurane's 0.34 x MAC band under desflurane's name

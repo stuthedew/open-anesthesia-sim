@@ -1,9 +1,15 @@
 ---
 id: PL-FY35
 title: The MAC and maximum-delivered literal pins in tests/unit/test_parameters.py carry no source locator, and nothing cross-checks a stored MAC against a second source such as Mapleson 1996's age-40 values, which the agent files' own notes already record
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: test
 feature: tests-detect-wrong-values
+touches: tests/unit/test_parameters.py
 added: 2026-10-17
+payoff: each stored MAC and vaporizer maximum is pinned by a test that names its source, and a MAC that drifts from Mapleson 1996 by more than its recorded deviation fails
+verify: grep -q 'def test_mac_matches_its_cited_source_and_its_recorded_mapleson_deviation' tests/unit/test_parameters.py
 ---
 
 **Problem.** The MAC and maximum-delivered literal pins in tests/unit/test_parameters.py carry no source locator, and nothing cross-checks a stored MAC against a second source such as Mapleson 1996's age-40 values, which the agent files' own notes already record

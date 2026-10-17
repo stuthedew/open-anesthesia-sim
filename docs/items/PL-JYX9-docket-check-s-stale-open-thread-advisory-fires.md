@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: friction-batch
+milestone: v0.5.25
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
