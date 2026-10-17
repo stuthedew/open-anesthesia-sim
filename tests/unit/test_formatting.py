@@ -18,6 +18,8 @@ from pathlib import Path
 from typing import Any, get_type_hints
 
 import pytest
+from hypothesis import example, given, settings
+from hypothesis import strategies as st
 
 from anesthesia_sim.app import formatting as formatting_module
 from anesthesia_sim.app.controller import SimulationController
@@ -164,6 +166,77 @@ def test_format_percent_marks_a_value_below_the_resolution() -> None:
     # Either side of the rounding threshold, at half the resolution.
     assert format_percent(Fraction(4.9e-5)) == "<0.01%"
     assert format_percent(Fraction(5.1e-5)) == "0.01%"
+
+
+def _displayed_value(reading: str) -> float:
+    """The percent a reading from `format_percent` states, as a number to compare.
+
+    "<0.01%" says that the value is above zero and below the resolution, so
+    it is read as half the resolution, a number strictly between the two.
+    """
+
+    assert reading.endswith("%"), reading
+    number = reading.removesuffix("%")
+
+    if number.startswith("<"):
+        assert float(number.removeprefix("<")) == CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+        return CONCENTRATION_DISPLAY_RESOLUTION_PERCENT / 2.0
+
+    return float(number)
+
+
+#: One count of the last displayed digit, as a fraction: 0.01% is 1e-4.
+_DISPLAY_COUNT_FRACTION = CONCENTRATION_DISPLAY_RESOLUTION_PERCENT / 100.0
+
+
+def _ulps_from(value: float, steps: int) -> float:
+    """`value` moved `steps` units in the last place, kept inside 0 to 1."""
+
+    for _ in range(abs(steps)):
+        value = math.nextafter(value, math.inf if steps > 0 else -math.inf)
+
+    return min(max(value, 0.0), 1.0)
+
+
+# A fraction anywhere in 0 to 1, or within two units in the last place of a
+# whole or half display count. The rounding threshold between two readings is
+# at a half count, so that is where a formatter that is not monotone would
+# show it first.
+_FRACTIONS = st.one_of(
+    st.floats(min_value=0.0, max_value=1.0),
+    st.builds(
+        _ulps_from,
+        st.integers(min_value=0, max_value=20_000).map(
+            lambda half_counts: half_counts * _DISPLAY_COUNT_FRACTION / 2.0
+        ),
+        st.integers(min_value=-2, max_value=2),
+    ),
+)
+
+
+@settings(derandomize=True, database=None, deadline=None, max_examples=2_000)
+@given(_FRACTIONS, _FRACTIONS)
+@example(0.0, 1e-12)
+@example(4.9e-5, 5.1e-5)
+@example(9.9e-5, 1.0)
+def test_format_percent_preserves_order(first: float, second: float) -> None:
+    """A higher fraction is never displayed as a lower percent.
+
+    The dashboard shows six concentrations side by side to be read in
+    order, and `docs/MODEL.md` § "Displayed precision" relies on the
+    display not reordering them. Rounding is monotone, but `format_percent`
+    also has a below-resolution branch, so the property is checked on the
+    shipped function rather than assumed (`PL-0M7K`). Each reading is
+    parsed back to a number, with "<0.01%" read as strictly between 0 and
+    0.01. The fractions cover 0, the below-resolution branch and both
+    sides of every display-count boundary from 0% to 100%.
+    """
+
+    lower, higher = sorted((first, second))
+
+    assert _displayed_value(format_percent(Fraction(lower))) <= _displayed_value(
+        format_percent(Fraction(higher))
+    )
 
 
 @pytest.mark.parametrize("impossible", [-1e-8, -0.02, 1.0000000000000002])

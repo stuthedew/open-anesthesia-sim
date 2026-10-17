@@ -33,7 +33,8 @@ from pathlib import Path
 
 import pytest
 
-from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.app import formatting
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
@@ -709,11 +710,12 @@ HELD_RUN_ROUNDING_BOUND = 1e-12
 # value was not.** It used to be 3.0 counts, set at 1.7 times a measured 1.73
 # counts under the operator split, with an arithmetic sanity check that was
 # itself wrong: it added "half a count of rounding each" on top of two
-# displacements. Rounding cannot contribute. `_displayed_percent` is monotone
-# non-decreasing — verified over 2 000 000 random ordered pairs and 18 009
-# pairs straddling exact display-count boundaries at ±3e-17 to ±5e-16, with
-# zero violations — so it can never produce an ordering opposite to the raw
-# one. The correct figure for that check was 5.6 counts, not 6.6.
+# displacements. Rounding cannot contribute. The shipped `format_percent` is
+# monotone non-decreasing, so it can never produce an ordering opposite to the
+# raw one. `test_format_percent_preserves_order` in
+# `tests/unit/test_formatting.py` is what checks that, on the shipped function
+# and across its below-resolution branch (`PL-0M7K`). The correct figure for
+# that check was 5.6 counts, not 6.6.
 #
 # With monotonicity, the bound is a consequence rather than a measurement.
 # Write e = reference - shipped. An inversion of (left, right) needs
@@ -736,11 +738,13 @@ HELD_RUN_ROUNDING_BOUND = 1e-12
 # gap that approaches 2ε from below at every scale and never exceeds it.
 #
 # **What this test is for, now that the bound follows from the one above.** It
-# is no longer a second, independent bound on the solver: if the absolute gate
-# passes, this one cannot fail. What it still checks is the step from a state
-# to a displayed row — that `_displayed_percent` is monotone in practice on
-# real trajectories rather than only on random pairs, and that the display path
-# has not acquired a transformation that reorders. The gate keeps its
+# is not a second, independent bound on the solver. If the absolute gate passes
+# and `format_percent` is monotone, this test cannot fail, and the unit property
+# named above is what fails first when the formatter stops being monotone. What
+# it adds is the measurement `docs/MODEL.md` quotes: the readings the shipped
+# formatter gives on real trajectories, compared pair by pair. Until `PL-0M7K`
+# it read a test-local `round()` instead, so it could not see the formatter at
+# all. The gate keeps its
 # gap-threshold shape rather than asserting zero inversions, because crossings
 # really are sampled at gaps below the differential (the smallest nonzero true
 # gap seen is 2.354e-15 in fraction, below the 1.104e-12 differential), so an
@@ -782,10 +786,16 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
 # `Percent` is the type the system under test takes its vaporizer dial as, and
 # since `PL-4R3W` it checks a number against 0 to 100 and solves nothing, so
 # the property holds of it as well. It is built at the same one place.
+#
+# `Fraction` is the type `format_percent` takes, and since `PL-0M7K` the
+# displayed ordering is read through `format_percent`. It checks a number
+# against 0 to 1 and solves nothing. `_displayed_percent` is the one place it
+# is built.
 ALLOWED_PACKAGE_IMPORTS = frozenset(
     {
         "AlveolarVentilation",
         "CardiacOutput",
+        "Fraction",
         "FreshGasFlow",
         "Percent",
         "load_agent_parameters",
@@ -1450,8 +1460,9 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
 
     The displayed resolution, because
     `test_displayed_ordering_reverses_only_at_a_crossing` measures a property
-    of the rounded values and adding a decimal would change what it proves
-    without changing anything it reads. The shipped step, because what this
+    of the displayed values and quotes its threshold in counts of the last
+    displayed digit, and adding a decimal would change what those counts
+    mean without changing anything it reads. The shipped step, because what this
     module measures is rounding accumulated once per step and because the step
     is when a setting change takes effect — `SHIPPED_STEP_S` carries both, and
     records that neither is the coefficient-times-step reason this docstring
@@ -1469,7 +1480,7 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
     since `PL-25KS` moved every claim the dashboard makes there.
     """
 
-    from anesthesia_sim.app import dashboard_frame, formatting
+    from anesthesia_sim.app import dashboard_frame
 
     assert (
         MIN_DELIVERED_CONCENTRATION_PERCENT,
@@ -1487,9 +1498,19 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
 
 
 def _displayed_percent(fraction: float) -> float:
-    """The value the interface shows for a fraction, at its own resolution."""
+    """The percent the interface shows for a fraction, read back as a number.
 
-    return round(fraction * 100.0, CONCENTRATION_DISPLAY_DECIMALS)
+    The reading comes from the shipped `format_percent`, so a display path
+    that reordered two values would be measured here (`PL-0M7K`). A reading of
+    "<0.01%" says the value is above zero and below the resolution, so it is
+    read as half the resolution. `tests/unit/test_formatting.py` reads it the
+    same way.
+    """
+
+    reading = formatting.format_percent(Fraction(fraction)).removesuffix("%")
+    if reading.startswith("<"):
+        return 10.0**-CONCENTRATION_DISPLAY_DECIMALS / 2.0
+    return float(reading)
 
 
 def _display_ordering(displayed: tuple[float, ...], left: int, right: int) -> int:
@@ -1519,13 +1540,13 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
 
     **What this measures, now that its threshold is derived rather than
     fitted.** `MAX_INVERTED_GAP_IN_DISPLAY_COUNTS` is a consequence of
-    `EXACT_STEP_ORACLE_TOLERANCE` plus the monotonicity of
-    `_displayed_percent`, so a failure here that was not also a failure of
-    `test_exact_step_matches_the_independent_solution_everywhere` would mean
-    the monotonicity assumption had broken — a display path that reorders, or
-    a rounding rule that does. That is the part of the chain the absolute gate
-    cannot see, and it is on the safety-critical side of the model-to-readout
-    boundary. The derivation is written out where the constant is defined.
+    `EXACT_STEP_ORACLE_TOLERANCE` plus the monotonicity of the shipped
+    `format_percent`, which `_displayed_percent` reads. So this test can fail
+    only when `test_exact_step_matches_the_independent_solution_everywhere`
+    fails or when the formatter stops being monotone, and
+    `test_format_percent_preserves_order` in `tests/unit/test_formatting.py`
+    checks the second over the formatter's whole domain. The derivation is
+    written out where the constant is defined.
 
     Measured, there are no inversions at all: zero over 1 485 000 pair
     comparisons. The test keeps its gap-threshold shape rather than asserting
@@ -1534,8 +1555,10 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
     1.104e-12 worst pairwise differential — so an inversion is reachable there
     and a zero-inversion assertion would turn a different libm into a failure.
 
-    `docs/MODEL.md` § "Displayed precision" cites this test as the reason the
-    interface marks nothing about comparing two compartments.
+    `docs/MODEL.md` § "Displayed precision" quotes this test's count of pair
+    comparisons. It cites the absolute gate and the unit property as what
+    holds the claim that the interface need mark nothing about comparing two
+    compartments.
     """
 
     system = _empty_shipped_system(agent_id)
@@ -1594,10 +1617,10 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
         f"{MAX_INVERTED_GAP_IN_DISPLAY_COUNTS:.3e} allowed. The shipped step "
         f"is inverting a gradient rather than resolving a crossing. That gap "
         f"exceeds twice the absolute tolerance the neighbouring gate enforces, "
-        f"so either that gate is also failing or the display path has stopped "
-        f"being monotone; docs/MODEL.md's 'Displayed precision' cites this "
-        f"test as the reason the interface marks nothing about comparing two "
-        f"compartments."
+        f"so either that gate is also failing or format_percent has stopped "
+        f"being monotone, which test_format_percent_preserves_order checks; "
+        f"docs/MODEL.md's 'Displayed precision' quotes this test's count of "
+        f"pair comparisons."
     )
 
 

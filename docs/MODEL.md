@@ -8384,7 +8384,9 @@ error can invert which of two compartments is displayed as higher. Across every
 trajectory in "Independent-solution test", all three agents, comparing every
 pair of the six readouts at every step — 1 485 000 pair comparisons —
 the shipped and reference solutions **never** disagree about the displayed
-ordering, anywhere, at any gap. Under the split they disagreed on the worst
+ordering, anywhere, at any gap. Since `PL-0M7K` the readings compared are the
+shipped `format_percent`'s, and the count is still zero (re-measured
+2026-10-17). Under the split they disagreed on the worst
 reachable trajectory for 0.2 s of a 900 s run with sevoflurane and 1.7 s with
 desflurane, at gaps up to 1.73 counts of the last displayed digit.
 
@@ -8402,10 +8404,18 @@ That is why the interface marks nothing here. A reader who compares the
 readouts the way the row is designed to be compared cannot be misled by solver
 error; a reader who subtracts two of them is doing arithmetic the interface
 does not perform, and the paragraph above is the disclosure for it.
-`test_displayed_ordering_reverses_only_at_a_crossing` holds the claim, now
-against a threshold derived from the absolute gate rather than fitted to a
-measurement: twice the tolerance, which is $`1.0\times10^{-7}`$ counts against
-the 3.0 counts the split's bound allowed.
+Two tests hold the claim, and each can fail on its own half of the path from
+the model to the readout. `test_exact_step_matches_the_independent_solution_everywhere`
+bounds the solver's error. `test_format_percent_preserves_order` in
+`tests/unit/test_formatting.py` checks that the shipped formatter never shows a
+higher fraction as a lower percent, across its "<0.01%" reading below the
+resolution and both sides of every display-count boundary (`PL-0M7K`).
+Together they mean that no inversion can occur at a true gap above twice the
+tolerance, which is $`1.0\times10^{-7}`$ counts against the 3.0 counts the
+split's bound allowed. `test_displayed_ordering_reverses_only_at_a_crossing`
+is the trajectory measurement quoted above. It enforces that same threshold,
+but it cannot fail unless one of the two tests fails, so it is the measurement
+and not the evidence.
 
 **Why the resolution is uniform rather than per-compartment.** The six
 readouts sit together — in one row where seven panels fit the window, in a
