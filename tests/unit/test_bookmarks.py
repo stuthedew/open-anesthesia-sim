@@ -205,6 +205,26 @@ def test_an_instant_already_marked_may_not_be_marked_again() -> None:
         marks.with_time_bookmark(TimeBookmark(CaseInstant(600.0), "second thoughts"))
 
 
+def test_the_repeated_instant_refusal_is_pinned_whole() -> None:
+    """The whole sentence the bookmark dialog shows when an instant is marked twice.
+
+    The test above matches "marked once", which passes with the instant
+    missing from the message (`PL-79PK`). The MAC-target twin is not pinned:
+    it names its crossing by the Python repr of an enum member, which is a
+    defect of its own rather than a sentence to freeze.
+    """
+
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        marks.with_time_bookmark(TimeBookmark(CaseInstant(600.0), "second thoughts"))
+
+    assert str(refusal.value) == (
+        "an instant is marked once: a second time bookmark naming 600.0 would be a row no "
+        "run could stop at on its own account"
+    )
+
+
 def test_a_crossing_already_marked_may_not_be_marked_again() -> None:
     marks = BookmarkSet().with_mac_target(_target())
 

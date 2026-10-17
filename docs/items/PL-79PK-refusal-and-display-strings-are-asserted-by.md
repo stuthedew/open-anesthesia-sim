@@ -3,11 +3,13 @@ id: PL-79PK
 title: Refusal and display strings are asserted by unanchored substring or not at all, so 174 of the 279 unit-tier mutant survivors change only message text, and format_case_discard_warning's singular rule survives the whole suite because '1 recorded control change' is a substring of '1 recorded control changes'
 priority: P2
 effort: M
-status: ready
+status: done
 classes: test
 feature: tests-detect-wrong-values
-touches: tests/unit, docs/items/PL-2TZT-five-more-guard-names-in-core-are-passed.md, docs/items/PL-PLT9-tools-context-reading-py-printed-a-negative.md
+touches: tests/unit, tests/integration/test_controller.py, docs/items/PL-2TZT-five-more-guard-names-in-core-are-passed.md, docs/items/PL-PLT9-tools-context-reading-py-printed-a-negative.md
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1513
 payoff: a refusal or warning a learner reads is asserted as a whole string, so a wrong plural or a changed sentence fails a test instead of passing as a substring
 verify: grep -q 'def test_the_case_discard_warning_is_pinned_whole' tests/unit/test_formatting.py
 ---
@@ -109,3 +111,67 @@ perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above. Symbols re-checked against
 `9ea87a3c`.
+
+**What was pinned, 2026-10-17.** Two read-only passes listed every refusal
+that can reach the "Setting refused" banner (and the bookmark dialog's notice)
+and the "Simulation stopped" banner, with the strongest test of each. Each
+message a learner can reach without a monkeypatch is now asserted whole with
+`==`, and the expected sentence is typed from the source template and the run
+the test builds:
+
+- `tests/unit/test_formatting.py`: `test_the_case_discard_warning_is_pinned_whole`
+  (singular, zero and plural), and
+  `test_each_display_refusal_a_halt_can_show_is_pinned_whole` (MAC divisor,
+  MAC-awake lower edge, negative duration).
+- `tests/unit/test_supported_ranges.py`:
+  `test_a_setting_s_range_refusal_is_pinned_whole`, one case per flow
+  control.
+- `tests/unit/test_concentration.py`: the dial's percent refusal and a
+  compartment's fraction refusal.
+- `tests/unit/test_bookmarks.py`: the repeated-instant refusal.
+- `tests/unit/test_dashboard_frame.py`: the no-step refusal of `setting_readouts`.
+- `tests/unit/test_uptake_system_failure.py`: the failed step's restated
+  reason, which is what the banner shows for every guard reached inside a step.
+- `tests/integration/test_controller.py`: a branch's agent change, a branch at
+  no keyframe, the three refusals to branch where a run stands (going, failed,
+  at its opening), the one at the supported run length, and the two at a mark.
+
+Already pinned whole before this item, and left alone: the vaporizer maximum
+(`test_circuit.py`), the tissue-flow mismatch on the Reset path
+(`test_simulation_view.py`), and the unit-level guards in
+`test_governing_equations.py` and `test_matrix_exponential.py`.
+
+**Left unpinned, and why.**
+
+- The five bare guard names and the `TissueGroup` and `VenousBloodCompartment`
+  field refusals are `PL-2TZT`'s. Its brief now says it pins each reworded
+  message whole.
+- The repeated MAC-target refusal names its crossing by a Python enum repr.
+  That is a defect, filed as `PL-5HM5`, rather than a sentence to freeze.
+- The accounting refusal and the squaring-cap refusals print numbers that only
+  the run produces (`:.6e` amounts and a matrix norm), so no expected value can
+  be typed independently. Their tests keep the anchored start.
+- Refusals that only a monkeypatch or an `object.__setattr__` past a guard can
+  reach keep their existing unit-level pins.
+
+**Fail-before, 2026-10-17.** Each new test was run against a mutant of the
+code it pins, and each mutant was reverted with `git checkout`.
+
+- Mutant `format_case_discard_warning__mutmut_2`, made by hand as
+  `if (control_change_count == 1) and False`.
+  `uv run pytest -q tests/unit/test_formatting.py -k discard` gave 1 failed and
+  9 passed. The failing case was the singular one:
+  `- rol change — will be discarded ...` against `+ rol changes — will be discarded ...`.
+  Before this item the same mutant passed the whole simulator suite.
+- The supported-range template citing `(docs/MODEL.md)` in place of
+  `(docs/MODEL.md, "Supported input ranges")`.
+  `uv run pytest -q -n auto tests/unit` gave 3 failed and 5123 passed, and the
+  three were the cases of `test_a_setting_s_range_refusal_is_pinned_whole`.
+  No other test noticed. A first mutant that dropped the unit was caught by
+  `test_the_refusal_names_the_setting_the_value_and_the_interval` as well, so
+  it did not show what the new test adds.
+- The going-run refusal in `app/controller.py` ending "branches where it
+  stands" in place of "branches where it then stands".
+  `uv run pytest -q tests/integration/test_controller.py -k "branch or resumed or fork"`
+  gave 1 failed and 89 passed, and the one was
+  `test_each_refusal_to_branch_where_a_run_stands_is_pinned_whole`.

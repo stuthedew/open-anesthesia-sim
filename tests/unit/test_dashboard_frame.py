@@ -1529,6 +1529,22 @@ def test_a_control_with_no_step_inside_its_range_fails_rather_than_offering_a_re
         setting_readouts(_snapshot(accepted_fresh_gas_flow_range_l_min=(0.52, 0.58)))
 
 
+def test_the_no_step_refusal_is_pinned_whole() -> None:
+    """The whole sentence the "Simulation stopped" banner shows for a control with no step.
+
+    The test above matches the sentence's opening, so the source it cites
+    could change unseen (`PL-79PK`).
+    """
+
+    with pytest.raises(ValueError) as refusal:
+        setting_readouts(_snapshot(accepted_fresh_gas_flow_range_l_min=(0.52, 0.58)))
+
+    assert str(refusal.value) == (
+        "Fresh gas flow can offer no setting: no 0.1 L/min step lies inside 0.52 to 0.58 "
+        'L/min, the range the run accepts (docs/MODEL.md, "Supported input ranges")'
+    )
+
+
 @pytest.mark.parametrize(
     ("minimum", "maximum", "decimals", "offered"),
     (

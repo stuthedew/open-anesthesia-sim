@@ -646,6 +646,32 @@ def test_the_mac_awake_band_refuses_inputs_it_cannot_place_honestly() -> None:
         )
 
 
+def test_each_display_refusal_a_halt_can_show_is_pinned_whole() -> None:
+    """The whole sentence the "Simulation stopped" banner shows for each display refusal.
+
+    A frame that cannot be drawn halts the run and prints the refusal. The
+    tests above match a phrase of each, which passes with the value it names
+    missing (`PL-79PK`).
+    """
+
+    with pytest.raises(ValueError) as no_mac:
+        mac_multiple(Fraction(0.02), 0.0)
+
+    with pytest.raises(ValueError) as no_band:
+        mac_awake_band_percent(
+            fraction_of_mac=0.05, standard_deviation_fraction_of_mac=0.05, mac_percent=2.0
+        )
+
+    with pytest.raises(ValueError) as no_time:
+        format_elapsed(-1.0)
+
+    assert str(no_mac.value) == "mac_percent must be strictly positive, got 0.0"
+    assert str(no_band.value) == (
+        "the MAC-awake band's lower edge must be strictly positive, got 0.05 - 0.05"
+    )
+    assert str(no_time.value) == "duration must be finite and non-negative, got -1.0"
+
+
 def test_the_mac_awake_band_arguments_are_keyword_only() -> None:
     """A transposition the type system cannot catch, refused by the signature.
 
