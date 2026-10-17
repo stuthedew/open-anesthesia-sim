@@ -52,3 +52,11 @@ but they work only under `--dist loadgroup`, and CI runs `worksteal`.
 
 `PL-4Z5Y`'s dealing trial waits on this item: until the builds are shared,
 the dealing moves the tail onto them and makes it longer.
+
+**Answered 2026-10-17: closed by `PL-4Z5Y`'s dealing, not by sharing**
+(project owner, 2026-10-17, ratified, in `PL-H9KW`'s session, over
+`PL-H9KW` extending the hook after `PL-4Z5Y` merges). The six tests are dealt
+back to back at the head of one worker's first slice, so each trunk is built
+once per run. Candidate (1)'s flock is not built. `PL-H9KW`'s brief, on its
+pull request #1479, holds the same finding, reached independently.
+`PL-4Z5Y`'s brief has the steps.

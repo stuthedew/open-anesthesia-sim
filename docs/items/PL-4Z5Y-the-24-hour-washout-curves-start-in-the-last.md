@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: infra, test
 feature: ci-cost
-touches: tests/reference/test_late_washout_against_published_fits.py, tests/reference/conftest.py, tests/conftest.py, tests/unit/test_reference_conftest.py
+touches: tests/reference/test_late_washout_against_published_fits.py, tests/reference/conftest.py, tests/conftest.py, tests/unit/test_reference_conftest.py, tests/integration/test_controller.py, docs/items/PL-K5VM-test-controller-py-s-two-module-scoped-24-hour.md, docket.toml
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
 payoff: a slow CI runner's pytest step falls by at least 30 s, and the washout curves stop being the last thing every run waits on
@@ -186,7 +186,7 @@ the tail, and the dealing makes them longer.
   from before the merge and five from after, the way the CI table above was
   taken.
 
-**Decision needed, and recommended: hold the trial until `PL-K5VM` lands, and
+[superseded 2026-10-17: answered in `PL-H9KW`'s session, below] **Decision needed, and recommended: hold the trial until `PL-K5VM` lands, and
 do not run it on CI now.** On this tree the hook is slower in both hook-on
 runs, by 23 to 43 s, so the keep criterion of a fall of at least 30 s would
 likely fail. That would cost at least five slow-runner runs plus a revert pull
@@ -202,3 +202,68 @@ request. Holding means:
 
 The other route is to run the trial on CI now, as decided 2026-09-28.
 Nothing measured here says it would pass.
+
+**Answered 2026-10-17, in `PL-H9KW`'s session: the hook also deals the six
+24-hour controller-trunk tests first** (project owner, 2026-10-17, ratified,
+over `PL-H9KW` extending the hook after this item merges). The owner's "agree
+with recs" came at 05:34 UTC (00:34 CDT), in reply to that session's one
+question. It was read from that session's transcript,
+`session_01WzrYT8Tr723VBYbZvJRTfK`. The answer came before this session's
+local runs reached the owner, and they support it: the hook was slower
+because it split those six tests over more workers. `PL-H9KW` drops its
+cross-worker sharing step on the strength of it. It keeps two things, which
+stay out of this item: `test_doc_check.py`'s three whole-repository tests
+sharing one analysis, and re-timing CI and restating `quality.yml`'s
+`timeout-minutes` comment once this merges.
+
+**Next steps, for the session that builds it.** This session reset for
+length before building this.
+
+1. **Move the hook to `tests/conftest.py`**, beside
+   `pytest_configure_node`, because it now deals `tests/integration/` too.
+   Delete `tests/reference/conftest.py`, and move its docstring's argument
+   into `tests/conftest.py`'s docstring.
+2. **Read each module's table from `item.module`** with `getattr`, rather
+   than by importing the washout module. A run that collects neither module
+   then never imports either.
+3. **Give `test_controller.py` a table of its two module-scoped trunk
+   fixtures**, `trunk_stepped_onto_the_limit` and
+   `trunk_halted_on_a_mark_at_the_limit`, each with its cost in simulated
+   minutes, `MAXIMUM_ELAPSED_SIMULATION_TIME_S / 60`.
+   - The minute is a fair common unit with the curves'
+     `elimination_duration_min`. A trunk and a 24-hour curve both take
+     864,000 steps of 0.1 s, and here a trunk took about 52 s to build
+     against 46 to 55 s for a curve.
+   - The hook makes one group of every test in that module whose
+     `item.fixturenames` names a fixture in the table. The group is placed
+     back to back and costs the sum of the fixtures it reads.
+   - It has to be one group: `offers_no_place` reads both trunks, so two
+     groups would build a trunk twice.
+   - pytest keeps a module-scoped fixture alive across consecutive tests
+     from its module, and `worksteal` steals only from a queue's tail
+     (`steal_from.pending[-num_steal:]`). So each trunk is built once, at
+     the start of the run.
+4. **Deal by longest processing time first**, over units: the trunk group
+   (2,880 min) and each curve opener (the sum of the curves it opens). The
+   heaviest goes first, each to the slice with the least load so far, so
+   the trunks' worker gets fewer curves.
+5. **Split the dealing into a pure `deal(items, units, workers)`** and test
+   it with plain values. Three properties:
+   - a unit stays contiguous at the head of one slice;
+   - the result is a permutation of the input;
+   - the heaviest unit sits alone in its slice.
+
+   Rename `tests/unit/test_reference_conftest.py` to
+   `tests/unit/test_worksteal_dealing.py`, and its `docket.toml`
+   `workflow_paths` entry with it. Keep its check against xdist's real
+   scheduler.
+6. **Time one run of CI's command with the hook.** Expect 2 trunk builds,
+   both starting at about 25 s, and compare the run against the 311.2 and
+   316.6 s baselines above. The scratch timing plugin is described above.
+   Count builds as the number of workers that ran a test reading each trunk.
+7. **If the run is faster, open the pull request.** It is on the owner's
+   read list, so leave it unarmed and ask for the read. The CI trial and
+   its keep criterion are unchanged. `PL-K5VM` closes with it: this
+   dealing, not cross-worker sharing, is what brings the builds to 2. If
+   the six tests cannot be dealt as one group, say so here, and `PL-H9KW`
+   takes them up after this merges.
