@@ -1,9 +1,15 @@
 ---
 id: PL-9YHR
 title: The published-data gates cannot resolve most stored parameters - fat tissue:gas x2 and x0.5, fat volume x2, muscle tissue:gas x1.5 and vessel-rich tissue:gas x0.8 each pass every Yasuda-tied assertion, and only 6 of 25 simulation-affecting x1.10 perturbations fail one - while the gate's resolving power is recorded only for alveolar ventilation and cardiac output
-status: untriaged
+priority: P1
+effort: L
+status: ready
+classes: science, test, docs
 feature: validation-resolving-power
+touches: tests/reference/test_published_wash_in_and_elimination.py, docs/MODEL.md
 added: 2026-10-17
+payoff: docs/MODEL.md's validation claim says which stored parameters the published-data gates can and cannot detect an error in, so a green gate is not read as validating values it cannot resolve
+verify: grep -q 'def test_the_published_data_gate_fails_at_a_stated_perturbation' tests/reference/test_published_wash_in_and_elimination.py
 ---
 
 **Problem.** The published-data gates cannot resolve most stored parameters - fat tissue:gas x2 and x0.5, fat volume x2, muscle tissue:gas x1.5 and vessel-rich tissue:gas x0.8 each pass every Yasuda-tied assertion, and only 6 of 25 simulation-affecting x1.10 perturbations fail one - while the gate's resolving power is recorded only for alveolar ventilation and cardiac output

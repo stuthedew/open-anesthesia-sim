@@ -1,9 +1,11 @@
 ---
 id: PL-6JKB
 title: Nothing checks that a bug fix's regression test fails before the fix: a replay of 58 recent simulator bug-fix commits found every test reproduces its bug, but 16 of them (28%) cannot even be collected against the pre-fix code, so that protection rests on reasoning rather than on a run recorded when the fix merged
-status: untriaged
+status: dropped
 feature: test-effectiveness-measurement
 added: 2026-10-17
+closed: 2026-10-17
+reason: The item's own replay found that all 58 bug-fix regression tests reproduce their bug, 16 of them through a hand-built variant, so a recorded fail-before run would have changed nothing in 58 fixes while adding a step to every fix's close-out. The replay is a measurement, not a practice: it is re-run with PL-Y1PS's mutation recipe, whose brief now carries it. Decided by the 2026-10-17 triage pass under rule 14's one-correct-option clause.
 ---
 
 **Problem.** Nothing checks that a bug fix's regression test fails before the fix: a replay of 58 recent simulator bug-fix commits found every test reproduces its bug, but 16 of them (28%) cannot even be collected against the pre-fix code, so that protection rests on reasoning rather than on a run recorded when the fix merged

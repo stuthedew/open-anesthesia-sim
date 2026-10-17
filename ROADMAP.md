@@ -5715,7 +5715,7 @@ named here, for the reason beat 3 gives.
 - PL-W54S (M) Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
 - PL-JSY5 (S) docs/MODEL.md's readout-row rung and its educational-disclaimer line both assume one window's width and one always-on-screen surface, which the area system makes false
 
-**Cleared before v0.6.0 begins unless deferred, the product lane - 91 entries**
+**Cleared before v0.6.0 begins unless deferred, the product lane - 97 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-0FJ8 (S) A MAC divisor's positivity is checked in five app/formatting.py functions and by nothing that holds it: AgentParameters admits Percent(0.0) built directly, only the loader's PositivePercent refuses one, and format_mac_reference checks nothing, directly or through another
@@ -5746,6 +5746,7 @@ named here, for the reason beat 3 gives.
 - PL-921Y (S) docs/MODEL.md's first-24-hours subsection compares the model's isolated muscle time constant with Yasuda's fitted one, which is an apparent constant read off the whole washout curve; read the same way, off the eigenvalues of the model's open-circuit system, the model's muscle term runs 1.9 to 2.0 times the fitted one at about half its amplitude (measured 2026-10-03), not 1.5 to 1.7
 - PL-95NW (M) Test whether the model's slower muscle return explains the open-circuit washout tail's closest approach to Yasuda's fitted mean curves over hours 2 to 4, by varying the muscle tissue:gas coefficient in the late-washout module; docs/MODEL.md's first-24-hours subsection records that reading as inferred from the isolated time constants and not tested (PL-KK1Q)
 - PL-979Z (M) CaseInstant and the three flow types are built from another checked quantity silently - CaseInstant(StepCount(600)) is an instant of 600 s, CaseInstant(FreshGasFlow(5.0)) one of 5 s and FreshGasFlow(CaseInstant(5.0)) a flow of 5 L/min - because require_a_number admits every int and float subclass and only the stored-value checks (require_case_instant, _require_built) name a swapped quantity; refuse another checked quantity at the constructor, as Fraction refuses a Percent (found reviewing PL-7N8P)
+- PL-9YHR (L) The published-data gates cannot resolve most stored parameters - fat tissue:gas x2 and x0.5, fat volume x2, muscle tissue:gas x1.5 and vessel-rich tissue:gas x0.8 each pass every Yasuda-tied assertion, and only 6 of 25 simulation-affecting x1.10 perturbations fail one - while the gate's resolving power is recorded only for alveolar ventilation and cardiac output
 - PL-B26Y (S) BreathingCircuit.advance_fresh_gas reports a nan exhaust at an admitted fresh-gas flow below about 2e-306 L/min, because the circuit's time constant overflows to inf there and its zero-flow branch tests == 0.0 only; core/__init__.py says the branch agrees with the general path bit for bit at the smallest denormal, which holds for the fraction and not for the exhaust
 - PL-BBMG (M) RunDefinition accepts a delivered concentration above the agent's vaporizer maximum - 20% sevoflurane against an 8% maximum ran on 2026-10-04 - because UptakeEquationSettings carries no agent and no vaporizer maximum, so a run built from a settings record bounds the dial only at 100%, and the BreathingCircuit that refuses it is never built
 - PL-BMY5 (S) SimulationState can be constructed already past the supported run length, and only the next advance refuses it
@@ -5754,10 +5755,12 @@ named here, for the reason beat 3 gives.
 - PL-CZTR (S) ResumePoint.elapsed_s is the fork instant on the case's axis and should be named fork_instant_s, now that the definition's own instants are instant_s
 - PL-DBGT (S) desflurane.json points at 'the five other candidates ruled out' in a MODEL.md table that now has nine rows, and names tests/reference/test_published_wash_in.py, which does not exist
 - PL-FPY2 (M) A wrapped mark row's continuation can be a whole clause naming a run, so it reads as a row of its own and binds to the wrong mark
+- PL-H1JH (M) Sevoflurane's and isoflurane's MAC-awake fraction_of_mac and all three agents' standard_deviation_fraction_of_mac have no behavioural oracle or literal pin from the adopted primary source, so a 10% transcription error passes every data-dependent simulator test, and desflurane's one published check passes only by float rounding
 - PL-H8QP (S) The two for_agent reads-the-file tests cannot fail when for_agent() stops reading a data file, because the core defaults equal the files' values, so docs/MODEL.md's claim that they catch it holds only for the fresh gas flow
 - PL-HBH2 (S) docs/MODEL.md's fat-perfusion note weighs the stored fat flow against Heinonen's PET adipose perfusion alone, though Yasuda 1991's two human washout fits put the fat group's time constant (1,340-2,130 min) and flow (2.1-2.4 mL/100 mL/min) where the stored parameters already sit (1,496-2,603 min, 2.07), so its 'would over-estimate fat loading' reading may be one-sided
 - PL-HGB6 (S) docs/machine-abstraction.md says circuit_volume_l is apparatus-plus-circuit where the shipped profile says apparatus alone, so a profile author following the design document would store an assembled total the code does not expect
 - PL-HNWX (M) SUPPORTED_SCHEMA_VERSION is one global constant across agents, patients and machines, so a machine-only schema bump drags three agent files and the patient file with it
+- PL-JPS2 (S) Both MAC-awake band tests take their expected band from the snapshot under test, so a band left at the previous agent's values after an agent switch passes the whole suite and the chart would draw sevoflurane's 0.34 x MAC band under desflurane's name
 - PL-KFNP (M) PatientCompartments.__setattr__'s type-only guard (PL-LBQY) admits a checked CardiacOutput written past set_cardiac_output and leaves every tissue's blood flow at the old output, a record the core refuses wherever it is next built; root cause of PL-M4M0 and the two items filed beside it, so decide whether the write keeps the relation through set_cardiac_output or is refused outright, which PL-LBQY's three options did not weigh (found reviewing PL-M4M0)
 - PL-HSFV (S) RunDefinition propagates an UptakeEquationSettings whose flows are outside the supported ranges - cardiac output 1000 L/min, a hundred times the supported maximum, ran on 2026-10-04 - because the settings record checks only that the tissue flows sum to cardiac output, and the range guards run only in the compartments' constructors and setters, which a run built from a settings record never calls
 - PL-J0F7 (S) The Qt chart's hover box was never looked at rendered: its placement flips near the window's right edge and the axis top, and nothing has confirmed the flip lands the box inside the plot or that INK on PANEL in a pg.TextItem is what is painted
@@ -5777,9 +5780,11 @@ named here, for the reason beat 3 gives.
 - PL-N67T (S) RunView.build_sidebar_panels constructs fresh panels on every call and reparents the run's live labels into them, so a second call silently strips the accounting and control-change panels out of the sidebar
 - PL-NC62 (S) resumed_at's settings-mismatch refusal blames the control timeline whatever the cause, so a patient or agent mismatch would be misdiagnosed
 - PL-Q7V1 (S) ROADMAP.md's varying-perfusion note ('Also unsupported at rest, one layer down', under planned milestone item 35) reads the stored fat flow as 'that far out' against Heinonen alone, where PL-HBH2 records that Yasuda 1991's washout fits put it at or a little above the stored figure
+- PL-QJXS (S) No test compares an agent-switched run with a fresh run of the new agent, so a set_agent that keeps the previous agent's patient compartments passes the whole suite while a run labelled Desflurane computes with sevoflurane's blood:gas 0.65 and shows alveolar 2.95% (0.49 xMAC) at 5 min against 3.59% (0.60 xMAC)
 - PL-QPN8 (S) src/anesthesia_sim/data/patients/reference_adult.json's Meybohm et al. 2021 note says its Tables 1-3 could not be read, but pmc.ncbi.nlm.nih.gov answered through the egress proxy on 2026-10-06, so read PMC7943506's tables and settle whether they list a blood or venous volume
 - PL-QW19 (S) default_fresh_gas_flow_l_min is a required field no manufacturer publishes, so the first real machine profile must invent an unsourced number or cannot be written
 - PL-QYBW (M) The chart's percent axis is scaled by the alveolar peak, so the slow compartments are compressed into 1-2 px and two runs' fat curves cannot be told apart by pointing
+- PL-R0NL (L) Wash-in is compared with published human data at one instant, 30 minutes, so the first 15 minutes of the F_A/F_I rise, the phase the simulator most displays, are compared against nothing published and a doubled FRC that moves F_A/F_I at 1 min by -0.118 passes every gate
 - PL-RBMK (S) _apply_to_every_run documents a two-phase write it does not implement: it applies in a loop and catches, so the docstring promises atomicity the code cannot give
 - PL-SM5V (M) A run's settings cannot be recovered from RunSegment.settings: the L/min to L/s conversion does not round-trip for 7 of 101 cardiac outputs
 - PL-SPN6 (S) Three compartments now raise the same 'partial_pressure_fraction must be between 0 and 1', so a refused step no longer says which one refused
@@ -5808,6 +5813,7 @@ named here, for the reason beat 3 gives.
 - PL-YT8N (S) BreathingCircuit.advance_fresh_gas reports a negative exhaust, as low as -3.3e-16 L, at admitted flows from 1e-15 to 1e-6 L/min, because 1 - exp(-dt/tau) loses its digits to cancellation when dt/tau is small; the exhaust it integrates cannot be negative (found fixing PL-B26Y)
 - PL-Z0T3 (S) dataclasses.replace() on PatientCompartments rewrites the tissue and venous flows of the original it shares those sub-objects with, because __post_init__ calls _update_blood_flows on them: a running system is left perfusing at the twin's cardiac output while its snapshot reports the old one, until the next step's tissue-sum check halts the run (found reviewing #1350)
 - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
+- PL-ZH1F (S) RunDefinition.record_change's dial-moved-back branch is tested only on two-segment runs, the one size where segments[:-1] and segments[:1] agree, so a mutant that silently deletes every later stretch (state_at 600 s alveolar 0.01246 against 0.01867) survives all 5734 simulator tests
 
 **Cleared before v0.6.0 begins unless deferred, the workflow lane - 116 entries**
 
@@ -6019,6 +6025,16 @@ admitting a zero MAC, which `format_mac_reference` prints as `1 MAC sevoflurane
 taking a bare float as either form. `PL-QPN8` (`science`, 2026-10-11) is the
 reference adult's Meybohm et al. 2021 note, whose tables can now be read at the
 source. The triage pass that classed them placed all five in the product lane.
+`PL-QJXS`, `PL-JPS2`, `PL-ZH1F` and `PL-H1JH` (`safety`, 2026-10-17) are the
+test-effectiveness audit's safety findings: no test compares an agent-switched
+run with a fresh run of the new agent; both MAC-awake band tests read their
+expected band from the snapshot under test; the dial-moved-back branch of
+`RunDefinition.record_change` is tested only on two-segment runs; and the
+MAC-awake fractions and spreads carry no pin from their primary source.
+`PL-9YHR` and `PL-R0NL` (`science`, 2026-10-17) are its validation findings: the
+published-data gates cannot resolve most stored parameters, and wash-in is
+compared with published human data at 30 minutes alone. The triage pass that
+classed them placed all six in the product lane.
 
 `PL-YVV4` (`planning`, filed 2026-09-13) was let in on 2026-10-03 and sits in
 the workflow lane with `PL-VV6N`, which waits on it. It was in the store at the
