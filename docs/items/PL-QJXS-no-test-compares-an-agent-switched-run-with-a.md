@@ -1,9 +1,15 @@
 ---
 id: PL-QJXS
 title: No test compares an agent-switched run with a fresh run of the new agent, so a set_agent that keeps the previous agent's patient compartments passes the whole suite while a run labelled Desflurane computes with sevoflurane's blood:gas 0.65 and shows alveolar 2.95% (0.49 xMAC) at 5 min against 3.59% (0.60 xMAC)
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: safety, test
 feature: tests-detect-wrong-values
+touches: tests/integration/test_controller.py
 added: 2026-10-17
+payoff: a run switched to another agent is proved to compute with that agent alone, so a value shown under a correct agent name but computed from the previous agent fails the suite
+verify: grep -q 'def test_an_agent_switch_runs_exactly_as_a_fresh_run_of_that_agent' tests/integration/test_controller.py
 ---
 
 **Problem.** No test compares an agent-switched run with a fresh run of the new agent, so a set_agent that keeps the previous agent's patient compartments passes the whole suite while a run labelled Desflurane computes with sevoflurane's blood:gas 0.65 and shows alveolar 2.95% (0.49 xMAC) at 5 min against 3.59% (0.60 xMAC)

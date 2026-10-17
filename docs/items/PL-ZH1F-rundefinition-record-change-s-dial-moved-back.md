@@ -1,9 +1,15 @@
 ---
 id: PL-ZH1F
 title: RunDefinition.record_change's dial-moved-back branch is tested only on two-segment runs, the one size where segments[:-1] and segments[:1] agree, so a mutant that silently deletes every later stretch (state_at 600 s alveolar 0.01246 against 0.01867) survives all 5734 simulator tests
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: safety, test
 feature: tests-detect-wrong-values
+touches: tests/unit/test_run_definition.py
 added: 2026-10-17
+payoff: a dial moved and moved back within one step can no longer delete the earlier stretches of a run without a test failing, so the chart trace and branch states stay computed under the settings the case was under
+verify: grep -q 'def test_a_change_undone_at_one_instant_keeps_every_earlier_stretch' tests/unit/test_run_definition.py
 ---
 
 **Problem.** RunDefinition.record_change's dial-moved-back branch is tested only on two-segment runs, the one size where segments[:-1] and segments[:1] agree, so a mutant that silently deletes every later stretch (state_at 600 s alveolar 0.01246 against 0.01867) survives all 5734 simulator tests

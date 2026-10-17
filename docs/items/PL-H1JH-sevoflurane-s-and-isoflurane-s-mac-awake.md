@@ -1,9 +1,15 @@
 ---
 id: PL-H1JH
 title: Sevoflurane's and isoflurane's MAC-awake fraction_of_mac and all three agents' standard_deviation_fraction_of_mac have no behavioural oracle or literal pin from the adopted primary source, so a 10% transcription error passes every data-dependent simulator test, and desflurane's one published check passes only by float rounding
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: safety, science, test
 feature: tests-detect-wrong-values
+touches: tests/unit/test_parameters.py, tests/unit/test_formatting.py
 added: 2026-10-17
+payoff: a transcription error in any MAC-awake fraction or spread fails a test that names the paper and table it came from, so the emergence band cannot drift from its source unnoticed
+verify: grep -q 'def test_mac_awake_matches_its_adopted_primary_source' tests/unit/test_parameters.py
 ---
 
 **Problem.** Sevoflurane's and isoflurane's MAC-awake fraction_of_mac and all three agents' standard_deviation_fraction_of_mac have no behavioural oracle or literal pin from the adopted primary source, so a 10% transcription error passes every data-dependent simulator test, and desflurane's one published check passes only by float rounding

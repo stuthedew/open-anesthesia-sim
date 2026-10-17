@@ -1,9 +1,15 @@
 ---
 id: PL-79PK
 title: Refusal and display strings are asserted by unanchored substring or not at all, so 174 of the 279 unit-tier mutant survivors change only message text, and format_case_discard_warning's singular rule survives the whole suite because '1 recorded control change' is a substring of '1 recorded control changes'
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: test
 feature: tests-detect-wrong-values
+touches: tests/unit
 added: 2026-10-17
+payoff: a refusal or warning a learner reads is asserted as a whole string, so a wrong plural or a changed sentence fails a test instead of passing as a substring
+verify: grep -q 'def test_the_case_discard_warning_is_pinned_whole' tests/unit/test_formatting.py
 ---
 
 **Problem.** Refusal and display strings are asserted by unanchored substring or not at all, so 174 of the 279 unit-tier mutant survivors change only message text, and format_case_discard_warning's singular rule survives the whole suite because '1 recorded control change' is a substring of '1 recorded control changes'
