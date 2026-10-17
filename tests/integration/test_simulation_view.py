@@ -167,6 +167,7 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
     AlveolarVentilation,
+    CardiacOutput,
     CaseInstant,
     FreshGasFlow,
 )
@@ -2095,6 +2096,64 @@ def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
     assert run._status_text.text() == "Paused"
     assert run._start_button.isEnabled() is True
     assert run._notice_text.isHidden() is True
+
+
+def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_last_step_ran_at(
+    application: QApplication,
+) -> None:
+    """The cardiac output on screen is the one the values beside it were computed at.
+
+    Until `PL-KFNP` an output written onto the patient past
+    `set_cardiac_output` reached the halt that followed - at the next step, or
+    at the Reset `PL-M4M0` refuses - and the readout and the dial showed it
+    beside compartment values and a chart computed at the old flows
+    (`PL-J39J`). The patient's write refuses that now. What is left reaches
+    stale flows through a tissue's own flow (`_with_stale_tissue_flows`),
+    which moves no output: the patient keeps the one its last completed step
+    ran at, and the record at the stale flows is refused before any step runs
+    at them, so the readout, the dial, the values beside them and the run's
+    definition, which the chart is drawn from, all state that output. The
+    banner's sentence names the two figures that disagree.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    run._start_button.click()
+    _steps(run, 5)
+    before = controller.snapshot()
+    ran_under = controller._state.uptake_system.equation_settings()
+
+    with pytest.raises(SimulationConfigurationError, match="set_cardiac_output"):
+        controller._state.uptake_system.patient.cardiac_output_l_min = CardiacOutput(6.0)
+
+    _with_stale_tissue_flows(controller, 6.0)
+
+    _steps(run, 1)
+
+    after = controller.snapshot()
+    notice = run._notice_text.notice()
+
+    assert controller.has_failed is True
+    assert ran_under.cardiac_output_l_min == 5.0
+    assert controller.run_segments[-1].settings == ran_under
+    assert after.elapsed_s == before.elapsed_s > 0.0
+    assert after.alveolar_partial_pressure_fraction == before.alveolar_partial_pressure_fraction
+    assert (
+        after.mixed_venous_partial_pressure_fraction
+        == before.mixed_venous_partial_pressure_fraction
+    )
+    assert run._cardiac_output_slider.value_label.text() == "5.0 L/min"
+    assert run._cardiac_output_slider.value() == 5.0
+    assert notice is not None
+    assert "perfused at 6.0 L/min in total but cardiac output is 5.0 L/min" in notice
+    assert "The values shown are the last completed step." in notice
+
+    run._reset_button.click()
+
+    assert controller.run_segments[-1].settings == ran_under
+    assert run._cardiac_output_slider.value_label.text() == "5.0 L/min"
+    assert run._cardiac_output_slider.value() == 5.0
 
 
 def test_a_refused_branch_reset_halts_the_branch_and_names_the_same_repair(
