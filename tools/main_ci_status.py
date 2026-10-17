@@ -222,7 +222,8 @@ STEP_WIDTH = 70
 # have no `name:`, so GitHub names each `Run ` plus its whole `run:` line. Only
 # the start is matched, so a change to the flags after it does not lose a step.
 # `tests/unit/test_main_ci_status.py` holds it to the workflow, so naming a
-# pytest step fails a test.
+# pytest step fails a test. The one exception is the item-only fast path's step,
+# which is named so that it is not counted as the suite (`PL-DXD4`).
 PYTEST_STEP_PREFIX = "Run uv run pytest"
 
 #: How many of `main`'s newest successful runs the pytest step's median is taken

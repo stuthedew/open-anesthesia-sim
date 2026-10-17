@@ -302,6 +302,7 @@ def _this_repository() -> doc_check.Report:
     return doc_check.analyze(Path(doc_check.__file__).resolve().parent.parent)
 
 
+@pytest.mark.reads_item_store
 def test_this_repository_is_clean() -> None:
     """The real tree must satisfy its own checker, not only a fixture."""
     assert _this_repository().errors == []
@@ -4677,6 +4678,7 @@ def test_a_one_character_file_is_reported_in_the_singular(tmp_path: Path) -> Non
     assert "resident instructions: 1 character over 1 line loaded at launch" in printed
 
 
+@pytest.mark.reads_item_store
 def test_this_repository_reports_its_own_resident_total() -> None:
     """The real tree, not only a fixture: the number has to be about this file.
 
@@ -4954,8 +4956,14 @@ def test_the_two_totals_are_reported_separately_and_never_summed(tmp_path: Path)
     assert "instructions loaded on demand:" in rendered
 
 
+@pytest.mark.reads_item_store
 def test_this_repository_measures_its_own_skill_on_demand() -> None:
-    """Run against the real tree: the `docket` skill is the text this was built for."""
+    """Run against the real tree: the `docket` skill is the text this was built for.
+
+    Marked like the other two tests that read `_this_repository()`. The first
+    of them to run in a process does the analysis, which reads the store, and
+    which test that is depends on how the run deals them (`PL-DXD4`).
+    """
     on_demand = _this_repository().on_demand
 
     assert on_demand is not None
@@ -6692,6 +6700,7 @@ def test_a_line_citation_with_a_leading_slash_is_read_from_the_repository_root(
     assert any("/core/thing.py:900" in error for error in _line_citation_errors(root))
 
 
+@pytest.mark.reads_item_store
 def test_this_repository_resolves_every_live_line_citation() -> None:
     # The rule against the real store rather than a fixture: this is the one
     # that catches the third generation of a hand-repaired line number.
@@ -10374,7 +10383,21 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
 }
 
 
-@pytest.mark.parametrize("reader", sorted(CONTINUED_STATEMENTS))
+#: The cases whose reader lists this checkout's item store: `dead_ends.check`
+#: reads the ids the store holds. CI's item-only fast path runs them
+#: (`PL-DXD4`).
+READS_THE_STORE = frozenset({"dead ends, a title carried on from the margin is refused by name"})
+
+
+@pytest.mark.parametrize(
+    "reader",
+    [
+        pytest.param(reader, marks=pytest.mark.reads_item_store)
+        if reader in READS_THE_STORE
+        else reader
+        for reader in sorted(CONTINUED_STATEMENTS)
+    ],
+)
 def test_each_reader_reads_its_formats_continued_statement_whole(
     reader: str, tmp_path: Path
 ) -> None:

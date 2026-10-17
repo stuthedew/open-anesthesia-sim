@@ -780,10 +780,16 @@ def _pytest_step_names() -> list[str]:
     """The names GitHub gives `quality.yml`'s pytest steps: `Run ` plus each `run:` line.
 
     A step with a `name:` of its own carries its `run:` on a line that does not
-    open the step, so the assertion below refuses it.
+    open the step, so the assertion below refuses it. The item-only fast path's
+    step is left out (`PL-DXD4`). It runs only the tests marked
+    `reads_item_store`, and it is named so that `pytest_seconds` leaves it out
+    of the suite's time: it is skipped on `main`, and a skipped pytest step
+    stops that time being read.
     """
     lines = [line.strip() for line in _workflow().splitlines()]
-    runs = [line for line in lines if "run: uv run pytest" in line]
+    runs = [
+        line for line in lines if "run: uv run pytest" in line and "-m reads_item_store" not in line
+    ]
     assert runs, "quality.yml should run pytest"
     assert all(line.startswith("- run: ") for line in runs), f"a pytest step is named: {runs}"
     return ["Run " + line.removeprefix("- run: ") for line in runs]
