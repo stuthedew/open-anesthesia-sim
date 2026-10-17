@@ -10,6 +10,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-10
 closed: 2026-10-17
+pr: 1475
 payoff: a claiming citation passes only on words one block of the cited file holds together, so a splice across a heading or a paragraph break cannot stand in for a quotation
 verify: grep -q 'def test_a_quotation_spliced_across_a_heading_and_its_paragraph_is_not_in_the_file' tests/unit/test_doc_check.py
 ---
