@@ -111,7 +111,7 @@ RERUN_STATUS = {0: "survived", 1: "killed"}
 #: How long that run may take before its mutant is reported as a timeout.
 RERUN_TIMEOUT_S = 900
 #: Why a run whose results list is empty is refused rather than reported.
-UNREAD = (
+LISTING_UNREAD = (
     "Its output may have changed shape, and a report built from it would call every "
     "function untested."
 )
@@ -512,7 +512,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             ]
             found = statuses(root)
             if not found:
-                raise Refusal(f"mutmut ran, but `mutmut results` listed no mutant. {UNREAD}")
+                raise Refusal(
+                    f"mutmut ran, but `mutmut results` listed no mutant. {LISTING_UNREAD}"
+                )
             print(report_all(settle(root, found, recorded_exit_codes(root, files))))
             return 0
         base = args.base or default_base(root)
@@ -535,7 +537,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             # mutmut exits 0 only when a pattern matched a mutant.
             raise Refusal(
                 "mutmut ran, but `mutmut results` listed no mutant of the changed functions. "
-                + UNREAD
+                + LISTING_UNREAD
             )
         codes = recorded_exit_codes(root, {unit.path for unit in change.units})
         print(report_branch(root, change, settle(root, found, codes)))
