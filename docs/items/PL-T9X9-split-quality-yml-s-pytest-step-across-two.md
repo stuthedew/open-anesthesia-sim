@@ -3,13 +3,17 @@ id: PL-T9X9
 title: Split quality.yml's pytest step across two GitHub-hosted jobs, so a slow runner's checks job falls from about 10 minutes to about 6
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: infra
 feature: ci-cost
-touches: .github/workflows/quality.yml, tools/required_checks_check.py, tools/doc_check.py, tests/conftest.py, Makefile
+touches: .github/workflows/quality.yml, tools/required_checks_check.py, tools/doc_check.py, tools/main_ci_status.py, tests/conftest.py, Makefile, docs/apparatus.md, tests/unit/test_worksteal_dealing.py, tests/unit/test_main_ci_status.py, tests/unit/test_doc_check.py, tests/unit/test_quality_step_order.py, tests/unit/test_required_checks_check.py, tests/unit/test_tools_portability.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1508
 payoff: a slow runner's checks run takes about 6 minutes instead of about 10, so every pull request waits less and main moves less under an armed one
+verify: uv run pytest -q tests/unit/test_quality_step_order.py::test_checks_needs_every_other_job tests/unit/test_worksteal_dealing.py::test_the_parts_run_every_test_exactly_once tests/unit/test_required_checks_check.py::test_this_repository_requires_exactly_checks_and_pr_title tests/unit/test_doc_check.py::test_parts_that_fold_back_into_the_makefiles_gate_are_quiet
+recurrences: 2026-10-17 PL-ZWQS, 2026-10-17 PL-JWBW
 ---
 
 **Problem.** Split quality.yml's pytest step across two GitHub-hosted jobs, so a slow runner's checks job falls from about 10 minutes to about 6
@@ -82,19 +86,102 @@ runs. The estimate already assumes a slow runner for that reason.
 - **Twice the runner slots per push.** The Free plan allows 20 concurrent
   jobs (https://docs.github.com/en/actions/reference/limits). The peak seen on
   2026-10-17 was 7 runs at once, so 14 jobs.
-- **Each job repeats checkout, the `libegl1` install and `uv sync`**, about
-  60 s of setup on top of its shard.
+- **Each job repeats checkout, the `libegl1` install and `uv sync`.** This
+  costs about 20 s, not the 60 s first guessed. On the 19 successful
+  slow-runner runs after #1487, the medians were 4.5 s for checkout, 9 s for
+  the `libegl1` install, 3 s for `setup-uv` and 1 s for `uv sync`.
+- **`tools/main_ci_status.py`'s pytest drift line (`PL-YY32`) reads one
+  pytest step in the `checks` job.** After the split there are two steps in
+  other jobs, so the line must sum them, and its 470 s baseline must be
+  measured again.
 
-**Decision needed, and recommended: build it once `PL-4Z5Y`'s A/B is scored.**
-The A/B measures the dealing hook on today's single-job layout, and the split
-changes what each worker is dealt. Building the split first would change the
-layout under that trial before it is read. The other route is to leave CI as
-one job and accept about 10 minutes per slow run.
+**Research before building, 2026-10-17.** The owner asked whether splitting
+pytest is the right lever before it is built. The usual levers, checked
+against this job:
 
-**Done when.** `quality.yml` runs pytest in two shard jobs and a combining job
-named `checks` that holds `core/` at 100%. Across at least five slow-runner
-runs, the median `checks` run takes at least 3 minutes less than the 621 s
-measured on 2026-10-17.
+- **Caching and setup.** Already done. All setup together is about 20 s of a
+  621 s slow-runner job (the step medians above).
+- **A cheaper coverage tracer.** Already in effect. coverage.py 7.15.4 on
+  Python 3.14 uses the `sys.monitoring` core by default, which `Coverage.sys_info()`
+  reports as `SysMonitor`. coverage.py's own `doc/config.rst` says that core is
+  "the default in Python 3.14+". Measured in a 4-core container with CI's
+  pytest command, one run each: 294 s with `--cov` and 299 s without. So
+  coverage costs nothing measurable.
+- **Parallel work on one runner.** Already done: 8 xdist workers on 4 vCPUs.
+- **The slowest tests.** The 8 washout curves took 49 to 57 s each and the
+  two controller trunks 99 s and 61 s, on 8 workers sharing 4 cores. Removing
+  those 46 tests cut the local run from 294 s to 229 s, 22% less. `core/`
+  coverage stayed at 100% of statements and branches without them.
+- **Running only the tests a change can affect** (test selection, as in Memon
+  et al., "Taming Google-Scale Continuous Testing", ICSE-SEIP 2017,
+  https://doi.org/10.1109/ICSE-SEIP.2017.16). Of the 113 merges to `main` from
+  2026-10-10 to 2026-10-17, 89 touched none of `src/`, `app/`,
+  `tests/reference/` or `tests/integration/`. Skipping the 46 long tests on
+  those pull requests would save roughly 110 s per slow run, scaling the 22%
+  to the 506 s step. That is an estimate, not a measurement.
+- **Faster runners.** Linux arm64 runners (`ubuntu-24.04-arm`) are free on a
+  public repository and have the same 4 vCPU as x64 ones
+  (https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+  The PySide6 lock entry has an aarch64 wheel. Nobody has run the suite on one,
+  so whether arm64 avoids the slow x64 runners, which take 1.9 times as long,
+  is unknown.
+- **Splitting across runners**, this item. It is the only lever left inside
+  the job that cuts every run's time by more than a fifth.
+
+So splitting is still the main lever. Test selection and an arm64 trial are
+separate, smaller changes that can follow it.
+
+**Decided: build it** (project owner, 2026-10-17, ratified, "agree with
+recs", over leaving CI as one job and accepting about 10 minutes per slow run).
+The owner also agreed to file the two smaller levers above: `PL-STM6` skips the
+costly tests on pull requests that touch no simulator path, and `PL-JWBW` tries
+the arm64 runners.
+
+**Merged as built** (project owner, 2026-10-17, ratified, "agree with recs",
+over tabling the split after its first run saved about 2 minutes rather than
+4). Balancing the parts is tabled in `PL-ZWQS`.
+
+**As built.**
+
+- `checks-part-1` runs everything the one job ran, with pytest given
+  `--part 1/2`. `checks-part-2` runs the setup and pytest with `--part 2/2`.
+  Each uploads its `.coverage` file as an artifact kept for one day.
+- `checks` needs both parts and runs `if: always()`. Its first step fails
+  unless both parts succeeded. Then it runs `coverage combine` on the two
+  files and `coverage report --show-missing --fail-under=100`.
+- The required checks are still `checks` and `pr-title`. Each part declares
+  `# not-required:`, and `tests/unit/test_quality_step_order.py` fails if
+  `checks` stops needing a job of the workflow.
+- `tests/conftest.py`'s `--part K/N` gives every test that reads a costly
+  computation to the last part, and deals the other tests round robin. This
+  replaces design point 5's tuned share. The linters' 95 s in part 1 is about
+  what the 46 costly tests cost a slow runner, about 110 s, so the parts
+  should finish close together with no number to re-tune as tests are added.
+  It also keeps each costly computation on one runner, so none is computed
+  twice. On 2026-10-17 the parts held 4,281 and 4,315 of the 8,596 tests,
+  and together exactly the full collection.
+- **The balance was wrong, measured on the first CI run** (run 39062849281,
+  2026-10-17). `checks-part-1` took 299 s, `checks-part-2` 487 s, of which
+  its pytest step was 462 s, and `checks` 10 s. The run took 499 s from the
+  first job's start to the end of `checks`, against the single job's 621 s
+  slow-runner median. A local profile found the cause: with half the other
+  tests, part 2's workers run out of work while one worker is still building
+  the first controller run, and `worksteal` hands them the remaining
+  controller tests, so the runs were built four times instead of twice
+  (setups of 101 s, 57 s, 57 s and 30 s). `PL-ZWQS` holds the fix.
+- `tools/doc_check.py`'s `check_coverage_gate` puts the threshold back into
+  each part's line before comparing it with the Makefile's, and checks that
+  the parts are numbered 1 to N and that one `coverage report --fail-under`
+  holds them.
+- `tools/main_ci_status.py` sums the pytest steps of a run's jobs, so a run
+  from before the split and one after it are read the same way. The sum is
+  expected to sit a little above the 470 s baseline, inside its band.
+
+**Done when.** `quality.yml` runs pytest in two part jobs and a combining job
+named `checks` that holds `core/` at 100%. The timing check, a median `checks`
+run at least 3 minutes shorter than the 621 s measured on 2026-10-17 over five
+slow-runner runs, moved to `PL-ZWQS`, because it needs runs on `main` that
+exist only after this merges.
 
 **Generator check.** Work the owner asked for, not a defect: no reader
 misread a fact. The CI suite grew and one job carries all of it, which is a
