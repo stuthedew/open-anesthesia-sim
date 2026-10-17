@@ -359,12 +359,25 @@ both read it through `RunView._snapshot_for_a_control`, which halts the run on
 the raise and restates the halt from `record()`; `_handle_agent_change` then
 puts the agent selector back to the agent `SimulationController.agent_id`
 names, since the snapshot that would name it is what refused (`PL-V2HC`).
-The dials are written the same way: `present_halt` writes all four from the
-same record's `RunSettings`, which the snapshot also extends, built from the
-agent and the settings the run holds and no compartment value, so a dial
-dragged into the halt reads the value the run holds beside it rather than
-the value before the drag, which only a frame would have rewritten
-(`PL-85LJ`). A run that stops itself inside its own step tick - on a mark, or
+Every widget that states what the run holds is written by one writer.
+`RunView._write_statement` writes the status word, the transport, the agent
+identity, the four dials, the control-change panel and the banner from
+`dashboard_frame.run_statement`, and both `refresh` and `present_halt` call
+it, so a halted run states on each of them what a frame would. A dial dragged
+into the halt reads the value the run holds rather than the value before the
+drag (`PL-85LJ`), an agent changed just before the halt is named on every
+identity widget (`PL-1YDD`), and the control-change panel lists the record
+the run holds (`PL-DTJQ`). What only a frame can state - the readouts and the
+clock read with them, the accounting panel, the off-scale and wash-in lines,
+and both legends - stays as the last frame drew it, and
+`test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`
+holds every other widget to the halt by default, so a widget added later is
+checked without being listed (`PL-X7D5`). The legends are told what a frame
+drew once both plots have drawn it, so where the frame a click asked for
+fails, the boxes go on naming the curves on the plot (`PL-G3K7`); and
+`SimulationView._halt_every_run` restates the branch controls from the case,
+so a failed trunk offers no branch where it stands (`PL-MMNX`). A run that
+stops itself inside its own step tick - on a mark, or
 on arriving at the supported run length - asks for no frame and needs none
 asked for: the render tick draws whenever a displayed run's `record()`
 differs from the one its view last wrote (`RunView.owes_a_frame`), or the run
