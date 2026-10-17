@@ -33,7 +33,8 @@ from pathlib import Path
 
 import pytest
 
-from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.app import formatting
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
@@ -709,11 +710,12 @@ HELD_RUN_ROUNDING_BOUND = 1e-12
 # value was not.** It used to be 3.0 counts, set at 1.7 times a measured 1.73
 # counts under the operator split, with an arithmetic sanity check that was
 # itself wrong: it added "half a count of rounding each" on top of two
-# displacements. Rounding cannot contribute. `_displayed_percent` is monotone
-# non-decreasing — verified over 2 000 000 random ordered pairs and 18 009
-# pairs straddling exact display-count boundaries at ±3e-17 to ±5e-16, with
-# zero violations — so it can never produce an ordering opposite to the raw
-# one. The correct figure for that check was 5.6 counts, not 6.6.
+# displacements. Rounding cannot contribute. The shipped `format_percent` is
+# monotone non-decreasing, so it can never produce an ordering opposite to the
+# raw one. `test_format_percent_preserves_order` in
+# `tests/unit/test_formatting.py` is what checks that, on the shipped function
+# and across its below-resolution branch (`PL-0M7K`). The correct figure for
+# that check was 5.6 counts, not 6.6.
 #
 # With monotonicity, the bound is a consequence rather than a measurement.
 # Write e = reference - shipped. An inversion of (left, right) needs
@@ -736,11 +738,13 @@ HELD_RUN_ROUNDING_BOUND = 1e-12
 # gap that approaches 2ε from below at every scale and never exceeds it.
 #
 # **What this test is for, now that the bound follows from the one above.** It
-# is no longer a second, independent bound on the solver: if the absolute gate
-# passes, this one cannot fail. What it still checks is the step from a state
-# to a displayed row — that `_displayed_percent` is monotone in practice on
-# real trajectories rather than only on random pairs, and that the display path
-# has not acquired a transformation that reorders. The gate keeps its
+# is not a second, independent bound on the solver. If the absolute gate passes
+# and `format_percent` is monotone, this test cannot fail, and the unit property
+# named above is what fails first when the formatter stops being monotone. What
+# it adds is the measurement `docs/MODEL.md` quotes: the readings the shipped
+# formatter gives on real trajectories, compared pair by pair. Until `PL-0M7K`
+# it read a test-local `round()` instead, so it could not see the formatter at
+# all. The gate keeps its
 # gap-threshold shape rather than asserting zero inversions, because crossings
 # really are sampled at gaps below the differential (the smallest nonzero true
 # gap seen is 2.354e-15 in fraction, below the 1.104e-12 differential), so an
@@ -782,10 +786,16 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
 # `Percent` is the type the system under test takes its vaporizer dial as, and
 # since `PL-4R3W` it checks a number against 0 to 100 and solves nothing, so
 # the property holds of it as well. It is built at the same one place.
+#
+# `Fraction` is the type `format_percent` takes, and since `PL-0M7K` the
+# displayed ordering is read through `format_percent`. It checks a number
+# against 0 to 1 and solves nothing. `_displayed_percent` is the one place it
+# is built.
 ALLOWED_PACKAGE_IMPORTS = frozenset(
     {
         "AlveolarVentilation",
         "CardiacOutput",
+        "Fraction",
         "FreshGasFlow",
         "Percent",
         "load_agent_parameters",
@@ -1450,8 +1460,9 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
 
     The displayed resolution, because
     `test_displayed_ordering_reverses_only_at_a_crossing` measures a property
-    of the rounded values and adding a decimal would change what it proves
-    without changing anything it reads. The shipped step, because what this
+    of the displayed values and quotes its threshold in counts of the last
+    displayed digit, and adding a decimal would change what those counts
+    mean without changing anything it reads. The shipped step, because what this
     module measures is rounding accumulated once per step and because the step
     is when a setting change takes effect — `SHIPPED_STEP_S` carries both, and
     records that neither is the coefficient-times-step reason this docstring
@@ -1469,7 +1480,7 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
     since `PL-25KS` moved every claim the dashboard makes there.
     """
 
-    from anesthesia_sim.app import dashboard_frame, formatting
+    from anesthesia_sim.app import dashboard_frame
 
     assert (
         MIN_DELIVERED_CONCENTRATION_PERCENT,
@@ -1487,9 +1498,19 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
 
 
 def _displayed_percent(fraction: float) -> float:
-    """The value the interface shows for a fraction, at its own resolution."""
+    """The percent the interface shows for a fraction, read back as a number.
 
-    return round(fraction * 100.0, CONCENTRATION_DISPLAY_DECIMALS)
+    The reading comes from the shipped `format_percent`, so a display path
+    that reordered two values would be measured here (`PL-0M7K`). A reading of
+    "<0.01%" says the value is above zero and below the resolution, so it is
+    read as half the resolution. `tests/unit/test_formatting.py` reads it the
+    same way.
+    """
+
+    reading = formatting.format_percent(Fraction(fraction)).removesuffix("%")
+    if reading.startswith("<"):
+        return 10.0**-CONCENTRATION_DISPLAY_DECIMALS / 2.0
+    return float(reading)
 
 
 def _display_ordering(displayed: tuple[float, ...], left: int, right: int) -> int:
@@ -1519,13 +1540,13 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
 
     **What this measures, now that its threshold is derived rather than
     fitted.** `MAX_INVERTED_GAP_IN_DISPLAY_COUNTS` is a consequence of
-    `EXACT_STEP_ORACLE_TOLERANCE` plus the monotonicity of
-    `_displayed_percent`, so a failure here that was not also a failure of
-    `test_exact_step_matches_the_independent_solution_everywhere` would mean
-    the monotonicity assumption had broken — a display path that reorders, or
-    a rounding rule that does. That is the part of the chain the absolute gate
-    cannot see, and it is on the safety-critical side of the model-to-readout
-    boundary. The derivation is written out where the constant is defined.
+    `EXACT_STEP_ORACLE_TOLERANCE` plus the monotonicity of the shipped
+    `format_percent`, which `_displayed_percent` reads. So this test can fail
+    only when `test_exact_step_matches_the_independent_solution_everywhere`
+    fails or when the formatter stops being monotone, and
+    `test_format_percent_preserves_order` in `tests/unit/test_formatting.py`
+    checks the second over the formatter's whole domain. The derivation is
+    written out where the constant is defined.
 
     Measured, there are no inversions at all: zero over 1 485 000 pair
     comparisons. The test keeps its gap-threshold shape rather than asserting
@@ -1534,8 +1555,10 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
     1.104e-12 worst pairwise differential — so an inversion is reachable there
     and a zero-inversion assertion would turn a different libm into a failure.
 
-    `docs/MODEL.md` § "Displayed precision" cites this test as the reason the
-    interface marks nothing about comparing two compartments.
+    `docs/MODEL.md` § "Displayed precision" quotes this test's count of pair
+    comparisons. It cites the absolute gate and the unit property as what
+    holds the claim that the interface need mark nothing about comparing two
+    compartments.
     """
 
     system = _empty_shipped_system(agent_id)
@@ -1594,10 +1617,10 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
         f"{MAX_INVERTED_GAP_IN_DISPLAY_COUNTS:.3e} allowed. The shipped step "
         f"is inverting a gradient rather than resolving a crossing. That gap "
         f"exceeds twice the absolute tolerance the neighbouring gate enforces, "
-        f"so either that gate is also failing or the display path has stopped "
-        f"being monotone; docs/MODEL.md's 'Displayed precision' cites this "
-        f"test as the reason the interface marks nothing about comparing two "
-        f"compartments."
+        f"so either that gate is also failing or format_percent has stopped "
+        f"being monotone, which test_format_percent_preserves_order checks; "
+        f"docs/MODEL.md's 'Displayed precision' quotes this test's count of "
+        f"pair comparisons."
     )
 
 
@@ -1727,3 +1750,201 @@ def test_oracle_imports_no_solver_from_core() -> None:
             f"{bypass!r} reaches a solver in `core/`, but the independence "
             "check above reports nothing that would fail it"
         )
+
+
+#: The functions that form each independent solution, by the file that holds
+#: them. Each must exist, so a rename fails the check instead of emptying it.
+_ORACLE_FUNCTIONS = {
+    "test_coupled_dynamics.py": ("_build_derivative", "_rk4_step", "_integrate_rk4"),
+    "test_late_washout_against_published_fits.py": (
+        "_open_circuit_system_per_min",
+        "_open_circuit_modes",
+        "_isolated_time_constants_min",
+    ),
+}
+
+#: The imported names an oracle may use. The two parameter loaders read data
+#: files and solve nothing. The rest are the standard library and numpy, and
+#: `Callable` and `dataclass` appear only in a type alias and a decorator.
+_ORACLE_IMPORTS = frozenset(
+    {
+        "Callable",
+        "cmath",
+        "dataclass",
+        "load_agent_parameters",
+        "load_reference_adult_parameters",
+        "math",
+        "numpy",
+    }
+)
+
+#: Builtins that reach a module or a namespace by name, which would let an
+#: oracle get hold of a solver without importing one.
+_ORACLE_FORBIDDEN_BUILTINS = frozenset(
+    {"__import__", "compile", "eval", "exec", "getattr", "globals", "locals", "vars"}
+)
+
+
+def _module_bindings(tree: ast.Module) -> tuple[dict[str, ast.stmt], frozenset[str]]:
+    """The statement that binds each module-level name, and the imported names.
+
+    Args:
+        tree: A parsed module.
+
+    Returns:
+        A map from each name a top-level function, class or assignment binds
+        to the statement that binds it, and the set of names that a top-level
+        import binds.
+    """
+    definitions: dict[str, ast.stmt] = {}
+    imported: set[str] = set()
+    for statement in tree.body:
+        if isinstance(statement, (ast.FunctionDef, ast.ClassDef)):
+            definitions[statement.name] = statement
+        elif isinstance(statement, (ast.Assign, ast.AnnAssign)):
+            targets = statement.targets if isinstance(statement, ast.Assign) else [statement.target]
+            for target in targets:
+                for node in ast.walk(target):
+                    if isinstance(node, ast.Name):
+                        definitions[node.id] = statement
+        elif isinstance(statement, (ast.Import, ast.ImportFrom)):
+            for alias in statement.names:
+                imported.add((alias.asname or alias.name).split(".")[0])
+    return definitions, frozenset(imported)
+
+
+def _without_annotations(tree: ast.Module) -> ast.Module:
+    """`tree` with every annotation removed, since none of them ever runs.
+
+    Under `from __future__ import annotations` an annotation is a string that
+    nothing evaluates, so a name it mentions is not one the code uses.
+    """
+    for node in ast.walk(tree):
+        if isinstance(node, ast.arg):
+            node.annotation = None
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            node.returns = None
+        elif isinstance(node, ast.AnnAssign):
+            node.annotation = ast.Constant(value=None)
+    return tree
+
+
+def _oracle_violations(source: str, roots: Sequence[str]) -> list[str]:
+    """Every way the functions `roots` could reach code they must not.
+
+    The walk starts at each root and follows every module-level function,
+    class or assignment the code it reads refers to, so a helper that calls a
+    solver is found as surely as a root that does. Annotations are not read,
+    for the reason `_without_annotations` gives.
+
+    Args:
+        source: A module's text.
+        roots: The names of the oracle's functions in that module.
+
+    Returns:
+        One line per violation: a root that is missing, an import statement
+        inside the oracle, an imported name not on `_ORACLE_IMPORTS`, a
+        builtin on `_ORACLE_FORBIDDEN_BUILTINS`, or a dunder attribute such as
+        `__module__`, which names a module without importing it. An empty
+        list means the oracle reads parameters and computes the rest itself.
+    """
+    definitions, imported = _module_bindings(_without_annotations(ast.parse(source)))
+    violations: list[str] = []
+    visited: set[str] = set()
+    pending = list(roots)
+
+    for root in roots:
+        if root not in definitions:
+            violations.append(f"{root} is not defined in the module")
+
+    while pending:
+        name = pending.pop()
+        if name in visited or name not in definitions:
+            continue
+        visited.add(name)
+
+        for node in ast.walk(definitions[name]):
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                violations.append(f"{name} imports inside its body")
+            elif isinstance(node, ast.Attribute) and node.attr.startswith("__"):
+                violations.append(f"{name} reads the attribute {node.attr}")
+            elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+                if node.id in _ORACLE_FORBIDDEN_BUILTINS:
+                    violations.append(f"{name} calls {node.id}")
+                elif node.id in definitions:
+                    pending.append(node.id)
+                elif node.id in imported and node.id not in _ORACLE_IMPORTS:
+                    violations.append(f"{name} uses the imported name {node.id}")
+
+    return violations
+
+
+def test_oracle_bodies_call_no_solver_from_core() -> None:
+    """Each independent solution computes the model itself from its parameters.
+
+    `test_oracle_imports_no_solver_from_core` reads what this module imports.
+    That cannot settle what an oracle does with an import the module is
+    allowed: this module imports `AgentUptakeSystem` because it is the system
+    under test, and the late-washout module imports it to run the model. So
+    this check reads the oracle functions themselves, in both files, and
+    everything they reach in their own module (`PL-GHT8`).
+
+    An oracle may use the parameter loaders, `math`, `cmath`, `numpy` and its
+    own module's helpers. It may not use another imported name, import inside
+    its body, read a dunder attribute such as `__module__`, or call a builtin
+    that reaches a namespace by name. That shuts the three routes that
+    reading imports alone leaves open: calling the system under test, reading
+    `sys.modules`, and `importlib.import_module(AgentUptakeSystem.__module__)`.
+    A name assembled at runtime from strings is still beyond any reading of
+    the source, and stays with review.
+    """
+
+    directory = Path(__file__).parent
+    for file_name, roots in _ORACLE_FUNCTIONS.items():
+        source = (directory / file_name).read_text(encoding="utf-8")
+        assert _oracle_violations(source, roots) == [], (
+            f"an independent solution in {file_name} reaches code it must not: "
+            f"{_oracle_violations(source, roots)}"
+        )
+
+    # Probes, each a small module whose oracle takes one route to a solver.
+    # Each must be found. They are written as text rather than in this module,
+    # because a real bypass added to prove the point would be a real bypass.
+    loaders = (
+        "from anesthesia_sim.core.parameters import load_agent_parameters\n"
+        "from anesthesia_sim.core.uptake_system import AgentUptakeSystem\n"
+    )
+    probes = {
+        "the system under test": loaders + "def _build_derivative(agent_id, point):\n"
+        "    system = AgentUptakeSystem.for_agent(load_agent_parameters(agent_id))\n"
+        "    return system.equation_settings()\n",
+        "sys.modules": "import sys\n"
+        "def _build_derivative(agent_id, point):\n"
+        "    return sys.modules['anesthesia_sim.core.governing_equations']\n",
+        "a module named by __module__": loaders + "import importlib\n"
+        "def _build_derivative(agent_id, point):\n"
+        "    return importlib.import_module(AgentUptakeSystem.__module__)\n",
+        "a helper that calls the solver": loaders + "def _helper(agent_id):\n"
+        "    return AgentUptakeSystem.for_agent(load_agent_parameters(agent_id))\n"
+        "def _build_derivative(agent_id, point):\n"
+        "    return _helper(agent_id)\n",
+        "an import inside the body": "def _build_derivative(agent_id, point):\n"
+        "    from anesthesia_sim.core import uptake_system\n"
+        "    return uptake_system\n",
+    }
+    for route, probe in probes.items():
+        assert _oracle_violations(probe, ("_build_derivative",)) != [], (
+            f"an oracle that reaches a solver through {route} passes the check"
+        )
+
+    allowed = loaders + (
+        "import math\n"
+        "def _scale(value):\n"
+        "    return math.exp(-value)\n"
+        "def _build_derivative(agent_id, point):\n"
+        "    agent = load_agent_parameters(agent_id)\n"
+        "    return _scale(agent.blood_gas_partition_coefficient)\n"
+    )
+    assert _oracle_violations(allowed, ("_build_derivative",)) == [], (
+        "an oracle that reads its parameters and computes the rest itself is refused"
+    )
