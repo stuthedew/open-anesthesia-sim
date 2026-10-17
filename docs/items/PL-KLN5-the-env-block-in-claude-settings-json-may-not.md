@@ -9,6 +9,7 @@ feature: friction-batch
 touches: docs/maintainer.md, docs/items
 added: 2026-10-01
 closed: 2026-10-17
+pr: 1502
 payoff: docs/maintainer.md says truthfully which model exploration subagents run on in a cloud session, so the owner's cost lever is one that works
 verify: grep -qE '^\*\*Subagent model measured [0-9]{4}-[0-9]{2}-[0-9]{2}' docs/items/PL-KLN5*.md
 not-delegable: the deciding measurement reads a probe subagent's transcript, which the auto-mode classifier refused on 2026-10-01; it needs a session whose permission mode allows that read
