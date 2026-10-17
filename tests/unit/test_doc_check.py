@@ -7017,6 +7017,30 @@ def test_the_newest_spans_strangers_are_not_reported_yet(tmp_path: Path) -> None
     assert not any("v0.2.5.md" in message for message in errors)
 
 
+def test_the_newest_spans_strangers_are_reported_once_the_next_release_has_notes(
+    tmp_path: Path,
+) -> None:
+    """The cut that writes the next notes is told what the last notes owe (`PL-JLYG`).
+
+    The newest tag's span was skipped until the next tag existed. So the v0.5.6
+    cut was never asked for v0.5.5's pointer, and `make check` turned red on
+    `main` for every session once the owner pushed the v0.5.6 tag. Here
+    v0.2.5's cut is committed and not yet tagged, so v0.2.4 is the newest tag.
+    """
+    cut = ("PL-6RT5: cut v0.2.5 (#13)", {"docs/releases/v0.2.5.md": NOTES_0_2_5}, "")
+    errors = _span_report(_span_repo(tmp_path, (*SPAN_HISTORY[:3], cut), SPAN_ITEMS)).errors
+
+    assert len(errors) == 1
+    assert errors[0].startswith("docs/releases/v0.2.4.md: 1 closing pull request")
+    assert "(#11)" in errors[0]
+    assert "`- PL-7KD2 - #11 - described in v0.2.5`" in errors[0]
+
+
+def test_the_newest_spans_strangers_wait_while_no_newer_release_has_notes(tmp_path: Path) -> None:
+    """With v0.2.4 the newest tag and no later notes, no release exists to name yet."""
+    assert _span_report(_span_repo(tmp_path, SPAN_HISTORY[:3], SPAN_ITEMS)).errors == []
+
+
 def test_a_dropped_items_pull_request_is_not_a_closure(tmp_path: Path) -> None:
     """Nothing shipped, so no release's notes owe it a line."""
     items = dict(SPAN_ITEMS)

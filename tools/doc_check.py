@@ -223,7 +223,9 @@ try:
         code_spans,
         notes_bullets,
         notes_claims,
+        notes_files,
         notes_path,
+        notes_version,
         version_in,
         version_key,
     )
@@ -4192,7 +4194,8 @@ class _TagSpans:
     #: own commit where it added the notes, as it should, and otherwise the one
     #: the tag's history says did (`PL-QHCW`).
     cut: Mapping[str, str]
-    #: The newest release version reachable here, whose span is not judged.
+    #: The newest release version reachable here, whose span is judged only
+    #: once the tree holds a newer release's notes.
     newest: str
 
 
@@ -4278,12 +4281,15 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     it from the commit that added the notes file makes the exemption a fact
     about the tree rather than a reading of prose.
 
-    The newest tag's span is the second. Its strangers are described in a
-    release that has not been cut yet, so a pointer naming one cannot be
-    written and requiring it would turn `make check` red on a state nobody can
-    clear - the failure `PL-8HJ2` removed and `check_tags` stays silent on for
-    the same reason. The span is judged from the next cut onward, when the
-    release that describes the work exists and can be named.
+    The newest tag's span is the second, until the tree holds a newer
+    release's notes. Before then its strangers are described in a release
+    that has not been cut, so a pointer naming one cannot be written, and
+    requiring it would turn `make check` red on a state nobody can clear - the
+    failure `PL-8HJ2` removed and `check_tags` stays silent on for the same
+    reason. The cut that writes the next notes names that release, so the span
+    is judged from the cut onward, on the cut's own branch (`PL-JLYG`). Judged
+    from the next tag instead, it was skipped at the v0.5.6 cut and turned
+    `main` red for every session once the owner pushed the tag.
 
     **What it cannot see, and says nothing about.** A closure whose squash
     subject carries no `(#N)` is invisible to the span read: 85 of this store's
@@ -4318,6 +4324,10 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
         )
         return
 
+    written = notes_files(root)
+    newest_waits = not written or version_key(notes_version(written[-1].name)) <= version_key(
+        spans.newest
+    )
     commit_of = {number: commit for commit, number in spans.pull_request.items()}
     # Version -> (pull request, the release describing it) -> the items it
     # carried. One line per pull request is what the reader wants, and the
@@ -4337,7 +4347,11 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
         if commit is None:
             continue
         version = spans.version.get(commit)
-        if version is None or version == spans.newest or spans.cut.get(version) == commit:
+        if (
+            version is None
+            or (newest_waits and version == spans.newest)
+            or spans.cut.get(version) == commit
+        ):
             continue
         notes = root / notes_path(version)
         if not notes.is_file():
