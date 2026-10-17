@@ -66,16 +66,19 @@ def _advance_for(controller: SimulationController, duration_s: float) -> None:
 
 
 def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
-    """Write a checked cardiac output onto the patient past `set_cardiac_output`.
+    """Perfuse each tissue group at its share of `cardiac_output_l_min`, past its patient.
 
-    The one write the type-only guard admits (`PL-LBQY`), and nothing in the
-    application makes it: the setter recomputes the tissue flows, and this
-    leaves them at the old output, which the settings record a run's
-    definition opens on refuses - at the next step, and at Reset (`PL-M4M0`).
+    A tissue group does not know its patient, so its own `set_blood_flow`
+    takes a flow the patient's cardiac output does not give it (`PL-HQF5`),
+    and nothing in the application calls it but the patient's setter. The
+    patient keeps its output, and the settings record a run's definition
+    opens on refuses tissue flows that no longer sum to it - at the next step,
+    and at Reset (`PL-M4M0`). Until `PL-KFNP` this wrote the output onto the
+    patient past `set_cardiac_output`, which the patient's write now refuses.
     """
 
-    patient = controller._state.uptake_system.patient
-    patient.cardiac_output_l_min = CardiacOutput(cardiac_output_l_min)
+    for tissue in controller._state.uptake_system.patient.tissues:
+        tissue.set_blood_flow(cardiac_output_l_min * tissue.perfusion_fraction)
 
 
 def test_default_controller_starts_with_sevoflurane() -> None:

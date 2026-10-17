@@ -494,6 +494,82 @@ def test_a_bare_float_written_onto_a_compartment_is_refused_at_the_write(control
         pickle.loads(pickle.dumps(smuggled))
 
 
+def test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_write() -> None:
+    """A checked output the compartments are not perfused at is refused, not stored stale.
+
+    The test above holds every flow to its type at the write, and the type
+    was all the patient's write checked: `CardiacOutput(10.0)` written onto a
+    patient perfused at 5.0 L/min was stored, every compartment's flow stayed
+    at its share of 5.0, and the settings record refused the pair only where
+    it was next built, at the next step and at Reset (`PL-M4M0`). A rewrite
+    now meets the relation the constructor checks, against the value
+    written, in the constructor's words, which name `set_cardiac_output`;
+    the field and every flow hold what they held, so the record built after
+    is the one the setter last left and the run steps on. What is held is
+    the relation and not the writer, so a rewrite to the output the
+    compartments stand at is admitted. The setter perfuses the compartments
+    before it writes, and refuses a type before it moves anything. The
+    constructor, `dataclasses.replace`, a copy and a pickle write the output
+    before any compartment, so their first write is held to the type alone,
+    and each still builds the patient (`PL-KFNP`).
+    """
+
+    system = AgentUptakeSystem.default()
+    patient = system.patient
+    held = patient.cardiac_output_l_min
+    flows = [tissue.blood_flow_l_min for tissue in patient.tissues]
+    venous_flow = patient.venous_blood.blood_flow_l_min
+    settings = system.equation_settings()
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        patient.cardiac_output_l_min = CardiacOutput(10.0)
+
+    assert str(raised.value) == (
+        "vessel_rich is perfused at 3.8 L/min, but this patient's cardiac output of 10.0 L/min "
+        'gives it 7.6 L/min (docs/MODEL.md, "Tissue groups"): compartments perfused at another '
+        "output are another patient's, as a dataclasses.replace copy's are, so copy a patient "
+        "whole with copy.deepcopy and change its output with set_cardiac_output"
+    )
+    assert patient.cardiac_output_l_min is held
+    assert [tissue.blood_flow_l_min for tissue in patient.tissues] == flows
+    assert patient.venous_blood.blood_flow_l_min == venous_flow
+    assert system.equation_settings() == settings
+    system.advance(SimulationStep(0.1))
+
+    rewritten = CardiacOutput(float(held))
+    patient.cardiac_output_l_min = rewritten
+
+    assert patient.cardiac_output_l_min is rewritten
+
+    with pytest.raises(TypeError, match="not built as CardiacOutput"):
+        patient.set_cardiac_output(10.0)  # type: ignore[arg-type]
+
+    assert patient.cardiac_output_l_min is rewritten
+    assert [tissue.blood_flow_l_min for tissue in patient.tissues] == flows
+    assert patient.venous_blood.blood_flow_l_min == venous_flow
+
+    patient.set_cardiac_output(CardiacOutput(10.0))
+
+    assert patient.cardiac_output_l_min == 10.0
+    assert [tissue.blood_flow_l_min for tissue in patient.tissues] == [
+        10.0 * tissue.perfusion_fraction for tissue in patient.tissues
+    ]
+    assert patient.venous_blood.blood_flow_l_min == 10.0
+    system.equation_settings()
+
+    for built in (
+        replace(patient),
+        copy.copy(patient),
+        copy.deepcopy(patient),
+        pickle.loads(pickle.dumps(patient)),
+    ):
+        assert built.cardiac_output_l_min == 10.0
+        assert [tissue.blood_flow_l_min for tissue in built.tissues] == [
+            tissue.blood_flow_l_min for tissue in patient.tissues
+        ]
+        assert built.venous_blood.blood_flow_l_min == 10.0
+
+
 # --- The supported run length (PL-Y5WR) -------------------------------------
 #
 # The fifth bound, and the only one on the run rather than on a setting. It is

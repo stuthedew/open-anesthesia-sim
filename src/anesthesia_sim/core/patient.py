@@ -64,6 +64,8 @@ class PatientCompartments:
         the copy's output (`PL-Z0T3`). `from_parameters` builds each
         compartment at its flow, and `set_cardiac_output` moves them together.
         Both compute the product the check does, so the comparison is exact.
+        The output written onto a built patient meets the same check, at the
+        write (`__setattr__`, `PL-KFNP`).
 
         Raises:
             SimulationConfigurationError: the tissue perfusion fractions do not
@@ -76,16 +78,7 @@ class PatientCompartments:
         if abs(self.total_perfusion_fraction - 1.0) > FLOW_FRACTION_TOLERANCE:
             raise SimulationConfigurationError("tissue perfusion fractions must sum to 1")
 
-        for tissue in self.tissues:
-            self._require_perfused_at(
-                tissue.name,
-                tissue.blood_flow_l_min,
-                self.cardiac_output_l_min * tissue.perfusion_fraction,
-            )
-
-        self._require_perfused_at(
-            "venous_blood", self.venous_blood.blood_flow_l_min, self.cardiac_output_l_min
-        )
+        self._require_perfused_at(self.cardiac_output_l_min)
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
         # Hidden from `mypy` on purpose. A class that defines `__setattr__` is
@@ -94,36 +87,53 @@ class PatientCompartments:
         # would pass `--strict` and fail at run time against the slots - on
         # the classes that define one alone. Hidden, `mypy` reads the
         # dataclass's fields and their types as before, and this is the
-        # runtime half for the callers it does not read; its three lines are
-        # checked by their tests rather than by `mypy` (`PL-LBQY`, found at
-        # review).
+        # runtime half for the callers it does not read; its lines are checked
+        # by their tests rather than by `mypy` (`PL-LBQY`, found at review).
 
         def __setattr__(self, name: str, value: object) -> None:
-            """Write a field, refusing a cardiac output that was not built as a `CardiacOutput`.
+            """Write a field, refusing a cardiac output the compartments are not perfused at.
 
-            The one place a cardiac output is stored on the patient is this field,
-            so its type is required here, for the constructor, `set_cardiac_output`
-            and an assignment made past both alike, as
-            `BreathingCircuit.__setattr__` explains (`PL-LBQY`). Nothing is written
-            when it is refused. The type is all it requires: a checked output
-            written past the setter leaves every tissue's blood flow at the old
-            output, which is the relation `set_cardiac_output` keeps and
-            `UptakeEquationSettings` refuses at the next step, as the
-            `SimulationNumericalError` `advance()` restates every guard reached
-            inside a step as, and wherever else the record is built, a Reset
-            included, which is refused before anything is cleared (`PL-M4M0`).
-            A copy `dataclasses.replace` makes at another output is refused by
-            `__post_init__` before anything is written; one made at the same
+            The one place a cardiac output is stored on the patient is this
+            field, so it is checked here, for the constructor,
+            `set_cardiac_output` and an assignment made past both alike, as
+            `BreathingCircuit.__setattr__` explains (`PL-LBQY`). Every write
+            requires the type. A rewrite also requires the relation
+            `__post_init__` checks, against the value written: each tissue
+            group perfused at its share of it and the venous pool at the whole
+            of it. So an output written past `set_cardiac_output`, which would
+            leave every compartment perfused at the old one, is refused in the
+            constructor's words, which name that setter as the way to change
+            it, and a rewrite to the output the compartments already stand at
+            is admitted, since what is held is the relation and not the writer
+            (`PL-KFNP`). Until `PL-KFNP` the type was all the write required,
+            and the record left was refused only where it was next built: at
+            the next step and at Reset (`PL-M4M0`). Nothing is written when a
+            value is refused.
+
+            The first write is held to the type alone, because there are no
+            compartments yet to compare it against: the constructor,
+            `dataclasses.replace`, a copy and a pickle each write the output
+            before any compartment, so `__post_init__` checks the relation for
+            the constructor and `dataclasses.replace`, and refuses a copy made
+            at another output before anything is written. One made at the same
             output shares the original's compartments, so moving its output
-            moves the original's flows with it (`PL-Z0T3`).
+            moves the original's flows with it (`PL-Z0T3`). A compartment's own
+            blood flow is the compartment's to write, and a tissue group does
+            not know its patient (`PL-HQF5`).
 
             Raises:
                 TypeError: `name` is `cardiac_output_l_min` and `value` was not
                     built as a `CardiacOutput` (`require_cardiac_output`).
+                SimulationConfigurationError: `name` is `cardiac_output_l_min`,
+                    the patient already holds an output, and a compartment is
+                    not perfused at its share of `value`.
             """
 
             if name == "cardiac_output_l_min":
                 require_cardiac_output(value)
+
+                if hasattr(self, name):
+                    self._require_perfused_at(value)
 
             super().__setattr__(name, value)
 
@@ -231,16 +241,23 @@ class PatientCompartments:
         The output arrives checked against the supported range, which its
         type was built through and nothing here checks again
         (`core/supported_ranges.py`); that it was built as the type is
-        required by the write itself, in `__setattr__`. Every tissue's blood
-        flow is then its perfusion fraction of the new value.
+        required first, so a refused type moves nothing. Every compartment is
+        then perfused at the new output, each tissue group at its perfusion
+        fraction of it and the venous pool at the whole of it, and the field
+        is written last, where `__setattr__` holds the relation those writes
+        have just made true (`PL-KFNP`). Nothing can refuse once the first
+        compartment has moved: a `CardiacOutput` times a perfusion fraction
+        is nonnegative and finite, which is all a compartment's blood flow
+        requires.
 
         Raises:
             TypeError: `cardiac_output_l_min` was not built as a
                 `CardiacOutput`. Nothing is written when it is refused.
         """
 
+        require_cardiac_output(cardiac_output_l_min)
+        self._update_blood_flows(cardiac_output_l_min)
         self.cardiac_output_l_min = cardiac_output_l_min
-        self._update_blood_flows()
 
     def capture_state(self) -> PatientCompartmentsState:
         """Record run state so a failed step can be rolled back."""
@@ -268,21 +285,38 @@ class PatientCompartments:
 
         self.venous_blood.reset()
 
-    def _update_blood_flows(self) -> None:
+    def _update_blood_flows(self, cardiac_output_l_min: CardiacOutput) -> None:
         for tissue in self.tissues:
-            tissue.set_blood_flow(self.cardiac_output_l_min * tissue.perfusion_fraction)
+            tissue.set_blood_flow(cardiac_output_l_min * tissue.perfusion_fraction)
 
-        self.venous_blood.set_blood_flow(self.cardiac_output_l_min)
+        self.venous_blood.set_blood_flow(cardiac_output_l_min)
 
-    def _require_perfused_at(
-        self, compartment: str, blood_flow_l_min: float, own_blood_flow_l_min: float
-    ) -> None:
-        if blood_flow_l_min != own_blood_flow_l_min:
-            raise SimulationConfigurationError(
-                f"{compartment} is perfused at {blood_flow_l_min} L/min, but this patient's "
-                f"cardiac output of {self.cardiac_output_l_min} L/min gives it "
-                f'{own_blood_flow_l_min} L/min (docs/MODEL.md, "Tissue groups"): compartments '
-                "perfused at another output are another patient's, as a dataclasses.replace "
-                "copy's are, so copy a patient whole with copy.deepcopy and change its output "
-                "with set_cardiac_output"
-            )
+    def _require_perfused_at(self, cardiac_output_l_min: CardiacOutput) -> None:
+        """Refuse a compartment that is not perfused at its share of `cardiac_output_l_min`.
+
+        The one statement of the relation, for the constructor and for an
+        output written onto a built patient alike: the output is
+        `__post_init__`'s own, or the one `__setattr__` is about to write.
+
+        Raises:
+            SimulationConfigurationError: a tissue group's blood flow is not
+                its perfusion fraction of `cardiac_output_l_min`, or the
+                venous pool's is not the whole of it.
+        """
+
+        shares = [
+            (tissue.name, tissue.blood_flow_l_min, cardiac_output_l_min * tissue.perfusion_fraction)
+            for tissue in self.tissues
+        ]
+        shares.append(("venous_blood", self.venous_blood.blood_flow_l_min, cardiac_output_l_min))
+
+        for compartment, blood_flow_l_min, own_blood_flow_l_min in shares:
+            if blood_flow_l_min != own_blood_flow_l_min:
+                raise SimulationConfigurationError(
+                    f"{compartment} is perfused at {blood_flow_l_min} L/min, but this "
+                    f"patient's cardiac output of {cardiac_output_l_min} L/min gives it "
+                    f'{own_blood_flow_l_min} L/min (docs/MODEL.md, "Tissue groups"): '
+                    "compartments perfused at another output are another patient's, as a "
+                    "dataclasses.replace copy's are, so copy a patient whole with "
+                    "copy.deepcopy and change its output with set_cardiac_output"
+                )

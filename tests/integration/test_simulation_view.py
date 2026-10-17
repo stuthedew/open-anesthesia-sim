@@ -167,7 +167,6 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
     AlveolarVentilation,
-    CardiacOutput,
     CaseInstant,
     FreshGasFlow,
 )
@@ -738,16 +737,19 @@ class _StepFailingController(SimulationController):
 
 
 def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
-    """Write a checked cardiac output onto the patient past `set_cardiac_output`.
+    """Perfuse each tissue group at its share of `cardiac_output_l_min`, past its patient.
 
-    The one write the type-only guard admits (`PL-LBQY`), which no control
-    here makes: the setter recomputes the tissue flows, and this leaves them
-    at the old output, which the settings record a run's definition opens on
-    refuses - at the next step, and at Reset (`PL-M4M0`).
+    A tissue group does not know its patient, so its own `set_blood_flow`
+    takes a flow the patient's cardiac output does not give it (`PL-HQF5`),
+    which no control here makes: only the patient's setter calls it. The
+    patient keeps its output, and the settings record a run's definition
+    opens on refuses tissue flows that no longer sum to it - at the next step,
+    and at Reset (`PL-M4M0`). Until `PL-KFNP` this wrote the output onto the
+    patient past `set_cardiac_output`, which the patient's write now refuses.
     """
 
-    patient = controller._state.uptake_system.patient
-    patient.cardiac_output_l_min = CardiacOutput(cardiac_output_l_min)
+    for tissue in controller._state.uptake_system.patient.tissues:
+        tissue.set_blood_flow(cardiac_output_l_min * tissue.perfusion_fraction)
 
 
 # ------------------------------------------------------- the constructor
@@ -1932,8 +1934,8 @@ def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplicatio
 
     `SimulationController.reset()` refuses a settings record the run's
     definition cannot open on - tissue flows that no longer sum to the
-    cardiac output, which a checked output written onto the patient past
-    `set_cardiac_output` leaves. Before `PL-M4M0` the refusal escaped the
+    cardiac output, which a tissue's own flow set past its patient leaves
+    (`_with_stale_tissue_flows`). Before `PL-M4M0` the refusal escaped the
     Reset slot after `pause()` and the state had been cleared, so the run
     stood half reset - compartments and clock at zero, the old definition and
     timeline kept, no failure recorded, `case_restarted` never emitted - with
@@ -1960,8 +1962,8 @@ def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplicatio
     run._reset_button.click()
 
     reason = (
-        "SimulationConfigurationError: the tissue groups are perfused at 5.0 L/min in total "
-        "but cardiac output is 6.0 L/min; the venous balance returns what the tissues "
+        "SimulationConfigurationError: the tissue groups are perfused at 6.0 L/min in total "
+        "but cardiac output is 5.0 L/min; the venous balance returns what the tissues "
         "receive, so the two must agree"
     )
     status = controller.status()
@@ -2044,7 +2046,7 @@ def test_a_reset_refused_on_a_failed_run_keeps_the_failure_and_states_the_refusa
     assert notice.startswith(f"Simulation stopped — {failure}.")
     assert notice.endswith(
         "Reset was refused — SimulationConfigurationError: the tissue groups are perfused at "
-        "5.0 L/min in total but cardiac output is 6.0 L/min; the venous balance returns what "
+        "6.0 L/min in total but cardiac output is 5.0 L/min; the venous balance returns what "
         f"the tissues receive, so the two must agree. {REFUSED_RESET_REPAIR_TEXT}"
     )
 
