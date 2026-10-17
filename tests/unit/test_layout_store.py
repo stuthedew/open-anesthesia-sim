@@ -12,15 +12,17 @@ file.
 
 import json
 import os
+import shutil
 import stat
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
+from anesthesia_sim.layout import serialization as serialization_module
 from anesthesia_sim.layout import store as store_module
 from anesthesia_sim.layout.exceptions import LayoutRefused, WorkspaceFileError
-from anesthesia_sim.layout.migrations import LAYOUT_SCHEMA_VERSION
+from anesthesia_sim.layout.migrations import LAYOUT_SCHEMA_VERSION, Migrated
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.serialization import workspace_set_from_json, workspace_set_to_json
 from anesthesia_sim.layout.store import (
@@ -519,6 +521,100 @@ def test_the_user_directory_is_the_override_where_set_and_the_platforms_otherwis
 
     with pytest.raises(
         LayoutRefused,
-        match=f"no application data location and {USER_DIRECTORY_VARIABLE} is not set",
+        match=f"no application data location and {USER_DIRECTORY_VARIABLE} is unset or empty",
     ):
         user_data_directory("", {})
+
+
+def test_a_first_save_creates_every_missing_level_of_the_directory(tmp_path: Path) -> None:
+    directory = tmp_path / "Open Anesthesia Simulator" / "state"
+    store = a_store(directory)
+    store.load(SHIPPED)
+
+    assert store.save(MINE) == directory / WORKSPACES_FILE_NAME
+    assert store.directory == directory
+    assert a_store(directory).load(SHIPPED).workspaces == MINE
+
+
+def test_a_lossy_migration_is_told_to_the_reader_at_load(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    saved(tmp_path, MINE)
+
+    def fake_migrate(body: dict[str, object], written_at: int) -> Migrated:
+        return Migrated(body, ("which tab was open was not kept",))
+
+    monkeypatch.setattr(serialization_module, "migrate", fake_migrate)
+
+    loaded = a_store(tmp_path).load(SHIPPED)
+
+    assert loaded.workspaces == MINE
+    assert loaded.notice is not None
+    assert "which tab was open was not kept" in loaded.notice
+    assert f"written at schema version {LAYOUT_SCHEMA_VERSION}" in loaded.notice
+
+
+def test_a_rescued_previous_generation_an_older_build_wrote_is_kept_at_the_first_save(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    saved(tmp_path, MINE).save(LATER)
+    (tmp_path / WORKSPACES_FILE_NAME).unlink()
+    previous_text = (tmp_path / PREVIOUS_FILE_NAME).read_text(encoding="utf-8")
+    monkeypatch.setattr(store_module, "LAYOUT_SCHEMA_VERSION", LAYOUT_SCHEMA_VERSION + 1)
+    store = a_store(tmp_path)
+
+    loaded = store.load(SHIPPED)
+
+    assert (loaded.source, loaded.written_at) == (Source.PREVIOUS, LAYOUT_SCHEMA_VERSION)
+
+    store.save(LATER)
+
+    assert (tmp_path / kept_file_name(LAYOUT_SCHEMA_VERSION)).read_text(
+        encoding="utf-8"
+    ) == previous_text
+    assert (tmp_path / PREVIOUS_FILE_NAME).read_text(encoding="utf-8") == previous_text
+
+
+def test_a_pre_migration_copy_that_cannot_be_written_is_the_path_the_error_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    saved(tmp_path, MINE)
+    monkeypatch.setattr(store_module, "LAYOUT_SCHEMA_VERSION", LAYOUT_SCHEMA_VERSION + 1)
+    kept = tmp_path / kept_file_name(LAYOUT_SCHEMA_VERSION)
+    real_copyfile = shutil.copyfile
+
+    def refuse_the_kept_copy(source: Path, target: Path, **options: object) -> Path:
+        if Path(target).name == kept.name:
+            raise PermissionError(13, "Permission denied", str(target))
+
+        return real_copyfile(source, target, **options)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(shutil, "copyfile", refuse_the_kept_copy)
+    store = a_store(tmp_path)
+    store.load(SHIPPED)
+
+    with pytest.raises(
+        WorkspaceFileError, match="could not keep the pre-migration file as"
+    ) as raised:
+        store.save(LATER)
+
+    assert raised.value.path == kept
+    assert (tmp_path / WORKSPACES_FILE_NAME).read_text(encoding="utf-8") == workspace_set_to_json(
+        MINE
+    )
+
+
+def test_a_previous_generation_that_is_not_text_is_named_in_the_notice(tmp_path: Path) -> None:
+    (tmp_path / PREVIOUS_FILE_NAME).write_bytes(b"\xff\xfe")
+
+    loaded = a_store(tmp_path).load(SHIPPED)
+
+    assert (loaded.workspaces, loaded.writable) == (SHIPPED, True)
+    assert loaded.notice is not None
+    assert "could not be used (it is not UTF-8 text" in loaded.notice
+
+
+def test_a_set_aside_name_is_written_in_utc_whatever_zone_the_clock_gives() -> None:
+    central = datetime(2026, 10, 17, 0, 0, tzinfo=timezone(timedelta(hours=-5)))
+
+    assert set_aside_file_name(central) == f"workspaces.invalid-{STAMP}.json"

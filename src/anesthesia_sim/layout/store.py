@@ -180,7 +180,7 @@ def user_data_directory(
     if not os.fspath(standard_location):
         raise LayoutRefused(
             "there is no directory to keep the reader's Workspaces in: the platform reported no "
-            f"application data location and {USER_DIRECTORY_VARIABLE} is not set"
+            f"application data location and {USER_DIRECTORY_VARIABLE} is unset or empty"
         )
 
     return Path(standard_location)
@@ -243,6 +243,8 @@ class WorkspaceStore:
 
     @property
     def directory(self) -> Path:
+        """The directory the file is kept in, for the interface to name beside a notice."""
+
         return self._directory
 
     @property

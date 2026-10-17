@@ -400,3 +400,43 @@ class TestWorkspaceSetOperations:
         for operation in (start.duplicate, start.remove, start.activate):
             with pytest.raises(expected):
                 operation(index)
+
+
+class TestWorkspaceSetMutationsFound:
+    """Cases the first adversarial review's surviving mutations named (2026-10-17)."""
+
+    def test_move_to_a_later_position_lands_there(self) -> None:
+        start = a_set("Default", "Induction", "Maintenance")
+
+        assert names(start.move(0, 1)) == ["Induction", "Default", "Maintenance"]
+        assert names(start.move(0, 2)) == ["Induction", "Maintenance", "Default"]
+
+    def test_the_third_duplicate_counts_on(self) -> None:
+        thrice = a_set("Default").duplicate(0).duplicate(0).duplicate(0)
+
+        assert names(thrice) == [
+            "Default",
+            "Default (copy 3)",
+            "Default (copy 2)",
+            "Default (copy)",
+        ]
+
+    def test_editing_another_workspace_leaves_the_active_one_active(self) -> None:
+        start = a_set("Default", "Induction", active=0)
+
+        assert start.rename(1, WorkspaceName("Wash-in")).active == 0
+        assert start.replace(1, workspace("Wash-in")).active == 0
+
+    def test_a_written_origin_is_matched_whole(self) -> None:
+        with pytest.raises(InvalidLayout, match="not 'x shipped:default'"):
+            Origin.from_written("x shipped:default")
+
+        with pytest.raises(InvalidLayout, match="not 'default-x'"):
+            ShippedWorkspaceId("default-x")
+
+    def test_a_name_looked_up_is_a_workspace_name(self) -> None:
+        with pytest.raises(TypeError, match="name is a WorkspaceName, not str"):
+            a_set("Default").position_of("Default")  # type: ignore[arg-type]
+
+        with pytest.raises(TypeError, match="name is a WorkspaceName, not str"):
+            workspace("Default").renamed("Other")  # type: ignore[arg-type]

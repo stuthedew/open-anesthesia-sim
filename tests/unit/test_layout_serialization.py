@@ -19,7 +19,9 @@ from collections.abc import Callable
 import pytest
 
 from anesthesia_sim.layout import migrations
+from anesthesia_sim.layout import serialization as serialization_module
 from anesthesia_sim.layout.exceptions import LayoutFormatError, UnsupportedSchemaVersion
+from anesthesia_sim.layout.migrations import Migrated
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.serialization import (
     LAYOUT_SCHEMA_VERSION,
@@ -706,3 +708,59 @@ class TestWorkspaceSetDocument:
             TypeError, match="a Workspace set document is read from a str, not dict"
         ):
             workspace_set_from_json({})  # type: ignore[arg-type]
+
+
+class TestVersionPlumbing:
+    """The parts a version bump will lean on, exercised with the version patched or a step faked."""
+
+    def test_the_written_text_is_the_same_whatever_order_the_state_was_given_in(self) -> None:
+        chart = ViewKind("concentration_chart")
+        accounting = ViewKind("agent_accounting")
+        layout = (
+            LayoutModel.single_area(chart)
+            .split(AreaId(1), Orientation.ROW, 0.5)[0]
+            .set_view(AreaId(2), accounting)
+        )
+        ordered = Workspace(
+            WorkspaceName("D"),
+            Origin.mine(),
+            layout,
+            {AreaId(1): {accounting: {"a": 1}, chart: {"b": 2}}, AreaId(2): {}},
+        )
+        reversed_in = Workspace(
+            WorkspaceName("D"),
+            Origin.mine(),
+            layout,
+            {AreaId(2): {}, AreaId(1): {chart: {"b": 2}, accounting: {"a": 1}}},
+        )
+
+        assert workspace_set_to_json(WorkspaceSet((ordered,), 0)) == workspace_set_to_json(
+            WorkspaceSet((reversed_in,), 0)
+        )
+        assert list(workspace_to_dict(reversed_in)["view_state"]) == ["1", "2"]  # type: ignore[call-overload]
+
+    def test_a_lossy_migration_reaches_the_reader_with_the_version_found(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def fake_migrate(body: dict[str, object], written_at: int) -> Migrated:
+            return Migrated(body, ("which tab was open was not kept",))
+
+        monkeypatch.setattr(serialization_module, "migrate", fake_migrate)
+
+        read = workspace_set_from_json(workspace_set_to_json(the_set()))
+
+        assert read.workspaces == the_set()
+        assert read.written_at == LAYOUT_SCHEMA_VERSION
+        assert read.lossy == ("which tab was open was not kept",)
+
+    def test_a_single_layout_document_is_read_at_the_current_version_only(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            serialization_module, "LAYOUT_SCHEMA_VERSION", LAYOUT_SCHEMA_VERSION + 1
+        )
+
+        assert (
+            f"schema_version: a document holding one layout on its own is read at version "
+            f"{LAYOUT_SCHEMA_VERSION + 1} only, and this one was written at {LAYOUT_SCHEMA_VERSION}"
+        ) in refused(json.dumps(document()))

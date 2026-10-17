@@ -338,7 +338,11 @@ class Workspace:
         return replace(self, layout=layout, view_state=kept)
 
     def renamed(self, name: WorkspaceName) -> Workspace:
-        """This Workspace under `name`. Whether the name is free is the set's question."""
+        """This Workspace under `name`. Whether the name is free is the set's question.
+
+        Raises:
+            TypeError: `name` is not a `WorkspaceName`.
+        """
 
         return replace(self, name=name)
 
@@ -406,8 +410,12 @@ class WorkspaceSet:
         """Where the Workspace named `name` sits.
 
         Raises:
+            TypeError: `name` is not a `WorkspaceName`.
             NotInWorkspaceSet: no Workspace of that name is in the set.
         """
+
+        if not isinstance(name, WorkspaceName):
+            raise TypeError(f"a Workspace's name is a WorkspaceName, not {type(name).__name__}")
 
         for position, workspace in enumerate(self.workspaces):
             if workspace.name == name:

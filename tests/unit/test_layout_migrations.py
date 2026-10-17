@@ -113,3 +113,19 @@ def test_a_step_says_which_version_it_reads_and_what_it_loses() -> None:
 
     with pytest.raises(TypeError, match="lossy is a str or None, not bool"):
         Migration(1, dict, lossy=True)  # type: ignore[arg-type]
+
+
+def test_a_chain_whose_oldest_version_is_above_one_slices_from_the_version_found() -> None:
+    steps = (
+        Migration(2, lambda body: {**body, "two": True}),
+        Migration(3, lambda body: {**body, "three": True}),
+    )
+
+    from_two = migrate({}, 2, steps, 4)
+    from_three = migrate({}, 3, steps, 4)
+
+    assert from_two.body == {"two": True, "three": True}
+    assert from_three.body == {"three": True}
+
+    with pytest.raises(LayoutFormatError, match="reads versions from 2 to 4, and 1 is older"):
+        migrate({}, 1, steps, 4)
