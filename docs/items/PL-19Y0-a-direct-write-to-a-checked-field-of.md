@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: safety, defect
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/core-domain.md, tests/unit/test_circuit.py, tests/unit/test_blood.py, tests/unit/test_tissue.py, tests/unit/test_alveolar.py, tests/unit/test_agent_simulation_validation.py, tests/unit/test_state_capture.py, tests/unit/test_supported_range_edges.py, tests/unit/test_uptake_system_failure.py, tests/reference/test_late_washout_against_published_fits.py, tests/reference/test_published_wash_in_and_elimination.py
+touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/core-domain.md, tests/unit/test_circuit.py, tests/unit/test_blood.py, tests/unit/test_tissue.py, tests/unit/test_alveolar.py, tests/unit/test_agent_simulation_validation.py, tests/unit/test_state_capture.py, tests/unit/test_supported_range_edges.py, tests/unit/test_uptake_system_failure.py, tests/reference/test_late_washout_against_published_fits.py, tests/reference/test_published_wash_in_and_elimination.py
 added: 2026-10-11
 closed: 2026-10-17
 pr: 1480

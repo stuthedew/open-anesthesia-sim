@@ -413,9 +413,10 @@ class BreathingCircuit:
             dial before the maximum and the flow before the range, so each is
             held to its partner once the partner is set, and the partner's own
             write checks the pair. The circuit holds its agent as a fraction of
-            its volume, so a volume written here moves the agent with it, and
-            the next step halts on the agent the accounting finds missing;
-            `set_circuit_volume` is the write that conserves the agent.
+            its volume, so a volume written here moves the agent with it,
+            gaining or losing agent no flow carried, and the next step's
+            mass-balance check halts on the difference; `set_circuit_volume`
+            is the write that conserves the agent.
 
             Raises:
                 TypeError: `value` was not built as the field's type - a

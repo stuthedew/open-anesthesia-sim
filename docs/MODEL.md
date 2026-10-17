@@ -5383,9 +5383,9 @@ compartment holds is refused, as `set_circuit_volume` refuses a circuit volume
 too small for its agent (`require_room_for_the_agent_held`,
 `core/validation.py`). The circuit holds its agent as a fraction of its
 volume, so a circuit volume written past `set_circuit_volume` cannot overfill
-it and is not refused at the write; it moves the agent with the volume, and the
-next step halts on the agent the accounting identity finds missing
-(§ "Mass-balance identity"), rolled back. The venous pool rolls back past its
+it and is not refused at the write; it moves the agent with the volume, gaining
+or losing agent no flow carried, and the next step halts on the difference the
+accounting identity finds (§ "Mass-balance identity"), rolled back. The venous pool rolls back past its
 guard for the reason the alveolar and tissue amounts do; the circuit and the
 validator roll back through theirs, which cannot refuse a state
 `capture_state()` produced, since nothing their captured values are held to
