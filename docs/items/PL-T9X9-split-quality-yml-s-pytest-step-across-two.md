@@ -82,14 +82,55 @@ runs. The estimate already assumes a slow runner for that reason.
 - **Twice the runner slots per push.** The Free plan allows 20 concurrent
   jobs (https://docs.github.com/en/actions/reference/limits). The peak seen on
   2026-10-17 was 7 runs at once, so 14 jobs.
-- **Each job repeats checkout, the `libegl1` install and `uv sync`**, about
-  60 s of setup on top of its shard.
+- **Each job repeats checkout, the `libegl1` install and `uv sync`.** This
+  costs about 20 s, not the 60 s first guessed. On the 19 successful
+  slow-runner runs after #1487, the medians were 4.5 s for checkout, 9 s for
+  the `libegl1` install, 3 s for `setup-uv` and 1 s for `uv sync`.
+- **`tools/main_ci_status.py`'s pytest drift line (`PL-YY32`) reads one
+  pytest step in the `checks` job.** After the split there are two steps in
+  other jobs, so the line must sum them, and its 470 s baseline must be
+  measured again.
 
-**Decision needed, and recommended: build it once `PL-4Z5Y`'s A/B is scored.**
-The A/B measures the dealing hook on today's single-job layout, and the split
-changes what each worker is dealt. Building the split first would change the
-layout under that trial before it is read. The other route is to leave CI as
-one job and accept about 10 minutes per slow run.
+**Research before building, 2026-10-17.** The owner asked whether splitting
+pytest is the right lever before it is built. The usual levers, checked
+against this job:
+
+- **Caching and setup.** Already done. All setup together is about 20 s of a
+  621 s slow-runner job (the step medians above).
+- **A cheaper coverage tracer.** Already in effect. coverage.py 7.15.4 on
+  Python 3.14 uses the `sys.monitoring` core by default, which `Coverage.sys_info()`
+  reports as `SysMonitor`. coverage.py's own `doc/config.rst` says that core is
+  "the default in Python 3.14+". Measured in a 4-core container with CI's
+  pytest command, one run each: 294 s with `--cov` and 299 s without. So
+  coverage costs nothing measurable.
+- **Parallel work on one runner.** Already done: 8 xdist workers on 4 vCPUs.
+- **The slowest tests.** The 8 washout curves took 49 to 57 s each and the
+  two controller trunks 99 s and 61 s, on 8 workers sharing 4 cores. Removing
+  those 46 tests cut the local run from 294 s to 229 s, 22% less. `core/`
+  coverage stayed at 100% of statements and branches without them.
+- **Running only the tests a change can affect** (test selection, as in Memon
+  et al., "Taming Google-Scale Continuous Testing", ICSE-SEIP 2017,
+  https://doi.org/10.1109/ICSE-SEIP.2017.16). Of the 113 merges to `main` from
+  2026-10-10 to 2026-10-17, 89 touched none of `src/`, `app/`,
+  `tests/reference/` or `tests/integration/`. Skipping the 46 long tests on
+  those pull requests would save roughly 110 s per slow run, scaling the 22%
+  to the 506 s step. That is an estimate, not a measurement.
+- **Faster runners.** Linux arm64 runners (`ubuntu-24.04-arm`) are free on a
+  public repository and have the same 4 vCPU as x64 ones
+  (https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+  The PySide6 lock entry has an aarch64 wheel. Nobody has run the suite on one,
+  so whether arm64 avoids the slow x64 runners, which take 1.9 times as long,
+  is unknown.
+- **Splitting across runners**, this item. It is the only lever left inside
+  the job that cuts every run's time by more than a fifth.
+
+So splitting is still the main lever. Test selection and an arm64 trial are
+separate, smaller changes that can follow it.
+
+**Decision needed, and recommended: build it.** `PL-4Z5Y`'s A/B is now
+scored, so building the split no longer changes the layout under an unread
+trial. The other route is to leave CI as one job and accept about 10 minutes
+per slow run.
 
 **Done when.** `quality.yml` runs pytest in two shard jobs and a combining job
 named `checks` that holds `core/` at 100%. Across at least five slow-runner
