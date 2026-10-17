@@ -3,10 +3,11 @@ id: PL-H9KW
 title: quality.yml's pytest step now takes about 9 minutes, about 82% of every checks run, up from 48 s on 2026-09-05 and 144-359 s on 2026-09-28 while test functions grew 29%, so a few slow tests are the likely cause; and the 15-minute timeout's comment still sizes it against a 3m44s job
 priority: P2
 effort: S
-status: ready
+status: blocked
 classes: infra, test
 feature: ci-cost
 touches: tests/unit/test_doc_check.py, .github/workflows/quality.yml
+blocked-by: PL-4Z5Y
 added: 2026-10-17
 payoff: every pull request's checks run finishes minutes sooner, and its timeout is sized against what the job now takes, so a slow runner reads as slow rather than as a red check
 verify: ! grep -qF 'twice the observed 3m44s' .github/workflows/quality.yml
@@ -140,7 +141,10 @@ one fact misread by several readers. No head's `misread:` states it.
    the tree once. Measured: the three pass together in 29 s, one 27 s analysis
    and two calls under 5 ms, and the module's 893 tests pass in 63 s.
 5. After `PL-4Z5Y` merges: re-time CI against the done-when below, and restate
-   the `timeout-minutes: 15` comment against the new measured job time.
+   the `timeout-minutes: 15` comment against the new measured job time. This is
+   all that is left, which is why the item is `blocked` on `PL-4Z5Y`. The timed
+   run also checks the inferred claim in the dropped step 2: each trunk is
+   built once.
 
 **Done when.** On at least five successful CI runs after the change, the
 pytest step's 99%-to-100% stretch is back near its late-September 73 s, no
