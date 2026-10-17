@@ -6484,6 +6484,34 @@ def test_a_quoted_closed_status_is_read_as_the_store_reads_it(tmp_path: Path) ->
     assert _line_citation_errors(root) == []
 
 
+def test_one_analysis_reads_the_item_store_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-LYH3`: every check that asks for the queue shares one read of it per run.
+
+    Seven readers each parsed every item file for themselves: 16,289
+    `parse_item` calls for 2,327 items in one analysis of this repository on
+    2026-10-17, 2.0 s of a 32.4 s run. The second analysis reads the store
+    again, so a store changed between two runs is never answered from the
+    first run's read.
+    """
+    root = _items(_repo(tmp_path), {"PL-8888-open": _brief("ready", "It adds `core/thing.py`.")})
+    reads: list[Path] = []
+    real = doc_check.read_items
+
+    def counted(directory: Path) -> list[doc_check.Item]:
+        reads.append(directory)
+        return real(directory)
+
+    monkeypatch.setattr(doc_check, "read_items", counted)
+
+    doc_check.analyze(root)
+    first = len(reads)
+    doc_check.analyze(root)
+
+    assert (first, len(reads)) == (1, 2)
+
+
 def test_an_item_may_quote_the_broken_citation_it_reports(tmp_path: Path) -> None:
     """An item whose subject is a stale citation must be able to show it.
 

@@ -3,12 +3,13 @@ id: PL-LYH3
 title: tools/doc_check.py's analyze() reads the item store seven times in one run (16,009 parse_item calls for about 2,300 items, via _read_store), about 10.6 s of a 59 s profiled whole-repository analysis on 2026-10-17, and a quality.yml checks job runs that analysis five times (the two doc_check.py check steps and three tests in tests/unit/test_doc_check.py), so reading the store once per analysis would cut each run by roughly a sixth (found working PL-H9KW)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: perf
 feature: ci-cost
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/WORKING_NOTES.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
+closed: 2026-10-17
 payoff: each whole-repository documentation check parses the item store once instead of seven times, about 1.7 s less per analysis and 5 to 8.5 s less per CI checks job
 verify: grep -q 'def test_one_analysis_reads_the_item_store_once' tests/unit/test_doc_check.py
 ---

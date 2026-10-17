@@ -111,6 +111,7 @@ import sys
 import textwrap
 import tokenize
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from decimal import Decimal
 from functools import lru_cache
@@ -2442,6 +2443,13 @@ class _Store:
     items: Mapping[str, Item]
 
 
+#: The store each root's run has read so far, while `analyze` runs, and `None`
+#: outside a run. `_read_store` explains why.
+_RUN_STORES: ContextVar[dict[Path, _Store | None] | None] = ContextVar(
+    "doc_check_run_stores", default=None
+)
+
+
 def _read_store(root: Path) -> _Store | None:
     """The queue, or `None` where the store cannot answer.
 
@@ -2463,7 +2471,27 @@ def _read_store(root: Path) -> _Store | None:
     nothing where nothing had been read at all. That is the distinction
     `Report.declined` exists to keep, so unifying the read resolves it this
     way rather than the other.
+
+    **Read once in each `analyze` run** (`PL-LYH3`). Five checks call it
+    directly, and three more reach it through `_live_item_briefs`. Each read
+    parsed every item file: 16,289 `parse_item` calls for 2,327 items in one
+    analysis of this repository on 2026-10-17, 2.0 s of a 32.4 s run. So inside
+    a run the first read is kept in `_RUN_STORES` and returned to every later
+    caller. That is safe because nothing in this tool writes to the store.
+    Outside a run, as when a test calls one check on its own, every call reads
+    the disk again.
     """
+    stores = _RUN_STORES.get()
+    if stores is not None and root in stores:
+        return stores[root]
+    store = _load_store(root)
+    if stores is not None:
+        stores[root] = store
+    return store
+
+
+def _load_store(root: Path) -> _Store | None:
+    """The queue as the disk holds it now. `_read_store` is the reader to call."""
     try:
         config = load_docket_config(root)
     except (OSError, ValueError):  # pragma: no cover - a config that will not parse
@@ -8065,7 +8093,20 @@ def check_host_claims(root: Path, report: Report) -> None:
 
 
 def analyze(root: Path) -> Report:
-    """Run every mechanical documentation check over a checkout."""
+    """Run every mechanical documentation check over a checkout.
+
+    The checks share one read of the item store for the whole run, which
+    `_read_store` explains (`PL-LYH3`).
+    """
+    run = _RUN_STORES.set({})
+    try:
+        return _analyze(root)
+    finally:
+        _RUN_STORES.reset(run)
+
+
+def _analyze(root: Path) -> Report:
+    """`analyze`'s checks, in the order they report."""
     report = Report()
     documents = read_docs(root)
     if not documents:
