@@ -23,6 +23,10 @@ lower. Every other test replaces `fetch_jobs` wholesale, so a typo in its
 endpoint path or in the response key it reads would leave this suite green
 while the attribution never fired once - and its caller swallows the failure by
 design, so nothing in production would report it either (`PL-T83R`).
+
+The pytest line compares the step's median time with a recorded baseline
+(`PL-YY32`). Its tests choose times whose median differs from their mean and
+from the newest time, so a line built from either of those fails them.
 """
 
 from __future__ import annotations
@@ -35,6 +39,8 @@ import pathlib
 import subprocess
 import urllib.error
 import urllib.request
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 import main_ci_status
 import pytest
@@ -265,21 +271,28 @@ _REPLAY_STEPS = [
 _REPLAY_ONLY = _job(_REPLAY_STEPS)
 
 
+def _github_origin(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Substitute `git remote get-url` with this repository's GitHub remote."""
+    monkeypatch.setattr(
+        main_ci_status.subprocess,
+        "run",
+        lambda *a, **k: subprocess.CompletedProcess(
+            a[0], 0, stdout=b"https://github.com/stuthedew/open-anesthesia-sim.git\n", stderr=b""
+        ),
+    )
+
+
 class TestMain:
-    """End to end, with the two boundaries substituted."""
+    """End to end, with the two boundaries substituted.
+
+    These are the verdict lines' tests, so they leave the pytest line out.
+    `TestMainWithThePytestLine` puts it back and checks how the two print together.
+    """
 
     @pytest.fixture(autouse=True)
     def _origin(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            main_ci_status.subprocess,
-            "run",
-            lambda *a, **k: subprocess.CompletedProcess(
-                a[0],
-                0,
-                stdout=b"https://github.com/stuthedew/open-anesthesia-sim.git\n",
-                stderr=b"",
-            ),
-        )
+        _github_origin(monkeypatch)
+        monkeypatch.setattr(main_ci_status, "pytest_time_line", lambda slug, runs: None)
 
     def test_reports_a_failing_main_run(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
@@ -303,7 +316,7 @@ class TestMain:
         The green verdict below it is about an older commit, and printing
         nothing handed that answer to a reader as `main`'s - true of that
         commit and silent about the one that lost its run (`PL-JTHW`). The line
-        costs no second request: the verdict is green, so no step is asked about.
+        asks for no step attribution: the verdict is green, so no step is asked about.
         """
         asked: list[object] = []
 
@@ -319,7 +332,7 @@ class TestMain:
         assert "#1555 on c0ffee99 was cancelled" in out
         assert "Re-run it" in out
         assert out.rstrip("\n").endswith("https://github.com/o/r/actions/runs/1555")
-        assert asked == [], "a green verdict must cost one request, not two"
+        assert asked == [], "a green verdict must ask for no step attribution"
 
     def test_a_cancelled_run_a_later_verdict_covers_prints_nothing(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
@@ -360,12 +373,15 @@ class TestMain:
         assert "no run readable here reached one" in lines[0]
 
     @pytest.mark.parametrize("boom", _NETWORK_FAILURES)
-    def test_stays_silent_and_exits_zero_when_the_fetch_fails(
+    def test_says_only_that_it_could_not_read_and_exits_zero_when_the_fetch_fails(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], boom: Exception
     ) -> None:
-        """An offline container must start exactly as cleanly as an online one.
+        """An offline container must start as cleanly as an online one.
 
-        This is the property that lets the hook call it unconditionally.
+        It exits 0 and prints no verdict line, which is the property that lets
+        the hook call it unconditionally. It prints one line saying the pytest
+        time was not compared, and no figure, so that line's silence still means
+        "inside the band" (`PL-YY32`).
         """
 
         def _raise(slug: str) -> list[dict]:
@@ -373,7 +389,10 @@ class TestMain:
 
         monkeypatch.setattr(main_ci_status, "fetch_runs", _raise)
         assert main_ci_status.main() == 0
-        assert capsys.readouterr().out == ""
+        lines = capsys.readouterr().out.splitlines()
+        assert lines == [
+            main_ci_status.pytest_declined(f"the Actions API could not be read ({boom})")
+        ]
 
     def test_stays_silent_when_there_is_no_git_remote(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
@@ -433,10 +452,12 @@ class TestMain:
     def test_asks_for_the_jobs_only_once_the_verdict_is_a_failure(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """The second request is the whole cost of this, and a green `main` must not pay it.
+        """The attribution request is paid only on a failing verdict.
 
-        Every session start but a few reads a green `main`, so a request made
-        unconditionally would be paid on all of them for an answer nobody prints.
+        Every session start but a few reads a green `main`, so asking for the
+        verdict run's steps unconditionally would be paid on all of them for an
+        answer nobody prints. The pytest line's own requests are a separate cost,
+        which `TestMainWithThePytestLine` counts.
         """
         asked: list[object] = []
 
@@ -448,7 +469,7 @@ class TestMain:
         monkeypatch.setattr(main_ci_status, "fetch_jobs", _jobs)
         assert main_ci_status.main() == 0
         assert capsys.readouterr().out == ""
-        assert asked == [], "a green main must cost one request, not two"
+        assert asked == [], "a green main must ask for no step attribution"
 
     @pytest.mark.parametrize("boom", _NETWORK_FAILURES)
     def test_still_reports_a_red_main_when_the_attribution_cannot_be_read(
@@ -753,3 +774,312 @@ class TestFetchRuns:
             "https://api.github.com/repos/o/r/actions/workflows/quality.yml/runs"
             "?branch=trunk&event=push&status=completed&per_page=10"
         ]
+
+
+def _pytest_step_name() -> str:
+    """The name GitHub gives `quality.yml`'s pytest step: `Run ` plus its `run:` line."""
+    prefix = "- run: " + main_ci_status.PYTEST_STEP_PREFIX.removeprefix("Run ")
+    lines = [line.strip() for line in _workflow().splitlines()]
+    matches = [line for line in lines if line.startswith(prefix)]
+    assert len(matches) == 1, f"quality.yml should have one step starting {prefix!r}"
+    return "Run " + matches[0].removeprefix("- run: ")
+
+
+def _stamp(instant: datetime) -> str:
+    """A time as the Actions API writes it."""
+    return instant.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _timed_job(seconds: float, conclusion: str = "success") -> dict:
+    """A `checks` job whose pytest step took `seconds`, between two other steps."""
+    start = datetime(2026, 10, 17, 16, 8, 21, tzinfo=UTC)
+    end = start + timedelta(seconds=seconds)
+    return {
+        "name": main_ci_status.CHECKS_JOB,
+        "steps": [
+            {
+                "name": "Run uv run mypy",
+                "conclusion": "success",
+                "started_at": _stamp(start - timedelta(seconds=9)),
+                "completed_at": _stamp(start),
+            },
+            {
+                "name": _pytest_step_name(),
+                "conclusion": conclusion,
+                "started_at": _stamp(start),
+                "completed_at": _stamp(end),
+            },
+            {
+                "name": "Run uv run python tools/branch_id_check.py",
+                "conclusion": "success",
+                "started_at": _stamp(end),
+                "completed_at": _stamp(end + timedelta(seconds=1)),
+            },
+        ],
+    }
+
+
+def _times_by_id(seconds: dict[int, float]) -> Callable[[str, object], list[object]]:
+    """A `fetch_jobs` substitute that answers each run id with its pytest time."""
+
+    def _jobs(slug: str, run_id: object) -> list[object]:
+        assert isinstance(run_id, int)
+        return [_timed_job(seconds[run_id])]
+
+    return _jobs
+
+
+def _green_page(count: int, first: int = 1560) -> list[dict]:
+    """`count` successful runs, newest first, numbered down from `first`."""
+    return [_run("success", first - index) for index in range(count)]
+
+
+# Times whose median (790) differs from their mean (894) and from the newest
+# time (800), so a line built from either of those reads a different figure.
+# The median is 1.68 times the baseline, above the band.
+_SLOW = [800.0, 100.0, 790.0, 2000.0, 780.0]
+
+# The median here (205) is 0.44 times the baseline, below the band, while the
+# mean (333, 0.71 times) sits inside it. A line built from the mean would stay
+# silent on a baseline this far out of date.
+_FAST = [200.0, 150.0, 210.0, 900.0, 205.0]
+
+
+class TestPytestSeconds:
+    """The pytest step's time, read from one run's jobs (`PL-YY32`)."""
+
+    def test_reads_the_time_between_the_steps_start_and_end(self) -> None:
+        assert main_ci_status.pytest_seconds([_timed_job(523)]) == 523.0
+
+    def test_reads_only_the_checks_job(self) -> None:
+        other = _timed_job(9999) | {"name": "release"}
+        assert main_ci_status.pytest_seconds([other, _timed_job(523)]) == 523.0
+        assert main_ci_status.pytest_seconds([other]) is None
+
+    @pytest.mark.parametrize("conclusion", ["failure", "cancelled", "skipped", None])
+    def test_a_step_that_did_not_end_in_success_has_no_time(self, conclusion: str | None) -> None:
+        """It stopped early, so its time would understate the suite."""
+        job = _timed_job(523)
+        job["steps"][1]["conclusion"] = conclusion
+        assert main_ci_status.pytest_seconds([job]) is None
+
+    @pytest.mark.parametrize("key", ["started_at", "completed_at"])
+    @pytest.mark.parametrize("value", [None, "", "yesterday", 1760717301])
+    def test_a_step_without_a_readable_time_has_none(self, key: str, value: object) -> None:
+        job = _timed_job(523)
+        job["steps"][1][key] = value
+        assert main_ci_status.pytest_seconds([job]) is None
+
+    def test_a_named_pytest_step_is_not_found(self) -> None:
+        """Naming the step would change what GitHub calls it; the caller then declines."""
+        job = _timed_job(523)
+        job["steps"][1]["name"] = "pytest, with coverage"
+        assert main_ci_status.pytest_seconds([job]) is None
+
+    @pytest.mark.parametrize(
+        "jobs",
+        [[], ["not a dict"], [{"name": "checks", "steps": "not a list"}], [{"name": "checks"}]],
+    )
+    def test_returns_none_from_a_malformed_or_empty_payload(self, jobs: list) -> None:
+        assert main_ci_status.pytest_seconds(jobs) is None
+
+
+class TestPytestAdvisory:
+    """The computation: the median against the baseline and its band (`PL-YY32`)."""
+
+    @pytest.mark.parametrize("fraction", [main_ci_status.PYTEST_BAND[0], 1.0, 0.8, 1.2])
+    def test_says_nothing_inside_the_band(self, fraction: float) -> None:
+        seconds = [main_ci_status.PYTEST_BASELINE_S * fraction] * main_ci_status.PYTEST_RUNS
+        assert main_ci_status.pytest_advisory(seconds, _green_page(5)) is None
+
+    def test_says_nothing_on_the_upper_bound(self) -> None:
+        upper = main_ci_status.PYTEST_BASELINE_S * main_ci_status.PYTEST_BAND[1]
+        assert main_ci_status.pytest_advisory([upper] * 5, _green_page(5)) is None
+
+    def test_reports_the_median_above_the_band(self) -> None:
+        line = main_ci_status.pytest_advisory(_SLOW, _green_page(5))
+        assert line is not None
+        assert "is 790 s, which is 1.68 times the 470 s baseline" in line
+        assert "Find what slowed it." in line
+
+    def test_reports_the_median_below_the_band(self) -> None:
+        line = main_ci_status.pytest_advisory(_FAST, _green_page(5))
+        assert line is not None
+        assert "is 205 s, which is 0.44 times the 470 s baseline" in line
+        assert "or the band cannot catch the next slowdown" in line
+
+    def test_names_the_runs_the_median_was_taken_over(self) -> None:
+        line = main_ci_status.pytest_advisory(_SLOW, _green_page(5, first=1560))
+        assert line is not None
+        assert "main's last 5 successful runs (#1560 back to #1556)" in line
+        assert line.endswith("https://github.com/o/r/actions/runs/1560")
+
+
+class TestPytestTimeLine:
+    """Which runs are read, and every way the read declines (`PL-YY32`)."""
+
+    def test_reads_the_newest_successful_runs_and_passes_over_the_rest(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        runs = [
+            _run("cancelled", 1570),
+            _run("success", 1569),
+            _run("failure", 1568),
+            *_green_page(6, first=1567),
+        ]
+        asked: list[object] = []
+        slow = dict(zip([1569, 1567, 1566, 1565, 1564], _SLOW, strict=True))
+
+        def _jobs(slug: str, run_id: object) -> list[object]:
+            asked.append(run_id)
+            assert isinstance(run_id, int)
+            return [_timed_job(slow[run_id - 99000000])]
+
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", _jobs)
+        line = main_ci_status.pytest_time_line("o/r", runs)
+        assert sorted(asked) == sorted(99000000 + number for number in slow)
+        assert line is not None
+        assert "(#1569 back to #1564) is 790 s" in line
+
+    def test_says_nothing_while_the_median_is_inside_the_band(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        page = _green_page(5)
+        times = {run["id"]: 470.0 + index for index, run in enumerate(page)}
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", _times_by_id(times))
+        assert main_ci_status.pytest_time_line("o/r", page) is None
+
+    def test_declines_with_fewer_successful_runs_than_the_median_needs(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A median of a smaller set would mean something else, so it is not taken."""
+        asked: list[object] = []
+        monkeypatch.setattr(
+            main_ci_status, "fetch_jobs", lambda slug, run_id: asked.append(run_id) or []
+        )
+        runs = [*_green_page(4), _run("failure", 1500), _run("cancelled", 1499)]
+        assert main_ci_status.pytest_time_line("o/r", runs) == main_ci_status.pytest_declined(
+            "only 4 of main's last 6 completed runs succeeded, and the median needs 5"
+        )
+        assert asked == [], "a declined line asks for nothing"
+
+    @pytest.mark.parametrize("boom", _NETWORK_FAILURES)
+    def test_declines_in_words_when_a_read_fails(
+        self, monkeypatch: pytest.MonkeyPatch, boom: Exception
+    ) -> None:
+        """One failed read declines the whole line rather than take the median of four."""
+        page = _green_page(5)
+
+        def _jobs(slug: str, run_id: object) -> list[object]:
+            if run_id == page[2]["id"]:
+                raise boom
+            return [_timed_job(2000)]
+
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", _jobs)
+        assert main_ci_status.pytest_time_line("o/r", page) == main_ci_status.pytest_declined(
+            f"the Actions API could not be read ({boom})"
+        )
+
+    def test_declines_when_a_run_has_no_finished_pytest_step(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        page = _green_page(5, first=1560)
+
+        def _jobs(slug: str, run_id: object) -> list[object]:
+            if run_id == page[3]["id"]:
+                return [_timed_job(2000, conclusion="cancelled")]
+            return [_timed_job(2000)]
+
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", _jobs)
+        assert main_ci_status.pytest_time_line("o/r", page) == main_ci_status.pytest_declined(
+            "run #1557 has no finished pytest step in its checks job"
+        )
+
+    def test_a_declined_line_gives_no_figure_but_the_baseline(self) -> None:
+        line = main_ci_status.pytest_declined("the Actions API could not be read (offline)")
+        assert line == (
+            "CI's pytest step time was not compared with its 470 s baseline, because "
+            "the Actions API could not be read (offline)."
+        )
+
+
+class TestMainWithThePytestLine:
+    """How the pytest line prints beside the verdict lines, end to end (`PL-YY32`)."""
+
+    @pytest.fixture(autouse=True)
+    def _origin(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _github_origin(monkeypatch)
+
+    def test_a_green_main_inside_the_band_prints_nothing(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        page = _green_page(10)
+        monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: page)
+        monkeypatch.setattr(
+            main_ci_status, "fetch_jobs", _times_by_id({run["id"]: 480.0 for run in page})
+        )
+        assert main_ci_status.main() == 0
+        assert capsys.readouterr().out == ""
+
+    def test_a_green_main_costs_one_request_per_run_the_median_reads(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The runs list, then one jobs request for each of the newest five green runs."""
+        page = _green_page(10)
+        asked: list[object] = []
+
+        def _jobs(slug: str, run_id: object) -> list[object]:
+            asked.append(run_id)
+            return [_timed_job(480)]
+
+        monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: page)
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", _jobs)
+        assert main_ci_status.main() == 0
+        assert sorted(asked) == sorted(run["id"] for run in page[: main_ci_status.PYTEST_RUNS])
+
+    def test_a_drifted_green_main_prints_only_the_pytest_line(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        page = _green_page(5)
+        times = dict(zip((run["id"] for run in page), _SLOW, strict=True))
+        monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: page)
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", _times_by_id(times))
+        assert main_ci_status.main() == 0
+        lines = capsys.readouterr().out.splitlines()
+        assert len(lines) == 1
+        assert lines[0].startswith("CI's pytest step has drifted from its baseline.")
+
+    def test_the_pytest_line_comes_after_a_red_verdict(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A red `main` matters more than a slow suite, so it is read first."""
+        page = [_run("failure", 1561), *_green_page(5)]
+        times = dict(zip((run["id"] for run in page[1:]), _SLOW, strict=True))
+
+        def _jobs(slug: str, run_id: object) -> list[object]:
+            if run_id == page[0]["id"]:
+                return [_REPLAY_ONLY]
+            return _times_by_id(times)(slug, run_id)
+
+        monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: page)
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", _jobs)
+        assert main_ci_status.main() == 0
+        lines = capsys.readouterr().out.splitlines()
+        assert len(lines) == 2
+        assert "#1561 on abcdef12 concluded failure" in lines[0]
+        assert lines[1].startswith("CI's pytest step has drifted from its baseline.")
+
+
+class TestThePytestStepMatchesTheWorkflow:
+    """The job and step names are strings GitHub derives from `quality.yml`; hold them to it.
+
+    A renamed job or a step given a `name:` would make every run read as having
+    no pytest step. The line would then decline at every session start, which
+    is honest but stops the check, so a test fails first.
+    """
+
+    def test_the_checks_job_is_a_job_of_quality_yml(self) -> None:
+        assert f"\n  {main_ci_status.CHECKS_JOB}:\n" in _workflow()
+
+    def test_one_unnamed_step_runs_pytest_and_github_names_it_with_the_prefix(self) -> None:
+        assert _pytest_step_name().startswith(main_ci_status.PYTEST_STEP_PREFIX)
