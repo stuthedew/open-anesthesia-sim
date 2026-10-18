@@ -70,9 +70,12 @@ wheels/
 # records a gitlink - mode 160000, pointing at a commit this repository has no
 # `.gitmodules` entry for - so a clone of this repository gets a reference it
 # cannot resolve rather than the files. Git prints a warning, which is easy to
-# miss inside a `git add -A`. `PL-548V` covers the rule that tells sessions to
-# make such a clone without naming a destination.
+# miss inside a `git add -A`. `.claude/rules/citing-sources.md` now tells a
+# session to clone the private reference corpus outside the working tree, and
+# `/open-anesthesia-sim-references/` is ignored for a session that clones it
+# into the root anyway (`PL-548V`).
 /oas-mirror/
+/open-anesthesia-sim-references/
 /output/
 /outputs/
 

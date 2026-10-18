@@ -3,10 +3,12 @@ id: PL-548V
 title: citing-sources.md tells a session to clone the private reference corpus with no destination and no ignore rule, so running it from the repository root leaves a nested git repo in the working tree
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, infra
 touches: .claude/rules/citing-sources.md, .gitignore
 added: 2026-09-15
+closed: 2026-10-18
+pr: 1547
 not-delegable: proving it means cloning the private corpus from a session holding add_repo access and reading git status afterwards, which no check in this repository can do; the rule's own text is the only artifact, and whether it names a usable destination is a judgement rather than a match
 ---
 
