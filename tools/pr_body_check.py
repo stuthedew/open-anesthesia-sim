@@ -205,7 +205,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_docket_config  # noqa: E402
-from docket.model import parse_front_matter  # noqa: E402
+from docket.model import parse_front_matter, pr_number  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import (  # noqa: E402
     RECORDS,
@@ -565,8 +565,10 @@ def queue_backlinks(root: Path = ROOT) -> dict[int, set[str]]:
     """
     links: dict[int, set[str]] = {}
     for item in read_items(root / load_docket_config(root).items_dir):
-        if item.pr.isdigit():
-            links.setdefault(int(item.pr), set()).add(item.identifier)
+        # Read by `pr_number`, which `docket check` refuses by, so `pr: 07`
+        # links no pull request here while the check calls it an error (`PL-4DK2`).
+        if (number := pr_number(item.pr)) is not None:
+            links.setdefault(number, set()).add(item.identifier)
     return links
 
 

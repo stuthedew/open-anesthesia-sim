@@ -3944,7 +3944,7 @@ def test_the_cut_window_names_what_landed_since_the_cut() -> None:
     while `docs/releases/v0.3.8.md` names it nowhere and `v0.3.9.md` does.
     """
     advisories = _window_advisories(
-        CutWindow(version="0.3.8", landed=("PL-D9WD",)), notes={"0.3.8": frozenset({"PL-K7QX"})}
+        CutWindow(version="0.3.8", landed=("PL-D9WD",)), notes={"v0.3.8": frozenset({"PL-K7QX"})}
     )
 
     assert len(advisories) == 1
@@ -3958,7 +3958,7 @@ def test_an_id_the_cut_already_names_is_not_a_stranger() -> None:
     """The branch's own work reaches the base through the merge, which is not the seam."""
     assert (
         _window_advisories(
-            CutWindow(version="0.3.8", landed=("PL-D9WD",)), notes={"0.3.8": frozenset({"PL-D9WD"})}
+            CutWindow(version="0.3.8", landed=("PL-D9WD",)), notes={"v0.3.8": frozenset({"PL-D9WD"})}
         )
         == []
     )
@@ -5445,3 +5445,21 @@ def test_a_k_selector_is_read_where_a_command_invokes_pytest() -> None:
         "uv run pytest tests/unit -k x ;& true",
     ):
         assert not _has(_selector_errors(verify=command), NARROWS), command
+
+
+def test_a_stamp_written_without_its_v_matches_its_notes() -> None:
+    """`milestone: 0.4.1` against `v0.4.1.md` naming it is one release, not two (`PL-4DK2`)."""
+    report = analyze(
+        [_item("PL-2222", status="done", closed=TODAY, milestone="0.4.1", commit="abc1234")],
+        TODAY,
+        notes={"v0.4.1": frozenset({"PL-2222"})},
+    )
+
+    assert [line for line in report.errors if "0.4.1" in line] == []
+
+
+def test_a_pr_value_with_a_leading_zero_is_refused() -> None:
+    """The reading `vcs` and `tools/pr_body_check.py` share, so none of them takes it for #7."""
+    report = analyze([_item(pr="07")], TODAY)
+
+    assert any("`pr` is '07'" in line for line in report.errors)

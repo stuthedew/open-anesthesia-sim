@@ -32,6 +32,7 @@ from docket.model import (
     misread_faults,
     parse_front_matter,
     parse_item,
+    pr_number,
     ranks_as_generator,
     ranks_as_generator_defect,
     recurrence_count,
@@ -42,6 +43,8 @@ from docket.model import (
     root_cause_faults,
     split_deferred_from,
     split_generator_verdict,
+    split_list,
+    top_band,
     unread_front_matter_lines,
     with_front_matter_field,
     with_front_matter_value,
@@ -1481,3 +1484,44 @@ def test_a_project_declaring_no_machinery_refutes_every_claim() -> None:
     (fault,) = generator_defect_faults(item, ())
 
     assert "declares no `generator_paths`" in fault
+
+
+# --- one reading of each item field predicate (`PL-4DK2`) --------------------
+
+
+def test_a_pr_value_is_a_number_only_where_github_would_give_one() -> None:
+    """`str.isdigit` took `07` for #7 and `²` for a digit that `int` then refused."""
+    assert pr_number("12") == 12
+    assert pr_number("07") is None
+    assert pr_number("²") is None
+    assert pr_number("#12") is None
+    assert pr_number("") is None
+
+
+def test_the_top_band_leaves_untriaged_work_out() -> None:
+    """Triage gives an item its band, so an untriaged `P0` does not make the band `P0`."""
+    untriaged = _item(identifier="PL-0001", priority="P0", status="untriaged")
+    ready = _item(identifier="PL-0002", priority="P1")
+
+    assert top_band([untriaged, ready]) == ("P1", [ready])
+    assert top_band([untriaged]) == ("", [])
+
+
+def test_a_list_field_drops_blank_entries_wherever_it_is_split() -> None:
+    assert split_list(" a.py,, b.py ,") == ("a.py", "b.py")
+
+
+def test_an_anticipated_item_waits_only_while_it_is_blocked() -> None:
+    """The class says the hazard is not live yet, and `blocked` says until when (`PL-ZF2G`)."""
+    blocked = _item(status="blocked", classes=("safety", "anticipated"))
+
+    assert blocked.waits_anticipated
+    assert not _item(classes=("safety", "anticipated")).waits_anticipated
+    assert not _item(status="blocked", classes=("safety",)).waits_anticipated
+
+
+def test_startable_is_open_triaged_and_not_blocked() -> None:
+    assert _item().is_startable
+    assert not _item(status="blocked").is_startable
+    assert not _item(status="untriaged").is_startable
+    assert not _item(status="done", closed=date(2026, 8, 2)).is_startable

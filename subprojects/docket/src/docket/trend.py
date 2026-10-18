@@ -47,6 +47,7 @@ from .model import (
     PRIORITIES,
     Item,
     is_under,
+    top_band,
 )
 from .release import NOTES_DIR
 from .vcs import Churn
@@ -333,19 +334,14 @@ def analyze(
     # one. `P0` is a hotfix here and is empty in a healthy store, so naming it
     # unconditionally would spend the sharpest line in the report saying that
     # four lanes hold nothing.
-    top_band = next(
-        (band for band in PRIORITIES if any(item.priority == band for item in open_items)),
-        PRIORITIES[1],
-    )
+    # Untriaged work holds no band, so it is left out here as `checks` leaves it
+    # out (`PL-4DK2`).
+    name, band = top_band(items)
     return Trend(
         periods=tuple(period for period in periods if not period.is_empty),
         open_lanes=dict(Counter(item.lane(config.workflow_paths) for item in open_items)),
-        top_band=dict(
-            Counter(
-                item.lane(config.workflow_paths) for item in open_items if item.priority == top_band
-            )
-        ),
-        top_band_name=top_band,
+        top_band=dict(Counter(item.lane(config.workflow_paths) for item in band)),
+        top_band_name=name or PRIORITIES[1],
         by=by,
         churn_reading=reading,
         anchor=first,

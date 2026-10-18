@@ -501,3 +501,19 @@ def test_no_git_names_the_day_its_windows_are_anchored_at(
 
     assert "anchored at 2026-08-25, the first closure." in key
     assert "A run that reads git anchors at the first commit to change a line instead" in key
+
+
+def test_an_untriaged_item_does_not_name_the_top_band() -> None:
+    """The band `checks` reads, so the two do not name `P0` and `P1` for one store (`PL-4DK2`)."""
+    report = analyze(
+        [
+            _item("PL-0001", status="untriaged", closed=None, priority="P0"),
+            _item("PL-0002", status="ready", closed=None, priority="P1"),
+        ],
+        Churn(),
+        CONFIG,
+        today=date(2026, 8, 27),
+    )
+
+    assert report.top_band_name == "P1"
+    assert report.top_band == {"product": 1}

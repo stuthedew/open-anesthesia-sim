@@ -2904,3 +2904,13 @@ def test_the_notes_files_come_back_by_version_and_without_a_readme(tmp_path: Pat
         (releases / name).write_text("# notes\n", encoding="utf-8")
 
     assert [path.name for path in notes_files(tmp_path)] == ["v0.4.0.md", "v0.5.9.md", "v0.5.10.md"]
+
+
+def test_a_stamp_written_without_its_v_is_the_same_release() -> None:
+    """`milestone: 0.4.1` is the release whose notes are `v0.4.1.md` (`PL-4DK2`)."""
+    from docket.release import unrecorded_milestones, unreleased
+
+    bare = _item("PL-2222", milestone="0.4.1")
+
+    assert unrecorded_milestones([bare], {"v0.4.1": frozenset({"PL-2222"})}) == []
+    assert [i.identifier for i in unreleased([bare], "v0.4.1")] == ["PL-2222"]
