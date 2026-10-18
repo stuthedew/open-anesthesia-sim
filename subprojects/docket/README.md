@@ -737,10 +737,18 @@ A claim still live whose session has ended is taken over with `claim --over
 
 **A claim ends in one of five ways:** a `Yield:`, the branch's own copy of the
 item reaching `done`, `dropped` or `blocked` (`claims.RELEASING_STATUSES`), a
-takeover, a lapse, or landing. Landing is the one a session cannot record,
-because the merge authors it, so it stays derived. A branch the base contains,
-or whose content it holds, is not read at all; within one still read, a claim
-is spent by the base closing the item, or by the branch's landed prefix — a
+takeover, a lapse, or landing. A block counts only where the branch wrote it
+(`claims.releases`). One the base already shows is somebody else's, so `claim`
+accepts the item and the claim holds, because a design round on an item another
+session blocked is still working it (project owner, 2026-09-26, ratified, over
+keeping the refusal, `PL-0JDP`). Landing is the one a session cannot record,
+because the merge authors it, so it stays derived. A branch the base contains
+is not read at all. A branch whose content the base holds is read for its live
+claims alone: a branch that took another pull request's head and then claimed
+carries nothing of its own, and that pull request merging must not end the
+claim (`PL-7XGR`). `claim` still refuses to write a new claim on such a branch,
+since its own pull request has usually merged. Within a branch, a claim is
+spent by the base closing the item, or by the branch's landed prefix — a
 commit descending from the claim through which the branch's work is all on the
 base, which is what a squash leaves on a branch that goes on committing
 (`PL-8JQQ`).

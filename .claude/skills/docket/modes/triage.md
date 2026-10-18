@@ -518,7 +518,7 @@ without one. Where an item is genuinely not done, reopen it and the field is
 writable again; which tree the command passed on is recoverable from the item's
 `pr` (`PL-JZ1D`).
 
-### `falsifies:`, and why triage is the only pass that can write it
+### `falsifies:`, and why triage is the pass that writes it
 
 **Skip this unless the item's brief already quotes a string its work will
 delete.** The field is rare by construction, and the closing paragraph says how
@@ -535,7 +535,7 @@ check refuses - correctly, and every time. `falsifies:` holds enough of the one
 assertion the work makes untrue for that removal to be folded and printed
 rather than counted.
 
-**Why this pass and no other.** `docket verify` reads the declaration from **the
+**Why this pass.** `docket verify` reads the declaration from **the
 base's copy of the item**, never from the branch, because the whole worth of
 the field is that a reviewer wrote it before the work. So the line counts only
 once it has *merged*: a session that triages an item and works it in the same
