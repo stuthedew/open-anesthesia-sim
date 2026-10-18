@@ -2462,9 +2462,9 @@ def cmd_show(args: argparse.Namespace) -> int:
         # item reaches `show` and nothing else, so before this the one thing it
         # could not learn here was that another branch had already written to
         # the file it was about to write to (`PL-N1JK`). Startable by
-        # `plan._startable`'s rule - open, triaged, not blocked, and not in
+        # `Item.is_startable`, which `plan._startable` reads, and not in
         # flight, which the condition above already holds - so a closed or
-        # blocked item is not invited to start (`PL-9F8B`).
+        # blocked item is not invited to start (`PL-9F8B`, `PL-RJLQ`).
         print(render.format_queue_edit(edits, _now(args), startable=item.is_startable))
     if threads := _notes_threads(root, config, item.identifier):
         print(render.format_notes_threads(threads, item.identifier, config.notes_file))

@@ -1529,6 +1529,32 @@ def test_status_names_the_later_milestone_that_places_an_item() -> None:
     assert "[v0.4.0] placed by that later milestone" in status
 
 
+def test_status_never_names_an_item_that_cannot_start() -> None:
+    """`PL-RJLQ`: a feature's next item, and the loose work, are startable items only.
+
+    `format_status` left out a blocked item and kept an untriaged one, so it
+    could name as next an item that `next` would never offer. It now reads
+    `Item.is_startable`, as `plan` and `show` do.
+    """
+    from docket.checks import Report
+    from docket.render import format_status
+
+    items = [
+        _open("PL-BB01", feature="mixed", status="untriaged"),
+        _open("PL-RD02", feature="mixed"),
+        _open("PL-DN03", feature="mixed", status="done"),
+        _open("PL-BB04", feature="held", status="untriaged"),
+        _open("PL-BL05", feature="held", status="blocked"),
+        _open("PL-DN06", feature="held", status="done"),
+        _open("PL-BB07", status="untriaged"),
+    ]
+    status = format_status(Report(items=items), None, None, _marked_plan())
+
+    assert "next: PL-RD02" in status
+    assert "nothing remaining can start: every open item is blocked or untriaged" in status
+    assert not {"PL-BB01", "PL-BB04", "PL-BB07"} & set(status.split())
+
+
 def test_status_defines_the_unmarked_row_rather_than_leaving_it_silent() -> None:
     """`PL-J790`'s point, met with a legend rather than a sentence per row: an
     unmarked row has to be distinguishable from one nobody looked at."""
