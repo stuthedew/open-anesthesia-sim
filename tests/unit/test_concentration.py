@@ -613,10 +613,10 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
         fat.set_partial_pressure_fraction(0.0)  # type: ignore[arg-type]
 
     with pytest.raises(TypeError, match="^tissue_return_partial_pressure_fraction of 0.0 was"):
-        venous.advance(0.0, step)  # type: ignore[arg-type]
+        venous.advance(0.0, step, 5.0)  # type: ignore[arg-type]
 
     with pytest.raises(TypeError, match="^arterial_partial_pressure_fraction of 0.0 was not"):
-        fat.advance(0.0, step)  # type: ignore[arg-type]
+        fat.advance(0.0, step, 0.3)  # type: ignore[arg-type]
 
     assert system.state_vector() == vector_before
 

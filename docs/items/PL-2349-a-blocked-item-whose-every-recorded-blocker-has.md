@@ -14,6 +14,7 @@ closed: 2026-10-12
 pr: 1427
 payoff: an item stops reading blocked the moment nothing blocks it, so released work reaches bin/docket next in the pull request that released it instead of waiting for a grooming pass
 verify: grep -q 'def test_a_blocked_item_whose_every_blocker_has_closed_is_an_error' subprojects/docket/tests/test_checks.py
+reenters: PL-6T44
 ---
 
 **Problem.** A blocked item whose every recorded blocker has closed has no status to move to short of ready, which demands verify: and payoff:, so the session closing the blocker leaves status: blocked standing as a false claim - PL-R417's closure on 2026-10-11 left five that way, and PL-5XG1 and PL-ZYHX sat 15 and 8 days

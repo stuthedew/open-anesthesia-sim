@@ -156,9 +156,9 @@ def _copy_fat_group_as(system: AgentUptakeSystem, group_class: type) -> TissueGr
     """Swap the system's fat group for a stand-in holding the same state.
 
     Copied field by field rather than rebuilt from parameters, so the run in
-    progress is untouched: blood flow is derived from cardiac output and the
-    stored amount is the trajectory, and rebuilding either would change what
-    the failure is measured against.
+    progress is untouched: the stored amount is the trajectory, and rebuilding
+    it would change what the failure is measured against. The group stores no
+    blood flow, which is formed from the cardiac output (`PL-HQF5`).
     """
 
     original = system.patient.fat
@@ -168,7 +168,6 @@ def _copy_fat_group_as(system: AgentUptakeSystem, group_class: type) -> TissueGr
         perfusion_fraction=original.perfusion_fraction,
         blood_gas_partition_coefficient=original.blood_gas_partition_coefficient,
         tissue_gas_partition_coefficient=original.tissue_gas_partition_coefficient,
-        blood_flow_l_min=original.blood_flow_l_min,
         agent_amount_l=original.agent_amount_l,
     )
     system.patient.fat = replacement
@@ -690,22 +689,38 @@ def test_a_failed_step_says_it_was_rolled_back_and_names_the_invariant() -> None
     assert FAT_REFUSAL_TEXT in message
 
 
+def _with_tissue_fractions_written_past_their_guard(
+    system: AgentUptakeSystem, scale: float
+) -> None:
+    """Scale each tissue's perfusion fraction, writing it past the tissue's own guard.
+
+    No guarded write can now leave the tissue flows out of step with the
+    cardiac output. Each flow is formed from the output (`PL-HQF5`), and a
+    fraction is written once (`PL-Z0HN`). This write bypasses that guard, as
+    a rollback does, so that the settings record's own refusal can still be
+    reached. Scaled by 1.2 at 5.0 L/min, the flows sum to 6.0 L/min.
+    """
+
+    for tissue in system.patient.tissues:
+        object.__setattr__(tissue, "perfusion_fraction", tissue.perfusion_fraction * scale)
+
+
 def test_a_stale_record_met_at_step_time_is_a_failed_step_stated_in_litres_per_minute() -> None:
     """A record the step cannot build is a failed step, in the unit the flows were set in.
 
     `_propagator_for` builds the settings record when a setting has moved
     since the last step. The record refuses tissue flows that no longer sum
-    to the cardiac output. Setting a tissue's flow directly leaves them that
-    way, because a tissue group does not know which patient it belongs to
-    (`PL-HQF5`). Before `PL-KFNP`, this test reached the mismatch by
-    assigning the output to the patient directly, bypassing
-    `set_cardiac_output`, and the patient now refuses that. The refusal is
+    to the cardiac output. Until `PL-HQF5`, setting a tissue's flow directly
+    left them that way. No guarded write can now, so this test writes the
+    tissue fractions past their guard instead. Before `PL-KFNP`, it reached
+    the mismatch by assigning the output to the patient directly, bypassing
+    `set_cardiac_output`. The refusal is
     restated like every other guard reached inside a step, because a
     `SimulationConfigurationError` out of `advance()` would promise a run
     still worth continuing (`core/exceptions.py`) and this run is refused on
     every step after, and at Reset; the step is rolled back like any other;
     and the two flows are named in L/min, which is what every readout shows,
-    as they were set. The tissue flows set from 6.0 sum to 6.000000000000001,
+    as they were set. The tissue flows sum to 6.0 L/min within float noise,
     and the message says 6.0 (`PL-M4M0`).
     """
 
@@ -713,10 +728,12 @@ def test_a_stale_record_met_at_step_time_is_a_failed_step_stated_in_litres_per_m
     system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
     before = system.capture_state()
 
-    for tissue in system.patient.tissues:
-        tissue.set_blood_flow(6.0 * tissue.perfusion_fraction)
+    _with_tissue_fractions_written_past_their_guard(system, 1.2)
 
-    assert sum(tissue.blood_flow_l_min for tissue in system.patient.tissues) == 6.000000000000001
+    assert sum(
+        tissue.blood_flow_l_min_at(system.patient.cardiac_output_l_min)
+        for tissue in system.patient.tissues
+    ) == pytest.approx(6.0, abs=1e-12)
     assert system.patient.cardiac_output_l_min == 5.0
 
     with pytest.raises(SimulationNumericalError) as raised:
@@ -736,15 +753,13 @@ def test_a_failed_step_s_restated_refusal_is_pinned_whole() -> None:
 
     The test above matches phrases of it, which passes with the step, the
     rollback clause or a flow wrong (`PL-79PK`). The step is the 0.1 s the
-    interface takes. The tissue flows are set from 6.0 L/min against a
-    cardiac output of 5.0 L/min, as above.
+    interface takes. The tissue flows sum to 6.0 L/min against a cardiac
+    output of 5.0 L/min, as above.
     """
 
     system = _sevoflurane_at_one_mac()
     system.advance(SimulationStep(0.1))
-
-    for tissue in system.patient.tissues:
-        tissue.set_blood_flow(6.0 * tissue.perfusion_fraction)
+    _with_tissue_fractions_written_past_their_guard(system, 1.2)
 
     with pytest.raises(SimulationNumericalError) as raised:
         system.advance(SimulationStep(0.1))

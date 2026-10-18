@@ -891,10 +891,10 @@ class RunView(QWidget):
         which setting was refused. Any other exception halts the run through
         `_halt_run`; a raise from outside the project's hierarchy is still a
         run that cannot continue (`PL-YK2V`). An accepted setting clears a
-        standing refusal, and the way out a refused Reset left on the banner:
-        the setting may be the repair that Reset needed - `set_cardiac_output`
-        recomputes the tissue flows - and the next Reset is refused or not on
-        the record as it then stands (`PL-M4M0`).
+        standing refusal, and the way out a refused Reset left on the banner.
+        The next Reset is then refused or not on the record as it then stands
+        (`PL-M4M0`). Until `PL-HQF5` a cardiac output change could repair
+        that record, because it recomputed the stored tissue flows.
 
         The frame is left to the render tick only when `coalesce` is set
         and no refusal was standing before or is standing after: a refusal,
@@ -1003,8 +1003,9 @@ class RunView(QWidget):
         for a settings record the next step would be refused on too, so the
         run is left exactly as it was and is stopped through the failed-step
         path - the refusal recorded, the status word, the transport and the
-        banner stating it - with the banner's way out naming the setting to
-        change, since Reset is the door it names otherwise. Every raise
+        banner stating it. Reset is the door the banner names otherwise, so
+        its way out is `REFUSED_RESET_WAY_OUT_TEXT`, which says no setting
+        can repair the refusal (`PL-01GY`). Every raise
         halts, as a step's does: a `SimulationConfigurationError` here is
         not a refused setting, because the run it leaves is one that cannot
         be cleared (`PL-M4M0`). `case_restarted` is not emitted, since no
@@ -1074,8 +1075,8 @@ class RunView(QWidget):
         answered by the halt that refusal is, restated, and the selector is
         put back to the agent the controller names, since the snapshot that
         would name it is what refused (`PL-V2HC`); Reset is the way out the
-        halt banner names, unless a refused Reset has left the setting to
-        change standing as the exit.
+        halt banner names, unless a refused Reset has left its own way out
+        standing.
         """
 
         agent_id = self._agent_dropdown.itemData(index)

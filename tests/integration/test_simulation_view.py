@@ -93,7 +93,7 @@ from anesthesia_sim.app.dashboard_frame import (
     NO_TIME_BOOKMARKS_TEXT,
     NO_TRACES_SHOWN_TEXT,
     READOUT_PANELS,
-    REFUSED_RESET_REPAIR_TEXT,
+    REFUSED_RESET_WAY_OUT_TEXT,
     REMOVE_NOTHING_SELECTED_TEXT,
     RESET_EXIT_TEXT,
     RESET_LABEL,
@@ -723,7 +723,6 @@ def _real_step_failure() -> SimulationNumericalError:
         perfusion_fraction=original.perfusion_fraction,
         blood_gas_partition_coefficient=original.blood_gas_partition_coefficient,
         tissue_gas_partition_coefficient=original.tissue_gas_partition_coefficient,
-        blood_flow_l_min=original.blood_flow_l_min,
     )
 
     try:
@@ -750,21 +749,38 @@ class _StepFailingController(SimulationController):
 
 
 def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
-    """Set each tissue's blood flow from `cardiac_output_l_min`, bypassing the patient.
+    """Make the tissue flows sum to `cardiac_output_l_min`, past the tissues' guard.
 
-    A tissue group does not know which patient it belongs to, so its own
-    `set_blood_flow` accepts a flow that the patient's cardiac output does not
-    give it (`PL-HQF5`). No control here makes that call, because only the
-    patient's setter makes it. The patient keeps its output. The settings
-    record that a run's definition opens on then refuses the tissue flows,
-    because they no longer sum to the output. It refuses them at the next
-    step and at Reset (`PL-M4M0`). Before `PL-KFNP`, this helper assigned the
-    output to the patient directly, bypassing `set_cardiac_output`, and the
-    patient now refuses that.
+    Each tissue's perfusion fraction is scaled by `cardiac_output_l_min` over
+    the patient's output, and written past the tissue's own guard. The patient
+    keeps its output. The settings record that a run's definition opens on
+    then refuses the tissue flows, because they no longer sum to the output.
+    It refuses them at the next step and at Reset (`PL-M4M0`), and no setting
+    repairs them. No guarded write can make this record now. Every flow is
+    formed from the output (`PL-HQF5`), and a fraction is written once
+    (`PL-Z0HN`). Until then, a tissue's `set_blood_flow` made it, and a
+    cardiac output change repaired it. `_with_the_tissue_fractions_put_back`
+    stands in for that repair.
     """
 
-    for tissue in controller._state.uptake_system.patient.tissues:
-        tissue.set_blood_flow(cardiac_output_l_min * tissue.perfusion_fraction)
+    patient = controller._state.uptake_system.patient
+    scale = cardiac_output_l_min / patient.cardiac_output_l_min
+
+    for tissue in patient.tissues:
+        object.__setattr__(tissue, "perfusion_fraction", tissue.perfusion_fraction * scale)
+
+
+def _with_the_tissue_fractions_put_back(controller: SimulationController) -> None:
+    """Write back the reference adult's perfusion fractions, past the tissues' guard.
+
+    The fractions are typed from `data/patients/reference_adult.json`. With
+    them back, the settings record no longer refuses the tissue flows.
+    """
+
+    for tissue, fraction in zip(
+        controller._state.uptake_system.patient.tissues, (0.76, 0.18, 0.06), strict=True
+    ):
+        object.__setattr__(tissue, "perfusion_fraction", fraction)
 
 
 # ------------------------------------------------------- the constructor
@@ -2334,17 +2350,17 @@ def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplicatio
 
     `SimulationController.reset()` refuses a settings record that the run's
     definition cannot open on. Tissue flows that no longer sum to the cardiac
-    output make such a record, and setting a tissue's flow directly leaves
-    them that way (`_with_stale_tissue_flows`). Before `PL-M4M0` the refusal escaped the
+    output make such a record, and tissue fractions written past their guard
+    leave them that way (`_with_stale_tissue_flows`). Before `PL-M4M0` the refusal escaped the
     Reset slot after `pause()` and the state had been cleared, so the run
     stood half reset - compartments and clock at zero, the old definition and
     timeline kept, no failure recorded, `case_restarted` never emitted - with
     the screen reading "Running" and Pause offered. The core now refuses
     before it clears anything, and the view halts the run on the refusal:
     recorded as the failure, said by the status word, the transport and the
-    banner, whose way out names the setting to change rather than the Reset
-    just refused. Nothing moved, so the frame that follows draws the run
-    where it stood.
+    banner, whose way out says no setting can repair the refusal rather than
+    naming the Reset just refused (`PL-01GY`). Nothing moved, so the frame
+    that follows draws the run where it stood.
     """
 
     controller = SimulationController()
@@ -2384,7 +2400,7 @@ def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplicatio
     assert notice is not None
     assert notice == (
         f"Simulation stopped — {reason}. The values shown are the last completed step. "
-        f"Reset was refused for this reason. {REFUSED_RESET_REPAIR_TEXT}"
+        f"Reset was refused for this reason. {REFUSED_RESET_WAY_OUT_TEXT}"
     )
     assert RESET_EXIT_TEXT not in notice
 
@@ -2413,7 +2429,7 @@ def test_a_second_refused_reset_states_the_refusal_once(application: QApplicatio
     notice = run._notice_text.notice()
     assert notice == first
     assert notice.count("perfused at") == 1
-    assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_REPAIR_TEXT}")
+    assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_WAY_OUT_TEXT}")
 
 
 def test_a_reset_refused_on_a_failed_run_keeps_the_failure_and_states_the_refusal(
@@ -2448,19 +2464,21 @@ def test_a_reset_refused_on_a_failed_run_keeps_the_failure_and_states_the_refusa
     assert notice.endswith(
         "Reset was refused — SimulationConfigurationError: the tissue groups are perfused at "
         "5.0 L/min in total but cardiac output is 6.0 L/min; the venous balance returns what "
-        f"the tissues receive, so the two must agree. {REFUSED_RESET_REPAIR_TEXT}"
+        f"the tissues receive, so the two must agree. {REFUSED_RESET_WAY_OUT_TEXT}"
     )
 
 
 def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
     application: QApplication,
 ) -> None:
-    """Setting the cardiac output recomputes the tissue flows, after which Reset clears the run.
+    """Once the record accepts a setting again, the exit is lifted and Reset clears the run.
 
     The accepted setting also takes the refused-Reset exit off the banner at
     once, so the reader is sent to a Reset that will take rather than to a
-    setting already changed; a setting the stale record refuses, which every
-    other dial's is, leaves the exit standing (`PL-M4M0`).
+    setting already changed; a setting the stale record refuses leaves the
+    exit standing (`PL-M4M0`). Until `PL-HQF5`, the cardiac output change
+    itself repaired the stale flows. No setting repairs a fraction written
+    past its guard, so the fractions are put back first.
     """
 
     controller = SimulationController()
@@ -2478,8 +2496,9 @@ def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
 
     notice = run._notice_text.notice()
     assert notice is not None
-    assert notice.endswith(REFUSED_RESET_REPAIR_TEXT)
+    assert notice.endswith(REFUSED_RESET_WAY_OUT_TEXT)
 
+    _with_the_tissue_fractions_put_back(controller)
     run._handle_cardiac_output_change(6.0)
 
     notice = run._notice_text.notice()
@@ -2498,6 +2517,57 @@ def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
     assert run._notice_text.isHidden() is True
 
 
+def test_a_refused_reset_names_no_setting_and_sends_the_reader_to_restart(
+    application: QApplication,
+) -> None:
+    """No dial repairs the record a Reset was refused on, so the banner names none.
+
+    Every tissue flow is formed from the cardiac output (`PL-HQF5`), so a new
+    output scales them all by one factor and the sum still disagrees with it.
+    Until `PL-01GY` the banner said to change the setting the refusal names,
+    which is the cardiac output. This test moves that dial on the refused run
+    and shows the record still refused: the exit still stands, and the next
+    Reset is refused again. The expected sentence is written here as a
+    literal rather than read from the constant.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    restarts: list[None] = []
+    run.case_restarted.connect(lambda: restarts.append(None))
+    run._start_button.click()
+    _steps(run, 5)
+    _with_stale_tissue_flows(controller, 6.0)
+    way_out = (
+        "Reset was refused for this reason. No setting can repair this, because only a "
+        "fault in the simulator causes it. Close and reopen the application to start a "
+        "new run."
+    )
+
+    run._reset_button.click()
+
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert notice.endswith(way_out)
+    assert "Change the setting" not in notice
+
+    run._handle_cardiac_output_change(6.0)
+
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert notice.endswith(way_out)
+
+    run._reset_button.click()
+
+    assert restarts == []
+    assert controller.has_failed is True
+    assert controller.snapshot().elapsed_s > 0.0
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert notice.endswith(way_out)
+
+
 def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_last_step_ran_at(
     application: QApplication,
 ) -> None:
@@ -2508,9 +2578,10 @@ def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_
     step, or at the Reset that `PL-M4M0` refuses. The readout and the dial
     showed the assigned output beside compartment values and a chart computed
     at the old flows (`PL-J39J`). The patient now refuses that assignment.
-    Stale flows can still be reached by setting a tissue's flow directly
-    (`_with_stale_tissue_flows`), and that changes no cardiac output. The
-    patient keeps the output at which its last completed step ran. The
+    Since `PL-HQF5` stale flows can be reached only by writing the tissue
+    fractions past their guard (`_with_stale_tissue_flows`), and that changes
+    no cardiac output.
+    The patient keeps the output at which its last completed step ran. The
     settings record at the stale flows is refused before any step runs at
     them. So the readout, the dial, the values beside them and the run's
     definition, from which the chart is drawn, all show that output. The
@@ -2557,16 +2628,16 @@ def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_
     assert run._cardiac_output_slider.value() == 5.0
 
 
-def test_a_refused_branch_reset_halts_the_branch_and_names_the_same_repair(
+def test_a_refused_branch_reset_halts_the_branch_and_names_the_same_way_out(
     application: QApplication,
 ) -> None:
-    """The same halt on a branch's own run, naming the same door: the branch's own dial.
+    """The same halt on a branch's own run, naming the same way out.
 
     `_open_at` records the settings in force at the fork, and `reset()` reads
     them before the branch is stood back there (`PL-M4M0`). The comparison
-    stands, with the trunk untouched, and the way out is the one every run
-    has: a branch cannot start a case of its own (`PL-TFX5`), and the trunk's
-    Reset the fork panel already names.
+    stands, with the trunk untouched. The way out is the one every run has,
+    closing and reopening the application, because a branch cannot start a
+    case of its own (`PL-TFX5`).
     """
 
     case = _branched_case()
@@ -2588,22 +2659,23 @@ def test_a_refused_branch_reset_halts_the_branch_and_names_the_same_repair(
     assert branch._status_text.text() == "Stopped — simulation error"
     notice = branch._notice_text.notice()
     assert notice is not None
-    assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_REPAIR_TEXT}")
+    assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_WAY_OUT_TEXT}")
     assert view.runs[TRUNK_RUN_INDEX].controller.has_failed is False
 
 
 def test_a_refused_trunk_reset_while_comparing_names_the_one_door_open(
     application: QApplication,
 ) -> None:
-    """Beside a branch the selector is locked, so the repair is the only door, and it is named.
+    """Beside a branch the selector is locked, so the banner names a way out open on every run.
 
     A comparison replaces the trunk's agent selector with the
     `COMPARING_AGENT_LOCK_TEXT` chip, and the branch's Reset leaves the
     comparison standing, so a banner naming a new case named a control the
     screen had hidden, with the trunk's Reset - the one just refused - the
-    only control left enabled. The exit names the dial's repair instead,
-    after which the trunk's Reset takes and ends the comparison as the fork
-    panel says it does (`PL-M4M0`).
+    only control left enabled (`PL-M4M0`). The exit names closing and
+    reopening the application instead (`PL-01GY`). Once the record builds
+    again, the trunk's Reset takes and ends the comparison as the fork panel
+    says it does.
     """
 
     case = _branched_case()
@@ -2621,8 +2693,9 @@ def test_a_refused_trunk_reset_while_comparing_names_the_one_door_open(
     assert trunk._running_agent_lock_text.text() == COMPARING_AGENT_LOCK_TEXT
     notice = trunk._notice_text.notice()
     assert notice is not None
-    assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_REPAIR_TEXT}")
+    assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_WAY_OUT_TEXT}")
 
+    _with_the_tissue_fractions_put_back(trunk.controller)
     trunk._handle_cardiac_output_change(6.0)
     trunk._reset_button.click()
     _settle(application)

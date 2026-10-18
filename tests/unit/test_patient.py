@@ -3,7 +3,6 @@ from dataclasses import replace
 
 import pytest
 
-from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
@@ -111,19 +110,21 @@ def test_each_tissue_group_takes_its_own_agents_coefficients(
 
 def test_allocates_cardiac_output_to_tissues() -> None:
     patient = _build_patient()
+    cardiac_output_l_min = patient.cardiac_output_l_min
 
-    assert patient.vessel_rich.blood_flow_l_min == pytest.approx(5.0 * 0.76)
-    assert patient.muscle.blood_flow_l_min == pytest.approx(5.0 * 0.18)
-    assert patient.fat.blood_flow_l_min == pytest.approx(5.0 * 0.06)
-    assert patient.venous_blood.blood_flow_l_min == 5.0
+    assert patient.vessel_rich.blood_flow_l_min_at(cardiac_output_l_min) == pytest.approx(
+        5.0 * 0.76
+    )
+    assert patient.muscle.blood_flow_l_min_at(cardiac_output_l_min) == pytest.approx(5.0 * 0.18)
+    assert patient.fat.blood_flow_l_min_at(cardiac_output_l_min) == pytest.approx(5.0 * 0.06)
+    assert cardiac_output_l_min == 5.0
 
 
 def _assert_perfused_at_5_l_min(patient: PatientCompartments) -> None:
     assert patient.cardiac_output_l_min == 5.0
-    assert [tissue.blood_flow_l_min for tissue in patient.tissues] == [
-        5.0 * tissue.perfusion_fraction for tissue in patient.tissues
-    ]
-    assert patient.venous_blood.blood_flow_l_min == 5.0
+    assert [
+        tissue.blood_flow_l_min_at(patient.cardiac_output_l_min) for tissue in patient.tissues
+    ] == [5.0 * tissue.perfusion_fraction for tissue in patient.tissues]
 
 
 def test_replace_leaves_the_original_perfused_at_its_own_output() -> None:
@@ -133,43 +134,26 @@ def test_replace_leaves_the_original_perfused_at_its_own_output() -> None:
     venous pool, and the constructor set the copy's flows on them, so the
     original went on recording 5 L/min while perfused at 10, and its next step
     was refused as a numerical failure though nothing numerical had failed.
+    `PL-Z0T3` refused such a copy. Since `PL-HQF5` no compartment stores a
+    flow, so the copy is built, shares the compartments, and is perfused at
+    its own output while the original stays perfused at its own.
     """
 
     system = AgentUptakeSystem.default()
     patient = system.patient
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match=r"^vessel_rich is perfused at 3\.8 L/min, but this patient's cardiac output "
-        r"of 10\.0 L/min gives it 7\.6 L/min ",
-    ):
-        replace(patient, cardiac_output_l_min=CardiacOutput(10.0))
+    copied = replace(patient, cardiac_output_l_min=CardiacOutput(10.0))
 
+    assert copied.vessel_rich is patient.vessel_rich
+    assert copied.vessel_rich.blood_flow_l_min_at(copied.cardiac_output_l_min) == pytest.approx(
+        10.0 * 0.76
+    )
     _assert_perfused_at_5_l_min(patient)
     system.advance(SimulationStep(0.1))
 
 
-def test_rejects_a_venous_pool_perfused_at_another_output() -> None:
-    patient = _build_patient()
-    venous_blood = patient.venous_blood
-
-    with pytest.raises(
-        SimulationConfigurationError,
-        match=r"^venous_blood is perfused at 7\.0 L/min, but this patient's cardiac output "
-        r"of 5\.0 L/min gives it 5\.0 L/min ",
-    ):
-        replace(
-            patient,
-            venous_blood=VenousBloodCompartment(
-                volume_l=venous_blood.volume_l,
-                blood_gas_partition_coefficient=venous_blood.blood_gas_partition_coefficient,
-                blood_flow_l_min=7.0,
-            ),
-        )
-
-
 def test_a_deep_copy_takes_another_output_without_the_original() -> None:
-    """The copy the refusal above names: compartments of its own, set apart."""
+    """A copy with compartments of its own takes another output, and the original keeps its own."""
 
     system = AgentUptakeSystem.default()
     patient = system.patient
@@ -177,9 +161,97 @@ def test_a_deep_copy_takes_another_output_without_the_original() -> None:
 
     copied.set_cardiac_output(CardiacOutput(10.0))
 
-    assert copied.venous_blood.blood_flow_l_min == 10.0
+    assert copied.cardiac_output_l_min == 10.0
     _assert_perfused_at_5_l_min(patient)
     system.advance(SimulationStep(0.1))
+
+
+def test_a_compartment_blood_flow_is_the_patients_output_and_nothing_else() -> None:
+    """Changing the output moves every compartment's flow, and no write moves one alone.
+
+    Each compartment stored its own flow until `PL-HQF5`. A tissue's or the
+    venous pool's `set_blood_flow` could then leave a flow that the cardiac
+    output did not give it. The tissue half was refused only at the next step.
+    The venous half was never refused, because no step reads the pool's flow.
+    Neither compartment now has a flow field or a setter. Each tissue's flow
+    is formed from its patient's output when it is read. The expected flows
+    are the reference adult's fractions (0.76, 0.18 and 0.06, typed from
+    `data/patients/reference_adult.json`) times the output, worked here.
+    """
+
+    patient = _build_patient()
+
+    for compartment in (*patient.tissues, patient.venous_blood):
+        assert not hasattr(compartment, "blood_flow_l_min")
+        assert not hasattr(compartment, "set_blood_flow")
+
+        with pytest.raises(AttributeError, match="blood_flow_l_min"):
+            compartment.blood_flow_l_min = 99.0
+
+    for cardiac_output_l_min, expected_l_min in (
+        (5.0, (3.8, 0.9, 0.3)),
+        (7.5, (5.7, 1.35, 0.45)),
+        (0.0, (0.0, 0.0, 0.0)),
+    ):
+        patient.set_cardiac_output(CardiacOutput(cardiac_output_l_min))
+
+        assert [
+            tissue.blood_flow_l_min_at(patient.cardiac_output_l_min) for tissue in patient.tissues
+        ] == pytest.approx(expected_l_min, abs=1e-12)
+
+
+def test_a_perfusion_fraction_written_on_a_built_patient_is_refused() -> None:
+    """A fraction cannot be changed, or a new tissue group swapped in, once the patient is built.
+
+    Regression (`PL-Z0HN`). `vessel_rich.perfusion_fraction = 0.5` was accepted
+    on a built patient, so the fractions summed to 0.74. Nothing checked them
+    again, so every later cardiac output change was refused, and its
+    write-back moved the vessel-rich flow from 3.8 to 2.5 L/min under a
+    banner saying nothing had changed. A tissue group now refuses a second
+    write of its fraction, and the patient refuses a replacement group that
+    would leave the fractions summing to anything but 1. Deleting the
+    fraction or the group first is refused too, since a write after a
+    deletion would bypass both checks. Every refusal leaves the patient as it
+    was, perfused at 3.8, 0.9 and 0.3 L/min.
+    """
+
+    patient = _build_patient()
+    vessel_rich = patient.vessel_rich
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^the vessel_rich tissue group's perfusion fraction of 0.76 cannot be written "
+        "again, as 0.5, once the group is built",
+    ):
+        vessel_rich.perfusion_fraction = 0.5
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^the vessel_rich tissue group's perfusion_fraction cannot be deleted",
+    ):
+        del vessel_rich.perfusion_fraction
+
+    with pytest.raises(
+        SimulationConfigurationError, match="^the patient's vessel_rich cannot be deleted"
+    ):
+        del patient.vessel_rich
+
+    with pytest.raises(TypeError, match="^fat of 1.0 has type float, not TissueGroup$"):
+        patient.fat = 1.0  # type: ignore[assignment]
+
+    with pytest.raises(
+        SimulationConfigurationError, match="^tissue perfusion fractions must sum to 1$"
+    ):
+        patient.vessel_rich = replace(vessel_rich, perfusion_fraction=0.5)
+
+    assert patient.vessel_rich is vessel_rich
+    assert vessel_rich.perfusion_fraction == 0.76
+    _assert_perfused_at_5_l_min(patient)
+
+    patient.vessel_rich = replace(vessel_rich, volume_l=7.0)
+
+    assert patient.vessel_rich.volume_l == 7.0
+    assert patient.total_perfusion_fraction == pytest.approx(1.0, abs=FLOW_FRACTION_TOLERANCE)
 
 
 def test_tissue_return_is_flow_weighted() -> None:
@@ -254,7 +326,6 @@ def test_accepts_cardiac_output_at_both_ends_of_the_supported_range() -> None:
         patient.set_cardiac_output(CardiacOutput(cardiac_output_l_min))
 
         assert patient.cardiac_output_l_min == cardiac_output_l_min
-        assert patient.venous_blood.blood_flow_l_min == cardiac_output_l_min
 
 
 def test_rejects_cardiac_output_above_the_supported_range() -> None:
@@ -274,7 +345,6 @@ def test_rejects_cardiac_output_above_the_supported_range() -> None:
         patient.set_cardiac_output(CardiacOutput(1000.0))
 
     assert patient.cardiac_output_l_min == supported_output_l_min
-    assert patient.venous_blood.blood_flow_l_min == supported_output_l_min
 
 
 def test_rejects_construction_with_cardiac_output_above_the_supported_range() -> None:
