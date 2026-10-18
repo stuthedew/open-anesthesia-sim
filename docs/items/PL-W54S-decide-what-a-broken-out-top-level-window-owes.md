@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, anticipated
 feature: interface-areas
+milestone: v0.5.29
 touches: src/anesthesia_sim/app/unconditional_set.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/layout/model.py, tests/unit/test_unconditional_set.py, docs/MODEL.md, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-16
 closed: 2026-10-18

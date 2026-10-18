@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety
 feature: cardiac-output-write-consistency
+milestone: v0.5.29
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py
 added: 2026-10-18
 closed: 2026-10-18

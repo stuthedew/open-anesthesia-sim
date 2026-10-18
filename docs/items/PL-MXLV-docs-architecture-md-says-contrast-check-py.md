@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.5.29
 touches: docs/apparatus.md
 added: 2026-09-22
 closed: 2026-10-18

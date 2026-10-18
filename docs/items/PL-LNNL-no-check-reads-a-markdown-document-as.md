@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: prose-renders-as-written
+milestone: v0.5.29
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md
 blocked-by: PL-5DZ8, PL-8QMD, PL-ZGYX
 added: 2026-10-04

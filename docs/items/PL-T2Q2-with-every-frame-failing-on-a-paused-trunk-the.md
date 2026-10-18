@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: ux, defect
 feature: every-control-restates-the-halt
+milestone: v0.5.29
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py, tests/integration/test_controller.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17

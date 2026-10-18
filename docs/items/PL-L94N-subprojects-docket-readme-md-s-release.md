@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: convergence-visibility
+milestone: v0.5.29
 touches: subprojects/docket/README.md
 deferred-from: v0.6.0 - a sentence in the docket's own README, which changes nothing a learner sees
 added: 2026-10-18

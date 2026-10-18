@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: slug-rename-on-write
+milestone: v0.5.29
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/items/PL-08SS-simulationview-handle-fork-and-handle-here-fork.md, docs/items/PL-ZWQS-balance-quality-yml-s-two-test-parts-whose.md, docs/items/PL-Y2SL-a-learner-who-pauses-the-trunk-can-branch-there.md, docs/items/PL-75P5-a-refused-branch-stays-on-screen-through-a.md
 added: 2026-09-19
 closed: 2026-10-18
