@@ -1148,7 +1148,7 @@ def _hover_context(run: RunFrame, time_s: float, run_count: int) -> str:
     (`run_trace_style`): a single run has nothing to be told apart from, and
     a name on the only run drawn implies a comparison that is not on screen.
     The condition is not a hidden mode - a second run brings a second legend
-    entry and a second readout panel with it.
+    entry and a second named value in each readout panel with it.
 
     Args:
         run: The run the point belongs to.

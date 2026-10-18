@@ -74,7 +74,11 @@ from PySide6.QtWidgets import (
 
 from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.control_record import ControlInput
-from anesthesia_sim.app.control_timeline import AdjustmentGrouping, ControlAdjustment
+from anesthesia_sim.app.control_timeline import (
+    AdjustmentGrouping,
+    ControlAdjustment,
+    wrapping_between_parts,
+)
 from anesthesia_sim.app.controller import (
     RunRecord,
     RunSettings,
@@ -433,6 +437,12 @@ class RunView(QWidget):
         )
         self._playback_rate_dropdown.currentIndexChanged.connect(self._handle_playback_rate_change)
 
+        # Which run the heading line's values belong to, while more than one
+        # is shown. The paired readouts sit under the first run's heading,
+        # so a later run's heading is not beside its own values and its
+        # position names nothing (`PL-F2YS`).
+        self._heading_run_name_text = styled_label("", color=INK, bold=True)
+        self._heading_run_name_text.setHidden(True)
         self._compartment_substance_text = styled_label(
             substance_heading(snapshot), color=INK, bold=True
         )
@@ -487,8 +497,13 @@ class RunView(QWidget):
         )
         self._agent_amounts_text = styled_label(initial_accounting.amounts, color=MUTED)
 
+        # Wraps, because the record column is narrower than its longest
+        # lines, and only between their parts (`wrapping_between_parts`).
         self._control_timeline_text = styled_label(
-            timeline_panel((), 0).entries, color=MUTED, size_px=METRIC_QUALIFIER_SIZE
+            wrapping_between_parts(timeline_panel((), 0).entries),
+            color=MUTED,
+            size_px=METRIC_QUALIFIER_SIZE,
+            wrap=True,
         )
         self._control_timeline_overflow_text = styled_label(
             "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
@@ -690,7 +705,7 @@ class RunView(QWidget):
         _emphasised(self._status_text, statement.status)
         self._subtitle_text.setText(statement.subtitle)
         self._compartment_substance_text.setText(statement.substance_heading)
-        self._control_timeline_text.setText(statement.timeline.entries)
+        self._control_timeline_text.setText(wrapping_between_parts(statement.timeline.entries))
         self._control_timeline_overflow_text.setText(statement.timeline.overflow)
         self._control_timeline_overflow_text.setHidden(not statement.timeline.overflow)
         self._write_notice(statement.banner)
@@ -1398,7 +1413,7 @@ class RunView(QWidget):
         return row
 
     def set_run_name(self, name: str | None) -> None:
-        """Name this view in its own header and on both its record panels, or not at all.
+        """Name this view in its own header, its readouts and both its record panels, or not at all.
 
         The dashboard decides the name, from `dashboard_frame.run_label`, so
         that this panel and the chart's legend call one run the same thing -
@@ -1430,6 +1445,9 @@ class RunView(QWidget):
         self._run_name = name
         self._run_name_text.setText(name or "")
         self._run_name_text.setHidden(name is None)
+        self._heading_run_name_text.setText(name or "")
+        self._heading_run_name_text.setHidden(name is None)
+        self._readout_row.set_run_name(name)
         self._accounting_heading_text.setText(compared_panel_heading(ACCOUNTING_HEADING, name))
         self._control_timeline_heading_text.setText(
             compared_panel_heading(CONTROL_TIMELINE_HEADING, name)
@@ -1451,6 +1469,25 @@ class RunView(QWidget):
 
         return self._readout_section
 
+    def show_readings_of(self, other: RunView) -> tuple[QWidget, ...]:
+        """Carry `other`'s readouts in this run's panels, one block for both runs.
+
+        `docs/MODEL.md` § "Minimum displayed outputs" pairs two runs' values
+        under one compartment name, so comparing them is one row's reading
+        rather than two rows' (`PL-F2YS`). `other` keeps writing its own
+        values; only where they are drawn changes. Its readout section keeps
+        its heading line, and its own row is hidden.
+
+        Args:
+            other: The run being compared with this one.
+
+        Returns:
+            The widgets moved into this run's panels. Deleting them, as
+            removing `other` does, takes them out again.
+        """
+
+        return self._readout_row.add_readings(other._readout_row)
+
     def _lay_out_readout_section(self) -> QWidget:
         """Build the section around this run's heading and readouts; only the constructor calls it.
 
@@ -1465,6 +1502,7 @@ class RunView(QWidget):
         heading = QHBoxLayout(heading_row)
         heading.setContentsMargins(0, 0, 0, 0)
         heading.setSpacing(12)
+        heading.addWidget(self._heading_run_name_text)
         heading.addWidget(self._compartment_substance_text)
         heading.addWidget(self._interpretation_text)
         heading.addStretch(1)

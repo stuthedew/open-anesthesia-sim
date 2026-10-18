@@ -140,13 +140,7 @@ from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 from anesthesia_sim.layout.model import MAIN_WINDOW, LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 
-#: The unconditional region gives the run rows three parts of its width and
-#: the control-change records one, the proportion the Flet build's 9:3 grid
-#: columns gave the chart panel and the sidebar below them.
-_CHART_COLUMN_STRETCH: Final = 3
-_SIDEBAR_STRETCH: Final = 1
-
-#: The dashboard's Areas: the chart panel beside the sidebar, in one row
+#: The shares of the window's width the chart panel and the sidebar take
 #: (`PL-W9P6`). The chart panel still holds the wash-in plot, the marks and the
 #: branch control under the concentration plot, until each is a View of its
 #: own (`PL-TH35`, `PL-9LNF`), so it carries the tag of the View it leads with.
@@ -154,18 +148,31 @@ _SIDEBAR_STRETCH: Final = 1
 #: 1366 px window before the row was an Area layout, when it stood at its own
 #: minimum width at every window size. A placeholder until the
 #: shipped Workspaces replace this layout.
+_CHART_PANEL_SHARE: Final = 0.82
+_SIDEBAR_SHARE: Final = 0.18
+
+#: The dashboard's Areas: the chart panel beside the sidebar, in one row.
 _DASHBOARD_LAYOUT: Final = LayoutModel(
     (
         Window(
             Split(
                 Orientation.ROW,
-                (0.82, 0.18),
+                (_CHART_PANEL_SHARE, _SIDEBAR_SHARE),
                 (Area(AreaId(1), CONCENTRATION_CHART), Area(AreaId(2), AGENT_ACCOUNTING)),
             )
         ),
     ),
     AreaId(3),
 )
+
+#: The unconditional region divides its width as the Areas under it do. The
+#: run rows take the chart panel's share and the control-change records take
+#: the sidebar's, which is the width `PL-J8K2` Q3 gave the records. At a
+#: 1366 px window that leaves one run's readout row room for all seven panels
+#: (`PL-F2YS`). A box layout's stretch is a whole number, so each share is
+#: read in hundredths.
+_RUN_ROWS_STRETCH: Final = round(100 * _CHART_PANEL_SHARE)
+_RECORD_COLUMN_STRETCH: Final = round(100 * _SIDEBAR_SHARE)
 
 #: Spare height goes to the plots. The setting sections are held to their own
 #: height by a vertical policy that can shrink but not grow, so a taller
@@ -262,7 +269,8 @@ class _RunSlots:
             controls join the Areas as a View of their own,
             `parameter_controls`, once the View contract exists (`PL-TH35`).
         placed: Every widget this run put into a shared layout, the section
-            included. Removing the run is deleting these.
+            included, and for a later run the readings it put into the first
+            run's readout panels. Removing the run is deleting these.
     """
 
     parameters: QWidget
@@ -528,16 +536,15 @@ class SimulationView(QWidget):
         """Build the band that holds every run's unconditional values, empty of runs.
 
         Its left column stacks every run's transport row, then every
-        notice banner, then every readout section; its right column holds
+        notice banner, then every readout section. A later run's section
+        shows only its heading line, because its readouts join the first
+        run's panels (`RunView.show_readings_of`). Its right column holds
         every run's control-change record, scrolling within itself so a long
         record never makes the band taller than the rows beside it
-        (`PL-J8K2` Q3). The two columns take the band's width in the
-        proportion the charts and the sidebar take theirs. A box layout gives
-        the record more than the splitter gives the sidebar: about 300 px at
-        a 1366 px window, against the sidebar's 228, where today's record
-        lines are cut off. The exact width, and whether the seven readouts
-        stand in one row beside it at that width, are `PL-F2YS`'s. Nothing new is
-        drawn around the region (`PL-J8K2` Q4).
+        (`PL-J8K2` Q3). The two columns take the band's width in the shares
+        the chart panel and the sidebar take the Areas' width, so one run's
+        seven readouts stand in one row at a 1366 px window (`PL-F2YS`).
+        Nothing new is drawn around the region (`PL-J8K2` Q4).
 
         Returns:
             The region, which `unconditional_region` names.
@@ -579,8 +586,8 @@ class SimulationView(QWidget):
         # gives the band the left column's height, and the record scrolls.
         record_scroll.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Ignored)
 
-        row.addWidget(run_rows, _CHART_COLUMN_STRETCH)
-        row.addWidget(record_scroll, _SIDEBAR_STRETCH)
+        row.addWidget(run_rows, _RUN_ROWS_STRETCH)
+        row.addWidget(record_scroll, _RECORD_COLUMN_STRETCH)
         self._unconditional_region = region
 
         return region
@@ -725,7 +732,7 @@ class SimulationView(QWidget):
 
         run.presentation_requested.connect(self.present)
         parameters = _fixed_height(run.build_parameter_controls())
-        placed = (
+        placed: tuple[QWidget, ...] = (
             _holder(self._transport_column, (run.build_transport_row(),)),
             _holder(self._notice_column, (run.build_notice(),)),
             _holder(self._readout_column, (run.build_readout_section(),)),
@@ -735,6 +742,11 @@ class SimulationView(QWidget):
             _holder(self._wash_in_state_column, (run.build_wash_in_state(),)),
             parameters,
         )
+        # A later run's readouts join the first run's panels, so two runs
+        # read as one block of seven (`PL-F2YS`); they leave with the run.
+        if self._runs:
+            placed = (*placed, *self._runs[0].show_readings_of(run))
+
         self._settings_column.addWidget(parameters)
         self._require_unconditional_values(run)
         self._runs = (*self._runs, run)
