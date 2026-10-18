@@ -3,12 +3,14 @@ id: PL-8TPV
 title: bin/docket arm still says to arm a pull request after the owner switches its auto-merge off to let another one merge first, so its session can re-arm it against the owner's choice
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: arm-follows-owner
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_cli.py, docket.toml, tools/open_pull_requests.py, tests/unit/test_open_pull_requests.py, docs/maintainer.md, docs/apparatus.md, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
+closed: 2026-10-18
+pr: 1587
 payoff: a pull request the owner holds back by switching auto-merge off stays off, so sessions stop merging work out of the order the owner chose
 verify: grep -q 'def test_an_owner_disarm_is_not_rearmed' subprojects/docket/tests/test_cli.py
 ---
@@ -65,3 +67,29 @@ pins both cases.
 pull request's auto-merge setting", which nothing records. `PL-XTBF` misreads
 the same fact in the other direction. Two items share it, which is below the
 three a generator needs.
+
+**Route chosen, 2026-10-18: the session records its own switches.** Checked
+first whether GitHub could tell the two apart after all. It cannot: on
+`#1478`'s timeline every switch is `stuthedew` with no
+`performed_via_github_app`, and `#1586`'s, armed by a session through its
+GitHub tools at 16:28Z, reads the same. So the brief's "Nobody records the
+fact" shape applies, and the record is a commit trailer,
+`Auto-merge: off - <why>`, which a session writes on its next commit after it
+switches auto-merge off.
+
+**Worked.** `tools/open_pull_requests.py --auto-merge NUMBER` prints the latest
+switch from the pull request's timeline as `on TIME` or `off TIME`, through
+`docket.toml`'s new `auto_merge_command`. `arm` asks it for an open pull
+request. A switch off holds the pull request unless a commit on the branch
+carries the record with a committer date at or after the switch. A session
+switches it off and then commits, so a record made before the switch cannot be
+for it. The hold says the owner switched it off, and to arm or merge it only on
+the owner's word. A forge that could not be asked leaves the answer `unknown`.
+The ordinary hold line now asks for the record whenever it tells a session to
+switch auto-merge off. A session that forgets the record gets the owner's hold,
+which fails safe: it asks the owner, or records the switch if its own
+transcript shows it made it. `test_an_owner_disarm_is_not_rearmed` covers the
+owner's switch, a record before and after it, an armed and a never-armed pull
+request, and a forge that could not be asked.
+`test_arm_asks_the_auto_merge_command_docket_toml_names` runs the command end
+to end.

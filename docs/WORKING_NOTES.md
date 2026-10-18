@@ -925,8 +925,8 @@ against that ceiling today.
 **Two costs the item does not list.**
 
 - **numpy, and it is already decided.** matplotlib pulls numpy, pillow and
-  pyparsing among others, against this file's "Decided: no numpy" (2026-09-05)
-  - which was settled on fit rather than on dependency avoidance, and whose
+  pyparsing among others, against this file's "Decided: no numpy" (2026-09-05) -
+  which was settled on fit rather than on dependency avoidance, and whose
   reasoning does not cover a rendering backend. Option 3 reopens that
   question rather than being covered by it.
 - **It gives back `PL-KP7H`.** The paused-only hover is Flet controls

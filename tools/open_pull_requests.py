@@ -156,8 +156,11 @@ def repo_slug() -> str | None:
     return github_slug(_git(["remote", "get-url", REMOTE]))
 
 
-def fetch(slug: str, query: Query) -> list[object]:
+def fetch(slug: str, query: Query, listing: str = "pulls") -> list[object]:
     """One page of `slug`'s pull requests as `query` narrows it, or `ListingFailed` saying why not.
+
+    `listing` is the path under the repository that is listed: its pull
+    requests by default, or one pull request's timeline for `auto_merge`.
 
     The one request every question here makes. Its failures are named apart -
     no token or a refusal is `NO_PERMISSION`, nothing answering is
@@ -169,7 +172,7 @@ def fetch(slug: str, query: Query) -> list[object]:
     if not token:
         raise ListingFailed(NO_PERMISSION, "no GH_TOKEN or GITHUB_TOKEN to ask GitHub with")
     request = urllib.request.Request(
-        f"{GITHUB_API}/repos/{slug}/pulls?{urllib.parse.urlencode(query)}",
+        f"{GITHUB_API}/repos/{slug}/{listing}?{urllib.parse.urlencode(query)}",
         headers={
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
@@ -315,6 +318,40 @@ def newest_pull_request(slug: str, branch: str, base: str) -> tuple[NewestPullRe
     return () if found is None else (found,)
 
 
+#: The timeline events that switch auto-merge on, one per merge method, and
+#: the one that switches it off. GitHub's REST timeline names them so.
+AUTO_MERGE_ON_EVENTS = frozenset(
+    {"auto_merge_enabled", "auto_squash_enabled", "auto_rebase_enabled"}
+)
+AUTO_MERGE_OFF_EVENT = "auto_merge_disabled"
+
+
+def auto_merge(slug: str, number: int) -> tuple[str, str] | None:
+    """`(STATE, TIME)` for the latest switch of auto-merge on pull request `number`.
+
+    `STATE` is `on` or `off`, and None means it was never switched on.
+    `ListingFailed` is `fetch`'s, or an event this cannot read: one with no
+    time. The timeline is read whole by `every_page`, oldest first, so the last
+    switch found is the latest. The actor is not read, since GitHub names the
+    owner's account for a session's switches too (`PL-8TPV`).
+    """
+    events = every_page(lambda asked: fetch(slug, asked, f"issues/{number}/timeline"), {})
+    latest: tuple[str, str] | None = None
+    for entry in events:
+        if not isinstance(entry, dict):
+            raise ListingFailed(
+                UNREADABLE_ANSWER, "GitHub's timeline held an entry that is not one"
+            )
+        event = entry.get("event")
+        if event not in AUTO_MERGE_ON_EVENTS and event != AUTO_MERGE_OFF_EVENT:
+            continue
+        at = entry.get("created_at")
+        if not isinstance(at, str) or not at:
+            raise ListingFailed(UNREADABLE_ANSWER, f"GitHub's {event} event carried no time")
+        latest = ("off" if event == AUTO_MERGE_OFF_EVENT else "on", at)
+    return latest
+
+
 def main(argv: Sequence[str] = ()) -> int:
     parser = argparse.ArgumentParser(
         description="Print every open pull request's branch and number, one per line."
@@ -326,8 +363,25 @@ def main(argv: Sequence[str] = ()) -> int:
         help="print `NUMBER STATE HEAD` for the newest pull request from BRANCH into BASE "
         "instead, or nothing where none was ever opened",
     )
+    parser.add_argument(
+        "--auto-merge",
+        type=int,
+        metavar="NUMBER",
+        help="print `STATE TIME` for the latest switch of auto-merge on pull request NUMBER "
+        "instead, `STATE` `on` or `off`, or nothing where it was never switched on",
+    )
     args = parser.parse_args(list(argv))
     slug = repo_slug()
+    if args.auto_merge is not None:
+        if not slug:
+            return 1
+        try:
+            switch = auto_merge(slug, args.auto_merge)
+        except ListingFailed:
+            return 1
+        if switch is not None:
+            print(*switch)
+        return 0
     if args.newest is not None:
         branch, base = args.newest
         newest = newest_pull_request(slug, branch, base) if slug else None

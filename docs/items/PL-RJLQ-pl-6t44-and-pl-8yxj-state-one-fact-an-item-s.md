@@ -3,15 +3,17 @@ id: PL-RJLQ
 title: PL-6T44 and PL-8YXJ state one fact - an item's current queue state: its status, what blocks it, and what it must land after - and no head names it at family altitude; decide whether it is a generator, and if so record its head with a verdict
 priority: P1
 effort: M
-status: ready
+status: done
 classes: housekeeping
 feature: generator-identification
-touches: docs/items
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_release.py, docs/items
 added: 2026-09-24
+closed: 2026-10-18
+pr: 1581
 payoff: one family head says whether reading an item's queue state wrongly is still producing work, so the next reader who misreads it is ranked rather than filed
 verify: grep -q '^generator: spent' docs/items/PL-RJLQ-*.md
 root-cause-of: PL-6T44, PL-8YXJ, PL-0H5D, PL-59QW, PL-9F8B, PL-JNWS, PL-2349
-generator: live - five instances arrived after its two narrower heads closed, from 2026-09-21 to 2026-10-11, each from a copy or reader the last fix left out; the writer and brief copies are now refused, but cli.cmd_show and render.format_status still decide whether an item can start beside plan._unseated_by, and format_status counts an untriaged item, so a reader can still hand it a member
+generator: spent - Item.is_startable in docket.model is the one test of whether an item can start, and plan, show, status and both top-band counts read it; no reader in docket decides it on its own any more, so a new reader restates a named property rather than a status rule
 misread: An item's current queue state: its status, what blocks it, and what it must land after
 reenters: PL-6T44, PL-8YXJ
 ---
@@ -71,3 +73,15 @@ fix lands after `PL-4DK2` or takes it with that chain's agreement. Then this
 item records `generator: spent - <why>`, which is what its `verify:` now
 tests. The old `verify:` passed once this decision was written, so it proved
 nothing about the fix.
+
+**Fixed 2026-10-18.** `Item.is_startable` in `docket.model` is now the one
+test of whether an item can start: open, triaged and not blocked.
+`plan._unseated_by` reads it, so `next` and the generator tier do. So do
+`cli.cmd_show`'s queue-edit line, `render.format_status`'s next item and loose
+work, and the two top-band counts in `checks` and `render`'s triage rules.
+`format_status` had named an untriaged member as a feature's next, and
+`test_status_never_names_an_item_that_cannot_start` fails on the code before
+the fix for that reason. `PL-4DK2`'s parked patch adds the same property with
+the same body, so its hunk is already applied. The mechanism is spent: no
+reader in docket decides startability on its own any more, and a new reader
+would have to restate a property that already exists by name.

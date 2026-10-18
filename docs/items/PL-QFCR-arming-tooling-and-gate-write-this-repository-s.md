@@ -3,14 +3,16 @@ id: PL-QFCR
 title: arming.TOOLING and GATE write this repository's layout into the docket package, which reads every other path it depends on from docket.toml
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: review-hold
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, docket.toml
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 blocked-by: PL-5DZ8, PL-8QMD, PL-ZGYX
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-25
-payoff: docket.toml becomes the one place the package reads this repository's paths from, so moving the tooling or reusing docket in another repository changes a setting instead of holding every tooling change there for a read
+closed: 2026-10-18
+pr: 1587
+payoff: the package finds its gate and its tooling from where its own module sits, so moving the tooling or reusing docket in another repository moves them with it, and no setting can point the gate at another file
 verify: ! grep -qF '"subprojects/docket/"' subprojects/docket/src/docket/arming.py
 ---
 
@@ -38,3 +40,30 @@ verify: ! grep -qF '"subprojects/docket/"' subprojects/docket/src/docket/arming.
 `bin/docket generators` marked still generating, so the generator pause that
 held this item has ended (`CLAUDE.md` § "What this project is"), and the
 `verify:` and `payoff:` written above stand.
+
+**Changed shape, 2026-10-18, re-confirmed against `3d3515a5`.** The problem
+is real: `arming.py` still spelt `TOOLING = "subprojects/docket/"` and built
+`GATE` from it. Two facts in the brief have moved since 2026-09-25. Since
+`PL-KKHD` (2026-10-03), only the simulator paths and the gate hold, so a
+`TOOLING` that matches nothing no longer holds every tooling change. It only
+changes which paths `arm` names. And a `GATE` that matches nothing now fails
+open: the module itself would arm on green. That makes the brief's route, a
+`docket.toml` field, the wrong one. `docket.toml` arms on green, so a change
+to it could point the gate at another file and let the next change to
+`arming.py` merge unread. That is the loosening `PL-WW0Q` closes from the
+other side.
+
+**Worked.** `GATE` is now the module's own path from the root of the checkout
+holding it, read by `vcs.path_in_checkout` from `__file__`. `TOOLING` is the
+package's project directory, two levels above `src/docket/`. `find_root`
+moved from `cli.py` to `vcs.py` so both read one walk. A moved module or
+package, or docket used in another repository, finds its own paths. Outside
+any checkout both are empty, so nothing is the gate and nothing is the
+tooling. `READ_PATHS`, `TESTS` and `RECORDS` stay spelt in `arming.py` on
+purpose: the read list must take an edit the gate holds, and `RECORDS` is a
+directory a tool writes, not part of the package. So the Done-when's "names no
+path of this repository" is met for the two constants the title names, not
+for those three. `test_the_gate_and_the_tooling_are_found_from_where_the_module_sits`
+holds the derivation and the no-checkout case, and
+`test_the_gate_arm_holds_for_a_read_is_the_module_that_decides_the_answer`
+still pins the gate to the module's real path.

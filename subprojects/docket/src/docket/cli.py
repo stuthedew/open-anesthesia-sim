@@ -191,6 +191,7 @@ from .vcs import (
     filed_with_work,
     files_in_flight,
     find_cut,
+    find_root,
     gone_paths,
     head_branch,
     is_shallow,
@@ -234,15 +235,6 @@ from .verify import (
 # - three statements of it, where the fourth was the one that misread.
 CAPTURE_TEMPLATE = """**Problem.** {title}
 """
-
-
-def find_root(start: Path | None = None) -> Path:
-    """The repository root, or the working directory if there is no checkout."""
-    current = (start or Path.cwd()).resolve()
-    for candidate in (current, *current.parents):
-        if (candidate / ".git").exists():
-            return candidate
-    return current
 
 
 def _root(items: Path | None) -> Path:
@@ -2462,9 +2454,9 @@ def cmd_show(args: argparse.Namespace) -> int:
         # item reaches `show` and nothing else, so before this the one thing it
         # could not learn here was that another branch had already written to
         # the file it was about to write to (`PL-N1JK`). Startable by
-        # `plan._startable`'s rule - open, triaged, not blocked, and not in
+        # `Item.is_startable`, which `plan._startable` reads, and not in
         # flight, which the condition above already holds - so a closed or
-        # blocked item is not invited to start (`PL-9F8B`).
+        # blocked item is not invited to start (`PL-9F8B`, `PL-RJLQ`).
         print(render.format_queue_edit(edits, _now(args), startable=item.is_startable))
     if threads := _notes_threads(root, config, item.identifier):
         print(render.format_notes_threads(threads, item.identifier, config.notes_file))
@@ -5093,6 +5085,37 @@ def _newest_pull_request(
     return ask
 
 
+def _auto_merge(root: Path, config: Config) -> Callable[[int], arming.AutoMerge] | None:
+    """A way to ask when a pull request's auto-merge was last switched, or None if there is none.
+
+    `auto_merge_command` answers it, with the pull request's number appended
+    (`PL-8TPV`). As for `_newest_pull_request`, a command that failed, timed
+    out or printed a line of any other shape comes back `declined`, naming the
+    command, and `arm` answers `unknown` on it.
+    """
+    command = config.auto_merge_command
+    if not command:
+        return None
+
+    def ask(number: int) -> arming.AutoMerge:
+        done = _run_forge_command(command, root, str(number))
+        if isinstance(done, str):
+            return arming.AutoMerge(declined=f"`{command}` was not answered: {done}")
+        if done.returncode != 0:
+            return arming.AutoMerge(declined=f"`{command}` exited {done.returncode}")
+        said = [line.strip() for line in done.stdout.split("\n") if line.strip()]
+        if not said:
+            return arming.AutoMerge()
+        fields = said[0].split()
+        if len(fields) == 2 and fields[0] in (arming.AUTO_MERGE_ON, arming.AUTO_MERGE_OFF):
+            return arming.AutoMerge(state=fields[0], at=fields[1])
+        return arming.AutoMerge(
+            declined=f"`{command}` answered {said[0]!r}, which is not `STATE TIME`"
+        )
+
+    return ask
+
+
 def cmd_flight(args: argparse.Namespace) -> int:
     """Which items are being worked on a branch, and how long since each moved.
 
@@ -5280,6 +5303,7 @@ def cmd_arm(args: argparse.Namespace) -> int:
         fetch=not args.no_fetch,
         runner=inv.git,
         newest=_newest_pull_request(inv.root, inv.config),
+        auto_merge=_auto_merge(inv.root, inv.config),
     )
     for line in verdict.lines:
         print(line)

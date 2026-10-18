@@ -7525,7 +7525,7 @@ def test_git_answers_an_undecodable_path_as_unanswered(tmp_path: Path) -> None:
 #
 # Each reader below once took a physical line for a statement its format lets
 # run on: CommonMark continues a paragraph across a soft break (0.31.2 § 4.8,
-# § 6.7) and a code span across a line ending (§ 6.1), and make continues a line
+# § 6.8) and a code span across a line ending (§ 6.1), and make continues a line
 # ending in a backslash (GNU make manual, "Splitting Long Lines", "Splitting
 # Recipe Lines"). The guard hands every reader its format's continuation forms
 # and holds it to reading the statement whole, or refusing it by name. The YAML

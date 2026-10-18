@@ -329,7 +329,16 @@ clinical change unread. `not needed` arms it on green, with the reason in the
 pull request body. `needed` holds it for you on any path.
 `subprojects/docket/src/docket/arming.py` always waits on you, because it
 decides what merges without you and could loosen the rule (project owner,
-2026-10-12, ratified, `PL-VKHD`). A held pull request merges on your word
+2026-10-12, ratified, `PL-VKHD`). So does a change to or a deletion of an
+existing test that pins `arm`'s answers in
+`subprojects/docket/tests/test_cli.py`: a `test_arm_` test, a test that runs
+`arm` or reads `arming`, or one of those tests' `_arm` helpers and `ARM_`
+constants. The modules `arm` reads through, such as `vcs.py`, `claims.py` and
+`cli.py`, arm on green, so a change there that loosens an answer has to edit a
+pinned test, and that edit waits on you (project owner, 2026-10-12, ratified,
+`PL-WW0Q`). The hold covers `arming.py` and the tests that pin its answers,
+not its inputs: a new test arms, and a loosening that no test pins arms too.
+A held pull request merges on your word
 alone - "Merge it" - by the route § "Bring a stale base in when you merge,
 with Update branch" describes.
 
@@ -456,6 +465,14 @@ when you come to merge:
 With several ready at once, arm auto-merge on each and update just one. When it
 merges, `update-armed.yml` brings `main` into every other armed one it left
 behind, which re-runs each one's checks, and the next to go green merges.
+
+**Switching auto-merge off holds a pull request back, and its session leaves
+it off.** GitHub names your account for every switch, the ones a session makes
+through its tools included, so a session records each switch it makes itself
+as an `Auto-merge: off - <why>` trailer on its next commit. `bin/docket arm`
+asks GitHub for the latest switch, and holds a pull request whose auto-merge
+is off when no commit since carries that record. The session then arms or
+merges it only on your word (`PL-8TPV`).
 
 If a check fails after the update, the branch and the new `main` do not work
 together. That is the merge skew the setting now stops at the pull request
