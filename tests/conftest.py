@@ -57,8 +57,9 @@ one; the dealing sits beside it because it deals two test trees.
 **The parts CI runs the suite in** (`PL-T9X9`). `quality.yml` runs the suite
 in two jobs, each on its own runner, and `--part K/N` picks the tests one job
 runs. Every test that reads a costly computation runs in the last part, so each
-computation runs on one runner and not on both. The other tests are dealt round
-robin, so each module is split between the parts. The first part's job also
+computation runs on one runner and not on both. The other tests are dealt in
+cycles, so each module is split between the parts, and `PART_SHARES` sets how
+many of each cycle each part takes. The first part's job also
 runs the linters, `mypy` and the floor section, which took about 95 s of a slow
 runner's 621 s job on 2026-10-17. The tests that read a costly computation took
 about 22% of the suite's time, so giving all of them to the second part was
@@ -158,15 +159,34 @@ def deal[Test: Hashable](
     return dealt
 
 
+#: How many of each cycle of ordinary tests each part takes, by the number of
+#: parts. The first part's job also runs about 115 s of linters and tree checks
+#: outside pytest. With an even split it finished last on both of `PL-ZWQS`'s
+#: measured runs, by 17 s and by 116 s. So of every 5 ordinary tests it takes 2.
+#: Retune this when the two jobs drift apart. A split not named here is even.
+PART_SHARES: dict[int, tuple[int, ...]] = {2: (2, 3)}
+
+
 def part[Test: Hashable](
-    tests: Sequence[Test], costly: Collection[Test], index: int, parts: int
+    tests: Sequence[Test],
+    costly: Collection[Test],
+    index: int,
+    parts: int,
+    shares: Sequence[int] | None = None,
 ) -> list[Test]:
     """The tests that part `index` of `parts` runs, in their order in `tests`.
 
     Parts are numbered from 1. Every test in `costly` runs in the last part.
-    The other tests are dealt round robin, so the i-th of them, counting from
-    0, runs in part i mod `parts` + 1. Every test runs in exactly one part.
+    The other tests are dealt in repeating cycles. In each cycle, part 1 takes
+    the first `shares[0]` tests, part 2 the next `shares[1]`, and so on. With
+    no `shares`, each part takes one test per cycle, which is round robin.
+    Every test runs in exactly one part.
     """
+
+    shares = (1,) * parts if shares is None else tuple(shares)
+    if len(shares) != parts or any(share < 1 for share in shares):
+        raise ValueError(f"{parts} parts need {parts} shares of at least 1 each, not {shares}")
+    owner = [k for k, share in enumerate(shares, start=1) for _ in range(share)]
 
     chosen: list[Test] = []
     dealt = 0
@@ -175,7 +195,7 @@ def part[Test: Hashable](
             if index == parts:
                 chosen.append(test)
             continue
-        if dealt % parts == index - 1:
+        if owner[dealt % len(owner)] == index:
             chosen.append(test)
         dealt += 1
     return chosen
@@ -331,7 +351,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     if chosen is not None:
         reads, groups = _costly_reads(items)
         costly = set(reads).union(*groups.values())
-        kept = part(items, costly, *chosen)
+        kept = part(items, costly, *chosen, PART_SHARES.get(chosen[1]))
         kept_set = set(kept)
         config.hook.pytest_deselected(items=[item for item in items if item not in kept_set])
         items[:] = kept

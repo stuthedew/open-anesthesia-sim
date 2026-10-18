@@ -40,6 +40,28 @@ first job's start to the end of `checks`, took 343 s, against 499 s on the
 split's first run and the single job's 621 s median. One run is one runner, so
 this is not yet the five-run median that "Done when" asks for.
 
+**The first part now takes 2 of every 5 ordinary tests** (project owner,
+2026-10-17: "it seems less balanced now"). On the run after the merge from
+`main` (run 39079652820), `checks-part-1` took 337 s and `checks-part-2` 221 s.
+Part 2's pytest step moved by 80 s between the two runs, which is runner speed,
+but part 1 finished last on both, by 17 s and by 116 s. Part 1 also runs about
+115 s of linters and tree checks outside pytest, which an even split ignores.
+So `tests/conftest.py`'s `PART_SHARES` gives part 1 2 of each 5 ordinary tests,
+about 35 s of pytest moved to part 2: 3,466 tests against 5,233. With runner
+noise near 80 s, one run can still land more than 30 s apart. Retune the one
+constant if the median drifts.
+
+**Runner speed sets the gap on a single run, so tuning stops here** (project
+owner, 2026-10-17, ratified, over closing `#1523` and keeping the even split).
+On `#1523`'s run (39080271618), `checks-part-1` took 186 s and `checks-part-2`
+426 s. Part 1's `doc_check` step took 15 s there and 26 to 27 s on the two runs
+before, so part 1 had a runner about 1.7 times faster. The single job's medians,
+621 s on slow runners and 352 s on fast ones, show the same spread. When one
+part gets a fast runner and the other a slow one, the parts finish 2 to 4
+minutes apart whatever the split. The 2-in-5 share is kept because it should
+help the median, by about 35 s. Judge it by the median of several runs on
+`main`, never by a single run. The owner approved merging `#1523` on 2026-10-17.
+
 **What is left is the re-timing.** It needs five successful slow-runner runs
 on `main` after `#1519` merges, so no branch can do it. The timeouts, the
 `checks` job's 5 minutes and `PYTEST_BASELINE_S` stay as they are until then.
