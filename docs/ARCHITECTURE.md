@@ -49,6 +49,9 @@ data/  --loaded by-->  core/  --read by-->  app/
   reached from `core/circuit.py` and were therefore invisible to
   `tools/doc_check.py`'s provenance walk, which can only see a constant that
   entered a data file.
+  `data/workspaces/` holds the shipped Workspaces, which are layout rather
+  than parameters: `layout/shipped.py` reads them, and nothing in `core/`
+  does.
 
 Three rules rest on this layering, and this section is where the first is
 stated. Simulation code stays independent of the UI toolkit:
@@ -114,11 +117,13 @@ src/anesthesia_sim/
 │   ├── workspace.py                # Workspace and WorkspaceSet: a named layout with each View's saved state per Area and kind, and the ordered set a reader works in; removing the last Workspace is refused by the type (PL-WV9K)
 │   ├── migrations.py               # LAYOUT_SCHEMA_VERSION, and the steps that read a set document an older build wrote, each one version; the table is empty at version 1 and the chain is checked at import (PL-SSQW Q5)
 │   ├── store.py                    # WorkspaceStore: the reader's workspaces.json - the atomic save on "Save as default", and what a launch does with a file that is missing, older, newer, invalid or unreadable, none of it silent (PL-SSQW)
+│   ├── shipped.py                  # the shipped Workspaces read from data/workspaces/ by the reader the learner's file goes through, one file per Workspace, held to the current schema_version (PL-KXTL)
 │   └── exceptions.py               # what the package refuses, and what each refusal means to a caller
-└── data/                 # versioned, cited parameter files
+└── data/                 # versioned, cited parameter files, and the shipped Workspaces
     ├── agents/{sevoflurane,isoflurane,desflurane}.json
     ├── machines/reference_circle_system.json
-    └── patients/reference_adult.json
+    ├── patients/reference_adult.json
+    └── workspaces/{default,induction,maintenance}.json
 ```
 
 ## Data flow
@@ -800,9 +805,12 @@ disk; that was true until this store landed.
   state. `core/parameters.py`'s one-version rule is right for files that ship
   with the code and wrong for one the reader wrote, which is why this policy is
   decided rather than inherited.
-- **The shipped set** the store falls back to is `PL-KXTL`'s, under
-  `data/workspaces/`, read by the same reader as the learner's file.
-  <!-- absent: data/workspaces/ -->
+- **The shipped set** the store falls back to is `PL-KXTL`'s: three
+  Workspaces under `data/workspaces/`, one JSON file each, every file a set
+  document holding one Workspace. `layout/shipped.py` reads them with the
+  reader the learner's file goes through and holds them to the current
+  `schema_version`, since a shipped file is never migrated. "Reset this
+  Workspace" reads one file again by its id.
 
 ## Dependencies
 
