@@ -3,11 +3,13 @@ id: PL-F2YS
 title: The unconditional region opens a 1366 px laptop's readout row on four columns and stacks two runs' readouts in two rows where docs/MODEL.md pairs them in one, so compare mode leaves the chart below its 360 px minimum
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
 feature: interface-areas
 touches: src/anesthesia_sim/app/, tests/integration, docs/MODEL.md
 added: 2026-10-18
+closed: 2026-10-18
+pr: 1604
 payoff: a 1366 px laptop opens the seven readouts in one row, and two runs compared share one readout block as docs/MODEL.md specifies, so compare mode keeps the chart at its minimum or the shortfall reaches the owner
 verify: grep -q 'def test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns' tests/integration/test_simulation_view.py
 ---
@@ -88,3 +90,45 @@ scope" entry 20, where compare mode was `PL-W54S`'s to settle.
 **`PL-W9P6` built, 2026-10-18 (`#1592`).** The sidebar width is now the
 adapter's: `SimulationView`'s layout constant gives the accounting Area 0.18 of
 the window, and `app/area_layout.py` sets the splitter from it.
+
+## Built 2026-10-18
+
+**1. The record column takes the sidebar's share.** The region's two columns
+now take the chart panel's and the sidebar's shares of the width, 0.82 and
+0.18, read from the same constants as the Areas' split. At a 1366 px window on
+the offscreen font the record is 235 px and the readout column 1073 px, 68 px
+more than seven across needs. By the time of the build, `#1592` (`PL-W9P6`) had
+already widened the readout column to 1032 px, so `main` at `661e3e8f` opened
+on seven with 27 px to spare; the first finding above no longer reproduced
+there. `test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns`
+therefore passes on that base too, and holds the margin rather than catching
+the original fault.
+
+At 235 px the longest record lines did not fit, and the label clipped them, so
+the end of a line, where the new value is, was cut off. The label now wraps,
+and `control_timeline.wrapping_between_parts` lets it break a line only after
+the time and after the arrow, so no value is separated from its unit
+(`PL-3355`). The longest unbreakable part measured 184 px, against the label's
+207 px. `format_adjustment`'s output is unchanged.
+
+**2. Two runs share one readout block.** The second run's reading (its run
+name, value and second unit, one widget per panel) moves into the first run's
+panel for the same quantity, `ReadoutRow.add_readings`, and the second run's
+own row is hidden. The second run's view still writes its labels; only where
+they are drawn changes. The moved readings are among the widgets deleted with
+the run, so dropping the branch takes them out again. Each value names its run
+on the line above it, and each run's heading line names its run too, because
+the paired block sits under the first run's heading. The two values are
+stacked, not side by side, because stacking keeps seven across at 1366 px
+(placement is a placeholder, rule 14). The block went from two rows of 103 px
+to one of 176 px, and the region's height hint from 400 px to 366 px.
+
+Regression check, against `origin/main` `661e3e8f` with the new test file:
+`test_two_runs_share_one_readout_block_whose_values_name_their_runs` fails at
+`assert branch._readout_row.isHidden()` ("assert False"), because there each
+run had its own row.
+
+**3. Compare mode measured: 159 px short.** With the readouts paired, the
+chart has about 201 px on the 1366 by 700 reference with two runs, against 392
+px with one. That shortfall and the options are `PL-JG82`, a decision for the
+project owner, filed at `needs-decision` with a recommendation.
