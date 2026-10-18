@@ -215,13 +215,16 @@ try:
     # signature wrapped over several lines included (`PL-V2HK`).
     from docket.python import UNTOKENIZABLE, definition, read_logical_lines, refusal
     from docket.release import (
+        AUTOLINK_RE,
         CODE_SPAN_AT,
         NOTES_BULLET_RE,
         NOTES_DIR,
+        RAW_HTML_RE,
         REFERENCED_RE,
         SEMVER_RE,
         SPAN_HEADING,
         code_spans,
+        is_tagged,
         notes_bullets,
         notes_claims,
         notes_files,
@@ -530,27 +533,6 @@ QUOTATION_CHAR = rf'(?:[^"\n]|{SOFT_BREAK})'
 UNCLOSED_QUOTATION = rf'(?P<unclosed>{QUOTATION_CHAR}*+)(?!")'
 
 
-#: An autolink (§ 6.5): a URI, or an email address, in angle brackets.
-AUTOLINK_RE = re.compile(
-    r"<(?:[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\x00-\x20]*"
-    r"|[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
-    r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*)>"
-)
-#: An attribute of an HTML tag (§ 6.6): its name, and a value where one is given.
-HTML_ATTRIBUTE = (
-    r"(?:\s+[A-Za-z_:][A-Za-z0-9_.:-]*"
-    r"""(?:\s*=\s*(?:[^"'=<>`\x00-\x20]+|'[^']*'|"[^"]*"))?)"""
-)
-#: Raw HTML (§ 6.6): an open or a closing tag, a comment, a processing
-#: instruction, a declaration or a CDATA section.
-RAW_HTML_RE = re.compile(
-    rf"<[A-Za-z][A-Za-z0-9-]*{HTML_ATTRIBUTE}*\s*/?>"
-    r"|</[A-Za-z][A-Za-z0-9-]*\s*>"
-    r"|<!---?>|<!--(?:[^-]|-[^-]|--[^>])*-->"
-    r"|<\?[\s\S]*?\?>"
-    r"|<![A-Za-z][^>]*>"
-    r"|<!\[CDATA\[[\s\S]*?\]\]>"
-)
 #: A backslash escape (§ 2.4) or a character reference (§ 2.5), as a link's
 #: destination decodes them.
 ESCAPE_OR_REFERENCE_RE = re.compile(
@@ -1179,8 +1161,6 @@ STALE_VERSION_CLAIM_RE = re.compile(
 # running on past a blank line (`PL-4ZDZ`).
 LIST_SEPARATOR_RE = re.compile(rf"(?:[,:]|{GAP})*(?:and{GAP}+)?")
 LIST_VERSION_RE = re.compile(rf"v(?P<version>{SEMVER_PATTERN})")
-# The status cell that says a version has gone out.
-COMPLETED_MARK = "completed"
 # This document writes its counts as words, so both forms are read. Anything
 # outside the table is reported rather than guessed at: a count nobody can read
 # is a count nobody is checking.
@@ -2926,34 +2906,6 @@ def check_self_cleared_group(root: Path, report: Report) -> None:
 SCOPE_EXCLUSION_MARKERS = ("not in scope", "out of scope", "stays at gate", "stays on gate")
 
 
-def _subsection_line(section: MilestoneSection, lines: list[str], prefix: str) -> int | None:
-    """The **1-based** line of one `###` heading inside a milestone section.
-
-    `MilestoneSection` records the ids under each subsection but not where the
-    heading sat, and both readers here need that: the error cites a line a
-    person can open, and `_scope_bullets` needs somewhere to start.
-
-    One-based deliberately, matching `MilestoneSection.line` and the `scope`
-    index `parse_milestones` hands `_subsection_ids`. Those readers all treat
-    the number as "the heading's line", so `range(start, ...)` over a 0-based
-    list begins on the line *after* it - which is what reading a subsection's
-    body means. Returning the 0-based index instead made `_scope_bullets` start
-    on the heading and stop on it, so the advisory silently found nothing.
-
-    The headings are `markdown`'s, as `parse_milestones` reads them, so a `#`
-    line inside a fence or a comment neither opens the subsection nor ends the
-    section (`PL-0Y7J`).
-    """
-    for heading in read_headings(lines):
-        if heading.line < section.line:
-            continue
-        if heading.level <= 2:
-            return None
-        if heading.level == 3 and heading.title.lower().startswith(prefix):
-            return heading.line + 1
-    return None
-
-
 #: A test function's name, as the whole of a code span names one, e.g.
 #: `` `test_washout` ``.
 TEST_NAME_RE = re.compile(r"test_[A-Za-z0-9_]+")
@@ -3383,13 +3335,11 @@ def check_scope_exclusions(root: Path, report: Report) -> None:
         report.declined.append(f"{roadmap_name} is absent, so its scope headings were not compared")
         return
     text = roadmap.read_text(encoding="utf-8")
-    lines = split_lines(text)
     for section in parse_milestones(text):
         excluded = set(section.excluded_ids)
         both = [identifier for identifier in section.own_scope_ids if identifier in excluded]
         if both:
-            where = _subsection_line(section, lines, SCOPE_SUBSECTION)
-            at = f":{where}" if where is not None else ""
+            at = f":{section.scope_line}" if section.scope_line else ""
             scope_heading = SCOPE_SUBSECTION.capitalize()
             excluded_heading = EXCLUDED_SUBSECTION.capitalize()
             report.errors.append(
@@ -3785,11 +3735,6 @@ def _version_claim(
     return frozenset(named), [], line
 
 
-def _is_tagged(version: str, existing: frozenset[str]) -> bool:
-    """Whether a tag names this release, written with or without its leading `v`."""
-    return f"v{version}" in existing or version in existing
-
-
 def check_tags(root: Path, report: Report) -> None:
     """Hold the roadmap's tag statements to `git tag`, and to each other.
 
@@ -3874,7 +3819,7 @@ def check_tags(root: Path, report: Report) -> None:
     text = roadmap.read_text(encoding="utf-8")
 
     rows = parse_version_table(text)
-    completed = {row.version: row for row in rows if COMPLETED_MARK in row.status.casefold()}
+    completed = {row.version: row for row in rows if row.is_completed}
     if not completed:
         return
 
@@ -3921,7 +3866,7 @@ def check_tags(root: Path, report: Report) -> None:
 
     absent: list[str] = []
     for version, row in sorted(completed.items()):
-        if version in untagged or _is_tagged(version, existing):
+        if version in untagged or is_tagged(version, existing):
             continue
         if version == baseline:
             # Silent, not merely non-fatal: see the docstring. The skip stays -
@@ -3956,7 +3901,7 @@ def check_tags(root: Path, report: Report) -> None:
         report.errors.extend(absent)
 
     for version in sorted(untagged):
-        if _is_tagged(version, existing):
+        if is_tagged(version, existing):
             report.errors.append(
                 f"{roadmap_name}:{claim_line}: v{version} is named as untagged, but git holds a "
                 "tag for it"

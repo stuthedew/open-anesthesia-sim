@@ -20,6 +20,7 @@ from docket.release import (
     Readiness,
     already_released,
     below_current,
+    is_tagged,
     is_untagged,
     milestones,
     notes_bullets,
@@ -35,6 +36,8 @@ from docket.release import (
     release_notes,
     restate_references,
     suggest_version,
+    tag_confirmation,
+    tag_name,
     unreferenced,
     unreferenced_by_version,
     version_in,
@@ -390,6 +393,21 @@ def test_a_tag_written_without_its_v_still_counts() -> None:
     assert not is_untagged("0.2.5", frozenset({"0.2.5"}))
 
 
+def test_a_version_written_with_its_v_names_one_tag() -> None:
+    """`PL-5H48`: a version file may declare `v0.5.0`, and the tagger named `vv0.5.0`."""
+    assert tag_name("v0.5.0") == tag_name("0.5.0") == "v0.5.0"
+    assert tag_confirmation("v0.5.0", "origin").endswith(" refs/tags/v0.5.0")
+
+
+def test_a_v_less_tag_names_a_version_written_with_its_v() -> None:
+    """`PL-5H48`: `doc_check` read `v0.4.8` against a tag `0.4.8` as untagged."""
+    existing = frozenset({"0.4.8"})
+
+    assert is_tagged("v0.4.8", existing) and is_tagged("0.4.8", existing)
+    assert not is_untagged("v0.4.8", existing)
+    assert not is_tagged("0.4.9", existing)
+
+
 def test_a_project_that_has_never_tagged_is_not_taught_to() -> None:
     """Emptiness says the project does not tag, not that every release is missing one."""
     assert not is_untagged("0.2.5", frozenset())
@@ -548,6 +566,25 @@ def test_an_escaped_backtick_opens_no_code_span() -> None:
     assert contents(r"\\`a` and \``b`") == ["a", "b"]
     assert contents(r"`a\` `b`") == ["a\\", "b"]
     assert replace_code_spans("", r"\`a` b `c`") == r"\`ac`"
+
+
+def test_an_autolink_or_raw_html_opening_first_takes_the_backtick_inside_it() -> None:
+    """`PL-Q80R`: CommonMark 0.31.2 § 6.1 gives the backtick to what opens first.
+
+    The scan stepped over an escape but not over an autolink or a tag, so the
+    backtick inside one opened a span running to the real span's opener.
+    `tools/doc_check.py`'s inline reader read `c` here, and `code_spans` read
+    `b> and `.
+    """
+    from docket.release import code_spans, replace_code_spans
+
+    def contents(text: str) -> list[str]:
+        return [span["content"] for span in code_spans(text)]
+
+    assert contents("<http://a`b> and `c`") == ["c"]
+    assert contents('<span title="`x">y</span> and `c`') == ["c"]
+    assert replace_code_spans("", "<http://a`b> and `c`") == "<http://a`b> and "
+    assert contents("`<http://a`b>") == ["<http://a"], "a span opening first keeps its backtick"
 
 
 def test_a_backslash_escaped_backtick_opens_no_code_span_in_a_title() -> None:

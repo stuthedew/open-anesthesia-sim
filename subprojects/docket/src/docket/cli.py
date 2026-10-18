@@ -134,6 +134,7 @@ from .release import (
     restate_references,
     stamp,
     tag_confirmation,
+    tag_name,
     unrecorded_milestones,
     unreferenced_by_version,
 )
@@ -3865,7 +3866,7 @@ def cmd_release(args: argparse.Namespace) -> int:
         return 1
 
     version = (args.version or resuming or ready.suggested_version).lstrip("v")
-    name = f"v{version}"
+    name = tag_name(version)
 
     # A wrong number rather than a state a dry run exists to review, so it is
     # refused outright as the unfinished-cut refusal above is: the bump, the
@@ -4099,7 +4100,9 @@ def _unmerged_cut(root: Path, git: Runner, current: str) -> str:
     the notes: that keeps the untagged guard, which refuses too.
     """
     declared = current.strip().lstrip("v")
-    return f"v{declared}" if declared and cut_window(root, runner=git).version == declared else ""
+    return (
+        tag_name(declared) if declared and cut_window(root, runner=git).version == declared else ""
+    )
 
 
 def _unmerged_cut_refusal(cut: str) -> str:
@@ -4415,7 +4418,7 @@ def _untagged_warning(version: str, root: Path, git: Runner) -> str:
     (`PL-QHCW`), and until `PL-2FY6` the four lines the owner pasted after
     every cut.
     """
-    name = f"v{version.lstrip('v')}"
+    name = tag_name(version)
     return "\n".join(
         [
             f"{name} shipped and carries no tag, so no commit in its span can be",
@@ -4483,7 +4486,7 @@ def _unreadable_tags_refusal(version: str, declined: str) -> str:
     resolved until further down and a printed command carrying the wrong one
     is worse than no command at all.
     """
-    name = f"v{version.lstrip('v')}"
+    name = tag_name(version)
     return "\n".join(
         [
             f"Cannot tell whether {name} is tagged, so the tag gate did not run:",
