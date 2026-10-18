@@ -3,11 +3,13 @@ id: PL-GLHZ
 title: tests/unit/test_doc_check.py::test_a_version_named_as_shipping_with_a_stale_version_file_is_excused failed once in CI (checks-part-2, run 39087297513, head cc7f135c, 2026-10-18 01:45Z) when its fixture's git commit --allow-empty exited 128, and passed on the next head and in one local run, so a fixture repository's git call fails intermittently in CI
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra, defect
 touches: conftest.py, subprojects/docket/tests/test_git_isolation.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
+closed: 2026-10-18
+pr: 1536
 payoff: the next CI test that fails on a git or other subprocess call prints that program's own error, so it can be fixed instead of re-run as a flake
 verify: grep -q 'def test_a_failed_subprocess_shows_its_output_in_the_report' subprojects/docket/tests/test_git_isolation.py
 ---

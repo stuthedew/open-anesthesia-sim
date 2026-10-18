@@ -83,6 +83,16 @@ removed, two unmarked tests failed because the store's directory was gone, and
 both passed with one item back. That run also found the cached read above. So
 no unmarked test depends on what an item says or on which items exist.
 
+**A failed subprocess shows what it printed** (`PL-GLHZ`). The suite runs
+real git, and other programs, with `check=True` and `capture_output=True`, so a
+non-zero exit raises `subprocess.CalledProcessError` holding the program's
+output. Pytest prints that exception without the output, so the failure says
+"exit status 128" and drops git's own message, which names the cause. That
+happened once in CI on 2026-10-18, and nothing could be learned from it. So
+the report of any test phase that failed with that exception gets a section
+for each stream the exception captured, which pytest prints beside the
+traceback. Every test is covered at once, and no fixture has to remember it.
+
 At the repository root rather than in each tree, for two reasons. One rule
 covers both trees and `pytest` resolves `rootdir` here however it is invoked -
 including from inside `subprojects/docket/`, whose own `pyproject.toml`
@@ -94,6 +104,7 @@ a duplicate-module error that stops mypy before it evaluates anything
 """
 
 import os
+import subprocess
 import sys
 from collections.abc import Generator
 from pathlib import Path
@@ -215,16 +226,38 @@ def pytest_runtest_protocol(
         _STORE_READS.reads = None
 
 
+def subprocess_output_sections(error: BaseException) -> list[tuple[str, str]]:
+    """The report sections that show what a failed subprocess printed.
+
+    One section for each stream that `error` captured and that is not empty,
+    in the order stderr, then stdout, since stderr is where git explains a
+    failure. Any other exception, or one whose streams were not captured,
+    gives no section. Bytes are decoded with replacement, so a stream that is
+    not valid UTF-8 still shows.
+    """
+    if not isinstance(error, subprocess.CalledProcessError):
+        return []
+    command = error.cmd if isinstance(error.cmd, str) else " ".join(map(str, error.cmd))
+    sections = []
+    for name, stream in (("stderr", error.stderr), ("stdout", error.stdout)):
+        text = stream.decode(errors="replace") if isinstance(stream, bytes) else stream
+        if text:
+            sections.append((f"Captured {name} of the failed command `{command}`", text))
+    return sections
+
+
 @pytest.hookimpl(wrapper=True)
 def pytest_runtest_makereport(
     item: pytest.Item, call: pytest.CallInfo[None]
 ) -> Generator[None, pytest.TestReport, pytest.TestReport]:
-    """Fail the setup, call or teardown phase that read the store without the marker.
+    """Show a failed subprocess's output, and fail a phase that read the store unmarked.
 
     The report is made right after its phase, so the reads taken here are that
     phase's own.
     """
     report = yield
+    if call.excinfo is not None:
+        report.sections.extend(subprocess_output_sections(call.excinfo.value))
     reads = _STORE_READS.take()
     if reads and item.get_closest_marker(READS_ITEM_STORE) is None:
         report.outcome = "failed"
