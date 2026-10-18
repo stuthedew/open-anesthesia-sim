@@ -5528,10 +5528,11 @@ raises it as a `SimulationNumericalError`, as it does for every check that
 fails inside a step. Through `SimulationController`, the same refusal comes
 before that step begins, as a `SimulationConfigurationError`. The controller
 sees that the core's settings no longer match its run definition, and builds
-the record to say why before it takes the step (`PL-XRN8`). At Reset, `SimulationController.reset()` refuses before it
-clears anything, and the interface halts the run (`PL-M4M0`). A setting change
-that the record refuses is written back, so its compartment, the run's
-definition and the timeline keep the previous setting (`PL-VCP4`). No setting
+the record to say why before it takes the step (`PL-XRN8`). At Reset,
+`SimulationController.reset()` refuses before it clears anything, and the
+interface halts the run (`PL-M4M0`). A setting change that the record refuses
+is written back, so its compartment, the run's definition and the timeline
+keep the previous setting (`PL-VCP4`). No setting
 change repairs such a fraction. A new cardiac output scales every tissue flow
 by the same factor, so flows that did not sum to the old output do not sum to
 the new one. Putting the fractions back, or building a new patient, is the
