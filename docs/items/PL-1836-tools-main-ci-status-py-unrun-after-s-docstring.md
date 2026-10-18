@@ -3,11 +3,13 @@ id: PL-1836
 title: tools/main_ci_status.py unrun_after's docstring and tests/unit/test_main_ci_status.py's say quality.yml runs four to nine (six to eleven) checks below the whole-store verify replay, but the replay is now the job's last step, so a replay failure skips nothing and the load-bearing reason the docstring gives no longer holds
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor, docs
 touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-03
+closed: 2026-10-18
+pr: 1538
 payoff: nobody maintains or reasons from a branch of the red-main advisory that cannot fire, or from a fixture saying a replay failure still skips the checks PL-7K2C moved above it
 verify: ! grep -q 'def unrun_after' tools/main_ci_status.py
 ---
