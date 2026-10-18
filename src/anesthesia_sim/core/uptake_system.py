@@ -521,7 +521,19 @@ class AgentUptakeSystem:
         return self._propagator
 
     def _propagator_cache_key(self, simulation_step_s: SimulationStep) -> tuple[float, ...]:
-        """Return the step and every compartment value the settings record holds.
+        """Return the step, followed by `settings_key()`."""
+
+        return (simulation_step_s, *self.settings_key())
+
+    def settings_key(self) -> tuple[float, ...]:
+        """Return every compartment value the settings record holds, compared by value.
+
+        Equal keys mean equal `equation_settings()`, at about a sixth of the
+        cost of building the record: 1.8 us against 11.0 us, measured
+        2026-10-18. That is why the propagator cache compares this rather than
+        the record, and why `SimulationController` can ask it before every step
+        whether the core still holds the settings its run definition recorded
+        (`PL-XRN8`).
 
         One entry per field of `UptakeEquationSettings`, in its order, read
         straight off the compartments and converted by nothing.
@@ -552,7 +564,6 @@ class AgentUptakeSystem:
         venous_blood = patient.venous_blood
 
         return (
-            simulation_step_s,
             self.circuit.circuit_volume_l,
             self.alveoli.gas_volume_l,
             venous_blood.volume_l,

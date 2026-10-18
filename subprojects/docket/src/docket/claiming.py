@@ -109,8 +109,10 @@ from .vcs import (
     _run_git,
     _unlanded_refs,
     base_copies,
+    changed_path_args,
     default_base,
     head_branch,
+    logged_fields,
     remote_heads,
 )
 
@@ -723,32 +725,30 @@ def _first_add(
     gave no answer it can be read from.
     """
     done = _git(
-        [
+        changed_path_args(
             "log",
-            "--no-renames",
             "--diff-filter=A",
             "--name-only",
-            "--format=%x00%H %aI",
+            "--format=%x1e%H %aI",
             rev,
             "--not",
             base,
             "--",
             items_dir.strip("/"),
-        ],
+        ),
         root,
     )
     if done.code != 0:
         return None
     # Newest first, so the last commit naming `key`'s file is the oldest add.
     oldest: list[str] = []
-    stamped: list[str] = []
-    for line in split_lines(done.out):
-        if line.startswith("\x00"):
-            stamped = line[1:].split()
-            continue
-        found = ITEM_FILE_RE.match(line.strip().rsplit("/", 1)[-1])
-        if found is not None and found.group(1) == key:
-            oldest = stamped
+    for header, paths in logged_fields(done.out):
+        if any(
+            (found := ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])) is not None
+            and found.group(1) == key
+            for path in paths
+        ):
+            oldest = header.split()
     if len(oldest) != 2:
         return None
     commit, stamp = oldest
