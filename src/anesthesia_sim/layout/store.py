@@ -83,8 +83,8 @@ loads and that Area shows `PL-R1WQ`'s failure state (`LayoutModel.unknown_kinds`
 
 The shipped set is `PL-KXTL`'s: `layout/shipped.py` reads it from
 `data/workspaces/` with the same reader as a learner's file, and the store is
-handed it and does not know where it came from. Wiring the store into the application is the adapter's
-(`PL-W9P6`): nothing under `app/` calls it yet.
+handed it and does not know where it came from. Wiring the store into the
+application is the adapter's (`PL-W9P6`): nothing under `app/` calls it yet.
 """
 
 from __future__ import annotations
