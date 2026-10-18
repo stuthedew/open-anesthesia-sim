@@ -6281,8 +6281,10 @@ def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
                         yield command.group("name"), first + at
                 continue
             for run in simple_commands(reading, piece):
-                arguments = run.words[run.assignments + 1 :]
-                if run.program == "make" and arguments:
+                # Past a wrapper, as `timeout 600 make check` runs `make` (`PL-RHPK`).
+                program = run.runs()
+                arguments = run.words[program + 1 :] if program is not None else ()
+                if program is not None and run.words[program] == "make" and arguments:
                     if (name := MAKE_TARGET_WORD_RE.match(arguments[0])) is not None:
                         yield name.group(), first + piece.count("\n", 0, run.start)
 
