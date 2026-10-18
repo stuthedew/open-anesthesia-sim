@@ -48,6 +48,7 @@ from anesthesia_sim.app.chart_time_base import ChartTimeBase, time_base_for_span
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
 from anesthesia_sim.app.controller import (
+    BranchedCase,
     HereForkPoint,
     MarkForkPoint,
     ResumePoint,
@@ -103,6 +104,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WIDEST_READOUT_SECONDARY,
     WIDEST_READOUT_VALUE,
     BookmarkPanel,
+    BranchAtStake,
     Emphasis,
     ForkOffer,
     ForkPoint,
@@ -110,6 +112,7 @@ from anesthesia_sim.app.dashboard_frame import (
     RunMarks,
     accounting,
     bookmark_panel,
+    branch_at_stake,
     compared_panel_heading,
     compared_run_line,
     compared_run_notice,
@@ -139,6 +142,7 @@ from anesthesia_sim.app.dashboard_frame import (
     time_axis_caption,
     timeline_panel,
     transport,
+    trunk_reset_question,
     wash_in_state,
 )
 from anesthesia_sim.app.formatting import (
@@ -2427,6 +2431,70 @@ def test_the_confirmations_trailing_action_is_the_one_that_keeps_the_case() -> N
 
     assert question.discard_label == "Discard and start desflurane"
     assert question.keep_label == "Keep the sevoflurane case"
+
+
+# --- the trunk's Reset question -------------------------------------------------
+
+
+def test_a_branch_holding_nothing_is_not_at_stake() -> None:
+    """`PL-W5WX`: a branch just taken holds nothing, so the trunk's Reset asks nothing about it.
+
+    A branch opens standing at its fork, so its elapsed time is past zero
+    from the start; what it holds is counted from the fork (`PL-7TBQ`).
+    """
+
+    branch = BranchedCase(_paused_run_with_history()).fork_at(CaseInstant(60.0))
+
+    assert branch_at_stake("Run 2", branch.began_at_s, branch.snapshot(), 0) is None
+
+
+def test_a_branch_run_past_its_fork_is_at_stake_with_both_instants() -> None:
+    """The run it reached is stated as the instant its clock reads, from a branch stepped there."""
+
+    branch = BranchedCase(_paused_run_with_history()).fork_at(CaseInstant(60.0))
+    branch.start()
+    _advance_to(branch, elapsed_s=90.0)
+    branch.pause()
+
+    assert branch_at_stake("Run 2", branch.began_at_s, branch.snapshot(), 0) == BranchAtStake(
+        name="Run 2", began_at_s=60.0, elapsed_s=90.0, adjustment_count=0
+    )
+
+
+def test_a_branch_whose_snapshot_refuses_is_at_stake_with_no_instant_stated() -> None:
+    """What cannot be read is not known to be nothing, so the question is still asked."""
+
+    assert branch_at_stake("Run 2", CaseInstant(60.0), None, 0) == BranchAtStake(
+        name="Run 2", began_at_s=60.0, elapsed_s=None, adjustment_count=0
+    )
+
+
+def test_the_trunk_reset_question_names_both_runs_and_what_the_trunk_keeps() -> None:
+    """Every line of the question, as literals, so the wording is the test's and not the code's.
+
+    The keep button is named for the branch, because the branch is what the
+    reader keeps by declining; the trunk is not touched either way.
+    """
+
+    question = trunk_reset_question("Run 1", (BranchAtStake("Run 2", 60.0, 330.5, 2),))
+
+    assert question.title == "Reset Run 1 and discard Run 2?"
+    assert question.body == (
+        "Run 1's Reset starts the case over, and a branch cannot outlive the run it was "
+        "taken from.",
+        "Run 2 — branched at 1m and run to 5m30.5s, 2 recorded control changes — will be "
+        "discarded along with its chart history. This cannot be undone.",
+        "Run 1 goes back to induction with its settings and bookmarks kept.",
+    )
+    assert question.discard_label == "Reset and discard Run 2"
+    assert question.keep_label == "Keep Run 2"
+
+
+def test_a_trunk_reset_question_about_no_branch_is_refused() -> None:
+    """A Reset that discards nothing asks nothing, so asking about no branch is an error."""
+
+    with pytest.raises(ValueError, match="none was given"):
+        trunk_reset_question("Run 1", ())
 
 
 # --- layout and the interpretation line -----------------------------------------

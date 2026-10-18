@@ -3,11 +3,13 @@ id: PL-562Z
 title: Taking a branch pushes the concentration chart mostly below the fold: in a 1600 x 1000 window the second run's readouts move it from y 520-880 to 848-1208 of the 1000 px page, so a learner who branched to compare two curves sees 152 of its 360 px without scrolling
 priority: P2
 effort: S
-status: ready
+status: done
 classes: ux
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-18
+pr: 1578
 payoff: taking a branch leaves the concentration chart in view, so the comparison the learner asked for is on screen
 verify: grep -q "def test_taking_a_branch_leaves_the_concentration_chart_in_view" tests/integration/test_simulation_view.py
 ---
@@ -61,3 +63,24 @@ makes the fork handlers bring the concentration chart into view once the
 branch's readouts are laid out. A test at 1600 x 1000 asserts that the chart
 lies wholly inside the page's viewport after a branch is taken. The scroll
 goes when v0.6.0 replaces the scrolling page.
+
+**Built 2026-10-18 under (a).** `SimulationView._show_branch` ends both branch
+controls. It calls `_keep_chart_in_view`, which scrolls the page with Qt's
+`ensureWidgetVisible` so that the concentration chart is wholly in view. The
+branch's readouts reach their final size over several passes of layout after
+the press returns. A single scroll at the press, or one on a zero timer,
+landed while the page was 1,568 px or 1,830 px tall and left the chart's lower
+edge below the fold (measured with a scratch probe at 1600 x 1000). So the
+view watches the chart and the widgets that place it on the page, and scrolls
+again each time one of them moves or resizes. It stops when the reader
+scrolls the page themselves, through the scroll bar's `actionTriggered`
+signal, or when the trunk's Reset ends the comparison.
+
+Re-measured at 1600 x 1000 before the fix: one run puts the chart at y 512-872
+of the 1000 px viewport, and two runs at 869-1229. With the fix, two runs put
+it at 640-1000.
+
+`test_taking_a_branch_leaves_the_concentration_chart_in_view` (both branch
+controls) and `test_the_page_stops_holding_the_chart_once_the_reader_scrolls`
+hold it. Against the code before the fix, the first fails with
+`assert 1229 <= 1000` for both controls, and the second with `assert 0 > 0`.

@@ -5779,10 +5779,16 @@ machine cannot set would invite a refusal instead of preventing one
 so an end falling between two steps is offered as the step just inside it: a
 machine floored at 0.25 L/min is offered 0.3 L/min, never the 0.2 L/min it
 would refuse. A range holding no step at all is an error rather than a control
-whose only setting the run refuses.
-`test_the_fresh_gas_flow_control_narrows_to_a_declared_machine_range` and
+whose only setting the run refuses. A machine profile whose opening flow is not
+one of the offered steps is refused as well, when the dashboard builds its
+controls (`PL-1KQ9`). A slider position is a printed value (`PL-25KS`,
+decision D4). A run opening between two steps would leave the slider on a
+neighbouring step beside a rounded readout, so both would show a flow the run
+does not hold.
+`test_the_fresh_gas_flow_control_narrows_to_a_declared_machine_range`,
 `test_a_declared_range_off_the_display_grid_offers_only_settings_inside_it`
-in `tests/unit/test_dashboard_frame.py` hold both, and nothing displayed
+and `test_an_opening_fresh_gas_flow_off_the_slider_grid_is_refused`
+in `tests/unit/test_dashboard_frame.py` hold all three, and nothing displayed
 changes while the shipped profile declares no range.
 
 #### Supported run length
@@ -6318,6 +6324,21 @@ is exempt: there is nothing to discard, and
 a confirmation that fires where nothing is at stake is answered without being
 read by the time one is. Reset is therefore also the way to make a change of
 agent free.
+
+**Reset's exemption covers the run whose button was pressed, and no other
+run** (project owner, 2026-10-18, ratified, over extending it to every run the
+press takes with it, `PL-W5WX`). Pressing a run's Reset is the request to
+discard that run. The trunk's Reset also drops every branch drawn beside it,
+because a branch cannot outlive the run it was taken from, and the reader did
+not press Reset on the branch. So where a drawn branch holds elapsed simulated
+time or a recorded control change, the trunk's Reset states what that branch
+holds and asks before it discards anything, as the list above requires. A
+branch whose state cannot be read is asked about too, since what it holds is
+not known to be nothing. A branch holding neither is dropped without a
+question. `test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work`,
+`test_declining_the_trunks_reset_leaves_every_run_as_it_was` and
+`test_confirming_the_trunks_reset_starts_the_case_over_without_the_branch` in
+`tests/integration/test_simulation_view.py` hold it.
 
 ## What a branch comparison asserts, and what it does not
 

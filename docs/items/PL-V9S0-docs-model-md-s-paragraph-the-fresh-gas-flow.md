@@ -3,12 +3,14 @@ id: PL-V9S0
 title: docs/MODEL.md's paragraph 'The fresh gas flow control offers the intersection, read from the circuit' does not say that a machine profile opening the run off the slider's 0.1 L/min grid is refused, which PL-1KQ9 built; held back because docs/MODEL.md was declared by PL-HQF5's open pull request (found building PL-1KQ9)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: anesthesia-machine
 touches: docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-18
+closed: 2026-10-18
+pr: 1578
 payoff: a profile author who meets the off-grid refusal finds the rule in the paragraph it cites
 verify: grep -q "test_an_opening_fresh_gas_flow_off_the_slider_grid_is_refused" docs/MODEL.md
 ---
@@ -33,3 +35,8 @@ of the offered steps, and why: a slider position is a printed value
 (`PL-25KS`, decision D4). It names
 `test_an_opening_fresh_gas_flow_off_the_slider_grid_is_refused` among the
 tests that hold it. Start it after `PL-HQF5`'s pull request has merged.
+
+**Written 2026-10-18.** The paragraph now says that a machine profile whose
+opening flow is not one of the offered steps is refused when the dashboard
+builds its controls, gives the reason from `PL-25KS` decision D4, and names
+`test_an_opening_fresh_gas_flow_off_the_slider_grid_is_refused`.
