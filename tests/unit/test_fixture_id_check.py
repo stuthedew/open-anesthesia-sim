@@ -244,6 +244,17 @@ def test_a_malformed_literal_in_a_value_is_reported_with_its_line(tmp_path: Path
     assert offender.render(tmp_path).startswith("pkg/thing.py:1")
 
 
+def test_an_attribute_docstring_is_prose_and_not_scanned(tmp_path: Path) -> None:
+    """`PL-8W1J`: the string under an assignment is a docstring, as glyph_check reads it.
+
+    Only the first statement of a module, class or function was dropped, so an
+    attribute docstring was scanned as a value and its example id reported.
+    """
+    _write(tmp_path, "pkg/thing.py", f'ITEM = 1\n"""See {UNMINTABLE[1]} for why."""\n')
+
+    assert fixture_id_check.collect(tmp_path) == []
+
+
 @pytest.mark.parametrize("odd", ["\u2028", "\x85", "\x0c"], ids=["U+2028", "U+0085", "form-feed"])
 def test_a_line_separator_python_accepts_is_scanned_rather_than_crashing(
     tmp_path: Path, odd: str

@@ -213,7 +213,7 @@ try:
     # so `def test_ghost():` inside a fixture string defines nothing, and a
     # changed line counts toward the definition whose statement holds it, a
     # signature wrapped over several lines included (`PL-V2HK`).
-    from docket.python import UNTOKENIZABLE, definition, read_logical_lines, refusal
+    from docket.python import UNTOKENIZABLE, definition, docstrings, read_logical_lines, refusal
     from docket.release import (
         AUTOLINK_RE,
         CODE_SPAN_AT,
@@ -5558,12 +5558,15 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
 
 
 def _docstrings(tree: ast.Module) -> Iterator[tuple[int, str]]:
-    """Every module, class and function docstring, with the line it starts on."""
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        if (docstring := ast.get_docstring(node, clean=False)) is not None:
-            yield node.body[0].lineno, docstring
+    """Every docstring, an attribute docstring included, with the line it starts on.
+
+    `docket.python.docstrings` decides which strings those are. Reading only a
+    module's, a class's and a function's left a citation in an attribute
+    docstring unchecked (`PL-8W1J`).
+    """
+    for node in docstrings(tree):
+        if isinstance(node.value, str):  # always, and how the type checker learns it
+            yield node.lineno, node.value
 
 
 def _unread_source(relative: Path, error: Exception, unread: str = "citation") -> str:
