@@ -84,6 +84,8 @@ import tempfile
 from collections.abc import Callable
 from pathlib import Path
 
+from hook_input import project_root
+
 #: The line as the harness ships it, and the line that replaces it. Matched
 #: whole, indentation included, so a near-miss elsewhere in the script cannot
 #: be rewritten and an upstream change to this line is a clean miss rather than
@@ -184,18 +186,6 @@ def widen_fetch_refspec(run: Callable[[list[str]], tuple[int, str]]) -> str:
         return "its fetch refspec could not be cleared"
     status, _ = run(["config", "--add", "remote.origin.fetch", WIDE_REFSPEC])
     return "" if status == 0 else "its fetch refspec could not be widened"
-
-
-def project_root() -> Path:
-    """The checkout to repair.
-
-    `CLAUDE_PROJECT_DIR` is what the harness sets and what `settings.json`
-    already uses to find this file; the fallback is this file's own position,
-    two directories inside the repository, so the hook still acts on the right
-    clone when it is run by hand from somewhere else.
-    """
-    declared = os.environ.get("CLAUDE_PROJECT_DIR")
-    return Path(declared) if declared else Path(__file__).resolve().parent.parent.parent
 
 
 def _git(args: list[str]) -> tuple[int, str]:

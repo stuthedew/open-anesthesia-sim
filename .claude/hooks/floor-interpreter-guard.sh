@@ -91,17 +91,13 @@ PAYLOAD="$payload" HOOKS="$hooks" python3 -c '
 import json, os, re, sys
 
 sys.path.insert(0, os.environ["HOOKS"])
+import hook_input
 import shell_split
 
-try:
-    data = json.loads(os.environ["PAYLOAD"])
-except (ValueError, KeyError):
+call = hook_input.bash_call(os.environ.get("PAYLOAD", ""))
+if call is None:
     sys.exit(0)
-if data.get("tool_name") != "Bash":
-    sys.exit(0)
-command = data.get("tool_input", {}).get("command")
-if not isinstance(command, str):
-    sys.exit(0)
+command = call.command
 
 # Split the way bash splits it, by `shell_split.py` beside this file, which the
 # four Bash guards share (`PL-PVW2`). A regex would not do, because the failing
