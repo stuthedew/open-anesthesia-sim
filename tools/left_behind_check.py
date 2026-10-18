@@ -410,15 +410,16 @@ def orphaned_branches(root: Path) -> frozenset[str] | None:
     A failure here costs only the agreement clause. The findings above it are
     this check's own and are printed either way.
     """
-    from docket.vcs import orphaned
+    from docket.vcs import _head_name, orphaned, remote_names
 
     try:
         report = orphaned(root)
+        remotes = remote_names(root) | {REMOTE}
     except Exception:  # the comparison is a courtesy; it must not take the findings down
         return None
     if not report.known:
         return None
-    return frozenset(branch.ref.removeprefix(f"{REMOTE}/") for branch in report.branches)
+    return frozenset(_head_name(branch.ref, remotes) for branch in report.branches)
 
 
 def lines(report: Report, orphaned: frozenset[str] | None, *, every: bool = False) -> list[str]:
