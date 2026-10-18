@@ -37,6 +37,14 @@ whether it is open. Say what the check showed when it changes the answer.
 errors mean an item is about to be silently wrong. Commit item changes with
 the work they describe. An uncommitted queue is a lost queue.
 
+**A sweep verdict goes in the swept item's brief, not in the reply.** A sweep
+checks many open items against the tree and reaches a verdict on each: it still
+reproduces, it was solved another way, or its brief overstates what is left.
+Write each verdict on an item that stays open into its brief as a dated
+paragraph, `**Checked 2026-10-17:** ...`, in the commit the sweep makes. A
+reply is deleted with its session. The 2026-09-19 workflow sweep left ten such
+verdicts in a reply, and `PL-6ZQY` had to work all ten out again (`PL-NGLM`).
+
 ## The two modes this queue serves
 
 The project owner works in two distinct modes, and they have opposite cost

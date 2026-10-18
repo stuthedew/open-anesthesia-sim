@@ -68,49 +68,59 @@ falsifies the two names below is a new model release, nothing about how this
 project works, so check the lineup before trusting them; everything else in
 this section holds whoever is at the top.
 
-- **As of 2026-09-19 the strongest available model is Claude Fable 5.1**
-  (`claude-fable-5-1`) — what `use your strongest model` is asking for. The
-  project owner confirmed on 2026-09-19 that Fable is stronger than Opus,
-  which is what settles it against the assumption a session running Claude
-  Opus 5 would otherwise make: that whatever it is already on satisfies the
-  flag. Claude Opus 5 (`claude-opus-5`) is the step below and the right
-  substitute when Fable is unavailable.
-- **As of 2026-09-19 `delegable` means Claude Sonnet 5** (`claude-sonnet-5`)
-  — *not* Claude Haiku 4.5, and one named tier rather than a choice between
-  two. The project owner asked for a cheap-model offer on clear-cut items and
-  specified the asymmetry it must have (2026-09-19): *"I'd rather err on the
-  side of default opus if any question and miss items that could have been
-  safe with a lower model than try to catch every lower model opportunity and
-  find out later I should have actually used opus."* Naming one tier follows
-  from that and is this session's reading of it rather than their own words —
-  a second tier would reinstate, at the moment of reading, exactly the
-  per-item judgment the asymmetry exists to remove.
+- **As of 2026-10-18 the strongest available model is still Claude Fable
+  5.1** (`claude-fable-5-1`), which is what `use your strongest model` asks
+  for. Anthropic's models overview recommends Claude Opus 5.5 for most work,
+  and Fable 5.1 "for demanding reasoning and long-horizon agentic work, or when
+  your evals on Claude Opus 5.5 at higher effort still fall short"
+  (https://platform.claude.com/docs/en/about-claude/models/overview, read
+  2026-10-18). The project owner confirmed on 2026-09-19 that Fable is
+  stronger than Opus. That settles it against the assumption that whatever
+  model a session already runs satisfies the flag. Claude Opus 5.5
+  (`claude-opus-5-5`) is the step below and the substitute when Fable is
+  unavailable. The owner moved this project's Projects threads from Fable 5.1
+  to Opus 5.5 on 2026-10-14 (`PL-XJV3`). Which model a session runs is the
+  owner's choice, and this line only says what the flag asks for.
+- **As of 2026-10-18 `delegable` still means Claude Sonnet 5.5**
+  (`claude-sonnet-5-5`), not Claude Haiku 5.5, and one named tier rather than
+  a choice between two. The project owner asked for a cheap-model offer on
+  clear-cut items and specified the asymmetry it must have (2026-09-19): *"I'd
+  rather err on the side of default opus if any question and miss items that
+  could have been safe with a lower model than try to catch every lower model
+  opportunity and find out later I should have actually used opus."* Naming
+  one tier follows from that and is this session's reading of it rather than
+  their own words. A second tier would bring back, at the moment of reading,
+  exactly the per-item judgment the asymmetry exists to remove.
 
-Three facts decide Sonnet over Haiku, and none of them is a preference:
+Three facts decided Sonnet 5 over Haiku 4.5 on 2026-09-19. None of them holds
+for Haiku 5.5, by the models overview read on 2026-10-18:
 
-1. **Haiku 4.5 is a generation behind.** Claude Opus 5 and Claude Sonnet 5
-   are the Claude 5 family; Haiku 4.5 is not. A delegated item here is a real
-   defect with a real fix — `bin/docket delegable` currently offers 141 of
-   them — not a typo sweep.
-2. **Haiku 4.5's context window is 200K against the others' 1M.**
-   `CLAUDE.md` budgets 150,000 tokens of *spend* on top of whatever a session
-   starts with, and that baseline measured 81,048 bare and 115,320 with the
-   `docket` skill loaded (`PL-W80S`, 2026-09-21). A session spending its whole
-   budget therefore ends around 231K–265K of context: **past Haiku's entire
-   window before it reaches the hand-off**, and about a quarter of Sonnet's.
-   This line previously read "roughly 50K of headroom on Haiku", which the
-   2026-09-21 re-anchoring of the budget to spend made backwards rather than
-   merely stale. The resident instruction set alone measured 2.5–5.6% of the
-   contexts seven concurrent sessions carried on 2026-09-19 (`PL-H253`).
-3. **Haiku 4.5 does not take the effort parameter**, so § "Match effort to
-   the standard the work is held to" below — open apparatus sessions at
-   `high` — cannot be honoured on a Haiku session at all. The lever this file
-   spends a section on does not exist there.
+1. **Haiku 4.5 was a generation behind.** Haiku 5.5 belongs to the same
+   generation as Opus 5.5 and Sonnet 5.5.
+2. **Haiku 4.5's context window was 200K against the others' 1M.** A session
+   spending its whole 150,000-token budget ended around 231K–265K of context,
+   past Haiku 4.5's entire window (`PL-W80S`). Haiku 5.5's window is 1M, the
+   same as the other three models.
+3. **Haiku 4.5 did not take the effort parameter**, so § "Match effort to the
+   standard the work is held to" below could not be honoured on it. Haiku 5.5
+   takes it, and Claude Code opens it at `medium`.
 
-And the saving barely differs: at first-party API rates Claude Sonnet 5 costs
-$2/$10 per 1M tokens against Claude Opus 5's $5/$25 and Haiku 4.5's $1/$5, so
-moving to Sonnet already captures **75%** of the largest saving available.
-The remaining 25% is what the three costs above would be bought with.
+What still decides Sonnet is the owner's asymmetry quoted above, not a
+measurement. Anthropic describes Haiku 5.5 as "for high-volume,
+latency-sensitive tasks such as classification, extraction, and routing". A
+delegated item here is a real defect with a real fix, and no trial here has
+measured Haiku 5.5 on one. The `model-evidence` feature is where such a trial
+would be recorded, so moving `delegable` to Haiku waits on its evidence rather
+than on a reading of the lineup.
+
+The saving now differs more than it did. At first-party API rates per 1M
+tokens, Claude Fable 5.1 costs $10 input and $50 output, Claude Opus 5.5 $4 and
+$20, and Claude Sonnet 5.5 $2 and $10. Claude Haiku 5.5 costs $0.10 and $0.50
+for prompts up to 100,000 tokens, and $0.50 and $2.50 for longer ones
+(*Pricing*, https://platform.claude.com/docs/en/about-claude/pricing, read
+2026-10-18). Measured against Opus 5.5, moving to Sonnet 5.5 captures 51% to
+57% of the largest saving available, depending on prompt length. On the
+2026-09-19 lineup it captured **75%**.
 
 **`delegable` is an offer, never an instruction.** It is derived from
 `Item.delegability` — `ready`, no `safety` or `science` class, no open

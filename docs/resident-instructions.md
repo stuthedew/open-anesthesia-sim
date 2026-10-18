@@ -255,6 +255,17 @@ changing a decision, which is the defect that section retires a check for.
 Build it once the store holds a run of items written under this rule to
 calibrate the shape against, and this block goes when it does.
 
+*Extended 2026-10-18, +995 characters (`PL-YJY3`, waiting for another
+instance).* § "Count what undoing it would cost" now says that a
+recommendation to build the durable route only once another instance turns up
+is the cheap route, so the count applies to it. It also says when the rule of
+three applies. Nothing was cut to pay for it. The section's opening frame, "two
+routes to one end state", is what the deferral escaped. Rewriting that frame to
+cover a deferral would cost about as many characters and would drop the worked
+example that makes the case recognizable. That example is `PL-51B7`'s first
+recommendation, which deferred checked types this way and which the owner
+refused.
+
 **Path-scoping was measured against this rather than waved off, and it loses
 on one moment.** Two rules already scope `docs/MODEL.md` — `citing-sources.md`
 and `sources-and-docstrings.md` — and nothing scopes `ROADMAP.md`, so the
