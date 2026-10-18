@@ -9,6 +9,7 @@ feature: interface-areas
 touches: src/anesthesia_sim/app/, tests/integration, tests/unit, docs/ARCHITECTURE.md, docs/interface-provenance.md, tools/contrast_check.py, docs/items
 added: 2026-09-16
 closed: 2026-10-18
+pr: 1599
 payoff: an Area whose View kind this build does not know shows a failure in that Area rather than a wrong View, and renaming a class cannot change what a saved layout means
 verify: grep -qr --include=view_registry.py 'ViewKind' src/anesthesia_sim/app
 ---
