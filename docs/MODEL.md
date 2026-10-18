@@ -2024,11 +2024,12 @@ admissible, and finding a primary source being work is not one of them:
    consistent set where the primary literature supplies scattered measurements
    made in different laboratories on different cohorts. The twelve partition
    coefficients are the worked example. Eger, Strum and Eger, Lerman et al.,
-   and Esper et al. 2015 did measure these quantities in this population, so the first reason
-   does not cover them — but a single laboratory's blood:gas figure dropped
-   into a Gas Man tissue set makes the trajectory a hybrid of two parameter
-   lineages — the same objection this document makes below against dividing a
-   Gas Man trajectory by a Mapleson MAC, applied one level down.
+   and Esper et al. 2015 did measure these quantities in this population, so
+   the first reason does not cover them — but a single laboratory's blood:gas
+   figure dropped into a Gas Man tissue set makes the trajectory a hybrid of
+   two parameter lineages — the same objection this document makes below
+   against dividing a Gas Man trajectory by a Mapleson MAC, applied one level
+   down.
 
 The second reason is the narrower of the two and is not a way around the
 first. It is available only where the primaries are cited on the entry with
@@ -2038,8 +2039,9 @@ desflurane −0.9%, sevoflurane −5.2%, isoflurane −11.0% against the measure
 blood:gas coefficients, and the decision itself dated to 2026-09-03
 (`PL-D6LX`). Against Esper et al. 2015, the largest of those measurements and
 the most recent, the stored values are lower again: desflurane −26.3%,
-sevoflurane −12.2% and isoflurane −10.3% (`PL-SWY5`). `ROADMAP.md`'s planned-milestone item 31 is the route to a
-primary coefficient set, which would retire this reason for these twelve.
+sevoflurane −12.2% and isoflurane −10.3% (`PL-SWY5`). `ROADMAP.md`'s
+planned-milestone item 31 is the route to a primary coefficient set, which
+would retire this reason for these twelve.
 
 Where a primary measurement *is* available and simply has not been adopted,
 the entry says so in those words and the value **carries no adopted primary**.
