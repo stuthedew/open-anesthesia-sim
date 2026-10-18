@@ -410,8 +410,8 @@ reply's closing block is this one command (`PL-CM40`).
 It was fifty lines of bash in the session-start hook, and that was the whole
 problem: a hook runs once, at session start, and the condition it guards
 against develops *during* a session. A session opened to discuss the next piece
-of work, while another session finishes something, is told its base is current
-- and by the time the discussion becomes implementation, the other session has
+of work, while another session finishes something, is told its base is current -
+and by the time the discussion becomes implementation, the other session has
 merged. Nothing looks again, so the staleness surfaces at push time as a merge
 conflict, which is the rework cycle the check exists to prevent.
 
