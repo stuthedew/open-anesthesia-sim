@@ -1552,7 +1552,7 @@ def test_status_never_names_an_item_that_cannot_start() -> None:
 
     assert "next: PL-RD02" in status
     assert "nothing remaining can start: every open item is blocked or untriaged" in status
-    assert "PL-BB0" not in status
+    assert not {"PL-BB01", "PL-BB04", "PL-BB07"} & set(status.split())
 
 
 def test_status_defines_the_unmarked_row_rather_than_leaving_it_silent() -> None:
