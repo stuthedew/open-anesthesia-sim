@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
 closed: 2026-10-18
+pr: 1603
 payoff: bin/docket inflow stops re-asking PL-61FT's line, which the owner answered, so its 'fix did not hold' heading lists only the lines still waiting for an answer
 verify: grep -q 'def test_a_line_answered_with_no_successor_is_listed_apart' subprojects/docket/tests/test_inflow.py
 ---

@@ -10,6 +10,7 @@ touches: subprojects/docket/README.md
 deferred-from: v0.6.0 - a sentence in the docket's own README, which changes nothing a learner sees
 added: 2026-10-18
 closed: 2026-10-18
+pr: 1603
 payoff: The README's account of the release alarm matches what inflow counts
 verify: grep -q 'class-pinned' subprojects/docket/README.md && grep -q 'recurrence_chains' subprojects/docket/README.md
 ---
