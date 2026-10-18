@@ -3,10 +3,12 @@ id: PL-RZKZ
 title: A rule file pointing at a deleted module cannot cite it by path, and nothing warns the writer before doc_check refuses the draft: citation-drift.md is scoped to docs/items, WORKING_NOTES and skills, so a session writing .claude/rules never loads the rule that would tell it to route the pointer through the item instead
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, infra
 touches: .claude/rules/citation-drift.md, tests/unit/test_rules_paths_check.py
 added: 2026-09-21
+closed: 2026-10-18
+pr: 1551
 payoff: a session writing a rules file is told how to cite a moving target before doc_check refuses the finished draft
 verify: grep -qF '/.claude/rules/**' .claude/rules/citation-drift.md
 ---

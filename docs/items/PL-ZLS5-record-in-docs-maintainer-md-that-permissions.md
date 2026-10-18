@@ -3,11 +3,13 @@ id: PL-ZLS5
 title: Record in docs/maintainer.md that permissions.defaultMode auto is user/managed scope only and a cloud session takes its mode from the dropdown, so no repo-side setting can carry it
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: worker-instructions
 touches: docs/maintainer.md
 added: 2026-09-16
+closed: 2026-10-18
+pr: 1554
 verify: grep -qF 'permissions.defaultMode' docs/maintainer.md && python3 tools/doc_check.py check
 ---
 
