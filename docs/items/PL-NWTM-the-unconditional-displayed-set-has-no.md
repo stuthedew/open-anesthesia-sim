@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: safety, anticipated
 feature: interface-areas
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, docs/MODEL.md, tests/integration/test_simulation_view.py
 blocked-by: PL-1FT6
 added: 2026-09-16
 payoff: the values docs/MODEL.md says no Workspace may remove leave the splitter tree before its handles go live, so no drag, split, join or close can take them off screen, and a run with no volatile agent is never asked for a vaporizer dial

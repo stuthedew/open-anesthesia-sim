@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: feature
 feature: preferences-store
-touches: src/anesthesia_sim/data/, tests/unit
+touches: src/anesthesia_sim/data/, tests/unit, Makefile
 blocked-by: PL-SSQW
 added: 2026-09-16
 payoff: shipped default preferences exist as a validated versioned artifact a reset restores from, loading through the reader's own path, with a check that refuses a settable key with no factory value
