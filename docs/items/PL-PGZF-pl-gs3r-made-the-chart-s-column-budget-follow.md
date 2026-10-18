@@ -3,11 +3,13 @@ id: PL-PGZF
 title: PL-GS3R made the chart's column budget follow the window width, so assemble_chart_frame costs 8.4 ms at 150 columns and 15.4 ms at 1601 - PL-CNCF measured only the fixed 150-column budget, and 15.4 ms is essentially a whole 60 fps frame
 priority: P3
 effort: M
-status: ready
+status: done
 classes: perf
 feature: chart-readout
 touches: src/anesthesia_sim/app/chart_frame.py, docs/WORKING_NOTES.md
 added: 2026-09-16
+closed: 2026-10-18
+pr: 1529
 verify: grep -qF 'measured at the window-following budget' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 
@@ -113,3 +115,17 @@ derived from it"). So the `assemble_chart_frame` figures above predate that,
 and the part of them outside `drawn_window` - the per-instant packaging this
 item's growth was attributed to - is still unmeasured. Re-take the table before
 sizing anything.
+
+**Closed 2026-10-18 on a recorded conclusion: the read's margin is adequate.**
+The title's comparison with a 60 fps frame was the wrong budget. The interface
+draws one frame every `RENDER_INTERVAL_S`, which is 0.2 s, so a frame has
+200 ms. `docs/WORKING_NOTES.md` § "The read measured at the window-following
+budget" has the figures, measured on this tree from 150 to 3 841 columns, for
+one run, two compared runs and a 120-minute run with ten dial changes. The read
+costs 12.0 ms for one run on a 1 600 px plot, which is 6% of the frame. The
+worst case measured, two compared runs on a 3 840 px plot, costs 55.9 ms, or
+28%. The figures at 150 columns are lower than this item's, 1.2 ms against
+8.4 ms, because `PL-CNCF` has since kept each frame's propagators for the next.
+Nothing in `app/chart_frame.py` changed. Paint is the half this container
+cannot measure, and extrapolated from the owner's one reading it could pass the
+frame for two compared runs on a very wide plot; `PL-0KPD` carries that.
