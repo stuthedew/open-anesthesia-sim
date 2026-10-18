@@ -1129,6 +1129,28 @@ def test_blocked_anticipated_safety_work_may_sit_anywhere() -> None:
     assert not _has(_errors(blocked), "starts at P0 or P1")
 
 
+def test_a_dropped_anticipated_safety_item_keeps_the_band_it_held() -> None:
+    """A closed item's priority is its record and ranks nothing (`PL-9HHC`).
+
+    `PL-Y04W` waited blocked at P2 as anticipated safety work, and its drop was
+    refused until the record was rewritten to a P1 it never held. A closed item
+    of either kind keeps the band it held, while open safety work at P2 is still
+    refused.
+    """
+    for status, reason in (("dropped", "the feature was cut"), ("done", "")):
+        closed = _item(
+            classes=("safety", "anticipated"),
+            priority="P2",
+            status=status,
+            reason=reason,
+            closed=date(2026, 9, 26),
+        )
+
+        assert not _has(_errors(closed), "starts at P0 or P1"), status
+
+    assert _has(_errors(_item(classes=("safety",), priority="P2")), "starts at P0 or P1")
+
+
 def test_the_exemption_is_claimed_rather_than_inferred() -> None:
     """Fail closed. Reading a *missing* class as the anticipated case would make
     forgetting to write one the way to obtain the exemption, so a blocked safety

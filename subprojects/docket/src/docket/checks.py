@@ -921,7 +921,13 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             "its own item, or drop the `housekeeping` class and write the brief"
         )
     safety = tuple(c for c in item.classes if c in config.safety_classes)
-    exempt = item.status == "blocked" and "anticipated" in item.classes
+    # A closed item's priority is its record and ranks nothing, so the band
+    # binds open work only. Held on a closed item, it refused the drop of an
+    # anticipated safety item that waited at P2 until its record was rewritten
+    # to a P1 it never held (`PL-9HHC`).
+    exempt = item.status in CLOSED_STATUSES or (
+        item.status == "blocked" and "anticipated" in item.classes
+    )
     if safety and not exempt and item.priority in ("P2", "P3"):
         blocked_hint = (
             "; if the concern does not exist until a later feature is built, class it "
