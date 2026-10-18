@@ -6,7 +6,8 @@
 # below, spelled as this repository writes them to be run - in the `Makefile`,
 # the workflows, a skill or `README.md`, or a remedy this hook prints - and as
 # sessions have been seen writing them: bare or by path, through a bare `uv
-# run` or a wrapper `shell_split.WRAPPERS` names, after a `cd`, an assignment,
+# run` or a wrapper `shell_split.WRAPPERS` names, as the module a Python
+# interpreter runs (`python3 -m docket check`), after a `cd`, an assignment,
 # a redirection or a reserved word, and in every list, group and compound the
 # tests pin. A path's form, an option's order, a count or a target does not
 # make a spelling new, and a line a program's usage admits is not one anybody
@@ -224,7 +225,6 @@ cut = shell_split.segments(command)
 if cut is None:
     sys.exit(0)
 
-INTERPRETER = shell_split.PYTHON
 # A compound command runs in this shell, as a `{ }` group does, unless it is
 # piped or backgrounded. `case` is not read: the splitter reads the `)` after
 # each of its patterns as a subshell closing.
@@ -337,10 +337,14 @@ def runs_dry(arguments):
 def gate(segment):
     """The gate command this segment invokes, spelled for the message, or None."""
     rest = strip_prefixes(segment)
-    if not rest:
+    found = shell_split.invocation(rest) if rest else None
+    if found is None:
         return None
-    head, arguments = rest[0], rest[1:]
-    name = base(head)
+    # The program by name, or the module a Python interpreter runs: `python3 -m
+    # docket check` runs the docket gate `check`, as `verify` reads it (`PL-RHPK`).
+    name, at = found
+    head = " ".join(rest[:at]) if at > 1 else rest[0]
+    arguments = rest[at:]
     if name == "make":
         if runs_dry(arguments):
             return None
@@ -350,9 +354,9 @@ def gate(segment):
         return head + " " + arguments[0]
     if name in DIRECT:
         return name
-    if INTERPRETER.match(name):
+    if shell_split.is_python(name):
         return check_script(arguments)
-    if base(head).endswith("_check.py"):
+    if name.endswith("_check.py"):
         return head
     return None
 
