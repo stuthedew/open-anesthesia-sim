@@ -156,6 +156,25 @@ worktree of `origin/main` at `47d28760` with
 It failed with `AssertionError: inside the layout container`, since the
 splitter `isAncestorOf` the `ReadoutRow`.
 
+**Self-review, `bin/docket verify --self PL-NWTM`.** It returned REJECT on one
+check: eight assertions in four tests changed. Each one is a test of the old
+arrangement, and each change follows the layout `PL-J8K2` ratified:
+- `test_the_header_shows_the_application_name_from_app_metadata` became
+  `test_the_page_leaves_the_application_name_to_the_window_title`, because the
+  title row is gone (Q2).
+- `test_a_second_build_sidebar_panels_leaves_the_run_labels_on_screen` became
+  `test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen`,
+  because `build_sidebar_panels` split into two builders.
+- `test_the_run_added_after_construction_is_named_and_given_its_own_sections`
+  now expects one new splitter section rather than two, since the readout
+  section left the splitter, and asserts the new run's readouts are in the
+  region.
+- `test_the_sidebar_panels_name_the_run_they_record` now finds the named
+  heading in either column, since the record moved to the band.
+Its other note, whether a new test asserts the value the model should give,
+is answered by the heading test's literals: 2.00% of a 2.0% MAC is 1.00 ×MAC,
+and 3.00% is 1.50 ×MAC, worked by hand rather than read from the view.
+
 **Unblocked here.** Closing this item left `PL-JSY5`, `PL-W54S` and
 `PL-W9P6` blocked on nothing, so this pull request moves each to `ready` with a
 `payoff:` and a `verify:`. `PL-JSY5` and `PL-W54S` carry the `safety` class, so
