@@ -56,7 +56,7 @@ from datetime import date
 from pathlib import Path
 
 from . import vcs
-from .frontmatter import Unread, closing, key_statements, keys
+from .frontmatter import Unread, body_lines, closing, key_statements, keys
 from .lines import split_lines
 from .markdown import PROSE, statement_lines
 from .roadmap import SENTENCE_BREAK
@@ -178,9 +178,8 @@ def parse(name: str, text: str) -> list[Assertion]:
     lines = split_lines(text)
     assertions: list[Assertion] = []
     fence = closing(lines)
-    body = 0 if fence is None else fence + 1
     spans = [] if fence is None else _key_spans(lines[1:fence])
-    spans += statement_lines([""] * body + lines[body:], PROSE)
+    spans += statement_lines(body_lines(lines), PROSE)
     for first, end in spans:
         statement = "\n".join(lines[first:end])
         for start, stop in _sentences(statement):
