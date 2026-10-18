@@ -3,11 +3,13 @@ id: PL-9KGT
 title: triage.md's reply rule escalates only a P0 or a compounding-friction finding, 'nothing else', and omits the fresh-session ending CLAUDE.md requires for a live generator or an impairs-generators item (PL-ZKT8 audit flag E4)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, defect
 touches: .claude/skills/docket/modes/triage.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-10-18
+closed: 2026-10-18
+pr: 1545
 payoff: a triage pass that finds a ranking generator ends its reply with the prompt that starts it, so the head is not left to wait for its band
 verify: grep -qF 'ranking generator' .claude/skills/docket/modes/triage.md
 ---
