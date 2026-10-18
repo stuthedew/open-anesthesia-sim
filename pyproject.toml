@@ -12,7 +12,7 @@ license-files = ["LICENSE"]
 authors = [
     { name = "Stuart Feichtinger", email = "stuthedew@users.noreply.github.com" }
 ]
-requires-python = ">=3.14,<3.15"
+requires-python = ">=3.14,<3.16"
 
 # The package's machine-readable statement of maturity, audience and subject.
 # Every string below is an exact row of <https://pypi.org/classifiers/>, read
