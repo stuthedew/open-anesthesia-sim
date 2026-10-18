@@ -13,6 +13,7 @@ closed: 2026-10-12
 pr: 1436
 payoff: doc_check stops reporting a gate difference it could not read and stops aborting on a malformed pyproject.toml, so its Makefile, fence and workflow answers hold for the forms make, bash and YAML accept
 verify: grep -q 'def test_gate_parity_reports_no_difference_once_a_make_check_line_is_declined' tests/unit/test_doc_check.py && grep -q 'def test_a_tab_only_line_under_a_rule_is_no_recipe' tests/unit/test_doc_check.py && grep -q 'def test_a_pyproject_that_is_not_toml_is_reported_not_raised' tests/unit/test_doc_check.py && ! grep -q 'def _git(' tools/doc_check.py
+reenters: PL-0HPV
 ---
 
 **Problem.** doc_check's gate-parity, Makefile and workflow readers misread six forms beside where a statement ends - check_gate_parity reports a difference after declining a line, make_targets counts a tab-only recipe line and keeps an escape's backslash, _make_mentions reads a block-quoted fence with its markers, _run_script reads an invalid literal block's first lines silently, and a pyproject.toml that is not TOML aborts the run - and _git has no caller; latent

@@ -14,6 +14,7 @@ pr: 769
 payoff: stops the queue reading as more stuck than it is by naming, where work is chosen, the blocked items whose blockers have all closed - the one that unblocked three more of v0.5.0's own scope was invisible to docket next
 verify: grep -q 'def test_an_item_whose_every_blocker_has_closed_is_reported_promotable' subprojects/docket/tests/test_plan.py
 root-cause-of: PL-JFQ3, PL-8G48, PL-CHQY
+generator: spent - this record takes no later member: its fact is recorded from 2026-10-18 on PL-RJLQ, which ranks it live and holds the instances filed since this closed
 misread: An item's current queue state: its status, what blocks it, and what it must land after
 ---
 
