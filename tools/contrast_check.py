@@ -90,6 +90,13 @@ the change leaves alone passes, because that is also how a correct one arrives,
 and a base that cannot be read fails rather than passing unread.
 `shortfalls_added_with_their_colour` says what stays with review.
 
+**And an entry excuses a pair only as bad as it was when listed.** Each entry
+records the ratio it excuses, and that ratio must be what the pair measures, so
+a change that moves the pair also moves its entry where review sees it. Given
+`--base`, a pair that now measures below the ratio the base's entry recorded
+fails (PL-L1NX). A colour renamed with its value kept is read as the base's
+colour under a new name, so its entry moves with it and is not new (PL-NDGS).
+
 **Exemptions, and why they are not shortfalls (PL-HKTB).** SC 1.4.11 binds a
 graphical object *required to understand the content*, and its Understanding
 document says which are not: one whose information text also carries ("labels
@@ -226,6 +233,7 @@ from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
+from typing import NamedTuple
 
 from workflow_paths_check import tracked_under
 
@@ -861,6 +869,20 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
     ),
 )
 
+
+class Shortfall(NamedTuple):
+    """One `KNOWN_SHORTFALLS` entry: who closes the gap, and how wide it is.
+
+    A literal call rather than a dataclass built elsewhere, because `--base`
+    reads the base's copy of this file with `ast` and never imports it.
+    """
+
+    #: The item that closes the shortfall.
+    item: str
+    #: The ratio the entry excuses, as the report prints it (`DISPLAY_DECIMALS`).
+    ratio: float
+
+
 #: Declared pairs that do not meet their minimum today, each against the item
 #: that closes it. Not a suppression list: an entry here that starts passing is
 #: reported as an error, so a fix cannot leave its excuse behind, and so is one
@@ -868,6 +890,11 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
 #: either (PL-KNHX). Under `--base`, an entry added in the change that
 #: introduces or alters a colour of its pair fails too, so the list grows only
 #: for a colour that change leaves alone (PL-VJFQ).
+#:
+#: Each entry is a `Shortfall`: the item that closes it and the ratio it
+#: excuses, which must be the ratio the pair measures. Under `--base`, a pair
+#: measuring below the ratio the base's entry recorded fails, so an entry
+#: cannot go on excusing a pair that a change has made worse (PL-L1NX).
 #:
 #: **Empty since 2026-09-16, and that is the state to keep it in.** `ACCENT` was
 #: listed twice with the same measured value and two different owners - the
@@ -881,7 +908,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
 #: An empty dict is not a reason to delete the mechanism. A shortfall that is
 #: found, owned and visible is the thing this replaced a comment-nobody-checks
 #: with, and the next one wants somewhere to go that is not a silent failure.
-KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {}
+KNOWN_SHORTFALLS: dict[tuple[str, str], Shortfall] = {}
 
 #: Uses of a colour that SC 1.4.11 does not bind, keyed by the constant: each
 #: use names the surface it is drawn on, the criterion's ground in a few words
@@ -1666,12 +1693,12 @@ class BaseUnreadable(Exception):
 
 @dataclass(frozen=True)
 class Base:
-    """The palette and the shortfall keys where this change started from."""
+    """The palette and the shortfall entries where this change started from."""
 
     #: The ref `--base` named, as the report prints it.
     ref: str
     palette: dict[str, str]
-    shortfalls: frozenset[tuple[str, str]]
+    shortfalls: dict[tuple[str, str], Shortfall]
 
 
 def _git_read(root: Path, *args: str) -> str:
@@ -1695,13 +1722,33 @@ def _git_read(root: Path, *args: str) -> str:
     return text
 
 
-def shortfall_keys(source: str) -> frozenset[tuple[str, str]]:
-    """The keys of the `KNOWN_SHORTFALLS` literal in a copy of this file.
+def _shortfall(node: ast.expr) -> Shortfall | None:
+    """The entry a literal `Shortfall(...)` call writes, or `None` for any other value."""
+    if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)):
+        return None
+    if node.func.id != Shortfall.__name__:
+        return None
+    try:
+        given = [ast.literal_eval(arg) for arg in node.args]
+        named = {k.arg: ast.literal_eval(k.value) for k in node.keywords if k.arg is not None}
+    except (ValueError, TypeError, SyntaxError):
+        return None
+    fields = dict(zip(Shortfall._fields, given, strict=False)) | named
+    if len(given) > len(Shortfall._fields) or set(fields) != set(Shortfall._fields):
+        return None
+    item, ratio = fields["item"], fields["ratio"]
+    if not isinstance(item, str) or isinstance(ratio, bool) or not isinstance(ratio, int | float):
+        return None
+    return Shortfall(item, float(ratio))
+
+
+def shortfall_entries(source: str) -> dict[tuple[str, str], Shortfall]:
+    """The entries of the `KNOWN_SHORTFALLS` literal in a copy of this file.
 
     Raises:
         BaseUnreadable: The copy defines no such literal, or holds a key that
-            is not a literal pair of names, so which entries it has cannot be
-            said.
+            is not a literal pair of names or a value that is not a literal
+            `Shortfall(...)`, so which entries it has cannot be said.
     """
     for statement in ast.parse(source, filename=SHORTFALLS_SOURCE.as_posix()).body:
         targets: list[ast.expr] = []
@@ -1714,8 +1761,8 @@ def shortfall_keys(source: str) -> frozenset[tuple[str, str]]:
             continue
         if not isinstance(value, ast.Dict):
             raise BaseUnreadable("KNOWN_SHORTFALLS is not a literal mapping there")
-        keys: set[tuple[str, str]] = set()
-        for key in value.keys:
+        entries: dict[tuple[str, str], Shortfall] = {}
+        for key, entry in zip(value.keys, value.values, strict=True):
             try:
                 pair = None if key is None else ast.literal_eval(key)
             except (ValueError, TypeError, SyntaxError):
@@ -1724,13 +1771,18 @@ def shortfall_keys(source: str) -> frozenset[tuple[str, str]]:
                 isinstance(pair, tuple) and len(pair) == 2 and all(isinstance(n, str) for n in pair)
             ):
                 raise BaseUnreadable("a KNOWN_SHORTFALLS key there is not a literal pair of names")
-            keys.add((pair[0], pair[1]))
-        return frozenset(keys)
+            shortfall = _shortfall(entry)
+            if shortfall is None:
+                raise BaseUnreadable(
+                    "a KNOWN_SHORTFALLS value there is not a literal Shortfall(item, ratio)"
+                )
+            entries[(pair[0], pair[1])] = shortfall
+        return entries
     raise BaseUnreadable("it defines no KNOWN_SHORTFALLS")
 
 
 def read_base(root: Path, ref: str) -> Base:
-    """The palette and the shortfall keys at the merge base of `HEAD` and `ref`.
+    """The palette and the shortfall entries at the merge base of `HEAD` and `ref`.
 
     The merge base rather than `ref` itself, as `bin/docket check --verify-base`
     takes its diff: a colour `ref` has changed since this branch left it is not
@@ -1755,7 +1807,7 @@ def read_base(root: Path, ref: str) -> Base:
     ledger = _git_read(root, "show", f"{commit}:{SHORTFALLS_SOURCE.as_posix()}")
     try:
         palette = palette_from_sources(sources)
-        shortfalls = shortfall_keys(ledger)
+        shortfalls = shortfall_entries(ledger)
     except SyntaxError as error:
         raise BaseUnreadable(f"at {at}: {error.filename} does not parse: {error.msg}") from error
     except BaseUnreadable as error:
@@ -1791,24 +1843,84 @@ def shortfalls_added_with_their_colour(
     review (PL-VJFQ).
 
     Names are compared rather than values alone, so a new constant holding a
-    value another already has is still a new colour. The price is that renaming
-    a listed colour reads as introducing one.
+    value another already has is still a new colour. A rename is the exception,
+    as `renamed_colours` reads one: the base's entry moves to the new name, so
+    it was not added (PL-NDGS).
     """
     by_key = {requirement.key: requirement for requirement in REQUIREMENTS}
+    renames = renamed_colours(palette, base)
     found: list[AddedWithColour] = []
     for key in KNOWN_SHORTFALLS:
         requirement = by_key.get(key)
         # A key naming no requirement is `stale_shortfalls`' to report, and a
         # name the palette lacks is `missing`'s, so neither is said twice.
-        if key in base.shortfalls or requirement is None:
+        if requirement is None or base_key(requirement, renames) in base.shortfalls:
             continue
         for name in (*requirement.candidates, requirement.background):
             now = palette.get(name)
             if now is None:
                 continue
-            was = base.palette.get(name)
+            was = base.palette.get(renames.get(name, name))
             if was is None or was.upper() != now.upper():
                 found.append(AddedWithColour(requirement, name, was, now))
+    return tuple(found)
+
+
+def renamed_colours(palette: dict[str, str], base: Base) -> dict[str, str]:
+    """Each colour renamed since the base with its value kept, as `{new name: old name}`.
+
+    A name the base lacks is a rename when exactly one base name holds the same
+    value and is gone from the palette now. A new constant that reuses the
+    value of a constant still defined is not a rename, so it stays a new
+    colour. Two base names gone with the same value leave which one was renamed
+    unknown, so neither is read as the rename and the colour stays new.
+    """
+    renames: dict[str, str] = {}
+    for name, value in palette.items():
+        if name in base.palette:
+            continue
+        gone = [
+            old
+            for old, was in base.palette.items()
+            if old not in palette and was.upper() == value.upper()
+        ]
+        if len(gone) == 1:
+            renames[name] = gone[0]
+    return renames
+
+
+def base_key(requirement: AnyRequirement, renames: dict[str, str]) -> tuple[str, str]:
+    """The key `requirement`'s entry had at the base, before the colours in `renames` moved."""
+    label = " or ".join(renames.get(name, name) for name in requirement.candidates)
+    return (label, renames.get(requirement.background, requirement.background))
+
+
+@dataclass(frozen=True)
+class MadeWorse:
+    """A listed pair that measures below the ratio the base's entry excused."""
+
+    result: Result
+    #: The ratio the base's entry recorded.
+    excused: float
+
+
+def shortfalls_made_worse(
+    excused: Iterable[Result], palette: dict[str, str], base: Base
+) -> tuple[MadeWorse, ...]:
+    """Every excused pair measuring below the ratio its entry recorded at the base.
+
+    An entry excuses a gap as wide as it was when listed. Without this, an
+    entry already on the base went on excusing its pair whatever a later change
+    did to the pair's colours, so a change could make a listed pair worse and
+    stay green (PL-L1NX). A pair whose entry the base lacks is
+    `shortfalls_added_with_their_colour`'s to judge.
+    """
+    renames = renamed_colours(palette, base)
+    found: list[MadeWorse] = []
+    for result in excused:
+        was = base.shortfalls.get(base_key(result.requirement, renames))
+        if was is not None and result.rounded < was.ratio:
+            found.append(MadeWorse(result, was.ratio))
     return tuple(found)
 
 
@@ -1850,12 +1962,18 @@ class Report:
     #: requirement was renamed, retyped or deleted is seen here or nowhere
     #: (PL-KNHX).
     stale_shortfalls: tuple[tuple[str, str], ...]
+    #: Excused pairs whose entry records a ratio other than the one they
+    #: measure, so the entry no longer says how wide the gap is (PL-L1NX).
+    misrecorded: tuple[Result, ...]
     #: The ref `--base` named, or `None` when the run compared nothing with one.
     base: str | None
     #: Entries the base lacks, beside a colour of their pair the change
     #: introduces or alters - the use `.claude/rules/ui-color.md` forbids
     #: (PL-VJFQ).
     added_with_colour: tuple[AddedWithColour, ...]
+    #: Excused pairs measuring below the ratio the base's entry recorded
+    #: (PL-L1NX).
+    made_worse: tuple[MadeWorse, ...]
     #: Why the base could not be read, when it could not. An error rather than a
     #: pass: this comparison is the only gate on the rule it enforces.
     base_unreadable: tuple[str, ...]
@@ -1908,7 +2026,9 @@ class Report:
                 self.unexpected,
                 self.repaired,
                 self.stale_shortfalls,
+                self.misrecorded,
                 self.added_with_colour,
+                self.made_worse,
                 self.base_unreadable,
                 self.exempt_missing,
                 self.exempt_and_required,
@@ -1973,12 +2093,24 @@ def analyze(root: Path, base: str | None = None) -> Report:
     declared = {requirement.key for requirement in REQUIREMENTS}
     stale_shortfalls = tuple(key for key in KNOWN_SHORTFALLS if key not in declared)
     added_with_colour: tuple[AddedWithColour, ...] = ()
+    made_worse: tuple[MadeWorse, ...] = ()
     base_unreadable: tuple[str, ...] = ()
     if base is not None:
         try:
-            added_with_colour = shortfalls_added_with_their_colour(palette, read_base(root, base))
+            read = read_base(root, base)
         except BaseUnreadable as error:
             base_unreadable = (str(error),)
+        else:
+            added_with_colour = shortfalls_added_with_their_colour(palette, read)
+            made_worse = shortfalls_made_worse(excused, palette, read)
+    # A pair made worse is reported once, as made worse, whatever its entry now says.
+    worse = {each.result.requirement.key for each in made_worse}
+    misrecorded = tuple(
+        result
+        for result in excused
+        if result.requirement.key not in worse
+        and result.rounded != KNOWN_SHORTFALLS[result.requirement.key].ratio
+    )
     exempt: list[tuple[str, Exemption]] = []
     exempt_missing: set[str] = set()
     for name, uses in EXEMPT.items():
@@ -2032,8 +2164,10 @@ def analyze(root: Path, base: str | None = None) -> Report:
         repaired=repaired,
         excused=excused,
         stale_shortfalls=stale_shortfalls,
+        misrecorded=misrecorded,
         base=base,
         added_with_colour=added_with_colour,
+        made_worse=made_worse,
         base_unreadable=base_unreadable,
         exempt=tuple(exempt),
         exempt_missing=tuple(sorted(exempt_missing)),
@@ -2129,7 +2263,7 @@ def format_report(report: Report, *, matrix: bool) -> str:
             requirement = result.requirement
             lines.append(
                 f"  {requirement.label} on {requirement.background}: {result.rounded:.2f}, "
-                f"tracked by {KNOWN_SHORTFALLS[requirement.key]}"
+                f"tracked by {KNOWN_SHORTFALLS[requirement.key].item}"
             )
 
     if report.stale_shortfalls:
@@ -2140,7 +2274,7 @@ def format_report(report: Report, *, matrix: bool) -> str:
         for foreground, background in report.stale_shortfalls:
             lines.append(
                 f"  {foreground} on {background}, tracked by "
-                f"{KNOWN_SHORTFALLS[(foreground, background)]}"
+                f"{KNOWN_SHORTFALLS[(foreground, background)].item}"
             )
         lines.append(
             "  A renamed, retyped or deleted requirement leaves its entry excusing nothing, "
@@ -2163,11 +2297,44 @@ def format_report(report: Report, *, matrix: bool) -> str:
             )
             lines.append(
                 f"  {requirement.label} on {requirement.background}, tracked by "
-                f"{KNOWN_SHORTFALLS[requirement.key]}: {added.colour} is {change}"
+                f"{KNOWN_SHORTFALLS[requirement.key].item}: {added.colour} is {change}"
             )
         lines.append(
             "  An entry is for a shortfall found on a colour this change leaves alone. "
             "Re-pick it, or fix what is drawn around it (.claude/rules/ui-color.md, judgment 4)."
+        )
+
+    if report.made_worse:
+        lines.append("")
+        lines.append(
+            "Listed as a known shortfall and made worse than its entry excused "
+            f"(base {report.base}):"
+        )
+        for worse in report.made_worse:
+            requirement = worse.result.requirement
+            lines.append(
+                f"  {requirement.label} on {requirement.background}: {worse.result.rounded:.2f}, "
+                f"below the {worse.excused:.2f} the base's entry excused, tracked by "
+                f"{KNOWN_SHORTFALLS[requirement.key].item}"
+            )
+        lines.append(
+            "  An entry excuses a gap only as wide as it was when listed. Restore the colour, "
+            "or fix what is drawn around it (.claude/rules/ui-color.md, judgment 4)."
+        )
+
+    if report.misrecorded:
+        lines.append("")
+        lines.append("Listed as a known shortfall at a ratio the pair does not measure:")
+        for result in report.misrecorded:
+            requirement = result.requirement
+            entry = KNOWN_SHORTFALLS[requirement.key]
+            lines.append(
+                f"  {requirement.label} on {requirement.background}: measures "
+                f"{result.rounded:.2f}, listed at {entry.ratio:.2f}, tracked by {entry.item}"
+            )
+        lines.append(
+            "  Record the ratio the pair measures, so the entry says how wide the gap is "
+            "and a change that widens it is seen."
         )
 
     if report.exempt_missing:
@@ -2196,7 +2363,7 @@ def format_report(report: Report, *, matrix: bool) -> str:
             requirement = result.requirement
             lines.append(
                 f"  {requirement.label} on {requirement.background}: {result.rounded:.2f} < "
-                f"{requirement.minimum} - {KNOWN_SHORTFALLS[requirement.key]}"
+                f"{requirement.minimum} - {KNOWN_SHORTFALLS[requirement.key].item}"
             )
 
     if report.below_trace_floor:
