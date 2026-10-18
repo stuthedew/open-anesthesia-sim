@@ -3,11 +3,12 @@ id: PL-HTHC
 title: docket's config.load reads a list setting of the wrong type as its default and coerces a non-string scalar with str(), where its docstring promises that a malformed config fails to parse, so a setting that looks applied is silently not; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_config.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
+closed: 2026-10-18
 payoff: a mistyped or misspelt docket.toml setting stops the run by name instead of silently falling back to a default that looks applied
 verify: grep -q 'def test_a_list_setting_of_the_wrong_type_is_rejected_rather_than_defaulted' subprojects/docket/tests/test_config.py && grep -q 'def test_an_unknown_key_in_the_docket_table_is_rejected' subprojects/docket/tests/test_config.py
 ---
