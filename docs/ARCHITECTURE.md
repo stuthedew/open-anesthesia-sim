@@ -803,8 +803,8 @@ disk; that was true until this store landed.
   step was lossy, the pre-migration file kept once as `workspaces.v<N>.json`
   at the next save; *newer* - refused and left untouched, the shipped set
   shown, saving off for the session, a notice naming the file and both
-  versions; *unreadable* - as newer; *invalid at a version this build reads*
-  - set aside unchanged as `workspaces.invalid-<UTC time>.json`, the previous
+  versions; *unreadable* - as newer; *invalid at a version this build reads* -
+  set aside unchanged as `workspaces.invalid-<UTC time>.json`, the previous
   generation loaded where it validates and the shipped set otherwise, the
   notice saying which, saving on. A View kind no View is registered under is
   not a file error: the file loads and that Area shows `PL-R1WQ`'s failure
