@@ -3,11 +3,10 @@ id: PL-F2YS
 title: The unconditional region opens a 1366 px laptop's readout row on four columns and stacks two runs' readouts in two rows where docs/MODEL.md pairs them in one, so compare mode leaves the chart below its 360 px minimum
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: defect, safety
 feature: interface-areas
 touches: src/anesthesia_sim/app/, tests/integration, docs/MODEL.md
-blocked-by: PL-W9P6
 added: 2026-10-18
 payoff: a 1366 px laptop opens the seven readouts in one row, and two runs compared share one readout block as docs/MODEL.md specifies, so compare mode keeps the chart at its minimum or the shortfall reaches the owner
 verify: grep -q 'def test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns' tests/integration/test_simulation_view.py
@@ -71,7 +70,7 @@ each restoring a decision already ratified rather than making a new one):
    recommendation, because the budget was his and lowering the chart's minimum
    was refused on 2026-10-11.
 
-**Blocked by `PL-W9P6`.** That item builds the adapter that replaces the
+[superseded 2026-10-18] **Blocked by `PL-W9P6`.** That item builds the adapter that replaces the
 splitters, and the sidebar width this item reads is a splitter's today. Both
 change `app/simulation_view.py`'s layout code, so this one follows.
 
@@ -85,3 +84,7 @@ what the build shows.
 
 *Scope.* `ROADMAP.md` § "v0.6.0 - the layout is the reader's" -> "Required
 scope" entry 20, where compare mode was `PL-W54S`'s to settle.
+
+**`PL-W9P6` built, 2026-10-18 (`#1592`).** The sidebar width is now the
+adapter's: `SimulationView`'s layout constant gives the accounting Area 0.18 of
+the window, and `app/area_layout.py` sets the splitter from it.

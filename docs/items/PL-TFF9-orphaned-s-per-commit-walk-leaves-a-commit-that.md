@@ -3,15 +3,18 @@ id: PL-TFF9
 title: orphaned's per-commit walk leaves a commit that deletes a file unclassified, since the deleted path is in neither of _landing_split's sets, so a left-behind commit that deletes one file and edits another is never reported as work left behind
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: stranded-report-fidelity
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
+closed: 2026-10-18
+pr: 1588
 payoff: a commit pushed after its pull request merged is reported as left behind even when it deletes a file, so bin/docket stranded stops calling lost work accounted for
 verify: grep -q 'def test_orphaned_reports_a_left_behind_commit_that_also_deletes_a_file' subprojects/docket/tests/test_vcs.py
 reenters: PL-GHHW
+recurrences: 2026-10-18 PL-N80K
 ---
 
 **Problem.** orphaned's per-commit walk leaves a commit that deletes a file unclassified, since the deleted path is in neither of _landing_split's sets, so a left-behind commit that deletes one file and edits another is never reported as work left behind
@@ -58,3 +61,18 @@ build found it as it found that head's `PL-8HSX`. No one predicate is spelled
 two ways here. The walk compares every path a commit touched against
 `_landing_split`'s set of paths given content, which is deliberately narrower,
 as though the two were the same set.
+
+**Worked, 2026-10-18.** The brief held against `656a9fe1`. `_Landings.deletions`
+lists the paths a ref deleted since its fork and splits them by whether the
+base's tip still holds each one. A path the tip lacks is a deletion the base
+took, and one it still holds is outstanding. `orphaned` and `landed_whole` add
+those halves to the content split before `_commits_by_landing` classifies each
+commit, so the delete-and-edit commit is reported, and a squashed commit that
+included a deletion counts as taken whole. The test also showed the second half
+mattered on its own: where the branch's only pre-merge commit deleted a file,
+`landed_whole` was false and nothing was reported at all.
+
+Not covered: a post-merge commit that only deletes a file. The content split of
+such a branch is all landed, so `_unlanded_refs` treats it as taken whole and
+`orphaned` never asks about it. Filed as its own item rather than widened here,
+since it changes the read every in-flight reader shares.

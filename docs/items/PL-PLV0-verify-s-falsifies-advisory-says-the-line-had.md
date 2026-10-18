@@ -3,12 +3,14 @@ id: PL-PLV0
 title: verify's falsifies: advisory says the line had to reach the base before the branch's first commit and that triage is the only pass that can write it, though PL-TKFD's route amends the base mid-work from an item-only branch
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: verify-close-out
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, .claude/skills/docket/modes/triage.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
+closed: 2026-10-18
+pr: 1588
 payoff: a session whose branch declares a falsifies: the base lacks is told the route that still works - declare it on the base and re-audit - instead of that nothing could have been done
 verify: ! grep -qF 'so triage is the only pass' subprojects/docket/src/docket/verify.py && ! grep -qF 'why triage is the only pass that can write it' .claude/skills/docket/modes/triage.md
 falsifies: triage is the only pass that can write it
@@ -63,3 +65,11 @@ base's copy is read at its tip when `verify` runs, not as of the branch's
 first commit. It was filed in the commit that closed that head, as a leftover
 the head knowingly deferred. That makes it bookkeeping of the close, not a new
 mechanism.
+
+**Worked, 2026-10-18.** The advisory now says to declare the line on the base
+from an item-only branch, let that merge, bring the base in and re-audit. It
+keeps the phrase "before this branch's first commit" only to say that triage,
+at that point, is the pass that writes it for nothing. So the test's other
+assertion still holds and needed no declaration. The `triage.md` heading is now
+"`falsifies:`, and why triage is the pass that writes it", and its "Why this
+pass and no other" lead is "Why this pass".

@@ -3,12 +3,13 @@ id: PL-R1WQ
 title: Nothing says where the view registry lives, how a view-kind tag is allocated so a class rename does not trip the loud failure meant for a missing view, or how a pure-Python LayoutModel validates a kind tag without importing a Qt view
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: planning
 feature: interface-areas
-touches: docs/ARCHITECTURE.md
-blocked-by: PL-W9P6
+touches: src/anesthesia_sim/app/, tests/integration, docs/ARCHITECTURE.md
 added: 2026-09-16
+payoff: an Area whose View kind this build does not know shows a failure in that Area rather than a wrong View, and renaming a class cannot change what a saved layout means
+verify: grep -qr --include=view_registry.py 'ViewKind' src/anesthesia_sim/app
 ---
 
 **Problem.** Nothing says where the view registry lives, how a view-kind tag is allocated so a class rename does not trip the loud failure meant for a missing view, or how a pure-Python LayoutModel validates a kind tag without importing a Qt view
@@ -102,7 +103,7 @@ specified otherwise is `PL-WV9K` Q4: layouts are saved by an explicit "Save
 as default" action in the layout menu, not automatically; `PL-WV9K`
 § "Answers 2026-09-27" carries that design.
 
-## Blocked on `PL-W9P6`, 2026-10-12
+## [superseded 2026-10-18] Blocked on `PL-W9P6`, 2026-10-12
 
 Set by `PL-1FT6`'s close-out. Q2's half is built with no Qt import: `ViewKind`
 checks the tag's syntax, and `LayoutModel.unknown_kinds(known)` returns the
@@ -112,3 +113,11 @@ What is left is the registry module Q1 places in `app/` and the per-Area
 failure Required scope entry 4 names. The adapter reads both when it resolves
 a tag, so the registry is built with the adapter, its first consumer, rather
 than ahead of it as a table nothing reads.
+
+**`PL-W9P6` built, 2026-10-18.** The adapter exists without the registry.
+`AreaLayout` takes a `view_for` function that returns the widget for each
+Area, and `SimulationView._area_view` maps the dashboard's two tags to their
+widgets and raises `LookupError` for any other tag. That function is the seam
+this item's registry replaces. Q1's `app/view_registry.py` and the per-Area
+failure state are still to build, so the work now reaches `app/` and the
+integration tests as well as `docs/ARCHITECTURE.md`.

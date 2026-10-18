@@ -191,6 +191,7 @@ from anesthesia_sim.core.supported_ranges import (
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.units import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
+from anesthesia_sim.layout.tree import Split
 
 # The size every dashboard here is shown at: wide enough for the seven
 # readouts to stand side by side and for a chart column with pixels to
@@ -333,17 +334,14 @@ def _record_panels(run: RunView) -> tuple[QWidget, QWidget]:
     return accounting, timeline
 
 
-def _stacked_sections(view: SimulationView) -> QSplitter:
-    """The vertical splitter of settings and the chart row, under the unconditional region."""
+def _setting_sections(view: SimulationView) -> list[QWidget]:
+    """Each run's setting controls, in the column between the unconditional region and the Areas."""
 
-    vertical = [
-        splitter
-        for splitter in view.findChildren(QSplitter)
-        if splitter.orientation() == Qt.Orientation.Vertical
-    ]
-    assert len(vertical) == 1, "the dashboard stacks its sections in exactly one splitter"
+    column = view._settings_column
+    sections = [column.itemAt(index).widget() for index in range(column.count())]
+    assert all(section is not None for section in sections), "the column holds a bare layout"
 
-    return vertical[0]
+    return [section for section in sections if section is not None]
 
 
 def _steps(run: RunView, ticks: int) -> None:
@@ -4321,10 +4319,10 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
         "the filled track and the handle, none of which is painted from the "
         "foreground role."
     ),
-    "QSplitterHandle": (
-        "the grips between the sidebar, the chart column and the run panels. "
-        "Chrome with no text, painted by the platform style; PL-KRZW covers "
-        "it with the scroll bars above."
+    "_AreaHandle": (
+        "the border between two Areas, the chart column and the sidebar. It draws "
+        "no text: nothing at rest, and under the pointer a PRIMARY line that "
+        "`tools/contrast_check.py` measures against BACKGROUND (PL-RQT1)."
     ),
     "_LineSwatch": (
         "the legend's line samples. Each paints with the pen of the trace it "
@@ -4759,14 +4757,14 @@ def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QAp
 
     controller = SimulationController()
     view = _shown_view(application, controller)
-    stacked = _stacked_sections(view)
-    settings, chart_row = (stacked.widget(index) for index in range(2))
+    (settings,) = _setting_sections(view)
+    chart_row = view.layout_container
     readout_section = view.unconditional_region
     page = _page_of(view)
 
     assert abs(readout_section.height() - readout_section.sizeHint().height()) <= 2
     assert abs(settings.height() - settings.sizeHint().height()) <= 2
-    assert chart_row.height() >= chart_row.sizeHint().height() - 2 * stacked.handleWidth()
+    assert chart_row.height() >= chart_row.sizeHint().height() - 2
 
     settled_chart_row_height = chart_row.height()
     spare = 400
@@ -5742,18 +5740,17 @@ def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
 
     The dashboard holds its compartment selection to the compared cap from
     this count, the legends name the runs from it, the panels carry the names the legend
-    entries use, and `PL-25KS` gives every surface outside the unconditional
-    region a splitter section of its own - so a second run adds one, for its
-    setting controls, and its readouts join the region (`PL-NWTM`).
+    entries use, and each run has a section of setting controls of its own -
+    so a second run adds one, and its readouts join the region (`PL-NWTM`).
     """
 
     view = _case_view(application, _branched_case())
-    sections_before = _stacked_sections(view).count()
+    sections_before = len(_setting_sections(view))
 
     _take_fork(view, 60.0)
     _settle(application)
 
-    assert _stacked_sections(view).count() == sections_before + 1
+    assert len(_setting_sections(view)) == sections_before + 1
     assert view.unconditional_region.isAncestorOf(view.runs[1]._readout_row)
     assert view._legend._run_count == 2
     assert view._wash_in_legend._run_count == 2
@@ -6011,11 +6008,11 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
 
 
 def test_no_unconditional_value_sits_inside_the_layout_container(application: QApplication) -> None:
-    """Every value `docs/MODEL.md` requires in every layout is in the region, outside the splitters.
+    """Every value `docs/MODEL.md` requires in every layout is in the region, outside the Areas.
 
-    The splitter tree is what the Areas replace (`PL-W9P6`), so a value with
-    a splitter among its ancestors is one a reader could close away once the
-    handles are live (`PL-NWTM`). Held for both runs of a compared case,
+    The layout container holds the Areas a reader resizes (`PL-W9P6`), so a
+    value inside it is one a reader could close away once Areas can be
+    closed (`PL-NWTM`). Held for both runs of a compared case,
     since the second run's widgets are placed an hour after the first's. The
     halt banner is hidden while nothing has halted, and is held to its place
     alone; every other value is on screen.
@@ -6125,16 +6122,35 @@ def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QAppl
     assert run_label(0) not in run._control_timeline_heading_text.text()
 
 
-def test_no_handle_of_the_restacked_splitter_becomes_draggable(application: QApplication) -> None:
-    """Qt enables the handle it creates with a new section (`PL-25KS` freezes them)."""
+def test_dragging_the_border_beside_the_sidebar_changes_the_layout_model(
+    application: QApplication,
+) -> None:
+    """A reader's drag of the one live border reaches the layout model, not only the widgets.
 
-    view = _case_view(application, _branched_case())
-    _take_fork(view, 60.0)
-    _settle(application)
-    sections = _stacked_sections(view)
+    The dashboard draws the chart panel and the sidebar as two Areas of one
+    row (`PL-W9P6`). Dragging the border between them 100 px to the left
+    leaves the chart panel's share of the row at its new width over the
+    row's, as the pixels give it, and the sidebar wider by the same 100 px.
+    """
 
-    for index in range(1, sections.count()):
-        assert sections.handle(index).isEnabled() is False
+    view = _shown_view(application, SimulationController())
+    splitter = view.layout_container.findChild(QSplitter)
+    assert splitter is not None, "the dashboard's Areas are not in a splitter"
+    chart_px, sidebar_px = splitter.sizes()
+    handle = splitter.handle(1)
+    start = handle.rect().center()
+    end = QPoint(start.x() - 100, start.y())
+
+    QTest.mousePress(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start)
+    QTest.mouseMove(handle, end)
+    QTest.mouseRelease(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, end)
+    application.processEvents()
+
+    tree = view.layout_container.model.windows[0].tree
+    assert isinstance(tree, Split)
+    assert splitter.sizes() == [chart_px - 100, sidebar_px + 100]
+    assert tree.sizes[0] == pytest.approx((chart_px - 100) / (chart_px + sidebar_px), abs=1e-2)
+    assert splitter.widget(0) is view._chart_column
 
 
 def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplication) -> None:

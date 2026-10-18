@@ -12,10 +12,11 @@ sit in a band across the top of the page, and the use disclaimer in a line
 across its foot. `docs/MODEL.md` § "Minimum displayed outputs" requires those
 values on screen in every Workspace, and `app/unconditional_set.py` declares
 which they are; `_place_run` refuses a run whose declared values the band does
-not hold. Every other surface is an independent widget inside nested splitters
-whose handles are inert (`PL-25KS`), and those splitters are the layout
-container the Areas will replace (`PL-W9P6`). Nothing in the band has an
-ancestor among them, so no split, join or close can reach it.
+not hold. Under the band, each run's setting controls stand at their own
+height, and under them the Areas: the chart panel beside the sidebar, drawn
+from a layout model by `app/area_layout.py`, so a reader can drag the border
+between them (`PL-W9P6`). The Areas are the layout container. Nothing in the
+band has an ancestor among them, so no split, join or close can reach it.
 
 **One frame, both charts, then every run.** `_refresh_view` reads one
 snapshot per run, assembles one `ChartFrame` through `app/chart_frame.py`,
@@ -64,6 +65,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from anesthesia_sim.app.area_layout import AreaLayout
 from anesthesia_sim.app.chart_frame import ChartFrame, RunInput, assemble_chart_frame
 from anesthesia_sim.app.chart_time_base import (
     FIT_RUN_KEY,
@@ -108,14 +110,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import format_time_base, mac_multiple
 from anesthesia_sim.app.qt_chart import ConcentrationChart, TraceLegend, WashInChart, WashInLegend
-from anesthesia_sim.app.qt_widgets import (
-    BookmarkDialog,
-    BookmarksPanel,
-    ForkPanel,
-    freeze_splitter_handles,
-    inert_splitter,
-    styled_label,
-)
+from anesthesia_sim.app.qt_widgets import BookmarkDialog, BookmarksPanel, ForkPanel, styled_label
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.stylesheets import (
@@ -141,17 +136,45 @@ from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_se
 from anesthesia_sim.core.concentration import fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
+from anesthesia_sim.layout.model import LayoutModel
+from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, Window
 
-#: The chart column takes three parts of the width beside the sidebar's one,
-#: the proportion the Flet build's 9:3 grid columns gave the same two panels.
+#: The unconditional region gives the run rows three parts of its width and
+#: the control-change records one, the proportion the Flet build's 9:3 grid
+#: columns gave the chart panel and the sidebar below them.
 _CHART_COLUMN_STRETCH: Final = 3
 _SIDEBAR_STRETCH: Final = 1
 
-#: Spare height goes to the plots. The readout and setting sections are held
-#: to their own height by a vertical policy that can shrink but not grow, so
-#: a taller window lengthens the traces rather than opening blank space above
-#: and below a row of readouts. A splitter stretch factor would not do it: Qt
-#: multiplies a section's opening size by the factor, and only above one.
+#: The View kinds of the dashboard's two Areas. The chart panel still holds
+#: the wash-in plot, the marks and the branch control under the concentration
+#: plot, until each is a View of its own (`PL-TH35`, `PL-9LNF`), so it carries
+#: the tag of the View it leads with. The sidebar holds each run's agent
+#: accounting, under the tag `PL-50PZ` gives that View.
+_CONCENTRATION_CHART: Final = ViewKind("concentration_chart")
+_AGENT_ACCOUNTING: Final = ViewKind("agent_accounting")
+
+#: The dashboard's Areas: the chart panel beside the sidebar, in one row
+#: (`PL-W9P6`). The sidebar's 0.18 gives it about the 228 px it had beside the
+#: charts in a 1366 px window before the row was an Area layout, when it stood
+#: at its own minimum width at every window size. A placeholder until the
+#: shipped Workspaces replace this layout.
+_DASHBOARD_LAYOUT: Final = LayoutModel(
+    (
+        Window(
+            Split(
+                Orientation.ROW,
+                (0.82, 0.18),
+                (Area(AreaId(1), _CONCENTRATION_CHART), Area(AreaId(2), _AGENT_ACCOUNTING)),
+            )
+        ),
+    ),
+    AreaId(3),
+)
+
+#: Spare height goes to the plots. The setting sections are held to their own
+#: height by a vertical policy that can shrink but not grow, so a taller
+#: window lengthens the traces rather than opening blank space under a row of
+#: sliders.
 _FIXED_SECTION_POLICY: Final = QSizePolicy.Policy.Maximum
 
 #: Object names the page and the chart panel are styled through.
@@ -162,7 +185,7 @@ _CHART_COLUMN_NAME: Final = "chartColumn"
 
 
 def _fixed_height(section: QWidget) -> QWidget:
-    """Hold a splitter section to its own height, so spare height goes to the plots."""
+    """Hold a section to its own height, so spare height goes to the plots."""
 
     section.setSizePolicy(section.sizePolicy().horizontalPolicy(), _FIXED_SECTION_POLICY)
 
@@ -237,12 +260,11 @@ class _RunSlots:
     """Where one displayed run's widgets sit among the layouts every run shares.
 
     Attributes:
-        parameters: The run's setting controls, which are a section of the
-            vertical splitter in their own right rather than a holder inside
-            one - `PL-25KS` makes every surface outside the unconditional
-            region an independent splitter section so that a later item can
-            let a reader resize them, and merging two runs' controls into one
-            section would take a boundary away.
+        parameters: The run's setting controls, a section of the settings
+            column above the Areas, held to its own height. A height a reader
+            could drag is a fraction of the window in the layout model, so the
+            controls join the Areas as a View of their own,
+            `parameter_controls`, once the View contract exists (`PL-TH35`).
         placed: Every widget this run put into a shared layout, the section
             included. Removing the run is deleting these.
     """
@@ -452,13 +474,14 @@ class SimulationView(QWidget):
 
         The unconditional region comes first: per run the transport row, the
         notice banner and the readouts, with every run's control-change
-        record in a column to their right, at the width the sidebar has
-        beside the charts (`PL-J8K2` Q1 and Q3). The notice banners sit under
-        the transport rows and above every displayed value, so a halted run
-        is read before the values it explains. Under the region, the setting
-        controls of each run and then the charts beside the sidebar are
-        splitter sections, and only the last of them takes spare height. The
-        use disclaimer is the page's last line.
+        record in a column to their right (`PL-J8K2` Q1 and Q3). The notice
+        banners sit under the transport rows and above every displayed
+        value, so a halted run is read before the values it explains. Under
+        the region come the setting controls of each run, each at its own
+        height, and then the Areas, the chart panel beside the sidebar, which
+        take the spare height. The Areas are drawn from `_DASHBOARD_LAYOUT`
+        by the adapter, so a reader can drag the border between them. The use
+        disclaimer is the page's last line.
 
         No run is placed here. Every layout a run contributes to is kept, so
         that `_place_run` can fill them in the same order whether it is
@@ -477,18 +500,16 @@ class SimulationView(QWidget):
 
         column.addWidget(self._build_unconditional_region())
 
-        sidebar = QWidget()
-        self._sidebar_column = _spaced_column(sidebar, PAGE_SPACING)
+        settings = QWidget()
+        self._settings_column = _spaced_column(settings, PAGE_SPACING)
+        column.addWidget(settings)
+
+        self._sidebar = QWidget()
+        self._sidebar_column = _spaced_column(self._sidebar, PAGE_SPACING)
         self._sidebar_column.addStretch(1)
 
-        self._charts_and_sidebar = inert_splitter(
-            Qt.Orientation.Horizontal, (self._chart_column, sidebar)
-        )
-        self._charts_and_sidebar.setStretchFactor(0, _CHART_COLUMN_STRETCH)
-        self._charts_and_sidebar.setStretchFactor(1, _SIDEBAR_STRETCH)
-
-        self._sections = inert_splitter(Qt.Orientation.Vertical, (self._charts_and_sidebar,))
-        column.addWidget(self._sections, 1)
+        self._areas = AreaLayout(_DASHBOARD_LAYOUT, self._area_view)
+        column.addWidget(self._areas, 1)
         column.addWidget(styled_label(USE_DISCLAIMER_TEXT, color=WARNING, bold=True, wrap=True))
 
         scroll = QScrollArea()
@@ -575,14 +596,32 @@ class SimulationView(QWidget):
         return self._unconditional_region
 
     @property
-    def layout_container(self) -> QWidget:
-        """The splitter tree every surface outside the unconditional region sits in.
+    def layout_container(self) -> AreaLayout:
+        """The Areas: the widget tree the adapter draws from the layout model.
 
-        What the Areas replace (`PL-W9P6`), and the widget no unconditional
-        value may have as an ancestor.
+        The widget no unconditional value may have as an ancestor, since a
+        reader can resize what is in it and, once the area system is built
+        out, close it (`PL-W9P6`). Its `model` is the layout drawn now, after
+        every drag the reader has made.
         """
 
-        return self._sections
+        return self._areas
+
+    def _area_view(self, area: Area) -> QWidget:
+        """The widget `area` draws: the chart panel, or the sidebar of accounting panels.
+
+        Raises:
+            LookupError: `area` names a View kind the dashboard does not
+                draw. `_DASHBOARD_LAYOUT` names only these two, so this is a
+                defect in that layout rather than a reader's file.
+        """
+
+        views = {_CONCENTRATION_CHART: self._chart_column, _AGENT_ACCOUNTING: self._sidebar}
+
+        if area.view not in views:
+            raise LookupError(f"the dashboard draws no View of the kind {area.view!r}")
+
+        return views[area.view]
 
     def _build_chart_column(self) -> QWidget:
         """The chart panel: heading and time base, captions, legend, advisories, both plots.
@@ -697,10 +736,10 @@ class SimulationView(QWidget):
             _holder(self._wash_in_state_column, (run.build_wash_in_state(),)),
             parameters,
         )
+        self._settings_column.addWidget(parameters)
         self._require_unconditional_values(run)
         self._runs = (*self._runs, run)
         self._slots = (*self._slots, _RunSlots(parameters, placed))
-        self._restack_sections()
         self._rename_runs()
 
         return run
@@ -833,7 +872,6 @@ class SimulationView(QWidget):
         for run, slots in dropped:
             self._remove_run(run, slots)
 
-        self._restack_sections()
         self._rename_runs()
 
     def _trunk_reset_question(self) -> NewCaseQuestion | None:
@@ -931,7 +969,7 @@ class SimulationView(QWidget):
 
             if widget is None or not _within(widget, self._unconditional_region):
                 misplaced.append(value.value)
-            elif _within(widget, self._sections):
+            elif _within(widget, self._areas):
                 misplaced.append(value.value)
 
         if misplaced:
@@ -940,21 +978,6 @@ class SimulationView(QWidget):
                 f"{', '.join(misplaced)}, which docs/MODEL.md requires on screen in every "
                 "layout (app/unconditional_set.py)"
             )
-
-    def _restack_sections(self) -> None:
-        """Order the vertical splitter: every run's settings, then the charts.
-
-        `QSplitter.addWidget` moves a section it already holds, so re-adding
-        every section in order is the whole of the reordering; the handles
-        are frozen again because Qt enables the one it creates with a new
-        section.
-        """
-
-        for slots in self._slots:
-            self._sections.addWidget(slots.parameters)
-
-        self._sections.addWidget(self._charts_and_sidebar)
-        freeze_splitter_handles(self._sections)
 
     def _rename_runs(self) -> None:
         """Hold the compartment selection to the run count, and tell every run.
