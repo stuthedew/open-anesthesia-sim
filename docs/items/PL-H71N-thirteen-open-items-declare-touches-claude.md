@@ -3,10 +3,12 @@ id: PL-H71N
 title: Thirteen open items declare touches: .claude/skills/docket/SKILL.md, but the docket skill's modes now live in .claude/skills/docket/modes/, so bin/docket concurrent under-reports contention between items whose work lands in the same mode file
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: housekeeping
 touches: docs/items
 added: 2026-09-20
+closed: 2026-10-18
+reason: Every item it named has closed since it was filed, ten done and two dropped, so no open item points SKILL.md at work that lands in a mode file. The one open item that still declares .claude/skills/docket/SKILL.md, PL-124X, quotes the compaction cap that SKILL.md itself opens with, so its declaration is right. The verify names PL-0QRP, which was dropped, and a closed brief is a record that is not repaired (.claude/rules/citation-drift.md).
 payoff: bin/docket concurrent reports the real contention between two docket-skill items instead of overlap on a front page neither will touch
 verify: grep -qE '^touches:.*[.]claude/skills/docket/modes/' docs/items/PL-0QRP-a-verify-clause-that-counts-occurrences-of-a.md
 ---

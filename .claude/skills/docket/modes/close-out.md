@@ -290,10 +290,10 @@ page and decides which file a session reads.
    passes.
 
    **Make one of the sceptics run the claim rather than reason about it.**
-   Both refutations that mattered on `#784` were empirical. A fourth candidate
-   - that per-run holder widgets cost the plots 18 px of layout spacing -
-   read as obviously true and measured **0 px** at two window sizes, and would
-   have been filed on argument alone. Conversely the three that were real were
+   Both refutations that mattered on `#784` were empirical. A fourth candidate -
+   that per-run holder widgets cost the plots 18 px of layout spacing - read as
+   obviously true and measured **0 px** at two window sizes, and would have
+   been filed on argument alone. Conversely the three that were real were
    each reproduced with a scratch script under the offscreen platform before
    being written down.
 

@@ -3,12 +3,14 @@ id: PL-N7LK
 title: Four apparatus documents wrap a spaced hyphen to a line start, so CommonMark renders a clause as a list item: docs/WORKING_NOTES.md:912, docs/maintainer.md:240, subprojects/docket/README.md:369 and .claude/skills/docket/modes/close-out.md:293 (the PL-DSMK shape outside ROADMAP.md; twelve such lines across six documents suggest a doc_check rule that a list may not interrupt a paragraph, captured rather than built while the generator pause holds)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, defect
 feature: prose-renders-as-written
 touches: docs/WORKING_NOTES.md, docs/maintainer.md, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-18
+pr: 1586
 payoff: docs/maintainer.md's statement of which pull requests wait for the owner's read, and three other passages, render as the single statements they are instead of a paragraph cut short and a stray bullet
 verify: ! grep -qE '^ *- which was settled on fit' docs/WORKING_NOTES.md && ! grep -qE '^ *- (or .\.github/workflows/|the paths where a wrong clinical value)' docs/maintainer.md && ! grep -qE '^ *- and by the time the discussion becomes' subprojects/docket/README.md && ! grep -qE '^ *- (that per-run holder widgets|read as obviously true)' .claude/skills/docket/modes/close-out.md
 ---
@@ -63,3 +65,10 @@ a continued statement whole and reaches no writer, so recording writer-side
 members there would put `PL-LNNL` inside its scope, a re-scoping for that
 head's next worker to weigh rather than for triage. No check holds the fact
 for a writer; `PL-LNNL` is the one that would.
+
+**Fixed 2026-10-18.** Three of the four passages still wrapped a spaced
+hyphen to a line start; `PL-DKBG` had already rewritten the one in
+`docs/maintainer.md`. The dash in the `docs/WORKING_NOTES.md` numpy entry, in
+the README's "It was fifty lines of bash" paragraph and in close-out's "Make one
+of the sceptics run the claim" step now ends the line before. The
+`markdown-it` command above prints nothing.
