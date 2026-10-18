@@ -1003,8 +1003,9 @@ class RunView(QWidget):
         for a settings record the next step would be refused on too, so the
         run is left exactly as it was and is stopped through the failed-step
         path - the refusal recorded, the status word, the transport and the
-        banner stating it - with the banner's way out naming the setting to
-        change, since Reset is the door it names otherwise. Every raise
+        banner stating it. Reset is the door the banner names otherwise, so
+        its way out is `REFUSED_RESET_WAY_OUT_TEXT`, which says no setting
+        can repair the refusal (`PL-01GY`). Every raise
         halts, as a step's does: a `SimulationConfigurationError` here is
         not a refused setting, because the run it leaves is one that cannot
         be cleared (`PL-M4M0`). `case_restarted` is not emitted, since no
@@ -1074,8 +1075,8 @@ class RunView(QWidget):
         answered by the halt that refusal is, restated, and the selector is
         put back to the agent the controller names, since the snapshot that
         would name it is what refused (`PL-V2HC`); Reset is the way out the
-        halt banner names, unless a refused Reset has left the setting to
-        change standing as the exit.
+        halt banner names, unless a refused Reset has left its own way out
+        standing.
         """
 
         agent_id = self._agent_dropdown.itemData(index)
