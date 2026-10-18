@@ -2946,7 +2946,7 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
     # Startable rather than every member of the band, because `checks.py` counts
     # it that way: a blocked item is not a choice a session can make
     # (`PL-P23D`). Two numbers for one rule is worse than either of them.
-    startable = sum(1 for i in report.open_items if i.priority == top and i.status != "blocked")
+    startable = sum(1 for i in report.open_items if i.priority == top and i.is_startable)
     rules = [
         f"{'/'.join(config.safety_classes)} classes force P0 or P1; `docket check` "
         "rejects them at P2 or P3.",
@@ -3279,11 +3279,12 @@ def format_status(
     complete = [f for f in grouped.values() if f.is_complete]
 
     def next_in(feature: Feature) -> str:
+        # `Item.is_startable`, so an untriaged member is never named next (`PL-RJLQ`).
         candidates = sorted(
-            (i for i in feature.open_items if i.status != "blocked"), key=lambda i: i.sort_key()
+            (i for i in feature.open_items if i.is_startable), key=lambda i: i.sort_key()
         )
         if not candidates:
-            return "all remaining work is blocked"
+            return "nothing remaining can start: every open item is blocked or untriaged"
         item = candidates[0]
         mark = " [IN FLIGHT]" if item.identifier in flight.ids else ""
         return (
@@ -3306,7 +3307,7 @@ def format_status(
     loose = [
         i
         for i in report.open_items
-        if not i.feature and i.status != "blocked" and i.identifier not in flight.ids
+        if not i.feature and i.is_startable and i.identifier not in flight.ids
     ]
     if loose:
         lines.append("")

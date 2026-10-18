@@ -390,7 +390,10 @@ checked without being listed (`PL-X7D5`). The legends are told what a frame
 drew once both plots have drawn it, so where the frame a click asked for
 fails, the boxes go on naming the curves on the plot (`PL-G3K7`); and
 `SimulationView._halt_every_run` restates the branch controls from the case,
-so a failed trunk offers no branch where it stands (`PL-MMNX`). A run that
+so a failed trunk offers no branch where it stands (`PL-MMNX`). The trunk
+records that its frame failed, so it then offers no keyframe and no passed
+mark either: a branch opened there would be drawn by the same failing frame
+(`SimulationController.record_failed_frame`, `PL-T2Q2`). A run that
 stops itself inside its own step tick - on a mark, or
 on arriving at the supported run length - asks for no frame and needs none
 asked for: the render tick draws whenever a displayed run's `record()`
@@ -446,10 +449,10 @@ same section's "What this requires of a branch".
 
 Five things in `app/controller.py` carry it:
 
-- `SimulationController.resumed_at(elapsed_s)` makes one. It builds a second
+- `SimulationController.resumed_at(instant_s)` makes one. It builds a second
   controller through the ordinary constructor, replays the trunk's settings
   from the recorded control timeline into it, seeds its system with the
-  trunk's canonical state at `elapsed_s`, and hands it back paused. The trunk
+  trunk's canonical state at `instant_s`, and hands it back paused. The trunk
   is read and never written, so the two runs share no compartment, no
   accounting and no clock — which is what lets both be advanced.
 - `SimulationController.resumed_here()` makes one where the paused trunk

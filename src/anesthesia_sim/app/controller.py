@@ -503,6 +503,7 @@ class SimulationController:
 
         self._is_running = False
         self._failure_reason: str | None = None
+        self._failed_frame_reason: str | None = None
         self._recorded_supported_limit_reason: str | None = None
         # What this run has done with the marks, as opposed to what is marked.
         # Both are the run's product rather than the learner's question, so
@@ -617,6 +618,7 @@ class SimulationController:
         # session that has nothing wrong with it. A stale limit reason would
         # do the same to a run that has taken no steps at all.
         self._failure_reason = None
+        self._failed_frame_reason = None
         self._recorded_supported_limit_reason = None
 
     def _clear_control_timeline(self) -> None:
@@ -668,6 +670,56 @@ class SimulationController:
         # state) must not overwrite it.
         if self._failure_reason is None:
             self._failure_reason = reason
+
+    def record_failed_frame(self, reason: str) -> None:
+        """Stop the run because the frame it is drawn in raised, recording why.
+
+        The frame is shared by every run on the dashboard, so a raise there is
+        attributable to none of them (`SimulationView._halt_every_run`). This
+        records that the frame failed. It says nothing about whether the model
+        failed, so the interface also calls `fail()` or
+        `halt_at_supported_limit()`, as the raise deserves.
+
+        A run with this record offers no branch at all (`PL-T2Q2`). A branch
+        opened from it would be drawn by the same frame, beside this run, and
+        would halt on the next one. The first reason is kept, as `fail()`
+        keeps its own. Only a fresh run clears it, via `reset()` or
+        `set_agent()`.
+
+        Args:
+            reason: What the frame raised, as `dashboard_frame.halt_disposition`
+                words it.
+        """
+
+        self._is_running = False
+
+        if self._failed_frame_reason is None:
+            self._failed_frame_reason = reason
+
+    @property
+    def fork_refusal(self) -> str | None:
+        """Why no branch at all may be taken from this run, or None where one may.
+
+        Two reasons refuse every door. This run is itself a branch, or the
+        frame it is drawn in has failed (`record_failed_frame`). Each door
+        raises from this same check, so `BranchedCase` offers no fork point
+        where it is set, and the offer and the doors cannot disagree. A door
+        may still refuse a particular fork for its own reason, which
+        `here_fork_point` and the doors' docstrings name.
+        """
+
+        refusal_as_a_branch = self._refusal_as_a_branch()
+
+        if refusal_as_a_branch is not None:
+            return refusal_as_a_branch
+
+        if self._failed_frame_reason is not None:
+            return (
+                f"the frame this run is drawn in failed ({self._failed_frame_reason}), and a "
+                "branch would be drawn in the same frame and halt on it; reset the run first"
+            )
+
+        return None
 
     @property
     def has_reached_supported_limit(self) -> bool:
@@ -1120,8 +1172,8 @@ class SimulationController:
 
         return CaseInstant(0.0) if self._opened_from is None else self._opened_from.fork.instant_s
 
-    def resumed_at(self, elapsed_s: CaseInstant) -> SimulationController:
-        """Open a second live run at this run's canonical state at `elapsed_s`.
+    def resumed_at(self, instant_s: CaseInstant) -> SimulationController:
+        """Open a second live run at this run's canonical state at `instant_s`.
 
         The seam `PL-J2TD` exists for: a branch has to become something a
         learner can *manage* rather than a second curve, and managing it means
@@ -1129,10 +1181,10 @@ class SimulationController:
         `SimulationController` that advances by the path every run takes -
         `advance()` is not overridden and no second way to move a run forward
         is introduced - standing at the state this run passed through at
-        `elapsed_s`.
+        `instant_s`.
 
         **It opens at a keyframe, because that is this door's scope**
-        (`PL-54V0`). `elapsed_s` must be an instant this run holds a keyframe
+        (`PL-54V0`). `instant_s` must be an instant this run holds a keyframe
         for, which is its start and every recorded setting change. Anywhere
         else is refused, and not for want of a way to reproduce it: a marked
         instant is branched at through `resumed_at_mark` and the instant a
@@ -1191,7 +1243,7 @@ class SimulationController:
         the data files as well as the timeline (`_disagreements_with`).
 
         Args:
-            elapsed_s: The case instant to open at, in seconds. Must be one
+            instant_s: The case instant to open at, in seconds. Must be one
                 this run holds a keyframe for.
 
         Returns:
@@ -1200,19 +1252,20 @@ class SimulationController:
             timeline of its own and a copy of this run's bookmarks.
 
         Raises:
-            TypeError: `elapsed_s` is not a `CaseInstant`, so nothing has
+            TypeError: `instant_s` is not a `CaseInstant`, so nothing has
                 checked it against the supported run length
                 (`core/supported_ranges.py`).
-            SimulationConfigurationError: `elapsed_s` is not an instant this
+            SimulationConfigurationError: `instant_s` is not an instant this
                 run holds a keyframe for; this run is itself a branch, since a
                 branch of a branch is refused rather than silently flattened
-                (`PL-TFX5`); the fork instant is not a whole number of this
+                (`PL-TFX5`); the frame this run is drawn in has failed
+                (`fork_refusal`); the fork instant is not a whole number of this
                 run's steps; or the rebuilt branch holds an equation setting or
                 agent reference this run did not hold at the fork, each named
                 with both of its values.
         """
 
-        return self._branch_from(self._resume_point_at(elapsed_s))
+        return self._branch_from(self._resume_point_at(instant_s))
 
     def resumed_here(self) -> SimulationController:
         """Open a second live run where this paused run stands, stopped on a mark or not.
@@ -1649,23 +1702,24 @@ class SimulationController:
         # what keeps that record from naming a row the panel no longer draws.
         self._forget_unmarked()
 
-    def _resume_point_at(self, elapsed_s: CaseInstant) -> ResumePoint:
-        """Everything a branch opening at `elapsed_s` needs, or a refusal saying why.
+    def _resume_point_at(self, instant_s: CaseInstant) -> ResumePoint:
+        """Everything a branch opening at `instant_s` needs, or a refusal saying why.
 
         Raises:
-            TypeError: `elapsed_s` is not a `CaseInstant`.
-            SimulationConfigurationError: this run is a branch; `elapsed_s` is
-                not one of this run's keyframes; or the instant is not a whole
+            TypeError: `instant_s` is not a `CaseInstant`.
+            SimulationConfigurationError: this run is a branch or its frame
+                has failed (`fork_refusal`); `instant_s` is not one of this
+                run's keyframes; or the instant is not a whole
                 number of this run's steps.
         """
 
         self._require_forkable()
-        require_case_instant("elapsed_s", elapsed_s)
+        require_case_instant("instant_s", instant_s)
 
         openings = [segment.opening.instant_s for segment in self._run_definition.segments]
 
         for segment in self._run_definition.segments:
-            if segment.opening.instant_s == elapsed_s:
+            if segment.opening.instant_s == instant_s:
                 break
         else:
             # The door's scope is the reason, not arithmetic: the two other
@@ -1673,7 +1727,7 @@ class SimulationController:
             # (`PL-54V0`), so a message blaming the propagation would teach a
             # constraint the code beside it disproves.
             raise SimulationConfigurationError(
-                f"this run holds no keyframe at {elapsed_s} s, and resumed_at opens at one: the "
+                f"this run holds no keyframe at {instant_s} s, and resumed_at opens at one: the "
                 f"run's opening or a recorded setting change, which this run holds at {openings} "
                 "s. A marked instant is branched at with resumed_at_mark once the run has passed "
                 "it, and the instant a paused run stands at with resumed_here"
@@ -1722,10 +1776,10 @@ class SimulationController:
         for each refusal; the messages say what to do instead.
         """
 
-        refusal_as_a_branch = self._refusal_as_a_branch()
+        refusal_to_fork = self.fork_refusal
 
-        if refusal_as_a_branch is not None:
-            return refusal_as_a_branch
+        if refusal_to_fork is not None:
+            return refusal_to_fork
 
         if self._is_running:
             return (
@@ -1814,8 +1868,9 @@ class SimulationController:
         """Everything a branch opening at the step that reached `bookmark` needs, or a refusal.
 
         Raises:
-            SimulationConfigurationError: this run is a branch; it holds no
-                time bookmark at that instant; it has not passed the mark; or
+            SimulationConfigurationError: this run is a branch or its frame
+                has failed (`fork_refusal`); it holds no time bookmark at that
+                instant; it has not passed the mark; or
                 the fork instant is not a whole number of this run's steps,
                 which the step count it is built from rules out.
         """
@@ -1882,16 +1937,17 @@ class SimulationController:
         return CaseInstant(step_count * simulation_step_s)
 
     def _require_forkable(self) -> None:
-        """Refuse a fork from a run that is itself a branch.
+        """Refuse a fork from a run that is a branch, or whose frame has failed.
 
         Raises:
-            SimulationConfigurationError: this run is a branch. A branch of a
+            SimulationConfigurationError: this run is a branch, or the frame
+                it is drawn in has failed (`fork_refusal`). A branch of a
                 branch is excluded rather than unimplemented (`PL-TFX5`), and
                 refusing it here covers the caller holding a branch directly,
                 which `BranchedCase` cannot reach.
         """
 
-        refusal = self._refusal_as_a_branch()
+        refusal = self.fork_refusal
 
         if refusal is not None:
             raise SimulationConfigurationError(refusal)
@@ -1899,8 +1955,8 @@ class SimulationController:
     def _refusal_as_a_branch(self) -> str | None:
         """Why a fork from this run is refused for its being a branch, or None for a trunk.
 
-        `_require_forkable`'s message, kept apart so `_refusal_here` can
-        answer without raising.
+        The first of `fork_refusal`'s two reasons, kept apart because the
+        message is about the run's place in the case rather than its frame.
         """
 
         if self._opened_from is None:
@@ -1963,8 +2019,8 @@ class SimulationController:
             crossing=self._crossing_of_step(stepped_from, fork),
         )
 
-    def _setting_at(self, control: ControlInput, elapsed_s: float, current: float) -> float:
-        """What `control` was set to at `elapsed_s`, from this run's recorded changes.
+    def _setting_at(self, control: ControlInput, instant_s: float, current: float) -> float:
+        """What `control` was set to at `instant_s`, from this run's recorded changes.
 
         In the units the compartments hold and the timeline records, which is
         what makes the replay exact - `ControlChange` stores the value the core
@@ -1978,7 +2034,7 @@ class SimulationController:
         """
 
         for change in reversed(self._control_timeline):
-            if change.control is control and change.elapsed_s <= elapsed_s:
+            if change.control is control and change.elapsed_s <= instant_s:
                 return change.new_value
 
         for change in self._control_timeline:
@@ -2160,6 +2216,7 @@ class SimulationController:
 
         self.pause()
         self._failure_reason = None
+        self._failed_frame_reason = None
         self._recorded_supported_limit_reason = None
         self._forget_reached_marks()
         self._state.reset()
@@ -2836,7 +2893,16 @@ class BranchedCase:
         it. A fork at a mark is taken through `fork_here` or `fork_at_mark`
         instead, neither of which needs a keyframe, so neither adds an instant
         to this list.
+
+        **Empty while the trunk refuses every fork** (`PL-T2Q2`), which on a
+        trunk means its frame has failed (`SimulationController.fork_refusal`).
+        A trunk that failed on its own step keeps its keyframes here, because
+        each is a state the run computed before the failure and a branch from
+        one is drawn normally.
         """
+
+        if self._trunk.fork_refusal is not None:
+            return ()
 
         return tuple(segment.opening.instant_s for segment in self._trunk.run_segments)
 
@@ -2851,7 +2917,12 @@ class BranchedCase:
         leaves only when the learner unmarks it or the trunk starts over - which
         is the lifetime of the keyframes beside it, and not `here_fork_point`'s,
         which ends when the trunk starts again.
+
+        Empty while the trunk refuses every fork, as `fork_points_s` is.
         """
+
+        if self._trunk.fork_refusal is not None:
+            return ()
 
         return self._trunk.mark_fork_points
 
@@ -2868,15 +2939,15 @@ class BranchedCase:
 
         return self._trunk.here_fork_point
 
-    def fork_at(self, elapsed_s: CaseInstant) -> SimulationController:
-        """Take a branch from the trunk at `elapsed_s`, and keep it.
+    def fork_at(self, instant_s: CaseInstant) -> SimulationController:
+        """Take a branch from the trunk at `instant_s`, and keep it.
 
         The trunk is left exactly as it was - `resumed_at` reads it and writes
         nothing - so the case gains a run rather than trading one for another,
         which is what makes this a comparison instead of an undo.
 
         Args:
-            elapsed_s: The case instant to branch at, in seconds, from
+            instant_s: The case instant to branch at, in seconds, from
                 `fork_points_s`.
 
         Returns:
@@ -2886,14 +2957,15 @@ class BranchedCase:
             lost it.
 
         Raises:
-            TypeError: `elapsed_s` is not a `CaseInstant`.
-            SimulationConfigurationError: `elapsed_s` is not one of
-                `fork_points_s` or is not a whole number of the trunk's steps;
+            TypeError: `instant_s` is not a `CaseInstant`.
+            SimulationConfigurationError: `instant_s` is not one of
+                `fork_points_s`, which is empty once the trunk's frame has
+                failed, or is not a whole number of the trunk's steps;
                 or the branch rebuilt there would not hold what the trunk held.
                 `resumed_at` raises these and names which.
         """
 
-        return self._kept(self._trunk.resumed_at(elapsed_s))
+        return self._kept(self._trunk.resumed_at(instant_s))
 
     def fork_here(self) -> SimulationController:
         """Take a branch from the trunk where it is paused, stopped on a mark or not, and keep it.
@@ -2940,8 +3012,9 @@ class BranchedCase:
             trunk is left exactly as it was.
 
         Raises:
-            SimulationConfigurationError: the trunk holds no time bookmark at
-                that instant or has not passed it, or the branch rebuilt there
+            SimulationConfigurationError: the trunk's frame has failed; the
+                trunk holds no time bookmark at that instant or has not passed
+                it; or the branch rebuilt there
                 would not hold what the trunk held. `resumed_at_mark` raises
                 these and names which.
         """

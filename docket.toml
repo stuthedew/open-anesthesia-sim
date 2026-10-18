@@ -611,6 +611,16 @@ open_pull_requests_command = "python3 tools/open_pull_requests.py"
 # not ask - which `branch` then says, and `arm` answers `unknown` on.
 newest_pull_request_command = "python3 tools/open_pull_requests.py --newest"
 
+# How `bin/docket arm` asks when a pull request's auto-merge was last switched
+# (`PL-8TPV`). The owner switches it off to choose the order pull requests
+# merge in, and GitHub names the owner's account for a session's switches too,
+# so `arm` takes a switch off as the owner's unless a commit made since records
+# the session making it. The package appends the pull request's number, and the
+# script prints `on TIME` or `off TIME` for the latest switch, nothing where it
+# was never switched on, or exits non-zero where it could not ask - which `arm`
+# answers `unknown` on.
+auto_merge_command = "python3 tools/open_pull_requests.py --auto-merge"
+
 version_file = "pyproject.toml"
 
 # ROADMAP.md: "The next release number is chosen for the capability boundary it

@@ -1257,11 +1257,15 @@ class ForkPanel(QWidget):
 
             self._offered = offer.points
 
-        self.point_selector.setDisabled(offer.locked)
-        self.point_selector.setHidden(offer.locked)
-        self.take_button.setDisabled(offer.locked)
-        self.take_button.setHidden(offer.locked)
-        self._point_label.setHidden(offer.locked)
+        # An offer of no points is withdrawn like a locked one. It comes only
+        # from a trunk whose frame failed, and a live button over an empty
+        # selector could only fail (`PL-T2Q2`).
+        withdrawn = offer.locked or not offer.points
+        self.point_selector.setDisabled(withdrawn)
+        self.point_selector.setHidden(withdrawn)
+        self.take_button.setDisabled(withdrawn)
+        self.take_button.setHidden(withdrawn)
+        self._point_label.setHidden(withdrawn)
         # Written before it is shown, so the button is never on screen for one
         # frame carrying an instant the trunk has already left.
         self.here_button.setText(offer.here_label)

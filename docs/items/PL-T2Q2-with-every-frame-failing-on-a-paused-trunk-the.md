@@ -3,12 +3,14 @@ id: PL-T2Q2
 title: With every frame failing on a paused trunk, the keyframe selector's Branch button stays live and opens a branch, because fork_at accepts a failed trunk's keyframe, and the next failing frame then halts the new run (found triaging PL-MMNX, 2026-10-17)
 priority: P2
 effort: M
-status: ready
+status: done
 classes: ux, defect
 feature: every-control-restates-the-halt
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py, tests/integration/test_controller.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
+closed: 2026-10-18
+pr: 1583
 payoff: a halted trunk offers a branch only where one can open and be drawn, so no Branch control can only fail
 verify: grep -q "def test_a_trunk_halted_by_a_failing_frame_offers_no_branch" tests/integration/test_simulation_view.py && grep -q "def test_a_trunk_failed_on_its_own_step_keeps_its_earlier_keyframes_branchable" tests/integration/test_simulation_view.py
 ---
@@ -66,3 +68,23 @@ must hold is the one above.
 and asserts that the keyframe selector, the mark selector and "Branch here"
 offer nothing. A second test fails a trunk on its own step and asserts that
 its earlier keyframes are still offered and that a branch opens at one.
+
+**Built 2026-10-18.** The case learns the halt's cause from a record on the
+trunk. `SimulationView._halt_every_run` now halts each run with
+`RunView.halt(error, in_frame=True)`, which calls the new
+`SimulationController.record_failed_frame`. That record stops the run and keeps
+the first reason, like `fail()`, and only a fresh run clears it, through
+`reset()` or `set_agent()`. `SimulationController.fork_refusal` refuses every
+door while the record is set, and `BranchedCase.fork_points_s` and
+`mark_fork_points` return nothing while it refuses, so the offer and the doors
+read one check. A trunk that failed on its own step has no record, so it keeps
+its keyframes. `ForkPanel.set_offer` now hides the selector and its Branch
+button when nothing is offered, as it does when the panel is locked, because a
+live button over an empty selector could only fail.
+
+**Run against the code before the fix**, as `.claude/rules/test-oracles.md`
+rule 6 asks, with every file under `src/` stashed:
+`uv run pytest -q -p no:randomly tests/integration/test_simulation_view.py -k "offers_no_branch_at_all" -n0`
+fails on `assert panel.point_selector.count() == 0` with `assert 3 == 0`. The
+second test pins today's behaviour for a trunk that failed on its own step,
+so it passes there, as it should.

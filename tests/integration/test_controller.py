@@ -2691,8 +2691,8 @@ def test_a_non_finite_fork_instant_cannot_be_built() -> None:
         CaseInstant(float("inf"))
 
 
-@pytest.mark.parametrize("elapsed_s", [0.0, float("inf")])
-def test_a_fork_instant_not_built_as_a_case_instant_is_refused(elapsed_s: float) -> None:
+@pytest.mark.parametrize("instant_s", [0.0, float("inf")])
+def test_a_fork_instant_not_built_as_a_case_instant_is_refused(instant_s: float) -> None:
     """Whatever its value, and before the keyframes are searched (`PL-CN5S`).
 
     A bare `0.0` is refused although the trunk holds a keyframe there: nothing
@@ -2703,8 +2703,42 @@ def test_a_fork_instant_not_built_as_a_case_instant_is_refused(elapsed_s: float)
 
     trunk = _trunk_with_two_changes()
 
-    with pytest.raises(TypeError, match="elapsed_s of .* was not built as CaseInstant"):
-        trunk.resumed_at(elapsed_s)  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="instant_s of .* was not built as CaseInstant"):
+        trunk.resumed_at(instant_s)  # type: ignore[arg-type]
+
+
+def test_a_failed_frame_refuses_every_fork_until_the_trunk_starts_over() -> None:
+    """A trunk whose frame failed offers no fork point and refuses each door (`PL-T2Q2`).
+
+    The record is the run's, like a failure, so a reset clears it and the
+    fresh run offers its opening again. A failure alone does not refuse:
+    a trunk whose own step failed keeps its keyframes.
+    """
+
+    trunk = _trunk_with_two_changes()
+    case = BranchedCase(trunk)
+    keyframes = case.fork_points_s
+    assert len(keyframes) == 3
+
+    trunk.fail("SimulationNumericalError: a step failed")
+
+    assert case.fork_points_s == keyframes
+    assert trunk.fork_refusal is None
+
+    trunk.record_failed_frame("RuntimeError: this frame could not be assembled")
+
+    assert case.fork_points_s == ()
+    assert case.mark_fork_points == ()
+    assert trunk.fork_refusal is not None
+    assert "this frame could not be assembled" in trunk.fork_refusal
+
+    with pytest.raises(SimulationConfigurationError, match="the frame this run is drawn in failed"):
+        case.fork_at(keyframes[0])
+
+    trunk.reset()
+
+    assert trunk.fork_refusal is None
+    assert case.fork_points_s == (CaseInstant(0.0),)
 
 
 def test_a_branch_of_a_branch_is_refused_rather_than_silently_flattened() -> None:

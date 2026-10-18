@@ -410,8 +410,8 @@ reply's closing block is this one command (`PL-CM40`).
 It was fifty lines of bash in the session-start hook, and that was the whole
 problem: a hook runs once, at session start, and the condition it guards
 against develops *during* a session. A session opened to discuss the next piece
-of work, while another session finishes something, is told its base is current
-- and by the time the discussion becomes implementation, the other session has
+of work, while another session finishes something, is told its base is current -
+and by the time the discussion becomes implementation, the other session has
 merged. Nothing looks again, so the staleness surfaces at push time as a merge
 conflict, which is the rework cycle the check exists to prevent.
 
@@ -1011,7 +1011,12 @@ A project configuring no command gets the second reading, and `flight
 for `branch` and `arm` (`PL-8BR0`): the package appends the branch and the
 default branch's name, and the command prints `NUMBER STATE HEAD`, nothing
 where no pull request was ever opened, or exits non-zero where it could not
-ask.
+ask. `auto_merge_command` is the same boundary for `arm`'s other question
+(`PL-8TPV`): the package appends the pull request's number, and the command
+prints `on TIME` or `off TIME` for the latest switch of its auto-merge, nothing
+where it was never switched on, or exits non-zero where it could not ask. A
+switch off that no `Auto-merge: off - <why>` trailer on a commit made since
+records as the session's holds the pull request.
 
 **The forge is asked once per run, wherever a branch carries anything.** It was
 asked only where a branch had finished, which kept `docket flight` off the

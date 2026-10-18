@@ -80,6 +80,10 @@ parameter controls, Induction stacks the chart over wash-in beside the
 controls, and Maintenance puts the chart across the top with wash-in and the
 controls below.
 
+**Answered 2026-10-18:** the Default leaves the wash-in chart out (project
+owner, 2026-10-18, ratified, on the decision card, over a third column beside
+the controls and over wash-in below the chart).
+
 The View kind tags the files name - `concentration_chart`, `wash_in` and
 `parameter_controls` - are not registered yet. `PL-R1WQ` Q4's test, which
 asserts every shipped tag is registered, lands with the registry.
