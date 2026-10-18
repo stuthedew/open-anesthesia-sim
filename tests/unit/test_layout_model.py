@@ -341,11 +341,10 @@ def test_the_sum_of_a_splits_sizes_is_held_to_the_tolerance_and_no_further() -> 
 def test_a_split_never_holds_a_split_of_its_own_orientation() -> None:
     """A row inside a row is one wider row, so a tree takes one form (`layout/tree.py`).
 
-    With two forms, whether two Areas were next to each other in one split -
-    which is what `join` asks - would depend on how the tree was built rather
-    than on where they are. The form is one only where no four Areas meet at
-    a point: where they do, either cut through the point can be the outer one,
-    which `test_where_four_areas_meet_a_join_depends_on_which_cut_came_first`
+    The form is one only where no four Areas meet at a point. Where they do,
+    either cut through the point can be the outer one, so a join reads the
+    rectangles rather than which two Areas share a split, as
+    `test_where_four_areas_meet_a_join_is_taken_whichever_cut_came_first`
     holds the model to.
     """
 
@@ -814,6 +813,86 @@ def test_a_join_too_deep_cut_one_way_is_taken_cut_the_other() -> None:
     assert_places(joined, joined_places(rectangles(model), 1, 3))
 
 
+def test_a_join_too_deep_for_its_split_is_taken_by_cutting_a_split_above_first() -> None:
+    """Whether a join fits the depth maximum depends on the rectangles, not on which tree holds them.
+
+    The two trees hold the same rectangles: a cut down at x = 0.75 and a cut
+    across at y = 0.25 meet at a point, and each tree takes a different one
+    first. Joining Areas 9 and 12 needs one level more inside the lowest split
+    holding both. In the tree that cut down first, that split is too deep, and
+    the join was refused there. Cutting the region of a split above it across
+    first fits, as the other tree shows, so both now take the join.
+    """
+
+    upper = row((1 / 3, 0.5, 1 / 6), area(7), area(8), area(9))
+    lower = row((0.5, 1 / 3, 1 / 6), area(10), area(11), area(12))
+    down_first = column(
+        (0.5, 0.5),
+        row(
+            (0.75, 0.25),
+            column((0.25, 0.75), area(1), area(2)),
+            column((0.25, 0.375, 0.375), area(5), upper, lower),
+        ),
+        area(99),
+    )
+    across_first = column(
+        (0.125, 0.375, 0.5),
+        row((0.75, 0.25), area(1), area(5)),
+        row((0.75, 0.25), area(2), column((0.5, 0.5), upper, lower)),
+        area(99),
+    )
+
+    for tree in (down_first, across_first):
+        model = buried(tree, TREE_DEPTH_MAXIMUM - 4)
+
+        assert_places(model.join(AreaId(9), AreaId(12)), joined_places(rectangles(model), 9, 12))
+
+
+def test_a_join_that_merges_into_the_split_above_may_reach_the_depth_maximum() -> None:
+    """A re-sliced region one level deeper than its place is taken when it merges into the split above.
+
+    Joining Areas 1 and 2 leaves a column holding the merged Area beside a
+    row of Areas 4 and 5 and, under it, Area 3 beside them. Cut down first,
+    the region becomes a row, which merges into the row above it, so the
+    result fits the maximum although the region alone counted one level too
+    many.
+    """
+
+    grid = column(
+        (0.5, 0.5),
+        row((0.5, 0.5), area(1), area(3)),
+        row((0.5, 0.25, 0.25), area(2), area(4), area(5)),
+    )
+    model = buried(grid, TREE_DEPTH_MAXIMUM - 2)
+
+    assert_places(model.join(AreaId(1), AreaId(2)), joined_places(rectangles(model), 1, 2))
+
+
+def test_a_join_reads_two_edges_that_differ_only_by_rounding_as_one() -> None:
+    """Edges within `BORDER_ALIGNMENT_TOLERANCE` are one edge, to a join as to `borders()`.
+
+    The top row's second border is placed at 0.1 + 0.2, which is
+    0.30000000000000004, and the bottom row's border at 0.3. Areas 3 and 5
+    therefore share their left edge only to within rounding. Compared
+    exactly, they would share no whole edge, and no line would cross the
+    window at 0.3.
+    """
+
+    model = layout(
+        column(
+            (0.5, 0.5),
+            row((0.1, 0.2, 0.7), area(1), area(2), area(3)),
+            row((0.3, 0.7), area(4), area(5)),
+        )
+    )
+    places = rectangles(model)
+
+    assert places[3][0] != places[5][0]
+    assert abs(places[3][0] - places[5][0]) <= BORDER_ALIGNMENT_TOLERANCE
+
+    assert_places(model.join(AreaId(3), AreaId(5)), joined_places(places, 3, 5))
+
+
 def test_an_id_is_never_handed_out_twice() -> None:
     """`PL-HJPY` Q3: state kept per Area id must not reach an Area that never had it."""
 
@@ -881,8 +960,8 @@ def test_a_drag_moves_only_the_borders_on_its_line() -> None:
     the dragged line, which is what the project owner chose. The row's sizes
     are worked out again, as fractions of its new width. The same holds with
     that border at 0.625, where the row comes out halved, and with a third
-    Area in the row. Area 3, below, has no edge on the line and only widens
-    with the column, and the column's own border does not move.
+    Area in the row. Area 3, below, has its left edge on the line, so it
+    widens with the column, and the column's own border does not move.
     """
 
     model = layout(
@@ -945,6 +1024,55 @@ def test_a_drag_past_a_border_beside_its_line_is_refused() -> None:
     assert rectangles(model.resize(Handle(0, (), 0), 0.7))[2] == pytest.approx(
         (0.7, 0.0, 0.75, 0.5)
     )
+
+
+def test_a_drag_refuses_a_gap_the_stored_sizes_would_round_away() -> None:
+    """A drag is refused when the Area it narrows would come back with no width.
+
+    The check once read the sizes the drag computed, not the borders they
+    give. A drag to 0.9999999999999999 left Area 4 a size of about 1.7e-16,
+    which passed, but the border placed from the stored sizes lands on 1.0,
+    the window's edge. The layout then held an Area with no width, and a drag
+    inside a split of no width divided by zero. A file can hold such a split
+    too: sizes of 1 and 5e-10 sum to one within the tolerance, and the
+    second child lies between 1.0 and 1.0, where no border can go.
+    """
+
+    model = layout(
+        row(
+            (1 / 3, 2 / 3),
+            area(1),
+            column((0.5, 0.5), row((0.375, 0.125, 0.5), area(2), area(3), area(4)), area(5)),
+        )
+    )
+
+    with pytest.raises(LayoutRefused, match="no room for Area 4$"):
+        model.resize(Handle(0, (1, 0), 1), 0.9999999999999999)
+
+    flat = layout(
+        row((1.0, 5e-10), area(1), column((0.5, 0.5), row((0.5, 0.5), area(2), area(3)), area(4)))
+    )
+
+    with pytest.raises(LayoutRefused, match="no room for Area 2$"):
+        flat.resize(Handle(0, (1, 0), 0), 0.5)
+
+
+def test_a_drag_leaves_a_split_off_its_line_exactly_as_it_was() -> None:
+    """A split whose extent does not change and which holds no moved handle keeps its sizes as stored.
+
+    Worked out again from where its borders lie, a row of a tenth, two tenths
+    and seven tenths comes back with 0.20000000000000004 for its middle size.
+    The drag here moves only the top row's border, so the bottom row is left
+    as it was, to the last bit.
+    """
+
+    bottom = row((0.1, 0.2, 0.7), area(3), area(4), area(5))
+    model = layout(column((0.5, 0.5), row((0.5, 0.5), area(1), area(2)), bottom))
+
+    dragged = model.resize(Handle(0, (0,), 0), 0.25)
+
+    assert dragged.windows[0].tree.children[1] == bottom
+    assert rectangles(dragged)[1] == pytest.approx((0.0, 0.0, 0.25, 0.5))
 
 
 def test_a_drag_to_where_the_border_lies_returns_an_equal_layout() -> None:

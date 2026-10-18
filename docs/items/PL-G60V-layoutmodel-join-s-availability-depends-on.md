@@ -83,8 +83,12 @@ subtree beside the pair kept whole, so that it changes no split it need not,
 and then from every Area in the region, because a subtree's own border can be
 the only line that divides the region. The refusals left are a pair that
 shares no whole edge, an arrangement no straight cut divides (`PL-3J2P`), and a
-result past `TREE_DEPTH_MAXIMUM`, which a join can need one level more than
-the tree held. Blender's join was read at source this time:
+result past `TREE_DEPTH_MAXIMUM`. A join can need one level of splits more
+than the tree held, so where the lowest split's region is too deep, the region
+of each split above it is re-sliced in turn, up to the whole window. An
+adversarial review found the depth refusal depending on which cut came first
+before that climb; a depth fuzz against a whole-window oracle then went from 52
+wrong refusals in 6,536 joins to none. Blender's join was read at source this time:
 `area_getorientation` and `screen_area_join_aligned` in
 `source/blender/editors/screen/screen_edit.cc` (`blender/blender` `main`,
 read 2026-10-18) decide and make a join from the two Areas' corners alone,

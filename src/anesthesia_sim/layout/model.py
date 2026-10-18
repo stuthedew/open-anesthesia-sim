@@ -28,12 +28,14 @@ illustrated file has it.
 
 **What the tree cannot express is refused, never approximated** (`PL-3J2P`).
 A splitter tree is strictly less expressive than Blender's vertex-and-edge
-screen. Blender can join two Areas that share a whole edge into a pinwheel,
-five Areas no straight cut divides, and a tree cannot hold one. `join` refuses
-such a join, which is the limit surfacing as an unavailable operation rather
-than as a different layout than the one the reader asked for. Every other join
-of two Areas sharing a whole edge is taken, whichever splits they sit in
-(`PL-G60V`), because a reader sees the rectangles and never the tree.
+screen. In Blender, joining two Areas that share a whole edge can leave a
+pinwheel: five Areas that no straight cut divides. A tree cannot hold one, so
+`join` refuses such a join. The limit then shows as an unavailable operation
+rather than as a different layout from the one the reader asked for. `join`
+also refuses a result that would nest a split deeper than
+`TREE_DEPTH_MAXIMUM`, as `split` does. Every other join of two Areas sharing a
+whole edge is taken, whichever splits they sit in (`PL-G60V`), because a
+reader sees the rectangles and never the tree.
 
 **What is not here yet.** Minimum sizes, the clamp on a drag and `too_small()`
 are `PL-K285`'s; closing an Area and taking one into its own window are later
@@ -407,10 +409,11 @@ class LayoutModel:
 
         `keep` keeps its View; `remove` and its View leave the layout, and its
         id is not handed out again. Two Areas join where they share the whole
-        of one edge, so that together they make a rectangle, as Blender's
+        of one edge, so that together they make a rectangle. Blender's
         `area_getorientation` (`source/blender/editors/screen/screen_edit.cc`,
-        `blender/blender` `main`, read 2026-10-18) reads the pair from their
-        corners alone.
+        `blender/blender` `main`, read 2026-10-18) also decides from the two
+        Areas' corners alone, though it accepts part of an edge and trims the
+        rest (`docs/interface-provenance.md`).
 
         **Whether a join is taken depends on the rectangles alone, never on
         the order the splits were made in** (`PL-G60V`). Where four Areas meet
@@ -428,6 +431,12 @@ class LayoutModel:
         is tried again from every Area in the region, so that whether it is
         taken depends on the rectangles alone.
 
+        A result can need one level of splits more than the tree held. Where
+        that passes `TREE_DEPTH_MAXIMUM` inside the lowest split, the region of
+        each split above it is re-sliced in turn, up to the whole window,
+        because cutting a larger region the other way first can fit. So the
+        depth refusal also depends on the rectangles alone.
+
         Raises:
             TypeError: an argument was not built as an `AreaId`.
             NotInLayout: no Area of this layout holds one of the ids.
@@ -435,7 +444,8 @@ class LayoutModel:
                 different windows; they do not share the whole of one edge;
                 no straight cut divides the Areas the join would leave, which
                 is `PL-3J2P`'s refusal of what a tree cannot hold, such as the
-                pinwheel; or the result would nest a split deeper than
+                pinwheel; or every tree holding the result, re-sliced from any
+                split up to the whole window, would nest a split deeper than
                 `TREE_DEPTH_MAXIMUM`, which `split` refuses as well.
         """
 
@@ -472,18 +482,40 @@ class LayoutModel:
             max(kept_rect.right, removed_rect.right),
             max(kept_rect.bottom, removed_rect.bottom),
         )
-        attempts = tuple(
-            [
-                (merged if _is_area(node, keep) else rect, node)
-                for rect, node in pieces
-                if not _is_area(node, remove)
-            ]
-            for pieces in (whole, _pieces(holder, region, {keep, remove}, opened=True))
-        )
 
-        return LayoutModel(
-            self._with_tree(kept.window, _resliced(tree, common, region, attempts, keep, remove)),
-            self.next_area_id,
+        # A tree too deep for the lowest split's region can fit when a region
+        # higher up is cut first the other way, so each split above is tried
+        # in turn, up to the whole window. Where the lowest region has no
+        # straight cut, none above it has one either.
+        for level in range(len(common), -1, -1):
+            path = common[:level]
+            holder = _split_at(tree, path)
+            region = _rect_at(tree, path)
+            attempts = tuple(
+                [
+                    (merged if _is_area(node, keep) else rect, node)
+                    for rect, node in _pieces(holder, region, {keep, remove}, opened=opened)
+                    if not _is_area(node, remove)
+                ]
+                for opened in (False, True)
+            )
+
+            try:
+                resliced = _resliced(tree, path, region, attempts)
+            except _NoStraightCut:
+                raise LayoutRefused(
+                    f"Area {keep} and Area {remove} cannot be joined: no straight cut divides "
+                    "the Areas the join would leave, and a layout is made only of straight cuts "
+                    "across a rectangle"
+                ) from None
+            except _TooDeep:
+                continue
+
+            return LayoutModel(self._with_tree(kept.window, resliced), self.next_area_id)
+
+        raise LayoutRefused(
+            f"joining Area {keep} and Area {remove} would nest a split more than "
+            f"{TREE_DEPTH_MAXIMUM} deep, the most a split sits in a window's tree"
         )
 
     def resize(self, handle: Handle, position: float) -> LayoutModel:
@@ -513,7 +545,8 @@ class LayoutModel:
             LayoutRefused: `position` is not finite, or would leave an Area
                 beside the line with no size. That happens when `position`
                 lies at or past the far edge of that Area, which is another
-                border or the window's edge, and when two handles of one split
+                border or the window's edge, or so close to it that the stored
+                sizes would round the gap away, and when two handles of one split
                 lie on the line, since moving both to one place leaves the
                 children between them none. The message names the Areas left
                 with no room. `PL-K285` adds minimum sizes, which clamp a drag
@@ -732,8 +765,11 @@ def _dragged(
     and is left out of the result.
 
     Raises:
-        LayoutRefused: a child would be left with no size, because a border
-            or an edge now lies at or past the one on the child's far side.
+        LayoutRefused: a child would be left with no width or height,
+            because a border or an edge now lies at or past the one on the
+            child's far side, or because the sizes the tree would store place
+            the two together. A split whose own extent is nothing is refused
+            the same way, before any size is divided by that extent.
             The message names that split's children left with no room, and
             its Areas. The first such split in depth-first order is named.
     """
@@ -758,10 +794,14 @@ def _dragged(
                 ),
                 high,
             )
-            sizes = tuple((far - near) / (high - low) for near, far in pairwise(placed))
-            squeezed = tuple(
-                child for child, size in zip(node.children, sizes, strict=True) if not size > 0
-            )
+            squeezed = _squeezed(node, placed)
+            sizes = () if squeezed else _fractions(placed)
+
+            # The tree stores fractions, and placing a border from them again
+            # can round a sliver of 1e-16 to nothing, so the check is repeated
+            # on the borders the stored sizes will give.
+            if not squeezed:
+                squeezed = _squeezed(node, _boundaries(low, high, sizes))
 
             if squeezed:
                 raise LayoutRefused(
@@ -782,6 +822,28 @@ def _dragged(
     visit(tree, (), _WINDOW, _WINDOW)
 
     return resized
+
+
+def _squeezed(split: Split, placed: tuple[float, ...]) -> tuple[Node, ...]:
+    """The children of `split` that the borders `placed` leave no width or height.
+
+    `placed` holds one more border than `split` has children, in the window's
+    fractions, so each child lies between a border and the next one.
+    """
+
+    return tuple(
+        child
+        for child, (near, far) in zip(split.children, pairwise(placed), strict=True)
+        if not far > near
+    )
+
+
+def _fractions(placed: tuple[float, ...]) -> tuple[float, ...]:
+    """The share of the span from the first border to the last that each gap takes."""
+
+    extent = placed[-1] - placed[0]
+
+    return tuple((far - near) / extent for near, far in pairwise(placed))
 
 
 def _other(orientation: Orientation) -> Orientation:
@@ -881,20 +943,15 @@ def _pieces(
 
 
 def _resliced(
-    tree: Node,
-    path: tuple[int, ...],
-    region: _Rect,
-    attempts: tuple[list[tuple[_Rect, Node]], ...],
-    keep: AreaId,
-    remove: AreaId,
+    tree: Node, path: tuple[int, ...], region: _Rect, attempts: tuple[list[tuple[_Rect, Node]], ...]
 ) -> Node:
     """`tree` with the split at `path`, which fills `region`, divided again among some pieces.
 
     `attempts` holds the ways to divide the region into pieces, tried in
     order: the first that gives a tree is taken. For each, the region is cut
-    first along the axis the split there divides, so a
-    join that leaves that split's axis available keeps it, and across it
-    where only that is available. Below the first cut the axis is decided:
+    first along the axis that the split there divides. A join that still
+    allows a cut along that axis therefore keeps it, and the other axis is
+    used only where no such cut exists. Below the first cut the axis is decided:
     a strip between two cuts cannot be cut again along the same axis, or the
     cut would have crossed the whole region and been taken already. Where
     both first cuts give a tree, the first that nests no split past
@@ -903,8 +960,9 @@ def _resliced(
     (`_flattened`), the one form a tree takes (`layout/tree.py`).
 
     Raises:
-        LayoutRefused: no straight cut divides the pieces, or every tree
-            holding them nests a split past `TREE_DEPTH_MAXIMUM`.
+        _NoStraightCut: no straight cut divides the pieces of any attempt.
+        _TooDeep: every tree this region can hold nests a split past
+            `TREE_DEPTH_MAXIMUM`.
     """
 
     holder = _split_at(tree, path)
@@ -930,15 +988,9 @@ def _resliced(
         deep = True
 
     if deep:
-        raise LayoutRefused(
-            f"joining Area {keep} and Area {remove} would nest a split more than "
-            f"{TREE_DEPTH_MAXIMUM} deep, the most a split sits in a window's tree"
-        )
+        raise _TooDeep
 
-    raise LayoutRefused(
-        f"Area {keep} and Area {remove} cannot be joined: no straight cut divides the Areas "
-        "the join would leave, and a layout is made only of straight cuts across a rectangle"
-    )
+    raise _NoStraightCut
 
 
 def _sliced(
@@ -953,8 +1005,9 @@ def _sliced(
     the cuts lie.
 
     Raises:
-        _NoStraightCut: no line along `orientation`'s axis, here or in a strip
-            below, crosses its region whole.
+        _NoStraightCut: no line along `orientation`'s axis crosses the
+            region whole, or no line across that axis crosses one of the
+            strips between the cuts, and so on down.
         _TooDeep: the tree would need more than `levels` levels of splits.
     """
 
@@ -1008,7 +1061,7 @@ def _full_cuts(
         if not low + BORDER_ALIGNMENT_TOLERANCE < start < high - BORDER_ALIGNMENT_TOLERANCE:
             continue
 
-        if lines and start - lines[-1][-1] <= BORDER_ALIGNMENT_TOLERANCE:
+        if lines and _close(start, lines[-1][-1]):
             lines[-1].append(start)
         else:
             lines.append([start])
@@ -1233,11 +1286,8 @@ def _chain(handle: Handle, segments: Mapping[Handle, _Segment]) -> tuple[Handle,
             if (
                 candidate not in chain
                 and segment.orientation is orientation
-                and abs(segment.across - reached.across) <= BORDER_ALIGNMENT_TOLERANCE
-                and (
-                    abs(segment.start - reached.end) <= BORDER_ALIGNMENT_TOLERANCE
-                    or abs(reached.start - segment.end) <= BORDER_ALIGNMENT_TOLERANCE
-                )
+                and _close(segment.across, reached.across)
+                and (_close(segment.start, reached.end) or _close(reached.start, segment.end))
             ):
                 chain.add(candidate)
                 frontier.append(candidate)
