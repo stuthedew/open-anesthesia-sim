@@ -3,12 +3,14 @@ id: PL-MR2V
 title: CLAUDE.md's ideation mode must stay cheap with no detours, but rule 14 runs a refresh before every reply's closing block; decide whether an ideation reply is exempt (PL-ZKT8 audit flag B11)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: decision-ownership
 touches: .claude/rules/instruction-writing.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-10-18
+closed: 2026-10-18
+pr: 1545
 payoff: an ideation reply still refreshes before its closing block, so cheap ideation never repeats a stale state
 verify: grep -qF 'An ideation reply runs it too' .claude/rules/instruction-writing.md
 ---

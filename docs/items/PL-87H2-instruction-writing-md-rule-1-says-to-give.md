@@ -3,12 +3,14 @@ id: PL-87H2
 title: instruction-writing.md rule 1 says to give 'Phase 1 in detail' while its scope note says never to mention phases; decide which reading is meant (PL-ZKT8 audit flag B10)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: decision-ownership
 touches: .claude/rules/instruction-writing.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-10-18
+closed: 2026-10-18
+pr: 1545
 payoff: rule 1 and the scope note no longer contradict each other, so a session stops guessing which to break
 verify: ! grep -qF 'Phase 1 in detail' .claude/rules/instruction-writing.md
 ---
