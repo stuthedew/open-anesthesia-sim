@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_s
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
 closed: 2026-10-18
+pr: 1532
 payoff: the shell reader shared by verify, doc_check and the Bash guards reads a reserved word after a closing word as bash does, so none of them cuts such a command short
 verify: grep -qF 'if [[ a ]] then case' subprojects/docket/tests/test_shell.py
 ---

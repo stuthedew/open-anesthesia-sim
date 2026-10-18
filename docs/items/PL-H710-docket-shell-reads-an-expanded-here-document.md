@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_s
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by its own triage, 2026-10-12
 added: 2026-10-12
 closed: 2026-10-18
+pr: 1532
 payoff: a here-document body's substitution is read as bash's child runs its text, so no reader of the shared lexer names a command no run makes there
 verify: ! grep -qF 'PL-H710' subprojects/docket/tests/test_shell.py
 ---
