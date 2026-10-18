@@ -3,11 +3,13 @@ id: PL-F66M
 title: items_dir and notes_dir are never normalized at config load, so items_dir = "./docs/items" reads the store while the hand-built prefixes that test git's paths against it - claims' in-flight read among them - match none
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_config.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+closed: 2026-10-18
+pr: 1601
 payoff: a store path written with a leading ./ in docket.toml cannot blind the in-flight guard while every other command keeps working
 verify: grep -q 'def test_a_dotted_store_path_loads_normalized' subprojects/docket/tests/test_config.py
 reenters: PL-NGBM
@@ -27,3 +29,13 @@ reenters: PL-NGBM
 closed on 2026-09-23: where the item store sits, as the path prefix git prints
 for it, built by hand at twelve sites in three spellings. The first post-close
 instance of NGBM; `PL-74T0` notes it beside its cluster 1.
+
+**Done 2026-10-18 on #1601.** `config.load` now reads `items_dir` through
+`_store_dir`, which collapses `./` and doubled slashes and strips `/`, and
+refuses an absolute path, one holding `..`, or one naming no directory.
+`notes_dir` has no setting: `docket.toml` cannot set it, and every reader takes
+the constant `release.NOTES_DIR`, already written in git's spelling. So that
+half of the Done-when has nothing to normalize. A `notes_dir` setting, if one is
+ever added, should be read through the same helper. The twelve hand-built
+prefixes are left as they are, since each now receives the one spelling.
+

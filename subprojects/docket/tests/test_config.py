@@ -215,3 +215,19 @@ def test_an_unknown_key_in_the_docket_table_is_rejected(tmp_path: Path) -> None:
 def test_the_shipped_config_names_only_settings_load_reads() -> None:
     """The repository's own `docket.toml` loads under the stricter reading."""
     load(Path(__file__).resolve().parents[3])
+
+
+@pytest.mark.parametrize("written", ["./docs/items", "docs/items/", ".//docs//items/"])
+def test_a_dotted_store_path_loads_normalized(tmp_path: Path, written: str) -> None:
+    """A leading `./` once hid every item file from the in-flight guard (`PL-F66M`)."""
+    (tmp_path / "docket.toml").write_text(f'[docket]\nitems_dir = "{written}"\n', encoding="utf-8")
+
+    assert load(tmp_path).items_dir == "docs/items"
+
+
+@pytest.mark.parametrize("written", ["/docs/items", "docs/../items", "../items", ".", ""])
+def test_an_items_dir_outside_the_project_fails_to_load(tmp_path: Path, written: str) -> None:
+    (tmp_path / "docket.toml").write_text(f'[docket]\nitems_dir = "{written}"\n', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="items_dir"):
+        load(tmp_path)
