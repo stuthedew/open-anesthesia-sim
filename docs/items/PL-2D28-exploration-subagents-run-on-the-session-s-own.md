@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: session-cost
+milestone: v0.5.26
 touches: .claude/settings.json, .claude/agents, docs/maintainer.md
 deferred-from: v0.6.0 - apparatus session-cost work: which model an exploration subagent runs on changes nothing the milestone ships
 added: 2026-10-17

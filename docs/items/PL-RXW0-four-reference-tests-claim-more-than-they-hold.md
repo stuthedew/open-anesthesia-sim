@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: test, docs
 feature: tests-detect-wrong-values
+milestone: v0.5.26
 touches: tests/reference/test_published_wash_in_and_elimination.py, tests/reference/test_late_washout_against_published_fits.py, tests/reference/test_circuit_wash_in_closed_form.py, docs/MODEL.md, README.md
 added: 2026-10-17
 closed: 2026-10-17

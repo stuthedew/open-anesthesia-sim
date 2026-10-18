@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, test
 feature: ci-cost
+milestone: v0.5.26
 touches: tests/unit/test_doc_check.py, .github/workflows/quality.yml
 added: 2026-10-17
 closed: 2026-10-17

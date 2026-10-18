@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: release-process
+milestone: v0.5.26
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, .claude/skills/docket/modes/release.md, ROADMAP.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-23

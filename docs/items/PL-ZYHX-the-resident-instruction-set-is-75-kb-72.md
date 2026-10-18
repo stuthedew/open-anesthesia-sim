@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, session-cost
 feature: friction-batch
+milestone: v0.5.26
 touches: CLAUDE.md, .claude/rules, docs/resident-instructions.md, docs/ARCHITECTURE.md, docs/apparatus.md, tools/import_boundary_check.py
 blocked-by: PL-40SJ, PL-YXFF
 deferred-from: v0.6.0 - a decision about how the resident instruction set carries engineering rules is not debt the layout milestone clears

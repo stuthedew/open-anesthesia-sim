@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: friction-batch
+milestone: v0.5.26
 touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpreter_guard.py, .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-11

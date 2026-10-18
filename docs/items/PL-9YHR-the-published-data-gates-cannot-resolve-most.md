@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: science, test, docs
 feature: validation-resolving-power
+milestone: v0.5.26
 touches: tests/reference/test_published_wash_in_and_elimination.py, docs/MODEL.md, docs/items/PL-R0NL-wash-in-is-compared-with-published-human-data.md
 added: 2026-10-17
 closed: 2026-10-17
