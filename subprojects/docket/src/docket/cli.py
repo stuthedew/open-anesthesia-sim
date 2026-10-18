@@ -191,6 +191,7 @@ from .vcs import (
     files_in_flight,
     find_cut,
     gone_paths,
+    head_branch,
     is_shallow,
     lost,
     merged_pull_requests,
@@ -3642,8 +3643,7 @@ class _Train:
 def _release_train(read: Holdings, root: Path, run: Runner) -> _Train:
     """The release train's holders in one `Holdings`, judged against `HEAD`'s branch."""
     remotes = _remotes(root, run)
-    name = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
-    here = _head_name(name, remotes) if name not in {"", "HEAD"} else ""
+    here = head_branch(root, run, remotes)
     trains = [hold for hold in read.holds if hold.resource == RELEASE_TRAIN]
     ours = [hold for hold in trains if here and _head_name(hold.ref, remotes) == here]
     holder = read.holder(RELEASE_TRAIN)

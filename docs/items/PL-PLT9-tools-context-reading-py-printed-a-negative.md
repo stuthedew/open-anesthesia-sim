@@ -3,11 +3,13 @@ id: PL-PLT9
 title: tools/context_reading.py printed a negative spend (baseline 381,829, context 254,293, spend -127,536) in a Projects thread after the harness moved the session's working directory to /home/user and back, because the first request of the transcript it read is not the session's floor, so the budget check had no usable reading
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
-touches: tools/context_reading.py, tests/unit/test_context_reading.py
+touches: tools/context_reading.py, tests/unit/test_context_reading.py, docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
+closed: 2026-10-18
+pr: 1543
 payoff: the budget check either reads a session's real spend or says it cannot, so no session decides whether to start an item on a negative number
 verify: grep -q 'def test_a_negative_spend_is_not_printed' tests/unit/test_context_reading.py
 ---
@@ -53,3 +55,48 @@ pins that no negative spend is printed.
 **Generator check.** One-off. The fact is "which request is the session's first",
 and only `tools/context_reading.py` reads it. `PL-W80S` and `PL-BZVY` were about
 `get_session`'s reading, which is a different fact.
+
+**Go-ahead.** Built as the project owner's pick in the "Ship v0.6.0" project
+(project owner, 2026-10-18: "build", answering whether to build it or only
+explain it).
+
+**Plan (2026-10-18).** The fix has three parts.
+
+1. Read every transcript that carries the session's id. Today
+   `transcript_path` returns the first match under `projects/*/`, sorted. A
+   session whose working directory moved has a transcript under each project
+   directory, and `-home-user` sorts before `-home-user-open-anesthesia-sim`,
+   so the script read only the later file (inferred: the failing transcript
+   was in another container and was not inspected). The script will read all
+   of them and order the requests by timestamp.
+2. Check that the first record read is the session's first. Each transcript
+   record carries `uuid` and `parentUuid`, and the session's first record has
+   `parentUuid: null`, measured on this thread's own transcript (Claude Code
+   2.1.302). A first record whose `parentUuid` is set means the start of the
+   session was not read, so the script names that and prints no spend.
+3. Never print a negative spend. Where the latest request is smaller than the
+   first one read, the script says so and prints no spend.
+
+**Resolution (2026-10-18).** All three parts of the plan were built.
+`transcript_paths` now returns every file that carries the session's id, and
+`read` orders the requests by timestamp. `read` also records whether the
+earliest record carrying `parentUuid` has it empty, and `Reading.spend` is
+`None`, with `Reading.spend_unread` giving the reason, when it does not or
+when the latest request is smaller than the first. `report` then prints
+`spend unknown` with that reason, and `--json` gives `"spend": null` with a
+`spend_unread` field. The JSON key `transcript` now names every file read,
+comma-separated, so the existing end-to-end assertion stays as it was. On this thread's own transcript the
+script still prints a spend, so the new check does not refuse a normal
+session.
+
+The three new tests fail against the code before the fix, run by swapping
+`git show HEAD:tools/context_reading.py` into place:
+`test_a_negative_spend_is_not_printed` with `assert -127536 is None`,
+`test_a_transcript_that_starts_partway_through_gives_no_spend` with
+`assert 50000 is None`, and
+`test_every_transcript_of_a_moved_session_is_read_in_time_order` with
+`assert 381829 == 84000`. The last one reproduces the reported numbers
+exactly from two files under `-home-user` and
+`-home-user-open-anesthesia-sim`, which supports the inferred cause: the old
+script read only the file under `-home-user` because that directory sorts
+first.

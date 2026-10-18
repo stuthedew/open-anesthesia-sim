@@ -2311,6 +2311,29 @@ def _head_name(name: str, remotes: frozenset[str]) -> str:
     return rest if rest and prefix in remotes else name
 
 
+def remote_names(root: Path) -> frozenset[str]:
+    """The remotes this checkout knows, for a tool that strips a ref with `_head_name`.
+
+    A git that answers nothing gives an empty set, which strips no prefix. So a
+    caller that must strip `REMOTE` whatever git says adds it to this set.
+    """
+    return _remotes(root, _run_git)
+
+
+def head_branch(root: Path, run: Runner, remotes: frozenset[str] | None = None) -> str:
+    """The branch `HEAD` is on, by the name a forge knows it by, or `""` when detached.
+
+    The one reader of which branch is checked out (`PL-KL6B`). Seven readers
+    each asked `rev-parse --abbrev-ref HEAD` themselves, and only four of them
+    stripped a remote's prefix from the answer. `remotes` is for a caller that
+    has already read them; without it they are read here.
+    """
+    name = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
+    if name in {"", "HEAD"}:
+        return ""
+    return _head_name(name, _remotes(root, run) if remotes is None else remotes)
+
+
 @dataclass(frozen=True)
 class OpenPullRequests:
     """Which in-flight refs have a pull request open, where the forge was asked.
@@ -3292,8 +3315,8 @@ def branch_state(root: Path, *, runner: Runner | None = None) -> BranchState:
 
 def _branch_state(root: Path, run: Runner) -> BranchState:
     """`branch_state`'s reading, against a runner whose silences are watched."""
-    branch = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
-    if not branch or branch == "HEAD":
+    branch = head_branch(root, run)
+    if not branch:
         return BranchState(
             absent=True, declined="no branch is checked out here, so there is nothing to compare"
         )
@@ -4143,15 +4166,39 @@ def _cut_versions(
     )
 
 
+@dataclass(frozen=True)
+class CutWritten:
+    """The commit that last wrote a version's notes on a ref, and when it was authored.
+
+    `at` is `None` where git gave no date it could parse.
+    """
+
+    commit: str
+    at: datetime | None
+
+
+def cut_written(ref: str, notes_dir: str, version: str, root: Path, run: Runner) -> CutWritten:
+    """When a version's notes were written on a ref: the one reader of a cut's date.
+
+    The author date, which a rebase leaves alone, so a rebased cut keeps the
+    date it was cut on. `cuts_in_flight` read the committer date and
+    `claims.holdings` the author date, and the two parted on a rebased cut
+    (`PL-KL6B`).
+    """
+    path = f"{notes_dir.strip('/')}/{notes_name(version)}"
+    written = run(["log", "-1", "--format=%H%x1f%aI", ref, "--", path], root)
+    commit, _, stamp = written.strip().partition("\x1f")
+    try:
+        at: datetime | None = datetime.fromisoformat(stamp)
+    except ValueError:
+        at = None
+    return CutWritten(commit=commit, at=at)
+
+
 def _cut_date(ref: str, notes_dir: str, version: str, root: Path, run: Runner) -> date | None:
     """When the notes for a version were written on a ref, or `None` if unreadable."""
-    stamp = run(
-        ["log", "-1", "--format=%cI", ref, "--", f"{notes_dir}/{notes_name(version)}"], root
-    ).strip()
-    try:
-        return datetime.fromisoformat(stamp).astimezone(UTC).date()
-    except ValueError:
-        return None
+    at = cut_written(ref, notes_dir, version, root, run).at
+    return None if at is None else at.astimezone(UTC).date()
 
 
 @dataclass(frozen=True)

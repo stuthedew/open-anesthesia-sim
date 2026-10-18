@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from docket.checks import Report
-from docket.claims import BY_LANDING, LIVE, holdings, work_outside_queue
+from docket.claims import BY_LANDING, LIVE, agent_branch, holdings, work_outside_queue
 from docket.config import Config
 from docket.store import ID_PATTERN
 from docket.vcs import (
@@ -57,6 +57,7 @@ from docket.vcs import (
     StrandedReport,
     SubjectPullRequest,
     Unlisted,
+    _cut_date,
     _items_at,
     _landed_since,
     _landing_split,
@@ -77,6 +78,7 @@ from docket.vcs import (
     closed_by,
     closures_on_base,
     cut_window,
+    cut_written,
     cuts_in_flight,
     default_base,
     default_branch,
@@ -86,6 +88,7 @@ from docket.vcs import (
     github_slug,
     github_token,
     gone_paths,
+    head_branch,
     landed_whole,
     listed_paths,
     lost,
@@ -2771,7 +2774,7 @@ def _cut_runner(
             ref = args[-2]
             return _raw(((f"{ref}blob", f"some/{ref}"),), args)
         if args[0] == "log":
-            return f"{when}\n"
+            return f"c1\x1f{when}\n"
         return _default_run(args, root)
 
     return run
@@ -5186,3 +5189,61 @@ def test_tracked_files_walks_a_checkout_it_could_not_list_when_told_not_to_raise
     assert tracked_under(tmp_path, "docs", ".md", raise_unlisted=False) == [
         tmp_path / "docs" / "kept.md"
     ]
+
+
+def test_head_branch_is_read_by_one_function(tmp_path: Path) -> None:
+    """Which branch `HEAD` is on has one reader, `vcs.head_branch` (`PL-KL6B`).
+
+    Seven readers asked git themselves. On a detached `HEAD` each spelt "no
+    branch" its own way, and only four stripped a remote's prefix. So no other
+    module in docket or the tools beside it asks `rev-parse --abbrev-ref HEAD`,
+    and the one reader returns `""` on a detached `HEAD`.
+    """
+    top = Path(__file__).resolve().parents[3]
+    sources = [*(top / "subprojects/docket/src/docket").glob("*.py"), *(top / "tools").glob("*.py")]
+    askers = sorted(
+        str(path.relative_to(top))
+        for path in sources
+        if '"--abbrev-ref", "HEAD"' in path.read_text(encoding="utf-8")
+    )
+    assert askers == ["subprojects/docket/src/docket/vcs.py"]
+
+    repo = _Repo(tmp_path / "repo")
+    tip = repo.commit("base", a_txt="a\n")
+    assert head_branch(repo.root, _run_git) == "main"
+    repo.git("checkout", "-q", "--detach", tip)
+    assert head_branch(repo.root, _run_git) == ""
+
+
+def test_a_branch_named_in_another_case_is_an_agent_branch() -> None:
+    """`Claude/x` sits in the agent namespace to every reader (`PL-KL6B`)."""
+    assert agent_branch("Claude/x")
+    assert agent_branch("claude/x")
+    assert not agent_branch("feature/claude")
+
+
+def test_a_rebased_cut_is_dated_by_its_author_date(tmp_path: Path) -> None:
+    """A cut's date is the author date, which a rebase leaves alone (`PL-KL6B`).
+
+    `cuts_in_flight` read the committer date and `claims.holdings` the author
+    date, so the two dated a rebased cut differently.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("base", a_txt="a\n")
+    (repo.root / "docs" / "releases").mkdir(parents=True)
+    (repo.root / "docs" / "releases" / "v1.2.3.md").write_text("notes\n", encoding="utf-8")
+    repo.git("add", "-A")
+    subprocess.run(
+        ["git", "commit", "-qm", "cut"],
+        cwd=repo.root,
+        check=True,
+        env={
+            **os.environ,
+            "GIT_AUTHOR_DATE": "2026-01-01T12:00:00Z",
+            "GIT_COMMITTER_DATE": "2026-02-01T12:00:00Z",
+        },
+    )
+    written = cut_written("main", "docs/releases/", "1.2.3", repo.root, _run_git)
+    assert written.commit == repo.git("rev-parse", "HEAD")
+    assert written.at == datetime(2026, 1, 1, 12, tzinfo=UTC)
+    assert _cut_date("main", "docs/releases", "1.2.3", repo.root, _run_git) == date(2026, 1, 1)

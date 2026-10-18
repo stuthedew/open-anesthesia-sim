@@ -169,6 +169,7 @@ from .vcs import (
     carried_merge,
     changed_path_args,
     default_base,
+    head_branch,
     listed_paths,
     remote_heads,
     resolved,
@@ -392,7 +393,7 @@ def arms_on_green(path: str, tooling: Collection[str] = ()) -> bool:
     while the change raises no question for them - a judgment this module
     does not make - and asks for the reason in the report.
 
-    It is not `claims.in_queue`, which asks whether a change owes a claim and
+    It is not `vcs.in_queue`, which asks whether a change owes a claim and
     counts the roadmap and the notes as queue records, since a triage pass and
     a design round write them and nothing else (`PL-3CTW`). The two answers
     were kept apart on purpose: `ROADMAP.md` and `docs/WORKING_NOTES.md` owe
@@ -671,17 +672,17 @@ def arm(
             )
     run = _Silences(ran)
     remotes = _remotes(root, run)
-    name = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
+    name = head_branch(root, run, remotes)
     # A git that answered nothing is said as that, not as the "no branch" or
     # "no base" it would otherwise read as (`vcs.branch_state` has the case).
-    if run.reason or name in {"", "HEAD"}:
+    if run.reason or not name:
         reason = run.reason or "HEAD is on no branch, so there is no pull request to answer for"
         return Verdict(UNKNOWN, unread=(reason, *unread))
     base = default_base(root, runner=run)
     if not resolved(base):
         reason = run.reason or f"no default branch could be established to compare {name} with"
         return Verdict(UNKNOWN, branch=name, unread=(reason, *unread))
-    branch = _head_name(name, remotes)
+    branch = name
     if branch == _head_name(base, remotes):
         reason = f"HEAD is on {name}, the default branch, which opens no pull request of its own"
         return Verdict(UNKNOWN, branch=name, base=base, unread=(reason,))

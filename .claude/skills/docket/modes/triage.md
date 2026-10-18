@@ -592,10 +592,14 @@ branch opened for an item it just triaged, a design question resolved, a pull
 request shepherded through review. The pull is strongest where the finding is
 most interesting, and interesting is not the test.
 
-**Escalate only a `P0` or a compounding-friction finding.** A finding
-compounds when it meets any of the four tests in the `CLAUDE.md` bullet
-"Friction that compounds is recommended the moment it is found, not filed".
-Name it in a sentence or two
+**Escalate only a `P0`, a compounding-friction finding or a ranking
+generator.** A finding compounds when it meets any of the four tests in the
+`CLAUDE.md` bullet "Friction that compounds is recommended the moment it is
+found, not filed". A ranking generator is a head recorded `generator: live`,
+or an item recorded `impairs-generators:`. `CLAUDE.md` gives it two endings:
+fix it in this session, or end the reply with a ready-to-paste prompt for a
+fresh one. A triage pass is not the fix, so it takes the prompt (`PL-9KGT`).
+Name each escalated finding in a sentence or two
 and hand over the means to act on it *elsewhere* - `bin/docket next` where the
 queue already holds the work, or the exact line to paste into a fresh session,
 per **Mode: recommend what to work on** in
