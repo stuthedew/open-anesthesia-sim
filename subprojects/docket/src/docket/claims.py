@@ -755,10 +755,15 @@ def holdings(
 
     holds = tuple(hold for *_, hold in ranked)
     held = {hold.key for hold in (*holds, *dispositions, *named.values()) if hold.state == LIVE}
+    # A branch the base took whole is dated too where it holds a live claim, so
+    # `flight` names its newest commit rather than calling it unreadable
+    # (`PL-JLK6`). One holding nothing live stays out: `unclaimed` walks every
+    # ref dated here, and would call its landed work unclaimed.
+    live = {branch for _, _, branch, hold in ranked if hold.state == LIVE}
     last = {
-        branches[branch][0]: dates[-1]
+        claimed[branch][0]: dates[-1]
         for branch, dates in renewals.items()
-        if dates and branch in branches
+        if dates and (branch in branches or branch in live)
     }
     cuts = _cuts(histories, branches, tips, last, base, notes_dir, root, run, moment)
     editing = _editing(touched, branches, tips, last, held, base, root, run, copies)
@@ -785,7 +790,7 @@ def holdings(
         ),
         last=last,
         declined=run.reason,
-        head=branches[here][0] if here in branches else "",
+        head=claimed[here][0] if here in claimed else "",
     )
 
 
