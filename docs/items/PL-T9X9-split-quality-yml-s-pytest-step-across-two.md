@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: ci-cost
+milestone: v0.5.26
 touches: .github/workflows/quality.yml, tools/required_checks_check.py, tools/doc_check.py, tools/main_ci_status.py, tests/conftest.py, Makefile, docs/apparatus.md, tests/unit/test_worksteal_dealing.py, tests/unit/test_main_ci_status.py, tests/unit/test_doc_check.py, tests/unit/test_quality_step_order.py, tests/unit/test_required_checks_check.py, tests/unit/test_tools_portability.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-10-17

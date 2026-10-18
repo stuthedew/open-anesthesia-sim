@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.26
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, docs/items/PL-RHPK-verify-and-checks-each-decide-a-command-s.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12

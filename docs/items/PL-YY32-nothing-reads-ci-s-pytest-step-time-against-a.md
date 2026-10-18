@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: friction-batch
+milestone: v0.5.26
 touches: tools/main_ci_status.py, .claude/hooks/docket-digest.sh, tests/unit/test_main_ci_status.py, docs/apparatus.md
 added: 2026-10-17
 closed: 2026-10-17

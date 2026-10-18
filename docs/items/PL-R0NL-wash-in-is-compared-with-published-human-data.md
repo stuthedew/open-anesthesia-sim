@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: science, test
 feature: validation-resolving-power
+milestone: v0.5.26
 touches: tests/reference/test_published_wash_in_and_elimination.py, docs/references, docs/MODEL.md
 added: 2026-10-17
 closed: 2026-10-18

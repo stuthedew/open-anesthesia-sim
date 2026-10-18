@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: tests-detect-wrong-values
+milestone: v0.5.26
 touches: .claude/rules/test-oracles.md, docs/items/PL-Y1PS-test-effectiveness-has-been-measured-once-by-a.md, docs/items/PL-6JKB-nothing-checks-that-a-bug-fix-s-regression-test.md, docs/items/PL-75D9-bit-for-bit-determinism-is-tested-only-within.md
 added: 2026-10-17
 closed: 2026-10-17

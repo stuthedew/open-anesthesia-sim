@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: ci-cost
+milestone: v0.5.26
 touches: .github/workflows/quality.yml, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, conftest.py, docket.toml, tests/unit/test_item_store_guard.py, tests/unit/test_quality_step_order.py, tests/unit/test_main_ci_status.py, tools/main_ci_status.py, tests/unit/test_dead_ends.py, tests/unit/test_doc_check.py, tests/unit/test_docket_gate.py, tests/unit/test_inline_reference.py, tests/unit/test_contrast_check.py, subprojects/docket/tests/test_grep.py, subprojects/docket/tests/test_markdown_reference.py, tools/doc_check.py, docs/apparatus.md
 added: 2026-10-17
 closed: 2026-10-17

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: perf
 feature: chart-readout
+milestone: v0.5.26
 touches: src/anesthesia_sim/app/chart_frame.py, docs/WORKING_NOTES.md
 added: 2026-09-16
 closed: 2026-10-18

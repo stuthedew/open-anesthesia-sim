@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost
 feature: model-evidence
+milestone: v0.5.26
 touches: CLAUDE.md, .claude/rules, .claude/skills/docket, docs/WORKING_NOTES.md, docs/resident-instructions.md
 added: 2026-10-17
 closed: 2026-10-18
