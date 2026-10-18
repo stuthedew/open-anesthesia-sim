@@ -9,6 +9,7 @@ feature: interface-areas
 touches: src/anesthesia_sim/app/, tests/integration, docs/MODEL.md
 added: 2026-10-18
 closed: 2026-10-18
+pr: 1609
 payoff: compare mode on the 1366 by 700 laptop gives the chart back what folding the per-run lines saves, with every required value still named
 verify: grep -q 'PL-QLZ5' tests/integration/test_simulation_view.py
 ---
