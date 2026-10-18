@@ -45,6 +45,15 @@ paragraph, `**Checked 2026-10-17:** ...`, in the commit the sweep makes. A
 reply is deleted with its session. The 2026-09-19 workflow sweep left ten such
 verdicts in a reply, and `PL-6ZQY` had to work all ten out again (`PL-NGLM`).
 
+**Every item you offer carries its relation to the gate, in whichever mode
+names it** (project owner, 2026-09-13). That covers a `next` answer, the
+closing line of a design round, and the last paragraph of a session that has
+just finished something else. `PL-FZ6T` was offered in that last place as "the
+natural continuation" of the item before it, with nothing said about the gate
+(`PL-J790`). `.claude/skills/docket/modes/picking.md` § "Mode: recommend what
+to work on" lists the four relations and how to state each one. The rule sat only there until
+`PL-B1R4`, and the design and close-out sessions it binds never read that file.
+
 ## The two modes this queue serves
 
 The project owner works in two distinct modes, and they have opposite cost

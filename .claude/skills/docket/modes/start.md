@@ -318,4 +318,9 @@ milestone first, per the development rules there, and start the items that
 milestone produces.
 
 Set the item's `status` and `feature` as work begins, and add `touches` if it
-is missing — that is what makes the next concurrency answer correct.
+is missing — that is what makes the next concurrency answer correct. Two more
+fields are repaired at this moment, and the rules for them live in other modes.
+Write a `payoff:` if the item has none, as `picking.md`'s paragraph on
+`payoff:` says. Rewrite a `verify:` that selects nothing or still carries a
+trailing selector clause, as `.claude/skills/docket/modes/triage.md` § "The
+`verify:` command, and running it before writing it down" says (`PL-B1R4`).

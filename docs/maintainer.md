@@ -193,9 +193,8 @@ read 2026-10-17). The simulator half of the split is unchanged.
 **Open apparatus sessions at `high` and simulator sessions at `max`** (project
 owner, 2026-09-19, ratified, over running every session at `max`). The split
 follows the two standards `CLAUDE.md` already draws rather than a new
-judgment: `.claude/rules/apparatus-standard.md` governs `subprojects/docket/`,
-`tools/`, `.claude/`, `.github/` and `docs/worker.md`, and asks for working
-reliably rather than for specialist quality; `src/`, `tests/`, `docs/MODEL.md`
+judgment: `.claude/rules/apparatus-standard.md` governs the apparatus paths
+that `CLAUDE.md` lists, and asks for working reliably rather than for specialist quality; `src/`, `tests/`, `docs/MODEL.md`
 and `README.md` are the opposite case, and the safety-critical standard reaches
 them.
 
