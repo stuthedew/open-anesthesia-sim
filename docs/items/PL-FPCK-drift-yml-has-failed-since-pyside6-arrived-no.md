@@ -1,0 +1,45 @@
+---
+id: PL-FPCK
+title: drift.yml has failed since PySide6 arrived: no job installs libegl1, and the interpreter job deletes the tracked .python-version that a test lists
+priority: P2
+effort: S
+status: open
+classes: infra
+touches: .github/workflows/drift.yml
+added: 2026-10-18
+payoff: every drift.yml job reaches its test results on an unchanged tree, so a red run means a dependency, a new interpreter or a test order broke the suite, and not the runner
+verify: test "$(grep -c 'apt-get install -y libegl1' .github/workflows/drift.yml)" -eq 3 && ! grep -q 'rm -f .python-version' .github/workflows/drift.yml
+---
+
+**Problem.** The only scheduled `drift` run since the Qt port,
+[run 36822855719](https://github.com/stuthedew/open-anesthesia-sim/actions/runs/36822855719)
+on 2026-10-01, failed in both jobs. Nobody looked at it for 17 days. It had
+two causes, and neither was the drift that the workflow exists to find.
+
+1. **No job installs `libegl1`.** Qt's offscreen platform plugin links
+   `libEGL.so.1`, and `ubuntu-latest` does not carry it. `PL-VHLZ` added the
+   `apt-get install -y libegl1` step to `quality.yml` on 2026-09-14 and did not
+   add it to `drift.yml`. So seven test modules that import `PySide6.QtGui` fail
+   at collection in every job: 5463 passed, 7 errors in `dependencies`. The
+   `order` job, added by `PL-75D9` on 2026-10-17, has the same gap. Its first
+   weekly run is on Monday 2026-10-19, so it would have failed every week.
+2. **The interpreter job deletes a tracked file.** The job removes
+   `.python-version` so that uv uses the newer interpreter that setup-python
+   installed. `tests/unit/test_workflow_paths_check.py::test_a_checkout_is_listed_by_git_rather_than_walked`
+   asserts that the first 50 files `git ls-files` lists all exist, and
+   `.python-version` is the 50th. So the job fails a test that passes on every
+   other runner.
+
+The seven modules that never ran on 2026-10-01 may hide other failures. Only a
+run with both fixes can say.
+
+**Fix.**
+
+- Add `quality.yml`'s `libegl1` step to each of the three jobs.
+- In the interpreter job, overwrite `.python-version` with the version of the
+  interpreter that setup-python installed, instead of deleting the file. uv
+  still uses that interpreter, and the tracked file still exists.
+
+**Done when.** The `verify:` line holds, and a `workflow_dispatch` run of
+`drift.yml` on the branch gets past test collection in all three jobs. Any test
+that still fails is a drift finding to capture, not a defect of this item.
