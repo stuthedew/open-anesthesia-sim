@@ -7126,6 +7126,33 @@ dashboard refuses to place a run whose region lacks a declared value, so a
 value moved into the splitter fails at once rather than becoming closeable
 when the area system arrives (`PL-NWTM`, laid out to `PL-J8K2`).
 
+**Where the educational-use disclaimer lives** (`PL-JSY5`, 2026-10-18). The
+use disclaimer, `USE_DISCLAIMER_TEXT`, is a standing statement rather than one
+of this list's values, so `app/unconditional_set.py` does not declare it. Its
+home is the line across the foot of the window, outside the layout container,
+which the project owner ratified on 2026-10-11 with the band across the top
+(`PL-J8K2`, Q1). No split, join, close or Workspace switch reaches it, so it is
+present in every Workspace a learner builds
+(`test_the_dashboard_carries_the_educational_disclaimer`). Once more than one
+top-level window can exist, each window carries the line in its own frame,
+beside its invariant tier, because a window read alone needs the statement of
+what the tool is for as much as it needs the run's time and agent.
+
+*Present, and not yet always in view* (measured 2026-10-18). Until v0.6.0's
+tiled layout replaces the scrolling page, the line is the page's last line, and
+the page scrolls. On the offscreen platform the page is 1571 px tall, so at a
+window 700, 900 or 1100 px high the line is below the visible part until the
+reader scrolls. When the Areas fill the window and the page stops scrolling,
+the foot line is in view at every window height, which is what the colour
+section below means by "always". The unconditional region at the top of the
+same page has the mirror of this gap, and so does the interpretation
+statement, `INTERPRETATION_DISCLAIMER_TEXT`, on its readout heading row. Both
+are in view when the window opens. They partly or wholly leave the view when
+the reader scrolls down to the wash-in chart, or takes a branch, which scrolls
+the page to the concentration chart (`PL-562Z`). Measured on 2026-10-18, that
+scroll at a 1366 by 700 window leaves 27 px of a one-run readout row's 103 px
+in view. Both gaps close when the page stops scrolling.
+
 **The rule all three rest on is about occlusion, not about window types.** No
 value this list requires may be covered while the application still believes it
 is showing it. That one sentence binds a panel drawn over the dashboard, a
@@ -7398,6 +7425,12 @@ alarm colour would teach the opposite of the convention it borrowed. The
 divergence is also chosen for its own sake: a teaching tool that looks
 unmistakably unlike a monitor cannot be mistaken for one, which is the reading
 this project's disclaimers already take.
+
+*"Always" names where the line lives, not that it is in view on every screen
+today* (`PL-JSY5`, 2026-10-18). The line's home and the one gap in it are
+stated in § "Minimum displayed outputs" -> "What this list requires once the
+layout is the reader's". The argument above needs only that the line is
+standing rather than conditional, which holds at every window size.
 
 The interface runs that as a signal economy one level down. The
 supported-run-length boundary is `MUTED`, not `WARNING`, because colouring a
@@ -8673,8 +8706,8 @@ the widest value each column can show, measured in the rendering font
 its widest percent and MAC multiple, so the clock's width costs no other
 column - and the widths at which the row steps down belong to the font and
 the display scale rather than to this document: on the offscreen font the
-test suite renders with, the row is seven across from 1068 logical pixels,
-four from 632 and two from 336, and
+test suite renders with, measured on 2026-10-18, the row is seven across
+from 1005 logical pixels, four from 591 and two from 310, and
 `test_the_readout_row_reflows_where_its_panels_stop_fitting` reads those
 widths from the row rather than asserting them. Those figures are an example
 of the rule, not a specification of it. The Flet build recorded 1200, 992
@@ -8724,6 +8757,31 @@ a screen too narrow for seven across at its full width still opens below the
 widest rung: the maximized window changes which rung a screen affords, never
 the rule that decides it. Until the Qt port the window opened full screen and
 the widest breakpoint was the only one a reader met without resizing.
+
+**The row sits in the unconditional region, so its rung follows that region
+and never an Area** (`PL-JSY5`, 2026-10-18). The readouts are in
+`SimulationView.unconditional_region`, above the layout container that the
+Areas replace (§ "Minimum displayed outputs" -> "What this list requires once
+the layout is the reader's";
+`test_no_unconditional_value_sits_inside_the_layout_container`). So a split, a
+join, a border drag or a Workspace switch never changes the width the row is
+laid out at. Two things do: the window's width, and how the region divides that
+width. Since `PL-J8K2`, the region holds the runs' rows in a left column and the
+control-change record in a right column, in the 3:1 proportion that the charts
+and the sidebar take, and the left column never narrows below its own minimum
+width. At whatever width that leaves, the reservation rule above (`PL-3355`)
+still applies: every rung lays each panel out at its full reserved width, so
+no value is wrapped away from its unit.
+
+**Measured 2026-10-18: a 1366 px window no longer opens on seven with one
+run.** On the offscreen font, a 1366 px window with one run gives the region
+1320 px and the left column 1002 px. Seven across needs 1005 px, so the row
+opens on four. Two runs open on seven at the same width, because two runs'
+rows raise the left column's minimum width to 1044 px. One run first opens on
+seven at 1398 px. So the outcome recorded above for a 1366 px screen no longer
+holds now that the control-change record shares the region's width with the
+readouts (`PL-J8K2`). The region's exact division is `PL-W54S`'s to settle (`ROADMAP.md` § "v0.6.0 - the
+layout is the reader's", Required scope entry 20).
 
 **Why not a significant-figures rule.** A significant-figures rule gives the
 smallest values the most decimal places, and the small values are exactly
