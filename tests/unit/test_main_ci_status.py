@@ -714,6 +714,113 @@ class TestFetchJobs:
         assert main_ci_status.fetch_jobs("o/r", 1) == []
 
 
+# Run #4805's one job as the Actions API returned it on 2026-10-05: GitHub
+# cancelled it 15 minutes after creating it, having given it no runner, so it
+# has no steps, `runner_id` 0 and an empty `runner_name`.
+_RUN_4805_JOB = {
+    "id": 52700000000,
+    "name": "checks",
+    "status": "completed",
+    "conclusion": "cancelled",
+    "created_at": "2026-10-05T19:34:02Z",
+    "started_at": "2026-10-05T19:34:02Z",
+    "completed_at": "2026-10-05T19:49:04Z",
+    "runner_id": 0,
+    "runner_name": "",
+    "steps": [],
+}
+
+
+def _gate_job(conclusion: str) -> dict:
+    """The `checks` job, whose first step fails unless both parts succeeded."""
+    job = _job([("Set up job", "success"), (main_ci_status.PARTS_GATE_STEP, conclusion)])
+    job["runner_id"] = 1000011567
+    return job
+
+
+class TestIdleJobs:
+    """A job no runner took is told apart from one that ran (`PL-7WNJ`).
+
+    GitHub cancels such a job at the same 15 minutes `timeout-minutes` sets for
+    a hung step, so without this a red `main` that ran nothing reads as code
+    hanging.
+    """
+
+    def test_names_a_job_no_runner_took_as_nothing_ran(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        _github_origin(monkeypatch)
+        monkeypatch.setattr(main_ci_status, "pytest_time_line", lambda slug, runs: None)
+        run = _run("failure", 4805, "b67dace8aaaa")
+        monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: [run])
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", lambda slug, run_id: [_RUN_4805_JOB])
+        assert main_ci_status.main() == 0
+        out = capsys.readouterr().out
+        assert '#4805 on b67dace8 concluded failure because no runner took the job "checks"' in out
+        assert "so nothing ran" in out
+        assert "re-run it rather than fixing anything" in out
+        assert out.rstrip("\n").endswith("https://github.com/o/r/actions/runs/4805")
+
+    def test_reads_the_4805_shape(self) -> None:
+        assert main_ci_status.idle_jobs([_RUN_4805_JOB]) == ("checks",)
+
+    def test_a_job_that_ran_is_not_idle(self) -> None:
+        ran = {**_REPLAY_ONLY, "runner_id": 1000011567}
+        assert main_ci_status.idle_jobs([ran]) == ()
+
+    def test_a_job_with_steps_is_not_idle_even_with_runner_id_zero(self) -> None:
+        assert main_ci_status.idle_jobs([{**_REPLAY_ONLY, "runner_id": 0}]) == ()
+
+    @pytest.mark.parametrize("runner", [None, False, "0", 0.0])
+    def test_only_a_runner_id_of_integer_zero_reads_as_no_runner(self, runner: object) -> None:
+        """A missing or odd field is not evidence that the tree went unjudged."""
+        job = {**_RUN_4805_JOB, "runner_id": runner}
+        if runner is None:
+            del job["runner_id"]
+        assert main_ci_status.idle_jobs([job]) == ()
+
+    def test_a_job_whose_steps_are_absent_reads_as_idle(self) -> None:
+        job = {key: value for key, value in _RUN_4805_JOB.items() if key != "steps"}
+        assert main_ci_status.idle_jobs([job, "not a dict"]) == ("checks",)
+
+    def test_a_job_that_ran_keeps_todays_line(self) -> None:
+        line = main_ci_status.advisory(_run("failure", 1553), _pairs(_REPLAY_STEPS), ())
+        assert "bin/docket check --verify" in line
+        assert "no runner" not in line.lower()
+
+    def test_one_idle_part_beside_passing_jobs_is_the_whole_failure(self) -> None:
+        part_1 = {**_job([("Set up job", "success"), ("Run uv run pytest", "success")])}
+        part_2 = {**_RUN_4805_JOB, "name": "checks-part-2"}
+        jobs = [part_1, part_2, _gate_job("failure")]
+        line = main_ci_status.advisory(
+            _run("failure", 1553),
+            main_ci_status.step_conclusions(jobs),
+            main_ci_status.idle_jobs(jobs),
+        )
+        assert 'no runner took the job "checks-part-2", so that job ran no step' in line
+        assert "Every step that ran passed" in line
+        assert "main is red" not in line
+
+    def test_an_idle_job_beside_a_real_failure_names_both(self) -> None:
+        line = main_ci_status.advisory(
+            _run("failure", 1553),
+            _pairs([("Run uv run mypy", "failure")]),
+            ("checks-part-2", "checks"),
+        )
+        assert "Run uv run mypy" in line
+        assert "main is red" in line
+        assert 'No runner took the jobs "checks-part-2", "checks", so they ran nothing.' in line
+
+    def test_withholds_the_queue_reading_while_a_job_is_idle(self) -> None:
+        """A part that never ran checked nothing, so the tree is not cleared."""
+        line = main_ci_status.advisory(
+            _run("failure", 1553), _pairs(_REPLAY_STEPS), ("checks-part-2",)
+        )
+        assert "bin/docket check --verify" not in line
+        assert main_ci_status.REPLAY_STEP in line
+        assert 'No runner took the job "checks-part-2", so it ran nothing.' in line
+
+
 class TestStepNamesMatchTheWorkflow:
     """The constants are strings GitHub derives from `quality.yml`; hold them to it.
 
