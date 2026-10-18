@@ -260,7 +260,7 @@ def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
     application.processEvents()
     view.present(False)
     width = next(base for base in SELECTABLE_TIME_BASES if base.span_s == _FOLLOWING_WIDTH_S)
-    selector = view._time_base_dropdown
+    selector = view._time_base_selector
     index = selector.findData(str(width.span_s))
     assert index >= 0, "the time-base control does not offer the 15-minute width"
     selector.setCurrentIndex(index)

@@ -136,7 +136,7 @@ from anesthesia_sim.app.playback import (
     PlaybackRate,
     playback_rate_for,
 )
-from anesthesia_sim.app.qt_chart import TraceLegend
+from anesthesia_sim.app.qt_chart import TimeBaseSelector, TraceLegend
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, MarkListingLabel, ParameterSlider
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
@@ -400,7 +400,7 @@ def _select_playback_rate(run: RunView, multiplier: int) -> None:
 
 
 def _select_time_base(view: SimulationView, key: str) -> None:
-    combo = view._time_base_dropdown
+    combo = view._time_base_selector
     index = combo.findData(key)
     assert index >= 0, f"the time-base control does not offer {key!r}"
     combo.setCurrentIndex(index)
@@ -3838,7 +3838,7 @@ def test_the_chart_defaults_to_fitting_the_whole_run(application: QApplication) 
     view = _shown_view(application, controller)
     frame = view._concentration_chart.frame
 
-    assert view._time_base_dropdown.currentData() == FIT_RUN_KEY
+    assert view._time_base_selector.currentData() == FIT_RUN_KEY
     assert view._time_base is None
     assert frame is not None
     assert frame.fitted is True
@@ -3849,7 +3849,7 @@ def test_the_chart_defaults_to_fitting_the_whole_run(application: QApplication) 
 def test_the_time_base_selector_offers_fit_run_and_the_settled_widths(
     application: QApplication,
 ) -> None:
-    combo = _shown_view(application, SimulationController())._time_base_dropdown
+    combo = _shown_view(application, SimulationController())._time_base_selector
 
     assert [combo.itemData(index) for index in range(combo.count())] == [
         FIT_RUN_KEY,
@@ -3967,7 +3967,59 @@ def test_the_time_base_is_never_disabled(application: QApplication) -> None:
     view.present(False)
 
     assert view.runs[0]._agent_dropdown.isEnabled() is False
-    assert view._time_base_dropdown.isEnabled() is True
+    assert view._time_base_selector.isEnabled() is True
+
+
+def test_the_chosen_time_base_survives_its_selector_being_closed(application: QApplication) -> None:
+    """`PL-9LNF`: the dashboard owns the width both plots are drawn at, not the control.
+
+    Before, the dropdown was the state: the handler read the width back out
+    of it. Closing the control must leave the next frame at the width the
+    reader chose, and the caption beside the plots must still state it.
+    """
+
+    controller = _paused_run_with_history(1800.0)
+    view = _shown_view(application, controller)
+    _select_time_base(view, "1800.0")
+
+    view._time_base_selector.deleteLater()
+    _settle(application)
+    view.present(False)
+
+    frame = view._concentration_chart.frame
+    assert frame is not None
+    assert frame.fitted is False
+    assert frame.time_base == time_base_for_span(1800.0)
+    assert view._wash_in_chart.frame is frame
+    assert format_time_base(1800.0) in view._time_axis_caption.text()
+
+
+def test_a_second_time_base_selector_shows_the_width_a_first_one_chose(
+    application: QApplication,
+) -> None:
+    """Two controls on one dashboard show one width, because each shows what it is handed.
+
+    The second selector stands for a second chart View in another Area. It
+    is told the dashboard's width once a frame has drawn it, and a pick on
+    either is a request the dashboard answers for both.
+    """
+
+    view = _shown_view(application, SimulationController())
+    second = TimeBaseSelector()
+    view.time_base_changed.connect(second.show_time_base)
+    second.time_base_requested.connect(view._handle_time_base_request)
+
+    _select_time_base(view, "1800.0")
+
+    assert second.currentData() == "1800.0"
+
+    second.setCurrentIndex(second.findData(FIT_RUN_KEY))
+
+    assert view._time_base is None
+    assert view._time_base_selector.currentData() == FIT_RUN_KEY
+    frame = view._concentration_chart.frame
+    assert frame is not None
+    assert frame.fitted is True
 
 
 def test_reset_leaves_the_selected_time_base_alone(application: QApplication) -> None:
@@ -3977,7 +4029,7 @@ def test_reset_leaves_the_selected_time_base_alone(application: QApplication) ->
     view.runs[0]._reset_button.click()
 
     assert view._time_base == time_base_for_span(1800.0)
-    assert view._time_base_dropdown.currentData() == "1800.0"
+    assert view._time_base_selector.currentData() == "1800.0"
 
 
 def test_the_mac_axis_and_references_follow_the_agent(application: QApplication) -> None:

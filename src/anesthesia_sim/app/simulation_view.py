@@ -66,12 +66,7 @@ from PySide6.QtWidgets import (
 
 from anesthesia_sim.app.area_layout import AreaLayout
 from anesthesia_sim.app.chart_frame import ChartFrame, RunInput, assemble_chart_frame
-from anesthesia_sim.app.chart_time_base import (
-    FIT_RUN_KEY,
-    SELECTABLE_TIME_BASES,
-    ChartTimeBase,
-    time_base_for_span,
-)
+from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import (
     INITIAL_COMPARTMENT_SELECTION,
     CompartmentSelection,
@@ -79,7 +74,6 @@ from anesthesia_sim.app.compartment_selection import (
 from anesthesia_sim.app.controller import BranchedCase, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     CHART_HEADING,
-    FIT_RUN_LABEL,
     FORK_NOTHING_SELECTED_TEXT,
     MAX_DISPLAYED_RUNS,
     NO_TRACES_SHOWN_TEXT,
@@ -107,8 +101,14 @@ from anesthesia_sim.app.dashboard_frame import (
     time_axis_caption,
     trunk_reset_question,
 )
-from anesthesia_sim.app.formatting import format_time_base, mac_multiple
-from anesthesia_sim.app.qt_chart import ConcentrationChart, TraceLegend, WashInChart, WashInLegend
+from anesthesia_sim.app.formatting import mac_multiple
+from anesthesia_sim.app.qt_chart import (
+    ConcentrationChart,
+    TimeBaseSelector,
+    TraceLegend,
+    WashInChart,
+    WashInLegend,
+)
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, BookmarksPanel, ForkPanel, styled_label
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_view import RunView
@@ -117,7 +117,6 @@ from anesthesia_sim.app.stylesheets import (
     page_stylesheet,
     panel_stylesheet,
     scroll_area_stylesheet,
-    selector_stylesheet,
 )
 from anesthesia_sim.app.theme import (
     GRIDLINE,
@@ -128,7 +127,6 @@ from anesthesia_sim.app.theme import (
     PAGE_SPACING,
     PANEL_PADDING,
     SECTION_DIVIDER_HEIGHT,
-    TIME_BASE_SELECTOR_WIDTH,
     WARNING,
 )
 from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set, window_region
@@ -295,6 +293,14 @@ class SimulationView(QWidget):
     simply no longer told, and a second is told the same (`PL-VN6M`).
     """
 
+    time_base_changed = Signal(object)
+    """Emitted with the time base a frame was drawn at, None for "Fit run", once both plots drew it.
+
+    Every time-base control is connected to it rather than called, so one
+    that has been closed is simply no longer told, and a second is told the
+    same (`PL-9LNF`), as `compartment_selection_changed` is for the legend.
+    """
+
     def __init__(
         self,
         controllers: Sequence[SimulationController],
@@ -396,16 +402,11 @@ class SimulationView(QWidget):
         self._legend = TraceLegend()
         self.compartment_selection_changed.connect(self._legend.show_selection)
         self._wash_in_legend = WashInLegend()
-        self._time_base_dropdown = QComboBox()
-        self._time_base_dropdown.setFixedWidth(TIME_BASE_SELECTOR_WIDTH)
-        self._time_base_dropdown.setStyleSheet(selector_stylesheet())
-        self._time_base_dropdown.addItem(FIT_RUN_LABEL, userData=FIT_RUN_KEY)
-
-        for time_base in SELECTABLE_TIME_BASES:
-            self._time_base_dropdown.addItem(
-                format_time_base(time_base.span_s), userData=str(time_base.span_s)
-            )
-
+        # The control shows this view's time base and asks to change it; it
+        # holds none of its own, so closing it takes nothing with it and a
+        # second shows the same width (`PL-9LNF`).
+        self._time_base_selector = TimeBaseSelector()
+        self.time_base_changed.connect(self._time_base_selector.show_time_base)
         self._time_axis_caption = styled_label("", color=MUTED)
         self._mac_reference_text = styled_label("", color=MUTED)
         self._mac_awake_reference_text = styled_label("", color=MUTED)
@@ -447,7 +448,7 @@ class SimulationView(QWidget):
         for controller in controllers:
             self._place_run(controller)
 
-        self._time_base_dropdown.currentIndexChanged.connect(self._handle_time_base_change)
+        self._time_base_selector.time_base_requested.connect(self._handle_time_base_request)
         self._legend.compartment_requested.connect(self._handle_compartment_request)
 
         self._render_timer = QTimer(self)
@@ -664,7 +665,7 @@ class SimulationView(QWidget):
         heading.setSpacing(8)
         heading.addWidget(styled_label(CHART_HEADING, color=INK, bold=True, wrap=True), 1)
         heading.addWidget(styled_label(TIME_BASE_LABEL, color=MUTED))
-        heading.addWidget(self._time_base_dropdown)
+        heading.addWidget(self._time_base_selector)
         column.addLayout(heading)
         column.addWidget(self._time_axis_caption)
         column.addWidget(self._mac_reference_text)
@@ -1343,6 +1344,7 @@ class SimulationView(QWidget):
         # set is answered by the halt it raises, and is not retried every tick.
         self._drawn_run_count = len(self._runs)
         selection = self._compartment_selection
+        time_base = self._time_base
         snapshots = tuple(run.snapshot() for run in self._runs)
         inputs = tuple(
             RunInput(run_label(index), run.controller, snapshot, run.adjustments(snapshot))
@@ -1350,7 +1352,7 @@ class SimulationView(QWidget):
         )
         frame = assemble_chart_frame(
             inputs,
-            self._time_base,
+            time_base,
             selection.shown,
             plot_width_px=max(chart.plot_width_px() for chart in self._charts),
         )
@@ -1359,6 +1361,7 @@ class SimulationView(QWidget):
             chart.draw(frame)
 
         self.compartment_selection_changed.emit(selection)
+        self.time_base_changed.emit(time_base)
         self._wash_in_legend.set_run_count(len(frame.runs))
         self._time_axis_caption.setText(time_axis_caption(frame))
         self._mac_reference_text.setText(mac_reference_caption(frame))
@@ -1578,24 +1581,14 @@ class SimulationView(QWidget):
         selected = marks[index]
         self._apply_to_every_run(lambda run: run.remove_mac_target(selected))
 
-    def _handle_time_base_change(self, index: int) -> None:
-        """Take the width the reader chose and draw it at once.
+    def _handle_time_base_request(self, time_base: ChartTimeBase | None) -> None:
+        """Answer a reader's pick of a width, None for "Fit run": take it and draw at once.
 
-        Touches no simulation state: the time base is a view control, never
-        disabled, and Reset leaves it alone (`PL-012`).
-
-        Raises:
-            ValueError: If the control offers a width not on the ladder
-                (`time_base_for_span`) - a divergence between the two tables
-                is a defect to surface.
+        The control only asks. Touches no simulation state: the time base is
+        a view control, never disabled, and Reset leaves it alone (`PL-012`).
         """
 
-        key = self._time_base_dropdown.itemData(index)
-
-        if key is None:
-            return
-
-        self._time_base = None if key == FIT_RUN_KEY else time_base_for_span(float(key))
+        self._time_base = time_base
         self.present(False)
 
     def _handle_compartment_request(self, quantity: RecordedQuantity, shown: bool) -> None:
