@@ -7299,6 +7299,32 @@ NOTES_0_2_4 = "## v0.2.4 - 2026-09-01\n\n### defect\n\n- PL-9WX1 The stamped one
 NOTES_0_2_5 = "## v0.2.5 - 2026-09-08\n\n### defect\n\n- PL-7KD2 The late one — #11\n"
 
 
+@pytest.mark.parametrize(
+    ("cell", "reported"),
+    [("| 1 items |", False), ("| 2 items |", True), ("", False)],
+    ids=["agrees", "disagrees", "no-count"],
+)
+def test_a_version_row_item_count_is_held_to_its_notes(
+    tmp_path: Path, cell: str, reported: bool
+) -> None:
+    """The row and the notes file are written by hand from the same items (`PL-S9X7`)."""
+    roadmap = VERSIONED_ROADMAP.replace(
+        "| v0.2.4 | Completed | The one before. |", f"| v0.2.4 | Completed | The one before. {cell}"
+    ).replace(
+        "| v0.2.5 | Completed / current baseline | The current one. |",
+        "| v0.2.5 | Completed / current baseline | The current one. | 3 items |",
+    )
+    root = _versioned(tmp_path, roadmap=roadmap)
+    (root / "docs" / "releases").mkdir(parents=True, exist_ok=True)
+    (root / "docs" / "releases" / "v0.2.4.md").write_text(NOTES_0_2_4, encoding="utf-8")
+    report = doc_check.Report()
+
+    doc_check.check_release_row_item_count(root, report)
+
+    expected = ["ROADMAP.md:20: v0.2.4 says 2 items, but docs/releases/v0.2.4.md claims 1"]
+    assert [e.split(";")[0] for e in report.errors] == (expected if reported else [])
+
+
 def _git_run(root: Path, *command: str) -> None:
     # Real git, for the reason `_git_init` gives: what is under test is how
     # doc_check reads a checkout, so a stub would test the stub.

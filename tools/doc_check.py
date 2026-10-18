@@ -235,6 +235,7 @@ try:
         notes_bullets,
         notes_claims,
         notes_files,
+        notes_ids,
         notes_path,
         notes_version,
         version_in,
@@ -4349,6 +4350,35 @@ def _tag_spans(root: Path) -> _TagSpans | None:
         return None
     cut = {name.lstrip("v"): release.commit for name, release in cuts.cut.items() if release.commit}
     return _TagSpans(version, pull_request, cut, max(version.values(), key=version_key))
+
+
+def check_release_row_item_count(root: Path, report: Report) -> None:
+    """Hold a version-table row's item count to the items its notes file claims.
+
+    The release session writes both from the same items, by hand, so nothing
+    else says whether they agree. On 2026-10-18 all 45 rows that carry a count
+    agreed with their notes (`PL-S9X7`). A row with no count cell, or a
+    version with no notes file, is skipped, since the older releases have
+    neither. The notes are counted by `notes_ids` on the claimed half of the
+    file, as `docket.release.notes_by_version` counts them, so a pointer
+    bullet naming another release's item is not counted here either.
+    """
+    roadmap_name = roadmap_path(root)
+    roadmap = root / roadmap_name
+    if not roadmap.is_file():
+        return
+    for row in parse_version_table(roadmap.read_text(encoding="utf-8")):
+        if row.items is None:
+            continue
+        notes = root / notes_path(row.version)
+        if not notes.is_file():
+            continue
+        claimed = len(notes_ids(notes_claims(notes.read_text(encoding="utf-8"))[0]))
+        if claimed != row.items:
+            report.errors.append(
+                f"{roadmap_name}:{row.line}: v{row.version} says {row.items} items, "
+                f"but {notes_path(row.version)} claims {claimed}; correct whichever is wrong"
+            )
 
 
 def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
@@ -8518,6 +8548,7 @@ def _analyze(root: Path) -> Report:
     check_gate_reentries(root, report)
     check_tags(root, report)
     check_tag_span_covers_its_notes(root, report)
+    check_release_row_item_count(root, report)
     check_make_targets(root, documents, report)
     check_workflow_paths(root, report)
     check_coverage_gate(root, report)
