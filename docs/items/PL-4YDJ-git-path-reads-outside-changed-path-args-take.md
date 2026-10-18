@@ -2,7 +2,7 @@
 id: PL-4YDJ
 title: Git path reads outside changed_path_args take git's C-quoted spelling of an unusual path for the path: about 15 --name-only, ls-tree and diff reads across vcs.py, claims.py, verify.py, pr_title_check.py and doc_check.py ask for no -z, the fact PL-JTCQ, PL-MR8Z and PL-PXT7 each misread at their own readers
 priority: P3
-effort: L
+effort: M
 status: ready
 classes: defect
 feature: one-answer
@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-12
 payoff: Every git read of a path in docket and the tools gets the file's real name even where git would quote it, and a new read that forgets -z fails a test, so this fact stops yielding a member one reader at a time
 verify: grep -q 'def test_an_item_file_git_would_quote_is_read_by_its_path' subprojects/docket/tests/test_vcs.py && grep -q 'def test_every_path_listing_read_in_docket_asks_for_z' subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_closed_item_whose_path_git_would_quote_is_read' tests/unit/test_pr_title_check.py
+falsifies: "--name-only", BASE, "docs/releases/"
 root-cause-of: PL-JTCQ, PL-MR8Z, PL-PXT7
 generator: spent - every member was found by a sweep or a review and none in use, and no tracked path is one git quotes, so ordinary work cannot meet one
 misread: How git spells a path in its output, and when it quotes one
@@ -93,6 +94,17 @@ argv without `-z` outside `changed_path_args`; and
 `test_a_closed_item_whose_path_git_would_quote_is_read`. The members' own sites
 stay theirs, so this lands before or beside `PL-JTCQ` and `PL-MR8Z` without
 redoing them.
+
+**Started 2026-10-18; re-sized `L` to `M` and one assertion declared falsified.**
+The start mode refuses an `L` item straight from the queue until it is
+scoped. This one already is: the `Done when` names each read and each test,
+and PL-86H3 has since folded five of the 11 reads into `vcs._item_blobs` and
+`vcs.item_additions`, so the work is seven reads, two parsers and the tests,
+an `M`. `falsifies:` names the one assertion the fix makes untrue:
+`test_the_base_is_read_from_the_ref_rather_than_the_working_tree` pins the
+notes listing's argv without `-z`, which is the read this item changes. It is
+declared here, on the default branch, because `verify` honours only the base's
+copy, and the work lands in a pull request after this one.
 
 **Generator check.** This item is the head for the fact, how git spells a path
 in its output and when it quotes one. Read on 2026-10-17 against every head's
