@@ -38,3 +38,5 @@ pins it.
 holds or has superseded a branch commit's change", filed after that head
 closed: `Holdings.last` reads "taken" as "nothing of its own". So
 `reenters: PL-927J` is set.
+
+**Corrected 2026-10-18.** The `--self` hint is `bin/docket verify`'s, not `arm`'s: `_own_branch_refused` in `cli.py` compares a hold with `Holdings.head`, and `arming.py` never reads `head`. The fix is the same.

@@ -1025,7 +1025,7 @@ def test_a_live_claim_on_a_branch_the_base_took_whole_names_its_head(tmp_path: P
 
     `PL-7XGR` kept such a claim live, but `Holdings.last` left the branch out,
     so `flight` printed "no commit of its own this checkout can read" and
-    `Holdings.head` was empty, which cost `arm` its `--self` hint. A taken
+    `Holdings.head` was empty, which cost `verify` its `--self` hint. A taken
     branch holding nothing live stays undated, so `unclaimed` never walks its
     landed work.
     """
