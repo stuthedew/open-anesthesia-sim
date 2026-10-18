@@ -1,8 +1,15 @@
 ---
 id: PL-QT2J
 title: drift.yml's 30-minute job timeout has half its margin left: the interpreter job's pytest step took 14.6 min on 2026-10-18, against 3.8 min on 2026-10-01, as the suite grew from 5,463 to 9,354 tests
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra, perf
+touches: .github/workflows/drift.yml
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
+payoff: drift.yml's job limit is set from a measurement of what slows the interpreter job, with a margin stated beside it
+verify: grep -q 'PL-QT2J' .github/workflows/drift.yml
 ---
 
 **Problem.** Each `drift.yml` job has `timeout-minutes: 30`. The comment says
@@ -34,3 +41,11 @@ uv-managed one, so bytecode compilation on first import is a candidate.
 Second, whether `quality.yml`'s worker count, twice the CPU count, shortens
 these jobs as much as it shortens `quality.yml`. Measure both before
 changing the limit.
+
+**Done when.** The two questions above have measured answers recorded here,
+and `timeout-minutes` in `.github/workflows/drift.yml` is set from them, with
+the margin over the slowest measured job stated in the comment beside it.
+
+**Generator check.** Not an instance of a closed head's fact: a limit set from
+an old measurement, with nothing that re-reads it. `PL-JTWV` is what would show
+the timeout failing.

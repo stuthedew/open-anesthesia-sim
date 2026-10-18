@@ -3,12 +3,14 @@ id: PL-JLK6
 title: A live claim on a branch the base took whole prints 'no commit of its own this checkout can read' in flight, and Holdings.head is empty there so arm gives no --self hint, because Holdings.last leaves taken branches out (found reviewing PL-7XGR)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: claim-integrity
 touches: subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
+closed: 2026-10-18
+pr: 1607
 payoff: a live claim on a branch the base took whole names its head commit in flight, and arm gives its --self hint there
 verify: grep -q 'def test_a_live_claim_on_a_branch_the_base_took_whole_names_its_head' subprojects/docket/tests/test_claims.py
 reenters: PL-927J
@@ -37,3 +39,5 @@ pins it.
 holds or has superseded a branch commit's change", filed after that head
 closed: `Holdings.last` reads "taken" as "nothing of its own". So
 `reenters: PL-927J` is set.
+
+**Corrected 2026-10-18.** The `--self` hint is `bin/docket verify`'s, not `arm`'s: `_own_branch_refused` in `cli.py` compares a hold with `Holdings.head`, and `arming.py` never reads `head`. The fix is the same.
