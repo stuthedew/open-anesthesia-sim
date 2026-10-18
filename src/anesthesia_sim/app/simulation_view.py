@@ -131,6 +131,7 @@ from anesthesia_sim.app.theme import (
     METRIC_QUALIFIER_SIZE,
     MUTED,
     PAGE_PADDING,
+    PAGE_SPACING,
     PANEL_PADDING,
     SECTION_DIVIDER_HEIGHT,
     TIME_BASE_SELECTOR_WIDTH,
@@ -217,7 +218,7 @@ def _holder(
     holder = QWidget()
     # The holder's own spacing is the shared layout's, so a run whose widgets
     # sit inside one is laid out exactly as it would have been laid out
-    # directly: the two sidebar panels keep the gap the column gives them.
+    # directly: a run's panels keep the gap the column gives them.
     column = _spaced_column(holder, layout.spacing())
 
     for widget in widgets:
@@ -472,12 +473,12 @@ class SimulationView(QWidget):
         page.setStyleSheet(page_stylesheet(_PAGE_NAME))
         column = QVBoxLayout(page)
         column.setContentsMargins(PAGE_PADDING, PAGE_PADDING, PAGE_PADDING, PAGE_PADDING)
-        column.setSpacing(12)
+        column.setSpacing(PAGE_SPACING)
 
         column.addWidget(self._build_unconditional_region())
 
         sidebar = QWidget()
-        self._sidebar_column = _spaced_column(sidebar, 12)
+        self._sidebar_column = _spaced_column(sidebar, PAGE_SPACING)
         self._sidebar_column.addStretch(1)
 
         self._charts_and_sidebar = inert_splitter(
@@ -513,9 +514,13 @@ class SimulationView(QWidget):
         notice banner, then every readout section; its right column holds
         every run's control-change record, scrolling within itself so a long
         record never makes the band taller than the rows beside it
-        (`PL-J8K2` Q3). The two columns divide the width as the charts and
-        the sidebar below divide it, so the record keeps the sidebar's width.
-        Nothing new is drawn around it (`PL-J8K2` Q4).
+        (`PL-J8K2` Q3). The two columns take the band's width in the
+        proportion the charts and the sidebar take theirs. A box layout gives
+        the record more than the splitter gives the sidebar: about 300 px at
+        a 1366 px window, against the sidebar's 228, where today's record
+        lines are cut off. The seven readouts still stand in one row beside
+        it, and the exact width is `PL-W54S`'s to settle. Nothing new is
+        drawn around the region (`PL-J8K2` Q4).
 
         Returns:
             The region, which `unconditional_region` names.
@@ -525,28 +530,28 @@ class SimulationView(QWidget):
         region.setObjectName(_REGION_NAME)
         row = QHBoxLayout(region)
         row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(12)
+        row.setSpacing(PAGE_SPACING)
 
         run_rows = QWidget()
-        run_column = _spaced_column(run_rows, 12)
+        run_column = _spaced_column(run_rows, PAGE_SPACING)
 
         transport_rows = QWidget()
-        self._transport_column = _spaced_column(transport_rows, 12)
+        self._transport_column = _spaced_column(transport_rows, PAGE_SPACING)
         run_column.addWidget(transport_rows)
 
         notices = QWidget()
-        self._notice_column = _spaced_column(notices, 12)
+        self._notice_column = _spaced_column(notices, PAGE_SPACING)
         run_column.addWidget(notices)
 
         readouts = QWidget()
-        self._readout_column = _spaced_column(readouts, 12)
+        self._readout_column = _spaced_column(readouts, PAGE_SPACING)
         run_column.addWidget(readouts)
 
         records = QWidget()
         records.setObjectName(_RECORD_COLUMN_NAME)
         records.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         records.setStyleSheet(page_stylesheet(_RECORD_COLUMN_NAME))
-        self._record_column = _spaced_column(records, 12)
+        self._record_column = _spaced_column(records, PAGE_SPACING)
         self._record_column.addStretch(1)
         record_scroll = QScrollArea()
         record_scroll.setWidgetResizable(True)

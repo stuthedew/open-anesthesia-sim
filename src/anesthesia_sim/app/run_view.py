@@ -468,8 +468,8 @@ class RunView(QWidget):
             slider.adjustment_started.connect(self._handle_adjustment_start)
             slider.value_changed.connect(handler)
 
-        # The two sidebar panels' headings. Instance labels rather than
-        # widgets built inside `_lay_out_sidebar_panels`, because each has to
+        # The two record panels' headings. Instance labels rather than
+        # widgets built inside `_lay_out_record_panels`, because each has to
         # gain and lose this run's name as the dashboard's run set changes,
         # and `set_run_name` is the one writer of that name (`PL-C3GS`).
         self._accounting_heading_text = styled_label(ACCOUNTING_HEADING, color=INK, bold=True)

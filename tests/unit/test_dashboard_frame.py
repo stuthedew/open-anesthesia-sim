@@ -57,7 +57,6 @@ from anesthesia_sim.app.controller import (
     SimulationSnapshot,
 )
 from anesthesia_sim.app.dashboard_frame import (
-    delivered_line,
     ACCOUNTING_HEADING,
     ACCOUNTING_UNIT_CAPTION,
     BRANCH_AGENT_LOCK_TEXT,
@@ -118,6 +117,7 @@ from anesthesia_sim.app.dashboard_frame import (
     compared_run_line,
     compared_run_notice,
     comparing_fork_lock_text,
+    delivered_line,
     fork_offer,
     halt_disposition,
     halt_notice,

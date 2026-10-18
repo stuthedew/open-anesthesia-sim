@@ -145,11 +145,6 @@ from anesthesia_sim.app.run_series import (
     RecordedQuantity,
 )
 from anesthesia_sim.app.run_view import RunView
-from anesthesia_sim.app.unconditional_set import (
-    INHALED_AGENT,
-    UnconditionalValue,
-    unconditional_set,
-)
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
     ACCENT_TEXT,
@@ -160,6 +155,11 @@ from anesthesia_sim.app.theme import (
     MUTED,
     PANEL,
     WARNING,
+)
+from anesthesia_sim.app.unconditional_set import (
+    INHALED_AGENT,
+    UnconditionalValue,
+    unconditional_set,
 )
 from anesthesia_sim.app.wash_in import read_wash_in
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
@@ -4596,8 +4596,8 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
     pixels.
 
     The record panels measured are the ones the page holds, which the test
-    below proves. They used to come from a second `build_sidebar_panels()`
-    call, whose panels had no parent: `mapTo(page, ...)` assumes the page is
+    below proves. They used to come from a second build of the panels,
+    whose panels had no parent: `mapTo(page, ...)` assumes the page is
     an ancestor and checks nothing, so the last two assertions compared
     coordinates that never reached the page and could not fail (`PL-JS0X`).
     """
@@ -4629,8 +4629,8 @@ def test_the_sidebar_panels_measured_are_the_ones_the_page_holds(application: QA
     Matched against the page's own children by the object name the panel's
     stylesheet is scoped by, so a rebuilt panel fails here, and so does a
     widget the heading might come to sit in between it and the panel. The
-    second `build_sidebar_panels()` call this replaced also moved the run's
-    live labels out of the sidebar the assertions before it had measured
+    second build of the panels that this replaced also moved the run's
+    live labels out of the column the assertions before it had measured
     (`PL-JS0X`, `PL-N67T`).
     """
 
@@ -6010,9 +6010,7 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
     assert view.runs[0]._control_timeline_text.text() != branch._control_timeline_text.text()
 
 
-def test_no_unconditional_value_sits_inside_the_layout_container(
-    application: QApplication,
-) -> None:
+def test_no_unconditional_value_sits_inside_the_layout_container(application: QApplication) -> None:
     """Every value `docs/MODEL.md` requires in every layout is in the region, outside the splitters.
 
     The splitter tree is what the Areas replace (`PL-W9P6`), so a value with

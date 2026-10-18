@@ -1,14 +1,16 @@
 ---
 id: PL-JSY5
 title: docs/MODEL.md's readout-row rung and its educational-disclaimer line both assume one window's width and one always-on-screen surface, which the area system makes false
-status: blocked
-feature: interface-areas
-added: 2026-09-16
-priority: P2
+priority: P1
 effort: S
-blocked-by: PL-NWTM
+status: ready
 classes: docs, safety, anticipated
+feature: interface-areas
 touches: docs/MODEL.md
+blocked-by: PL-NWTM
+added: 2026-09-16
+payoff: docs/MODEL.md says the readout row's precision rung follows the width of the Area it sits in, and where the disclaimer lives, so neither statement turns false once a reader can resize the layout
+verify: grep -q 'rung follows the width of the Area' docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md's readout-row rung and its educational-disclaimer line both assume one window's width and one always-on-screen surface, which the area system makes false

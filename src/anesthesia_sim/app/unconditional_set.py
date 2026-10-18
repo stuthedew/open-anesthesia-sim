@@ -175,10 +175,14 @@ class SubstanceInstance:
         misplaced = [value for value in self.values if value.tier is not Tier.PER_SUBSTANCE]
 
         if misplaced:
+            verdict = (
+                "is not a per-substance value"
+                if len(misplaced) == 1
+                else "are not per-substance values"
+            )
             raise ValueError(
                 f"the per-substance tier for {self.substance_model} holds "
-                f"{', '.join(value.value for value in misplaced)}, which "
-                f"{'is not a per-substance value' if len(misplaced) == 1 else 'are not per-substance values'}"
+                f"{', '.join(value.value for value in misplaced)}, which {verdict}"
             )
 
         if len(set(self.values)) != len(self.values):

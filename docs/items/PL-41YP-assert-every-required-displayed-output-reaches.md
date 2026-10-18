@@ -53,3 +53,10 @@ rendered view, and fails when one loses its widget.
 Unchanged: the test carrying the field-to-widget link is still what this item
 is for. It reads `PL-NWTM`'s declaration once that exists, so the ordering
 between the two is unaffected by the convention.
+
+**Noted 2026-10-18 by `PL-NWTM`.** The unconditional part of § "Minimum
+displayed outputs" now has a declaration in code,
+`src/anesthesia_sim/app/unconditional_set.py`, and
+`RunView.unconditional_widgets` maps each of its values to the widget that
+draws it. Build this item's assertion over that declaration rather than over a
+list of its own, as `PL-NWTM`'s Done when asks.

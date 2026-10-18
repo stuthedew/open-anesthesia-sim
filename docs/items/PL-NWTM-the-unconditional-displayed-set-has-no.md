@@ -3,12 +3,14 @@ id: PL-NWTM
 title: The unconditional displayed set has no structural home in the code, so the guarantee docs/MODEL.md states as structural - a region outside the area system - exists only as prose
 priority: P1
 effort: L
-status: ready
+status: done
 classes: safety, anticipated
 feature: interface-areas
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, docs/MODEL.md, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/unconditional_set.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md, docs/ARCHITECTURE.md, tools/contrast_check.py, tools/literal_home_check.py, tests/benchmarks/frame_cost.py, tests/integration/test_simulation_view.py, tests/unit/test_unconditional_set.py, tests/unit/test_dashboard_frame.py, docs/items/PL-41YP-assert-every-required-displayed-output-reaches.md, docs/items/PL-W9P6-build-the-one-adapter-module-that-drives-the-qt.md, docs/items/PL-JSY5-docs-model-md-s-readout-row-rung-and-its.md, docs/items/PL-W54S-decide-what-a-broken-out-top-level-window-owes.md
 blocked-by: PL-1FT6
 added: 2026-09-16
+closed: 2026-10-18
+pr: 1585
 payoff: the values docs/MODEL.md says no Workspace may remove leave the splitter tree before its handles go live, so no drag, split, join or close can take them off screen, and a run with no volatile agent is never asked for a vaporizer dial
 verify: grep -q 'def test_no_unconditional_value_sits_inside_the_layout_container' tests/integration/test_simulation_view.py && grep -q 'def test_a_run_with_no_volatile_agent_owes_no_vaporizer_circuit_or_mac_value' tests/unit/test_unconditional_set.py
 ---
@@ -95,5 +97,68 @@ an eighth "Delivered" card, which narrows every card and may wrap the row to
 two rows (+122 px) on the laptop; or leaving both in closeable Views and
 amending `docs/MODEL.md` to drop them from the tier.
 
-The build goes on with the parts both answers share, and the heading line is
-its own commit so another answer replaces only that commit.
+The build goes on with the parts both answers share. The heading line landed
+in the same commit as the region, as two labels in `RunView`
+(`_delivered_text`, `_one_mac_text`) and `dashboard_frame.delivered_line`, so
+another answer replaces those three and their two tests.
+
+## Built 2026-10-18
+
+**What was built.** `app/unconditional_set.py` is the declaration the second
+Done when asks for: a toolkit-free module whose `unconditional_set(substance)`
+returns the invariant tier, the per-substance tier the substance selects, and
+the control-input record. `INHALED_AGENT` is today's instance, with the seven
+concentrations and the 1 MAC divisor. The accounting is absent by design,
+because it is reachable-only and `PL-50PZ`'s. `SimulationView` now builds one
+region above the splitter, laid out to `PL-J8K2`: each run's transport row with
+its badge at the right end, its notice, its readout heading and cards on the
+left, and its control-change record in a right column that scrolls within
+itself. The title row is gone. `RunView.unconditional_widgets` maps every
+declared value to the widget that draws it, and `_place_run` refuses a run
+whose region lacks one, so a value moved back into the splitter fails at
+construction.
+
+**The record column's width.** It takes a quarter of the band, about 300 px at
+a 1366 px window, rather than the sidebar's 228 px. At 228 px today's record
+lines are cut off on the right (measured offscreen on `main` at `47d28760`), and
+at 300 px they are not, while the seven readout cards still stand in one row
+beside it. Holding it at exactly the sidebar's width was tried and gave the
+record a horizontal scroll bar, because its longest line needs 257 px. The
+exact width is `PL-W54S`'s, as `PL-J8K2` Q3 left it.
+
+**Done-when clauses, one by one.**
+- *A named region outside the layout container holds every unconditional
+  value:* `SimulationView.unconditional_region`, object name
+  `unconditionalRegion`. `test_no_unconditional_value_sits_inside_the_layout_container`
+  asserts all 14 values for two runs.
+- *The layout model has no address for it:* unchanged, since
+  `src/anesthesia_sim/layout/` addresses Areas only and the region is not one.
+- *Still on screen after a split, a join, a close and a Workspace switch:*
+  `PL-G5SX`'s, as the 2026-10-12 note records; those operations do not exist
+  yet.
+- *One declaration, the single source the region and the tests read:* done.
+  `test_a_run_with_no_volatile_agent_owes_no_vaporizer_circuit_or_mac_value`
+  builds a substance with no volatile agent and finds no vaporizer, circuit or
+  MAC value owed.
+- *`PL-036`'s check reads it:* dropped. `PL-036` closed binding each bullet of
+  the section to a named test in `tools/doc_check.py`, which runs from a bare
+  checkout and cannot import `src/`. The tests it names now read this
+  declaration, which is the reachable half.
+- *`PL-41YP`'s check reads it:* `PL-41YP` is open and not this item's. Its
+  brief now says to build from `unconditional_set`.
+- *Reachability (third Problem):* `PL-50PZ`'s.
+
+**Regression check against the code before the fix.** A variant of the new
+container test that needs no new interface (it asks `view._sections` whether
+it holds `run._readout_row` and `run._control_timeline_text`) was run on a
+worktree of `origin/main` at `47d28760` with
+`PYTHONPATH=<worktree>/src:<worktree> .venv/bin/python -m pytest -k pl_nwtm_variant`.
+It failed with `AssertionError: inside the layout container`, since the
+splitter `isAncestorOf` the `ReadoutRow`.
+
+**Unblocked here.** Closing this item left `PL-JSY5`, `PL-W54S` and
+`PL-W9P6` blocked on nothing, so this pull request moves each to `ready` with a
+`payoff:` and a `verify:`. `PL-JSY5` and `PL-W54S` carry the `safety` class, so
+they move from `P2` to `P1`, as `docket check` requires of safety work.
+
+**Fix-now:** none.

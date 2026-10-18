@@ -482,6 +482,11 @@ NEW_CASE_DIALOG_WIDTH = 420
 
 NEW_CASE_DIALOG_SPACING = 12
 
+# The gap between the dashboard page's stacked sections, and between the panels
+# each of its columns stacks, in px: the band at the top, the run rows and the
+# record column inside it, and the sidebar.
+PAGE_SPACING = 12
+
 # One width for the selector and for the chip that stands in its place, so the
 # transport controls beside them do not move when a run starts. A header that
 # reflows on Start announces a mode change by motion in the wrong place, and
