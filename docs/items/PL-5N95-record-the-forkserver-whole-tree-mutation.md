@@ -28,3 +28,11 @@ ARGS=--all` run in forkserver mode, with its commit, mutant counts and per-modul
 kill rates, and says how it differs from the fork-mode table. The run took about
 75 minutes for 1,058 of 2,498 mutants on 2026-10-17, so it needs a session that
 can wait about three hours.
+
+**In progress 2026-10-18 on `#1601`.** The run started at 20:22 UTC in a
+separate worktree at `d7c1d74c` (`make mutate ARGS=--all`, forkserver mode,
+45 simulator test files under `tests/unit/`). Next step: when it finishes, add
+the second table under § "Baselines" in `docs/mutation-testing.md` with its
+commit, mutant counts and per-module kill rates, say how it differs from the
+fork-mode table, then close this item on `#1601`.
+
