@@ -59,6 +59,16 @@ rise is the curve a learner watches most.
 (`_wash_in_ratio`, `test_thirty_minute_ratio_matches_published_human_measurement`,
 `WASH_IN_DURATION_S`); `docs/references/`; `docs/MODEL.md`.
 
+**Measured by `PL-9YHR`, 2026-10-17: a doubled FRC does not pass every
+gate for every agent.** The table above is at the default 10 L/min. The flow
+sweep's 1 L/min point fails sevoflurane at alveolar gas volume x2 (-1.07 SD)
+and desflurane (-1.06 SD), and isoflurane passes (-0.56 SD). The gate's last
+passing factor upward is x1.82, x3.91 and x1.92, and downward the gate passes
+sevoflurane and isoflurane at a tenth of the stored volume. `docs/MODEL.md`
+§ "What the published-data gate can and cannot resolve" has the full table.
+So the finding still holds for isoflurane, and for every agent the 30-minute
+ratio at the default flow barely registers FRC.
+
 **Recommended work.** Extract the Yasuda 1991 F_A/F_I time course from the
 private reference corpus into `docs/references/`, for example at 1, 2, 3, 5,
 10, 15, 20 and 25 min, as mean ± SD with page and figure locators. Add a test
