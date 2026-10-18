@@ -7121,10 +7121,12 @@ exists only where a curve does.
 **Where the unconditional set lives in the build.** `app/unconditional_set.py`
 states the two tiers and the control-input record as data, with the inhaled
 instance as `INHALED_AGENT`. Each run's values sit in one region across the
-top of the dashboard, above the splitter that every other surface sits in. The
+top of the dashboard, outside the Areas that `app/area_layout.py` lays out.
+Since `PL-W9P6` (2026-10-18) the setting sections sit in a plain column
+between the region and the Areas, so they are not in an Area either. The
 dashboard refuses to place a run whose region lacks a declared value, so a
-value moved into the splitter fails at once rather than becoming closeable
-when the area system arrives (`PL-NWTM`, laid out to `PL-J8K2`).
+value moved into an Area fails at once rather than becoming closeable when the
+area system's docking operations arrive (`PL-NWTM`, laid out to `PL-J8K2`).
 
 **Where the educational-use disclaimer lives** (`PL-JSY5`, 2026-10-18). The
 use disclaimer, `USE_DISCLAIMER_TEXT`, is a standing statement rather than one
@@ -8268,9 +8270,13 @@ mid-grey to none.
 
 Two things still follow the host, both by the rule rather than by omission. A
 **disabled** widget draws from the `Disabled` colour group all three mechanisms
-leave to the platform, so the inert splitter handles keep the host's surface
-(`PL-05M4`); declaring a disabled colour is a decision under
-`.claude/rules/ui-color.md` and this interface has exactly one, measured above.
+leave to the platform. Declaring a disabled colour is a decision under
+`.claude/rules/ui-color.md`, and this interface has exactly one, measured above.
+The splitter handles used to be disabled and so kept the host's dark surface.
+Since `PL-W9P6` (2026-10-18) they are enabled, and the border between two Areas
+shows the page's `BACKGROUND` under a dark host too, which
+`test_the_border_between_two_areas_shows_the_page_rather_than_the_host` checks
+(`PL-05M4`).
 And a **tooltip** draws from `ToolTipBase` and `ToolTipText`, which are outside
 the declared role set; this interface uses no tooltip today.
 
