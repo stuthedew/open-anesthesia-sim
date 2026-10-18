@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: test
 feature: reader-checks
+milestone: v0.5.28
 touches: subprojects/docket/tests/test_shell.py, subprojects/docket/tests/mvdan-sh
 added: 2026-10-12
 closed: 2026-10-18

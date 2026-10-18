@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, infra
 feature: presentation-safety
+milestone: v0.5.28
 touches: tools/glyph_check.py
 added: 2026-09-16
 closed: 2026-10-18

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: claim-record
+milestone: v0.5.28
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_claims.py, .claude/skills/docket/modes/start.md
 deferred-from: v0.6.0 - new since the freeze (e6cdfd93, 2026-09-21): the claim's session token and flight's lease-state column both arrived with PL-3FYK (#983) and PL-N162 (#1002) on 2026-09-24, and not safety or science
 added: 2026-09-25
