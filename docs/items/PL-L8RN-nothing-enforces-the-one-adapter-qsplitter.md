@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: interface-areas
+milestone: v0.5.29
 touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py
 added: 2026-09-16
 closed: 2026-10-18

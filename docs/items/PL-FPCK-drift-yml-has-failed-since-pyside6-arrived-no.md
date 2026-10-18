@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: infra
+milestone: v0.5.29
 touches: .github/workflows/drift.yml
 added: 2026-10-18
 closed: 2026-10-18

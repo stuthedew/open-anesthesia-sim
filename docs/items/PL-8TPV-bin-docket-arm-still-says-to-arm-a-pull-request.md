@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: arm-follows-owner
+milestone: v0.5.29
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_cli.py, docket.toml, tools/open_pull_requests.py, tests/unit/test_open_pull_requests.py, docs/maintainer.md, docs/apparatus.md, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17

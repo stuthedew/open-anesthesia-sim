@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: infra
+milestone: v0.5.29
 touches: pyproject.toml, uv.lock, .github/workflows/drift.yml, ROADMAP.md
 added: 2026-10-18
 closed: 2026-10-18

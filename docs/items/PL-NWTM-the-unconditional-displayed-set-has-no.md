@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: safety, anticipated
 feature: interface-areas
+milestone: v0.5.29
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/unconditional_set.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md, docs/ARCHITECTURE.md, tools/contrast_check.py, tools/literal_home_check.py, tests/benchmarks/frame_cost.py, tests/integration/test_simulation_view.py, tests/unit/test_unconditional_set.py, tests/unit/test_dashboard_frame.py, docs/items/PL-41YP-assert-every-required-displayed-output-reaches.md, docs/items/PL-W9P6-build-the-one-adapter-module-that-drives-the-qt.md, docs/items/PL-JSY5-docs-model-md-s-readout-row-rung-and-its.md, docs/items/PL-W54S-decide-what-a-broken-out-top-level-window-owes.md
 blocked-by: PL-1FT6
 added: 2026-09-16

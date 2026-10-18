@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor
 feature: review-hold
+milestone: v0.5.29
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 blocked-by: PL-5DZ8, PL-8QMD, PL-ZGYX
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass

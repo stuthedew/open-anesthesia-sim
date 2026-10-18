@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, session-cost
 feature: prose-quality
+milestone: v0.5.29
 touches: .claude/skills/docket/modes/close-out.md, tools/new_prose.py, tests/unit/test_new_prose.py
 deferred-from: v0.6.0 - a workflow cost decision, not part of the layout milestone's scope
 added: 2026-10-18
