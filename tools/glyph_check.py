@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Refuse a character the client cannot draw from any string that reaches a reader.
 
-`PL-8XPQ` is what this exists for. `→` (U+2192) has no glyph in the Flutter
-client this interface renders in, and drew as a replacement box in the
-control-change list on 2026-09-04. The character that failed was the arrow in
+`PL-8XPQ` is what this exists for. `→` (U+2192) had no glyph in the Flutter
+client this interface rendered in before its Qt port, and drew as a
+replacement box in the control-change list on 2026-09-04. The character that failed was the arrow in
 `5.60% -> 0.95%` - the direction of a setting change, which is the one thing
 that line exists to state.
 
@@ -116,16 +116,40 @@ DATA_TREE = Path("src/anesthesia_sim/data")
 CONFIRMED: dict[int, str] = {
     0x00A0: (
         "NO-BREAK SPACE - EMPTY_METRIC_QUALIFIER and EMPTY_METRIC_SECONDARY_VALUE in "
-        "app/dashboard_frame.py, which drew a full line of the qualifier's size where a "
-        "blank string collapsed to zero height in Flutter. Its rendered height is what "
-        "kept every reading in the readout row on one baseline, so it shipped rendered "
-        "and observed on the Flet build; PL-L9RD's rider re-confirms the six under Qt."
+        "app/dashboard_frame.py. Seen in the Qt build (PySide6 6.11.2, offscreen, the "
+        "container's Inter, 2026-10-18) as a blank qualifier line with no replacement box. "
+        "The Flet reason for it does not hold in Qt: there a blank string collapsed to zero "
+        "height, but a Qt label holding an empty string is as tall as one holding this "
+        "character (15 px at the qualifier's size, 16 px at the second unit's) (PL-TMSN)."
     ),
-    0x00B1: "PLUS-MINUS SIGN - rendered in the wash-in tolerance readout (PL-8XPQ, 2026-09-04).",
-    0x00B7: "MIDDLE DOT - rendered in the control-change list (PL-8XPQ, 2026-09-04).",
-    0x00D7: "MULTIPLICATION SIGN - rendered in the MAC-multiple readout (PL-8XPQ, 2026-09-04).",
-    0x2013: "EN DASH - rendered in the control-change list (PL-8XPQ, 2026-09-04).",
-    0x2014: "EM DASH - rendered in the halted-run banner (PL-8XPQ, 2026-09-04).",
+    0x00B1: (
+        "PLUS-MINUS SIGN - first seen in the Flutter client's wash-in tolerance readout "
+        "(PL-8XPQ, 2026-09-04). Seen in the Qt build (PySide6 6.11.2, offscreen, the "
+        "container's Inter, 2026-10-18) in the MAC-awake band line and its legend row "
+        "(PL-TMSN)."
+    ),
+    0x00B7: (
+        "MIDDLE DOT - first seen in the Flutter client's control-change list (PL-8XPQ, "
+        "2026-09-04). Seen in the Qt build (PySide6 6.11.2, offscreen, the container's "
+        "Inter, 2026-10-18) in the control-change list (PL-TMSN)."
+    ),
+    0x00D7: (
+        "MULTIPLICATION SIGN - first seen in the Flutter client's MAC-multiple readout "
+        "(PL-8XPQ, 2026-09-04). Seen in the Qt build (PySide6 6.11.2, offscreen, the "
+        "container's Inter, 2026-10-18) in the readouts' xMAC line and the playback speed "
+        "(PL-TMSN)."
+    ),
+    0x2013: (
+        "EN DASH - first seen in the Flutter client's control-change list (PL-8XPQ, "
+        "2026-09-04). Seen in the Qt build (PySide6 6.11.2, offscreen, the container's "
+        "Inter, 2026-10-18) in the MAC-awake band's range (PL-TMSN)."
+    ),
+    0x2014: (
+        "EM DASH - first seen in the Flutter client's halted-run banner (PL-8XPQ, "
+        "2026-09-04). Seen in the Qt build (PySide6 6.11.2, offscreen, the container's "
+        "Inter, 2026-10-18) in the version badge, the model-outputs caption and the "
+        "control-change list's caption (PL-TMSN)."
+    ),
     0x2022: (
         "BULLET - MARK_ROW_BULLET in app/theme.py, where each mark row starts. Rendered "
         "through app/qt_widgets.styled_label under PySide6's offscreen platform in "
