@@ -175,6 +175,7 @@ stays a reviewer's question.
 | reading a correct concentration as belonging to a different agent | agent colour is a redundant cue, never the sole identifier: the agent name is always visible - carried by the invariant tier every top-level window shows, subject to the observability limit stated there (§ "Minimum displayed outputs" -> "What this list requires once the layout is the reader's") - and the ISO 5360 colours and their accessible foregrounds are audited as one unit in `src/anesthesia_sim/app/theme.py` by `tools/agent_identity_check.py` | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
 | reading a run halted by a failure as one the user paused | a halt gets its own status words rather than falling back to "Paused", and the two failure modes are distinguished from each other as well; the status word, the transport and the banner are stated from the run's status alone - three facts no compartment value is built for - so a run whose own snapshot refuses a value still reads as stopped rather than as running with Pause offered, and the banner written before any frame of the stopped run has drawn says so instead of claiming a step was rolled back (`PL-7DJK`) | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`, `test_a_halt_is_shown_when_the_snapshot_itself_is_refused`, `test_a_halt_is_stated_from_the_run_status_alone`, `test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step` |
 | reading a run whose Reset the core refused as one still running, or as one that was reset | `SimulationController.reset()` builds the settings record the fresh run definition opens on before it clears anything, so a refusal - tissue flows that no longer sum to the cardiac output, which since `PL-HQF5` and `PL-Z0HN` only a perfusion fraction written past its guard can leave - leaves the run exactly as it was rather than half cleared, and the interface halts it through the failed-step path: the refusal recorded as the failure (on a run that had already failed for something else, that failure stays the reason and the banner's exit states the refusal), the status word, the transport and the banner stating it, with the banner's way out saying that no setting can repair the refusal and that closing and reopening the application starts a new run, rather than naming the Reset just refused or a dial that cannot repair it (`PL-01GY`), and the two flows named in L/min, the unit every readout shows, as they were set (`PL-M4M0`) | `test_a_reset_the_core_refuses_halts_the_run_visibly`, `test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was`, `test_a_refused_reset_names_the_way_out_in_the_banner`, `test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute` |
+| comparing readouts with a chart that was drawn from different settings | the readouts come from the steps and the chart from the run definition, so before each step `SimulationController.advance()` compares `AgentUptakeSystem.settings_key()` with the key it noted when the definition last recorded settings. A setting written onto the core past the controller, which nothing in `app/` does, halts the run on the last step both agree on, with a banner saying why, and Reset starts a new run from the settings the core then holds. A setting changed through the controller afterwards records the whole settings record, so it brings the definition back into line rather than halting (`PL-XRN8`) | `test_a_setting_written_onto_the_core_past_the_controller_refuses_the_next_step`, `test_a_setting_written_onto_a_branch_s_core_past_its_controller_refuses_its_next_step`, `test_reset_after_a_setting_written_past_the_controller_runs_at_that_setting`, `test_a_run_whose_core_setting_moved_past_its_controller_halts_on_the_last_recorded_step` |
 | reading the agent selector or a slider, used on a run whose snapshot refuses, as a control that took effect | the selector and the sliders read the snapshot through `RunView._snapshot_for_a_control`, which halts the run on the refusal and states the halt from the run's status rather than letting the raise escape the slot unseen, with the selector put back to the agent the controller names, since the snapshot that would name it is what refused; Reset stays the way out the banner names, unless a refused Reset has left its own way out standing; the controls stay live on a halted run rather than locked (project owner, 2026-10-12, ratified, over locking them, which would render the agent selector disabled) (`PL-V2HC`) | `test_an_agent_change_on_a_halted_run_restates_the_halt`, `test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it` |
 | reading the value printed beside a dial dragged into a halt as the value the run holds | the halt writes every dial from `SimulationController.record()` - the agent and the four settings in force, read from the settings the compartments hold and from no compartment value - after its banner, so the label beside a dial dragged into the halt reads the value the dial and the run hold rather than the value before the drag, which only a frame would have rewritten and no frame of a run whose snapshot refuses draws (`PL-85LJ`) | `test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial`, `test_a_halt_is_stated_before_its_dials_are_written` |
 | believing a setting above the vaporizer maximum was simulated | such a setting is **rejected, not clamped**, so no run proceeds on a value the user did not choose; the boundary itself is accepted - by the circuit, and by the settings record a run is built from, which carries the maximum beside the dial (`PL-BBMG`) | `test_rejects_delivered_concentration_above_the_vaporizer_maximum`, `test_explicit_delivered_concentration_above_the_agent_max_is_rejected`, `test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum`, `test_rejects_a_dial_above_the_vaporizer_maximum`, `test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum` |
@@ -4866,11 +4867,24 @@ be misread as one of the others.
   the run was forked at the mark and opened standing on it, or the learner
   marked an instant the case had already run past. A passed mark on the trunk
   is one a branch may be taken at (§ "What this requires of a branch").
-- **Reached** — a MAC target the run has halted on at least once. Historical,
-  and a property of the run rather than of the mark, so it is cleared by a
-  reset and by a change of agent, which begin a new run. A branch is the one
-  exception and not a carry-over: it opens *standing on* the crossing it was
-  forked at, which is where the branch is rather than something its trunk did.
+- **Reached** — a MAC target the run has stood on at least once: it halted on
+  the target, or the target lies inside a step the run stands on or opened on.
+  Historical, and a property of the run rather than of the mark, so it is
+  cleared by a reset and by a change of agent, which begin a new run.
+  Two steps are asked again every time the standings are read, against the
+  marks as they stand then (`PL-1ZQ4`; project owner, 2026-10-17, ratified,
+  over keeping MAC targets historical everywhere). One is the step a stopped
+  run's clock ends: paused, halted, or at the supported run length, on a trunk
+  or a branch, but not after a failure, which is not a pause. The other is the
+  step a branch opened on, which it opens *standing on*, however far it has
+  run since. That is where the branch is rather than something its trunk did.
+  So a target added after the step that crossed it reads reached on the trunk
+  standing there and on every branch opened there, in whichever order the
+  target and the branch came. A run that leaves the step it stood on keeps
+  what the step crossed, so the target still reads reached once the run moves
+  on. A run that went past the step before the target was added never stood
+  on it with the target marked, and reads it still running, as it reads any
+  height it did not stop on.
 - **Not reached within the supported run length** — the run has stopped at the
   limit § "Supported run length" declares, with this mark outstanding. A
   height above a compartment's asymptote is never reached, so this is an
@@ -5199,7 +5213,14 @@ and what it does not:
 - **It is the branch the halt would have given.** A mark set before the run
   passed it halts the run and is forked at the halt; the same mark set after the
   clock went by is forked here, and the two branches' whole provenance -
-  stretch, fork state, step count, crossing - compares equal.
+  stretch, fork state, step count, the step the fork ends, crossing - compares
+  equal. It stays that branch for a mark added later too: every run asks the
+  step it opened on or stands on which marks it crossed, against the marks as
+  they stand whenever its standings are read, so a mark added inside that step
+  reads alike on the trunk and the branch, whether it came before the branch or
+  after (`PL-1ZQ4`). Each door asks that step in the same way, a fork at a
+  control event included, so `resumed_at` at a keyframe the trunk halted on
+  opens on the halt's crossing as `resumed_here` does.
 - **It leaves the trunk the case it was.** Nothing is recorded where the mark
   stands, which is what kept the bookmark fork from changing the run it marks.
 - **It does not open at the typed instant.** The fork is the end of the step
@@ -5524,10 +5545,14 @@ checks.
 cardiac output. Only a fraction written past its guard, with
 `object.__setattr__`, can now reach that refusal. At the next step, `advance()`
 raises it as a `SimulationNumericalError`, as it does for every check that
-fails inside a step. At Reset, `SimulationController.reset()` refuses before it
-clears anything, and the interface halts the run (`PL-M4M0`). A setting change
-that the record refuses is written back, so its compartment, the run's
-definition and the timeline keep the previous setting (`PL-VCP4`). No setting
+fails inside a step. Through `SimulationController`, the same refusal comes
+before that step begins, as a `SimulationConfigurationError`. The controller
+sees that the core's settings no longer match its run definition, and builds
+the record to say why before it takes the step (`PL-XRN8`). At Reset,
+`SimulationController.reset()` refuses before it clears anything, and the
+interface halts the run (`PL-M4M0`). A setting change that the record refuses
+is written back, so its compartment, the run's definition and the timeline
+keep the previous setting (`PL-VCP4`). No setting
 change repairs such a fraction. A new cardiac output scales every tissue flow
 by the same factor, so flows that did not sum to the old output do not sum to
 the new one. Putting the fractions back, or building a new patient, is the
