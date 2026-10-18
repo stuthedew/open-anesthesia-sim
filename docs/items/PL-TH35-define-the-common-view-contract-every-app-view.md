@@ -3,12 +3,14 @@ id: PL-TH35
 title: Define the common View contract every app/ view implements so any view is interchangeable in any area
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: refactor, ux
 feature: interface-areas
 touches: src/anesthesia_sim/app, docs/ARCHITECTURE.md
 blocked-by: PL-R1WQ
 added: 2026-09-16
+payoff: every View is built in any Area through the registry's factory from one context, and two existing Views are written to that one contract
+verify: grep -q '    factory:' src/anesthesia_sim/app/view_registry.py && grep -rq 'class ViewContext' src/anesthesia_sim/app
 not-delegable: the deliverable is a contract to be agreed before it is coded, and no command can prove a protocol is the right one; the test arrives with the first two views written to it
 ---
 
@@ -240,9 +242,19 @@ the adapter, and § "Why it is blocked rather than ready" writes the contract
 with the area system rather than ahead of it, so the adapter is what this
 waits on.
 
-## Blocked on `PL-R1WQ`, 2026-10-18
+## [superseded 2026-10-18] Blocked on `PL-R1WQ`, 2026-10-18
 
 `PL-W9P6` closed on 2026-10-18 in `#1592` without the View registry: the
 adapter takes a plain `view_for` function. Q2 constructs every View through
-the registry's factory, as `factory(context)`, so the contract waits on
+the registry's factory, as `factory(context)`, so the contract waited on
 `PL-R1WQ`'s registry rather than on the adapter.
+
+## Ready since `PL-R1WQ`, 2026-10-18
+
+`PL-R1WQ` built the registry in `src/anesthesia_sim/app/view_registry.py`
+without a factory, because Q2 decides what the factory is called with. Each
+`RegisteredView` holds a tag and a title, and `AreaLayout` still asks its
+caller's `view_for` for every registered kind. This item adds the `factory`
+field with `ViewContext`, replaces `view_for` with it, and adds `PL-R1WQ`
+Q4's second test, that every registered kind has a factory. `PL-9LNF` makes
+the charts constructible one per Area, which the two validating Views need.
