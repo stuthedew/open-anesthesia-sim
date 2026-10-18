@@ -552,7 +552,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "for the accounting and control-change panels it builds for its run, "
         "`SimulationView` for the chart's and the wash-in section's), and every "
         "legend label beside a swatch (`TraceLegend` for the concentration "
-        "chart's three rows, `WashInLegend` for the wash-in plot's). Also the "
+        "chart's three rows, `WashInLegend` for the wash-in plot's), and the "
+        "body of the notice an Area shows in place of a View it cannot draw "
+        "(`AreaNotice`, PL-DB5G, PL-R1WQ). Also the "
         "six compartment checkboxes that show and hide the chart's traces "
         "(`TraceLegend`), whose label is INK text while that trace is drawn and "
         "MUTED while it is hidden - `_on_toggled` is the one writer of that. "
@@ -729,9 +731,10 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "the agent-accounting status word when validation fails "
         "(`_agent_accounting_status_text`, in the accounting panel `RunView` "
         "builds), the notice naming a compartment trace that is above the top "
-        "of the chart (`_off_scale_text`), and the line of the new-case "
+        "of the chart (`_off_scale_text`), the line of the new-case "
         "confirmation stating what a switch would discard (`NewCaseDialog`, "
-        "PL-R3KB)",
+        "PL-R3KB), and the title of the notice an Area shows in place of a "
+        "View it cannot draw (`AreaNotice`, PL-DB5G, PL-R1WQ)",
     ),
     Requirement(
         "PANEL",

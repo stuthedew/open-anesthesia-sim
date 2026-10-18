@@ -35,9 +35,9 @@ data/  --loaded by-->  core/  --read by-->  app/
   `core/` it reads only `core/checked_number.py`'s naming of a refused value.
   Its `store.py` is the one module in the package, and the first under `src/`,
   that writes outside the tree: the reader's saved Workspaces, under § "User
-  state: the saved Workspaces" below. The adapter that builds the widget tree
-  from it is `PL-W9P6`'s, and until it lands nothing in `app/` reads the
-  package.
+  state: the saved Workspaces" below. `app/area_layout.py` builds the widget
+  tree from it (`PL-W9P6`), and `app/view_registry.py` is the one list of the
+  View kinds a layout may name (`PL-R1WQ`), since the package holds none.
 - **`data/`** holds versioned, schema-validated parameter files (JSON) with
   citations, in three kinds — the agent, the patient, and the machine in front
   of them. Every scientific constant a shipped run uses comes from one of them:
@@ -97,7 +97,8 @@ src/anesthesia_sim/
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_UNITS, ControlChange; toolkit-independent
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed, which SimulationController.advance supplies each step
 │   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the charts, the legend and the compartment selection it shows, the time base, the captions, the wash-in section, the render tick, and the layout model the Areas below the settings are drawn from; no domain logic
-│   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6)
+│   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6); an Area whose View kind is not registered shows an AreaNotice instead (PL-R1WQ)
+│   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry, and RETIRED_TAGS for a tag renamed or removed; the text of the notice an unregistered kind shows; toolkit-independent (PL-R1WQ)
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
@@ -959,6 +960,11 @@ in it, or a line left behind after a deletion, fails `make check`.
   the literals that predate it and only shrinks, and a finding names any
   constant of the same value without deciding that it is the same quantity,
   which stays the reader's call (`PL-40SJ`).
+- A new View kind → its tag as a literal in `app/view_registry.py`, with a
+  `RegisteredView` entry beside it. The tag is what saved layouts name, so it
+  never changes: a View renamed or removed goes into `RETIRED_TAGS` with the
+  release that retired it, and its old tag is never registered again
+  (`PL-R1WQ`).
 - A new display panel or control → what it *claims*, as a plain value with a
   test in `tests/unit/test_dashboard_frame.py`, in `app/dashboard_frame.py`;
   the widget that draws it, deciding nothing, in `app/qt_widgets.py`; and its

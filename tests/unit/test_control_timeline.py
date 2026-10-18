@@ -7,7 +7,13 @@ from anesthesia_sim.app.control_timeline import (
     format_adjustment,
     format_control_value,
     group_adjustments,
+    wrapping_between_parts,
 )
+from anesthesia_sim.app.dashboard_frame import NO_CONTROL_CHANGES_TEXT
+
+#: U+00A0, written out here rather than imported, so the tests below state
+#: independently of the module which character keeps two words together.
+_NBSP = "\u00a0"
 
 
 def _change(
@@ -261,3 +267,51 @@ def test_a_grouping_does_not_answer_for_another_run() -> None:
     assert len(grouping.of(timeline)) == 1
     assert grouping.of(()) == ()
     assert len(grouping.of(timeline)) == 1
+
+
+# --- wrapping the record column's lines (`PL-F2YS`) ---------------------------
+
+
+def test_a_flow_line_breaks_only_after_its_time_and_after_its_arrow() -> None:
+    """A wrap never separates a value from its unit (`PL-3355`)."""
+
+    line = "12s · Fresh gas flow 4.0 L/min -> 2.0 L/min"
+
+    assert wrapping_between_parts(line).split(" ") == [
+        f"12s{_NBSP}·",
+        f"Fresh{_NBSP}gas{_NBSP}flow{_NBSP}4.0{_NBSP}L/min{_NBSP}->",
+        f"2.0{_NBSP}L/min",
+    ]
+
+
+def test_a_multi_setting_line_keeps_its_count_with_the_new_value() -> None:
+    line = "10s–10.2s · Delivered agent 2.00% -> 4.00% (2 settings)"
+
+    assert wrapping_between_parts(line).split(" ") == [
+        f"10s–10.2s{_NBSP}·",
+        f"Delivered{_NBSP}agent{_NBSP}2.00%{_NBSP}->",
+        f"4.00%{_NBSP}(2{_NBSP}settings)",
+    ]
+
+
+def test_wrapping_changes_no_character_a_reader_sees() -> None:
+    """Three lines, so a change that reached only the first or last shows."""
+
+    timeline = (
+        _change(10.0, ControlInput.CARDIAC_OUTPUT, 5.0, 2.5, adjustment=1),
+        _change(20.0, ControlInput.DELIVERED, 2.0, 4.0, adjustment=2),
+        _change(30.0, ControlInput.ALVEOLAR_VENTILATION, 4.0, 6.0, adjustment=3),
+    )
+    lines = "\n".join(format_adjustment(a) for a in group_adjustments(timeline))
+
+    wrapped = wrapping_between_parts(lines)
+
+    assert wrapped.replace(_NBSP, " ") == lines
+    assert len(wrapped.splitlines()) == 3
+    assert all(line.count(" ") == 2 for line in wrapped.splitlines())
+
+
+def test_a_line_that_records_no_change_is_left_as_it_is() -> None:
+    """The text before any setting has changed is a sentence, free to wrap."""
+
+    assert wrapping_between_parts(NO_CONTROL_CHANGES_TEXT) == NO_CONTROL_CHANGES_TEXT

@@ -4,7 +4,9 @@
 These tests hold what it promises: each split in the model is a splitter and
 each Area its View, the splitters take the model's sizes, a reader's drag
 changes the model and every widget follows the model, and a layout the model
-refuses changes nothing. Each expected size is worked out here from the
+refuses changes nothing. An Area whose View kind the registry does not hold
+shows the failure notice and nothing else, while its neighbours draw as usual
+(`PL-R1WQ`). Each expected size is worked out here from the
 pixels, never read back from the adapter. They render under the `offscreen`
 platform `tests/conftest.py` selects.
 """
@@ -15,14 +17,19 @@ import pytest
 from PySide6.QtCore import QEvent, QPoint, QPointF, Qt
 from PySide6.QtGui import QEnterEvent, QImage
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QSplitter, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QSplitter, QWidget
 
-from anesthesia_sim.app.area_layout import AreaLayout
+from anesthesia_sim.app.area_layout import AreaLayout, AreaNotice
 from anesthesia_sim.app.theme import AREA_HANDLE_LINE_WIDTH, AREA_HANDLE_WIDTH, PRIMARY
+from anesthesia_sim.app.view_registry import RegisteredView, registry
 from anesthesia_sim.layout.model import Handle, LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, Window
 
 _VIEW = ViewKind("test_view")
+_UNKNOWN = ViewKind("retired_view")
+
+# The tests draw a View kind of their own, so they register it themselves.
+_REGISTERED = registry(RegisteredView(_VIEW, "Test view"))
 
 # A container this size leaves 400 px for the children of a split of two, once
 # the 8 px handle is taken out, so a fraction reads straight off as pixels.
@@ -99,7 +106,7 @@ def _show(
     views: _Views,
     size: tuple[int, int] = (_SIDE_PX, _SIDE_PX),
 ) -> AreaLayout:
-    container = AreaLayout(model, views)
+    container = AreaLayout(model, views, registered=_REGISTERED)
     container.resize(*size)
     container.show()
     application.processEvents()
@@ -209,7 +216,7 @@ def test_a_layout_of_two_windows_is_refused(views: _Views) -> None:
     model = LayoutModel((Window(_area(1)), Window(_area(2))), AreaId(3))
 
     with pytest.raises(ValueError, match="draws one window, and the layout holds 2"):
-        AreaLayout(model, views)
+        AreaLayout(model, views, registered=_REGISTERED)
 
 
 # --------------------------------------------------------- a reader's drag
@@ -393,6 +400,94 @@ def test_a_view_the_new_layout_does_not_hold_leaves_the_container(
     assert _splitters(container) == {}
     assert views.by_id[1].parentWidget() is container
     assert removed.parentWidget() is None
+
+
+# ------------------------------------------------- an unknown View kind
+
+# The notice's two lines, written out here rather than read from the module
+# that writes them (`PL-DB5G` Q2).
+_NOTICE_TITLE = "This Area's View is not in this build."
+_NOTICE_BODY = (
+    "It was saved as the View kind 'retired_view'. This build does not know it. "
+    "The saved name is kept, so saving this layout loses nothing."
+)
+
+
+def _texts(widget: QWidget) -> list[str]:
+    """Every string `widget` and its descendants show, in the order they were built."""
+
+    return [label.text() for label in widget.findChildren(QLabel) if label.isVisible()]
+
+
+def test_an_area_of_an_unknown_kind_shows_the_notice_and_nothing_else(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """The middle Area of three fails alone, and its neighbours draw their Views."""
+
+    model = _layout(_row((0.25, 0.5, 0.25), _area(1), Area(AreaId(2), _UNKNOWN), _area(3)), 4)
+    container = _show(application, shown, model, views, (800 + 2 * AREA_HANDLE_WIDTH, 400))
+    splitter = _splitters(container)[()]
+    notice = splitter.widget(1)
+
+    assert splitter.widget(0) is views.by_id[1]
+    assert splitter.widget(2) is views.by_id[3]
+    assert isinstance(notice, AreaNotice)
+    assert notice.isVisible()
+    assert _texts(notice) == [_NOTICE_TITLE, _NOTICE_BODY]
+    assert views.asked == [1, 3]
+    assert splitter.sizes() == [200, 400, 200]
+
+
+def test_the_model_keeps_the_unknown_kind_so_a_save_writes_back_what_was_read(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """A drag beside the failed Area changes its size and never its kind."""
+
+    model = _layout(_row((0.5, 0.5), _area(1), Area(AreaId(2), _UNKNOWN)), 3)
+    container = _show(application, shown, model, views)
+
+    _drag(application, _splitters(container)[()], 1, 100)
+
+    assert container.model.unknown_kinds(_REGISTERED.keys()) == (Area(AreaId(2), _UNKNOWN),)
+    assert container.model != model
+
+
+def test_a_layout_of_one_unknown_area_is_the_notice_alone(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    container = _show(application, shown, _layout(Area(AreaId(1), _UNKNOWN), 2), views)
+
+    assert _splitters(container) == {}
+    assert [type(child) for child in container.findChildren(AreaNotice)] == [AreaNotice]
+    assert _texts(container) == [_NOTICE_TITLE, _NOTICE_BODY]
+    assert views.asked == []
+
+
+def test_a_rebuild_deletes_the_notices_the_old_layout_drew(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """Replacing the failed Area's layout leaves no notice behind, not even a hidden one."""
+
+    model = _layout(_row((0.5, 0.5), _area(1), Area(AreaId(2), _UNKNOWN)), 3)
+    container = _show(application, shown, model, views)
+
+    container.set_model(_layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
+    application.processEvents()
+
+    assert container.findChildren(AreaNotice) == []
+    assert _splitters(container)[()].widget(1) is views.by_id[2]
+
+
+def test_the_default_registry_holds_no_test_kind(application: QApplication, views: _Views) -> None:
+    """Built with the shipped registry, the adapter draws a test-only kind as a failure."""
+
+    container = AreaLayout(_layout(_area(1), 2), views)
+
+    try:
+        assert len(container.findChildren(AreaNotice)) == 1
+        assert views.asked == []
+    finally:
+        container.deleteLater()
 
 
 # ------------------------------------------------------------- the handle
