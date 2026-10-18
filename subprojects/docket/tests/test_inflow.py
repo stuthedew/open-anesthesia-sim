@@ -35,6 +35,7 @@ def _item(
     root_cause_of: tuple[str, ...] = (),
     reenters: tuple[str, ...] = (),
     classes: tuple[str, ...] = ("defect",),
+    no_successor: tuple[str, ...] = (),
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -54,6 +55,7 @@ def _item(
         body="",
         root_cause_of=root_cause_of,
         reenters=reenters,
+        no_successor=no_successor,
     )
 
 
@@ -218,6 +220,39 @@ def test_a_line_a_successor_head_answers_names_it() -> None:
     assert "PL-FXD1" in unanswered and "PL-FXD0" not in unanswered
     assert "PL-FXD0  by PL-0R1B, PL-0R2B, PL-0HD1" in answered
     assert "successor PL-0HD1 (ready)" in answered
+
+
+def test_a_line_answered_with_no_successor_is_listed_apart() -> None:
+    """`PL-C4F0`: an item whose `no-successor:` names the line answers it, until three more.
+
+    The answer lived only in `PL-4097`'s prose, so every run listed `PL-61FT`
+    as a generator whose fix did not hold. Three filings that re-enter the
+    line after the answer's date list it as open again, since the mechanism
+    has then started producing again.
+    """
+    filings = [_item(f"PL-0RQ{n}", date(2026, 9, n), reenters=("PL-FXD0",)) for n in (1, 2, 3)]
+    answer = _item("PL-0NSW", date(2026, 9, 2), closed=date(2026, 9, 4), no_successor=("PL-FXD0",))
+
+    report = analyze([FIXED, *filings, answer], CONFIG, today=date(2026, 9, 7))
+
+    assert report.answered == {"PL-FXD0": (answer,)}
+    text = format_inflow(report)
+    assert "a generator whose fix did not hold:" not in text
+    assert "PL-FXD0  by PL-0RQ1, PL-0RQ2, PL-0RQ3" in text.split("no successor owed")[1]
+    assert "answered by PL-0NSW (done)" in text
+
+    later = [_item(f"PL-0RT{n}", date(2026, 9, n), reenters=("PL-FXD0",)) for n in (5, 6, 7)]
+    reopened = analyze([FIXED, *filings, answer, *later], CONFIG, today=date(2026, 9, 14))
+
+    assert reopened.answered == {}
+    closed_later = _item(
+        "PL-0NSW", date(2026, 9, 2), closed=date(2026, 9, 10), no_successor=("PL-FXD0",)
+    )
+    still_open = analyze([FIXED, *filings, closed_later, *later], CONFIG, today=date(2026, 9, 14))
+    assert still_open.answered == {}  # closing the answer does not move its date
+    text = format_inflow(reopened)
+    assert "PL-FXD0  by" in text.split("a generator whose fix did not hold:")[1]
+    assert "no successor owed" not in text
 
 
 def test_a_reentry_must_name_a_fix_shipped_before_the_filing() -> None:

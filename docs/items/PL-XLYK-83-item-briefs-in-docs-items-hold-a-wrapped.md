@@ -1,9 +1,16 @@
 ---
 id: PL-XLYK
 title: 83 item briefs in docs/items hold a wrapped clause that renders as a list item, which PL-LNNL's check skips because the item store was outside its measured scope; fix the open ones and decide whether the check reads the store
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
 feature: prose-renders-as-written
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/items
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
+payoff: a wrap that renders as a stray list item in an open brief fails make check where it is written
+verify: grep -q 'def test_an_open_brief_with_a_wrapped_clause_is_refused_and_a_closed_one_passes' tests/unit/test_doc_check.py
 ---
 
 **Problem.** 83 item briefs in docs/items hold a wrapped clause that renders as a list item, which PL-LNNL's check skips because the item store was outside its measured scope; fix the open ones and decide whether the check reads the store
@@ -25,3 +32,21 @@ red with no fix in the same change.
 the line above. Then decide whether the check reads the store: a closed brief
 is a record, and rewrapping 76 of them is churn for a page few readers open.
 Reading only open items would catch each new wrap where a session writes it.
+
+**Decided at triage, 2026-10-18.** The check reads open briefs and skips
+closed ones. `.claude/rules/citation-drift.md` already decides that a closed
+brief is a historical record rather than a live statement, so its prose is not
+a finding. Rewrapping 76 closed briefs would change records for no reader. An
+open brief is live, and it is where a session writes new prose.
+
+**Why it matters.** A brief renders on GitHub, and a wrap that opens a list
+item there splits a sentence in two. Sessions keep writing such wraps, because
+nothing in the raw text shows them.
+
+**Done when.** `check_wrapped_list_items` in `tools/doc_check.py` reads every
+open brief in `docs/items/` and skips closed ones. The six open briefs it would
+refuse are rewrapped. A test in `tests/unit/test_doc_check.py` pins that an
+open brief is refused and a closed one passes.
+
+**Generator check.** Not owed beyond `PL-LNNL`'s: this is the scope `PL-LNNL`
+left out on purpose, filed with it, not a re-entry of a fix.

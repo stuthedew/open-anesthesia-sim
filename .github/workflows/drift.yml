@@ -130,11 +130,12 @@ jobs:
 
   # Does the tree work on a CPython newer than the one it pins?
   #
-  # `pyproject.toml` pins `requires-python = ">=3.14,<3.15"` - a single minor
-  # version - and repeats that number in `[tool.ruff] target-version`,
-  # `[tool.mypy] python_version` and `.python-version`. CPython ships a minor
-  # release a year, so this pin is wrong within twelve months and several times
-  # over this project's horizon.
+  # `pyproject.toml` bounds `requires-python = ">=3.14,<3.16"`, and pins 3.14
+  # in `[tool.ruff] target-version`, `[tool.mypy] python_version` and
+  # `.python-version`. The bound was widened to take in 3.15 after this job
+  # passed on 3.15.0 (`PL-J0P8`). CPython ships a minor release a year, so the
+  # bound and the pin are wrong within twelve months and several times over
+  # this project's horizon.
   #
   # The upper bound has to be relaxed in the runner for the question to be
   # asked at all: uv refuses an interpreter outside `requires-python`, which is
@@ -249,7 +250,7 @@ jobs:
           if [ "$resolved" = "$PINNED_MINOR" ]; then
             line="No newer CPython exists yet. Tested ${full}, which is the pinned ${PINNED_MINOR} series. This run confirms the pin still works and is not evidence about the next interpreter."
           else
-            line="Tested past the pin: resolved ${full} against a pinned ${PINNED_MINOR}. Green here is evidence that requires-python's upper bound can move; red is the next interpreter breaking this tree."
+            line="Tested past the pin: resolved ${full} against a pinned ${PINNED_MINOR}. Green here is evidence that the pin, or requires-python's upper bound, can move; red is the next interpreter breaking this tree."
           fi
           echo "$line"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"

@@ -6546,8 +6546,8 @@ removed, and this file's history before that change holds their text.
 owner decides. Nothing upgrades on a schedule, and nothing gates on it.**
 
 This is a multi-year project, so every version constraint in `pyproject.toml`
-will be wrong eventually — `requires-python` pins a single CPython minor and
-CPython ships one a year; Flet is pre-1.0 and its 1.0 is excluded by an upper
+will be wrong eventually — `requires-python` admits two CPython minors, 3.14 and
+3.15, and CPython ships one a year; Flet is pre-1.0 and its 1.0 is excluded by an upper
 bound; the dev tools are unbounded floors whose behaviour changes underneath
 the gate. The failure being guarded against is not a stale pin. It is returning
 after a gap to a tree that no longer builds, where the upgrade that would fix
