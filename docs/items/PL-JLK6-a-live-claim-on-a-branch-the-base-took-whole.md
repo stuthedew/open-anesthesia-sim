@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
 closed: 2026-10-18
+pr: 1607
 payoff: a live claim on a branch the base took whole names its head commit in flight, and arm gives its --self hint there
 verify: grep -q 'def test_a_live_claim_on_a_branch_the_base_took_whole_names_its_head' subprojects/docket/tests/test_claims.py
 reenters: PL-927J
