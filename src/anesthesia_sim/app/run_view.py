@@ -74,7 +74,11 @@ from PySide6.QtWidgets import (
 
 from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.control_record import ControlInput
-from anesthesia_sim.app.control_timeline import AdjustmentGrouping, ControlAdjustment
+from anesthesia_sim.app.control_timeline import (
+    AdjustmentGrouping,
+    ControlAdjustment,
+    wrapping_between_parts,
+)
 from anesthesia_sim.app.controller import (
     RunRecord,
     RunSettings,
@@ -487,8 +491,13 @@ class RunView(QWidget):
         )
         self._agent_amounts_text = styled_label(initial_accounting.amounts, color=MUTED)
 
+        # Wraps, because the record column is narrower than its longest
+        # lines, and only between their parts (`wrapping_between_parts`).
         self._control_timeline_text = styled_label(
-            timeline_panel((), 0).entries, color=MUTED, size_px=METRIC_QUALIFIER_SIZE
+            wrapping_between_parts(timeline_panel((), 0).entries),
+            color=MUTED,
+            size_px=METRIC_QUALIFIER_SIZE,
+            wrap=True,
         )
         self._control_timeline_overflow_text = styled_label(
             "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
@@ -690,7 +699,7 @@ class RunView(QWidget):
         _emphasised(self._status_text, statement.status)
         self._subtitle_text.setText(statement.subtitle)
         self._compartment_substance_text.setText(statement.substance_heading)
-        self._control_timeline_text.setText(statement.timeline.entries)
+        self._control_timeline_text.setText(wrapping_between_parts(statement.timeline.entries))
         self._control_timeline_overflow_text.setText(statement.timeline.overflow)
         self._control_timeline_overflow_text.setHidden(not statement.timeline.overflow)
         self._write_notice(statement.banner)

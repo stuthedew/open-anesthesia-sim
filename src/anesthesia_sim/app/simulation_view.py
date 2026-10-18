@@ -139,12 +139,6 @@ from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 from anesthesia_sim.layout.model import MAIN_WINDOW, LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, Window
 
-#: The unconditional region gives the run rows three parts of its width and
-#: the control-change records one, the proportion the Flet build's 9:3 grid
-#: columns gave the chart panel and the sidebar below them.
-_CHART_COLUMN_STRETCH: Final = 3
-_SIDEBAR_STRETCH: Final = 1
-
 #: The View kinds of the dashboard's two Areas. The chart panel still holds
 #: the wash-in plot, the marks and the branch control under the concentration
 #: plot, until each is a View of its own (`PL-TH35`, `PL-9LNF`), so it carries
@@ -153,23 +147,36 @@ _SIDEBAR_STRETCH: Final = 1
 _CONCENTRATION_CHART: Final = ViewKind("concentration_chart")
 _AGENT_ACCOUNTING: Final = ViewKind("agent_accounting")
 
-#: The dashboard's Areas: the chart panel beside the sidebar, in one row
+#: The shares of the window's width the chart panel and the sidebar take
 #: (`PL-W9P6`). The sidebar's 0.18 gives it about the 228 px it had beside the
 #: charts in a 1366 px window before the row was an Area layout, when it stood
 #: at its own minimum width at every window size. A placeholder until the
 #: shipped Workspaces replace this layout.
+_CHART_PANEL_SHARE: Final = 0.82
+_SIDEBAR_SHARE: Final = 0.18
+
+#: The dashboard's Areas: the chart panel beside the sidebar, in one row.
 _DASHBOARD_LAYOUT: Final = LayoutModel(
     (
         Window(
             Split(
                 Orientation.ROW,
-                (0.82, 0.18),
+                (_CHART_PANEL_SHARE, _SIDEBAR_SHARE),
                 (Area(AreaId(1), _CONCENTRATION_CHART), Area(AreaId(2), _AGENT_ACCOUNTING)),
             )
         ),
     ),
     AreaId(3),
 )
+
+#: The unconditional region divides its width as the Areas under it do. The
+#: run rows take the chart panel's share and the control-change records take
+#: the sidebar's, which is the width `PL-J8K2` Q3 gave the records. At a
+#: 1366 px window that leaves one run's readout row room for all seven panels
+#: (`PL-F2YS`). A box layout's stretch is a whole number, so each share is
+#: read in hundredths.
+_RUN_ROWS_STRETCH: Final = round(100 * _CHART_PANEL_SHARE)
+_RECORD_COLUMN_STRETCH: Final = round(100 * _SIDEBAR_SHARE)
 
 #: Spare height goes to the plots. The setting sections are held to their own
 #: height by a vertical policy that can shrink but not grow, so a taller
@@ -535,13 +542,10 @@ class SimulationView(QWidget):
         notice banner, then every readout section; its right column holds
         every run's control-change record, scrolling within itself so a long
         record never makes the band taller than the rows beside it
-        (`PL-J8K2` Q3). The two columns take the band's width in the
-        proportion the charts and the sidebar take theirs. A box layout gives
-        the record more than the splitter gives the sidebar: about 300 px at
-        a 1366 px window, against the sidebar's 228, where today's record
-        lines are cut off. The exact width, and whether the seven readouts
-        stand in one row beside it at that width, are `PL-F2YS`'s. Nothing new is
-        drawn around the region (`PL-J8K2` Q4).
+        (`PL-J8K2` Q3). The two columns take the band's width in the shares
+        the chart panel and the sidebar take the Areas' width, so one run's
+        seven readouts stand in one row at a 1366 px window (`PL-F2YS`).
+        Nothing new is drawn around the region (`PL-J8K2` Q4).
 
         Returns:
             The region, which `unconditional_region` names.
@@ -583,8 +587,8 @@ class SimulationView(QWidget):
         # gives the band the left column's height, and the record scrolls.
         record_scroll.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Ignored)
 
-        row.addWidget(run_rows, _CHART_COLUMN_STRETCH)
-        row.addWidget(record_scroll, _SIDEBAR_STRETCH)
+        row.addWidget(run_rows, _RUN_ROWS_STRETCH)
+        row.addWidget(record_scroll, _RECORD_COLUMN_STRETCH)
         self._unconditional_region = region
 
         return region

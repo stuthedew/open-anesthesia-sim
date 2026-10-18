@@ -45,7 +45,14 @@ __all__ = [
     "format_adjustment",
     "format_control_value",
     "group_adjustments",
+    "wrapping_between_parts",
 ]
+
+#: Where a rendered line's parts meet: after the time, and after the arrow
+#: between the old value and the new one.
+_AFTER_TIME: Final = " · "
+_ARROW: Final = " -> "
+_NO_BREAK_SPACE: Final = "\u00a0"
 
 # What each control is called on screen. A second table beside
 # `control_record.CONTROL_INPUT_UNITS` rather than a field on it, because the
@@ -279,11 +286,51 @@ def format_adjustment(adjustment: ControlAdjustment) -> str:
     # caught: every assertion here compares strings the same font-less
     # process produced.
     moved = (
-        f"{format_control_value(adjustment.control, adjustment.from_value)} -> "
+        f"{format_control_value(adjustment.control, adjustment.from_value)}{_ARROW}"
         f"{format_control_value(adjustment.control, adjustment.to_value)}"
     )
 
     if adjustment.change_count == 1:
-        return f"{when} · {label} {moved}"
+        return f"{when}{_AFTER_TIME}{label} {moved}"
 
-    return f"{when} · {label} {moved} ({adjustment.change_count} settings)"
+    return f"{when}{_AFTER_TIME}{label} {moved} ({adjustment.change_count} settings)"
+
+
+def wrapping_between_parts(lines: str) -> str:
+    """Rendered lines that a wrapping label may break only between their parts.
+
+    The record column is narrower than its longest lines, so its label wraps
+    (`PL-F2YS`). A wrap at any space could leave "4.0" at the end of one line
+    and "L/min" at the start of the next, and a value cut from its unit is
+    the misreading `PL-3355` stopped the readouts wrapping for. So every
+    space becomes a no-break space except the one after the time and the
+    one after the arrow, and a long line breaks into when it was, what moved
+    from what, and what it moved to.
+
+    Args:
+        lines: Lines as `format_adjustment` renders them, joined by newlines.
+
+    Returns:
+        The same text, with the same characters a reader sees.
+    """
+
+    return "\n".join(_wrapping_between_parts(line) for line in lines.split("\n"))
+
+
+def _wrapping_between_parts(line: str) -> str:
+    """One line as `wrapping_between_parts` returns it.
+
+    A line without the time's joint is not an adjustment, such as the text
+    shown before any control has changed, and is returned unchanged.
+    """
+
+    if _AFTER_TIME not in line:
+        return line
+
+    unbroken = line.replace(" ", _NO_BREAK_SPACE)
+
+    for joint in (_AFTER_TIME, _ARROW):
+        held = joint.rstrip().replace(" ", _NO_BREAK_SPACE)
+        unbroken = unbroken.replace(held + _NO_BREAK_SPACE, held + " ")
+
+    return unbroken
