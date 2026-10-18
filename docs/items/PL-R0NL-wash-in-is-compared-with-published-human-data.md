@@ -97,3 +97,56 @@ perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above. Symbols re-checked against
 `9ea87a3c`.
+
+## What the papers hold, 2026-10-18
+
+An early time course exists in both papers, as a figure and not as a table.
+Figure 2 of Yasuda et al., *Anesth Analg* 1991;72:316-24 (printed page 320),
+plots F_A/F_I as mean ± SD for the sevoflurane and isoflurane cohort (n = 7).
+Figure 2 of Yasuda et al., *Anesthesiology* 1991;74:489-98 (printed page 493),
+plots the same for the desflurane and isoflurane cohort (n = 8). Each SD is
+drawn as a one-sided bar. Both papers sampled end-tidal gas at the tracheal tube
+at 0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 12.5, 15, 20, 25 and 29 minutes, and gave the
+agents as a square wave from a non-rebreathing circuit (*Anesth Analg* page
+317). So the inspired fraction was held at the airway from the first breath.
+The *Anesth Analg* figure also plots desflurane, but normalized to that study's
+isoflurane, so the desflurane values here come from the *Anesthesiology* figure.
+
+Both figures survive only as 300 dpi bilevel scans of the printed page. The
+values are read from the page image by fitting the axis lines and tick marks
+and locating each marker's centre. The scan is sheared by up to 0.8 degrees,
+so each point is read along lines parallel to the plotted axes. Read this way,
+each 30-minute mean lands within 0.006 of the value the paper's text states.
+
+## Pre-registration, written 2026-10-18 before the model was compared
+
+The comparison drives the shipped patient with the inspired fraction held at the
+airway, as the papers' non-rebreathing circuit held it. It reads F_A/F_I at each
+sample time from 1 to 25 minutes and compares it with the figure's mean, in units
+of the figure's SD. The 30-minute value is already compared in
+`test_thirty_minute_ratio_matches_published_human_measurement`.
+
+What a disagreement would mean:
+
+1. **Every point within 1 SD.** The early rise is consistent with the published
+   cohorts at the resolution of the figure. The test asserts the 1 SD band, as
+   the 30-minute comparison does, and the item closes.
+2. **The model rises too fast in the first 3 minutes and agrees by 30.** The
+   first minutes are set mostly by alveolar ventilation over the lung's gas
+   volume, and the papers measured minute ventilation while the model uses the
+   reference patient's default. So the first candidates are a model ventilation
+   higher than the cohort's, or a functional residual capacity smaller than the
+   cohort's. A structural error in the lung compartment comes after those.
+3. **The model rises too slowly in the first 3 minutes.** The candidates are
+   uptake into blood that is too large: a blood:gas coefficient or cardiac
+   output above the cohort's, or a vessel-rich capacity that is too large.
+4. **A disagreement only at 1 minute.** The first minute is the steepest part
+   of the curve, so it is the most sensitive to when each sample was taken and
+   to the airway dead space. It says little about the model unless 2 and 3
+   minutes disagree too.
+5. **A disagreement at 5 to 25 minutes with agreement at 30.** This would point
+   at the vessel-rich and muscle groups, whose filling sets that phase.
+
+In cases 2 to 5 the test asserts a stated regression band at the points that
+disagree, as the elimination half does, and the disagreement is filed as its
+own item rather than fixed here.
