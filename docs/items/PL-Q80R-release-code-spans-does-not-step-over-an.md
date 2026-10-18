@@ -3,12 +3,14 @@ id: PL-Q80R
 title: release.code_spans does not step over an autolink or raw HTML opening before a backtick, which doc_check's _InlineReader does, so on <http://a`b> and `c` it reads one span, 'b> and ', where CommonMark and the inline reader read 'c' (found fixing PL-T3GW)
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/release.py, tools/doc_check.py, subprojects/docket/tests/test_markdown_reference.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_verify.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1546
 payoff: docket and the tools find the same code spans CommonMark does where an autolink or a tag holds a backtick, so a cited path is checked and a title escaped by what renders, with one answer where there were two
 verify: grep -q 'def test_an_autolink_or_raw_html_opening_first_takes_the_backtick_inside_it' subprojects/docket/tests/test_release.py && grep -q 'def test_a_comparison_shaped_like_a_tag_is_still_read_as_code' subprojects/docket/tests/test_verify.py && ! grep -qF 'which `code_spans` does not read' subprojects/docket/tests/test_markdown_reference.py
 reenters: PL-5DZ8

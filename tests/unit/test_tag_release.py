@@ -87,6 +87,27 @@ def test_the_tag_lands_on_the_cut_however_late_it_runs(
     assert run(tagger, apply=True) == 0, "a second run is not a failure"
 
 
+def test_a_version_file_declaring_its_v_is_tagged_once(
+    published: tuple[Path, Path], tmp_path: Path
+) -> None:
+    """`PL-5H48`: `f"v{version}"` named a declared `v0.3.0`'s release `vv0.3.0`."""
+    origin, work = published
+    cut = _commit(
+        work,
+        "PL-TR4N: cut v0.3.0",
+        {
+            "docs/releases/v0.3.0.md": "## v0.3.0\n",
+            "pyproject.toml": '[project]\nversion = "v0.3.0"\n',
+        },
+    )
+    _git(work, "push", "-q", "origin", "HEAD:main")
+
+    assert run(work, apply=True) == 0
+
+    assert _git(origin, "tag", "--list") == "v0.3.0"
+    assert _git(origin, "rev-parse", "v0.3.0^{commit}") == cut
+
+
 def test_a_push_that_is_not_a_cut_tags_nothing(
     published: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
 ) -> None:
