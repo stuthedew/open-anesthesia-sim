@@ -3,12 +3,14 @@ id: PL-W9P6
 title: Build the one adapter module that drives the Qt widget tree from the LayoutModel, and turn the Qt port's inert splitter handles live
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature
 feature: interface-areas
-touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, tests/integration, tests/unit/test_layout_model.py, tests/unit/test_import_boundary_check.py, tools/import_boundary_check.py, tools/contrast_check.py, docs/ARCHITECTURE.md, docs/interface-provenance.md, .claude/rules/ui-color.md, docs/items/PL-05M4-the-inert-splitter-handles-keep-the-host-s.md, docs/items/PL-2KXB-build-the-docking-affordances-a-reader-uses.md, docs/items/PL-K285-an-area-that-cannot-be-given-the-size-its-view.md
+touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, tests/integration, tests/unit/test_layout_model.py, tests/unit/test_import_boundary_check.py, tools/import_boundary_check.py, tools/contrast_check.py, docs/ARCHITECTURE.md, docs/interface-provenance.md, .claude/rules/ui-color.md, docs/items/PL-05M4-the-inert-splitter-handles-keep-the-host-s.md, docs/items/PL-2KXB-build-the-docking-affordances-a-reader-uses.md, docs/items/PL-K285-an-area-that-cannot-be-given-the-size-its-view.md, docs/items/PL-R1WQ-nothing-says-where-the-view-registry-lives-how.md, docs/items/PL-TH35-define-the-common-view-contract-every-app-view.md, docs/items/PL-ZBBP-retire-or-re-scope-claude-rules-ui-areas-md-and.md, docs/items/PL-RTG9-readme-carries-no-attribution-line-for-the.md, docs/items/PL-904Y-split-the-whole-interface-visibility-predicate.md, docs/items/PL-9LNF-three-app-surfaces-own-state-a-layout-could.md
 blocked-by: PL-NWTM, PL-5HSG
 added: 2026-09-16
+closed: 2026-10-18
+pr: 1592
 payoff: a reader can drag a border and the layout model changes with it, from one adapter module that is the only code in the app building splitters
 verify: grep -q 'def test_a_drag_on_a_border_changes_the_layout_model' tests/integration/test_layout_adapter.py
 ---

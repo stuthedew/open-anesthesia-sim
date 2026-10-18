@@ -1,14 +1,15 @@
 ---
 id: PL-9LNF
 title: Three app/ surfaces own state a layout could duplicate or relocate beside PL-VN6M's TraceLegend: RunView's build_ accessors hand out the same widget object on every call, the chart time base is owned by a dropdown inside one plot's panel, and the chart's column budget is read from sibling plots
-priority: P2
+priority: P1
 effort: L
-status: blocked
+status: ready
 classes: safety, anticipated, refactor
 feature: interface-areas
-blocked-by: PL-W9P6
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, tests/integration/test_simulation_view.py
 added: 2026-09-16
+payoff: each chart draws at the width of its own Area, and placing a run's widgets in a second Area cannot silently empty the first
+verify: grep -q 'def test_resizing_one_chart_redraws_it_at_its_own_width' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** Three app/ surfaces own state a layout could duplicate or relocate beside PL-VN6M's TraceLegend: RunView's build_ accessors hand out the same widget object on every call, the chart time base is owned by a dropdown inside one plot's panel, and the chart's column budget is read from sibling plots
@@ -52,3 +53,8 @@ added: 2026-09-16
 ## Area-model audit (PL-BNYF)
 
 **Disposition: `missing-prereq`.** Filed 2026-09-16 by the area-model queue audit (`PL-BNYF`), which swept 49 open and untriaged items and seven gap lenses against `ROADMAP.md` item 34, `docs/interface-provenance.md` and `.claude/rules/ui-areas.md`. Each candidate was checked against the store before it was filed, so a gap an existing item already covers is not here.
+
+**Checked 2026-10-18:** still reproduces. `PL-W9P6` made the border between
+the chart and the sidebar draggable, so the width a chart is given now
+changes under a reader's drag rather than only with the window. The
+`inert_splitter` this brief's basis quotes is deleted.

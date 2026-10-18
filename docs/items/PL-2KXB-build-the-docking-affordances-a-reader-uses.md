@@ -3,12 +3,13 @@ id: PL-2KXB
 title: Build the docking affordances a reader uses: border drag moving the collinear chain, corner drag to split and to join, and Area swap, with a join the splitter tree cannot express refused rather than approximated
 priority: P2
 effort: L
-status: blocked
+status: ready
 classes: feature, ux
 feature: interface-areas
 touches: src/anesthesia_sim/app/, tests/integration
-blocked-by: PL-W9P6, PL-G60V
 added: 2026-09-16
+payoff: a reader can split, join and swap Areas and switch Workspaces with the mouse, and a join the layout cannot make is shown as unavailable rather than approximated
+verify: grep -q 'def test_a_corner_drag_splits_an_area' tests/integration/test_layout_adapter.py && grep -q 'def test_a_join_the_layout_cannot_make_is_shown_unavailable' tests/integration/test_layout_adapter.py
 ---
 
 **Problem.** Build the docking affordances a reader uses: border drag moving the collinear chain, corner drag to split and to join, and Area swap, with a join the splitter tree cannot express refused rather than approximated
