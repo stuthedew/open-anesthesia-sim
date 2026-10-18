@@ -289,6 +289,24 @@ set it when the session opens rather than toggling it.
   to **Default**; it saves as you change it. The change reaches new threads
   only, so make it before the first task. A thread can confirm it:
   `get_session` reads `environment_id` `env_01JWikdPctorEBXoFK7bJnCq`.
+- **Auto mode as your default reaches only the sessions on your Mac, and no
+  file in this repository can carry it** (`PL-ZLS5`). Your
+  `"permissions": {"defaultMode": "auto"}` in `~/.claude/settings.json` is
+  the right place for it. A project file would be ignored without an error:
+  "`permissions.defaultMode` values `auto` and `bypassPermissions` don't take
+  effect from project or local settings; set them in user or managed settings
+  instead, or pass `--permission-mode` for one session"
+  ([Settings](https://code.claude.com/docs/en/settings), "A value you set is
+  ignored", read 2026-10-18). A cloud session reads neither of your own files:
+  `~/.claude/settings.json` and `.claude/settings.local.json` are "not read.
+  Both stay on your machine" (same page, "Settings in cloud sessions"). So a
+  cloud session takes its mode from the menu instead: "You pick a cloud
+  session's permission mode from the mode dropdown, both when you create the
+  task and while the session runs"
+  ([Use Claude Code in the cloud](https://code.claude.com/docs/en/claude-code-on-the-web),
+  "Permission modes in cloud sessions", read 2026-10-18). A cloud session
+  that asks for permissions you thought you had turned off is in the mode its
+  dropdown names, so change it there.
 
 ## What comes to you before it merges
 
@@ -547,6 +565,43 @@ git fetch origin refs/archive/claude/NAME/TIP && git push origin FETCH_HEAD:refs
 Success is `* [new branch]` on the last line. `git ls-remote origin
 'refs/archive/*'` lists every archived tip, if the log has expired. An archive
 ref is not shown on GitHub's Branches page and no clone fetches it unasked.
+
+## Run tag-release yourself where a session cannot
+
+`.github/workflows/tag-release.yml` tags each release on the commit that cut
+it, once that commit reaches `main`. When a run fails, the session fixes the
+cause and starts a new run itself. Two cases are left to you (`PL-F23S`,
+`PL-S641`). `bin/docket release` refuses the next release while one is
+untagged, and its refusal names both.
+
+**When GitHub refuses the session's run.** Start it yourself, in either of two
+ways:
+
+- On the repository's page click **Actions**, then **tag-release** in the left
+  sidebar, then **Run workflow** above the list of runs. Leave **Branch** on
+  `main`, which the workflow requires, and click **Run workflow**. The log of
+  its **tag** job ends with `Tagged VERSION and pushed it to origin.`
+- Or run `python3 tools/tag_release.py --apply` on the Mac, from a clone that is
+  up to date with `main`. It tags with your own credentials, because a tag a
+  session pushes is dropped without an error (`PL-N936`). It prints the same
+  last line once `origin` holds the tag.
+
+The `gh` command `gh workflow run tag-release.yml --ref main` starts the same
+run. GitHub's
+[Manually running a workflow](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
+gives both routes (read 2026-10-18). Check the result with
+`git ls-remote --tags origin refs/tags/VERSION`, which prints the tag where
+`origin` holds it and nothing where it does not.
+
+**When `origin` already holds the tag on another commit.** The run declines
+and tags nothing. Its log says `Declined: origin holds VERSION on COMMIT, not
+on its cut, CUT.` Which of the two commits is right is your decision. The cut
+is the commit that added the version's notes under `docs/releases/`. If the tag
+on `origin` is the right one, nothing needs to change. If it is wrong, first
+copy the `git ls-remote` line above, so that the old commit is recorded. Then
+delete the tag from `origin` with `git push origin --delete refs/tags/VERSION`
+and start the run again as above. To undo the deletion, push the old commit
+back as the tag with `git push origin COMMIT:refs/tags/VERSION`.
 
 ## Retire the stop hook patch once Anthropic fixes it
 
