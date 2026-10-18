@@ -3,11 +3,13 @@ id: PL-562Z
 title: Taking a branch pushes the concentration chart mostly below the fold: in a 1600 x 1000 window the second run's readouts move it from y 520-880 to 848-1208 of the 1000 px page, so a learner who branched to compare two curves sees 152 of its 360 px without scrolling
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: ux
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+payoff: taking a branch leaves the concentration chart in view, so the comparison the learner asked for is on screen
+verify: grep -q "def test_taking_a_branch_leaves_the_concentration_chart_in_view" tests/integration/test_simulation_view.py
 ---
 
 **Problem.** Taking a branch pushes the concentration chart mostly below the fold: in a 1600 x 1000 window the second run's readouts move it from y 520-880 to 848-1208 of the 1000 px page, so a learner who branched to compare two curves sees 152 of its 360 px without scrolling
@@ -40,3 +42,22 @@ no longer depends on this.
 **Done when.** The answer below is recorded, and either taking a branch leaves the concentration chart in view at 1600 x 1000, held by a test, or the item closes into the v0.6.0 `Required scope` entry that owns the page's arrangement.
 
 **Decision needed.** Whether to fix this before v0.6.0 replaces the single scrolling page, and how: (a) scroll the chart into view when a branch is taken - one `ensureWidgetVisible` call from the fork handler and a test; (b) re-order the page so the readouts do not sit above the chart; or (c) leave it to v0.6.0, whose tiled layout gives the chart its own view. **Recommended: (a).** It answers the click that asked for the comparison, v0.6.0 deletes it along with the page, and v0.6.0 is 4 L, 16 M and 3 S away. Its cost is a page that moves on a click; (b) is layout work v0.6.0 owns and would be redone, and (c) leaves every branch until then showing 152 of the chart's 360 px. It is the owner's because it is behaviour a learner sees.
+
+**Re-read 2026-10-18 at `21174fd3`, in the product decision batch's design
+round.** `app/simulation_view.py` still makes no call that scrolls the page
+when a branch is taken. The pixel figures above were measured on 2026-10-01
+and were not re-measured here. A build under (a) re-measures them in its
+test. v0.6.0's build has not started: its gate has 20 entries open, and the
+layout adapter (`PL-W9P6`) is blocked behind it. So under (c) the chart stays
+mostly below the fold until that build ships. The recommendation stays (a),
+and the question is put to the project owner, because the answer decides
+what a learner sees after pressing Branch.
+
+**Answered 2026-10-18: (a), scroll the chart into view when a branch is
+taken** (project owner, 2026-10-18, ratified, over (c), leaving it to
+v0.6.0's tiled layout, and over (b), re-ordering the page). Stuart tapped
+"Scroll now" on the product decision batch's card at 03:55Z. The build
+makes the fork handlers bring the concentration chart into view once the
+branch's readouts are laid out. A test at 1600 x 1000 asserts that the chart
+lies wholly inside the page's viewport after a branch is taken. The scroll
+goes when v0.6.0 replaces the scrolling page.

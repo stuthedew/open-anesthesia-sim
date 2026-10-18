@@ -3,12 +3,14 @@ id: PL-1KQ9
 title: A machine profile can open the run at a fresh gas flow off the slider's 0.1 L/min grid - 2.25 L/min, or 0.25 L/min under a declared range floored there, which the control offers from 0.3 - so the slider sits on a neighbouring step while the run holds the stated flow and the readout rounds it (found building PL-7CRY)
 priority: P3
 effort: S
-status: needs-decision
+status: ready
 classes: defect, ux
 feature: anesthesia-machine
 touches: src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+payoff: no run opens at a fresh gas flow that the slider and the readout beside it cannot both state
+verify: grep -q "def test_an_opening_fresh_gas_flow_off_the_slider_grid_is_refused" tests/unit/test_dashboard_frame.py
 ---
 
 **Problem.** A machine profile can open the run at a fresh gas flow off the slider's 0.1 L/min grid - 2.25 L/min, or 0.25 L/min under a declared range floored there, which the control offers from 0.3 - so the slider sits on a neighbouring step while the run holds the stated flow and the readout rounds it (found building PL-7CRY)
@@ -59,3 +61,24 @@ meeting an error at launch rather than a run that opens.
 refused where the profile is loaded under the recommended route, or stated at
 its own precision by slider and readout alike under the other - and a test in
 `tests/unit/test_dashboard_frame.py` pins 2.25 L/min and the 0.25 L/min floor.
+
+**Decided 2026-10-18 in the product decision batch's design round: refuse
+an opening flow off the control's grid, where the dashboard builds the
+control for the run.** This is the recommendation above, taken as an obvious
+call rather than put to the project owner, because two rules this repository
+already states leave only one route. The Qt port's decision D4 (`PL-25KS`)
+makes a slider position a printed value. The second route would let the
+slider stand at a flow the run does not hold, so it breaks D4. The
+safety-critical standard in `CLAUDE.md` prefers an obvious failure to a
+plausible-looking value, and the refusal is that failure. A third route, a
+finer slider grid, was considered and refused: a profile can state a flow at
+any precision, so a finer grid moves the defect and does not remove it. The
+check belongs in `app/`, beside `offered_range`, because the grid is the
+interface's fact and `core/` should not learn it. One rule covers both cases
+in the problem statement. 2.25 L/min is off the 0.1 L/min grid, and 0.25 L/min
+under a range floored there lies outside the offered range, which starts at
+0.3. The refusal names the profile's flow, the grid and the offered range, as
+`.claude/rules/sources-and-docstrings.md` asks of a refusal. The premise was
+re-read at `21174fd3`. `core/parameters.py` still checks
+`default_fresh_gas_flow_l_min` only as positive and finite, and the shipped
+profile's 4.0 L/min is on the grid, so no shipped run is refused.

@@ -48,6 +48,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path, PurePath, PurePosixPath
 
 from . import markdown
+from .config import Config
 from .gitargv import subcommand_of
 from .lines import ENCODING, file_text, record_text, split_lines
 from .model import CLOSED_STATUSES, _front_matter_pairs, is_under, parse_front_matter, parse_item
@@ -236,6 +237,32 @@ def listed_paths(listing: str) -> tuple[str, ...]:
     asks `answered` of the listing first.
     """
     return tuple(path for path in listing.split("\0") if path)
+
+
+def uncommitted_paths(root: Path, run: Runner) -> tuple[str, ...]:
+    """Every path whose change the checkout holds and `HEAD` does not, sorted.
+
+    The one reading of a checkout's uncommitted paths, for `working_paths` and
+    for `verify.changed_paths` (`PL-QNHZ`). It reads three `-z` listings: the
+    index against `HEAD`, the working tree against `HEAD`, and the untracked
+    files. The index needs a read of its own. A staged edit whose working copy
+    was then restored to `HEAD` is a change the next commit carries, but the
+    working tree matches `HEAD`, so `diff HEAD` alone does not list it.
+    `working_paths` missed that path while `verify`'s `status --porcelain`
+    listed it.
+
+    `run` decides what a failed read means. `verify` passes a reader that raises
+    `GitUnanswered`, and `working_paths` passes one that records the silence and
+    reads it as no paths.
+    """
+    found: set[str] = set()
+    for args in (
+        changed_path_args("diff", "--name-only", "--cached", "HEAD"),
+        changed_path_args("diff", "--name-only", "HEAD"),
+        untracked_path_args(),
+    ):
+        found.update(listed_paths(run(args, root)))
+    return tuple(sorted(found))
 
 
 #: Directories a checkout carries but does not author. Skipped by the walk that
@@ -1220,8 +1247,74 @@ def leading_ids(line: str) -> tuple[str, ...]:
     return tuple(found.group(0).upper() for found in ANY_ID_RE.finditer(match.group(0)))
 
 
-def _annotates_only(paths: list[str], prefix: str) -> bool:
-    """Whether a commit's whole diff sits inside the queue directory.
+#: The pull requests' body files. `tools/pr_body_check.py --recover` writes
+#: `<N>.md` here for a squash commit that landed with no body, at each release
+#: (`PL-3PH2`); from 2026-09-25 to 2026-09-26 `--record` also wrote one on every
+#: pull request's branch (`PL-979D`). `arming.RECORDS` spells the
+#: same directory for what arms on green, in the one module the gate holds for
+#: a read, and is kept there rather than imported from here, so that widening
+#: what arms still takes an edit the gate holds; `test_claims` pins the two
+#: equal (`PL-F6MM`). The path is this repository's layout, as
+#: `arming.TOOLING`'s is.
+RECORDS = "docs/pr-bodies/"
+
+
+def queue_records(config: Config) -> tuple[str, ...]:
+    """The records a queue workflow writes, as `in_queue` counts them and a refusal names them.
+
+    A name ending in `/` is a directory and holds every path under it; any
+    other is one file. One list for the check and for what its refusal says it
+    admits, so the two cannot drift apart: `PL-F6MM`'s body records were
+    missing from both.
+    """
+    return tuple(
+        name
+        for name in (
+            config.items_dir.strip("/") + "/",
+            config.roadmap_file,
+            config.notes_file,
+            RECORDS,
+        )
+        if name
+    )
+
+
+def in_queue(path: str, config: Config) -> bool:
+    """Whether a repository path is one of the records a queue workflow writes.
+
+    The items, the roadmap, the working notes and the pull requests' body
+    records (`queue_records`). A capture, a triage pass or a design round writes
+    these and nothing else - triage puts an item on the debt gate's list in the
+    roadmap, a design round keeps its thread in the notes, and a recovery
+    writes a lost body - and owes no claim, since the ids it leads with are
+    never pushed into one (`PL-3CTW`). Read as the items
+    directory alone, as the spec's "outside `items_dir`" says, it refused 12
+    such passes merged in the week to 2026-09-24, and would have made each
+    claim the ids it triaged. Without the body records it refused every such
+    pass once recorded, so `pr-title` and `checks` could not both pass on it
+    (`PL-F6MM`).
+
+    The whole records directory counts, so CI does not refuse a `--recover`
+    pass that claims nothing, though `CLAUDE.md`'s housekeeping rule still
+    files and claims one, and a release, which runs it (`PL-3PH2`), holds a
+    claim already (`PL-F6MM`).
+
+    It is not what arms. `arming.arms_on_green` asks whether a change may merge
+    on green CI without the owner's read, and keeps to the store, the tooling
+    and the body records, so a `ROADMAP.md`-only triage pass owes no claim here
+    and still waits on a read there (project owner, 2026-09-26, ratified, over
+    widening arming to the roadmap and the notes, `PL-0JGZ`). That answer is
+    spelt in the module the gate holds for a read rather than in this one, for
+    the reason `RECORDS` above gives.
+    """
+    return any(
+        path.startswith(name) if name.endswith("/") else path == name
+        for name in queue_records(config)
+    )
+
+
+def _annotates_only(paths: list[str], config: Config) -> bool:
+    """Whether a commit's whole diff sits inside the queue's records.
 
     **The rule that separates recording an item from working on it**, and it
     is deliberately about where the commit wrote rather than about what it
@@ -1273,8 +1366,14 @@ def _annotates_only(paths: list[str], prefix: str) -> bool:
     `claims` still reads a commit made before a session could write a claim
     by this rule alone, until `PL-CH3Z` retires that reading. `orphaned` asks
     it its own question: whether a commit wrote anywhere but the queue.
+
+    **What counts as the queue is `in_queue`'s answer** (`PL-86H3`): the items,
+    the roadmap, the working notes and the body records. This read the items
+    directory alone, so a commit writing only `ROADMAP.md`, as a triage pass
+    placing an item on the gate does, was merge evidence here and queue-only to
+    `claims.work_outside_queue`.
     """
-    return bool(paths) and all(path.startswith(prefix) for path in paths)
+    return bool(paths) and all(in_queue(path, config) for path in paths)
 
 
 def _raw_writes(output: str) -> Iterator[tuple[str, str]]:
@@ -2024,26 +2123,6 @@ def _deleted_on_remote(root: Path, run: Runner, remote: RemoteHeads) -> frozense
         if short.strip() and branch != "HEAD" and branch not in remote.tips:
             gone.add(short.strip())
     return frozenset(gone)
-
-
-def _item_paths_on(base: str, items_dir: str, root: Path, run: Runner) -> dict[str, str]:
-    """Each item id the base holds, mapped to its file's path there, from one tree listing.
-
-    The store names each file for its item - `docs/items/PL-K7QX-do-it.md` -
-    which `store.filename_for` guarantees, so the id is the head of the
-    basename. The three readers of the base's copy of an item share this so
-    that the one question they all open with is spelled once.
-    """
-    prefix = items_dir.strip("/") + "/"
-    names: dict[str, str] = {}
-    for line in split_lines(run(["ls-tree", "--name-only", base, "--", prefix], root)):
-        path = line.strip()
-        if not path:
-            continue
-        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
-        if match is not None:
-            names.setdefault(match.group(1).upper(), path)
-    return names
 
 
 @dataclass(frozen=True)
@@ -3441,7 +3520,7 @@ def base_copies(
     if not moved:
         return BaseCopies(base=base, declined=run.reason)
     here = {key.upper() for key in _changed_items(root, base, items_dir, run)}
-    paths = _item_paths_on(base, items_dir, root, run)
+    paths = _items_at(base, root, items_dir, run)
     copies: dict[str, BaseCopy] = {}
     for key in sorted(moved):
         path = paths.get(key, "")
@@ -4357,6 +4436,83 @@ def merged_pull_requests(root: Path, *, runner: Runner | None = None) -> PullReq
 
 
 @dataclass(frozen=True)
+class ItemAddition:
+    """One commit that added item files to the store: its sha, its subject and the ids it added."""
+
+    commit: str
+    subject: str
+    item_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ItemAdditions:
+    """Every commit a ref reaches that added an item file, newest first, or why that is unknown."""
+
+    commits: tuple[ItemAddition, ...] = ()
+    declined: str = ""
+
+
+def item_additions(root: Path, ref: str, prefix: str, run: Runner) -> ItemAdditions:
+    """Each commit `ref` reaches that added an item file under `prefix`, newest first.
+
+    The one reading of which commit filed an item, for `filed_with_work` and
+    for `tools/generator_check.py`'s spawn counts (`PL-86H3`). A file is an
+    item when it sits directly in the store and its name leads with an id, as
+    `_item_blobs` lists one.
+
+    **A shallow clone declines.** Its boundary commit shows every file it holds
+    as added, so the commit at the horizon would read as filing every item older
+    than it. `filed_with_work` declined there and `generator_check` did not, so
+    the check credited one commit with every older item's filing. A checkout
+    that cannot say whether it is shallow declines too.
+    """
+    shallow = is_shallow(root, runner=run)
+    if shallow is True:
+        return ItemAdditions(
+            declined="the checkout is a shallow clone, so an item filed before its horizon "
+            "would read as filed by its boundary commit"
+        )
+    if shallow is None:
+        return ItemAdditions(declined="git cannot say whether this checkout is complete")
+    directory = prefix.strip("/")
+    log = run(
+        [
+            "log",
+            ref,
+            "--diff-filter=A",
+            "--format=%x00%H%x01%s",
+            "--name-status",
+            "--",
+            f"{directory}/",
+        ],
+        root,
+    )
+    commits: list[ItemAddition] = []
+    commit = subject = ""
+    added: list[str] = []
+
+    def close() -> None:
+        if commit:
+            commits.append(ItemAddition(commit, subject, tuple(dict.fromkeys(added))))
+
+    # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
+    for line in log.split("\n"):
+        if line.startswith("\x00"):
+            close()
+            commit, _, subject = line[1:].partition("\x01")
+            added = []
+            continue
+        if not commit or not line.strip() or not line.split("\t")[0].startswith("A"):
+            continue
+        folder, _, name = line.split("\t")[-1].rpartition("/")
+        match = ITEM_FILE_RE.match(name) if folder == directory else None
+        if match is not None:
+            added.append(match.group(1))
+    close()
+    return ItemAdditions(commits=tuple(commits))
+
+
+@dataclass(frozen=True)
 class FilingCommit:
     """The commit that added an item's file, where that commit also changed code.
 
@@ -4446,48 +4602,21 @@ def filed_with_work(
     run = _Silences(runner or _run_git)
     if not item_ids:
         return FilingReport()
-    shallow = is_shallow(root, runner=run)
-    if shallow is True:
-        return FilingReport(
-            declined="the checkout is a shallow clone, so an item filed before its horizon "
-            "would read as filed by nobody"
-        )
-    if shallow is None:
-        return FilingReport(declined="git cannot say whether this checkout is complete")
-    log = run(
-        [
-            "log",
-            default_base(root, runner=run),
-            "--diff-filter=A",
-            "--format=%x00%H%x01%s",
-            "--name-status",
-            "--",
-            prefix,
-        ],
-        root,
-    )
-    if not log.strip():
+    additions = item_additions(root, default_base(root, runner=run), prefix, run)
+    if additions.declined:
+        return FilingReport(declined=additions.declined)
+    if not additions.commits:
         return FilingReport(
             declined="no default branch this checkout can read, so nothing says which "
             "commit filed an item"
         )
-
     # Newest add wins: a file added, removed and restored is carried by the
     # commit that put the copy being read there, which is the one a reader
     # opening it would find.
     filed: dict[str, tuple[str, str]] = {}
-    commit = subject = ""
-    # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
-    for line in log.split("\n"):
-        if line.startswith("\x00"):
-            commit, _, subject = line[1:].partition("\x01")
-            continue
-        if not commit or not line.strip() or not line.split("\t")[0].startswith("A"):
-            continue
-        path = line.split("\t")[-1]
-        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1]) if path.startswith(prefix) else None
-        if match is not None:
-            filed.setdefault(match.group(1), (commit, subject))
+    for addition in additions.commits:
+        for item_id in addition.item_ids:
+            filed.setdefault(item_id, (addition.commit, addition.subject))
 
     found: dict[str, FilingCommit] = {}
     for item_id in sorted(item_ids):
@@ -4602,7 +4731,7 @@ def closures_on_base(
             if not text:
                 continue
         item = parse_item(text, name)
-        if item.status != "done":
+        if not landed_closure(item.status):
             continue
         landed.add(identifier)
         if item.pr and item.pr.isdigit():
@@ -4616,10 +4745,23 @@ def closures_on_base(
     )
 
 
+def landed_closure(status: str) -> bool:
+    """Whether an item's copy reading `status` holds its closure as landed there.
+
+    The one test of whether a tree already holds a closure, for `closed_by`,
+    `closures_on_base` and `tools/pr_record_check.py` (`PL-86H3`). Only `done`
+    does. A copy the base holds `dropped` and the branch marks `done` is a
+    closure the branch introduces, and `bin/docket record` writes the branch's
+    number onto it. The check read every closed base copy as landed and did not
+    ask for that number.
+    """
+    return status == "done"
+
+
 def _done_at(revision: str, path: str, name: str, root: Path, run: Runner) -> bool:
     """Whether the item at `path` reads `status: done` in that revision's tree."""
     text = run(["show", f"{revision}:{path}"], root)
-    return bool(text) and parse_item(text, name).status == "done"
+    return bool(text) and landed_closure(parse_item(text, name).status)
 
 
 def _parent_in_reach(revision: str, root: Path, run: Runner) -> bool:
@@ -4736,15 +4878,24 @@ def _item_blobs(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, 
     `<mode> <type> <object>\t<path>`, with everything after the first tab
     taken as the path because a path may contain one and git quotes what it
     cannot print.
+
+    **This is the one listing of the item files at a ref** (`PL-86H3`).
+    `_items_at` is its path half, and `claims`, `claiming`, `verify`,
+    `tools/pr_title_check.py` and `tools/branch_id_check.py` read it rather
+    than listing the tree again. A file is an item only where it sits directly
+    in the store, since `store.read_items` reads no subdirectory. Before this,
+    the recursive read here counted a file under `docs/items/sub/` as an item
+    and the one-level reads beside it did not.
     """
+    directory = items_dir.strip("/")
     found: dict[str, tuple[str, str]] = {}
     for line in split_lines(run(["ls-tree", "-r", ref, "--", items_dir], root)):
         head, _, path = line.partition("\t")
         fields = head.split()
-        path = path.strip()
-        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1]) if path and len(fields) == 3 else None
+        folder, _, name = path.strip().rpartition("/")
+        match = ITEM_FILE_RE.match(name) if len(fields) == 3 and folder == directory else None
         if match is not None:
-            found.setdefault(match.group(1), (fields[2], path))
+            found.setdefault(match.group(1), (fields[2], f"{folder}/{name}"))
     return found
 
 
@@ -5729,7 +5880,7 @@ def _commits_by_landing(
     outstanding: frozenset[str],
     root: Path,
     run: Runner,
-    items_prefix: str,
+    config: Config,
 ) -> tuple[tuple[OrphanedCommit, ...], bool]:
     """One walk of the ref's commits, read for both halves of the rule.
 
@@ -5839,15 +5990,13 @@ def _commits_by_landing(
             found.append(
                 OrphanedCommit(commit=commit.strip(), subject=subject.strip(), paths=touched)
             )
-        elif all(path in landed for path in touched) and not _annotates_only(
-            list(touched), items_prefix
-        ):
+        elif all(path in landed for path in touched) and not _annotates_only(list(touched), config):
             took_one_whole = True
     return tuple(found), took_one_whole
 
 
 def landed_whole(
-    base: str, root: Path, run: Runner, *, ref: str = "HEAD", items_dir: str = "docs/items"
+    base: str, root: Path, run: Runner, *, ref: str = "HEAD", config: Config | None = None
 ) -> bool:
     """Whether the default branch has already taken a whole commit of this ref's work.
 
@@ -5900,7 +6049,8 @@ def landed_whole(
         root: Repository root.
         run: The git runner.
         ref: Which side to read; the checkout's own `HEAD` by default.
-        items_dir: The queue directory, whose commits are not merge evidence.
+        config: Where the queue's records are, whose commits are not merge
+            evidence; the defaults where none is given.
 
     Returns:
         `True` only where the base holds a whole commit of this ref that is not
@@ -5917,7 +6067,7 @@ def landed_whole(
     # No outstanding set: the whole-commit verdict reads the landed half alone,
     # and the commits it would list as left behind are discarded here.
     _, took_one_whole = _commits_by_landing(
-        ref, base, frozenset(landed), frozenset(), root, run, items_dir.strip("/") + "/"
+        ref, base, frozenset(landed), frozenset(), root, run, config or Config()
     )
     return took_one_whole
 
@@ -5926,7 +6076,7 @@ def orphaned(
     root: Path,
     *,
     include_remote: bool = True,
-    items_dir: str = "docs/items",
+    config: Config | None = None,
     runner: Runner | None = None,
 ) -> OrphanedReport:
     """Branches carrying work the default branch took only part of.
@@ -6005,6 +6155,7 @@ def orphaned(
     the way they do for `flight` and `stranded`.
     """
     run = _Silences(runner or _run_git)
+    settings = config or Config()
     base = default_base(root, runner=run)
     refs = _unlanded_refs(base, root, run, include_remote=include_remote)
     if not refs.listed:
@@ -6030,18 +6181,12 @@ def orphaned(
         # reads as outstanding above because its older `status:` line is an
         # addition, and the recovery offered for it overwrites the base's
         # closed copy with it (`PL-MBTZ`).
-        superseded |= _behind_on_base(name, base, outstanding, root, items_dir, run)
+        superseded |= _behind_on_base(name, base, outstanding, root, settings.items_dir, run)
         outstanding = tuple(path for path in outstanding if path not in superseded)
         if not outstanding:
             continue
         left, took_one_whole = _commits_by_landing(
-            name,
-            base,
-            frozenset(landed),
-            frozenset(outstanding),
-            root,
-            run,
-            items_dir.strip("/") + "/",
+            name, base, frozenset(landed), frozenset(outstanding), root, run, settings
         )
         # A split alone is not enough in either direction, and the branch that
         # taught each half is named in `_commits_by_landing`. The split says
@@ -6300,10 +6445,7 @@ def working_paths(root: Path, *, runner: Runner | None = None) -> WorkingPaths:
     changes are what it is in the middle of - and the middle is where a finding
     is usually made, since it is what the session is looking at.
 
-    Three reads rather than one `status --porcelain`, deliberately: the
-    porcelain format carries status codes, rename arrows and shell-quoted paths
-    with spaces, so parsing it is three chances to get a path wrong. Each of
-    these prints one path per line and nothing else.
+    The uncommitted half is `uncommitted_paths`, which `verify` reads too.
 
     The branch diff is `base...HEAD` rather than `base..HEAD` for the reason
     `files_in_flight` gives: the two-dot form re-reports every file the default
@@ -6320,11 +6462,6 @@ def working_paths(root: Path, *, runner: Runner | None = None) -> WorkingPaths:
     """
     run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)
-    found: set[str] = set()
-    for args in (
-        changed_path_args("diff", "--name-only", f"{base}...HEAD"),
-        changed_path_args("diff", "--name-only", "HEAD"),
-        untracked_path_args(),
-    ):
-        found.update(listed_paths(run(args, root)))
+    committed = listed_paths(run(changed_path_args("diff", "--name-only", f"{base}...HEAD"), root))
+    found = {*committed, *uncommitted_paths(root, run)}
     return WorkingPaths(paths=tuple(sorted(found)), base=base, declined=run.reason)

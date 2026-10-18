@@ -2544,7 +2544,9 @@ the reason somebody wanted it.
 
 Two further fields govern whether the work may be handed to a cheaper model:
 `verify`, a single-line command that proves the item done, and `not-delegable`,
-holding the reason an otherwise-qualifying item is withheld. See *Delegation is
+holding the reason an otherwise-qualifying item is withheld. `docket check`
+refuses a `verify` continued onto an indented line, because the reader joins the
+lines with a space and a shell continuation then runs as an escaped space. See *Delegation is
 derived, never granted* below.
 
 `falsifies` is read by `docket verify` alone, and is absent from every item

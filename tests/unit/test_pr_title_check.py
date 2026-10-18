@@ -41,9 +41,12 @@ def _tree(**refs: dict[str, str]):
 
     def fake(args: list[str]) -> str:
         if args[0] == "ls-tree":
-            # ["ls-tree", "-r", "--name-only", <ref>, "--", <dir>]
-            ref = args[3]
-            return "\n".join(f"docs/items/{name}" for name in refs.get(ref, {}))
+            # ["ls-tree", "-r", <ref>, "--", <dir>], as `vcs._item_blobs` reads it.
+            ref = args[2]
+            return "".join(
+                f"100644 blob {index:040x}\tdocs/items/{name}\n"
+                for index, name in enumerate(refs.get(ref, {}))
+            )
         if args[0] == "show":
             ref, _, path = args[1].partition(":")
             return refs.get(ref, {}).get(path.split("/")[-1], "")
@@ -64,6 +67,20 @@ def test_a_branch_that_closes_an_item_needs_its_id(monkeypatch: pytest.MonkeyPat
     )
 
     assert pr_title_check.closes("base", "head") == ["PL-K7QX"]
+
+
+def test_a_file_below_the_store_closes_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A file in a subdirectory of the store is no item, as `docket` reads it (`PL-86H3`).
+
+    This check listed the store recursively while `docket`'s one-level reads
+    did not, so a closed copy under `docs/items/sub/` owed the title an id that
+    `docket` held no item for.
+    """
+    _install(
+        monkeypatch, base={}, head={"sub/PL-K7QX-a.md": CLOSED.format(id="PL-K7QX", status="done")}
+    )
+
+    assert pr_title_check.closes("base", "head") == []
 
 
 def test_the_incident_this_exists_for_is_refused(
@@ -166,7 +183,7 @@ def _git_answering(**refs: dict[str, str]):
         args = list(argv[1:])
         if args[0] == "rev-parse":
             return subprocess.CompletedProcess(argv, 0, b"claude/pl-1pbv-slug\n", b"")
-        ref = args[3] if args[0] == "ls-tree" else args[1].partition(":")[0]
+        ref = args[2] if args[0] == "ls-tree" else args[1].partition(":")[0]
         if ref in refs:
             return subprocess.CompletedProcess(argv, 0, tree(args).encode(), b"")
         said = f"fatal: Not a valid object name {ref}\n"
