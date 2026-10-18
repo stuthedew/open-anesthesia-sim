@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/model.py, subprojects/docket/README.md, s
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
 closed: 2026-10-18
+pr: 1597
 payoff: a quoted or comment-interrupted front-matter value is read as YAML reads it or refused by name, rather than stored short with nothing reported
 verify: grep -q 'def test_a_quoted_value_continued_on_a_hash_led_line_is_read_whole' subprojects/docket/tests/test_model.py && grep -q 'def test_a_comment_line_inside_a_plain_value_is_not_folded_over' subprojects/docket/tests/test_model.py
 reenters: PL-HXJY

@@ -10,6 +10,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md
 blocked-by: PL-5DZ8, PL-8QMD, PL-ZGYX
 added: 2026-10-04
 closed: 2026-10-18
+pr: 1597
 payoff: a prose wrap that would render a clause as a stray list item fails make check where it is written, instead of being found on the rendered page one capture at a time
 verify: grep -q 'def test_a_wrapped_clause_that_renders_as_a_list_item_is_refused' tests/unit/test_doc_check.py && grep -q 'def test_a_list_that_interrupts_a_paragraph_on_purpose_passes' tests/unit/test_doc_check.py
 ---

@@ -10,6 +10,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
 closed: 2026-10-18
+pr: 1597
 payoff: doc_check's workflow readers hand back what they declined to read, so no caller can drop it by passing an empty list
 verify: grep -q 'def test_workflow_commands_returns_its_declines' tests/unit/test_doc_check.py
 ---
