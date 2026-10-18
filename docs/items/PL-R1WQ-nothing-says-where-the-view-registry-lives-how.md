@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: interface-areas
+milestone: v0.5.29
 touches: src/anesthesia_sim/app/, tests/integration, tests/unit, docs/ARCHITECTURE.md, docs/interface-provenance.md, tools/contrast_check.py, docs/items
 added: 2026-09-16
 closed: 2026-10-18

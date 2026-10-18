@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux, docs
 feature: reset-aftermath
+milestone: v0.5.29
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py, tests/unit/test_formatting.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-22

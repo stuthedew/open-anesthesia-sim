@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra, planning
 feature: convergence-visibility
+milestone: v0.5.29
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_trend.py, docs/items
 added: 2026-09-19
 closed: 2026-10-18
