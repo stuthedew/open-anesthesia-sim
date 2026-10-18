@@ -3,12 +3,14 @@ id: PL-JHHC
 title: A decision whose answer adds a commit to a pull request held for the owner's read is orphaned when the owner answers and merges in one sitting: PL-0GJC's answer was written while #1328 merged without it on 2026-10-04, and needed a follow-up pull request; nothing marks such a pull request as waiting on a commit, so the merge button reads as ready
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: review-hold
-touches: subprojects/docket/src/docket/arming.py, .claude/rules/instruction-writing.md
+touches: .claude/rules/instruction-writing.md
 blocked-by: PL-5DZ8, PL-8QMD, PL-ZGYX
 added: 2026-10-04
+closed: 2026-10-18
+pr: 1587
 payoff: a pull request that a pending answer will add a commit to stops reading as ready to merge, so the answer lands with its work instead of in a follow-up pull request
 verify: grep -qE '^\*\*Shape chosen, [0-9]{4}-' docs/items/PL-JHHC-*.md
 not-delegable: the shape - a draft-conversion rule or an arm hold on needs-decision - is the building session's judgment, and no admitted command reads either mechanism, so the command reads only the recorded choice
@@ -71,3 +73,21 @@ request to carry it: the answering session saw the merge and opened #1335.
 `bin/docket generators` marked still generating, so the generator pause that
 held this item has ended (`CLAUDE.md` § "What this project is"), and the
 `verify:` and `payoff:` written above stand.
+
+**Shape chosen, 2026-10-18: a claim at `needs-decision`, and no new code.**
+Of the two shapes, the `arm` hold on any `needs-decision` item would have held
+every batch pull request that sets an item aside for the next decision round,
+which design mode's "A build that meets a decision sets the item aside and goes
+on" merges on purpose. A claim already does what the brief asks. `arm` keeps
+a branch with an open claim unarmed, the start mode keeps its pull request a
+draft, and `needs-decision` does not release a claim
+(`claims.RELEASING_STATUSES` is the closed statuses and `blocked`). A set-aside
+item yields its claim, so it holds nothing. So the rule is the draft-conversion
+shape built on that existing claim. While a pull request is open on the
+branch, the item the answer goes into stays claimed there at `needs-decision`,
+reopened if it had closed, and the pull request is a draft until the answer is
+committed. It is written into rule 14's line on answers that produce a commit,
+in `.claude/rules/instruction-writing.md`. That line's old ending, "otherwise
+it is answered alongside the merge and its answer is orphaned", is what it
+replaces. `PL-0GJC`'s case would have read as a draft on `#1328` with its
+claim open, and the merge button would not have offered a merge.

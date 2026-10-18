@@ -353,3 +353,58 @@ def test_a_newest_entry_the_api_has_promised_nothing_about_is_a_refusal(
     """A missing `merged_at` most of all: read as "not merged", it is the answer being fixed."""
     _served(json.dumps([entry]))
     assert open_pull_requests.newest_pull_request("owner/repo", "claude/one", "main") is None
+
+
+def _switch(event: str, at: str) -> dict:
+    return {"event": event, "created_at": at}
+
+
+def test_auto_merge_reads_the_latest_switch_off_the_pull_requests_timeline(
+    _served, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The last switch on the timeline decides, whichever merge method switched it on (`PL-8TPV`).
+
+    `#1478`'s timeline on 2026-10-17 had this shape: armed, switched off,
+    armed again and switched off again. Other events in between are not
+    switches.
+    """
+    urls = _served(
+        _payload(
+            _switch("auto_squash_enabled", "2026-10-17T06:17:17Z"),
+            _switch("auto_merge_disabled", "2026-10-17T06:31:05Z"),
+            {"event": "committed", "sha": HEAD_SHA},
+            _switch("auto_merge_enabled", "2026-10-17T06:32:27Z"),
+            _switch("auto_merge_disabled", "2026-10-17T06:34:21Z"),
+        )
+    )
+    monkeypatch.setattr(open_pull_requests, "repo_slug", lambda: "owner/repo")
+
+    assert open_pull_requests.main(["--auto-merge", "1478"]) == 0
+    assert capsys.readouterr().out == "off 2026-10-17T06:34:21Z\n"
+    assert urls[0].startswith("https://api.github.com/repos/owner/repo/issues/1478/timeline?")
+
+
+def test_auto_merge_answers_on_and_nothing_where_it_was_never_switched_on(_served) -> None:
+    _served(_payload(_switch("auto_rebase_enabled", "2026-10-17T06:17:17Z")))
+    assert open_pull_requests.auto_merge("owner/repo", 7) == ("on", "2026-10-17T06:17:17Z")
+
+    _served(_payload({"event": "labeled"}))
+    assert open_pull_requests.auto_merge("owner/repo", 7) is None
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [urllib.error.URLError("no network"), "{}", _payload({"event": "auto_merge_disabled"})],
+    ids=["no-network", "not-a-listing", "a-switch-with-no-time"],
+)
+def test_auto_merge_exits_non_zero_and_prints_nothing_when_it_could_not_ask(
+    _served,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str | Exception,
+) -> None:
+    """Printed nothing with exit 0 would read as "never armed", and `arm` would arm it."""
+    _served(failure)
+    monkeypatch.setattr(open_pull_requests, "repo_slug", lambda: "owner/repo")
+    assert open_pull_requests.main(["--auto-merge", "7"]) == 1
+    assert capsys.readouterr().out == ""

@@ -11436,6 +11436,249 @@ def test_the_gate_arm_holds_for_a_read_is_the_module_that_decides_the_answer() -
     assert (root / arming.GATE).resolve() == Path(arming.__file__).resolve()
 
 
+def test_the_gate_and_the_tooling_are_found_from_where_the_module_sits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The package spells none of this repository's layout, and outside a checkout nothing is it.
+
+    `TOOLING` and `GATE` were written into the module, so a moved package or
+    another repository would have named paths nothing holds (`PL-QFCR`).
+    """
+    assert arming.TOOLING == "subprojects/docket/"
+    assert vcs.path_in_checkout(tmp_path / "arming.py") == ""
+    assert arming._tooling("") is None
+    assert arming._tooling("src/docket/arming.py") == ""
+    assert arming._tooling(ARM_GATE) == "subprojects/docket/"
+
+    monkeypatch.setattr(arming, "TOOLING", None)
+    assert arming.outside_the_store("subprojects/docket/src/docket/render.py", "docs/items")
+    assert not arming.outside_the_store("docs/items/PL-B1B1-held.md", "docs/items")
+
+
+#: A test file pinning `arm`'s answers, as the base holds it.
+ARM_PINS_BASE = '''
+import arming
+
+def _arm(root):
+    return 0
+
+def test_arm_holds_a_claim(tmp_path):
+    """Says what it pins."""
+    assert _arm(tmp_path) == 1
+
+def test_the_read_list_is_spelt(tmp_path):
+    assert arming.READ_PATHS
+
+def test_something_else(tmp_path):
+    assert True
+'''
+
+
+@pytest.mark.parametrize(
+    ("change", "held"),
+    [
+        ("assert _arm(tmp_path) == 1", ""),
+        ("assert _arm(tmp_path) == 0", "test_arm_holds_a_claim"),
+        ("    assert arming.READ_PATHS\n", "test_the_read_list_is_spelt"),
+        ("def _arm(root):\n    return 0", "_arm"),
+        ('"""Says what it pins."""', ""),
+        ("assert True", ""),
+    ],
+    ids=["new-test", "edit", "delete", "edit-helper", "docstring", "unpinned"],
+)
+def test_arm_holds_a_change_to_an_existing_test_arm_test(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], change: str, held: str
+) -> None:
+    """A loosening read through `vcs` or `claims` must edit a pinned answer, and that waits.
+
+    Their modules arm on green, so a change there that reads fewer paths would
+    merge unread with its test edited to match (project owner, 2026-10-12,
+    ratified, `PL-WW0Q`). A changed or deleted pinned test holds the pull
+    request for the owner's read. A new one, a reworded docstring and a test
+    that pins nothing do not.
+    """
+    pins = "subprojects/docket/tests/test_cli.py"
+    root, git = _arm_repo(tmp_path)
+    _on_base(git, root, {pins: ARM_PINS_BASE})
+    if not held:
+        replaced = {
+            "assert _arm(tmp_path) == 1": ARM_PINS_BASE
+            + "\ndef test_arm_holds_more(tmp_path):\n    assert _arm(tmp_path) == 1\n",
+            '"""Says what it pins."""': ARM_PINS_BASE.replace(
+                '"""Says what it pins."""', '"""Says it plainly."""'
+            ),
+            "assert True": ARM_PINS_BASE.replace("assert True", "assert 1"),
+        }[change]
+    elif change.startswith("def _arm"):
+        replaced = ARM_PINS_BASE.replace("return 0", "return 1")
+    elif change.startswith("    assert arming"):
+        replaced = ARM_PINS_BASE.replace(
+            "def test_the_read_list_is_spelt(tmp_path):\n" + change, ""
+        )
+    else:
+        replaced = ARM_PINS_BASE.replace("assert _arm(tmp_path) == 1", change)
+    _commit_file(git, root, pins, replaced, ARM_T0)
+
+    code = _arm(root)
+    out = capsys.readouterr().out
+    if not held:
+        assert code == 0, out
+        assert out.startswith(f"arm - {ARM_BRANCH}")
+        return
+    count = len(held.split(", "))
+    tests = "test" if count == 1 else "tests"
+    assert code == 1
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it changes or deletes {count} {tests} in {pins} pinning the "
+        f"gate's answers: {held}, so its pull request waits on the owner's read\n"
+    )
+
+
+@pytest.mark.parametrize(
+    ("change", "path"),
+    [
+        ("rename", "src/anesthesia_sim/core/uptake.py"),
+        ("non-ascii", "src/anesthesia_sim/core/café.py"),
+        ("delete", "src/anesthesia_sim/core/uptake.py"),
+    ],
+)
+def test_arm_holds_a_simulator_path_whatever_shape_its_change_takes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], change: str, path: str
+) -> None:
+    """Each shape the read of changed paths once broke on is pinned through real git (`PL-WW0Q`).
+
+    A move into the store printed as the new path alone under rename detection
+    (`PL-KR69`), and git quoted a path outside ASCII, so the read named a file
+    nothing holds (`PL-8HSX`). Either way the simulator change armed unread.
+    """
+    root, git = _arm_repo(tmp_path)
+    if change == "non-ascii":
+        _put(git, root, path)
+    else:
+        _on_base(git, root, {path: "X = 1\n"})
+        if change == "rename":
+            git("mv", path, "docs/items/uptake.py")
+        else:
+            git("rm", "-q", path)
+        git("commit", "-qm", f"{change} {path}", when=ARM_T0)
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it changes 1 simulator path and no Owner-read record on a "
+        f"commit since its newest change there says whether the owner must read it\n  {path}\n"
+    )
+
+
+def _open_pull(root: Path) -> Callable[[str, str], vcs.PullRequestLookup]:
+    """A forge naming an open pull request whose head is the branch's tip."""
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    return lambda branch, base: vcs.PullRequestLookup(vcs.NewestPullRequest(7, "open", head))
+
+
+@pytest.mark.parametrize(
+    ("switch", "record", "answer"),
+    [
+        (arming.AutoMerge("off", "2026-09-01T12:00:30Z"), "", arming.HOLD),
+        (arming.AutoMerge("off", "2026-09-01T12:00:30Z"), "2026-09-01T12:00:10+00:00", arming.HOLD),
+        (arming.AutoMerge("off", "2026-09-01T12:00:30Z"), "2026-09-01T12:00:40+00:00", arming.ARM),
+        (arming.AutoMerge("on", "2026-09-01T12:00:30Z"), "", arming.ARM),
+        (arming.AutoMerge(), "", arming.ARM),
+        (arming.AutoMerge(declined="`false` exited 1"), "", arming.UNKNOWN),
+    ],
+    ids=[
+        "owner-off",
+        "record-before-the-switch",
+        "record-after-the-switch",
+        "armed",
+        "never-armed",
+        "could-not-ask",
+    ],
+)
+def test_an_owner_disarm_is_not_rearmed(
+    tmp_path: Path, switch: arming.AutoMerge, record: str, answer: str
+) -> None:
+    """A switch off that no commit since records as the session's is the owner's, and holds.
+
+    GitHub names the owner's account for every switch, a session's included,
+    so on 2026-10-17 sessions armed again five pull requests the owner had
+    switched off to merge others first (`PL-8TPV`). A session's own switch is
+    the one it records after making it. A record made before the switch cannot
+    be for it.
+    """
+    root, git = _arm_repo(tmp_path)
+    _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
+    if record:
+        git(
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "PL-F4F4: note the switch\n\nAuto-merge: off - a claim rides the next push\n"
+            "Co-authored-by: Claude <noreply@anthropic.com>",
+            when=record,
+        )
+    asked: list[int] = []
+
+    def auto_merge(number: int) -> arming.AutoMerge:
+        asked.append(number)
+        return switch
+
+    verdict = arming.arm(
+        root,
+        items_dir="docs/items",
+        now=datetime.fromisoformat(ARM_NOW),
+        newest=_open_pull(root),
+        auto_merge=auto_merge,
+    )
+
+    assert asked == [7]
+    assert verdict.answer == answer, verdict.lines
+    if answer == arming.HOLD:
+        assert verdict.lines[0] == (
+            f"hold - {ARM_BRANCH}: auto-merge was switched off at 2026-09-01T12:00:30Z, after "
+            "it was armed, and no commit since records this session doing it"
+        )
+        assert arming.OWNER_OFF in verdict.lines
+        assert arming.READ_ASK not in verdict.lines
+    if answer == arming.UNKNOWN:
+        assert "could not be asked - `false` exited 1" in verdict.lines[0]
+
+
+def test_arm_asks_the_auto_merge_command_docket_toml_names(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`auto_merge_command` is handed the pull request's number, and its line is read.
+
+    The settings file is left untracked, so the change a merge would land is
+    the item file alone.
+    """
+    root, git = _arm_repo(tmp_path)
+    _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
+    head = git("rev-parse", "HEAD").strip()
+    forge = tmp_path / "forge.py"
+    forge.write_text(
+        "import sys\n"
+        "if sys.argv[1] == 'newest':\n"
+        f"    print('7 open {head}')\n"
+        "elif sys.argv[2] == '7':\n"
+        "    print('off 2026-09-01T12:00:30Z')\n",
+        encoding="utf-8",
+    )
+    (root / "docket.toml").write_text(
+        "[docket]\n"
+        f'newest_pull_request_command = "python3 {forge} newest"\n'
+        f'auto_merge_command = "python3 {forge} auto"\n',
+        encoding="utf-8",
+    )
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(f"hold - {ARM_BRANCH}: auto-merge was switched off at 2026-09-01")
+
+
 def _flight_row(out: str, start: str) -> str:
     return next(line for line in out.splitlines() if line.startswith(start))
 

@@ -32,9 +32,11 @@ every later push while a pull request is open.
   work nobody finished or handed back. A simulator path no `Owner-read`
   record covers holds it until the session records whether the owner needs
   to read it (`JUDGE_ASK`), so a judgment nobody made fails safe rather than
-  merging a clinical change unread. A record saying `needed`, and any change
-  to this module, hold it for the owner's read, and it merges on the owner's
-  word alone. Once no claim holds it, that hold also says where the ask goes
+  merging a clinical change unread. A record saying `needed`, any change to
+  this module, and a change to an existing test pinning its answers (`PINS`)
+  hold it for the owner's read, and it merges on the owner's word alone. So
+  does a switch of auto-merge off that no commit records as the session's
+  (`AUTO_MERGE`). Once no claim holds it, that hold also says where the ask goes
   and what it carries (`READ_ASK`).
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
@@ -135,6 +137,12 @@ has already merged; what went unread is said beside it.
   owner. Chosen over dropping the list and leaving the judgment to prose,
   which fails open on a session that never makes it, and over keeping the
   list and rewording the ask, which leaves housekeeping waiting on the owner.
+- the gate's read covers the existing tests that pin its answers as well as
+  this module, so a loosening through what the answer is read through has to
+  edit one (project owner, 2026-10-12, ratified, over holding `vcs.py`,
+  `claims.py`, `cli.py` and `test_cli.py` whole, and over leaving it;
+  `PL-WW0Q`). It reopens, for that one route, `PL-SQTR`'s line at this
+  module alone.
 
 Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
 holds"): a triage pass moving statuses is the queue-only work auto-merge
@@ -157,6 +165,7 @@ from .claims import LAPSED, RELEASED, Hold, holdings
 from .lines import split_lines
 from .python import imports
 from .vcs import (
+    PULL_OPEN,
     REMOTE,
     MergedPullRequest,
     PullRequestLookup,
@@ -172,6 +181,7 @@ from .vcs import (
     default_base,
     head_branch,
     listed_paths,
+    path_in_checkout,
     remote_heads,
     resolved,
 )
@@ -239,6 +249,31 @@ REPAIR_EXCEPTION = (
     "lands the fix once CI is green, as docs/maintainer.md says."
 )
 
+#: The commit trailer a session records its own switch of auto-merge off in,
+#: with the value `AUTO_MERGE_OFF - <why>`. GitHub names the owner's account
+#: as the actor of every arm and every disarm, the ones a session makes
+#: through its tools included, so nothing the forge keeps says who switched it
+#: off (`PL-8TPV`, checked on `#1478` and `#1586`, 2026-10-18). A session
+#: switches it off only before a push that brings a hold, or when told to
+#: change nothing, so it records that in the next commit it makes; a switch no
+#: record covers is the owner's.
+AUTO_MERGE = "Auto-merge"
+AUTO_MERGE_OFF = "off"
+
+#: What a `hold` tells a session when auto-merge was switched off and no
+#: commit records this session doing it. The owner switches it off to choose
+#: the order pull requests merge in, so a session that armed it again, or
+#: merged it once CI was green, would override that choice: ten switches on
+#: five pull requests on 2026-10-17 were the owner's, and the sessions read
+#: them as theirs to undo (`PL-8TPV`).
+OWNER_OFF = (
+    "  The owner switched auto-merge off to hold it back, most often so that another pull "
+    "request merges first. Leave it off, and arm or merge it only on the owner's word. If "
+    "this session switched it off itself, as its own transcript shows, record that as "
+    f"`{AUTO_MERGE}: {AUTO_MERGE_OFF} - <why>` in the last paragraph of a commit made after "
+    "the switch, and ask again."
+)
+
 #: What a `hold` on a simulator path with no record tells the session. The
 #: test for a real decision is the design round's, so it is pointed at rather
 #: than restated, and the high-risk cases are the ones the owner's rule names
@@ -259,22 +294,60 @@ JUDGE_ASK = (
     "a measurement. Then ask again."
 )
 
-#: The queue's own tooling, which arms on green beside the store. The path is
-#: this repository's layout.
-TOOLING = "subprojects/docket/"
-
 #: The pull requests' body files, which arm on green beside the store and the
 #: tooling: `tools/pr_body_check.py --recover` writes one for a squash commit
 #: that landed with no body, and a copy of a body is never a change to read
-#: (`PL-3PH2`). `verify` sanctions the same write as `record`. The path is this
-#: repository's layout, as `TOOLING`'s is.
+#: (`PL-3PH2`). `verify` sanctions the same write as `record`. The path is
+#: this repository's layout. It is spelt here rather than found as `GATE` is,
+#: because it is a directory a tool writes and not a part of the package.
 RECORDS = "docs/pr-bodies/"
 
 #: The one file under `TOOLING` that still waits on a read: this module, which
-#: decides the answer, so a change to it could loosen the rule it states.
-#: `test_cli` pins it to the module's own path, so a move cannot leave it
-#: naming a file nothing reads.
-GATE = TOOLING + "src/docket/arming.py"
+#: decides the answer, so a change to it could loosen the rule it states. It is
+#: the module's own path from the root of the checkout holding it, so a move
+#: cannot leave it naming a file nothing reads, and the package spells none of
+#: this repository's layout (`PL-QFCR`). It is read from the module rather than
+#: from `docket.toml`, because a change to `docket.toml` arms on green: a
+#: setting naming the gate could point it at another file and let the next
+#: change to this one merge unread. `""` where no checkout holds the module,
+#: since then no path of the repository being asked about is the gate.
+GATE = path_in_checkout(Path(__file__))
+
+
+def _tooling(gate: str) -> str | None:
+    """The package's project directory, which holds `src/docket/` and so this module.
+
+    `""` where that directory is the checkout's root, so that every path is
+    the tooling's, and `None` where no checkout holds the module, so that none
+    is.
+    """
+    if not gate:
+        return None
+    home = PurePosixPath(gate).parents[2].as_posix()
+    return "" if home == "." else home + "/"
+
+
+#: The queue's own tooling, which arms on green beside the store. It is found
+#: from `GATE`, as the directory the package lives in.
+TOOLING = _tooling(GATE)
+
+#: The test file whose arm tests pin the gate's answers. A change to what the
+#: answer is read through - `vcs.changed_path_args`, `claims.holdings`,
+#: `cli.cmd_arm` - arms on green, so a loosening there passes unread unless it
+#: also has to edit a pinned answer. So a change to or a deletion of an
+#: existing pinned test waits on the owner's read, as a change to `GATE` does,
+#: and a new test arms (project owner, 2026-10-12, ratified, over holding
+#: `vcs.py`, `claims.py`, `cli.py` and `test_cli.py` whole, `PL-WW0Q`).
+#: `None` where no checkout holds the module.
+PINS = None if TOOLING is None else TOOLING + "tests/test_cli.py"
+
+#: How a top-level name in `PINS` marks the definition as one of the arm
+#: tests, their helpers or their constants.
+PIN_PREFIXES = ("test_arm_", "_arm", "ARM_")
+
+#: Names whose use in a test marks it as pinning an answer of `arm`'s: the
+#: helper that runs the command, and this module.
+PIN_NAMES = frozenset({"_arm", "arming"})
 
 #: The simulator's tests, at the root: `subprojects/docket/tests/` starts with
 #: `subprojects/`, so the prefix leaves it to the tooling.
@@ -420,7 +493,78 @@ def outside_the_store(path: str, items_dir: str) -> bool:
     the old hold would have given.
     """
     prefix = items_dir.strip("/") + "/"
-    return not path.startswith((prefix, TOOLING, RECORDS))
+    if TOOLING is not None and path.startswith(TOOLING):
+        return False
+    return not path.startswith((prefix, RECORDS))
+
+
+def _bound_names(node: ast.stmt) -> tuple[str, ...]:
+    """The names a top-level statement defines: a function's, or an assignment's targets."""
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return (node.name,)
+    if isinstance(node, ast.Assign):
+        return tuple(target.id for target in node.targets if isinstance(target, ast.Name))
+    if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+        return (node.target.id,)
+    return ()
+
+
+def pinned_definitions(tree: ast.Module) -> dict[str, str]:
+    """Each definition in `PINS` that pins `arm`'s answers, with a dump of what it says.
+
+    A definition is pinned when its name starts with one of `PIN_PREFIXES`,
+    or when it is a test that uses one of `PIN_NAMES`. The dump leaves out a
+    function's docstring, so rewording what a test says about itself is not a
+    change to what it pins. It also leaves out formatting and comments, which
+    `ast` does not keep.
+    """
+    found: dict[str, str] = {}
+    for node in tree.body:
+        for name in _bound_names(node):
+            uses = {sub.id for sub in ast.walk(node) if isinstance(sub, ast.Name)}
+            if not name.startswith(PIN_PREFIXES) and not (
+                name.startswith("test_") and uses & PIN_NAMES
+            ):
+                continue
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                body = node.body[1:] if ast.get_docstring(node, clean=False) else node.body
+                parts: list[ast.AST] = [*node.decorator_list, node.args, *body]
+                if node.returns is not None:
+                    parts.append(node.returns)
+                found[name] = "\n".join(ast.dump(part) for part in parts)
+            else:
+                found[name] = ast.dump(node)
+    return found
+
+
+def changed_pins(before: str, after: str) -> tuple[str, ...]:
+    """The pinned definitions of `before` that `after` changes or deletes, sorted.
+
+    A definition `after` adds is not among them: a new pinned answer loosens
+    nothing. Raises what `ast.parse` raises on a side that will not parse.
+    """
+    old = pinned_definitions(ast.parse(before, filename=PINS or "test_cli.py"))
+    new = pinned_definitions(ast.parse(after, filename=PINS or "test_cli.py"))
+    return tuple(sorted(name for name, said in old.items() if new.get(name) != said))
+
+
+@dataclass(frozen=True)
+class AutoMerge:
+    """What the forge says of a pull request's auto-merge: its latest switch, and when.
+
+    `state` is `AUTO_MERGE_ON` or `AUTO_MERGE_OFF` for the latest switch, and
+    `""` where nobody ever switched it on. `at` is when that switch was made,
+    in ISO 8601. `declined` says why the forge could not be asked, so that
+    "could not ask" never reads as "never armed".
+    """
+
+    state: str = ""
+    at: str = ""
+    declined: str = ""
+
+
+#: `AutoMerge.state` for a pull request whose latest switch armed it.
+AUTO_MERGE_ON = "on"
 
 
 @dataclass(frozen=True)
@@ -457,7 +601,10 @@ class Verdict:
     simulator paths a merge would land, `record` the newest `OWNER_READ`
     record that covers them (or, with none, the branch), `outside` the paths it would
     land outside the store, the tooling and the records that arm all the same
-    and are named, `gate` whether it would change this module, and `behind`
+    and are named, `gate` whether it would change this module, `pinned` the
+    existing tests in `PINS` pinning its answers that it would change or
+    delete, `switched_off` when the owner switched its auto-merge off, and
+    `behind`
     how many of the base's commits the branch lacks. `unpulled` is what the branch's copy on
     the remote holds that HEAD lacks, with what brings it in, or why that
     could not be read, said before anything else. `unread` is why the answer
@@ -474,6 +621,8 @@ class Verdict:
     record: OwnerRead | None = None
     outside: tuple[str, ...] = ()
     gate: bool = False
+    pinned: tuple[str, ...] = ()
+    switched_off: str = ""
     behind: int = 0
     unpulled: str = ""
     unread: tuple[str, ...] = ()
@@ -490,8 +639,12 @@ class Verdict:
 
     @property
     def needs_owner(self) -> bool:
-        """Whether the pull request waits on the owner: the gate, or a record saying needed."""
-        return self.gate or (self.record is not None and self.record.needed)
+        """Whether the pull request waits on the owner's read.
+
+        It does for a change to the gate or to a test pinning its answers, and
+        for a record saying needed.
+        """
+        return self.gate or bool(self.pinned) or (self.record is not None and self.record.needed)
 
     @property
     def lines(self) -> tuple[str, ...]:
@@ -573,7 +726,8 @@ class Verdict:
             said.append(f"  {self._shown(self.read)}")
         said.append(
             "  Leave auto-merge off, disarming it before the push that brings this if it is "
-            "armed"
+            f"armed and recording that as `{AUTO_MERGE}: {AUTO_MERGE_OFF} - <why>` in the next "
+            "commit"
             + (
                 ", and keep the pull request a draft while a claim holds it."
                 if self.claims
@@ -585,6 +739,8 @@ class Verdict:
         # it, as docs/maintainer.md says (`PL-XTBF`). A draft has no such case.
         if not self.claims:
             said.append(REPAIR_EXCEPTION)
+        if self.switched_off:
+            said.append(OWNER_OFF)
         # A claim keeps the pull request a draft, which nobody is asked to read.
         if self.unjudged and not self.claims:
             said.append(JUDGE_ASK)
@@ -595,7 +751,10 @@ class Verdict:
     @property
     def _arming(self) -> str:
         """The store, the tooling and the records, as `arm` names the paths outside them."""
-        return f"{self.items_dir}, {TOOLING.rstrip('/')} and {RECORDS.rstrip('/')}"
+        named = [self.items_dir]
+        if TOOLING is not None:
+            named.append(TOOLING.rstrip("/") or "the tooling")
+        return f"{', '.join(named)} and {RECORDS.rstrip('/')}"
 
     @staticmethod
     def _shown(paths: tuple[str, ...]) -> str:
@@ -622,8 +781,20 @@ class Verdict:
                 f"the {OWNER_READ} record on {self.record.commit[:12]} asks for the owner's "
                 f"read: {self.record.why}"
             )
+        if self.switched_off:
+            reasons.append(
+                f"auto-merge was switched off at {self.switched_off}, after it was armed, and "
+                "no commit since records this session doing it"
+            )
         if self.gate:
             reasons.append(f"it changes {GATE}, the gate itself")
+        if self.pinned:
+            count = len(self.pinned)
+            tests = "test" if count == 1 else "tests"
+            reasons.append(
+                f"it changes or deletes {count} {tests} in {PINS} pinning the gate's answers: "
+                f"{self._shown(self.pinned)}"
+            )
         return reasons
 
 
@@ -635,6 +806,7 @@ def arm(
     fetch: bool = True,
     runner: Runner | None = None,
     newest: Callable[[str, str], PullRequestLookup] | None = None,
+    auto_merge: Callable[[int], AutoMerge] | None = None,
 ) -> Verdict:
     """Whether the pull request `HEAD`'s branch would open, or has open, may be armed.
 
@@ -660,6 +832,12 @@ def arm(
     `vcs.carried_merge` confirms HEAD still stands on is `landed` at once, and
     a forge that could not be asked is unread, since arming a pull request that
     merged is the answer this exists to stop.
+
+    **And its auto-merge may have been switched off by the owner** (`PL-8TPV`).
+    `auto_merge` asks the forge for the latest switch on an open pull request,
+    handed its number. A switch off that no `AUTO_MERGE` record on a commit
+    made since covers holds the pull request, and a forge that could not be
+    asked is unread.
     """
     unread: list[str] = []
     ran = runner or _run_git
@@ -694,6 +872,7 @@ def arm(
         reason = f"HEAD is on {name}, the default branch, which opens no pull request of its own"
         return Verdict(UNKNOWN, branch=name, base=base, unread=(reason,))
     unpulled = _unpulled(root, run, heads, name, branch)
+    switched_off = ""
     if newest is not None:
         asked = newest(branch, _head_name(base, remotes))
         pull = asked.newest
@@ -719,6 +898,18 @@ def arm(
                     unread=tuple(unread),
                     merged=merged,
                 )
+            if pull.state == PULL_OPEN and auto_merge is not None:
+                switch = auto_merge(pull.number)
+                if switch.declined:
+                    unread.append(
+                        f"whether auto-merge on #{pull.number} was switched off could not be "
+                        f"asked - {switch.declined}"
+                    )
+                elif switch.state == AUTO_MERGE_OFF:
+                    owned, misread = _switched_off_here(root, run, base, switch.at)
+                    unread.extend(misread)
+                    if not owned:
+                        switched_off = switch.at
 
     prefix = items_dir.strip("/") + "/"
     # Both sides of a rename, so a file moved into the store shows the deletion
@@ -727,6 +918,7 @@ def arm(
     on_list: tuple[str, ...] = ()
     outside: tuple[str, ...] = ()
     gate = False
+    pinned: tuple[str, ...] = ()
     if answered(changed):
         paths = set(listed_paths(changed))
         # The gate is reported apart, and asked for directly rather than read
@@ -735,6 +927,9 @@ def arm(
         rest = paths - {GATE}
         tooling, unreadable = _tests_of_the_tooling(sorted(rest), base, root, run)
         unread.extend(unreadable)
+        if PINS is not None and PINS in paths:
+            pinned, unpinned = _pins_changed(base, root, run)
+            unread.extend(unpinned)
         on_list = tuple(sorted(path for path in rest if not arms_on_green(path, tooling)))
         outside = tuple(
             sorted(
@@ -783,11 +978,13 @@ def arm(
         record=record,
         outside=outside,
         gate=gate,
+        pinned=pinned,
+        switched_off=switched_off,
         behind=behind,
         unpulled=unpulled,
         unread=tuple(unread),
     )
-    if claims or found.unjudged or found.needs_owner:
+    if claims or found.unjudged or found.needs_owner or switched_off:
         return found
     if unpulled or unread:
         return Verdict(UNKNOWN, branch=name, base=base, unpulled=unpulled, unread=tuple(unread))
@@ -802,6 +999,33 @@ def arm(
         record=record,
         outside=outside,
     )
+
+
+def _switched_off_here(root: Path, run: Runner, base: str, at: str) -> tuple[bool, tuple[str, ...]]:
+    """Whether a commit of the branch records this session switching auto-merge off at `at`.
+
+    A record counts when its commit's committer date is `at` or later: a
+    session switches it off and then commits, so a record made before the
+    switch cannot be for it. A time that does not parse leaves the answer
+    unread, and so does a commit date that does not.
+    """
+    try:
+        switched = datetime.fromisoformat(at.replace("Z", "+00:00"))
+    except ValueError:
+        return False, (f"the forge's time for the switch, {at!r}, is not a time",)
+    fmt = f"--format=%cI%x1f%(trailers:key={AUTO_MERGE},valueonly,unfold,separator=%x1e)"
+    for line in split_lines(run(["log", fmt, f"{base}..HEAD", "--"], root)):
+        when, _, values = line.partition("\x1f")
+        said = [value for value in values.split("\x1e") if value.strip()]
+        if not any(value.partition(" - ")[0].strip().lower() == AUTO_MERGE_OFF for value in said):
+            continue
+        try:
+            committed = datetime.fromisoformat(when)
+        except ValueError:
+            return False, (f"a commit's date, {when!r}, is not a time",)
+        if committed >= switched:
+            return True, ()
+    return False, ()
 
 
 def _owner_read(
@@ -840,6 +1064,35 @@ def _owner_read(
             )
         return OwnerRead(commit=commit, needed=parsed[0], why=parsed[1]), ()
     return None, ()
+
+
+def _pins_changed(base: str, root: Path, run: Runner) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The pinned tests in `PINS` the change edits or deletes, and why they went unread.
+
+    The file is read at the merge base and at HEAD, the two sides
+    `_tests_of_the_tooling` reads. A side git would not hand over, or one that
+    will not parse here, leaves the answer unread, so `arm` never arms on a
+    comparison it could not make.
+    """
+    fork = run(["merge-base", base, "HEAD"], root).strip()
+    if not fork:
+        return (), (
+            f"git gave no merge base of {base} and HEAD, so whether the change edits a test "
+            f"in {PINS} pinning the gate's answers was not read",
+        )
+    sides = [run(["show", f"{rev}:{PINS}"], root) for rev in (fork, "HEAD")]
+    if not all(answered(side) for side in sides):
+        return (), (
+            f"git would not hand over {PINS} on both sides of the change, so whether it edits "
+            "a test pinning the gate's answers was not read",
+        )
+    try:
+        return changed_pins(*sides), ()
+    except (SyntaxError, ValueError, RecursionError) as error:
+        return (), (
+            f"{PINS} would not parse under this python3 ({error}), so whether the change edits "
+            "a test pinning the gate's answers was not read",
+        )
 
 
 def _tests_of_the_tooling(

@@ -1011,7 +1011,12 @@ A project configuring no command gets the second reading, and `flight
 for `branch` and `arm` (`PL-8BR0`): the package appends the branch and the
 default branch's name, and the command prints `NUMBER STATE HEAD`, nothing
 where no pull request was ever opened, or exits non-zero where it could not
-ask.
+ask. `auto_merge_command` is the same boundary for `arm`'s other question
+(`PL-8TPV`): the package appends the pull request's number, and the command
+prints `on TIME` or `off TIME` for the latest switch of its auto-merge, nothing
+where it was never switched on, or exits non-zero where it could not ask. A
+switch off that no `Auto-merge: off - <why>` trailer on a commit made since
+records as the session's holds the pull request.
 
 **The forge is asked once per run, wherever a branch carries anything.** It was
 asked only where a branch had finished, which kept `docket flight` off the

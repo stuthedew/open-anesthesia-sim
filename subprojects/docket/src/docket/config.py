@@ -264,6 +264,15 @@ class Config:
     #: `open_pull_requests_command`'s reason: without it both commands answer
     #: from the branch's content alone, and say so.
     newest_pull_request_command: str = ""
+    #: A command saying when a pull request's auto-merge was last switched,
+    #: which `docket arm` reads so that a switch off nobody recorded holds the
+    #: pull request rather than being armed again (`PL-8TPV`). The package
+    #: appends the pull request's number. The command owes exit 0 and one line
+    #: `STATE TIME` - `STATE` `on` or `off` for the latest switch, `TIME` when
+    #: it was made in ISO 8601 - or exit 0 and nothing where auto-merge was
+    #: never switched on, and non-zero where it could not ask. A command, and
+    #: empty by default, for `open_pull_requests_command`'s reason.
+    auto_merge_command: str = ""
     #: Paths a delegated item may never modify, whatever its check proves.
     #: Empty by default, and that default is fail-closed rather than
     #: permissive: with nothing declared protected, no item is delegable at
@@ -529,6 +538,9 @@ def load(root: Path) -> Config:
             section.get("newest_pull_request_command"),
             defaults.newest_pull_request_command,
             "newest_pull_request_command",
+        ),
+        auto_merge_command=_str(
+            section.get("auto_merge_command"), defaults.auto_merge_command, "auto_merge_command"
         ),
         code_paths=_tuple(section.get("code_paths"), defaults.code_paths, "code_paths"),
         product_paths=_tuple(section.get("product_paths"), defaults.product_paths, "product_paths"),
