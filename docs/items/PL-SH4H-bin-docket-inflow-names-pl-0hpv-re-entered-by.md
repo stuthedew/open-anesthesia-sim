@@ -3,11 +3,12 @@ id: PL-SH4H
 title: bin/docket inflow names PL-0HPV re-entered by three filings since the 2026-10-12 triage pass (#1455) - PL-RW3T, PL-ZXM1, PL-HSB3, none of them a head - so it reads as a generator whose fix did not hold until a session records a successor head or says why not, as PL-4097 did for the nine before it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: generator-heads
 touches: docs/items
 added: 2026-10-12
+closed: 2026-10-18
 payoff: the last unanswered line in bin/docket inflow's 'fix did not hold' list gets its answer, so a generator still producing there is either recorded and ranked or shown settled
 verify: grep -qE '^\*\*Answered 2026-' docs/items/PL-SH4H-*.md
 ---
@@ -49,3 +50,16 @@ blocked on `PL-C4F0`: the analysis and either answer can be written now, and
 for, as `PL-4097` was, not an instance of a head's fact. It was filed in
 `PL-4097`'s closing commit as the one line that pass left open, so it is not
 a re-entry of it either.
+
+**Answered 2026-10-18.** A successor head is owed, and `PL-ZQ3R` carries it,
+recorded live with `reenters: PL-0HPV`. `PL-RW3T`, `PL-ZXM1` and `PL-HSB3`
+each misread `PL-0HPV`'s own fact: the checks each gate runs, and where the
+two sets differ. `PL-RW3T` missed a script's mode. `PL-ZXM1` missed a workflow
+step's `if:`. `PL-HSB3` missed a Makefile conditional. `PL-5M36`'s first
+bullet is a fourth instance, filed 2026-10-10, and it now carries `reenters:
+PL-0HPV` too. No other head states a narrower fact that covers them.
+`PL-848V` reads only a workflow's `on:` triggers, and `PL-R417` reads only
+lines that continue a statement. `PL-0HPV`'s spent verdict held the gates
+together only at the script level. Gate parity still counts a command as run
+without reading the mode or condition it runs under, and two members are
+still open, so the mechanism is still producing.
