@@ -723,7 +723,6 @@ def _real_step_failure() -> SimulationNumericalError:
         perfusion_fraction=original.perfusion_fraction,
         blood_gas_partition_coefficient=original.blood_gas_partition_coefficient,
         tissue_gas_partition_coefficient=original.tissue_gas_partition_coefficient,
-        blood_flow_l_min=original.blood_flow_l_min,
     )
 
     try:
@@ -750,21 +749,38 @@ class _StepFailingController(SimulationController):
 
 
 def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
-    """Set each tissue's blood flow from `cardiac_output_l_min`, bypassing the patient.
+    """Make the tissue flows sum to `cardiac_output_l_min`, past the tissues' guard.
 
-    A tissue group does not know which patient it belongs to, so its own
-    `set_blood_flow` accepts a flow that the patient's cardiac output does not
-    give it (`PL-HQF5`). No control here makes that call, because only the
-    patient's setter makes it. The patient keeps its output. The settings
-    record that a run's definition opens on then refuses the tissue flows,
-    because they no longer sum to the output. It refuses them at the next
-    step and at Reset (`PL-M4M0`). Before `PL-KFNP`, this helper assigned the
-    output to the patient directly, bypassing `set_cardiac_output`, and the
-    patient now refuses that.
+    Each tissue's perfusion fraction is scaled by `cardiac_output_l_min` over
+    the patient's output, and written past the tissue's own guard. The patient
+    keeps its output. The settings record that a run's definition opens on
+    then refuses the tissue flows, because they no longer sum to the output.
+    It refuses them at the next step and at Reset (`PL-M4M0`), and no setting
+    repairs them. No guarded write can make this record now. Every flow is
+    formed from the output (`PL-HQF5`), and a fraction is written once
+    (`PL-Z0HN`). Until then, a tissue's `set_blood_flow` made it, and a
+    cardiac output change repaired it. `_with_the_tissue_fractions_put_back`
+    stands in for that repair.
     """
 
-    for tissue in controller._state.uptake_system.patient.tissues:
-        tissue.set_blood_flow(cardiac_output_l_min * tissue.perfusion_fraction)
+    patient = controller._state.uptake_system.patient
+    scale = cardiac_output_l_min / patient.cardiac_output_l_min
+
+    for tissue in patient.tissues:
+        object.__setattr__(tissue, "perfusion_fraction", tissue.perfusion_fraction * scale)
+
+
+def _with_the_tissue_fractions_put_back(controller: SimulationController) -> None:
+    """Write back the reference adult's perfusion fractions, past the tissues' guard.
+
+    The fractions are typed from `data/patients/reference_adult.json`. With
+    them back, the settings record no longer refuses the tissue flows.
+    """
+
+    for tissue, fraction in zip(
+        controller._state.uptake_system.patient.tissues, (0.76, 0.18, 0.06), strict=True
+    ):
+        object.__setattr__(tissue, "perfusion_fraction", fraction)
 
 
 # ------------------------------------------------------- the constructor
@@ -2334,8 +2350,8 @@ def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplicatio
 
     `SimulationController.reset()` refuses a settings record that the run's
     definition cannot open on. Tissue flows that no longer sum to the cardiac
-    output make such a record, and setting a tissue's flow directly leaves
-    them that way (`_with_stale_tissue_flows`). Before `PL-M4M0` the refusal escaped the
+    output make such a record, and tissue fractions written past their guard
+    leave them that way (`_with_stale_tissue_flows`). Before `PL-M4M0` the refusal escaped the
     Reset slot after `pause()` and the state had been cleared, so the run
     stood half reset - compartments and clock at zero, the old definition and
     timeline kept, no failure recorded, `case_restarted` never emitted - with
@@ -2455,12 +2471,14 @@ def test_a_reset_refused_on_a_failed_run_keeps_the_failure_and_states_the_refusa
 def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
     application: QApplication,
 ) -> None:
-    """Setting the cardiac output recomputes the tissue flows, after which Reset clears the run.
+    """Once the record accepts a setting again, the exit is lifted and Reset clears the run.
 
     The accepted setting also takes the refused-Reset exit off the banner at
     once, so the reader is sent to a Reset that will take rather than to a
-    setting already changed; a setting the stale record refuses, which every
-    other dial's is, leaves the exit standing (`PL-M4M0`).
+    setting already changed; a setting the stale record refuses leaves the
+    exit standing (`PL-M4M0`). Until `PL-HQF5`, the cardiac output change
+    itself repaired the stale flows. No setting repairs a fraction written
+    past its guard, so the fractions are put back first.
     """
 
     controller = SimulationController()
@@ -2480,6 +2498,7 @@ def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
     assert notice is not None
     assert notice.endswith(REFUSED_RESET_REPAIR_TEXT)
 
+    _with_the_tissue_fractions_put_back(controller)
     run._handle_cardiac_output_change(6.0)
 
     notice = run._notice_text.notice()
@@ -2507,10 +2526,11 @@ def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_
     directly, bypassing `set_cardiac_output`. The run then halted at the next
     step, or at the Reset that `PL-M4M0` refuses. The readout and the dial
     showed the assigned output beside compartment values and a chart computed
-    at the old flows (`PL-J39J`). The patient now refuses that assignment.
-    Stale flows can still be reached by setting a tissue's flow directly
-    (`_with_stale_tissue_flows`), and that changes no cardiac output. The
-    patient keeps the output at which its last completed step ran. The
+    at the old flows (`PL-J39J`). `PL-KFNP` refused that assignment, and since
+    `PL-HQF5` it moves every flow with it, so it leaves no stale flows. Stale
+    flows can be reached only by writing the tissue fractions past their
+    guard (`_with_stale_tissue_flows`), and that changes no cardiac output.
+    The patient keeps the output at which its last completed step ran. The
     settings record at the stale flows is refused before any step runs at
     them. So the readout, the dial, the values beside them and the run's
     definition, from which the chart is drawn, all show that output. The
@@ -2524,10 +2544,6 @@ def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_
     _steps(run, 5)
     before = controller.snapshot()
     ran_under = controller._state.uptake_system.equation_settings()
-
-    with pytest.raises(SimulationConfigurationError, match="set_cardiac_output"):
-        controller._state.uptake_system.patient.cardiac_output_l_min = CardiacOutput(6.0)
-
     _with_stale_tissue_flows(controller, 6.0)
 
     _steps(run, 1)
@@ -2623,6 +2639,7 @@ def test_a_refused_trunk_reset_while_comparing_names_the_one_door_open(
     assert notice is not None
     assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_REPAIR_TEXT}")
 
+    _with_the_tissue_fractions_put_back(trunk.controller)
     trunk._handle_cardiac_output_change(6.0)
     trunk._reset_button.click()
     _settle(application)

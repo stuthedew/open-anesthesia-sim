@@ -174,7 +174,7 @@ stays a reviewer's question.
 | --- | --- | --- |
 | reading a correct concentration as belonging to a different agent | agent colour is a redundant cue, never the sole identifier: the agent name is always visible - carried by the invariant tier every top-level window shows, subject to the observability limit stated there (§ "Minimum displayed outputs" -> "What this list requires once the layout is the reader's") - and the ISO 5360 colours and their accessible foregrounds are audited as one unit in `src/anesthesia_sim/app/theme.py` by `tools/agent_identity_check.py` | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
 | reading a run halted by a failure as one the user paused | a halt gets its own status words rather than falling back to "Paused", and the two failure modes are distinguished from each other as well; the status word, the transport and the banner are stated from the run's status alone - three facts no compartment value is built for - so a run whose own snapshot refuses a value still reads as stopped rather than as running with Pause offered, and the banner written before any frame of the stopped run has drawn says so instead of claiming a step was rolled back (`PL-7DJK`) | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`, `test_a_halt_is_shown_when_the_snapshot_itself_is_refused`, `test_a_halt_is_stated_from_the_run_status_alone`, `test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step` |
-| reading a run whose Reset the core refused as one still running, or as one that was reset | `SimulationController.reset()` builds the settings record the fresh run definition opens on before it clears anything, so a refusal - tissue flows that no longer sum to the cardiac output, as setting a tissue's blood flow directly on the tissue can leave them (`PL-HQF5`) - leaves the run exactly as it was rather than half cleared, and the interface halts it through the failed-step path: the refusal recorded as the failure (on a run that had already failed for something else, that failure stays the reason and the banner's exit states the refusal), the status word, the transport and the banner stating it, with the banner's way out naming the setting to change rather than the Reset just refused, and the two flows named in L/min, the unit every readout shows, as they were set (`PL-M4M0`) | `test_a_reset_the_core_refuses_halts_the_run_visibly`, `test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was`, `test_a_refused_reset_names_the_way_out_in_the_banner`, `test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute` |
+| reading a run whose Reset the core refused as one still running, or as one that was reset | `SimulationController.reset()` builds the settings record the fresh run definition opens on before it clears anything, so a refusal - tissue flows that no longer sum to the cardiac output, which since `PL-HQF5` and `PL-Z0HN` only a perfusion fraction written past its guard can leave - leaves the run exactly as it was rather than half cleared, and the interface halts it through the failed-step path: the refusal recorded as the failure (on a run that had already failed for something else, that failure stays the reason and the banner's exit states the refusal), the status word, the transport and the banner stating it, with the banner's way out naming the setting to change rather than the Reset just refused, and the two flows named in L/min, the unit every readout shows, as they were set (`PL-M4M0`) | `test_a_reset_the_core_refuses_halts_the_run_visibly`, `test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was`, `test_a_refused_reset_names_the_way_out_in_the_banner`, `test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute` |
 | reading the agent selector or a slider, used on a run whose snapshot refuses, as a control that took effect | the selector and the sliders read the snapshot through `RunView._snapshot_for_a_control`, which halts the run on the refusal and states the halt from the run's status rather than letting the raise escape the slot unseen, with the selector put back to the agent the controller names, since the snapshot that would name it is what refused; Reset stays the way out the banner names, unless a refused Reset has left the setting to change standing as the exit; the controls stay live on a halted run rather than locked (project owner, 2026-10-12, ratified, over locking them, which would render the agent selector disabled) (`PL-V2HC`) | `test_an_agent_change_on_a_halted_run_restates_the_halt`, `test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it` |
 | reading the value printed beside a dial dragged into a halt as the value the run holds | the halt writes every dial from `SimulationController.record()` - the agent and the four settings in force, read from the settings the compartments hold and from no compartment value - after its banner, so the label beside a dial dragged into the halt reads the value the dial and the run hold rather than the value before the drag, which only a frame would have rewritten and no frame of a run whose snapshot refuses draws (`PL-85LJ`) | `test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial`, `test_a_halt_is_stated_before_its_dials_are_written` |
 | believing a setting above the vaporizer maximum was simulated | such a setting is **rejected, not clamped**, so no run proceeds on a value the user did not choose; the boundary itself is accepted - by the circuit, and by the settings record a run is built from, which carries the maximum beside the dial (`PL-BBMG`) | `test_rejects_delivered_concentration_above_the_vaporizer_maximum`, `test_explicit_delivered_concentration_above_the_agent_max_is_rejected`, `test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum`, `test_rejects_a_dial_above_the_vaporizer_maximum`, `test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum` |
@@ -791,7 +791,7 @@ get through the code is a defect in the code rather than a use for the table.
 | $`\dot V_F`$ | Fresh gas flow at the common gas outlet: carrier gas plus the vapour the vaporizer added, not the flowmeter setting (see § "Breathing circuit") | L gas/min | `BreathingCircuit.fresh_gas_flow_l_min` |
 | $`\dot V_A`$ | Alveolar ventilation | L gas/min | `AlveolarCompartment.alveolar_ventilation_l_min` |
 | $`Q`$ | Cardiac output | L blood/min | `PatientCompartments.cardiac_output_l_min` |
-| $`Q_i`$ | Blood flow to tissue group $`i`$ | L blood/min | `TissueGroup.blood_flow_l_min` |
+| $`Q_i`$ | Blood flow to tissue group $`i`$, formed as $`f_iQ`$ and never stored | L blood/min | `TissueGroup.blood_flow_l_min_at` |
 | $`f_i`$ | Fraction of cardiac output reaching tissue group $`i`$, so that $`Q_i = f_iQ`$ | dimensionless | `TissueGroup.perfusion_fraction` |
 | $`\mathrm{MAC}_\%`$ | Agent's 1 MAC, age-40 alveolar (display divisor only; not in any governing equation) | percent | `AgentParameters.mac_percent` |
 | $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient | dimensionless | `AgentParameters.blood_gas_partition_coefficient` |
@@ -921,7 +921,8 @@ Each group has:
 
 - a tissue volume $`V_i`$;
 - a fraction of cardiac output $`f_i`$;
-- a tissue blood flow $`Q_i`$;
+- a tissue blood flow $`Q_i = f_iQ`$, which is formed from the patient's
+  cardiac output whenever it is needed and is not stored on the group;
 - an agent tissue:gas partition coefficient $`\lambda_{i:g}`$, which is the
   coefficient stored per agent;
 - an agent tissue:blood partition coefficient $`\lambda_{i:b}`$, derived from
@@ -5486,54 +5487,50 @@ it held; the dataclass constructor, `dataclasses.replace`, a copy and a pickle
 all write through it - the last two because each compartment is a `slots=True`
 dataclass, whose state a copy or a pickle restores one field at a time through
 `__setattr__` where a `__dict__` would be updated past it - so the constructors
-run no check of their own. For a flow, the write checks the type and two
-relations. The first is the machine's range, which the circuit's write has
-compared the fresh gas flow against since `PL-19Y0`, as described below. The
-second is the patient's perfusion (`PL-KFNP`). When a new cardiac output is
-assigned to a patient that already has one, every compartment's blood flow
-must match the new output. Each tissue group's flow must equal its perfusion
-fraction times the output, and the venous pool's flow must equal the output.
-This is the check that the patient's constructor makes. An assignment that
-fails it is refused with a message that names `set_cardiac_output`, and the
-field and every flow keep their values. `set_cardiac_output` sets the
-compartments' flows from the new output before it writes the field, so its
-write passes the check. The first write of the field is checked for its type
-alone, because no compartment exists yet. The constructor,
-`dataclasses.replace`, a copy and a pickle each make such a first write.
+run no check of their own. For a flow, the write checks the type. The fresh
+gas flow's write also checks it against the machine's range, which the
+circuit's write has done since `PL-19Y0`, as described below.
 
-A compartment does not know which patient it belongs to, so three kinds of
-write can still put a compartment's blood flow out of step with the cardiac
-output. The first is a tissue's or the venous pool's own `set_blood_flow`
-(`PL-HQF5`). The second is a change to a tissue's perfusion fraction, which
-changes no flow (`PL-Z0HN`). The third is a change to the output of a copy
-that shares the compartments, which the next paragraph describes
-(`PL-Z0T3`). `UptakeEquationSettings` refuses tissue flows that no longer sum
-to the cardiac output. At the next step, `advance()` raises that refusal as a
-`SimulationNumericalError`, as it does for every check that fails inside a
-step. At Reset, `SimulationController.reset()` refuses before it clears
-anything, and the interface halts the run (`PL-M4M0`). A setting change that
-the record refuses is written back, so its compartment, the run's definition
-and the timeline keep the previous setting (`PL-VCP4`). A change to the
-cardiac output repairs the mismatch, because it sets every flow from the new
-output. A changed perfusion fraction cannot be repaired that way. The record
-does not read the fractions, so the run steps on at its old flows. But every
-later change of the cardiac output is refused, and the flows that its
-write-back leaves are not the ones that were in force (`PL-Z0HN`).
+**No compartment stores a blood flow, so none can disagree with the cardiac
+output** (`PL-HQF5`). A tissue group's blood flow is its perfusion fraction
+times the patient's cardiac output, $`Q_i = f_iQ`$, and
+`TissueGroup.blood_flow_l_min_at` is the one place that product is formed.
+The venous pool's flow is the cardiac output itself. Each compartment's
+`time_constant_s` and `advance()` take the flow as an argument, as
+$`\tau_i = V_i\lambda_{i:b}/Q_i`$ does. Until `PL-HQF5` each compartment
+stored a flow of its own, and three kinds of write could put it out of step
+with the output: a compartment's own `set_blood_flow`, a change to a tissue's
+perfusion fraction, and a change to the output of a copy that shared the
+original's compartments (`PL-Z0T3`). The patient refused a direct assignment
+of the output that the stored flows did not match, and named
+`set_cardiac_output` in the refusal (`PL-KFNP`). That check is gone with the
+stored flows. An assignment of the output, a copy, `dataclasses.replace` and a
+pickle now move every flow with the output, and a copy made at another output
+leaves the original's flows unchanged.
 
-The record does not refuse tissue flows that were moved between tissues with
-their sum unchanged. The run then steps at the moved flows, while its
-definition keeps the flows that it last recorded. So the readouts, which come
-from the steps, disagree with the chart, which comes from the definition. A
-later setting change records the moved flows but does not end the
-disagreement. After Reset, the readouts and the chart agree again, but on the
-moved flows, which no data file states and nothing on screen shows
-(`PL-HQF5`). No step reads the venous pool's flow. A copy that
-`dataclasses.replace` makes at a different cardiac output is refused. The
-patient's constructor checks each compartment's flow against the copy's output
-and changes no flow, so the original is unchanged. A copy made at the same
-output, by `dataclasses.replace` or `copy.copy`, shares the original's
-compartments. So changing the copy's output also changes the original's flows
-(`PL-Z0T3`).
+**A tissue's perfusion fraction is fixed once the group is built**
+(`PL-Z0HN`). The patient checks that its three fractions sum to 1 only when
+it is built, so a later change to one fraction would leave flows that no
+longer sum to the cardiac output. `TissueGroup` refuses a second write of the
+field and says to build a new patient with the new fractions. A tissue group
+written onto a built patient is refused unless the fractions, with the
+replacement in place, still sum to 1. Copies and pickles write the field once,
+onto a new object, so they are accepted. Neither a tissue group nor the patient
+lets a field be deleted, because a write after the deletion would bypass both
+checks.
+
+`UptakeEquationSettings` still refuses tissue flows that do not sum to the
+cardiac output. Only a fraction written past its guard, with
+`object.__setattr__`, can now reach that refusal. At the next step, `advance()`
+raises it as a `SimulationNumericalError`, as it does for every check that
+fails inside a step. At Reset, `SimulationController.reset()` refuses before it
+clears anything, and the interface halts the run (`PL-M4M0`). A setting change
+that the record refuses is written back, so its compartment, the run's
+definition and the timeline keep the previous setting (`PL-VCP4`). No setting
+change repairs such a fraction. A new cardiac output scales every tissue flow
+by the same factor, so flows that did not sum to the old output do not sum to
+the new one. Putting the fractions back, or building a new patient, is the
+only repair.
 
 **The alveolar and tissue agent amounts meet the compartment's capacity at
 the write, in the same `__setattr__`** (`PL-544D`). `set_partial_pressure_fraction`
@@ -6275,8 +6272,8 @@ Reset must:
 
 A Reset the core refuses does none of this. The settings record that the
 fresh run definition opens on is built from the compartments. It refuses
-tissue flows that no longer sum to the cardiac output, which setting a
-tissue's blood flow directly on the tissue can cause (`PL-HQF5`).
+tissue flows that no longer sum to the cardiac output. Since `PL-HQF5` and
+`PL-Z0HN` only a perfusion fraction written past its guard can cause that.
 `SimulationController.reset()` builds that record before anything above is
 done, so a refused Reset leaves the run
 exactly as it was rather than half cleared, and the interface halts the run on

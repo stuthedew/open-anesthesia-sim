@@ -2122,9 +2122,9 @@ class SimulationController:
             SimulationConfigurationError: If the settings record the run's
                 definition opens on cannot be built from what the
                 compartments hold. That happens when the tissue flows no
-                longer sum to the cardiac output, for example after a
-                tissue's blood flow was set directly on the tissue
-                (`PL-HQF5`). Raised before anything is
+                longer sum to the cardiac output. Since `PL-HQF5` and
+                `PL-Z0HN`, only a perfusion fraction written past its guard
+                can make them disagree. Raised before anything is
                 cleared, so the run is exactly as it was: still running if it
                 was, its state, definition, timeline and any recorded failure
                 untouched. The interface halts the run on it
@@ -2254,23 +2254,23 @@ class SimulationController:
 
         **The settings record can refuse a value that its compartment
         accepted** (`PL-VCP4`). A compartment checks only its own field, but
-        the record checks the fields against each other. Suppose a tissue's
-        blood flow was set directly on the tissue, so that the tissue flows
-        no longer sum to the cardiac output (`PL-HQF5`). Then building the
-        record fails for every setting except the cardiac output, and it
-        fails after the setter has already written the new value. So
+        the record checks the fields against each other. Building the record
+        can then fail after the setter has already written the new value. So
         `restore` writes the previous value back through the same setter
         before the error is raised. The compartment, the run's definition
         and the timeline then all hold the previous setting, and the
         interface is right to say that the simulation is unchanged.
         `restore` cannot fail, because it writes a value that was in force.
 
-        A cardiac output change repairs that mismatch instead of failing on
-        it, because `set_cardiac_output` sets every compartment's flow from
-        the new output. The record can still refuse one when the tissues'
-        perfusion fractions no longer sum to 1 (`PL-Z0HN`). Its `restore`
-        then puts the previous output back, but it sets the flows from the
-        changed fractions, so the flows are not the ones that were in force.
+        No write that its own guard checks can now lead the record to refuse.
+        The record's one cross-field check is that the tissue flows sum to the
+        cardiac output. Every flow is formed from the output when it is read
+        (`PL-HQF5`), and a tissue's perfusion fraction cannot change once its
+        patient has checked that the fractions sum to 1 (`PL-Z0HN`). Before
+        those two items, a flow set directly on a tissue, or a changed
+        fraction, led the record to refuse every later setting change. The
+        write-back stays, because a fraction written past its guard still
+        leads to a refusal, and the tests reach it that way.
 
         Both values are read off the compartment that holds them rather
         than taken from the caller's argument. The core rejects an

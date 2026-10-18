@@ -3,14 +3,16 @@ id: PL-Z0HN
 title: A tissue group's perfusion fraction can be changed on a built patient, and nothing checks that the fractions still sum to 1, so every later cardiac output change is refused, and its restore moves the tissue flows under a banner that says nothing changed (found reviewing PL-VCP4)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, defect
 feature: cardiac-output-write-consistency
 touches: src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/app/controller.py, tests/unit/test_patient.py, tests/integration/test_controller.py, docs/MODEL.md
 added: 2026-10-17
+closed: 2026-10-18
 payoff: a perfusion fraction can no longer be changed on a built patient, so the tissue flows cannot drift from the cardiac output under a banner that says nothing changed
 verify: grep -q 'def test_a_perfusion_fraction_written_on_a_built_patient_is_refused' tests/unit/test_patient.py
 reenters: PL-KFNP
+recurrences: 2026-10-18 PL-01GY
 ---
 
 **Problem.** `TissueGroup.__setattr__` accepts a new `perfusion_fraction` on a
@@ -71,3 +73,22 @@ for the blood flows, and its answer should not contradict this one.
 **Generator check.** A re-entry of `PL-KFNP`'s mechanism at a sibling field: a
 value on a built patient that takes part in the perfusion relation can be
 written past the check in `PatientCompartments.__post_init__`.
+
+**Built, 2026-10-18, with `PL-HQF5`.** `TissueGroup.perfusion_fraction` is
+write-once. A second write is refused with a message that says the patient
+checks its fractions only when it is built, and to build a new patient. The
+patient also refuses a tissue group written onto a built patient unless the
+fractions, with the replacement in place, still sum to 1. Copies and pickles
+write the field once onto a new object, so they are accepted.
+`test_a_perfusion_fraction_written_on_a_built_patient_is_refused` pins the
+choice. `PL-VCP4`'s controller test now reaches the cardiac output's restore:
+with the fractions written past their guard, a cardiac output change is
+refused and the restore leaves the output, the flows, the segments and the
+timeline unchanged.
+
+Regression proof: on `88960a11`,
+`vessel_rich.perfusion_fraction = 0.5` on the default patient was accepted and
+left fractions of `[0.5, 0.18, 0.06]`. The new test, run there with
+`PYTHONPATH=$BASE/src python -m pytest tests/unit/test_patient.py -k
+perfusion_fraction_written_on_a_built`, fails with `Failed: DID NOT RAISE
+SimulationConfigurationError`.
