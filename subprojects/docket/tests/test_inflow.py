@@ -34,6 +34,7 @@ def _item(
     closed: date | None = None,
     root_cause_of: tuple[str, ...] = (),
     reenters: tuple[str, ...] = (),
+    classes: tuple[str, ...] = ("defect",),
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -41,7 +42,7 @@ def _item(
         priority=priority,
         effort="S",
         status="done" if closed else "ready",
-        classes=("defect",),
+        classes=classes,
         touches=touches,
         blocked_by=(),
         feature="",
@@ -271,3 +272,39 @@ def test_a_cut_prints_the_broken_predictions_and_nothing_when_none_broke() -> No
     assert "1 P1 apparatus filing" in _missed_expectations(broken, CONFIG, today)
     assert _missed_expectations(broken[:1], CONFIG, today) == ""
     assert _missed_expectations(broken, Config(items_dir="docs/items"), today) == ""
+
+
+def test_a_class_pinned_p1_on_a_rule_file_is_not_an_unexpected_band() -> None:
+    """A simulator item pinned to P1 by its class says nothing about the apparatus.
+
+    `PL-HQF5` and `PL-4RL2` were safety- and science-classed product items that
+    also declared a rule file, and the week to 2026-10-18 reported both as a
+    broken prediction (`PL-00TR`). A pinned item that reaches a tool still
+    counts, and so does an unpinned P1 on a rule file.
+    """
+    config = Config(
+        items_dir=CONFIG.items_dir,
+        notes_file=CONFIG.notes_file,
+        workflow_paths=CONFIG.workflow_paths,
+        instruction_paths=(".claude/rules",),
+    )
+    week = date(2026, 9, 8)
+    rule_only = _item(
+        "PL-3000",
+        week,
+        touches=("src/core.py", ".claude/rules/core-domain.md"),
+        priority="P1",
+        classes=("defect", "safety"),
+    )
+    in_a_tool = _item(
+        "PL-3001", week, touches=("tools/a.py",), priority="P1", classes=("defect", "safety")
+    )
+    unpinned = _item("PL-3002", week, touches=(".claude/rules/x.md",), priority="P1")
+
+    def severe(items: list[Item]) -> dict[str, int]:
+        periods = analyze(items, config, today=date(2026, 9, 15)).periods
+        return dict(next(p for p in periods if p.start == week).severe)
+
+    assert severe([rule_only]) == {}
+    assert severe([rule_only, in_a_tool]) == {"P1": 1}
+    assert severe([unpinned]) == {"P1": 1}
