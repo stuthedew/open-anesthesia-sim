@@ -108,7 +108,12 @@ fi
 
 context=""
 if [ ! -e "$stale" ] && (set -C && : >"$stale") 2>/dev/null; then
-  context=$("$root/bin/docket" branch --brief --if-stale 2>/dev/null) || context=""
+  # Of its stderr, only the floor refusal is kept, as the digest hook keeps it,
+  # so a session below docket's Python floor is told why it hears nothing.
+  errors=$(mktemp 2>/dev/null) || errors=/dev/null
+  context=$("$root/bin/docket" branch --brief --if-stale 2>"$errors") ||
+    context=$(grep -m 1 '^docket needs Python' "$errors" 2>/dev/null)
+  [ "$errors" = /dev/null ] || rm -f "$errors"
 fi
 
 check="$root/tools/branch_id_check.py"

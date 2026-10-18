@@ -102,13 +102,27 @@ fi
 # `--brief` because the digest below prints what is in flight, and printing it
 # twice in text that is resent on every turn is the one cost this file is
 # careful about.
-"$root/bin/docket" branch --brief 2>/dev/null || true
+#
+# Its stderr is discarded except for one line: the refusal `bin/docket` prints
+# when `python3` is below its floor, which `run` in
+# `subprojects/docket/src/docket/__main__.py` words. A session on such an
+# interpreter would otherwise start with no digest and no reason (`PL-QHCP`).
+# The digest is skipped then, because it would fail on the same interpreter.
+errors=$(mktemp 2>/dev/null) || errors=/dev/null
+floor=""
+"$root/bin/docket" branch --brief 2>"$errors" ||
+  floor=$(grep -m 1 '^docket needs Python' "$errors" 2>/dev/null)
+[ "$errors" = /dev/null ] || rm -f "$errors"
 
 # `--no-fetch` because `branch` above has just fetched, and every read command
 # fetches for itself otherwise (PL-XBV4): a second network round trip would buy
 # nothing. The digest then says which moment its refs are from, with the clock
 # time rather than only an age, because this text is resent on every turn.
-"$root/bin/docket" digest --no-fetch 2>/dev/null || true
+if [ -n "$floor" ]; then
+  printf '%s\n' "$floor"
+else
+  "$root/bin/docket" digest --no-fetch 2>/dev/null || true
+fi
 
 # The dead ends, immediately after the queue state and before the exception
 # line below. Placed here because it answers a different question from
