@@ -3,11 +3,13 @@ id: PL-Y1PS
 title: Test effectiveness has been measured once, by a one-off mutation run whose recipe and baseline live nowhere durable, so it cannot be re-run or compared: record the mutmut 3.8.0 configuration, its pitfalls and the 2026-10-17 baseline (2619 mutants, 279 unit-tier survivors, about 88% killed), and propose diff-scoped mutation rather than whole-tree runs
 priority: P3
 effort: M
-status: ready
+status: done
 classes: infra
 feature: test-effectiveness-measurement
-touches: Makefile, pyproject.toml
+touches: Makefile, pyproject.toml, uv.lock, .gitignore, tools/diff_mutation.py, tests/unit/test_diff_mutation.py, tests/unit/test_line_splits.py, docs/mutation-testing.md, docs/apparatus.md, docket.toml, .claude/rules/test-oracles.md, .claude/skills/docket/modes/close-out.md
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1515
 payoff: the functions a pull request changes can be mutation-tested in minutes and compared with the 2026-10-17 baseline, so whether the tests catch a wrong value is measured rather than assumed
 verify: grep -q 'mutmut' Makefile
 ---
@@ -193,3 +195,16 @@ simulator suite (at `25ef454b`). It also used fault injection, stored-value
 perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above.
+
+**Outcome.** `make mutate` runs `tools/diff_mutation.py`, which mutates the
+functions a branch changed and reports each survivor's diff, and
+`make mutate ARGS=--all` mutates the whole tree. mutmut 3.8.0 sits in its own
+`mutation` dependency group. The tests are chosen by the import rule rather
+than the 33-file list above, which gave 43 files on 2026-10-17.
+`docs/mutation-testing.md` now holds the recipe, the pitfalls and this baseline,
+and close-out step 7 runs `make mutate` where a diff changes a mutated
+function. One pitfall above was wrong. The forkserver "timeouts" with exit
+status 255 were not slow imports: mutmut reports any exception in its worker
+as a timeout, such as pytest refusing a test it cannot collect. The tool reruns
+those mutants' test files whole, and `timeout_constant` is not set. The
+forkserver whole-tree baseline is `PL-5N95`.

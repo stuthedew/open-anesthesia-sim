@@ -309,3 +309,16 @@ page and decides which file a session reads.
    this branch if it is in scope and the item's `touches` already reach it.
    Otherwise file it - grouped under one `feature:` where the findings are one
    problem - and say in the reply what you found and what you left.
+
+7. **Run `make mutate` where the diff changes a function that mutmut
+   mutates.** Those are the modules that the `only_mutate` globs in
+   `pyproject.toml`'s `[tool.mutmut]` table name: `core/` and four
+   presentation modules. The run mutates only the functions that the branch
+   changed, and it took about five minutes on 2026-10-17. Sort each survivor
+   as `docs/mutation-testing.md` § "Read a survivor" says, and list each one
+   with its kind in the pull request body. Write the test that kills a real
+   gap in this change, and file an item for a gap that is not this change's.
+   The run is a measurement and not a gate, so a survivor never holds the pull
+   request (project owner, 2026-10-17, ratified, over a whole-tree mutation
+   score as a target, `PL-Y1PS`). On a branch that changes no such function,
+   `make mutate` says so in one line.
