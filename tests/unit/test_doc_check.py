@@ -3413,11 +3413,13 @@ def test_a_fenced_make_run_is_found_past_an_assignment() -> None:
 
     `_make_mentions` took the first word for the program, so `FOO=1 make
     check` named no target, and the descriptor in `{fd}>log` was kept as an
-    argument where docket's lexer reads one.
+    argument where docket's lexer reads one. `exec` is a wrapper that runs the
+    command after it, so `exec {fd}>log make lint` runs `make lint`, as the
+    guard hooks read it (`PL-RHPK`).
     """
     fence = "```bash\nFOO=1 make check\nexec {fd}>log make lint\nmake A=1\n```\n"
 
-    assert list(doc_check._make_mentions(fence)) == [("check", 2)]
+    assert list(doc_check._make_mentions(fence)) == [("check", 2), ("lint", 3)]
     assert doc_check._simple_commands(
         doc_check.shell_words("exec {fd}>log 2>&1 x"), "exec {fd}>log 2>&1 x"
     ) == (("exec", "x"),)

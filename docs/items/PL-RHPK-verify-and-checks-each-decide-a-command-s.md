@@ -6,13 +6,14 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/shell.py, .claude/hooks/gate-status-guard.sh, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/shell_split.py, tools/doc_check.py, tools/fact_home_check.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, tests/unit/test_gate_status_guard.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/shell.py, .claude/hooks/gate-status-guard.sh, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/shell_split.py, tools/doc_check.py, tools/fact_home_check.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, tests/unit/test_gate_status_guard.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
 closed: 2026-10-18
 pr: 1567
 payoff: docket answers which program a verify: command runs, and where its status ends, by one grammar
 verify: grep -q 'def test_a_command_program_is_read_through_docket_shell' subprojects/docket/tests/test_verify.py
+falsifies: assert list(doc_check._make_mentions(fence)) == [("check", 2)]
 ---
 
 **Problem.** verify and checks each decide a command's structure beside docket.shell - verify's SHELL_PREFIXES, INTERPRETERS, _programs and _docket_runs, checks' _STATUS_REPLACED and _after_pytest, gate-status-guard.sh's DOCKET_GATES, cli's shlex.split - so time python3, ;;, python3 -c pytest.main and python3 -m docket check each read two ways
