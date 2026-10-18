@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: defect
-touches: .claude/hooks/docket-digest.sh, .claude/hooks/docket-branch-guard.sh, tests/unit/test_docket_digest_hook.py, tests/unit/test_docket_branch_guard.py
+touches: .claude/hooks/docket-digest.sh, .claude/hooks/docket-branch-guard.sh, tests/unit/test_docket_digest_hook.py, tests/unit/test_docket_branch_guard.py, tools/ignore_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-26 triage pass
 added: 2026-09-26
 payoff: a session on a python3 below 3.11 is told at start which interpreter to fix, instead of starting with no digest and no reason

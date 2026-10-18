@@ -65,9 +65,11 @@ TREES = ("tests", "subprojects/docket/tests")
 #: putting the test's own directory on `sys.path` and `--explicit-package-bases`
 #: does not, so without them those imports go unresolved and the check declines
 #: (`PL-CR36`). A bare sibling import in another directory declines the same way,
-#: and the remedy is that directory here. The last is one:
+#: and the remedy is that directory here. The next is one:
 #: `tests/unit/test_inline_reference.py` puts it on `sys.path` itself to import
-#: `test_markdown_reference`'s reference reader (`PL-R417`).
+#: `test_markdown_reference`'s reference reader (`PL-R417`). The last holds
+#: `test_docket_digest_hook`, whose stand-in for an old `python3` the branch
+#: guard's test imports (`PL-QHCP`).
 MYPY_PATH = (
     "subprojects/docket/src",
     "tools",
@@ -75,6 +77,7 @@ MYPY_PATH = (
     "tests/benchmarks",
     "tests/reference",
     "subprojects/docket/tests",
+    "tests/unit",
 )
 
 #: The one finding this check exists to raise.
