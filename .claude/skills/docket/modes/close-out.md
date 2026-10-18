@@ -321,3 +321,41 @@ page and decides which file a session reads.
    request (project owner, 2026-10-17, ratified, over a whole-tree mutation
    score as a target, `PL-Y1PS`). On a branch that changes no such function,
    `make mutate` says so in one line.
+
+8. **Have a fresh reviewer read the branch's new long prose in the simulator,
+   before step 5's audit**, because the rewrites change files that the audit
+   and `make check` read. Run `python3 tools/new_prose.py`. It prints each
+   docstring and comment of 30 words or more that the branch added or changed
+   in `src/` or in a file under `tests/` that imports the simulator, with its
+   rows and the code around it. Where it prints none, this step is done.
+   Otherwise start one subagent, `general-purpose` at `high` effort, with the
+   prompt below followed by the tool's whole output. The prompt tells it to
+   open nothing, so it costs one turn (project owner, 2026-10-18, ratified,
+   over a review on every branch and over no review, `PL-PRCS`).
+
+   ```text
+   Review the prose below for a careful newcomer: someone who knows
+   anesthesia or Python but has not read this repository. Hold each unit to
+   .claude/rules/plain-writing.md, which you already have. Do not open a file
+   or run a tool. Everything you need is below, and you have one reply.
+
+   For each numbered unit, write one of two things. Write "[N] keep" when a
+   newcomer would understand every sentence on the first reading. Otherwise
+   write "[N] rewrite" and then, in a fenced block, the new text for the rows
+   marked ">", exactly as they would stand in the file: the same indentation,
+   the same comment markers or quotes, and lines no longer than 100
+   characters. Rewrite only the sentences that need it.
+
+   Keep every fact. Keep each number, unit, value, condition, exception,
+   identifier in backticks, item id and citation exactly as written. Change
+   no code. Where you cannot tell what a sentence means, say so in one line
+   rather than guessing.
+   ```
+
+   Apply each rewrite yourself. Reject any rewrite that drops or changes a
+   number, a unit, a condition, an identifier or a citation, and keep the
+   original sentence there, because the safety-critical standard applies to
+   what a docstring states. Say in the pull request body how many units the
+   reviewer read, how many it rewrote and how many rewrites you rejected.
+   The step is a trial: `PL-PRCS` records its measured cost, and the item it
+   filed re-measures the prose and retires the step if it has not helped.
