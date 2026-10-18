@@ -5564,12 +5564,19 @@ def _restate_notes(root: Path, by_id: Mapping[str, Item], dry_run: bool) -> int:
 
     Only an append is ever made, so a run that finds nothing to add writes
     nothing at all. `restate_references` carries why the title is left alone.
+    A bullet it declined to read is named by file and line with the reason,
+    so the report says what it left as well as what it wrote (`PL-K23D`).
     """
     verb = "would restate" if dry_run else "restated"
     total = 0
     for path in notes_files(root):
         text = path.read_text(encoding="utf-8")
-        restated, repaired = restate_references(text, by_id)
+        restated, repaired, declined = restate_references(text, by_id)
+        for entry in declined:
+            print(
+                f"{NOTES_DIR}/{path.name} {entry}. Left as it was, so this bullet may "
+                f"still have no route back to its change"
+            )
         if not repaired:
             continue
         if not dry_run:

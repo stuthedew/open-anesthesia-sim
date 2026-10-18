@@ -641,7 +641,7 @@ def test_a_title_quoting_another_id_is_not_read_as_that_item_s_bullet() -> None:
 
 
 def test_restating_appends_the_number_the_store_now_records() -> None:
-    restated, repaired = restate_references(SHIPPED, {"PL-2222": _item("PL-2222")})
+    restated, repaired, _ = restate_references(SHIPPED, {"PL-2222": _item("PL-2222")})
 
     assert repaired == ("PL-2222",)
     assert "- PL-2222 Item PL-2222 — #48" in restated
@@ -663,7 +663,7 @@ def test_a_restated_bullet_is_byte_for_byte_what_the_cut_would_have_written() ->
 
 def test_restating_leaves_a_bullet_that_already_cites_its_pull_request() -> None:
     """Idempotent, which is what lets this sit in `make fix` without a diff."""
-    restated, repaired = restate_references(SHIPPED, {"PL-1111": _item("PL-1111")})
+    restated, repaired, _ = restate_references(SHIPPED, {"PL-1111": _item("PL-1111")})
 
     assert repaired == ()
     assert restated == SHIPPED
@@ -680,7 +680,7 @@ def test_restating_leaves_the_title_exactly_as_it_shipped() -> None:
     text = "- PL-2222 The title this shipped under\n"
     renamed = replace(_item("PL-2222"), title="What it is called now")
 
-    restated, repaired = restate_references(text, {"PL-2222": renamed})
+    restated, repaired, _ = restate_references(text, {"PL-2222": renamed})
 
     assert repaired == ("PL-2222",)
     assert restated == "- PL-2222 The title this shipped under — #48\n"
@@ -688,14 +688,14 @@ def test_restating_leaves_the_title_exactly_as_it_shipped() -> None:
 
 def test_a_bullet_whose_item_records_nothing_is_left_alone() -> None:
     """This supplies a fact or it does nothing; there is no third thing to write."""
-    restated, repaired = restate_references(SHIPPED, {"PL-2222": _unreferenced_item("PL-2222")})
+    restated, repaired, _ = restate_references(SHIPPED, {"PL-2222": _unreferenced_item("PL-2222")})
 
     assert repaired == ()
     assert restated == SHIPPED
 
 
 def test_a_bullet_naming_an_item_the_store_has_dropped_is_left_alone() -> None:
-    restated, repaired = restate_references(SHIPPED, {})
+    restated, repaired, _ = restate_references(SHIPPED, {})
 
     assert repaired == ()
     assert restated == SHIPPED
@@ -735,13 +735,13 @@ def test_a_title_wrapped_onto_an_indented_line_keeps_its_reference() -> None:
     bullet was reported unreferenced and `make fix` appended a second one.
     """
     assert unreferenced(WRAPPED) == ()
-    assert restate_references(WRAPPED, {"PL-2222": _item("PL-2222")}) == (WRAPPED, ())
+    assert restate_references(WRAPPED, {"PL-2222": _item("PL-2222")}) == (WRAPPED, (), ())
 
 
 def test_restating_a_wrapped_bullet_appends_to_its_last_line() -> None:
     text = "- PL-2222 A title long enough that it wraps\n  onto a second line\n"
 
-    restated, repaired = restate_references(text, {"PL-2222": _item("PL-2222")})
+    restated, repaired, _ = restate_references(text, {"PL-2222": _item("PL-2222")})
 
     assert repaired == ("PL-2222",)
     assert restated == "- PL-2222 A title long enough that it wraps\n  onto a second line — #48\n"
@@ -753,7 +753,7 @@ def test_a_list_nested_under_a_bullet_is_not_its_text() -> None:
     assert unreferenced(text) == ()
 
     bare = "- PL-2222 A title\n  - A note on it.\n"
-    restated, repaired = restate_references(bare, {"PL-2222": _item("PL-2222")})
+    restated, repaired, _ = restate_references(bare, {"PL-2222": _item("PL-2222")})
     assert (restated, repaired) == (text, ("PL-2222",))
 
 
@@ -779,7 +779,7 @@ def test_a_setext_underline_in_a_bullet_is_not_its_text_and_takes_no_reference(
     bullets, declined = notes_bullets(text)
     assert (bullets[0], declined) == ((4, 5, "- PL-BCDF A title wrapped"), ())
     assert unreferenced(text) == ("PL-BCDF",)
-    restated, repaired = restate_references(text, {"PL-BCDF": _item("PL-BCDF")})
+    restated, repaired, _ = restate_references(text, {"PL-BCDF": _item("PL-BCDF")})
     assert repaired == ("PL-BCDF",)
     assert restated == text.replace("A title wrapped\n", "A title wrapped — #48\n")
     assert unreferenced(restated) == ()
@@ -794,7 +794,8 @@ def test_a_bullet_carried_on_from_the_margin_is_declined_and_left_alone(tmp_path
     could pass empty or leave out, and `unreferenced`, reading one file, raises
     it rather than answering from the file read short (`PL-JTP1`).
     """
-    assert restate_references(LAZY, {"PL-2222": _item("PL-2222")}) == (LAZY, ())
+    restated, repaired, declined = restate_references(LAZY, {"PL-2222": _item("PL-2222")})
+    assert (restated, repaired, [entry.line for entry in declined]) == (LAZY, (), [2])
     bullets, declined = notes_bullets(LAZY)
     assert (bullets, [entry.line for entry in declined]) == ([], [2])
     with pytest.raises(UnreadEntry, match=re.escape(f"line 2: {LAZY_ENTRY}")):
@@ -823,7 +824,7 @@ def test_a_bullet_indented_one_to_three_spaces_is_read_as_notes_ids_reads_it(ind
 
     assert notes_ids(text) == frozenset(store)
     assert unreferenced(text) == ("PL-BCDF", "PL-HJKM")
-    restated, repaired = restate_references(text, store)
+    restated, repaired, _ = restate_references(text, store)
     assert repaired == ("PL-BCDF", "PL-HJKM")
     assert restated == (
         f"## Fixed\n\n{indent}- PL-BCDF a title with no reference — #48\n"
@@ -890,7 +891,7 @@ def test_restating_leaves_the_pointer_section_byte_for_byte() -> None:
     `REFERENCED_RE`'s tail, so a restate reading the whole file would write
     `... - described in v0.3.1 — #52` and the pointer would stop being one.
     """
-    restated, repaired = restate_references(POINTED, {"PL-4444": _item("PL-4444")})
+    restated, repaired, _ = restate_references(POINTED, {"PL-4444": _item("PL-4444")})
 
     assert repaired == ()
     assert restated.endswith("- PL-4444 - #52 - described in v0.3.1\n")
