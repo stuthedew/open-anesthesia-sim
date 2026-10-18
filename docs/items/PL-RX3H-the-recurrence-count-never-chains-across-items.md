@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: feature
 feature: generator-identification
-touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/duplicates.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_duplicates.py
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-22
 payoff: a mechanism re-filed at sibling sites is counted as one cluster even after the item it first matched closes, instead of restarting at one filing per item
 not-delegable: its first step re-runs the chain count, and that count decides between building the chaining and dropping the item with the count recorded; no command can prove an outcome the count has not chosen yet
@@ -58,6 +58,26 @@ shape, or the item is dropped with the count recorded.
 **Recommended.** Re-count before building. One chain in the three days since
 the signal landed (2026-09-20), for a mechanism that was found by hand anyway,
 does not yet pay for a change to the generator machinery.
+
+**Re-counted 2026-10-18, at `9fd4366c`: build it.** 76 items carry live
+recurrences, and seven recurrence edges chain onto an item that carries its
+own. Five of the seven reach `MIN_RECURRENCES` only when chained, against one
+on 2026-09-23: `PL-K5PW` <- `PL-T441` (this brief's own case), `PL-316G` <-
+`PL-YSMV`, `PL-B26Y` <- `PL-YT8N`, `PL-LRP2` <- `PL-08D4` (the hand-tagged
+releases) and `PL-MMNX` <- `PL-YHR3`. Read against their titles, all five are
+one mechanism re-filed, so the recommendation above to wait is answered. The
+last is live: `PL-YHR3` and `PL-5JTH` are open, `PL-MMNX` closed on
+2026-10-17, and `plan.recurring` names neither.
+
+**The build, for whoever takes it.** For an open item, add to its own count
+the recurrences of each closed item whose live recurrences name it, followed
+through closed anchors only. That is filings minus one along the chain. Use it
+in `plan.recurring`, and have `cli._say_recurring` and the digest line in
+`render.format_digest` print the chained count and filings, so the line does
+not name a candidate with a count of one. The test is the `PL-K5PW` <-
+`PL-T441` <- `PL-WF3X` shape. Yielded 2026-10-18 from
+`claude/workflow-g8zn-dflc-hsqzx7`: `cli.py` was being changed on
+`claude/project-thread-lctfud` (#1553), so wait for that to merge.
 
 **Generator check.** A one-off at the edge of the recurrence signal that
 `PL-TZ7T`'s cluster built. It is not a post-close instance of that head's

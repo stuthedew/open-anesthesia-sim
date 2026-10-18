@@ -53,7 +53,9 @@ through**. A script's own rule, the failure path it reports on, and the input
 that once broke it are worth pinning; a getter, a constructor, or the standard
 library's own behaviour are not. That is the whole bar, and nothing stricter
 applies to the apparatus tests under `tests/unit/` or to
-`subprojects/docket/tests/`.
+`subprojects/docket/tests/`. This rule's `paths:` do not match `tests/unit/`,
+so `.claude/rules/where-new-code-goes.md`, which loads there, points a session
+editing one of those tests to this section (`PL-3YRT`).
 
 **It does not reach a test that imports the product package.** That test is the
 simulator's, and `CLAUDE.md`'s safety-critical standard asks of it what the
