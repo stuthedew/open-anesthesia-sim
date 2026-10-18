@@ -9,6 +9,7 @@ feature: cardiac-output-write-consistency
 touches: src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/app/controller.py, tests/unit/test_patient.py, tests/integration/test_controller.py, docs/MODEL.md
 added: 2026-10-17
 closed: 2026-10-18
+pr: 1537
 payoff: a perfusion fraction can no longer be changed on a built patient, so the tissue flows cannot drift from the cardiac output under a banner that says nothing changed
 verify: grep -q 'def test_a_perfusion_fraction_written_on_a_built_patient_is_refused' tests/unit/test_patient.py
 reenters: PL-KFNP
