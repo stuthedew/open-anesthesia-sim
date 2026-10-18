@@ -36,6 +36,8 @@ subjects and bodies, not git and not GitHub.
 
 from __future__ import annotations
 
+import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -826,3 +828,82 @@ def test_anchors_on_a_shallow_clone_say_nothing_was_checked(
 
     assert pr_body_check.anchors("origin/main") == 0
     assert "not checked" in capsys.readouterr().out
+
+
+# --- the email screen on a pull request call (`PL-7K31`) ----------------------
+#
+# A body is public as soon as GitHub has it, so the screen runs before the call.
+# What is pinned is that a personal address is refused and named, that the one
+# trailer address and a version pin are not, that the wiring reaches both tools
+# and no other, and that the hook script refuses when Claude Code starts it.
+
+REPO = Path(__file__).resolve().parents[2]
+
+
+def _call(tool: str, **arguments: str) -> str:
+    return json.dumps({"tool_name": tool, "tool_input": {"owner": "o", "repo": "r", **arguments}})
+
+
+def test_an_email_address_in_a_pull_request_body_is_refused() -> None:
+    refusal = pr_body_check.screen(
+        _call("mcp__github__create_pull_request", title="t", body="Asked by a.person@example.org.")
+    )
+
+    assert refusal is not None
+    decision = json.loads(refusal)["hookSpecificOutput"]
+    assert decision["permissionDecision"] == "deny"
+    assert "`a.person@example.org`" in decision["permissionDecisionReason"]
+
+
+def test_an_email_address_in_an_updated_title_is_refused() -> None:
+    call = _call("mcp__github__update_pull_request", title="PL-K7QX: from me@example.com")
+
+    assert pr_body_check.screen(call) is not None
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "Co-authored-by: Claude <noreply@anthropic.com>",
+        "Pins react@18.3.1 and @types/node.",
+        "No address at all.",
+    ],
+)
+def test_a_body_without_a_personal_address_is_let_through(body: str) -> None:
+    assert pr_body_check.screen(_call("mcp__github__create_pull_request", body=body)) is None
+
+
+@pytest.mark.parametrize("payload", ["not json", "[]", _call("mcp__github__merge_pull_request")])
+def test_a_payload_the_screen_does_not_govern_is_let_through(payload: str) -> None:
+    assert pr_body_check.screen(payload) is None
+
+
+def test_the_hook_is_wired_to_both_pull_request_tools_and_refuses_from_its_script() -> None:
+    """The matcher is a regex over the whole tool name, as Claude Code reads one.
+
+    https://code.claude.com/docs/en/hooks, read 2026-09-30 for the merge guard:
+    a matcher holding a character other than letters, digits, `_` and `|` is a
+    regular expression.
+    """
+    settings = json.loads((REPO / ".claude" / "settings.json").read_text(encoding="utf-8"))
+    commands = {
+        hook["command"]: entry["matcher"]
+        for entry in settings["hooks"]["PreToolUse"]
+        for hook in entry["hooks"]
+    }
+    command = 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/pr-body-email-guard.sh"'
+    matcher = re.compile(commands[command])
+    for tool in ("mcp__github__create_pull_request", "mcp__github__update_pull_request"):
+        assert matcher.fullmatch(tool)
+    for tool in ("mcp__github__update_pull_request_branch", "mcp__github__merge_pull_request"):
+        assert not matcher.fullmatch(tool)
+
+    ran = subprocess.run(
+        ["bash", str(REPO / ".claude" / "hooks" / "pr-body-email-guard.sh")],
+        input=_call("mcp__github__create_pull_request", body="me@example.com"),
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=REPO,
+    )
+    assert "`me@example.com`" in ran.stdout

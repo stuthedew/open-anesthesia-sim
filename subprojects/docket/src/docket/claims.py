@@ -113,7 +113,7 @@ from .vcs import (
     SettledReport,
     _cut_versions,
     _head_name,
-    _item_paths_on,
+    _items_at,
     _Landings,
     _notes_on,
     _remotes,
@@ -124,6 +124,7 @@ from .vcs import (
     answered,
     changed_path_args,
     default_base,
+    in_queue,
     leading_ids,
     listed_paths,
 )
@@ -542,7 +543,7 @@ def holdings(
     def status(ref: str, key: str) -> str:
         return _fields_at(ref, key, items_dir, root, run, copies).get("status", "")
 
-    copies[base] = _item_paths_on(base, items_dir, root, run)
+    copies[base] = _items_at(base, root, items_dir, run)
     on_base = set(copies[base])
 
     def stored(ref: str) -> Callable[[str], bool]:
@@ -859,71 +860,6 @@ def _finished_claim(hold: Hold) -> bool:
 # for both (`PL-FFR0`), because two spellings of one question are two answers
 # waiting to disagree, and the pre-registered 1-in-20 threshold is counted from
 # the row while CI refuses on the check.
-
-#: The pull requests' body files. `tools/pr_body_check.py --recover` writes
-#: `<N>.md` here for a squash commit that landed with no body, at each release
-#: (`PL-3PH2`); from 2026-09-25 to 2026-09-26 `--record` also wrote one on every
-#: pull request's branch (`PL-979D`). `arming.RECORDS` spells the
-#: same directory for what arms on green, in the one module the gate holds for
-#: a read, and is kept there rather than imported from here, so that widening
-#: what arms still takes an edit the gate holds; `test_claims` pins the two
-#: equal (`PL-F6MM`). The path is this repository's layout, as
-#: `arming.TOOLING`'s is.
-RECORDS = "docs/pr-bodies/"
-
-
-def queue_records(config: Config) -> tuple[str, ...]:
-    """The records a queue workflow writes, as `in_queue` counts them and a refusal names them.
-
-    A name ending in `/` is a directory and holds every path under it; any
-    other is one file. One list for the check and for what its refusal says it
-    admits, so the two cannot drift apart: `PL-F6MM`'s body records were
-    missing from both.
-    """
-    return tuple(
-        name
-        for name in (
-            config.items_dir.strip("/") + "/",
-            config.roadmap_file,
-            config.notes_file,
-            RECORDS,
-        )
-        if name
-    )
-
-
-def in_queue(path: str, config: Config) -> bool:
-    """Whether a repository path is one of the records a queue workflow writes.
-
-    The items, the roadmap, the working notes and the pull requests' body
-    records (`queue_records`). A capture, a triage pass or a design round writes
-    these and nothing else - triage puts an item on the debt gate's list in the
-    roadmap, a design round keeps its thread in the notes, and a recovery
-    writes a lost body - and owes no claim, since the ids it leads with are
-    never pushed into one (`PL-3CTW`). Read as the items
-    directory alone, as the spec's "outside `items_dir`" says, it refused 12
-    such passes merged in the week to 2026-09-24, and would have made each
-    claim the ids it triaged. Without the body records it refused every such
-    pass once recorded, so `pr-title` and `checks` could not both pass on it
-    (`PL-F6MM`).
-
-    The whole records directory counts, so CI does not refuse a `--recover`
-    pass that claims nothing, though `CLAUDE.md`'s housekeeping rule still
-    files and claims one, and a release, which runs it (`PL-3PH2`), holds a
-    claim already (`PL-F6MM`).
-
-    It is not what arms. `arming.arms_on_green` asks whether a change may merge
-    on green CI without the owner's read, and keeps to the store, the tooling
-    and the body records, so a `ROADMAP.md`-only triage pass owes no claim here
-    and still waits on a read there (project owner, 2026-09-26, ratified, over
-    widening arming to the roadmap and the notes, `PL-0JGZ`). That answer is
-    spelt in the module the gate holds for a read rather than in this one, for
-    the reason `RECORDS` above gives.
-    """
-    return any(
-        path.startswith(name) if name.endswith("/") else path == name
-        for name in queue_records(config)
-    )
 
 
 def work_outside_queue(
@@ -1408,7 +1344,7 @@ def _copy(
 ) -> dict[str, str]:
     """Each item id `ref`'s copy of the store holds, mapped to its path, listed once per read."""
     if ref not in copies:
-        copies[ref] = _item_paths_on(ref, items_dir, root, run)
+        copies[ref] = _items_at(ref, root, items_dir, run)
     return copies[ref]
 
 

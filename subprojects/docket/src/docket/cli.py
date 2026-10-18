@@ -831,7 +831,7 @@ def _orphaned(args: argparse.Namespace) -> OrphanedReport | None:
         return None
     if not inv.tracked:
         return orphaned(inv.root, runner=inv.git)
-    return orphaned(inv.root, items_dir=inv.tracked, runner=inv.git)
+    return orphaned(inv.root, config=with_fields(inv.config, items_dir=inv.tracked), runner=inv.git)
 
 
 def _complete_report(

@@ -2140,6 +2140,37 @@ def test_a_multiline_verify_command_is_rejected() -> None:
     assert any("single-line command" in e for e in report.errors)
 
 
+def test_a_verify_continued_with_a_backslash_is_refused_through_the_parser() -> None:
+    """`PL-1R9S`: the fold leaves no newline, so the guard has to ask the parser.
+
+    Read from a real file, because only the reader can produce the value. It
+    joins the two lines into `! grep -q 'old' a.md \\ b.md`, which the shell
+    runs with an escaped space. grep then exits 2 on a file named " b.md", and
+    `!` turns that into a pass.
+    """
+    item = parse_item(
+        "---\nid: PL-K7QX\ntitle: t\nstatus: ready\npriority: P2\neffort: S\n"
+        "touches: a.md\nverify: ! grep -q 'old' a.md \\\n  b.md\nreason: one\n  two\n---\n\n"
+        + BRIEF
+    )
+
+    assert "\n" not in item.verify
+    assert item.folded_fields == ("reason", "verify")
+    assert _has(_errors(item), "`verify` must be a single-line command")
+    assert _has(_errors(item), "escaped space")
+
+
+def test_a_folded_field_other_than_verify_is_not_refused() -> None:
+    """A wrapped `reason:` is this format's one spelling of a long value."""
+    item = parse_item(
+        "---\nid: PL-K7QX\ntitle: t\nstatus: ready\npriority: P2\neffort: S\n"
+        "touches: a.md\nverify: grep -q x a.md\nreason: one\n  two\n---\n\n" + BRIEF
+    )
+
+    assert item.reason == "one two"
+    assert not _has(_errors(item), "single-line command")
+
+
 def test_not_delegable_holding_a_boolean_is_rejected() -> None:
     """The field holds the reason, not a flag; `not-delegable: no` reads as a grant.
 

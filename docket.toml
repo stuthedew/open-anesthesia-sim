@@ -693,8 +693,13 @@ protected_paths = [
 # that is genuinely only in the rule's wording therefore errors here until
 # this list is widened, which is the right direction for a fail-closed setting
 # - a visible edit with a reason, rather than a silent promotion.
+#
+# `inflow.py` is here because its re-entered list is how triage finds a
+# generator whose fix did not hold: three items filed after a closed head that
+# restate its fact (`PL-PWKK`).
 generator_paths = [
   "subprojects/docket/src/docket/plan.py",
+  "subprojects/docket/src/docket/inflow.py",
   "subprojects/docket/src/docket/model.py",
   "subprojects/docket/src/docket/checks.py",
   "subprojects/docket/src/docket/render.py",

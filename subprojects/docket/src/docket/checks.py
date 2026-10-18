@@ -952,8 +952,14 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             "closed - or, where a question is still open, pose it beneath the answer under "
             f"a {DECISION_NEEDED} heading"
         )
-    if item.verify and "\n" in item.verify:
-        report.errors.append(f"{where}: `verify` must be a single-line command")
+    if item.verify and ("verify" in item.folded_fields or "\n" in item.verify):
+        report.errors.append(
+            f"{where}: `verify` must be a single-line command, and this one continues "
+            "onto another line. The reader joins the lines with a space, so a shell "
+            "continuation (`\\` at a line's end) becomes an escaped space and the "
+            "command runs with an argument nobody wrote: a `! grep -q` then passes on "
+            "grep's exit 2. Put the whole command on the `verify:` line"
+        )
     # An error rather than an advisory because nothing here needs judgment:
     # whether the command names `docket verify` is decidable, and there is no
     # reading of it that is worth keeping. Running another item's command

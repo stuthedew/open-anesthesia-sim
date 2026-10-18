@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science, docs
 feature: provenance
+milestone: v0.5.27
 touches: src/anesthesia_sim/data/patients/reference_adult.json, src/anesthesia_sim/data/agents/desflurane.json, src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/machines/reference_circle_system.json, docs/MODEL.md, tests/unit/test_parameters.py, .claude/rules/sources-and-docstrings.md, ROADMAP.md
 added: 2026-10-18
 closed: 2026-10-18

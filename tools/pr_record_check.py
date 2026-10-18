@@ -58,7 +58,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.vcs import default_base  # noqa: E402
+from docket.vcs import default_base, landed_closure  # noqa: E402
 
 from open_pull_requests import repo_slug  # noqa: E402
 from pr_title_check import (  # noqa: E402
@@ -73,16 +73,19 @@ from pr_title_check import (  # noqa: E402
 def closures(base: str, head: str) -> dict[str, str]:
     """The done items this branch introduces, as id to the `pr` each records.
 
-    Done at `head` and not closed at `base`, which is `pr_title_check.closes`'s
-    comparison narrowed to `done`: an item already closed on the base is
-    somebody else's work arriving through a merge, and a number is not owed
-    for it. Raises `GitUnanswered` where git cannot read either tree.
+    Done at `head` and not already landed at `base`, by `vcs.landed_closure`,
+    the test `bin/docket record` writes by (`PL-86H3`). An item already done on
+    the base is somebody else's work arriving through a merge, and a number is
+    not owed for it. One the base holds `dropped` and `head` marks `done` is
+    this branch's closure, and owes one. Raises `GitUnanswered` where git
+    cannot read either tree.
     """
     at_base = closed_items_at(base)
     return {
         identifier: item.pr
         for identifier, item in sorted(closed_items_at(head).items())
-        if item.status == "done" and identifier not in at_base
+        if landed_closure(item.status)
+        and not (identifier in at_base and landed_closure(at_base[identifier].status))
     }
 
 
