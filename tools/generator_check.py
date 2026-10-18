@@ -64,6 +64,17 @@ capture declares `touches` on its subject, and 24, 18 and 0 open items declared
 `docs/items`, `docs/WORKING_NOTES.md` and `docs/dead-ends.md` when the
 exclusion was measured and removed (`PL-LSR0`).
 
+**Exact match is deliberate.** `bin/docket concurrent` reads `touches` by
+containment, so a directory covers every path below it. That is right for its
+question, which is whether two items could edit the same file. Here a cluster
+stands for one problem, and containment gathers size rather than concentration.
+Measured 2026-10-18 (`PL-FH61`), a containment reading would add the 7 open
+items that each declare one item file to `docs/items`, taking it from 17 open
+items to 24. Those 7 carry 7 different features, so no new concentration
+appears. The same reading would grow `tests` from 3 open items to 127 and
+`docs` from 0 to 101, and clusters that size would signal on every run without
+changing a decision.
+
 Advisory, and it exits 0 whatever it finds. There is no state of this tree that
 this script can call an error, because the thing it looks for is not something
 it can decide.

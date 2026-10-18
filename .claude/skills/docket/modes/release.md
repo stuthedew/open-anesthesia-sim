@@ -33,6 +33,12 @@ directions - Gate 2's list did on four entries on 2026-09-23 - so write that
 group's heading from `Required scope`. `bin/docket wave` reads the frozen list
 against the same rule afterwards (`PL-RFHH`).
 
+**Open each entry with its bare id, never an id written as code.** The gate
+reads a bullet's leading ids with `vcs.leading_ids`, which takes no backtick.
+`ROADMAP.md` relies on that to cite ids as code in the bullets that explain a
+gate. So a bullet written as `` - `PL-B1C2` (S) ... `` is read as commentary
+and is not on the gate, and nothing reports it missing (`PL-18ZB`).
+
 **Carry every open entry of the previous list, debt or not.** A frozen entry
 stays one whatever its classes become, and one the previous gate deferred - its
 `deferred-from:` names that gate - lands on this list by `ROADMAP.md` §

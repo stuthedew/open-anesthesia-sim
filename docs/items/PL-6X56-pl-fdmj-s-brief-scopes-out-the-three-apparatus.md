@@ -3,11 +3,13 @@ id: PL-6X56
 title: PL-FDMJ's brief scopes out the three apparatus tests workflow_paths listed on 2026-09-05, and the list holds 35 now, so worked as written it holds 32 apparatus tests to the simulator's bar
 priority: P2
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: apparatus-test-bar
 touches: docs/items
 added: 2026-09-27
+closed: 2026-10-18
+pr: 1547
 payoff: keeps PL-FDMJ from cutting 32 apparatus tests' prose to the simulator's bar when it is worked
 verify: ! grep -qF 'less the three files above' docs/items/PL-FDMJ-*.md
 ---

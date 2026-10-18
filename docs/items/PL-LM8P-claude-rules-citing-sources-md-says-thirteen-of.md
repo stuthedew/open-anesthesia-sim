@@ -3,11 +3,13 @@ id: PL-LM8P
 title: .claude/rules/citing-sources.md says thirteen of twenty-six sources entries name a route or a depth, and there are now thirty-five
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: worker-instructions
 touches: .claude/rules/citing-sources.md
 added: 2026-09-07
+closed: 2026-10-18
+pr: 1547
 verify: ! grep -qF 'Thirteen of the twenty-six' .claude/rules/citing-sources.md && python3 tools/doc_check.py check
 ---
 
