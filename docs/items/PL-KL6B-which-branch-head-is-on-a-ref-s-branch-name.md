@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cla
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
 closed: 2026-10-18
+pr: 1544
 payoff: a branch's name and namespace read the same to docket and to the tools that sweep, title and attribute it
 verify: grep -q 'def test_head_branch_is_read_by_one_function' subprojects/docket/tests/test_vcs.py
 ---
