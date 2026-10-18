@@ -3,11 +3,13 @@ id: PL-0GWD
 title: CLAUDE.md's product-focus paragraph says root causes are worked by the PL-NZC0 Projects trial's coordinator, and instruction-writing.md rule 14 says to start nothing its Order list reserves while it runs, but the owner archived and paused that project on 2026-10-01, so who works a root cause now is unstated
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 touches: CLAUDE.md, .claude/rules/instruction-writing.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-18
+pr: 1539
 payoff: a head found in a product session has a named worker whether or not the Projects trial is running, so no session hands it to nobody
 verify: grep -qF 'while the trial is paused' CLAUDE.md
 ---
@@ -41,3 +43,12 @@ can be cut (`CLAUDE.md` § "The queue, and how the project owner works"). It
 repairs a resident sentence that is wrong while the trial is paused - a defect
 in what exists rather than a new mechanism - so the pause on new workflow
 mechanisms does not hold it.
+
+**Built 2026-10-18.** `CLAUDE.md`'s product-focus paragraph now names the
+coordinator only while the trial runs, and says a product session that finds a
+root cause while the trial is paused ends its reply with a ready-to-paste
+prompt. Nothing resident was cut to pay for the 198 characters: the clause
+corrects a sentence that was wrong whenever the trial is paused, and no other
+sentence states that case. Rule 14's Order-list sentence in
+`.claude/rules/instruction-writing.md` already reads "while `PL-NZC0`'s
+Projects trial runs", so it agrees and was left as it is.

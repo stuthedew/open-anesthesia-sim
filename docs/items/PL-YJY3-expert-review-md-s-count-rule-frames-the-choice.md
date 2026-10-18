@@ -3,11 +3,13 @@ id: PL-YJY3
 title: expert-review.md's count rule frames the choice as two routes to one end state, so a recommendation to take the durable route only if another instance turns up reads as a third option the rule does not name: PL-51B7's first recommendation, 2026-10-04, deferred checked types for the supported-range quantities that way, without taking the count, after the step's range had been captured eight times before PL-0GJC typed it, and the project owner refused it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: .claude/rules/expert-review.md, docs/resident-instructions.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-18
+pr: 1539
 payoff: a recommendation to build the durable route only once another instance turns up has to carry the count first, so a deferral like PL-51B7's is priced before it reaches the owner instead of being refused by them
 verify: grep -qF 'another instance' .claude/rules/expert-review.md
 reenters: PL-0GMC

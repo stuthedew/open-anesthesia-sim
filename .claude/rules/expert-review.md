@@ -144,6 +144,20 @@ is sound taken deliberately and repaid by refactoring as experience arrives, and
 is never a licence for shipping what you already know is wrong (*Debt Metaphor*,
 2009, https://www.youtube.com/watch?v=pqeJFYwnkjE).
 
+**Waiting for another instance is the cheap route, not a third one.** A
+recommendation to build the durable route only if another instance turns up
+builds nothing now. It is the cheap route with its repayment made conditional,
+so the count applies to it unchanged, and is taken before the wait is
+recommended. The rule of three does not exempt it. Fowler credits that rule to
+Don Roberts: refactor on the third similar case, not the first (*Refactoring*,
+1999, chapter 2, "The Rule of Three"). It stops an abstraction being extracted
+before enough cases show its shape, so it applies while the abstraction is
+still unknown. Once the abstraction is chosen, waiting only lets instances pile
+up. `PL-51B7`'s first recommendation, on 2026-10-04, deferred checked types for
+the supported-range quantities that way, without taking the count. The step's
+range had already been captured eight times before `PL-0GJC` typed it as
+`SimulationStep`, and the project owner refused the deferral (`PL-YJY3`).
+
 **Where the count cannot be taken, the horizon decides.** The project owner's
 form of it, and the one to quote back: *of these options, which will we be glad
 we implemented in five years?* `CLAUDE.md` § "What this project is" is why that

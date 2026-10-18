@@ -3,11 +3,13 @@ id: PL-XJV3
 title: docs/maintainer.md's model choice is dated 2026-09-19 and names Fable 5.1, Opus 5, Sonnet 5 and Haiku 4.5 but not Opus 5.5, Sonnet 5.5 or Haiku 5.5, so its strongest-model and delegable answers and its three reasons against Haiku may no longer hold; the owner moved hard work to Opus 5.5 on 2026-10-14 (found in PL-KLN5)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: model-evidence
 touches: docs/maintainer.md
 added: 2026-10-17
+closed: 2026-10-18
+pr: 1539
 payoff: the owner and sessions choose models for hard and delegated work from the current model list, not from one a generation old
 verify: ! grep -qF 'As of 2026-09-19 the strongest available model' docs/maintainer.md
 ---
@@ -43,3 +45,15 @@ a model the owner has moved away from.
 **Done when.** The passage is dated after 2026-10-17, names the current models
 from the models page with their prices, and says whether each of its three
 reasons against Haiku still holds for Haiku 5.5.
+
+**Built 2026-10-18.** Checked against the models overview and pricing pages
+read that day. Fable 5.1 is still the strongest model, with Opus 5.5 the step
+below. None of the three reasons against Haiku holds for Haiku 5.5: it is the
+current generation, its window is 1M, and it takes effort. `delegable` stays on
+Sonnet 5.5, a session's call recorded in the passage: the remaining reason is
+the owner's own asymmetry ("err on the side of default opus if any question"),
+and no trial here has measured Haiku 5.5 on a delegated defect. The
+`model-evidence` feature is where that evidence would come from, so no new item
+was filed. The cost case for Haiku is larger than before: Sonnet 5.5 now
+captures 51% to 57% of the largest saving against Opus 5.5, where Sonnet 5
+captured 75%.
