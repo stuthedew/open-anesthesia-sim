@@ -1,7 +1,7 @@
 ---
 id: PL-W9P6
 title: Build the one adapter module that drives the Qt widget tree from the LayoutModel, and turn the Qt port's inert splitter handles live
-priority: P2
+priority: P1
 effort: M
 status: done
 classes: feature
