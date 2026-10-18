@@ -62,6 +62,11 @@ jobs:
     # The monthly schedule and a manual run; the weekly one is `order`'s.
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 1 * *'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workers: ['auto', '8']
+        attempt: [1, 2]
     # Both jobs here re-resolve every dependency (`--upgrade` ignores
     # `uv.lock`; setup-uv still restores its download cache, which a run on
     # 2026-10-18 showed) and then run the suite, so they are slower than
@@ -112,7 +117,21 @@ jobs:
       # is dependency versions alone. Wall clock is not the argument - this
       # runs monthly, gates nothing and blocks nobody's iteration - though the
       # CI minutes are real on a private repository.
-      - run: uv run pytest -n auto --dist worksteal
+      # EXPERIMENT, removed before the pull request opens.
+      - name: experiment - runner and interpreter facts
+        run: |
+          set -x
+          lscpu | grep 'Model name' || true
+          nproc
+          uv run python -c 'import sys, sysconfig; print(sys.executable, sys.version); print("CONFIG_ARGS", sysconfig.get_config_var("CONFIG_ARGS")); print("Py_DEBUG", sysconfig.get_config_var("Py_DEBUG")); print(sys.flags)'
+          stdlib="$(uv run python -c 'import sysconfig; print(sysconfig.get_paths()["stdlib"])')"
+          echo "stdlib $stdlib writable=$( [ -w "$stdlib" ] && echo yes || echo no)"
+          echo "stdlib pyc files: $(find "$stdlib" -name '*.pyc' | wc -l)"
+          echo "venv pyc files: $(find .venv -name '*.pyc' | wc -l)"
+          for i in 1 2 3; do /usr/bin/time -f "import of the app, try $i: %e s" uv run python -c 'import anesthesia_sim.app.main'; done
+          echo "venv pyc files after: $(find .venv -name '*.pyc' | wc -l)"
+          echo "stdlib pyc files after: $(find "$stdlib" -name '*.pyc' | wc -l)"
+      - run: uv run pytest -n ${{ matrix.workers }} --dist worksteal
       - run: uv run mypy
 
       # Never fails, and that is the point. It reports what exists *beyond*
@@ -145,6 +164,11 @@ jobs:
     # The monthly schedule and a manual run; the weekly one is `order`'s.
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 1 * *'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ['plain', 'compiled']
+        attempt: [1, 2]
     # Both jobs here re-resolve every dependency (`--upgrade` ignores
     # `uv.lock`; setup-uv still restores its download cache, which a run on
     # 2026-10-18 showed) and then run the suite, so they are slower than
@@ -255,6 +279,25 @@ jobs:
           echo "$line"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
 
+      # EXPERIMENT, removed before the pull request opens.
+      - name: experiment - runner and interpreter facts
+        run: |
+          set -x
+          lscpu | grep 'Model name' || true
+          nproc
+          uv run python -c 'import sys, sysconfig; print(sys.executable, sys.version); print("CONFIG_ARGS", sysconfig.get_config_var("CONFIG_ARGS")); print("Py_DEBUG", sysconfig.get_config_var("Py_DEBUG")); print(sys.flags)'
+          stdlib="$(uv run python -c 'import sysconfig; print(sysconfig.get_paths()["stdlib"])')"
+          echo "stdlib $stdlib writable=$( [ -w "$stdlib" ] && echo yes || echo no)"
+          echo "stdlib pyc files: $(find "$stdlib" -name '*.pyc' | wc -l)"
+          echo "venv pyc files: $(find .venv -name '*.pyc' | wc -l)"
+          for i in 1 2 3; do /usr/bin/time -f "import of the app, try $i: %e s" uv run python -c 'import anesthesia_sim.app.main'; done
+          echo "venv pyc files after: $(find .venv -name '*.pyc' | wc -l)"
+          echo "stdlib pyc files after: $(find "$stdlib" -name '*.pyc' | wc -l)"
+      - name: experiment - compile the stdlib and the venv first
+        if: matrix.variant == 'compiled'
+        run: |
+          stdlib="$(uv run python -c 'import sysconfig; print(sysconfig.get_paths()["stdlib"])')"
+          /usr/bin/time -f "compileall: %e s" uv run python -m compileall -q -j0 "$stdlib" .venv || true
       # Same flags and the same reasoning as the `dependencies` job's pytest
       # line above, which carries it in full. `PL-55JM`.
       - run: uv run pytest -n auto --dist worksteal
@@ -275,7 +318,7 @@ jobs:
   # It reports and gates nothing, like the rest of this file. A red result
   # names two tests that share state, and that is a defect in one of them.
   order:
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 * * 1'
+    if: false
     runs-on: ubuntu-latest
     # The same bound as the jobs above, chosen past any honest run because
     # the failure being bounded is a hang. This one installs from the lock
