@@ -14,7 +14,7 @@ closed: 2026-09-26
 pr: 1094
 payoff: a correct sentence stops failing make check for its wording, and the bare section citations - 264 by the stress test count, two stale today, one in docs/MODEL.md - are checked instead of passing unread
 verify: grep -q 'def test_a_bare_section_mark_citation_is_checked' tests/unit/test_doc_check.py && grep -q 'def test_a_proposal_quoted_beside_a_document_is_not_an_error' tests/unit/test_doc_check.py && grep -q 'def test_a_fenced_copy_of_the_capture_template_is_not_the_brief' subprojects/docket/tests/test_checks.py && grep -q 'def test_a_branch_named_for_an_id_the_store_does_not_hold_is_unattributed' tests/unit/test_branch_id_check.py && grep -q 'def test_the_prose_token_pl_prefixed_is_not_read_as_an_id' tests/unit/test_fixture_id_check.py
-root-cause-of: PL-YSMV, PL-QQCD, PL-HVST, PL-L8VP, PL-XGYH, PL-HJ8G, PL-VH5V, PL-SN2T, PL-NQ3X, PL-FKH6, PL-6G8T
+root-cause-of: PL-YSMV, PL-QQCD, PL-HVST, PL-L8VP, PL-XGYH, PL-HJ8G, PL-VH5V, PL-SN2T, PL-NQ3X, PL-FKH6, PL-6G8T, PL-KJ63, PL-V13T, PL-316G
 generator: spent - every hard gate its eleven members named now recognises by explicit syntax - the section mark, a claiming connective, a make target leading its line, an indented block blanked as code, a heading's words outside a fence, the capitalised recommendation label, an id the store holds and an id's own characters - with what needs wording demoted to an advisory, and each member is closed; PL-WK57, the store rule in claims.holdings' name hold, misreads who holds an item rather than a gate's claim and is filed under that fact
 misread: Whether a sentence makes the claim a hard gate checks, when the gate recognises it by wording
 ---
@@ -51,3 +51,8 @@ Three pull requests for steps 2 to 4 rather than one, because each is reviewed a
 **Decided 2026-09-26: the escaped bracket pair stays a hard error.** The recognition is by the characters `\[` and `\]`, which is syntax rather than wording, so the rule is exact; what the characters leave open is intent, and the rule resolves that by cost. GitHub never needs the escape for a literal bracket in prose - `[WIP]` renders as written where no link definition claims it, and a code span carries any bracket - so the repair the error names costs no meaning, while a display formula written as LaTeX renders as literal text in `docs/MODEL.md`, whose symbol table is how a reader maps a displayed clinical value back to its equation. Demoted to an advisory, that failure would be the one nobody reads. No `\[` stands in the tree today, and the two refusals on record - the fuzz harness's, and `PL-XGYH`'s own first title - were both repaired by a code span. Recorded beside `TEX_DELIMITER_RE` too, where the error's reader meets it.
 
 **`verify:` rewritten 2026-09-26, with step 1.** The commissioned command named step 1's test alone, so it passed the moment step 1 landed while the head stood open for three more steps, and `docket check --verify` reports an open item whose command passes as an error. It now names one test per step, as `PL-PVW2`'s does - step 1's, `PL-HVST`'s for step 2, `PL-NQ3X`'s for step 3, and `PL-SN2T`'s with the `PL-prefixed` test `PL-VH5V` owes for step 4 - and fails until the last of them exists. Step 4's four files join `touches`, so the command reads only paths the head declares.
+
+**Member added 2026-10-18 by `PL-K046`.** `PL-KJ63`, `PL-V13T` and `PL-316G` joined `root-cause-of:`. All three
+predate this head, so they were never listed.
+Two refuters found it misread this head's fact, and `PL-K046` has the
+reasoning.

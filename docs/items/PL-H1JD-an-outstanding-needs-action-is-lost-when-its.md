@@ -12,6 +12,9 @@ added: 2026-09-04
 closed: 2026-09-13
 pr: 545
 verify: python3 tools/doc_check.py check && grep -qF 'The block is a handover, not a store.' .claude/rules/instruction-writing.md
+root-cause-of: PL-N638, PL-M21Q, PL-NGLM
+generator: spent - each kind of output its members lost now has a rule that sends it to the store (rule 14 for requests and recommendations, CLAUDE.md for feature groups, the docket skill for sweep verdicts), and no member has been filed since 2026-09-19
+misread: Which session outputs a later session can read: only the store and pushed files, never the reply
 ---
 
 **Problem.** An outstanding needs_action is lost when its session is archived,
@@ -108,3 +111,9 @@ in a check or a path-scoped rule.
 **Not closed as "already covered", deliberately.** Writing the sentence down is
 what makes the coverage real; an unstated implication of a rule three files away
 is what let `v0.3.8` sit untagged in the first place.
+
+**Recorded as a head 2026-10-18 by `PL-K046`.** Two of three refuters found
+that `PL-N638`, `PL-M21Q` and `PL-NGLM` misread this item's fact for other
+kinds of output: a feature grouping, a recommendation and sweep verdicts, each
+held only in a reply. This item carries the `root-cause-of:` because its fix
+first wrote the fact down. `PL-K046` has the reasoning and the dissent.
