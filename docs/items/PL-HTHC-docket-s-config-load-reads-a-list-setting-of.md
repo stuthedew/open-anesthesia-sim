@@ -9,6 +9,7 @@ touches: subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
 closed: 2026-10-18
+pr: 1551
 payoff: a mistyped or misspelt docket.toml setting stops the run by name instead of silently falling back to a default that looks applied
 verify: grep -q 'def test_a_list_setting_of_the_wrong_type_is_rejected_rather_than_defaulted' subprojects/docket/tests/test_config.py && grep -q 'def test_an_unknown_key_in_the_docket_table_is_rejected' subprojects/docket/tests/test_config.py
 ---
