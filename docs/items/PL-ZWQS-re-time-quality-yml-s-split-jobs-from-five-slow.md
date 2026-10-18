@@ -5,7 +5,7 @@ priority: P3
 effort: M
 status: ready
 feature: ci-cost
-touches: .github/workflows/quality.yml, tools/main_ci_status.py, tests/conftest.py, tests/integration/test_controller.py
+touches: .github/workflows/quality.yml, tools/main_ci_status.py, tests/conftest.py, tests/integration/test_controller.py, tests/reference/test_late_washout_against_published_fits.py, tests/unit/test_worksteal_dealing.py
 added: 2026-10-17
 payoff: a slow runner's quality run takes about 6 minutes instead of about 8, and its timeouts and drift baseline match what the split jobs take
 not-delegable: the end state is a measurement of CI runs on GitHub, which no local command can take
@@ -14,6 +14,57 @@ not-delegable: the end state is a measurement of CI runs on GitHub, which no loc
 **Tabled** (project owner, 2026-10-17: "I want low hanging fruit. Not a new
 headache to trouble shoot for two minutes savings"). The split already saves about 2 minutes, and balancing the parts is the troubleshooting the owner declined, so this drops from P2 to P3. Pick it up only if
 CI time becomes a problem again.
+
+**Taken up again** (project owner, 2026-10-17: "Can you balance the split
+quality ci checks?"). The target is that the two parts finish within about 30 s
+of each other, and "don't spend hours optimizing for 5 or 10 seconds".
+
+**Balance is a one-time fix, kept by eye** (project owner, 2026-10-17,
+ratified, over automatic balancing with `pytest-split`). New ordinary tests
+are dealt round robin between the parts, so they stay even without help. Only
+a new costly computation, which always goes to the last part, or growth in part
+1's linters moves the balance. The owner will ask when the parts drift apart.
+`pytest-split` (https://github.com/jerry-git/pytest-split) balances from a
+committed `.test_durations` file that `--store-durations` writes. It was set
+aside because it would replace `tests/conftest.py`'s dealing of the costly
+tests, and because its durations file goes stale and must be regenerated.
+
+**The parts are balanced, measured 2026-10-17** (`#1519`, run 39077752143).
+The two 24-hour controller runs now go through `tests/conftest.py`'s
+`computed_once` fixture, as the washout curves do, so a worker that `worksteal`
+hands a controller test reads the run instead of building it again. An
+instrumented local run built each run once. On CI, `checks-part-1` took 324 s,
+206 s of it in pytest, and `checks-part-2` took 307 s, 278 s of it in pytest.
+The parts finished 17 s apart, against 188 s before. The whole run, from the
+first job's start to the end of `checks`, took 343 s, against 499 s on the
+split's first run and the single job's 621 s median. One run is one runner, so
+this is not yet the five-run median that "Done when" asks for.
+
+**The first part now takes 2 of every 5 ordinary tests** (project owner,
+2026-10-17: "it seems less balanced now"). On the run after the merge from
+`main` (run 39079652820), `checks-part-1` took 337 s and `checks-part-2` 221 s.
+Part 2's pytest step moved by 80 s between the two runs, which is runner speed,
+but part 1 finished last on both, by 17 s and by 116 s. Part 1 also runs about
+115 s of linters and tree checks outside pytest, which an even split ignores.
+So `tests/conftest.py`'s `PART_SHARES` gives part 1 2 of each 5 ordinary tests,
+about 35 s of pytest moved to part 2: 3,466 tests against 5,233. With runner
+noise near 80 s, one run can still land more than 30 s apart. Retune the one
+constant if the median drifts.
+
+**Runner speed sets the gap on a single run, so tuning stops here** (project
+owner, 2026-10-17, ratified, over closing `#1523` and keeping the even split).
+On `#1523`'s run (39080271618), `checks-part-1` took 186 s and `checks-part-2`
+426 s. Part 1's `doc_check` step took 15 s there and 26 to 27 s on the two runs
+before, so part 1 had a runner about 1.7 times faster. The single job's medians,
+621 s on slow runners and 352 s on fast ones, show the same spread. When one
+part gets a fast runner and the other a slow one, the parts finish 2 to 4
+minutes apart whatever the split. The 2-in-5 share is kept because it should
+help the median, by about 35 s. Judge it by the median of several runs on
+`main`, never by a single run. The owner approved merging `#1523` on 2026-10-17.
+
+**What is left is the re-timing.** It needs five successful slow-runner runs
+on `main` after `#1519` merges, so no branch can do it. The timeouts, the
+`checks` job's 5 minutes and `PYTEST_BASELINE_S` stay as they are until then.
 
 **Problem.** `PL-T9X9` split `quality.yml`'s pytest step into two jobs,
 `checks-part-1` and `checks-part-2`, and made `checks` the job that combines
