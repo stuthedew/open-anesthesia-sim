@@ -372,3 +372,23 @@ def test_the_hook_runs_after_every_bash_call_and_before_every_edit() -> None:
     assert matchers("PreToolUse") == {"Edit|Write|MultiEdit|NotebookEdit"}
     assert matchers("PostToolUse") == {"Bash"}
     assert matchers("PostToolUseFailure") == {"Bash"}
+
+
+def test_branch_guard_names_a_python_below_the_floor(tmp_path: Path) -> None:
+    """The floor refusal travels as context, and the edit still goes through.
+
+    The guard used to send `bin/docket`'s stderr to `/dev/null`, so a session
+    below the floor was never told why the branch check said nothing
+    (`PL-QHCP`).
+    """
+    from test_docket_digest_hook import install_python_below_the_floor
+
+    (tmp_path / "markers").mkdir()
+    work = _clone_of_a_moved_remote(tmp_path)
+    refusal = install_python_below_the_floor(work / "bin")
+
+    result = _run_guard(work, tmp_path)
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)["hookSpecificOutput"]
+    assert payload["additionalContext"].startswith(refusal)

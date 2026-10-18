@@ -164,3 +164,54 @@ def test_the_instruction_audit_settings_are_read_from_the_config(tmp_path: Path)
 
     assert config.instruction_stale_days == 45
     assert config.instruction_paths == ("CLAUDE.md", ".claude/rules")
+
+
+@pytest.mark.parametrize(
+    ("setting", "named"),
+    [
+        pytest.param('instruction_paths = "CLAUDE.md"', "instruction_paths", id="a string"),
+        pytest.param('protected_paths = ["src/core", 1]', "protected_paths", id="a mixed list"),
+        pytest.param('workflow_paths = "tools"', "workflow_paths", id="the lane setting"),
+    ],
+)
+def test_a_list_setting_of_the_wrong_type_is_rejected_rather_than_defaulted(
+    tmp_path: Path, setting: str, named: str
+) -> None:
+    """`PL-HTHC`. Each of these once read as the empty default, switching its guard off."""
+    (tmp_path / "docket.toml").write_text(f"[docket]\n{setting}\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match=f"^{named}: .* is not a list of strings$"):
+        load(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("setting", "named"),
+    [
+        pytest.param(
+            'check_command = ["make", "check"]', "check_command", id="a list for a string"
+        ),
+        pytest.param('top_band_limit = "12"', "top_band_limit", id="a string for a number"),
+        pytest.param("top_band_limit = true", "top_band_limit", id="a bool for a number"),
+    ],
+)
+def test_a_scalar_setting_of_the_wrong_type_is_rejected_rather_than_coerced(
+    tmp_path: Path, setting: str, named: str
+) -> None:
+    """`PL-HTHC`. `str()` turned `["make", "check"]` into the command `['make', 'check']`."""
+    (tmp_path / "docket.toml").write_text(f"[docket]\n{setting}\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match=f"^{named}: "):
+        load(tmp_path)
+
+
+def test_an_unknown_key_in_the_docket_table_is_rejected(tmp_path: Path) -> None:
+    """`PL-HTHC`. A misspelt `workflow_path` left the lanes off while the file named them."""
+    (tmp_path / "docket.toml").write_text('[docket]\nworkflow_path = ["tools"]\n', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="no setting is named workflow_path$"):
+        load(tmp_path)
+
+
+def test_the_shipped_config_names_only_settings_load_reads() -> None:
+    """The repository's own `docket.toml` loads under the stricter reading."""
+    load(Path(__file__).resolve().parents[3])
