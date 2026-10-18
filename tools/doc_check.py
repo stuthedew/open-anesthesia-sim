@@ -455,6 +455,13 @@ REFERENCES = Path("docs/references/README.md")
 
 PACKAGE_ROOT = PurePosixPath("src/anesthesia_sim")
 
+# The subdirectories of the package's `data/` whose JSON files are not
+# parameter files. The shipped Workspaces are layout, which
+# `layout/shipped.py` reads, and they store no value a clinician could read,
+# so neither the provenance table nor the source tiers apply to them
+# (`PL-KXTL`).
+NON_PARAMETER_DATA_DIRS = frozenset({"workspaces"})
+
 # Directories that hold no reviewable source, so nothing in them belongs in a
 # package map and nothing in them answers a path citation.
 IGNORED_DIRS = frozenset(
@@ -1467,6 +1474,17 @@ def _walk(root: Path, under: str | PurePath = "") -> Iterator[Path]:
             yield path
 
 
+def parameter_data_files(root: Path) -> Iterator[Path]:
+    """Yield each JSON file under the package's `data/` outside `NON_PARAMETER_DATA_DIRS`."""
+    data_root = root / PACKAGE_ROOT / "data"
+    for path in _walk(root, PACKAGE_ROOT / "data"):
+        if path.suffix != ".json":
+            continue
+        if NON_PARAMETER_DATA_DIRS.intersection(path.relative_to(data_root).parts[:-1]):
+            continue
+        yield path
+
+
 def read_docs(root: Path) -> dict[Path, str]:
     """Read every documentation file this tool holds to the tree."""
     documents: dict[Path, str] = {}
@@ -1767,9 +1785,7 @@ def check_provenance(root: Path, report: Report) -> None:
     data_root = root / PACKAGE_ROOT / "data"
     if not data_root.is_dir():
         return
-    for data_path in _walk(root, PACKAGE_ROOT / "data"):
-        if data_path.suffix != ".json":
-            continue
+    for data_path in parameter_data_files(root):
         relative = PurePosixPath(data_path.relative_to(root / PACKAGE_ROOT).as_posix())
         document = json.loads(data_path.read_text(encoding="utf-8"))
         for key_path, value in _leaf_numbers(document):
@@ -1838,9 +1854,7 @@ def check_source_tiers(root: Path, report: Report) -> None:
     if not data_root.is_dir():
         return
 
-    for data_path in _walk(root, PACKAGE_ROOT / "data"):
-        if data_path.suffix != ".json":
-            continue
+    for data_path in parameter_data_files(root):
         relative = data_path.relative_to(root / PACKAGE_ROOT).as_posix()
         document = json.loads(data_path.read_text(encoding="utf-8"))
         if not isinstance(document, dict):

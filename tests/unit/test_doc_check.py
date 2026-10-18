@@ -417,6 +417,17 @@ def test_row_without_a_key_path_is_an_error(tmp_path: Path) -> None:
     assert any("names 1 code spans in its source cell" in e for e in _errors(root))
 
 
+def test_a_shipped_workspace_file_is_not_held_to_the_parameter_checks(tmp_path: Path) -> None:
+    """`data/workspaces/` holds layout: fractions and ids, with no `sources` and no table row."""
+    root = _repo(tmp_path)
+    workspaces = root / "src" / "anesthesia_sim" / "data" / "workspaces"
+    workspaces.mkdir()
+    (workspaces / "default.json").write_text(
+        json.dumps({"schema_version": 1, "active": 0, "sizes": [0.75, 0.25]}), encoding="utf-8"
+    )
+    assert not any("workspaces" in e for e in _errors(root))
+
+
 def test_schema_version_is_not_treated_as_a_parameter(tmp_path: Path) -> None:
     assert not any("schema_version" in e for e in _errors(_repo(tmp_path)))
 

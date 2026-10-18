@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: feature
 feature: interface-areas
-touches: src/anesthesia_sim/data/, src/anesthesia_sim/layout/shipped.py, src/anesthesia_sim/layout/exceptions.py, src/anesthesia_sim/layout/__init__.py, src/anesthesia_sim/layout/store.py, tests/unit, docs/ARCHITECTURE.md, ROADMAP.md
+touches: src/anesthesia_sim/data/, src/anesthesia_sim/layout/shipped.py, src/anesthesia_sim/layout/exceptions.py, src/anesthesia_sim/layout/__init__.py, src/anesthesia_sim/layout/store.py, tests/unit, docs/ARCHITECTURE.md, ROADMAP.md, tools/doc_check.py, tools/source_tier_counts.py
 blocked-by: PL-WV9K, PL-SSQW
 added: 2026-09-16
 closed: 2026-10-18
@@ -83,3 +83,10 @@ controls below.
 The View kind tags the files name - `concentration_chart`, `wash_in` and
 `parameter_controls` - are not registered yet. `PL-R1WQ` Q4's test, which
 asserts every shipped tag is registered, lands with the registry.
+
+`tools/doc_check.py` and `tools/source_tier_counts.py` read every JSON file
+under `data/` as a parameter file, and refused the three Workspace files for
+having no `sources` and no provenance-table rows. Both now read the parameter
+files through one function, `doc_check.parameter_data_files`, which leaves out
+the subdirectories `NON_PARAMETER_DATA_DIRS` names: `workspaces`, which holds
+layout fractions and ids and no value a clinician could read.
