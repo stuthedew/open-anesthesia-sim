@@ -267,10 +267,10 @@ one to invent:
 > Retrieved from PubMed (PMID 2001020) and verified against the abstract
 > 2026-09-04.
 
-Thirteen of the twenty-six `sources` entries under `src/anesthesia_sim/data/`
-named a route or a depth when this rule was written; the rest name neither. So
-this is the existing convention made compulsory, not an addition — every note
-you write or touch names **which route** (PubMed metadata, PubMed full text, or
+Many of the `sources` entries under `src/anesthesia_sim/data/` already named
+a route or a depth when this rule was written. So this is the existing
+convention made compulsory, not an addition. Every note you write or touch
+names **which route** (PubMed metadata, PubMed full text, or
 a document already held in `docs/references/`) and **how deeply you read**
 (full text, or the abstract only).
 
