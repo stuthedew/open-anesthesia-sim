@@ -3,12 +3,14 @@ id: PL-NDGS
 title: contrast_check --base reads a renamed colour as a new one, so renaming a colour KNOWN_SHORTFALLS lists fails make check with no way to split the rename from the entry's move
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: contrast-base-entry-reading
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-09-30
+closed: 2026-10-18
+pr: 1548
 payoff: a listed colour can be renamed in one change without failing make check
 verify: grep -q 'def test_renaming_a_listed_colour_passes_the_base_check' tests/unit/test_contrast_check.py
 ---
@@ -31,3 +33,5 @@ around "fails make check", and nothing else about them is shared.
 **Done when.** Renaming a listed colour passes `--base`, with a test, while a new constant reusing an existing value still counts as a new colour.
 
 **Generator check.** See `PL-L1NX`: the same design choice, a second consequence.
+
+**Built 2026-10-18,** with `PL-L1NX`. `renamed_colours` reads a name the base lacks as a rename when exactly one base name with the same value is gone now, and `base_key` maps the entry back through it, so the base's entry moves with the rename. A new constant reusing a value still defined stays new (`test_a_new_constant_reusing_a_listed_value_is_still_a_new_colour`).
