@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: test
 feature: tests-detect-wrong-values
+milestone: v0.5.26
 touches: tests/unit, tests/integration/test_controller.py, docs/items/PL-2TZT-five-more-guard-names-in-core-are-passed.md, docs/items/PL-PLT9-tools-context-reading-py-printed-a-negative.md
 added: 2026-10-17
 closed: 2026-10-17

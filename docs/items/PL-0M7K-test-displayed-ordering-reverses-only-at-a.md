@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test, docs
 feature: tests-detect-wrong-values
+milestone: v0.5.26
 touches: tests/unit/test_formatting.py, tests/reference/test_coupled_dynamics.py, docs/MODEL.md
 added: 2026-10-17
 closed: 2026-10-17

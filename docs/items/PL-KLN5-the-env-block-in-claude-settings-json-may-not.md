@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: friction-batch
+milestone: v0.5.26
 touches: docs/maintainer.md, docs/items
 added: 2026-10-01
 closed: 2026-10-17

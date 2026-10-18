@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.5.26
 touches: .claude/rules/plain-writing.md, .claude/skills/docket/modes/start.md, docs/resident-instructions.md
 added: 2026-10-17
 closed: 2026-10-17

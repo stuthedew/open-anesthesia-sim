@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, test
 feature: ci-cost
+milestone: v0.5.26
 touches: tests/reference/test_late_washout_against_published_fits.py, tests/conftest.py, tests/unit/test_worksteal_dealing.py, tests/integration/test_controller.py, docs/items/PL-K5VM-test-controller-py-s-two-module-scoped-24-hour.md, docs/items/PL-H9KW-quality-yml-s-pytest-step-now-takes-about-9.md, docket.toml, pyproject.toml
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27

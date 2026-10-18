@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, science, test
 feature: tests-detect-wrong-values
+milestone: v0.5.26
 touches: tests/unit/test_parameters.py, tests/unit/test_formatting.py
 added: 2026-10-17
 closed: 2026-10-17

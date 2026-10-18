@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: review-hold
+milestone: v0.5.26
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, CLAUDE.md, docs/maintainer.md, docs/resident-instructions.md, tools/workflow_paths_check.py, docs/items/PL-N7LK-four-apparatus-documents-wrap-a-spaced-hyphen.md
 added: 2026-10-17
 closed: 2026-10-17

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, test
 feature: tests-detect-wrong-values
+milestone: v0.5.26
 touches: tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 added: 2026-10-17
 closed: 2026-10-17

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: test-effectiveness-measurement
+milestone: v0.5.26
 touches: .claude/rules/test-oracles.md
 added: 2026-10-17
 closed: 2026-10-17
