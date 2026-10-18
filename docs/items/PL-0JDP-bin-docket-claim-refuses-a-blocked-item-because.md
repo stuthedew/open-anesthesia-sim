@@ -3,12 +3,14 @@ id: PL-0JDP
 title: bin/docket claim refuses a blocked item because a block releases a claim as it is written (PL-3FYK), so a design round on a blocked head - PL-979D on 2026-09-25, blocked by PL-HMZZ since #1027 - cannot follow the claim-before-pull-request rule and runs unclaimed
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: claim-record
 touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claiming.py, subprojects/docket/tests/test_claims.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-26 triage pass
 added: 2026-09-25
+closed: 2026-10-18
+pr: 1588
 payoff: a design round on an item somebody else blocked can hold a claim, so every in-flight guard sees it and a second session does not triage or start the same item
 verify: grep -q 'def test_claim_accepts_an_item_blocked_before_the_branch_touched_it' subprojects/docket/tests/test_claiming.py && grep -q 'def test_a_claim_on_an_item_already_blocked_on_the_base_is_held' subprojects/docket/tests/test_claims.py && grep -qF 'PL-0JDP' subprojects/docket/src/docket/claims.py
 ---
@@ -68,3 +70,20 @@ that head closed, and never joined its `root-cause-of:`. That head's
 `generator:` line pre-registers two residuals, both rounds that forget to claim;
 this is a third, a round that cannot. It follows from how the 2026-09-24 answer
 was implemented, not from a reader re-deriving the fact.
+
+**Worked, 2026-10-18, on answer A.** `claims.releases(status, on_base)` is the
+one rule both readers ask. A `blocked` copy releases a claim only where the
+base's copy is not blocked, so only a block the branch wrote counts. Closed
+statuses release as before. `claiming._branch` reads the base's copy beside
+`HEAD`'s and refuses only on that rule. `holdings` passes the base's status in.
+
+`test_a_blocked_claim_with_no_disposition_behind_it_leaves_the_branch_live` lost
+its `blocked_on_base` case, which asserted the behaviour this item reverses: a
+claim on an item the base had already blocked read as released by status. The
+new `test_a_claim_on_an_item_already_blocked_on_the_base_is_held` states the
+reverse. `test_a_claim_that_could_not_hold_is_refused_before_anything_is_written`
+now blocks the item on the branch itself, since a block from the base is no
+longer refused. `arming.py`'s module docstring still says a block releases a
+claim, citing `claims.RELEASING_STATUSES`. It is still true of a block the
+branch writes, and it was left alone because an edit there holds a pull
+request for the owner's read.

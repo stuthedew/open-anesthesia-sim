@@ -1693,6 +1693,37 @@ class _Landings:
         split = self.split(ref)
         return split is not None and _work_already_on_base(split)
 
+    def deletions(self, ref: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        """The paths `ref` deleted since its fork, split by whether the base's tip lacks them.
+
+        `split` sees only paths a change gives content, so a deleted path is in
+        neither of its halves (`PL-TFF9`). A deletion has no blob to look for
+        in what the base wrote, so the test is the base's tip instead. A path
+        the fork held and the tip lacks is one the base deleted since, which
+        is the deletion landed. A path the tip still holds is the deletion
+        outstanding. Where git would not answer, the ref deleted nothing as
+        far as this can say, which is what every reader assumed before.
+        """
+        fork = self.fork(ref)
+        if not fork:
+            return (), ()
+        gone = listed_paths(
+            self.run(
+                changed_path_args("diff", "--name-only", "--diff-filter=D", fork, ref, "--"),
+                self.root,
+            )
+        )
+        if not gone:
+            return (), ()
+        tree = self.run(["ls-tree", "-r", "-z", "--name-only", self.base], self.root)
+        if not answered(tree):
+            return (), ()
+        held = frozenset(listed_paths(tree))
+        return (
+            tuple(path for path in gone if path not in held),
+            tuple(path for path in gone if path in held),
+        )
+
 
 #: How many bytes of pathspec one `git diff` may be handed at a time. Every
 #: path a caller names goes on the command line, and the callers hand over
@@ -2145,6 +2176,15 @@ class _Refs:
     listed: int
     candidates: list[str]
     unlanded: list[str]
+    #: The candidates left out of `unlanded` because the base wrote everything
+    #: they changed since their fork. Kept for `claims.holdings`, which still
+    #: reads their claims (`PL-7XGR`). A branch that took another pull
+    #: request's head and then claimed carries nothing of its own until it
+    #: commits work, so once that pull request squash-merges, the branch reads
+    #: as landed while its claim is minutes old. Whether a squash took a claim
+    #: is the landed prefix's question, and an empty claim commit with no work
+    #: after it is one no squash can have taken.
+    taken: list[str]
     unreadable: set[str]
     #: Per unlanded ref, the paths it introduces that the base already holds
     #: and the paths it does not. Kept because deciding a ref is unlanded
@@ -2206,6 +2246,7 @@ def _unlanded_refs(
     # one that answers it - two calls asking git the same question could
     # disagree about which commit the branch left from.
     unlanded: list[str] = []
+    taken: list[str] = []
     unreadable: set[str] = set()
     landing: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {}
     landings = _Landings(base, root, run)
@@ -2217,10 +2258,13 @@ def _unlanded_refs(
         if split is None or not _work_already_on_base(split):
             unlanded.append(name)
             landing[name] = split or ((), ())
+        else:
+            taken.append(name)
     return _Refs(
         listed=len(listing),
         candidates=candidates,
         unlanded=unlanded,
+        taken=taken,
         unreadable=unreadable,
         landing=landing,
         landings=landings,
@@ -6154,8 +6198,9 @@ def _commits_by_landing(
     """
     # Not `changed_path_args`: each commit's paths are matched against
     # `_landing_split`'s, which holds only the paths a change puts content at,
-    # so a rename's deleted side would match neither set and leave the commit
-    # unclassified (`PL-KR69`).
+    # and the deletions `_Landings.deletions` adds, so a rename git detects is
+    # read by its new name alone (`PL-KR69`). One it scores below 50% lists as
+    # a deletion and an addition, and both are classified (`PL-TFF9`).
     output = run(["log", "-z", "--format=%x1e%H%x1f%s", "--name-only", f"^{base}", ref, "--"], root)
     found: list[OrphanedCommit] = []
     took_one_whole = False
@@ -6237,10 +6282,11 @@ def landed_whole(
         answer - an unreadable fork point is the `MERGE` status quo rather than
         an invitation to restart.
     """
-    split = _Landings(base, root, run).split(ref)
+    landings = _Landings(base, root, run)
+    split = landings.split(ref)
     if split is None:
         return False
-    landed, _ = split
+    landed = (*split[0], *landings.deletions(ref)[0])
     if not landed:
         return False
     # No outstanding set: the whole-commit verdict reads the landed half alone,
@@ -6346,7 +6392,11 @@ def orphaned(
     rewritten: list[str] = []
     for name in refs.unlanded:
         landed, outstanding = refs.landing.get(name, ((), ()))
-        if not (landed and outstanding):
+        # A deleted path is in neither half of the split, so a commit deleting
+        # one would be classified as neither taken nor left behind (`PL-TFF9`).
+        dropped, kept = refs.landings.deletions(name)
+        landed = (*landed, *dropped)
+        if not (landed and (outstanding or kept)):
             continue
         # **The outstanding side is narrowed to what the base's tip is missing
         # before anything is decided on it.** `_landing_split` answers per
@@ -6361,7 +6411,7 @@ def orphaned(
         # addition, and the recovery offered for it overwrites the base's
         # closed copy with it (`PL-MBTZ`).
         superseded |= _behind_on_base(name, base, outstanding, root, settings.items_dir, run)
-        outstanding = tuple(path for path in outstanding if path not in superseded)
+        outstanding = (*(path for path in outstanding if path not in superseded), *kept)
         if not outstanding:
             continue
         left, took_one_whole = _commits_by_landing(

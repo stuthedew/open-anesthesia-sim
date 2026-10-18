@@ -980,6 +980,46 @@ def test_a_claim_on_a_branch_restoring_pre_fork_content_stays_live(tmp_path: Pat
     assert (taken.state, taken.released_by) == (RELEASED, BY_LANDING)
 
 
+@pytest.mark.parametrize(
+    "files",
+    [{"docs/items/PL-D4D4-new.md": _item("PL-D4D4")}, {"src/tool.py": "tool = 1\n"}],
+    ids=["captures-only", "work"],
+)
+def test_a_claim_on_a_branch_whose_only_content_another_pull_request_landed_stays_live(
+    tmp_path: Path, files: dict[str, str]
+) -> None:
+    """`PL-7XGR`: a claim stays live when the base takes the head it was written on.
+
+    The claiming branch starts at another branch's head and claims, so it
+    carries nothing of its own. Once that other branch squash-merges, the base
+    holds all of the claiming branch's content. That branch was then never
+    offered for its claims, so the item read as free until the session made a
+    commit of its own. No squash can have taken a claim with no work after it,
+    so the claim holds. Once the claiming branch's own work lands, its claim
+    is spent as before, and a branch the base took whole holds no lapsed row.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/capture")
+    repo.commit("PL-C2C2: capture", when=T0, files=files)
+    repo.branch("claude/stacked", "claude/capture")
+    repo.claim("PL-C2C2", when=T0 + HOUR)
+    [before] = holdings(repo.root, now=T0 + 2 * HOUR).holds
+    repo.git("checkout", "-q", "main")
+    repo.commit("PL-C2C2: capture (#1)", when=T0 + 3 * HOUR, files=files)
+    [after] = holdings(repo.root, now=T0 + 4 * HOUR).holds
+    late = holdings(repo.root, now=T0 + HOUR + LEASE_TERM + DAY).holds
+    repo.git("checkout", "-q", "claude/stacked")
+    repo.commit("PL-C2C2: the work", when=T0 + 5 * HOUR, files={"src/work.py": "w\n"})
+    repo.git("checkout", "-q", "main")
+    repo.commit("PL-C2C2: the work (#2)", when=T0 + 6 * HOUR, files={"src/work.py": "w\n"})
+    landed = holdings(repo.root, now=T0 + 7 * HOUR).holds
+
+    assert (before.state, before.ref) == (LIVE, "claude/stacked")
+    assert (after.state, after.ref, after.released_by) == (LIVE, "claude/stacked", "")
+    assert late == ()
+    assert landed == ()
+
+
 def test_holder_is_the_first_live_claim_whose_item_names_the_resource(tmp_path: Path) -> None:
     """Two release items claimed on two branches: the earlier claim holds the train.
 
@@ -1167,29 +1207,24 @@ def test_a_branch_that_blocked_what_it_claimed_is_not_settled(tmp_path: Path) ->
     assert settled_branches(repo.root, read, opened=lambda: ()).branches == ()
 
 
-@pytest.mark.parametrize("blocked_on_base", [False, True])
 def test_a_blocked_claim_with_no_disposition_behind_it_leaves_the_branch_live(
-    tmp_path: Path, blocked_on_base: bool
+    tmp_path: Path,
 ) -> None:
     """The claim itself says the item is blocked, where no disposition is left to.
 
-    A capture the base never had makes no disposition, and neither does a
-    block the base already shows. Either way the branch holds the only record
-    of unfinished work beside a close-out, and reading only the dispositions
-    reported it as finished (`PL-N162`, slice 4's review).
+    A capture the base never had makes no disposition, so the branch holds the
+    only record of unfinished work beside a close-out, and reading only the
+    dispositions reported it as finished (`PL-N162`, slice 4's review). A
+    block the base already shows was the second case here until it stopped
+    releasing the claim at all (`PL-0JDP`), which the next test holds.
     """
     repo = _Repo(tmp_path / "repo")
     files = {"src/y.py": "x\n"}
-    if blocked_on_base:
-        key = "PL-C2C2"
-        _close(repo, key, "blocked", T0 - DAY)
-        repo.branch("claude/work")
-    else:
-        key = "PL-D4D4"
-        repo.branch("claude/work")
-        capture = "docs/items/PL-D4D4-new.md"
-        repo.commit(f"{key}: capture", when=T0 - HOUR, files={capture: _item(key)})
-        files[capture] = _item(key, "blocked")
+    key = "PL-D4D4"
+    repo.branch("claude/work")
+    capture = "docs/items/PL-D4D4-new.md"
+    repo.commit(f"{key}: capture", when=T0 - HOUR, files={capture: _item(key)})
+    files[capture] = _item(key, "blocked")
     repo.claim(key, when=T0)
     repo.commit(f"{key}: blocked", when=T0 + HOUR, files=files)
     _close(repo, "PL-B1B1", "done", T0 + 2 * HOUR)
@@ -1203,6 +1238,31 @@ def test_a_blocked_claim_with_no_disposition_behind_it_leaves_the_branch_live(
     assert [(branch.name, branch.item_id) for branch in read.flight().branches] == [
         ("claude/work", "PL-B1B1")
     ]
+    assert settled_branches(repo.root, read, opened=lambda: ()).branches == ()
+
+
+def test_a_claim_on_an_item_already_blocked_on_the_base_is_held(tmp_path: Path) -> None:
+    """`PL-0JDP`: only a block the branch writes releases its claim.
+
+    The base blocked the item before the branch forked, so the branch's copy
+    shows the block without the branch having written it. The claim holds and
+    keeps the branch live. The branch's own block, written over a copy the base
+    shows as ready, still releases, as
+    `test_the_branch_s_own_copy_reaching_a_releasing_status_releases_the_claim`
+    holds.
+    """
+    repo = _Repo(tmp_path / "repo")
+    _close(repo, "PL-C2C2", "blocked", T0 - DAY)
+    repo.branch("claude/design")
+    claimed = repo.claim("PL-C2C2", when=T0)
+    repo.commit("PL-C2C2: design notes", when=T0 + HOUR, files={"docs/notes.md": "x\n"})
+
+    read = holdings(repo.root, now=T0 + 2 * HOUR)
+
+    assert [(hold.key, hold.state, hold.status, hold.commit) for hold in read.holds] == [
+        ("PL-C2C2", LIVE, "blocked", claimed)
+    ]
+    assert read.flight().ids == frozenset({"PL-C2C2"})
     assert settled_branches(repo.root, read, opened=lambda: ()).branches == ()
 
 

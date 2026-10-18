@@ -87,13 +87,13 @@ from .claims import (
     LAPSED,
     LIVE,
     RELEASED,
-    RELEASING_STATUSES,
     SESSION_VARIABLE,
     Hold,
     Holdings,
     _parse_claim,
     _parse_yield,
     holdings,
+    releases,
 )
 from .lines import record_text, split_lines
 from .model import CLOSED_STATUSES, parse_front_matter
@@ -320,6 +320,8 @@ def claim(
     for key in already:
         notes.append(f"{key}: {branch.name} already holds it first; nothing written for it")
     writing = [key for key in wanted if key not in already]
+    if writing and _taken_whole(root, read.base, branch, run):
+        return Written(REFUSED, (*notes, f"claim: {LANDED_BRANCH}; nothing was written"))
     if not writing:
         published = {key: _published(root, remote, made) for key, made in already.items()}
         unknown = [key for key, state in published.items() if state is None]
@@ -537,8 +539,8 @@ def _branch(
     empty = _Branch(name="", remotes=remotes)
     if not name:
         return empty, (f"{command}: HEAD is detached; a claim names the branch it is on",), ()
-    base = _head_name(default_base(root, runner=run), remotes)
-    if name == base:
+    base = default_base(root, runner=run)
+    if name == _head_name(base, remotes):
         return (
             empty,
             (
@@ -550,7 +552,7 @@ def _branch(
     upstream = run(
         ["for-each-ref", "--format=%(upstream:short)", f"refs/heads/{name}"], root
     ).strip()
-    if upstream and _head_name(upstream, remotes) == base:
+    if upstream and _head_name(upstream, remotes) == _head_name(base, remotes):
         upstream = ""
     if upstream and _head_name(upstream, remotes) != name:
         return (
@@ -565,6 +567,7 @@ def _branch(
     problems: list[str] = []
     absent: list[str] = []
     copies = _items_at("HEAD", root, items_dir, run) if keys else {}
+    on_base = _items_at(base, root, items_dir, run) if keys else {}
     for key in keys:
         path = copies.get(key, "")
         if not path:
@@ -573,14 +576,20 @@ def _branch(
         # Set aside on purpose: a `status:` written as a block arrives empty,
         # so it releases nothing here, as it releases nothing in `claims`, and
         # `docket check` refuses the form by name.
-        fields, _body, _declined = parse_front_matter(run(["show", f"HEAD:{path}"], root))
-        status = fields.get("status", "").strip()
-        if status in RELEASING_STATUSES:
+        status = _status(run, "HEAD", path, root)
+        there = _status(run, base, on_base[key], root) if key in on_base else ""
+        if releases(status, there):
             problems.append(
                 f"{command}: {key} is `{status}` in HEAD's copy, which releases a claim as soon "
                 "as it is written; set its status first"
             )
     return branch, tuple(problems), tuple(absent)
+
+
+def _status(run: Runner, ref: str, path: str, root: Path) -> str:
+    """The `status:` of the item file at `path` in `ref`, or `""` where it has none."""
+    fields, _body, _declined = parse_front_matter(run(["show", f"{ref}:{path}"], root))
+    return fields.get("status", "").strip()
 
 
 @dataclass(frozen=True)
@@ -1484,12 +1493,34 @@ def _unread_because(root: Path, read: Holdings, branch: _Branch, key: str) -> st
             "item is the one to pick"
         )
     refs = _unlanded_refs(read.base, root, _run_git, include_remote=True)
-    if not any(_head_name(name, branch.remotes) == branch.name for name in refs.unlanded):
-        return (
-            "the branch reads as landed - what it carries is already on the default branch - "
-            "and a landed branch holds nothing. Claim from a new branch off the default one"
-        )
+    offered = (*refs.unlanded, *refs.taken)
+    if not any(_head_name(name, branch.remotes) == branch.name for name in offered):
+        return LANDED_BRANCH
     return "this is a defect in docket, and the commit is where to start"
+
+
+#: Why a claim is not written on, or does not read back from, a branch whose
+#: work the default branch already holds.
+LANDED_BRANCH = (
+    "the branch reads as landed - what it carries is already on the default branch - "
+    "and a landed branch holds nothing. Claim from a new branch off the default one"
+)
+
+
+def _taken_whole(root: Path, base: str, branch: _Branch, run: Runner) -> bool:
+    """Whether the base already holds all of this branch's work, so a claim here is refused.
+
+    A claim on such a branch would hold (`PL-7XGR`: `claims.holdings` reads a
+    branch the base took whole for its live claims). It is refused anyway,
+    before anything is written, because the branch's pull request has usually
+    merged, and work claimed there belongs on a new branch off the base. A
+    claim written while the branch still had work of its own keeps holding
+    after the base takes that work, which is the case the read exists for.
+    Only the checkout's own branch is asked, since that is where the claim is
+    written: a branch restarted on the base after its pull request merged
+    carries nothing the base lacks, while its remote copy still reads as taken.
+    """
+    return branch.name in _unlanded_refs(base, root, run, include_remote=False).taken
 
 
 def _git(args: list[str], root: Path) -> _Ran:

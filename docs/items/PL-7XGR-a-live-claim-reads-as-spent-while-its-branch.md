@@ -3,12 +3,14 @@ id: PL-7XGR
 title: A live claim reads as spent while its branch holds nothing the base lacks: a branch that took another pull request's captures-only head and then claimed was not offered by vcs._unlanded_refs once that pull request squash-merged, so show dropped its IN FLIGHT line and the first-edit hook said 'this branch claims nothing' until the branch merged main
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: claim-integrity
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_claims.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-25
+closed: 2026-10-18
+pr: 1588
 payoff: a claim on a branch whose only content another pull request has landed keeps its item held, so next, show and the first-edit hook never read a claimed item as free once a captures-only pull request merges
 verify: grep -q 'def test_a_claim_on_a_branch_whose_only_content_another_pull_request_landed_stays_live' subprojects/docket/tests/test_claims.py
 ---
@@ -86,3 +88,20 @@ three days, one defect, so it is not a generator by the count. The fact it
 misreads, who holds an item now, belongs to `PL-MB2W`, `PL-7TVT` and
 `PL-8FJK`, all done and spent. `PL-WK57` is `PL-MB2W`'s one post-close
 instance, and this would be a second if it were filed as one.
+
+**Worked, 2026-10-18.** The brief held against `656a9fe1`. `vcs._unlanded_refs`
+now also returns the candidates it drops because the base took all of their
+content (`_Refs.taken`). `claims.holdings` reads those branches for their claims
+alone and keeps only the claims still live. The landed prefix already decides
+whether a squash took a claim, and an empty claim commit with no work after it
+is one no squash can have taken. So the claim holds once the other pull request
+merges. A claim with work after it, which the squash then took, is spent as
+before. A taken branch adds no disposition, name, cut, edit or lapsed row.
+
+`claiming.claim` still refuses to write a new claim on a branch the base took
+whole, now before writing anything rather than at the read-back
+(`test_a_claim_on_a_branch_whose_content_has_landed_names_that_as_the_cause`
+holds that ordering). Only the checkout's own branch is asked, so a branch
+restarted on the base after its pull request merged can still claim. A side
+effect worth knowing: `tools/branch_sweep.py` reads `unfinished_work` from the
+same holdings, so it no longer sweeps a taken branch whose claim is live.

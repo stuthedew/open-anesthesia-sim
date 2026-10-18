@@ -194,6 +194,29 @@ def test_a_claim_is_one_empty_commit_holding_the_record_and_the_attribution_toge
         ]
 
 
+def test_claim_accepts_an_item_blocked_before_the_branch_touched_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-0JDP`: a block the base already shows is not this branch's, so it claims.
+
+    A design round on an item another session blocked is still working it.
+    The refusal tested HEAD's copy alone, which a branch forked from a base
+    showing the block inherits, so the round ran unclaimed and no in-flight
+    guard could see it.
+    """
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+
+    assert _claim(monkeypatch, work, "PL-D3D3") == claiming.CLAIMED
+
+    assert "claim written on" in capsys.readouterr().out
+    observer = remote.clone("observer")
+    read = holdings(observer.root, now=T0 + HOUR)
+    assert [(hold.key, hold.state, hold.status) for hold in read.holds] == [
+        ("PL-D3D3", LIVE, "blocked")
+    ]
+
+
 def test_an_item_another_branch_holds_first_exits_3_and_writes_nothing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -436,7 +459,7 @@ def test_a_fetch_that_fails_refuses_before_anything_is_written(
         ("detached", "PL-B1B1", "HEAD is detached"),
         ("default", "PL-B1B1", "the default branch"),
         ("unknown", "PL-Z9Z9", "HEAD holds no item PL-Z9Z9"),
-        ("blocked", "PL-D3D3", "PL-D3D3 is `blocked` in HEAD's copy"),
+        ("blocked", "PL-B1B1", "PL-B1B1 is `blocked` in HEAD's copy"),
         ("elsewhere", "PL-B1B1", f"{BRANCH} pushes to origin/other"),
     ],
 )
@@ -458,6 +481,11 @@ def test_a_claim_that_could_not_hold_is_refused_before_anything_is_written(
         # tracking a branch of another name is not.
         work.git("push", "-q", "origin", "HEAD:refs/heads/other")
         work.git("branch", "-q", "--set-upstream-to", "origin/other")
+    if case == "blocked":
+        # A block this branch wrote. One the base already shows is not
+        # refused (`PL-0JDP`).
+        blocked = {"docs/items/PL-B1B1-held.md": _item("PL-B1B1", "blocked")}
+        work.commit("PL-B1B1: blocked", when=T0 - HOUR, files=blocked)
     before = work.head()
 
     assert _claim(monkeypatch, work, key) == claiming.REFUSED

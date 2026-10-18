@@ -333,6 +333,9 @@ def _runner(
                 if counts is not None:
                     rows.append((counts[0], counts[1], path))
             return _numstat(rows, args)
+        if args[0] == "diff" and "--diff-filter=D" in args:
+            # The deletions a ref made since its fork: none, in these branches.
+            return ""
         if args[0] == "diff":
             return _raw(
                 ((_blob(entry), _path(entry)) for entry in (adds or {}).get(args[-2], [])), args
@@ -4366,6 +4369,44 @@ def test_orphaned_still_reports_work_pushed_after_the_merge_beside_such_a_port(
     [branch] = report.branches
     assert [commit.commit for commit in branch.commits] == [lost]
     assert port not in {commit.commit for commit in branch.commits}
+
+
+@pytest.mark.parametrize("deletes", [False, True], ids=["edits", "edits-and-deletes"])
+def test_orphaned_reports_a_left_behind_commit_that_also_deletes_a_file(
+    tmp_path: Path, deletes: bool
+) -> None:
+    """`PL-TFF9`: a deleted path counts in the walk, so its commit is still reported.
+
+    The fork holds `old.txt` and `b.txt`. The branch adds `a.txt`, which the
+    base squash-merges, and then pushes a commit that edits `b.txt`. A
+    deletion writes no blob, so `old.txt` was in neither half of the split,
+    and a commit that also deleted it was neither reported nor taken whole.
+    The squash also took a commit that deleted `c.txt`, which now counts as
+    taken whole. Read as unclassified, it was the branch's only whole commit,
+    so `landed_whole` was false and nothing was reported at all.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", old_txt="old\n", b_txt="b\n", c_txt="c\n")
+    repo.git("checkout", "-qb", "claude/work")
+    repo.git("rm", "-q", "c.txt")
+    repo.commit("PL-0001: the work, retiring c", a_txt="a\n")
+    repo.git("checkout", "-q", "main")
+    repo.git("merge", "-q", "--squash", "claude/work")
+    repo.git("commit", "-qm", "PL-0001: the work (#1)")
+    repo.git("checkout", "-q", "claude/work")
+    taken = landed_whole("main", repo.root, _run_git)
+    if deletes:
+        repo.git("rm", "-q", "old.txt")
+    lost = repo.commit("PL-0001: pushed after the merge", b_txt="edited\n")
+    repo.git("checkout", "-q", "main")
+
+    report = orphaned(repo.root)
+
+    assert report.known, report.declined
+    [branch] = report.branches
+    assert [commit.commit for commit in branch.commits] == [lost]
+    assert set(branch.outstanding) == ({"b.txt", "old.txt"} if deletes else {"b.txt"})
+    assert taken
 
 
 def test_a_later_merge_touching_the_file_is_not_work_left_behind(tmp_path: Path) -> None:
