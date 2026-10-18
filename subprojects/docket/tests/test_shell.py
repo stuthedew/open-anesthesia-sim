@@ -1383,7 +1383,8 @@ def test_an_ansi_c_word_reads_as_bash_reads_it_in_the_c_locale(word: str) -> Non
 #: reads from it whole and a piece of `script_lines` at a time. The generator
 #: leaves each form out; the fix deletes its row and lets the generator draw it.
 #: Empty since `PL-55R2` fixed the last of `PL-C4XY`'s, so pytest reports the
-#: test below as skipped, for an empty parameter set.
+#: test below as skipped, for an empty parameter set; one bash warns running is
+#: a row of `WARNED_DEPARTURES` instead.
 KNOWN_DEPARTURES: list[object] = []
 
 
@@ -1400,6 +1401,26 @@ def test_each_known_departure_from_bash_reads_as_its_row_records(
     item, and the generator's exclusion of the form, want revisiting.
     """
     assert _bash_runs(script) == Counter(bash)
+    assert _lexer_runs(script) == Counter(whole)
+    assert _lexer_runs_by_piece(script) == Counter(pieces)
+
+
+#: Departures bash 5.2.21 warns running, read as `KNOWN_DEPARTURES` are. Empty
+#: since the lexer reads a body's substitution as bash's child runs it, which
+#: `test_a_body_s_substitution_reads_as_bash_s_child_runs_it` holds to bash, so
+#: pytest reports the test below as skipped, for an empty parameter set.
+WARNED_DEPARTURES: list[object] = []
+
+
+@pytest.mark.parametrize(("script", "bash", "whole", "pieces"), WARNED_DEPARTURES)
+def test_each_known_departure_bash_warns_on_reads_as_its_row_records(
+    script: str,
+    bash: dict[tuple[str, ...], int],
+    whole: dict[tuple[str, ...], int],
+    pieces: dict[tuple[str, ...], int],
+) -> None:
+    """As `test_each_known_departure_from_bash_reads_as_its_row_records`, where bash warns."""
+    assert _bash_runs(script, warns=True) == Counter(bash)
     assert _lexer_runs(script) == Counter(whole)
     assert _lexer_runs_by_piece(script) == Counter(pieces)
 
