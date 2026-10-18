@@ -19,7 +19,7 @@ import textwrap
 import tomllib
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from functools import cache
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import core_vocabulary_check
@@ -326,6 +326,25 @@ def test_package_map_entry_that_no_longer_exists_is_an_error(tmp_path: Path) -> 
 def test_childless_directory_covers_its_whole_subtree(tmp_path: Path) -> None:
     """`tools/harness/` is drawn without children, so `run.py` needs no line."""
     assert not any("harness/run.py" in e for e in _errors(_repo(tmp_path)))
+
+
+def test_a_childless_directory_covers_nothing_outside_its_own_subtree(tmp_path: Path) -> None:
+    """`covered_dirs` holds `tools/harness`, and a sibling named like it is not under it.
+
+    The positive half is the test above. Without this one, a covered-directory
+    match by string prefix rather than by path parent would pass every test
+    while letting `tools/harness_old/` go unmapped (`PL-S5YM`).
+    """
+    root = _repo(tmp_path)
+    (root / "tools" / "harness_old").mkdir()
+    (root / "tools" / "harness_old" / "run.py").write_text("", encoding="utf-8")
+    block = APPARATUS.split("```text\n", 1)[1].split("```", 1)[0].splitlines()
+    tree = doc_check.parse_tree(root, 1, block)
+
+    assert tree is not None
+    assert tree.covered_dirs == frozenset({PurePosixPath("tools/harness")})
+    assert any(e.endswith("does not list tools/harness_old/run.py") for e in _errors(root))
+    assert not any("harness/run.py" in e for e in _errors(root))
 
 
 def test_init_files_are_not_required_in_the_map(tmp_path: Path) -> None:

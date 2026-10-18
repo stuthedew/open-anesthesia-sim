@@ -60,8 +60,11 @@ in its map, or a line left behind after a deletion, fails `make check`, and a
 document whose map is gone fails rather than passing on the other's. That is
 why the trees list every module individually: a
 directory drawn with no children beneath it stands for its whole subtree and
-is not expanded — no tree draws one today — and `__init__.py` is excluded
-throughout. The same tool checks `docs/MODEL.md`'s provenance table against
+is not expanded, and `__init__.py` is excluded throughout. Neither live tree
+draws such a directory, so `tests/unit/test_doc_check.py` holds the rule in
+both directions:
+`test_childless_directory_covers_its_whole_subtree` and
+`test_a_childless_directory_covers_nothing_outside_its_own_subtree`. The same tool checks `docs/MODEL.md`'s provenance table against
 the data files and resolves every path and section heading the documentation
 cites.
 

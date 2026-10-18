@@ -1438,8 +1438,9 @@ class TreeMap:
     # Directories drawn without any children beneath them. Such an entry
     # stands for its whole subtree — a unit documented by its own README
     # rather than module by module — so files under it are covered without
-    # being listed. No tree draws one today; the mechanism is kept because a
-    # subtree with its own documentation is the case it exists for.
+    # being listed. No live tree draws one, so the two tests named in
+    # `docs/apparatus.md` hold both directions of it; the mechanism is kept
+    # because a subtree with its own documentation is the case it exists for.
     covered_dirs: frozenset[PurePosixPath]
 
     @property
