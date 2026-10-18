@@ -252,7 +252,7 @@ def test_mac_matches_its_cited_source_and_its_recorded_mapleson_deviation(
     The first literal is De Wolf et al. 2012 (PMC3502091), Methods, first
     paragraph: "MAC values that we used in our GasMan® simulations are:
     desflurane 6%, sevoflurane 2%, isoflurane 1.2%." It was read as full text
-    from PubMed Central on 2026-10-17. Meybohm et al. 2021 (PMC7943506),
+    from PubMed Central on 2026-10-17. Weber et al. 2021 (PMC7943506),
     Table 1, read the same way on the same day, prints the same Gas Man set
     with sevoflurane 2.1 and isoflurane 1.1. This test types De Wolf's
     figures because De Wolf is the adopted authority. It cannot settle which
