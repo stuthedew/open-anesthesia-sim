@@ -3,13 +3,14 @@ id: PL-PRCS
 title: Review new prose against the plain-writing rule at close-out, since 47% of prose written under the resident rule still read awkwardly in PL-Y55Q's blind re-measure
 priority: P3
 effort: M
-status: needs-decision
+status: ready
 classes: docs, session-cost
 feature: prose-quality
-touches: .claude/skills/docket/modes/close-out.md
+touches: .claude/skills/docket/modes/close-out.md, tools/new_prose.py, tests/unit/test_new_prose.py
 deferred-from: v0.6.0 - a workflow cost decision, not part of the layout milestone's scope
 added: 2026-10-18
 payoff: new prose reads plainly to a careful newcomer, where the resident rule alone left 47% of new test prose awkward
+verify: grep -qF 'tools/new_prose.py' .claude/skills/docket/modes/close-out.md
 ---
 
 **Problem.** Review new prose against the plain-writing rule at close-out, since 47% of prose written under the resident rule still read awkwardly in PL-Y55Q's blind re-measure
@@ -50,6 +51,7 @@ later reader a re-read, and in the simulator a misread docstring can mislead
 about a clinical value. The resident rule alone leaves about half of new
 prose awkward.
 
+[superseded 2026-10-18: by the decided form below]
 **Done when.** The decision is recorded here, and either the step is in
 `.claude/skills/docket/modes/close-out.md` and a re-measure of 30 later units
 is filed, or this item says why no step is added.
@@ -142,3 +144,20 @@ safety-critical standard already asks for more, at about a third of A's
 cost. The re-measure in point 6 then draws from simulator units only. If it
 shows the step works, extending it to the apparatus is a one-line change to
 the step's trigger.
+
+**Answered 2026-10-18: B, simulator branches only** (project owner,
+2026-10-18, ratified, over A, every branch that adds long prose, and C, no
+step; "Agree with recs" in the batch's thread at 12:31Z). The six points
+decided in the round stand with it.
+
+**Done when (decided form).** `tools/new_prose.py`, standard library only,
+prints each docstring and comment of 30 words or more that the branch added or
+changed in `src/` or in a test that imports the product package, with its path,
+line range and surrounding code. `.claude/skills/docket/modes/close-out.md`
+gains a step that runs it and, where it prints anything, hands its output to
+one fresh subagent at `high` effort in one turn. The session applies the
+rewrites and rejects any that changes a number, unit, condition or citation.
+The build records the step's measured cost on its own branch, and files the
+re-measure as an item: after 30 long simulator units written under the step
+have merged, rate them blind with the `PL-Y55Q` rubric, keep the step at 30%
+awkward or less, and retire it above.
