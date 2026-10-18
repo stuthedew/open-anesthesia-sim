@@ -4238,8 +4238,8 @@ already written down. Every one of them is `anticipated`, and since 2026-09-16
 that is a rule rather than a ground this subsection states for itself
 (`PL-83LS`): § "The gate is a snapshot, not a moving target" makes an
 `anticipated` finding **not debt until the hazard it describes exists**. The
-splitter handles are inert today, so none of these hazards exists until the
-milestone that creates them is built, and a gate that clears debt *before* a
+splitter handles only resize an Area today, so none of these hazards exists
+until the milestone that creates them is built, and a gate that clears debt *before* a
 milestone cannot clear a hazard that milestone introduces. So these are not
 deferred here: they are not debt against this gate at all, and the placement
 named for each above - v0.6.0's `Required scope`, v0.7.0's, or neither - is the
@@ -4253,9 +4253,11 @@ the code) and `PL-W54S` (what a broken-out top-level window owes that set). The
 presence rule re-entered them here regardless of when they were found, and this
 subsection then had to argue them back out one hazard at a time - which is the
 argument `PL-83LS` turned into the rule above. Each is classed `anticipated`, so
-none of the four is debt against this gate: the splitter handles are inert today
-(`src/anesthesia_sim/app/qt_widgets.py`'s `inert_splitter`), and no reader can
-close, replace or cover a required value until item 34 makes them live.
+none of the four is debt against this gate. Since `PL-W9P6` (2026-10-18) the
+handles are live, but they only resize an Area
+(`src/anesthesia_sim/app/area_layout.py`'s `AreaLayout`), and no reader can
+close, replace or cover a required value until item 34's docking operations
+are built.
 
 Each of the four is named in v0.6.0's `Required scope`, which is where the rule
 puts a hazard rather than where a deferral would leave it: the milestone that
@@ -6725,10 +6727,11 @@ list behind a marker nothing enforces, and over leaving the rule as it stands
 and putting the 2026-09-16 area-model findings on v0.5.0's list). The paragraph
 above is unconditional about *when* a finding was made; this says what it takes
 to be a finding against the current gate at all. An item classed `anticipated`
-describes a hazard a later milestone will create — the splitter handles are
-inert today (`src/anesthesia_sim/app/qt_widgets.py`'s `inert_splitter`), so no reader can
-close, replace or cover a required value until planned-milestone item 34 makes
-them live — and a gate that exists to clear debt *before* a milestone begins
+describes a hazard a later milestone will create — the splitter handles only
+resize an Area today (`src/anesthesia_sim/app/area_layout.py`'s `AreaLayout`,
+live since `PL-W9P6` on 2026-10-18), so no reader can close, replace or cover a
+required value until planned-milestone item 34's docking operations are built —
+and a gate that exists to clear debt *before* a milestone begins
 cannot clear a hazard that milestone introduces. It is § "What counts"'s own
 live-mechanism test — "Process work is debt once the mechanism is live, not
 before ... The distinction is state, not layer" — applied to a hazard rather
