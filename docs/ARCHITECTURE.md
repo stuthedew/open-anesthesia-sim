@@ -96,9 +96,10 @@ src/anesthesia_sim/
 │   ├── unconditional_set.py        # docs/MODEL.md's unconditional set as data: UnconditionalValue, its tiers, SubstanceInstance and INHALED_AGENT, read by the region that holds it (PL-NWTM); toolkit-independent
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_UNITS, ControlChange; toolkit-independent
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed, which SimulationController.advance supplies each step
-│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the charts, the legend and the compartment selection it shows, the time base, the captions, the wash-in section, the render tick, the splitter layout; no domain logic
+│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the charts, the legend and the compartment selection it shows, the time base, the captions, the wash-in section, the render tick, and the layout model the Areas below the settings are drawn from; no domain logic
+│   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6)
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
-│   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, inert_splitter, initial_window_geometry
+│   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; toolkit-independent
 │   ├── dashboard_frame.py          # what the dashboard claims about one run at one instant, as plain values: the status word, the notice and its precedence, the readouts and their glosses, the setting controls, the transport enablement, the accounting panel, the control-change list, the captions and the new-case question; toolkit-independent
@@ -650,7 +651,7 @@ is a property of the display rather than of the model:
   construction.** Its run set was fixed at construction until `PL-VKJW` —
   "the count cannot change while a dashboard is alive" — so a branch taken
   during a session had nowhere to be drawn. Both legends' run counts, the
-  names the runs carry, the splitter sections and the agent locks are now
+  names the runs carry, the setting sections and the agent locks are now
   written from the run set on every change to it. The cap is still
   `MAX_DISPLAYED_RUNS`, which is two.
 - **One comparison at a time, and Reset is the way out.** There is no run

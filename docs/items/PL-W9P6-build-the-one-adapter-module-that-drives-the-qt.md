@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: feature
 feature: interface-areas
-touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, tests/integration
+touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, tests/integration, tests/unit/test_layout_model.py, tests/unit/test_import_boundary_check.py, tools/import_boundary_check.py, tools/contrast_check.py, docs/ARCHITECTURE.md, docs/interface-provenance.md, .claude/rules/ui-color.md, docs/items/PL-05M4-the-inert-splitter-handles-keep-the-host-s.md, docs/items/PL-2KXB-build-the-docking-affordances-a-reader-uses.md, docs/items/PL-K285-an-area-that-cannot-be-given-the-size-its-view.md
 blocked-by: PL-NWTM, PL-5HSG
 added: 2026-09-16
 payoff: a reader can drag a border and the layout model changes with it, from one adapter module that is the only code in the app building splitters
@@ -57,4 +57,73 @@ did not touch must not move under it from the start.
 `SimulationView.layout_container` names the splitter tree this item builds
 from the model. `_place_run` refuses a run whose region lacks a value that
 `app/unconditional_set.py` declares, so the adapter cannot move one into an
-Area without failing at construction. `PL-5HSG` still blocks this item.
+Area without failing at construction. `PL-5HSG` closed the same day, as
+the section above records.
+
+## Built 2026-10-18
+
+**What was built.** `app/area_layout.py` holds `AreaLayout`, which is built
+from a `LayoutModel` and a `view_for` function that returns the widget for
+each Area. It makes one `QSplitter` per `Split` and puts each Area's widget in
+its place. It is the only module under `src/` that imports `QSplitter` or
+`QSplitterHandle`, and `tools/import_boundary_check.py` now refuses either
+import anywhere else (`PL-L8RN`, closed with this item). `inert_splitter` and
+`freeze_splitter_handles` are deleted from `app/qt_widgets.py`.
+
+**How a drag reaches the model.** Qt reports a drag on one handle. The adapter
+converts the handle's pixel position into a fraction of the window, using the
+new `LayoutModel.span(handle)` for where that handle's split begins and ends,
+and calls `LayoutModel.resize`. It then sets every splitter's sizes from the
+new model. So the whole line of joined borders moves, and no other border does
+(`PL-5HSG`'s rule). A drag the model refuses with `LayoutRefused` leaves the
+model unchanged and puts every splitter back. `layout_changed` is emitted once
+per change. A window resize keeps the fractions and does not change the model.
+
+**Decisions taken here, each a session's.**
+
+- The setting sections moved out of the splitter into a plain column between
+  the unconditional region and the Areas. Their heights are fixed by their
+  contents, which a fraction cannot express, and keeping them out of an Area
+  also keeps them out of anything closeable. Spare height still goes to the
+  plots.
+- The dashboard's layout is a module constant in `app/simulation_view.py`:
+  one row, the chart Area at 0.82 and the accounting sidebar at 0.18, tagged
+  `concentration_chart` and `agent_accounting`. The fractions give a sidebar of
+  about 236 px at a 1366 px window, close to the old fixed 228 px. The tags and
+  fractions are placeholders until `PL-R1WQ`'s registry and the shipped
+  Workspaces replace them.
+- The handle follows `PL-RQT1`: 8 px wide, drawing nothing at rest, the split
+  cursor, and a 2 px `PRIMARY` line along every border on the hovered line.
+  The width and line are look-and-feel placeholders for item 33's visual pass
+  (#1589). `tools/contrast_check.py` now declares `PRIMARY` on `BACKGROUND` at
+  3:1 for that line.
+- The adapter draws one window and refuses a layout holding two, with a
+  message saying that taking an Area into its own window is not built yet.
+
+**Not here.** Minimum sizes: below a window about 1266 px wide, Qt holds the
+sidebar at its minimum width while the model's fraction says less. That is
+recorded on `PL-K285`. Shift, Escape, the `WARNING` line, corner drags, swap
+and Workspace tabs are `PL-2KXB`'s.
+
+**Regression test.** `test_the_border_between_two_areas_shows_the_page_rather_than_the_host`
+in `tests/integration/test_dark_appearance.py` was run against `origin/main`
+before this change, with `PYTHONPATH` set to a worktree of it. It failed on
+`assert handle.isEnabled()`, because the inert handle was disabled. The
+adapter's own tests need `AreaLayout`, which this change adds.
+
+**Left for the thread working on `docs/MODEL.md` and `ROADMAP.md`.** The
+coordinator gave those two files to another thread, so they were not edited
+here. Three sentences are now stale:
+
+- `docs/MODEL.md` § "Minimum displayed outputs", the paragraph beginning
+  "Where the unconditional set lives in the build", says the region sits
+  "above the splitter that every other surface sits in". The setting sections
+  now sit in a plain column between the region and the Areas.
+- `docs/MODEL.md` § "Color contrast, and the standard this interface is held
+  to" says "the inert splitter handles keep the host's surface (`PL-05M4`)".
+  The handles are live and enabled, and the gap shows `BACKGROUND`. This is
+  the last thing `PL-05M4` waits on.
+- `ROADMAP.md`'s paragraph on `anticipated` items says "the splitter handles
+  are inert today" and cites `qt_widgets.py`'s `inert_splitter`, which is
+  deleted.
+

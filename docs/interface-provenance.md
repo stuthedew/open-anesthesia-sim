@@ -885,7 +885,11 @@ flagged as on it (`editflag`; read again 2026-10-18). Every other border keeps
 its place in the window, so in `row[1, column[row[2, 4], 3]]`, dragging the
 root border from one half to a quarter leaves Area 4 a quarter of the window
 wide (`PL-5HSG`; project owner, 2026-10-12, ratified, over keeping the
-proportions inside each child of the dragged split).
+proportions inside each child of the dragged split). On screen, a Qt splitter
+handle reports one handle's drag, so `app/area_layout.py` turns it into
+`LayoutModel.resize()` and then sets every splitter from the new model. That
+is how the whole line moves under the pointer and no other border does
+(`PL-W9P6`).
 
 **A join reads the rectangles, as Blender's does.** Blender decides whether two
 Areas can join from their corners alone: `area_getorientation`

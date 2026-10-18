@@ -315,6 +315,24 @@ class LayoutModel:
 
         return _chain(handle, segments)
 
+    def span(self, handle: Handle) -> tuple[float, float]:
+        """Where `handle`'s split begins and ends along its axis, in fractions of its window.
+
+        A row's span runs from left to right, and a column's from top to
+        bottom. A toolkit reports a drag as a share of the one splitter that
+        was dragged. The adapter (`app/area_layout.py`) reads this span to
+        turn that share into the position in the window that `resize()`
+        takes, so it does not work the split's place out a second time.
+
+        Raises:
+            TypeError: `handle` is not a `Handle`.
+            NotInLayout: `handle` is not a border of this layout.
+        """
+
+        segment = self._segments_of(handle)[handle]
+
+        return segment.low, segment.high
+
     def split(
         self, area_id: AreaId, orientation: Orientation, at: float
     ) -> tuple[LayoutModel, AreaId]:
