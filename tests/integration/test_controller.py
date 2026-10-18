@@ -1678,6 +1678,107 @@ def test_a_setting_the_record_refuses_leaves_the_run_on_its_previous_setting(
     assert len(repaired.control_timeline) == len(before.control_timeline) + 2
 
 
+_WRITES_PAST_THE_CONTROLLER: tuple[
+    tuple[str, Callable[[uptake_system.AgentUptakeSystem], None]], ...
+] = (
+    ("cardiac-output", lambda system: system.set_cardiac_output(CardiacOutput(6.0))),
+    ("fresh-gas-flow", lambda system: system.circuit.set_fresh_gas_flow(FreshGasFlow(6.0))),
+    (
+        "alveolar-ventilation",
+        lambda system: system.alveoli.set_alveolar_ventilation(AlveolarVentilation(6.0)),
+    ),
+    ("delivered", lambda system: system.circuit.set_delivered_concentration_percent(Percent(3.0))),
+)
+
+
+@pytest.mark.parametrize(
+    "write",
+    [write for _, write in _WRITES_PAST_THE_CONTROLLER],
+    ids=[name for name, _ in _WRITES_PAST_THE_CONTROLLER],
+)
+def test_a_setting_written_onto_the_core_past_the_controller_refuses_the_next_step(
+    write: Callable[[uptake_system.AgentUptakeSystem], None],
+) -> None:
+    """A setting the run definition never recorded stops the run before it is stepped (`PL-XRN8`).
+
+    The readouts come from the steps and the chart from the run definition. A
+    step at a setting the definition does not hold would make them describe
+    two different runs, so the controller refuses the step instead. Each write
+    here is a core setter the interface never calls, at a value other than
+    the reference default.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=10.0)
+    system = controller._state.uptake_system
+    recorded = controller.run_segments
+    state_before = system.state_vector()
+    elapsed_before = controller.snapshot().elapsed_s
+
+    write(system)
+
+    assert system.equation_settings() != recorded[-1].settings
+
+    with pytest.raises(SimulationExecutionError, match="without SimulationController recording it"):
+        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+
+    assert system.state_vector() == state_before
+    assert controller.snapshot().elapsed_s == elapsed_before == 10.0
+    assert controller.run_segments == recorded
+
+
+def test_reset_after_a_setting_written_past_the_controller_runs_at_that_setting() -> None:
+    """Reset starts a new run from what the core holds, so it steps again (`PL-XRN8`).
+
+    The expected trajectory is a fresh controller built at the same cardiac
+    output, rather than anything read from the controller under test.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=10.0)
+    controller._state.uptake_system.set_cardiac_output(CardiacOutput(6.0))
+
+    with pytest.raises(SimulationExecutionError):
+        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+
+    controller.reset()
+    controller.start()
+    _advance_for(controller, duration_s=10.0)
+
+    fresh = SimulationController(cardiac_output_l_min=CardiacOutput(6.0))
+    fresh.start()
+    _advance_for(fresh, duration_s=10.0)
+
+    assert controller.run_segments[0].settings.cardiac_output_l_min == 6.0
+    assert controller._state.uptake_system.state_vector() == (
+        fresh._state.uptake_system.state_vector()
+    )
+
+
+def test_a_setting_written_onto_a_branch_s_core_past_its_controller_refuses_its_next_step() -> None:
+    """A branch records its own settings at its fork, and holds its core to them (`PL-XRN8`)."""
+
+    trunk = SimulationController()
+    trunk.start()
+    _advance_for(trunk, duration_s=10.0)
+    trunk.pause()
+    branch = BranchedCase(trunk).fork_here()
+    branch.start()
+    _advance_for(branch, duration_s=10.0)
+
+    branch._state.uptake_system.set_cardiac_output(CardiacOutput(6.0))
+
+    with pytest.raises(SimulationExecutionError, match="without SimulationController recording it"):
+        branch.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+
+    trunk.start()
+    _advance_for(trunk, duration_s=10.0)
+
+    assert trunk.snapshot().elapsed_s == 20.0
+
+
 def test_changing_agent_starts_the_run_definition_over() -> None:
     """`set_agent` begins a new run, and a run definition is of one run only."""
 
