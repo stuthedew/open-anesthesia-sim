@@ -6579,6 +6579,14 @@ COVERAGE_PART = re.compile(r" --cov-report= --part (?P<index>\d+)/(?P<parts>\d+)
 COVERAGE_REPORT = re.compile(r"^uv run coverage report\b.* --fail-under=(?P<threshold>\S+)$")
 
 
+#: What make removes from the front of a recipe line before it hands the rest
+#: to the shell: `@` (no echo), `-` (ignore a failure) and `+` (run under `-n`),
+#: in any mix, with blanks between them (GNU make manual §5.2 "Recipe Echoing",
+#: §5.5 "Errors in Recipes", §9.3 "Instead of Executing Recipes"). Run through
+#: GNU make 4.3 on 2026-10-18, `@ - +echo one` ran `echo one`.
+RECIPE_PREFIXES = "@-+ \t"
+
+
 def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
     """Every command a Makefile recipe hands the shell, with the line it opens on.
 
@@ -6592,11 +6600,13 @@ def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
     command a backslash continues is one, spelled as make hands it over; read a
     physical line at a time it was two, the first ending in the backslash
     (`PL-G2FY`). A line in a `define` body is a variable's value and no command
-    (`PL-4MLK`). Raises `UnreadStatement` where `_recipe_statements` does.
+    (`PL-4MLK`). Make's recipe prefixes are gone from what is handed back, as
+    `RECIPE_PREFIXES` says, so an `@ruff check src` is the `ruff check src` it
+    runs (`PL-QYF4`). Raises `UnreadStatement` where `_recipe_statements` does.
     """
     for line, number in _recipe_statements(text):
-        if line.startswith("\t") and line.strip():
-            yield line.strip(), number
+        if line.startswith("\t") and (command := line.strip().lstrip(RECIPE_PREFIXES)):
+            yield command, number
 
 
 def _recipe_statements(text: str) -> list[tuple[str, int]]:

@@ -3843,6 +3843,23 @@ def test_ci_is_not_held_to_the_flag(tmp_path: Path) -> None:
     assert _errors(root) == []
 
 
+@pytest.mark.parametrize("prefix", ["@", "-", "+", "@-", "@ - +"])
+def test_a_recipe_prefix_is_stripped_before_the_command_is_read(
+    tmp_path: Path, prefix: str
+) -> None:
+    """Make runs the line after its `@`, `-` and `+`, so the checks read that (`PL-QYF4`).
+
+    `_recipe_commands` kept the prefix on the command, so an `@`-led cached
+    `ruff check` passed the ruff-cache check, and an `@`-led coverage run read
+    as differing from CI's identical one.
+    """
+    ruffed = _ruffed(_repo(tmp_path / "ruff"), check=f"{prefix}uv run ruff check .")
+    gated = _gated(_repo(tmp_path / "gate"), make=f"{prefix}{GATE}")
+
+    assert any("without `--no-cache`" in message for message in _errors(ruffed))
+    assert _errors(gated) == []
+
+
 def test_this_repository_runs_every_ruff_check_cache_free() -> None:
     # The rule against the real Makefile rather than a fixture: this is the one
     # that would catch the flag being dropped in a tidy-up.
