@@ -62,6 +62,15 @@ def test_a_reason_keeps_the_branch_under_either_spelling_of_its_name(ref: str) -
     assert verdict.kept == ("pull request #7 is open from it",)
 
 
+def test_a_reason_filed_under_another_remote_keeps_the_branch() -> None:
+    # Stripped against the remotes git lists, as `vcs._head_name` strips a
+    # ref, not against `origin/` alone (`PL-KL6B`).
+    readings = Readings(remotes=frozenset({"origin", "upstream"}))
+    readings.keep(f"upstream/{NAME}", "pull request #7 is open from it")
+    [verdict] = decide([_branch(NOW - 2 * GRACE)], readings, NOW)
+    assert verdict.kept == ("pull request #7 is open from it",)
+
+
 def test_a_pull_request_keeps_both_its_branches_and_an_unanswered_listing_declines(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -184,3 +193,12 @@ def test_a_reading_that_cannot_answer_sweeps_nothing(
         capsys.readouterr().out
         == "Nothing swept: GitHub's open pull requests could not be listed.\n"
     )
+
+
+def test_an_agent_branch_named_in_another_case_is_listed(forge: Path) -> None:
+    # `claims.agent_branch` reads `Claude/x` as an agent branch, so the sweep
+    # must list it too; a case-sensitive `for-each-ref` pattern never did
+    # (`PL-KL6B`). The default branch is still left out.
+    _git(forge, "push", "-q", "origin", "HEAD:refs/heads/Claude/upper-q7x2kd")
+    _git(forge, "fetch", "-q", "origin")
+    assert sorted(branch.name for branch in branches(forge)) == ["Claude/upper-q7x2kd", NAME]
