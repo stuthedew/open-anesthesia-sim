@@ -119,6 +119,13 @@ OPENS_A_COMMAND = frozenset(
 #: §3.2.3 "Pipelines", §3.2.6 "Coprocesses", §3.3 "Shell Functions").
 LEADS = frozenset(("time", "coproc", "function"))
 
+#: The reserved words that close a compound command, after which bash still
+#: reads a reserved word, so `if [[ a ]] then` and `fi case` open what they
+#: name: `fi`, `done`, `esac` and `}`, among the tokens `reserved_word_acceptable`
+#: in bash 5.2.21's parse.y takes, beside `]]` and an arithmetic command's `))`,
+#: which close words of their own (`PL-9NMR`).
+CLOSES_A_COMMAND = frozenset(("fi", "done", "esac", "}"))
+
 #: The tests of a conditional expression that take one operand, and those that
 #: take two, an unquoted word each; bash reads `<` and `>` there as the two
 #: string comparisons (`test_unop` and `test_binop` in bash 5.2.21's test.c,
@@ -515,11 +522,14 @@ class _Grammar:
     after a word in `OPENS_A_COMMAND`, after a function definition's `()`, and
     past what a word in `LEADS` takes before its command - `time`'s `-p` and
     then `--`, the name after `function`, and the one `coproc` may take
-    (`PL-0CJC`). Not yet after a closing word bash also names there, such as
-    `fi` or `]]` (`PL-9NMR`). A `)` heads a command too, whether it closes a
-    subshell or a function definition's `()`: `if (true) then` runs, and
-    bash 5.2.21 reads `(true) if` as a misplaced `if` (`PL-Y3TZ`). One per
-    read, since a substitution's body is a list of its own.
+    (`PL-0CJC`). It takes one after a word that closes a compound command too:
+    a word in `CLOSES_A_COMMAND` read at a head, the `]]` that closes a
+    conditional, and an arithmetic command, as `if (( 1 )) then` and
+    `if [[ a ]] then` run in bash 5.2.21 (`PL-9NMR`). A `)` heads a command
+    too, whether it closes a subshell or a function definition's `()`:
+    `if (true) then` runs, and bash 5.2.21 reads `(true) if` as a misplaced
+    `if` (`PL-Y3TZ`). One per read, since a substitution's body is a list of
+    its own.
     """
 
     def __init__(self) -> None:
@@ -567,18 +577,21 @@ class _Grammar:
             return True
         if state == "pattern" and reserved == "esac":
             self.cases.pop()
+            self.head = True
             return True
         if state in ("pattern", "patterns"):
             self.cases[-1] = "patterns"
             return True
         if self.conditional:
             self.condition(reserved, operator=False)
+            self.head = not self.conditional  # the `]]` that closed it
             return False
         if head and reserved == "case":
             self.cases.append("word")
             return True
         if head and reserved == "esac" and state == "clause":
             self.cases.pop()
+            self.head = True
             return True
         if head and reserved == "[[":
             self.conditional, self.groups = "term", 0
@@ -598,6 +611,7 @@ class _Grammar:
             self.opens = reserved == "time"
         else:
             self.head = self.opens = head and reserved in OPENS_A_COMMAND
+            self.head = self.head or (head and reserved in CLOSES_A_COMMAND)
             self.counting = head and reserved == "for"
         return False
 
@@ -925,12 +939,16 @@ class _Lexer:
                     # An arithmetic command, or an arithmetic `for`'s
                     # expressions: one word that runs no command (`PL-3Z8B`).
                     self.refuse("carries `(`, which no admitted shape uses")
+                    command_word = grammar.head
                     start()
                     end = self.arithmetic(index, stop)
                     text.append(command[index:end])
                     spelled.append(self.kept(index, end))
                     index = end
                     finish()  # bash reads what follows the `))` as a token of its own
+                    # A reserved word may follow an arithmetic command, though
+                    # not a `for`'s expressions, which `counting` reads past.
+                    grammar.head = grammar.head or command_word
                     continue
                 against = begin >= 0 and not quoted and names_a_descriptor("".join(text))
                 finish(redirected=operator[0] in "<>" and not grammar.conditional)

@@ -195,6 +195,61 @@ def test_a_case_after_time_p_or_coproc_on_one_line_stays_in_its_substitution(com
     assert _words(command)[0] == command
 
 
+#: Scripts that write a reserved word straight after a word closing a compound
+#: command, with no `;`, and the pieces `script_lines` cuts each into. Bash
+#: 5.2.21 reads the word as a reserved word, and runs each as written.
+AFTER_A_CLOSING_WORD = [
+    # The `case` after `]] then` is one, so its pattern's `)` does not close the `$(`.
+    (
+        "x=$(if [[ a ]] then case b in b) p in;;\nesac; fi)\np after\n",
+        ["x=$(if [[ a ]] then case b in b) p in;;\nesac; fi)", "p after"],
+    ),
+    # The `((` after `)) then` is arithmetic, so its newline ends no line.
+    (
+        "if (( 1 )) then ((1 +\n2)) && p arith; fi\np after\n",
+        ["if (( 1 )) then ((1 +\n2)) && p arith; fi", "p after"],
+    ),
+    # The `[[` after `} then` is a conditional, so its `&&` ends no line.
+    (
+        "if { p g; } then [[ a == a &&\nb == b ]] && p t; fi\np after\n",
+        ["if { p g; } then [[ a == a &&\nb == b ]] && p t; fi", "p after"],
+    ),
+    # After `done`, `esac` and `fi` too, the `then` opens the `case` after it.
+    (
+        "x=$(if for b in c; do p d; done then case b in b) p in;;\nesac; fi)\np after\n",
+        ["x=$(if for b in c; do p d; done then case b in b) p in;;\nesac; fi)", "p after"],
+    ),
+    (
+        "x=$(if if p i; then p t; fi then case b in b) p in;;\nesac; fi)\np after\n",
+        ["x=$(if if p i; then p t; fi then case b in b) p in;;\nesac; fi)", "p after"],
+    ),
+    (
+        "x=$(if case a in a) p c;; esac then case b in b) p in;;\nesac; fi)\np after\n",
+        ["x=$(if case a in a) p c;; esac then case b in b) p in;;\nesac; fi)", "p after"],
+    ),
+    # And an `esac` after `done` closes its `case`.
+    (
+        "case a in a) for b in c; do p d; done esac\np after\n",
+        ["case a in a) for b in c; do p d; done esac", "p after"],
+    ),
+]
+
+
+@pytest.mark.parametrize(("script", "pieces"), AFTER_A_CLOSING_WORD)
+def test_a_reserved_word_after_a_closing_word_is_read_as_bash_reads_it(
+    script: str, pieces: list[str]
+) -> None:
+    """Bash reads a reserved word after `fi`, `done`, `esac`, `}`, `]]` and `))` (`PL-9NMR`).
+
+    Read as a plain word there, a `case` let its pattern's `)` close the `$(`
+    around it, and a newline inside a `((` or a `[[` ended a line. So one
+    command was cut into pieces that each read as complete.
+    """
+    assert [piece for piece, _ in script_lines(script)] == pieces
+    assert _lexer_runs(script) == _bash_runs(script)
+    assert _lexer_runs_by_piece(script) == _bash_runs(script)
+
+
 def test_each_piece_carries_the_offset_its_line_starts_at() -> None:
     script = "cat <<'PY'\nbody\nPY\na \\\n  b\n"
 
