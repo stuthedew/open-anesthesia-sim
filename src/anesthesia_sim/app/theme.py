@@ -264,7 +264,6 @@ METRIC_SECONDARY_VALUE_SIZE = 13
 # three sizes above were named - so the scale was half declared and half
 # literal, and a reader could not see it whole. These complete it, at the
 # values already shipping.
-APP_TITLE_SIZE = 26
 METRIC_VALUE_SIZE = 22
 ACCOUNTING_STATUS_SIZE = 20
 

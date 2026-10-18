@@ -57,6 +57,7 @@ from anesthesia_sim.app.controller import (
     SimulationSnapshot,
 )
 from anesthesia_sim.app.dashboard_frame import (
+    delivered_line,
     ACCOUNTING_HEADING,
     ACCOUNTING_UNIT_CAPTION,
     BRANCH_AGENT_LOCK_TEXT,
@@ -1815,6 +1816,27 @@ def test_the_dial_is_readable_in_the_unit_its_compartments_are() -> None:
     assert delivered.value_text == format_percent(Fraction(0.025))
     assert delivered.secondary == format_mac_multiple(Fraction(0.025), Percent(2.0))
     assert delivered.secondary == "1.25 ×MAC"
+
+
+def test_the_delivered_line_prints_the_dial_in_both_units() -> None:
+    """The readout heading's copy of the dial, in the dial's own two units (`PL-NWTM`).
+
+    2.5% sevoflurane over its 2.0% MAC is 1.25 ×MAC, worked here by hand
+    rather than read back from the readout under test.
+    """
+
+    delivered = _settings_by_control(_snapshot())[ControlInput.DELIVERED]
+
+    assert delivered_line(delivered) == "Delivered 2.50% (1.25 ×MAC)"
+
+
+def test_the_delivered_line_refuses_a_flow_readout() -> None:
+    """A flow has no MAC line, and printed as the dial it would name a flow as a concentration."""
+
+    flow = _settings_by_control(_snapshot())[ControlInput.FRESH_GAS_FLOW]
+
+    with pytest.raises(ValueError, match="not from fresh_gas_flow's"):
+        delivered_line(flow)
 
 
 def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
