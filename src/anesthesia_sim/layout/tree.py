@@ -24,15 +24,12 @@ shown on, and is `PL-K285`'s.
 holds at least two children, and never a child split of its own orientation: a
 row inside a row is the same rectangle divided the same way as one wider row,
 and the model writes it as the wider row. That leaves one tree per arrangement
-except where four Areas meet at a point. Elsewhere, two Areas that sit next to
-each other in one split are exactly the pairs the tree can join, however it
-was built (`PL-3J2P`'s refusal, which the model in `layout/model.py`
-implements). Where four Areas do meet at a point - a 2x2 grid - either of the
-two cuts through it can be the outer one, so the arrangement has two trees:
-which two Areas are siblings, and so whether a join is available, depends on
-which cut came first. Whether a join should re-slice such a junction is an
-open decision (`PL-G60V`). A window's tree also nests no deeper than
-`TREE_DEPTH_MAXIMUM`.
+except where four Areas meet at a point. There - a 2x2 grid - either of the two
+cuts through the point can be the outer one, so the arrangement has two trees,
+and which two Areas are siblings depends on which cut came first. Nothing a
+reader is offered depends on it: a join reads the rectangles, not the tree, and
+re-slices a junction where it needs to (`PL-G60V`, in `layout/model.py`). A
+window's tree also nests no deeper than `TREE_DEPTH_MAXIMUM`.
 
 **An Area is addressed by an id, a whole number from 1** that the layout
 allocates and never reuses, so state kept per Area id cannot be resurrected
@@ -121,9 +118,10 @@ def is_tag(text: str) -> bool:
     return _TAG.fullmatch(text) is not None
 
 
-# How far a split's sizes may sum from exactly one. An operation rescales each
-# split it rebuilds to sum to one before working on it (`layout/model.py`), so
-# the most a split built by this code misses one by is the few units in the
+# How far a split's sizes may sum from exactly one. An operation either
+# rescales each split it rebuilds to sum to one before working on it, or works
+# the split's sizes out afresh from where its borders lie (`layout/model.py`).
+# So the most a split built by this code misses one by is the few units in the
 # last place one operation's rounding adds, which no later operation inherits.
 # A file can hold sizes anywhere inside this and is read as written, and one
 # whose sizes miss one by more was not written by this code, and is refused

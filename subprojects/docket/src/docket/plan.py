@@ -613,9 +613,7 @@ def _unseated_by(item: Item) -> str:
     Shared by `_startable` and `tier_standings`, so what `next` offers and what
     the generator tier says is ranked cannot disagree about a status.
     """
-    if item.is_open and not item.is_untriaged and item.status != "blocked":
-        return ""
-    return item.status
+    return "" if item.is_startable else item.status
 
 
 def awaits_decision(item: Item) -> bool:

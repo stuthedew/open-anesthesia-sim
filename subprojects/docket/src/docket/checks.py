@@ -47,6 +47,7 @@ from .model import (
     is_under,
     live_recurrences,
     misread_faults,
+    pr_number,
     ranks_as_generator,
     ranks_as_generator_defect,
     recurrence_faults,
@@ -54,6 +55,7 @@ from .model import (
     root_cause_faults,
     split_deferred_from,
     split_generator_verdict,
+    top_band,
 )
 from .notes import Thread
 from .plan import OfferedReport, promotable
@@ -64,6 +66,7 @@ from .release import (
     notes_name,
     reference,
     replace_code_spans,
+    tag_name,
     unrecorded_milestones,
     version_key,
 )
@@ -553,11 +556,6 @@ def answers_generator_check(body: str) -> bool:
     return bool(_section_text(body, GENERATOR_CHECK))
 
 
-# A pull request number, as GitHub allocates them: a bare positive integer.
-# Written without the `#` so that the field holds the number and nothing else,
-# and so a typo like `pr: #71 (docket)` is refused rather than half-parsed.
-PR_RE = re.compile(r"^[1-9][0-9]*$")
-
 #: The shortest `falsifies:` fragment worth folding on. Long enough that the
 #: tokens which would fold indiscriminately - `assert`, `== 0`, a bare name -
 #: are refused, and short enough to leave a real subject writable: the shortest
@@ -926,9 +924,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
     # binds open work only. Held on a closed item, it refused the drop of an
     # anticipated safety item that waited at P2 until its record was rewritten
     # to a P1 it never held (`PL-9HHC`).
-    exempt = item.status in CLOSED_STATUSES or (
-        item.status == "blocked" and "anticipated" in item.classes
-    )
+    exempt = item.status in CLOSED_STATUSES or item.waits_anticipated
     if safety and not exempt and item.priority in ("P2", "P3"):
         blocked_hint = (
             "; if the concern does not exist until a later feature is built, class it "
@@ -1034,7 +1030,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
         )
     # The `pr`-on-a-closure rule is not here: it needs to know whether the
     # closure has landed, which is a git question. `_check_closures` has it.
-    if item.pr and not PR_RE.match(item.pr):
+    if item.pr and pr_number(item.pr) is None:
         report.errors.append(
             f"{where}: `pr` is '{item.pr}'; it holds a pull request number and "
             "nothing else, written without the `#`"
@@ -1629,7 +1625,9 @@ def _check_release_notes(
     stamped_by_name: dict[str, list[Item]] = {}
     for item in report.items:
         if item.milestone:
-            stamped_by_name.setdefault(item.milestone.strip(), []).append(item)
+            # Keyed as the notes files are, by the tag's name, so `0.4.1` and
+            # `v0.4.1` are one release here as in `unrecorded_milestones` (`PL-4DK2`).
+            stamped_by_name.setdefault(tag_name(item.milestone), []).append(item)
 
     for name in unrecorded_milestones(report.items, notes, version or ""):
         stamped = sorted(item.identifier for item in stamped_by_name[name])
@@ -1766,11 +1764,13 @@ def _check_cut_window(
             "inside the tag's span and named in no notes"
         )
         return
-    named = (notes or {}).get(window.version, frozenset())
+    # The notes are keyed by file stem, `v0.3.8`, and a window's version is bare,
+    # so the lookup goes through the tag's name; asked bare it named nothing (`PL-4DK2`).
+    named = (notes or {}).get(tag_name(window.version), frozenset())
     stamped = {
         item.identifier
         for item in report.items
-        if item.milestone.strip().lstrip("v") == window.version
+        if tag_name(item.milestone) == tag_name(window.version)
     }
     strangers = sorted(set(window.landed) - named - stamped)
     if not strangers:
@@ -1830,9 +1830,9 @@ def _check_provenance(
     high_water = max(history.numbers)
     in_flight = closures.unlanded if closures is not None and closures.known else frozenset()
     for item in report.items:
-        if not item.pr or not PR_RE.match(item.pr) or item.identifier in in_flight:
+        number = pr_number(item.pr)
+        if number is None or item.identifier in in_flight:
             continue
-        number = int(item.pr)
         if number <= high_water and number not in history.numbers:
             report.errors.append(
                 f"{_where(item)}: records pull request #{number}, which no commit on "
@@ -4125,10 +4125,9 @@ def _groom(
             "it is ready to promote"
         )
 
-    top = _top_band(report)
+    band, top = top_band(report.items)
     if not top:
         return
-    band = top[0].priority
     # The generator tier's items are pinned in the band too (`PL-06JJ`), so
     # neither remedy below may prescribe demoting one: that is the action
     # `PL-CW14` stopped these advisories prescribing for a `safety` item.
@@ -4204,15 +4203,6 @@ def _groom(
             "the product work beside it; demote it, the product's correctness ranks above "
             "the workflow that builds it"
         )
-
-
-def _top_band(report: Report) -> list[Item]:
-    """The highest-priority band that has anything in it."""
-    for priority in PRIORITIES:
-        band = [item for item in report.open_items if item.priority == priority]
-        if band:
-            return band
-    return []
 
 
 def _check_lost(report: Report, lost: LostReport | None) -> None:

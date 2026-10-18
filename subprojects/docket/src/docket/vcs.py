@@ -51,7 +51,14 @@ from . import markdown
 from .config import Config
 from .gitargv import subcommand_of
 from .lines import ENCODING, file_text, record_text, split_lines
-from .model import CLOSED_STATUSES, _front_matter_pairs, is_under, parse_front_matter, parse_item
+from .model import (
+    CLOSED_STATUSES,
+    _front_matter_pairs,
+    is_under,
+    parse_front_matter,
+    parse_item,
+    pr_number,
+)
 from .release import (
     CUT_FLAGS,
     NOTES_DIR,
@@ -4887,8 +4894,8 @@ def closures_on_base(
         if not landed_closure(item.status):
             continue
         landed.add(identifier)
-        if item.pr and item.pr.isdigit():
-            recorded[identifier] = int(item.pr)
+        if (number := pr_number(item.pr)) is not None:
+            recorded[identifier] = number
     return ClosureReport(
         declined=run.reason,
         base=base,
