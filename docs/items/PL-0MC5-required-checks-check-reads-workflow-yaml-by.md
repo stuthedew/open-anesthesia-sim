@@ -9,6 +9,7 @@ feature: reader-checks
 touches: tests/unit/test_required_checks_reference.py, docket.toml
 added: 2026-10-12
 closed: 2026-10-18
+pr: 1568
 payoff: a workflow form required_checks_check misreads fails the pull request that first writes it, rather than surfacing as an item after it merges
 verify: grep -rq 'def test_required_checks_reads_generated_workflows_as_yaml_does' tests/unit
 ---
