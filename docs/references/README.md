@@ -527,5 +527,12 @@ logarithmic axes, were read qualitatively and no number was taken from them.
 Route and depth: the *Anesth Analg* paper through the corpus's text layer, pp.
 317-23; the *Anesthesiology* paper is a scan with no text layer, read as page
 images of pp. 493-96 only, p. 496 again on 2026-09-27, and pp. 493-95 again the
-same day for `PL-KK1Q`. Neither paper's methods for the wash-in apparatus were
-read in any pass.
+same day for `PL-KK1Q`.
+
+Their F_A/F_I curves during administration (Figure 2 of each, pp. 320 and 493)
+were read from the page images on 2026-10-18 for `PL-R0NL`, with the wash-in
+protocol from each paper's methods (*Anesth Analg* p. 317 through the text
+layer, *Anesthesiology* p. 490 as a page image). Every value read, the method
+and its reading error are in `docs/references/yasuda-1991-figure-2-wash-in.md`,
+and the values are `PUBLISHED_WASH_IN_TIME_COURSE` in
+`tests/reference/test_published_wash_in_and_elimination.py`.

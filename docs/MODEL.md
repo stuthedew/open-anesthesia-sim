@@ -3577,6 +3577,8 @@ this one answer different questions, and conflating them over-reads both.
 $`F_A/F_I`$ at 30 minutes of **wash-in**, which agrees with the published
 measurements, and $`F_A/F_{A0}`$ at 5 minutes of **elimination**, which does
 not. Both come from the same volunteers in the same sitting.
+§ "The early wash-in curve against the published figures" below extends the
+wash-in comparison to the first 25 minutes.
 
 $`F_A/F_I`$ at 30 minutes of wash-in is the classic measured quantity in the
 uptake literature, and Yasuda et al. published it for all three shipped
@@ -4159,16 +4161,78 @@ transfers to whatever `PL-N092` writes in its place.
    published mean curves" records its size and direction hour by hour
    (`PL-KK1Q`), and asserts no agreement.
 
+#### The early wash-in curve against the published figures
+
+**The first 25 minutes are compared too, point by point** (`PL-R0NL`,
+2026-10-18). Until then the 30-minute ratio was the only wash-in comparison,
+and it barely registers the lung's gas volume or the circuit. Both papers plot
+the whole $`F_A/F_I`$ curve during administration as Figure 2, as mean ± SD
+with each SD drawn on one side of the marker. Neither paper tabulates it. So
+the values were read from the page scans, and
+`docs/references/yasuda-1991-figure-2-wash-in.md` records the method and every
+value read. Read the same way, each 30-minute point lands within 0.006 of the
+value the text states, which is the size of a reading error here.
+
+The run is `_clamped_wash_in()` in
+`tests/reference/test_published_wash_in_and_elimination.py`. **It is a
+test-only driver, and no setting of the shipped simulator reaches the condition
+it creates.** Both papers gave the agents as a square wave from a
+non-rebreathing circuit, so the inspired fraction was the cylinder's from the
+first breath (*Anesth Analg* p. 317, *Anesthesiology* p. 490). The shipped
+circuit instead fills at its own time constant, so its $`F_I`$ lags the dial
+for the first minute or more. The driver sets the circuit back to the held
+$`F_I`$ after every step and records the agent it adds or removes, so the
+model's conservation check still holds. Everything else is the shipped model
+at the shipped operating point.
+
+Measured 2026-10-18, as distance from each point's mean in its SD:
+
+| Cohort | 1 to 3 min | 5 min | 7.5 to 25 min |
+| --- | --- | --- | --- |
+| Sevoflurane, n=7 | −0.54 to −0.69 SD | −0.22 SD | +0.48 to +0.77 SD |
+| Isoflurane, n=7 | −0.70 to −0.83 SD | −0.19 SD | +0.34 to +0.76 SD |
+| Isoflurane, n=8 | −0.60 to −0.67 SD | +0.08 SD | +0.32 to +1.06 SD |
+| Desflurane, n=8 | +1.79 to +1.82 SD | +1.82 SD | +2.10 SD at 10 min, then +0.94 to +0.28 SD |
+
+**Sevoflurane and isoflurane follow the published curves within one SD**, a
+little slow in the first 3 minutes and a little fast after 7.5. The one
+isoflurane point past one SD, +1.06 SD at 12.5 minutes, is within the reading
+error of the band.
+
+**Desflurane rises faster than its cohort from 1 to 10 minutes**, by 0.034 to
+0.042 in $`F_A/F_I`$, and agrees from 12.5 minutes on. The operating point is
+an unlikely cause, because the same eight volunteers breathed isoflurane from
+the same cylinder and the model follows their isoflurane curve. A ventilation
+or lung-volume error would also move every agent the same way, and sevoflurane
+and isoflurane sit slightly below their curves early. So the likely cause is
+something only desflurane has, such as its blood:gas or a tissue:gas
+coefficient. `PL-CM1B` carries the investigation. Until it is settled, the five
+desflurane points and the isoflurane point at 12.5 minutes are held to a
+regression band from −1 to +2.5 SD rather than to the agreement band, so the
+gap cannot grow unseen.
+
+Caveat 1 above applies here too, and the early curve is where a second-gas
+effect would show first. Its size is not measured. The volunteers had breathed
+70% nitrous oxide for 30 minutes before the potent agents started and 65%
+throughout, so their nitrous oxide uptake was already small by then, and the
+effect is probably small too. This model has none. Three of the 1-minute SDs
+are stand-ins: those bars are lost among
+overlapping marks near the axis, so each cohort's next readable bar is used,
+as the note says.
+
 #### What the published-data gate can and cannot resolve
 
 **A green gate shows only that no stored value is wrong by more than the gate
 can detect, and for most stored values that is a lot** (`PL-9YHR`,
-2026-10-17). The published-data gate is the set of assertions whose expected
-value is a published human measurement rather than this model's own output.
-They are the wash-in band for each cohort at every fresh gas flow from 1 to
-10 L/min, the sign of the elimination disagreement for each cohort, and both
-solubility orderings. The regression pins are not part of it. A pin, such as
-the 5-minute elimination pin above, `PINNED_REFERENCE_STATES` in
+2026-10-17; re-measured for `PL-R0NL`, 2026-10-18). The published-data gate is
+the set of assertions whose expected value is a published human measurement
+rather than this model's own output. They are the early wash-in points from 1
+to 25 minutes with F_I held at the airway, the 30-minute wash-in band for each
+cohort at every fresh gas flow from 1 to 10 L/min, the sign of the elimination
+disagreement for each cohort, and both solubility orderings. The early points
+are described in § "The early wash-in curve against the published figures"
+above. The regression pins are not part of the gate. A pin, such as the
+5-minute elimination pin above, `PINNED_REFERENCE_STATES` in
 `tests/reference/test_coupled_dynamics.py` or the late-washout tables, fails
 on any change at all. It detects an accidental edit, and it says nothing about
 whether a published value would have caught a wrong one, so none of them may
@@ -4181,16 +4245,17 @@ assertion failed, between a tenth and four times the stored value. A changed
 blood:gas coefficient reaches every compartment with the tissue:gas
 coefficients held as shipped, so tissue:blood moves inversely, exactly as it
 would if the stored blood:gas value alone were wrong. Each cell is the range
-of the change that still passes every published-data assertion:
+of the change that still passes every published-data assertion, measured on
+2026-10-18:
 
 | Stored parameter | Sevoflurane | Isoflurane | Desflurane |
 | --- | --- | --- | --- |
-| Blood:gas coefficient | −14% / +5% | −11% / +12% | −3% / +10% |
-| Vessel-rich tissue:gas, or vessel-rich volume | −46% / +24% | −46% / +48% | −22% / +55% |
-| Muscle tissue:gas, or muscle volume | −52% / +102% | −47% / past +300% | −11% / +105% |
+| Blood:gas coefficient | −5% / +5% | −1% / +5% | −1% / +10% |
+| Vessel-rich tissue:gas, or vessel-rich volume | −15% / +15% | −4% / +11% | −6% / +55% |
+| Muscle tissue:gas, or muscle volume | −44% / +102% | −17% / past +300% | −11% / +105% |
 | Fat tissue:gas, or fat volume | past −90% / past +300% | past −90% / past +300% | −84% / past +300% |
-| Venous pool volume | past −90% / +268% | past −90% / past +300% | past −90% / past +300% |
-| Alveolar gas volume (FRC) | past −90% / +82% | past −90% / +291% | −47% / +92% |
+| Venous pool volume | past −90% / +86% | −50% / +60% | −83% / past +300% |
+| Alveolar gas volume (FRC) | past −90% / +19% | −39% / +21% | −8% / +33% |
 | Circuit volume | past −90% / +76% | past −90% / +253% | −85% / +98% |
 
 The first row is relative to the stored blood:gas coefficients, which are
@@ -4203,37 +4268,46 @@ The first row is relative to the stored blood:gas coefficients, which are
 times the stored value. A tissue's volume and its tissue:gas coefficient give
 the same edges because a run depends only on their product, the tissue's
 capacity. That was measured, not assumed: the search found the same edges for
-both.
+both. Before the early points joined the gate, the same search on 2026-10-17
+put blood:gas at −14% / +5% for sevoflurane, −11% / +12% for isoflurane and
+−3% / +10% for desflurane, and the vessel-rich group at −22% to −46% below and
++24% to +55% above. `PL-9YHR` holds that table.
 
 **What a reader may conclude from a pass:**
 
-- **Blood:gas is resolved best, and still coarsely.** A pass excludes a
-  structurally wrong model, not a mis-parameterized one. Desflurane is
-  tightest, and in the direction of lower solubility, because it already sits
-  at +0.79 SD on wash-in with little room left above its mean.
-- **The flow sweep sets almost every upper edge**, at its 1 L/min point. A
-  change that survives at 10 L/min often does not survive at 1 L/min, so the
-  sweep is part of the gate rather than decoration.
-- **The vessel-rich group is held only to about a half below and a quarter to
-  a half above.** Its upper edges come from the wash-in flow sweep. Its lower
-  edges come from the elimination: with a much less soluble vessel-rich group
-  an agent eliminates faster than its published cohort, or out of the
-  published order. This page said until 2026-10-17 that the elimination held
-  the vessel-rich coefficient to about a fifth either way. That figure came
-  from an assertion that held the model's own elimination ratio to within one
-  published SD. It was a regression pin with a wide band, and `PL-RXW0` has
-  since narrowed it to $`1\times10^{-4}`$, so it never measured what a
-  published value can detect.
+- **A narrow edge is not a narrow uncertainty.** Most of the tightest edges
+  come from the 12.5- and 15-minute points, where the shipped model already
+  sits at +0.75 to +0.94 SD. A change that raises the late curve by a few
+  tenths of an SD then crosses +1 SD. So isoflurane's −1% edge for blood:gas
+  says the shipped model has used most of the band there. It does not say the
+  stored coefficient is known to 1%. The figure's reading error is about 0.3
+  SD, so an edge set by less than that much movement is within the reading.
+- **Blood:gas and the vessel-rich group are now resolved on both sides**, to
+  between 1% and 15% for sevoflurane and isoflurane. The early points set
+  every lower edge, through the 12.5- and 15-minute points. They also set
+  isoflurane's upper blood:gas edge and both agents' upper vessel-rich edges,
+  through the 2- and 3-minute points. The 30-minute flow sweep, at its
+  1 L/min point, still sets the other upper edges, and most of desflurane's.
+  A pass still excludes a structurally wrong model rather than a
+  mis-parameterized one.
+- **The alveolar gas volume is now seen from above.** Making it larger by a
+  fifth to a third slows the first minute past one SD for every agent. A
+  doubled volume moves sevoflurane's 1-minute F_A/F_I from 0.537 to 0.429,
+  −2.85 SD. Making it smaller still goes unseen for sevoflurane.
+- **Desflurane's edges carry its disagreement.** Its points from 1 to 10
+  minutes sit at +1.7 to +2.1 SD and are held only to the regression band
+  that ends at +2.5 SD, so its lower alveolar gas volume edge, −8%, is that
+  band's edge rather than a published SD (`PL-CM1B`).
 - **The gate cannot see fat for sevoflurane or isoflurane at all**, which is
   what a 30-minute load and a 5-minute washout should look like. Fat
   solubility and fat volume set the hours-long tail of washout that a learner
   reads emergence from, and nothing here checks them against a measurement.
   § "The first 24 hours of elimination against the published mean curves"
   compares that tail with the published fits, and it asserts no agreement.
-- **Making the venous pool, the alveolar gas volume or the circuit smaller
-  goes unseen** for sevoflurane and isoflurane, down to a tenth of the stored
-  value. Muscle is held only loosely. `PL-R0NL` carries the early wash-in
-  comparison that the alveolar gas and circuit volumes would need.
+- **Making the circuit smaller goes unseen** for sevoflurane and isoflurane,
+  down to a tenth of the stored value, because the early points are run with
+  F_I held at the airway and so never see the circuit. Muscle is held only
+  loosely.
 
 The two ratios respond to almost disjoint parts of the parameter set, which
 is why the edges fall where they do. Here is the movement per +10% in one
@@ -4260,20 +4334,21 @@ departure from the fitted mean curves over the rest of the day is
 
 **Two tests hold the table to the code.**
 `test_the_published_data_gate_fails_at_a_stated_perturbation` asserts that
-the gate fails for every agent at blood:gas ×0.80 and ×1.20 and at
-vessel-rich tissue:gas ×0.40 and ×2.00. ×1.10 is not used for blood:gas,
-because isoflurane passes it.
+the gate fails for every agent at blood:gas ×0.90 and ×1.15, at vessel-rich
+tissue:gas ×0.80 and ×1.75, and at alveolar gas volume ×1.50. ×1.10 is not
+used for blood:gas, because desflurane's edge is ×1.097.
 `test_the_published_data_gate_passes_at_a_stated_perturbation` asserts that
 the gate still passes at fat tissue:gas ×0.50 and ×2.00, fat volume ×2.00,
-muscle tissue:gas ×1.50, vessel-rich tissue:gas ×0.80, alveolar gas volume
-×0.50, venous pool volume ×2.00 and circuit volume ×0.50. Desflurane is left
-out of the two rows whose factor lies at or past its edge. Each factor sits
-well clear of its edge, because a test placed at an edge would sit 0.01 to
-0.03 SD from flipping. The first test fails if the gate goes blind along a
-direction it resolves today. The second fails if the gate starts to resolve
-a change that this section says it cannot, so the table is measured again
-rather than left stale. Neither widens nor narrows `AGREEMENT_TOLERANCE_SD`:
-the limit is the published spread, not the band.
+muscle tissue:gas ×1.50 and circuit volume ×0.50 for every agent. It also
+asserts a pass at alveolar gas volume ×0.50 for sevoflurane, at venous pool
+volume ×0.50 for sevoflurane and desflurane, and at venous pool volume ×2.00
+for desflurane. The agents left out of those rows have an edge at or inside
+the factor. Each factor sits well clear of its edge, because a test placed at
+an edge would sit 0.01 to 0.03 SD from flipping. The first test fails if the
+gate goes blind along a direction it resolves today. The second fails if the
+gate starts to resolve a change that this section says it cannot, so the
+table is measured again rather than left stale. Neither widens nor narrows
+`AGREEMENT_TOLERANCE_SD`: the limit is the published spread, not the band.
 
 #### The first 24 hours of elimination against the published mean curves
 
@@ -10169,7 +10244,11 @@ be worth in patients — and it is worth least in the phase the simulator most
 displays, the first minutes of the $`F_A/F_I`$ rise, which is the canonical
 teaching curve of inhaled-anesthetic uptake (see § "Model boundary"). So
 "agrees with Gas Man" may not be read as "agrees with a patient" anywhere in a
-case, and least of all in the first fifteen minutes.
+case, and least of all in the first fifteen minutes. Since 2026-10-18 this model's
+own first minutes are compared with the published human curves, in § "The early
+wash-in curve against the published figures". That comparison measures this
+implementation, which the study above does not, and it finds desflurane rising
+faster than its cohort.
 
 **Nor is the gap necessarily the patient model's.** The two workstations ran the
 same protocol, the same simulator and the same cardiac-output default, and
