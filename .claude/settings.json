@@ -90,7 +90,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/pr_body_check.py\" --screen"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/pr-body-email-guard.sh\""
           }
         ]
       }

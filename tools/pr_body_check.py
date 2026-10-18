@@ -26,9 +26,9 @@ four items of its own (`PL-F6MM`, `PL-K9XQ`, `PL-7VWK`, `PL-X2XP`). The files
 it wrote stay, with their `recorded:` header.
 
 **`--screen` keeps an email address out of a body before GitHub has it**
-(`PL-7K31`). It is the PreToolUse hook `.claude/settings.json` runs on
-`create_pull_request` and `update_pull_request`, and `screen` says why it
-refuses. It lives here because the body it guards is the one this file
+(`PL-7K31`). `.claude/hooks/pr-body-email-guard.sh` runs it as the
+PreToolUse hook on `create_pull_request` and `update_pull_request`, and
+`screen` says why it refuses. It lives here because the body it guards is the one this file
 recovers.
 
 **What `--recover` writes** (`PL-PNJF`, `PL-73G8`): `pr:`, then `note:`,

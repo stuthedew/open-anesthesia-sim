@@ -835,8 +835,7 @@ def test_anchors_on_a_shallow_clone_say_nothing_was_checked(
 # A body is public as soon as GitHub has it, so the screen runs before the call.
 # What is pinned is that a personal address is refused and named, that the one
 # trailer address and a version pin are not, that the wiring reaches both tools
-# and no other, and that the hook runs from a bare `python3` as Claude Code
-# starts it.
+# and no other, and that the hook script refuses when Claude Code starts it.
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -879,7 +878,7 @@ def test_a_payload_the_screen_does_not_govern_is_let_through(payload: str) -> No
     assert pr_body_check.screen(payload) is None
 
 
-def test_the_hook_is_wired_to_both_pull_request_tools_and_runs_from_a_bare_python() -> None:
+def test_the_hook_is_wired_to_both_pull_request_tools_and_refuses_from_its_script() -> None:
     """The matcher is a regex over the whole tool name, as Claude Code reads one.
 
     https://code.claude.com/docs/en/hooks, read 2026-09-30 for the merge guard:
@@ -892,7 +891,7 @@ def test_the_hook_is_wired_to_both_pull_request_tools_and_runs_from_a_bare_pytho
         for entry in settings["hooks"]["PreToolUse"]
         for hook in entry["hooks"]
     }
-    command = 'python3 "$CLAUDE_PROJECT_DIR/tools/pr_body_check.py" --screen'
+    command = 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/pr-body-email-guard.sh"'
     matcher = re.compile(commands[command])
     for tool in ("mcp__github__create_pull_request", "mcp__github__update_pull_request"):
         assert matcher.fullmatch(tool)
@@ -900,7 +899,7 @@ def test_the_hook_is_wired_to_both_pull_request_tools_and_runs_from_a_bare_pytho
         assert not matcher.fullmatch(tool)
 
     ran = subprocess.run(
-        ["python3", str(REPO / "tools" / "pr_body_check.py"), "--screen"],
+        ["bash", str(REPO / ".claude" / "hooks" / "pr-body-email-guard.sh")],
         input=_call("mcp__github__create_pull_request", body="me@example.com"),
         capture_output=True,
         text=True,
