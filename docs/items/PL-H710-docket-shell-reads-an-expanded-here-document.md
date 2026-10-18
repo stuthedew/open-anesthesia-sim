@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.27
 touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, docs/items/PL-54MD-docket-shell-reads-the-commands-of-a-nested-in.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by its own triage, 2026-10-12
 added: 2026-10-12
