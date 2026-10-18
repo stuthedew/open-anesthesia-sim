@@ -9,6 +9,7 @@ feature: owner-attention
 touches: .claude/rules/instruction-writing.md
 added: 2026-10-18
 closed: 2026-10-18
+pr: 1589
 payoff: a session decides a look, wording or placement call itself and records it as a placeholder, so the owner is not asked about styling while the structure is being built
 verify: grep -q 'Look, wording and placement are not among them for now' .claude/rules/instruction-writing.md
 ---
