@@ -305,13 +305,14 @@ def test_reset_clears_agent_and_preserves_parameters() -> None:
 def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
     """`time_constant_s` is $`60 V_v/Q`$ at the flow passed in (`PL-HQF5`).
 
-    The expected values are worked out by hand for the 1.0 L test pool:
-    60 x 1.0 / 4.0 = 15 s at 4.0 L/min and 60 x 1.0 / 6.0 = 10 s at 6.0 L/min.
+    The expected values are worked out by hand for a 2.0 L pool:
+    60 x 2.0 / 4.0 = 30 s at 4.0 L/min and 60 x 2.0 / 6.0 = 20 s at 6.0 L/min.
     Neither flow is 5 L/min, so a time constant formed at the reference
-    patient's output fails.
+    patient's output fails. The volume is not 1 L, so dividing by it instead
+    of multiplying fails too.
     """
 
-    venous = _build_venous_blood()
+    venous = VenousBloodCompartment(volume_l=2.0, blood_gas_partition_coefficient=0.65)
 
-    assert venous.time_constant_s(4.0) == pytest.approx(15.0, rel=1e-15)
-    assert venous.time_constant_s(6.0) == pytest.approx(10.0, rel=1e-15)
+    assert venous.time_constant_s(4.0) == pytest.approx(30.0, rel=1e-15)
+    assert venous.time_constant_s(6.0) == pytest.approx(20.0, rel=1e-15)
