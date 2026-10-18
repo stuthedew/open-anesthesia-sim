@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: docs/maintainer.md
 added: 2026-09-16
 closed: 2026-10-18
+pr: 1554
 verify: grep -qF 'permissions.defaultMode' docs/maintainer.md && python3 tools/doc_check.py check
 ---
 

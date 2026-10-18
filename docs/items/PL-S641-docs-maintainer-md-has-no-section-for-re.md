@@ -8,6 +8,7 @@ classes: docs
 touches: docs/maintainer.md
 added: 2026-09-30
 closed: 2026-10-18
+pr: 1554
 payoff: the owner can tag a release a session could not, from their own runbook, without a session to read the steps out
 verify: grep -qiE '^## .*tag-release' docs/maintainer.md
 ---

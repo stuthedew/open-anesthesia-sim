@@ -9,6 +9,7 @@ touches: docs/resident-instructions.md
 blocked-by: PL-5DZ8, PL-8QMD, PL-ZGYX
 added: 2026-10-04
 closed: 2026-10-18
+pr: 1554
 payoff: the next proposal to trim the resident set for adherence meets the published measurements beside the project's own count, instead of re-deriving the case from the count alone
 verify: grep -qF 'arXiv:2605.10039' docs/resident-instructions.md && grep -qF 'arXiv:2602.11988' docs/resident-instructions.md && grep -qF 'arXiv:2507.11538' docs/resident-instructions.md
 ---
