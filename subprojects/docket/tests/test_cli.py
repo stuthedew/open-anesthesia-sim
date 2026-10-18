@@ -6473,38 +6473,6 @@ def test_a_dry_run_record_says_what_it_would_restate_without_writing_it(
     assert "would restate 1 bullet(s)" in capsys.readouterr().out
 
 
-def test_record_merge_names_a_notes_bullet_it_declined_to_restate(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """A bullet carried on from the margin is left alone and named (`PL-K23D`).
-
-    The report was the whole of what the repair said, so a decline it dropped
-    read as notes fully repaired while one bullet still had no route back.
-    """
-    work = _releasable_owed_clone(tmp_path)
-    releases = work / "docs" / "releases"
-    releases.mkdir(parents=True)
-    lazy = "- PL-B1C2 a title wrapped\ncarried on from the margin\n"
-    (releases / "v0.2.5.md").write_text(
-        f"## v0.2.5 - 2026-08-20\n\n### infra\n\n{lazy}- PL-K7QX A closed item\n", encoding="utf-8"
-    )
-    command = ["record", "148", "--merge", "origin/main", "--items", str(work / "items")]
-
-    assert main([*command, "--dry-run"]) == 0
-    dry = capsys.readouterr().out
-    assert main(command) == 0
-    out = capsys.readouterr().out
-
-    for report in (dry, out):
-        assert "docs/releases/v0.2.5.md line 6: " in report
-        assert "may still have no route back to its change" in report
-    assert "would restate 1 bullet(s)" in dry
-    assert "restated 1 bullet(s)" in out
-    shipped = (releases / "v0.2.5.md").read_text(encoding="utf-8")
-    assert lazy in shipped
-    assert "- PL-K7QX A closed item — #148" in shipped
-
-
 # --- the branch form: the number written before the merge ---------------------
 #
 # `PL-HMZZ`. The branch that closes an item writes its own open pull request's

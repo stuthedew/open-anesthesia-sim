@@ -897,9 +897,7 @@ def unreferenced_by_version(
     return found, tuple(unread)
 
 
-def restate_references(
-    text: str, by_id: Mapping[str, Item]
-) -> tuple[str, tuple[str, ...], tuple[UnreadEntry, ...]]:
+def restate_references(text: str, by_id: Mapping[str, Item]) -> tuple[str, tuple[str, ...]]:
     """Append the reference the store can now supply to every bullet missing one.
 
     An append, and nothing else. The id and the title are left exactly as they
@@ -921,14 +919,16 @@ def restate_references(
     underline (`PL-703R`), and one carried on from the margin is left alone,
     since where it ends was not read.
 
-    Returns the new text, the ids it repaired and the bullets it declined, so
-    a caller can report the repair rather than a diff, and name what it could
-    not read rather than present the repair as whole (`PL-K23D`).
+    Returns the new text and the ids it repaired, so a caller can report the
+    repair rather than a diff.
     """
     repaired: list[str] = []
     claims, pointer = notes_claims(text)
     lines = claims.split("\n")
-    bullets, declined = notes_bullets(claims)
+    # Dropped, not settled: a bullet carried on from the margin is left alone
+    # here, as it should be, but `record --merge` reports none it left, which
+    # `PL-K23D` is open to carry out to that report. `docket check` names it.
+    bullets, _declined = notes_bullets(claims)
     for _, end, bullet in bullets:
         found = NOTES_BULLET_RE.match(bullet)
         if found is None or REFERENCED_RE.search(found.group(2)):
@@ -938,7 +938,7 @@ def restate_references(
             continue
         repaired.append(found.group(1))
         lines[end - 1] += suffix
-    return "\n".join(lines) + pointer, tuple(repaired), declined
+    return "\n".join(lines) + pointer, tuple(repaired)
 
 
 @dataclass(frozen=True)
