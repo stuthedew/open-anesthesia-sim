@@ -3,10 +3,11 @@ id: PL-4CJ8
 title: Four comments cite CommonMark 0.31.2 § 6.7 for a soft break, where 0.31.2 numbers soft line breaks § 6.8 and § 6.7 is hard line breaks - statement_lines' docstring, the comment above docket.roadmap's CONTINUED_LINE, and a comment each in test_roadmap and PL-R417's guard - so a reader checking the citation lands on the wrong rule
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: subprojects/docket/src/docket/markdown.py, subprojects/docket/tests/test_roadmap.py, tests/unit/test_doc_check.py
 added: 2026-10-06
+closed: 2026-10-18
 payoff: A reader checking a soft-break citation against CommonMark lands on the soft-break rule rather than the hard-break one
 verify: grep -qF '(§ 6.8) and a lazy continuation' subprojects/docket/src/docket/markdown.py && grep -qF '(0.31.2 § 6.8)' subprojects/docket/tests/test_roadmap.py && grep -qF '§ 6.8) and a code span' tests/unit/test_doc_check.py
 ---
@@ -47,3 +48,10 @@ one comment to the next.
 
 **Done when.** The four cite § 6.8. Since #1392 three remain, the ones the
 reproduction names.
+
+**Fixed 2026-10-18.** The three remaining citations now give § 6.8 for a soft
+break: `statement_lines`' docstring in `markdown.py`, the case comment in
+`test_roadmap.py`, and the comment opening `PL-R417`'s guard section in
+`test_doc_check.py`. The copy of the spec under `tests/unit/markdown-specs/`
+puts "Hard line breaks" before "Soft line breaks" in its Inlines chapter, which
+makes them § 6.7 and § 6.8.

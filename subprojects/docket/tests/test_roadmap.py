@@ -2338,7 +2338,7 @@ def test_a_released_frozen_list_entry_deferred_to_a_later_gate_says_nothing() ->
 @pytest.mark.parametrize(
     ("text", "statements"),
     [
-        # A soft break carries a paragraph on (0.31.2 § 6.7); a blank line ends it.
+        # A soft break carries a paragraph on (0.31.2 § 6.8); a blank line ends it.
         ("one\ntwo\n\nthree", [(0, 2), (3, 4)]),
         # An item numbered other than 1, or an empty one, cannot interrupt a
         # paragraph (§ 5.2), inside the paragraph's own item or quote (`PL-XYJF`) ...

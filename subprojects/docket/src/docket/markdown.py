@@ -288,7 +288,7 @@ def statement_lines(
     """Each statement of a Markdown document, as its span of `lines` (`PL-R417`).
 
     A statement is a paragraph, with every line CommonMark 0.31.2 carries it
-    onto - a soft break's (§ 6.7) and a lazy continuation line's (§ 5.2) - or a
+    onto - a soft break's (§ 6.8) and a lazy continuation line's (§ 5.2) - or a
     block of its own: a heading, a thematic break, an HTML block, each run of an
     indented code block's lines between blank ones, and each row of a table. A
     list item's paragraph is one, so a list is as many statements as it has
