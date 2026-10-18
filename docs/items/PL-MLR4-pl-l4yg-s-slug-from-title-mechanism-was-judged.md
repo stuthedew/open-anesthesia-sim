@@ -9,6 +9,7 @@ feature: generator-identification
 touches: docs/items
 added: 2026-09-23
 closed: 2026-10-18
+pr: 1571
 payoff: the slug-from-title mechanism three auditors judged live is either ranked as a generator or recorded as too small to be one, instead of ranking nowhere
 verify: grep -q '^root-cause-of: ' docs/items/PL-MLR4-*.md
 root-cause-of: PL-3833, PL-Y5JX, PL-5QLP, PL-QMC0

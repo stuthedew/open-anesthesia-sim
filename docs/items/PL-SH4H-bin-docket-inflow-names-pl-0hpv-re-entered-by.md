@@ -9,6 +9,7 @@ feature: generator-heads
 touches: docs/items
 added: 2026-10-12
 closed: 2026-10-18
+pr: 1571
 payoff: the last unanswered line in bin/docket inflow's 'fix did not hold' list gets its answer, so a generator still producing there is either recorded and ranked or shown settled
 verify: grep -qE '^\*\*Answered 2026-' docs/items/PL-SH4H-*.md
 ---
