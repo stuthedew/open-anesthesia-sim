@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, infra
 feature: apparatus-test-bar
+milestone: v0.5.28
 touches: .claude/rules/apparatus-standard.md, .claude/rules/where-new-code-goes.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-28 triage pass
 added: 2026-09-27

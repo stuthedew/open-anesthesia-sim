@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.28
 touches: tools/glyph_check.py, tools/fixture_id_check.py, tools/doc_check.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/python.py, tools/import_boundary_check.py, tests/unit/test_glyph_check.py, tests/unit/test_fixture_id_check.py, subprojects/docket/tests/test_python.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12

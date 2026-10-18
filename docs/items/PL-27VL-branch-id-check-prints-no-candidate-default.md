@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: evidence-declines
+milestone: v0.5.28
 touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23

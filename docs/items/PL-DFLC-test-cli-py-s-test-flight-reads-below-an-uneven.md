@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: pre-fork-content
+milestone: v0.5.28
 touches: subprojects/docket/tests/test_cli.py
 added: 2026-09-27
 closed: 2026-10-18

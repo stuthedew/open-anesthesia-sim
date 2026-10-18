@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.28
 touches: tools/doc_check.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/notes.py, subprojects/docket/src/docket/frontmatter.py, subprojects/docket/src/docket/checks.py, tools/fact_home_check.py, tests/unit/test_doc_check.py, tests/unit/test_inline_reference.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12

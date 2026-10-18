@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.5.28
 touches: docs/items/PL-25KS-port-the-dashboard-to-pyside6-the-readout-row.md
 added: 2026-10-12
 closed: 2026-10-18

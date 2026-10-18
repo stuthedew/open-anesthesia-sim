@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs, defect
+milestone: v0.5.28
 touches: .claude/skills/docket/modes/triage.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-10-18
