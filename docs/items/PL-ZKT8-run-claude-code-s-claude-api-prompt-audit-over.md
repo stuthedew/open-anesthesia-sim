@@ -9,7 +9,7 @@ feature: model-evidence
 touches: CLAUDE.md, .claude/rules, .claude/skills/docket
 added: 2026-10-17
 payoff: instructions written for older models stop costing tool rounds and accuracy on Opus 5.5, with every change approved by the owner
-verify: grep -q '^### Owner answers' docs/items/PL-ZKT8-run-claude-code-s-claude-api-prompt-audit-over.md
+verify: grep -q 'the files under' .claude/rules/citation-drift.md
 ---
 
 **Problem.** Run Claude Code's /claude-api prompt-audit over the resident instructions and the docket skill against Opus 5.5, and bring its proposed diff to the owner hunk by hunk
