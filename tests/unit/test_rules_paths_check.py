@@ -258,7 +258,7 @@ def test_a_doubled_single_quote_reads_as_docket_reads_it() -> None:
 @pytest.mark.parametrize(
     ("item", "why"),
     [
-        ('  - "/src/**" extra', "holds `extra` after its quoted glob"),
+        ('  - "/src/**" extra', "holds `extra` after its closing quote"),
         ('  - "/src/\\q"', "a quoted glob YAML refuses"),
         ("  -", "holds no glob"),
     ],

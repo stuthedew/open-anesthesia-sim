@@ -22,24 +22,37 @@ which dated every key by the newest date in any of them (`PL-2MLT`).
 **Where each top-level key's value ends is what this reads, and no value.** A
 value runs over the lines indented under its key, and where its key holds
 nothing on its own line, over `- ` items at the key's column too (§ 8.2.1). A
-quoted scalar or a flow collection runs to its close however the lines below it
-are indented: PyYAML 6.0 reads a continuation at the first column that way where
-a strict YAML 1.2.2 reader refuses the file (§ 6.3), and either way the key such
-a line looks like is no key. That holds wherever one opens, on the key's own
+quoted scalar or a flow collection runs to its close, however much shallower
+than its opening the lines below it are, so the key such a line looks like is
+no key. Each of those lines must still be indented past the column of the key
+or `- ` holding the node. PyYAML 6.0 reads one at the first column as the
+node's, but YAML 1.2.2 refuses the file (§ 6.3), and so does this reader
+(`PL-P6LL`). That holds wherever one opens, on the key's own
 line or below it - alone on the line under a key or list entry holding nothing,
 after a list entry's `- `, or after a nested key's `:` (§ 8.2.1, § 8.2.2). Below
 the key's line it was once followed by indentation alone, so a first-column
 line inside it read as a key (`PL-YQ9G`). A block scalar's lines and a plain
 scalar's continuation lines are text, so a quote opening one of them opens
 nothing; `quoted` hands back the quoted scalars this reading does follow, each
-where it opens and closes (`PL-S4JL`). Nothing inside a value is checked, so a
-value YAML refuses can still be passed over here: what a value holds is its
-reader's to decide, and `rules_paths_check.entries` decides `paths:`'s. A line
-at the first column that opens no key raises `Unread` naming it, as does an
-indented line above the first key, since no value holds either and a reader
-passing over one would hand on the key above it short. Where each value ends,
-and where each quoted scalar opens and closes, is held to PyYAML's reading over
-a generated corpus by `subprojects/docket/tests/test_frontmatter_reference.py`.
+where it opens and closes (`PL-S4JL`). A line at the first column that opens no
+key raises `Unread` naming it, as does an indented line above the first key,
+since no value holds either and a reader passing over one would hand on the key
+above it short.
+
+**What YAML refuses in the forms read here is refused, not passed over**
+(`PL-P6LL`). A value's lines are held to the block collections open above
+them (§ 8.2). A node is held to what may follow its close (§ 6.6, § 7.4), and
+to what may open it on its key's line (§ 8.2.2). A plain scalar's continuation
+lines and a block scalar's opening lines are held to their own rules (§ 7.3.3,
+§ 8.1.1). Each breach raises `Unread`, because a rule whose front matter YAML
+refuses may have no `paths:` read from it by Claude Code while it passes every
+check here. What a value holds past that is still its reader's to decide, and
+`rules_paths_check.entries` decides `paths:`'s. Where each value ends, and
+where each quoted scalar opens and closes, is held to PyYAML's reading over a
+generated corpus by `subprojects/docket/tests/test_frontmatter_reference.py`.
+What it refuses is held to the YAML Test Suite's in-domain cases by
+`subprojects/docket/tests/test_frontmatter_suite.py`, since PyYAML implements
+YAML 1.1 and accepts some of what the suite refuses.
 
 **A line's own grammar is read here too, once** (`PL-8MHZ`): where its comment
 opens (`uncommented`), the key it opens (`key`), what a quoted scalar holds
@@ -117,7 +130,24 @@ BLOCK_SCALAR_RE = re.compile(
 
 
 class Unread(ValueError):
-    """A front matter this reader cannot split into its keys, the line named in the message."""
+    """A front matter this reader cannot split into its keys, the line named in the message.
+
+    `key` is the top-level key whose value holds that line, where one does.
+    """
+
+    key: str | None = None
+
+
+class Misindented(Unread):
+    """A line of a value at an indentation YAML refuses for it (§ 8.2), `line` its index.
+
+    Raised apart from its parent so that a reader of one key, such as
+    `rules_paths_check` reading `paths:`, can say how to indent its own list.
+    """
+
+    def __init__(self, message: str, line: int) -> None:
+        super().__init__(message)
+        self.line = line
 
 
 @dataclass(frozen=True)
@@ -194,8 +224,11 @@ def keys(block: Sequence[str]) -> tuple[Key, ...]:
 
     A key written twice comes back twice, since which one counts is its
     reader's to decide, or to refuse. Raises `Unread` naming a first-column
-    line that opens no key, an indented line above the first key, and a quoted
-    scalar or flow collection that nothing in the block closes.
+    line that opens no key, an indented line above the first key, a quoted
+    scalar or flow collection that nothing in the block closes, and any other
+    line YAML refuses in the forms this reads (`PL-P6LL`). The refusal's `key`
+    names the key whose value holds the line, and a `Misindented` one gives the
+    line's index too.
     """
     return _keys(block, _Passed())
 
@@ -284,7 +317,11 @@ def _keys(block: Sequence[str], passed: _Passed) -> tuple[Key, ...]:
         if opened is None:
             raise Unread(f"`{text}` sits at the first column and opens no key")
         name, at = opened
-        end = _value_end(block, index, at, passed)
+        try:
+            end = _value_end(block, index, at, passed)
+        except Unread as refused:
+            refused.key = name
+            raise
         found.append(Key(name, block[index][at:], index, end))
         index = end
     return tuple(found)
@@ -340,7 +377,16 @@ def _value_end(block: Sequence[str], index: int, at: int, passed: _Passed) -> in
     (`block_content`), and one at a `#` after white space in a plain scalar's
     line, which no plain scalar holds (§ 7.3.3). Each comment the value holds
     is added to `passed`.
+
+    Each line's indentation is held to the block collections open above it
+    (§ 8.2): an entry sits at its collection's column, and a line deeper than
+    every open collection must open the node of an entry holding nothing on its
+    line. A plain scalar's continuation line holds no `: `, and none follows a
+    comment, which ends the scalar (§ 7.3.3). `Unread` names a line breaking
+    either, and a node `_refusal` refuses, since YAML refuses the block
+    (`PL-P6LL`).
     """
+    _refuse(block[index], at, after_key=True)
     node = _node(block[index], at)
     bare = not node
     # Lines indented past `literal` are a scalar's text; None while none is open.
@@ -348,9 +394,17 @@ def _value_end(block: Sequence[str], index: int, at: int, passed: _Passed) -> in
     # The index past a block scalar's content while one is open, and 0 while a
     # plain scalar is, whose lines may hold a comment.
     content = _block_end(block, index, 0, node)
+    # Whether a comment has ended the plain scalar open past `literal`.
+    ended = literal is not None and not content and _commented(block[index], at)
     # The column of the entry holding nothing on its line, whose node opens below it.
     holder = 0
-    line = _past(block, index, at, passed)
+    # That column while the next line may still open the node, and None once it has.
+    slot: int | None = 0 if bare else None
+    # Whether that entry's line holds an anchor or a tag, which its node takes.
+    propped = bare and _properties(block[index], at)
+    # Each block collection open, as its column and whether it is a sequence.
+    levels = [(0, False)]
+    line = _past(block, index, at, 0, passed)
     last = line - 1
     while line < len(block):
         text = block[line]
@@ -359,6 +413,7 @@ def _value_end(block: Sequence[str], index: int, at: int, passed: _Passed) -> in
         if not stripped or (indent == 0 and stripped.startswith("#")):
             if stripped:
                 passed.comments.append((line, 0))
+                ended = True
             line += 1
             continue
         if indent == 0 and not (bare and is_item(text)):
@@ -366,48 +421,180 @@ def _value_end(block: Sequence[str], index: int, at: int, passed: _Passed) -> in
         last = line
         line += 1
         if literal is not None and indent > literal:
+            opens = None
             if last >= content and (not content or stripped.startswith("#")):
                 opens = next((at for at in range(indent, len(text)) if _comment_at(text, at)), None)
                 if opens is not None:
                     passed.comments.append((last, opens))
+            if not content:
+                _carry_plain(text, indent, opens, ended)
+                ended = ended or opens is not None
             continue
         if stripped.startswith("#"):
             passed.comments.append((last, indent))
             continue
         literal = None
-        entry, position = holder, indent
+        ended = False
+        while levels[-1][0] > indent:
+            levels.pop()
+        column, sequence = levels[-1]
+        item = is_item(text[indent:])
+        if column == indent and sequence and not item and levels[-2:-1] == [(indent, False)]:
+            levels.pop()
+            sequence = False
+        if column == indent:
+            if item and not sequence:
+                if slot != indent:
+                    raise Misindented(
+                        f"`{stripped}` opens a list entry at a mapping's column", last
+                    )
+                levels.append((indent, True))
+            elif sequence and not item:
+                raise Misindented(
+                    f"`{stripped}` sits at a list's column and is no entry of it", last
+                )
+        elif slot is None or indent <= slot:
+            raise Misindented(
+                f"`{stripped}` is indented as no entry above it is, under a node that already "
+                "holds its value",
+                last,
+            )
+        elif item:
+            levels.append((indent, True))
+        entry, position = holder if slot is None else slot, indent
         while is_item(text[position:]):
             entry = position
+            if levels[-1] != (position, True):
+                levels.append((position, True))
             position = _skip_blanks(text, position + 1)
-        nested = _key_span(text[position:])
+        start = _node_start(text, position)
+        nested = _key_span(text[start:])
+        if (
+            text[position : position + 1] in ("?", ":")
+            and text[position + 1 : position + 2] in BLANKS
+        ):
+            # An explicit key or its value (§ 8.2.2), whose node follows the indicator.
+            nested = ("", position + 1 - start)
         if nested is not None:
+            if levels[-1] != (position, False):
+                levels.append((position, False))
             entry = position
-            position = _skip_blanks(text, position + nested[1])
+            position = _skip_blanks(text, start + nested[1])
+        elif column == indent and not item:
+            raise Misindented(f"`{stripped}` sits at a mapping's column and opens no key", last)
+        elif propped and not item and start > position and _node(text, position):
+            raise Unread(f"`{stripped}` gives a node a second anchor or tag")
+        _refuse(text, position, after_key=nested is not None)
+        slot, propped = None, False
         opened = _node(text, position)
         if opened[:1] in CLOSED_NODES:
-            last = _past(block, last, position, passed) - 1
+            last = _past(block, last, position, entry, passed) - 1
             line = last + 1
             continue
-        _past(block, last, position, passed)
+        _past(block, last, position, entry, passed)
         if opened:
             literal = entry
             content = _block_end(block, last, entry, opened)
+            ended = not content and _commented(text, position)
         else:
-            holder = entry
+            holder = slot = entry
+            propped = _properties(text, position)
     return last + 1
+
+
+def _properties(text: str, at: int) -> bool:
+    """Whether an anchor or a tag stands before the node opening at `text[at:]` (§ 6.9)."""
+    return _node_start(text, at) > _skip_blanks(text, at)
+
+
+def _commented(text: str, at: int) -> bool:
+    """Whether the line `text` ends in a comment past the node opening at `text[at:]`."""
+    rest = text[at:]
+    return uncommented(rest).rstrip() != rest.rstrip()
+
+
+#: A `:` that white space or the line's end follows, which no plain scalar holds (§ 7.3.3).
+_MAPPING_INDICATOR = re.compile(r":(?:[ \t]|$)")
+
+
+def _carry_plain(text: str, indent: int, opens: int | None, ended: bool) -> None:
+    """Refuse the plain scalar's continuation line `text` where YAML does (§ 7.3.3).
+
+    `opens` is where a comment opens on it, and `ended` whether a comment has
+    ended the scalar already. A line opening with `#` is a comment and is not
+    refused.
+    """
+    if opens == indent:
+        return
+    words = text[indent:opens].rstrip()
+    if ended:
+        raise Unread(f"`{words}` carries on a plain scalar past the comment that ended it")
+    if _MAPPING_INDICATOR.search(words):
+        raise Unread(
+            f"`{words}` carries on a plain scalar with a `: `, which no plain scalar holds"
+        )
+
+
+def _refusal(text: str, at: int, after_key: bool) -> str | None:
+    """Why YAML refuses the node opening at `text[at:]`, or `None` where it does not.
+
+    An anchor or a tag never names an alias (§ 7.1), and `,`, `]`, `}`, `%`,
+    `@` and a backtick open no node in a block (§ 5.3). After a key's `:` on
+    the key's own line, a node opens no block collection: no `- ` entry, no
+    `? ` or `: ` explicit entry, and no plain scalar holding a `: ` (§ 8.2.2).
+    """
+    start = _node_start(text, at)
+    node = uncommented(text[start:]).strip()
+    if not node:
+        return None
+    if node[0] == "*" and start > _skip_blanks(text, at):
+        return "gives an alias an anchor or a tag"
+    if node[0] in ",]}%@`":
+        return f"opens with `{node[0]}`, which opens no node here"
+    if after_key and (is_item(node) or (node[0] in "?:" and node[1:2] in BLANKS)):
+        return "opens a block collection on its key's line"
+    if after_key and plain(node) and _MAPPING_INDICATOR.search(node):
+        return "holds a second key on its key's line"
+    return None
+
+
+def _refuse(text: str, at: int, after_key: bool) -> None:
+    """Raise `Unread` naming `text` where `_refusal` refuses its node at `at`."""
+    reason = _refusal(text, at, after_key)
+    if reason is not None:
+        raise Unread(f"`{text.strip()}` {reason}")
 
 
 def _block_end(block: Sequence[str], line: int, holder: int, node: str) -> int:
     """The index past a block scalar's content where `node`, on `block[line]`, is its header.
 
-    0 where `node` opens none. Where it is a header YAML refuses, such as
-    `|x`, the block's length, so that the lines indented past `holder` are
-    passed over as the text `keys` reads them as, holding no comment.
+    0 where `node` opens none. Raises `Unread` where it is a header YAML
+    refuses, such as `|x` or `>#x`, and where a line of spaces before the
+    content is deeper than the content's first line (§ 8.1.1.1) or a tab
+    stands in the content's indentation (§ 6.1), since YAML refuses each
+    (`PL-P6LL`).
     """
     if node[:1] not in ("|", ">"):
         return 0
     content = block_content(block, line, holder, node)
-    return len(block) if content is None else content[1]
+    if content is None:
+        raise Unread(f"`{block[line].strip()}` opens a block scalar with a header YAML refuses")
+    indent, end = content
+    after = block[end] if end < len(block) else ""
+    spaces = len(after) - len(after.lstrip(" "))
+    if not after.strip() and "\t" in after:
+        raise Unread(f"`{block[line].strip()}` is followed by a tab where its content is indented")
+    leading = [len(text) for text in block[line + 1 : end] if not text.strip(" ")]
+    if all(not text.strip(" ") for text in block[line + 1 : end]) and holder < spaces < max(
+        leading, default=0
+    ):
+        raise Unread(
+            f"`{after.strip()}` is shallower than a line of spaces that opens the block "
+            "scalar above it"
+        )
+    if after.strip() and holder < spaces < indent and not after.lstrip().startswith("#"):
+        raise Unread(f"`{after.strip()}` stands deeper than its key and short of its block scalar")
+    return end
 
 
 def _skip_blanks(text: str, position: int) -> int:
@@ -596,11 +783,12 @@ def _scan_quote(text: str, position: int, quote: str) -> int:
 
 
 def _quote_end(
-    block: Sequence[str], line: int, position: int, quotes: list[Quoted]
+    block: Sequence[str], line: int, position: int, holder: int, quotes: list[Quoted]
 ) -> tuple[int, int]:
     """The line and column of the quote closing the scalar `block[line][position]` opens.
 
-    The scalar is added to `quotes`.
+    The scalar is added to `quotes`. Each later line is held to `_carried`
+    under `holder`, the column of the entry whose node it is.
     """
     first, quote = line, block[line][position]
     found = _scan_quote(block[line], position + 1, quote)
@@ -611,9 +799,27 @@ def _quote_end(
                 f"`{block[first].strip()}` opens a quoted scalar that nothing in the front "
                 "matter closes"
             )
+        _carried(block[line], holder)
         found = _scan_quote(block[line], 0, quote)
     quotes.append(Quoted(quote, first, position, line, found))
     return line, found
+
+
+def _carried(text: str, holder: int) -> None:
+    """Refuse `text`, a later line of a quoted scalar or a flow collection, short of its node.
+
+    Its spaces must reach past `holder`, the column of the entry whose node it
+    is, as YAML 1.2.2's flow line prefix asks (§ 6.3, § 8.2.2), and a tab is no
+    indentation (§ 6.1). A line of white space alone is an empty line, which
+    may stand shallower (§ 6.5). PyYAML 6.0 reads such a line at the first
+    column as the node's, where a conformant reader refuses the block
+    (`PL-P6LL`).
+    """
+    if text.strip() and len(text) - len(text.lstrip(" ")) <= holder:
+        raise Unread(
+            f"`{text.strip()}` carries a quoted scalar or a flow collection on at or before the "
+            "column of the key or `- ` holding it, which YAML refuses; indent it past that column"
+        )
 
 
 def key(line: str) -> tuple[str, int] | None:
@@ -657,50 +863,73 @@ def _key_span(line: str) -> tuple[str, int] | None:
     return None
 
 
-def _past(block: Sequence[str], index: int, at: int, passed: _Passed) -> int:
+def _past(block: Sequence[str], index: int, at: int, holder: int, passed: _Passed) -> int:
     """The index past the line on which the node opening at `block[index][at:]` ends.
 
     The next line, unless the node is a quoted scalar or a flow collection that
     line does not close, which is followed to its close across the lines below.
     An anchor or a tag before the node names it and changes nothing in it
     (§ 6.9). Each quoted scalar followed is added to `passed`, and so is the
-    comment on the line the node ends on, past its end.
+    comment on the line the node ends on, past its end. `holder` is the column
+    of the entry whose node it is, which each later line of one followed is
+    indented past (`_carried`). Raises `Unread` where anything but a comment
+    after white space follows the close, which YAML refuses (§ 6.6).
     """
     text = block[index]
     at = _node_start(text, at)
     if text[at : at + 1] in ("'", '"'):
-        index, close = _quote_end(block, index, at, passed.quotes)
+        index, close = _quote_end(block, index, at, holder, passed.quotes)
     elif text[at : at + 1] in ("[", "{"):
-        index, close = _flow_end(block, index, at, passed)
+        index, close = _flow_end(block, index, at, holder, passed)
     else:
         close = at - 1
     rest = block[index][close + 1 :]
+    if close >= at and rest.strip() and not (rest[:1] in BLANKS and rest.lstrip()[:1] == "#"):
+        raise Unread(
+            f"`{block[index].strip()}` holds `{rest.strip()}` after its closing quote or bracket, "
+            "which YAML refuses"
+        )
     kept = uncommented(rest)
     if len(kept) < len(rest):
         passed.comments.append((index, close + 1 + len(kept)))
     return index + 1
 
 
-def _flow_end(block: Sequence[str], index: int, at: int, passed: _Passed) -> tuple[int, int]:
+def _flow_end(
+    block: Sequence[str], index: int, at: int, holder: int, passed: _Passed
+) -> tuple[int, int]:
     """The line and column of the bracket closing the flow collection `block[index][at]` opens.
 
     A quote inside it opens a quoted scalar only where a node can open, as
     `_flow_node` says, so the `'` in `[don't]` is a character, and a `#` after
     white space comments out the rest of its line, which is added to `passed`
-    (§ 7.4). A line break is white space.
+    (§ 7.4). A line break is white space. Each later line but a comment is
+    held to `_carried` under `holder`. Raises `Unread` where a node follows a
+    closed one, or a plain scalar a comment ended, with no `,` between, which
+    YAML refuses (§ 7.4).
     """
     depth = 0
     node, closed = True, False
+    # Whether a comment ended a plain scalar, which nothing but an indicator may follow.
+    ended = False
     line, position = index, at
     while line < len(block):
         text = block[line]
+        if line > index and not text.lstrip(" \t").startswith("#"):
+            _carried(text, holder)
         while position < len(text):
             char = text[position]
             if _comment_at(text, position):
                 passed.comments.append((line, position))
+                ended = ended or not (node or closed)
                 break
+            if (closed or ended) and char not in " \t,]}:":
+                raise Unread(
+                    f"`{text.strip()}` holds a node that no `,` parts from the one before it"
+                )
+            ended = ended and char in " \t"
             if char in ("'", '"') and node:
-                line, position = _quote_end(block, line, position, passed.quotes)
+                line, position = _quote_end(block, line, position, holder, passed.quotes)
                 text = block[line]
                 node, closed = False, True
             else:

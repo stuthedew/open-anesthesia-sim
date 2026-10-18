@@ -3,12 +3,14 @@ id: PL-P6LL
 title: docket.frontmatter.keys reads keys out of 23 of the YAML Test Suite's 51 invalid in-domain documents, so a front matter a conformant parser refuses still passes docket's checks
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: reader-checks
 touches: subprojects/docket/src/docket/frontmatter.py, subprojects/docket/tests/test_frontmatter_suite.py, subprojects/docket/tests/yaml-test-suite, subprojects/docket/tests/test_frontmatter.py, subprojects/docket/tests/test_frontmatter_reference.py, tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed at capture, 2026-10-12
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1561
 payoff: a rule or skill whose front matter a YAML parser refuses fails docket's checks, instead of passing while Claude Code may read no paths: from it
 verify: grep -rq 'def test_keys_refuses_the_yaml_test_suite_error_cases' subprojects/docket/tests
 falsifies: _extents("paths: [don't
@@ -78,3 +80,17 @@ refused by name. One assertion writes its input inline, in
 reference corpus in `subprojects/docket/tests/test_frontmatter_reference.py`
 draws those lines past the holding column too, since its generator draws only
 YAML it expects to be read.
+
+**Resolved 2026-10-18.** `keys` now refuses all 51 in-domain error cases and
+reads the same 68 valid mappings it read before, declining the same 23. The
+walk in `docket.frontmatter._value_end` holds each line to the block
+collections open above it, refuses a plain scalar's continuation line holding a
+`: ` or following a comment, refuses what follows a quoted scalar's or a flow
+collection's close other than a comment, refuses a node a key's own line cannot
+hold, and refuses a block scalar header or opening YAML refuses. A quoted
+scalar's or a flow collection's later lines must stand past the column of the
+key or `- ` holding the node. An indentation refusal is a `Misindented`, so
+`tools/rules_paths_check.py` keeps its own advice on how to indent `paths:`.
+`subprojects/docket/tests/test_frontmatter_suite.py` runs the vendored cases
+under `subprojects/docket/tests/yaml-test-suite/`, and its error-case test
+fails on 23 cases against the code before the fix.
