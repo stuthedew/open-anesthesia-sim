@@ -91,3 +91,12 @@ ratified, over the alternative each names). The one decision the owner
 specified otherwise is `PL-WV9K` Q4: layouts are saved by an explicit "Save
 as default" action in the layout menu, not automatically; `PL-WV9K`
 § "Answers 2026-09-27" carries that design.
+
+**Measured with `PL-W9P6`, 2026-10-18.** Qt will not shrink a widget below its
+minimum size, so the screen and the model can disagree. On the dashboard,
+below a window about 1266 px wide, the accounting sidebar is held at its
+minimum width while the model's 0.18 fraction would give it less. Nothing
+collapses, but the model's fractions no longer describe the screen. This
+item's answer to whether a minimum is a request or a constraint decides which
+one gives way, and `app/area_layout.py`'s `_lay_out` is where it applies.
+

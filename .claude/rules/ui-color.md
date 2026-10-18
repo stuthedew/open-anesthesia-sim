@@ -89,9 +89,10 @@ call: a view built by a test or embedded elsewhere never runs `main()`, and
 `test_dark_appearance.py` asserts that a widget's own declaration survives a
 *hostile* application palette, which is the property that fails if the only
 declaration is global. Two things stay the platform's by rule - the `Disabled`
-colour group, so the inert splitter handles keep the host's surface
-(`PL-05M4`), and `ToolTipBase` and `ToolTipText`, which are outside the
-declared role set and which nothing here uses.
+colour group (`PL-05M4`), and `ToolTipBase` and `ToolTipText`, which are
+outside the declared role set and which nothing here uses. The Area borders
+drew from the `Disabled` group while they were inert, and are enabled since
+`PL-W9P6`, so the gap between two Areas shows the page's own `BACKGROUND`.
 
 Two consequences worth knowing before adding a control. A stylesheet on a
 *parent* makes everything under it resolve from the application palette rather

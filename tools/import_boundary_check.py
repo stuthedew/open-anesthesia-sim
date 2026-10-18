@@ -3,7 +3,7 @@
 
 A boundary names a package - or a dotted module prefix within one - the tree
 it is confined within, and the modules permitted to import it, which may be no
-module at all. Four invariants are declared today, and they are confined for
+module at all. Five invariants are declared today, and they are confined for
 unrelated reasons.
 
 **Pydantic, to one module.** `core/parameters.py` pairs each `_...Payload`
@@ -43,6 +43,13 @@ is the first boundary inside this package rather than around a dependency, and
 a comment in `tests/unit/test_formatting.py` credited this tool with it for as
 long as the tool read only root packages, to which `anesthesia_sim.app` and
 `anesthesia_sim.core` are both `anesthesia_sim` (`PL-YXFF`).
+
+**The layout, kept apart from the widgets.** `layout/` is a pure-Python
+model, so neither route into Qt is permitted in it (`PL-1FT6`), and nor is the
+interface: a View kind is a tag the model checks for syntax, never a class it
+imports. `QSplitter` and `QSplitterHandle` are allowed only in
+`app/area_layout.py`, the adapter that builds every splitter from the model,
+so no View can keep layout state of its own (`PL-W9P6`, `PL-L8RN`).
 
 Nothing measured any of them. The first two held on 2026-09-04 - `pydantic`
 appeared in exactly two lines of that one file, and no module under `core/`
@@ -361,6 +368,46 @@ BOUNDARIES: tuple[Boundary, ...] = (
             "the same rule as `PySide6` above, by the other route into Qt: pyqtgraph imports "
             "Qt at module load, so a layout module importing it carries the toolkit whether "
             "it draws anything or not"
+        ),
+    ),
+    Boundary(
+        package="PySide6.QtWidgets.QSplitter",
+        tree="src/anesthesia_sim",
+        allowed=("src/anesthesia_sim/app/area_layout.py",),
+        why=(
+            "`PL-C842` made the layout model the one record of where each View sits, and a "
+            "splitter is the widget that would keep a second one: `QSplitter.saveState()` "
+            "records sizes and no View identity, so a View that saves it, or reaches for the "
+            "splitter it sits in, has bound itself to one layout. The adapter builds every "
+            "splitter from the model (`PL-W9P6`), so it is the one module that needs the "
+            'class (`ROADMAP.md` § "v0.6.0 - the layout is the reader\'s", Required scope '
+            "entry 6, `PL-L8RN`). The tool reads imports, not attributes, so "
+            "`QtWidgets.QSplitter` after `from PySide6 import QtWidgets` is not caught, and no "
+            "module under `src/` imports Qt that way"
+        ),
+    ),
+    Boundary(
+        package="PySide6.QtWidgets.QSplitterHandle",
+        tree="src/anesthesia_sim",
+        allowed=("src/anesthesia_sim/app/area_layout.py",),
+        why=(
+            "a handle is the part of a splitter a reader drags, and the adapter turns each "
+            "drag into a change to the layout model (`PL-W9P6`). A handle built anywhere "
+            "else would move widgets the model knows nothing of, so it is held to the same "
+            "module as `QSplitter` above"
+        ),
+    ),
+    Boundary(
+        package="anesthesia_sim.app",
+        tree="src/anesthesia_sim/layout",
+        allowed=(),
+        why=(
+            '`docs/interface-provenance.md` § "Adopted": a View kind is a tag and a registry '
+            "lookup, never a subclass, and nothing in the layout layer knows that a concrete "
+            "View exists. The layout holds each kind as a tag it checks for syntax alone "
+            "(`layout/tree.py`, `PL-R1WQ` Q1). A layout module importing from the interface "
+            "would couple the two directly while the tag design still read as intact, so it "
+            "is confined out of the whole package (`PL-L8RN`)"
         ),
     ),
 )

@@ -699,6 +699,19 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "sets)",
     ),
     Requirement(
+        "PRIMARY",
+        "BACKGROUND",
+        AA_NON_TEXT,
+        "1.4.11",
+        "the line an Area border draws under the pointer (`_AreaHandle`, whose "
+        "`paintEvent` fills a centred line in PRIMARY across the gap, and "
+        "`_relight`, which lights every border on the same joined line). The "
+        "gap between two Areas paints nothing of its own, so the line sits on "
+        "the page's BACKGROUND. It is how a reader sees which line a drag will "
+        "move before pressing, so it identifies a component's state (PL-RQT1 "
+        "Q2, PL-W9P6)",
+    ),
+    Requirement(
         "WARNING",
         "BACKGROUND",
         AA_TEXT,

@@ -32,16 +32,16 @@ declare this interface's colours on the `QApplication` itself (2026-09-20,
 ratified), so the page's scroll bars - which no stylesheet and no widget
 palette reaches - resolve to the theme rather than to the host. Two things
 still do not, both by the rule rather than by omission: a *disabled* widget
-draws from the `Disabled` colour group this project leaves to the platform,
-which is why the inert splitter handles stay the host's (`PL-05M4`), and a
-tooltip draws from `ToolTipBase` and `ToolTipText`, which are outside the
-declared role set and which this interface uses nowhere today.
+that declares no colour of its own draws from the `Disabled` colour group
+this project leaves to the platform, and a tooltip draws from `ToolTipBase`
+and `ToolTipText`, which are outside the declared role set and which this
+interface uses nowhere today.
 """
 
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtCore import QRect, Qt
+from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtGui import QColor, QImage, QPalette
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -50,9 +50,9 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFrame,
-    QLabel,
     QLineEdit,
     QScrollArea,
+    QSplitter,
     QStyle,
     QStyleOptionButton,
     QVBoxLayout,
@@ -72,10 +72,9 @@ from anesthesia_sim.app.qt_widgets import (
     NewCaseDialog,
     declare_application_colours,
     declare_interface_colours,
-    inert_splitter,
 )
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, INK, MUTED, PANEL, PRIMARY
+from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, BACKGROUND, INK, MUTED, PANEL, PRIMARY
 
 #: The palette Qt reports on a host set to a dark appearance: a dark window, a
 #: near-black entry `Base` under a near-white `Text`, and a mid-grey
@@ -360,16 +359,18 @@ def test_declaring_the_application_leaves_its_disabled_colours_to_the_platform(
     choice and `tools/contrast_check.py` refuses.
 
     Its visible consequence is asserted rather than left as a claim: a
-    splitter handle is disabled by `freeze_splitter_handles`, so it draws from
-    the group left to the platform and keeps the host's surface after the
+    disabled surface that declares no colour of its own draws from the group
+    left to the platform, so it keeps the host's surface after the
     declaration. That is the rule working rather than the declaration
-    failing - `PL-05M4` is where whether the handles should be declared too
-    is decided.
+    failing. Until `PL-W9P6` the splitter handles were such a surface. They
+    are live now, and the test below holds what they draw (`PL-05M4`).
     """
 
-    handle = _shown(
-        inert_splitter(Qt.Orientation.Horizontal, (QLabel("left"), QLabel("right"))), dark_host
-    ).handle(1)
+    surface = QWidget()
+    surface.setAutoFillBackground(True)
+    surface.setMinimumSize(40, 40)
+    surface.setEnabled(False)
+    _shown(surface, dark_host)
     supplied = QPalette(dark_host.palette())
 
     declare_application_colours(dark_host)
@@ -379,8 +380,35 @@ def test_declaring_the_application_leaves_its_disabled_colours_to_the_platform(
             QPalette.ColorGroup.Disabled, role
         ), role
 
-    assert not handle.isEnabled()
-    assert _commonest(_colours(handle, dark_host)) == _HOST_DARK[QPalette.ColorRole.Window].upper()
+    assert not surface.isEnabled()
+    assert _commonest(_colours(surface, dark_host)) == _HOST_DARK[QPalette.ColorRole.Window].upper()
+
+
+def test_the_border_between_two_areas_shows_the_page_rather_than_the_host(
+    dark_host: QApplication,
+) -> None:
+    """`PL-05M4`: under a dark host, the gap between the chart panel and the sidebar stays light.
+
+    The inert handle was disabled, so it drew the host's dark surface between
+    two light panels. The live handle is enabled and draws nothing at rest
+    (`PL-RQT1` Q1), so the page's BACKGROUND shows through it, as it does on
+    a light host.
+    """
+
+    declare_application_colours(dark_host)
+    view = SimulationView((SimulationController(agent_id=_AGENT_ID),))
+    view.resize(1600, 1000)
+    view.show()
+    dark_host.processEvents()
+    splitter = view.layout_container.findChild(QSplitter)
+    assert splitter is not None, "the dashboard's Areas are not in a splitter"
+    handle = splitter.handle(1)
+    gap = QRect(handle.mapTo(view, QPoint(0, 0)), handle.size())
+
+    assert handle.isEnabled()
+    assert _commonest(_colours(view, dark_host, gap)) == BACKGROUND.upper()
+
+    view.close()
 
 
 # ------------------------------------------------------- the bookmark editor
