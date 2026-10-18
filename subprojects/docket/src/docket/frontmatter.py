@@ -37,7 +37,9 @@ nothing; `quoted` hands back the quoted scalars this reading does follow, each
 where it opens and closes (`PL-S4JL`). A line at the first column that opens no
 key raises `Unread` naming it, as does an indented line above the first key,
 since no value holds either and a reader passing over one would hand on the key
-above it short.
+above it short. The one exception is `...`, YAML's document-end marker: the
+keys above it are read, and only blank and comment lines may follow it
+(§ 9.1.2, `PL-G8ZN`).
 
 **What YAML refuses in the forms read here is refused, not passed over**
 (`PL-P6LL`). A value's lines are held to the block collections open above
@@ -77,6 +79,9 @@ from dataclasses import dataclass, field
 
 #: The line that opens a front matter, and the line that closes it.
 FENCE = "---"
+#: YAML's document-end marker (§ 9.1.2). At the first column, with white space
+#: or the line's end after it, it ends the document, so no key follows it.
+DOCUMENT_END = "..."
 
 #: What opens a node other than a plain scalar (YAML 1.2.2 § 5.3), so a line
 #: opening with one opens no plain key: `-`, `?` and `:` only where white space
@@ -209,6 +214,21 @@ def closing(lines: Sequence[str]) -> int | None:
     return None
 
 
+def body_lines(lines: Sequence[str]) -> list[str]:
+    """`lines` with a closed front matter blanked, both its `---` lines included.
+
+    What a reader of a document's Markdown reads, every line in its place. A
+    front matter is no Markdown: read as Markdown, a fence-shaped line in a
+    block scalar opened a fence that ran on into the body and hid its prose
+    (`PL-WX79`), and its keys were one paragraph that its closing `---`
+    underlined as a heading (`PL-2MLT`). `tools/doc_check.py`,
+    `docket.instructions` and `docket.notes` each blanked it inline before
+    this (`PL-NNVJ`).
+    """
+    fence = closing(lines)
+    return list(lines) if fence is None else [""] * (fence + 1) + list(lines[fence + 1 :])
+
+
 @dataclass
 class _Passed:
     """What a reading of a block passes on the way to each key's end."""
@@ -223,7 +243,10 @@ def keys(block: Sequence[str]) -> tuple[Key, ...]:
     """Each top-level key of `block`, a front matter's lines between its fences, in order.
 
     A key written twice comes back twice, since which one counts is its
-    reader's to decide, or to refuse. Raises `Unread` naming a first-column
+    reader's to decide, or to refuse. A first-column `...` ends the YAML
+    document (§ 9.1.2), so the keys above it are read, and anything after it
+    other than a blank or comment line raises `Unread` (`PL-G8ZN`). Raises
+    `Unread` naming a first-column
     line that opens no key, an indented line above the first key, a quoted
     scalar or flow collection that nothing in the block closes, and any other
     line YAML refuses in the forms this reads (`PL-P6LL`). The refusal's `key`
@@ -313,6 +336,9 @@ def _keys(block: Sequence[str], passed: _Passed) -> tuple[Key, ...]:
             continue
         if block[index][:1] in (" ", "\t"):
             raise Unread(f"`{text}` is indented above the first key, so no value holds it")
+        if _ends_document(block[index]):
+            _after_document_end(block, index, passed)
+            break
         opened = key(block[index])
         if opened is None:
             raise Unread(f"`{text}` sits at the first column and opens no key")
@@ -325,6 +351,33 @@ def _keys(block: Sequence[str], passed: _Passed) -> tuple[Key, ...]:
         found.append(Key(name, block[index][at:], index, end))
         index = end
     return tuple(found)
+
+
+def _ends_document(line: str) -> bool:
+    """Whether `line` opens with YAML's document-end marker, then white space or its end."""
+    return (
+        line.startswith(DOCUMENT_END) and line[len(DOCUMENT_END) : len(DOCUMENT_END) + 1] in BLANKS
+    )
+
+
+def _after_document_end(block: Sequence[str], index: int, passed: _Passed) -> None:
+    """Read the lines from the `...` on `block[index]` to the block's end, which may hold no node.
+
+    A comment on the marker's line, or on a line after it, is added to
+    `passed`. Anything else raises `Unread`: after the marker only comments
+    may follow in one document (§ 9.1.2), and a node there opens a second
+    document, which a front matter is not.
+    """
+    for at in range(index, len(block)):
+        start = len(DOCUMENT_END) if at == index else 0
+        text = block[at][start:].strip()
+        if text and not text.startswith("#"):
+            raise Unread(
+                f"`{block[at].strip()}` follows the `...` that ends the YAML document, where "
+                "only blank and comment lines may"
+            )
+        if text:
+            passed.comments.append((at, block[at].index("#", start)))
 
 
 def statements(block: Sequence[str]) -> tuple[list[tuple[int, int]], Unread | None]:
