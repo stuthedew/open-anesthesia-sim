@@ -10,6 +10,7 @@ touches: docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-22
 closed: 2026-10-18
+pr: 1602
 payoff: docs/MODEL.md stops telling a reader that the Area borders show the host's dark surface, which they no longer do
 verify: ! grep -q 'the inert splitter handles keep the host' docs/MODEL.md
 ---

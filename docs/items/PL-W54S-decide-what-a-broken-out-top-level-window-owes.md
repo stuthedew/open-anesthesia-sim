@@ -9,6 +9,7 @@ feature: interface-areas
 touches: src/anesthesia_sim/app/unconditional_set.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/layout/model.py, tests/unit/test_unconditional_set.py, docs/MODEL.md, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-16
 closed: 2026-10-18
+pr: 1602
 payoff: each top-level window's region carries the invariant tier and the name of its run, and the per-substance tier has one home in the main window, so a break-out window adds a window rather than rebuilding the region
 verify: grep -q 'def test_every_window_region_carries_the_invariant_tier_and_its_run_name' tests/unit/test_unconditional_set.py
 ---
