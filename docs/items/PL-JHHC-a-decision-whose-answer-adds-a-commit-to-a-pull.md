@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: review-hold
+milestone: v0.5.29
 touches: .claude/rules/instruction-writing.md
 blocked-by: PL-5DZ8, PL-8QMD, PL-ZGYX
 added: 2026-10-04

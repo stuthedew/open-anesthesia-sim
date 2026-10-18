@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, defect
 feature: scenario-branching
+milestone: v0.5.29
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, docs/MODEL.md, tests/integration/test_controller.py
 added: 2026-10-12
 closed: 2026-10-18

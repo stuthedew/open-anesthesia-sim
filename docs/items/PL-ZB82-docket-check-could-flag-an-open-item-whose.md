@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: verify-command-health
+milestone: v0.5.29
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/items/PL-7Z84-a-run-has-no-identity-a-workspace-can-pin-to.md, docs/items/PL-8TPV-bin-docket-arm-still-says-to-arm-a-pull-request.md, docs/items/PL-GL5X-load-factory-preferences-needs-shipped-defaults.md, docs/items/PL-NWTM-the-unconditional-displayed-set-has-no.md
 added: 2026-09-30
 closed: 2026-10-18

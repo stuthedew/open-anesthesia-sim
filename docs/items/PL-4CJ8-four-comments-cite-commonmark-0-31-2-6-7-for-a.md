@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.5.29
 touches: subprojects/docket/src/docket/markdown.py, subprojects/docket/tests/test_roadmap.py, tests/unit/test_doc_check.py
 added: 2026-10-06
 closed: 2026-10-18

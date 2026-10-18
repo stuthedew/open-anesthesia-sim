@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: cardiac-output-write-consistency
+milestone: v0.5.29
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science: no learner can reach the banner it corrects
 added: 2026-10-18

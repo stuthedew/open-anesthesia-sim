@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: anesthesia-machine
+milestone: v0.5.29
 touches: docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-18

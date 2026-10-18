@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, safety, anticipated
 feature: interface-areas
+milestone: v0.5.29
 touches: docs/MODEL.md
 blocked-by: PL-NWTM
 added: 2026-09-16

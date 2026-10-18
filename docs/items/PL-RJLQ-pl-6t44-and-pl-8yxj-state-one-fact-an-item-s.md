@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: housekeeping
 feature: generator-identification
+milestone: v0.5.29
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_release.py, docs/items
 added: 2026-09-24
 closed: 2026-10-18

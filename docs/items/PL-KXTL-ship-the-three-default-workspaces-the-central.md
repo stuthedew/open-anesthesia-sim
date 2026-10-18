@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: feature
 feature: interface-areas
+milestone: v0.5.29
 touches: src/anesthesia_sim/data/, src/anesthesia_sim/layout/shipped.py, src/anesthesia_sim/layout/exceptions.py, src/anesthesia_sim/layout/__init__.py, src/anesthesia_sim/layout/store.py, tests/unit, docs/ARCHITECTURE.md, ROADMAP.md, tools/doc_check.py, tools/source_tier_counts.py
 blocked-by: PL-WV9K, PL-SSQW
 added: 2026-09-16

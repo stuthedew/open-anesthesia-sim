@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: ux
 feature: interface-areas
+milestone: v0.5.29
 touches: src/anesthesia_sim/layout/model.py, tests/unit/test_layout_model.py, docs/interface-provenance.md, docs/items/PL-W9P6-build-the-one-adapter-module-that-drives-the-qt.md
 added: 2026-10-12
 closed: 2026-10-18
