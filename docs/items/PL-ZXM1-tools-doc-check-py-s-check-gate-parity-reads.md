@@ -3,11 +3,13 @@ id: PL-ZXM1
 title: tools/doc_check.py's check_gate_parity reads every run: line of a workflow triggered on pull_request as part of the merge gate, a step whose if: keeps it off pull requests included, so a script run only on a push to main passes as covered on every pull request: quality.yml's whole-store bin/docket check --verify step is one
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tools/required_checks_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-10-18
+pr: 1580
 payoff: a script CI runs only on a push to main can no longer pass gate parity as merge-gate coverage, so a check cannot merge unenforced behind a step condition
 verify: grep -q 'def test_gate_parity_leaves_out_a_step_whose_if_excludes_pull_requests' tests/unit/test_doc_check.py
 reenters: PL-0HPV
@@ -58,3 +60,17 @@ gate and the merge gate each run, and where the two sets differ - filed after
 that head closed (2026-09-22, `spent`). It is the second: `PL-RW3T`, the first,
 taught the rule a script's mode and found this while doing so. One short of the
 three that would record `PL-0HPV`'s fix as not holding.
+
+**Fixed 2026-10-18 under `PL-ZQ3R`.** `pull_request_runs` reads the `if:` of
+each step and of the job holding it, through `_runs_on_pull_requests`. A step
+whose condition keeps it off `pull_request` counts as no merge-gate coverage.
+The reader evaluates `always()`, `success()`, `github.event_name` compared
+with one event, and the item-only fast path's condition, which
+`GATE_CONDITIONS` records with its reason. A gate script under any other
+condition is declined by name. Steps that run no gate script are not asked,
+so `quality.yml`'s ruff, mypy and pytest steps decline nothing. The two
+`GATE_ONLY` entries recorded because the rule could not read an `if:`,
+`bin/docket check --verify` and plain `tools/contrast_check.py`, are removed.
+`required_checks_check.Step` gained `job_if`, so a job's condition is read
+too. `test_gate_parity_leaves_out_a_step_whose_if_excludes_pull_requests`
+fails on the code before the fix.

@@ -1065,14 +1065,17 @@ class Step:
     """One entry of a job's `steps:` list, at the line its `-` opens on, counted from 1.
 
     `keys` maps each key the step carries to the index of the line it opens on
-    and its column, which is where its value is read from. Where the step, or
-    the job holding it, is in a form `steps` does not read, `refused` names it
-    and `keys` is empty.
+    and its column, which is where its value is read from. `job_if` is the
+    same for the `if:` key of the job holding the step, or `None` where the job
+    has none, since a job's condition decides whether any of its steps runs
+    (`PL-ZQ3R`). Where the step, or the job holding it, is in a form `steps`
+    does not read, `refused` names it and `keys` is empty.
     """
 
     line: int
     keys: dict[str, tuple[int, int]] = field(default_factory=dict)
     refused: Undecidable | None = None
+    job_if: tuple[int, int] | None = None
 
 
 def _keys(lines: Sequence[str], first: _Line, what: str) -> Iterator[tuple[str, str, _Line, int]]:
@@ -1152,7 +1155,17 @@ def _job_steps(
             "write its keys as a block mapping",
             body.index + 1,
         )
-    for key, held, key_line, value_end in _keys(lines, body, f"job `{job}`"):
+    # The job's keys are read before its steps, since its `if:` may follow
+    # `steps:`. A key this does not read still ends the job after the steps
+    # read before it.
+    keys: list[tuple[str, str, _Line, int]] = []
+    unread: Undecidable | None = None
+    try:
+        keys.extend(_keys(lines, body, f"job `{job}`"))
+    except Undecidable as stop:
+        unread = stop
+    job_if = next(((at.index, at.indent) for key, _, at, _ in keys if key == "if"), None)
+    for key, held, key_line, value_end in keys:
         if key != "steps":
             continue
         if held:
@@ -1172,12 +1185,14 @@ def _job_steps(
                 )
             step_end = _passed_over(lines, entry.index + 1, entry.indent, "-")
             try:
-                keys = _step_keys(lines, entry)
-            except Undecidable as unread:
-                yield Step(entry.index + 1, refused=unread)
+                step_keys = _step_keys(lines, entry)
+            except Undecidable as refused:
+                yield Step(entry.index + 1, refused=refused)
             else:
-                yield Step(entry.index + 1, keys)
+                yield Step(entry.index + 1, step_keys, job_if=job_if)
             entry = _next(lines, step_end)
+    if unread is not None:
+        raise unread
 
 
 def steps(lines: Sequence[str]) -> list[Step]:

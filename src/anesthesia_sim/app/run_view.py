@@ -98,6 +98,7 @@ from anesthesia_sim.app.dashboard_frame import (
     START_LABEL,
     Emphasis,
     HaltDisposition,
+    NewCaseQuestion,
     StatusWord,
     Transport,
     accounting,
@@ -294,6 +295,12 @@ class RunView(QWidget):
         # acting, which is what makes answering the dialog idempotent.
         self._pending_agent_id: str | None = None
         self._new_case_dialog: NewCaseDialog | None = None
+        # What this run's Reset must ask before it discards work in another
+        # run, set by the dashboard on the trunk (`ask_before_reset`), and
+        # the dialog asking it while it is open. `_resolve_reset` clears the
+        # dialog before acting, so the answer is acted on once.
+        self._reset_question: Callable[[], NewCaseQuestion | None] | None = None
+        self._reset_dialog: NewCaseDialog | None = None
         # The frame this run was last refreshed from and its place in it,
         # so a coalesced slider change can rewrite this run's own labels at
         # once against the picture still on screen.
@@ -989,7 +996,67 @@ class RunView(QWidget):
         self.controller.pause()
         self.presentation_requested.emit(False)
 
+    def ask_before_reset(self, question: Callable[[], NewCaseQuestion | None]) -> None:
+        """Make this run's Reset ask first whenever `question` returns a question.
+
+        The dashboard sets it on the trunk, whose Reset discards every branch
+        with it (`PL-W5WX`). This view cannot see those branches, so the
+        dashboard decides whether there is anything to ask about. `question`
+        is called on each press rather than once, because what a branch holds
+        changes while it runs.
+
+        Args:
+            question: Returns what to ask, or None where the Reset discards
+                nothing outside this run and so asks nothing.
+        """
+
+        self._reset_question = question
+
     def _handle_reset(self) -> None:
+        """Answer a press of Reset: start over at once, or ask first.
+
+        It asks only where the dashboard says this Reset would discard work
+        in another run (`ask_before_reset`). Starting this run over needs no
+        question: pressing its own Reset is the request to discard it
+        (`docs/MODEL.md` § "Agent-change behavior").
+        """
+
+        question = None if self._reset_question is None else self._reset_question()
+
+        if question is None:
+            self._reset_now()
+            return
+
+        dialog = NewCaseDialog(question, self)
+        dialog.finished.connect(self._handle_reset_finished)
+        # Deleted once answered, for the reason the new-case dialog is.
+        dialog.finished.connect(dialog.deleteLater)
+        self._reset_dialog = dialog
+        dialog.open()
+
+    def _handle_reset_finished(self, result: int) -> None:
+        self._resolve_reset(result == QDialog.DialogCode.Accepted)
+
+    def _resolve_reset(self, confirmed: bool) -> None:
+        """Act on the answer to the Reset question once, however many times it is reported.
+
+        Args:
+            confirmed: True to start the case over and discard the branches;
+                False to keep every run as it stands.
+        """
+
+        if self._reset_dialog is None:
+            return
+
+        self._reset_dialog = None
+
+        if confirmed:
+            self._reset_now()
+            return
+
+        self.presentation_requested.emit(False)
+
+    def _reset_now(self) -> None:
         """Start over: clears the run and a standing refusal, and leaves the playback rate alone.
 
         `case_restarted` is emitted before the frame is asked for, so the

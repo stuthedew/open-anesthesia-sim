@@ -6540,6 +6540,8 @@ def test_resetting_the_trunk_ends_the_comparison(application: QApplication) -> N
     assert view._fork_panel.take_button.isHidden() is False
     assert view._fork_panel.lock_text.isHidden() is True
     assert view._fork_panel.notice.notice() is None
+    # A branch just taken holds nothing, so the Reset asked nothing (`PL-W5WX`).
+    assert view.runs[0]._reset_dialog is None
 
 
 def test_a_refused_branch_does_not_survive_a_one_run_reset(application: QApplication) -> None:
@@ -6627,6 +6629,186 @@ def test_resetting_a_branch_leaves_the_comparison_standing(application: QApplica
     assert branch.snapshot().elapsed_s == pytest.approx(60.0)
     assert view._fork_panel.lock_text.isHidden() is False
     assert view._fork_panel.take_button.isHidden() is True
+
+
+def _branch_holding_work(view: SimulationView, application: QApplication, work: str) -> RunView:
+    """Take a branch at 60 s and give it one of the two kinds of work `has_recorded_run` reads.
+
+    `elapsed` runs it four steps past its fork with nothing touched, and
+    `change` records one fresh gas flow change at the fork with no time run.
+    Either alone is work the trunk's Reset would discard.
+    """
+
+    _take_fork(view, 60.0)
+    branch = view.runs[BRANCH_RUN_INDEX]
+
+    if work == "elapsed":
+        branch._start_button.click()
+        _steps(branch, 4)
+        branch._pause_button.click()
+    else:
+        _set_fresh_gas_flow(branch, 3.0)
+
+    _settle(application)
+
+    return branch
+
+
+@pytest.mark.parametrize(
+    ("work", "warning"),
+    [
+        (
+            "elapsed",
+            "Run 2 — branched at 1m and run to 1m0.4s, 0 recorded control changes — will be "
+            "discarded along with its chart history. This cannot be undone.",
+        ),
+        (
+            "change",
+            "Run 2 — branched at 1m, 1 recorded control change — will be discarded along with "
+            "its chart history. This cannot be undone.",
+        ),
+    ],
+)
+def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
+    application: QApplication, work: str, warning: str
+) -> None:
+    """`PL-W5WX`: the press is on Run 1, so Run 2's work is not discarded until the reader says so.
+
+    Asked of both halves of `has_recorded_run`, because a question gated on
+    either alone misses the other. The warning is a literal: four steps of
+    0.1 s from the 60 s fork reach 1m0.4s on the case clock.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    branch = _branch_holding_work(view, application, work)
+    before = (branch.snapshot().elapsed_s, branch.controller.run_segments)
+
+    view.runs[TRUNK_RUN_INDEX]._reset_button.click()
+    _settle(application)
+
+    dialog = view.runs[TRUNK_RUN_INDEX]._reset_dialog
+    assert dialog is not None
+    assert dialog.isVisible() is True
+    assert dialog.title_label.text() == "Reset Run 1 and discard Run 2?"
+    assert dialog.body_labels[1].text() == warning
+    assert len(view.runs) == 2
+    assert view.case is case
+    assert (branch.snapshot().elapsed_s, branch.controller.run_segments) == before
+    assert view.runs[TRUNK_RUN_INDEX].snapshot().elapsed_s == pytest.approx(60.0)
+
+
+def test_declining_the_trunks_reset_leaves_every_run_as_it_was(application: QApplication) -> None:
+    """Keeping the branch keeps the trunk too: nothing is reset, and the comparison stands."""
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    branch = _branch_holding_work(view, application, "elapsed")
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    branch_before = (branch.snapshot().elapsed_s, branch.controller.run_segments)
+    trunk_before = (trunk.snapshot().elapsed_s, trunk.controller.run_segments)
+
+    trunk._reset_button.click()
+    dialog = trunk._reset_dialog
+    assert dialog is not None
+    assert dialog.keep_button.text() == "Keep Run 2"
+    dialog.keep_button.click()
+    _settle(application)
+
+    assert trunk._reset_dialog is None
+    assert len(view.runs) == 2
+    assert view.case is case
+    assert (branch.snapshot().elapsed_s, branch.controller.run_segments) == branch_before
+    assert (trunk.snapshot().elapsed_s, trunk.controller.run_segments) == trunk_before
+
+
+def test_confirming_the_trunks_reset_starts_the_case_over_without_the_branch(
+    application: QApplication,
+) -> None:
+    """Confirming does what the trunk's Reset did unasked before `PL-W5WX`."""
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _branch_holding_work(view, application, "elapsed")
+    trunk = view.runs[TRUNK_RUN_INDEX]
+
+    trunk._reset_button.click()
+    dialog = trunk._reset_dialog
+    assert dialog is not None
+    assert dialog.discard_button.text() == "Reset and discard Run 2"
+    dialog.discard_button.click()
+    _settle(application)
+
+    assert trunk._reset_dialog is None
+    assert len(view.runs) == 1
+    assert view.case is not None
+    assert view.case is not case
+    assert view.case.branches == ()
+    assert trunk.snapshot().elapsed_s == 0.0
+
+
+def _chart_span_in_viewport(view: SimulationView) -> tuple[int, int, int]:
+    """The chart's top and bottom edges in the page's viewport, and the viewport's height."""
+
+    scroll = view.findChild(QScrollArea)
+    assert scroll is not None, "the dashboard has no scroll area"
+    viewport = scroll.viewport()
+    chart = view._concentration_chart
+    top = chart.mapTo(viewport, QPoint(0, 0)).y()
+
+    return top, top + chart.height(), viewport.height()
+
+
+@pytest.mark.parametrize("door", ["selector", "here"])
+def test_taking_a_branch_leaves_the_concentration_chart_in_view(
+    application: QApplication, door: str
+) -> None:
+    """`PL-562Z`: the chart the learner branched to compare on is wholly on screen afterwards.
+
+    At 1600 x 1000 the branch's readouts push the chart down to about
+    y 869-1229 of a 1000 px viewport, measured with this scroll removed on
+    2026-10-18. Both branch controls are pressed, because both are ways to
+    ask for the comparison.
+    """
+
+    view = _case_view(application, _branched_case(), width_px=1600)
+
+    if door == "selector":
+        _take_fork(view, 60.0)
+    else:
+        view._fork_panel.here_button.click()
+
+    _settle(application)
+    _settle(application)
+
+    assert len(view.runs) == 2
+    top, bottom, viewport_height = _chart_span_in_viewport(view)
+    assert top >= 0
+    assert bottom <= viewport_height
+
+
+def test_the_page_stops_holding_the_chart_once_the_reader_scrolls(
+    application: QApplication,
+) -> None:
+    """The scroll a branch makes is the dashboard's until the reader scrolls the page themselves.
+
+    After that the reader owns the page, so a later change of layout - here
+    a shorter window, which moves the chart - does not scroll it back.
+    """
+
+    view = _case_view(application, _branched_case(), width_px=1600)
+    _take_fork(view, 60.0)
+    _settle(application)
+    scroll = view.findChild(QScrollArea)
+    assert scroll is not None
+    bar = scroll.verticalScrollBar()
+    assert bar.value() > 0
+
+    bar.triggerAction(QAbstractSlider.SliderAction.SliderToMinimum)
+    view.resize(1600, 800)
+    _settle(application)
+
+    assert bar.value() == 0
 
 
 def test_the_comparison_lock_names_the_run_whose_reset_ends_it(application: QApplication) -> None:
