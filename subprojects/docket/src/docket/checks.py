@@ -3147,7 +3147,7 @@ def _ready_with_an_open_blocker(report: Report, known_items: dict[str, Item]) ->
 
     `ready` asserts the work can be started now and `blocked-by` asserts it
     cannot, so an item carrying both is a plain contradiction. The ranking
-    reads only the status - `plan.py` filters on `status != "blocked"` and
+    reads only the status - `plan.py` filters on `Item.is_startable` and
     never opens `blocked_by`, which `concurrency.py` alone consumes - so the
     edge can be declared, every other check pass, and `docket next` still
     offer the item ahead of the work it says it waits on. Silently, which is
@@ -4141,7 +4141,7 @@ def _groom(
     # at or above the band of what it blocks - so gating one safety item on a
     # feature item raises that feature item into the band, and the count grows
     # by an item no class pinned there and nobody can act on (`PL-P23D`).
-    startable = [item for item in top if item.status != "blocked"]
+    startable = [item for item in top if item.is_startable]
     if len(startable) > config.top_band_limit:
         held = len(top) - len(startable)
         note = f", and {held} more blocked and not counted" if held else ""

@@ -867,6 +867,17 @@ class Item:
         return self.status == "untriaged"
 
     @property
+    def is_startable(self) -> bool:
+        """Open, triaged and not blocked: work a session could start now, held or not.
+
+        `next`, the generator tier, `show` and `status` each ask this, so what
+        one offers and another calls startable cannot disagree about a status.
+        Each had its own copy until `PL-RJLQ`, and `status` named an untriaged
+        item as a feature's next (`PL-4DK2`).
+        """
+        return self.is_open and not self.is_untriaged and self.status != "blocked"
+
+    @property
     def blocking_milestones(self) -> tuple[str, ...]:
         """The `blocked-by` entries naming a roadmap milestone, as written.
 
