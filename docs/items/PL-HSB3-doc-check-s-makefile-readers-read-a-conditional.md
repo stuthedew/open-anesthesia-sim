@@ -3,11 +3,13 @@ id: PL-HSB3
 title: doc_check's Makefile readers read a conditional's branches in turn, so make_targets and the gate parity check count a recipe line only one configuration runs, where until PL-TDVJ they dropped every recipe line inside a conditional; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, tests/unit/test_makefile_reference.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-06
+closed: 2026-10-18
+pr: 1580
 payoff: gate parity and the make-target check count a recipe line only where every configuration runs it, so neither passes a script make check may skip
 verify: grep -q 'def test_a_recipe_line_inside_a_conditional_runs_only_in_its_branch' tests/unit/test_doc_check.py
 reenters: PL-0HPV
@@ -71,3 +73,16 @@ fix did not hold, and whether it takes a successor head is answered under
 `PL-4097` with the other heads that report names. A `live` reading restarts
 `CLAUDE.md`'s pause on new workflow mechanisms, which is why `PL-61FT`'s went to
 the owner; this item is worked at its own band meanwhile.
+
+**Fixed 2026-10-18 under `PL-ZQ3R`, by declining.** `_make_lines` takes
+`every_branch`. `make_targets` and `_target_recipes` pass it false, so a
+recipe line inside a conditional raises `UnreadStatement` naming the
+conditional's line. `check_make_targets` and `check_gate_parity` then decline
+the Makefile by name instead of counting a command make runs in one branch.
+`_recipe_commands`, which the coverage gate and ruff cache checks read, still
+holds every branch. Reading each branch's commands per configuration would
+need make's variables evaluated, and the Makefile's one conditional holds no
+recipe line, so declining is the cheaper ending and costs nothing today.
+`tests/unit/test_makefile_reference.py` drops its `PL-HSB3` known departure
+and now draws conditionals. `test_a_recipe_line_inside_a_conditional_runs_only_in_its_branch`
+fails on the code before the fix.
