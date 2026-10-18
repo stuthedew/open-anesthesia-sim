@@ -109,14 +109,16 @@ class PatientCompartments:
             as `BreathingCircuit.__setattr__` explains (`PL-LBQY`). Nothing is
             written when a value is refused.
 
-            The type is the whole check. Every compartment's blood flow is
-            formed from this field when it is read, so a new output moves
-            every flow with it and no flow can be left at the old output.
-            Before `PL-HQF5` each compartment stored its own flow, and this
-            method also refused an output that the stored flows did not match
-            (`PL-KFNP`). Before that, the mismatch was refused only when the
-            settings record was next built, at the next step or at Reset
-            (`PL-M4M0`).
+            Every compartment's blood flow is formed from this field when it
+            is read, so no flow can be left at an old output. A new output
+            written straight to the field of a built patient is still
+            refused, and the refusal names `set_cardiac_output`, which is the
+            one way to change it (`PL-KFNP`). Before `PL-HQF5` that refusal
+            kept stored flows matched to the output. It is kept so that a
+            cardiac output has one way in. Writing the value the field
+            already holds is accepted. The constructor, a copy and a pickle
+            write the field onto a patient that has none yet, so only its type
+            is checked there.
 
             A tissue group written to a built patient replaces one whose
             perfusion fraction the patient has already checked. So the new
@@ -130,13 +132,24 @@ class PatientCompartments:
                     built as a `CardiacOutput` (`require_cardiac_output`), or
                     `name` names a tissue group and `value` is not a
                     `TissueGroup`.
-                SimulationConfigurationError: `name` names a tissue group of a
-                    built patient, and with `value` in its place the tissue
-                    perfusion fractions would not sum to 1.
+                SimulationConfigurationError: `name` is `cardiac_output_l_min`
+                    on a built patient and `value` differs from the output it
+                    holds; or `name` names a tissue group of a built patient,
+                    and with `value` in its place the tissue perfusion
+                    fractions would not sum to 1.
             """
 
             if name == "cardiac_output_l_min":
                 require_cardiac_output(value)
+
+                if hasattr(self, name) and value != self.cardiac_output_l_min:
+                    raise SimulationConfigurationError(
+                        f"a cardiac output of {value} L/min written straight onto the patient "
+                        "was refused. The patient keeps its cardiac output of "
+                        f"{self.cardiac_output_l_min} L/min. Change the output with "
+                        "set_cardiac_output, the one way a cardiac output is changed "
+                        '(docs/MODEL.md, "Tissue groups")'
+                    )
             elif name in _TISSUE_GROUP_FIELDS and hasattr(self, name):
                 if not isinstance(value, TissueGroup):
                     raise TypeError(
@@ -267,14 +280,19 @@ class PatientCompartments:
         type was built through and nothing here checks again
         (`core/supported_ranges.py`). Every compartment's blood flow is formed
         from the output when it is read, so writing the field moves them all
-        (`PL-HQF5`).
+        (`PL-HQF5`). It is the one way to change the output of a built
+        patient, since `__setattr__` refuses a new output written to the
+        field directly (`PL-KFNP`).
 
         Raises:
             TypeError: `cardiac_output_l_min` was not built as a
                 `CardiacOutput`. Nothing is written when it is refused.
         """
 
-        self.cardiac_output_l_min = cardiac_output_l_min
+        require_cardiac_output(cardiac_output_l_min)
+        # Past `__setattr__`, which refuses a new output written to the field
+        # directly so that this method stays the one way to change it.
+        object.__setattr__(self, "cardiac_output_l_min", cardiac_output_l_min)
 
     def capture_state(self) -> PatientCompartmentsState:
         """Record run state so a failed step can be rolled back."""

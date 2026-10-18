@@ -5501,12 +5501,13 @@ $`\tau_i = V_i\lambda_{i:b}/Q_i`$ does. Until `PL-HQF5` each compartment
 stored a flow of its own, and three kinds of write could put it out of step
 with the output: a compartment's own `set_blood_flow`, a change to a tissue's
 perfusion fraction, and a change to the output of a copy that shared the
-original's compartments (`PL-Z0T3`). The patient refused a direct assignment
-of the output that the stored flows did not match, and named
-`set_cardiac_output` in the refusal (`PL-KFNP`). That check is gone with the
-stored flows. An assignment of the output, a copy, `dataclasses.replace` and a
-pickle now move every flow with the output, and a copy made at another output
-leaves the original's flows unchanged.
+original's compartments (`PL-Z0T3`). `set_cardiac_output`, a copy,
+`dataclasses.replace` and a pickle now move every flow with the output, and a
+copy made at another output leaves the original's flows unchanged. A new
+output written straight to the field of a built patient is still refused, and
+the refusal names `set_cardiac_output` (`PL-KFNP`). That refusal once kept
+the stored flows matched to the output. It is kept so that a cardiac output
+has one way in. Writing the value the field already holds is accepted.
 
 **A tissue's perfusion fraction is fixed once the group is built**
 (`PL-Z0HN`). The patient checks that its three fractions sum to 1 only when

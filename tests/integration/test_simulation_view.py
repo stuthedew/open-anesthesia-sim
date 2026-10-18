@@ -2526,10 +2526,10 @@ def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_
     directly, bypassing `set_cardiac_output`. The run then halted at the next
     step, or at the Reset that `PL-M4M0` refuses. The readout and the dial
     showed the assigned output beside compartment values and a chart computed
-    at the old flows (`PL-J39J`). `PL-KFNP` refused that assignment, and since
-    `PL-HQF5` it moves every flow with it, so it leaves no stale flows. Stale
-    flows can be reached only by writing the tissue fractions past their
-    guard (`_with_stale_tissue_flows`), and that changes no cardiac output.
+    at the old flows (`PL-J39J`). The patient now refuses that assignment.
+    Since `PL-HQF5` stale flows can be reached only by writing the tissue
+    fractions past their guard (`_with_stale_tissue_flows`), and that changes
+    no cardiac output.
     The patient keeps the output at which its last completed step ran. The
     settings record at the stale flows is refused before any step runs at
     them. So the readout, the dial, the values beside them and the run's
@@ -2544,6 +2544,10 @@ def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_
     _steps(run, 5)
     before = controller.snapshot()
     ran_under = controller._state.uptake_system.equation_settings()
+
+    with pytest.raises(SimulationConfigurationError, match="set_cardiac_output"):
+        controller._state.uptake_system.patient.cardiac_output_l_min = CardiacOutput(6.0)
+
     _with_stale_tissue_flows(controller, 6.0)
 
     _steps(run, 1)
