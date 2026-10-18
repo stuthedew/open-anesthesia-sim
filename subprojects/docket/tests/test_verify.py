@@ -4986,3 +4986,45 @@ def test_a_pytest_run_is_what_a_command_invokes() -> None:
     )
     assert not selects_no_test("echo pytest", 5)
     assert selects_no_test("timeout 60 python3 -m pytest -k gate", 5)
+
+
+def test_a_removed_line_in_a_file_git_quotes_is_charged_to_that_file(tmp_path: Path) -> None:
+    """`PL-MR8Z`: git quotes a header path holding a byte above 0x7f.
+
+    `diff --git "a/tests/test_caf\\303\\251.py" "b/..."` matched no header,
+    so the file's lines were charged to the empty path. A deleted assertion in
+    a file the tokenizer refuses then reached no line reading, and the check
+    passed on "none" where the same deletion in `plain.py` failed it.
+    """
+    root = _repo(tmp_path)
+    path = "tests/test_café.py"
+    _work(root, "the file", path, "def test_b( -> None:\n    assert x == 1\n")
+    _git(root, "tag", "fork")
+    _work(root, "PL-K7QX drop the assertion", path, "def test_b( -> None:\n    pass\n")
+
+    report = verify(root, _item(touches=("tests",)), _config(), "fork")
+
+    removed = _check(report, "no existing assertion removed")
+    assert not removed.passed
+    assert removed.detail.startswith("1 line(s) in a file read line by line")
+    assert any(line.startswith(f"{path}: assert x == 1") for line in removed.lines)
+
+
+def test_a_content_line_opening_with_two_signs_is_not_read_as_a_header(tmp_path: Path) -> None:
+    """`PL-MR8Z`: only the `---` and `+++` lines before a file's first hunk head it.
+
+    Told apart by their second character, a removed `--1` and an added `++2`
+    were skipped as headers, so neither reached the fold.
+    """
+    root = _repo(tmp_path)
+    _work(root, "the file", "setup.cfg", "-1\n")
+    _git(root, "tag", "fork")
+    _work(root, "PL-K7QX change it", "setup.cfg", "+2\n")
+    commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=root, check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+    added, removed = verify_module._net_line_changes(root, "fork", (commit,))
+
+    assert added == [("setup.cfg", "+2")]
+    assert removed == [("setup.cfg", "-1")]

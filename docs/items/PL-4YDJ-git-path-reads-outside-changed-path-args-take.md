@@ -3,12 +3,14 @@ id: PL-4YDJ
 title: Git path reads outside changed_path_args take git's C-quoted spelling of an unusual path for the path: about 15 --name-only, ls-tree and diff reads across vcs.py, claims.py, verify.py, pr_title_check.py and doc_check.py ask for no -z, the fact PL-JTCQ, PL-MR8Z and PL-PXT7 each misread at their own readers
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/verify.py, tools/generator_check.py, tools/pr_title_check.py, subprojects/docket/tests, tests/unit/test_pr_title_check.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/verify.py, tools/generator_check.py, tools/pr_title_check.py, subprojects/docket/tests, tests/unit/test_pr_title_check.py, tests/unit/test_branch_id_check.py, tests/unit/test_pr_record_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1577
 payoff: Every git read of a path in docket and the tools gets the file's real name even where git would quote it, and a new read that forgets -z fails a test, so this fact stops yielding a member one reader at a time
 verify: grep -q 'def test_an_item_file_git_would_quote_is_read_by_its_path' subprojects/docket/tests/test_vcs.py && grep -q 'def test_every_path_listing_read_in_docket_asks_for_z' subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_closed_item_whose_path_git_would_quote_is_read' tests/unit/test_pr_title_check.py
 falsifies: "--name-only", BASE, "docs/releases/"
@@ -105,6 +107,14 @@ an `M`. `falsifies:` names the one assertion the fix makes untrue:
 notes listing's argv without `-z`, which is the read this item changes. It is
 declared here, on the default branch, because `verify` honours only the base's
 copy, and the work lands in a pull request after this one.
+
+**Closed 2026-10-18.** Every path listing in docket and `tools/` now asks git
+for `-z`, through `vcs.changed_path_args` or with `-z` in its own argv, and is
+parsed by `vcs.listed_paths` or `vcs.logged_fields`. A patch's header path,
+which `-z` leaves quoted, is read through `vcs.unquoted_path` (`PL-MR8Z`).
+`test_every_path_listing_read_in_docket_asks_for_z` walks docket's modules and
+`tools/*.py` and fails on a listing argv without `-z`, so the next reader of
+this fact fails a test where it is written instead of waiting for a sweep.
 
 **Generator check.** This item is the head for the fact, how git spells a path
 in its output and when it quotes one. Read on 2026-10-17 against every head's
