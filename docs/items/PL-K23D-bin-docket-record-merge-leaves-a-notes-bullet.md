@@ -3,14 +3,16 @@ id: PL-K23D
 title: bin/docket record --merge leaves a notes bullet that notes_bullets declines unrestated without saying so, so the command's report omits the bullet it could not write; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/tests
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-18
+pr: 1595
 payoff: a session running record --merge is told which shipped notes bullets it could not give a route back to their change, instead of reading the repair as complete until a later check says otherwise
-falsifies: restate_references(
 verify: grep -q 'def test_record_merge_names_a_notes_bullet_it_declined_to_restate' subprojects/docket/tests/test_cli.py
+falsifies: restate_references(
 ---
 
 **Problem.** bin/docket record --merge leaves a notes bullet that notes_bullets declines unrestated without saying so, so the command's report omits the bullet it could not write; latent
@@ -61,3 +63,5 @@ dry run and then the real run, and asserts that both print
 "docs/releases/v0.2.5.md line 6: ". It also asserts that the margin bullet is
 left byte for byte and that `PL-K7QX` gains its number.
 
+**Rebuilt 2026-10-18 on `#1595`**, once `#1594` had put the `falsifies:` line
+on `main`, exactly as the next step above describes.
