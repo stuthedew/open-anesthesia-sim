@@ -63,6 +63,18 @@ first request after, 11,508 over that session's starting floor of 84,479. The
 summary a compaction leaves is a user record marked `isCompactSummary`, which
 nobody typed, so it is not counted as a turn.
 
+**A session can have more than one transcript.** The harness files a
+transcript under a directory named for the working directory, so a session
+whose working directory moved writes a second file under a second directory.
+Read alone, the later file starts partway through the session, and its first
+request is not the session's floor. One such reading printed a spend of
+-127,536 (`PL-PLT9`). So the script reads every file that carries the
+session's id and orders the requests by time. It then checks that the first
+record it read starts the session: the harness writes that record with no
+`parentUuid`, so a first record that names a parent means the start was not
+read. In that case, and wherever the latest request is smaller than the first
+one read, it names what it could not read and prints no spend.
+
 Per `.claude/rules/apparatus-standard.md`, an answer here has to be true or has
 to say what it could not read: records that fail to parse, and assistant
 records carrying no usage block, are excluded from the numbers and counted back
@@ -103,6 +115,7 @@ class Reading:
     requests: tuple[Request, ...]
     turns: int
     unread: int
+    floor_unread: str = ""
 
     @property
     def baseline(self) -> int:
@@ -113,24 +126,41 @@ class Reading:
         return self.requests[-1].context if self.requests else 0
 
     @property
-    def spend(self) -> int:
+    def spend_unread(self) -> str:
+        """Why no spend can be given, or "" when it can."""
+        if self.floor_unread:
+            return self.floor_unread
+        if self.context < self.baseline:
+            return (
+                f"the latest request ({self.context:,}) is smaller than the first one "
+                f"read ({self.baseline:,}), so the first request read is not this "
+                "session's floor"
+            )
+        return ""
+
+    @property
+    def spend(self) -> int | None:
+        """What this session added over its floor, or None when the floor was not read."""
+        if self.spend_unread:
+            return None
         return self.context - self.baseline
 
 
-def transcript_path(session_id: str, config_dir: Path) -> Path | None:
-    """Locate `session_id`'s transcript, or None.
+def transcript_paths(session_id: str, config_dir: Path) -> list[Path]:
+    """Locate every transcript of `session_id`, or none.
 
     Matched on the session id rather than on the directory name, which is the
     working directory with its separators rewritten by a rule this script would
-    otherwise have to guess at and keep in step with.
+    otherwise have to guess at and keep in step with. A session whose working
+    directory moved has a file under each directory it worked in, and all of
+    them are its transcript.
     """
     root = config_dir / TRANSCRIPT_ROOT
     if not root.is_dir():
-        return None
-    for candidate in sorted(root.glob(f"*/{session_id}.jsonl")):
-        if candidate.is_file():
-            return candidate
-    return None
+        return []
+    return [
+        candidate for candidate in sorted(root.glob(f"*/{session_id}.jsonl")) if candidate.is_file()
+    ]
 
 
 def read(text: str) -> Reading:
@@ -141,11 +171,17 @@ def read(text: str) -> Reading:
     wins and the rest are duplicates rather than further spend. Sidechain
     records belong to a subagent and are skipped: that context was never in
     this session's window.
+
+    `text` may join several transcripts of one session, so the requests are
+    ordered by their timestamps rather than by where they appear. The earliest
+    record that carries a `parentUuid` field must have it empty, because that
+    is how the harness marks the record that starts a session.
     """
     seen: set[str] = set()
     requests: list[Request] = []
     turns = 0
     unread = 0
+    first_link: tuple[str, object] | None = None
 
     # On `\n` alone, the one character JSON Lines ends a record at. JSON leaves
     # U+2028, U+2029 and U+0085 raw inside a string, and `splitlines()` broke
@@ -161,6 +197,11 @@ def read(text: str) -> Reading:
             continue
         if not isinstance(row, dict) or row.get("isSidechain"):
             continue
+
+        if "parentUuid" in row:
+            link = (str(row.get("timestamp") or ""), row["parentUuid"])
+            if first_link is None or link[0] < first_link[0]:
+                first_link = link
 
         kind = row.get("type")
         message = row.get("message")
@@ -202,18 +243,30 @@ def read(text: str) -> Reading:
             )
         )
 
-    return Reading(requests=tuple(requests), turns=turns, unread=unread)
+    floor_unread = ""
+    if first_link is not None and first_link[1] is not None:
+        floor_unread = (
+            "the earliest record read continues one that no transcript read holds, "
+            "so the session's first request was not read"
+        )
+    requests.sort(key=lambda request: request.timestamp)
+    return Reading(requests=tuple(requests), turns=turns, unread=unread, floor_unread=floor_unread)
 
 
 def report(reading: Reading) -> list[str]:
     """The four lines a session reads before deciding whether to start an item."""
-    over = ""
-    if reading.baseline:
-        over = f", {reading.spend / reading.baseline:.0%} over baseline"
+    spend = reading.spend
+    if spend is None:
+        baseline = f"baseline  {reading.baseline:>9,}   first request read"
+        spend_line = f"spend     {'unknown':>9}   {reading.spend_unread}"
+    else:
+        over = f", {spend / reading.baseline:.0%} over baseline" if reading.baseline else ""
+        baseline = f"baseline  {reading.baseline:>9,}   first request of this session"
+        spend_line = f"spend     {spend:>9,}   this session's own work{over}"
     lines = [
         f"context   {reading.context:>9,}   now",
-        f"baseline  {reading.baseline:>9,}   first request of this session",
-        f"spend     {reading.spend:>9,}   this session's own work{over}",
+        baseline,
+        spend_line,
         f"turns     {reading.turns:>9,}   user message(s), across "
         f"{len(reading.requests):,} request(s)",
     ]
@@ -243,8 +296,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    path = transcript_path(session_id, config_dir)
-    if path is None:
+    paths = transcript_paths(session_id, config_dir)
+    if not paths:
         print(
             f"context_reading: no transcript for session {session_id} under "
             f"{config_dir / TRANSCRIPT_ROOT}/*/. No reading was taken.",
@@ -252,31 +305,31 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    reading = read(path.read_text(encoding="utf-8", errors="replace"))
+    reading = read("\n".join(path.read_text(encoding="utf-8", errors="replace") for path in paths))
     if not reading.requests:
         print(
-            f"context_reading: {path} holds no assistant record with a usage "
-            "block. No reading was taken.",
+            f"context_reading: the transcript(s) {', '.join(map(str, paths))} hold no "
+            "assistant record with a usage block. No reading was taken.",
             file=sys.stderr,
         )
         return 2
 
     if args.json:
-        print(
-            json.dumps(
-                {
-                    "session_id": session_id,
-                    "transcript": str(path),
-                    "context": reading.context,
-                    "baseline": reading.baseline,
-                    "spend": reading.spend,
-                    "turns": reading.turns,
-                    "requests": len(reading.requests),
-                    "unread": reading.unread,
-                },
-                indent=2,
-            )
-        )
+        # `transcript` names every file read, comma-separated. `spend` is null
+        # when no spend can be given, and only then is `spend_unread` present.
+        answer: dict[str, object] = {
+            "session_id": session_id,
+            "transcript": ", ".join(map(str, paths)),
+            "context": reading.context,
+            "baseline": reading.baseline,
+            "spend": reading.spend,
+            "turns": reading.turns,
+            "requests": len(reading.requests),
+            "unread": reading.unread,
+        }
+        if reading.spend_unread:
+            answer["spend_unread"] = reading.spend_unread
+        print(json.dumps(answer, indent=2))
         return 0
 
     print("\n".join(report(reading)))
