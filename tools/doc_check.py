@@ -261,7 +261,7 @@ try:
     # read `python3 "tools/my file.py"` as `tools/my` (`PL-CWBJ`), and a step's
     # script is cut into those lines by the same reading (`PL-Q9LK`), as are a
     # script's comments, which the host-claim check reads (`PL-W9VC`).
-    from docket.shell import REDIRECTIONS, Reading, Word, script_lines, shell_words
+    from docket.shell import Reading, Word, script_lines, shell_words, simple_commands
     from docket.shell import comments as shell_comments
     from docket.store import ID_PATTERN, read_items
 
@@ -6156,10 +6156,11 @@ def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
                     if (command := FENCED_MAKE_RE.match(line)) is not None:
                         yield command.group("name"), first + at
                 continue
-            for words, at in _placed_commands(reading):
-                if len(words) > 1 and words[0] == "make":
-                    if (name := MAKE_TARGET_WORD_RE.match(words[1])) is not None:
-                        yield name.group(), first + piece.count("\n", 0, at)
+            for run in simple_commands(reading, piece):
+                arguments = run.words[run.assignments + 1 :]
+                if run.program == "make" and arguments:
+                    if (name := MAKE_TARGET_WORD_RE.match(arguments[0])) is not None:
+                        yield name.group(), first + piece.count("\n", 0, run.start)
 
 
 def check_make_targets(root: Path, documents: dict[Path, str], report: Report) -> None:
@@ -6263,7 +6264,7 @@ def workflow_runs(text: str, steps: list[UnreadStatement]) -> Iterator[tuple[str
     for body, script in _step_scripts(text, steps):
         reading = shell_words(body)
         if reading.clauses:
-            yield from _simple_commands(reading)
+            yield from _simple_commands(reading, body)
             continue
         # `script_lines` hands the line where the reading stops on, with every
         # line after it, as its last piece.
@@ -6464,53 +6465,23 @@ def _shell_commands(
     `python3 tools/x.py --check | tee log`, `tee` and `log` are not its
     arguments. So the words are cut where bash ends a simple command, at each
     control operator. A redirection does not end one, and neither its file nor
-    the descriptor written against it - the `2` of `2>&1` - is an argument, so
-    both are left out: digits touching an operator that opens with `<` or `>`
-    are a descriptor (POSIX Shell Command Language §2.10.1, "IO_NUMBER").
+    the descriptor written against it - the `2` of `2>&1`, the `{fd}` of
+    `{fd}>log` - is an argument, so both are left out, as `_simple_commands`
+    says.
     """
     reading = _shell_reading(where, command, report, unread)
-    return () if reading is None else _simple_commands(reading)
+    return () if reading is None else _simple_commands(reading, command)
 
 
-def _simple_commands(reading: Reading) -> tuple[tuple[str, ...], ...]:
-    """The simple commands a reading runs, each as its words, cut where `_shell_commands` says.
+def _simple_commands(reading: Reading, command: str) -> tuple[tuple[str, ...], ...]:
+    """The simple commands a reading of `command` runs, each as its words.
 
-    A word of a `case` construct's own syntax - the word it matches, `in`, a
-    pattern, `esac` - is no word of a command; docket's reading marks each
-    (`PL-M3M4`).
+    Cut, and their redirections lifted out, by docket's `shell.simple_commands`,
+    the one reading of where bash ends a simple command and what it hands one
+    (`PL-7DXZ`). A word of a `case` construct's own syntax - the word it
+    matches, `in`, a pattern, `esac` - is no word of a command (`PL-M3M4`).
     """
-    return tuple(words for words, _ in _placed_commands(reading))
-
-
-def _placed_commands(reading: Reading) -> tuple[tuple[tuple[str, ...], int], ...]:
-    """`_simple_commands`, each with the offset of its first word in the command read.
-
-    A substitution's body is placed where it stands in the command, so a
-    command inside a `$( )` carried across lines is placed on its own line
-    rather than on the substitution's first (`PL-5M36`).
-    """
-    commands: list[list[tuple[str, int]]] = []
-    for clause in reading.every_clause():
-        words: list[tuple[str, int]] = []
-        target = descriptor = False
-        previous = -1
-        for token, (start, end) in zip(clause.tokens, clause.spans, strict=True):
-            if isinstance(token, Word):
-                if not (target or token.case_syntax):
-                    words.append((token.text, start))
-                digits = token.text.isascii() and token.text.isdecimal()
-                descriptor = digits and not (target or token.quoted or token.case_syntax)
-                target = False
-            elif token in REDIRECTIONS:
-                if descriptor and start == previous and token[0] in "<>":
-                    words.pop()
-                target, descriptor = True, False
-            else:
-                commands.append(words)
-                words, target, descriptor = [], False, False
-            previous = end
-        commands.append(words)
-    return tuple((tuple(text for text, _ in words), words[0][1]) for words in commands if words)
+    return tuple(run.words for run in simple_commands(reading, command))
 
 
 def _shell_reading(where: str, command: str, report: Report, unread: str) -> Reading | None:

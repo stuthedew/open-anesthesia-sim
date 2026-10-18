@@ -3,12 +3,14 @@ id: PL-7DXZ
 title: doc_check's _simple_commands reads shell commands with its own REDIRECTIONS copy, a digit-only descriptor and words[0] == "make", so {fd}>log, FOO=1 make check and timeout 60 make check read differently from docket.shell and the hooks
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, docs/items/PL-RHPK-verify-and-checks-each-decide-a-command-s.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1527
 payoff: a make target named in a fenced command is found by the grammar docket and the hooks read
 verify: grep -q 'def test_a_fenced_make_run_is_found_past_an_assignment' tests/unit/test_doc_check.py
 ---

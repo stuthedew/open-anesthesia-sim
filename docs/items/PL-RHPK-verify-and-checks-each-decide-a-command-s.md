@@ -23,6 +23,8 @@ verify: grep -q 'def test_a_command_program_is_read_through_docket_shell' subpro
 
 **Why it matters.** Each copy is held to the others by nothing, so the first input they part on is answered one way by docket and another by the hook or check a session trusts at that moment; every pair below was read at both sites by the sweep, and the parting input is the sweep's reading, to re-confirm at start.
 
+**The program word has a home now.** `docket.shell.simple_commands` (`PL-7DXZ`) cuts a reading into simple commands, lifts redirections, and names each one's `program` past its leading assignments. It does not yet read past a wrapper: `timeout 60 make check` names `timeout`, where the hooks' `shell_split.program_words` reads past it by `WRAPPERS`. Moving that wrapper grammar into `docket.shell` beside `simple_commands` gives verify, checks, the hooks and doc_check's fenced `make` finder one answer.
+
 **Done when.** Each reader asks `docket.shell` for the program, the command ends and the words, and a test per pair pins the parting input.
 
 **Generator check.** A member of `PL-5DZ8`, filed by that head's closing sweep on 2026-10-12 and named in its `root-cause-of:`. The fact is the head's: which spelling of a repeated predicate is the answer, when tools, hooks and docket each spell it. It is neither a post-close instance nor a new generator.

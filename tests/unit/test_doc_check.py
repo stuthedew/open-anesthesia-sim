@@ -3331,6 +3331,21 @@ def test_a_substitution_in_an_unquoted_body_is_a_command_bash_runs(tmp_path: Pat
     ]
 
 
+def test_a_fenced_make_run_is_found_past_an_assignment() -> None:
+    """A fenced `make` is found where docket's shell reading finds the program (`PL-7DXZ`).
+
+    `_make_mentions` took the first word for the program, so `FOO=1 make
+    check` named no target, and the descriptor in `{fd}>log` was kept as an
+    argument where docket's lexer reads one.
+    """
+    fence = "```bash\nFOO=1 make check\nexec {fd}>log make lint\nmake A=1\n```\n"
+
+    assert list(doc_check._make_mentions(fence)) == [("check", 2)]
+    assert doc_check._simple_commands(
+        doc_check.shell_words("exec {fd}>log 2>&1 x"), "exec {fd}>log 2>&1 x"
+    ) == (("exec", "x"),)
+
+
 def test_a_command_continued_past_its_line_is_read_whole(tmp_path: Path) -> None:
     """Its path is checked where it was declined, at the line it starts on.
 
