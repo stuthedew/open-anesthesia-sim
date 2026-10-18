@@ -3,13 +3,15 @@ id: PL-9LNF
 title: Three app/ surfaces own state a layout could duplicate or relocate beside PL-VN6M's TraceLegend: RunView's build_ accessors hand out the same widget object on every call, the chart time base is owned by a dropdown inside one plot's panel, and the chart's column budget is read from sibling plots
 priority: P1
 effort: L
-status: ready
+status: done
 classes: safety, anticipated, refactor
 feature: interface-areas
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/run_surfaces.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/main.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py, tests/integration/test_run_surfaces.py, tests/integration/test_qt_rendering.py, tests/unit/test_chart_frame.py, tests/unit/test_stylesheets.py, tools/contrast_check.py, tools/literal_home_check.py
 added: 2026-09-16
-payoff: each chart draws at the width of its own Area, and placing a run's widgets in a second Area cannot silently empty the first
-verify: grep -q 'def test_resizing_one_chart_redraws_it_at_its_own_width' tests/integration/test_simulation_view.py
+closed: 2026-10-18
+pr: 1606
+payoff: a chart redraws when its own Area widens, so no drawn chord is wider than a pixel after a border drag, and a run's accounting panel or setting controls placed in a second Area draw a second copy instead of emptying the first
+verify: grep -q 'def test_two_accounting_panels_of_one_run_both_draw' tests/integration/test_run_surfaces.py
 ---
 
 **Problem.** Three app/ surfaces own state a layout could duplicate or relocate beside PL-VN6M's TraceLegend: RunView's build_ accessors hand out the same widget object on every call, the chart time base is owned by a dropdown inside one plot's panel, and the chart's column budget is read from sibling plots
@@ -58,3 +60,151 @@ verify: grep -q 'def test_resizing_one_chart_redraws_it_at_its_own_width' tests/
 the chart and the sidebar draggable, so the width a chart is given now
 changes under a reader's drag rather than only with the window. The
 `inert_splitter` this brief's basis quotes is deleted.
+
+## Re-confirmed and designed, 2026-10-18
+
+**Disposition: changed shape.** All three problems still reproduce, but the
+third is narrower than the brief says. This section is the design the build
+follows. Every choice in it is an internal structure inside the approach that
+`PL-TH35` § "Design round 2026-09-27" Q3, Q7 and Q8 ratified, so none waits on
+the project owner.
+
+### 1. The column budget
+
+**Measured on `main` at `512fdaed`.** A paused run with 1 800 s of history,
+in a 1 366 px window, was presented with the chart narrowed to 573 px by a
+drag of the Area border. Dragging the border back widened the plot to 973 px.
+The next render tick drew nothing: `presented_frames` stayed at 2, and the
+plot kept the 594 columns sampled for 573 px, so the widest drawn chord was
+2 px. The probe was a scratch script, not a test. Nothing in
+`SimulationView` listens to `AreaLayout.layout_changed`, and its
+`resizeEvent` only fires when the dashboard itself changes size. So the
+defect is reachable now through `PL-W9P6`'s draggable border, while paused.
+
+**Design.** Each chart View records how many grid columns the frame it last
+drew was sampled with, and says it owes a frame when
+`chart_columns(plot_width_px())` is more than that. `render_tick` reads that
+from every drawn chart, the way it already reads `RunView.owes_a_frame`
+(`PL-X7D5`), so a border drag, a window resize and anything added later are
+covered without each being named. `SimulationView.resizeEvent` is deleted,
+because the charts now cover the case it guarded. The dashboard keeps its
+charts as a tuple of chart Views rather than reading two named attributes for
+the width.
+
+**One frame per tick, at the widest drawn chart.** This was chosen over a
+frame per chart at that chart's own width. The two plots are not the same
+width even inside one panel: 708.2 and 761.6 px at a 1 000 px window, 939.2
+and 992.6 px at 1 366 px, and 1 393.2 and 1 446.6 px at 1 920 px. So a frame
+per chart would assemble twice on every tick. One assembly costs about 10 ms
+at a 1 366 px window, against a whole refresh of about 24 ms (20 refreshes
+timed on this container). The guarantee `chart_columns` states, a chord of at
+most one pixel of time, holds at every width at or above a chart's own, so a
+narrower chart drawn from the wider frame loses nothing. `PL-TH35` Q3 says a
+chart "pulls its own frame at its own width". This item reads that as "never
+narrower than its own width", and `PL-TH35` should keep that reading when it
+builds the frame source, or measure again.
+
+**Test.** `test_resizing_one_chart_redraws_it_at_its_own_width` drags the
+Area border while paused and asserts that the next render tick draws once and
+leaves no chord wider than a pixel. It fails on `main` at both assertions.
+
+### 2. The time base
+
+**Design.** The dashboard keeps owning `_time_base`. The dropdown becomes a
+`TimeBaseSelector` widget beside `TraceLegend` in `app/qt_chart.py`. It shows
+the time base it is handed and emits a request when the reader picks another.
+The dashboard answers the request, assembles the frame, and emits
+`time_base_changed` once both plots have drawn it, which is the compartment
+selection's pattern (`PL-G3K7`, `PL-VN6M`). The selector is connected to that
+signal rather than read back. The statement of the width in force is
+`time_axis_caption(frame)`, a function of the frame each chart draws, so any
+chart surface can state it. Both plots still sit in one panel under the one
+caption until `PL-TH35` makes them separate Views, so no second caption is
+added now. That keeps the standing text where it is.
+
+**Test.** A test picks a width, deletes the selector, presents a frame, and
+asserts that the frame and the caption still carry the chosen width.
+
+### 3. The run surfaces
+
+**Narrower than the brief.** Only four of a run's surfaces will sit in an
+Area: the setting controls (`PARAMETER_CONTROLS`), the accounting panel
+(`AGENT_ACCOUNTING`), and two lines that go with the charts' Views, the
+off-scale notice and the wash-in state line. The transport row, the notice
+banner, the readout section and the control-change record are content of the
+unconditional region (`PL-NWTM`). `PL-TH35`'s validation set keeps them out
+of every Area, and `.claude/rules/ui-areas.md` test 5 keeps them out of
+anything closeable. So they stay one per run, and their `build_*` methods go
+on handing back the one widget. The brief's "Why it matters" leaned on
+`build_readout_section`, which `PL-NWTM` has since moved into that region.
+
+**Design.** Each of the four becomes a class in a new module,
+`app/run_surfaces.py`, that is built from nothing but what it draws:
+`AccountingPanel`, `ParameterControls` (the four `ParameterSlider`s, which
+pass their signals up with the control they belong to), `OffScaleLine` and
+`WashInStateLine`. `RunView` keeps the run's display state: the controller,
+the refused-setting and refused-reset notices, the playback rate, the
+pending agent, and the last frame and run index. It also keeps a list of the
+live instances of each kind. The `build_*` method for each of the four
+returns a new instance, adds it to the list, and drops it from the list when
+Qt destroys it. `refresh`, `_write_settings` and `set_run_name` write every
+live instance. A slider moved in one instance applies the setting through
+`_apply_setting` as now, and the next write puts the same value on every
+other instance.
+
+**Test.** `tests/integration/test_run_surfaces.py` builds two accounting
+panels and two sets of setting controls for one run. It asserts that both
+draw the same values, that a drag on one moves the other, and that deleting
+one leaves the other drawing.
+
+### Order of the build
+
+Three commits, each led by this id, in this order: the column budget first,
+because it fixes a defect reachable on `main`; then the time base; then the
+run surfaces. The build waits until the display-set thread's `PL-QLZ5` has
+merged, because that item rewrites `RunView`'s transport row and readout
+heading in the same files (coordinator's sequencing, 2026-10-18).
+
+## Built, 2026-10-18
+
+All three parts landed as designed, in the three commits the design names.
+
+**What the build added to the design.**
+
+- `RunView` keeps what each of the four surfaces last showed
+  (`_settings_shown`, `_accounting_shown`, `_off_scale_shown`,
+  `_wash_in_state_shown`) beside a list of the live copies of each kind, which
+  `run_surfaces.keep_until_destroyed` keeps. A copy is
+  built with the `RunView` as its Qt parent until a layout takes it, because
+  a parentless widget that is shown becomes a window of its own.
+- `keep_until_destroyed` is a generic function rather than a generic class.
+  `typing.get_type_hints` cannot resolve a class type parameter in a method's
+  annotations, so `tests/unit/test_supported_range_edges.py`, which reads the
+  hints of every method under `anesthesia_sim`, failed on one.
+- `OffScaleLine` and `WashInStateLine` are labels themselves, so
+  `qt_widgets.style_label` was split out of `styled_label` to style a label
+  that a class already is. No colour or size changed.
+- The four surfaces leave `vars(RunView)`, so the test holding every run-state
+  widget to reading alike on a drawn run and a halted one now walks each live
+  copy's widgets too. Without that change it would have stopped comparing the
+  sliders and the accounting panel.
+- `tools/contrast_check.py` cites `AccountingPanel` and `OffScaleLine` in its
+  reasons, and `tools/literal_home_check.py` moves the controls' spacing
+  literal to `ParameterControls.__init__`. Both are repairs the move forced.
+
+**Regression evidence (test-oracles rule 6).**
+
+- Column budget: `test_resizing_one_chart_redraws_it_at_its_own_width` fails
+  on the code before the fix at `assert view.presented_frames == presented + 1`
+  (2 == 3).
+- Time base: `test_the_chosen_time_base_survives_its_selector_being_closed`
+  passes on the code before the fix, because the dashboard already stored
+  `_time_base`. It is not a regression test. The change there is the shape:
+  the selector shows a width it is handed and asks for another, which
+  `test_a_second_time_base_selector_shows_the_width_a_first_one_chose`
+  exercises and which had no interface before.
+- Run surfaces: a variant of `test_two_accounting_panels_of_one_run_both_draw`
+  that needs no new interface (the placed panel reached through
+  `run._accounting_heading_text.parentWidget()`) fails on the code before the
+  fix at `assert second is not first`, because the build method handed back
+  the placed panel.

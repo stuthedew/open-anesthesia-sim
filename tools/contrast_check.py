@@ -548,8 +548,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "1.4.3",
         "every numeric readout and its unit (`MetricPanel` for the compartment "
         "grid, `ParameterSlider` for the four settings beside their sliders), "
-        "each panel heading (`ParameterSlider` for a setting's name, `RunView` "
-        "for the accounting and control-change panels it builds for its run, "
+        "each panel heading (`ParameterSlider` for a setting's name, "
+        "`AccountingPanel` for a run's accounting panel, `RunView` for the "
+        "control-change panel it builds for its run, "
         "`SimulationView` for the chart's and the wash-in section's), and every "
         "legend label beside a swatch (`TraceLegend` for the concentration "
         "chart's three rows, `WashInLegend` for the wash-in plot's), and the "
@@ -575,7 +576,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "rate beside the transport controls (`_playback_rate_dropdown`), which "
         "names the rate the clock is advancing at, which docs/MODEL.md requires "
         "displayed, so it is read rather than merely operated (PL-SN2C); and "
-        "the chart's time base (`_time_base_dropdown`), which names how much of "
+        "the chart's time base (`TimeBaseSelector`), which names how much of "
         "the run is on screen and is read the same way. Also the labels of the "
         "three transport buttons while they are usable "
         "(`transport_button_stylesheet`, applied in `RunView`): they set no "
@@ -647,7 +648,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "playback rate drawn under the simulated-time readout "
         "(`_playback_rate_text`), which shares the surface and the size of the "
         "MAC multiples beside it (PL-SN2C), and the border of the chart's "
-        "time-base dropdown (`_time_base_dropdown`), a user-interface component "
+        "time base selector (`TimeBaseSelector`), a user-interface component "
         "needing only SC 1.4.11's 3:1. Also the gloss under a setting's name "
         "in the controls row (`ParameterSlider`, PL-71CF), which is the "
         "readout gloss one panel row up: the same colour on the same surface "
@@ -683,8 +684,8 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the agent-accounting status word when conservation holds "
-        "(`_agent_accounting_status_text`, in the accounting panel `RunView` "
-        "builds, written by `refresh`). Rendered at 20px bold, which is large text, "
+        "(`_agent_accounting_status_text`, in each `AccountingPanel`, written "
+        "by `RunView.refresh`). Rendered at 20px bold, which is large text, "
         "so SC 1.4.3's 3:1 would suffice - the stricter bar is applied "
         "deliberately",
     ),
@@ -729,9 +730,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the agent-accounting status word when validation fails "
-        "(`_agent_accounting_status_text`, in the accounting panel `RunView` "
-        "builds), the notice naming a compartment trace that is above the top "
-        "of the chart (`_off_scale_text`), the line of the new-case "
+        "(`_agent_accounting_status_text`, in each `AccountingPanel`), the "
+        "notice naming a compartment trace that is above the top of the chart "
+        "(`OffScaleLine`), the line of the new-case "
         "confirmation stating what a switch would discard (`NewCaseDialog`, "
         "PL-R3KB), and the title of the notice an Area shows in place of a "
         "View it cannot draw (`AreaNotice`, PL-DB5G, PL-R1WQ)",
