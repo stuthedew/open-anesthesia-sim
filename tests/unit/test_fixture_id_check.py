@@ -574,12 +574,12 @@ ENDED_DESCRIPTION = '---\nname: x\ndescription: "see {}\\\n  {}"\n...{}\n---\nbo
 
 
 def test_a_document_end_marker_closes_the_front_matter(tmp_path: Path) -> None:
-    """A first-column `...` ends the YAML document, and the joins read the keys above it (`PL-G8ZN`).
+    """A first-column `...` ends the YAML document, and the joins read the keys above it.
 
     `docket.frontmatter.quoted` refused the block as a line opening no key, so
     nothing in it was joined. PyYAML 6.0.3 reads the keys above the marker, so
     the malformed `PL-K7QXZ` passed, and the well-formed `PL-K7QX` was
-    reported as `PL-K7`. A comment after the marker reads the same.
+    reported as `PL-K7`. A comment after the marker reads the same (`PL-G8ZN`).
     """
     for name, (head, tail), after in (
         ("malformed", ("PL-K7QX", "Z"), ""),

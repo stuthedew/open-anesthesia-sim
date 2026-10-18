@@ -354,7 +354,7 @@ def _keys(block: Sequence[str], passed: _Passed) -> tuple[Key, ...]:
 
 
 def _ends_document(line: str) -> bool:
-    """Whether `line` opens with YAML's document-end marker, which white space or its end follows."""
+    """Whether `line` opens with YAML's document-end marker, then white space or its end."""
     return (
         line.startswith(DOCUMENT_END) and line[len(DOCUMENT_END) : len(DOCUMENT_END) + 1] in BLANKS
     )
