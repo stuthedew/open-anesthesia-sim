@@ -110,9 +110,13 @@ such lucky pairing: part 1's pytest step took 206 s, the slow class, and part
 the gap holds for a single run, but the median gap is the split's own.
 `PL-2N6J`'s start-up delay in part 2, 76 to 146 s against 33 to 44 s in part
 1, falls inside the pytest step and so accounts for roughly 40 to 100 s of the
-140 s. Recommendation: work `PL-2N6J` first, then re-measure the median gap
-over at least 20 runs. Re-deal ordinary tests from part 2 to part 1 only if
-the gap is still more than 30 s.
+140 s.
+
+**Tuning resumes, part 2's start-up first** (project owner, 2026-10-18,
+ratified, over keeping "runner speed sets the gap, so tuning stops here").
+Work `PL-2N6J` first, then re-measure the median job gap over at least 20
+runs. Move ordinary tests from part 2 to part 1 only if the gap is still more
+than 30 s.
 
 **What is left is the re-timing.** It needs five successful slow-runner runs
 on `main` after `#1519` merges, so no branch can do it. The timeouts, the
