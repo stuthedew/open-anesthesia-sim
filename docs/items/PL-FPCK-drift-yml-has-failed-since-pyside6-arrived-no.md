@@ -8,7 +8,7 @@ classes: infra
 touches: .github/workflows/drift.yml
 added: 2026-10-18
 payoff: every drift.yml job reaches its test results on an unchanged tree, so a red run means a dependency, a new interpreter or a test order broke the suite, and not the runner
-verify: test "$(grep -c 'apt-get install -y libegl1' .github/workflows/drift.yml)" -eq 3 && ! grep -q 'rm -f .python-version' .github/workflows/drift.yml
+verify: grep -q 'Qt.s system libraries, for the offscreen platform plugin' .github/workflows/drift.yml && grep -q 'version_info.:3.). > .python-version' .github/workflows/drift.yml && ! grep -q 'rm -f .python-version' .github/workflows/drift.yml
 ---
 
 **Problem.** The only scheduled `drift` run since the Qt port,
@@ -32,6 +32,13 @@ two causes, and neither was the drift that the workflow exists to find.
 
 The seven modules that never ran on 2026-10-01 may hide other failures. Only a
 run with both fixes can say.
+
+**Why it matters.** `drift.yml` is the only thing that notices when a
+dependency release or a new CPython breaks this tree. While it fails on its own
+setup, a red run carries no news, so a real break would arrive looking exactly
+like the failures here and be ignored the same way. The header of the file
+says that a check that is red as routine should be retired. This item fixes the
+check so that the retirement question is asked about a check that works.
 
 **Fix.**
 
