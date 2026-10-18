@@ -125,11 +125,14 @@ MAX_EMITTED_BYTES = 4000
 NUDGE_FRACTION = 0.8
 
 ENTRY = re.compile(r"^- \*\*(?P<what>.+?)\*\* [-—] (?P<why>.+)$")
-#: What an entry opens with, before its title is known to close: a top-level
-#: bullet and a bolded approach. A bullet opening this way is held to the
-#: entry's rules even where its title wraps (`PL-F5B9`), and is refused where
-#: `ENTRY` cannot read it (`PL-QFFF`), so it cannot leave the digest unreported.
-OPENING = re.compile(r"^- \*\*")
+#: What an entry opens with, before its title is known to close: a bullet and a
+#: bolded approach. A bullet opening this way is held to the entry's rules even
+#: where its title wraps (`PL-F5B9`), and is refused where `ENTRY` cannot read
+#: it (`PL-QFFF`), so it cannot leave the digest unreported. Every bullet form
+#: CommonMark 0.31.2 opens (§ 5.2) counts - a dash, a plus or a star, after up
+#: to three spaces - though `ENTRY` reads only the dash at the margin, so any
+#: other form is refused by name rather than dropped (`PL-K02Q`).
+OPENING = re.compile(r"^ {0,3}[-+*] \*\*")
 #: The store's own grammar, so that "cites X, which is not an item" is
 #: refused on the same tokens `bin/docket check` calls ids. `PL-[A-Z0-9]{3,4}`
 #: stood here and read a three-letter token as an id (`PL-KYW3`).
@@ -299,8 +302,8 @@ def check(text: str) -> list[str]:
         if number not in wrapped and not ENTRY.match(joined):
             problems.append(
                 f"docs/dead-ends.md:{number}: opens like an entry but is not in an entry's "
-                f"shape, `- **approach** — why`, so it is never emitted. Put nothing "
-                f"between the closing `**` and the dash."
+                f"shape, `- **approach** — why`, so it is never emitted. Open it with a "
+                f"dash at the margin, and put nothing between the closing `**` and the dash."
             )
 
     return problems

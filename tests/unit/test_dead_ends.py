@@ -233,6 +233,41 @@ def test_an_entry_the_pattern_cannot_read_is_refused(unreadable: str) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "form",
+    [
+        pytest.param("* **Star bullet** — written with a star.\n", id="star"),
+        pytest.param("+ **Plus bullet** — written with a plus.\n", id="plus"),
+        pytest.param(" - **Indented one** — indented one space.\n", id="indented one"),
+        pytest.param(
+            "   * **Indented three** — a star indented three spaces.\n", id="indented three"
+        ),
+    ],
+)
+def test_an_entry_in_every_bullet_form_is_read_or_refused(form: str) -> None:
+    """`PL-K02Q`: CommonMark opens a bullet with a dash, a plus or a star after up to three spaces.
+
+    Each of these is the same entry to a reader of the file. `OPENING` used to
+    match only a dash at the margin, so each was neither emitted nor checked.
+    """
+    text = PREAMBLE + form
+
+    assert dead_ends.entries(text) == []
+    assert any(
+        p.startswith("docs/dead-ends.md:9: opens like an entry") for p in dead_ends.check(text)
+    )
+
+
+def test_a_bullet_nested_under_an_entry_is_refused_as_its_continuation() -> None:
+    """`PL-K02Q`'s indented-two form: indented under an entry, it is part of that entry."""
+    text = PREAMBLE + "* **Star bullet** — written with a star.\n  - **Indented two** — nested.\n"
+
+    assert dead_ends.entries(text) == []
+    assert any(
+        "dead-ends.md:10: continuation of the entry above" in p for p in dead_ends.check(text)
+    )
+
+
 def test_a_following_bullet_or_heading_is_not_a_continuation() -> None:
     text = (
         PREAMBLE
