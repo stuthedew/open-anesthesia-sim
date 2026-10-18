@@ -35,6 +35,15 @@ it as the line's successor, read from the same record by `model.is_generator`,
 so a reader can tell a settled line from an open one without knowing which
 filings are heads (`PL-0WT0`).
 
+**So does a line answered with no successor owed.** The item that gives that
+answer names the line in its own `no-successor:` field, and the list names
+that item and its status apart from both other headings (`PL-C4F0`). The
+answer was once a paragraph in `PL-4097`'s brief, which nothing here read, so
+every run re-asked it. The answer dates from the answering item's `closed:`,
+or its `added:` while it is open. Three filings that re-enter the line after
+that date list it as open again, so a recorded answer cannot hide a mechanism
+that has started producing again.
+
 **At release time it is silent unless an expectation failed.** `missed`
 checks the last complete period against `PL-04KR`'s pre-registered
 predictions, and `docket release` prints what it returns and nothing when it
@@ -175,6 +184,11 @@ class Inflow:
     #: filings counted, since the record makes a head the successor whether or
     #: not its own `touches` made it an apparatus filing.
     successors: Mapping[str, tuple[Item, ...]] = field(default_factory=dict)
+    #: For each id in `reentered` with no successor, the items whose
+    #: `no-successor:` names it and which fewer than `MIN_ROOT_CAUSE_ITEMS`
+    #: filings re-enter it after, by id. Read over every item, as `successors`
+    #: is.
+    answered: Mapping[str, tuple[Item, ...]] = field(default_factory=dict)
 
 
 def apparatus_paths(item: Item, config: Config, excluded: tuple[str, ...]) -> frozenset[str]:
@@ -281,6 +295,26 @@ def analyze(
             )
         )
     }
+    added = {item.identifier: item.added for item in items}
+    answered = {
+        closed: answers
+        for closed, filed in reentered.items()
+        if closed not in successors
+        and (
+            answers := tuple(
+                sorted(
+                    (
+                        item
+                        for item in items
+                        if closed in item.no_successor
+                        and _reentered_after(filed, added, item.closed or item.added)
+                        < MIN_ROOT_CAUSE_ITEMS
+                    ),
+                    key=lambda answer: answer.identifier,
+                )
+            )
+        )
+    }
     return Inflow(
         periods=tuple(periods),
         anchor=anchor,
@@ -288,6 +322,19 @@ def analyze(
         excluded=excluded,
         reentered=reentered,
         successors=successors,
+        answered=answered,
+    )
+
+
+def _reentered_after(
+    filed: Sequence[str], added: Mapping[str, date | None], answer: date | None
+) -> int:
+    """How many of `filed` were filed after `answer`, the date a line was answered.
+
+    An answer with no date has none to count from, so every filing counts.
+    """
+    return sum(
+        1 for identifier in filed if answer is None or (added.get(identifier) or answer) > answer
     )
 
 

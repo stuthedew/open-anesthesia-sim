@@ -12,9 +12,14 @@ added: 2026-10-12
 closed: 2026-10-12
 pr: 1452
 verify: grep -qx 'root-cause-of: PL-6SV4, PL-9VPH, PL-SV0D, PL-TS7L' docs/items/*.md && grep -qx 'reenters: PL-KGYT' docs/items/PL-5DZ8-*.md && grep -qx 'reenters: PL-GHHW' docs/items/PL-927J-*.md && grep -qx 'reenters: PL-WD5Z, PL-J6HP' docs/items/PL-8QMD-*.md
+no-successor: PL-61FT
 ---
 
 **Problem.** bin/docket inflow names five closed heads re-entered by three or more filings with no successor head - PL-61FT (7), PL-J6HP (5), PL-KGYT (5), PL-TZ7T (4), PL-GHHW (3); the four with a verdict read spent - so each is a generator whose fix did not hold under triage's three-post-close-instances rule until a session records a successor head or says why not
+
+**Recorded 2026-10-18** in this item's `no-successor:` field (`PL-C4F0`), so
+`bin/docket inflow` lists `PL-61FT` apart from the open lines instead of
+re-asking it.
 
 **Answered 2026-10-12 for `PL-61FT`: no successor head** (project owner,
 2026-10-12, ratified, "Agree", over reopening it live as a successor head
