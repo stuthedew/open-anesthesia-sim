@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cla
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
 closed: 2026-10-18
+pr: 1577
 payoff: Every git read of a path in docket and the tools gets the file's real name even where git would quote it, and a new read that forgets -z fails a test, so this fact stops yielding a member one reader at a time
 verify: grep -q 'def test_an_item_file_git_would_quote_is_read_by_its_path' subprojects/docket/tests/test_vcs.py && grep -q 'def test_every_path_listing_read_in_docket_asks_for_z' subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_closed_item_whose_path_git_would_quote_is_read' tests/unit/test_pr_title_check.py
 falsifies: "--name-only", BASE, "docs/releases/"

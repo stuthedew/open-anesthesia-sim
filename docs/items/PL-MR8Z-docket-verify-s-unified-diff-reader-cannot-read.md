@@ -9,6 +9,7 @@ touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
 closed: 2026-10-18
+pr: 1577
 payoff: verify reads every changed line of a branch, so a file git quotes or a line opening with two signs can no longer let a deleted assertion or an added suppression through on a reading of none
 verify: grep -q 'def test_a_removed_line_in_a_file_git_quotes_is_charged_to_that_file' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_content_line_opening_with_two_signs_is_not_read_as_a_header' subprojects/docket/tests/test_verify.py
 reenters: PL-4W2L
