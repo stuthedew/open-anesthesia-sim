@@ -1,0 +1,502 @@
+"""`tools/diff_mutation.py` must run the mutants of what a branch changed, and report them truly.
+
+Three of its rules decide what a reader is told. Which functions changed
+decides which mutants run, and a function missed there drops out of the report
+with nothing to say so. Which test files run decides whether a mutant can be
+killed at all. And a mutant whose pytest run raised inside mutmut is run again,
+so a rerun that fails for some other reason must never count as a kill.
+
+None of these tests runs mutmut, which is installed only with the `mutation`
+dependency group. The mutant names they expect are mutmut 3.8.0's, as
+`mangle_function_name` and `get_mutant_name` in `mutmut/__main__.py` build them.
+"""
+
+from __future__ import annotations
+
+import fnmatch
+import json
+import subprocess
+from pathlib import Path
+
+import diff_mutation
+import pytest
+from diff_mutation import (
+    NOTHING_MATCHES,
+    TIERS_NOT_RUN,
+    Change,
+    Refusal,
+    Unit,
+    branch_change,
+    changed_rows,
+    counts,
+    is_mutated,
+    main,
+    module_name,
+    mutmut_table,
+    recorded_exit_codes,
+    report_all,
+    report_branch,
+    selection_file,
+    settle,
+    simulator_unit_tests,
+    statuses,
+    units,
+    working_files,
+)
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+TABLE: dict[str, object] = {
+    "source_paths": ["src/"],
+    "only_mutate": ["src/pkg/core/*", "src/pkg/app/formatting.py"],
+    "do_not_mutate": ["src/pkg/core/generated.py"],
+    "pytest_add_cli_args_test_selection": [
+        "@selected-tests.txt",
+        "--deselect",
+        "tests/unit/test_slow.py::test_walk",
+    ],
+}
+
+TABLE_TOML = """\
+[tool.mutmut]
+source_paths = ["src/"]
+only_mutate = ["src/pkg/core/*"]
+pytest_add_cli_args_test_selection = ["@selected-tests.txt"]
+"""
+
+#: A module holding each kind of definition that `units` must tell apart. The
+#: line numbers in the tests count from the first line of this string.
+SOURCE = """\
+import functools
+
+LIMIT = 3
+
+
+@functools.cache
+def decorated(x):
+    return x + 1
+
+
+def outer(x):
+    def inner(y):
+        return y * 2
+
+    return inner(x)
+
+
+class Model:
+    rate = 0.5
+
+    def step(self, dt):
+        return self.rate * dt
+
+    @staticmethod
+    def make():
+        return Model()
+
+    class Nested:
+        def hidden(self):
+            return 1
+
+
+async def fetch():
+    return 1
+"""
+
+
+def _git(cwd: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
+    ).stdout
+
+
+def _write(root: Path, path: str, text: str) -> None:
+    (root / path).parent.mkdir(parents=True, exist_ok=True)
+    (root / path).write_text(text, encoding="utf-8")
+
+
+def _completed(
+    stdout: str = "", returncode: int = 0, stderr: str = ""
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess([], returncode, stdout=stdout, stderr=stderr)
+
+
+@pytest.fixture
+def repo(tmp_path: Path) -> Path:
+    """A repository with `SOURCE` committed on `main`."""
+    _git(tmp_path, "init", "-q", "-b", "main")
+    for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        _git(tmp_path, "config", key, value)
+    _write(tmp_path, "src/pkg/core/model.py", SOURCE)
+    _write(tmp_path, "src/pkg/other.py", "def f():\n    return 1\n")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "seed")
+    return tmp_path
+
+
+def test_units_are_the_top_level_functions_and_the_methods_of_top_level_classes() -> None:
+    found = [(u.cls, u.name, u.first, u.last) for u in units("src/pkg/core/model.py", SOURCE)]
+    # A nested function is part of the function around it, and mutmut never
+    # mutates a nested class. A span starts at the first decorator.
+    assert found == [
+        (None, "decorated", 6, 8),
+        (None, "outer", 11, 15),
+        ("Model", "step", 21, 22),
+        ("Model", "make", 24, 26),
+        (None, "fetch", 33, 34),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("patch", "rows"),
+    [
+        ("@@ -7 +7 @@\n-a\n+b\n", {7}),
+        ("@@ -12,0 +13,2 @@\n+a\n+b\n", {13, 14}),
+        # Lines deleted after line 19 count against the lines on both sides.
+        ("@@ -20,2 +19,0 @@\n-a\n-b\n", {19, 20}),
+        ("@@ -3 +3 @@\n-a\n+b\n@@ -30,2 +30,3 @@\n-c\n-d\n+e\n+f\n+g\n", {3, 30, 31, 32}),
+    ],
+)
+def test_changed_rows_are_the_new_lines_of_each_hunk(patch: str, rows: set[int]) -> None:
+    assert changed_rows(patch) == rows
+
+
+@pytest.mark.parametrize(
+    "patch", ["", "--- /dev/null\n+++ b/src/pkg/core/new.py\n@@ -0,0 +1,2 @@\n+a\n+b\n"]
+)
+def test_a_new_file_changes_every_line(patch: str) -> None:
+    # An untracked file has no patch at all.
+    assert changed_rows(patch) is None
+
+
+def test_branch_change_reads_from_the_fork_to_the_working_tree(repo: Path) -> None:
+    model = repo / "src/pkg/core/model.py"
+    _git(repo, "checkout", "-qb", "work")
+    model.write_text(SOURCE.replace("self.rate * dt", "self.rate * dt * 2"), encoding="utf-8")
+    _git(repo, "commit", "-qam", "change step")
+    # main moves on after the fork, in a function the branch never touched.
+    _git(repo, "checkout", "-q", "main")
+    model.write_text(SOURCE.replace("y * 2", "y * 3"), encoding="utf-8")
+    _git(repo, "commit", "-qam", "change inner on main")
+    _git(repo, "checkout", "-q", "work")
+    # An uncommitted change outside any function, a module git does not track
+    # yet, and a change to a file that mutmut does not mutate.
+    model.write_text(
+        model.read_text(encoding="utf-8").replace("LIMIT = 3", "LIMIT = 4"), encoding="utf-8"
+    )
+    _write(repo, "src/pkg/core/fresh.py", "def new():\n    return 1\n")
+    _write(repo, "src/pkg/other.py", "def f():\n    return 2\n")
+
+    change = branch_change(repo, "main", TABLE)
+
+    assert [unit.label for unit in change.units] == [
+        "pkg.core.fresh.new",
+        "pkg.core.model.Model.step",
+    ]
+    assert change.outside == {"src/pkg/core/model.py": [3]}
+
+
+@pytest.mark.parametrize(
+    ("path", "mutated"),
+    [
+        ("src/pkg/core/model.py", True),
+        ("src/pkg/app/formatting.py", True),
+        ("src/pkg/core/generated.py", False),
+        ("src/pkg/app/other.py", False),
+        ("src/pkg/core/notes.txt", False),
+    ],
+)
+def test_is_mutated_applies_the_tables_globs(path: str, mutated: bool) -> None:
+    assert is_mutated(path, TABLE) is mutated
+
+
+def test_is_mutated_needs_a_source_path_where_no_glob_narrows_it() -> None:
+    table: dict[str, object] = {"source_paths": ["src/"]}
+    assert is_mutated("src/pkg/model.py", table)
+    assert not is_mutated("tools/model.py", table)
+
+
+def test_mutant_names_follow_mutmuts_naming() -> None:
+    path = "src/anesthesia_sim/core/uptake.py"
+    assert module_name(path) == "anesthesia_sim.core.uptake"
+    assert module_name("src/anesthesia_sim/core/__init__.py") == "anesthesia_sim.core"
+    method = Unit(path, "UptakeSystem", "step", 3, 4)
+    assert Unit(path, None, "step", 1, 2).pattern == "anesthesia_sim.core.uptake.x_step__mutmut_*"
+    assert method.pattern == "anesthesia_sim.core.uptake.xǁUptakeSystemǁstep__mutmut_*"
+    assert method.label == "anesthesia_sim.core.uptake.UptakeSystem.step"
+
+
+def test_a_units_pattern_matches_no_other_units_mutants() -> None:
+    step = Unit("src/pkg/core/model.py", None, "step", 1, 2).pattern
+    assert fnmatch.fnmatch("pkg.core.model.x_step__mutmut_12", step)
+    assert not fnmatch.fnmatch("pkg.core.model.x_step_size__mutmut_1", step)
+    assert not fnmatch.fnmatch("pkg.core.model.xǁModelǁstep__mutmut_1", step)
+
+
+def test_selection_file_is_the_one_at_file_the_table_names() -> None:
+    assert selection_file(TABLE) == "selected-tests.txt"
+
+
+@pytest.mark.parametrize("args", [["--deselect", "x"], ["@a.txt", "@b.txt"]])
+def test_selection_file_refuses_anything_but_one_at_file(args: list[str]) -> None:
+    with pytest.raises(Refusal, match="exactly one @ file"):
+        selection_file({"pytest_add_cli_args_test_selection": args})
+
+
+def test_every_glob_in_the_repositorys_table_matches_a_module() -> None:
+    # A module renamed under a stale glob would silently stop being mutated.
+    table = mutmut_table(REPO_ROOT)
+    assert selection_file(table) == "selected-tests.txt"
+    sources = working_files(REPO_ROOT, "src")
+    for glob in diff_mutation._strings(table, "only_mutate"):
+        assert any(fnmatch.fnmatch(name, glob) for name in sources), glob
+
+
+def test_the_tests_that_run_are_the_unit_tests_that_import_the_simulator(repo: Path) -> None:
+    _write(repo, "tests/unit/test_core.py", "from anesthesia_sim.core import uptake\n")
+    _write(repo, "tests/unit/test_tool.py", "import doc_check\n")
+    _write(repo, "tests/unit/helpers.py", "import anesthesia_sim\n")
+    _write(repo, "tests/integration/test_run.py", "import anesthesia_sim\n")
+    _write(repo, "tests/unit/test_gone.py", "import anesthesia_sim\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "tests")
+    # A test file that nobody has committed yet runs too, and one deleted from
+    # the working tree but still tracked does not.
+    _write(repo, "tests/unit/test_new.py", "import anesthesia_sim.app\n")
+    (repo / "tests/unit/test_gone.py").unlink()
+
+    assert simulator_unit_tests(repo) == ["tests/unit/test_core.py", "tests/unit/test_new.py"]
+
+
+def _stub_reruns(
+    monkeypatch: pytest.MonkeyPatch, files: dict[str, list[str]], exits: dict[str, int | None]
+) -> list[tuple[tuple[str, ...], str]]:
+    """Answer `settle`'s two subprocess helpers from tables, and record each pytest run."""
+    runs: list[tuple[tuple[str, ...], str]] = []
+
+    def pytest_in_mutants(root: Path, named: list[str], mutant: str) -> int | None:
+        runs.append((tuple(named), mutant))
+        return exits[mutant]
+
+    monkeypatch.setattr(diff_mutation, "_test_files", lambda root, name: files[name])
+    monkeypatch.setattr(diff_mutation, "_pytest_in_mutants", pytest_in_mutants)
+    return runs
+
+
+def test_settle_reruns_each_mutant_whose_pytest_run_raised(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    raised = [f"m.x_f__mutmut_{n}" for n in range(1, 6)]
+    found = dict.fromkeys([*raised, "m.x_h__mutmut_1", "m.x_k__mutmut_1"], "timeout")
+    found["m.x_g__mutmut_1"] = "killed"
+    codes = dict.fromkeys([*raised, "m.x_k__mutmut_1"], 255)
+    codes |= {"m.x_g__mutmut_1": 1, "m.x_h__mutmut_1": -24}
+    files = dict.fromkeys(raised, ["tests/unit/test_f.py"])
+    files |= {"m.x_f__mutmut_2": ["tests/unit/test_e.py", "tests/unit/test_f.py"]}
+    files |= {"m.x_k__mutmut_1": []}
+    exits = dict(zip(["", *raised], [0, 1, 0, None, 2, 4], strict=True))
+    runs = _stub_reruns(monkeypatch, files, exits)
+
+    assert settle(tmp_path, found, codes) == {
+        "m.x_f__mutmut_1": "killed",
+        "m.x_f__mutmut_2": "survived",
+        "m.x_f__mutmut_3": "timeout",
+        "m.x_f__mutmut_4": "unsettled, pytest exited 2",
+        "m.x_f__mutmut_5": "unsettled, pytest exited 4",
+        # Only status 255 is rerun, so a real timeout keeps its verdict.
+        "m.x_g__mutmut_1": "killed",
+        "m.x_h__mutmut_1": "timeout",
+        # pytest given no file would run the whole suite instead.
+        "m.x_k__mutmut_1": "unsettled, mutmut names no test for it",
+    }
+    # The control run comes first, over every file, with no mutant applied.
+    assert runs[0] == (("tests/unit/test_e.py", "tests/unit/test_f.py"), "")
+    assert sorted(mutant for _, mutant in runs[1:]) == raised
+
+
+def test_settle_counts_no_kill_when_the_files_fail_with_no_mutant(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    found = {"m.x_f__mutmut_1": "timeout", "m.x_g__mutmut_1": "survived"}
+    codes = {"m.x_f__mutmut_1": 255, "m.x_g__mutmut_1": 0}
+    files = {"m.x_f__mutmut_1": ["tests/unit/test_f.py"]}
+    runs = _stub_reruns(monkeypatch, files, {"": 1, "m.x_f__mutmut_1": 1})
+
+    assert settle(tmp_path, found, codes) == {
+        "m.x_f__mutmut_1": "unsettled, its test files fail with no mutant applied",
+        "m.x_g__mutmut_1": "survived",
+    }
+    assert runs == [(("tests/unit/test_f.py",), "")]
+
+
+def test_settle_runs_nothing_when_no_pytest_run_raised(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    runs = _stub_reruns(monkeypatch, {}, {})
+    found = {"m.x_f__mutmut_1": "survived"}
+    assert settle(tmp_path, found, {"m.x_f__mutmut_1": 0}) == found
+    assert runs == []
+
+
+def test_statuses_reads_the_results_listing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    listing = (
+        "    pkg.core.model.x_f__mutmut_1: killed\n"
+        "    pkg.core.model.xǁModelǁstep__mutmut_2: no tests\n"
+    )
+    monkeypatch.setattr(diff_mutation, "_mutmut", lambda root, *a, log=None: _completed(listing))
+    assert statuses(tmp_path) == {
+        "pkg.core.model.x_f__mutmut_1": "killed",
+        "pkg.core.model.xǁModelǁstep__mutmut_2": "no tests",
+    }
+
+
+def test_statuses_refuses_a_failed_listing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    failed = _completed(returncode=1, stderr="no stats\n")
+    monkeypatch.setattr(diff_mutation, "_mutmut", lambda root, *a, log=None: failed)
+    with pytest.raises(Refusal, match="exited 1: no stats"):
+        statuses(tmp_path)
+
+
+def test_test_files_are_the_files_of_the_tests_mutmut_names(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    listing = "tests/unit/test_b.py::test_z\ntests/unit/test_a.py::test_x[1]\n"
+    listing += "tests/unit/test_a.py::test_y\n"
+    monkeypatch.setattr(diff_mutation, "_mutmut", lambda root, *a, log=None: _completed(listing))
+    assert diff_mutation._test_files(tmp_path, "m.x_f__mutmut_1") == [
+        "tests/unit/test_a.py",
+        "tests/unit/test_b.py",
+    ]
+
+
+def test_recorded_exit_codes_reads_each_files_meta(tmp_path: Path) -> None:
+    meta = tmp_path / "mutants/src/pkg/core/model.py.meta"
+    meta.parent.mkdir(parents=True)
+    codes = {"pkg.core.model.x_f__mutmut_1": 255}
+    meta.write_text(json.dumps({"exit_code_by_key": codes}), encoding="utf-8")
+    # A file that mutmut wrote no meta for adds no codes.
+    paths = ["src/pkg/core/model.py", "src/pkg/core/absent.py"]
+    assert recorded_exit_codes(tmp_path, paths) == codes
+
+
+def test_counts_puts_the_known_statuses_first() -> None:
+    found = ["timeout", "odd", "killed", "survived", "killed"]
+    assert counts(found) == "2 killed, 1 survived, 1 timeout, 1 odd"
+    assert counts([]) == "none"
+
+
+def test_the_branch_report_names_each_unit_and_shows_only_its_survivors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    shown: list[str] = []
+
+    def mutmut(root: Path, *args: str, log: Path | None = None) -> subprocess.CompletedProcess[str]:
+        shown.append(args[1])
+        return _completed(f"# {args[1]}: survived\n--- diff of {args[1]}\n")
+
+    monkeypatch.setattr(diff_mutation, "_mutmut", mutmut)
+    path = "src/pkg/core/model.py"
+    step = Unit(path, "Model", "step", 21, 22)
+    change = Change("main", [step, Unit(path, None, "decorated", 6, 8)], {path: [3, 4]})
+    found = {
+        "pkg.core.model.xǁModelǁstep__mutmut_1": "killed",
+        "pkg.core.model.xǁModelǁstep__mutmut_2": "survived",
+        "pkg.core.model.xǁModelǁstep__mutmut_3": "unsettled, pytest exited 4",
+        "pkg.core.other.x_f__mutmut_1": "survived",
+    }
+
+    report = report_branch(tmp_path, change, found).splitlines()
+
+    tally = "1 killed, 1 survived, 1 unsettled, pytest exited 4"
+    assert report[0] == "Mutation run on the functions changed against main."
+    assert f"  pkg.core.model.Model.step: 3 mutants - {tally}" in report
+    assert any(line.startswith("  pkg.core.model.decorated: no mutants.") for line in report)
+    assert (
+        "  src/pkg/core/model.py: 2 changed lines outside any function, from line 3 to 4. "
+        "mutmut never mutates module-level code or class attributes."
+    ) in report
+    assert f"All: 3 mutants - {tally}." in report
+    # Only this change's survivor is shown, not another module's.
+    assert shown == ["pkg.core.model.xǁModelǁstep__mutmut_2"]
+    assert "--- diff of pkg.core.model.xǁModelǁstep__mutmut_2" in report
+    assert "  pkg.core.model.xǁModelǁstep__mutmut_3: unsettled, pytest exited 4" in report
+    assert report[-1] == TIERS_NOT_RUN
+
+
+def test_the_whole_tree_report_gives_each_modules_kill_rate() -> None:
+    found = {
+        "a.b.x_f__mutmut_1": "killed",
+        "a.b.x_f__mutmut_2": "survived",
+        "a.b.xǁCǁm__mutmut_1": "killed",
+        "a.b.xǁCǁm__mutmut_2": "timeout",
+        "a.c.x_g__mutmut_1": "no tests",
+    }
+    report = report_all(found).splitlines()
+    assert "  a.b: 2 / 3 (67%); 2 killed, 1 survived, 1 timeout" in report
+    assert "  a.c: 0 / 0 (no mutant tested); 1 no tests" in report
+    assert "All: 5 mutants - 2 killed, 1 survived, 1 timeout, 1 no tests." in report
+
+
+@pytest.fixture
+def tabled(repo: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """`repo` with a `[tool.mutmut]` table, where the branch changed one function."""
+    _write(repo, "pyproject.toml", TABLE_TOML)
+    unit = Unit("src/pkg/core/model.py", None, "outer", 11, 15)
+    changed = Change("main", [unit], {})
+    monkeypatch.setattr(diff_mutation, "branch_change", lambda root, base, table: changed)
+    return repo
+
+
+def _stub_run(monkeypatch: pytest.MonkeyPatch, root: Path, code: int, log_text: str) -> None:
+    log = root / "run.log"
+    log.write_text(log_text, encoding="utf-8")
+    monkeypatch.setattr(diff_mutation, "run", lambda root, patterns, table: (code, log))
+
+
+def test_main_refuses_to_report_when_mutmut_fails(
+    tabled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _stub_run(monkeypatch, tabled, 1, "failed to run clean test\n")
+    assert main(["--root", str(tabled), "--base", "main"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "no answer: mutmut exited 1" in captured.err
+    assert "failed to run clean test" in captured.err
+
+
+def test_main_reports_no_mutants_when_no_pattern_matched(
+    tabled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _stub_run(monkeypatch, tabled, 1, f"AssertionError: {NOTHING_MATCHES}\n")
+    assert main(["--root", str(tabled), "--base", "main"]) == 0
+    assert "  pkg.core.model.outer: no mutants." in capsys.readouterr().out
+
+
+def test_main_refuses_a_listing_that_names_no_changed_mutant(
+    tabled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _stub_run(monkeypatch, tabled, 0, "done\n")
+    monkeypatch.setattr(
+        diff_mutation, "statuses", lambda root: {"pkg.other.x_f__mutmut_1": "killed"}
+    )
+    assert main(["--root", str(tabled), "--base", "main"]) == 1
+    assert "listed no mutant of the changed functions" in capsys.readouterr().err
+
+
+def test_main_all_refuses_an_empty_listing(
+    tabled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _stub_run(monkeypatch, tabled, 0, "done\n")
+    monkeypatch.setattr(diff_mutation, "statuses", lambda root: {})
+    assert main(["--root", str(tabled), "--all"]) == 1
+    assert "listed no mutant" in capsys.readouterr().err
+
+
+def test_main_refuses_a_tree_with_no_table(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write(tmp_path, "pyproject.toml", '[project]\nname = "x"\n')
+    assert main(["--root", str(tmp_path), "--base", "main"]) == 1
+    assert "no [tool.mutmut] table" in capsys.readouterr().err

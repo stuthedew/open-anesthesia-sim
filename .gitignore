@@ -27,6 +27,10 @@ htmlcov/
 # the tracked root lockfile (`PL-8PT6`).
 /subprojects/docket/uv.lock
 
+# mutmut's copy of the tree, which `make mutate` empties at the start of each
+# run (`PL-Y1PS`).
+/mutants/
+
 # Packaging and build output
 build/
 dist/
