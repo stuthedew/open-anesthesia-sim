@@ -338,6 +338,19 @@ constants. The modules `arm` reads through, such as `vcs.py`, `claims.py` and
 pinned test, and that edit waits on you (project owner, 2026-10-12, ratified,
 `PL-WW0Q`). The hold covers `arming.py` and the tests that pin its answers,
 not its inputs: a new test arms, and a loosening that no test pins arms too.
+**A hold reaches you with its question or its risk, never a bare "read #N"**
+(project owner, 2026-10-18, `PL-9JHM`). The session records what to ask you
+as an `Owner-ask:` trailer on a commit, and `arm` prints it as the ask's
+opening line. It is either a decision or a risk review. A decision has at
+least two options, each saying what it changes for you or a learner, and a
+recommendation. A risk review says what could go wrong and for whom, what was
+checked, and the one thing to look at. Until a record made after the newest
+change covers it, `arm` tells the session to send you nothing. A question
+whose answer is obvious is wrong, as on `#1516`. When there is nothing to
+decide or review, the session records `Owner-read: not needed` and the change
+merges on green without asking you. A change to `arming.py` or to a pinned
+test still holds whatever that record says, so its ask is a risk review.
+
 A held pull request merges on your word
 alone - "Merge it" - by the route § "Bring a stale base in when you merge,
 with Update branch" describes.

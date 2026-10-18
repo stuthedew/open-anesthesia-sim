@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: review-hold
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, CLAUDE.md, docs/maintainer.md
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; the owner asked for it on 2026-10-18
 added: 2026-10-18
 payoff: a pull request reaches the owner only with a recorded question or risk to review, printed as the ask's opening line, and anything else merges on green
@@ -49,7 +49,7 @@ Without a valid record on a commit made since the branch's newest change
 outside the store, `arm` prints no ask and tells the session what to do. If it
 cannot fill either form honestly, nothing needs the owner, and the session
 records `Owner-read: not needed - <why>` so the change merges on green. The
-printed form and the docket README say that a question with an obvious answer
+printed form and `docs/maintainer.md` say that a question with an obvious answer
 is wrong, citing `#1516`.
 
 **Open for the owner: the gate's own hold.** Any change to `arming.py`, and
@@ -66,8 +66,9 @@ loosening still reaches the owner.
 **Done when.** `arm` holds for the owner's read only with a valid `Owner-ask:`
 record and prints it as the ask's opening line; without one it says that
 nothing reaches the owner until the session records an ask or judges the
-change `not needed`. The docket README, `docs/maintainer.md` and `CLAUDE.md`'s
-arm bullet state the rule, and the owner's answer on the gate's own hold is
+change `not needed`. `arming.py`'s docstring and `docs/maintainer.md` § "What comes to
+you before it merges" state the rule, and `CLAUDE.md` stays as it is, because
+`arm` prints the rule at the moment a session needs it, and the owner's answer on the gate's own hold is
 built and recorded here.
 
 **Generator check.** Not recorded as a generator. Leaving the ask's shape to

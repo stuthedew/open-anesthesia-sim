@@ -36,8 +36,9 @@ every later push while a pull request is open.
   this module, and a change to an existing test pinning its answers (`PINS`)
   hold it for the owner's read, and it merges on the owner's word alone. So
   does a switch of auto-merge off that no commit records as the session's
-  (`AUTO_MERGE`). Once no claim holds it, that hold also says where the ask goes
-  and what it carries (`READ_ASK`).
+  (`AUTO_MERGE`). Once no claim holds it, that hold prints the ask's opening
+  line from the session's `Owner-ask` record (`ASK_LINE`), or, with no record,
+  says that nothing goes to the owner until there is one (`READ_ASK`).
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
   brings the base in (`PL-S5MF`). So the base is brought in first.
@@ -137,6 +138,16 @@ has already merged; what went unread is said beside it.
   owner. Chosen over dropping the list and leaving the judgment to prose,
   which fails open on a session that never makes it, and over keeping the
   list and rewording the ask, which leaves housekeeping waiting on the owner.
+- a hold for the owner's read carries its ask as an `Owner-ask` record, a
+  decision with at least two options and a recommendation or a risk review,
+  and `arm` prints it as the ask's opening line (project owner, 2026-10-18:
+  "View chooser thread just told me a generic read pull request without a
+  question again" and "it's not supposed to ask for a merge if nothing to
+  review"; built by `PL-9JHM`). The ask's shape was prose twice before
+  (`PL-9KHK`, `PL-DKBG`), and sessions still sent a bare read. A form for
+  "nothing to decide" was weighed and refused, because a pull request with
+  nothing to review should not reach the owner at all: the way out of such a
+  hold is `Owner-read: not needed`;
 - the gate's read covers the existing tests that pin its answers as well as
   this module, so a loosening through what the answer is read through has to
   edit one (project owner, 2026-10-12, ratified, over holding `vcs.py`,
@@ -201,32 +212,6 @@ EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, LANDED: 1, UNKNOWN: 2}
 #: names before counting the rest.
 SHOWN = 5
 
-#: What a `hold` for a read tells the session to put in the owner's ask, once
-#: no claim keeps the pull request a draft. It is said here, where the ask is
-#: decided, rather than in a resident rule every session pays for (`PL-8XQS`).
-#: It names the closing block's line, because a wording that said only what
-#: the ask opens with was followed to the letter: three sessions closed on a
-#: bare "read #N" (`PL-9KHK`). Its two forms are the owner's two reasons to
-#: be asked (2026-10-17, `PL-DKBG`). Its earlier form asked for "numbered
-#: points for the owner to judge" wherever a clinical value or a
-#: `docs/MODEL.md` statement changed, which contradicted the rule already in
-#: design.md step 4 and rule 14 of `.claude/rules/instruction-writing.md`: on
-#: `#1516` it produced a measured figure and an option the model's own run
-#: length ruled out as "points to judge". So it points at that rule now rather
-#: than stating a second one.
-READ_ASK = (
-    "  Ask for it in the closing block's own line, never as 'read #N', and repeat that line "
-    "whole in every later reply that still waits on it, short enough to take in at a "
-    "glance. For a real decision: the question, what the owner is deciding, each option "
-    "with what it costs, and the recommendation, one line each. For a high-risk change: "
-    "one plain sentence of what the change does, in terms a clinician recognises; then "
-    "the case for it and its risks, most important first - what could go wrong, for whom, "
-    "and what was checked to rule it out; then what needs no review, in one clause. A "
-    "question goes in only where .claude/skills/docket/modes/design.md step 4 makes it the "
-    "owner's. Where only the gate holds it and nothing in it carries a risk, say so in one "
-    "sentence and ask for the merge word alone."
-)
-
 #: The commit trailer a session records its judgment in: whether the owner
 #: needs to read the branch's change before it merges (project owner,
 #: 2026-10-17, `PL-DKBG`). Its value is `READ_NEEDED` or `READ_NOT_NEEDED`,
@@ -235,6 +220,55 @@ READ_ASK = (
 OWNER_READ = "Owner-read"
 READ_NEEDED = "needed"
 READ_NOT_NEEDED = "not needed"
+
+#: The commit trailer that carries what a hold for the owner's read asks him
+#: (project owner, 2026-10-18, `PL-9JHM`). `arm` prints it as the ask's
+#: opening line, so the ask is a recorded fact rather than prose a session
+#: may skip. It takes one of two forms, the owner's two reasons to be asked
+#: (`PL-DKBG`), each a run of fields joined by `ASK_SEPARATOR`:
+#:
+#: - a decision: `<question>? | <option>: <what it changes> | <option>: <what
+#:   it changes> | recommend <option> - <why>`, with at least two options;
+#: - a risk review, for a high-risk change with no choice in it: `risk -
+#:   <what could go wrong, for whom> | checked - <what was checked to rule it
+#:   out> | look - <the one thing the owner should look at>`.
+OWNER_ASK = "Owner-ask"
+ASK_SEPARATOR = " | "
+ASK_RECOMMEND = "recommend"
+ASK_RISK = ("risk", "checked", "look")
+
+#: What a hold for the owner's read prints when no `OWNER_ASK` record covers
+#: the change. The ask was prose until 2026-10-18, and sessions skipped it:
+#: three closed on a bare "read #N" (`PL-9KHK`), `#1516`'s ask invented two
+#: points to judge (`PL-DKBG`), and the view chooser thread sent another bare
+#: read on 2026-10-18. The owner's rule is that a pull request with nothing to
+#: review does not reach him at all, so the way out of a hold with nothing in
+#: it is `Owner-read: not needed`, never a question made up to fill the form.
+READ_ASK = (
+    "  Send the owner nothing about this pull request yet: no Owner-ask record on a commit "
+    "since its newest change outside the store says what to ask. A hold reaches the owner "
+    "only with something to decide or to review. A question whose answer is obvious is "
+    "wrong, as on #1516, whose ask invented two points to judge (PL-DKBG). Record one of "
+    "two forms in the last paragraph of a commit, beside its Co-authored-by line, then ask "
+    f"again. For a decision, with at least two options a careful person could each pick: "
+    f"`{OWNER_ASK}: <question>? | <option>: <what it changes for the owner or a learner> | "
+    f"<option>: <what it changes> | {ASK_RECOMMEND} <option> - <why>`. For a high-risk change "
+    f"with no choice in it: `{OWNER_ASK}: {ASK_RISK[0]} - <what could go wrong, for whom> | "
+    f"{ASK_RISK[1]} - <what was checked to rule it out> | {ASK_RISK[2]} - <the one thing to "
+    "look at>`. If neither form can be filled honestly, nothing needs the owner: record "
+    f"`{OWNER_READ}: {READ_NOT_NEEDED} - <why>` instead, and the change merges on green. A "
+    "change to the gate or to a test pinning its answers holds whatever that record says, "
+    "so for one of those use the risk form."
+)
+
+#: What a hold for the owner's read prints before the line its `OWNER_ASK`
+#: record renders. The line goes in the closing block, because a wording
+#: that said only what the ask opens with was followed to the letter
+#: (`PL-9KHK`).
+ASK_LINE = (
+    "  Open the ask with this line, word for word, as the closing block's own line, never "
+    "as 'read #N', and repeat it whole in every later reply that still waits on it:"
+)
 
 #: What a `hold` without a claim tells a session about a repair push. A
 #: session never arms a held pull request, so a held one that is armed was
@@ -594,12 +628,66 @@ def parse_owner_read(value: str) -> tuple[bool, str] | None:
 
 
 @dataclass(frozen=True)
+class OwnerAsk:
+    """What a hold for the owner's read asks him, from a session's `OWNER_ASK` record.
+
+    `commit` carries the trailer, and `line` is the ask's opening line as
+    `parse_owner_ask` renders it.
+    """
+
+    commit: str
+    line: str
+
+
+def parse_owner_ask(value: str) -> tuple[str, str]:
+    """`(line, "")` from an `OWNER_ASK` value in one of its forms, or `("", why)` otherwise.
+
+    A decision needs a question ending in "?", at least two options that each
+    say what they change, distinct labels, and a recommendation naming one of
+    them with its reason. A risk review needs its three fields in order, each
+    with a value. Whether a question's answer is obvious is judgment, so the
+    printed instructions say it and this does not try.
+    """
+    fields = [field.strip() for field in value.split(ASK_SEPARATOR)]
+    named = [field.partition(" -") for field in fields]
+    if [word.strip().lower() for word, _, _ in named] == list(ASK_RISK):
+        if not all(dash and said.strip() for _, dash, said in named):
+            return "", "a risk review needs a value after each of risk, checked and look"
+        risk, checked, look = (said.strip() for _, _, said in named)
+        return f"Risk to review: {risk}. Checked: {checked}. Please look at: {look}.", ""
+    question, options = fields[0], fields[1:-1]
+    recommend = fields[-1] if len(fields) > 1 else ""
+    if not question.endswith("?"):
+        return "", "it is neither a risk review nor a decision whose first field is a question"
+    word, _, rest = recommend.partition(" ")
+    pick, dash, why = rest.partition(" - ")
+    if word.lower() != ASK_RECOMMEND or not dash or not pick.strip() or not why.strip():
+        return "", f"its last field is not '{ASK_RECOMMEND} <option> - <why>'"
+    if len(options) < 2:
+        return "", "a decision needs at least two options"
+    pairs = [option.partition(": ") for option in options]
+    if not all(label.strip() and colon and change.strip() for label, colon, change in pairs):
+        return "", "each option needs '<option>: <what it changes>'"
+    labels = [label.strip().lower() for label, _, _ in pairs]
+    if len(set(labels)) < len(labels):
+        return "", "two options share a label"
+    if pick.strip().lower() not in labels:
+        return "", f"it recommends {pick.strip()!r}, which is not one of its options"
+    shown = " ".join(
+        f'Option "{label.strip()}": {change.strip().rstrip(".")}.' for label, _, change in pairs
+    )
+    return f'{question} {shown} I recommend "{pick.strip()}": {why.strip().rstrip(".")}.', ""
+
+
+@dataclass(frozen=True)
 class Verdict:
     """`arm`'s answer for `HEAD`, and what it rests on.
 
     `claims` are the unreleased claims bound to this branch, `read` the
     simulator paths a merge would land, `record` the newest `OWNER_READ`
-    record that covers them (or, with none, the branch), `outside` the paths it would
+    record that covers them (or, with none, the branch), `ask` the newest
+    `OWNER_ASK` record made since the branch's newest change outside the store,
+    and `misasked` why such a record did not parse, `outside` the paths it would
     land outside the store, the tooling and the records that arm all the same
     and are named, `gate` whether it would change this module, `pinned` the
     existing tests in `PINS` pinning its answers that it would change or
@@ -619,6 +707,8 @@ class Verdict:
     claims: tuple[Hold, ...] = ()
     read: tuple[str, ...] = ()
     record: OwnerRead | None = None
+    ask: OwnerAsk | None = None
+    misasked: str = ""
     outside: tuple[str, ...] = ()
     gate: bool = False
     pinned: tuple[str, ...] = ()
@@ -745,7 +835,12 @@ class Verdict:
         if self.unjudged and not self.claims:
             said.append(JUDGE_ASK)
         if read and not self.claims:
-            said.append(READ_ASK)
+            if self.misasked:
+                said.append(f"  {self.misasked}")
+            if self.ask is None:
+                said.append(READ_ASK)
+            else:
+                said.extend((ASK_LINE, f"  {self.ask.line}"))
         return (*said, *notes)
 
     @property
@@ -917,10 +1012,12 @@ def arm(
     changed = run(changed_path_args("diff", "--name-only", f"{base}...HEAD", "--"), root)
     on_list: tuple[str, ...] = ()
     outside: tuple[str, ...] = ()
+    worked: tuple[str, ...] = ()
     gate = False
     pinned: tuple[str, ...] = ()
     if answered(changed):
         paths = set(listed_paths(changed))
+        worked = tuple(sorted(path for path in paths if not path.startswith((prefix, RECORDS))))
         # The gate is reported apart, and asked for directly rather than read
         # back out of what `arms_on_green` holds.
         gate = GATE in paths
@@ -942,6 +1039,7 @@ def arm(
         unread.append(f"git would not diff {name} against {base}, so what a merge lands is unknown")
     record, misread = _owner_read(root, run, base, on_list)
     unread.extend(misread)
+    ask, misasked = _owner_ask(root, run, base, worked)
 
     read = holdings(root, now=now, items_dir=items_dir, remote=heads, runner=ran)
     if not read.known:
@@ -976,6 +1074,8 @@ def arm(
         claims=claims,
         read=on_list,
         record=record,
+        ask=ask,
+        misasked=misasked,
         outside=outside,
         gate=gate,
         pinned=pinned,
@@ -1028,6 +1128,58 @@ def _switched_off_here(root: Path, run: Runner, base: str, at: str) -> tuple[boo
     return False, ()
 
 
+def _since_change(root: Path, run: Runner, base: str, paths: Sequence[str]) -> list[str] | None:
+    """The revisions `git log` walks for a record made since the newest commit changing `paths`.
+
+    With no `paths`, every commit of the branch. `None` when no commit of the
+    branch changed them, so no record can be for them.
+    """
+    span = ["HEAD", f"^{base}"]
+    if paths:
+        newest = run(["log", "-1", "--format=%H", f"{base}..HEAD", "--", *paths], root).strip()
+        if not newest:
+            return None
+        parents = run(["rev-parse", f"{newest}^@"], root).split()
+        span.extend(f"^{parent}" for parent in parents)
+    return span
+
+
+def _newest_trailer(root: Path, run: Runner, span: Sequence[str], key: str) -> tuple[str, str]:
+    """The newest commit in `span` carrying the trailer `key`, and its last value.
+
+    `("", "")` where no commit in `span` carries it.
+    """
+    fmt = f"--format=%H%x1f%(trailers:key={key},valueonly,unfold,separator=%x1e)"
+    for line in split_lines(run(["log", fmt, *span, "--"], root)):
+        commit, _, values = line.partition("\x1f")
+        said = [value for value in values.split("\x1e") if value.strip()]
+        if said:
+            return commit, said[-1].strip()
+    return "", ""
+
+
+def _owner_ask(
+    root: Path, run: Runner, base: str, paths: Sequence[str]
+) -> tuple[OwnerAsk | None, str]:
+    """The newest `OWNER_ASK` record since the newest change to `paths`, or why it did not parse.
+
+    `paths` are what the branch changes outside the store and the records, so
+    an ask made before a later change to the work does not cover it, while
+    the closure, `record` and claim commits that follow the work do not
+    disturb it.
+    """
+    span = _since_change(root, run, base, paths)
+    if span is None:
+        return None, ""
+    commit, value = _newest_trailer(root, run, span, OWNER_ASK)
+    if not commit:
+        return None, ""
+    line, why = parse_owner_ask(value)
+    if why:
+        return None, f"The {OWNER_ASK} record on {commit[:12]} was not read: {why}."
+    return OwnerAsk(commit=commit, line=line), ""
+
+
 def _owner_read(
     root: Path, run: Runner, base: str, paths: Sequence[str]
 ) -> tuple[OwnerRead | None, tuple[str, ...]]:
@@ -1041,29 +1193,20 @@ def _owner_read(
     and not read, so it covers nothing: a simulator change it was meant for
     still holds, and anything else is `unknown` rather than armed.
     """
-    span = ["HEAD", f"^{base}"]
-    if paths:
-        newest = run(["log", "-1", "--format=%H", f"{base}..HEAD", "--", *paths], root).strip()
-        if not newest:
-            return None, ()
-        parents = run(["rev-parse", f"{newest}^@"], root).split()
-        span.extend(f"^{parent}" for parent in parents)
-    fmt = f"--format=%H%x1f%(trailers:key={OWNER_READ},valueonly,unfold,separator=%x1e)"
-    listed = run(["log", fmt, *span, "--"], root)
-    for line in split_lines(listed):
-        commit, _, values = line.partition("\x1f")
-        said = [value for value in values.split("\x1e") if value.strip()]
-        if not said:
-            continue
-        parsed = parse_owner_read(said[-1])
-        if parsed is None:
-            return None, (
-                f"the {OWNER_READ} record on {commit[:12]} is neither "
-                f"'{READ_NEEDED} - <why>' nor '{READ_NOT_NEEDED} - <why>', so it was not read: "
-                f"{said[-1].strip()}",
-            )
-        return OwnerRead(commit=commit, needed=parsed[0], why=parsed[1]), ()
-    return None, ()
+    span = _since_change(root, run, base, paths)
+    if span is None:
+        return None, ()
+    commit, value = _newest_trailer(root, run, span, OWNER_READ)
+    if not commit:
+        return None, ()
+    parsed = parse_owner_read(value)
+    if parsed is None:
+        return None, (
+            f"the {OWNER_READ} record on {commit[:12]} is neither "
+            f"'{READ_NEEDED} - <why>' nor '{READ_NOT_NEEDED} - <why>', so it was not read: "
+            f"{value}",
+        )
+    return OwnerRead(commit=commit, needed=parsed[0], why=parsed[1]), ()
 
 
 def _pins_changed(base: str, root: Path, run: Runner) -> tuple[tuple[str, ...], tuple[str, ...]]:

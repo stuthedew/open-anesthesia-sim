@@ -11431,30 +11431,159 @@ def test_a_read_hold_asks_once_no_claim_holds_the_branch(
 
 
 def test_a_read_hold_puts_a_decision_or_a_case_in_the_closing_block_line() -> None:
-    """The ask carries the owner's two reasons to be asked, and never an obvious call.
+    """With no recorded ask, the hold sends the owner nothing and says how to record one.
 
     Worded as what the ask opens with, it was followed to the letter: three
     sessions closed on a bare "read #N" (`PL-9KHK`). On `#1516` a measured
     figure and an option the model's run length ruled out were put as points
-    to judge, and the owner asked what the trade-off was (`PL-DKBG`).
+    to judge, and the owner asked what the trade-off was (`PL-DKBG`). Prose
+    alone did not stop a bare read, so the ask is a record now, and a hold
+    with nothing in it is judged `not needed` rather than asked (`PL-9JHM`).
     """
     parts = (
-        "the closing block's own line",
-        "never as 'read #N'",
-        "every later reply that still waits on it",
-        "short enough to take in at a glance",
-        "For a real decision: the question",
-        "each option with what it costs, and the recommendation",
+        "Send the owner nothing about this pull request yet",
+        "only with something to decide or to review",
+        "A question whose answer is obvious is wrong",
+        "#1516",
+        "For a decision, with at least two options",
+        "what it changes for the owner or a learner",
+        "recommend <option> - <why>",
         "For a high-risk change",
-        "in terms a clinician recognises",
-        "the case for it and its risks",
-        "what needs no review",
-        "design.md step 4 makes it the owner's",
-        "the merge word alone",
+        "risk - <what could go wrong, for whom>",
+        "nothing needs the owner",
+        "Owner-read: not needed - <why>",
+        "merges on green",
     )
     places = [arming.READ_ASK.index(part) for part in parts]
 
     assert places == sorted(places)
+    assert "never as 'read #N'" in arming.ASK_LINE
+    assert "every later reply that still waits on it" in arming.ASK_LINE
+
+
+def _record_ask(git: Callable[..., str], value: str, when: str) -> None:
+    """A commit carrying the session's `Owner-ask` record, beside its attribution line."""
+    git(
+        "commit",
+        "-q",
+        "--allow-empty",
+        "-m",
+        f"PL-B1B1: say what to ask\n\nOwner-ask: {value}\n"
+        "Co-authored-by: Claude <noreply@anthropic.com>",
+        when=when,
+    )
+
+
+ARM_DECISION = (
+    "Which view opens first? | Chooser: the learner picks a view each run | "
+    "Last used: it opens where they left off | recommend Chooser - it names every view"
+)
+
+
+def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A hold for the owner's read prints the recorded ask, and with none sends nothing.
+
+    The owner was sent a bare read again on 2026-10-18, after two prose fixes
+    (`PL-9KHK`, `PL-DKBG`), so the ask is a record `arm` parses (`PL-9JHM`).
+    An ask made before a later change to the work does not cover it, and the
+    closure that follows the work does not disturb it.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:00:10+00:00")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert arming.READ_ASK in out.splitlines()
+    assert arming.ASK_LINE not in out
+
+    _record_ask(git, ARM_DECISION, "2026-09-01T12:00:20+00:00")
+
+    assert _arm(root) == 1
+    lines = capsys.readouterr().out.splitlines()
+    assert arming.READ_ASK not in lines
+    at = lines.index(arming.ASK_LINE)
+    assert lines[at + 1] == (
+        '  Which view opens first? Option "Chooser": the learner picks a view each run. '
+        'Option "Last used": it opens where they left off. I recommend "Chooser": it names '
+        "every view."
+    )
+
+    closed = _item_document("PL-B1B1", "done")
+    _commit_file(git, root, "docs/items/PL-B1B1-held.md", closed, "2026-09-01T12:00:30+00:00")
+
+    assert _arm(root) == 1
+    assert arming.ASK_LINE in capsys.readouterr().out.splitlines()
+
+    _commit_file(git, root, "CLAUDE.md", "X = 2\n", "2026-09-01T12:00:40+00:00")
+
+    assert _arm(root) == 1
+    lines = capsys.readouterr().out.splitlines()
+    assert arming.READ_ASK in lines
+    assert arming.ASK_LINE not in lines
+
+    _record_ask(git, "none - held by rule", "2026-09-01T12:00:50+00:00")
+
+    assert _arm(root) == 1
+    lines = capsys.readouterr().out.splitlines()
+    assert arming.READ_ASK in lines
+    assert any(
+        line.startswith("  The Owner-ask record on ")
+        and line.endswith(
+            " was not read: it is "
+            "neither a risk review nor a decision whose first field is a question."
+        )
+        for line in lines
+    )
+
+
+@pytest.mark.parametrize(
+    ("value", "line", "why"),
+    [
+        (
+            ARM_DECISION,
+            'Which view opens first? Option "Chooser": the learner picks a view each run. '
+            'Option "Last used": it opens where they left off. I recommend "Chooser": it '
+            "names every view.",
+            "",
+        ),
+        (
+            "Risk - a dose label could read mg for mcg | checked - the formatter tests pin "
+            "the unit | look - the infusion panel's label",
+            "Risk to review: a dose label could read mg for mcg. Checked: the formatter tests "
+            "pin the unit. Please look at: the infusion panel's label.",
+            "",
+        ),
+        (
+            "risk - x | checked -  | look - z",
+            "",
+            "a risk review needs a value after each of risk, checked and look",
+        ),
+        (
+            "none - held by rule",
+            "",
+            "it is neither a risk review nor a decision whose first field is a question",
+        ),
+        ("Merge it?", "", "its last field is not 'recommend <option> - <why>'"),
+        ("Q? | A: x | recommend A - y", "", "a decision needs at least two options"),
+        ("Q? | A: x | B | recommend A - y", "", "each option needs '<option>: <what it changes>'"),
+        ("Q? | A: x | a: y | recommend A - z", "", "two options share a label"),
+        (
+            "Q? | A: x | B: y | recommend C - z",
+            "",
+            "it recommends 'C', which is not one of its options",
+        ),
+        (
+            "Q? | A: x | B: y | recommend A",
+            "",
+            "its last field is not 'recommend <option> - <why>'",
+        ),
+    ],
+)
+def test_parse_owner_ask_takes_a_decision_or_a_risk_review(value: str, line: str, why: str) -> None:
+    assert arming.parse_owner_ask(value) == (line, why)
 
 
 def test_the_gate_arm_holds_for_a_read_is_the_module_that_decides_the_answer() -> None:
