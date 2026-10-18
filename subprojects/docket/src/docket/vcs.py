@@ -1446,13 +1446,31 @@ def _written_since(fork_point: str, base: str, root: Path, run: Runner) -> froze
     missing commits, and a read git refused all read as "not landed", the safe
     direction `_landing_split` documents.
 
+    **A truncated clone's boundary commit writes nothing here** (`PL-29RM`).
+    Git shows a grafted commit with no parents, so `--raw` lists its whole tree
+    as added, content the base held long before the fork included. A branch
+    restoring a file to that content then read as landed, `#1118`'s shape
+    again. `--min-parents=1` leaves out every commit with no parents. A
+    repository's true root is an ancestor of every fork point, so `^fork`
+    already excludes it, and only a graft is dropped. What the boundary commit
+    really changed goes unread with it, which reads as "not landed".
+
     Measured 2026-09-27 on this checkout, 1,466 commits on `origin/main`: its
     20 candidate refs forked at 10 points, read in 0.098 s in all, and one read
     of the whole history takes 0.211 s, which bounds a fork of any age. None of
     the 20 changed verdict against the whole-history set it replaced.
     """
     listing = run(
-        changed_path_args("log", "--raw", "--no-abbrev", "--format=", f"^{fork_point}", base, "--"),
+        changed_path_args(
+            "log",
+            "--raw",
+            "--no-abbrev",
+            "--format=",
+            "--min-parents=1",
+            f"^{fork_point}",
+            base,
+            "--",
+        ),
         root,
     )
     return frozenset(blob for blob, _ in _raw_writes(listing))
