@@ -24,7 +24,7 @@ needs at the moment it names where a number came from.
 Gas Man is this project's **reference implementation**: the working example
 its starting values were taken from, and a behavior to compare against. It
 measured nothing, and neither did a paper whose table simply reprints its
-parameter set — De Wolf et al. 2012 and Meybohm et al. 2021 are both Gas Man
+parameter set — De Wolf et al. 2012 and Weber et al. 2021 are both Gas Man
 simulation studies, and neither measured a coefficient. Where a stored value
 is one of theirs, say so, name what the primary literature reports instead,
 and give the difference.

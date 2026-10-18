@@ -2023,12 +2023,13 @@ admissible, and finding a primary source being work is not one of them:
    above: a reference implementation supplies a complete, internally
    consistent set where the primary literature supplies scattered measurements
    made in different laboratories on different cohorts. The twelve partition
-   coefficients are the worked example. Eger, Strum and Eger, and Lerman et
-   al. did measure these quantities in this population, so the first reason
-   does not cover them — but a single laboratory's blood:gas figure dropped
-   into a Gas Man tissue set makes the trajectory a hybrid of two parameter
-   lineages — the same objection this document makes below against dividing a
-   Gas Man trajectory by a Mapleson MAC, applied one level down.
+   coefficients are the worked example. Eger, Strum and Eger, Lerman et al.,
+   and Esper et al. 2015 did measure these quantities in this population, so
+   the first reason does not cover them — but a single laboratory's blood:gas
+   figure dropped into a Gas Man tissue set makes the trajectory a hybrid of
+   two parameter lineages — the same objection this document makes below
+   against dividing a Gas Man trajectory by a Mapleson MAC, applied one level
+   down.
 
 The second reason is the narrower of the two and is not a way around the
 first. It is available only where the primaries are cited on the entry with
@@ -2036,8 +2037,11 @@ the measured value and the difference from the stored one recorded, so that
 the cost of the choice is visible to the reader rather than argued away:
 desflurane −0.9%, sevoflurane −5.2%, isoflurane −11.0% against the measured
 blood:gas coefficients, and the decision itself dated to 2026-09-03
-(`PL-D6LX`). `ROADMAP.md`'s planned-milestone item 31 is the route to a
-primary coefficient set, which would retire this reason for these twelve.
+(`PL-D6LX`). Against Esper et al. 2015, the largest of those measurements and
+the most recent, the stored values are lower again: desflurane −26.3%,
+sevoflurane −12.2% and isoflurane −10.3% (`PL-SWY5`). `ROADMAP.md`'s
+planned-milestone item 31 is the route to a primary coefficient set, which
+would retire this reason for these twelve.
 
 Where a primary measurement *is* available and simply has not been adopted,
 the entry says so in those words and the value **carries no adopted primary**.
@@ -2059,9 +2063,9 @@ paper that prints a reference implementation's parameter table is a tier-3
 citation wearing a journal's name. Both of this project's tier-3 citations are
 of exactly that kind, and neither measured a coefficient: De Wolf et al. 2012
 is a Gas Man simulation study whose Table 1 is the parameter set it fed to Gas
-Man, and Meybohm et al. 2021 is a Gas Man simulation study describing the
+Man, and Weber et al. 2021 is a Gas Man simulation study describing the
 product's standard 70 kg patient. The two do not even agree on what that set
-holds: Meybohm et al.'s Table 1 prints Gas Man 4.2's 1 MAC as 2.1% sevoflurane
+holds: Weber et al.'s Table 1 prints Gas Man 4.2's 1 MAC as 2.1% sevoflurane
 and 1.1% isoflurane where De Wolf et al. state 2.0% and 1.2%, the values stored
 on De Wolf's authority, while every partition coefficient the two print is the
 same (`PL-0SG0`; each agent file's De Wolf note carries the figures, read
@@ -2135,10 +2139,19 @@ parameters" states what that costs, and "Known limitations" records it.
 Every `sources` entry in every data file names its tier. The three agent files
 cite the primary measurements alongside their tier-3 values — Strum and Eger
 for sevoflurane, Eger for desflurane, Lerman et al. 1984 for isoflurane,
-Yasuda et al. for tissue solubility — and each records the measured value, that
-it was **not adopted**, and by how much the stored number differs: sevoflurane
-−5.2%, isoflurane −11.0%, desflurane −0.9% against the measured blood:gas
-coefficients. Isoflurane is the widest gap in the project; the decision to keep
+Esper et al. 2015 for all three, and Yasuda et al. for tissue solubility — and
+each records the measured value, that it was **not adopted**, and by how much
+the stored number differs. Against the older blood:gas measurements the stored
+values are sevoflurane −5.2%, isoflurane −11.0% and desflurane −0.9%, so
+isoflurane is the widest gap. Esper et al. 2015 measured all three agents in
+120 surgical patients at 37 °C, and against its means the stored values are
+sevoflurane −12.2%, isoflurane −10.3% and desflurane −26.3%. That makes
+desflurane the widest gap in the project, at about 3.8 of Esper's SDs. The
+paper was read from its abstract only (`PL-SWY5`). The Gas Man study that
+prints this parameter set says so in its own footnote: its blood/gas
+coefficients "differ from them observed by Esper et al." (Weber et al. 2021,
+Table 1). § "The early wash-in curve against the published figures" records
+what Esper's desflurane value would do in this model. The decision to keep
 the Gas Man value and label it, rather than move to the textbook 1.4 or to
 Lerman's measured 1.46, was taken on 2026-09-03 and the route to primary values
 for all three agents is `ROADMAP.md`'s planned-milestone item 31.
@@ -2809,7 +2822,7 @@ where no provenance row could reach them and changed neither value.
   this one anywhere this project has reached. The Workbook's parameter table
   gives the circuit row a volume and no flow, its interface defaults are
   described without numbers, and the two Gas Man simulation studies read here
-  chose flows for their own purposes (De Wolf et al. 1 L/min; Meybohm et al.
+  chose flows for their own purposes (De Wolf et al. 1 L/min; Weber et al.
   10 L/min for washout). It is a **teaching default, not a clinical
   recommendation** (project owner, 2026-09-20, ratified, over lowering it to
   match contemporary low-flow practice): a flow well inside the supported
@@ -4206,10 +4219,38 @@ the same cylinder and the model follows their isoflurane curve. A ventilation
 or lung-volume error would also move every agent the same way, and sevoflurane
 and isoflurane sit slightly below their curves early. So the likely cause is
 something only desflurane has, such as its blood:gas or a tissue:gas
-coefficient. `PL-CM1B` carries the investigation. Until it is settled, the five
+coefficient.
+
+**No single stored coefficient, moved within what was measured, closes the
+gap** (`PL-CM1B`, measured 2026-10-18). Each desflurane coefficient was moved
+alone through the reference test's own harness, with every other value
+shipped:
+
+- **Blood:gas is the only one that reaches the early points, and only where
+  the 30-minute comparison fails.** The 1-to-10-minute points come within one
+  SD from about 0.55 upward. Esper et al. 2015 measured 0.57 ± 0.04 in
+  surgical patients, and at 0.57 every early point lies within 0.83 SD. But
+  the 30-minute ratio stays within one SD at every fresh gas flow from 1 to
+  10 L/min only up to about 0.46. At 0.57 it fails at every flow, from −1.35 SD
+  at 10 L/min to −2.61 SD at 1 L/min. Eger's 0.424 ± 0.024 is too narrow a
+  spread to reach the early band.
+- **The vessel-rich and muscle coefficients** cannot close the gap at any
+  value inside Yasuda et al. 1989's measurements (brain 0.54 ± 0.02, muscle
+  0.94 ± 0.35).
+- **Esper's values for all three agents** would put the sevoflurane and
+  isoflurane points in the first 3 minutes 1.0 to 1.4 SD below their curves.
+  So taking Esper's value for desflurane alone would mix two lineages of
+  blood:gas coefficients, and taking it for all three moves the two agents
+  that agree now.
+
+Raising desflurane's blood:gas also closes little of its washout residual
+(`PL-RFLN`). The open-circuit 5-minute ratio moves from −2.33 SD to −1.97 SD
+at 0.57, so the two findings do not share this cause in any useful sense.
+Nothing stored changes, and the disagreement is a known limitation. The five
 desflurane points and the isoflurane point at 12.5 minutes are held to a
 regression band from −1 to +2.5 SD rather than to the agreement band, so the
-gap cannot grow unseen.
+gap cannot grow unseen. A primary-literature coefficient set, `ROADMAP.md`'s
+planned-milestone item 31, is where this would be weighed again.
 
 Caveat 1 above applies here too, and the early curve is where a second-gas
 effect would show first. Its size is not measured. The volunteers had breathed
