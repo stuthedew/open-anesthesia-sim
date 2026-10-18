@@ -3,13 +3,14 @@ id: PL-05M4
 title: The inert splitter handles keep the host's surface under a dark appearance, because a disabled widget draws from the Disabled colour group this project leaves to the platform
 priority: P3
 effort: S
-status: blocked
+status: ready
 classes: ux
 feature: chrome-colour-audit
-touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_dark_appearance.py, docs/MODEL.md
-blocked-by: PL-W9P6
+touches: docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-22
+payoff: docs/MODEL.md stops telling a reader that the Area borders show the host's dark surface, which they no longer do
+verify: ! grep -q 'the inert splitter handles keep the host' docs/MODEL.md
 ---
 
 **Problem.** The inert splitter handles keep the host's surface under a dark appearance, because a disabled widget draws from the Disabled colour group this project leaves to the platform
@@ -81,7 +82,7 @@ surface under the platform's disabled text grey is a trap for any control
 added later. This is an obvious call, so it was decided here rather than put
 to the project owner.
 
-So this item is blocked on `PL-W9P6`. What is left after it is small. Invert
+[superseded 2026-10-18] So this item is blocked on `PL-W9P6`. What is left after it is small. Invert
 the handle half of
 `tests/integration/test_dark_appearance.py::test_declaring_the_application_leaves_its_disabled_colours_to_the_platform`
 so it holds a light handle under a dark host. Then remove the known limit
@@ -89,3 +90,14 @@ from `docs/MODEL.md` § "Color contrast, and the standard this interface is
 held to". The close-out's docs sweep will also find the sentence in
 `.claude/rules/ui-color.md` that names this item. If `PL-W9P6`'s own build makes those changes, close this item as done
 under that pull request.
+
+**`PL-W9P6` built, 2026-10-18.** The handles are live and enabled, so the gap
+between two Areas shows the page's `BACKGROUND` under a dark host. The handle
+half of the dark-appearance test is inverted: the Disabled-group test now uses
+a disabled widget of its own, and
+`test_the_border_between_two_areas_shows_the_page_rather_than_the_host` holds
+the fix. The sentence in `.claude/rules/ui-color.md` is updated. What is left
+is the known-limit sentence in `docs/MODEL.md` § "Color contrast, and the
+standard this interface is held to", which another thread holds this week.
+Removing it closes this item.
+

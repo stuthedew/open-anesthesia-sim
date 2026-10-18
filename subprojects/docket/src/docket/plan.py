@@ -32,9 +32,9 @@ from .model import (
     Item,
     impairs_generators_soundly,
     is_generator,
+    live_recurrences,
     ranks_as_generator,
     ranks_as_generator_defect,
-    recurrence_count,
 )
 from .roadmap import (
     EXCLUDED,
@@ -1002,6 +1002,55 @@ def unranked_generators(
     return unranked
 
 
+def recurrence_chains(items: list[Item]) -> dict[str, tuple[str, ...]]:
+    """Each open item's filings, followed back through the closed items it re-files.
+
+    `duplicates.near_duplicates` matches a capture against open items only, so
+    once the item a mechanism was first matched to closes, its next filing is
+    recorded on the open item that re-filed it, and the count starts again at
+    one. `PL-K5PW` <- `PL-T441` <- `PL-WF3X` was three filings of one mechanism
+    recorded as one recurrence on each of two items, and neither reached
+    `MIN_RECURRENCES` (`PL-RX3H`).
+
+    So an open item's filings are its own live recurrences, plus each closed
+    item whose live recurrences name it or name a closed item already on its
+    chain, plus that closed item's own recurrences. The walk goes through
+    closed items only: an open item on the chain carries its own count, and
+    following it would add one mechanism's filings to two open items.
+
+    Returns the filing ids other than the item's own, sorted and distinct, so
+    the count is the chain's filings minus one, as `recurrence_count` is for an
+    item alone. An open item with none is left out.
+    """
+    by_id = {item.identifier: item for item in items if item.identifier}
+    refiled_from: dict[str, set[str]] = {}
+    for item in items:
+        if item.status not in CLOSED_STATUSES:
+            continue
+        for found in live_recurrences(item):
+            if found.identifier:
+                refiled_from.setdefault(found.identifier, set()).add(item.identifier)
+    chains: dict[str, tuple[str, ...]] = {}
+    for item in items:
+        if item.status in CLOSED_STATUSES or not item.identifier:
+            continue
+        filings = {found.identifier for found in live_recurrences(item) if found.identifier}
+        seen: set[str] = set()
+        stack = list(refiled_from.get(item.identifier, ()))
+        while stack:
+            anchor = stack.pop()
+            if anchor in seen:
+                continue
+            seen.add(anchor)
+            filings.add(anchor)
+            filings.update(f.identifier for f in live_recurrences(by_id[anchor]) if f.identifier)
+            stack.extend(refiled_from.get(anchor, ()))
+        filings.discard(item.identifier)
+        if filings:
+            chains[item.identifier] = tuple(sorted(filings))
+    return chains
+
+
 def recurring(items: list[Item], in_flight: Collection[str] | None = None) -> list[Item]:
     """Open items the store has now absorbed three or more filings of.
 
@@ -1024,6 +1073,10 @@ def recurring(items: list[Item], in_flight: Collection[str] | None = None) -> li
     `PL-QMC0`, recorded as a generator by hand) peaks at two and would never
     have surfaced. Deriving it keeps the project arguing about one threshold
     rather than two.
+
+    The count is `recurrence_chains`', so filings recorded on a closed item
+    this one re-files are counted here rather than lost when it closed
+    (`PL-RX3H`).
 
     **Candidates, never a verdict, and this one may not even rank.**
     `promotable` above is named-but-not-ranked because a closed blocker is not
@@ -1071,16 +1124,17 @@ def recurring(items: list[Item], in_flight: Collection[str] | None = None) -> li
     `FlightReport.ids` and print what went unread beside the answer.
     """
     flight = in_flight or set()
+    chains = recurrence_chains(items)
     return sorted(
         (
             item
             for item in items
             if item.status not in CLOSED_STATUSES
             and item.identifier not in flight
-            and recurrence_count(item) >= MIN_RECURRENCES
+            and len(chains.get(item.identifier, ())) >= MIN_RECURRENCES
             and not is_generator(item, {i.identifier for i in items if i.identifier})
         ),
-        key=lambda item: (-recurrence_count(item), item.identifier),
+        key=lambda item: (-len(chains[item.identifier]), item.identifier),
     )
 
 

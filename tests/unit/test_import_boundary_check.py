@@ -39,7 +39,7 @@ def _boundary(*allowed: str, package: str = "pydantic") -> Boundary:
 
 
 def _allowed_modules(package: Path) -> Path:
-    """The two modules the real allowances name, each making its import, plus `app/` and `layout/`.
+    """The three modules the real allowances name, each making its import, plus `layout/`.
 
     Every test that runs `main` against the real `BOUNDARIES` needs them,
     because an allowance naming a module that is absent, or one that no longer
@@ -58,6 +58,9 @@ def _allowed_modules(package: Path) -> Path:
     (layout / "model.py").write_text("from dataclasses import dataclass\n", encoding="utf-8")
     app = package / "app"
     app.mkdir(parents=True, exist_ok=True)
+    (app / "area_layout.py").write_text(
+        "from PySide6.QtWidgets import QSplitter, QSplitterHandle\n", encoding="utf-8"
+    )
     return app
 
 
@@ -197,12 +200,21 @@ class TestAnalyze:
             "anesthesia_sim.app",
             "PySide6",
             "pyqtgraph",
+            "PySide6.QtWidgets.QSplitter",
+            "PySide6.QtWidgets.QSplitterHandle",
+            "anesthesia_sim.app",
         )
         by_package = {boundary.package: boundary for boundary in BOUNDARIES}
         assert by_package["pydantic"].allowed == ("src/anesthesia_sim/core/parameters.py",)
         assert by_package["subprocess"].allowed == ("src/anesthesia_sim/app_metadata.py",)
         assert by_package["flet"].allowed == ()
         assert by_package["flet_charts"].allowed == ()
+        assert by_package["PySide6.QtWidgets.QSplitter"].allowed == (
+            "src/anesthesia_sim/app/area_layout.py",
+        )
+        assert by_package["PySide6.QtWidgets.QSplitterHandle"].allowed == (
+            "src/anesthesia_sim/app/area_layout.py",
+        )
         assert all(boundary.why.strip() for boundary in BOUNDARIES)
 
     @pytest.mark.parametrize("package", ["flet", "flet_charts"])
@@ -467,15 +479,77 @@ class TestMain:
         package = tmp_path / "src" / "anesthesia_sim"
         _allowed_modules(package)
         (package / "layout" / "adapter.py").write_text(
-            "from PySide6.QtWidgets import QSplitter\nimport pyqtgraph\n", encoding="utf-8"
+            "from PySide6.QtWidgets import QWidget\nimport pyqtgraph\n", encoding="utf-8"
         )
         assert main(["--root", str(tmp_path)]) == 1
         out = capsys.readouterr().out
         adapter = "src/anesthesia_sim/layout/adapter.py"
-        assert f"{adapter}:1: from PySide6.QtWidgets import QSplitter" in out
+        assert f"{adapter}:1: from PySide6.QtWidgets import QWidget" in out
         assert f"{adapter}:2: import pyqtgraph" in out
         assert "PySide6 is permitted in no module under src/anesthesia_sim/layout/" in out
         assert "pyqtgraph is permitted in no module under src/anesthesia_sim/layout/" in out
+        assert "2 errors" in out
+
+    def test_only_the_adapter_may_import_the_splitter(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A splitter or its handle anywhere but the adapter is a View holding layout state.
+
+        Against the real `BOUNDARIES` (`PL-L8RN`). A View module importing
+        each class is refused once per import. The adapter, which
+        `_allowed_modules` writes making both imports, is not refused, and
+        neither is another class from the same Qt module, because the
+        boundary is the class and not `QtWidgets`.
+        """
+        package = tmp_path / "src" / "anesthesia_sim"
+        app = _allowed_modules(package)
+        (app / "run_view.py").write_text(
+            "from PySide6.QtWidgets import QSplitter\n"
+            "from PySide6.QtWidgets import QSplitterHandle, QWidget\n",
+            encoding="utf-8",
+        )
+        (app / "qt_widgets.py").write_text(
+            "from PySide6.QtWidgets import QLabel, QWidget\n", encoding="utf-8"
+        )
+        assert main(["--root", str(tmp_path)]) == 1
+        out = capsys.readouterr().out
+        view = "src/anesthesia_sim/app/run_view.py"
+        assert f"{view}:1: from PySide6.QtWidgets import QSplitter" in out
+        assert f"{view}:2: from PySide6.QtWidgets import QSplitterHandle, QWidget" in out
+        assert (
+            "PySide6.QtWidgets.QSplitter is allowed only in src/anesthesia_sim/app/area_layout.py"
+            in out
+        )
+        assert "qt_widgets.py" not in out
+        assert "2 errors" in out
+
+    def test_the_layout_package_may_not_import_the_interface(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A View module reached from the layout, by each route, is refused (`PL-L8RN`).
+
+        The layout knows a View kind only as a tag, so an import of a module
+        under `app/` from `layout/`, absolute or relative, couples the two
+        directly. The other direction, `app/` reading the layout, is how the
+        adapter works and is not refused.
+        """
+        package = tmp_path / "src" / "anesthesia_sim"
+        app = _allowed_modules(package)
+        (package / "layout" / "tree.py").write_text(
+            "from anesthesia_sim.app.run_view import RunView\nfrom ..app import qt_chart\n",
+            encoding="utf-8",
+        )
+        (app / "simulation_view.py").write_text(
+            "from anesthesia_sim.layout.model import LayoutModel\n", encoding="utf-8"
+        )
+        assert main(["--root", str(tmp_path)]) == 1
+        out = capsys.readouterr().out
+        tree = "src/anesthesia_sim/layout/tree.py"
+        assert f"{tree}:1: from anesthesia_sim.app.run_view import RunView" in out
+        assert f"{tree}:2: from ..app import qt_chart" in out
+        assert (
+            "anesthesia_sim.app is permitted in no module under src/anesthesia_sim/layout/" in out
+        )
         assert "2 errors" in out
 
     def test_any_module_importing_flet_is_a_violation(

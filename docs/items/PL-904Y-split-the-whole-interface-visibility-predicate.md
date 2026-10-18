@@ -1,14 +1,15 @@
 ---
 id: PL-904Y
 title: Split the whole-interface visibility predicate out of PL-W54S: interface_strings answers is-this-string-in-this-widget-subtree, which stops meaning can-the-reader-see-it once a layout can close an area or move it to another window
-status: blocked
-feature: interface-areas
-added: 2026-09-16
-priority: P2
+priority: P1
 effort: M
-blocked-by: PL-W9P6
+status: ready
 classes: safety, anticipated, defect
+feature: interface-areas
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration
+added: 2026-09-16
+payoff: the whole-interface safety tests keep meaning that the reader can see a value once an Area can be closed, hidden behind a tab or moved
+verify: grep -q 'def test_a_value_hidden_from_the_reader_is_not_counted_as_shown' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** Split the whole-interface visibility predicate out of PL-W54S: interface_strings answers is-this-string-in-this-widget-subtree, which stops meaning can-the-reader-see-it once a layout can close an area or move it to another window

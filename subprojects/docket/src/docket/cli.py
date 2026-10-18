@@ -73,7 +73,6 @@ from .model import (
     generator_faults,
     generators_explaining,
     is_under,
-    live_recurrences,
     misread_faults,
     parse_item,
     recurrence_count,
@@ -101,6 +100,7 @@ from .plan import (
     placement_line,
     promotable,
     recommend,
+    recurrence_chains,
     recurring,
     set_aside,
     step_scope,
@@ -3157,10 +3157,13 @@ def _say_recurring(items: list[Item], in_flight: Collection[str]) -> None:
     candidates = recurring(items, in_flight)
     if not candidates:
         return
+    # The chain's count and filings, which `recurring` ranked on, so a
+    # candidate is never printed with the count of one item alone (`PL-RX3H`).
+    chains = recurrence_chains(items)
     print("Filed more than once, and never promoted for it:")
     for item in candidates:
-        filed = ", ".join(sorted({f.identifier for f in live_recurrences(item) if f.identifier}))
-        print(f"  {item.identifier} ({recurrence_count(item)} filings: {filed})")
+        filed = chains[item.identifier]
+        print(f"  {item.identifier} ({len(filed)} filings: {', '.join(filed)})")
     print(
         "  Not ranked above - the count comes from a title match, which may not buy a "
         "promotion. Read them against each other, and where they are one mechanism, "

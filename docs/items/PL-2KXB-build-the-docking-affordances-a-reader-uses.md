@@ -3,12 +3,13 @@ id: PL-2KXB
 title: Build the docking affordances a reader uses: border drag moving the collinear chain, corner drag to split and to join, and Area swap, with a join the splitter tree cannot express refused rather than approximated
 priority: P2
 effort: L
-status: blocked
+status: ready
 classes: feature, ux
 feature: interface-areas
 touches: src/anesthesia_sim/app/, tests/integration
-blocked-by: PL-W9P6, PL-G60V
 added: 2026-09-16
+payoff: a reader can split, join and swap Areas and switch Workspaces with the mouse, and a join the layout cannot make is shown as unavailable rather than approximated
+verify: grep -q 'def test_a_corner_drag_splits_an_area' tests/integration/test_layout_adapter.py && grep -q 'def test_a_join_the_layout_cannot_make_is_shown_unavailable' tests/integration/test_layout_adapter.py
 ---
 
 **Problem.** Build the docking affordances a reader uses: border drag moving the collinear chain, corner drag to split and to join, and Area swap, with a join the splitter tree cannot express refused rather than approximated
@@ -30,7 +31,7 @@ tree.
 *Scope.* `ROADMAP.md` § "v0.6.0 - the layout is the reader's" -> "Required
 scope" item 14.
 
-## Blocked on `PL-G60V`, 2026-10-12
+## [superseded 2026-10-18] Blocked on `PL-G60V`, 2026-10-12
 
 [superseded 2026-10-18] `PL-G60V` closed on 2026-10-18 in `#1579`, so a join
 already depends on the rectangles alone when this item starts. The owner answered `PL-G60V` on 2026-10-12 (ratified): whether two Areas can
@@ -38,3 +39,13 @@ be joined depends on the rectangles alone, never on which split came first.
 This item builds the join a reader uses, where a refusal would first be seen,
 so it waits for that change, as `PL-G60V`'s recommendation asked; the
 ordering is a session's, recorded in `PL-G60V`.
+
+**`PL-W9P6` built, 2026-10-18.** A border drag already moves the whole line:
+`app/area_layout.py` turns a handle drag into `LayoutModel.resize` and sets
+every splitter from the result, and a refused drag puts them back. What is
+left here is the rest of the drag (Shift, Escape, the `WARNING` line at a
+neighbour's minimum, from `PL-RQT1` Q3), corner drags to split and join,
+swap, and Workspace tabs. `AreaLayout.set_model` already rebuilds the
+splitters when the tree changes shape, so a split, join or swap reaches the
+screen through it.
+

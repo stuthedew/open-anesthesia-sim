@@ -7,7 +7,7 @@ status: blocked
 classes: refactor, ux
 feature: interface-areas
 touches: src/anesthesia_sim/app, docs/ARCHITECTURE.md
-blocked-by: PL-W9P6
+blocked-by: PL-R1WQ
 added: 2026-09-16
 not-delegable: the deliverable is a contract to be agreed before it is coded, and no command can prove a protocol is the right one; the test arrives with the first two views written to it
 ---
@@ -232,10 +232,17 @@ or `create_` name reads as a factory whose caller gets a new object to own.
 The contract should name what a view hands an area for what it is; `PL-KZR1`
 kept the prefix only so it is not renamed twice.
 
-## Blocked on `PL-W9P6`, 2026-10-12
+## [superseded 2026-10-18] Blocked on `PL-W9P6`, 2026-10-12
 
 Set by `PL-1FT6`'s close-out. The model half of the area system exists; the
 adapter does not. Q1's pruning test reads each contract member's call site in
 the adapter, and § "Why it is blocked rather than ready" writes the contract
 with the area system rather than ahead of it, so the adapter is what this
 waits on.
+
+## Blocked on `PL-R1WQ`, 2026-10-18
+
+`PL-W9P6` closed on 2026-10-18 in `#1592` without the View registry: the
+adapter takes a plain `view_for` function. Q2 constructs every View through
+the registry's factory, as `factory(context)`, so the contract waits on
+`PL-R1WQ`'s registry rather than on the adapter.

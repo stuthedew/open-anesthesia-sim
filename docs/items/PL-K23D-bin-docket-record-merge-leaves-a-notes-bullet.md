@@ -9,6 +9,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/rel
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
 payoff: a session running record --merge is told which shipped notes bullets it could not give a route back to their change, instead of reading the repair as complete until a later check says otherwise
+falsifies: restate_references(
 verify: grep -q 'def test_record_merge_names_a_notes_bullet_it_declined_to_restate' subprojects/docket/tests/test_cli.py
 ---
 
@@ -31,3 +32,32 @@ the route is unchanged: return it from `restate_references`.
 **Generator check.** A one-off: one function drops the decline record another returns, so the report rounds a partial answer off as whole, the floor in `.claude/rules/apparatus-standard.md`, which no head's `misread:` states as a fact.
 
 **Done when.** `bin/docket record N --merge SHA`, and its `--dry-run`, names each notes bullet it declined to restate, by file and line with the walker's reason, beside the bullets it restated: the record `notes_bullets` writes reaches `_restate_notes` through `restate_references` instead of a discarded list, and the declined bullet is still left byte for byte as it was. `test_record_merge_names_a_notes_bullet_it_declined_to_restate` in `subprojects/docket/tests/test_cli.py` runs `record --merge` over a notes file holding a bullet carried on from the margin and asserts both.
+
+**Built and held back, 2026-10-18, on `#1594`.** The build in the
+`Done when` worked and its tests passed: `restate_references` returned a third
+value, the declines from `notes_bullets`, and `_restate_notes` printed each one
+as "docs/releases/vX.md line N: <the walker's reason>. Left as it was, so this
+bullet may still have no route back to its change", under both `--merge` and
+`--dry-run`. `bin/docket verify --self` then refused it. Two assertions in
+`tests/test_release.py` compare the whole return value, so adding a third
+value had to change them. That is
+`test_a_title_wrapped_onto_an_indented_line_keeps_its_reference` and
+`test_a_bullet_carried_on_from_the_margin_is_declined_and_left_alone`. A
+declaration counts only where the base holds it, so `#1594` adds the
+`falsifies:` line above and leaves the code out.
+
+**Next step.** Once `#1594` has merged, rebuild it on a fresh branch from
+`main`. Change `restate_references` to return
+`(text, repaired, declined)` and update its `-> tuple[...]` annotation and
+docstring. Drop the comment above `notes_bullets` there that names this item.
+In `cli._restate_notes`, unpack three values and print each decline before the
+`if not repaired` test. Update the callers in `tests/test_release.py`
+(`restated, repaired, _ = ...`), and the two `==` assertions to the three-value
+form. Add `test_record_merge_names_a_notes_bullet_it_declined_to_restate` to
+`tests/test_cli.py`. It writes `- PL-B1C2 a title wrapped`, then
+`carried on from the margin` at column zero, then `- PL-K7QX A closed item`
+under `## v0.2.5` and `### infra` in `_releasable_owed_clone`. It runs the
+dry run and then the real run, and asserts that both print
+"docs/releases/v0.2.5.md line 6: ". It also asserts that the margin bullet is
+left byte for byte and that `PL-K7QX` gains its number.
+

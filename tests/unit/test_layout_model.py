@@ -1273,6 +1273,30 @@ def test_borders_stops_at_the_window_edge() -> None:
     assert moved.windows[1] == model.windows[1]
 
 
+def test_span_is_where_a_handles_split_begins_and_ends_in_its_window() -> None:
+    """A row in the lower part of the right half spans that half, from 0.5 to 1.0 across.
+
+    What the adapter reads to turn a drag inside one splitter into a position
+    in the window (`PL-W9P6`), so each span is checked against the Areas'
+    rectangles as `rectangles` works them out, not against the model.
+    """
+
+    model = layout(
+        row((0.5, 0.5), area(1), column((0.25, 0.75), area(2), row((0.4, 0.6), area(3), area(4))))
+    )
+    placed = rectangles(model)
+
+    assert model.span(Handle(0, (), 0)) == (0.0, 1.0)
+    assert model.span(Handle(0, (1,), 0)) == (placed[2][1], placed[3][3]) == (0.0, 1.0)
+    assert model.span(Handle(0, (1, 1), 0)) == (placed[3][0], placed[4][2]) == (0.5, 1.0)
+
+    with pytest.raises(NotInLayout, match="no border at window 0"):
+        model.span(Handle(0, (0,), 0))
+
+    with pytest.raises(TypeError, match="addressed by a Handle"):
+        model.span((0, (), 0))  # type: ignore[arg-type]
+
+
 def test_a_border_cannot_move_onto_or_past_a_neighbouring_border() -> None:
     """Without minimum sizes (`PL-K285`'s) the limit is that every child keeps some size.
 

@@ -3,14 +3,17 @@ id: PL-00TR
 title: docket inflow counts a safety- or science-classed product item as an unexpected P1 apparatus filing when it also declares a .claude/rules/ file, so release reported PL-HQF5 and PL-4RL2 as a missed PL-04KR prediction for the week to 2026-10-18
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: convergence-visibility
 touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/tests/test_inflow.py
 deferred-from: v0.6.0 - a counting fix in the apparatus's release alarm, which changes nothing a learner sees
 added: 2026-10-18
+closed: 2026-10-18
+pr: 1594
 payoff: A cut reports a missed apparatus prediction only when the apparatus missed it
 verify: grep -q 'def test_a_class_pinned_p1_on_a_rule_file_is_not_an_unexpected_band' subprojects/docket/tests/test_inflow.py
+recurrences: 2026-10-18 PL-L94N withdrawn 2026-10-18 PL-L94N
 ---
 
 **Problem.** docket inflow counts a safety- or science-classed product item as an unexpected P1 apparatus filing when it also declares a .claude/rules/ file, so release reported PL-HQF5 and PL-4RL2 as a missed PL-04KR prediction for the week to 2026-10-18
