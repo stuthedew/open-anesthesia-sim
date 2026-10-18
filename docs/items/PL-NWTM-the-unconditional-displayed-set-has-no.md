@@ -76,3 +76,24 @@ it becomes live - is the one that keeps them on screen; `PL-W9P6` is blocked
 on this item for that reason. The `PL-036` half of the second Done when still
 wants the re-decision the 2026-09-22 note records, and the third Problem,
 reachability, is `PL-50PZ`'s (Required scope entry 16).
+
+## Build question 2026-10-18: the delivered concentration and the 1 MAC divisor
+
+**Question put to the owner.** `docs/MODEL.md`'s per-substance tier requires
+the delivered concentration in both units and the running agent's 1 MAC in
+percent, so that the ×MAC readouts state their divisor. The band `PL-J8K2`
+ratified, as its mock-up draws it, holds neither: the delivered value is only
+on the dial in the Parameters View, and "1 MAC sevoflurane = 2.0%" is only in
+the chart's caption. Both are Views a learner will be able to close. The laptop
+budget (`PL-84QX`) leaves 25 px of slack, so no new row fits.
+
+**Recommendation: the heading line.** Add both to the line above the seven
+readout cards, which already exists and carries the substance heading, for
+example "Delivered 2.50% (1.25 ×MAC) · 1 MAC sevoflurane = 2.0%". It costs no
+height and leaves the dial and the chart caption as they are. *Alternatives:*
+an eighth "Delivered" card, which narrows every card and may wrap the row to
+two rows (+122 px) on the laptop; or leaving both in closeable Views and
+amending `docs/MODEL.md` to drop them from the tier.
+
+The build goes on with the parts both answers share, and the heading line is
+its own commit so another answer replaces only that commit.
