@@ -52,9 +52,9 @@ from .model import (
     FrontMatterDeclines,
     Item,
     _front_matter_pairs,
-    _split_list,
     is_under,
     parse_front_matter,
+    split_list,
 )
 from .python import (
     UNTOKENIZABLE,
@@ -2554,7 +2554,7 @@ def _recurrences_grew(before: str, after: str) -> bool:
 
     The append `cmd_new` makes, and the only change this exemption admits. Both
     copies are read as `parse_item` reads them - `_front_matter_pairs`, whose
-    fold is the one definition of where a value ends, and `_split_list` - so
+    fold is the one definition of where a value ends, and `split_list` - so
     the value is whole whichever lines carry it (`PL-J503`). Every other field
     and the body have to read the same on both sides, neither copy may hold
     anything the reader declined (`_declines`), and the entries already
@@ -2585,8 +2585,8 @@ def _recurrences_grew(before: str, after: str) -> bool:
     values = [value for key, value in pairs_now if key == "recurrences"]
     if len(recorded) > 1 or len(values) != 1:
         return False
-    entries_was = _split_list(recorded[0]) if recorded else ()
-    entries_now = _split_list(values[0])
+    entries_was = split_list(recorded[0]) if recorded else ()
+    entries_now = split_list(values[0])
     return (
         len(entries_now) > len(entries_was)
         and entries_now[: len(entries_was)] == entries_was
@@ -2715,7 +2715,7 @@ class Commission:
     @property
     def touches(self) -> tuple[str, ...]:
         """The prediction: the paths the base commissioned the work to stay inside."""
-        return _split_list(self.fields.get("touches", ""))
+        return split_list(self.fields.get("touches", ""))
 
 
 def read_commission(root: Path, base: str, items_dir: str, item: Item) -> Commission:

@@ -254,7 +254,18 @@ def find_item(items: list[Item], reference: str) -> Item | None:
     the id is typed by hand into commit subjects and command lines far more
     often than it is copied.
     """
-    wanted = reference.strip().upper()
-    if not wanted.startswith(ID_PREFIX):
-        wanted = ID_PREFIX + wanted
+    wanted = as_identifier(reference)
     return next((item for item in items if item.identifier.upper() == wanted), None)
+
+
+def as_identifier(reference: str) -> str:
+    """A typed reference as the store spells an id: upper case, with its prefix supplied.
+
+    `k7qx`, `pl-k7qx` and `PL-K7QX` are one id. `find_item` resolves an item
+    through this, and `claim`, `yield` and `show` read a typed id through it
+    too, so a reference one of them takes is one the others take (`PL-4DK2`).
+    The result is not checked against the id grammar; a caller that needs an
+    id holds it to `ID_RE`.
+    """
+    wanted = reference.strip().upper()
+    return wanted if wanted.startswith(ID_PREFIX) else ID_PREFIX + wanted
