@@ -215,16 +215,17 @@ def _numstat(rows: Iterable[tuple[int, int, str]], args: list[str]) -> str:
 def _log_names(commits: Iterable[tuple[str, str, Sequence[str]]], args: list[str]) -> str:
     """What `log --format=%x1e%H%x1f%s --name-only` prints for `(hash, subject, paths)`.
 
-    Measured on git 2.43.0, 2026-09-27: each commit's format line, then a blank
-    line and one path per line, and a merge, which names no path, as its format
-    line alone. Not `-z`: `vcs.orphaned` asks this walk without
-    `changed_path_args`, and under `-z` git ends the format line with NUL
-    instead, which this does not model and so refuses.
+    The `-z` form, measured on git 2.43.0, 2026-10-18: each commit's format
+    line ended with NUL, then one `\\n` and each path ended with NUL, and a
+    merge, which names no path, as its format line alone. `vcs.orphaned` asks
+    this walk with `-z` but without `changed_path_args` (`PL-JTCQ`), and a read
+    that stopped would be handed a shape it no longer parses, so the formatter
+    refuses it.
     """
-    assert "-z" not in args, f"a `--name-only` walk with -z, which no fake here models: {args}"
+    assert "-z" in args, f"a `--name-only` walk without -z, which no fake here models: {args}"
     return "".join(
-        f"\x1e{commit}\x1f{subject}\n"
-        + ("\n" + "".join(f"{path}\n" for path in paths) if paths else "")
+        f"\x1e{commit}\x1f{subject}\0"
+        + ("\n" + "".join(f"{path}\0" for path in paths) if paths else "")
         for commit, subject, paths in commits
     )
 

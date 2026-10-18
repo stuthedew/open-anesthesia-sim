@@ -6115,15 +6115,11 @@ def _commits_by_landing(
     # `_landing_split`'s, which holds only the paths a change puts content at,
     # so a rename's deleted side would match neither set and leave the commit
     # unclassified (`PL-KR69`).
-    output = run(["log", "--format=%x1e%H%x1f%s", "--name-only", f"^{base}", ref, "--"], root)
+    output = run(["log", "-z", "--format=%x1e%H%x1f%s", "--name-only", f"^{base}", ref, "--"], root)
     found: list[OrphanedCommit] = []
     took_one_whole = False
-    for record in output.split("\x1e"):
-        if not record.strip():
-            continue
-        header, _, body = record.partition("\n")
+    for header, touched in logged_fields(output):
         commit, _, subject = header.partition("\x1f")
-        touched = tuple(line.strip() for line in split_lines(body) if line.strip())
         if not touched:
             # A merge commit, which lists no paths of its own: it introduces no
             # work to leave behind and proves no merge of this branch either.
