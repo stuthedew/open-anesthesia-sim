@@ -144,7 +144,6 @@ from anesthesia_sim.app.run_series import (
     DrawnWindow,
     RecordedQuantity,
 )
-from anesthesia_sim.app.run_surfaces import LiveCopies
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
@@ -390,7 +389,11 @@ def _set_fresh_gas_flow(run: RunView, flow_l_min: float) -> None:
 
 
 def _set_delivered_percent(run: RunView, percent: float) -> None:
-    _drag(run._setting_controls[0]._delivered_concentration_slider, percent, CONCENTRATION_DISPLAY_DECIMALS)
+    _drag(
+        run._setting_controls[0]._delivered_concentration_slider,
+        percent,
+        CONCENTRATION_DISPLAY_DECIMALS,
+    )
 
 
 def _select_playback_rate(run: RunView, multiplier: int) -> None:
@@ -919,13 +922,21 @@ def test_the_integer_sliders_span_the_supported_input_ranges(application: QAppli
     run = _shown_view(application, SimulationController()).runs[0]
 
     for control, minimum, maximum in (
-        (run._setting_controls[0]._fresh_gas_flow_slider, MINIMUM_FRESH_GAS_FLOW_L_MIN, MAXIMUM_FRESH_GAS_FLOW_L_MIN),
+        (
+            run._setting_controls[0]._fresh_gas_flow_slider,
+            MINIMUM_FRESH_GAS_FLOW_L_MIN,
+            MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+        ),
         (
             run._setting_controls[0]._alveolar_ventilation_slider,
             MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
             MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
         ),
-        (run._setting_controls[0]._cardiac_output_slider, MINIMUM_CARDIAC_OUTPUT_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN),
+        (
+            run._setting_controls[0]._cardiac_output_slider,
+            MINIMUM_CARDIAC_OUTPUT_L_MIN,
+            MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+        ),
     ):
         assert control.slider.minimum() == slider_position(minimum, FLOW_DISPLAY_DECIMALS)
         assert control.slider.maximum() == slider_position(maximum, FLOW_DISPLAY_DECIMALS)
@@ -1115,7 +1126,9 @@ def test_a_refused_setting_is_reported_without_stopping_the_run(
     # The control must not keep showing a dial position the simulation is
     # not running at: that is the correct number under the wrong label.
     assert controller.snapshot().delivered_concentration_percent == delivered_before
-    assert run._setting_controls[0]._delivered_concentration_slider.value() == pytest.approx(delivered_before)
+    assert run._setting_controls[0]._delivered_concentration_slider.value() == pytest.approx(
+        delivered_before
+    )
 
 
 def test_a_refusal_notice_clears_once_a_setting_is_accepted(application: QApplication) -> None:
@@ -2109,7 +2122,10 @@ def test_a_halt_after_an_agent_change_names_one_agent(
     assert controller.agent_id == "desflurane"
     assert controller.has_failed is True
     assert run._status_text.text() == STATUS_FAILED_TEXT
-    assert run._setting_controls[0]._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
+    assert (
+        run._setting_controls[0]._delivered_concentration_slider.name_label.text()
+        == "Delivered desflurane"
+    )
     assert run._subtitle_text.text() == format_subtitle("Desflurane")
     assert run._running_agent_text.text() == "Desflurane"
     assert run._compartment_substance_text.text() == "Modelled concentrations: Desflurane"
@@ -2202,7 +2218,7 @@ def _widget_attributes(run: RunView) -> dict[str, QWidget]:
             widgets[name] = value
         elif isinstance(value, tuple) and value and all(isinstance(v, QWidget) for v in value):
             widgets.update({f"{name}[{index}]": item for index, item in enumerate(value)})
-        elif isinstance(value, LiveCopies):
+        elif isinstance(value, list) and all(isinstance(v, QWidget) for v in value):
             for index, copy in enumerate(value):
                 widgets[f"{name}[{index}]"] = copy
                 widgets.update(
@@ -3183,7 +3199,10 @@ def test_the_delivered_label_on_screen_names_the_current_agent(application: QApp
 
     run = _shown_view(application, SimulationController(agent_id="desflurane")).runs[0]
 
-    assert run._setting_controls[0]._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
+    assert (
+        run._setting_controls[0]._delivered_concentration_slider.name_label.text()
+        == "Delivered desflurane"
+    )
 
 
 def test_a_built_in_agent_without_an_identification_colour_fails_at_import() -> None:
@@ -3292,7 +3311,10 @@ def test_a_confirmed_agent_change_starts_the_new_case(application: QApplication)
     assert after.elapsed_s == 0.0
     assert after.control_timeline == ()
     assert run._agent_dropdown.currentData() == "desflurane"
-    assert run._setting_controls[0]._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
+    assert (
+        run._setting_controls[0]._delivered_concentration_slider.name_label.text()
+        == "Delivered desflurane"
+    )
     assert dialog.isVisible() is False
     assert run._new_case_dialog is None
 
@@ -4878,8 +4900,10 @@ def test_two_run_views_drive_two_controllers(application: QApplication) -> None:
     assert lean.snapshot().fresh_gas_flow_l_min == pytest.approx(1.0)
     assert generous.snapshot().fresh_gas_flow_l_min == pytest.approx(6.0)
 
-    assert lean_run._setting_controls[0]._fresh_gas_flow_slider.value_label.text() == format_flow(1.0)
-    assert generous_run._setting_controls[0]._fresh_gas_flow_slider.value_label.text() == format_flow(6.0)
+    lean_flow = lean_run._setting_controls[0]._fresh_gas_flow_slider
+    generous_flow = generous_run._setting_controls[0]._fresh_gas_flow_slider
+    assert lean_flow.value_label.text() == format_flow(1.0)
+    assert generous_flow.value_label.text() == format_flow(6.0)
     assert lean_run._elapsed_time_text.text() == format_elapsed(120.0)
     assert generous_run._elapsed_time_text.text() == format_elapsed(60.0)
 
@@ -6063,7 +6087,10 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
 
     for index, run in enumerate(view.runs):
         name = run_label(index)
-        headings = (run._accounting_panels[0]._accounting_heading_text, run._control_timeline_heading_text)
+        headings = (
+            run._accounting_panels[0]._accounting_heading_text,
+            run._control_timeline_heading_text,
+        )
 
         assert headings[0].text() == f"{ACCOUNTING_HEADING} — {name}"
         assert headings[1].text() == f"{CONTROL_TIMELINE_HEADING} — {name}"

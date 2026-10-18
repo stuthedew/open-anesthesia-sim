@@ -143,11 +143,11 @@ from anesthesia_sim.app.playback import (
 from anesthesia_sim.app.qt_widgets import NewCaseDialog, NoticeLabel, ReadoutRow, styled_label
 from anesthesia_sim.app.run_surfaces import (
     AccountingPanel,
-    LiveCopies,
     OffScaleLine,
     ParameterControls,
     WashInStateLine,
     emphasised,
+    keep_until_destroyed,
     panel_frame,
 )
 from anesthesia_sim.app.stylesheets import (
@@ -462,15 +462,15 @@ class RunView(QWidget):
         # later is drawn from these, so it shows what the copies already on
         # screen show, and every writer writes every copy (`PL-9LNF`).
         self._settings_shown = setting_readouts(snapshot)
-        self._setting_controls: LiveCopies[ParameterControls] = LiveCopies()
+        self._setting_controls: list[ParameterControls] = []
         self._accounting_shown = replace(
             accounting(snapshot), detail=ACCOUNTING_INITIAL_DETAIL_TEXT
         )
-        self._accounting_panels: LiveCopies[AccountingPanel] = LiveCopies()
+        self._accounting_panels: list[AccountingPanel] = []
         self._off_scale_shown: str | None = None
-        self._off_scale_lines: LiveCopies[OffScaleLine] = LiveCopies()
+        self._off_scale_lines: list[OffScaleLine] = []
         self._wash_in_state_shown = ""
-        self._wash_in_state_lines: LiveCopies[WashInStateLine] = LiveCopies()
+        self._wash_in_state_lines: list[WashInStateLine] = []
 
         # The control-change panel's heading. An instance label rather than a
         # widget built inside `_lay_out_control_record`, because it has to
@@ -1582,7 +1582,7 @@ class RunView(QWidget):
         controls.adjustment_started.connect(self._handle_adjustment_start)
         controls.setting_requested.connect(self._handle_setting_request)
 
-        return self._setting_controls.add(controls)
+        return keep_until_destroyed(self._setting_controls, controls)
 
     def build_accounting_panel(self) -> AccountingPanel:
         """A new copy of this run's mass-balance panel, for the sidebar beside the charts.
@@ -1593,12 +1593,13 @@ class RunView(QWidget):
         what the copies already built show (`PL-9LNF`).
         """
 
-        return self._accounting_panels.add(
+        return keep_until_destroyed(
+            self._accounting_panels,
             AccountingPanel(
                 self._accounting_shown,
                 compared_panel_heading(ACCOUNTING_HEADING, self._run_name),
                 parent=self,
-            )
+            ),
         )
 
     def build_control_record(self) -> QWidget:
@@ -1674,13 +1675,15 @@ class RunView(QWidget):
     def build_off_scale_notice(self) -> OffScaleLine:
         """A new copy of the line naming this run's traces that are above the plot."""
 
-        return self._off_scale_lines.add(OffScaleLine(self._off_scale_shown, parent=self))
+        return keep_until_destroyed(
+            self._off_scale_lines, OffScaleLine(self._off_scale_shown, parent=self)
+        )
 
     def build_wash_in_state(self) -> WashInStateLine:
         """A new copy of the line stating what this run's F_A/F_I plot is showing."""
 
-        return self._wash_in_state_lines.add(
-            WashInStateLine(self._wash_in_state_shown, parent=self)
+        return keep_until_destroyed(
+            self._wash_in_state_lines, WashInStateLine(self._wash_in_state_shown, parent=self)
         )
 
 

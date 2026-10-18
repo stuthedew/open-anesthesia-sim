@@ -100,7 +100,7 @@ src/anesthesia_sim/
 │   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6); an Area whose View kind is not registered shows an AreaNotice instead (PL-R1WQ)
 │   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry, and RETIRED_TAGS for a tag renamed or removed; the text of the notice an unregistered kind shows; toolkit-independent (PL-R1WQ)
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
-│   ├── run_surfaces.py             # the four parts of a run that may sit in an Area, each built any number of times from the values it draws: ParameterControls, AccountingPanel, OffScaleLine, WashInStateLine, and LiveCopies, the list RunView writes every copy through (PL-9LNF)
+│   ├── run_surfaces.py             # the four parts of a run that may sit in an Area, each built any number of times from the values it draws: ParameterControls, AccountingPanel, OffScaleLine, WashInStateLine, and keep_until_destroyed, which keeps the list of live copies RunView writes (PL-9LNF)
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; toolkit-independent

@@ -3,11 +3,13 @@ id: PL-9LNF
 title: Three app/ surfaces own state a layout could duplicate or relocate beside PL-VN6M's TraceLegend: RunView's build_ accessors hand out the same widget object on every call, the chart time base is owned by a dropdown inside one plot's panel, and the chart's column budget is read from sibling plots
 priority: P1
 effort: L
-status: ready
+status: done
 classes: safety, anticipated, refactor
 feature: interface-areas
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/run_surfaces.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/main.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py, tests/integration/test_run_surfaces.py, tests/integration/test_qt_rendering.py, tests/unit/test_chart_frame.py, tests/unit/test_stylesheets.py, tools/contrast_check.py, tools/literal_home_check.py
 added: 2026-09-16
+closed: 2026-10-18
+pr: 1606
 payoff: a chart redraws when its own Area widens, so no drawn chord is wider than a pixel after a border drag, and a run's accounting panel or setting controls placed in a second Area draw a second copy instead of emptying the first
 verify: grep -q 'def test_two_accounting_panels_of_one_run_both_draw' tests/integration/test_run_surfaces.py
 ---
@@ -171,9 +173,14 @@ All three parts landed as designed, in the three commits the design names.
 
 - `RunView` keeps what each of the four surfaces last showed
   (`_settings_shown`, `_accounting_shown`, `_off_scale_shown`,
-  `_wash_in_state_shown`) beside a `LiveCopies` list of each kind. A copy is
+  `_wash_in_state_shown`) beside a list of the live copies of each kind, which
+  `run_surfaces.keep_until_destroyed` keeps. A copy is
   built with the `RunView` as its Qt parent until a layout takes it, because
   a parentless widget that is shown becomes a window of its own.
+- `keep_until_destroyed` is a generic function rather than a generic class.
+  `typing.get_type_hints` cannot resolve a class type parameter in a method's
+  annotations, so `tests/unit/test_supported_range_edges.py`, which reads the
+  hints of every method under `anesthesia_sim`, failed on one.
 - `OffScaleLine` and `WashInStateLine` are labels themselves, so
   `qt_widgets.style_label` was split out of `styled_label` to style a label
   that a class already is. No colour or size changed.

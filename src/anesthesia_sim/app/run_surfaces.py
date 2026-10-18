@@ -9,10 +9,11 @@ the values it draws. It holds no controller and no run state, and a second
 instance of it draws the same values as the first
 (`.claude/rules/ui-areas.md`, rules 1 to 3; `PL-TH35` Q8).
 
-`RunView` keeps the run's state and a `LiveCopies` list of each kind. Its
-`build_*` methods return a new instance each time, and its writers write
-every live instance on the list. A control moved in one copy forwards its
-value to the run, and the next write shows the value in force on every copy.
+`RunView` keeps the run's state and a list of the live copies of each kind,
+which `keep_until_destroyed` keeps. Its `build_*` methods return a new
+instance each time, and its writers write every live instance on the list.
+A control moved in one copy forwards its value to the run, and the next
+write shows the value in force on every copy.
 
 These classes decide nothing and format nothing: each value they are given
 is already text, from `app/dashboard_frame.py`.
@@ -20,7 +21,7 @@ is already text, from `app/dashboard_frame.py`.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import Final
 
 from PySide6.QtCore import Signal
@@ -28,6 +29,7 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_UNIT_CAPTION,
+    PARAMETER_CONTROLS,
     Accounting,
     Emphasis,
     SettingReadout,
@@ -47,11 +49,11 @@ from anesthesia_sim.app.theme import (
 
 __all__ = [
     "AccountingPanel",
-    "LiveCopies",
     "OffScaleLine",
     "ParameterControls",
     "WashInStateLine",
     "emphasised",
+    "keep_until_destroyed",
     "panel_frame",
 ]
 
@@ -82,43 +84,30 @@ def emphasised(label: QLabel, word: StatusWord) -> None:
     label.setStyleSheet(foreground_stylesheet(_EMPHASIS_COLOR[word.emphasis]))
 
 
-class LiveCopies[W: QWidget]:
-    """The copies of one kind of surface that Qt has not yet destroyed, oldest first.
+def keep_until_destroyed[W: QWidget](copies: list[W], copy: W) -> W:
+    """Add a copy that was just built to its list, and drop it when Qt destroys it.
 
-    A copy is added when it is built and dropped when Qt destroys it, so a
-    writer that loops over this list never writes a deleted widget. A copy
-    that nobody places stays on the list until it is destroyed.
+    A writer that loops over `copies` therefore never writes a deleted
+    widget. A copy that nobody places stays on the list until it is
+    destroyed.
+
+    Args:
+        copies: The copies of one kind of surface that Qt has not destroyed,
+            oldest first.
+        copy: The new copy.
+
+    Returns:
+        The same copy, so a builder can return the call.
     """
 
-    def __init__(self) -> None:
-        self._copies: list[W] = []
+    copies.append(copy)
+    copy.destroyed.connect(lambda: _drop(copies, copy))
 
-    def add(self, copy: W) -> W:
-        """Add a copy that was just built, and return it.
+    return copy
 
-        Args:
-            copy: The new copy.
 
-        Returns:
-            The same copy, so a builder can return the call.
-        """
-
-        self._copies.append(copy)
-        copy.destroyed.connect(lambda: self._drop(copy))
-
-        return copy
-
-    def _drop(self, copy: W) -> None:
-        self._copies = [kept for kept in self._copies if kept is not copy]
-
-    def __iter__(self) -> Iterator[W]:
-        return iter(tuple(self._copies))
-
-    def __len__(self) -> int:
-        return len(self._copies)
-
-    def __getitem__(self, index: int) -> W:
-        return self._copies[index]
+def _drop[W: QWidget](copies: list[W], copy: W) -> None:
+    copies[:] = [kept for kept in copies if kept is not copy]
 
 
 class ParameterControls(QWidget):
@@ -147,13 +136,17 @@ class ParameterControls(QWidget):
             parent: The Qt parent.
 
         Raises:
-            ValueError: If `settings` does not hold exactly four readouts.
+            ValueError: If `settings` does not hold one readout per control in
+                `PARAMETER_CONTROLS`.
         """
 
         super().__init__(parent)
 
-        if len(settings) != 4:
-            raise ValueError(f"ParameterControls needs four setting readouts, got {len(settings)}")
+        if len(settings) != len(PARAMETER_CONTROLS):
+            raise ValueError(
+                f"ParameterControls needs {len(PARAMETER_CONTROLS)} setting readouts, "
+                f"one per control in PARAMETER_CONTROLS, got {len(settings)}"
+            )
 
         (
             self._fresh_gas_flow_slider,
