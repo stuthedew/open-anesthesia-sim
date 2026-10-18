@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety
 feature: interface-areas
+milestone: v0.5.30
 touches: src/anesthesia_sim/app/, tests/integration, docs/MODEL.md
 added: 2026-10-18
 closed: 2026-10-18
