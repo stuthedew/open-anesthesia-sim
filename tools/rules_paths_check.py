@@ -85,6 +85,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.frontmatter import (  # noqa: E402
+    Misindented,
     Unread,
     closing,
     closing_quote,
@@ -168,6 +169,13 @@ class Unreadable(Exception):
     """A `paths:` value continued in a form `entries` does not read, named in the message."""
 
 
+#: Why a `- ` line under `paths:` at another indentation than the list's is no glob.
+_OFF_THE_LIST = (
+    "`{}` under `paths:` is not at the list's indentation, or a tab indents it, which YAML "
+    "refuses; write each glob as a `- ` item at the list's indentation"
+)
+
+
 def entries(block: list[str]) -> list[str]:
     """Every `paths:` glob in one frontmatter block, in source order.
 
@@ -196,6 +204,11 @@ def entries(block: list[str]) -> list[str]:
     """
     try:
         declared = [key for key in keys(block) if key.name == "paths"]
+    except Misindented as misplaced:
+        stripped = block[misplaced.line].strip()
+        if misplaced.key == "paths" and is_item(stripped):
+            raise Unreadable(_OFF_THE_LIST.format(stripped)) from None
+        raise Unreadable(str(misplaced)) from None
     except Unread as unread:
         raise Unreadable(str(unread)) from None
     if not declared:
@@ -229,11 +242,7 @@ def entries(block: list[str]) -> list[str]:
         indent = len(line) - len(line.lstrip(" "))
         column = indent if column is None else column
         if line[indent] != "-" or indent < column:
-            raise Unreadable(
-                f"`{stripped}` under `paths:` is not at the list's indentation, or a tab "
-                "indents it, which YAML refuses; write each glob as a `- ` item at the "
-                "list's indentation"
-            )
+            raise Unreadable(_OFF_THE_LIST.format(stripped))
         if indent > column:
             raise Unreadable(
                 f"`{stripped}` under `paths:` is indented past the list's first `- `, so "
