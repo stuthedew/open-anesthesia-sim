@@ -7602,9 +7602,6 @@ def test_two_runs_share_one_readout_block_whose_values_name_their_runs(
 
     assert branch._readout_row.isHidden()
     assert row.columns() == len(READOUT_PANELS)
-    assert trunk._heading_run_name_text.text() == "Run 1"
-    assert branch._heading_run_name_text.text() == "Run 2"
-    assert view.unconditional_region.isAncestorOf(branch._heading_run_name_text)
 
     for panel, compared in zip(row.panels, branch._readout_row.panels, strict=True):
         assert panel.isAncestorOf(compared.value_label), panel.name_label.text()
@@ -7632,4 +7629,52 @@ def test_dropping_a_branch_takes_its_values_out_of_the_shared_block(
 
     assert [len(panel.findChildren(QLabel)) for panel in trunk._readout_row.panels] == labels_alone
     assert all(panel.run_name_label.isHidden() for panel in trunk._readout_row.panels)
-    assert trunk._heading_run_name_text.isHidden()
+    assert trunk.build_readout_section().isAncestorOf(trunk._delivered_text)
+    assert trunk.build_transport_row().isAncestorOf(trunk._agent_header_badge)
+    assert trunk._running_agent_display.maximumWidth() == AGENT_SELECTOR_WIDTH
+    assert trunk._delivered_text.isVisible()
+    assert trunk._agent_header_badge.isVisible()
+
+
+def test_two_compared_runs_take_one_line_each_above_one_shared_heading(
+    application: QApplication,
+) -> None:
+    """Each compared run's controls and delivered concentration share one line, one control high.
+
+    With two runs, each run's transport row and readout heading stood one
+    above the other, and the four lines left the chart about 200 px on the
+    1366 by 700 laptop reference (`PL-JG82`). Folded, a run's line carries
+    its own delivered concentration, the agent chip lays its caption on the
+    same line as the agent's name, and the values both runs share - the
+    substance, the agent's 1 MAC and the version-and-model badge - are
+    stated once, on the heading line above the paired readouts (`PL-QLZ5`).
+    The playback-rate selector is the tallest control on a run's line, so it
+    is the height one line is held to.
+    """
+
+    view = _case_view(application, _branched_case(), width_px=_LAPTOP_WIDTH_PX)
+    _take_fork(view, 60.0)
+    _settle(application)
+    trunk, branch = view.runs
+    heading = trunk.build_readout_section()
+
+    for run in view.runs:
+        line = run.build_transport_row()
+
+        assert line.isAncestorOf(run._delivered_text)
+        assert run._delivered_text.isVisible()
+        assert run._delivered_text.text() == "Delivered 2.00% (1.00 ×MAC)"
+        assert run._running_agent_display.isVisible()
+        assert line.height() <= run._playback_rate_dropdown.height(), "the line is two high"
+
+    assert trunk._running_agent_display.width() == branch._running_agent_display.width()
+    assert not branch.build_readout_section().isVisible()
+    assert heading.isAncestorOf(trunk._agent_header_badge)
+    assert trunk._agent_header_badge.isVisible()
+    assert not branch._agent_header_badge.isVisible()
+    assert trunk._compartment_substance_text.isVisible()
+    assert trunk._one_mac_text.text() == "1 MAC sevoflurane = 2.0%"
+    assert trunk._one_mac_text.isVisible()
+
+    for value in (UnconditionalValue.ADMINISTERED_SUBSTANCE, UnconditionalValue.ONE_MAC):
+        assert branch.unconditional_widgets()[value] is trunk.unconditional_widgets()[value]

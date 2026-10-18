@@ -7322,10 +7322,13 @@ reading this document requires the resolution to be uniform for — a reader
 seeing the circuit lead the alveoli lead the tissues. The two values are
 stacked rather than placed side by side because stacking keeps each panel at
 its one-run width, which keeps the row seven across at 1366 px; side by side
-would roughly double each panel's width. Each run's heading line, with its
-substance, delivered concentration and 1 MAC, also carries the run's name,
-because the paired block sits under the first run's heading and not beside
-the second's. `PL-3355` still applies: a readout panel reserves the width of
+would roughly double each panel's width. Each run's delivered concentration
+sits on that run's own line, beside its name and its transport controls. The
+values the two runs share are stated once, on the heading line above the
+paired block: the substance, the agent's 1 MAC and the version and model. They
+are the same for both runs because a second run must be on the first run's
+agent, and a branch's MAC is checked against its trunk's when it is opened
+(`PL-QLZ5`). `PL-3355` still applies: a readout panel reserves the width of
 the widest value it can show, so a value is never wrapped away from its unit
 at any width the row is laid out at.
 
