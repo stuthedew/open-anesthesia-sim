@@ -50,7 +50,6 @@ from dataclasses import dataclass
 from typing import Final
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QResizeEvent
 from PySide6.QtWidgets import (
     QAbstractButton,
     QBoxLayout,
@@ -385,6 +384,15 @@ class SimulationView(QWidget):
 
         self._concentration_chart = ConcentrationChart()
         self._wash_in_chart = WashInChart()
+        # Every chart one frame is drawn on. The frame's width and the render
+        # tick's question of whether a chart has outgrown it are read over
+        # these rather than over two charts named in place, because once each
+        # chart is a View in its own Area either may be absent and a second
+        # of one kind may be open at another width (`PL-9LNF`).
+        self._charts: tuple[ConcentrationChart | WashInChart, ...] = (
+            self._concentration_chart,
+            self._wash_in_chart,
+        )
         self._legend = TraceLegend()
         self.compartment_selection_changed.connect(self._legend.show_selection)
         self._wash_in_legend = WashInLegend()
@@ -1256,8 +1264,7 @@ class SimulationView(QWidget):
         behind a display that had stopped.
 
         A frame drawn now discharges one owed, so drawing at once clears the
-        pending flag first: the resize `show()` delivers owes a frame, and
-        the first presentation that follows it is that frame.
+        pending flag first.
 
         Args:
             coalesce: True to mark a frame owed and let the render tick draw
@@ -1280,13 +1287,16 @@ class SimulationView(QWidget):
         """Draw a frame if a run is running or one is owed; halt every run if drawing fails.
 
         A frame is owed when a change asked for one (`present(True)`), when
-        the run set differs from the one the last frame was drawn over, and
-        when a run's record differs from the one its view last wrote
-        (`RunView.owes_a_frame`). The last two are read from the runs rather
-        than asked for by whatever changed them, so a run that stops itself
-        inside its own step tick is redrawn within one tick (`PL-T995`), a
-        run added without a frame is drawn on the next (`PL-0LG6`), and a
-        path added later is covered without being named (`PL-X7D5`).
+        the run set differs from the one the last frame was drawn over, when
+        a run's record differs from the one its view last wrote
+        (`RunView.owes_a_frame`), and when a chart is wider than the frame it
+        drew was sampled for (`ConcentrationChart.owes_a_frame`). The last
+        three are read from the runs and the charts rather than asked for by
+        whatever changed them, so a run that stops itself inside its own step
+        tick is redrawn within one tick (`PL-T995`), a run added without a
+        frame is drawn on the next (`PL-0LG6`), a chart whose Area a reader
+        widens is redrawn although the window kept its size (`PL-9LNF`), and
+        a path added later is covered without being named (`PL-X7D5`).
 
         The pending flag is cleared before the frame is drawn, so a frame
         that raises cannot leave the change that asked for it owed forever;
@@ -1299,6 +1309,7 @@ class SimulationView(QWidget):
             and not self._render_pending
             and len(self._runs) == self._drawn_run_count
             and not any(run.owes_a_frame for run in self._runs)
+            and not any(chart.owes_a_frame for chart in self._charts)
         ):
             return
 
@@ -1312,8 +1323,11 @@ class SimulationView(QWidget):
     def _refresh_view(self) -> None:
         """Read every run once, assemble one frame, draw both plots, then refresh every run.
 
-        The frame is assembled for the wider of the two plots, so neither
-        draws a chord wider than a pixel (`PL-GS3R`). The MAC-awake line is
+        The frame is assembled for the widest of the charts, so none draws
+        a chord wider than a pixel (`PL-GS3R`). One frame rather than one per
+        chart at its own width: the two plots differ by about 53 px at every
+        window width measured, so a frame each would assemble twice on every
+        tick (`PL-9LNF`). The MAC-awake line is
         the reference run's, because the frame carries the band's edges and
         not the published fraction it was drawn from. Both legends are told
         what the frame drew once both plots have drawn it, and not before,
@@ -1338,12 +1352,12 @@ class SimulationView(QWidget):
             inputs,
             self._time_base,
             selection.shown,
-            plot_width_px=max(
-                self._concentration_chart.plot_width_px(), self._wash_in_chart.plot_width_px()
-            ),
+            plot_width_px=max(chart.plot_width_px() for chart in self._charts),
         )
-        self._concentration_chart.draw(frame)
-        self._wash_in_chart.draw(frame)
+
+        for chart in self._charts:
+            chart.draw(frame)
+
         self.compartment_selection_changed.emit(selection)
         self._wash_in_legend.set_run_count(len(frame.runs))
         self._time_axis_caption.setText(time_axis_caption(frame))
@@ -1599,19 +1613,6 @@ class SimulationView(QWidget):
 
         self._compartment_selection = self._compartment_selection.with_compartment(quantity, shown)
         self.present(False)
-
-    def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.
-        """Owe the render tick one frame from the new width.
-
-        A frame is assembled for the plot width it is drawn on, one column
-        per pixel, so the frame on screen is only right for the width it
-        was drawn at: after a resize while paused, with nothing running and
-        nothing owed, the columns drawn for the old width would stand on
-        the new one at a chord wider than a pixel (`PL-GS3R`, `PL-25KS`).
-        """
-
-        super().resizeEvent(event)
-        self._render_pending = True
 
     def _halt_every_run(self, error: BaseException) -> None:
         """Stop every run for a raise out of the shared render path, say so, then try to draw.

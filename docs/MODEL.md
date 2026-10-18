@@ -6674,8 +6674,11 @@ than optimisations:
 
 - **The columns sit on a grid anchored to the case's zero**, at absolute
   multiples of the spacing the selected time base and the width of the plot
-  imply: one column per pixel boundary of the plot the frame is drawn on, and
-  never fewer than 150 (`chart_columns` in `app/chart_frame.py`, `PL-GS3R`).
+  imply: one column per pixel boundary of the widest plot the frame is drawn
+  on, and never fewer than 150 (`chart_columns` in `app/chart_frame.py`,
+  `PL-GS3R`). A plot that becomes wider than its frame was sampled for, by a
+  window resize or by a reader dragging an Area border, is redrawn on the next
+  render tick, running or paused (`resample_owed`, `PL-9LNF`).
   A window following the run therefore keeps every column it had
   and gains at most one, so a steady trace is not redrawn on every frame. A
   grid anchored to the viewport instead would move on every scroll and resize,

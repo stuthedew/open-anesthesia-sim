@@ -77,6 +77,7 @@ from anesthesia_sim.app.chart_frame import (
     TraceStyle,
     nearest_trace_point,
     nearest_wash_in_point,
+    resample_owed,
     run_trace_style,
     trace_style,
     wash_in_axis_ticks,
@@ -828,11 +829,22 @@ class ConcentrationChart(QWidget):
     def plot_width_px(self) -> float:
         """The width of the plot area in logical pixels, for `assemble_chart_frame`.
 
-        Hand `chart_frame` the wider of this and the other plot's, so that
-        neither draws a chord wider than a pixel (`PL-GS3R`).
+        The dashboard samples one frame at the widest of its charts' widths,
+        so that none draws a chord wider than a pixel (`PL-GS3R`).
         """
 
         return _plot_width_px(self._plot)
+
+    @property
+    def owes_a_frame(self) -> bool:
+        """Whether this plot is now wider than the frame it drew was sampled for.
+
+        The dashboard's render tick reads it from every chart, so a chart
+        whose Area a reader widens is redrawn on the next tick even when the
+        window kept its size (`resample_owed`, `PL-9LNF`).
+        """
+
+        return resample_owed(self._frame, self.plot_width_px())
 
     def drawn_points(
         self, run: int, quantity: RecordedQuantity
@@ -1144,11 +1156,22 @@ class WashInChart(QWidget):
     def plot_width_px(self) -> float:
         """The width of the plot area in logical pixels, for `assemble_chart_frame`.
 
-        Hand `chart_frame` the wider of this and the other plot's, so that
-        neither draws a chord wider than a pixel (`PL-GS3R`).
+        The dashboard samples one frame at the widest of its charts' widths,
+        so that none draws a chord wider than a pixel (`PL-GS3R`).
         """
 
         return _plot_width_px(self._plot)
+
+    @property
+    def owes_a_frame(self) -> bool:
+        """Whether this plot is now wider than the frame it drew was sampled for.
+
+        The dashboard's render tick reads it from every chart, so a chart
+        whose Area a reader widens is redrawn on the next tick even when the
+        window kept its size (`resample_owed`, `PL-9LNF`).
+        """
+
+        return resample_owed(self._frame, self.plot_width_px())
 
     def drawn_stretches(self, run: int) -> tuple[tuple[tuple[float, float], ...], ...]:
         """Each shown stretch of one run, as its drawn (time, ratio) points."""

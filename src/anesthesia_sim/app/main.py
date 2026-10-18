@@ -13,9 +13,9 @@ does not reach it. It is also the reference's own default window state
 (`docs/interface-provenance.md` § "Adopted"). The first frame is drawn after
 the window is shown, because a frame is assembled from the plot's laid-out
 width, and the timers start after that so the first thing a reader sees is
-a drawn, paused run; the platform applies the maximized size afterwards, and
-`SimulationView.resizeEvent` then owes the render tick a frame at the new
-width.
+a drawn, paused run; the platform applies the maximized size afterwards, and each chart
+then owes the render tick a frame at its new width
+(`ConcentrationChart.owes_a_frame`).
 
 **What is opened is a case, not a run** (`PL-VKJW`). `BranchedCase` is what
 makes two runs on one axis one patient under two managements rather than two

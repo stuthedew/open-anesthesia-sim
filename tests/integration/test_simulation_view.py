@@ -6153,6 +6153,77 @@ def test_dragging_the_border_beside_the_sidebar_changes_the_layout_model(
     assert splitter.widget(0) is view._chart_column
 
 
+def _drag_area_border(application: QApplication, view: SimulationView, by_px: int) -> None:
+    """Drag the border between the chart panel and the sidebar by `by_px`, as a mouse does."""
+
+    splitter = view.layout_container.findChild(QSplitter)
+    assert splitter is not None, "the dashboard's Areas are not in a splitter"
+    handle = splitter.handle(1)
+    start = handle.rect().center()
+    end = QPoint(start.x() + by_px, start.y())
+
+    QTest.mousePress(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start)
+    QTest.mouseMove(handle, end)
+    QTest.mouseRelease(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, end)
+    application.processEvents()
+
+
+def test_resizing_one_chart_redraws_it_at_its_own_width(application: QApplication) -> None:
+    """`PL-9LNF`: widening a chart's Area while paused redraws it, though the window kept its size.
+
+    The frame on screen is sampled for the width it was drawn at (`PL-GS3R`).
+    A drag of the Area border changes the chart's width and not the
+    dashboard's, so a guard on the dashboard's own resize never fired: on
+    `main` at `512fdaed` the tick after the drag drew nothing and the widened
+    plot kept 2 px chords. Thirty minutes of history, so the frame has more
+    instants than the narrowed plot has pixels and the chord is set by the
+    columns rather than by the run.
+    """
+
+    controller = _paused_run_with_history(1800.0)
+    view = _shown_view(application, controller)
+    window_px = view.width()
+    _drag_area_border(application, view, -400)
+    view.present(False)
+    narrowed_px = view._concentration_chart.plot_width_px()
+    presented = view.presented_frames
+
+    _drag_area_border(application, view, 400)
+
+    assert view.width() == window_px, "the drag resized the dashboard, not only the Area"
+    assert view._concentration_chart.plot_width_px() > narrowed_px + 300
+    assert _widest_chord_px(view) > 1, "the drag did not widen the plot under the old frame"
+
+    view.render_tick()
+
+    assert view.presented_frames == presented + 1
+    assert _widest_chord_px(view) <= 1
+
+    view.render_tick()
+
+    assert view.presented_frames == presented + 1, "the tick kept drawing with nothing owed"
+
+
+def test_narrowing_a_chart_owes_no_frame(application: QApplication) -> None:
+    """A plot narrower than its frame's width draws chords closer than a pixel, and needs nothing.
+
+    So only a widening is owed a frame (`resample_owed`); a tick after a
+    narrowing drag draws nothing while paused, and no drawn chord is wider
+    than a pixel.
+    """
+
+    controller = _paused_run_with_history(1800.0)
+    view = _shown_view(application, controller)
+    view.render_tick()
+    presented = view.presented_frames
+
+    _drag_area_border(application, view, -400)
+    view.render_tick()
+
+    assert view.presented_frames == presented
+    assert _widest_chord_px(view) <= 1
+
+
 def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplication) -> None:
     """The display is capped at two and there is no run selector, so the way out is Reset.
 
