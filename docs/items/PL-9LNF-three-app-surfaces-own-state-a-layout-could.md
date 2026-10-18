@@ -9,7 +9,7 @@ feature: interface-areas
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/run_surfaces.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/main.py, docs/MODEL.md, tests/integration/test_simulation_view.py, tests/integration/test_run_surfaces.py, tests/unit/test_chart_frame.py
 added: 2026-09-16
 payoff: a chart redraws when its own Area widens, so no drawn chord is wider than a pixel after a border drag, and a run's accounting panel or setting controls placed in a second Area draw a second copy instead of emptying the first
-verify: grep -q 'def test_resizing_one_chart_redraws_it_at_its_own_width' tests/integration/test_simulation_view.py
+verify: grep -q 'def test_two_accounting_panels_of_one_run_both_draw' tests/integration/test_run_surfaces.py
 ---
 
 **Problem.** Three app/ surfaces own state a layout could duplicate or relocate beside PL-VN6M's TraceLegend: RunView's build_ accessors hand out the same widget object on every call, the chart time base is owned by a dropdown inside one plot's panel, and the chart's column budget is read from sibling plots
