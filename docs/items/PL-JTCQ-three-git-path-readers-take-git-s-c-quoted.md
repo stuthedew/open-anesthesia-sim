@@ -10,6 +10,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-06
 payoff: orphaned and the resident-size baseline read a non-ASCII path as the path it is, so a commit adding one is not lost from stranded and a rule file is not dropped from the measurement
 verify: grep -q 'def test_a_non_ascii_path_is_read_as_git_wrote_it' subprojects/docket/tests/test_vcs.py && grep -q 'def test_the_resident_baseline_reads_a_non_ascii_rule_file' tests/unit/test_doc_check.py
+falsifies: assert "-z" not in args
 ---
 
 **Problem.** Three git path readers take git's C-quoted spelling of an unusual path for the path - vcs._commits_by_landing reads log --name-only and doc_check._baseline reads ls-tree, both without -z, and doc_check._deleted_paths unsets quotePath but not -z - so orphaned misses a commit that only adds a non-ASCII file, and the resident-size baseline drops a non-ASCII rule file; latent
@@ -54,6 +55,13 @@ Latent until a tracked path holds a byte git quotes.
 **Done when.** The three readers ask git for `-z` output and split at NUL, as
 `listed_paths` does, pinned by a test with a non-ASCII path for each of the
 first two.
+
+**One assertion declared falsified, 2026-10-18.** `falsifies:` names the
+guard in `subprojects/docket/tests/test_vcs.py`'s `_log_names`, which refuses
+a `--name-only` walk sent with `-z` because the fake modelled only the bare
+form. `_commits_by_landing` now sends `-z`, so the fake models that form and
+refuses the bare one instead. It is declared on the default branch because
+`verify` honours only the base's copy.
 
 [superseded 2026-10-12: answered below, a `spent` head filed as `PL-4YDJ`] **Generator question, open at the 2026-10-11 triage pass; left untriaged for it.**
 `PL-JTCQ`, `PL-MR8Z` and `PL-PXT7` misread one fact no head states: git prints an
