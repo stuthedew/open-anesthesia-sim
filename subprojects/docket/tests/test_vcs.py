@@ -3833,7 +3833,7 @@ def test_a_restore_to_content_main_held_before_the_fork_is_not_landed(tmp_path: 
     assert landed_whole("main", repo.root, _run_git, ref="topic") is False
 
 
-def test_a_graft_in_a_shallow_clone_writes_nothing_since_the_fork(tmp_path: Path) -> None:
+def test_a_restore_to_the_horizon_tree_does_not_read_as_landed(tmp_path: Path) -> None:
     """A truncated clone's boundary commit is not a root that wrote its whole tree (`PL-29RM`).
 
     `main` merged a side line forked from below the branch's fork, and the

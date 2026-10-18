@@ -57,7 +57,7 @@ the work, as `close-out.md` step 5 describes.
 
 **Resolved 2026-10-18.** `_written_since` passes `--min-parents=1` to its
 walk, so a graft writes nothing. `subprojects/docket/tests/test_vcs.py`'s
-`test_a_graft_in_a_shallow_clone_writes_nothing_since_the_fork` holds the
+`test_a_restore_to_the_horizon_tree_does_not_read_as_landed` holds the
 restore to not landed. `subprojects/docket/tests/test_claims.py`'s
 `test_a_squash_below_the_clone_s_horizon_leaves_its_claim_live` holds the
 squashed claim to live, and the uneven-horizon test keeps its `PL-B1B1` half
