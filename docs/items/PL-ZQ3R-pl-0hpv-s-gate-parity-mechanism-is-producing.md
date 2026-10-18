@@ -45,3 +45,29 @@ its mechanism spent, and closes with `generator: spent - <why>`.
 
 **Generator check.** This is the successor head for `PL-0HPV`, recorded by
 `PL-SH4H` on 2026-10-18 (`reenters: PL-0HPV`).
+
+**Next steps, 2026-10-18 13:30Z.** Stuart agreed at 13:08Z that the
+"Workflow items, third place" thread fixes this item next. That thread
+stopped for length before claiming it, so a fresh thread takes it up.
+
+1. Run `bin/docket flight` and `bin/docket concurrent PL-ZQ3R`. `PL-JTCQ`
+   also declares `tools/doc_check.py` and `tests/unit/test_doc_check.py`,
+   for `_baseline` and `_deleted_paths`, which are different functions. The
+   one-answer thread ("One-answer items, batch five") was asked at 13:27Z to
+   agree that both proceed and the second to merge brings `main` in. Read
+   its answer before claiming.
+2. Claim `PL-ZQ3R`, `PL-ZXM1` and `PL-HSB3` together.
+3. `PL-ZXM1`: `workflow_commands` yields every `run:` line of a workflow that
+   `_gates_pull_requests` admits. Read each step's `if:`, leave out a step
+   whose condition excludes the `pull_request` event, and decline through
+   `Report.declined` a condition the reader cannot parse. Then remove or
+   restate the `GATE_ONLY` entry for `bin/docket check --verify`, which was
+   recorded by hand because the rule could not read an `if:`.
+4. `PL-HSB3`: `_make_lines` reads every branch of a Makefile conditional.
+   Make `make_targets` and `check_gate_parity` count a recipe line inside a
+   conditional as running only in its branch, or decline such a target by
+   name. Keep the coverage-gate and ruff-cache readers, which rightly hold
+   every command make might run.
+5. Pin each with a test that fails on the code before the fix. Then record
+   the bound in this item's `generator:` as `spent - <why>`, which its
+   `verify:` tests, and close all three.
