@@ -1,11 +1,21 @@
 ---
 id: PL-2N6J
 title: checks-part-2 spends 76 to 146 s between the start of its pytest step and pytest's session header, against 33 to 44 s in checks-part-1 on the same image; find what the first uv run or pytest start-up does there
-status: untriaged
+priority: P3
+effort: S
+status: ready
 feature: ci-cost
 touches: .github/workflows/quality.yml
 added: 2026-10-18
+payoff: part 2 starts its tests 35 to 100 s sooner on most quality runs, so the run ends that much sooner
+not-delegable: the cause can be found only by timing CI runs on GitHub, which no local command can do
 ---
+
+**Tabled** (project owner, 2026-10-18, ratified, over chasing the cause now).
+The gap costs about 35 to 100 s on most runs, and its cause is unknown. The
+owner set the bar for CI work at low-hanging fruit, not a new problem to
+troubleshoot, so this ranks `P3`. Pick it up only if CI time becomes a
+problem again.
 
 **Problem.** In `quality.yml`, `checks-part-2` waits much longer than
 `checks-part-1` before pytest starts. The gap is measured from the pytest
