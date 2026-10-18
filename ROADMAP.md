@@ -6586,7 +6586,8 @@ scientific core stopped working. One dependency, one patch version, one
 interpreter build.
 
 **What notices.** `.github/workflows/drift.yml`, monthly and on demand. Two
-questions, both of which `quality.yml` is right not to ask:
+questions, both of which `quality.yml` is right not to ask, and a third that
+runs weekly:
 
 - *`dependencies`* — the newest release each bound in `pyproject.toml` already
   allows, resolved with `uv sync --upgrade`. A failure means a dependency broke
@@ -6594,6 +6595,10 @@ questions, both of which `quality.yml` is right not to ask:
 - *`interpreter`* — the newest stable CPython, with the upper bound on
   `requires-python` relaxed in the runner only. A failure means the next
   interpreter is not ready for this tree, or this tree is not ready for it.
+- *`order`* — the whole suite in a shuffled order, with pytest-randomly and
+  the date as its seed, every Monday. A failure means a test passes only when
+  another test runs before it, and the run's output names the seed that
+  reproduces it (`PL-75D9`).
 
 It also prints what exists *beyond* the declared bounds without failing on it,
 because crossing a major bound is a deliberate migration and not something CI

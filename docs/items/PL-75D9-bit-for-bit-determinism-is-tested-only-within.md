@@ -3,11 +3,13 @@ id: PL-75D9
 title: Bit-for-bit determinism is tested only within one interpreter process, and CI never randomizes test order, so hash-seed-dependent iteration or a new order dependence between tests would pass every gate
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: test-effectiveness-measurement
-touches: tests/integration/test_cross_process_determinism.py, .github/workflows/drift.yml, pyproject.toml
+touches: tests/integration/test_cross_process_determinism.py, .github/workflows/drift.yml, pyproject.toml, uv.lock, ROADMAP.md
 added: 2026-10-17
+closed: 2026-10-18
+pr: 1525
 payoff: a run gives bit-identical results in a second process with a different hash seed, and a new order dependence between tests turns a weekly run red with the seed that reproduces it
 verify: grep -rq 'PYTHONHASHSEED' tests/integration && grep -q 'randomly' .github/workflows/drift.yml
 ---
@@ -95,6 +97,29 @@ seeds, and a scheduled job runs the suite in a randomized order.
 
 **Generator check.** Not a member of any head. Both properties hold today; the
 gap is a test and a job that were never written, not a fact a reader misread.
+
+**Outcome, 2026-10-18.** `tests/integration/test_cross_process_determinism.py`
+runs a 6000-step case with five setting changes in two child processes, under
+`PYTHONHASHSEED` 0 and 12345, and once in process, and requires one SHA-256 of
+`repr(snapshot) + repr(run_segments)` from all three. It takes about 1.5 s. It
+also requires the two children to hash a string differently, so a seed that
+never reached a child cannot make it pass. pytest-randomly 5.0.0 is in the dev
+group, `addopts` carries `-p no:randomly`, and `drift.yml` gained a weekly
+`order` job that turns it back on with the date as the seed. `ROADMAP.md`'s
+account of `drift.yml` now lists the third job.
+
+Fail-before, 2026-10-18. `propagate()` in `core/matrix_exponential.py` was
+changed by hand to add each row's products in an order sorted by the hash of
+their `repr`, with `functools.reduce(operator.add, ...)`. Then
+`uv run pytest -q tests/integration/test_cross_process_determinism.py` failed
+with `AssertionError: assert ['6ccd7f00749...2b4e241c4caf'] == ['292d710839b...d4e241b9d077']`.
+The same sort with the builtin `sum()` passed, as did a hash-ordered `sum()`
+in `PatientCompartments.total_agent_amount_l`. Since Python 3.12, `sum()` of
+floats uses compensated summation ("Changed in version 3.12" under `sum()` in
+the Python documentation's built-in functions page), so its result seldom
+depends on order: `sum([1e16, 1.0, -1e16])` is 1.0 where `reduce` gives 0.0.
+The test therefore catches an order-dependent accumulation written as a loop
+or a `reduce`, and only rarely one written as `sum()`. The docstring says so.
 
 **Provenance.** A read-only test-effectiveness audit on 2026-10-17 found this.
 The audit ran mutation testing with mutmut 3.8.0 over `core/` and four
