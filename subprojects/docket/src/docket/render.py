@@ -4151,18 +4151,18 @@ def format_inflow(report: Inflow) -> str:
         for c, f in report.reentered.items()
         if c not in report.successors and c not in report.answered
     }
-    answered = {c: f for c, f in report.reentered.items() if c in report.successors}
+    succeeded = {c: f for c, f in report.reentered.items() if c in report.successors}
     owed_none = {c: f for c, f in report.reentered.items() if c in report.answered}
     if unanswered:
         lines += ["", "Re-entered by three or more filings, a generator whose fix did not hold:"]
         lines += [f"  {closed}  by {', '.join(filed)}" for closed, filed in unanswered.items()]
-    if answered:
+    if succeeded:
         lines += [
             "",
             "Re-entered by three or more filings and answered by a successor: a head whose own",
             "reenters: names the line, so the question is that head's rather than this list's:",
         ]
-        for closed, filed in answered.items():
+        for closed, filed in succeeded.items():
             heads = ", ".join(
                 f"{head.identifier} ({head.status})" for head in report.successors[closed]
             )

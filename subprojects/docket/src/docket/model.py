@@ -892,9 +892,9 @@ class Item:
     #: The closed items this item answers "no successor head is owed" for:
     #: each is a line `docket inflow` names as re-entered by three or more
     #: filings, and this item is where the reason none is owed is written
-    #: (`PL-C4F0`). The answer dates from this item's `closed:`, or its
-    #: `added:` while it is open, so three filings that re-enter the line
-    #: after that date open the line again.
+    #: (`PL-C4F0`). The answer dates from this item's `added:`, which closing
+    #: it does not move, so three filings that re-enter the line after that
+    #: date open the line again.
     no_successor: tuple[str, ...] = ()
     #: The gate this item is excused from, and why, as `vX.Y.Z - why`: the
     #: version of the milestone whose gate does not hold the item, never a gate

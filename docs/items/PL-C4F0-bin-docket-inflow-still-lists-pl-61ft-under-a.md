@@ -70,7 +70,9 @@ the narrower fix by its own Done-when, so `reenters:` is not set.
 
 **Closed 2026-10-18.** The field is `no-successor:` on the answering item, as
 recommended, and `bin/docket set --no-successor` writes it. The answer dates
-from the answering item's `closed:`, or its `added:` while it is open.
+from the answering item's `added:`. The review found that dating it from
+`closed:` let closing the item hide filings made in between, and `added:` is
+the conservative choice: it can only reopen a line sooner.
 `inflow.Inflow.answered` holds each answered line, and `format_inflow` lists
 it under a third heading naming the answering item. `PL-4097` carries
 `no-successor: PL-61FT`, and on that day `bin/docket inflow --no-fetch` lists

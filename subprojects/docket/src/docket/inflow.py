@@ -39,10 +39,11 @@ filings are heads (`PL-0WT0`).
 answer names the line in its own `no-successor:` field, and the list names
 that item and its status apart from both other headings (`PL-C4F0`). The
 answer was once a paragraph in `PL-4097`'s brief, which nothing here read, so
-every run re-asked it. The answer dates from the answering item's `closed:`,
-or its `added:` while it is open. Three filings that re-enter the line after
-that date list it as open again, so a recorded answer cannot hide a mechanism
-that has started producing again.
+every run re-asked it. The answer dates from the answering item's `added:`,
+which does not move when the item closes, so closing it cannot hide filings
+that came after. Three filings that re-enter the line after that date list it
+as open again, so a recorded answer cannot hide a mechanism that has started
+producing again.
 
 **At release time it is silent unless an expectation failed.** `missed`
 checks the last complete period against `PL-04KR`'s pre-registered
@@ -307,8 +308,7 @@ def analyze(
                         item
                         for item in items
                         if closed in item.no_successor
-                        and _reentered_after(filed, added, item.closed or item.added)
-                        < MIN_ROOT_CAUSE_ITEMS
+                        and _reentered_after(filed, added, item.added) < MIN_ROOT_CAUSE_ITEMS
                     ),
                     key=lambda answer: answer.identifier,
                 )

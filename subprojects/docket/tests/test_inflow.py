@@ -245,6 +245,11 @@ def test_a_line_answered_with_no_successor_is_listed_apart() -> None:
     reopened = analyze([FIXED, *filings, answer, *later], CONFIG, today=date(2026, 9, 14))
 
     assert reopened.answered == {}
+    closed_later = _item(
+        "PL-0ANS", date(2026, 9, 2), closed=date(2026, 9, 10), no_successor=("PL-FXD0",)
+    )
+    still_open = analyze([FIXED, *filings, closed_later, *later], CONFIG, today=date(2026, 9, 14))
+    assert still_open.answered == {}  # closing the answer does not move its date
     text = format_inflow(reopened)
     assert "PL-FXD0  by" in text.split("a generator whose fix did not hold:")[1]
     assert "no successor owed" not in text

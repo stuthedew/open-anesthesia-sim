@@ -1697,8 +1697,8 @@ one (`PL-0WT0`). A line answered with no successor owed is listed apart under a
 third heading. The item that records that answer names the line in its own
 `no-successor:` field, and the list names that item and its status
 (`PL-C4F0`). Three filings that re-enter the line after the answer's date,
-which is the answering item's `closed:`, or its `added:` while it is open, list
-the line as open again. Like `trend`, it decides nothing and prints no score.
+which is the answering item's `added:`, list the line as open again. Closing
+the answering item does not move that date. Like `trend`, it decides nothing and prints no score.
 
 `docket release` prints the one verdict, and only when it is unwelcome: when
 the last complete week broke one of `PL-04KR`'s pre-registered predictions -
