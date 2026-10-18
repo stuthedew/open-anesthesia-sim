@@ -1020,6 +1020,35 @@ def test_a_claim_on_a_branch_whose_only_content_another_pull_request_landed_stay
     assert landed == ()
 
 
+def test_a_live_claim_on_a_branch_the_base_took_whole_names_its_head(tmp_path: Path) -> None:
+    """`PL-JLK6`: a live claim on a taken branch is dated, and the checkout's branch is its head.
+
+    `PL-7XGR` kept such a claim live, but `Holdings.last` left the branch out,
+    so `flight` printed "no commit of its own this checkout can read" and
+    `Holdings.head` was empty, which cost `arm` its `--self` hint. A taken
+    branch holding nothing live stays undated, so `unclaimed` never walks its
+    landed work.
+    """
+    repo = _Repo(tmp_path / "repo")
+    files = {"src/tool.py": "tool = 1\n"}
+    repo.branch("claude/capture")
+    repo.commit("PL-C2C2: capture", when=T0, files=files)
+    repo.branch("claude/stacked", "claude/capture")
+    repo.claim("PL-C2C2", when=T0 + HOUR)
+    repo.git("checkout", "-q", "main")
+    repo.commit("PL-C2C2: capture (#1)", when=T0 + 2 * HOUR, files=files)
+    repo.git("checkout", "-q", "claude/stacked")
+
+    read = holdings(repo.root, now=T0 + 3 * HOUR)
+    late = holdings(repo.root, now=T0 + HOUR + LEASE_TERM + DAY)
+
+    [row] = read.flight().branches
+    assert (row.name, row.item_id, row.last_commit) == ("claude/stacked", "PL-C2C2", T0 + HOUR)
+    assert read.head == "claude/stacked"
+    assert "claude/stacked" not in late.last
+    assert "claude/capture" not in read.last
+
+
 def test_a_yield_on_a_branch_the_base_took_whole_reads_on_that_branch(tmp_path: Path) -> None:
     """`yield` retries a yield it could not push, so the checkout's own branch keeps it.
 
