@@ -4171,6 +4171,167 @@ def test_gate_parity_declines_a_step_it_cannot_read_by_name(tmp_path: Path) -> N
     assert "step's script cannot be read to its end" in report.declined[0]
 
 
+def _conditioned_parity(tmp_path: Path, steps: str) -> doc_check.Report:
+    """Gate parity over a `check:` that runs `x_check.py` and `y_check.py`, and the given steps.
+
+    `steps` is the first job's step list as written, and may go on to more jobs.
+    """
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/x_check.py", "python3 tools/y_check.py"],
+        workflows={"quality.yml": (GATING_WORKFLOW, [])},
+    )
+    (root / ".github" / "workflows" / "quality.yml").write_text(
+        GATING_WORKFLOW.format(steps=steps), encoding="utf-8"
+    )
+    report = doc_check.Report()
+    doc_check.check_gate_parity(root, report)
+    return report
+
+
+#: `y_check.py` with no condition, and `x_check.py` under `{condition}`.
+CONDITIONED_STEPS = (
+    "      - run: python3 tools/y_check.py\n"
+    "      - run: python3 tools/x_check.py\n"
+    "        if: {condition}\n"
+)
+
+
+def test_gate_parity_leaves_out_a_step_whose_if_excludes_pull_requests(
+    tmp_path: Path,
+) -> None:
+    """`PL-ZXM1`'s reproduction: a script CI runs only on a push to `main` gates no merge.
+
+    Before the step's `if:` was read, `x_check.py` passed as covered and the
+    check reported nothing.
+    """
+    report = _conditioned_parity(
+        tmp_path, CONDITIONED_STEPS.format(condition="github.event_name != 'pull_request'")
+    )
+
+    assert report.declined == []
+    assert len(report.errors) == 1
+    assert report.errors[0].startswith(
+        "`make check` runs tools/x_check.py and no workflow triggered by a pull request does"
+    )
+
+
+def test_gate_parity_leaves_out_a_job_its_condition_keeps_off_pull_requests(tmp_path: Path) -> None:
+    """A job's `if:` decides for every step it holds, as a step's does for one (`PL-ZQ3R`)."""
+    steps = (
+        "      - run: python3 tools/y_check.py\n"
+        "  sweep:\n"
+        "    if: ${{ github.event_name == 'push' }}\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - run: python3 tools/x_check.py\n"
+    )
+    report = _conditioned_parity(tmp_path, steps)
+
+    assert report.declined == []
+    assert [error.split(" and ")[0] for error in report.errors] == [
+        "`make check` runs tools/x_check.py"
+    ]
+
+
+@pytest.mark.parametrize(
+    "condition",
+    [
+        "github.event_name == 'pull_request'",
+        "${{ github.event_name ==  'pull_request' }}",
+        "github.event_name != 'push'  # every event but a push",
+        "always()",
+        "success()",
+        "steps.scope.outputs.scope != 'items'",
+    ],
+)
+def test_gate_parity_counts_a_step_every_pull_request_runs(tmp_path: Path, condition: str) -> None:
+    """A condition that admits every pull request, or one `GATE_CONDITIONS` records, is coverage."""
+    report = _conditioned_parity(tmp_path, CONDITIONED_STEPS.format(condition=condition))
+
+    assert (report.errors, report.declined) == ([], [])
+
+
+@pytest.mark.parametrize(
+    ("condition", "why"),
+    [
+        (
+            "github.actor == 'stuthedew'",
+            "this step's `if:` is `github.actor == 'stuthedew'`, which this reader does not "
+            "evaluate, so whether a pull request runs it is not known",
+        ),
+        (
+            "\"github.event_name == 'pull_request'\"",
+            "this step's `if:` is quoted, written as a block or carried past its line, which "
+            "this reader does not read, so whether a pull request runs it is not known",
+        ),
+        (
+            "github.event_name ==\n          'pull_request'",
+            "this step's `if:` is quoted, written as a block or carried past its line, which "
+            "this reader does not read, so whether a pull request runs it is not known",
+        ),
+    ],
+)
+def test_gate_parity_declines_a_condition_it_cannot_evaluate(
+    tmp_path: Path, condition: str, why: str
+) -> None:
+    """A gate script under a condition this does not read is declined, never counted (`PL-ZQ3R`)."""
+    report = _conditioned_parity(tmp_path, CONDITIONED_STEPS.format(condition=condition))
+
+    assert report.errors == []
+    assert report.declined == [
+        f".github/workflows/quality.yml:14: {why}, so the scripts it runs were not compared"
+    ]
+
+
+def test_gate_parity_reads_no_condition_on_a_step_running_no_gate_script(tmp_path: Path) -> None:
+    """Only a gate script's condition matters, so `quality.yml`'s ruff steps decline nothing."""
+    steps = (
+        "      - run: python3 tools/x_check.py\n      - run: python3 tools/y_check.py\n"
+        "      - run: uv run ruff check .\n        if: github.actor == 'stuthedew'\n"
+    )
+
+    assert (_conditioned_parity(tmp_path, steps).declined) == []
+
+
+def test_a_recipe_line_inside_a_conditional_runs_only_in_its_branch() -> None:
+    """`PL-HSB3`: a reader of what a target runs declines the line, and the others keep it.
+
+    GNU make 4.3 runs `@echo y` alone for this Makefile without `X`, and `@echo x`
+    alone with it. Read with both branches taken, `make_targets` and
+    `_target_recipes` gave `check` both commands. The coverage gate and the ruff
+    cache check hold every command make might run, so `_recipe_commands` still
+    gives both.
+    """
+    for read in (doc_check.make_targets, doc_check._target_recipes):
+        with pytest.raises(doc_check.UnreadStatement) as declined:
+            read(BRANCHED_RECIPE)
+        assert (declined.value.line, declined.value.why) == (3, IN_A_BRANCH.format(2))
+    assert list(doc_check._recipe_commands(BRANCHED_RECIPE)) == [("echo x", 3), ("echo y", 5)]
+
+
+def test_gate_parity_declines_a_make_check_line_inside_a_conditional(tmp_path: Path) -> None:
+    """`PL-HSB3`: make runs a recipe line in one branch only, so it is not every run's."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py"],
+        workflows={"quality.yml": (GATING_WORKFLOW, ["python3 tools/a_check.py"])},
+    )
+    (root / "Makefile").write_text(
+        ".PHONY: check\ncheck:\nifdef FAST\n\tpython3 tools/a_check.py\nendif\n", encoding="utf-8"
+    )
+    report = doc_check.Report()
+
+    doc_check.check_gate_parity(root, report)
+
+    assert report.errors == []
+    assert report.declined == [
+        "Makefile:4: this recipe line sits inside the conditional on line 3, so make runs it "
+        "only in that branch, and which branch make takes turns on variables this reader does "
+        "not evaluate, so the scripts `make check` runs were not compared"
+    ]
+
+
 def test_a_recorded_asymmetry_is_accepted(tmp_path: Path) -> None:
     """`GATE_ONLY` is where the reason lives, and writing one is the whole ask."""
     root = _parity_repo(
@@ -7968,8 +8129,21 @@ def _make_lines_refusal(text: str) -> tuple[int, str] | list[tuple[str, int]]:
         return statement.line, statement.why
 
 
-#: A rule whose recipe a conditional splits, both branches read in turn.
+def _reading_refusal(read: Callable[[str], object], text: str) -> object:
+    """Where a Makefile reader declines `text` and why, or what it reads where it declines none."""
+    try:
+        return read(text)
+    except doc_check.UnreadStatement as statement:
+        return statement.line, statement.why
+
+
+#: A rule whose recipe a conditional splits.
 BRANCHED_RECIPE = "check:\nifdef X\n\t@echo x\nelse\n\t@echo y\nendif\n"
+#: Why a reader of what a target runs declines a recipe line inside a conditional.
+IN_A_BRANCH = (
+    "this recipe line sits inside the conditional on line {}, so make runs it only in that "
+    "branch, and which branch make takes turns on variables this reader does not evaluate"
+)
 #: Why `_make_lines` declines a line led by a tab where no rule is open.
 NO_RULE_OPEN = (
     "this line is led by a tab where no rule is open, and is no assignment, directive or "
@@ -8630,13 +8804,25 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         ),
         (frozenset({"check"}), frozenset({"check"})),
     ),
-    "make targets, a conditional line ends no rule": (
-        lambda _: doc_check.make_targets(BRANCHED_RECIPE),
-        (frozenset({"check"}), frozenset({"check"})),
+    # Read with both branches taken, `check` ran `echo x` and `echo y`, where
+    # make runs one of them (`PL-HSB3`).
+    "make targets, a recipe line in a conditional is declined": (
+        lambda _: _reading_refusal(doc_check.make_targets, BRANCHED_RECIPE),
+        (3, IN_A_BRANCH.format(2)),
     ),
-    "target recipes, a conditional line ends no rule": (
-        lambda _: doc_check._target_recipes(BRANCHED_RECIPE),
-        ({"check": ["echo x", "echo y"]}, {"check": []}),
+    "target recipes, a recipe line in a conditional is declined": (
+        lambda _: _reading_refusal(doc_check._target_recipes, BRANCHED_RECIPE),
+        (3, IN_A_BRANCH.format(2)),
+    ),
+    "target recipes, the else branch's line names the conditional": (
+        lambda _: _reading_refusal(
+            doc_check._target_recipes, "check:\n\t@echo a\nifdef X\nelse\n\t@echo y\nendif\n"
+        ),
+        (5, IN_A_BRANCH.format(3)),
+    ),
+    "make targets, a conditional holding no recipe line ends no rule": (
+        lambda _: doc_check.make_targets("check:\nifdef X\nendif\n\t@echo x\n"),
+        (frozenset({"check"}), frozenset({"check"})),
     ),
     "make targets, a rule line led by spaces": (
         lambda _: doc_check.make_targets("  check:\n\t@echo ok\n"),
@@ -10637,7 +10823,7 @@ LONG_QUOTATIONS: dict[str, tuple[Callable[[Path], object], object]] = {
 AGREEING_MAKEFILES = {
     "a comment line in a rule": ".PHONY: check\ncheck:\n# run the gate\n\t@echo CHECK-RAN\n",
     "a blank line in a rule": "check:\n\t@echo a\n\n\t@echo b\n",
-    "a conditional in a rule": BRANCHED_RECIPE,
+    "a conditional holding no recipe line in a rule": "check:\nifdef X\nendif\n\t@echo a\n",
     "a tab-led assignment above the first rule": (
         "\tGATE := pytest --cov-fail-under=100\nall:\n\t@echo $(GATE)\n"
     ),
