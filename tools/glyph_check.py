@@ -55,6 +55,19 @@ attribute docstrings in `app/controller.py` and in two `core/` modules, out of
 a list that is supposed to mean *this was rendered and seen*. Comments never
 enter, `ast` not carrying them.
 
+**A translation-table key is not displayed either.** `str.maketrans` maps the
+characters it is given to replacements, so its keys are what a normaliser
+removes from text, never what it shows. A key of the dict literal passed to
+`maketrans`, and the from and delete strings of its two- and three-argument
+forms, are skipped; every replacement is still read (PL-5XKP). Without that,
+the fix for an undrawable character was refused for naming it.
+
+**A character built at run time is not seen.** This reads literals, so
+`chr(0x2192)`, inside an f-string or out of one, and any other value computed
+or interpolated, passes unread. The gap is known and accepted: following such a
+value to the screen is dataflow, which a walk over the syntax tree cannot do
+(PL-5XKP).
+
 **No rot guard, unlike `KNOWN_SHORTFALLS` in `tools/contrast_check.py`,** and
 the asymmetry is deliberate. A listed shortfall that starts passing is an
 error there because the entry is an excuse and the excuse has expired. An entry
@@ -142,15 +155,41 @@ def documentation(tree: ast.Module) -> set[int]:
     return found
 
 
-def python_strings(path: Path) -> Iterator[tuple[int, str]]:
-    """Every string literal in a module that is not documentation, with its line.
+def translation_keys(tree: ast.Module) -> set[int]:
+    """Every string literal a `maketrans` call reads as characters to replace, by identity.
 
-    f-strings are reached through their `Constant` parts, so the literal text
-    around an interpolation is checked and the interpolated value - which this
-    tool cannot see - is not.
+    The keys of a dict literal passed alone, and the first and third arguments
+    of the two- and three-argument forms. The replacements are not here,
+    because a replacement is what the normalised text shows.
+    """
+    found: set[int] = set()
+    for node in ast.walk(tree):
+        if not (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "maketrans"
+        ):
+            continue
+        if len(node.args) == 1 and isinstance(node.args[0], ast.Dict):
+            found.update(id(key) for key in node.args[0].keys if isinstance(key, ast.Constant))
+        else:
+            found.update(
+                id(arg)
+                for position, arg in enumerate(node.args)
+                if position in (0, 2) and isinstance(arg, ast.Constant)
+            )
+    return found
+
+
+def python_strings(path: Path) -> Iterator[tuple[int, str]]:
+    """Every string literal in a module that no reader is shown, with its line.
+
+    Documentation and `maketrans` keys are left out. f-strings are reached
+    through their `Constant` parts, so the literal text around an interpolation
+    is checked and the interpolated value - which this tool cannot see - is not.
     """
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    excluded = documentation(tree)
+    excluded = documentation(tree) | translation_keys(tree)
     for node in ast.walk(tree):
         if (
             isinstance(node, ast.Constant)

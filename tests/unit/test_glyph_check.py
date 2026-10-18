@@ -137,6 +137,21 @@ def test_an_f_string_literal_part_is_read_around_the_interpolation(tmp_path: Pat
     assert "U+21D2" in found[0]
 
 
+def test_a_translation_table_key_is_not_a_displayed_string(tmp_path: Path) -> None:
+    """PL-5XKP. A normaliser that strips the arrow names it, and shows only the replacement."""
+
+    app = (
+        'ARROWLESS = str.maketrans({"→": "->"})\n'
+        'PAIRED = str.maketrans("→", ">", "⇒")\n'
+        'SHOWN = str.maketrans({"->": "⇒"})\n'
+    )
+
+    found = glyph_check.problems(_tree(tmp_path, app=app))
+
+    assert len(found) == 1, "only the replacement on the third line reaches a reader"
+    assert "module.py:3: U+21D2" in found[0]
+
+
 def test_a_character_is_reported_once_per_string_however_often_it_repeats(tmp_path: Path) -> None:
     """One line per string per character, so a repeated character is not a wall of noise."""
 
