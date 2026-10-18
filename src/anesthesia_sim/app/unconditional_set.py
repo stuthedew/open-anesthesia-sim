@@ -23,11 +23,17 @@ The set has two tiers, plus the control-input record:
   of settings changed during the run, which `docs/MODEL.md` states apart from
   both tiers ("The control-input timeline splits the same way").
 
-Two things are deliberately not here. The agent accounting is required to be
+The agent accounting is deliberately not here. It is required to be
 reachable, not to be visible, so it belongs to the View registry (`PL-50PZ`).
-The name of the run a window shows joins the invariant tier only once more
-than one top-level window can exist, and which tier each window carries is
-`PL-W54S`'s.
+
+**Each top-level window's region holds part of the set** (`PL-W54S`).
+`docs/MODEL.md` § "What a second top-level window owes, and it is not the
+whole set" splits the set by the reason each tier is required. Every window
+carries the invariant tier, because a concentration drawn with no time, run
+state or drug is misread in whatever window it is drawn. Once a second window
+is open, every window also names the run it shows. The per-substance tier and
+the control-input record are statements about the whole run, so they live
+once, in the main window. `window_region` returns what one window owes.
 
 Nothing here imports a toolkit, so the declaration is tested without a
 `QApplication` and read by the widgets that draw it.
@@ -40,17 +46,20 @@ from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.run_series import RecordedQuantity
+from anesthesia_sim.layout.model import MAIN_WINDOW
 
 __all__ = [
     "CONTROL_RECORD_TIER",
     "INHALED_AGENT",
     "INVARIANT_TIER",
+    "RUN_NAME_TIER",
     "SubstanceInstance",
     "Tier",
     "UnconditionalSet",
     "UnconditionalValue",
     "compartment_value",
     "unconditional_set",
+    "window_region",
 ]
 
 
@@ -65,6 +74,9 @@ class Tier(StrEnum):
 
     CONTROL_RECORD = "control-input record"
     """The settings changed during the run, stated apart from both tiers."""
+
+    RUN_NAME = "run name"
+    """The name of the run a window shows, owed once a second window is open."""
 
 
 class UnconditionalValue(StrEnum):
@@ -84,6 +96,7 @@ class UnconditionalValue(StrEnum):
     FAT_CONCENTRATION = "fat_concentration"
     ONE_MAC = "one_mac"
     CONTROL_INPUT_RECORD = "control_input_record"
+    RUN_NAME = "run_name"
 
     @property
     def tier(self) -> Tier:
@@ -108,6 +121,7 @@ _TIERS: Final[Mapping[UnconditionalValue, Tier]] = MappingProxyType(
         UnconditionalValue.FAT_CONCENTRATION: Tier.PER_SUBSTANCE,
         UnconditionalValue.ONE_MAC: Tier.PER_SUBSTANCE,
         UnconditionalValue.CONTROL_INPUT_RECORD: Tier.CONTROL_RECORD,
+        UnconditionalValue.RUN_NAME: Tier.RUN_NAME,
     }
 )
 
@@ -134,6 +148,10 @@ INVARIANT_TIER: Final[tuple[UnconditionalValue, ...]] = tuple(
 CONTROL_RECORD_TIER: Final[tuple[UnconditionalValue, ...]] = (
     UnconditionalValue.CONTROL_INPUT_RECORD,
 )
+
+#: The run's name. No window owes it while the main window is the only one,
+#: because there is no other window to tell its run apart from.
+RUN_NAME_TIER: Final[tuple[UnconditionalValue, ...]] = (UnconditionalValue.RUN_NAME,)
 
 
 def compartment_value(quantity: RecordedQuantity) -> UnconditionalValue:
@@ -245,3 +263,44 @@ def unconditional_set(substance: SubstanceInstance) -> UnconditionalSet:
     """
 
     return UnconditionalSet(INVARIANT_TIER, substance, CONTROL_RECORD_TIER)
+
+
+def window_region(
+    run_set: UnconditionalSet, window: int, window_count: int
+) -> tuple[UnconditionalValue, ...]:
+    """The values one top-level window's unconditional region must hold.
+
+    `docs/MODEL.md` § "What a second top-level window owes, and it is not the
+    whole set" decides the split (project owner, 2026-09-16, ratified). Every
+    window holds the invariant tier, and also the run's name once more than
+    one window is open. Only the main window, `MAIN_WINDOW`, holds the
+    per-substance tier and the control-input record.
+
+    Args:
+        run_set: The unconditional set of the run the window shows.
+        window: The window's index in `LayoutModel.windows`.
+        window_count: How many top-level windows the layout holds.
+
+    Returns:
+        The values in the order the region draws them: the invariant tier,
+        then the run's name when several windows are open, then, in the main
+        window only, the per-substance tier and the control-input record.
+
+    Raises:
+        ValueError: `window_count` is less than 1, because a layout always
+            holds the main window, or `window` is not the index of one of the
+            layout's windows.
+    """
+
+    if window_count < 1:
+        raise ValueError(f"a layout holds at least one window, the main window, not {window_count}")
+
+    if not 0 <= window < window_count:
+        raise ValueError(f"window {window} is not one of the layout's {window_count} windows")
+
+    named = RUN_NAME_TIER if window_count > 1 else ()
+
+    if window == MAIN_WINDOW:
+        return (*run_set.invariant, *named, *run_set.per_substance.values, *run_set.control_record)
+
+    return (*run_set.invariant, *named)
