@@ -73,6 +73,7 @@ from PySide6.QtWidgets import (
 )
 
 from anesthesia_sim.app.chart_frame import ChartFrame
+from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import AdjustmentGrouping, ControlAdjustment
 from anesthesia_sim.app.controller import (
     RunRecord,
@@ -105,6 +106,7 @@ from anesthesia_sim.app.dashboard_frame import (
     compared_panel_heading,
     compared_run_line,
     compared_run_notice,
+    delivered_line,
     halt_disposition,
     halt_notice,
     new_case_question,
@@ -121,7 +123,11 @@ from anesthesia_sim.app.dashboard_frame import (
     transport,
     wash_in_state,
 )
-from anesthesia_sim.app.formatting import format_playback_rate, format_subtitle
+from anesthesia_sim.app.formatting import (
+    format_mac_reference,
+    format_playback_rate,
+    format_subtitle,
+)
 from anesthesia_sim.app.playback import (
     DEFAULT_PLAYBACK_RATE,
     SUPPORTED_PLAYBACK_RATES,
@@ -158,6 +164,7 @@ from anesthesia_sim.app.theme import (
     RUNNING_AGENT_DISPLAY_PADDING,
     WARNING,
 )
+from anesthesia_sim.app.unconditional_set import UnconditionalValue, compartment_value
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
@@ -432,6 +439,14 @@ class RunView(QWidget):
         self._interpretation_text = styled_label(
             INTERPRETATION_DISCLAIMER_TEXT, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True
         )
+        # The dial's setting in both units and the divisor of every ×MAC
+        # number in the row, on the heading line above it. Both are in
+        # `docs/MODEL.md`'s per-substance tier, which the dial and the chart's
+        # caption cannot carry once each is a View a reader can close
+        # (`PL-NWTM`). `_write_settings` writes both, from the readout the
+        # dial is written from, so the two cannot disagree.
+        self._delivered_text = styled_label("", color=INK)
+        self._one_mac_text = styled_label("", color=MUTED)
         self._readout_row = ReadoutRow(
             readouts(snapshot, self._playback_rate), reservations=READOUT_RESERVATIONS
         )
@@ -453,8 +468,8 @@ class RunView(QWidget):
             slider.adjustment_started.connect(self._handle_adjustment_start)
             slider.value_changed.connect(handler)
 
-        # The two sidebar panels' headings. Instance labels rather than
-        # widgets built inside `_lay_out_sidebar_panels`, because each has to
+        # The two record panels' headings. Instance labels rather than
+        # widgets built inside `_lay_out_record_panels`, because each has to
         # gain and lose this run's name as the dashboard's run set changes,
         # and `set_run_name` is the one writer of that name (`PL-C3GS`).
         self._accounting_heading_text = styled_label(ACCOUNTING_HEADING, color=INK, bold=True)
@@ -485,7 +500,7 @@ class RunView(QWidget):
         self._transport_row = self._lay_out_transport_row()
         self._readout_section = self._lay_out_readout_section()
         self._parameter_controls = self._lay_out_parameter_controls()
-        self._sidebar_panels = self._lay_out_sidebar_panels()
+        self._accounting_panel, self._control_record_panel = self._lay_out_record_panels()
 
         # This run's rather than the chart's: whether a trace is clipped is
         # a property of the samples this run drew, and one line over two
@@ -797,6 +812,13 @@ class RunView(QWidget):
 
         for slider, setting in zip(self._sliders(), setting_readouts(settings), strict=True):
             slider.set_setting(setting)
+
+            if setting.control is ControlInput.DELIVERED:
+                self._delivered_text.setText(delivered_line(setting))
+
+        self._one_mac_text.setText(
+            format_mac_reference(settings.agent_display_name, settings.agent_mac_percent)
+        )
 
     def _transport_lock(self, status: RunStatus) -> Transport:
         """This run's transport enablement, with both facts `dashboard_frame` cannot read.
@@ -1338,13 +1360,8 @@ class RunView(QWidget):
 
     # -------------------------------------------------------------- layout
 
-    def build_header_badge(self) -> QWidget:
-        """The badge naming the agent this run is on, for the dashboard's header."""
-
-        return self._agent_header_badge
-
     def build_transport_row(self) -> QWidget:
-        """This run's agent selector or chip, Start/Pause/Reset, playback rate and status.
+        """This run's agent selector or chip, Start/Pause/Reset, playback rate, status and badge.
 
         One row per run rather than one for the dashboard: each control
         reaches a particular controller, and a shared transport would leave
@@ -1373,11 +1390,15 @@ class RunView(QWidget):
         layout.addWidget(self._playback_rate_dropdown)
         layout.addWidget(self._status_text)
         layout.addStretch(1)
+        # The version-and-model badge, at the row's right end beside the run
+        # state it qualifies; the in-page title row it sat in is gone
+        # (`PL-J8K2` Q2).
+        layout.addWidget(self._agent_header_badge)
 
         return row
 
     def set_run_name(self, name: str | None) -> None:
-        """Name this view in its own header and on both its sidebar panels, or not at all.
+        """Name this view in its own header and on both its record panels, or not at all.
 
         The dashboard decides the name, from `dashboard_frame.run_label`, so
         that this panel and the chart's legend call one run the same thing -
@@ -1424,7 +1445,8 @@ class RunView(QWidget):
 
         The heading says whose concentrations the seven panels under it are
         (`PL-TCD1`); the interpretation line sits on the same row, once,
-        beside the values it qualifies (`PL-2K1R`).
+        beside the values it qualifies (`PL-2K1R`). The delivered
+        concentration and the agent's 1 MAC close the same row (`PL-NWTM`).
         """
 
         return self._readout_section
@@ -1446,6 +1468,8 @@ class RunView(QWidget):
         heading.addWidget(self._compartment_substance_text)
         heading.addWidget(self._interpretation_text)
         heading.addStretch(1)
+        heading.addWidget(self._delivered_text)
+        heading.addWidget(self._one_mac_text)
         column.addWidget(heading_row)
         column.addWidget(self._readout_row)
 
@@ -1472,17 +1496,58 @@ class RunView(QWidget):
 
         return row
 
-    def build_sidebar_panels(self) -> tuple[QWidget, QWidget]:
-        """This run's accounting panel and its control-change panel, in that order.
+    def build_accounting_panel(self) -> QWidget:
+        """This run's mass-balance panel, for the sidebar beside the charts.
 
-        Both are records of one run: the mass-balance diagnostic is of this
-        run's own agent, and the timeline is what was changed during it.
+        `docs/MODEL.md` requires it to be reachable rather than always
+        visible, so it is the one record of a run that may sit in a surface a
+        reader can close (`PL-50PZ`).
         """
 
-        return self._sidebar_panels
+        return self._accounting_panel
 
-    def _lay_out_sidebar_panels(self) -> tuple[QWidget, QWidget]:
-        """Build the two sidebar panels around this run's labels; only the constructor calls it.
+    def build_control_record(self) -> QWidget:
+        """This run's control-change panel, for the unconditional region.
+
+        The record of what was changed during the run is unconditional
+        (`docs/MODEL.md` § "Minimum displayed outputs"), so it is never
+        placed in a surface a reader can close (`PL-NWTM`).
+        """
+
+        return self._control_record_panel
+
+    def unconditional_widgets(self) -> Mapping[UnconditionalValue, QWidget]:
+        """The widget that draws each value of this run's unconditional set.
+
+        `SimulationView` builds its unconditional region from this, and
+        refuses a run whose set names a value this mapping lacks, so the
+        declaration in `app/unconditional_set.py` is what decides what the
+        region must hold (`PL-NWTM`).
+
+        Returns:
+            One widget per value of `unconditional_set(INHALED_AGENT)`.
+        """
+
+        clock = self._readout_row.panels[_CLOCK_PANEL_INDEX]
+        widgets: dict[UnconditionalValue, QWidget] = {
+            UnconditionalValue.SIMULATED_TIME: clock.value_label,
+            UnconditionalValue.PLAYBACK_RATE: self._playback_rate_text,
+            UnconditionalValue.RUN_STATE: self._status_text,
+            UnconditionalValue.HALT_REASON: self._notice_text,
+            UnconditionalValue.ADMINISTERED_SUBSTANCE: self._compartment_substance_text,
+            UnconditionalValue.DELIVERED_CONCENTRATION: self._delivered_text,
+            UnconditionalValue.ONE_MAC: self._one_mac_text,
+            UnconditionalValue.CONTROL_INPUT_RECORD: self._control_record_panel,
+        }
+
+        for panel, readout_panel in zip(self._readout_row.panels, READOUT_PANELS, strict=True):
+            if readout_panel.quantity is not None:
+                widgets[compartment_value(readout_panel.quantity)] = panel.value_label
+
+        return widgets
+
+    def _lay_out_record_panels(self) -> tuple[QWidget, QWidget]:
+        """Build the accounting and control-change panels; only the constructor calls it.
 
         A second call would move the labels out of the panels on screen (`PL-N67T`).
         """

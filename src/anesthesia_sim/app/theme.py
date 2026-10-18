@@ -264,7 +264,6 @@ METRIC_SECONDARY_VALUE_SIZE = 13
 # three sizes above were named - so the scale was half declared and half
 # literal, and a reader could not see it whole. These complete it, at the
 # values already shipping.
-APP_TITLE_SIZE = 26
 METRIC_VALUE_SIZE = 22
 ACCOUNTING_STATUS_SIZE = 20
 
@@ -482,6 +481,11 @@ BOOKMARK_LIST_MAX_HEIGHT = 120
 NEW_CASE_DIALOG_WIDTH = 420
 
 NEW_CASE_DIALOG_SPACING = 12
+
+# The gap between the dashboard page's stacked sections, and between the panels
+# each of its columns stacks, in px: the band at the top, the run rows and the
+# record column inside it, and the sidebar.
+PAGE_SPACING = 12
 
 # One width for the selector and for the chip that stands in its place, so the
 # transport controls beside them do not move when a run starts. A header that

@@ -538,6 +538,11 @@ and are labels for that reason."""
 # row's own hazard is a reader setting these beside a monitor.
 COMPARTMENT_SUBSTANCE_TEMPLATE: Final = "Modelled concentrations: {agent}"
 
+# The dial's setting on the readout heading line, in the two units the dial
+# prints it in. A label for the setting rather than a modelled value, so the
+# word is the dial's own: what the vaporizer is set to deliver (`PL-NWTM`).
+DELIVERED_LINE_TEMPLATE: Final = "Delivered {value} ({secondary})"
+
 # What the confirmation says before a new case replaces a recorded one, in
 # the order a reader meets it: why this is a new case at all, what is about
 # to be lost (`formatting.format_case_discard_warning`, per case), and what
@@ -2099,6 +2104,33 @@ def _here_fork_label(here: HereForkPoint) -> str:
     template = HALT_FORK_LABEL_TEMPLATE if here.stopped_on_mark else HERE_FORK_LABEL_TEMPLATE
 
     return template.format(instant=format_elapsed(here.fork_s))
+
+
+def delivered_line(delivered: SettingReadout) -> str:
+    """The delivered concentration in both units, for the readout heading line.
+
+    Written from the readout the dial itself is written from, so the line
+    and the dial print one setting in one form (`PL-NWTM`).
+
+    Args:
+        delivered: The delivered dial's readout from `setting_readouts`.
+
+    Returns:
+        The line.
+
+    Raises:
+        ValueError: If `delivered` is not the delivered dial's readout. A
+            flow's readout has no second unit, and printed here it would
+            name a flow as the concentration the vaporizer is set to.
+    """
+
+    if delivered.control is not ControlInput.DELIVERED:
+        raise ValueError(
+            f"the delivered line is written from the delivered dial's readout, "
+            f"not from {delivered.control.value}'s"
+        )
+
+    return DELIVERED_LINE_TEMPLATE.format(value=delivered.value_text, secondary=delivered.secondary)
 
 
 def substance_heading(settings: RunSettings) -> str:

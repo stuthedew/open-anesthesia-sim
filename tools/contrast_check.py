@@ -526,9 +526,9 @@ class Exemption:
 #:
 #: `MUTED` is judged at the normal-text minimum rather than the large-text one
 #: even where it is bold: WCAG's large-text exception starts at 18pt, or 14pt
-#: bold (18.66px), and no size `app/theme.py` gives MUTED text reaches it. The
-#: one genuinely large string, the 26px application title in `INK`, clears the
-#: stricter bar anyway, so the exception is not claimed anywhere in this
+#: bold (18.66px), and no size `app/theme.py` gives MUTED text reaches it.
+#: Larger text, such as the 22px readout values, is held to the normal-text
+#: minimum as well, so the exception is not claimed anywhere in this
 #: interface.
 REQUIREMENTS: tuple[AnyRequirement, ...] = (
     Requirement(
@@ -536,8 +536,10 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "BACKGROUND",
         AA_TEXT,
         "1.4.3",
-        "the application title in the page header, which `SimulationView` places "
-        "on the page surface",
+        "the readout heading line of each run, which `RunView` places on the "
+        "page surface above its readout cards: the substance the run "
+        "administers (`_compartment_substance_text`) and its delivered "
+        "concentration (`_delivered_text`, PL-NWTM)",
     ),
     Requirement(
         "INK",
@@ -608,7 +610,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "(`_status_text`, whose colour `refresh` writes for every run "
         "state), the 'Playback' caption beside the rate selector in that row "
         "(`build_transport_row`), and the interpretation line beside the "
-        "readout heading (`_interpretation_text`, PL-2K1R). Also the border of "
+        "readout heading (`_interpretation_text`, PL-2K1R), and the agent's 1 "
+        "MAC stated at the end of that heading (`_one_mac_text`, PL-NWTM). "
+        "Also the border of "
         "the playback-rate dropdown drawn beside them "
         "(`_playback_rate_dropdown`), which is a user-interface component "
         "and so needs only SC 1.4.11's 3:1 - met with room to spare by the text "

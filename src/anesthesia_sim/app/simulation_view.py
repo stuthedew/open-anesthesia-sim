@@ -4,9 +4,18 @@
 It holds what two runs cannot each have their own of - the concentration
 chart, the wash-in plot, the compartment legend and the selection it shows,
 the time base and its caption, the two clinical reference lines - and one
-`RunView` per run for everything else. Every surface is an independent widget inside nested
-splitters whose handles are inert (`PL-25KS`), so a later item can let a
-reader resize them by enabling the handles.
+`RunView` per run for everything else.
+
+**The unconditional region is outside the splitters** (`PL-NWTM`). Each run's
+transport row, its notice banner, its readouts and its control-change record
+sit in a band across the top of the page, and the use disclaimer in a line
+across its foot. `docs/MODEL.md` § "Minimum displayed outputs" requires those
+values on screen in every Workspace, and `app/unconditional_set.py` declares
+which they are; `_place_run` refuses a run whose declared values the band does
+not hold. Every other surface is an independent widget inside nested splitters
+whose handles are inert (`PL-25KS`), and those splitters are the layout
+container the Areas will replace (`PL-W9P6`). Nothing in the band has an
+ancestor among them, so no split, join or close can reach it.
 
 **One frame, both charts, then every run.** `_refresh_view` reads one
 snapshot per run, assembles one `ChartFrame` through `app/chart_frame.py`,
@@ -117,18 +126,18 @@ from anesthesia_sim.app.stylesheets import (
     selector_stylesheet,
 )
 from anesthesia_sim.app.theme import (
-    APP_TITLE_SIZE,
     GRIDLINE,
     INK,
     METRIC_QUALIFIER_SIZE,
     MUTED,
     PAGE_PADDING,
+    PAGE_SPACING,
     PANEL_PADDING,
     SECTION_DIVIDER_HEIGHT,
     TIME_BASE_SELECTOR_WIDTH,
     WARNING,
 )
-from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
+from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set
 from anesthesia_sim.core.concentration import fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
@@ -147,6 +156,8 @@ _FIXED_SECTION_POLICY: Final = QSizePolicy.Policy.Maximum
 
 #: Object names the page and the chart panel are styled through.
 _PAGE_NAME: Final = "dashboardPage"
+_REGION_NAME: Final = "unconditionalRegion"
+_RECORD_COLUMN_NAME: Final = "controlRecordColumn"
 _CHART_COLUMN_NAME: Final = "chartColumn"
 
 
@@ -156,6 +167,20 @@ def _fixed_height(section: QWidget) -> QWidget:
     section.setSizePolicy(section.sizePolicy().horizontalPolicy(), _FIXED_SECTION_POLICY)
 
     return section
+
+
+def _within(widget: QWidget, ancestor: QWidget) -> bool:
+    """Whether `ancestor` is `widget` or one of the widgets it sits inside."""
+
+    current: QWidget | None = widget
+
+    while current is not None:
+        if current is ancestor:
+            return True
+
+        current = current.parentWidget()
+
+    return False
 
 
 def _spaced_column(widget: QWidget, spacing: int) -> QVBoxLayout:
@@ -184,7 +209,7 @@ def _holder(
         layout: The shared layout to add it to.
         widgets: This run's widgets for that layout, in order.
         before_stretch: True where the layout ends in a stretch the run's
-            widgets must stay in front of - the header row and the sidebar.
+            widgets must stay in front of - the record column and the sidebar.
 
     Returns:
         The holder, already placed.
@@ -193,7 +218,7 @@ def _holder(
     holder = QWidget()
     # The holder's own spacing is the shared layout's, so a run whose widgets
     # sit inside one is laid out exactly as it would have been laid out
-    # directly: the two sidebar panels keep the gap the column gives them.
+    # directly: a run's panels keep the gap the column gives them.
     column = _spaced_column(holder, layout.spacing())
 
     for widget in widgets:
@@ -212,18 +237,16 @@ class _RunSlots:
     """Where one displayed run's widgets sit among the layouts every run shares.
 
     Attributes:
-        readouts: The run's readout section, which is a section of the
-            vertical splitter in its own right rather than a holder inside
-            one - `PL-25KS` makes every surface an independent splitter
-            section so that a later item can let a reader resize them, and
-            merging two runs' readouts into one section would take a
-            boundary away.
-        parameters: Its setting controls, the same.
-        placed: Every widget this run put into a shared layout, the two
-            sections included. Removing the run is deleting these.
+        parameters: The run's setting controls, which are a section of the
+            vertical splitter in their own right rather than a holder inside
+            one - `PL-25KS` makes every surface outside the unconditional
+            region an independent splitter section so that a later item can
+            let a reader resize them, and merging two runs' controls into one
+            section would take a boundary away.
+        placed: Every widget this run put into a shared layout, the section
+            included. Removing the run is deleting these.
     """
 
-    readouts: QWidget
     parameters: QWidget
     placed: tuple[QWidget, ...]
 
@@ -427,11 +450,15 @@ class SimulationView(QWidget):
     def _build_page(self) -> None:
         """Lay the dashboard out, top to bottom, inside a scrolling page.
 
-        The notice banners sit under the transport rows and above every
-        displayed value, so a halted run is read before the values it
-        explains. The sections below them - one readout section and one
-        settings section per run, then the charts beside the sidebar - are
-        splitter sections, and only the last of them takes spare height.
+        The unconditional region comes first: per run the transport row, the
+        notice banner and the readouts, with every run's control-change
+        record in a column to their right, at the width the sidebar has
+        beside the charts (`PL-J8K2` Q1 and Q3). The notice banners sit under
+        the transport rows and above every displayed value, so a halted run
+        is read before the values it explains. Under the region, the setting
+        controls of each run and then the charts beside the sidebar are
+        splitter sections, and only the last of them takes spare height. The
+        use disclaimer is the page's last line.
 
         No run is placed here. Every layout a run contributes to is kept, so
         that `_place_run` can fill them in the same order whether it is
@@ -446,29 +473,12 @@ class SimulationView(QWidget):
         page.setStyleSheet(page_stylesheet(_PAGE_NAME))
         column = QVBoxLayout(page)
         column.setContentsMargins(PAGE_PADDING, PAGE_PADDING, PAGE_PADDING, PAGE_PADDING)
-        column.setSpacing(12)
+        column.setSpacing(PAGE_SPACING)
 
-        header = QWidget()
-        header_row = QHBoxLayout(header)
-        header_row.setContentsMargins(0, 0, 0, 0)
-        header_row.setSpacing(12)
-        header_row.addWidget(
-            styled_label(APP_DISPLAY_NAME, color=INK, size_px=APP_TITLE_SIZE, bold=True)
-        )
-        header_row.addStretch(1)
-        self._header_row = header_row
-        column.addWidget(header)
-
-        transport_rows = QWidget()
-        self._transport_column = _spaced_column(transport_rows, 12)
-        column.addWidget(transport_rows)
-
-        notices = QWidget()
-        self._notice_column = _spaced_column(notices, 12)
-        column.addWidget(notices)
+        column.addWidget(self._build_unconditional_region())
 
         sidebar = QWidget()
-        self._sidebar_column = _spaced_column(sidebar, 12)
+        self._sidebar_column = _spaced_column(sidebar, PAGE_SPACING)
         self._sidebar_column.addStretch(1)
 
         self._charts_and_sidebar = inert_splitter(
@@ -496,6 +506,83 @@ class SimulationView(QWidget):
         self._page_scroll = scroll
         outer = _spaced_column(self, 0)
         outer.addWidget(scroll)
+
+    def _build_unconditional_region(self) -> QWidget:
+        """Build the band that holds every run's unconditional values, empty of runs.
+
+        Its left column stacks every run's transport row, then every
+        notice banner, then every readout section; its right column holds
+        every run's control-change record, scrolling within itself so a long
+        record never makes the band taller than the rows beside it
+        (`PL-J8K2` Q3). The two columns take the band's width in the
+        proportion the charts and the sidebar take theirs. A box layout gives
+        the record more than the splitter gives the sidebar: about 300 px at
+        a 1366 px window, against the sidebar's 228, where today's record
+        lines are cut off. The seven readouts still stand in one row beside
+        it, and the exact width is `PL-W54S`'s to settle. Nothing new is
+        drawn around the region (`PL-J8K2` Q4).
+
+        Returns:
+            The region, which `unconditional_region` names.
+        """
+
+        region = QWidget()
+        region.setObjectName(_REGION_NAME)
+        row = QHBoxLayout(region)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(PAGE_SPACING)
+
+        run_rows = QWidget()
+        run_column = _spaced_column(run_rows, PAGE_SPACING)
+
+        transport_rows = QWidget()
+        self._transport_column = _spaced_column(transport_rows, PAGE_SPACING)
+        run_column.addWidget(transport_rows)
+
+        notices = QWidget()
+        self._notice_column = _spaced_column(notices, PAGE_SPACING)
+        run_column.addWidget(notices)
+
+        readouts = QWidget()
+        self._readout_column = _spaced_column(readouts, PAGE_SPACING)
+        run_column.addWidget(readouts)
+
+        records = QWidget()
+        records.setObjectName(_RECORD_COLUMN_NAME)
+        records.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        records.setStyleSheet(page_stylesheet(_RECORD_COLUMN_NAME))
+        self._record_column = _spaced_column(records, PAGE_SPACING)
+        self._record_column.addStretch(1)
+        record_scroll = QScrollArea()
+        record_scroll.setWidgetResizable(True)
+        record_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        record_scroll.setStyleSheet(scroll_area_stylesheet())
+        record_scroll.setWidget(records)
+        # As tall as the run rows beside it and no taller: an ignored height
+        # gives the band the left column's height, and the record scrolls.
+        record_scroll.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Ignored)
+
+        row.addWidget(run_rows, _CHART_COLUMN_STRETCH)
+        row.addWidget(record_scroll, _SIDEBAR_STRETCH)
+        self._unconditional_region = region
+
+        return region
+
+    @property
+    def unconditional_region(self) -> QWidget:
+        """The band holding every run's unconditional values, outside every splitter."""
+
+        return self._unconditional_region
+
+    @property
+    def layout_container(self) -> QWidget:
+        """The splitter tree every surface outside the unconditional region sits in.
+
+        What the Areas replace (`PL-W9P6`), and the widget no unconditional
+        value may have as an ancestor.
+        """
+
+        return self._sections
 
     def _build_chart_column(self) -> QWidget:
         """The chart panel: heading and time base, captions, legend, advisories, both plots.
@@ -599,20 +686,20 @@ class SimulationView(QWidget):
             run.ask_before_reset(self._trunk_reset_question)
 
         run.presentation_requested.connect(self.present)
-        readouts = _fixed_height(run.build_readout_section())
         parameters = _fixed_height(run.build_parameter_controls())
         placed = (
-            _holder(self._header_row, (run.build_header_badge(),), before_stretch=True),
             _holder(self._transport_column, (run.build_transport_row(),)),
             _holder(self._notice_column, (run.build_notice(),)),
-            _holder(self._sidebar_column, run.build_sidebar_panels(), before_stretch=True),
+            _holder(self._readout_column, (run.build_readout_section(),)),
+            _holder(self._record_column, (run.build_control_record(),), before_stretch=True),
+            _holder(self._sidebar_column, (run.build_accounting_panel(),), before_stretch=True),
             _holder(self._off_scale_column, (run.build_off_scale_notice(),)),
             _holder(self._wash_in_state_column, (run.build_wash_in_state(),)),
-            readouts,
             parameters,
         )
+        self._require_unconditional_values(run)
         self._runs = (*self._runs, run)
-        self._slots = (*self._slots, _RunSlots(readouts, parameters, placed))
+        self._slots = (*self._slots, _RunSlots(parameters, placed))
         self._restack_sections()
         self._rename_runs()
 
@@ -818,19 +905,50 @@ class SimulationView(QWidget):
         run.setParent(None)
         run.deleteLater()
 
-    def _restack_sections(self) -> None:
-        """Order the vertical splitter: every run's readouts, every run's settings, the charts.
+    def _require_unconditional_values(self, run: RunView) -> None:
+        """Refuse a run whose unconditional values are not all inside the region.
 
-        Both runs' readouts stand together and both runs' settings stand
-        together, so a reader compares like against like down one column.
+        The run's set is read from `app/unconditional_set.py`, so the
+        declaration rather than this method decides what the region must
+        hold. Every agent this build loads is an inhaled agent, so every run
+        owes `INHALED_AGENT`'s tier.
+
+        Args:
+            run: The run just placed.
+
+        Raises:
+            RuntimeError: A declared value has no widget, or its widget is
+                outside the region or inside the layout container. Either is
+                a layout that could take a value `docs/MODEL.md` requires
+                off the screen, so the dashboard is not built.
+        """
+
+        widgets = run.unconditional_widgets()
+        misplaced = []
+
+        for value in unconditional_set(INHALED_AGENT).values:
+            widget = widgets.get(value)
+
+            if widget is None or not _within(widget, self._unconditional_region):
+                misplaced.append(value.value)
+            elif _within(widget, self._sections):
+                misplaced.append(value.value)
+
+        if misplaced:
+            raise RuntimeError(
+                "the unconditional region does not hold "
+                f"{', '.join(misplaced)}, which docs/MODEL.md requires on screen in every "
+                "layout (app/unconditional_set.py)"
+            )
+
+    def _restack_sections(self) -> None:
+        """Order the vertical splitter: every run's settings, then the charts.
+
         `QSplitter.addWidget` moves a section it already holds, so re-adding
         every section in order is the whole of the reordering; the handles
         are frozen again because Qt enables the one it creates with a new
         section.
         """
-
-        for slots in self._slots:
-            self._sections.addWidget(slots.readouts)
 
         for slots in self._slots:
             self._sections.addWidget(slots.parameters)

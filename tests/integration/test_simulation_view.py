@@ -156,6 +156,11 @@ from anesthesia_sim.app.theme import (
     PANEL,
     WARNING,
 )
+from anesthesia_sim.app.unconditional_set import (
+    INHALED_AGENT,
+    UnconditionalValue,
+    unconditional_set,
+)
 from anesthesia_sim.app.wash_in import read_wash_in
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core import supported_ranges as supported_ranges_module
@@ -309,13 +314,15 @@ def _page_of(view: SimulationView) -> QWidget:
     return page
 
 
-def _sidebar_panels(run: RunView) -> tuple[QWidget, QWidget]:
-    """The accounting and control-change panels a run placed in the sidebar, in that order.
+def _record_panels(run: RunView) -> tuple[QWidget, QWidget]:
+    """The accounting and control-change panels a run placed on the page, in that order.
 
-    Reached through the heading placed in each rather than through
-    `build_sidebar_panels`, so what the tests below measure is what the page
-    holds whatever that method hands back. A second call to it used to build
-    panels with no parent and move the run's live labels into them
+    The accounting panel is in the sidebar beside the charts and the
+    control-change panel in the unconditional region (`PL-NWTM`). Reached
+    through the heading placed in each rather than through the build methods,
+    so what the tests below measure is what the page holds whatever those
+    methods hand back. A second call to the method that built both used to
+    build panels with no parent and move the run's live labels into them
     (`PL-N67T`).
     """
 
@@ -327,7 +334,7 @@ def _sidebar_panels(run: RunView) -> tuple[QWidget, QWidget]:
 
 
 def _stacked_sections(view: SimulationView) -> QSplitter:
-    """The vertical splitter of readouts, settings and the chart row."""
+    """The vertical splitter of settings and the chart row, under the unconditional region."""
 
     vertical = [
         splitter
@@ -4087,12 +4094,20 @@ def test_a_real_run_draws_the_ratio_of_its_own_recorded_compartments(
 # ------------------------------------------- the whole interface, walked
 
 
-def test_the_header_shows_the_application_name_from_app_metadata(application: QApplication) -> None:
-    """`PL-HK75`: the name on screen is the one `app_metadata` declares."""
+def test_the_page_leaves_the_application_name_to_the_window_title(
+    application: QApplication,
+) -> None:
+    """The page no longer restates the name the window's title bar carries (`PL-J8K2` Q2).
+
+    `PL-HK75` put the name on screen from `app_metadata`; the title bar is
+    where it now is, and `test_bootstrap` holds the window title to it. The
+    in-page title row cost 44 px the chart cannot spare on a laptop
+    (`PL-84QX`).
+    """
 
     view = _shown_view(application, SimulationController())
 
-    assert APP_DISPLAY_NAME in _interface_strings(view)
+    assert APP_DISPLAY_NAME not in _interface_strings(view)
 
 
 def test_no_interface_string_drops_the_end_tidal_equivalent_hedge(
@@ -4580,9 +4595,9 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
     never widens it; the chart column alone asks for less than a thousand
     pixels.
 
-    The sidebar panels measured are the ones the page holds, which the test
-    below proves. They used to come from a second `build_sidebar_panels()`
-    call, whose panels had no parent: `mapTo(page, ...)` assumes the page is
+    The record panels measured are the ones the page holds, which the test
+    below proves. They used to come from a second build of the panels,
+    whose panels had no parent: `mapTo(page, ...)` assumes the page is
     an ancestor and checks nothing, so the last two assertions compared
     coordinates that never reached the page and could not fail (`PL-JS0X`).
     """
@@ -4603,8 +4618,8 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
 
         assert right_edge <= page.width(), "a setting control is laid beyond the page"
 
-    for panel in _sidebar_panels(view.runs[0]):
-        assert page.isAncestorOf(panel), "a sidebar panel measured is not on the page"
+    for panel in _record_panels(view.runs[0]):
+        assert page.isAncestorOf(panel), "a record panel measured is not on the page"
         assert panel.mapTo(page, panel.rect().bottomRight()).x() <= page.width()
 
 
@@ -4614,62 +4629,69 @@ def test_the_sidebar_panels_measured_are_the_ones_the_page_holds(application: QA
     Matched against the page's own children by the object name the panel's
     stylesheet is scoped by, so a rebuilt panel fails here, and so does a
     widget the heading might come to sit in between it and the panel. The
-    second `build_sidebar_panels()` call this replaced also moved the run's
-    live labels out of the sidebar the assertions before it had measured
+    second build of the panels that this replaced also moved the run's
+    live labels out of the column the assertions before it had measured
     (`PL-JS0X`, `PL-N67T`).
     """
 
     view = _shown_view(application, SimulationController())
     page = _page_of(view)
-    accounting, timeline = _sidebar_panels(view.runs[0])
+    accounting, timeline = _record_panels(view.runs[0])
 
     for panel, name in ((accounting, "accountingPanel"), (timeline, "controlTimelinePanel")):
         assert page.findChildren(QWidget, name) == [panel], f"{name} is not the page's own"
         assert panel.isVisible(), f"{name} is not shown"
 
 
-def test_a_second_build_sidebar_panels_leaves_the_run_labels_on_screen(
+def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
     application: QApplication,
 ) -> None:
-    """Asking a run for its sidebar panels again hands back the two it placed.
+    """Asking a run for its accounting or control-change panel again hands back the one it placed.
 
-    The method used to build two new panels on every call and lay the run's
-    own labels into them, and a layout takes a widget from wherever it sits:
-    a second call moved the accounting status, its amounts and the control
-    changes into panels with no parent, and the sidebar a learner was reading
-    went empty of them (`PL-N67T`). Every label is held to being on screen
-    and in the shared column before the call as well as after it, so the
-    test cannot pass on a sidebar that never showed them. The overflow line
-    is hidden while nothing overflows, so it is held to the column alone.
+    The method that built both used to build two new panels on every call and
+    lay the run's own labels into them, and a layout takes a widget from
+    wherever it sits: a second call moved the accounting status, its amounts
+    and the control changes into panels with no parent, and the sidebar a
+    learner was reading went empty of them (`PL-N67T`). Each label is held to
+    being on screen and in its shared column before the call as well as after
+    it, so the test cannot pass on a column that never showed them. The
+    overflow line is hidden while nothing overflows, so it is held to its
+    column alone. Since `PL-NWTM` the accounting panel is in the sidebar and
+    the control-change panel in the unconditional region's record column.
     """
 
     view = _shown_view(application, SimulationController())
     run = view.runs[0]
     sidebar = view._sidebar_column.parentWidget()
-    placed = _sidebar_panels(run)
+    records = view._record_column.parentWidget()
+    placed = _record_panels(run)
     shown = (
-        run._accounting_heading_text,
-        run._agent_accounting_status_text,
-        run._agent_accounting_detail_text,
-        run._agent_amounts_text,
-        run._control_timeline_heading_text,
-        run._control_timeline_text,
+        (run._accounting_heading_text, sidebar),
+        (run._agent_accounting_status_text, sidebar),
+        (run._agent_accounting_detail_text, sidebar),
+        (run._agent_amounts_text, sidebar),
+        (run._control_timeline_heading_text, records),
+        (run._control_timeline_text, records),
     )
 
-    assert sidebar is not None
+    assert sidebar is not None and records is not None
 
-    for label in shown:
+    for label, column in shown:
         assert label.isVisible(), "a run label is off screen before the second call"
-        assert sidebar.isAncestorOf(label), "a run label is outside the sidebar to begin with"
+        assert column is not None and column.isAncestorOf(label), (
+            "a run label is outside its column to begin with"
+        )
 
-    again = run.build_sidebar_panels()
+    again = (run.build_accounting_panel(), run.build_control_record())
     _settle(application)
 
-    for label in shown:
+    for label, column in shown:
         assert label.isVisible(), "a second call took a run label off screen"
-        assert sidebar.isAncestorOf(label), "a second call moved a run label out of the sidebar"
+        assert column is not None and column.isAncestorOf(label), (
+            "a second call moved a run label out of its column"
+        )
 
-    assert sidebar.isAncestorOf(run._control_timeline_overflow_text)
+    assert records.isAncestorOf(run._control_timeline_overflow_text)
     assert again[0] is placed[0], "a second call built a new accounting panel"
     assert again[1] is placed[1], "a second call built a new control-change panel"
 
@@ -4725,18 +4747,21 @@ def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QAppl
 
 
 def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QApplication) -> None:
-    """The readout and setting sections stand at their own height; the chart row takes the rest.
+    """The region and the setting section stand at their own height; the chart row takes the rest.
 
     At the fixed test size the page is taller than the window and there is
     no spare; a window taller than the page's own hint has some, and every
-    pixel of it lengthens the chart row while the two rows above it do not
-    move.
+    pixel of it lengthens the chart row while the region holding the
+    readouts and the setting row above the charts do not move. The readout
+    section is measured inside the region, where it has been since
+    `PL-NWTM`.
     """
 
     controller = SimulationController()
     view = _shown_view(application, controller)
     stacked = _stacked_sections(view)
-    readout_section, settings, chart_row = (stacked.widget(index) for index in range(3))
+    settings, chart_row = (stacked.widget(index) for index in range(2))
+    readout_section = view.unconditional_region
     page = _page_of(view)
 
     assert abs(readout_section.height() - readout_section.sizeHint().height()) <= 2
@@ -5717,8 +5742,9 @@ def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
 
     The dashboard holds its compartment selection to the compared cap from
     this count, the legends name the runs from it, the panels carry the names the legend
-    entries use, and `PL-25KS` gives every surface a splitter section of its
-    own - so a second run adds two.
+    entries use, and `PL-25KS` gives every surface outside the unconditional
+    region a splitter section of its own - so a second run adds one, for its
+    setting controls, and its readouts join the region (`PL-NWTM`).
     """
 
     view = _case_view(application, _branched_case())
@@ -5727,7 +5753,8 @@ def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
     _take_fork(view, 60.0)
     _settle(application)
 
-    assert _stacked_sections(view).count() == sections_before + 2
+    assert _stacked_sections(view).count() == sections_before + 1
+    assert view.unconditional_region.isAncestorOf(view.runs[1]._readout_row)
     assert view._legend._run_count == 2
     assert view._wash_in_legend._run_count == 2
     assert view.runs[0]._run_name_text.text() == run_label(0)
@@ -5929,11 +5956,12 @@ def test_a_lone_run_leaves_the_notice_banner_unnamed(application: QApplication) 
 
 
 def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) -> None:
-    """Both panels sit in the sidebar column the runs share, so each heading says whose.
+    """Both panels sit in a column the runs share, so each heading says whose.
 
-    Once a branch is drawn the column stacks four panels - accounting,
-    control changes, accounting, control changes - and nothing on any of them
-    said which run it recorded. Both carry a claim about one run: a
+    Once a branch is drawn the sidebar stacks two accounting panels and the
+    unconditional region's record column two control-change panels
+    (`PL-NWTM`); before that one column stacked all four, and nothing on any
+    of them said which run it recorded. Both carry a claim about one run: a
     mass-balance status with litres of equivalent pure agent gas, and a list
     of settings under the words "What was changed during this run". Read as
     the other run's, the second says the trunk received an intervention it
@@ -5964,9 +5992,7 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
     branch = view.runs[1]
     branch.controller.set_alveolar_ventilation(AlveolarVentilation(6.0))
     view.present(False)
-    sidebar = view._sidebar_column.parentWidget()
-
-    assert sidebar is not None
+    columns = (view._sidebar_column.parentWidget(), view._record_column.parentWidget())
 
     for index, run in enumerate(view.runs):
         name = run_label(index)
@@ -5975,11 +6001,108 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
         assert headings[0].text() == f"{ACCOUNTING_HEADING} — {name}"
         assert headings[1].text() == f"{CONTROL_TIMELINE_HEADING} — {name}"
 
-        for heading in headings:
+        for heading, column in zip(headings, columns, strict=True):
             assert heading.isVisible(), "a panel heading naming the run is not on screen"
-            assert sidebar.isAncestorOf(heading), "the named heading is not in the shared column"
+            assert column is not None and column.isAncestorOf(heading), (
+                "the named heading is not in the shared column"
+            )
 
     assert view.runs[0]._control_timeline_text.text() != branch._control_timeline_text.text()
+
+
+def test_no_unconditional_value_sits_inside_the_layout_container(application: QApplication) -> None:
+    """Every value `docs/MODEL.md` requires in every layout is in the region, outside the splitters.
+
+    The splitter tree is what the Areas replace (`PL-W9P6`), so a value with
+    a splitter among its ancestors is one a reader could close away once the
+    handles are live (`PL-NWTM`). Held for both runs of a compared case,
+    since the second run's widgets are placed an hour after the first's. The
+    halt banner is hidden while nothing has halted, and is held to its place
+    alone; every other value is on screen.
+    """
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+    _settle(application)
+    required = unconditional_set(INHALED_AGENT).values
+
+    assert len(view.runs) == 2
+    assert len(required) == 14, "five invariant, eight per-substance and the record"
+
+    for run in view.runs:
+        widgets = run.unconditional_widgets()
+
+        assert set(widgets) == set(required)
+
+        for value in required:
+            widget = widgets[value]
+
+            assert not view.layout_container.isAncestorOf(widget), (
+                f"{value.value} is inside the layout container"
+            )
+            assert view.unconditional_region.isAncestorOf(widget), (
+                f"{value.value} is outside the unconditional region"
+            )
+
+            if value is not UnconditionalValue.HALT_REASON:
+                assert widget.isVisible(), f"{value.value} is not on screen"
+
+
+def test_the_readout_heading_states_the_dial_and_the_mac_it_divides_by(
+    application: QApplication,
+) -> None:
+    """The region carries the delivered concentration in both units and the 1 MAC (`PL-NWTM`).
+
+    Expected text is worked by hand: the dial opens at sevoflurane's own
+    1 MAC, 2.0% (`data/agents/sevoflurane.json`), which is 1.00 ×MAC; moved
+    to 3.0% it is 1.50 ×MAC.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+
+    assert run._delivered_text.text() == "Delivered 2.00% (1.00 ×MAC)"
+    assert run._one_mac_text.text() == "1 MAC sevoflurane = 2.0%"
+
+    controller.set_delivered_concentration_percent(
+        Percent(3.0, name="delivered_concentration_percent")
+    )
+    view.present(False)
+
+    assert run._delivered_text.text() == "Delivered 3.00% (1.50 ×MAC)"
+    assert run._delivered_text.isVisible()
+    assert run._one_mac_text.isVisible()
+
+
+@pytest.mark.parametrize("misplaced", ["missing", "in a splitter"])
+def test_a_run_whose_region_lacks_a_declared_value_is_refused(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, misplaced: str
+) -> None:
+    """The declaration decides what the region holds, so a run short of a value is not shown.
+
+    Built with the 1 MAC statement taken out of the run's mapping, and with
+    it pointed at a setting slider inside the splitter tree: a dashboard
+    built either way would draw ×MAC numbers whose divisor a reader could
+    close away.
+    """
+
+    original = RunView.unconditional_widgets
+
+    def short_of_one_mac(run: RunView) -> dict[UnconditionalValue, QWidget]:
+        widgets = dict(original(run))
+
+        if misplaced == "missing":
+            del widgets[UnconditionalValue.ONE_MAC]
+        else:
+            widgets[UnconditionalValue.ONE_MAC] = run._fresh_gas_flow_slider
+
+        return widgets
+
+    monkeypatch.setattr(RunView, "unconditional_widgets", short_of_one_mac)
+
+    with pytest.raises(RuntimeError, match="does not hold one_mac"):
+        SimulationView((SimulationController(),))
 
 
 def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QApplication) -> None:

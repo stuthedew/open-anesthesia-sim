@@ -93,9 +93,10 @@ src/anesthesia_sim/
 ├── app/                  # user interface - PySide6 and pyqtgraph since PL-25KS (ROADMAP.md § "Completed: v0.4.26 - the interface moves to Qt")
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots; ResumePoint and BranchedCase: where a branch opened, and the trunk it belongs to
 │   ├── run_series.py               # the vocabulary a run's drawn values are addressed by, and the window one frame reads them from: RecordedQuantity, RecordedSeries, DrawnWindow; toolkit-independent
+│   ├── unconditional_set.py        # docs/MODEL.md's unconditional set as data: UnconditionalValue, its tiers, SubstanceInstance and INHALED_AGENT, read by the region that holds it (PL-NWTM); toolkit-independent
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_UNITS, ControlChange; toolkit-independent
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed, which SimulationController.advance supplies each step
-│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the charts, the legend and the compartment selection it shows, the time base, the captions, the wash-in section, the render tick, the splitter layout; no domain logic
+│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the charts, the legend and the compartment selection it shows, the time base, the captions, the wash-in section, the render tick, the splitter layout; no domain logic
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, inert_splitter, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
