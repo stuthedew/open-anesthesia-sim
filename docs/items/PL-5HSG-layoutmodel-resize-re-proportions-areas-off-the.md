@@ -3,11 +3,13 @@ id: PL-5HSG
 title: LayoutModel.resize re-proportions Areas off the dragged line, so dragging a root border moves a nested border no reader touched, where Blender moves only the borders on the line: decide which a reader gets before PL-W9P6 turns the handles live
 priority: P2
 effort: M
-status: ready
+status: done
 classes: ux
 feature: interface-areas
-touches: src/anesthesia_sim/layout/model.py, tests/unit/test_layout_model.py, docs/interface-provenance.md
+touches: src/anesthesia_sim/layout/model.py, tests/unit/test_layout_model.py, docs/interface-provenance.md, docs/items/PL-W9P6-build-the-one-adapter-module-that-drives-the-qt.md
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1579
 payoff: dragging one border moves only that border's line, so no plot or table the reader did not touch resizes under them
 verify: grep -q 'def test_a_drag_moves_only_the_borders_on_its_line' tests/unit/test_layout_model.py
 ---
@@ -62,3 +64,16 @@ The test pinning today's drag,
 `tests/unit/test_layout_model.py`, gives way to one asserting this, and
 `resize`'s docstring and `docs/interface-provenance.md` no longer name it as
 a difference from Blender.
+
+**Built 2026-10-18 (`#1579`).** `resize` now places every border on the
+dragged line at the new position and keeps every other border where it lies
+in the window. `_dragged` walks down from the window: a split whose extent the
+drag changed, or which holds a moved handle, gets its sizes worked out again
+from where its borders lie, and every other split keeps its sizes exactly. A
+drag that carries the line onto or past a border that stays put is refused,
+naming the Area left with no room, until `PL-K285` makes it a clamp.
+Blender's `area_move_apply_do` in `source/blender/editors/screen/screen_ops.cc`
+(`blender/blender` `main`, read again 2026-10-18) still moves only the
+vertices whose `editflag` is set. A randomized check against an independent
+reading of the rectangles, run on four seeds and about 94,000 drags of random
+8x8-grid layouts, found no border off the line moving.

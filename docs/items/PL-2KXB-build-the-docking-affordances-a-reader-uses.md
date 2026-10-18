@@ -32,7 +32,8 @@ scope" item 14.
 
 ## Blocked on `PL-G60V`, 2026-10-12
 
-The owner answered `PL-G60V` on 2026-10-12 (ratified): whether two Areas can
+[superseded 2026-10-18] `PL-G60V` closed on 2026-10-18 in `#1579`, so a join
+already depends on the rectangles alone when this item starts. The owner answered `PL-G60V` on 2026-10-12 (ratified): whether two Areas can
 be joined depends on the rectangles alone, never on which split came first.
 This item builds the join a reader uses, where a refusal would first be seen,
 so it waits for that change, as `PL-G60V`'s recommendation asked; the
