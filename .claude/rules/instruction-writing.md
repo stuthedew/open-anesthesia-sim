@@ -114,7 +114,13 @@ rules, "phases," or "closed loops" in the output itself.
       answer rests on** (project owner, 2026-09-19). Theirs are the
       consequential questions: the order features come in, what the project
       is for, behavior a learner would see, and anything the safety-critical
-      standard reaches. **A choice with one clearly correct option is never
+      standard reaches. **Look, wording and placement are not among them for
+      now** (project owner, 2026-10-18). While the structure and function are
+      being built, those choices are placeholders. Decide one yourself, record
+      it in the item as a placeholder, and say in one line what you chose. A
+      choice stays theirs where it decides whether a value the safety-critical
+      standard requires is on screen, readable or correctly labelled, because
+      that is a correctness question and not one of look (`PL-KBBJ`). **A choice with one clearly correct option is never
       offered: take it, record why in the item, and say in one line what you
       did** (project owner, 2026-09-27), closing an item whose own
       measurements show the work is not worth doing included. Offer a choice
