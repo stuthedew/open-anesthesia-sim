@@ -53,12 +53,30 @@ other ([memory](https://code.claude.com/docs/en/memory), read 2026-10-12).
 `tools/doc_check.py` measures the resident set through it, so a nested rule is
 never measured as resident here and left unread there (`PL-9NZ3`).
 
+**A third rule holds the apparatus set's three copies to each other**
+(`PL-21RC`). `CLAUDE.md` names the paths the apparatus standard governs,
+`.claude/rules/expert-review.md` restates them so the scope is read on sight,
+and `.claude/rules/apparatus-standard.md`'s `paths:` is the copy that loads the
+rule. `PL-1KTV` corrected all three by hand when `.github/` was missing from
+them, and `docs/maintainer.md` then went missing from all three the same way.
+Whether the three lists name the same paths needs no judgment, so it is a hard
+rule. So is whether each apparatus path is in `docket.toml`'s
+`workflow_paths`, the lane the path's items take.
+
+Whether a `workflow_paths` entry belongs in the apparatus set is the judgment,
+and `LANE_ONLY` records it for each entry that does not. So an entry added to
+`workflow_paths` fails here until somebody puts it in one list or the other,
+which is the moment that decision is taken. Entries under `tests/` are left
+out: a test's imports decide its bar, by the rule
+`.claude/rules/where-new-code-goes.md` points to.
+
 Standard library only, like every tool here, so it runs in a bare checkout.
 """
 
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path, PurePosixPath
 
@@ -67,6 +85,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.frontmatter import (  # noqa: E402
+    Misindented,
     Unread,
     closing,
     closing_quote,
@@ -77,7 +96,7 @@ from docket.frontmatter import (  # noqa: E402
 )
 from docket.lines import split_lines  # noqa: E402
 
-from workflow_paths_check import tracked_under  # noqa: E402
+from workflow_paths_check import declared_workflow_paths, tracked_under  # noqa: E402
 
 #: Where Claude Code reads project rules, relative to the repository root.
 RULES_DIR = ".claude/rules"
@@ -85,6 +104,46 @@ RULES_DIR = ".claude/rules"
 #: The spelling that matches nothing, called out separately in the failure
 #: because "add a leading slash" reads as cosmetic against it.
 DEAD_PREFIX = "./"
+
+#: The rule whose `paths:` is the apparatus set's loading copy.
+APPARATUS_RULE = ".claude/rules/apparatus-standard.md"
+
+#: The prose copies of the apparatus set. Each is a file, the words just before
+#: the list, and the words that end it. Whitespace is collapsed before matching,
+#: so a line break inside either phrase does not matter.
+APPARATUS_LISTS = (
+    (
+        "CLAUDE.md",
+        "The workflow apparatus that exists so agent sessions can be productive — ",
+        " —",
+    ),
+    (".claude/rules/expert-review.md", "It is not the bar for the apparatus (", ")"),
+)
+
+#: The `workflow_paths` entries outside the apparatus set, so that a session
+#: opening one does not load the apparatus standard. Each is a record or a
+#: configuration file rather than apparatus prose or code, or it is written for
+#: contributors to both halves. `PL-1KTV` placed most of them, and `PL-21RC`
+#: placed the rest on the same test.
+LANE_ONLY = (
+    # Records of what was decided or measured, not instructions.
+    "docs/items",
+    "docs/WORKING_NOTES.md",
+    "docs/dead-ends.md",
+    "docs/pr-bodies",
+    "docs/stress-2026-09-25",
+    # Configuration, which carries no prose a standard could apply to.
+    ".gitattributes",
+    ".gitignore",
+    ".vscode",
+    "Makefile",
+    "conftest.py",
+    "docket.toml",
+    # Written for contributors to both halves.
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "docs/mutation-testing.md",
+)
 
 #: Where a glob stops being a real path. Everything before the first of these
 #: is literal, and so is answerable against the tree.
@@ -108,6 +167,13 @@ def frontmatter(text: str) -> list[str] | None:
 
 class Unreadable(Exception):
     """A `paths:` value continued in a form `entries` does not read, named in the message."""
+
+
+#: Why a `- ` line under `paths:` at another indentation than the list's is no glob.
+_OFF_THE_LIST = (
+    "`{}` under `paths:` is not at the list's indentation, or a tab indents it, which YAML "
+    "refuses; write each glob as a `- ` item at the list's indentation"
+)
 
 
 def entries(block: list[str]) -> list[str]:
@@ -138,6 +204,11 @@ def entries(block: list[str]) -> list[str]:
     """
     try:
         declared = [key for key in keys(block) if key.name == "paths"]
+    except Misindented as misplaced:
+        stripped = block[misplaced.line].strip()
+        if misplaced.key == "paths" and is_item(stripped):
+            raise Unreadable(_OFF_THE_LIST.format(stripped)) from None
+        raise Unreadable(str(misplaced)) from None
     except Unread as unread:
         raise Unreadable(str(unread)) from None
     if not declared:
@@ -171,11 +242,7 @@ def entries(block: list[str]) -> list[str]:
         indent = len(line) - len(line.lstrip(" "))
         column = indent if column is None else column
         if line[indent] != "-" or indent < column:
-            raise Unreadable(
-                f"`{stripped}` under `paths:` is not at the list's indentation, or a tab "
-                "indents it, which YAML refuses; write each glob as a `- ` item at the "
-                "list's indentation"
-            )
+            raise Unreadable(_OFF_THE_LIST.format(stripped))
         if indent > column:
             raise Unreadable(
                 f"`{stripped}` under `paths:` is indented past the list's first `- `, so "
@@ -329,12 +396,101 @@ def problems(root: Path) -> list[str]:
     return found
 
 
+def _prose_list(root: Path, name: str, opener: str, closer: str) -> list[str] | str:
+    """The backticked paths one prose copy of the apparatus set names, or why none were read."""
+    try:
+        text = " ".join((root / name).read_text(encoding="utf-8").split())
+    except OSError as error:
+        return f"{name} cannot be read ({error})"
+    start = text.find(opener)
+    if start < 0:
+        return f"{name} no longer holds the words `{opener.strip()}` that open its apparatus list"
+    start += len(opener)
+    end = text.find(closer, start)
+    if end < 0:
+        return f"{name}'s apparatus list is never closed by `{closer.strip()}`"
+    return re.findall(r"`([^`]+)`", text[start:end])
+
+
+def _glob_path(entry: str) -> str | None:
+    """A `paths:` glob as the prose spells the same path, or None for any other shape.
+
+    `/tools/**` is `tools/` and `/docs/worker.md` is `docs/worker.md`. Any other
+    glob does not name one path, so the prose cannot list it.
+    """
+    if not entry.startswith("/"):
+        return None
+    path = entry[1:]
+    if path.endswith("/**"):
+        path = path[:-2]
+    return None if any(char in GLOB_CHARS for char in path) else path
+
+
+def apparatus_set_problems(root: Path) -> list[str]:
+    """Every disagreement between the apparatus set's three copies and `workflow_paths`."""
+    found: list[str] = []
+    copies: dict[str, set[str]] = {}
+    for name, opener, closer in APPARATUS_LISTS:
+        listed = _prose_list(root, name, opener, closer)
+        if isinstance(listed, str):
+            found.append(f"apparatus set: {listed}, so it was not compared with the others")
+        else:
+            copies[name] = set(listed)
+    try:
+        block = frontmatter((root / APPARATUS_RULE).read_text(encoding="utf-8"))
+        globs = entries(block or [])
+    except (OSError, Unreadable) as error:
+        found.append(f"apparatus set: {APPARATUS_RULE}'s `paths:` was not read ({error})")
+    else:
+        paths = [_glob_path(glob) for glob in globs]
+        for glob, path in zip(globs, paths, strict=True):
+            if path is None:
+                found.append(
+                    f'apparatus set: {APPARATUS_RULE}\'s "{glob}" names no one path, so the '
+                    "prose lists cannot name it; write `/<file>` or `/<directory>/**`"
+                )
+        copies[f"{APPARATUS_RULE}'s `paths:`"] = {path for path in paths if path}
+    union: set[str] = set().union(*copies.values())
+    for name, named in copies.items():
+        missing = sorted(union - named)
+        if missing:
+            found.append(
+                f"apparatus set: {name} does not name {', '.join(missing)}, which "
+                "another copy of the set names"
+            )
+    workflow = declared_workflow_paths(root)
+    for path in sorted(union):
+        bare = path.rstrip("/")
+        if not any(bare == entry or bare.startswith(entry + "/") for entry in workflow):
+            found.append(
+                f"apparatus set: {path} is not in docket.toml's workflow_paths, so its "
+                "items take the simulator's lane while the apparatus standard governs it"
+            )
+    for entry in workflow:
+        if entry.startswith("tests/"):
+            continue
+        placed = entry in LANE_ONLY or any(
+            path.rstrip("/") == entry or path.startswith(entry + "/") for path in union
+        )
+        if not placed:
+            found.append(
+                f"apparatus set: workflow_paths' {entry} is in neither the apparatus set nor "
+                "LANE_ONLY; add it to the three copies of the set, or to LANE_ONLY with its reason"
+            )
+    for entry in LANE_ONLY:
+        if entry not in workflow:
+            found.append(
+                f"apparatus set: LANE_ONLY's {entry} is no longer in workflow_paths; drop it"
+            )
+    return found
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=ROOT, help="repository to check")
     args = parser.parse_args()
 
-    found = problems(args.root)
+    found = problems(args.root) + apparatus_set_problems(args.root)
     if not found:
         declared = [
             entry
@@ -343,7 +499,9 @@ def main() -> int:
         ]
         print(
             f"rules-paths: {len(declared)} declared path glob(s) across "
-            f"{RULES_DIR}, all anchored to the repository root and resolving"
+            f"{RULES_DIR}, all anchored to the repository root and resolving; the "
+            f"apparatus set's {len(APPARATUS_LISTS) + 1} copies agree with each other "
+            "and with workflow_paths"
         )
         return 0
 
@@ -353,7 +511,9 @@ def main() -> int:
         + "  A `paths:` entry decides which files load a rule, and it fails silently "
         "in both directions: without a leading `/` it also matches the same name at "
         "any depth, and pointing at a path that is not there it is never delivered at "
-        "all. Measured, not assumed (`PL-ZQ35`, `PL-LLWN`, `PL-DNYL`).",
+        "all. Measured, not assumed (`PL-ZQ35`, `PL-LLWN`, `PL-DNYL`). The apparatus "
+        "set is copied in three places, and a path missing from one of them went "
+        "unnoticed twice (`PL-1KTV`, `PL-21RC`).",
         file=sys.stderr,
     )
     return 1

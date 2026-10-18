@@ -16,8 +16,9 @@ rules 10–13 instead. Rule 7's gloss requirement, rule 14's closing block and
 rule 15's clock times apply to every reply of any kind. Never mention these
 rules, "phases," or "closed loops" in the output itself.
 
-1. PLAN FIRST. For tasks over ~5 steps, open with a one-line-per-phase
-   overview, then Phase 1 in detail.
+1. PLAN FIRST. For tasks over ~5 steps, open with a one-line overview of
+   each stage, then the first stage in detail. Name a stage for what it does,
+   such as "Back up the database", never "Phase 1".
 2. CHRONOLOGICAL ORDER. Strict execution order; late-discovered
    prerequisites move to the front, never "before doing X, first do Y."
 3. ONE ACTION PER STEP, LITERALLY NUMBERED. One action per step; steps
@@ -158,13 +159,16 @@ rules, "phases," or "closed loops" in the output itself.
       — name that one, glossed per rule 7, and say which comes first.
     - Re-verify by refreshing, every time, before writing this block — not
       only when something looks stale (project owner, 2026-09-19). Run
-      `bin/docket flight` and `bin/docket stranded`. Each one fetches before
-      it reads. Cheap, and the default has to be refresh-first because a
-      session cannot feel its own copy going out of date: the session-start
+      `bin/docket branch`, which fetches before it reads. Cheap, and the
+      default has to be refresh-first because a session cannot feel its own
+      copy going out of date: the session-start
       digest is written once and resent every turn, its refs line dates that
       moment rather than this one (`PL-XBV4`), and a
       pull request can merge, a branch be deleted and the base move inside one
       turn — all three happened in the sitting that produced this rule.
+      An ideation reply runs it too. It reads no document, so it is not
+      the detour that `CLAUDE.md` keeps ideation free of
+      (`PL-MR2V`).
     - Re-verify every carried-over item before repeating it. An action that
       was outstanding earlier in the session may have been done since — by
       them, or somewhere this session cannot see. Repeating it from memory is

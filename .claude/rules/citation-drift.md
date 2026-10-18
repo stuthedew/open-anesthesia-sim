@@ -3,6 +3,7 @@ paths:
   - "/docs/items/**"
   - "/docs/WORKING_NOTES.md"
   - "/.claude/skills/**"
+  - "/.claude/rules/**"
 ---
 
 # When a citation that has drifted is a finding, and when it is not
@@ -29,6 +30,12 @@ tree facts.
 Scoped to `SKILL.md` alone, this rule would have stopped loading for exactly the
 files it governs, and `tools/rules_paths_check.py` could not have said so - the
 glob still resolves, because `SKILL.md` still exists (`PL-2XM2`).
+
+**The rules glob covers this file's own tree.** A rule is read by more
+sessions, and for longer, than any other apparatus document, so a path it cites
+that later moves is costly. Without this glob, a session writing a rule learned
+how to cite a moving target only when `tools/doc_check.py` refused the finished
+draft (`PL-RZKZ`).
 
 **Ratified, not specified, so the bar to reopen it is ordinary evidence.** It
 was a session's recommendation that the project owner agreed with on one read -

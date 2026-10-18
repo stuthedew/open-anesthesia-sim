@@ -1,9 +1,30 @@
 ---
 id: PL-5N95
 title: Record the forkserver whole-tree mutation baseline that make mutate ARGS=--all measures in docs/mutation-testing.md, beside the 2026-10-17 fork-mode audit baseline, so the two modes and the 33-file and import-rule test selections can be compared
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: infra
 feature: test-effectiveness-measurement
+touches: docs/mutation-testing.md
+deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-10-17
+payoff: a later mutation kill rate has a baseline in its own mode to be compared against, so a drop is not mistaken for the change of mode
+verify: grep -qE '^### .*forkserver' docs/mutation-testing.md
 ---
 
 **Problem.** Record the forkserver whole-tree mutation baseline that make mutate ARGS=--all measures in docs/mutation-testing.md, beside the 2026-10-17 fork-mode audit baseline, so the two modes and the 33-file and import-rule test selections can be compared
+
+**Why it matters.** `docs/mutation-testing.md` § "Baselines" holds one
+measurement, the 2026-10-17 audit in fork mode over 33 hand-listed test files.
+`make mutate ARGS=--all` now runs in forkserver mode and selects tests by the
+import rule, and the same file says that mode reported about 49 mutants as
+surviving that fork mode killed. Until a whole-tree forkserver run is recorded,
+a later kill rate has nothing in its own mode to be compared against, so a drop
+cannot be told apart from the change of mode.
+
+**Done when.** § "Baselines" holds a second table from one `make mutate
+ARGS=--all` run in forkserver mode, with its commit, mutant counts and per-module
+kill rates, and says how it differs from the fork-mode table. The run took about
+75 minutes for 1,058 of 2,498 mutants on 2026-10-17, so it needs a session that
+can wait about three hours.

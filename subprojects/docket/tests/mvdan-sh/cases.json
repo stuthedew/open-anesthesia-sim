@@ -1,0 +1,4662 @@
+[
+ {
+  "source": "file",
+  "input": ""
+ },
+ {
+  "source": "file",
+  "input": " "
+ },
+ {
+  "source": "file",
+  "input": "\t"
+ },
+ {
+  "source": "file",
+  "input": "\n \n"
+ },
+ {
+  "source": "file",
+  "input": "\r \r\n"
+ },
+ {
+  "source": "file",
+  "input": "# foo"
+ },
+ {
+  "source": "file",
+  "input": "# foo ( bar"
+ },
+ {
+  "source": "file",
+  "input": "# foo'bar"
+ },
+ {
+  "source": "file",
+  "input": "foo"
+ },
+ {
+  "source": "file",
+  "input": "foo "
+ },
+ {
+  "source": "file",
+  "input": " foo"
+ },
+ {
+  "source": "file",
+  "input": "foo # bar"
+ },
+ {
+  "source": "file",
+  "input": "\\"
+ },
+ {
+  "source": "file",
+  "input": "foo\\"
+ },
+ {
+  "source": "file",
+  "input": "f\\\noo\\"
+ },
+ {
+  "source": "file",
+  "input": "foo\\\\"
+ },
+ {
+  "source": "file",
+  "input": "foo\\\\\\"
+ },
+ {
+  "source": "file",
+  "input": "foo\\a"
+ },
+ {
+  "source": "file",
+  "input": "f\\\noo\\a"
+ },
+ {
+  "source": "file",
+  "input": "foo\nbar"
+ },
+ {
+  "source": "file",
+  "input": "foo; bar;"
+ },
+ {
+  "source": "file",
+  "input": "foo;bar;"
+ },
+ {
+  "source": "file",
+  "input": "\nfoo\nbar\n"
+ },
+ {
+  "source": "file",
+  "input": "foo\r\nbar\r\n"
+ },
+ {
+  "source": "file",
+  "input": "foo a b"
+ },
+ {
+  "source": "file",
+  "input": " foo  a  b "
+ },
+ {
+  "source": "file",
+  "input": "foo \\\n a b"
+ },
+ {
+  "source": "file",
+  "input": "foo \\\r\n a b"
+ },
+ {
+  "source": "file",
+  "input": "foobar"
+ },
+ {
+  "source": "file",
+  "input": "foo\\\nbar"
+ },
+ {
+  "source": "file",
+  "input": "foo\\\nba\\\nr"
+ },
+ {
+  "source": "file",
+  "input": "foo \\\n"
+ },
+ {
+  "source": "file",
+  "input": "foo \\\r\n"
+ },
+ {
+  "source": "file",
+  "input": "foo'bar'"
+ },
+ {
+  "source": "file",
+  "input": "(foo)"
+ },
+ {
+  "source": "file",
+  "input": "(foo;)"
+ },
+ {
+  "source": "file",
+  "input": "(\nfoo\n)"
+ },
+ {
+  "source": "file",
+  "input": "(\n\tfoo\n\tbar\n)"
+ },
+ {
+  "source": "file",
+  "input": "(foo; bar)"
+ },
+ {
+  "source": "file",
+  "input": "{ foo; }"
+ },
+ {
+  "source": "file",
+  "input": "{\nfoo\n}"
+ },
+ {
+  "source": "file",
+  "input": "{ if a; then b; fi; }"
+ },
+ {
+  "source": "file",
+  "input": "{ if a; then b; fi }"
+ },
+ {
+  "source": "file",
+  "input": "if a; then b; fi"
+ },
+ {
+  "source": "file",
+  "input": "if a\nthen\nb\nfi"
+ },
+ {
+  "source": "file",
+  "input": "if a;\nthen\nb\nfi"
+ },
+ {
+  "source": "file",
+  "input": "if a \nthen\nb\nfi"
+ },
+ {
+  "source": "file",
+  "input": "if a; then b; else c; fi"
+ },
+ {
+  "source": "file",
+  "input": "if a\nthen b\nelse\nc\nfi"
+ },
+ {
+  "source": "file",
+  "input": "if a; then a; elif b; then b; else c; fi"
+ },
+ {
+  "source": "file",
+  "input": "if a; then a; elif b; then b; elif c; then c; else d; fi"
+ },
+ {
+  "source": "file",
+  "input": "if a\nthen a\nelif b\nthen b\nelif c\nthen c\nelse\nd\nfi"
+ },
+ {
+  "source": "file",
+  "input": "if\n\ta1\n\ta2 foo\n\ta3 bar\nthen b; fi"
+ },
+ {
+  "source": "file",
+  "input": "if a1; a2 foo; a3 bar; then b; fi"
+ },
+ {
+  "source": "file",
+  "input": "((a == 2))"
+ },
+ {
+  "source": "file",
+  "input": "if (($# > 2)); then b; fi"
+ },
+ {
+  "source": "file",
+  "input": "(($(date -u) > DATE))"
+ },
+ {
+  "source": "file",
+  "input": "((`date -u` > DATE))"
+ },
+ {
+  "source": "file",
+  "input": ": $((0x$foo == 10))"
+ },
+ {
+  "source": "file",
+  "input": "((# 1 + 2))"
+ },
+ {
+  "source": "file",
+  "input": "(( # 1 + 2 ))"
+ },
+ {
+  "source": "file",
+  "input": "$((# 1 + 2))"
+ },
+ {
+  "source": "file",
+  "input": "$(( # 1 + 2 ))"
+ },
+ {
+  "source": "file",
+  "input": "((3#20))"
+ },
+ {
+  "source": "file",
+  "input": "((1.2 > 0.3))"
+ },
+ {
+  "source": "file",
+  "input": "while a; do b; done"
+ },
+ {
+  "source": "file",
+  "input": "wh\\\nile a; do b; done"
+ },
+ {
+  "source": "file",
+  "input": "wh\\\r\nile a; do b; done"
+ },
+ {
+  "source": "file",
+  "input": "while a\ndo\nb\ndone"
+ },
+ {
+  "source": "file",
+  "input": "while a;\ndo\nb\ndone"
+ },
+ {
+  "source": "file",
+  "input": "while { a; }; do b; done"
+ },
+ {
+  "source": "file",
+  "input": "while { a; } do b; done"
+ },
+ {
+  "source": "file",
+  "input": "while (a); do b; done"
+ },
+ {
+  "source": "file",
+  "input": "while (a) do b; done"
+ },
+ {
+  "source": "file",
+  "input": "while ((1 > 2)); do b; done"
+ },
+ {
+  "source": "file",
+  "input": "until a; do b; done"
+ },
+ {
+  "source": "file",
+  "input": "until a\ndo\nb\ndone"
+ },
+ {
+  "source": "file",
+  "input": "for i; do foo; done"
+ },
+ {
+  "source": "file",
+  "input": "for i do foo; done"
+ },
+ {
+  "source": "file",
+  "input": "for i\ndo foo\ndone"
+ },
+ {
+  "source": "file",
+  "input": "for i;\ndo foo\ndone"
+ },
+ {
+  "source": "file",
+  "input": "for i in; do foo; done"
+ },
+ {
+  "source": "file",
+  "input": "for i in 1 2 3; do echo $i; done"
+ },
+ {
+  "source": "file",
+  "input": "for i in 1 2 3\ndo echo $i\ndone"
+ },
+ {
+  "source": "file",
+  "input": "for i in 1 2 3;\ndo echo $i\ndone"
+ },
+ {
+  "source": "file",
+  "input": "for i in 1 2 3 #foo\ndo echo $i\ndone"
+ },
+ {
+  "source": "file",
+  "input": "for i in \\\n\t1 2 3; do #foo\n\techo $i\ndone"
+ },
+ {
+  "source": "file",
+  "input": "for i #foo\n\tin 1 2 3; do\n\techo $i\ndone"
+ },
+ {
+  "source": "file",
+  "input": "for i; { foo; }"
+ },
+ {
+  "source": "file",
+  "input": "for i in 1 2 3; { echo $i; }"
+ },
+ {
+  "source": "file",
+  "input": "for ((i = 0; i < 10; i++)); do echo $i; done"
+ },
+ {
+  "source": "file",
+  "input": "for ((i=0;i<10;i++)) do echo $i; done"
+ },
+ {
+  "source": "file",
+  "input": "for (( i = 0 ; i < 10 ; i++ ))\ndo echo $i\ndone"
+ },
+ {
+  "source": "file",
+  "input": "for (( i = 0 ; i < 10 ; i++ ));\ndo echo $i\ndone"
+ },
+ {
+  "source": "file",
+  "input": "for (( ; ; )); do foo; done"
+ },
+ {
+  "source": "file",
+  "input": "for ((;;)); do foo; done"
+ },
+ {
+  "source": "file",
+  "input": "for ((i = 0; ; )); do foo; done"
+ },
+ {
+  "source": "file",
+  "input": "for ((i = 0;;)); do foo; done"
+ },
+ {
+  "source": "file",
+  "input": "select i; do foo; done"
+ },
+ {
+  "source": "file",
+  "input": "select i in; do foo; done"
+ },
+ {
+  "source": "file",
+  "input": "select i in 1 2 3; do echo $i; done"
+ },
+ {
+  "source": "file",
+  "input": "select i in 1 2 3\ndo echo $i\ndone"
+ },
+ {
+  "source": "file",
+  "input": "select i in 1 2 3 #foo\ndo echo $i\ndone"
+ },
+ {
+  "source": "file",
+  "input": "select foo bar"
+ },
+ {
+  "source": "file",
+  "input": "' ' \"foo bar\""
+ },
+ {
+  "source": "file",
+  "input": "\"foo \\\" bar\""
+ },
+ {
+  "source": "file",
+  "input": "\">foo\" \"\nbar\""
+ },
+ {
+  "source": "file",
+  "input": "foo \\\" bar"
+ },
+ {
+  "source": "file",
+  "input": "'\"'"
+ },
+ {
+  "source": "file",
+  "input": "'`'"
+ },
+ {
+  "source": "file",
+  "input": "\"'\""
+ },
+ {
+  "source": "file",
+  "input": "\"\""
+ },
+ {
+  "source": "file",
+  "input": "=a s{s s=s"
+ },
+ {
+  "source": "file",
+  "input": "foo && bar"
+ },
+ {
+  "source": "file",
+  "input": "foo&&bar"
+ },
+ {
+  "source": "file",
+  "input": "foo &&\nbar"
+ },
+ {
+  "source": "file",
+  "input": "foo &&\n\tbar"
+ },
+ {
+  "source": "file",
+  "input": "foo || bar"
+ },
+ {
+  "source": "file",
+  "input": "foo||bar"
+ },
+ {
+  "source": "file",
+  "input": "foo ||\nbar"
+ },
+ {
+  "source": "file",
+  "input": "if a; then b; fi || while a; do b; done"
+ },
+ {
+  "source": "file",
+  "input": "foo && bar1 || bar2"
+ },
+ {
+  "source": "file",
+  "input": "a || b || c || d"
+ },
+ {
+  "source": "file",
+  "input": "foo | bar"
+ },
+ {
+  "source": "file",
+  "input": "foo|bar"
+ },
+ {
+  "source": "file",
+  "input": "foo |\n#etc\nbar"
+ },
+ {
+  "source": "file",
+  "input": "foo | bar | extra"
+ },
+ {
+  "source": "file",
+  "input": "foo | a=b bar"
+ },
+ {
+  "source": "file",
+  "input": "foo |&"
+ },
+ {
+  "source": "file",
+  "input": "foo \\\n\t|&"
+ },
+ {
+  "source": "file",
+  "input": "foo |& bar"
+ },
+ {
+  "source": "file",
+  "input": "foo|&bar"
+ },
+ {
+  "source": "file",
+  "input": "foo &|"
+ },
+ {
+  "source": "file",
+  "input": "foo &!"
+ },
+ {
+  "source": "file",
+  "input": "foo &|\nbar"
+ },
+ {
+  "source": "file",
+  "input": "foo() {\n\ta\n\tb\n}"
+ },
+ {
+  "source": "file",
+  "input": "foo() { a; b; }"
+ },
+ {
+  "source": "file",
+  "input": "foo ( ) {\na\nb\n}"
+ },
+ {
+  "source": "file",
+  "input": "foo()\n{\na\nb\n}"
+ },
+ {
+  "source": "file",
+  "input": "foo() { a; }\nbar"
+ },
+ {
+  "source": "file",
+  "input": "foo() {\na\n}; bar"
+ },
+ {
+  "source": "file",
+  "input": "foO_123() { a; }"
+ },
+ {
+  "source": "file",
+  "input": "-foo_.,+-bar() { a; }"
+ },
+ {
+  "source": "file",
+  "input": "function foo() {\n\ta\n\tb\n}"
+ },
+ {
+  "source": "file",
+  "input": "function foo() { a; b; }"
+ },
+ {
+  "source": "file",
+  "input": "function foo {\n\ta\n\tb\n}"
+ },
+ {
+  "source": "file",
+  "input": "function foo { a; b; }"
+ },
+ {
+  "source": "file",
+  "input": "function foo() (a)"
+ },
+ {
+  "source": "file",
+  "input": "function f1 f2 f3() {\n\ta\n}"
+ },
+ {
+  "source": "file",
+  "input": "function {\n\ta\n}"
+ },
+ {
+  "source": "file",
+  "input": "() {\n\ta\n}"
+ },
+ {
+  "source": "file",
+  "input": "a=b foo=$bar foo=start$bar"
+ },
+ {
+  "source": "file",
+  "input": "a=\"\nbar\""
+ },
+ {
+  "source": "file",
+  "input": "A_3a= foo"
+ },
+ {
+  "source": "file",
+  "input": "a=b=c"
+ },
+ {
+  "source": "file",
+  "input": "à=b foo"
+ },
+ {
+  "source": "file",
+  "input": "foo >a >>b <c"
+ },
+ {
+  "source": "file",
+  "input": "foo > a >> b < c"
+ },
+ {
+  "source": "file",
+  "input": ">a >>b <c foo"
+ },
+ {
+  "source": "file",
+  "input": "foo bar >a"
+ },
+ {
+  "source": "file",
+  "input": "foo >a bar"
+ },
+ {
+  "source": "file",
+  "input": ">a >\\b"
+ },
+ {
+  "source": "file",
+  "input": ">a\n>b"
+ },
+ {
+  "source": "file",
+  "input": ">a; >b"
+ },
+ {
+  "source": "file",
+  "input": "foo1\nfoo2 >r2"
+ },
+ {
+  "source": "file",
+  "input": "foo1; >r2 foo2"
+ },
+ {
+  "source": "file",
+  "input": "foo >bar$(etc)"
+ },
+ {
+  "source": "file",
+  "input": "foo >b\\\nar`etc`"
+ },
+ {
+  "source": "file",
+  "input": "a=b c=d foo >x <y"
+ },
+ {
+  "source": "file",
+  "input": "a=b c=d >x <y foo"
+ },
+ {
+  "source": "file",
+  "input": ">x a=b c=d <y foo"
+ },
+ {
+  "source": "file",
+  "input": ">x <y a=b c=d foo"
+ },
+ {
+  "source": "file",
+  "input": "a=b >x c=d foo <y"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF \nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\t\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\r\nbar\r\nEOF\r\n"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\n\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\nbar\n\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\n1\n2\n3\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<ÉOF\nbar\nÉOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<ÉOF\nÉOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<'ÉOF'\nbar\nÉOF"
+ },
+ {
+  "source": "file",
+  "input": "a <<EOF\nfoo$bar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "a <<EOF\n\"$bar\"\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "a <<EOF\n$''$bar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "a <<EOF\n$(b)\nc\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "a <<EOF\n`b`\nc\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "a <<EOF\nfoo$(bar)baz\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "a <<EOF\nfoo`bar`baz\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "a <<EOF\n\\${\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "{\n\tfoo <<EOF\nbar\nEOF\n}"
+ },
+ {
+  "source": "file",
+  "input": "{ foo <<EOF\nbar\nEOF\n}"
+ },
+ {
+  "source": "file",
+  "input": "$(\n\tfoo <<EOF\nbar\nEOF\n)"
+ },
+ {
+  "source": "file",
+  "input": "$(foo <<EOF\nbar\nEOF\n)"
+ },
+ {
+  "source": "file",
+  "input": "`\nfoo <<EOF\nbar\nEOF\n`"
+ },
+ {
+  "source": "file",
+  "input": "`foo <<EOF\nbar\nEOF`"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\nbar\nEOF$(oops)\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\nbar\nEOF`oops`\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\nbar\nNOTEOF$(oops)\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\nbar\nNOTEOF`oops`\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "$(\n\tfoo <<'EOF'\nbar\nEOF\n)"
+ },
+ {
+  "source": "file",
+  "input": "$(foo <<'EOF'\nbar\nEOF\n)"
+ },
+ {
+  "source": "file",
+  "input": "`\nfoo <<'EOF'\nbar\nEOF\n`"
+ },
+ {
+  "source": "file",
+  "input": "`foo <<'EOF'\nbar\nEOF`"
+ },
+ {
+  "source": "file",
+  "input": "foo <<'EOF'\nbar\nEOF`oops`\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<'EOF'\nbar\nNOTEOF`oops`\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "$(<foo)"
+ },
+ {
+  "source": "file",
+  "input": "`<foo`"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF >f\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF && {\nbar\nEOF\n\tetc\n}"
+ },
+ {
+  "source": "file",
+  "input": "$(\n\tfoo\n) <<EOF\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "<<EOF $(\n\tfoo\n)\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "`\n\tfoo\n` <<EOF\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "<<EOF `\n\tfoo\n`\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "$((foo)) <<EOF\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "<<EOF $((\n\tfoo\n))\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "if true; then\n\tfoo <<-EOF\n\t\tbar\n\tEOF\nfi"
+ },
+ {
+  "source": "file",
+  "input": "if true; then\n\tfoo <<-EOF\n\tEOF\nfi"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\nEOF_body\nEOF\nfoo2"
+ },
+ {
+  "source": "file",
+  "input": "foo <<FOOBAR\nbar\nFOOBAR"
+ },
+ {
+  "source": "file",
+  "input": "foo <<\"EOF\"\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<'EOF'\nEOF_body\nEOF\nfoo2"
+ },
+ {
+  "source": "file",
+  "input": "foo <<'EOF'\n${\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<'EOF'\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<\"EOF\"2\nbar\nEOF2"
+ },
+ {
+  "source": "file",
+  "input": "foo <<\\EOF\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\nbar\\\nbaz\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<'EOF'\nbar\\\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<'EOF'\nbar\\\r\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<'EOF'\nbar\\\r\nEOF\r\n"
+ },
+ {
+  "source": "file",
+  "input": "foo <<-EOF\n\tbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<-EOF\r\n\tbar\r\nEOF\r\n"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<-EOF\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<-'EOF'\n\tbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\n"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\n\\\n"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\nbar"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\nbar\\\n"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\nbar\n"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\n$bar"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF\nbar\\"
+ },
+ {
+  "source": "file",
+  "input": "foo <<'EOF'\nbar\\"
+ },
+ {
+  "source": "file",
+  "input": "foo <<-EOF\n\tbar"
+ },
+ {
+  "source": "file",
+  "input": "foo <<-EOF\n\tbar\n\t"
+ },
+ {
+  "source": "file",
+  "input": "foo <<-EOF\n$bar\t"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF || bar <<EOF\nbaz\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "`foo <<EOF\nbar`"
+ },
+ {
+  "source": "file",
+  "input": "`foo <<'EOF'\nbar`"
+ },
+ {
+  "source": "file",
+  "input": "`foo <<EOF`"
+ },
+ {
+  "source": "file",
+  "input": "`foo <<EOF`\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "f1 <<EOF1\nh1\nEOF1\nf2 <<EOF2\nh2\nEOF2"
+ },
+ {
+  "source": "file",
+  "input": "f1 <<EOF1; f2 <<EOF2\nh1\nEOF1\nh2\nEOF2"
+ },
+ {
+  "source": "file",
+  "input": "a <<EOF\nfoo\nEOF\nb\nb\nb\nb\nb\nb\nb\nb\nb"
+ },
+ {
+  "source": "file",
+  "input": "a <<EOF;b;b;b;b;b;b;b;b;b\nfoo\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo \"\narg\" <<EOF\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo <<EOF \"\narg\"\nbar\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "foo >&2 <&0 2>file 345>file <>f2"
+ },
+ {
+  "source": "file",
+  "input": "foo bar >file"
+ },
+ {
+  "source": "file",
+  "input": "foo bar>file"
+ },
+ {
+  "source": "file",
+  "input": "true &>a"
+ },
+ {
+  "source": "file",
+  "input": "true &>>b"
+ },
+ {
+  "source": "file",
+  "input": "foo 2>file bar"
+ },
+ {
+  "source": "file",
+  "input": "2>file foo bar"
+ },
+ {
+  "source": "file",
+  "input": "a >f1\nb >f2"
+ },
+ {
+  "source": "file",
+  "input": "a >f1; b >f2"
+ },
+ {
+  "source": "file",
+  "input": "foo >|bar"
+ },
+ {
+  "source": "file",
+  "input": "foo >>|a &>|b &>>|c"
+ },
+ {
+  "source": "file",
+  "input": "foo >|a >>|b &>|c &>>|d"
+ },
+ {
+  "source": "file",
+  "input": "foo >!a >>!b &>!c &>>!d"
+ },
+ {
+  "source": "file",
+  "input": "foo &>|a &>>c &>>|d"
+ },
+ {
+  "source": "file",
+  "input": "foo >&|a >>&c >>&|d"
+ },
+ {
+  "source": "file",
+  "input": "foo &>!a >>&c >>&!d"
+ },
+ {
+  "source": "file",
+  "input": "foo >&!a >>&c >>&!d"
+ },
+ {
+  "source": "file",
+  "input": "foo <<<input"
+ },
+ {
+  "source": "file",
+  "input": "foo <<< input"
+ },
+ {
+  "source": "file",
+  "input": "foo <<<\"spaced input\""
+ },
+ {
+  "source": "file",
+  "input": "foo <<< \"spaced input\""
+ },
+ {
+  "source": "file",
+  "input": "foo >(foo)"
+ },
+ {
+  "source": "file",
+  "input": "foo < <(foo)"
+ },
+ {
+  "source": "file",
+  "input": "a<(b) c>(d)"
+ },
+ {
+  "source": "file",
+  "input": "foo =(bar)"
+ },
+ {
+  "source": "file",
+  "input": "foo {fd}<f"
+ },
+ {
+  "source": "file",
+  "input": "foo {fds[3]}<f"
+ },
+ {
+  "source": "file",
+  "input": "! foo"
+ },
+ {
+  "source": "file",
+  "input": "foo &\nbar"
+ },
+ {
+  "source": "file",
+  "input": "foo & bar"
+ },
+ {
+  "source": "file",
+  "input": "foo&bar"
+ },
+ {
+  "source": "file",
+  "input": "! if foo; then bar; fi >/dev/null &"
+ },
+ {
+  "source": "file",
+  "input": "! if foo; then bar; fi>/dev/null&"
+ },
+ {
+  "source": "file",
+  "input": "if foo; then bar; fi >/dev/null"
+ },
+ {
+  "source": "file",
+  "input": ">/dev/null if foo; then bar; fi"
+ },
+ {
+  "source": "file",
+  "input": "! foo && bar"
+ },
+ {
+  "source": "file",
+  "input": "! foo | bar"
+ },
+ {
+  "source": "file",
+  "input": "a && b &\nc"
+ },
+ {
+  "source": "file",
+  "input": "a && b & c"
+ },
+ {
+  "source": "file",
+  "input": "a | b &"
+ },
+ {
+  "source": "file",
+  "input": "foo#bar"
+ },
+ {
+  "source": "file",
+  "input": "$foo#bar foo#$bar"
+ },
+ {
+  "source": "file",
+  "input": "$(foo)#bar"
+ },
+ {
+  "source": "file",
+  "input": "`foo`#bar"
+ },
+ {
+  "source": "file",
+  "input": "{ foo } }; }"
+ },
+ {
+  "source": "file",
+  "input": "foo {"
+ },
+ {
+  "source": "file",
+  "input": "foo }"
+ },
+ {
+  "source": "file",
+  "input": "{ }"
+ },
+ {
+  "source": "file",
+  "input": "{}"
+ },
+ {
+  "source": "file",
+  "input": "( )"
+ },
+ {
+  "source": "file",
+  "input": "if; then; fi"
+ },
+ {
+  "source": "file",
+  "input": "if foo; then; fi"
+ },
+ {
+  "source": "file",
+  "input": "while; do exit; done"
+ },
+ {
+  "source": "file",
+  "input": "while\ndo exit\ndone"
+ },
+ {
+  "source": "file",
+  "input": "while false; do; done"
+ },
+ {
+  "source": "file",
+  "input": "$({ foo; })"
+ },
+ {
+  "source": "file",
+  "input": "$( (echo foo bar) )"
+ },
+ {
+  "source": "file",
+  "input": "$( (echo foo bar))"
+ },
+ {
+  "source": "file",
+  "input": "`(echo foo bar)`"
+ },
+ {
+  "source": "file",
+  "input": "$()"
+ },
+ {
+  "source": "file",
+  "input": "$(\n\t(a)\n\tb\n)"
+ },
+ {
+  "source": "file",
+  "input": "$( (a); b)"
+ },
+ {
+  "source": "file",
+  "input": "`(a); b`"
+ },
+ {
+  "source": "file",
+  "input": "$(echo \\')"
+ },
+ {
+  "source": "file",
+  "input": "`"
+ },
+ {
+  "source": "file",
+  "input": "echo \\\\'"
+ },
+ {
+  "source": "file",
+  "input": "$(echo \\\\)"
+ },
+ {
+  "source": "file",
+  "input": "echo \\\\\\\\"
+ },
+ {
+  "source": "file",
+  "input": "$(echo '\\' 'a\\b' \"\\\\\" \"a\\a\")"
+ },
+ {
+  "source": "file",
+  "input": "echo '\\' 'a\\\\b' \"\\\\\\\\\" \"a\\a\""
+ },
+ {
+  "source": "file",
+  "input": "$(echo $(x))"
+ },
+ {
+  "source": "file",
+  "input": "`echo \\`x\\``"
+ },
+ {
+  "source": "file",
+  "input": "$($(foo bar))"
+ },
+ {
+  "source": "file",
+  "input": "`\\`foo bar\\``"
+ },
+ {
+  "source": "file",
+  "input": "\"$(echo \"foobar\")\""
+ },
+ {
+  "source": "file",
+  "input": "\"`echo \\\"foobar\\\"`\""
+ },
+ {
+  "source": "file",
+  "input": "\"$(echo '\"')\""
+ },
+ {
+  "source": "file",
+  "input": "\"`echo '\\\"'`\""
+ },
+ {
+  "source": "file",
+  "input": "$( (a) | b)"
+ },
+ {
+  "source": "file",
+  "input": "\"$( (foo) )\""
+ },
+ {
+  "source": "file",
+  "input": "\"foo\\\nbar\""
+ },
+ {
+  "source": "file",
+  "input": "'foo\\\nbar'"
+ },
+ {
+  "source": "file",
+  "input": "'foo\\\r\nbar'"
+ },
+ {
+  "source": "file",
+  "input": "$({ echo; })"
+ },
+ {
+  "source": "file",
+  "input": "`{ echo; }`"
+ },
+ {
+  "source": "file",
+  "input": "{foo}"
+ },
+ {
+  "source": "file",
+  "input": "{\"foo\""
+ },
+ {
+  "source": "file",
+  "input": "foo\"bar\""
+ },
+ {
+  "source": "file",
+  "input": "fo\\\no\"bar\""
+ },
+ {
+  "source": "file",
+  "input": "fo\\\r\no\"bar\""
+ },
+ {
+  "source": "file",
+  "input": "!foo"
+ },
+ {
+  "source": "file",
+  "input": "$(foo bar)"
+ },
+ {
+  "source": "file",
+  "input": "`foo bar`"
+ },
+ {
+  "source": "file",
+  "input": "$(foo | bar)"
+ },
+ {
+  "source": "file",
+  "input": "`foo | bar`"
+ },
+ {
+  "source": "file",
+  "input": "$(foo | >f)"
+ },
+ {
+  "source": "file",
+  "input": "`foo | >f`"
+ },
+ {
+  "source": "file",
+  "input": "$(foo $(b1 b2))"
+ },
+ {
+  "source": "file",
+  "input": "\"$(foo \"bar\")\""
+ },
+ {
+  "source": "file",
+  "input": "$(foo)"
+ },
+ {
+  "source": "file",
+  "input": "`fo\\\no`"
+ },
+ {
+  "source": "file",
+  "input": "foo $(bar)"
+ },
+ {
+  "source": "file",
+  "input": "foo `bar`"
+ },
+ {
+  "source": "file",
+  "input": "$(foo 'bar')"
+ },
+ {
+  "source": "file",
+  "input": "`foo 'bar'`"
+ },
+ {
+  "source": "file",
+  "input": "$(foo \"bar\")"
+ },
+ {
+  "source": "file",
+  "input": "`foo \"bar\"`"
+ },
+ {
+  "source": "file",
+  "input": "\"`foo \"bar\"`\""
+ },
+ {
+  "source": "file",
+  "input": "${ foo;}"
+ },
+ {
+  "source": "file",
+  "input": "${\nfoo; }"
+ },
+ {
+  "source": "file",
+  "input": "${\n\tfoo; }"
+ },
+ {
+  "source": "file",
+  "input": "${\tfoo;}"
+ },
+ {
+  "source": "file",
+  "input": "${\n\tfoo\n\tbar\n}"
+ },
+ {
+  "source": "file",
+  "input": "${ foo; bar;}"
+ },
+ {
+  "source": "file",
+  "input": "${|foo;}"
+ },
+ {
+  "source": "file",
+  "input": "${| foo; }"
+ },
+ {
+  "source": "file",
+  "input": "${|\n\tfoo\n\tbar\n}"
+ },
+ {
+  "source": "file",
+  "input": "${|foo; bar;}"
+ },
+ {
+  "source": "file",
+  "input": "\"${ foo;}\""
+ },
+ {
+  "source": "file",
+  "input": "\"${ foo; }\""
+ },
+ {
+  "source": "file",
+  "input": "\"${|foo;}\""
+ },
+ {
+  "source": "file",
+  "input": "\"${| foo; }\""
+ },
+ {
+  "source": "file",
+  "input": "${ foo;}bar"
+ },
+ {
+  "source": "file",
+  "input": "\"$foo\""
+ },
+ {
+  "source": "file",
+  "input": "\"#foo\""
+ },
+ {
+  "source": "file",
+  "input": "$2foo $3[bar] \"ba$4z\""
+ },
+ {
+  "source": "file",
+  "input": "$@a $*a $#a $$a $?a $!a $-a $0a $30a $_a"
+ },
+ {
+  "source": "file",
+  "input": "\"$!\""
+ },
+ {
+  "source": "file",
+  "input": "\"$#\" $#\"$foo\" $#"
+ },
+ {
+  "source": "file",
+  "input": "\"$+\" $+\"$foo\" $+"
+ },
+ {
+  "source": "file",
+  "input": "\"$%\" $%\"$foo\" $%foo"
+ },
+ {
+  "source": "file",
+  "input": "$=\"$foo\" $~\"$foo\" $^\"$foo\""
+ },
+ {
+  "source": "file",
+  "input": "$"
+ },
+ {
+  "source": "file",
+  "input": "$ #"
+ },
+ {
+  "source": "file",
+  "input": "${@} ${*} ${#} ${$} ${?} ${!} ${0} ${29} ${-}"
+ },
+ {
+  "source": "file",
+  "input": "${#$} ${#@} ${#*} ${##}"
+ },
+ {
+  "source": "file",
+  "input": "${foo}"
+ },
+ {
+  "source": "file",
+  "input": "${}"
+ },
+ {
+  "source": "file",
+  "input": "${foo}\"bar\""
+ },
+ {
+  "source": "file",
+  "input": "$a/b $a-b $a:b $a}b $a]b $a.b $a,b $a*b $a_b $a2b"
+ },
+ {
+  "source": "file",
+  "input": "$aàb $àb $,b"
+ },
+ {
+  "source": "file",
+  "input": "$à"
+ },
+ {
+  "source": "file",
+  "input": "$\\\nà"
+ },
+ {
+  "source": "file",
+  "input": "$\\\r\nà"
+ },
+ {
+  "source": "file",
+  "input": "$foobar"
+ },
+ {
+  "source": "file",
+  "input": "$foo\\\nbar"
+ },
+ {
+  "source": "file",
+  "input": "$foo\\bar"
+ },
+ {
+  "source": "file",
+  "input": "echo -e \"$foo\\nbar\""
+ },
+ {
+  "source": "file",
+  "input": "${foo-bar}"
+ },
+ {
+  "source": "file",
+  "input": "${foo+}\"bar\""
+ },
+ {
+  "source": "file",
+  "input": "${foo:=<\"bar\"}"
+ },
+ {
+  "source": "file",
+  "input": "${foo:=b${c}$(d)}"
+ },
+ {
+  "source": "file",
+  "input": "${foo:=b${c}`d`}"
+ },
+ {
+  "source": "file",
+  "input": "${foo?\"${bar}\"}"
+ },
+ {
+  "source": "file",
+  "input": "${foo:?bar1 bar2}"
+ },
+ {
+  "source": "file",
+  "input": "${a:+b}${a:-b}${a=b}"
+ },
+ {
+  "source": "file",
+  "input": "${3:-'$x'}"
+ },
+ {
+  "source": "file",
+  "input": "${@:-$x}"
+ },
+ {
+  "source": "file",
+  "input": "${var#*'=\"'}"
+ },
+ {
+  "source": "file",
+  "input": "${var/'a'/b'c'd}"
+ },
+ {
+  "source": "file",
+  "input": "${foo%bar}${foo%%bar*}"
+ },
+ {
+  "source": "file",
+  "input": "${3#bar}${-##bar*}"
+ },
+ {
+  "source": "file",
+  "input": "${foo%?}"
+ },
+ {
+  "source": "file",
+  "input": "foo=force_expansion\necho ${foo:#bar}"
+ },
+ {
+  "source": "file",
+  "input": "foo=force_expansion\necho ${foo:|bar}"
+ },
+ {
+  "source": "file",
+  "input": "foo=force_expansion\necho ${foo:*bar}"
+ },
+ {
+  "source": "file",
+  "input": "${foo[1]}"
+ },
+ {
+  "source": "file",
+  "input": "${foo[ 1 ]}"
+ },
+ {
+  "source": "file",
+  "input": "$foo[1]"
+ },
+ {
+  "source": "file",
+  "input": "a$foo[1]b"
+ },
+ {
+  "source": "file",
+  "input": "\"a$foo[1]b\""
+ },
+ {
+  "source": "file",
+  "input": "${foo[1,3]}"
+ },
+ {
+  "source": "file",
+  "input": "${foo[ 1 , 3 ]}"
+ },
+ {
+  "source": "file",
+  "input": "${a:(1):(2)}"
+ },
+ {
+  "source": "file",
+  "input": "${args[cmd,#]}"
+ },
+ {
+  "source": "file",
+  "input": "${foo[1,-1]}"
+ },
+ {
+  "source": "file",
+  "input": "${@[-1]}"
+ },
+ {
+  "source": "file",
+  "input": "${*[-1]}"
+ },
+ {
+  "source": "file",
+  "input": "$foo[1,3]"
+ },
+ {
+  "source": "file",
+  "input": "${signals[(i)QUIT]}"
+ },
+ {
+  "source": "file",
+  "input": "${ZSH_VERSION[(s:.:w)2]}"
+ },
+ {
+  "source": "file",
+  "input": "$foo[(r)pattern]"
+ },
+ {
+  "source": "file",
+  "input": "${array[(i)]}"
+ },
+ {
+  "source": "file",
+  "input": "${array[(i)--]}"
+ },
+ {
+  "source": "file",
+  "input": "${array[(R)/*]}"
+ },
+ {
+  "source": "file",
+  "input": "${array[(i)&]}"
+ },
+ {
+  "source": "file",
+  "input": "${foo[(r)ab,(r)cd]}"
+ },
+ {
+  "source": "file",
+  "input": "${foo[-1]}"
+ },
+ {
+  "source": "file",
+  "input": "${foo[@]}"
+ },
+ {
+  "source": "file",
+  "input": "${foo[*]-etc}"
+ },
+ {
+  "source": "file",
+  "input": "${foo[bar]}"
+ },
+ {
+  "source": "file",
+  "input": "${foo[$bar]}"
+ },
+ {
+  "source": "file",
+  "input": "${foo[${bar}]}"
+ },
+ {
+  "source": "file",
+  "input": "${foo:1}"
+ },
+ {
+  "source": "file",
+  "input": "${foo: 1 }"
+ },
+ {
+  "source": "file",
+  "input": "${foo:1:2}"
+ },
+ {
+  "source": "file",
+  "input": "${foo: 1 : 2 }"
+ },
+ {
+  "source": "file",
+  "input": "${foo:a:b}"
+ },
+ {
+  "source": "file",
+  "input": "${foo:1:-2}"
+ },
+ {
+  "source": "file",
+  "input": "${foo::+3}"
+ },
+ {
+  "source": "file",
+  "input": "${foo: -1}"
+ },
+ {
+  "source": "file",
+  "input": "${foo: +2+3}"
+ },
+ {
+  "source": "file",
+  "input": "${foo:a?1:2:3}"
+ },
+ {
+  "source": "file",
+  "input": "${foo/a/b}"
+ },
+ {
+  "source": "file",
+  "input": "${foo/ /\t}"
+ },
+ {
+  "source": "file",
+  "input": "${foo/[/]-}"
+ },
+ {
+  "source": "file",
+  "input": "${foo/bar/b/a/r}"
+ },
+ {
+  "source": "file",
+  "input": "${foo/$a/$'\\''}"
+ },
+ {
+  "source": "file",
+  "input": "${foo//b1/b2}"
+ },
+ {
+  "source": "file",
+  "input": "${foo///}"
+ },
+ {
+  "source": "file",
+  "input": "${foo//}"
+ },
+ {
+  "source": "file",
+  "input": "${foo/-//}"
+ },
+ {
+  "source": "file",
+  "input": "${foo//#/}"
+ },
+ {
+  "source": "file",
+  "input": "${foo//#}"
+ },
+ {
+  "source": "file",
+  "input": "${foo//[42]/}"
+ },
+ {
+  "source": "file",
+  "input": "${a^b} ${a^^b} ${a,b} ${a,,b}"
+ },
+ {
+  "source": "file",
+  "input": "${a@E} ${b@a} ${@@Q} ${!ref@P}"
+ },
+ {
+  "source": "file",
+  "input": "${a@K} ${b@k}"
+ },
+ {
+  "source": "file",
+  "input": "${a@Q} ${b@#}"
+ },
+ {
+  "source": "file",
+  "input": "${#foo}"
+ },
+ {
+  "source": "file",
+  "input": "${%foo}"
+ },
+ {
+  "source": "file",
+  "input": "${!foo} ${!bar[@]}"
+ },
+ {
+  "source": "file",
+  "input": "${!foo*} ${!bar@}"
+ },
+ {
+  "source": "file",
+  "input": "${#?}"
+ },
+ {
+  "source": "file",
+  "input": "${#-foo} ${#?bar}"
+ },
+ {
+  "source": "file",
+  "input": "\"${foo}\""
+ },
+ {
+  "source": "file",
+  "input": "\"(foo)\""
+ },
+ {
+  "source": "file",
+  "input": "\"${foo}>\""
+ },
+ {
+  "source": "file",
+  "input": "\"$(foo)\""
+ },
+ {
+  "source": "file",
+  "input": "\"`foo`\""
+ },
+ {
+  "source": "file",
+  "input": "\"$(foo bar)\""
+ },
+ {
+  "source": "file",
+  "input": "\"$(foo  bar)\""
+ },
+ {
+  "source": "file",
+  "input": "\"`foo bar`\""
+ },
+ {
+  "source": "file",
+  "input": "\"`foo  bar`\""
+ },
+ {
+  "source": "file",
+  "input": "'${foo}'"
+ },
+ {
+  "source": "file",
+  "input": "$((1))"
+ },
+ {
+  "source": "file",
+  "input": "$((1 + 3))"
+ },
+ {
+  "source": "file",
+  "input": "$((1+3))"
+ },
+ {
+  "source": "file",
+  "input": "\"$((foo))\""
+ },
+ {
+  "source": "file",
+  "input": "$((a)) b"
+ },
+ {
+  "source": "file",
+  "input": "$((arr[0]++))"
+ },
+ {
+  "source": "file",
+  "input": "$((++arr[0]))"
+ },
+ {
+  "source": "file",
+  "input": "$((${a:-1}))"
+ },
+ {
+  "source": "file",
+  "input": "$((5 * 2 - 1))"
+ },
+ {
+  "source": "file",
+  "input": "$((5*2-1))"
+ },
+ {
+  "source": "file",
+  "input": "$((i | 13))"
+ },
+ {
+  "source": "file",
+  "input": "$(((a) + ((b))))"
+ },
+ {
+  "source": "file",
+  "input": "$((\n(a) + \n(\n(b)\n)\n))"
+ },
+ {
+  "source": "file",
+  "input": "$((3 % 7))"
+ },
+ {
+  "source": "file",
+  "input": "$((3\n% 7))"
+ },
+ {
+  "source": "file",
+  "input": "$((3\\\n % 7))"
+ },
+ {
+  "source": "file",
+  "input": "$((3\\\r\n % 7))"
+ },
+ {
+  "source": "file",
+  "input": "\"$((1 / 3))\""
+ },
+ {
+  "source": "file",
+  "input": "$((2 ** 10))"
+ },
+ {
+  "source": "file",
+  "input": "$(((1) ^ 3))"
+ },
+ {
+  "source": "file",
+  "input": "$((1 >> (3 << 2)))"
+ },
+ {
+  "source": "file",
+  "input": "$((-(1)))"
+ },
+ {
+  "source": "file",
+  "input": "$((i++))"
+ },
+ {
+  "source": "file",
+  "input": "$((--i))"
+ },
+ {
+  "source": "file",
+  "input": "$((! i))"
+ },
+ {
+  "source": "file",
+  "input": "$((!i))"
+ },
+ {
+  "source": "file",
+  "input": "$((~i))"
+ },
+ {
+  "source": "file",
+  "input": "$((-! +i))"
+ },
+ {
+  "source": "file",
+  "input": "$((-!+i))"
+ },
+ {
+  "source": "file",
+  "input": "$((! ! i))"
+ },
+ {
+  "source": "file",
+  "input": "$((!!i))"
+ },
+ {
+  "source": "file",
+  "input": "$((~~i))"
+ },
+ {
+  "source": "file",
+  "input": "$((1 < 3))"
+ },
+ {
+  "source": "file",
+  "input": "$((i = 2))"
+ },
+ {
+  "source": "file",
+  "input": "$((i=2))"
+ },
+ {
+  "source": "file",
+  "input": "((a[i] = 4))"
+ },
+ {
+  "source": "file",
+  "input": "((a[i]=4))"
+ },
+ {
+  "source": "file",
+  "input": "$((a += 2, b -= 3))"
+ },
+ {
+  "source": "file",
+  "input": "$((a >>= 2, b <<= 3))"
+ },
+ {
+  "source": "file",
+  "input": "$((a ^^ 2))"
+ },
+ {
+  "source": "file",
+  "input": "$((a ^^= 2, b **= 3))"
+ },
+ {
+  "source": "file",
+  "input": "$((a &&= 2, b ||= 3))"
+ },
+ {
+  "source": "file",
+  "input": "$((a == b && c > d))"
+ },
+ {
+  "source": "file",
+  "input": "$((a != b))"
+ },
+ {
+  "source": "file",
+  "input": "$((a &= b))"
+ },
+ {
+  "source": "file",
+  "input": "$((a |= b))"
+ },
+ {
+  "source": "file",
+  "input": "$((a %= b))"
+ },
+ {
+  "source": "file",
+  "input": "$((a /= b))"
+ },
+ {
+  "source": "file",
+  "input": "$((a/=b))"
+ },
+ {
+  "source": "file",
+  "input": "$((a ^= b))"
+ },
+ {
+  "source": "file",
+  "input": "$((i *= 3))"
+ },
+ {
+  "source": "file",
+  "input": "$((2 >= 10))"
+ },
+ {
+  "source": "file",
+  "input": "$((foo ? b1 : b2))"
+ },
+ {
+  "source": "file",
+  "input": "$((a <= (1 || 2)))"
+ },
+ {
+  "source": "file",
+  "input": "foo$"
+ },
+ {
+  "source": "file",
+  "input": "foo$\n"
+ },
+ {
+  "source": "file",
+  "input": "foo$\\\n"
+ },
+ {
+  "source": "file",
+  "input": "foo$\\\r\n"
+ },
+ {
+  "source": "file",
+  "input": "$''"
+ },
+ {
+  "source": "file",
+  "input": "$\"\""
+ },
+ {
+  "source": "file",
+  "input": "$'foo'"
+ },
+ {
+  "source": "file",
+  "input": "$'f+oo${'"
+ },
+ {
+  "source": "file",
+  "input": "$'foo bar`'"
+ },
+ {
+  "source": "file",
+  "input": "$'a ${b} c'"
+ },
+ {
+  "source": "file",
+  "input": "$\"a ${b} c\""
+ },
+ {
+  "source": "file",
+  "input": "\"a $b c\""
+ },
+ {
+  "source": "file",
+  "input": "$\"a $b c\""
+ },
+ {
+  "source": "file",
+  "input": "$'f\\'oo\n'"
+ },
+ {
+  "source": "file",
+  "input": "$\"foo\""
+ },
+ {
+  "source": "file",
+  "input": "$\"foo$\""
+ },
+ {
+  "source": "file",
+  "input": "$\"foo bar\""
+ },
+ {
+  "source": "file",
+  "input": "$'f\\'oo'"
+ },
+ {
+  "source": "file",
+  "input": "$\"f\\\"oo\""
+ },
+ {
+  "source": "file",
+  "input": "\"foo$\""
+ },
+ {
+  "source": "file",
+  "input": "\"foo$$\""
+ },
+ {
+  "source": "file",
+  "input": "\"a $\\\"b\\\" c\""
+ },
+ {
+  "source": "file",
+  "input": "$(foo$)"
+ },
+ {
+  "source": "file",
+  "input": "`foo$`"
+ },
+ {
+  "source": "file",
+  "input": "foo$bar"
+ },
+ {
+  "source": "file",
+  "input": "foo$(bar)"
+ },
+ {
+  "source": "file",
+  "input": "foo${bar}"
+ },
+ {
+  "source": "file",
+  "input": "'foo${bar'"
+ },
+ {
+  "source": "file",
+  "input": "(foo)\nbar"
+ },
+ {
+  "source": "file",
+  "input": "(foo); bar"
+ },
+ {
+  "source": "file",
+  "input": "foo\n(bar)"
+ },
+ {
+  "source": "file",
+  "input": "foo; (bar)"
+ },
+ {
+  "source": "file",
+  "input": "case $i in 1) foo ;; 2 | 3*) bar ;; esac"
+ },
+ {
+  "source": "file",
+  "input": "case $i in 1) foo;; 2 | 3*) bar; esac"
+ },
+ {
+  "source": "file",
+  "input": "case $i in (1) foo;; 2 | 3*) bar;; esac"
+ },
+ {
+  "source": "file",
+  "input": "case $i\nin\n#etc\n1)\nfoo\n;;\n2 | 3*)\nbar\n;;\nesac"
+ },
+ {
+  "source": "file",
+  "input": "case i in 1) a ;& 2) ;; esac"
+ },
+ {
+  "source": "file",
+  "input": "case i in 1) a ;; esac"
+ },
+ {
+  "source": "file",
+  "input": "case i { 1) a ;; }"
+ },
+ {
+  "source": "file",
+  "input": "case i {\n1) a ;;\n}"
+ },
+ {
+  "source": "file",
+  "input": "case i in 1) a ;;& 2) b ;; esac"
+ },
+ {
+  "source": "file",
+  "input": "case i in 1) a ;| 2) b ;; esac"
+ },
+ {
+  "source": "file",
+  "input": "case $i in 1) cat <<EOF ;;\nfoo\nEOF\nesac"
+ },
+ {
+  "source": "file",
+  "input": "foo | while read a; do b; done"
+ },
+ {
+  "source": "file",
+  "input": "while read l; do foo || bar; done"
+ },
+ {
+  "source": "file",
+  "input": "echo if while"
+ },
+ {
+  "source": "file",
+  "input": "${foo}if"
+ },
+ {
+  "source": "file",
+  "input": "$if'|'"
+ },
+ {
+  "source": "file",
+  "input": "if a; then b=; fi"
+ },
+ {
+  "source": "file",
+  "input": "if a; then b=\nfi"
+ },
+ {
+  "source": "file",
+  "input": "if a; then >f; fi"
+ },
+ {
+  "source": "file",
+  "input": "if a; then >f\nfi"
+ },
+ {
+  "source": "file",
+  "input": "if a; then (a); fi"
+ },
+ {
+  "source": "file",
+  "input": "if a; then (a) fi"
+ },
+ {
+  "source": "file",
+  "input": "a=b\nc=d"
+ },
+ {
+  "source": "file",
+  "input": "a=b; c=d"
+ },
+ {
+  "source": "file",
+  "input": "foo && write | read"
+ },
+ {
+  "source": "file",
+  "input": "write | read && bar"
+ },
+ {
+  "source": "file",
+  "input": "foo >f | bar"
+ },
+ {
+  "source": "file",
+  "input": "(foo) >f | bar"
+ },
+ {
+  "source": "file",
+  "input": "foo | >f"
+ },
+ {
+  "source": "file",
+  "input": "[[ a ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a ]]\nb"
+ },
+ {
+  "source": "file",
+  "input": "[[ a > b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ 1 -nt 2 ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ 1 -eq 2 ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -1 -eq -1 ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ +3 -eq 1+2 ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -R a ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[\n-R a\n]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a =~ b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a =~ b ]];"
+ },
+ {
+  "source": "file",
+  "input": "[[ a =~ \" foo \"$bar ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a =~ foo\"bar\" ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a =~ [ab](c |d) ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a =~ ( ]]<>;&) ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a =~ ($foo) ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a =~ b\\ c|d ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a == -n ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a == (b|c)* ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a == (#i)bar ]]"
+ },
+ {
+  "source": "file",
+  "input": "echo (foo|bar).baz"
+ },
+ {
+  "source": "file",
+  "input": "ls (#i)*.mod"
+ },
+ {
+  "source": "file",
+  "input": "[[ a =~ -n ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a =~ b$ || c =~ d$ ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -n $a ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ ! $a < 'b' ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ ! -e $a ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ ! -a $a ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[\n!\n-a $a\n]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a && b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[\na &&\nb ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[\n\na &&\n\nb ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ (a && b) ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a && (b) ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a &&\n(\nb) ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ (a && b) || -f c ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -S a && -L b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -S a && -h b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -k a && -N b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -G a && -O b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -d a && -c b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -b a && -p b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -g a && -u b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -r a && -w b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -x a && -s b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -t a && -z b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ -o a && -v b ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a -ot b && c -ef d ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a = b && c != d ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a -ne b && c -le d ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ c -ge d ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ a -lt b && c -gt d ]]"
+ },
+ {
+  "source": "file",
+  "input": "[[ 1.2 -gt 0.3 ]]"
+ },
+ {
+  "source": "file",
+  "input": "declare -f func"
+ },
+ {
+  "source": "file",
+  "input": "(local bar)"
+ },
+ {
+  "source": "file",
+  "input": "local {a,b}_c=1"
+ },
+ {
+  "source": "file",
+  "input": "typeset"
+ },
+ {
+  "source": "file",
+  "input": "export bar"
+ },
+ {
+  "source": "file",
+  "input": "readonly -n"
+ },
+ {
+  "source": "file",
+  "input": "nameref bar="
+ },
+ {
+  "source": "file",
+  "input": "declare -a +n -b$o foo=bar"
+ },
+ {
+  "source": "file",
+  "input": "declare -a foo=(b1 $(b2))"
+ },
+ {
+  "source": "file",
+  "input": "declare -a foo=(b1 `b2`)"
+ },
+ {
+  "source": "file",
+  "input": "local -a foo=(b1)"
+ },
+ {
+  "source": "file",
+  "input": "declare -A foo=([a]=b)"
+ },
+ {
+  "source": "file",
+  "input": "declare foo[a]="
+ },
+ {
+  "source": "file",
+  "input": "declare foo[*]"
+ },
+ {
+  "source": "file",
+  "input": "declare foo[\"x y\"]"
+ },
+ {
+  "source": "file",
+  "input": "declare foo['x y']"
+ },
+ {
+  "source": "file",
+  "input": "foo=([)"
+ },
+ {
+  "source": "file",
+  "input": "a && b=(c)\nd"
+ },
+ {
+  "source": "file",
+  "input": "a && b=(c); d"
+ },
+ {
+  "source": "file",
+  "input": "declare -f $func >/dev/null"
+ },
+ {
+  "source": "file",
+  "input": "declare a\n{ x; }"
+ },
+ {
+  "source": "file",
+  "input": "eval a=b foo"
+ },
+ {
+  "source": "file",
+  "input": "time"
+ },
+ {
+  "source": "file",
+  "input": "time\n"
+ },
+ {
+  "source": "file",
+  "input": "time -p"
+ },
+ {
+  "source": "file",
+  "input": "time -a"
+ },
+ {
+  "source": "file",
+  "input": "time --"
+ },
+ {
+  "source": "file",
+  "input": "time foo"
+ },
+ {
+  "source": "file",
+  "input": "time { foo; }"
+ },
+ {
+  "source": "file",
+  "input": "time\nfoo"
+ },
+ {
+  "source": "file",
+  "input": "coproc foo bar"
+ },
+ {
+  "source": "file",
+  "input": "coproc name { foo; }"
+ },
+ {
+  "source": "file",
+  "input": "coproc $namevar { foo; }"
+ },
+ {
+  "source": "file",
+  "input": "coproc foo"
+ },
+ {
+  "source": "file",
+  "input": "coproc foo;"
+ },
+ {
+  "source": "file",
+  "input": "coproc { foo; }"
+ },
+ {
+  "source": "file",
+  "input": "coproc (foo)"
+ },
+ {
+  "source": "file",
+  "input": "coproc name foo | bar"
+ },
+ {
+  "source": "file",
+  "input": "coproc $()"
+ },
+ {
+  "source": "file",
+  "input": "coproc ``"
+ },
+ {
+  "source": "file",
+  "input": "let i++"
+ },
+ {
+  "source": "file",
+  "input": "let a++ b++ c +d"
+ },
+ {
+  "source": "file",
+  "input": "let ++i >/dev/null"
+ },
+ {
+  "source": "file",
+  "input": "let a=(1 + 2) b=3+4"
+ },
+ {
+  "source": "file",
+  "input": "let a=(1+2) b=3+4"
+ },
+ {
+  "source": "file",
+  "input": "let a=$(echo 3)"
+ },
+ {
+  "source": "file",
+  "input": "let a=`echo 3`"
+ },
+ {
+  "source": "file",
+  "input": "(foo-bar)"
+ },
+ {
+  "source": "file",
+  "input": "let i++\nbar"
+ },
+ {
+  "source": "file",
+  "input": "let i++ \nbar"
+ },
+ {
+  "source": "file",
+  "input": "let i++; bar"
+ },
+ {
+  "source": "file",
+  "input": "let i++\nfoo=(bar)"
+ },
+ {
+  "source": "file",
+  "input": "let i++; foo=(bar)"
+ },
+ {
+  "source": "file",
+  "input": "let i++; foo=(bar)\n"
+ },
+ {
+  "source": "file",
+  "input": "case a in b) let i++ ;; esac"
+ },
+ {
+  "source": "file",
+  "input": "case a in b) let i++;; esac"
+ },
+ {
+  "source": "file",
+  "input": "a+=1"
+ },
+ {
+  "source": "file",
+  "input": "b+=(2 3)"
+ },
+ {
+  "source": "file",
+  "input": "a[1]=(b c)"
+ },
+ {
+  "source": "file",
+  "input": "a[2]=b c[-3]= d[x]+=e"
+ },
+ {
+  "source": "file",
+  "input": "*[i]=x"
+ },
+ {
+  "source": "file",
+  "input": "arr[0,1]=x"
+ },
+ {
+  "source": "file",
+  "input": "b[i]+=2"
+ },
+ {
+  "source": "file",
+  "input": "b[ i ]+=2"
+ },
+ {
+  "source": "file",
+  "input": "$((a + \"b + $c\"))"
+ },
+ {
+  "source": "file",
+  "input": "let 'i++'"
+ },
+ {
+  "source": "file",
+  "input": "echo ${a[\"x y\"]}"
+ },
+ {
+  "source": "file",
+  "input": "a[$\"x y\"]=b"
+ },
+ {
+  "source": "file",
+  "input": "a[ $\"x y\" ]=b"
+ },
+ {
+  "source": "file",
+  "input": "((a[\"x y\"] = b))"
+ },
+ {
+  "source": "file",
+  "input": "((a[\"x y\"]=b))"
+ },
+ {
+  "source": "file",
+  "input": "a=([\"x y\"]=b)"
+ },
+ {
+  "source": "file",
+  "input": "a=( [ \"x y\" ]=b)"
+ },
+ {
+  "source": "file",
+  "input": "a=([x]= [y]=)"
+ },
+ {
+  "source": "file",
+  "input": "a=(\n[x]=\n[y]=\n)"
+ },
+ {
+  "source": "file",
+  "input": "a=(foo[0-9])"
+ },
+ {
+  "source": "file",
+  "input": "a=(\"foo\"[0-9])"
+ },
+ {
+  "source": "file",
+  "input": "a]b"
+ },
+ {
+  "source": "file",
+  "input": "echo a[b c[de]f"
+ },
+ {
+  "source": "file",
+  "input": "<<EOF | b\nfoo\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "<<EOF1 <<EOF2 | c && d\nEOF1\nEOF2"
+ },
+ {
+  "source": "file",
+  "input": "<<EOF && { bar; }\nhdoc\nEOF"
+ },
+ {
+  "source": "file",
+  "input": "<<EOF &&\nhdoc\nEOF\n{ bar; }"
+ },
+ {
+  "source": "file",
+  "input": "foo() {\n\t<<EOF && { bar; }\nhdoc\nEOF\n}"
+ },
+ {
+  "source": "file",
+  "input": "\"a$(\"\")\""
+ },
+ {
+  "source": "file",
+  "input": "\"a`\"\"`\""
+ },
+ {
+  "source": "file",
+  "input": "echo ?(b)*(c)+(d)@(e)!(f)"
+ },
+ {
+  "source": "file",
+  "input": "echo foo@(b*(c|d))bar"
+ },
+ {
+  "source": "file",
+  "input": "echo $a@(b)$c?(d)$e*(f)$g+(h)$i!(j)$k"
+ },
+ {
+  "source": "file",
+  "input": "\"^$1[[:space:]]\""
+ },
+ {
+  "source": "file",
+  "input": "echo *(.)"
+ },
+ {
+  "source": "file",
+  "input": "echo **(/)"
+ },
+ {
+  "source": "file",
+  "input": "echo *.txt(@)"
+ },
+ {
+  "source": "file",
+  "input": "echo *(om[1,5])"
+ },
+ {
+  "source": "file",
+  "input": "echo /bin/sh(:t)"
+ },
+ {
+  "source": "file",
+  "input": "echo .(:a)"
+ },
+ {
+  "source": "file",
+  "input": "echo ~(:t)"
+ },
+ {
+  "source": "file",
+  "input": "echo {go.mod,shfmt}(N*)"
+ },
+ {
+  "source": "file",
+  "input": "echo $var(Nms-3)"
+ },
+ {
+  "source": "file",
+  "input": "echo a(A) b(B)"
+ },
+ {
+  "source": "file",
+  "input": "echo <->"
+ },
+ {
+  "source": "file",
+  "input": "echo <5-10>"
+ },
+ {
+  "source": "file",
+  "input": "echo foo<->.txt"
+ },
+ {
+  "source": "file",
+  "input": "echo <5->.*"
+ },
+ {
+  "source": "file",
+  "input": "@test \"desc\" { body; }"
+ },
+ {
+  "source": "file",
+  "input": "@test 'desc' {\n\tmultiple\n\tstatements\n}"
+ },
+ {
+  "source": "file",
+  "input": "${+foo}"
+ },
+ {
+  "source": "file",
+  "input": "$+foo $#bar"
+ },
+ {
+  "source": "file",
+  "input": "${${foo#head}%tail}"
+ },
+ {
+  "source": "file",
+  "input": "${#\"${foo}\"}"
+ },
+ {
+  "source": "file",
+  "input": "${$(echo footail)%tail}"
+ },
+ {
+  "source": "file",
+  "input": "${foo:u}"
+ },
+ {
+  "source": "file",
+  "input": "${foo:t5:h2:l}"
+ },
+ {
+  "source": "file",
+  "input": "$${foo}"
+ },
+ {
+  "source": "file",
+  "input": "${=foo}"
+ },
+ {
+  "source": "file",
+  "input": "${~foo}"
+ },
+ {
+  "source": "file",
+  "input": "${^foo}"
+ },
+ {
+  "source": "file",
+  "input": "${==foo}"
+ },
+ {
+  "source": "file",
+  "input": "${~~foo}"
+ },
+ {
+  "source": "file",
+  "input": "${^^foo}"
+ },
+ {
+  "source": "file",
+  "input": "$=foo $^bar $~baz"
+ },
+ {
+  "source": "file",
+  "input": "${(o)=items}"
+ },
+ {
+  "source": "file",
+  "input": "${(aO)foo} ${(s/x/)foo}"
+ },
+ {
+  "source": "file",
+  "input": "${:-word}"
+ },
+ {
+  "source": "file",
+  "input": "${:+word}"
+ },
+ {
+  "source": "file",
+  "input": "${(%):-%N}"
+ },
+ {
+  "source": "file",
+  "input": "$[foo]"
+ },
+ {
+  "source": "file",
+  "input": "\"$[foo]\""
+ },
+ {
+  "source": "file",
+  "input": "\"$[1 + 3]\""
+ },
+ {
+  "source": "file",
+  "input": "# foo\ncmd\n# bar"
+ },
+ {
+  "source": "file",
+  "input": "foo # bar # baz"
+ },
+ {
+  "source": "file",
+  "input": "$(\n\t# foo\n)"
+ },
+ {
+  "source": "file",
+  "input": "`\n\t# foo\n`"
+ },
+ {
+  "source": "file",
+  "input": "`# foo\n`"
+ },
+ {
+  "source": "file",
+  "input": "`# foo`"
+ },
+ {
+  "source": "file",
+  "input": "` # foo`"
+ },
+ {
+  "source": "error",
+  "input": "${ "
+ },
+ {
+  "source": "error",
+  "input": "${ foo;"
+ },
+ {
+  "source": "error",
+  "input": "${ foo }"
+ },
+ {
+  "source": "error",
+  "input": "${|"
+ },
+ {
+  "source": "error",
+  "input": "${|foo;"
+ },
+ {
+  "source": "error",
+  "input": "${|foo }"
+ },
+ {
+  "source": "error",
+  "input": "${ { foo; }bar; }"
+ },
+ {
+  "source": "error",
+  "input": "!"
+ },
+ {
+  "source": "error",
+  "input": "! !"
+ },
+ {
+  "source": "error",
+  "input": "! ! foo"
+ },
+ {
+  "source": "error",
+  "input": "}"
+ },
+ {
+  "source": "error",
+  "input": "foo | }"
+ },
+ {
+  "source": "error",
+  "input": "then"
+ },
+ {
+  "source": "error",
+  "input": "elif"
+ },
+ {
+  "source": "error",
+  "input": "fi"
+ },
+ {
+  "source": "error",
+  "input": "do"
+ },
+ {
+  "source": "error",
+  "input": "done"
+ },
+ {
+  "source": "error",
+  "input": "esac"
+ },
+ {
+  "source": "error",
+  "input": "a=b { foo; }"
+ },
+ {
+  "source": "error",
+  "input": "a=b foo() { bar; }"
+ },
+ {
+  "source": "error",
+  "input": "a=b if foo; then bar; fi"
+ },
+ {
+  "source": "error",
+  "input": ">f { foo; }"
+ },
+ {
+  "source": "error",
+  "input": ">f foo() { bar; }"
+ },
+ {
+  "source": "error",
+  "input": ">f if foo; then bar; fi"
+ },
+ {
+  "source": "error",
+  "input": "if done; then b; fi"
+ },
+ {
+  "source": "error",
+  "input": "'"
+ },
+ {
+  "source": "error",
+  "input": "\""
+ },
+ {
+  "source": "error",
+  "input": "'\\''"
+ },
+ {
+  "source": "error",
+  "input": ";"
+ },
+ {
+  "source": "error",
+  "input": "{ ; }"
+ },
+ {
+  "source": "error",
+  "input": "\"foo\"(){ :; }"
+ },
+ {
+  "source": "error",
+  "input": "foo$bar(){ :; }"
+ },
+ {
+  "source": "error",
+  "input": "{"
+ },
+ {
+  "source": "error",
+  "input": "{ foo;"
+ },
+ {
+  "source": "error",
+  "input": "{ foo; #}"
+ },
+ {
+  "source": "error",
+  "input": "(x"
+ },
+ {
+  "source": "error",
+  "input": ")"
+ },
+ {
+  "source": "error",
+  "input": ";;"
+ },
+ {
+  "source": "error",
+  "input": "( foo;"
+ },
+ {
+  "source": "error",
+  "input": "&"
+ },
+ {
+  "source": "error",
+  "input": "|"
+ },
+ {
+  "source": "error",
+  "input": "&&"
+ },
+ {
+  "source": "error",
+  "input": "||"
+ },
+ {
+  "source": "error",
+  "input": "foo; || bar"
+ },
+ {
+  "source": "error",
+  "input": "echo & || bar"
+ },
+ {
+  "source": "error",
+  "input": "echo & ; bar"
+ },
+ {
+  "source": "error",
+  "input": "foo;;"
+ },
+ {
+  "source": "error",
+  "input": "foo("
+ },
+ {
+  "source": "error",
+  "input": "foo(bar"
+ },
+ {
+  "source": "error",
+  "input": "à("
+ },
+ {
+  "source": "error",
+  "input": "foo'"
+ },
+ {
+  "source": "error",
+  "input": "foo\""
+ },
+ {
+  "source": "error",
+  "input": "\"foo"
+ },
+ {
+  "source": "error",
+  "input": "\"foobar\\"
+ },
+ {
+  "source": "error",
+  "input": "\"foo\\a"
+ },
+ {
+  "source": "error",
+  "input": "foo()"
+ },
+ {
+  "source": "error",
+  "input": "foo() {"
+ },
+ {
+  "source": "error",
+  "input": "foo() { bar;"
+ },
+ {
+  "source": "error",
+  "input": "foo-bar() { x; }"
+ },
+ {
+  "source": "error",
+  "input": "foò() { x; }"
+ },
+ {
+  "source": "error",
+  "input": "echo foo("
+ },
+ {
+  "source": "error",
+  "input": "echo &&"
+ },
+ {
+  "source": "error",
+  "input": "echo |"
+ },
+ {
+  "source": "error",
+  "input": "echo ||"
+ },
+ {
+  "source": "error",
+  "input": "echo | #bar"
+ },
+ {
+  "source": "error",
+  "input": "echo && #bar"
+ },
+ {
+  "source": "error",
+  "input": "`echo &&`"
+ },
+ {
+  "source": "error",
+  "input": "`echo |`"
+ },
+ {
+  "source": "error",
+  "input": "echo | ! true"
+ },
+ {
+  "source": "error",
+  "input": "echo >"
+ },
+ {
+  "source": "error",
+  "input": "echo >>"
+ },
+ {
+  "source": "error",
+  "input": "echo <"
+ },
+ {
+  "source": "error",
+  "input": "echo 2>"
+ },
+ {
+  "source": "error",
+  "input": "echo <\nbar"
+ },
+ {
+  "source": "error",
+  "input": "echo | < #bar"
+ },
+ {
+  "source": "error",
+  "input": "echo && > #"
+ },
+ {
+  "source": "error",
+  "input": "<<"
+ },
+ {
+  "source": "error",
+  "input": "<<EOF"
+ },
+ {
+  "source": "error",
+  "input": "<<EOF\n\\"
+ },
+ {
+  "source": "error",
+  "input": "<<EOF\n\\\n"
+ },
+ {
+  "source": "error",
+  "input": "<<EOF\n\\\nEOF"
+ },
+ {
+  "source": "error",
+  "input": "<<EOF\nfoo\\\nEOF"
+ },
+ {
+  "source": "error",
+  "input": "<<'EOF'\n\\\n"
+ },
+ {
+  "source": "error",
+  "input": "<<EOF <`\n#\n`\n``"
+ },
+ {
+  "source": "error",
+  "input": "<<'EOF'"
+ },
+ {
+  "source": "error",
+  "input": "<<\\EOF"
+ },
+ {
+  "source": "error",
+  "input": "<<\\\\EOF"
+ },
+ {
+  "source": "error",
+  "input": "<<-EOF"
+ },
+ {
+  "source": "error",
+  "input": "<<-EOF\n\t"
+ },
+ {
+  "source": "error",
+  "input": "<<-'EOF'\n\t"
+ },
+ {
+  "source": "error",
+  "input": "<<\nEOF\nbar\nEOF"
+ },
+ {
+  "source": "error",
+  "input": "$(<<EOF\nNOTEOF)"
+ },
+ {
+  "source": "error",
+  "input": "`<<EOF\nNOTEOF`"
+ },
+ {
+  "source": "error",
+  "input": "if"
+ },
+ {
+  "source": "error",
+  "input": "if true;"
+ },
+ {
+  "source": "error",
+  "input": "if true then"
+ },
+ {
+  "source": "error",
+  "input": "if true; then bar;"
+ },
+ {
+  "source": "error",
+  "input": "if true; then bar; fi#etc"
+ },
+ {
+  "source": "error",
+  "input": "if a; then b; elif c;"
+ },
+ {
+  "source": "error",
+  "input": "'foo' '"
+ },
+ {
+  "source": "error",
+  "input": "'foo\n' '"
+ },
+ {
+  "source": "error",
+  "input": "while"
+ },
+ {
+  "source": "error",
+  "input": "while true;"
+ },
+ {
+  "source": "error",
+  "input": "while true; do bar"
+ },
+ {
+  "source": "error",
+  "input": "while true; do bar;"
+ },
+ {
+  "source": "error",
+  "input": "until"
+ },
+ {
+  "source": "error",
+  "input": "until true;"
+ },
+ {
+  "source": "error",
+  "input": "until true; do bar"
+ },
+ {
+  "source": "error",
+  "input": "until true; do bar;"
+ },
+ {
+  "source": "error",
+  "input": "for"
+ },
+ {
+  "source": "error",
+  "input": "for i"
+ },
+ {
+  "source": "error",
+  "input": "for i in;"
+ },
+ {
+  "source": "error",
+  "input": "for i in 1 2 3;"
+ },
+ {
+  "source": "error",
+  "input": "for i in 1 2 &"
+ },
+ {
+  "source": "error",
+  "input": "for i in 1 2 ("
+ },
+ {
+  "source": "error",
+  "input": "for i in 1 2 3; do echo $i;"
+ },
+ {
+  "source": "error",
+  "input": "for i in 1 2 3; echo $i;"
+ },
+ {
+  "source": "error",
+  "input": "for 'i' in 1 2 3; do echo $i; done"
+ },
+ {
+  "source": "error",
+  "input": "for in 1 2 3; do echo $i; done"
+ },
+ {
+  "source": "error",
+  "input": "select"
+ },
+ {
+  "source": "error",
+  "input": "select i"
+ },
+ {
+  "source": "error",
+  "input": "select i in;"
+ },
+ {
+  "source": "error",
+  "input": "select i in 1 2 3;"
+ },
+ {
+  "source": "error",
+  "input": "select i in 1 2 3; do echo $i;"
+ },
+ {
+  "source": "error",
+  "input": "select i in 1 2 3; echo $i;"
+ },
+ {
+  "source": "error",
+  "input": "select 'i' in 1 2 3; do echo $i; done"
+ },
+ {
+  "source": "error",
+  "input": "select in 1 2 3; do echo $i; done"
+ },
+ {
+  "source": "error",
+  "input": "echo foo &\n;"
+ },
+ {
+  "source": "error",
+  "input": "echo $(foo"
+ },
+ {
+  "source": "error",
+  "input": "echo $((foo"
+ },
+ {
+  "source": "error",
+  "input": "echo $((\\"
+ },
+ {
+  "source": "error",
+  "input": "echo $((o\\"
+ },
+ {
+  "source": "error",
+  "input": "echo $((foo\\a"
+ },
+ {
+  "source": "error",
+  "input": "echo $(($(a\""
+ },
+ {
+  "source": "error",
+  "input": "echo $((`echo 0`"
+ },
+ {
+  "source": "error",
+  "input": "echo $((& $("
+ },
+ {
+  "source": "error",
+  "input": "echo $((a'"
+ },
+ {
+  "source": "error",
+  "input": "echo $((a b\""
+ },
+ {
+  "source": "error",
+  "input": "echo $(())"
+ },
+ {
+  "source": "error",
+  "input": "echo $((()))"
+ },
+ {
+  "source": "error",
+  "input": "echo $(((3))"
+ },
+ {
+  "source": "error",
+  "input": "echo $((+))"
+ },
+ {
+  "source": "error",
+  "input": "echo $((a b c))"
+ },
+ {
+  "source": "error",
+  "input": "echo $((a ; c))"
+ },
+ {
+  "source": "error",
+  "input": "echo $((foo) )"
+ },
+ {
+  "source": "error",
+  "input": "echo $((a *))"
+ },
+ {
+  "source": "error",
+  "input": "echo $((++))"
+ },
+ {
+  "source": "error",
+  "input": "echo $((a ? b))"
+ },
+ {
+  "source": "error",
+  "input": "echo $((a : b))"
+ },
+ {
+  "source": "error",
+  "input": "echo $((/"
+ },
+ {
+  "source": "error",
+  "input": "echo $((:"
+ },
+ {
+  "source": "error",
+  "input": "echo $(((a)+=b))"
+ },
+ {
+  "source": "error",
+  "input": "echo $((1=2))"
+ },
+ {
+  "source": "error",
+  "input": "echo $(($0=2))"
+ },
+ {
+  "source": "error",
+  "input": "echo $(($(a)=2))"
+ },
+ {
+  "source": "error",
+  "input": "<<EOF\n$(()a"
+ },
+ {
+  "source": "error",
+  "input": "<<EOF\n`))"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo"
+ },
+ {
+  "source": "error",
+  "input": "echo ${à}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${1a}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo-bar"
+ },
+ {
+  "source": "error",
+  "input": "#foo\n{ bar;"
+ },
+ {
+  "source": "error",
+  "input": "echo \"foo${bar\""
+ },
+ {
+  "source": "error",
+  "input": "echo ${%"
+ },
+ {
+  "source": "error",
+  "input": "echo ${+"
+ },
+ {
+  "source": "error",
+  "input": "echo ${#${"
+ },
+ {
+  "source": "error",
+  "input": "echo ${#$("
+ },
+ {
+  "source": "error",
+  "input": "echo ${("
+ },
+ {
+  "source": "error",
+  "input": "echo $$(foo)"
+ },
+ {
+  "source": "error",
+  "input": "echo ${##"
+ },
+ {
+  "source": "error",
+  "input": "echo ${#<}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${%<}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${!<}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${@foo}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${$needbraces}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${?foo}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${-foo}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${\"bad\"}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${\"$needbraces\"}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${\"${foo}}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${\"${foo}bad\"}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${${nested}foo}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${@[@]} ${@[*]}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${${nested}[@]"
+ },
+ {
+  "source": "error",
+  "input": "echo ${*[@]} ${*[*]}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${#[x]}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${$[0]}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${?[@]}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${2[@]}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo*}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo;}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo!}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${#foo:-bar}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${%foo:1:3}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${#foo%x}"
+ },
+ {
+  "source": "error",
+  "input": "echo foo\n;"
+ },
+ {
+  "source": "error",
+  "input": "<<$ <<0\n$(<<$<<"
+ },
+ {
+  "source": "error",
+  "input": "(foo) bar"
+ },
+ {
+  "source": "error",
+  "input": "{ foo; } bar"
+ },
+ {
+  "source": "error",
+  "input": "if foo; then bar; fi bar"
+ },
+ {
+  "source": "error",
+  "input": "case"
+ },
+ {
+  "source": "error",
+  "input": "case i"
+ },
+ {
+  "source": "error",
+  "input": "case i in 3) foo;"
+ },
+ {
+  "source": "error",
+  "input": "case i in 3) foo; 4) bar; esac"
+ },
+ {
+  "source": "error",
+  "input": "case i in 3&) foo;"
+ },
+ {
+  "source": "error",
+  "input": "case $i in &) foo;"
+ },
+ {
+  "source": "error",
+  "input": "case i {"
+ },
+ {
+  "source": "error",
+  "input": "case i { x) y ;;"
+ },
+ {
+  "source": "error",
+  "input": "\"`\""
+ },
+ {
+  "source": "error",
+  "input": "`\"`"
+ },
+ {
+  "source": "error",
+  "input": "`\\```"
+ },
+ {
+  "source": "error",
+  "input": "`{\nfoo`"
+ },
+ {
+  "source": "error",
+  "input": "echo \"`)`\""
+ },
+ {
+  "source": "error",
+  "input": "<<$bar\n$bar"
+ },
+ {
+  "source": "error",
+  "input": "<<${bar}\n${bar}"
+ },
+ {
+  "source": "error",
+  "input": "<<$(bar)\n$(bar)"
+ },
+ {
+  "source": "error",
+  "input": "<<$-\n$-"
+ },
+ {
+  "source": "error",
+  "input": "<<`bar`\n`bar`"
+ },
+ {
+  "source": "error",
+  "input": "<<\"$bar\"\n$bar"
+ },
+ {
+  "source": "error",
+  "input": "<<a <<0\n$(<<$<<"
+ },
+ {
+  "source": "error",
+  "input": "\"\"()"
+ },
+ {
+  "source": "error",
+  "input": "]] )"
+ },
+ {
+  "source": "error",
+  "input": "((foo"
+ },
+ {
+  "source": "error",
+  "input": "(())"
+ },
+ {
+  "source": "error",
+  "input": "echo ((foo"
+ },
+ {
+  "source": "error",
+  "input": "echo |&"
+ },
+ {
+  "source": "error",
+  "input": "|& a"
+ },
+ {
+  "source": "error",
+  "input": "let"
+ },
+ {
+  "source": "error",
+  "input": "let a+ b"
+ },
+ {
+  "source": "error",
+  "input": "let + a"
+ },
+ {
+  "source": "error",
+  "input": "let a ++"
+ },
+ {
+  "source": "error",
+  "input": "let (a)++"
+ },
+ {
+  "source": "error",
+  "input": "let 1++"
+ },
+ {
+  "source": "error",
+  "input": "let $0++"
+ },
+ {
+  "source": "error",
+  "input": "let --(a)"
+ },
+ {
+  "source": "error",
+  "input": "let --$a"
+ },
+ {
+  "source": "error",
+  "input": "let a+\n"
+ },
+ {
+  "source": "error",
+  "input": "let ))"
+ },
+ {
+  "source": "error",
+  "input": "`let !`"
+ },
+ {
+  "source": "error",
+  "input": "let a:b"
+ },
+ {
+  "source": "error",
+  "input": "let a+b=c"
+ },
+ {
+  "source": "error",
+  "input": "`let` { foo; }"
+ },
+ {
+  "source": "error",
+  "input": "$(let)"
+ },
+ {
+  "source": "error",
+  "input": "[["
+ },
+ {
+  "source": "error",
+  "input": "[[ ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ a"
+ },
+ {
+  "source": "error",
+  "input": "[[ a ||"
+ },
+ {
+  "source": "error",
+  "input": "[[ a && &&"
+ },
+ {
+  "source": "error",
+  "input": "[[ a && ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ a =="
+ },
+ {
+  "source": "error",
+  "input": "[[ a =~"
+ },
+ {
+  "source": "error",
+  "input": "[[ -f a"
+ },
+ {
+  "source": "error",
+  "input": "[[ -n\na ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ a -ef\nb ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ a ==\nb ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ a -nt b"
+ },
+ {
+  "source": "error",
+  "input": "[[ a =~ b"
+ },
+ {
+  "source": "error",
+  "input": "[[ a b c ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ a b$x c ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ a & b ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ true && () ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ true && (&& ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ a == ! b ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ (! ) ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ ! && ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ (-e ) ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ (a) == b ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ a =~ ; ]]"
+ },
+ {
+  "source": "error",
+  "input": "[[ a =~ )"
+ },
+ {
+  "source": "error",
+  "input": "[[ a =~ ())"
+ },
+ {
+  "source": "error",
+  "input": "[[ >"
+ },
+ {
+  "source": "error",
+  "input": "local ("
+ },
+ {
+  "source": "error",
+  "input": "declare 0=${o}"
+ },
+ {
+  "source": "error",
+  "input": "declare ab=${o})"
+ },
+ {
+  "source": "error",
+  "input": "export ab=$0("
+ },
+ {
+  "source": "error",
+  "input": "declare {x,y}=(1 2)"
+ },
+ {
+  "source": "error",
+  "input": "a=(<)"
+ },
+ {
+  "source": "error",
+  "input": "a=([)"
+ },
+ {
+  "source": "error",
+  "input": "a=([i)"
+ },
+ {
+  "source": "error",
+  "input": "a=([i])"
+ },
+ {
+  "source": "error",
+  "input": "a[i]=(y)"
+ },
+ {
+  "source": "error",
+  "input": "a=([i]=(y))"
+ },
+ {
+  "source": "error",
+  "input": "o=([0]=#"
+ },
+ {
+  "source": "error",
+  "input": "a[b] ==["
+ },
+ {
+  "source": "error",
+  "input": "a[b] +=c"
+ },
+ {
+  "source": "error",
+  "input": "a=(x y) foo"
+ },
+ {
+  "source": "error",
+  "input": "a[2]=x foo"
+ },
+ {
+  "source": "error",
+  "input": "function"
+ },
+ {
+  "source": "error",
+  "input": "function foo("
+ },
+ {
+  "source": "error",
+  "input": "function `function"
+ },
+ {
+  "source": "error",
+  "input": "function \"foo\"(){}"
+ },
+ {
+  "source": "error",
+  "input": "function foo()"
+ },
+ {
+  "source": "error",
+  "input": "@test"
+ },
+ {
+  "source": "error",
+  "input": "@test 'desc'"
+ },
+ {
+  "source": "error",
+  "input": "echo <<<"
+ },
+ {
+  "source": "error",
+  "input": "a["
+ },
+ {
+  "source": "error",
+  "input": "a[b"
+ },
+ {
+  "source": "error",
+  "input": "a[]"
+ },
+ {
+  "source": "error",
+  "input": "a[["
+ },
+ {
+  "source": "error",
+  "input": "echo $((a[))"
+ },
+ {
+  "source": "error",
+  "input": "echo $((a[b))"
+ },
+ {
+  "source": "error",
+  "input": "echo $((a[]))"
+ },
+ {
+  "source": "error",
+  "input": "echo $((x$t["
+ },
+ {
+  "source": "error",
+  "input": "a[1]"
+ },
+ {
+  "source": "error",
+  "input": "a[i]+"
+ },
+ {
+  "source": "error",
+  "input": "a[1]#"
+ },
+ {
+  "source": "error",
+  "input": "echo $[foo"
+ },
+ {
+  "source": "error",
+  "input": "echo $'"
+ },
+ {
+  "source": "error",
+  "input": "echo $\""
+ },
+ {
+  "source": "error",
+  "input": "echo @("
+ },
+ {
+  "source": "error",
+  "input": "echo @(a"
+ },
+ {
+  "source": "error",
+  "input": "echo @([abc)])"
+ },
+ {
+  "source": "error",
+  "input": "((@("
+ },
+ {
+  "source": "error",
+  "input": "time { foo;"
+ },
+ {
+  "source": "error",
+  "input": "time ! foo"
+ },
+ {
+  "source": "error",
+  "input": "coproc"
+ },
+ {
+  "source": "error",
+  "input": "coproc\n$"
+ },
+ {
+  "source": "error",
+  "input": "coproc declare ("
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo[1 2]}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo[}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo]}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo[]}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${a/\n"
+ },
+ {
+  "source": "error",
+  "input": "echo ${a/''"
+ },
+ {
+  "source": "error",
+  "input": "echo ${a-\n"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo:"
+ },
+ {
+  "source": "error",
+  "input": "foo=force_expansion; echo ${foo:1 2}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo:1"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo:1:"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo:1:2"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo:h"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo,"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo@"
+ },
+ {
+  "source": "error",
+  "input": "foo=force_expansion; echo ${foo@}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo@Q"
+ },
+ {
+  "source": "error",
+  "input": "foo=force_expansion; echo ${foo@bar}"
+ },
+ {
+  "source": "error",
+  "input": "foo=force_expansion; echo ${foo@'Q'}"
+ },
+ {
+  "source": "error",
+  "input": "echo $((echo a); (echo b))"
+ },
+ {
+  "source": "error",
+  "input": "((echo a); (echo b))"
+ },
+ {
+  "source": "error",
+  "input": "for ((;;"
+ },
+ {
+  "source": "error",
+  "input": "for ((;;0000000"
+ },
+ {
+  "source": "error",
+  "input": "echo <("
+ },
+ {
+  "source": "error",
+  "input": "echo >("
+ },
+ {
+  "source": "error",
+  "input": "echo {var}>foo"
+ },
+ {
+  "source": "error",
+  "input": "echo ;&"
+ },
+ {
+  "source": "error",
+  "input": "echo ;;&"
+ },
+ {
+  "source": "error",
+  "input": "echo ;|"
+ },
+ {
+  "source": "error",
+  "input": "for i in 1 2 3; { echo; }"
+ },
+ {
+  "source": "error",
+  "input": "echo !(a)"
+ },
+ {
+  "source": "error",
+  "input": "echo $a@(b)"
+ },
+ {
+  "source": "error",
+  "input": "foo=(1 2)"
+ },
+ {
+  "source": "error",
+  "input": "a=$c\n'"
+ },
+ {
+  "source": "error",
+  "input": "echo ${!foo[@]}"
+ },
+ {
+  "source": "error",
+  "input": "foo << < bar"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo,bar}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo@Q}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo@a}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo@u}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo@A}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo@E}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo@K}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo@k}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo@L}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo@P}"
+ },
+ {
+  "source": "error",
+  "input": "echo ${foo@U}"
+ },
+ {
+  "source": "error",
+  "input": "foo=force_expansion; echo ${foo@#}"
+ },
+ {
+  "source": "error",
+  "input": "`\"`\\"
+ }
+]

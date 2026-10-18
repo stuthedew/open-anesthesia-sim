@@ -9,7 +9,7 @@ this - but a project that does care should not have to edit the source.
 from __future__ import annotations
 
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import date
 from pathlib import Path
 
@@ -384,10 +384,36 @@ def _date(value: object, fallback: date | None, name: str) -> date | None:
     raise ValueError(f"{name}: {value!r} is not a date")
 
 
-def _tuple(value: object, fallback: tuple[str, ...]) -> tuple[str, ...]:
+def _tuple(value: object, fallback: tuple[str, ...], name: str) -> tuple[str, ...]:
+    """Read a list of strings, rejecting any other value as `_date` does (`PL-HTHC`)."""
+    if value is None:
+        return fallback
     if isinstance(value, list) and all(isinstance(v, str) for v in value):
-        return tuple(str(v) for v in value)
-    return fallback
+        return tuple(value)
+    raise ValueError(f"{name}: {value!r} is not a list of strings")
+
+
+def _str(value: object, fallback: str, name: str) -> str:
+    """Read a string. `str()` once turned a list into its repr here (`PL-HTHC`)."""
+    if value is None:
+        return fallback
+    if isinstance(value, str):
+        return value
+    raise ValueError(f"{name}: {value!r} is not a string")
+
+
+def _int(value: object, fallback: int, name: str) -> int:
+    """Read a whole number. TOML's `true` is a bool, which Python counts as an int."""
+    if value is None:
+        return fallback
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    raise ValueError(f"{name}: {value!r} is not a whole number")
+
+
+#: The keys `load` reads, which are the fields of `Config` but `extra`: a
+#: project sets that one in code, never in the file.
+SETTINGS = frozenset(f.name for f in fields(Config)) - {"extra"}
 
 
 def load(root: Path) -> Config:
@@ -403,22 +429,43 @@ def load(root: Path) -> Config:
     with path.open("rb") as handle:
         data = tomllib.load(handle)
     section = data.get("docket", data)
+    # A misspelt key would otherwise leave its setting at the default while the
+    # file reads as though it were set (`PL-HTHC`).
+    unknown = sorted(set(section) - SETTINGS)
+    if unknown:
+        raise ValueError(f"{CONFIG_NAME}: no setting is named {', '.join(unknown)}")
     defaults = Config()
     return Config(
-        items_dir=str(section.get("items_dir", defaults.items_dir)),
-        safety_classes=_tuple(section.get("safety_classes"), defaults.safety_classes),
-        process_classes=_tuple(section.get("process_classes"), defaults.process_classes),
-        debt_classes=_tuple(section.get("debt_classes"), defaults.debt_classes),
-        new_work_classes=_tuple(section.get("new_work_classes"), defaults.new_work_classes),
-        top_band_limit=int(section.get("top_band_limit", defaults.top_band_limit)),
-        untriaged_stale_days=int(
-            section.get("untriaged_stale_days", defaults.untriaged_stale_days)
+        items_dir=_str(section.get("items_dir"), defaults.items_dir, "items_dir"),
+        safety_classes=_tuple(
+            section.get("safety_classes"), defaults.safety_classes, "safety_classes"
         ),
-        recheck_after_days=int(section.get("recheck_after_days", defaults.recheck_after_days)),
-        instruction_stale_days=int(
-            section.get("instruction_stale_days", defaults.instruction_stale_days)
+        process_classes=_tuple(
+            section.get("process_classes"), defaults.process_classes, "process_classes"
         ),
-        instruction_paths=_tuple(section.get("instruction_paths"), defaults.instruction_paths),
+        debt_classes=_tuple(section.get("debt_classes"), defaults.debt_classes, "debt_classes"),
+        new_work_classes=_tuple(
+            section.get("new_work_classes"), defaults.new_work_classes, "new_work_classes"
+        ),
+        top_band_limit=_int(
+            section.get("top_band_limit"), defaults.top_band_limit, "top_band_limit"
+        ),
+        untriaged_stale_days=_int(
+            section.get("untriaged_stale_days"),
+            defaults.untriaged_stale_days,
+            "untriaged_stale_days",
+        ),
+        recheck_after_days=_int(
+            section.get("recheck_after_days"), defaults.recheck_after_days, "recheck_after_days"
+        ),
+        instruction_stale_days=_int(
+            section.get("instruction_stale_days"),
+            defaults.instruction_stale_days,
+            "instruction_stale_days",
+        ),
+        instruction_paths=_tuple(
+            section.get("instruction_paths"), defaults.instruction_paths, "instruction_paths"
+        ),
         verify_required_at_close_from=_date(
             section.get("verify_required_at_close_from"),
             defaults.verify_required_at_close_from,
@@ -430,9 +477,13 @@ def load(root: Path) -> Config:
             "verify_prerequisite_refused_from",
         ),
         collected_test_paths=_tuple(
-            section.get("collected_test_paths"), defaults.collected_test_paths
+            section.get("collected_test_paths"),
+            defaults.collected_test_paths,
+            "collected_test_paths",
         ),
-        health_clauses=_tuple(section.get("health_clauses"), defaults.health_clauses),
+        health_clauses=_tuple(
+            section.get("health_clauses"), defaults.health_clauses, "health_clauses"
+        ),
         verify_k_selector_refused_from=_date(
             section.get("verify_k_selector_refused_from"),
             defaults.verify_k_selector_refused_from,
@@ -453,24 +504,38 @@ def load(root: Path) -> Config:
             defaults.recommendation_required_from,
             "recommendation_required_from",
         ),
-        minor_classes=_tuple(section.get("minor_classes"), defaults.minor_classes),
-        known_classes=_tuple(section.get("known_classes"), defaults.known_classes),
-        retired_features=_tuple(section.get("retired_features"), defaults.retired_features),
-        protected_paths=_tuple(section.get("protected_paths"), defaults.protected_paths),
-        workflow_paths=_tuple(section.get("workflow_paths"), defaults.workflow_paths),
-        generator_paths=_tuple(section.get("generator_paths"), defaults.generator_paths),
-        gate_paths=_tuple(section.get("gate_paths"), defaults.gate_paths),
-        check_command=str(section.get("check_command", defaults.check_command)),
-        open_pull_requests_command=str(
-            section.get("open_pull_requests_command", defaults.open_pull_requests_command)
+        minor_classes=_tuple(section.get("minor_classes"), defaults.minor_classes, "minor_classes"),
+        known_classes=_tuple(section.get("known_classes"), defaults.known_classes, "known_classes"),
+        retired_features=_tuple(
+            section.get("retired_features"), defaults.retired_features, "retired_features"
         ),
-        newest_pull_request_command=str(
-            section.get("newest_pull_request_command", defaults.newest_pull_request_command)
+        protected_paths=_tuple(
+            section.get("protected_paths"), defaults.protected_paths, "protected_paths"
         ),
-        code_paths=_tuple(section.get("code_paths"), defaults.code_paths),
-        product_paths=_tuple(section.get("product_paths"), defaults.product_paths),
-        notes_file=str(section.get("notes_file", defaults.notes_file)),
-        version_file=str(section.get("version_file", defaults.version_file)),
-        roadmap_file=str(section.get("roadmap_file", defaults.roadmap_file)),
-        version_policy=str(section.get("version_policy", defaults.version_policy)),
+        workflow_paths=_tuple(
+            section.get("workflow_paths"), defaults.workflow_paths, "workflow_paths"
+        ),
+        generator_paths=_tuple(
+            section.get("generator_paths"), defaults.generator_paths, "generator_paths"
+        ),
+        gate_paths=_tuple(section.get("gate_paths"), defaults.gate_paths, "gate_paths"),
+        check_command=_str(section.get("check_command"), defaults.check_command, "check_command"),
+        open_pull_requests_command=_str(
+            section.get("open_pull_requests_command"),
+            defaults.open_pull_requests_command,
+            "open_pull_requests_command",
+        ),
+        newest_pull_request_command=_str(
+            section.get("newest_pull_request_command"),
+            defaults.newest_pull_request_command,
+            "newest_pull_request_command",
+        ),
+        code_paths=_tuple(section.get("code_paths"), defaults.code_paths, "code_paths"),
+        product_paths=_tuple(section.get("product_paths"), defaults.product_paths, "product_paths"),
+        notes_file=_str(section.get("notes_file"), defaults.notes_file, "notes_file"),
+        version_file=_str(section.get("version_file"), defaults.version_file, "version_file"),
+        roadmap_file=_str(section.get("roadmap_file"), defaults.roadmap_file, "roadmap_file"),
+        version_policy=_str(
+            section.get("version_policy"), defaults.version_policy, "version_policy"
+        ),
     )

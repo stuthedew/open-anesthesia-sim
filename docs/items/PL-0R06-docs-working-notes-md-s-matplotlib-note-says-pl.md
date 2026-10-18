@@ -3,11 +3,13 @@ id: PL-0R06
 title: docs/WORKING_NOTES.md's matplotlib note says PL-KP7H and PL-YLKR would both be rebuilt against a WebAgg canvas, but PL-YLKR closed as design-only on 2026-09-14 and its build is PL-YVHK
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: closed-item-claims
 touches: docs/WORKING_NOTES.md
 added: 2026-09-14
+closed: 2026-10-18
+pr: 1538
 verify: ! grep -qF 'would both be rebuilt against it' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 

@@ -450,31 +450,23 @@ def test_a_walk_that_runs_off_a_truncated_history_is_unread_rather_than_believed
     assert named == ([] if branch == BRANCH else [(f"origin/{branch}", "PL-B1B1")])
 
 
-def test_a_merge_of_main_read_below_an_uneven_horizon_spends_only_what_a_squash_took(
-    tmp_path: Path,
-) -> None:
-    """`PL-N162`'s review of slice 2: a claim, then a merge of `main`, read in a shallow clone.
+SQUASHED = "claude/squashed-q8rt2m"
+
+
+def _unevenly_truncated_clone(tmp_path: Path, branch: str) -> Path:
+    """A shallow clone of `main` cut unevenly, with one claimed branch fetched whole.
 
     `main` reaches the root down a short path and is grafted on its long one,
-    `test_cli.py`'s `_unevenly_truncated_pair` topology. The merge brings in
-    `main`'s own long-path commits, which the walk then reaches below the
-    graft: each has a parent, so nothing marks the ref unread, and each writes
-    only content the base holds. Main work 3 was authored after the claim and is
-    no ancestor of it, so it sorts after the claim in the walk. Taken as the
-    landed prefix, it spent the live claim, and `flight` said nobody held the
-    item.
-
-    The second branch is the other direction. A squash took its first commit
-    before it merged `main`, so its claim is spent, and it stays spent although
-    the newest landed commit in its walk is one of `main`'s, which is no
-    descendant of the claim.
+    `test_cli.py`'s `_unevenly_truncated_pair` topology. `BRANCH` claims
+    `PL-B1B1` and merges `main`. `SQUASHED` claims `PL-C2C2`, and a squash of
+    its first commit lands on `main` below the clone's horizon before it
+    merges `main` too.
     """
-    squashed = "claude/squashed-q8rt2m"
     origin = _Repo(tmp_path / "origin")
     root = origin.git("rev-parse", "HEAD").strip()
     origin.branch(BRANCH)
     origin.claim("PL-B1B1", when=T0)
-    origin.branch(squashed, root)
+    origin.branch(SQUASHED, root)
     origin.claim("PL-C2C2", when=T0)
     origin.commit("PL-C2C2: first", when=T0 + HOUR / 2, files={"src/first.py": "first\n"})
     origin.git("checkout", "-q", "main")
@@ -482,8 +474,8 @@ def test_a_merge_of_main_read_below_an_uneven_horizon_spends_only_what_a_squash_
         origin.commit(f"main work {number}", when=when, files={f"a{number}": f"main {number}\n"})
     origin.commit("PL-C2C2: first (#1)", when=T0 + HOUR / 2, files={"src/first.py": "first\n"})
     origin.commit("main work 3", when=T0 + HOUR, files={"a3": "main 3\n"})
-    for branch, path in ((BRANCH, "src/work.py"), (squashed, "src/second.py")):
-        origin.git("checkout", "-q", branch)
+    for name, path in ((BRANCH, "src/work.py"), (SQUASHED, "src/second.py")):
+        origin.git("checkout", "-q", name)
         origin.git("merge", "-q", "--no-edit", "main", env=_dated(T0 + 2 * HOUR))
         origin.commit("the work", when=T0 + 3 * HOUR, files={path: f"{path}\n"})
     origin.git("checkout", "-q", "main")
@@ -498,19 +490,33 @@ def test_a_merge_of_main_read_below_an_uneven_horizon_spends_only_what_a_squash_
     origin.commit("the tip", when=T0 + 9 * HOUR, files={"tip": "tip\n"})
     work = tmp_path / "work"
     # Five reaches the root down the short path and stops at main work 4 on the
-    # long one; the branches are then fetched whole.
-    subprocess.run(
-        ["git", "clone", "-q", "--depth=5", "--branch", "main", origin.root.as_uri(), str(work)],
-        check=True,
-        capture_output=True,
-    )
-    for branch in (BRANCH, squashed):
-        subprocess.run(
-            ["git", "fetch", "-q", "origin", f"{branch}:refs/remotes/origin/{branch}"],
-            cwd=work,
-            check=True,
-            capture_output=True,
-        )
+    # long one; the branch is then fetched whole.
+    for args, cwd in (
+        (["clone", "-q", "--depth=5", "--branch", "main", origin.root.as_uri(), str(work)], None),
+        (["fetch", "-q", "origin", f"{branch}:refs/remotes/origin/{branch}"], work),
+    ):
+        subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+    return work
+
+
+def test_a_merge_of_main_read_below_an_uneven_horizon_spends_only_what_a_squash_took(
+    tmp_path: Path,
+) -> None:
+    """`PL-N162`'s review of slice 2: a claim, then a merge of `main`, read in a shallow clone.
+
+    The merge brings in `main`'s own long-path commits, which the walk then
+    reaches below the graft: each has a parent, so nothing marks the ref
+    unread, and each writes only content the base holds. Main work 3 was
+    authored after the claim and is no ancestor of it, so it sorts after the
+    claim in the walk. Taken as the landed prefix, it spent the live claim, and
+    `flight` said nobody held the item.
+
+    The squashed branch once shared this test, and its claim read as spent.
+    That reading came only from the graft listing its whole tree as written,
+    `src/first.py` among it, so it moved to a test of its own when the graft
+    stopped writing anything (`PL-29RM`).
+    """
+    work = _unevenly_truncated_clone(tmp_path, BRANCH)
     walk = subprocess.run(
         ["git", "log", "--no-merges", "--format=%p %s", "^origin/main", f"origin/{BRANCH}"],
         cwd=work,
@@ -527,12 +533,27 @@ def test_a_merge_of_main_read_below_an_uneven_horizon_spends_only_what_a_squash_
     assert all(line.split(" ", 1)[0] for line in walk)
     assert (read.unreadable, read.declined) == ((), "")
     assert {(hold.key, hold.state, hold.released_by) for hold in read.holds} == {
-        ("PL-B1B1", LIVE, ""),
-        ("PL-C2C2", RELEASED, BY_LANDING),
+        ("PL-B1B1", LIVE, "")
     }
     assert [(branch.name, branch.item_id) for branch in read.flight().branches] == [
         (f"origin/{BRANCH}", "PL-B1B1")
     ]
+
+
+def test_a_squash_below_the_clone_s_horizon_leaves_its_claim_live(tmp_path: Path) -> None:
+    """A landing the clone cannot see reads as not landed, the safe side (`PL-29RM`).
+
+    The squash of `PL-C2C2`'s first commit sits below the graft. Before
+    `PL-29RM` the grafted commit listed its whole tree as written since the
+    fork, `src/first.py` among it, so the claim read as spent by a landing the
+    clone holds no record of.
+    """
+    work = _unevenly_truncated_clone(tmp_path, SQUASHED)
+
+    read = holdings(work, now=T0 + 10 * HOUR)
+
+    assert (read.unreadable, read.declined) == ((), "")
+    assert {(hold.key, hold.state) for hold in read.holds} == {("PL-C2C2", LIVE)}
 
 
 def test_a_commit_made_before_the_record_claims_nothing_whatever_its_subject(
@@ -1683,6 +1704,33 @@ def test_flight_s_rows_carry_the_kind_and_state_of_the_hold_behind_each(tmp_path
     for row, kind in zip(rows, kinds, strict=True):
         assert f"  live  {kind:<18}  last commit" in row
     assert "  live  " not in bare
+
+
+def test_flight_s_claim_rows_print_the_holder_s_session(tmp_path: Path) -> None:
+    """A claim row carries its session token, and the caveat names the call that reads it.
+
+    A branch's age cannot tell a running session from an ended one, and
+    `get_session` on the token the claim records can (`PL-6WYD`). A claim made
+    with no session prints no token, and no pointer to a call it cannot take.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/claimed-a1b2c3")
+    repo.claim("PL-B1B1", when=T0, session="cse_01SessionToken")
+    repo.branch("claude/tokenless-d4e5f6", "main")
+    repo.claim("PL-C2C2", when=T0)
+
+    read = holdings(repo.root, now=T0 + HOUR)
+    printed = render.format_flight(read.flight(), T0 + HOUR, read=read)
+
+    rows = {line[:7]: line for line in printed.splitlines() if line.startswith("PL-")}
+    assert rows["PL-B1B1"].endswith("  session cse_01SessionToken")
+    assert "session" not in rows["PL-C2C2"]
+    assert "`live` means only that a hold is inside its 7-day lease" in printed
+    assert "`get_session` on a row's session token says whether the session" in printed
+
+    repo.git("branch", "-q", "-D", "claude/claimed-a1b2c3")
+    tokenless = holdings(repo.root, now=T0 + HOUR)
+    assert "get_session" not in render.format_flight(tokenless.flight(), T0 + HOUR, read=tokenless)
 
 
 def test_a_lapsed_claim_beside_a_later_live_claim_is_no_lapsed_row(tmp_path: Path) -> None:

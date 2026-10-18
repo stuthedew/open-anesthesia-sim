@@ -97,6 +97,14 @@ time to green, not the count. Suppressing the class would have cost every one
 of the 93 findings, all of which were real and all of which somebody later
 fixed, so the rate is accepted and the line made precise instead.
 
+**A run whose job no runner took is not a hang** (`PL-7WNJ`). GitHub cancels
+a queued job 15 minutes after it was created, the same cutoff `timeout-minutes`
+sets for a hung step, and concludes the run `failure`. Four runs ended this way
+on 2026-10-05, among them `main`'s #4805 and #4809, and a session read the first
+as code hanging. Such a job has no steps and a `runner_id` of 0, which is how
+`idle_jobs` tells it from a job that ran. The line then says that nothing ran,
+so a re-run rather than a fix is what clears it.
+
 **It also says when CI's pytest step has drifted from its baseline**
 (`PL-YY32`). The pytest step of `quality.yml`'s `checks` job took 48 s on
 2026-09-05, about 125 s in mid-September and about 500 s by 2026-10-17. Since
@@ -189,6 +197,12 @@ REPLAY_STEP = "verify replay, the whole store"
 # narrows a replay failure to the one report `--verify` adds. Held to the
 # workflow by a test alongside `REPLAY_STEP`.
 BARE_CHECK_STEP = "Run bin/docket check"
+
+# The first step of the `checks` job, which needs both test parts and fails
+# unless both succeeded (`PL-T9X9`). It fails because a part did, so it names no
+# cause of its own, and `failing_steps` leaves it out whenever another step
+# failed. Held to the workflow by a test alongside `REPLAY_STEP`.
+PARTS_GATE_STEP = "both parts succeeded"
 
 # `skipped` is every step after the failure, and `cancelled` is a job that lost
 # its runner. Neither names a cause, and printing them would bury the one that
@@ -336,43 +350,50 @@ def step_conclusions(jobs: list[object]) -> tuple[tuple[str, str], ...]:
     return tuple(out)
 
 
-def failing_steps(steps: tuple[tuple[str, str], ...]) -> tuple[str, ...]:
-    """The names of the steps that did not pass, in run order."""
-    return tuple(name for name, conclusion in steps if conclusion in STEP_FAILURES)
+#: What a job whose name the payload does not carry is called, as `UNNAMED_STEP`
+#: is for a step.
+UNNAMED_JOB = "(a job whose name could not be read)"
 
 
-# GitHub appends one of these per `uses:` action, to run its cleanup, and names
-# it `Post ` plus the step it follows. They are skipped along with everything
-# else below a failure, and counting them inflates the number the line prints:
-# measured across the 93 recorded replay failures, every one carries exactly two,
-# so an unfiltered count says six to eleven where the truth is four to nine.
-# A step of this repository's own that began with `Post ` would be excluded too,
-# and that error runs the safe way - it under-counts what was skipped, where the
-# bug being fixed over-counted it.
-_CLEANUP_PREFIX = "Post "
+def idle_jobs(jobs: list[object]) -> tuple[str, ...]:
+    """The names of the jobs no runner took, in the order the payload lists them.
 
-
-def unrun_after(steps: tuple[tuple[str, str], ...], name: str) -> int:
-    """How many of the job's own steps after `name` never ran, its failure skipping them.
-
-    Load-bearing rather than decoration. `quality.yml` puts four to nine checks
-    *below* the replay - `contrast_check`, `import_boundary_check`,
-    `core_vocabulary_check` and `glyph_check` among them, all of which read
-    `src/` and `app/` - and a failing step skips every one. So a replay failure
-    leaves those unrun, and a line that called the tree clean on the strength of
-    the steps above it would be claiming a guarantee nobody checked.
-
-    The number is printed, so it is the repository's own steps rather than every
-    skipped row: `_CLEANUP_PREFIX` says why.
+    Such a job has a `runner_id` of 0 and no steps. That is the shape of
+    run #4805's one job on 2026-10-05, which was cancelled when it had waited 15
+    minutes for a runner. A payload missing `runner_id`, or giving it any other
+    type, is not read as that shape, because the line it changes says the tree
+    was not judged.
     """
-    for index, (step, _) in enumerate(steps):
-        if step == name:
-            return sum(
-                1
-                for later, c in steps[index + 1 :]
-                if c == "skipped" and not later.startswith(_CLEANUP_PREFIX)
-            )
-    return 0
+    names: list[str] = []
+    for job in jobs:
+        if not isinstance(job, dict):
+            continue
+        runner = job.get("runner_id")
+        if type(runner) is not int or runner != 0 or job.get("steps") not in (None, []):
+            continue
+        name = job.get("name")
+        names.append(name if isinstance(name, str) else UNNAMED_JOB)
+    return tuple(names)
+
+
+def _jobs_phrase(names: tuple[str, ...]) -> str:
+    """The idle jobs as the line names them."""
+    quoted = ", ".join(f'"{name}"' for name in names)
+    return f"the job {quoted}" if len(names) == 1 else f"the jobs {quoted}"
+
+
+def failing_steps(steps: tuple[tuple[str, str], ...]) -> tuple[str, ...]:
+    """The names of the steps that did not pass, in run order.
+
+    `PARTS_GATE_STEP` is left out when another step failed, because its failure
+    only repeats that one. Counted, it would also stop a replay failure from
+    ever being the only failing step, which `_is_queue_failure` requires. It
+    stays in when it is the only failure, since then it is the one clue the run
+    gives, as when a part was cancelled.
+    """
+    failed = tuple(name for name, conclusion in steps if conclusion in STEP_FAILURES)
+    causes = tuple(name for name in failed if name != PARTS_GATE_STEP)
+    return causes or failed
 
 
 def _quoted(step: str) -> str:
@@ -415,7 +436,9 @@ def _is_queue_failure(run: dict[str, object], steps: tuple[tuple[str, str], ...]
     return any(name == BARE_CHECK_STEP and conclusion == "success" for name, conclusion in steps)
 
 
-def advisory(run: dict[str, object], steps: tuple[tuple[str, str], ...] = ()) -> str | None:
+def advisory(
+    run: dict[str, object], steps: tuple[tuple[str, str], ...] = (), idle: tuple[str, ...] = ()
+) -> str | None:
     """Return the line to print for a run, or None when it says nothing useful.
 
     Only a non-`success` verdict earns a line. The head sha is included because
@@ -423,12 +446,18 @@ def advisory(run: dict[str, object], steps: tuple[tuple[str, str], ...] = ()) ->
     something already pushed past; `steps` answers the second, which is whether
     this is the tree or the queue.
 
-    **The queue reading never claims the tree is clean**, and that distinction is
-    the point rather than a hedge. What can be said is that the replay was the
-    only step that failed and that the checks above it passed. What cannot is
-    that the tree is sound, because the replay's own failure skipped every check
-    below it - `unrun_after` counts them and the line says so, so a reader is
-    never handed a green they did not get.
+    **The queue reading says only what the run shows.** The replay was the
+    only step that failed, and `bin/docket check` passed above it on the same
+    tree. The replay is the last step of its job, and
+    `test_the_whole_store_replay_is_the_last_step_in_the_job` in
+    `tests/unit/test_quality_step_order.py` keeps it there. So its failure
+    skipped no check of that job.
+
+    `idle` names the jobs no runner took, from `idle_jobs`. When no other step
+    failed, they are the whole failure, and the line says the run judged
+    nothing and asks for a re-run. Otherwise the line names the failing steps
+    and adds that those jobs ran nothing. The queue reading is withheld while
+    any job is idle, because a job that never ran checked nothing.
     """
     conclusion = run.get("conclusion")
     if conclusion == "success":
@@ -437,22 +466,33 @@ def advisory(run: dict[str, object], steps: tuple[tuple[str, str], ...] = ()) ->
     sha = _short_sha(run)
     url = run.get("html_url", "")
     head = f"main's quality run #{number} on {sha} concluded {conclusion}"
-    if _is_queue_failure(run, steps):
-        unrun = unrun_after(steps, REPLAY_STEP)
-        tail = (
-            f" The {unrun} step(s) below it were skipped, so they are unrun rather than green."
-            if unrun
-            else ""
+    failed = failing_steps(steps)
+    if idle and set(failed) <= {PARTS_GATE_STEP}:
+        if not steps:
+            ran = "nothing ran. The run judged nothing about the tree"
+        else:
+            ran = (
+                f"{'those jobs' if len(idle) > 1 else 'that job'} ran no step. Every step "
+                "that ran passed, so the missing runner is the failure rather than the tree"
+            )
+        return (
+            f"{head} because no runner took {_jobs_phrase(idle)}, so {ran}: re-run it "
+            f"rather than fixing anything. {url}"
         )
+    if not idle and _is_queue_failure(run, steps):
         return (
             f'{head} at "{REPLAY_STEP}", the only step that failed; `bin/docket check` passed '
             "above it on the same tree, so this is an open item's `verify:` command that has "
             "flipped to passing rather than the tree. `bin/docket check --verify` reproduces "
-            f"it here.{tail} {url}"
+            f"it here. {url}"
         )
-    failed = failing_steps(steps)
     where = f" at {', '.join(_quoted(name) for name in failed)}" if failed else ""
-    return f"{head}{where} - main is red and no pull request will show it. {url}"
+    unran = (
+        f" No runner took {_jobs_phrase(idle)}, so {'they' if len(idle) > 1 else 'it'} ran nothing."
+        if idle
+        else ""
+    )
+    return f"{head}{where} - main is red and no pull request will show it.{unran} {url}"
 
 
 def unjudged_advisory(cancelled: dict[str, object], verdict: dict[str, object] | None) -> str:
@@ -676,13 +716,16 @@ def main() -> int:
         # separately from the fetch above: by this point `main` is red and the
         # reader is owed that whether or not the attribution can be read.
         steps: tuple[tuple[str, str], ...] = ()
+        idle: tuple[str, ...] = ()
         if run.get("conclusion") != "success":
             try:
-                steps = step_conclusions(fetch_jobs(slug, run.get("id")))
+                jobs = fetch_jobs(slug, run.get("id"))
             except NETWORK_FAILURES:
-                steps = ()
+                jobs = []
+            steps = step_conclusions(jobs)
+            idle = idle_jobs(jobs)
 
-        line = advisory(run, steps)
+        line = advisory(run, steps, idle)
         if line is not None:
             print(line)
 

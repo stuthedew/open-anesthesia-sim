@@ -26,7 +26,7 @@ from typing import Any
 
 import pytest
 
-from docket import arming, claims, cli, vcs
+from docket import arming, claims, cli, render, vcs
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.claims import SESSION_VARIABLE, Holdings
 from docket.cli import build_parser, main, merge_shared
@@ -1058,6 +1058,22 @@ def test_verify_refuses_a_base_no_candidate_resolved(
     # the branch, on a check whose whole job is to certify that branch's scope.
     assert "fatal:" not in out
     assert "ambiguous argument" not in out
+
+
+def test_verify_refusal_says_a_base_resolved_past_an_unanswered_candidate() -> None:
+    """A real ref reached past a silence is not called unresolved (`PL-27VL`).
+
+    `default_base` hands back `GuessedBase("main")` when `origin/main` went
+    unanswered and the local `main` resolved, and `GUESSED_BASE` only when
+    nothing resolved. The refusal names which one happened.
+    """
+    past_a_silence = cli._guessed_base_refusal(vcs.GuessedBase("main"))
+    assert past_a_silence.startswith(
+        "Cannot verify: `main` resolved only after git did not answer a candidate ahead of it"
+    )
+    assert "no candidate default branch resolved" not in past_a_silence
+    nothing = cli._guessed_base_refusal(vcs.GUESSED_BASE)
+    assert nothing.startswith("Cannot verify: no candidate default branch resolved here")
 
 
 def test_verify_names_self_when_the_claim_is_this_sessions_own(
@@ -5533,6 +5549,30 @@ def test_branch_state_says_nothing_to_the_digest_with_nothing_to_compare(
     assert "no remote copy to compare with" in capsys.readouterr().out
 
 
+def test_branch_names_what_is_stranded(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """`branch` prints `stranded`'s answer in one line, and the hook's forms do not (`PL-CM40`).
+
+    Rule 14 asks for a refreshed picture before a reply's closing block. With
+    this line, `bin/docket branch` gives the whole of it, so the rule names one
+    command where it named three.
+    """
+    root = _diverged_repo(tmp_path)
+    store = str(root / "items")
+
+    assert main(["--items", store, "branch", "--no-fetch"]) == 0
+    assert "No item is only on a branch, across the" in capsys.readouterr().out
+    for flags in (["--brief"], ["--brief", "--if-stale"]):
+        assert main(["--items", store, "branch", "--no-fetch", *flags]) == 0
+        assert "only on a branch" not in capsys.readouterr().out
+
+    state = vcs.BranchState(branch="claude/pl-k7qx-x", base="origin/main")
+    item = vcs.StrandedItem("PL-K7QX", "A title", "docs/items/x.md", ("origin/claude/y",))
+    found = render.format_branch_state(state, stranded=vcs.StrandedReport(items=(item,)))
+    assert "Only on a branch, not in this checkout: PL-K7QX (A title)." in found
+    unread = render.format_branch_state(state, stranded=vcs.StrandedReport(declined="no git"))
+    assert "Which items are only on a branch could not be read: no git." in unread
+
+
 def test_the_branch_guard_flag_speaks_only_when_the_branch_is_stale(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -5802,8 +5842,9 @@ def test_flight_reads_below_an_uneven_horizon_by_the_landed_prefix(
     (project owner, 2026-09-13).
 
     `flight` now answers from `claims.holdings`, and that read asks a different
-    question the clone *can* answer: whether the branch's work up to a commit is
-    content the base already holds (`claims._landed_through`). The default
+    question the clone *can* answer: whether the branch's work up to a commit,
+    measured against that commit's own fork, is content the base wrote since
+    that fork (`claims._landed_through`, since `PL-927J`). The default
     branch's own commits, reached below the graft, carry no `Claim:` trailer,
     and since `PL-CH3Z` their leading ids claim nothing, while the branch's own
     claim after them is still read. The walk guard is unchanged and stays

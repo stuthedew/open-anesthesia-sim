@@ -38,6 +38,7 @@ from docket import picks as docket_picks
 from docket import vcs as docket_vcs
 from docket import verify as docket_verify
 from docket.fences import blocks as fence_blocks
+from docket.frontmatter import Unread as UnreadFrontMatter
 from docket.frontmatter import keys as front_matter_keys
 from docket.instructions import parse as dated_assertions
 from docket.model import parse_item, with_front_matter_field
@@ -1267,6 +1268,23 @@ def test_a_section_mark_citation_is_checked_like_a_comma_one(tmp_path: Path) -> 
         'PL-0000-demo.md:1: quotes docs/MODEL.md as "A thread that was deleted"' in e
         for e in _errors(root)
     )
+
+
+def test_a_four_column_quote_marker_is_paragraph_text(tmp_path: Path) -> None:
+    """A `>` four columns into a paragraph's next line is its text, and a quotation keeps it.
+
+    CommonMark 0.31.2 reads `    > b` after `a` as the paragraph going on
+    (§ 4.8), since a block quote's marker opens no more than three columns in.
+    `doc_check` dropped the `>` from every wrapped line, so a quotation of a
+    heading that holds one compared as words the file does not hold. The
+    marks are now `docket.markdown`'s to blank, which blanks only a block
+    quote's (`PL-NNVJ`).
+    """
+    assert doc_check._comparable_statements("a\n    > b\n") == "a > b"
+    assert doc_check._comparable_statements("> a\n> b\n") == "a b"
+    root = _repo(tmp_path, model=MODEL + "\n## Gas a > b\n\nText.\n")
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` § "Gas a\n    > b".\n')
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
 
 
 def test_a_section_mark_citation_that_resolves_is_not_an_error(tmp_path: Path) -> None:
@@ -7495,7 +7513,12 @@ def _refused(read: Callable[[], object]) -> object:
     """A reader's answer, or the form it names in declining to give one."""
     try:
         return read()
-    except (doc_check.UnreadStatement, rules_paths_check.Unreadable, rcc.Undecidable) as unread:
+    except (
+        doc_check.UnreadStatement,
+        rules_paths_check.Unreadable,
+        rcc.Undecidable,
+        UnreadFrontMatter,
+    ) as unread:
         return f"declined: {str(unread).partition(',')[0]}"
 
 
@@ -7533,9 +7556,10 @@ def _relaxed_pin(tmp_path: Path, pyproject: str) -> str:
 #: A rule's front matter whose description is a literal block holding `---`.
 INDENTED_RULE = '---\ndescription: |\n  ---\n  more\npaths:\n  - "/src/**"\n---\nbody\n'
 #: A rule whose quoted description carries a line opening `paths:`, which
-#: PyYAML reads as the description's and no key (`PL-BM8T`).
+#: YAML reads as the description's and no key (`PL-BM8T`). The line is indented
+#: past the key's column, since YAML refuses it at the first column (`PL-P6LL`).
 QUOTED_PATHS_RULE = (
-    '---\ndescription: "Loads at launch, since no\npaths: key defers it"\n---\nbody\n'
+    '---\ndescription: "Loads at launch, since no\n paths: key defers it"\n---\nbody\n'
 )
 #: A front matter whose keys carry two dates, each its own record (`PL-2MLT`).
 DATED_FRONT_MATTER = (
@@ -9008,15 +9032,24 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: _refused(lambda: rules_paths_check.entries(["paths: >-", "  #/src/**"])),
         "declined: `paths:` is a block scalar",
     ),
+    # `PL-P6LL`: YAML refuses a quoted glob carried on at or before the column of
+    # its key or its item's `-`, so the front matter is refused before the glob
+    # is read. Carried on past that column, the glob itself is refused.
     "rules paths, a quoted glob continued at the first column is refused by name": (
         lambda _: _refused(lambda: rules_paths_check.entries(['paths: "/src/**', '/x"'])),
-        "declined: `paths:` opens a quoted glob its line does not close",
+        'declined: `/x"` carries a quoted scalar or a flow collection on at or before the '
+        "column of the key or `- ` holding it",
     ),
     "rules paths, a quoted item continued at the item's column is refused by name": (
         lambda _: _refused(
             lambda: rules_paths_check.entries(["paths:", '  - "/src/**', '  - /tests/**"'])
         ),
-        'declined: `- "/src/**` under `paths:` opens a quoted glob its line does not close',
+        'declined: `- /tests/**"` carries a quoted scalar or a flow collection on at or '
+        "before the column of the key or `- ` holding it",
+    ),
+    "rules paths, a quoted glob continued past the key's column is refused by name": (
+        lambda _: _refused(lambda: rules_paths_check.entries(['paths: "/src/**', ' /x"'])),
+        "declined: `paths:` opens a quoted glob its line does not close",
     ),
     "rules paths, a paths line inside another key's quoted value is no key": (
         lambda _: rules_paths_check.entries(rules_paths_check.frontmatter(QUOTED_PATHS_RULE) or []),
@@ -9027,30 +9060,32 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         False,
     ),
     # `PL-YQ9G`: a quoted scalar or a flow collection opened on the line below
-    # its key, or after a list item's `- ` there, runs to its own close, as
-    # PyYAML 6.0.3 reads each of these, so a first-column line inside it is no
-    # key. Followed by indentation alone, each was read as a `paths:` key.
+    # its key, or after a list item's `- ` there, runs to its own close. So a
+    # key-shaped line inside it is no key, though it is shallower than where the
+    # node opened. Followed by indentation alone, a first-column one was read
+    # as a `paths:` key. YAML refuses that one, and so does this reader now
+    # (`PL-P6LL`).
     "front matter, a double-quoted value opened below its key": (
         lambda _: _front_matter_keys(
-            "description:", '  "Loads at launch, since no', 'paths: key defers it"', "name: x"
+            "description:", '  "Loads at launch, since no', ' paths: key defers it"', "name: x"
         ),
         [("description", 0, 3), ("name", 3, 4)],
     ),
     "front matter, a single-quoted value opened below its key": (
         lambda _: _front_matter_keys(
-            "description:", "  'Loads at launch, since no", "paths: key defers it'", "name: x"
+            "description:", "  'Loads at launch, since no", " paths: key defers it'", "name: x"
         ),
         [("description", 0, 3), ("name", 3, 4)],
     ),
     "front matter, a flow mapping opened below its key": (
         lambda _: _front_matter_keys(
-            "description:", "  {why: loads at launch,", "paths: no key}", "name: x"
+            "description:", "  {why: loads at launch,", " paths: no key}", "name: x"
         ),
         [("description", 0, 3), ("name", 3, 4)],
     ),
     "front matter, a flow sequence opened below its key": (
         lambda _: _front_matter_keys(
-            "description:", "  [loads at launch,", "paths: no key]", "name: x"
+            "description:", "  [loads at launch,", " paths: no key]", "name: x"
         ),
         [("description", 0, 3), ("name", 3, 4)],
     ),
@@ -9058,11 +9093,27 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: _front_matter_keys(
             "description:",
             '  - "Loads at launch, since no',
-            'paths: key defers it"',
+            '   paths: key defers it"',
             "paths:",
             '  - "/src/**"',
         ),
         [("description", 0, 3), ("paths", 3, 5)],
+    ),
+    "front matter, a quoted value carried on at the first column is refused by name": (
+        lambda _: _refused(
+            lambda: _front_matter_keys(
+                "description:", '  "Loads at launch, since no', 'paths: key defers it"', "name: x"
+            )
+        ),
+        'declined: `paths: key defers it"` carries a quoted scalar or a flow collection on at '
+        "or before the column of the key or `- ` holding it",
+    ),
+    "front matter, a flow collection carried on at the first column is refused by name": (
+        lambda _: _refused(
+            lambda: _front_matter_keys("description:", "  [loads at launch,", "paths: no key]")
+        ),
+        "declined: `paths: no key]` carries a quoted scalar or a flow collection on at or "
+        "before the column of the key or `- ` holding it",
     ),
     # `PL-WX79`: a YAML front matter is no Markdown. Each key's value is a
     # statement of its own and the body is read from the line after the front

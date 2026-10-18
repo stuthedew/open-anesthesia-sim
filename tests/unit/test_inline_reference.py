@@ -3,7 +3,7 @@
 `tools/doc_check.py` reads three things inside a statement by hand, because the
 tools run on the standard library alone: its code spans, its links and images,
 and the line ending a phrase reader crosses where a sentence wraps
-(`doc_check.SOFT_BREAK`). Each of `PL-R417`'s inline members was one of those
+(`docket.markdown.SOFT_BREAK`). Each of `PL-R417`'s inline members was one of those
 meeting a rule of CommonMark 0.31.2 § 6 one capture at a time - an escaped
 backtick opening a span, a `]` inside a code span closing link text, a link
 wrapped onto a line opening with `2026.` - and each was found by an audit after
@@ -171,9 +171,14 @@ def _line_starts(text: str) -> list[int]:
 
 
 def _soft_break_misses(text: str, contents: dict[Key, str]) -> Iterator[str]:
-    """Each line `SOFT_BREAK` leaves anywhere but where markdown-it-py's content line begins."""
+    """Each line `SOFT_BREAK` leaves anywhere but where markdown-it-py's content line begins.
+
+    Matched in the text every phrase reader matches in, its container markers
+    blanked (`doc_check._unmarked_text`).
+    """
     lines = split_lines(text)
     starts = _line_starts(text)
+    text = doc_check._unmarked_text(text)
     for (first, end), content in contents.items():
         expected = content.split("\n")
         if len(expected) != end - first:

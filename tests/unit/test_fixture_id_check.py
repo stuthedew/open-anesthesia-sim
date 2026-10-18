@@ -244,6 +244,17 @@ def test_a_malformed_literal_in_a_value_is_reported_with_its_line(tmp_path: Path
     assert offender.render(tmp_path).startswith("pkg/thing.py:1")
 
 
+def test_an_attribute_docstring_is_prose_and_not_scanned(tmp_path: Path) -> None:
+    """`PL-8W1J`: the string under an assignment is a docstring, as glyph_check reads it.
+
+    Only the first statement of a module, class or function was dropped, so an
+    attribute docstring was scanned as a value and its example id reported.
+    """
+    _write(tmp_path, "pkg/thing.py", f'ITEM = 1\n"""See {UNMINTABLE[1]} for why."""\n')
+
+    assert fixture_id_check.collect(tmp_path) == []
+
+
 @pytest.mark.parametrize("odd", ["\u2028", "\x85", "\x0c"], ids=["U+2028", "U+0085", "form-feed"])
 def test_a_line_separator_python_accepts_is_scanned_rather_than_crashing(
     tmp_path: Path, odd: str
@@ -555,6 +566,31 @@ def test_the_front_matter_joins_find_its_edges_through_docket(tmp_path: Path) ->
         _write(tmp_path, f".claude/skills/{name}/SKILL.md", ESCAPED_DESCRIPTION.format("", after))
 
     assert _found(tmp_path) == [("exact", 3, JOINED), ("space", 3, JOINED), ("tab", 3, JOINED)]
+
+
+#: A skill's front matter whose `description:` carries an id over an escaped
+#: line break, then YAML's document-end marker `...`, then the closing `---`.
+ENDED_DESCRIPTION = '---\nname: x\ndescription: "see {}\\\n  {}"\n...{}\n---\nbody\n'
+
+
+def test_a_document_end_marker_closes_the_front_matter(tmp_path: Path) -> None:
+    """A first-column `...` ends the YAML document, and the joins read the keys above it.
+
+    `docket.frontmatter.quoted` refused the block as a line opening no key, so
+    nothing in it was joined. PyYAML 6.0.3 reads the keys above the marker, so
+    the malformed `PL-K7QXZ` passed, and the well-formed `PL-K7QX` was
+    reported as `PL-K7`. A comment after the marker reads the same (`PL-G8ZN`).
+    """
+    for name, (head, tail), after in (
+        ("malformed", ("PL-K7QX", "Z"), ""),
+        ("commented", ("PL-K7QX", "Z"), " # done"),
+        ("well-formed", ("PL-K7", "QX"), ""),  # not-an-id
+    ):
+        _write(
+            tmp_path, f".claude/skills/{name}/SKILL.md", ENDED_DESCRIPTION.format(head, tail, after)
+        )
+
+    assert _found(tmp_path) == [("commented", 3, JOINED), ("malformed", 3, JOINED)]
 
 
 def test_a_comma_ending_a_plain_scalar_opens_no_quoted_scalar(tmp_path: Path) -> None:

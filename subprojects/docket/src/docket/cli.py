@@ -134,6 +134,7 @@ from .release import (
     restate_references,
     stamp,
     tag_confirmation,
+    tag_name,
     unrecorded_milestones,
     unreferenced_by_version,
 )
@@ -152,7 +153,6 @@ from .trend import BY_DAY, BY_WEEK
 from .trend import analyze as analyze_trend
 from .vcs import (
     CURRENT,
-    DEFAULT_BRANCHES,
     FETCHED,
     PULL_STATES,
     REMOTE,
@@ -191,6 +191,7 @@ from .vcs import (
     files_in_flight,
     find_cut,
     gone_paths,
+    head_branch,
     is_shallow,
     lost,
     merged_pull_requests,
@@ -205,6 +206,7 @@ from .vcs import (
     snapshot,
     stranded,
     tags,
+    unresolved_base_cause,
     with_newest_pull_request,
     working_paths,
 )
@@ -3642,8 +3644,7 @@ class _Train:
 def _release_train(read: Holdings, root: Path, run: Runner) -> _Train:
     """The release train's holders in one `Holdings`, judged against `HEAD`'s branch."""
     remotes = _remotes(root, run)
-    name = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
-    here = _head_name(name, remotes) if name not in {"", "HEAD"} else ""
+    here = head_branch(root, run, remotes)
     trains = [hold for hold in read.holds if hold.resource == RELEASE_TRAIN]
     ours = [hold for hold in trains if here and _head_name(hold.ref, remotes) == here]
     holder = read.holder(RELEASE_TRAIN)
@@ -3865,7 +3866,7 @@ def cmd_release(args: argparse.Namespace) -> int:
         return 1
 
     version = (args.version or resuming or ready.suggested_version).lstrip("v")
-    name = f"v{version}"
+    name = tag_name(version)
 
     # A wrong number rather than a state a dry run exists to review, so it is
     # refused outright as the unfinished-cut refusal above is: the bump, the
@@ -4099,7 +4100,9 @@ def _unmerged_cut(root: Path, git: Runner, current: str) -> str:
     the notes: that keeps the untagged guard, which refuses too.
     """
     declared = current.strip().lstrip("v")
-    return f"v{declared}" if declared and cut_window(root, runner=git).version == declared else ""
+    return (
+        tag_name(declared) if declared and cut_window(root, runner=git).version == declared else ""
+    )
 
 
 def _unmerged_cut_refusal(cut: str) -> str:
@@ -4415,7 +4418,7 @@ def _untagged_warning(version: str, root: Path, git: Runner) -> str:
     (`PL-QHCW`), and until `PL-2FY6` the four lines the owner pasted after
     every cut.
     """
-    name = f"v{version.lstrip('v')}"
+    name = tag_name(version)
     return "\n".join(
         [
             f"{name} shipped and carries no tag, so no commit in its span can be",
@@ -4483,7 +4486,7 @@ def _unreadable_tags_refusal(version: str, declined: str) -> str:
     resolved until further down and a printed command carrying the wrong one
     is worse than no command at all.
     """
-    name = f"v{version.lstrip('v')}"
+    name = tag_name(version)
     return "\n".join(
         [
             f"Cannot tell whether {name} is tagged, so the tag gate did not run:",
@@ -4510,8 +4513,8 @@ def cmd_delegable(args: argparse.Namespace) -> int:
     return 0
 
 
-def _guessed_base_refusal() -> str:
-    """Refuse the audit where no candidate default branch resolved.
+def _guessed_base_refusal(base: str) -> str:
+    """Refuse the audit where no default branch was established.
 
     The commission audit is a claim about what a branch changed *against a
     base*, so a base nobody established makes every one of its findings
@@ -4536,9 +4539,8 @@ def _guessed_base_refusal() -> str:
     """
     return "\n".join(
         [
-            "Cannot verify: no candidate default branch resolved in this checkout,",
-            "so there is no base to audit the commission against "
-            f"(tried {', '.join(DEFAULT_BRANCHES)}).",
+            f"Cannot verify: {unresolved_base_cause(base)},",
+            "so there is no base to audit the commission against.",
             "",
             "Every finding here is a claim about what this branch changed relative to",
             "a base, so a guessed one would report paths that do not exist and pass",
@@ -4589,7 +4591,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     root = inv.root
     base = args.base or default_base(root, runner=inv.git)
     if not resolved(base):
-        print(_guessed_base_refusal())
+        print(_guessed_base_refusal(base))
         return 1
     reports = verify_batch(root, wanted, config, base, self_audit=args.self_audit)
     own = frozenset() if args.self_audit else _own_branch_refused(args, reports)
@@ -4954,9 +4956,16 @@ def cmd_branch(args: argparse.Namespace) -> int:
         state = with_newest_pull_request(state, lookup, inv.root, runner=inv.git)
     if args.if_stale and state.disposition == CURRENT:
         return 0
+    # The full answer adds `stranded`'s one line, so a reply's closing block is
+    # one command rather than three (`PL-CM40`); `--brief` and `--if-stale`
+    # are the hook's, and leave it out.
+    full = not (args.brief or args.if_stale)
     print(
         render.format_branch_state(
-            state, None if args.brief else _flight(args), rests_on=_refs_line(args)
+            state,
+            None if args.brief else _flight(args),
+            rests_on=_refs_line(args),
+            stranded=_stranded(_load(args)[1], args) if full else None,
         )
     )
     return 0
