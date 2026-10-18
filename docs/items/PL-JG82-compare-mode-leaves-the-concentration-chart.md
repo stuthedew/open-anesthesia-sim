@@ -3,12 +3,15 @@ id: PL-JG82
 title: Compare mode leaves the concentration chart about 200 px on the 1366 by 700 laptop reference, 159 px under PL-84QX's 360 px minimum, after PL-F2YS paired the readouts
 priority: P1
 effort: S
-status: needs-decision
+status: done
 classes: safety
 feature: interface-areas
 touches: src/anesthesia_sim/app/, ROADMAP.md, docs/MODEL.md
 added: 2026-10-18
+closed: 2026-10-18
+pr: 1604
 payoff: compare mode on the commonest laptop shows the chart at a size the owner chose, rather than a refusal or a scroll nobody decided
+verify: grep -q 'Compare mode accepts that' ROADMAP.md
 ---
 
 **Problem.** With two runs compared, the unconditional region leaves the
@@ -73,3 +76,15 @@ ground, so the recommendation is limited to compare mode.
 **Done when.** The owner's answer is recorded here with its kind and date,
 `ROADMAP.md` Required scope entry 20's budget sentence says what compare mode
 does on the reference, and any build item the answer calls for is filed.
+
+## Answered 2026-10-18
+
+**Accept a shorter chart in compare mode, then compact** (project owner,
+2026-10-18, ratified, over keeping 360 px and scrolling the page and over
+keeping 360 px and refusing the chart's Area), given by tapping "Accept,
+compact" on the thread's decision card. One run keeps the 360 px minimum on the
+1366 by 700 reference. In compare mode the chart takes what that reference
+leaves, about 201 px at `PL-F2YS`. `PL-QLZ5` folds each run's transport row and
+readout heading into one line in compare mode, to win back what layout can.
+`ROADMAP.md` Required scope entry 20 records the answer, and this item closes
+on it.

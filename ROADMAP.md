@@ -5706,6 +5706,9 @@ unconditional set, and entry 20 names it, so it is cleared by v0.6.0 itself.
 compare-mode half that `PL-F2YS`'s build measured and could not settle: the
 chart at about 200 px against the 360 px minimum, which is a decision for the
 project owner. Entry 20's budget names it, so it is cleared by v0.6.0 itself.
+`PL-QLZ5` followed from the owner's answer the same day: compare mode folds each
+run's transport row and heading into one line to give the chart back what
+layout can, and entry 20 names it too.
 
 **What this list is not swept for yet.** Beat 3 of the cadence requires a
 staleness pass before any of it is worked - a `verify:` command tests for the
@@ -5716,7 +5719,7 @@ filed as its own item under `feature: gate-staleness-sweep` and runs against
 this list before implementation of this milestone begins; no standing item is
 named here, for the reason beat 3 gives.
 
-**Cleared by v0.6.0 itself - 16 entries**
+**Cleared by v0.6.0 itself - 17 entries**
 
 - PL-9LNF (L) Three app/ surfaces own state a layout could duplicate or relocate beside PL-VN6M's TraceLegend: RunView's build_ accessors hand out the same widget object on every call, the chart time base is owned by a dropdown inside one plot's panel, and the chart's column budget is read from sibling plots
 - PL-NWTM (L) The unconditional displayed set has no structural home in the code, so the guarantee docs/MODEL.md states as structural - a region outside the area system - exists only as prose
@@ -5729,6 +5732,7 @@ named here, for the reason beat 3 gives.
 - PL-K285 (M) An Area that cannot be given the size its View needs says so rather than collapsing it, which is the second of the three properties docs/interface-provenance.md records Blender not supplying
 - PL-L8RN (M) Nothing enforces the one-adapter QSplitter confinement PL-C842 decided, because import_boundary_check.py confines root packages and PySide6 is one root package
 - PL-PGZF (M) PL-GS3R made the chart's column budget follow the window width, so assemble_chart_frame costs 8.4 ms at 150 columns and 15.4 ms at 1601 - PL-CNCF measured only the fixed 150-column budget, and 15.4 ms is essentially a whole 60 fps frame
+- PL-QLZ5 (M) In compare mode, fold each run's transport row and readout heading line into one line, so the 1366 by 700 laptop reference gives the concentration chart back roughly 70 to 80 px (PL-JG82)
 - PL-TH35 (M) Define the common View contract every app/ view implements so any view is interchangeable in any area
 - PL-VN6M (M) TraceLegend owns the compartment-visibility state inside a widget, which an area system will have to move out
 - PL-W54S (M) Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
@@ -6339,8 +6343,8 @@ removed, and this file's history before that change holds their text.
 
 20. **The look and the edge states of every surface this milestone creates**
     (queue items `PL-QW1Z`, `PL-MS34`, `PL-RQT1`, `PL-30L5`, `PL-RBXL`,
-    `PL-DB5G`, `PL-J8K2` and `PL-84QX`, and `PL-F2YS` and `PL-JG82`, which
-    joined on 2026-10-18; the entry itself was `PL-M3X6`).
+    `PL-DB5G`, `PL-J8K2` and `PL-84QX`, and `PL-F2YS`, `PL-JG82` and
+    `PL-QLZ5`, which joined on 2026-10-18; the entry itself was `PL-M3X6`).
     Every surface this milestone brings into existence
     has its appearance and its edge states decided here - not inherited from
     the toolkit, not deferred to the visual pass. Entries 1-19 are mechanism:
@@ -6401,8 +6405,11 @@ removed, and this file's history before that change holds their text.
     handle; and the region gives back the in-page title row (`PL-J8K2`).
     Compare mode is past that minimum on that screen. `PL-F2YS` paired the
     two runs' readouts in one block on 2026-10-18 and measured what is left:
-    about 200 px for the chart, 159 px short. What compare mode does on this
-    screen is `PL-JG82`'s decision. Entry 13's shipped Workspaces are composed
+    about 200 px for the chart, 159 px short. Compare mode accepts that
+    shorter chart on this screen, and layout wins back what it can by folding
+    each run's transport row and heading into one line (project owner,
+    2026-10-18, ratified, over scrolling the page and over refusing the
+    chart's Area, `PL-JG82`; the folding is `PL-QLZ5`). Entry 13's shipped Workspaces are composed
     within it. **All eight were decided on 2026-10-11** (project owner,
     ratified, over the alternatives each item names); the items carry the
     decisions, and the build items they name carry the look.
