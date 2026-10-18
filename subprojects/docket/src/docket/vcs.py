@@ -238,6 +238,32 @@ def listed_paths(listing: str) -> tuple[str, ...]:
     return tuple(path for path in listing.split("\0") if path)
 
 
+def uncommitted_paths(root: Path, run: Runner) -> tuple[str, ...]:
+    """Every path whose change the checkout holds and `HEAD` does not, sorted.
+
+    The one reading of a checkout's uncommitted paths, for `working_paths` and
+    for `verify.changed_paths` (`PL-QNHZ`). It reads three `-z` listings: the
+    index against `HEAD`, the working tree against `HEAD`, and the untracked
+    files. The index needs a read of its own. A staged edit whose working copy
+    was then restored to `HEAD` is a change the next commit carries, but the
+    working tree matches `HEAD`, so `diff HEAD` alone does not list it.
+    `working_paths` missed that path while `verify`'s `status --porcelain`
+    listed it.
+
+    `run` decides what a failed read means. `verify` passes a reader that raises
+    `GitUnanswered`, and `working_paths` passes one that records the silence and
+    reads it as no paths.
+    """
+    found: set[str] = set()
+    for args in (
+        changed_path_args("diff", "--name-only", "--cached", "HEAD"),
+        changed_path_args("diff", "--name-only", "HEAD"),
+        untracked_path_args(),
+    ):
+        found.update(listed_paths(run(args, root)))
+    return tuple(sorted(found))
+
+
 #: Directories a checkout carries but does not author. Skipped by the walk that
 #: stands in for `git ls-files` in a tree that is not a checkout.
 SKIP_DIRS = frozenset(
@@ -6300,10 +6326,7 @@ def working_paths(root: Path, *, runner: Runner | None = None) -> WorkingPaths:
     changes are what it is in the middle of - and the middle is where a finding
     is usually made, since it is what the session is looking at.
 
-    Three reads rather than one `status --porcelain`, deliberately: the
-    porcelain format carries status codes, rename arrows and shell-quoted paths
-    with spaces, so parsing it is three chances to get a path wrong. Each of
-    these prints one path per line and nothing else.
+    The uncommitted half is `uncommitted_paths`, which `verify` reads too.
 
     The branch diff is `base...HEAD` rather than `base..HEAD` for the reason
     `files_in_flight` gives: the two-dot form re-reports every file the default
@@ -6320,11 +6343,6 @@ def working_paths(root: Path, *, runner: Runner | None = None) -> WorkingPaths:
     """
     run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)
-    found: set[str] = set()
-    for args in (
-        changed_path_args("diff", "--name-only", f"{base}...HEAD"),
-        changed_path_args("diff", "--name-only", "HEAD"),
-        untracked_path_args(),
-    ):
-        found.update(listed_paths(run(args, root)))
+    committed = listed_paths(run(changed_path_args("diff", "--name-only", f"{base}...HEAD"), root))
+    found = {*committed, *uncommitted_paths(root, run)}
     return WorkingPaths(paths=tuple(sorted(found)), base=base, declined=run.reason)

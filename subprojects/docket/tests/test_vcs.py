@@ -101,6 +101,7 @@ from docket.vcs import (
     tags,
     tracked_files,
     tracked_under,
+    uncommitted_paths,
     untracked_path_args,
     with_newest_pull_request,
     working_paths,
@@ -4061,6 +4062,25 @@ def test_working_paths_names_an_untracked_non_ascii_file_as_written(tmp_path: Pa
 
     assert listed_paths(_run_git(untracked_path_args(), repo.root)) == ("new é.py",)
     assert {"new é.py", "seed.txt"} <= set(working_paths(repo.root).paths)
+
+
+def test_a_staged_edit_restored_in_the_working_copy_is_listed(tmp_path: Path) -> None:
+    """Both readers of a checkout's changed paths list a staged edit (`PL-QNHZ`).
+
+    The edit is staged and its working copy then restored to `HEAD`, so `git
+    status` prints `MM` and `diff HEAD` prints nothing. `verify.changed_paths`
+    listed the path through `status --porcelain`, and `working_paths` did not.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", seed_txt="seed\n")
+    (repo.root / "seed.txt").write_text("staged\n", encoding="utf-8")
+    repo.git("add", "seed.txt")
+    (repo.root / "seed.txt").write_text("seed\n", encoding="utf-8")
+
+    assert listed_paths(_run_git(changed_path_args("diff", "--name-only", "HEAD"), repo.root)) == ()
+    assert uncommitted_paths(repo.root, _run_git) == ("seed.txt",)
+    assert "seed.txt" in working_paths(repo.root).paths
+    assert changed_paths(repo.root, "HEAD") == ("seed.txt",)
 
 
 def test_filed_with_work_reads_a_path_holding_a_space() -> None:

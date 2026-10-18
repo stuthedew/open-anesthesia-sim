@@ -2080,43 +2080,23 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
     so no value this could return would say "unread" (`PL-9RFP`).
 
     **Both halves read `-z`, the one form in which git quotes no path**
-    (`PL-8HSX`): the committed half because `changed_path_args` asks every read
-    for it, parsed by `vcs.listed_paths`, and `status` by its own flag. A quoted
-    path starts with `"`, so `is_under` matches it against nothing protected.
-    Git quotes a path outside ASCII while `core.quotePath` is on, one holding a
-    tab, newline, `"` or `\\` however that is set, and in `status` one holding
-    a space as well: measured on git 2.43.0, 2026-09-25, a
-    committed `src/anesthesia_sim/core/café.py` and an uncommitted
-    `src/anesthesia_sim/core/a b.py` each passed as "none touched".
-    `--untracked-files=all` because `status.showUntrackedFiles=no` in a user's
-    git config drops every untracked file from the porcelain, which passed a new
-    uncommitted core file the same way, and because otherwise an untracked
-    directory is one `dir/` entry rather than the files in it.
+    (`PL-8HSX`). The committed half asks for it through `changed_path_args`,
+    and the uncommitted half is `vcs.uncommitted_paths`, which `working_paths`
+    reads too (`PL-QNHZ`). A quoted path starts with `"`, so `is_under` matches
+    it against nothing protected. Git quotes a path outside ASCII while
+    `core.quotePath` is on, and one holding a tab, newline, `"` or `\\` however
+    that is set. Measured on git 2.43.0, 2026-09-25, a committed
+    `src/anesthesia_sim/core/café.py` and an uncommitted
+    `src/anesthesia_sim/core/a b.py` each passed as "none touched" before
+    every read asked for `-z`. The untracked files come from `ls-files
+    --others`, which `status.showUntrackedFiles=no` in a user's git config does
+    not hide, and which lists each file in an untracked directory.
     """
     if commits:
         committed = _git(vcs.changed_path_args("show", "--name-only", "--format=", *commits), root)
     else:
         committed = _git(vcs.changed_path_args("diff", "--name-only", f"{base}...HEAD"), root)
-    return tuple(sorted({*vcs.listed_paths(committed), *_uncommitted_paths(root)}))
-
-
-def _uncommitted_paths(root: Path) -> frozenset[str]:
-    """Every path whose change the working tree holds and `HEAD` does not.
-
-    `changed_paths`' other half. Raises `GitUnanswered` where `git status`
-    cannot be read.
-    """
-    working = _git(["status", "--porcelain", "-z", "--untracked-files=all"], root)
-    paths: set[str] = set()
-    entries = iter(working.split("\0"))
-    for entry in entries:
-        # `XY path`: two status letters and a space. A rename or a copy is
-        # followed by the path it came from, as a field of its own.
-        paths.add(entry[3:])
-        if "R" in entry[:2] or "C" in entry[:2]:
-            paths.add(next(entries, ""))
-    paths.discard("")
-    return frozenset(paths)
+    return tuple(sorted({*vcs.listed_paths(committed), *vcs.uncommitted_paths(root, _git)}))
 
 
 def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
@@ -2416,7 +2396,7 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     whatever its commits wrote, as an uncommitted capture or record already
     was, since neither has a commit to read.
     """
-    if path in _uncommitted_paths(root):
+    if path in vcs.uncommitted_paths(root, _git):
         return ""
     if is_under(path, (RECORDS,)):
         return "record" if _added_record(root, base, path) else ""
@@ -3231,7 +3211,7 @@ def _check_item(
     # committed, and the page would otherwise not say why it is not (`PL-W6ZD`).
     unsanctioned = {
         path
-        for path in _uncommitted_paths(root).intersection(outside)
+        for path in set(vcs.uncommitted_paths(root, _git)).intersection(outside)
         if is_under(path, (config.items_dir, RECORDS))
     }
     widened = [path for path in outside if commission.touches and is_under(path, item.touches)]
