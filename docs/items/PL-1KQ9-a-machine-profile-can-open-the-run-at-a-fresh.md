@@ -3,12 +3,14 @@ id: PL-1KQ9
 title: A machine profile can open the run at a fresh gas flow off the slider's 0.1 L/min grid - 2.25 L/min, or 0.25 L/min under a declared range floored there, which the control offers from 0.3 - so the slider sits on a neighbouring step while the run holds the stated flow and the readout rounds it (found building PL-7CRY)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: anesthesia-machine
 touches: src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1549
 payoff: no run opens at a fresh gas flow that the slider and the readout beside it cannot both state
 verify: grep -q "def test_an_opening_fresh_gas_flow_off_the_slider_grid_is_refused" tests/unit/test_dashboard_frame.py
 ---
