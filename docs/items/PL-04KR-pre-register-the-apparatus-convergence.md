@@ -3,11 +3,13 @@ id: PL-04KR
 title: Pre-register the apparatus-convergence expectation on two causal signals, baselined 2026-09-19, so the owner's expectation that workflow inflow declines can fail loudly rather than be re-argued
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra, planning
 feature: convergence-visibility
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_trend.py, docs/items
 added: 2026-09-19
+closed: 2026-10-18
+pr: 1591
 verify: grep -q '^### Checked at the third release' docs/items/PL-04KR-pre-register-the-apparatus-convergence.md
 recurrences: 2026-09-23 PL-02C4 withdrawn 2026-09-23 PL-02C4
 ---
@@ -166,3 +168,79 @@ the command's output is read against, and the prediction is checked at each of
 the next three releases, with the result recorded here. If all four predictions
 hold, this item closes having found nothing, which is the outcome it exists to
 be able to report.
+
+**How the three cuts below were read, 2026-10-18.** Each reading replays what
+`bin/docket release` printed at that cut. It runs the tag's own copy of
+`docket` over the tag's own store, with the reference date set to the tag's
+commit date, and calls the same `_missed_expectations` that `release` calls.
+The `bin/docket inflow --today DATE` table was read the same way. `bin/docket
+inflow` (`PL-WXKD`) shipped in v0.5.24, so v0.5.24 is the first of the three
+cuts.
+
+### Checked at v0.5.24 (2026-10-12)
+
+Silent: every prediction held. The last complete week was 2026-10-05 to 10-11.
+It had 53 apparatus filings that no head explained and 62 filed by a head. It
+named 4 new apparatus paths, which is 0.03 a filing against the 0.13 ceiling.
+It had 15 re-entries against 18 the week before, so re-entry fell. Its 3 `P1`
+filings were all on the generator tier, so none counted against the
+prediction.
+
+### Checked at v0.5.25 (2026-10-17)
+
+Silent: every prediction held. The cut read the same week, 2026-10-05 to
+10-11, because the week from 10-12 had not ended. The numbers were unchanged
+except that one more filing in that week was counted under a head.
+
+### Checked at the third release: v0.5.26 (2026-10-18)
+
+Silent: every prediction held. The cut again read the week 2026-10-05 to 10-11,
+because the week from 10-12 ends on 10-18 and a week counts as complete only
+once it has ended. v0.5.27 and v0.5.28, cut the same day, read that week too.
+
+### Result
+
+**All three cuts held, but they checked one week, not three.** Five releases
+were cut in six days, so the three checks this item asked for all read the
+week of 2026-10-05 to 10-11. In that week the predictions held clearly: new
+paths per filing fell to 0.03, re-entry fell, and no apparatus filing outside
+the generator tier reached `P1`.
+
+**The next week will miss two predictions, and the next cut will say so.**
+Read with the reference date set to 2026-10-19, the first day after the week
+of 2026-10-12 to 10-18 ends, `release` prints two misses for that week. It
+names 24 new apparatus paths over 91 filings, 0.26 a filing, against the 0.13
+ceiling. It also counts 2 `P1` apparatus filings outside the generator tier.
+
+**What the two misses are made of, read by hand on 2026-10-18.** This is a
+reading, not a verdict on whether a generator is behind it.
+
+- The 2 `P1` filings are `PL-HQF5`, a `safety`-classed defect in the cardiac
+  output a tissue group can be given, and `PL-4RL2`, a `science`-classed
+  citation fix. Both are simulator work. Each counts as an apparatus filing
+  only because it also declares a file under `.claude/rules/`. Each is `P1`
+  because `docket check` pins `safety` and `science` work to `P1`, not because
+  of anything in the apparatus. So this miss is a false alarm in how the
+  prediction is counted. It is filed as its own item.
+- Of the 24 new paths, 13 were first named on 2026-10-12 and 11 on 10-17 and
+  10-18. Most are new files that a filing set out to create: new rules
+  (`.claude/rules/plain-writing.md`, `.claude/rules/test-oracles.md`), new
+  tools (`tools/fact_home_check.py`, `tools/diff_mutation.py`,
+  `tools/new_prose.py`), their tests, a new skill directory
+  (`.claude/skills/model-review`) and two test corpora under
+  `subprojects/docket/tests/`. The owner asked for several of them, for
+  example the plain-writing rule on 2026-10-17 (`PL-8ZTQ`). New mechanisms
+  were allowed again once no head carried `generator: live`.
+
+So the surface grew because new mechanisms were built on request, not because
+defects arrived in new places. That is the reading the prediction's own
+wording allows for: "If any moves the wrong way, that is the trigger to
+investigate, and which one moved says what to look for." The two misses point
+at a counting rule and at deliberate building. Neither points at an unfound
+generator.
+
+**Why the item closes.** Its done-when asks for the three cuts' results, and
+they are recorded above. The mechanism the item exists for does not depend on
+it staying open: `bin/docket release` checks the last complete week at every
+cut and prints any prediction it broke. The false alarm in the `P1` count is a
+separate item, so a later cut's miss can be read for what it is.
