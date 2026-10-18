@@ -3,11 +3,10 @@ id: PL-W54S
 title: Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: safety, anticipated
 feature: interface-areas
 touches: src/anesthesia_sim/app/unconditional_set.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_unconditional_set.py, docs/MODEL.md, ROADMAP.md
-blocked-by: PL-W9P6
 added: 2026-09-16
 payoff: each top-level window's region carries the invariant tier and the name of its run, and the per-substance tier has one home in the main window, so a break-out window adds a window rather than rebuilding the region
 verify: grep -q 'def test_every_window_region_carries_the_invariant_tier_and_its_run_name' tests/unit/test_unconditional_set.py
@@ -137,6 +136,10 @@ both are short: one run opens the readout row on four columns at 1366 px, and
 two runs stack two readout blocks where `docs/MODEL.md` pairs them in one.
 `PL-F2YS` carries them, and entry 20 now names it.
 
-**Blocked on `PL-W9P6`.** The adapter builds each window from the layout, so
+[superseded 2026-10-18] **Blocked on `PL-W9P6`.** The adapter builds each window from the layout, so
 the per-window region is built where that code builds a window. Its thread is
 changing `src/anesthesia_sim/app/` now, and this item follows it.
+
+**`PL-W9P6` built, 2026-10-18 (`#1592`).** `AreaLayout` draws one window and
+refuses a layout holding two, so the per-window region is built where a
+second window is first drawn.
