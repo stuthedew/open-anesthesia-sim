@@ -441,10 +441,10 @@ same section's "What this requires of a branch".
 
 Five things in `app/controller.py` carry it:
 
-- `SimulationController.resumed_at(elapsed_s)` makes one. It builds a second
+- `SimulationController.resumed_at(instant_s)` makes one. It builds a second
   controller through the ordinary constructor, replays the trunk's settings
   from the recorded control timeline into it, seeds its system with the
-  trunk's canonical state at `elapsed_s`, and hands it back paused. The trunk
+  trunk's canonical state at `instant_s`, and hands it back paused. The trunk
   is read and never written, so the two runs share no compartment, no
   accounting and no clock — which is what lets both be advanced.
 - `SimulationController.resumed_here()` makes one where the paused trunk

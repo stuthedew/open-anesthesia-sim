@@ -1120,8 +1120,8 @@ class SimulationController:
 
         return CaseInstant(0.0) if self._opened_from is None else self._opened_from.fork.instant_s
 
-    def resumed_at(self, elapsed_s: CaseInstant) -> SimulationController:
-        """Open a second live run at this run's canonical state at `elapsed_s`.
+    def resumed_at(self, instant_s: CaseInstant) -> SimulationController:
+        """Open a second live run at this run's canonical state at `instant_s`.
 
         The seam `PL-J2TD` exists for: a branch has to become something a
         learner can *manage* rather than a second curve, and managing it means
@@ -1129,10 +1129,10 @@ class SimulationController:
         `SimulationController` that advances by the path every run takes -
         `advance()` is not overridden and no second way to move a run forward
         is introduced - standing at the state this run passed through at
-        `elapsed_s`.
+        `instant_s`.
 
         **It opens at a keyframe, because that is this door's scope**
-        (`PL-54V0`). `elapsed_s` must be an instant this run holds a keyframe
+        (`PL-54V0`). `instant_s` must be an instant this run holds a keyframe
         for, which is its start and every recorded setting change. Anywhere
         else is refused, and not for want of a way to reproduce it: a marked
         instant is branched at through `resumed_at_mark` and the instant a
@@ -1191,7 +1191,7 @@ class SimulationController:
         the data files as well as the timeline (`_disagreements_with`).
 
         Args:
-            elapsed_s: The case instant to open at, in seconds. Must be one
+            instant_s: The case instant to open at, in seconds. Must be one
                 this run holds a keyframe for.
 
         Returns:
@@ -1200,10 +1200,10 @@ class SimulationController:
             timeline of its own and a copy of this run's bookmarks.
 
         Raises:
-            TypeError: `elapsed_s` is not a `CaseInstant`, so nothing has
+            TypeError: `instant_s` is not a `CaseInstant`, so nothing has
                 checked it against the supported run length
                 (`core/supported_ranges.py`).
-            SimulationConfigurationError: `elapsed_s` is not an instant this
+            SimulationConfigurationError: `instant_s` is not an instant this
                 run holds a keyframe for; this run is itself a branch, since a
                 branch of a branch is refused rather than silently flattened
                 (`PL-TFX5`); the fork instant is not a whole number of this
@@ -1212,7 +1212,7 @@ class SimulationController:
                 with both of its values.
         """
 
-        return self._branch_from(self._resume_point_at(elapsed_s))
+        return self._branch_from(self._resume_point_at(instant_s))
 
     def resumed_here(self) -> SimulationController:
         """Open a second live run where this paused run stands, stopped on a mark or not.
@@ -1649,23 +1649,23 @@ class SimulationController:
         # what keeps that record from naming a row the panel no longer draws.
         self._forget_unmarked()
 
-    def _resume_point_at(self, elapsed_s: CaseInstant) -> ResumePoint:
-        """Everything a branch opening at `elapsed_s` needs, or a refusal saying why.
+    def _resume_point_at(self, instant_s: CaseInstant) -> ResumePoint:
+        """Everything a branch opening at `instant_s` needs, or a refusal saying why.
 
         Raises:
-            TypeError: `elapsed_s` is not a `CaseInstant`.
-            SimulationConfigurationError: this run is a branch; `elapsed_s` is
+            TypeError: `instant_s` is not a `CaseInstant`.
+            SimulationConfigurationError: this run is a branch; `instant_s` is
                 not one of this run's keyframes; or the instant is not a whole
                 number of this run's steps.
         """
 
         self._require_forkable()
-        require_case_instant("elapsed_s", elapsed_s)
+        require_case_instant("instant_s", instant_s)
 
         openings = [segment.opening.instant_s for segment in self._run_definition.segments]
 
         for segment in self._run_definition.segments:
-            if segment.opening.instant_s == elapsed_s:
+            if segment.opening.instant_s == instant_s:
                 break
         else:
             # The door's scope is the reason, not arithmetic: the two other
@@ -1673,7 +1673,7 @@ class SimulationController:
             # (`PL-54V0`), so a message blaming the propagation would teach a
             # constraint the code beside it disproves.
             raise SimulationConfigurationError(
-                f"this run holds no keyframe at {elapsed_s} s, and resumed_at opens at one: the "
+                f"this run holds no keyframe at {instant_s} s, and resumed_at opens at one: the "
                 f"run's opening or a recorded setting change, which this run holds at {openings} "
                 "s. A marked instant is branched at with resumed_at_mark once the run has passed "
                 "it, and the instant a paused run stands at with resumed_here"
@@ -1963,8 +1963,8 @@ class SimulationController:
             crossing=self._crossing_of_step(stepped_from, fork),
         )
 
-    def _setting_at(self, control: ControlInput, elapsed_s: float, current: float) -> float:
-        """What `control` was set to at `elapsed_s`, from this run's recorded changes.
+    def _setting_at(self, control: ControlInput, instant_s: float, current: float) -> float:
+        """What `control` was set to at `instant_s`, from this run's recorded changes.
 
         In the units the compartments hold and the timeline records, which is
         what makes the replay exact - `ControlChange` stores the value the core
@@ -1978,7 +1978,7 @@ class SimulationController:
         """
 
         for change in reversed(self._control_timeline):
-            if change.control is control and change.elapsed_s <= elapsed_s:
+            if change.control is control and change.elapsed_s <= instant_s:
                 return change.new_value
 
         for change in self._control_timeline:
@@ -2868,15 +2868,15 @@ class BranchedCase:
 
         return self._trunk.here_fork_point
 
-    def fork_at(self, elapsed_s: CaseInstant) -> SimulationController:
-        """Take a branch from the trunk at `elapsed_s`, and keep it.
+    def fork_at(self, instant_s: CaseInstant) -> SimulationController:
+        """Take a branch from the trunk at `instant_s`, and keep it.
 
         The trunk is left exactly as it was - `resumed_at` reads it and writes
         nothing - so the case gains a run rather than trading one for another,
         which is what makes this a comparison instead of an undo.
 
         Args:
-            elapsed_s: The case instant to branch at, in seconds, from
+            instant_s: The case instant to branch at, in seconds, from
                 `fork_points_s`.
 
         Returns:
@@ -2886,14 +2886,14 @@ class BranchedCase:
             lost it.
 
         Raises:
-            TypeError: `elapsed_s` is not a `CaseInstant`.
-            SimulationConfigurationError: `elapsed_s` is not one of
+            TypeError: `instant_s` is not a `CaseInstant`.
+            SimulationConfigurationError: `instant_s` is not one of
                 `fork_points_s` or is not a whole number of the trunk's steps;
                 or the branch rebuilt there would not hold what the trunk held.
                 `resumed_at` raises these and names which.
         """
 
-        return self._kept(self._trunk.resumed_at(elapsed_s))
+        return self._kept(self._trunk.resumed_at(instant_s))
 
     def fork_here(self) -> SimulationController:
         """Take a branch from the trunk where it is paused, stopped on a mark or not, and keep it.
