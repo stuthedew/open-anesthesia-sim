@@ -205,6 +205,13 @@ change has moved an element onto a surface it fails, which no palette
 comparison can see, so a reviewer of a colour change still reads every entry
 added.
 
+**An entry also excuses its pair only as bad as it was when listed**
+(`PL-L1NX`). Each entry is a `Shortfall` holding the item that closes it and the
+ratio it excuses, and that ratio must be the one the pair measures. Under
+`--base`, a pair that measures below the ratio the base's entry recorded fails,
+so a change cannot make a listed pair worse and stay green. A colour renamed
+with its value kept carries its entry with it (`PL-NDGS`).
+
 **Neither is the exemption table.** `EXEMPT`, beside it, records a use of a
 colour that SC 1.4.11 does not bind - a graphic whose information text also
 carries, or a control boundary that visible content already identifies - with

@@ -3,11 +3,13 @@ id: PL-TMSN
 title: tools/glyph_check.py's six CONFIRMED entries cite evidence from the Flutter client, and one rests on a Flet layout fact, so the check passes on a Qt tree none of its evidence describes
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, infra
 feature: presentation-safety
 touches: tools/glyph_check.py
 added: 2026-09-16
+closed: 2026-10-18
+pr: 1548
 verify: uv run python tools/glyph_check.py && grep -q 'Qt build' tools/glyph_check.py
 ---
 
@@ -41,3 +43,5 @@ route - each evidence string names the Qt build and the date it was seen, and
 U+00A0's premise is re-checked against Qt specifically and either restated or
 the entry removed. The phrase `Qt build` in the module is what the `verify:`
 command reads.
+
+**Built 2026-10-18.** The dashboard was rendered by the `run-the-app` skill's route, with a control change, and each of the six was found in a visible label and looked at in a crop: em dash in the version badge and captions, multiplication sign in the xMAC lines and playback speed, middle dot in the control-change list, plus-minus sign and en dash in the MAC-awake band line, and the no-break space as a blank qualifier line. PySide6 6.11.2, offscreen, the container's Inter. An empty `styled_label` is as tall as one holding U+00A0 (15 px and 16 px at the two sizes), so the Flet premise does not hold in Qt; the entry stays as a record that it renders, and `PL-P55M` is filed for whether the constants still need it.
