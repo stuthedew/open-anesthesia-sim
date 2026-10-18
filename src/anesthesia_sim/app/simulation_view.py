@@ -273,7 +273,8 @@ class _RunSlots:
             controls join the Areas as a View of their own,
             `parameter_controls`, once the View contract exists (`PL-TH35`).
         placed: Every widget this run put into a shared layout, the section
-            included. Removing the run is deleting these.
+            included, and for a later run the readings it put into the first
+            run's readout panels. Removing the run is deleting these.
     """
 
     parameters: QWidget
@@ -539,7 +540,9 @@ class SimulationView(QWidget):
         """Build the band that holds every run's unconditional values, empty of runs.
 
         Its left column stacks every run's transport row, then every
-        notice banner, then every readout section; its right column holds
+        notice banner, then every readout section. A later run's section
+        shows only its heading line, because its readouts join the first
+        run's panels (`RunView.show_readings_of`). Its right column holds
         every run's control-change record, scrolling within itself so a long
         record never makes the band taller than the rows beside it
         (`PL-J8K2` Q3). The two columns take the band's width in the shares
@@ -730,7 +733,7 @@ class SimulationView(QWidget):
 
         run.presentation_requested.connect(self.present)
         parameters = _fixed_height(run.build_parameter_controls())
-        placed = (
+        placed: tuple[QWidget, ...] = (
             _holder(self._transport_column, (run.build_transport_row(),)),
             _holder(self._notice_column, (run.build_notice(),)),
             _holder(self._readout_column, (run.build_readout_section(),)),
@@ -740,6 +743,11 @@ class SimulationView(QWidget):
             _holder(self._wash_in_state_column, (run.build_wash_in_state(),)),
             parameters,
         )
+        # A later run's readouts join the first run's panels, so two runs
+        # read as one block of seven (`PL-F2YS`); they leave with the run.
+        if self._runs:
+            placed = (*placed, *self._runs[0].show_readings_of(run))
+
         self._settings_column.addWidget(parameters)
         self._require_unconditional_values(run)
         self._runs = (*self._runs, run)
