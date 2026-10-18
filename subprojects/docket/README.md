@@ -2364,8 +2364,13 @@ whole format:
   an item has to know, and the one that parsed to empty put a `safety`-classed
   item in the bottom band with nothing reporting it (`PL-FX0K`).
 - **An indented line continues the value above it**, folded on with a single
-  space, exactly as YAML folds a plain scalar. Twelve `reason:` fields here are
-  hand-wrapped that way. Indentation is what makes a continuation: a line at
+  space, as YAML folds a plain scalar. Twelve `reason:` fields here are
+  hand-wrapped that way. Two things differ from YAML. A blank line inside a
+  value also folds to a space, where YAML keeps a line break, because every
+  value here is read and written as one line. And a `#`-led line ends a plain
+  value, as YAML's comment does, so an indented line after it is reported as
+  read by no field; inside a quoted value still open, the same line is content
+  and continues it (`PL-B53Y`). Indentation is what makes a continuation: a line at
   column zero that is not `key: value` belongs to no field, and nor does an
   indented line above the first field. Both are *reported* at `docket check`
   rather than passed over, because what such a line usually holds is the tail

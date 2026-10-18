@@ -3,12 +3,14 @@ id: PL-GC59
 title: Readers outside PL-JTP1's four still let a caller drop a decline by writing nothing or an empty list: docket.shell's Reading.refusal and roadmap's MilestoneSection.unread, Scope and Wave.unread carry theirs as a record field, and doc_check's workflow_commands and workflow_runs take a list a caller can pass empty
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: reader-checks
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
+closed: 2026-10-18
+pr: 1597
 payoff: doc_check's workflow readers hand back what they declined to read, so no caller can drop it by passing an empty list
 verify: grep -q 'def test_workflow_commands_returns_its_declines' tests/unit/test_doc_check.py
 ---
@@ -61,3 +63,9 @@ pins that the declines are returned.
 **Generator check.** Not a re-entry. `PL-JTP1` named its four readers on
 purpose, and these are the readers it left. The fact is "a shared reader's
 declines reach every caller", and no head records it.
+
+**Closed 2026-10-18.** `workflow_commands`, `workflow_runs`,
+`pull_request_runs` and `_step_scripts` return `(result, declines)` and take no
+list. `pull_request_runs` had the same shape and was changed with them. The
+rewritten assertions in `tests/unit/test_doc_check.py` keep their asserted
+values; one, which compared the old bare list, now compares the pair.

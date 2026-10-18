@@ -3,12 +3,14 @@ id: PL-B53Y
 title: docket's front-matter fold takes an indented line opening with # for a comment before it takes it for a continuation, so a quoted value carried onto such a line is read short with its opening quote kept and nothing reported, a comment line inside a plain value does not end it, and a blank line inside a value folds to a space where YAML folds a newline, against the README's exactly-as-YAML promise; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: front-matter-round-trip
-touches: subprojects/docket/src/docket/model.py, subprojects/docket/README.md, subprojects/docket/tests/test_model.py
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/README.md, subprojects/docket/tests/test_model.py, tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
+closed: 2026-10-18
+pr: 1597
 payoff: a quoted or comment-interrupted front-matter value is read as YAML reads it or refused by name, rather than stored short with nothing reported
 verify: grep -q 'def test_a_quoted_value_continued_on_a_hash_led_line_is_read_whole' subprojects/docket/tests/test_model.py && grep -q 'def test_a_comment_line_inside_a_plain_value_is_not_folded_over' subprojects/docket/tests/test_model.py
 reenters: PL-HXJY
@@ -67,3 +69,12 @@ a fix that did not hold (2026-10-11 triage).
 takes it for a comment while a quoted value is open, ends a plain value at a
 comment line or declines it by name, and folds a blank line as YAML does or the
 README stops promising it, each pinned by a test.
+
+**Closed 2026-10-18.** `_fold` now ends a plain value at a comment line and
+reports an indented line after it as unread, and folds a `#`-led line into a
+quoted value that is still open (`_quote_open`). A blank line inside a value
+still folds to a space; the README now says so as a stated departure from
+YAML rather than promising YAML's reading. One fixture in
+`tests/unit/test_doc_check.py` placed a comment line inside a plain field to
+pin doc_check's decline of it; that case can no longer arise, so it was
+removed and the decline's wording now names a blank or unread line only.
