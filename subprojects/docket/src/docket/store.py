@@ -49,6 +49,20 @@ ID_PREFIX = "PL-"
 ID_PATTERN = rf"{ID_PREFIX}(?:[{ID_ALPHABET}]{{{ID_LENGTH}}}|\d{{3}})(?![{ID_ALPHABET}])"
 ID_RE = re.compile(rf"^{ID_PATTERN}$")
 SLUG_RE = re.compile(r"[^a-z0-9]+")
+_CITED_ID_RE = re.compile(ID_PATTERN)
+
+
+def cited_ids(text: str, own: str) -> frozenset[str]:
+    """The ids an item's file names other than its own, anywhere in the file.
+
+    The one reading of which items an item cites, for
+    `tools/generator_check.py`'s citation signal and `tools/item_reads.py`'s
+    traversal count (`PL-86H3`). The front matter counts: an id named only in
+    `root-cause-of:` or `blocked-by:` is the strongest citation an item makes,
+    and the body-only reading in `item_reads` missed it.
+    """
+    return frozenset(_CITED_ID_RE.findall(text)) - {own}
+
 
 # An item file's whole name, as `filename_for` writes one: the id, then a
 # slug, then the suffix. This is what tells a `touches` entry that names *an

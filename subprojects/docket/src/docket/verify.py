@@ -2080,43 +2080,23 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
     so no value this could return would say "unread" (`PL-9RFP`).
 
     **Both halves read `-z`, the one form in which git quotes no path**
-    (`PL-8HSX`): the committed half because `changed_path_args` asks every read
-    for it, parsed by `vcs.listed_paths`, and `status` by its own flag. A quoted
-    path starts with `"`, so `is_under` matches it against nothing protected.
-    Git quotes a path outside ASCII while `core.quotePath` is on, one holding a
-    tab, newline, `"` or `\\` however that is set, and in `status` one holding
-    a space as well: measured on git 2.43.0, 2026-09-25, a
-    committed `src/anesthesia_sim/core/café.py` and an uncommitted
-    `src/anesthesia_sim/core/a b.py` each passed as "none touched".
-    `--untracked-files=all` because `status.showUntrackedFiles=no` in a user's
-    git config drops every untracked file from the porcelain, which passed a new
-    uncommitted core file the same way, and because otherwise an untracked
-    directory is one `dir/` entry rather than the files in it.
+    (`PL-8HSX`). The committed half asks for it through `changed_path_args`,
+    and the uncommitted half is `vcs.uncommitted_paths`, which `working_paths`
+    reads too (`PL-QNHZ`). A quoted path starts with `"`, so `is_under` matches
+    it against nothing protected. Git quotes a path outside ASCII while
+    `core.quotePath` is on, and one holding a tab, newline, `"` or `\\` however
+    that is set. Measured on git 2.43.0, 2026-09-25, a committed
+    `src/anesthesia_sim/core/café.py` and an uncommitted
+    `src/anesthesia_sim/core/a b.py` each passed as "none touched" before
+    every read asked for `-z`. The untracked files come from `ls-files
+    --others`, which `status.showUntrackedFiles=no` in a user's git config does
+    not hide, and which lists each file in an untracked directory.
     """
     if commits:
         committed = _git(vcs.changed_path_args("show", "--name-only", "--format=", *commits), root)
     else:
         committed = _git(vcs.changed_path_args("diff", "--name-only", f"{base}...HEAD"), root)
-    return tuple(sorted({*vcs.listed_paths(committed), *_uncommitted_paths(root)}))
-
-
-def _uncommitted_paths(root: Path) -> frozenset[str]:
-    """Every path whose change the working tree holds and `HEAD` does not.
-
-    `changed_paths`' other half. Raises `GitUnanswered` where `git status`
-    cannot be read.
-    """
-    working = _git(["status", "--porcelain", "-z", "--untracked-files=all"], root)
-    paths: set[str] = set()
-    entries = iter(working.split("\0"))
-    for entry in entries:
-        # `XY path`: two status letters and a space. A rename or a copy is
-        # followed by the path it came from, as a field of its own.
-        paths.add(entry[3:])
-        if "R" in entry[:2] or "C" in entry[:2]:
-            paths.add(next(entries, ""))
-    paths.discard("")
-    return frozenset(paths)
+    return tuple(sorted({*vcs.listed_paths(committed), *vcs.uncommitted_paths(root, _git)}))
 
 
 def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
@@ -2262,12 +2242,18 @@ def _net_line_changes(
     return added, removed
 
 
-def _store_at(root: Path, base: str, items_dir: str) -> tuple[str, ...] | None:
-    """The item filenames the base ref holds, or `None` where its store cannot be read."""
-    listing = vcs.call_git(["ls-tree", "--name-only", f"{base}:{items_dir}"], root).answer
-    if not vcs.answered(listing):
+def _store_at(root: Path, base: str, items_dir: str) -> dict[str, str] | None:
+    """Each item id the base ref holds, mapped to its file, or `None` where git did not list it.
+
+    `vcs._items_at`, the one listing of a ref's item files (`PL-86H3`). A
+    store git lists as empty is read as unread too, since a tree holds no
+    empty directory and the base with no store is the case this declines on.
+    """
+    try:
+        held = vcs._items_at(base, root, items_dir, _git)
+    except vcs.GitUnanswered:
         return None
-    return tuple(line.strip() for line in split_lines(listing) if line.strip())
+    return held or None
 
 
 def _listed_copy(root: Path, spec: str) -> str | None:
@@ -2280,20 +2266,6 @@ def _listed_copy(root: Path, spec: str) -> str | None:
     call = vcs.call_git(["show", spec], root)
     text = call.answer
     return text if call.code == 0 and vcs.answered(text) else None
-
-
-def _base_copy(held: tuple[str, ...], identifier: str) -> str:
-    """The file among `held` that is `identifier`'s, by the grammar `vcs.ITEM_FILE_RE` states.
-
-    Read rather than respelt as a `startswith`, so the next change to how an
-    item file is named reaches this audit's two readers of the base's copy
-    without a second edit (`PL-24BC`).
-    """
-    for name in held:
-        match = vcs.ITEM_FILE_RE.match(name)
-        if match and match.group(1) == identifier:
-            return name
-    return ""
 
 
 #: A `pr:` value as `cmd_record` writes it, a number and nothing else, matched
@@ -2416,7 +2388,7 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     whatever its commits wrote, as an uncommitted capture or record already
     was, since neither has a commit to read.
     """
-    if path in _uncommitted_paths(root):
+    if path in vcs.uncommitted_paths(root, _git):
         return ""
     if is_under(path, (RECORDS,)):
         return "record" if _added_record(root, base, path) else ""
@@ -2742,15 +2714,15 @@ def read_commission(root: Path, base: str, items_dir: str, item: Item) -> Commis
     held = _store_at(root, base, items_dir)
     if held is None:
         return Commission(unread=f"no item store at {base}:{items_dir} to read the commission from")
-    was = _base_copy(held, item.identifier)
+    was = held.get(item.identifier, "")
     if not was:
         return Commission()
-    before = _listed_copy(root, f"{base}:{items_dir}/{was}")
+    before = _listed_copy(root, f"{base}:{was}")
     if before is None:
-        return Commission(unread=f"{base}:{items_dir}/{was} could not be read")
+        return Commission(unread=f"{base}:{was} could not be read")
     fields, _body, declined = parse_front_matter(before)
     if declined:
-        return Commission(unread=f"{base}:{items_dir}/{was} declines {declined}")
+        return Commission(unread=f"{base}:{was} declines {declined}")
     return Commission(fields=fields)
 
 
@@ -2893,19 +2865,15 @@ def front_matter_check(
             advisory=advisory,
             commission=True,
         )
-    was = _base_copy(held, item.identifier)
+    was = held.get(item.identifier, "")
     if not was:
         return Check(
             name, True, f"a new item file - {base} holds no copy to differ from", commission=True
         )
-    before = _listed_copy(root, f"{base}:{items_dir}/{was}")
+    before = _listed_copy(root, f"{base}:{was}")
     if before is None:
         return Check(
-            name,
-            False,
-            f"{base}:{items_dir}/{was} could not be read",
-            advisory=advisory,
-            commission=True,
+            name, False, f"{base}:{was} could not be read", advisory=advisory, commission=True
         )
     old, _body, was_declined = parse_front_matter(before)
     new, _body, now_declined = parse_front_matter(after)
@@ -3231,7 +3199,7 @@ def _check_item(
     # committed, and the page would otherwise not say why it is not (`PL-W6ZD`).
     unsanctioned = {
         path
-        for path in _uncommitted_paths(root).intersection(outside)
+        for path in set(vcs.uncommitted_paths(root, _git)).intersection(outside)
         if is_under(path, (config.items_dir, RECORDS))
     }
     widened = [path for path in outside if commission.touches and is_under(path, item.touches)]

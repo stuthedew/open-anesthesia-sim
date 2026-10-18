@@ -33,21 +33,18 @@ from docket.claims import (
     LEASE_TERM,
     LIVE,
     NAMED,
-    RECORDS,
     RELEASED,
     SESSION_VARIABLE,
     Hold,
     Holdings,
     Unclaimed,
     holdings,
-    in_queue,
-    queue_records,
     settled_branches,
     unclaimed,
     work_outside_queue,
 )
 from docket.config import Config
-from docket.vcs import SILENT, _run_git, remote_heads
+from docket.vcs import RECORDS, SILENT, _run_git, in_queue, queue_records, remote_heads
 
 #: When the claims under test are made. Each repository's base sits a month
 #: earlier, outside every lease.

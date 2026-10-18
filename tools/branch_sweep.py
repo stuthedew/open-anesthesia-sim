@@ -193,7 +193,7 @@ def read_stranded(root: Path, now: datetime, readings: Readings) -> None:
 
 
 def read_orphaned(root: Path, now: datetime, readings: Readings) -> None:
-    report = orphaned(root, items_dir=load_config(root).items_dir)
+    report = orphaned(root, config=load_config(root))
     if not report.known:
         raise Declined(f"`vcs.orphaned` could not read the branches: {report.declined}")
     for branch in report.branches:

@@ -208,10 +208,7 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
     },
     "subprojects/docket/src/docket/checks.py": {("definition", "SOFT_BREAK"): 1},
     "subprojects/docket/src/docket/claiming.py": {("definition", "ID"): 1, ("git", "_git"): 1},
-    "subprojects/docket/src/docket/claims.py": {
-        ("definition", "ID"): 1,
-        ("definition", "RECORDS"): 1,
-    },
+    "subprojects/docket/src/docket/claims.py": {("definition", "ID"): 1},
     "subprojects/docket/src/docket/cli.py": {("shell-lexer", "_run_forge_command"): 1},
     "subprojects/docket/src/docket/frontmatter.py": {("definition", "FENCE"): 1},
     "subprojects/docket/src/docket/grep.py": {("definition", "MARKER"): 1},
@@ -230,6 +227,7 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
     "subprojects/docket/src/docket/vcs.py": {
         ("definition", "BEHIND"): 1,
         ("definition", "LANDED"): 1,
+        ("definition", "RECORDS"): 1,
         ("definition", "UNPARSABLE"): 1,
     },
     "subprojects/docket/src/docket/verify.py": {
@@ -258,7 +256,6 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("definition", "SOFT_BREAK"): 1,
     },
     "tools/fixture_id_check.py": {("definition", "JSON_KEY_RE"): 1, ("definition", "MARKER"): 1},
-    "tools/generator_check.py": {("definition", "ID_RE"): 1},
     "tools/item_reads.py": {
         ("definition", "ITEMS"): 1,
         ("definition", "ITEM_ID"): 1,
