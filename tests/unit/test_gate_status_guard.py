@@ -340,6 +340,16 @@ INTERPRETED = (
     ("python3 -c 'import sys' tools/glyph_check.py | head", False),
     ("python3 -m json.tool tools/glyph_check.py | head", False),
     ("python3 - tools/glyph_check.py < scratch.py | head", False),
+    # A gate run as the module it is: `docket.shell.invocation` reads the
+    # module as the program, as `verify` does, so `python3 -m docket check`
+    # is the docket gate in both (`PL-RHPK`). These were `PL-7PB9`'s known gaps.
+    ("python3 -m docket check | tail", True),
+    ("python3 -m pytest -q 2>&1 | tail", True),
+    ("python3 -m mypy | tail", True),
+    ("python -m ruff check . | tail", True),
+    ("uv run python -m mypy | tail", True),
+    ("timeout 60 python3 -X dev -m pytest | tail", True),
+    ("python3 -m docket show PL-RHPK | tail", False),
 )
 
 
@@ -983,10 +993,6 @@ UV_OPTIONS = (
     "grammar, is `59ea9d1c`, the head of `#1127` on `claude/project-thread-qt3onr`, ready "
     "to rebase if the spelling is met"
 )
-AS_A_MODULE = (
-    "a listed gate run as `python -m` is written nowhere here and met by no session: "
-    "`PL-7PB9`, found working `PL-QMN0` on `claude/project-thread-qt3onr`"
-)
 DOCKET_OPTIONS = (
     "`bin/docket` with its own options ahead of the subcommand is a line argparse admits "
     "and nobody writes: `PL-BM3Z`, found working `PL-QMN0` on `claude/project-thread-qt3onr`"
@@ -1025,10 +1031,6 @@ KNOWN_GAPS = (
     ("uv run --frozen mypy | tail", False, LOSES, UV_OPTIONS),
     ("uv run -m pytest | tail", False, LOSES, UV_OPTIONS),
     ("uv -q run pytest -q 2>&1 | tail", False, LOSES, UV_OPTIONS),
-    ("python3 -m pytest -q 2>&1 | tail", False, LOSES, AS_A_MODULE),
-    ("python3 -m mypy | tail", False, LOSES, AS_A_MODULE),
-    ("python -m ruff check . | tail", False, LOSES, AS_A_MODULE),
-    ("uv run python -m mypy | tail", False, LOSES, AS_A_MODULE),
     ("bin/docket --no-fetch check 2>&1 | tail -3", False, LOSES, DOCKET_OPTIONS),
     ("bin/docket --no-fetch verify PL-QMN0 | tail", False, LOSES, DOCKET_OPTIONS),
     ("bin/docket --items docs/items check | tail", False, LOSES, DOCKET_OPTIONS),

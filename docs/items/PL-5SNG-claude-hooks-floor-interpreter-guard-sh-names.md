@@ -3,12 +3,14 @@ id: PL-5SNG
 title: .claude/hooks/floor-interpreter-guard.sh names one 3.11 collision (app_metadata.py) and six uv-run tools, where app/bookmarks.py:451 is a second collision and seven ast tools run under uv, and neither its comments nor its deny message say doc_check and possessive_section_check also parse source and decline at the floor
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpreter_guard.py
 added: 2026-09-24
+closed: 2026-10-18
+pr: 1548
 payoff: a session that hits the 3.11 floor is told the true set of collisions and uv-run tools, so it does not re-derive a second SyntaxError on main as a defect
-verify: grep -qF 'app/bookmarks.py' .claude/hooks/floor-interpreter-guard.sh && grep -qF 'fixture_id_check.py' .claude/hooks/floor-interpreter-guard.sh && ! grep -qF 'The collision is one line' .claude/hooks/floor-interpreter-guard.sh && ! grep -qF 'the CI floor section run these bare on purpose' tests/unit/test_floor_interpreter_guard.py
+verify: grep -qF 'app/bookmarks.py' .claude/hooks/floor-interpreter-guard.sh && grep -qF 'the `Makefile` is the list' .claude/hooks/floor-interpreter-guard.sh && ! grep -qF 'The collision is one line' .claude/hooks/floor-interpreter-guard.sh && ! grep -qF 'the CI floor section run these bare on purpose' tests/unit/test_floor_interpreter_guard.py
 reenters: PL-G424
 ---
 
@@ -71,3 +73,5 @@ this was filed rather than repaired in place. It is the only post-close
 instance of that head recorded so far, so there is no new head. It is not
 `PL-PVW2`'s, even though that head's `PL-GVFC` and `PL-BBV7` share this hook.
 The hook evaluates nothing from these lists; they are prose.
+
+**Built 2026-10-18, taking the other reading.** Seven files under `src/` and `tests/` fail to parse at 3.11 today, so a full list would drift as this one did. The hook now gives examples of both PEP 758 and PEP 695 collisions and names the `Makefile` as the list of uv-run tools, and `verify:` was rewritten to that reading. The deny message also no longer says PATH answers 3.11: this container's `python3` is 3.13.

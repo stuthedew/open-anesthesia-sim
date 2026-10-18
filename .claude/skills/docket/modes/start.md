@@ -110,8 +110,9 @@ not dead in that sense but gone: it holds nothing, `claim` passes it with no
 nothing else claims the item - with `--over` offered for the record it adds
 rather than as a condition. The `<session>`
 token in a claim is `CLAUDE_CODE_REMOTE_SESSION_ID`,
-which reads `cse_...` where `get_session` wants `session_...`; the part after
-the prefix matched on the one session compared in full, on 2026-09-24. A branch that
+which reads `cse_...`. `get_session` takes that token as `flight` and `show`
+print it, and answers for the matching `session_...` (measured on two tokens,
+2026-09-25). A branch that
 already contains the holder's tip is a continuation, and `claim` writes the
 takeover without `--over`.
 
@@ -317,4 +318,9 @@ milestone first, per the development rules there, and start the items that
 milestone produces.
 
 Set the item's `status` and `feature` as work begins, and add `touches` if it
-is missing — that is what makes the next concurrency answer correct.
+is missing — that is what makes the next concurrency answer correct. Two more
+fields are repaired at this moment, and the rules for them live in other modes.
+Write a `payoff:` if the item has none, as `picking.md`'s paragraph on
+`payoff:` says. Rewrite a `verify:` that selects nothing or still carries a
+trailing selector clause, as `.claude/skills/docket/modes/triage.md` § "The
+`verify:` command, and running it before writing it down" says (`PL-B1R4`).

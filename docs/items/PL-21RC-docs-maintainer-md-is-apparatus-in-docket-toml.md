@@ -3,11 +3,13 @@ id: PL-21RC
 title: docs/maintainer.md is apparatus in docket.toml's workflow_paths but is named in none of the three places that list the apparatus set, and apparatus-standard.md's paths: glob does not load for it
 priority: P3
 effort: M
-status: ready
+status: done
 classes: docs, infra
 feature: worker-instructions
-touches: CLAUDE.md, .claude/rules/expert-review.md, .claude/rules/apparatus-standard.md, tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py
+touches: CLAUDE.md, .claude/rules/expert-review.md, .claude/rules/apparatus-standard.md, tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py, docs/apparatus.md, docs/maintainer.md
 added: 2026-09-13
+closed: 2026-10-18
+pr: 1557
 verify: grep -q '"/docs/maintainer.md"' .claude/rules/apparatus-standard.md && grep -q 'docs/maintainer.md' .claude/rules/expert-review.md && uv run pytest tests/unit/test_rules_paths_check.py
 ---
 
@@ -108,3 +110,17 @@ vendored Markdown specifications. None of the three enumerations names it. It
 has teeth for the reason `docs/maintainer.md` does: a session editing it loads
 no apparatus rule at all, though its opening paragraph names
 `.claude/rules/apparatus-standard.md` as its standard.
+
+**Resolved 2026-10-18.** All three copies now name `bin/`, `CLAUDE.md`,
+`docs/maintainer.md`, `docs/apparatus.md` and `docs/resident-instructions.md`
+beside the paths they already held. `apparatus-standard.md`'s `paths:` gained
+`/CLAUDE.md`, which the two prose copies already named, so the three are now
+one set. `tools/rules_paths_check.py`'s new `apparatus_set_problems` holds the
+three copies to each other and to `workflow_paths`. Each `workflow_paths` entry
+outside `tests/` must be in the set or in `LANE_ONLY`, so the next entry added
+fails `make check` until somebody places it. The rows from 2026-09-27 and
+2026-10-11 were placed on `PL-1KTV`'s test. `bin/` and the three documents
+joined the set. `.vscode`, `.gitattributes`, `docs/pr-bodies` and
+`docs/stress-2026-09-25` went to `LANE_ONLY` as configuration or records,
+beside the entries `PL-1KTV` had already left out. `docs/maintainer.md`'s own
+fourth copy of the list now points at `CLAUDE.md`'s instead.

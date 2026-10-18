@@ -158,6 +158,25 @@ class GuessedBase(str):
 GUESSED_BASE = GuessedBase("main")
 
 
+def unresolved_base_cause(base: str) -> str:
+    """Why `base` is a guess, as a clause a decline prints before its verdict.
+
+    Two cases reach a `GuessedBase`, and a decline has to name the one that
+    happened, because the reader picks a remedy from it (`PL-27VL`). Where no
+    candidate resolved, `default_base` returns the `GUESSED_BASE` singleton,
+    so identity tells it apart from a name that resolved after git left a
+    candidate ahead of it unanswered. Both declines that print this, `bin/docket
+    verify` and `tools/branch_id_check.py`, read it here so they cannot drift.
+    """
+    tried = ", ".join(DEFAULT_BRANCHES)
+    if base is GUESSED_BASE:
+        return f"no candidate default branch resolved here (tried {tried})"
+    return (
+        f"`{base}` resolved only after git did not answer a candidate ahead of it "
+        f"(tried {tried}), so it is not established as the default branch"
+    )
+
+
 def resolved(base: str) -> bool:
     """Whether `base` is the ref this repository calls for, as against a guess.
 
@@ -1427,13 +1446,31 @@ def _written_since(fork_point: str, base: str, root: Path, run: Runner) -> froze
     missing commits, and a read git refused all read as "not landed", the safe
     direction `_landing_split` documents.
 
+    **A truncated clone's boundary commit writes nothing here** (`PL-29RM`).
+    Git shows a grafted commit with no parents, so `--raw` lists its whole tree
+    as added, content the base held long before the fork included. A branch
+    restoring a file to that content then read as landed, `#1118`'s shape
+    again. `--min-parents=1` leaves out every commit with no parents. A
+    repository's true root is an ancestor of every fork point, so `^fork`
+    already excludes it, and only a graft is dropped. What the boundary commit
+    really changed goes unread with it, which reads as "not landed".
+
     Measured 2026-09-27 on this checkout, 1,466 commits on `origin/main`: its
     20 candidate refs forked at 10 points, read in 0.098 s in all, and one read
     of the whole history takes 0.211 s, which bounds a fork of any age. None of
     the 20 changed verdict against the whole-history set it replaced.
     """
     listing = run(
-        changed_path_args("log", "--raw", "--no-abbrev", "--format=", f"^{fork_point}", base, "--"),
+        changed_path_args(
+            "log",
+            "--raw",
+            "--no-abbrev",
+            "--format=",
+            "--min-parents=1",
+            f"^{fork_point}",
+            base,
+            "--",
+        ),
         root,
     )
     return frozenset(blob for blob, _ in _raw_writes(listing))
@@ -2309,6 +2346,29 @@ def _head_name(name: str, remotes: frozenset[str]) -> str:
     """
     prefix, _, rest = name.partition("/")
     return rest if rest and prefix in remotes else name
+
+
+def remote_names(root: Path) -> frozenset[str]:
+    """The remotes this checkout knows, for a tool that strips a ref with `_head_name`.
+
+    A git that answers nothing gives an empty set, which strips no prefix. So a
+    caller that must strip `REMOTE` whatever git says adds it to this set.
+    """
+    return _remotes(root, _run_git)
+
+
+def head_branch(root: Path, run: Runner, remotes: frozenset[str] | None = None) -> str:
+    """The branch `HEAD` is on, by the name a forge knows it by, or `""` when detached.
+
+    The one reader of which branch is checked out (`PL-KL6B`). Seven readers
+    each asked `rev-parse --abbrev-ref HEAD` themselves, and only four of them
+    stripped a remote's prefix from the answer. `remotes` is for a caller that
+    has already read them; without it they are read here.
+    """
+    name = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
+    if name in {"", "HEAD"}:
+        return ""
+    return _head_name(name, _remotes(root, run) if remotes is None else remotes)
 
 
 @dataclass(frozen=True)
@@ -3292,8 +3352,8 @@ def branch_state(root: Path, *, runner: Runner | None = None) -> BranchState:
 
 def _branch_state(root: Path, run: Runner) -> BranchState:
     """`branch_state`'s reading, against a runner whose silences are watched."""
-    branch = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
-    if not branch or branch == "HEAD":
+    branch = head_branch(root, run)
+    if not branch:
         return BranchState(
             absent=True, declined="no branch is checked out here, so there is nothing to compare"
         )
@@ -4143,15 +4203,39 @@ def _cut_versions(
     )
 
 
+@dataclass(frozen=True)
+class CutWritten:
+    """The commit that last wrote a version's notes on a ref, and when it was authored.
+
+    `at` is `None` where git gave no date it could parse.
+    """
+
+    commit: str
+    at: datetime | None
+
+
+def cut_written(ref: str, notes_dir: str, version: str, root: Path, run: Runner) -> CutWritten:
+    """When a version's notes were written on a ref: the one reader of a cut's date.
+
+    The author date, which a rebase leaves alone, so a rebased cut keeps the
+    date it was cut on. `cuts_in_flight` read the committer date and
+    `claims.holdings` the author date, and the two parted on a rebased cut
+    (`PL-KL6B`).
+    """
+    path = f"{notes_dir.strip('/')}/{notes_name(version)}"
+    written = run(["log", "-1", "--format=%H%x1f%aI", ref, "--", path], root)
+    commit, _, stamp = written.strip().partition("\x1f")
+    try:
+        at: datetime | None = datetime.fromisoformat(stamp)
+    except ValueError:
+        at = None
+    return CutWritten(commit=commit, at=at)
+
+
 def _cut_date(ref: str, notes_dir: str, version: str, root: Path, run: Runner) -> date | None:
     """When the notes for a version were written on a ref, or `None` if unreadable."""
-    stamp = run(
-        ["log", "-1", "--format=%cI", ref, "--", f"{notes_dir}/{notes_name(version)}"], root
-    ).strip()
-    try:
-        return datetime.fromisoformat(stamp).astimezone(UTC).date()
-    except ValueError:
-        return None
+    at = cut_written(ref, notes_dir, version, root, run).at
+    return None if at is None else at.astimezone(UTC).date()
 
 
 @dataclass(frozen=True)

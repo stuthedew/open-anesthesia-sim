@@ -3,10 +3,12 @@ id: PL-M3YJ
 title: Turn on mypy's warn_unused_configs so a dead [[tool.mypy.overrides]] is reported rather than sitting inert - PL-7SVX's flet_charts and msgpack entries are gone and only pyqtgraph's is live, so the cost of turning it on is zero today
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: infra
 touches: pyproject.toml
 added: 2026-09-16
+closed: 2026-10-18
+reason: Measured 2026-10-18 with mypy on this branch: the flag cannot do what the item wants and adds a note to every run. It reports a section whose module pattern matches nothing imported, not an ignore_missing_imports that has become unneeded, so pyqtgraph shipping stubs would still be silent. Its output is a note with exit 0, so it fails nothing. And the bare uv run mypy already notes three live patterns as unused: pyqtgraph.* (no submodule is imported) and xdist and xdist.* (only tests/ imports xdist, and that pass is tools/ignore_check.py). A note that fires on every run and changes no decision is the check CLAUDE.md retires.
 verify: uv run mypy && grep -q '^warn_unused_configs = true$' pyproject.toml
 ---
 

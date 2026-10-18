@@ -3,12 +3,14 @@ id: PL-5XKP
 title: glyph_check refuses the non-ASCII key of a str.maketrans normaliser whose purpose is to remove that glyph, and passes chr(0x2192) built inside an f-string
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: exact-gates
 touches: tools/glyph_check.py, tests/unit/test_glyph_check.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
+closed: 2026-10-18
+pr: 1548
 payoff: code that strips an undrawable character from displayed text either passes glyph_check or meets a written reason it cannot, and the chr() blind spot is recorded where the next session reads it
 verify: grep -q 'def test_a_translation_table_key' tests/unit/test_glyph_check.py
 ---
@@ -26,3 +28,5 @@ Re-confirmed 2026-09-25 against 46954a81 in a scratch tree: the translation-tabl
 **Done when.** A literal used only as a translation-table key is accepted, or the check documents why not; the `chr()` gap is recorded as known.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
+
+**Built 2026-10-18.** `translation_keys` skips the keys of a dict literal passed alone to `maketrans` and the from and delete strings of its two- and three-argument forms; replacements are still read. Before the fix, `uv run pytest -q tests/unit/test_glyph_check.py -k translation_table` failed with `assert 4 == 1`. The `chr()` gap is recorded in the module docstring as known.

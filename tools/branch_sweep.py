@@ -57,19 +57,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.claims import holdings, unfinished_work  # noqa: E402
+from docket.claims import AGENT_BRANCH_PREFIX, agent_branch, holdings, unfinished_work  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
 from docket.lines import record_text, split_lines  # noqa: E402
 from docket.model import CLOSED_STATUSES  # noqa: E402
 from docket.store import read_items  # noqa: E402
-from docket.vcs import REMOTE, orphaned, stranded  # noqa: E402
+from docket.vcs import REMOTE, _head_name, orphaned, remote_names, stranded  # noqa: E402
 
 import left_behind_check  # noqa: E402
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
-
-#: The branches read. The harness names every session's branch under it, so the
-#: default branch and any branch the project owner makes are never touched.
-PREFIX = "claude/"
 
 #: Where a swept branch's tip is kept, as `<ARCHIVE>/<branch>/<tip>`. The tip in
 #: the name means a branch swept twice keeps both.
@@ -104,12 +100,16 @@ class Readings:
 
     kept: dict[str, list[str]] = field(default_factory=dict)
     notes: dict[str, list[str]] = field(default_factory=dict)
+    #: The remotes a ref's prefix is stripped against, as `vcs._head_name` strips
+    #: it. `REMOTE` is always among them, so a `git remote` that answered nothing
+    #: cannot file a reason under a name `decide` never looks up.
+    remotes: frozenset[str] = frozenset()
 
     def keep(self, ref: str, why: str) -> None:
-        self.kept.setdefault(ref.removeprefix(f"{REMOTE}/"), []).append(why)
+        self.kept.setdefault(_head_name(ref, self.remotes | {REMOTE}), []).append(why)
 
     def note(self, ref: str, what: str) -> None:
-        self.notes.setdefault(ref.removeprefix(f"{REMOTE}/"), []).append(what)
+        self.notes.setdefault(_head_name(ref, self.remotes | {REMOTE}), []).append(what)
 
 
 @dataclass(frozen=True)
@@ -130,19 +130,27 @@ def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 
 def branches(root: Path) -> list[Branch]:
-    """Every fetched `claude/` branch, oldest last commit first."""
+    """Every fetched agent branch, oldest last commit first.
+
+    The harness names every session's branch under `claims.AGENT_BRANCH_PREFIX`,
+    so the default branch and any branch the project owner makes are never
+    touched. Every fetched branch is listed and `claims.agent_branch` picks,
+    because `for-each-ref`'s pattern is case-sensitive and that test is not.
+    """
     listed = _git(
         root,
         "for-each-ref",
         "--sort=committerdate",
         "--format=%(refname:strip=3)%09%(objectname)%09%(committerdate:unix)",
-        f"refs/remotes/{REMOTE}/{PREFIX}",
+        f"refs/remotes/{REMOTE}/",
     )
     if listed.returncode != 0:
         raise Declined(f"git could not list the fetched branches: {listed.stderr.strip()}")
     found = []
     for line in split_lines(listed.stdout):
         name, tip, stamp = line.split("\t")
+        if not agent_branch(name):
+            continue
         found.append(Branch(name, tip, datetime.fromtimestamp(int(stamp), UTC)))
     return found
 
@@ -284,7 +292,8 @@ def report(verdicts: Sequence[Verdict], failed: dict[str, str], *, applied: bool
     kept = [v for v in verdicts if v.kept]
     verb = "Swept" if applied else "Would sweep (a dry run; --apply pushes)"
     lines = [
-        f"{verb} {len(swept)} of {len(verdicts)} {PREFIX} branches, each kept under {ARCHIVE}/:"
+        f"{verb} {len(swept)} of {len(verdicts)} {AGENT_BRANCH_PREFIX} branches, "
+        f"each kept under {ARCHIVE}/:"
     ]
     for verdict in swept:
         branch = verdict.branch
@@ -310,7 +319,7 @@ def main(argv: Sequence[str] | None = None, *, root: Path = ROOT) -> int:
     )
     args = parser.parse_args(argv)
     now = datetime.now(UTC)
-    readings = Readings()
+    readings = Readings(remotes=remote_names(root))
     try:
         found = branches(root)
         for read in READERS:

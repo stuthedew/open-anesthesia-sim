@@ -3,11 +3,13 @@ id: PL-18ZB
 title: A debt-gate bullet that writes its id as code is read as commentary and never as an entry, and nothing a session reads before writing a gate says so
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: gate-list-integrity
 touches: .claude/skills/docket/modes/release.md
 added: 2026-10-01
+closed: 2026-10-18
+pr: 1547
 payoff: a session writing a gate entry learns before writing it that an id written as code takes the entry off the gate
 verify: grep -qiF 'read as commentary' .claude/skills/docket/modes/release.md
 ---

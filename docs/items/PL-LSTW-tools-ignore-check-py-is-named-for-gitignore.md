@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: infra
-touches: tools/ignore_check.py, Makefile
+touches: tools/ignore_check.py, tests/unit/test_ignore_check.py, Makefile, .github/workflows/quality.yml, tests/unit/test_quality_step_order.py, docket.toml, subprojects/docket/src/docket/verify.py, subprojects/docket/README.md, subprojects/docket/tests/test_verify.py, tests/unit/test_workflow_paths_check.py, tests/unit/test_line_splits.py, tests/unit/test_concentration.py
 added: 2026-09-15
 verify: python3 tools/type_ignore_check.py --help >/dev/null && ! test -e tools/ignore_check.py
 ---
@@ -33,3 +33,14 @@ evaluates in the same shape as its neighbours (`import_boundary_check.py`,
 `core_vocabulary_check.py`); the name is a proposal rather than a finding, and
 any name that does not read as `.gitignore` satisfies the item. `Makefile`'s
 invocation moves with it, and `git mv` keeps the history.
+
+**Touches widened 2026-10-18, and set aside from a batch.** A grep for
+`ignore_check` outside the item store and the release records finds the name
+in twelve files, not two. They include `.github/workflows/quality.yml`,
+`tests/unit/test_quality_step_order.py` (the step name it pins),
+`docket.toml`, the docket subproject's `verify.py`, README and `test_verify.py`,
+and the docstring of `tests/unit/test_concentration.py`, which is a product
+test. `touches:` now names all twelve, so `bin/docket concurrent` can see the
+overlap. The third-place workflow thread claimed it and yielded it unworked,
+because `tests/unit/test_concentration.py` was changing on another open branch
+at the time.

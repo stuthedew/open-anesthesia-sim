@@ -176,3 +176,37 @@ line, the Linux `libegl1` line), `ROADMAP.md` (six citations of the deleted
 module), `docs/WORKING_NOTES.md` (the testing thread and the mockups thread),
 `docs/worker.md` (how a session writes the screenshot),
 `.claude/rules/ui-color.md` (what the checks read), `CONTRIBUTING.md`.
+
+**The numbered decisions, assembled 2026-10-18 from the citations (`PL-FYSQ`).**
+The port's design reply numbered its decisions, and the code cites six of them,
+but the list itself never reached the repository. Each entry below is written
+in the words its citations use, so it records what the code says each decision
+is, not a recollection of the reply. The other numbers were never cited.
+
+- **D2. Widgets decide nothing.** Every string a reader sees, and every rule
+  choosing between two of them, is a pure function in `app/dashboard_frame.py`
+  that tests can hold without a display. The widgets call those functions once
+  per tick and write the results. Cited in `app/dashboard_frame.py`'s module
+  docstring, `app/qt_widgets.py`'s module docstring, `app/run_view.py`'s module
+  docstring and `app/simulation_view.py`'s module docstring.
+- **D4. A slider position is a printed value.** Each slider is an integer
+  `QSlider` whose step is the control's display resolution, decoded through
+  `dashboard_frame.slider_value`, so the number applied to the model is the
+  number beside the thumb. Cited in `app/qt_widgets.py`'s module docstring and
+  its slider class, twice in `app/dashboard_frame.py`, and twice in
+  `tests/unit/test_dashboard_frame.py`.
+- **D6. Hover is the chart's.** `qt_chart` answers whenever the pointer is over
+  a drawn point, running or paused, and the dashboard adds nothing. Cited in
+  `app/simulation_view.py`'s module docstring.
+- **D7. Two cadences, kept apart.** Each run's own `QTimer` steps it and never
+  presents; the dashboard's render timer draws. No wall clock is read. Cited in
+  `app/run_view.py`'s and `app/simulation_view.py`'s module docstrings.
+- **D9. Bare pixel spacings are an interim.** The few pixel spacings inside the
+  stylesheets are accepted until the interface pass (planned-milestone item 33
+  in `ROADMAP.md`) decides the spacing rhythm. Cited in `app/stylesheets.py`'s
+  module docstring and at `_HEADER_BADGE_PADDING` in `app/run_view.py`.
+- **D10. Every colour reaches a widget through a stylesheet.** Colours are
+  `app/theme.py`'s, and `app/stylesheets.py` composes them over the theme name.
+  Both citations pair it with `PL-Y4YX` rather than `PL-25KS`, which moved the
+  composers into `app/stylesheets.py`. Cited in `app/qt_widgets.py`'s and
+  `app/run_view.py`'s module docstrings.

@@ -1412,7 +1412,11 @@ def test_every_slider_endpoint_is_a_setting_the_core_accepts() -> None:
 
 
 def _controller_on_a_machine_declaring(
-    monkeypatch: pytest.MonkeyPatch, minimum_l_min: float, maximum_l_min: float
+    monkeypatch: pytest.MonkeyPatch,
+    minimum_l_min: float | None,
+    maximum_l_min: float | None,
+    *,
+    opening_flow_l_min: float = 4.0,
 ) -> SimulationController:
     """A controller whose machine profile declares a deliverable fresh gas flow range.
 
@@ -1420,8 +1424,10 @@ def _controller_on_a_machine_declaring(
     the range added and nothing else changed, parsed as the loader parses it,
     and handed to `AgentUptakeSystem.for_agent()` by replacing the loader it
     calls - the route `tests/unit/test_circuit.py` hands it another profile by,
-    until `PL-2FZ9` lets a run name its machine. The shipped profile opens the
-    run at 4.0 L/min, so each range here holds that flow.
+    until `PL-2FZ9` lets a run name its machine. A range of two `None`s keeps
+    the shipped profile's undeclared range. The shipped profile opens the run
+    at 4.0 L/min, so each range here holds that flow, and `opening_flow_l_min`
+    states another opening flow in its place.
     """
 
     payload = json.loads(
@@ -1429,10 +1435,14 @@ def _controller_on_a_machine_declaring(
         .joinpath("reference_circle_system.json")
         .read_text(encoding="utf-8")
     )
-    payload["deliverable_fresh_gas_flow_range"] = {
-        "minimum_l_min": minimum_l_min,
-        "maximum_l_min": maximum_l_min,
-    }
+    payload["default_fresh_gas_flow_l_min"] = opening_flow_l_min
+
+    if minimum_l_min is not None and maximum_l_min is not None:
+        payload["deliverable_fresh_gas_flow_range"] = {
+            "minimum_l_min": minimum_l_min,
+            "maximum_l_min": maximum_l_min,
+        }
+
     machine = parse_breathing_circuit_parameters(payload)
     monkeypatch.setattr(uptake_system, "load_reference_circle_system_parameters", lambda: machine)
 
@@ -1543,6 +1553,101 @@ def test_the_no_step_refusal_is_pinned_whole() -> None:
         "Fresh gas flow can offer no setting: no 0.1 L/min step lies inside 0.52 to 0.58 "
         'L/min, the range the run accepts (docs/MODEL.md, "Supported input ranges")'
     )
+
+
+@pytest.mark.parametrize(
+    ("minimum_l_min", "maximum_l_min", "opening_flow_l_min", "refusal"),
+    (
+        # Between two 0.1 L/min steps: the slider would sit at 2.2, since
+        # `slider_position` rounds half to even, and the readout would print
+        # 2.2 over a run at 2.25.
+        (
+            None,
+            None,
+            2.25,
+            "Fresh gas flow is 2.25 L/min, which the slider cannot show: it offers 0.1 L/min "
+            "steps from 0.0 to 10.0 L/min, so a machine profile must open the run on one of "
+            "those steps (docs/MODEL.md, \"The model's envelope and a machine's deliverable "
+            'range are two claims")',
+        ),
+        # The floor of a range declared off the grid: the run accepts 0.25,
+        # but the slider's floor is the step just inside, 0.3, and the readout
+        # would print 0.2 beside it.
+        (
+            0.25,
+            8.75,
+            0.25,
+            "Fresh gas flow is 0.25 L/min, which the slider cannot show: it offers 0.1 L/min "
+            "steps from 0.3 to 8.7 L/min, so a machine profile must open the run on one of "
+            "those steps (docs/MODEL.md, \"The model's envelope and a machine's deliverable "
+            'range are two claims")',
+        ),
+    ),
+)
+def test_an_opening_fresh_gas_flow_off_the_slider_grid_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+    minimum_l_min: float | None,
+    maximum_l_min: float | None,
+    opening_flow_l_min: float,
+    refusal: str,
+) -> None:
+    """A profile cannot open the run at a flow its slider and readout cannot both show (`PL-1KQ9`).
+
+    The run accepts each of these flows, so the core opens it there. The
+    controls are what refuse it, as the dashboard builds them, because a
+    slider position is a printed value (`PL-25KS`, decision D4), and a slider
+    standing at a neighbouring step beside a rounded readout would show a
+    flow the run does not hold. The whole sentence is pinned, since it is
+    what the reader sees in place of a dashboard.
+    """
+
+    controller = _controller_on_a_machine_declaring(
+        monkeypatch, minimum_l_min, maximum_l_min, opening_flow_l_min=opening_flow_l_min
+    )
+
+    assert controller.snapshot().fresh_gas_flow_l_min == opening_flow_l_min
+
+    with pytest.raises(ValueError) as refused:
+        setting_readouts(controller.snapshot())
+
+    assert str(refused.value) == refusal
+
+
+@pytest.mark.parametrize(
+    ("minimum_l_min", "maximum_l_min", "opening_flow_l_min"),
+    (
+        (None, None, 2.3),
+        (None, None, 0.1),
+        (None, None, 10.0),
+        (0.25, 8.75, 0.3),
+        (0.25, 8.75, 8.7),
+    ),
+)
+def test_an_opening_fresh_gas_flow_on_the_slider_grid_opens(
+    monkeypatch: pytest.MonkeyPatch,
+    minimum_l_min: float | None,
+    maximum_l_min: float | None,
+    opening_flow_l_min: float,
+) -> None:
+    """An opening flow on one of the slider's steps opens, at each end of the offered range too.
+
+    The slider stands on the stated flow and the readout prints it, which is
+    the property the refusal above protects.
+    """
+
+    controller = _controller_on_a_machine_declaring(
+        monkeypatch, minimum_l_min, maximum_l_min, opening_flow_l_min=opening_flow_l_min
+    )
+    fresh_gas_flow = _settings_by_control(controller.snapshot())[ControlInput.FRESH_GAS_FLOW]
+
+    assert fresh_gas_flow.value == opening_flow_l_min
+    assert (
+        slider_value(
+            slider_position(fresh_gas_flow.value, fresh_gas_flow.decimals), fresh_gas_flow.decimals
+        )
+        == opening_flow_l_min
+    )
+    assert fresh_gas_flow.value_text == f"{opening_flow_l_min:.1f} L/min"
 
 
 @pytest.mark.parametrize(

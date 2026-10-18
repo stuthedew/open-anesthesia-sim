@@ -50,9 +50,6 @@ LAZY_ENTRY = (
     "part of that entry and the list walker does not; indent it to keep it in the entry, "
     "or put a blank line before it"
 )
-#: A list item's marker and the gap after it (CommonMark 0.31.2 § 5.2), which an
-#: entry's text is read without.
-ENTRY_MARKER_RE = re.compile(r" {0,3}(?:[-+*]|\d{1,9}[.)])(?:[ \t]+|$)")
 #: Where a sentence of prose ends: its stop, any closing emphasis, code,
 #: parenthesis or bracket, and the space after it. A soft break is a space.
 SENTENCE_BREAK = re.compile(r"[.!?][*`)\]]*\s")
@@ -117,8 +114,10 @@ def table_rows(text: str, heading: str, level: int = 2) -> Iterator[tuple[int, l
 # copies of it would drift, and the drift would be in the one document that
 # says which release is current.
 VERSION_TABLE_HEADING = "Versioning decision"
-# The status cell marking a release as shipped. Matched as a substring: this
-# project writes "Completed / current baseline" on the row it is standing on.
+# The status cell marking a release as shipped. Matched as a substring, and
+# casefolded as `BASELINE_MARK` is: this project writes "Completed / current
+# baseline" on the row it is standing on, and a hand-written `completed` is the
+# same claim. `VersionRow.is_completed` is the one reading of it (`PL-5H48`).
 COMPLETED = "Completed"
 BASELINE_MARK = "current baseline"
 BASELINE_HEADING_RE = re.compile(rf"^Current baseline:\s*v?(?P<version>{SEMVER_PATTERN})\b")
@@ -135,6 +134,16 @@ class VersionRow:
     @property
     def is_baseline(self) -> bool:
         return BASELINE_MARK in self.status.casefold()
+
+    @property
+    def is_completed(self) -> bool:
+        """Whether the row records its release as shipped, in any case.
+
+        docket and `doc_check` both ask this. Until `PL-5H48` docket matched
+        `Completed` exactly and `doc_check` casefolded, so a status cell
+        `completed` was untagged to the one and unreleased to the other.
+        """
+        return COMPLETED.casefold() in self.status.casefold()
 
 
 def parse_version_table(text: str) -> list[VersionRow]:
@@ -161,7 +170,7 @@ def released_versions(rows: Iterable[VersionRow]) -> frozenset[str]:
     a substring, so a second copy would be a second place for the substring to
     drift.
     """
-    return frozenset(row.version for row in rows if COMPLETED in row.status)
+    return frozenset(row.version for row in rows if row.is_completed)
 
 
 def baseline_heading(text: str) -> tuple[int, str] | None:
@@ -499,6 +508,12 @@ class MilestoneSection:
     #: not read whole - `tools/doc_check.py` fails each line, and `wave` and the
     #: digest say so.
     unread: tuple[UnreadEntry, ...] = ()
+    #: The 1-based line of the `Required scope` heading the ids above are read
+    #: under, or 0 where the section has none. A section holding two such
+    #: headings is read under the last, and `tools/doc_check.py` cites this line
+    #: rather than finding a heading of its own, which found the first
+    #: (`PL-5H48`).
+    scope_line: int = 0
 
     @property
     def label(self) -> str:
@@ -594,7 +609,9 @@ def _scope_ids(entries: Sequence[GateEntry], scope_ids: Iterable[str]) -> tuple[
     return _deduped([identifier for entry in entries for identifier in entry.ids] + list(scope_ids))
 
 
-def _entry_text(lines: Sequence[str], first: int, end: int, prose: Collection[int]) -> str:
+def _entry_text(
+    lines: Sequence[str], bare: Sequence[str], first: int, end: int, prose: Collection[int]
+) -> str:
     """An entry's span of `lines` joined into one line, less its marker: the lines of its prose.
 
     The text a `GateEntry` and a `ScopeEntry` carry. Every line of the entry is
@@ -605,9 +622,12 @@ def _entry_text(lines: Sequence[str], first: int, end: int, prose: Collection[in
     too, since CommonMark reads both as the entry's (`PL-YSMD`); a fence, an
     indented code block and an HTML block inside it do not, holding a literal or
     a comment, so only its prose blocks are read (`PL-KR6M`).
+
+    The marker is the one `markdown` reads its item open on, blanked in `bare`,
+    the entry's lines as `markdown.unmarked` gives them: a second spelling of
+    it here parted from `markdown`'s on a thematic break (`PL-NNVJ`).
     """
-    marker = ENTRY_MARKER_RE.match(lines[first])
-    parts = [lines[first][marker.end() if marker else 0 :].strip()] if first in prose else []
+    parts = [bare[first].strip()] if first in prose else []
     parts.extend(lines[index].strip() for index in range(first + 1, end) if index in prose)
     return " ".join(part for part in parts if part)
 
@@ -789,7 +809,7 @@ def _gate_entries(
     for first, end in spans:
         ids = leading_ids(next(prose.within(first, end), ""))
         if ids:
-            text = _entry_text(lines, first, end, prose_lines)
+            text = _entry_text(lines, prose.bare, first, end, prose_lines)
             entries.append(GateEntry(line=first + 1, ids=ids, text=text))
     return tuple(entries), declined
 
@@ -811,7 +831,7 @@ def _scope_entries(
     for first, end in spans:
         statements = list(prose.within(first, end))
         ids = _deduped(identifier for text in statements for identifier in _declared_ids(text))
-        text = _entry_text(lines, first, end, prose_lines)
+        text = _entry_text(lines, prose.bare, first, end, prose_lines)
         entries.append(
             ScopeEntry(line=first + 1, ids=ids, text=text, lead=statements[0] if statements else "")
         )
@@ -865,6 +885,7 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
                 excluded_ids=_deduped(_subsection_ids(lines, excluded)) if excluded else (),
                 scope_entries=scope_entries,
                 unread=gate_unread + scope_unread,
+                scope_line=scope or 0,
             )
         )
 
@@ -1007,7 +1028,7 @@ def milestone_states(text: str) -> MilestoneStates:
     known.update(_rendered(section.version) for section in sections)
 
     cleared = {_rendered(section.version) for section in sections if section.is_scoped}
-    released = {f"v{row.version}" for row in parse_version_table(text) if COMPLETED in row.status}
+    released = {f"v{version}" for version in released_versions(parse_version_table(text))}
     known.update(released)
     cleared.update(released)
     claimed = {
@@ -1084,9 +1105,12 @@ class GateStatus:
     #: cannot honestly ask for before the milestone begins.
     #:
     #: Disjoint from `blocked_outside`, which is computed first and wins. An
-    #: entry that is milestone work *and* waits on work off the list is not
-    #: something the milestone can simply clear, and filing it under this
-    #: heading would hide the constraint behind the reassuring half of it.
+    #: entry that is milestone work *and* waits on work outside the milestone
+    #: is not something the milestone can simply clear, and filing it under
+    #: this heading would hide the constraint behind the reassuring half of it.
+    #: An entry waiting only on work the same `Required scope` names, at every
+    #: depth, is here rather than there, since implementing the milestone
+    #: clears what it waits on too (`PL-W9BK`).
     self_cleared: tuple[GateEntry, ...]
     #: Ids the gate names that the store does not hold. A gate cannot be shown
     #: clear while one of these stands: the entry may be a typo or a file that
@@ -2154,7 +2178,7 @@ def gate_status(
         )
         if frontier:
             outside[entry] = frontier
-    blocked_outside = tuple(entry for entry in outstanding if entry in outside)
+    waiting = tuple(entry for entry in outstanding if entry in outside)
     prerequisites = {
         entry: frozenset().union(
             *(
@@ -2163,8 +2187,26 @@ def gate_status(
                 if identifier not in closed_ids
             )
         )
-        for entry in blocked_outside
+        for entry in waiting
     }
+    own_scope = frozenset(milestone.own_scope_ids)
+    # An entry the milestone's `Required scope` names, waiting at every depth
+    # only on work that scope also names, is cleared by implementing the
+    # milestone, so it is not blocked *outside* anything (`PL-W9BK`). It falls
+    # through to `self_cleared` below, which is the bucket the roadmap's own
+    # "Cleared by" group, held to Required scope by `tools/doc_check.py`, puts
+    # it in. `PL-FD5Q` drew the same line for the blockers themselves.
+    within_scope = {
+        entry
+        for entry in waiting
+        if prerequisites[entry] <= own_scope
+        and all(
+            identifier in closed_ids or (identifier in known_ids and identifier in own_scope)
+            for identifier in entry.ids
+        )
+    }
+    blocked_outside = tuple(entry for entry in waiting if entry not in within_scope)
+    prerequisites = {entry: prerequisites[entry] for entry in blocked_outside}
     sequenced: list[Sequenced] = []
     gate_row = train.row(milestone) if train is not None else None
     if train is not None and gate_row is not None:
@@ -2174,7 +2216,6 @@ def gate_status(
             if len(ahead) == len(rows):
                 sequenced.append(Sequenced(entry=entry, row=train.steps[max(ahead)].label))
     held = set(blocked_outside) | excused
-    own_scope = frozenset(milestone.own_scope_ids)
     # Every *open* id, rather than every id: an entry holding a closed id and an
     # open one is asked only for the half that is left. An unknown id counts
     # against it, because an id the store cannot place is not one the milestone

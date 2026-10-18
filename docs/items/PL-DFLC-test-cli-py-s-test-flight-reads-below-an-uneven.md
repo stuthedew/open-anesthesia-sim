@@ -3,11 +3,13 @@ id: PL-DFLC
 title: test_cli.py's test_flight_reads_below_an_uneven_horizon_by_the_landed_prefix docstring says claims._landed_through asks whether the branch's work up to a commit is content the base already holds, and since PL-927J it asks whether the base wrote it since the commit's own fork
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: pre-fork-content
 touches: subprojects/docket/tests/test_cli.py
 added: 2026-09-27
+closed: 2026-10-18
+pr: 1555
 payoff: the docstring on a test of the landed-content read explains the question the code actually asks
 verify: ! grep -qF 'content the base already holds (`claims._landed_through`)' subprojects/docket/tests/test_cli.py
 ---

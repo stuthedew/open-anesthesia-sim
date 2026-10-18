@@ -3,11 +3,13 @@ id: PL-7WNJ
 title: A quality job GitHub never gives a runner is cancelled at the 15-minute timeout with no steps and runner_id 0, which reads as a hang in the code - main's runs 4805 and 4809 and #1379's 4807 died that way on 2026-10-05, and a session diagnosing red main read the first as the timeout firing on a hung check
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-05
+closed: 2026-10-18
+pr: 1538
 payoff: A red main whose job never got a runner stops being read as code hanging at the 15-minute timeout, so no session root-causes a tree that never ran.
 verify: grep -q 'def test_names_a_job_no_runner_took_as_nothing_ran' tests/unit/test_main_ci_status.py
 ---
@@ -83,3 +85,13 @@ verdict) and `PL-T83R` (closed 2026-09-20, a replay failure is the queue, not
 the tree), both in the same tool. Neither fix should have covered a run
 concluding `failure`, so this is not a re-entry: a one-off. A fourth reading
 of "which runs judged the tree" would make the three a head.
+
+**Built 2026-10-18.** `idle_jobs` in `tools/main_ci_status.py` names each job
+with a `runner_id` of integer 0 and no steps, and `advisory` takes them. When
+no other step failed, the line says no runner took the job, so nothing ran, and
+asks for a re-run rather than a fix. Beside a real failure it names the steps as
+before and adds that the idle jobs ran nothing. The queue reading is withheld
+while any job is idle. Against the code before the fix,
+`uv run pytest "tests/unit/test_main_ci_status.py::TestIdleJobs::test_names_a_job_no_runner_took_as_nothing_ran"`
+failed with the old line: "main's quality run #4805 on b67dace8 concluded
+failure - main is red and no pull request will show it."

@@ -37,6 +37,7 @@ from docket.roadmap import (
     parse_milestones,
     parse_timeline,
     parse_version_table,
+    released_versions,
     scope_status,
     wave,
 )
@@ -476,6 +477,38 @@ def test_an_entry_the_milestone_names_and_a_later_release_holds_reads_as_blocked
     assert len(plan.gate.clearable) + len(plan.gate.self_cleared) + len(
         plan.gate.blocked_outside
     ) == len(plan.gate.outstanding)
+
+
+def test_an_entry_waiting_only_on_its_milestones_own_scope_is_cleared_by_it() -> None:
+    """`PL-W9BK`: work the milestone's `Required scope` names is cleared by implementing it.
+
+    `PL-SLF9` is in that scope and waits on `PL-MNPQ`, which the scope also
+    names, so nothing it waits on lies outside the milestone. `wave` read 11
+    such v0.6.0 entries as blocked outside the gate, where the roadmap's own
+    "Cleared by" group put all 14. One more link to work outside the scope, at
+    any depth, still holds it outside.
+    """
+    inside = _wave(
+        "0.2.5",
+        frozenset(),
+        roadmap=SELF_CLEARING,
+        blockers={"PL-SLF9": ("PL-MNPQ",)},
+        known=SELF_KNOWN,
+    )
+    assert inside.gate is not None
+    assert [entry.ids for entry in inside.gate.self_cleared] == [("PL-SLF9",)]
+    assert inside.gate.blocked_outside == () and not inside.gate.prerequisites
+
+    beyond = _wave(
+        "0.2.5",
+        frozenset(),
+        roadmap=SELF_CLEARING,
+        blockers={"PL-SLF9": ("PL-MNPQ",), "PL-MNPQ": ("PL-QRST",)},
+        known=SELF_KNOWN,
+    )
+    assert beyond.gate is not None
+    assert [entry.ids for entry in beyond.gate.blocked_outside] == [("PL-SLF9",)]
+    assert not beyond.gate.self_cleared
 
 
 def test_the_wave_block_names_what_the_milestone_clears_itself() -> None:
@@ -1663,6 +1696,39 @@ def test_a_completed_release_is_cleared_without_a_scoped_section() -> None:
     states = milestone_states(MILESTONE_STATES_ROADMAP)
 
     assert states.is_known("v0.4.0") and states.is_cleared("v0.4.0")
+
+
+def test_a_lowercase_completed_row_is_released_to_docket_as_to_doc_check() -> None:
+    """`PL-5H48`: docket matched `Completed` exactly and `doc_check` casefolded.
+
+    So a hand-written `completed` cell made `doc_check` demand a tag for a
+    release that docket read as never shipped. Both now ask
+    `VersionRow.is_completed`.
+    """
+    text = MILESTONE_STATES_ROADMAP.replace("| v0.4.0 | Completed |", "| v0.4.0 | completed |")
+    rows = parse_version_table(text)
+
+    assert [row.version for row in rows if row.is_completed] == ["0.4.0"]
+    assert released_versions(rows) == {"0.4.0"}
+    assert milestone_states(text).is_cleared("v0.4.0")
+
+
+def test_two_required_scope_headings_record_the_line_they_are_read_under() -> None:
+    """`PL-5H48`: the ids come from the last heading, and the line cited is that one's.
+
+    `doc_check` found a heading of its own and cited the first, so an error
+    pointed at a heading whose ids were not the ones it named.
+    """
+    text = MILESTONE_STATES_ROADMAP.replace(
+        "### Definition of done",
+        "### Required scope\n\n- **A second list** (queue item PL-GS3R).\n\n### Definition of done",
+    )
+    (section,) = [s for s in parse_milestones(text) if s.version == (0, 5, 0)]
+    lines = text.splitlines()
+
+    assert section.own_scope_ids == ("PL-GS3R",)
+    assert lines[section.scope_line - 1] == "### Required scope"
+    assert "A second list" in lines[section.scope_line + 1]
 
 
 def test_a_patch_track_and_a_gate_are_not_milestones() -> None:

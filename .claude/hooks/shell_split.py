@@ -122,14 +122,25 @@ _DOCKET = os.path.normpath(
 if _DOCKET not in sys.path:
     sys.path.insert(0, _DOCKET)
 
-from docket.shell import (  # noqa: E402
+# The wrapper grammar, `basename`, `invocation`, `is_python` and `python_operand` are
+# docket's, so `verify`, `checks` and the guards read past a wrapper and into a
+# Python interpreter's arguments by one grammar (`PL-RHPK`). The guards ask for
+# `invocation`, `is_python` and `python_operand` here.
+from docket.shell import (  # noqa: E402, F401
     HEADS,
     REDIRECTIONS,
+    WRAPPERS,
     Assignment,
     Descriptor,
+    Grammar,
     Operator,
     Reserved,
+    basename,
     flat_reading,
+    invocation,
+    is_python,
+    python_operand,
+    run_by,
 )
 
 
@@ -155,63 +166,6 @@ SEPARATORS = {
     for operator in HEADS - {"("}
 }
 
-# A Python interpreter, named bare or by its basename: `python`, `python3`,
-# `python3.11`. The floor and gate guards both ask it (`PL-Y3TZ`).
-PYTHON = re.compile(r"^python(?:3(?:\.\d+)?)?$")
-
-# The options a Python interpreter reads ahead of what it runs (`python3
-# --help`). `-W` and `-X` take a value, glued on or in the next word, and
-# `--check-hash-based-pycs` takes one in the next word. `-c` and `-m` end the
-# options and take what they run in the same two ways: a string of code, or a
-# module.
-PYTHON_VALUED = "WX"
-PYTHON_RUNS = "cm"
-
-
-def python_operand(arguments: list[str]) -> tuple[str, str, int]:
-    """What a Python interpreter given `arguments` runs, and where the words it passes on start.
-
-    Returns a kind, an operand and an index into `arguments`. The kind is `-c`
-    for a string of code, `-m` for a module, `-` for a script read from standard
-    input, `file` for a script named by path, and an empty string where the
-    options use up every word, which also reads standard input. The operand is
-    the code, the module or the script's path, and is empty for the last two
-    kinds. The index is that of the first word Python hands what it runs as
-    `sys.argv[1:]`. Python never parses those words itself, so the floor and
-    gate guards both read an invocation through this (`PL-6X0C`, `PL-CDZ8`).
-    `--` ends the options, so the word after it is a script even when it starts
-    with `-`, unless it is `-` itself.
-    """
-    index = 0
-    while index < len(arguments):
-        token = arguments[index]
-        if not token.startswith("-") or token == "-":
-            break
-        index += 1
-        if token == "--":
-            break
-        if token == "--check-hash-based-pycs":
-            index += 1
-        if token.startswith("--"):
-            continue
-        for position, flag in enumerate(token[1:], 1):
-            glued = token[position + 1 :]
-            if flag in PYTHON_RUNS:
-                if glued:
-                    return "-" + flag, glued, index
-                operand = arguments[index] if index < len(arguments) else ""
-                return "-" + flag, operand, index + 1
-            if flag in PYTHON_VALUED:
-                if not glued:
-                    index += 1
-                break
-    if index >= len(arguments):
-        return "", "", len(arguments)
-    if arguments[index] == "-":
-        return "-", "", index + 1
-    return "file", arguments[index], index + 1
-
-
 # What makes bash read a word written bare as something else: a blank splits
 # it, a quote or a backslash is read as quoting, an operator character ends it,
 # and a `#` can open a comment. A `$`, a backtick and the glob characters are
@@ -225,110 +179,10 @@ NEEDS_QUOTES = re.compile(r"[\s'\"\\&|;()<>#]")
 EXPANDS = re.compile(r"[$`{]")
 
 
-class Grammar:
-    """How one wrapper reads the words ahead of the command it runs, as GNU getopt reads them.
-
-    A plain class rather than a `NamedTuple`, whose `typing` would cost every
-    guard's import on every Bash call (`PL-JNYL`).
-    """
-
-    def __init__(
-        self,
-        valued: str = "",
-        optional: str = "",
-        flags: str = "",
-        long_valued: tuple[str, ...] = (),
-        long_other: tuple[str, ...] = (),
-        stops: frozenset[str] = frozenset(("help", "version")),
-        operands: int = 0,
-    ) -> None:
-        # Short options whose value is the rest of the word, or else the next word.
-        self.valued = valued
-        # Short options whose value is only ever the rest of the word.
-        self.optional = optional
-        # Short options taking no value, which a bundle may run on after.
-        self.flags = flags
-        # Long options whose value follows an `=`, or else is the next word; each
-        # may be abbreviated to any prefix no other long option shares.
-        self.long_valued = long_valued
-        # Long options taking a value only after an `=`, and those taking none.
-        self.long_other = long_other
-        # Options after which no program is read: one that describes a command
-        # rather than running it, or one that runs a string this does not split.
-        self.stops = stops
-        # The words read between the options and the command: a duration.
-        self.operands = operands
-
-
-# The programs that run a command named after their own options, finding it on
-# PATH as bash would, from `timeout --help`, `env --help`, `nice --help` and
-# `nohup --help` in coreutils 9.4, `xargs --help` in findutils 4.9.0, and `help
-# command` and `help exec` in bash 5.2.21, each spelling run to see which word
-# it ran (`PL-TRMN`). Every one stops reading options at its first word that is
-# not one, so an option after the command is the command's: `timeout 5 echo -s
-# x` prints `-s x`.
-WRAPPERS = {
-    "timeout": Grammar(
-        valued="ks",
-        flags="v",
-        long_valued=("kill-after", "signal"),
-        long_other=("foreground", "preserve-status", "verbose"),
-        operands=1,
-    ),
-    "env": Grammar(
-        valued="uCS",
-        flags="i0v",
-        long_valued=("unset", "chdir", "split-string"),
-        long_other=(
-            "ignore-environment",
-            "null",
-            "block-signal",
-            "default-signal",
-            "ignore-signal",
-            "list-signal-handling",
-            "debug",
-        ),
-        stops=frozenset(("help", "version", "S", "split-string")),
-    ),
-    "nice": Grammar(valued="n", long_valued=("adjustment",)),
-    "nohup": Grammar(),
-    "xargs": Grammar(
-        valued="adEILnPs",
-        optional="eil",
-        flags="0oprtx",
-        long_valued=(
-            "arg-file",
-            "delimiter",
-            "max-lines",
-            "max-args",
-            "max-procs",
-            "max-chars",
-            "process-slot-var",
-        ),
-        long_other=(
-            "null",
-            "eof",
-            "replace",
-            "open-tty",
-            "interactive",
-            "no-run-if-empty",
-            "show-limits",
-            "verbose",
-            "exit",
-        ),
-    ),
-    # `command -v` and `-V` describe the command and run nothing.
-    "command": Grammar(flags="p", stops=frozenset(("help", "v", "V"))),
-    "exec": Grammar(valued="a", flags="cl"),
-}
-
 # The builtins that run another builtin in this shell (`help command` and `help
 # builtin` in bash 5.2.21): `command` by its grammar as a wrapper, and `builtin`,
 # which refuses any option but `--`. Named bare, since a path names a program.
 RUN_A_BUILTIN = {"command": WRAPPERS["command"], "builtin": Grammar()}
-
-# `nice`'s older spelling of an adjustment: `nice -5` and `nice --5`.
-NICE_ADJUSTMENT = re.compile(r"^-[-+]?\d")
 
 
 def words(command: str) -> list[str] | None:
@@ -449,8 +303,8 @@ def program_words(segment: list[str]) -> Command:
     """
     rest, _ = _lift(command_words(segment))
     wrappers: list[str] = []
-    while rest and _basename(rest[0]) in WRAPPERS:
-        wrappers.append(_basename(rest[0]))
+    while rest and basename(rest[0]) in WRAPPERS:
+        wrappers.append(basename(rest[0]))
         rest = _run_by(rest, WRAPPERS)
     return Command(rest, tuple(wrappers))
 
@@ -519,66 +373,10 @@ def _lift(words: list[str]) -> tuple[list[str], list[tuple[str, str, str]]]:
     return kept, lifted
 
 
-def _basename(word: str) -> str:
-    return word.rsplit("/", 1)[-1]
-
-
-def _long_option(grammar: Grammar, written: str) -> str | None:
-    """The long option `written` names, whole or as an abbreviation getopt accepts, or None."""
-    names = (*grammar.long_valued, *grammar.long_other, "help", "version")
-    if written in names:
-        return written
-    matching = [name for name in names if name.startswith(written)]
-    return matching[0] if len(matching) == 1 else None
-
-
 def _run_by(words: list[str], grammars: dict[str, Grammar]) -> list[str]:
-    """The words of the command the word opening `words` runs, read by its grammar in `grammars`.
-
-    Or [] where it runs none, as `program_words` and `builtin_words` say.
-    """
-    name = _basename(words[0])
-    grammar = grammars[name]
-    at = 1
-    while at < len(words):
-        word = words[at]
-        if isinstance(word, Operator) or not word.startswith("-") or word == "-":
-            break
-        at += 1
-        if word == "--":
-            break
-        if name == "nice" and NICE_ADJUSTMENT.match(word):
-            continue
-        if word.startswith("--"):
-            written, equals, _ = word[2:].partition("=")
-            option = _long_option(grammar, written)
-            if option is None or option in grammar.stops:
-                return []
-            if option in grammar.long_valued and not equals:
-                at += 1
-            continue
-        for position, letter in enumerate(word[1:], 2):
-            if letter in grammar.stops:
-                return []
-            if letter in grammar.valued:
-                # The value is the rest of the word, or the next word if none is left.
-                if position == len(word):
-                    at += 1
-                break
-            if letter in grammar.optional:
-                break
-            if letter not in grammar.flags:
-                return []
-    if name == "env":
-        # A lone `-` is `-i`, and each `NAME=VALUE` sets the command's environment.
-        if at < len(words) and words[at] == "-":
-            at += 1
-        while at < len(words) and "=" in words[at] and not isinstance(words[at], Operator):
-            at += 1
-    at += grammar.operands
-    if at >= len(words) or isinstance(words[at], Operator):
-        return []
-    return words[at:]
+    """The words of the command the word opening `words` runs, or [] where it runs none."""
+    at = run_by(words, grammars)
+    return [] if at is None else words[at:]
 
 
 def commands(command: str) -> list[Command]:

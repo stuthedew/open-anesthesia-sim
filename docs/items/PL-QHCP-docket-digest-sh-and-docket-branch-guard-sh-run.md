@@ -3,11 +3,13 @@ id: PL-QHCP
 title: docket-digest.sh and docket-branch-guard.sh run bin/docket with 2>/dev/null, so the one-line Python-floor refusal PL-LKGW added reaches a person at a terminal and never a session: a session whose python3 is below 3.11 still starts with no digest and nothing saying why
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
-touches: .claude/hooks/docket-digest.sh, .claude/hooks/docket-branch-guard.sh, tests/unit/test_docket_digest_hook.py, tests/unit/test_docket_branch_guard.py
+touches: .claude/hooks/docket-digest.sh, .claude/hooks/docket-branch-guard.sh, tests/unit/test_docket_digest_hook.py, tests/unit/test_docket_branch_guard.py, tools/ignore_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-26 triage pass
 added: 2026-09-26
+closed: 2026-10-18
+pr: 1551
 payoff: a session on a python3 below 3.11 is told at start which interpreter to fix, instead of starting with no digest and no reason
 verify: grep -q 'def test_a_python_below_the_floor_is_named_at_session_start' tests/unit/test_docket_digest_hook.py && grep -q 'def test_branch_guard_names_a_python_below_the_floor' tests/unit/test_docket_branch_guard.py
 ---

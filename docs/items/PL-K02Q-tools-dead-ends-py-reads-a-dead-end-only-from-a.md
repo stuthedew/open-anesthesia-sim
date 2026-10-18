@@ -3,11 +3,13 @@ id: PL-K02Q
 title: tools/dead_ends.py reads a dead end only from a bullet opening with a dash at column 0, so one written with a star or plus bullet, or indented one to three spaces, is neither shown in the session-start digest nor checked, with nothing reported; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tools/dead_ends.py, tests/unit/test_dead_ends.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
+closed: 2026-10-18
+pr: 1548
 payoff: A dead end written in any bullet form CommonMark opens reaches the digest and the id check, or is refused by name, instead of vanishing
 verify: grep -q 'def test_an_entry_in_every_bullet_form_is_read_or_refused' tests/unit/test_dead_ends.py
 ---
@@ -52,3 +54,5 @@ fact, so this is a one-off, worth one pass with it.
 **Done when.** `dead_ends` reads an entry in every bullet form CommonMark gives
 one, or refuses an unread bullet by name as `PL-F5B9` does for a wrapped title,
 pinned by a test for each form above.
+
+**Built 2026-10-18.** `OPENING` now matches a dash, plus or star after up to three spaces; `ENTRY` still reads only the dash at the margin, so every other form is refused by name. Before the fix, the five new tests failed: `uv run pytest -q tests/unit/test_dead_ends.py -k "every_bullet_form or nested_under"` gave `5 failed`.

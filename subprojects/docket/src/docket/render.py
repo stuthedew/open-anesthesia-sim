@@ -110,6 +110,7 @@ from .vcs import (
     SettledReport,
     SinceFiled,
     Snapshot,
+    StrandedItem,
     StrandedReport,
     TouchedPath,
     only_on_a_branch,
@@ -677,12 +678,7 @@ def format_digest(
     # on, as `PL-LFNK`'s live digest did.
     unnamed = [item for item in stranded.items if item.identifier not in filed] if stranded else []
     if unnamed:
-        named = ", ".join(f"{item.identifier} ({_gloss(item.title)})" for item in unnamed[:2])
-        rest = f", +{len(unnamed) - 2} more" if len(unnamed) > 2 else ""
-        lines.append(
-            f"  Only on a branch, not in this checkout: {named}{rest}. "
-            "`bin/docket stranded` to recover."
-        )
+        lines.append(f"  {_only_on_a_branch(unnamed)}")
     if orphaned is not None and orphaned.branches:
         first = orphaned.branches[0]
         rest = f", +{len(orphaned.branches) - 1} more" if len(orphaned.branches) > 1 else ""
@@ -1292,27 +1288,37 @@ def format_flight(
             # without being sent anywhere (`PL-3CTW`).
             filed = only_on_a_branch(branch.item_id, on_base=branch.on_base, here=here)
             mark = "  filed there" if filed else ""
+            # The holder's session token, as the claim records it (`PL-6WYD`):
+            # `get_session` on it says whether that session is still running,
+            # which no age can.
+            hold = held.get(branch.item_id)
+            token = f"  session {hold.session}" if hold is not None and hold.session else ""
             row = (
                 f"{branch.item_id}  {branch.name:<{width}}  {kind}"
-                f"{ages[branch.name]:<{age_width}}{_review(branch.name, reviews)}{mark}"
+                f"{ages[branch.name]:<{age_width}}{_review(branch.name, reviews)}{mark}{token}"
             )
             lines.append(row.rstrip())
         lines.append("")
         lines.append(
             "A branch outlives its session, so no row here says anybody is still on it: "
-            "the age is how long it has sat."
+            f"the age is how long it has sat, and `{LIVE}` means only that a hold is inside "
+            f"its {LEASE_TERM.days}-day lease."
         )
         if reviews is not None and reviews.asked:
             lines.append(
                 "With a pull request open, the work is written and waits on review. With "
                 "none, a branch minutes old is usually a session still working - but one "
-                "whose session has ended reads the same until its age grows, and nothing "
-                "a checkout can read tells the two apart sooner."
+                "whose session has ended reads the same until its age grows."
             )
         else:
             lines.append(
                 "Whether a pull request is open for any of them could not be read here, so "
                 "work waiting on review reads the same as work still being written."
+            )
+        if any((hold := held.get(branch.item_id)) and hold.session for branch in live):
+            lines.append(
+                "`get_session` on a row's session token says whether the session that claimed "
+                "it is still running."
             )
         if any(
             only_on_a_branch(branch.item_id, on_base=branch.on_base, here=here) for branch in live
@@ -2219,6 +2225,11 @@ def _one_claim(only: Hold, item: str, read: Holdings, now: datetime) -> list[str
         *lines,
         f"  That branch has claimed {item}, so starting it here would redo its work.",
         "  A branch outlives its session, so this does not say anybody is still on it;",
+        *(
+            ["  `get_session` on the session token above says whether it is still running, and"]
+            if only.session
+            else []
+        ),
         "  `bin/docket flight` adds whether a pull request is open.",
     ]
 
@@ -2401,8 +2412,37 @@ def format_holds(read: Holdings, item_id: str, now: datetime) -> str:
     return "\n".join(lines)
 
 
+def _only_on_a_branch(items: Sequence[StrandedItem]) -> str:
+    """The digest's and `branch`'s one line naming items that exist only on a branch."""
+    named = ", ".join(f"{item.identifier} ({_gloss(item.title)})" for item in items[:2])
+    rest = f", +{len(items) - 2} more" if len(items) > 2 else ""
+    return (
+        f"Only on a branch, not in this checkout: {named}{rest}. `bin/docket stranded` to recover."
+    )
+
+
+def _stranded_line(report: StrandedReport) -> str:
+    """`stranded`'s answer in one line, for `branch`, which a closing block re-runs (`PL-CM40`).
+
+    Rule 14 in `.claude/rules/instruction-writing.md` asks for a refreshed
+    picture before a reply's closing block, and `branch` already prints the
+    base's position, what is in flight and which refs went unread. This is the
+    one fact it lacked. A store that could not be read says so, and an answer
+    of none says how many refs it read, since none from two refs and none from
+    twenty are different claims (`StrandedReport.refs_read`).
+    """
+    if report.declined:
+        return f"Which items are only on a branch could not be read: {report.declined}."
+    if report.items:
+        return _only_on_a_branch(report.items)
+    return f"No item is only on a branch, across the {report.refs_read} refs this checkout holds."
+
+
 def format_branch_state(
-    state: BranchState, flight: FlightReport | None = None, rests_on: str = ""
+    state: BranchState,
+    flight: FlightReport | None = None,
+    rests_on: str = "",
+    stranded: StrandedReport | None = None,
 ) -> str:
     """Where the branch stands, what to run about it, and what moved while it sat.
 
@@ -2482,6 +2522,8 @@ def format_branch_state(
         )
     if state.landed:
         lines.append(f"  Landed on {base} since this branch forked: {', '.join(state.landed)}.")
+    if stranded is not None:
+        lines.append(f"  {_stranded_line(stranded)}")
     # `rests_on` is `format_snapshot`'s line, and it is empty where a caveat
     # would describe a hazard that cannot arise: a checkout with no remote is
     # not made fresher by fetching (`PL-XBV4`).

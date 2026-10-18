@@ -246,9 +246,8 @@ def _pairs(steps: list[tuple[str, str]]) -> tuple[tuple[str, str], ...]:
 
 
 # `quality.yml`'s real shape on a replay failure: the bare `bin/docket check`,
-# ruff, mypy and the suite pass above it, and four to nine checks below it -
-# among them the four that read `src/` and `app/` - never run at all, with
-# GitHub's two cleanup rows skipped alongside them and counted as neither.
+# ruff, mypy and the suite pass above it. The replay is the job's last step, so
+# only GitHub's two cleanup rows follow it.
 _REPLAY_STEPS = [
     ("Set up job", "success"),
     (main_ci_status.BARE_CHECK_STEP, "success"),
@@ -257,8 +256,6 @@ _REPLAY_STEPS = [
     ("Run uv run pytest", "success"),
     ("verify replay, scoped to what this branch changed", "skipped"),
     (main_ci_status.REPLAY_STEP, "failure"),
-    ("Run uv run python tools/import_boundary_check.py", "skipped"),
-    ("Run uv run python tools/glyph_check.py", "skipped"),
     # GitHub's own cleanup rows, one per `uses:` action. Every real job carries
     # them and every recorded replay failure carries exactly two.
     ("Post Run astral-sh/setup-uv@v9.0.0", "skipped"),
@@ -535,33 +532,6 @@ class TestStepConclusions:
         """Parsed JSON the API has promised nothing about; the caller degrades."""
         assert main_ci_status.step_conclusions(jobs) == ()
 
-    def test_counts_the_steps_a_failure_left_unrun(self) -> None:
-        assert main_ci_status.unrun_after(_pairs(_REPLAY_STEPS), main_ci_status.REPLAY_STEP) == 2
-
-    def test_does_not_count_githubs_own_cleanup_rows(self) -> None:
-        """They are skipped with everything else and are not checks.
-
-        Every one of the 93 recorded replay failures carries exactly two, so an
-        unfiltered count printed six to eleven where the truth was four to nine
-        (`PL-T83R`). The fixture carries a skipped one, which this pins.
-        """
-        pairs = _pairs(_REPLAY_STEPS)
-        assert any(n.startswith("Post ") and c == "skipped" for n, c in pairs), "fixture"
-        assert main_ci_status.unrun_after(pairs, main_ci_status.REPLAY_STEP) == 2
-
-    def test_counts_nothing_for_a_step_that_is_not_there(self) -> None:
-        assert main_ci_status.unrun_after(_pairs(_REPLAY_STEPS), "no such step") == 0
-
-    def test_counts_only_the_steps_that_were_skipped(self) -> None:
-        """A step below the failure that ran and passed is not unrun."""
-        pairs = _pairs(
-            [("x", "failure"), ("ran", "success"), ("never", "skipped"), ("also", "skipped")]
-        )
-        assert main_ci_status.unrun_after(pairs, "x") == 2
-
-    def test_counts_nothing_when_the_failure_was_the_last_step(self) -> None:
-        assert main_ci_status.unrun_after(_pairs([("only", "failure")]), "only") == 0
-
 
 class TestAdvisoryNamesTheCause:
     def test_says_the_failure_is_the_queue_when_the_replay_failed_alone(self) -> None:
@@ -570,23 +540,37 @@ class TestAdvisoryNamesTheCause:
         assert "the only step that failed" in line
         assert "bin/docket check --verify" in line, "the reader needs the command, not the cause"
 
-    def test_never_calls_the_tree_clean_on_steps_the_failure_skipped(self) -> None:
-        """The blocking half. `quality.yml` runs six to eleven checks *below* the
-        replay - `import_boundary_check`, `core_vocabulary_check`, `glyph_check`
-        and `contrast_check` among them, all reading `src/` and `app/` - and a
-        failing step skips every one. A line calling the tree clean would be
-        handing the reader a guarantee nobody checked.
-        """
-        line = main_ci_status.advisory(_run("failure", 1553), _pairs(_REPLAY_STEPS))
-        assert "unrun rather than green" in line
-        assert "2 step(s) below it were skipped" in line
-
     def test_the_queue_line_still_carries_the_run_number_sha_and_url(self) -> None:
         """The longer sentence must not have pushed out what identifies the run."""
         line = main_ci_status.advisory(_run("failure", 1553, "9c6ebd29aaaa"), _pairs(_REPLAY_STEPS))
         assert "#1553" in line
         assert "9c6ebd29" in line
         assert line.endswith("https://github.com/o/r/actions/runs/1553")
+
+    def test_reads_the_queue_through_the_checks_jobs_failed_parts_gate(self) -> None:
+        """A part failing fails the `checks` job's gate step too, on every red run.
+
+        Since `PL-T9X9` split the suite, the replay runs in `checks-part-1` and
+        the `checks` job's first step fails because that part did. Counting it
+        as a second failure meant the queue reading could never fire.
+        """
+        gate = {
+            "name": "checks",
+            "steps": [
+                {"name": "Set up job", "conclusion": "success"},
+                {"name": main_ci_status.PARTS_GATE_STEP, "conclusion": "failure"},
+                {"name": "Run uv run coverage report", "conclusion": "skipped"},
+            ],
+        }
+        steps = main_ci_status.step_conclusions([_REPLAY_ONLY, gate])
+        line = main_ci_status.advisory(_run("failure", 1553), steps)
+        assert "bin/docket check --verify" in line
+        assert main_ci_status.PARTS_GATE_STEP not in line
+
+    def test_names_the_parts_gate_when_it_is_the_only_failing_step(self) -> None:
+        """A part that was cancelled leaves the gate as the run's one clue."""
+        pairs = _pairs([("Set up job", "success"), (main_ci_status.PARTS_GATE_STEP, "failure")])
+        assert main_ci_status.failing_steps(pairs) == (main_ci_status.PARTS_GATE_STEP,)
 
     def test_does_not_claim_the_queue_when_another_step_failed_too(self) -> None:
         """The whole claim rests on the replay being the only failure."""
@@ -730,6 +714,113 @@ class TestFetchJobs:
         assert main_ci_status.fetch_jobs("o/r", 1) == []
 
 
+# Run #4805's one job as the Actions API returned it on 2026-10-05: GitHub
+# cancelled it 15 minutes after creating it, having given it no runner, so it
+# has no steps, `runner_id` 0 and an empty `runner_name`.
+_RUN_4805_JOB = {
+    "id": 52700000000,
+    "name": "checks",
+    "status": "completed",
+    "conclusion": "cancelled",
+    "created_at": "2026-10-05T19:34:02Z",
+    "started_at": "2026-10-05T19:34:02Z",
+    "completed_at": "2026-10-05T19:49:04Z",
+    "runner_id": 0,
+    "runner_name": "",
+    "steps": [],
+}
+
+
+def _gate_job(conclusion: str) -> dict:
+    """The `checks` job, whose first step fails unless both parts succeeded."""
+    job = _job([("Set up job", "success"), (main_ci_status.PARTS_GATE_STEP, conclusion)])
+    job["runner_id"] = 1000011567
+    return job
+
+
+class TestIdleJobs:
+    """A job no runner took is told apart from one that ran (`PL-7WNJ`).
+
+    GitHub cancels such a job at the same 15 minutes `timeout-minutes` sets for
+    a hung step, so without this a red `main` that ran nothing reads as code
+    hanging.
+    """
+
+    def test_names_a_job_no_runner_took_as_nothing_ran(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        _github_origin(monkeypatch)
+        monkeypatch.setattr(main_ci_status, "pytest_time_line", lambda slug, runs: None)
+        run = _run("failure", 4805, "b67dace8aaaa")
+        monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: [run])
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", lambda slug, run_id: [_RUN_4805_JOB])
+        assert main_ci_status.main() == 0
+        out = capsys.readouterr().out
+        assert '#4805 on b67dace8 concluded failure because no runner took the job "checks"' in out
+        assert "so nothing ran" in out
+        assert "re-run it rather than fixing anything" in out
+        assert out.rstrip("\n").endswith("https://github.com/o/r/actions/runs/4805")
+
+    def test_reads_the_4805_shape(self) -> None:
+        assert main_ci_status.idle_jobs([_RUN_4805_JOB]) == ("checks",)
+
+    def test_a_job_that_ran_is_not_idle(self) -> None:
+        ran = {**_REPLAY_ONLY, "runner_id": 1000011567}
+        assert main_ci_status.idle_jobs([ran]) == ()
+
+    def test_a_job_with_steps_is_not_idle_even_with_runner_id_zero(self) -> None:
+        assert main_ci_status.idle_jobs([{**_REPLAY_ONLY, "runner_id": 0}]) == ()
+
+    @pytest.mark.parametrize("runner", [None, False, "0", 0.0])
+    def test_only_a_runner_id_of_integer_zero_reads_as_no_runner(self, runner: object) -> None:
+        """A missing or odd field is not evidence that the tree went unjudged."""
+        job = {**_RUN_4805_JOB, "runner_id": runner}
+        if runner is None:
+            del job["runner_id"]
+        assert main_ci_status.idle_jobs([job]) == ()
+
+    def test_a_job_whose_steps_are_absent_reads_as_idle(self) -> None:
+        job = {key: value for key, value in _RUN_4805_JOB.items() if key != "steps"}
+        assert main_ci_status.idle_jobs([job, "not a dict"]) == ("checks",)
+
+    def test_a_job_that_ran_keeps_todays_line(self) -> None:
+        line = main_ci_status.advisory(_run("failure", 1553), _pairs(_REPLAY_STEPS), ())
+        assert "bin/docket check --verify" in line
+        assert "no runner" not in line.lower()
+
+    def test_one_idle_part_beside_passing_jobs_is_the_whole_failure(self) -> None:
+        part_1 = {**_job([("Set up job", "success"), ("Run uv run pytest", "success")])}
+        part_2 = {**_RUN_4805_JOB, "name": "checks-part-2"}
+        jobs = [part_1, part_2, _gate_job("failure")]
+        line = main_ci_status.advisory(
+            _run("failure", 1553),
+            main_ci_status.step_conclusions(jobs),
+            main_ci_status.idle_jobs(jobs),
+        )
+        assert 'no runner took the job "checks-part-2", so that job ran no step' in line
+        assert "Every step that ran passed" in line
+        assert "main is red" not in line
+
+    def test_an_idle_job_beside_a_real_failure_names_both(self) -> None:
+        line = main_ci_status.advisory(
+            _run("failure", 1553),
+            _pairs([("Run uv run mypy", "failure")]),
+            ("checks-part-2", "checks"),
+        )
+        assert "Run uv run mypy" in line
+        assert "main is red" in line
+        assert 'No runner took the jobs "checks-part-2", "checks", so they ran nothing.' in line
+
+    def test_withholds_the_queue_reading_while_a_job_is_idle(self) -> None:
+        """A part that never ran checked nothing, so the tree is not cleared."""
+        line = main_ci_status.advisory(
+            _run("failure", 1553), _pairs(_REPLAY_STEPS), ("checks-part-2",)
+        )
+        assert "bin/docket check --verify" not in line
+        assert main_ci_status.REPLAY_STEP in line
+        assert 'No runner took the job "checks-part-2", so it ran nothing.' in line
+
+
 class TestStepNamesMatchTheWorkflow:
     """The constants are strings GitHub derives from `quality.yml`; hold them to it.
 
@@ -740,6 +831,9 @@ class TestStepNamesMatchTheWorkflow:
 
     def test_the_replay_step_is_named_in_quality_yml(self) -> None:
         assert f"name: {main_ci_status.REPLAY_STEP}" in _workflow()
+
+    def test_the_parts_gate_step_is_named_in_quality_yml(self) -> None:
+        assert f"- name: {main_ci_status.PARTS_GATE_STEP}\n" in _workflow()
 
     def test_the_bare_check_step_is_the_run_line_github_names_it_after(self) -> None:
         """It has no `name:`, so GitHub calls it `Run ` plus the `run:` line verbatim."""

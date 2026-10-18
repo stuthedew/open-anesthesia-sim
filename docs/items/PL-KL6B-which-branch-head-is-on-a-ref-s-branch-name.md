@@ -3,12 +3,14 @@ id: PL-KL6B
 title: Which branch HEAD is on, a ref's branch name without its remote, the agent namespace and a cut's date are each spelt by several readers - seven for HEAD's branch, removeprefix("origin/") in two tools, a case-sensitive claude/ in branch_sweep, %cI against %aI - and each pair parts on one input
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, tools/branch_id_check.py, tools/pr_title_check.py, tools/branch_sweep.py, tools/left_behind_check.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, tools/branch_id_check.py, tools/pr_title_check.py, tools/branch_sweep.py, tools/left_behind_check.py, subprojects/docket/tests/test_vcs.py, tests/unit/test_branch_sweep.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1544
 payoff: a branch's name and namespace read the same to docket and to the tools that sweep, title and attribute it
 verify: grep -q 'def test_head_branch_is_read_by_one_function' subprojects/docket/tests/test_vcs.py
 ---
@@ -25,3 +27,12 @@ verify: grep -q 'def test_head_branch_is_read_by_one_function' subprojects/docke
 **Done when.** Each fact has one function in `docket.vcs` or `claims` that the rest call, and a test pins each parting input.
 
 **Generator check.** A member of `PL-5DZ8`, filed by that head's closing sweep on 2026-10-12 and named in its `root-cause-of:`. The fact is the head's: which spelling of a repeated predicate is the answer, when tools, hooks and docket each spell it. It is neither a post-close instance nor a new generator.
+
+**Built 2026-10-18.** Each fact now has one function, and the rest call it.
+
+- `vcs.head_branch` is the one reader of which branch `HEAD` is on. It returns `""` on a detached `HEAD` and strips a remote's prefix with `_head_name`. The six other readers call it. `branch_id_check.branch_name` still reads `GITHUB_HEAD_REF` first, because on a `pull_request` event CI checks out a detached merge commit. That is a separate fact, the branch CI is testing, so it stays.
+- `branch_sweep`'s `Readings` and `left_behind_check.orphaned_branches` strip a ref with `vcs._head_name` against the remotes git lists, read through the new `vcs.remote_names`.
+- `claims.agent_branch` is the one test of the agent namespace. `branch_sweep.branches` lists every fetched branch and lets that test pick, so `Claude/x` is listed. `branch_sweep.PREFIX` is gone.
+- `vcs.cut_written` reads a cut's commit and author date. `cuts_in_flight` and `claims.holdings` both call it, so a rebased cut keeps the date it was cut on in both. The author date was chosen because a rebase leaves it alone, which is the reason the claims record already orders by it.
+
+The `arming.py` docstring that still named `claims.in_queue` after `#1534` now names `vcs.in_queue`.
