@@ -110,8 +110,9 @@ not dead in that sense but gone: it holds nothing, `claim` passes it with no
 nothing else claims the item - with `--over` offered for the record it adds
 rather than as a condition. The `<session>`
 token in a claim is `CLAUDE_CODE_REMOTE_SESSION_ID`,
-which reads `cse_...` where `get_session` wants `session_...`; the part after
-the prefix matched on the one session compared in full, on 2026-09-24. A branch that
+which reads `cse_...`. `get_session` takes that token as `flight` and `show`
+print it, and answers for the matching `session_...` (measured on two tokens,
+2026-09-25). A branch that
 already contains the holder's tip is a continuation, and `claim` writes the
 takeover without `--over`.
 
