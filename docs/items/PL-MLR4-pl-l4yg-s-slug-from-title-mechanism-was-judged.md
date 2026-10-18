@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: housekeeping
 feature: generator-identification
+milestone: v0.5.28
 touches: docs/items
 added: 2026-09-23
 closed: 2026-10-18

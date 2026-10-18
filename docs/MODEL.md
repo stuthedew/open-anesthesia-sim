@@ -4866,11 +4866,24 @@ be misread as one of the others.
   the run was forked at the mark and opened standing on it, or the learner
   marked an instant the case had already run past. A passed mark on the trunk
   is one a branch may be taken at (§ "What this requires of a branch").
-- **Reached** — a MAC target the run has halted on at least once. Historical,
-  and a property of the run rather than of the mark, so it is cleared by a
-  reset and by a change of agent, which begin a new run. A branch is the one
-  exception and not a carry-over: it opens *standing on* the crossing it was
-  forked at, which is where the branch is rather than something its trunk did.
+- **Reached** — a MAC target the run has stood on at least once: it halted on
+  the target, or the target lies inside a step the run stands on or opened on.
+  Historical, and a property of the run rather than of the mark, so it is
+  cleared by a reset and by a change of agent, which begin a new run.
+  Two steps are asked again every time the standings are read, against the
+  marks as they stand then (`PL-1ZQ4`; project owner, 2026-10-17, ratified,
+  over keeping MAC targets historical everywhere). One is the step a stopped
+  run's clock ends: paused, halted, or at the supported run length, on a trunk
+  or a branch, but not after a failure, which is not a pause. The other is the
+  step a branch opened on, which it opens *standing on*, however far it has
+  run since. That is where the branch is rather than something its trunk did.
+  So a target added after the step that crossed it reads reached on the trunk
+  standing there and on every branch opened there, in whichever order the
+  target and the branch came. A run that leaves the step it stood on keeps
+  what the step crossed, so the target still reads reached once the run moves
+  on. A run that went past the step before the target was added never stood
+  on it with the target marked, and reads it still running, as it reads any
+  height it did not stop on.
 - **Not reached within the supported run length** — the run has stopped at the
   limit § "Supported run length" declares, with this mark outstanding. A
   height above a compartment's asymptote is never reached, so this is an
@@ -5199,7 +5212,14 @@ and what it does not:
 - **It is the branch the halt would have given.** A mark set before the run
   passed it halts the run and is forked at the halt; the same mark set after the
   clock went by is forked here, and the two branches' whole provenance -
-  stretch, fork state, step count, crossing - compares equal.
+  stretch, fork state, step count, the step the fork ends, crossing - compares
+  equal. It stays that branch for a mark added later too: every run asks the
+  step it opened on or stands on which marks it crossed, against the marks as
+  they stand whenever its standings are read, so a mark added inside that step
+  reads alike on the trunk and the branch, whether it came before the branch or
+  after (`PL-1ZQ4`). Each door asks that step in the same way, a fork at a
+  control event included, so `resumed_at` at a keyframe the trunk halted on
+  opens on the halt's crossing as `resumed_here` does.
 - **It leaves the trunk the case it was.** Nothing is recorded where the mark
   stands, which is what kept the bookmark fork from changing the run it marks.
 - **It does not open at the typed instant.** The fork is the end of the step

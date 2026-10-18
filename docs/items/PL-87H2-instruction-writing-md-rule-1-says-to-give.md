@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: decision-ownership
+milestone: v0.5.28
 touches: .claude/rules/instruction-writing.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-10-18

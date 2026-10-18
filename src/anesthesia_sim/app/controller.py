@@ -365,10 +365,10 @@ class SimulationSnapshot(RunRecord):
 class ResumePoint:
     """Everything a branch needs in order to have opened where it did.
 
-    Six things that only mean anything together, so they travel together
-    rather than as six attributes a later edit could set one of - the
+    Seven things that only mean anything together, so they travel together
+    rather than as seven attributes a later edit could set one of - the
     argument `RunSegment` already makes about its own two halves. A branch
-    rebuilt from five of these and a stale sixth would open at a state its
+    rebuilt from six of these and a stale seventh would open at a state its
     settings never produced, or on an accounting period that never happened.
 
     It is also what `SimulationController.reset()` reads. Reset returns a run
@@ -406,16 +406,25 @@ class ResumePoint:
         accounting_anchor_l: The agent the *case's* accounting period started
             from, carried rather than re-derived. `AgentUptakeSystem.resume_at`
             says why deriving it is unsafe.
-        crossing: The marked crossing the fork was taken at, or `None` where
-            no step crossed a mark there: a fork at a control event, which is
-            not a crossing at all, or at a mark standing on the run's own
-            opening, which no step reaches. It is the one member that is about
-            the *marks* rather than about the state, and it is here rather
-            than read from the parent for the reason the other five are:
-            `_open_at` is a reset's path as well as a fork's, and a reset
-            cannot go back and ask the parent. Held on the resume point, both
-            paths seed from the identical value and a branch reset onto its
-            own fork stands where it stood (`PL-3K9B`, case G).
+        stepped_from: The instant one step before the fork and the parent's
+            canonical state there, or `None` for a fork at the case's opening,
+            which no step ends at. With `fork` it is the step the branch opens
+            standing on. The branch asks that step which marks it crossed each
+            time its standings are read, against the marks as they stand then,
+            so a mark added after the fork reads as it would have read had it
+            been there before (`PL-1ZQ4`). The parent's state is held here
+            because the branch cannot evaluate it: a branch taken at a control
+            event opens its definition at the fork, after this instant.
+        crossing: What the step ending at the fork crossed, asked of the marks
+            as they stood when the fork was taken, or `None` where it crossed
+            none or no step ends there. Every door asks it the same way, a
+            control event's included (`PL-1ZQ4`, case 3). It is what the
+            branch reports having opened on (`SimulationSnapshot.bookmark_halt`),
+            and it is here rather than asked again for the reason the other
+            members are: `_open_at` is a reset's path as well as a fork's, and
+            a reset stands the branch back on the identical record
+            (`PL-3K9B`, case G). The standings do not read it; they ask
+            `stepped_from` and `fork` again.
     """
 
     segment: RunSegment
@@ -423,6 +432,7 @@ class ResumePoint:
     step_count: StepCount
     simulation_step_s: SimulationStep | None
     accounting_anchor_l: float
+    stepped_from: Keyframe | None
     crossing: BookmarkCrossing | None
 
 
@@ -530,10 +540,10 @@ class SimulationController:
         not, because a standing carried across a reset would report a crossing
         that the run now on screen never took.
 
-        A branch's reset clears through here and is then re-seeded by
-        `_open_at`, which is the same sequence a fork runs: the crossing a
-        branch opens on is where the branch stands rather than what an earlier
-        run did, so it comes back with the state it belongs to.
+        A branch's reset clears through here and then stands on its fork again
+        through `_open_at`, which is the same sequence a fork runs: the
+        crossing a branch opens on is where the branch stands rather than what
+        an earlier run did, so it comes back with the state it belongs to.
         """
 
         self._bookmark_halt = None
@@ -1255,7 +1265,7 @@ class SimulationController:
         pausing or marking a run would change it.
 
         **The crossing the branch opens standing on is the step's, asked
-        again** (`_crossing_ending_at`), as `resumed_at_mark` asks it, and not
+        again** (`_crossing_of_step`), as `resumed_at_mark` asks it, and not
         read from a halt's record. The record names what was marked when the
         run stopped, so a mark added inside the halting step while the run
         stood on it was missing from it and read as before the branch, where
@@ -1319,7 +1329,7 @@ class SimulationController:
 
         **The crossing the branch opens standing on is reconstructed**, since
         a step that halted nothing kept no record of what it crossed
-        (`_crossing_ending_at`). It is `BookmarkSet.crossings_between` asked
+        (`_crossing_of_step`). It is `BookmarkSet.crossings_between` asked
         about that one step, with the marks as they stand now and each
         compartment read canonically at either end, so the rule that halts a
         running case is the rule that names this crossing - and a mark lying
@@ -1604,47 +1614,34 @@ class SimulationController:
         self._stand_on(resume_point.crossing)
 
     def _stand_on(self, crossing: BookmarkCrossing | None) -> None:
-        """Seed what this run has done with the marks from the crossing it opens on.
+        """Record the crossing this run opens standing on as where it stopped.
 
-        The deliberate exception to the rule stated beside `_reached_instants_s`
-        - that what a run has done with the marks is the run's product and is
-        cleared wherever a new run begins. A branch forked at a halt is
-        *standing on* that crossing: it is not something the parent did and
-        the branch inherited, it is where the branch is, and a run that opens
-        on a crossing and reports having crossed nothing describes a different
-        run (`PL-3K9B`).
+        A branch forked at a crossing is *standing on* it: that is where the
+        branch is rather than something its parent did, and a run that opens
+        on a crossing and reports having stopped on nothing describes a
+        different run (`PL-3K9B`). So the crossing is the branch's
+        `bookmark_halt`, as a halt is a trunk's.
 
-        Assigned rather than merged, because this is called from `_open_at`,
-        which is a reset's path as well as a fork's. A fork reaches it with
-        the sets already empty and a reset with them just cleared, so both
-        arrive at the same three values from the same crossing - which is what
-        keeps a branch reset onto its own fork standing where it stood rather
-        than back in the defect.
+        **What the branch has done with the marks is not seeded from it**
+        (`PL-1ZQ4`). The standings ask the step the branch opened on again at
+        every read, against the marks as they stand then
+        (`_crossings_stood_on`), so a mark added to the branch after it opened
+        reads as it would have read had it been there at the fork. Seeding the
+        reached sets here as well would be a second, older answer to the same
+        question, and the one this replaced: it named only the marks there at
+        the fork.
 
-        A time bookmark no longer needs this - the clock places it, and
-        `bookmarks._time_bookmark_standing` says how - with the one exception
-        the comparison cannot see: a mark whose instant is not a multiple of
-        the step in binary is crossed by a step that lands a few parts in 1e16
-        past it, so the branch opens *after* its own mark. A MAC target needs
-        it outright, having no clock to be placed against.
+        Called from `_open_at`, which is a reset's path as well as a fork's,
+        so a branch reset onto its own fork stands on the same record it
+        opened on.
 
         Args:
             crossing: The marked crossing this run opens standing on, or
-                `None` where no step crossed a mark at its fork: a control
-                event, or a mark at the case's opening.
+                `None` where the step ending at its fork crossed no mark or
+                no step ends there.
         """
 
         self._bookmark_halt = crossing
-
-        if crossing is None:
-            self._reached_instants_s = frozenset()
-            self._reached_crossings = frozenset()
-            return
-
-        self._reached_instants_s = frozenset(
-            bookmark.instant_s for bookmark in crossing.time_bookmarks
-        )
-        self._reached_crossings = frozenset(target.crossing_key for target in crossing.mac_targets)
         # A mark unmarked on this branch before the reset is not put back by
         # it: the crossing is a record of a step, and `_forget_unmarked` is
         # what keeps that record from naming a row the panel no longer draws.
@@ -1681,13 +1678,13 @@ class SimulationController:
             )
 
         # The fork *is* the stretch's opening here, which is what makes a
-        # control event the simple case: one instant doing both jobs. And no
-        # crossing: a keyframe is where a setting was changed, which is not a
-        # mark and carries none. A mark standing on that instant is answered
-        # by the clock instead - the branch opens exactly at it, so
-        # `opened_at_s <= instant_s <= elapsed_s` holds from the first
-        # snapshot (`PL-3K9B`, case E).
-        return self._resume_point(segment, segment.opening, None)
+        # control event the simple case: one instant doing both jobs. The
+        # step ending there is asked what it crossed as every other door asks
+        # it. A keyframe is not a mark, but the step that reached it may have
+        # crossed one, and a branch opening on no crossing where `resumed_here`
+        # opens on the step's would read one instant two ways (`PL-1ZQ4`,
+        # case 3).
+        return self._resume_point(segment, segment.opening)
 
     def _resume_point_here(self) -> ResumePoint:
         """Everything a branch opening where this run stands needs, or a refusal saying why.
@@ -1713,11 +1710,7 @@ class SimulationController:
         fork_s = self._state.elapsed_s
         fork = Keyframe(fork_s, self._run_definition.state_at(fork_s))
 
-        return self._resume_point(
-            self._run_definition.segment_at(fork_s),
-            fork,
-            self._crossing_ending_at(self._state.step_count, fork),
-        )
+        return self._resume_point(self._run_definition.segment_at(fork_s), fork)
 
     def _refusal_here(self) -> str | None:
         """Why a branch where this run stands is refused, or None where it is not.
@@ -1763,35 +1756,56 @@ class SimulationController:
 
         return None
 
-    def _crossing_ending_at(self, step_count: StepCount, fork: Keyframe) -> BookmarkCrossing | None:
-        """The marks the step ending at `fork` crossed, as the marks stand now, or None.
+    def _keyframe_before(self, step_count: StepCount) -> Keyframe | None:
+        """Where the step ending after `step_count` steps began, or None where no step ends there.
+
+        The instant one step earlier and this run's canonical state there, so
+        the step is read from `RunDefinition.state_at` at either end, as a
+        fork reads it. The case's opening is reached by no step.
+
+        Args:
+            step_count: How many steps the case had completed at the step's
+                end. It is never fewer than this run opened on, since a
+                branch is never asked about a step it did not take.
+        """
+
+        if step_count == 0:
+            return None
+
+        before_s = self._instant_after(StepCount(step_count - 1))
+
+        return Keyframe(before_s, self._run_definition.state_at(before_s))
+
+    def _crossing_of_step(
+        self, stepped_from: Keyframe | None, stepped_to: Keyframe
+    ) -> BookmarkCrossing | None:
+        """The marks the step from `stepped_from` to `stepped_to` crossed, as the marks stand now.
 
         Asked again of the rule `advance` halts by, about that one step, with
         each compartment read canonically at either end, rather than read
         from any record: a step that halted nothing kept none, and a halt's
         record names only what was marked when the run stopped, so a mark
         added inside the halting step afterwards would be missing from it
-        (`PL-2N43`). The end reading is the state the branch opens from, so
+        (`PL-2N43`). Every door asks the step ending at its fork through
+        here, and so do the standings, of the step a run opened on or stands
+        on (`PL-1ZQ4`). The end reading is the state a branch opens from, so
         its first step begins where this one ends and a height arrived at here
-        is not crossed again by it. The case's opening is reached by no step,
-        so a fork there stands on no crossing.
+        is not crossed again by it.
 
         Args:
-            step_count: How many steps the case had completed at the fork.
-            fork: The instant those steps end at, and the canonical state
-                there.
+            stepped_from: Where the step began, or None where no step ends at
+                `stepped_to`, so nothing was crossed.
+            stepped_to: Where the step ended.
         """
 
-        if step_count == 0 or self._bookmarks.is_empty:
+        if stepped_from is None or self._bookmarks.is_empty:
             return None
 
-        before_s = self._instant_after(StepCount(step_count - 1))
-
         return self._bookmarks.crossings_between(
-            before_s=before_s,
-            after_s=fork.instant_s,
-            before=self._compartment_mac_multiples(self._run_definition.state_at(before_s)),
-            after=self._compartment_mac_multiples(fork.state),
+            before_s=stepped_from.instant_s,
+            after_s=stepped_to.instant_s,
+            before=self._compartment_mac_multiples(stepped_from.state),
+            after=self._compartment_mac_multiples(stepped_to.state),
         )
 
     def _resume_point_at_mark(self, bookmark: TimeBookmark) -> ResumePoint:
@@ -1819,11 +1833,7 @@ class SimulationController:
         fork_s = self._instant_after(step_count)
         fork = Keyframe(fork_s, self._run_definition.state_at(fork_s))
 
-        return self._resume_point(
-            self._run_definition.segment_at(fork_s),
-            fork,
-            self._crossing_ending_at(step_count, fork),
-        )
+        return self._resume_point(self._run_definition.segment_at(fork_s), fork)
 
     def _passed_time_bookmarks(self) -> tuple[TimeBookmark, ...]:
         """The time bookmarks this run's clock is at or past, as its standings say.
@@ -1900,20 +1910,22 @@ class SimulationController:
             "from the trunk instead"
         )
 
-    def _resume_point(
-        self, segment: RunSegment, fork: Keyframe, crossing: BookmarkCrossing | None
-    ) -> ResumePoint:
+    def _resume_point(self, segment: RunSegment, fork: Keyframe) -> ResumePoint:
         """A branch's whole provenance: the stretch it opens inside and where it stands.
+
+        **The crossing is asked here, once, for every door** (`PL-1ZQ4`). The
+        step ending at the fork is asked what it crossed whichever door named
+        the fork, so a branch taken at a control event, at a mark and where
+        the run stands opens on one account of one step. While each door
+        passed its own answer in, `resumed_at` passed none, and a keyframe
+        the trunk was halted on opened a branch reading the halt's marks as
+        before it.
 
         Args:
             segment: The stretch of this run holding `fork`, whose opening is
                 the keyframe the branch's own definition opens at.
             fork: The instant the branch is taken at and this run's canonical
                 state there.
-            crossing: The marked crossing being forked at, or `None` where no
-                step crossed a mark there: a control event, or the case's
-                opening. Required rather than defaulted, so a door added later
-                states which it is instead of inheriting the quieter answer.
 
         Raises:
             SimulationConfigurationError: the fork instant is not a whole
@@ -1935,6 +1947,8 @@ class SimulationController:
                     "step count exactly"
                 )
 
+        stepped_from = self._keyframe_before(step_count)
+
         return ResumePoint(
             segment=segment,
             fork=fork,
@@ -1943,7 +1957,8 @@ class SimulationController:
             accounting_anchor_l=(
                 self._state.uptake_system.agent_simulation_validator.initial_agent_l
             ),
-            crossing=crossing,
+            stepped_from=stepped_from,
+            crossing=self._crossing_of_step(stepped_from, fork),
         )
 
     def _setting_at(self, control: ControlInput, elapsed_s: float, current: float) -> float:
@@ -2088,6 +2103,9 @@ class SimulationController:
                 f"this run has reached the supported run length "
                 f"({supported_limit_reason}); reset it to start a new run"
             )
+
+        if not self._is_running:
+            self._keep_crossings_stood_on()
 
         self._is_running = True
 
@@ -2392,9 +2410,8 @@ class SimulationController:
         Args:
             state: A state vector in `governing_equations`' order: the live
                 system's, for a step `advance` is taking, or
-                `RunDefinition.state_at`'s, for one `_crossing_ending_at`
-                asks about after the fact, for `resumed_here` and
-                `resumed_at_mark`.
+                `RunDefinition.state_at`'s, for one `_crossing_of_step`
+                asks about after the fact, for a fork or for the standings.
 
         Raises:
             SimulationConfigurationError: If a compartment's quotient is
@@ -2420,16 +2437,93 @@ class SimulationController:
         resumed at all. Passing the cap and withholding the failure left
         every mark on a failed run reading as one the run had not reached
         *yet*, on a run whose next step would raise as its last one did.
+
+        **What the run did is joined by the steps it opened on and stands on,
+        asked now** (`PL-1ZQ4`, project owner 2026-10-17, ratified). A mark
+        lying inside the step a branch opened on, or the step a stopped run
+        stands on, reads as crossed by that step, against the marks as they
+        stand at this read and not as they stood when the step was taken. So
+        a mark added after the step reads alike on the trunk and on every
+        branch, whichever order the mark and the branch came in.
         """
 
+        stood_on = self._crossings_stood_on()
+
         return self._bookmarks.standings(
-            reached_instants_s=self._reached_instants_s,
-            reached_crossings=self._reached_crossings,
+            reached_instants_s=self._reached_instants_s.union(
+                *(_reached_instants(crossing) for crossing in stood_on)
+            ),
+            reached_crossings=self._reached_crossings.union(
+                *(_reached_heights(crossing) for crossing in stood_on)
+            ),
             opened_at_s=self.began_at_s,
             elapsed_s=self._state.elapsed_s,
             stopped_at_cap=self.has_reached_supported_limit,
             run_failed=self._failure_reason is not None,
         )
+
+    def _crossings_stood_on(self) -> tuple[BookmarkCrossing, ...]:
+        """What the step this run opened on and the step it stands on crossed, asked now.
+
+        Two steps, and the second only while the run is stopped:
+
+        - **The step a branch opened on**, at every read, however far the
+          branch has run since. The branch opens standing on it
+          (`ResumePoint.stepped_from`), as a fork at a halt always has.
+        - **The step a stopped run's clock ends**, paused or halted, at its
+          cap or not, on a trunk or a branch. A run that is going stands on
+          no step, since where it stands moves with every step. A failed run
+          is left out too, because a failure is not a pause
+          (`RunStatus.failure_reason`) and `resumed_here` refuses to branch
+          there. `start` keeps what this step crossed when the run leaves it
+          (`_keep_crossings_stood_on`), so a mark read as reached while the
+          run stood on its step still reads reached once the run moves on.
+
+        A trunk reads a mark the way a branch opened on the same step reads
+        it, because both ask the same step through `_crossing_of_step`, from
+        the same canonical states at either end.
+        """
+
+        if self._bookmarks.is_empty:
+            return ()
+
+        steps: list[tuple[Keyframe | None, Keyframe]] = []
+        standing_on_fork = False
+
+        if self._opened_from is not None:
+            steps.append((self._opened_from.stepped_from, self._opened_from.fork))
+            standing_on_fork = self._state.step_count == self._opened_from.step_count
+
+        if not self._is_running and self._failure_reason is None and not standing_on_fork:
+            elapsed_s = self._state.elapsed_s
+            steps.append(
+                (
+                    self._keyframe_before(self._state.step_count),
+                    Keyframe(elapsed_s, self._run_definition.state_at(elapsed_s)),
+                )
+            )
+
+        return tuple(
+            crossing
+            for stepped_from, stepped_to in steps
+            if (crossing := self._crossing_of_step(stepped_from, stepped_to)) is not None
+        )
+
+    def _keep_crossings_stood_on(self) -> None:
+        """Record what the step this run stands on crossed, as the run leaves it.
+
+        Called by `start`. While the run is stopped, `_crossings_stood_on`
+        answers for the step it stands on. Once it is going that step is
+        behind it, so what the step crossed joins what the run has done, as
+        a halt's crossing does in `_halt_on`. Without this, a target added
+        while the run stood on its step would read reached until Start and
+        not reached after it, though nothing about the target or the step
+        had changed.
+        """
+
+        for crossing in self._crossings_stood_on():
+            self._reached_instants_s |= _reached_instants(crossing)
+            self._reached_crossings |= _reached_heights(crossing)
 
     def advance(self, simulation_step_s: SimulationStep) -> None:
         """No-op while paused; otherwise advance state, record history, and halt on a crossing.
@@ -2545,8 +2639,20 @@ class SimulationController:
 
         self._is_running = False
         self._bookmark_halt = crossing
-        self._reached_instants_s |= {bookmark.instant_s for bookmark in crossing.time_bookmarks}
-        self._reached_crossings |= {target.crossing_key for target in crossing.mac_targets}
+        self._reached_instants_s |= _reached_instants(crossing)
+        self._reached_crossings |= _reached_heights(crossing)
+
+
+def _reached_instants(crossing: BookmarkCrossing) -> frozenset[CaseInstant]:
+    """The marked instants `crossing` reached, as the standings match them."""
+
+    return frozenset(bookmark.instant_s for bookmark in crossing.time_bookmarks)
+
+
+def _reached_heights(crossing: BookmarkCrossing) -> frozenset[tuple[RecordedQuantity, float]]:
+    """The marked heights `crossing` reached, by `MacTarget.crossing_key`."""
+
+    return frozenset(target.crossing_key for target in crossing.mac_targets)
 
 
 class BranchedCase:

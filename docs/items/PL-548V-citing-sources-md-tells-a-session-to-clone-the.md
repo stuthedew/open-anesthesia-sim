@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs, infra
+milestone: v0.5.28
 touches: .claude/rules/citing-sources.md, .gitignore
 added: 2026-09-15
 closed: 2026-10-18

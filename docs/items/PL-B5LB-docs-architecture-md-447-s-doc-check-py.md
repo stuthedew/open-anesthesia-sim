@@ -3,11 +3,13 @@ id: PL-B5LB
 title: docs/ARCHITECTURE.md:447's doc_check.py inventory and CONTRIBUTING.md:52's summary both describe the tool as validating documentation, but check_coverage_gate and check_ruff_cache hold the Makefile's own invocations, so the authoritative description of what the tool does is narrower than the tool
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: doc-consistency-checks
 touches: docs/apparatus.md, CONTRIBUTING.md
 added: 2026-09-15
+closed: 2026-10-18
+pr: 1553
 verify: grep -q "the Makefile's own invocations" docs/apparatus.md
 ---
 

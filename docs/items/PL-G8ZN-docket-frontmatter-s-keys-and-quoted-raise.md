@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
+milestone: v0.5.28
 touches: subprojects/docket/src/docket/frontmatter.py, subprojects/docket/tests/test_frontmatter.py, subprojects/docket/tests/test_frontmatter_reference.py, tests/unit/test_fixture_id_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12

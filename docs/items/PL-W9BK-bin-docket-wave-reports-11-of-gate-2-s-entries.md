@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: gate-prerequisites
+milestone: v0.5.28
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) and not safety or science; a report fix that changes what wave prints, not what the gate is asked to clear, so nothing in v0.6.0 waits on it
 added: 2026-10-03

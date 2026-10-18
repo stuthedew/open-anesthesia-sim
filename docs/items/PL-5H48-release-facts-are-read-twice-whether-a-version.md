@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.28
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, tools/doc_check.py, tools/tag_release.py, tests/unit/test_tag_release.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_roadmap.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: housekeeping
 feature: apparatus-test-bar
+milestone: v0.5.28
 touches: docs/items
 added: 2026-09-27
 closed: 2026-10-18

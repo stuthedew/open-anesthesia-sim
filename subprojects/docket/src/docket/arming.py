@@ -226,6 +226,19 @@ OWNER_READ = "Owner-read"
 READ_NEEDED = "needed"
 READ_NOT_NEEDED = "not needed"
 
+#: What a `hold` without a claim tells a session about a repair push. A
+#: session never arms a held pull request, so a held one that is armed was
+#: armed by the owner, and `docs/maintainer.md` § "Bring a stale base in when
+#: you merge, with Update branch" has the repair land on it unread
+#: (`PL-XTBF`, decided 2026-10-12). Whether the owner armed it is prose, not a
+#: computed branch: a session's GitHub calls are the owner's too, so `arm`
+#: cannot tell who armed it.
+REPAIR_EXCEPTION = (
+    "  The exception is a repair. If the pull request already held before this push "
+    "and is armed, the owner armed it after reading it. Leave it armed, and auto-merge "
+    "lands the fix once CI is green, as docs/maintainer.md says."
+)
+
 #: What a `hold` on a simulator path with no record tells the session. The
 #: test for a real decision is the design round's, so it is pointed at rather
 #: than restated, and the high-risk cases are the ones the owner's rule names
@@ -567,6 +580,11 @@ class Verdict:
                 else "."
             )
         )
+        # A session never arms a held pull request, so one that held before
+        # this push and is armed was armed by the owner, and the repair rides
+        # it, as docs/maintainer.md says (`PL-XTBF`). A draft has no such case.
+        if not self.claims:
+            said.append(REPAIR_EXCEPTION)
         # A claim keeps the pull request a draft, which nobody is asked to read.
         if self.unjudged and not self.claims:
             said.append(JUDGE_ASK)
