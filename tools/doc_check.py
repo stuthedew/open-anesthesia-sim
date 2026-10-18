@@ -284,8 +284,9 @@ try:
     # blob batch, which answers every tag's `pyproject.toml` from one process,
     # and `answered` for telling git's silence from an empty file.
     # `changed_path_args` is borrowed so the close-out sweep lists a renamed
-    # file's old name, the one stale prose still cites (`PL-KR69`), and
-    # `default_base` so a tag the working tree predates is placed against the
+    # file's old name, the one stale prose still cites (`PL-KR69`), with
+    # `listed_paths` and `logged_fields` reading its `-z` listings (`PL-4YDJ`),
+    # and `default_base` so a tag the working tree predates is placed against the
     # branch every docket command compares with (`PL-HVLJ`). `find_cut` and
     # `notes_added` are the one definition of a release's cut, which the
     # printed tag commands use too (`PL-QHCW`). And `subject_pull_request` is
@@ -309,6 +310,7 @@ try:
         find_cut,
         is_shallow,
         listed_paths,
+        logged_fields,
         notes_added,
         read_git,
         resolved,
@@ -5233,23 +5235,14 @@ def _deleted_paths(root: Path) -> dict[str, str] | None:
     this is asked.
     """
     text = _git_text(
-        root,
-        "-c",
-        "core.quotePath=false",
-        "log",
-        "--no-renames",
-        "--diff-filter=D",
-        "--name-only",
-        "--format=%x00%h",
-        "HEAD",
+        root, *changed_path_args("log", "--diff-filter=D", "--name-only", "--format=%x1e%h", "HEAD")
     )
     if text is None:
         return None
     deleted: dict[str, str] = {}
-    for record in text.split("\x00")[1:]:
-        lines = [line for line in split_lines(record) if line.strip()]
-        for gone in lines[1:]:
-            deleted.setdefault(gone, lines[0])
+    for commit, paths in logged_fields(text):
+        for gone in paths:
+            deleted.setdefault(gone, commit)
     return deleted
 
 
@@ -7756,11 +7749,11 @@ def _baseline(
     ref = default_base(root)
     if not resolved(ref):
         return None
-    listing = _git_text(root, "ls-tree", "-r", "--name-only", ref, "--", *roots)
+    listing = _git_text(root, "ls-tree", "-r", "-z", "--name-only", ref, "--", *roots)
     if listing is None:
         return None
     measured: list[ResidentFile] = []
-    for name in sorted(split_lines(listing)):
+    for name in sorted(listed_paths(listing)):
         if not name.endswith(".md"):
             continue
         text = _git_text(root, "show", f"{ref}:{name}")
@@ -8615,8 +8608,8 @@ def _changed_json_keys(
     for copy in (base, ""):
         try:
             if copy:
-                held = _git_output(root, "ls-tree", "--name-only", copy, "--", relative)
-                text = _git_output(root, "show", f"{copy}:{relative}") if held.strip() else None
+                held = _git_output(root, "ls-tree", "-z", "--name-only", copy, "--", relative)
+                text = _git_output(root, "show", f"{copy}:{relative}") if held.strip("\0") else None
             else:
                 file = root / relative
                 text = file.read_bytes().decode("utf-8") if file.is_file() else None
