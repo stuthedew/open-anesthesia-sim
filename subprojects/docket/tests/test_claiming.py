@@ -1297,3 +1297,9 @@ def test_every_other_shape_of_a_second_copy_is_claimed_and_at_most_told(
     else:
         assert CARRIER not in out
     assert "second add of the file, made after" not in out
+
+
+def test_a_lower_case_id_is_claimed_as_find_item_reads_it() -> None:
+    """`claim k7qx` claims the item `show k7qx` finds, rather than refusing it (`PL-4DK2`)."""
+    assert claiming._keys(["k7qx", "PL-K7QX"]) == (["PL-K7QX"], "")
+    assert claiming._keys(["not an id"]) == ([], "'not an id' is not an item id")

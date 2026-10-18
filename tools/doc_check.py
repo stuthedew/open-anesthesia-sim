@@ -3456,44 +3456,6 @@ def _opening(text: str, width: int = 60) -> str:
     return text if len(text) <= width else f"{text[:width].rstrip()}..."
 
 
-#: The class an item carries to claim that the hazard it describes does not
-#: exist yet, because the milestone that creates it has not been built.
-#: `ROADMAP.md` § "The gate is a snapshot, not a moving target" makes such a
-#: finding not debt until that milestone lands (project owner, 2026-09-16,
-#: ratified), which is the one carve-out the unconditional `safety`/`science`
-#: re-entry takes.
-#:
-#: Spelled here rather than imported, although `docket.config` declares it:
-#: there it is one member of `BRANCHED_ON`, a list of the classes `checks.py`
-#: branches on, and that tuple names a vocabulary rather than this rule's
-#: subject - reading the rule off it would make any future member of it silence
-#: this advisory too. The drift that spelling risks fails in the safe
-#: direction: a name that stops matching excludes nothing, so the advisory keeps
-#: naming the item rather than going quiet about it.
-ANTICIPATED_CLASS = "anticipated"
-
-#: The status that carries the class above's expiry, and the half that makes it
-#: a wait rather than a permanent exemption. `anticipated` says the hazard is
-#: not live yet; `blocked` is what the item stops saying once it is, and
-#: `blocked-by` - which `checks.py` errors on a `blocked` item for omitting - is
-#: where it names what has to happen first. So the pair is a claim with its own
-#: stated end, where the class alone was open-ended (`PL-ZF2G`, project owner,
-#: 2026-09-16, ratified - chosen over leaving the exclusion on the class alone).
-#:
-#: `subprojects/docket/src/docket/checks.py` already requires exactly this pair
-#: for the safety-band exemption, on the same reasoning: "A blocked item where
-#: something is already wrong is the opposite case". Read from there rather than
-#: re-decided here, so that `anticipated` does not come to mean one thing in the
-#: checker and another in this tool.
-#:
-#: Spelled rather than imported for `ANTICIPATED_CLASS`'s reason: `docket.model`
-#: declares it inside `OPEN_STATUSES`, which names a vocabulary rather than this
-#: rule's subject. The drift fails in the same safe direction - a name that stops
-#: matching exempts nothing, so every `anticipated` item is named rather than
-#: passed over.
-BLOCKED_STATUS = "blocked"
-
-
 def _current_gate(text: str) -> MilestoneSection | None:
     """The gate the project is clearing now, read by `docket.roadmap.baseline_gate`.
 
@@ -3605,8 +3567,9 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     was not built: it would put a second copy of `checks.py`'s resolution logic
     - item edges, milestone edges, `ships_with` - in the tool whose job is to
     read the store rather than reason about it, to buy a pass that an existing
-    `bin/docket check` rule already covers. The conjunct is what `checks.py` spells, and
-    agreeing with it is worth more here than being a pass quicker.
+    `bin/docket check` rule already covers. The conjunct is `Item.waits_anticipated`,
+    the one `checks.py` reads too, and agreeing with it is worth more here than
+    being a pass quicker (`PL-4DK2`).
 
     The roadmap had already decided one of these by hand, which is what settles
     it. `PL-V6M0` is `safety, anticipated` and was never blocked, and
@@ -3644,7 +3607,7 @@ def check_gate_reentries(root: Path, report: Report) -> None:
         for item in store.items.values()
         if item.status not in CLOSED_STATUSES
         and item.identifier not in placed
-        and not (item.status == BLOCKED_STATUS and ANTICIPATED_CLASS in item.classes)
+        and not item.waits_anticipated
         and any(name in config.safety_classes for name in item.classes)
     ]
     if not owed:

@@ -27,6 +27,7 @@ from pathlib import Path
 from docket.model import Item
 from docket.store import (
     ID_RE,
+    as_identifier,
     filename_for,
     find_item,
     new_id,
@@ -169,3 +170,10 @@ def test_rewrite_item_keeps_the_file_it_came_from(tmp_path: Path) -> None:
     assert target == original
     assert [p.name for p in tmp_path.glob("*.md")] == [original.name]
     assert "title: New title" in original.read_text(encoding="utf-8")
+
+
+def test_a_typed_id_is_read_in_the_store_s_spelling() -> None:
+    """`claim`, `yield` and `show` read a typed id as `find_item` does (`PL-4DK2`)."""
+    assert as_identifier(" k7qx ") == "PL-K7QX"
+    assert as_identifier("pl-k7qx") == "PL-K7QX"
+    assert as_identifier("PL-K7QX") == "PL-K7QX"

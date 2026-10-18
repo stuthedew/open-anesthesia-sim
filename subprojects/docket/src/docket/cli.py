@@ -79,6 +79,7 @@ from .model import (
     recurrence_count,
     recurrences_of,
     render_item,
+    split_list,
 )
 from .picks import picks
 from .plan import (
@@ -140,7 +141,7 @@ from .release import (
 from .roadmap import IN_SCOPE, MilestoneStates, Scope, Wave, latest_gate, milestone_states, wave
 from .shell import argv
 from .store import (
-    ID_PREFIX,
+    as_identifier,
     find_item,
     insert_field,
     new_id,
@@ -1727,7 +1728,7 @@ def cmd_withdraw(args: argparse.Namespace) -> int:
         )
         return 1
 
-    capture = _as_identifier(args.capture)
+    capture = as_identifier(args.capture)
     entries = recurrences_of(matched)
     targets = [found for found in entries if found.identifier.upper() == capture]
     if not targets:
@@ -1776,17 +1777,6 @@ def cmd_withdraw(args: argparse.Namespace) -> int:
     return 0
 
 
-def _as_identifier(reference: str) -> str:
-    """A typed reference as the store spells an id: upper case, prefix supplied.
-
-    The same tolerance `find_item` extends, applied to a reference that names a
-    *recorded entry* rather than an item - a withdrawn capture may be any id the
-    field carries, so the comparison cannot go through the store.
-    """
-    wanted = reference.strip().upper()
-    return wanted if wanted.startswith(ID_PREFIX) else ID_PREFIX + wanted
-
-
 def _say_undeclared_withdrawal(args: argparse.Namespace, matched: Item, brief: Item) -> None:
     """Warn where the withdrawing item has not declared the file it just changed.
 
@@ -1818,10 +1808,7 @@ def _comma_separated(values: list[str] | None) -> tuple[str, ...]:
     One value per flag and the flag repeatable, for `new --touches` and for
     every list field `set` writes.
     """
-    paths: list[str] = []
-    for value in values or ():
-        paths.extend(part.strip() for part in value.split(",") if part.strip())
-    return tuple(paths)
+    return tuple(entry for value in values or () for entry in split_list(value))
 
 
 def _reads_as_a_path(title: str) -> bool:
@@ -2517,8 +2504,10 @@ def _say_held_elsewhere(args: argparse.Namespace, items: list[Item]) -> None:
     writes a file and a stale base is how that went wrong before (`PL-KBFN`).
     Silent where no branch has the id either, which is the ordinary typo.
     """
-    held = render.format_holds(_holdings(args), args.item, _now(args))
-    key = args.item.upper()
+    # The id as `find_item` read it, so `show k7qx` finds the holds and the
+    # branch copy that `show PL-K7QX` finds (`PL-4DK2`).
+    key = as_identifier(args.item)
+    held = render.format_holds(_holdings(args), key, _now(args))
     report = _stranded(items, args)
     found = next(
         (entry for entry in (report.items if report else ()) if entry.identifier.upper() == key),

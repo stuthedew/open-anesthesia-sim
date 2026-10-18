@@ -97,7 +97,7 @@ from .claims import (
 )
 from .lines import record_text, split_lines
 from .model import CLOSED_STATUSES, parse_front_matter
-from .store import ID_PATTERN
+from .store import ID_PATTERN, as_identifier
 from .vcs import (
     ITEM_FILE_RE,
     REMOTE,
@@ -484,13 +484,18 @@ def yield_claims(
 
 
 def _keys(keys: Sequence[str]) -> tuple[list[str], str]:
-    """The ids asked for, upper-cased and once each, or why they cannot be."""
+    """The ids asked for, as the store spells them and once each, or why they cannot be.
+
+    Read through `store.as_identifier`, so `claim k7qx` claims the item that
+    `show k7qx` finds rather than refusing it as no id (`PL-4DK2`).
+    """
     wanted: list[str] = []
     for key in keys:
-        if _ID.fullmatch(key) is None:
+        identifier = as_identifier(key)
+        if _ID.fullmatch(identifier) is None:
             return [], f"{key!r} is not an item id"
-        if key.upper() not in wanted:
-            wanted.append(key.upper())
+        if identifier not in wanted:
+            wanted.append(identifier)
     return wanted, ""
 
 

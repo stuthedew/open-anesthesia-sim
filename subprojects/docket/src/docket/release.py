@@ -117,7 +117,9 @@ def unreleased(items: list[Item], resuming: str = "") -> list[Item]:
             for i in items
             if i.status == "done"
             and i.resource != RELEASE_TRAIN
-            and (not i.milestone or (bool(resuming) and i.milestone.strip() == resuming))
+            and (
+                not i.milestone or (bool(resuming) and tag_name(i.milestone) == tag_name(resuming))
+            )
         ),
         key=lambda i: (i.closed or date.min, i.identifier),
     )
@@ -415,8 +417,11 @@ def unrecorded_milestones(
     if not floors:
         return []
     floor = min(floors)
+    # Each stamp as its tag is named, as the notes files are keyed, so a
+    # `milestone: 0.4.1` is the release whose notes are `v0.4.1.md` here as it
+    # is to `checks._check_cut_window` (`PL-4DK2`).
     stamped = {
-        item.milestone.strip()
+        tag_name(item.milestone)
         for item in items
         if item.milestone and SEMVER_RE.match(item.milestone.strip())
     }

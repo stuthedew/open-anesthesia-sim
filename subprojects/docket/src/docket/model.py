@@ -69,6 +69,25 @@ BLOCK_ENTRY_RE = re.compile(r"^[ \t]+-([ \t]|$)")
 PRIORITIES = ("P0", "P1", "P2", "P3")
 EFFORTS = ("S", "M", "L")
 
+# A pull request number, as GitHub allocates them: a bare positive integer in
+# ASCII digits. Written without the `#` so that the field holds the number and
+# nothing else, and so a typo like `pr: #71 (docket)` is refused rather than
+# half-parsed. `str.isdigit` read `07` as #7 and `²` as a digit that `int`
+# then refused (`PL-4DK2`).
+PR_RE = re.compile(r"[1-9][0-9]*")
+
+
+def pr_number(value: str) -> int | None:
+    """The pull request a `pr:` value records, or `None` where it holds no number GitHub gives.
+
+    The one reading of the field: `checks` refuses what this returns `None`
+    for, and `vcs` and `tools/pr_body_check.py` link only what it returns a
+    number for, so no reader takes `07` for #7 while another refuses it
+    (`PL-4DK2`).
+    """
+    return int(value) if PR_RE.fullmatch(value) else None
+
+
 # `untriaged` is the capture state: an idea recorded before anyone has decided
 # what it is worth. It exists so that writing something down costs nothing at
 # the moment it occurs - no priority to guess, no band to choose, no other
@@ -570,7 +589,12 @@ def unread_front_matter_lines(text: str) -> tuple[str, ...]:
     return unread
 
 
-def _split_list(value: str) -> tuple[str, ...]:
+def split_list(value: str) -> tuple[str, ...]:
+    """A list field's entries as the store reads them: comma-separated, in order, no blanks.
+
+    `cli` splits a list flag the same way, so `--touches a,,b` writes what the
+    file is read back as (`PL-4DK2`).
+    """
     return tuple(part.strip() for part in value.split(",") if part.strip())
 
 
@@ -876,6 +900,18 @@ class Item:
         item as a feature's next (`PL-4DK2`).
         """
         return self.is_open and not self.is_untriaged and self.status != "blocked"
+
+    @property
+    def waits_anticipated(self) -> bool:
+        """Blocked and classed `anticipated`: a hazard that is not live until a later feature is.
+
+        The pair is a claim with its own end. `anticipated` says the hazard does
+        not exist yet, and `blocked`, with its `blocked-by`, names what has to
+        happen first (`PL-ZF2G`). `checks`' safety-band rule and
+        `tools/doc_check.py`'s gate advisory both exempt it, by this one
+        reading (`PL-4DK2`).
+        """
+        return self.status == "blocked" and "anticipated" in self.classes
 
     @property
     def blocking_milestones(self) -> tuple[str, ...]:
@@ -1673,7 +1709,7 @@ def parse_item(text: str, path: str = "") -> Item:
     (`PL-DHGC`).
     """
     fields, body, declined = parse_front_matter(text)
-    lists = {name: _split_list(fields.get(name, "")) for name in LIST_FIELDS}
+    lists = {name: split_list(fields.get(name, "")) for name in LIST_FIELDS}
     return Item(
         identifier=fields.get("id", ""),
         title=fields.get("title", ""),
@@ -2019,3 +2055,22 @@ def with_front_matter_value(text: str, name: str, value: str) -> str:
     return _read_back(
         text[:start] + replacement + text[match.start(1) + len(through) :], {name: value}
     )
+
+
+def top_band(items: Collection[Item]) -> tuple[str, list[Item]]:
+    """The highest band that open, triaged work occupies, and the items in it.
+
+    `("", [])` where no such work exists. Untriaged work holds no band, since
+    triage is what gives it one, so an untriaged `P0` beside ready `P1` items
+    leaves the band `P1`. `checks` and `trend` read it here, where they read it
+    two ways (`PL-4DK2`).
+    """
+    for priority in PRIORITIES:
+        band = [
+            item
+            for item in items
+            if item.is_open and not item.is_untriaged and item.priority == priority
+        ]
+        if band:
+            return priority, band
+    return "", []
