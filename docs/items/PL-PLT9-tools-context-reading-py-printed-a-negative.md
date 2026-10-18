@@ -53,3 +53,24 @@ pins that no negative spend is printed.
 **Generator check.** One-off. The fact is "which request is the session's first",
 and only `tools/context_reading.py` reads it. `PL-W80S` and `PL-BZVY` were about
 `get_session`'s reading, which is a different fact.
+
+**Go-ahead.** Built as the project owner's pick in the "Ship v0.6.0" project
+(project owner, 2026-10-18: "build", answering whether to build it or only
+explain it).
+
+**Plan (2026-10-18).** The fix has three parts.
+
+1. Read every transcript that carries the session's id. Today
+   `transcript_path` returns the first match under `projects/*/`, sorted. A
+   session whose working directory moved has a transcript under each project
+   directory, and `-home-user` sorts before `-home-user-open-anesthesia-sim`,
+   so the script read only the later file (inferred: the failing transcript
+   was in another container and was not inspected). The script will read all
+   of them and order the requests by timestamp.
+2. Check that the first record read is the session's first. Each transcript
+   record carries `uuid` and `parentUuid`, and the session's first record has
+   `parentUuid: null`, measured on this thread's own transcript (Claude Code
+   2.1.302). A first record whose `parentUuid` is set means the start of the
+   session was not read, so the script names that and prints no spend.
+3. Never print a negative spend. Where the latest request is smaller than the
+   first one read, the script says so and prints no spend.
