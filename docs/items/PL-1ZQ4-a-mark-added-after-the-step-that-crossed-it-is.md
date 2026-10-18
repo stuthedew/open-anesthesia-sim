@@ -3,11 +3,13 @@ id: PL-1ZQ4
 title: A mark added after the step that crossed it is answered three ways: the trunk reads a late MAC target as not reached where a branch opened on that step reads it reached, a mark added to a branch after it opened is never asked of its opening step, and fork_at at a keyframe the trunk halted on opens on no crossing where fork_here opens on the halt's
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, defect
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, docs/MODEL.md, tests/integration/test_controller.py
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1575
 payoff: a mark reads the same on the trunk and on every branch whichever order it and the branch came in, so a learner never sees one mark reached and not reached at one instant
 verify: grep -q 'def test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run' tests/integration/test_controller.py
 ---
@@ -130,3 +132,40 @@ crossing"'s "Reached" definition and § "The canonical evaluation rule"'s
 bullet say so. A regression test in `tests/integration/test_controller.py`,
 `test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run`,
 covers the three cases.
+
+**Done 2026-10-18** (`#1575`). Every door now builds its resume point through
+one call that asks the step ending at the fork what it crossed, so `resumed_at`
+at a keyframe opens on the same crossing `resumed_here` does. The resume point
+also holds the parent's canonical state one step before the fork
+(`ResumePoint.stepped_from`). The standings ask two steps again at every read,
+against the marks as they stand then: the step a branch opened on, and the
+step a stopped run's clock ends (paused, halted or at the cap, not failed).
+`start` keeps what the second crossed when the run leaves it, so the trunk
+still reads a late target reached 300 s on. The reached sets are no longer
+seeded at the fork, because the re-asked opening step answers the same
+question with the current marks.
+
+One residual is deliberate and stated in `docs/MODEL.md`: a run that went past
+the step before a target lying in it was added never stood on it with the
+target marked, so it reads the target still running, as it reads any height it
+did not stop on. A branch opened on that step reads it reached, because it
+opens standing on the step.
+
+Reading a paused run's standings now costs two canonical evaluations: 1.78 ms
+per snapshot against 0.019 ms before, measured on a trunk paused at 118.1 s
+with three marks. A paused run is drawn only when a frame is owed
+(`SimulationView.render_tick`), so this is paid per frame drawn, not per tick.
+
+**The regression test fails on the code before the fix.** With
+`src/anesthesia_sim/app/controller.py` stashed, `uv run pytest -q -p no:xdist
+tests/integration/test_controller.py -k reads_alike_on_every_run` fails at
+case 1's first assertion: `At index 2 diff: <MarkStanding.STILL_RUNNING:
+'still_running'> != <MarkStanding.REACHED: 'reached'>`.
+
+**One existing assertion is rewritten, as the answer requires.**
+`test_a_branch_taken_at_a_control_event_agrees_with_its_trunk_about_a_mark_there`
+asserted `branch.opened_from.crossing is None` ("the premise: a keyframe
+carries no crossing"), which is case 3's defect. It now asserts the halt's
+crossing and that the branch's provenance equals `resumed_here`'s. The base
+copy of this item carries no `falsifies:`, so `bin/docket verify --self`
+reports that removal.

@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: infra
+milestone: v0.5.28
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-19
 closed: 2026-10-18

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: worker-instructions
+milestone: v0.5.28
 touches: .claude/skills/docket/modes, .claude/skills/docket/SKILL.md, docs/items/PL-B1R4-sweep-the-seven-docket-mode-files-for-other.md
 added: 2026-09-22
 closed: 2026-10-18

@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs, infra
+milestone: v0.5.28
 touches: .claude/rules/citation-drift.md, tests/unit/test_rules_paths_check.py
 added: 2026-09-21
 closed: 2026-10-18
