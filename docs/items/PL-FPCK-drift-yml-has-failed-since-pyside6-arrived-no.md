@@ -3,7 +3,7 @@ id: PL-FPCK
 title: drift.yml has failed since PySide6 arrived: no job installs libegl1, and the interpreter job deletes the tracked .python-version that a test lists
 priority: P2
 effort: S
-status: open
+status: ready
 classes: infra
 touches: .github/workflows/drift.yml
 added: 2026-10-18
