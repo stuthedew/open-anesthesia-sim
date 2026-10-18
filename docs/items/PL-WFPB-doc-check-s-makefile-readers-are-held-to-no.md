@@ -77,3 +77,7 @@ so `KNOWN_DEPARTURES` pins two rows, `PL-GSJ6`'s `.RECIPEPREFIX` and
 failed on `tools/doc_check.py` from before each of three fixes: `#1436`
 (`PL-5M36` and `PL-QYF4`, an `@` kept on a command), `#1385` (`PL-GZXY`) and
 `#1338` (`PL-G2FY`). It takes about 5 seconds.
+
+The test asserts that GNU make is on `PATH` rather than skipping without it,
+as `test_shell.py` does for bash. `make check` runs it, so make is always
+there, and `bin/docket verify` refuses an added `skipif` as a suppression.

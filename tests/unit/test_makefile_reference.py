@@ -40,8 +40,8 @@ that sets `.RECIPEPREFIX` (`PL-GSJ6`) and a conditional (`PL-HSB3`).
 `KNOWN_DEPARTURES` pins each one's present reading, so a fix fails that row
 and the fix removes it and adds the form to the generator.
 
-The test is skipped where no GNU make is on `PATH`. CI's runners and the
-cloud containers both carry GNU make 4.3.
+The test needs GNU make on `PATH`, as `make check`, which runs it, does.
+CI's runners and the cloud containers both carry GNU make 4.3.
 """
 
 from __future__ import annotations
@@ -52,6 +52,7 @@ import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 
 import doc_check
@@ -60,17 +61,15 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 
-def _gnu_make() -> str | None:
-    """The path of GNU make on `PATH`, or `None` where there is none."""
-    found = shutil.which("make")
-    if found is None:
-        return None
-    version = subprocess.run([found, "--version"], capture_output=True, text=True, check=False)
-    return found if version.stdout.startswith("GNU Make") else None
+@cache
+def _gnu_make() -> str:
+    """The GNU make the comparison runs, found on `PATH`."""
+    path = shutil.which("make")
+    assert path is not None, "the comparison runs GNU make, and no make is on PATH"
+    version = subprocess.run([path, "--version"], capture_output=True, text=True, check=True)
+    assert version.stdout.startswith("GNU Make"), f"{path} is not GNU make"
+    return path
 
-
-MAKE = _gnu_make()
-pytestmark = pytest.mark.skipif(MAKE is None, reason="no GNU make on PATH")
 
 #: make's message for the goal no Makefile here names, which is how the database is printed.
 NO_GOAL = "make: *** No rule to make target 'NO_SUCH_GOAL'.  Stop.\n"
@@ -103,9 +102,8 @@ def _make(text: str, directory: str, *argv: str) -> subprocess.CompletedProcess[
     The environment holds `PATH` alone, so a `MAKEFLAGS` that `make check` set
     for the suite cannot reach this make.
     """
-    assert MAKE is not None
     return subprocess.run(
-        [MAKE, "--no-print-directory", "-f", "-", *argv],
+        [_gnu_make(), "--no-print-directory", "-f", "-", *argv],
         input=text,
         capture_output=True,
         text=True,
