@@ -87,9 +87,7 @@ def test_the_tag_lands_on_the_cut_however_late_it_runs(
     assert run(tagger, apply=True) == 0, "a second run is not a failure"
 
 
-def test_a_version_file_declaring_its_v_is_tagged_once(
-    published: tuple[Path, Path], tmp_path: Path
-) -> None:
+def test_a_declared_leading_v_names_one_tag(published: tuple[Path, Path]) -> None:
     """`PL-5H48`: `f"v{version}"` named a declared `v0.3.0`'s release `vv0.3.0`."""
     origin, work = published
     cut = _commit(
