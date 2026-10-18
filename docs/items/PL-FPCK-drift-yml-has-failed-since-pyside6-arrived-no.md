@@ -3,10 +3,11 @@ id: PL-FPCK
 title: drift.yml has failed since PySide6 arrived: no job installs libegl1, the interpreter job deletes the tracked .python-version that a test lists, and it never reaches a new CPython
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 touches: .github/workflows/drift.yml
 added: 2026-10-18
+closed: 2026-10-18
 payoff: every drift.yml job reaches its test results on an unchanged tree, so a red run means a dependency, a new interpreter or a test order broke the suite, and not the runner
 verify: grep -q 'check-latest: true' .github/workflows/drift.yml && grep -q 'Qt.s system libraries, for the offscreen platform plugin' .github/workflows/drift.yml && grep -q 'version_info.:3.). > .python-version' .github/workflows/drift.yml && ! grep -q 'rm -f .python-version' .github/workflows/drift.yml
 ---
@@ -59,3 +60,14 @@ check so that the retirement question is asked about a check that works.
 **Done when.** The `verify:` line holds, and a `workflow_dispatch` run of
 `drift.yml` on the branch gets past test collection in all three jobs. Any test
 that still fails is a drift finding to capture, not a defect of this item.
+
+**Closed 2026-10-18.** On this branch,
+[run 39157643905](https://github.com/stuthedew/open-anesthesia-sim/actions/runs/39157643905)
+passed all three jobs: `dependencies` and `interpreter` each ran 9,352 tests,
+mypy was clean, and `uv pip list --outdated` named no release beyond a declared
+bound. That run's interpreter job still tested 3.14.8, which led to the
+`check-latest` fix. With that fix,
+[run 39159017258](https://github.com/stuthedew/open-anesthesia-sim/actions/runs/39159017258)
+tested CPython 3.15.0 against the pinned 3.14. Its interpreter job passed:
+9,352 tests passed and 2 were skipped. Whether to move the pin is
+`PL-J0P8`'s question, not this item's.
