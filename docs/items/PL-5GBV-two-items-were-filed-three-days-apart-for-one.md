@@ -3,11 +3,13 @@ id: PL-5GBV
 title: Two items were filed three days apart for one defect and both reached ready and entered the frozen v0.5.0 gate, which counted the same work twice
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: infra
 feature: open-item-overlap-detection
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-07
+closed: 2026-10-18
+reason: The detection half landed elsewhere and the gate half needs nothing: bin/docket new warns on a capture sharing a subject with an open item (PL-TZ7T, PL-0HLS) and docket check compares open items' verify clauses (PL-BGMK); the remaining pair shape shares no field, which no comparison can reach (measured 2026-09-30); a duplicate found later is dropped, and a dropped entry clears the gate's open count; dropped duplicates fell from 60 in September to 3 so far in October
 verify: grep -q 'def test_triage_names_an_open_item_with_a_near_identical_title' subprojects/docket/tests/test_cli.py && uv run pytest -q subprojects/docket/tests/test_cli.py
 ---
 
