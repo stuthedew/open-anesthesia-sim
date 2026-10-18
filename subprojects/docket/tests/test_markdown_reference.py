@@ -194,7 +194,11 @@ class _EmphasisReference:
     two are the ones `emphasis.postProcess` empties.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, departing: tuple[str, ...] = ("link_open", "image", "html_inline")) -> None:
+        #: The token types that keep a text out of the comparison. An
+        #: autolink is a `link_open` whose markup is `autolink`, and is kept
+        #: out only while `html_inline` is.
+        self.departing = departing
         self.parser = MarkdownIt("commonmark").enable("table").disable("reference")
         self.parser.inline.ruler.at("backticks", self._backtick)
         self.parser.inline.ruler.at("emphasis", self._delimiter)
@@ -204,7 +208,7 @@ class _EmphasisReference:
         self.noted: list[tuple[str, list[Literal], set[Span]]] = []
 
     def read(self, text: str) -> list[tuple[str, list[Literal], set[Span]]]:
-        """Each inline text of `text` holding no link, image, autolink or raw HTML, as read."""
+        """Each inline text of `text` holding none of the tokens `departing` names, as read."""
         self.noted = []
         self.parser.parse(text)
         return self.noted
@@ -232,7 +236,10 @@ class _EmphasisReference:
         opened: list[tuple[str, int]] = []
         departs = False
         for index, token in enumerate(state.tokens):
-            departs = departs or token.type in ("link_open", "image", "html_inline")
+            departs = departs or (
+                token.type in self.departing
+                and not (token.markup == "autolink" and "html_inline" not in self.departing)
+            )
             if token.type in ("em_open", "strong_open"):
                 opened.append((token.type, self.offsets[(key, index)]))
             elif token.type in ("em_close", "strong_close"):
@@ -300,11 +307,11 @@ def test_code_spans_finds_each_specification_example_span_markdown_it_py_finds()
 
     The examples hold escaped backticks, runs no closer matches and runs of
     unequal length, each of which the pattern before this one read on its own
-    terms. A text holding a link, an image, an autolink or raw HTML is passed
-    over, as the emphasis test passes it: an autolink or raw HTML opening first
-    takes a backtick inside it, which `code_spans` does not read.
+    terms. A text holding a link or an image is passed over: `code_spans`
+    does not read a link's text and destination apart. An autolink or raw HTML
+    opening first takes a backtick inside it, as `code_spans` reads (`PL-Q80R`).
     """
-    reference = _EmphasisReference()
+    reference = _EmphasisReference(departing=("link_open", "image"))
     differing = [
         f"{text!r}: docket {found}, markdown-it-py {literals}"
         for name in ("commonmark-0.31.2.txt", "gfm-0.29.0.gfm.13.txt")

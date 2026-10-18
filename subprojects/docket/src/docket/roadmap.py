@@ -117,8 +117,10 @@ def table_rows(text: str, heading: str, level: int = 2) -> Iterator[tuple[int, l
 # copies of it would drift, and the drift would be in the one document that
 # says which release is current.
 VERSION_TABLE_HEADING = "Versioning decision"
-# The status cell marking a release as shipped. Matched as a substring: this
-# project writes "Completed / current baseline" on the row it is standing on.
+# The status cell marking a release as shipped. Matched as a substring, and
+# casefolded as `BASELINE_MARK` is: this project writes "Completed / current
+# baseline" on the row it is standing on, and a hand-written `completed` is the
+# same claim. `VersionRow.is_completed` is the one reading of it (`PL-5H48`).
 COMPLETED = "Completed"
 BASELINE_MARK = "current baseline"
 BASELINE_HEADING_RE = re.compile(rf"^Current baseline:\s*v?(?P<version>{SEMVER_PATTERN})\b")
@@ -135,6 +137,16 @@ class VersionRow:
     @property
     def is_baseline(self) -> bool:
         return BASELINE_MARK in self.status.casefold()
+
+    @property
+    def is_completed(self) -> bool:
+        """Whether the row records its release as shipped, in any case.
+
+        docket and `doc_check` both ask this. Until `PL-5H48` docket matched
+        `Completed` exactly and `doc_check` casefolded, so a status cell
+        `completed` was untagged to the one and unreleased to the other.
+        """
+        return COMPLETED.casefold() in self.status.casefold()
 
 
 def parse_version_table(text: str) -> list[VersionRow]:
@@ -161,7 +173,7 @@ def released_versions(rows: Iterable[VersionRow]) -> frozenset[str]:
     a substring, so a second copy would be a second place for the substring to
     drift.
     """
-    return frozenset(row.version for row in rows if COMPLETED in row.status)
+    return frozenset(row.version for row in rows if row.is_completed)
 
 
 def baseline_heading(text: str) -> tuple[int, str] | None:
@@ -499,6 +511,12 @@ class MilestoneSection:
     #: not read whole - `tools/doc_check.py` fails each line, and `wave` and the
     #: digest say so.
     unread: tuple[UnreadEntry, ...] = ()
+    #: The 1-based line of the `Required scope` heading the ids above are read
+    #: under, or 0 where the section has none. A section holding two such
+    #: headings is read under the last, and `tools/doc_check.py` cites this line
+    #: rather than finding a heading of its own, which found the first
+    #: (`PL-5H48`).
+    scope_line: int = 0
 
     @property
     def label(self) -> str:
@@ -865,6 +883,7 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
                 excluded_ids=_deduped(_subsection_ids(lines, excluded)) if excluded else (),
                 scope_entries=scope_entries,
                 unread=gate_unread + scope_unread,
+                scope_line=scope or 0,
             )
         )
 
@@ -1007,7 +1026,7 @@ def milestone_states(text: str) -> MilestoneStates:
     known.update(_rendered(section.version) for section in sections)
 
     cleared = {_rendered(section.version) for section in sections if section.is_scoped}
-    released = {f"v{row.version}" for row in parse_version_table(text) if COMPLETED in row.status}
+    released = {f"v{version}" for version in released_versions(parse_version_table(text))}
     known.update(released)
     cleared.update(released)
     claimed = {

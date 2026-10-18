@@ -974,6 +974,17 @@ def test_strip_non_code_blanks_a_double_backtick_literal_whole() -> None:
     assert "xfail" not in strip_non_code('    """``@pytest.mark.xfail`` marks it expected to fail.')
 
 
+def test_a_comparison_shaped_like_a_tag_is_still_read_as_code() -> None:
+    """`PL-Q80R`: the scan that steps over raw HTML is Markdown's, never Python's.
+
+    `RAW_HTML_RE` matches `<b and c>` in the line below. Were the strip to step
+    over it as Markdown does, the marker after it would be blanked with it.
+    """
+    line = "if a<b and c>d: pytest.mark.xfail"
+
+    assert strip_non_code(line) == line
+
+
 def test_no_suppression_marker_is_comment_shaped() -> None:
     """`is_suppression_line` blanks comments, so a comment-form marker is dead.
 
