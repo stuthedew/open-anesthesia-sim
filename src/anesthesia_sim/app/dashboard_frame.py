@@ -61,6 +61,7 @@ from anesthesia_sim.app.formatting import (
     FLOW_DISPLAY_DECIMALS,
     format_agent_residual,
     format_agent_volume,
+    format_branch_discard_warning,
     format_case_discard_warning,
     format_delivered_label,
     format_elapsed,
@@ -559,6 +560,23 @@ NEW_CASE_CARRYOVER_TEMPLATE: Final = (
 # makes without reading is the one that keeps their case.
 KEEP_CURRENT_CASE_TEMPLATE: Final = "Keep the {agent} case"
 START_NEW_CASE_TEMPLATE: Final = "Discard and start {agent}"
+
+# What the confirmation says before the trunk's Reset discards a branch
+# holding work (`PL-W5WX`). It is built the way the new-case question is:
+# why the branch goes too, what is lost (`formatting.format_branch_discard_warning`,
+# per branch), and what the trunk keeps. `TRUNK_RESET_KEEPS_TEMPLATE` is a
+# claim about `SimulationController.reset`, which keeps the settings and the
+# bookmarks, and has to stay true with it. The buttons name their outcomes,
+# and the keeping one is the default, as on the new-case question.
+TRUNK_RESET_TITLE_TEMPLATE: Final = "{reset} {trunk} and discard {branches}?"
+TRUNK_RESET_ENDS_BRANCHES_TEMPLATE: Final = (
+    "{trunk}'s {reset} starts the case over, and a branch cannot outlive the run it was taken from."
+)
+TRUNK_RESET_KEEPS_TEMPLATE: Final = (
+    "{trunk} goes back to induction with its settings and bookmarks kept."
+)
+TRUNK_RESET_DISCARD_TEMPLATE: Final = "{reset} and discard {branches}"
+KEEP_BRANCHES_TEMPLATE: Final = "Keep {branches}"
 
 # While a run is going the agent selector is *replaced* by a chip rather than
 # greyed, because a disabled control repaints the agent's identity colour in
@@ -2570,10 +2588,14 @@ def no_traces_shown(frame: ChartFrame) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class NewCaseQuestion:
-    """The confirmation asked before a recorded run is discarded for a new agent.
+    """The confirmation asked before recorded work is discarded for a new case.
+
+    Two questions take this shape: a new agent discarding the run
+    (`new_case_question`), and the trunk's Reset discarding a branch
+    (`trunk_reset_question`). Both start the case over.
 
     Attributes:
-        title: Names the agent the reader would start.
+        title: Names what the reader would start, or the runs a Reset ends.
         body: Three statements in the order a reader meets them: why this
             is a new case at all, what is about to be lost, and what
             survives. Three rather than one paragraph because they answer
@@ -2627,6 +2649,104 @@ def new_case_question(
         ),
         discard_label=START_NEW_CASE_TEMPLATE.format(agent=new),
         keep_label=KEEP_CURRENT_CASE_TEMPLATE.format(agent=current),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class BranchAtStake:
+    """One drawn branch that the trunk's Reset would discard, as the question states it.
+
+    Attributes:
+        name: What the branch is called on screen (`run_label`).
+        began_at_s: The case instant it branched at.
+        elapsed_s: The case instant it has run to, or None where its
+            snapshot refuses a value and the instant could not be read.
+        adjustment_count: How many control changes it holds, counted as its
+            "Control changes" panel lists them.
+    """
+
+    name: str
+    began_at_s: float
+    elapsed_s: float | None
+    adjustment_count: int
+
+
+def branch_at_stake(
+    name: str, began_at_s: float, snapshot: SimulationSnapshot | None, adjustment_count: int
+) -> BranchAtStake | None:
+    """Whether a trunk's Reset would discard work in this branch, and what work.
+
+    A branch holding nothing is not at stake, by `has_recorded_run`, which
+    is what spares the new-case question too: a question asked where nothing
+    is lost is answered without reading by the time something is. A branch
+    whose snapshot refuses a value is at stake, because what it holds cannot
+    be read, and discarding unread work without asking is the outcome this
+    question exists to prevent.
+
+    Args:
+        name: What the branch is called on screen.
+        began_at_s: The case instant it branched at, from its controller.
+        snapshot: Its snapshot, or None where reading one refused.
+        adjustment_count: How many control changes it holds, grouped as its
+            panel lists them.
+
+    Returns:
+        What the question states about the branch, or None where the branch
+        holds nothing.
+    """
+
+    if snapshot is not None and not snapshot.has_recorded_run:
+        return None
+
+    return BranchAtStake(
+        name=name,
+        began_at_s=began_at_s,
+        elapsed_s=None if snapshot is None else snapshot.elapsed_s,
+        adjustment_count=adjustment_count,
+    )
+
+
+def trunk_reset_question(trunk_name: str, branches: Sequence[BranchAtStake]) -> NewCaseQuestion:
+    """The confirmation asked before the trunk's Reset discards branches holding work.
+
+    `docs/MODEL.md` § "Agent-change behavior" requires it. Reset's exemption
+    from that section's confirmation covers the run whose button was
+    pressed, and a branch is another run (`PL-W5WX`).
+
+    Args:
+        trunk_name: What the trunk is called on screen.
+        branches: The drawn branches holding work, in drawing order.
+
+    Returns:
+        The question's text.
+
+    Raises:
+        ValueError: If no branch is given, since a Reset that discards
+            nothing asks nothing; or if an instant is negative or not finite
+            (`format_branch_discard_warning`, through `format_elapsed`).
+    """
+
+    if not branches:
+        raise ValueError("a trunk's Reset asks only before it discards a branch; none was given")
+
+    names = " and ".join(branch.name for branch in branches)
+
+    return NewCaseQuestion(
+        title=TRUNK_RESET_TITLE_TEMPLATE.format(
+            reset=RESET_LABEL, trunk=trunk_name, branches=names
+        ),
+        body=(
+            TRUNK_RESET_ENDS_BRANCHES_TEMPLATE.format(trunk=trunk_name, reset=RESET_LABEL),
+            " ".join(
+                format_branch_discard_warning(
+                    branch.name, branch.began_at_s, branch.elapsed_s, branch.adjustment_count
+                )
+                for branch in branches
+            ),
+            TRUNK_RESET_KEEPS_TEMPLATE.format(trunk=trunk_name),
+        ),
+        discard_label=TRUNK_RESET_DISCARD_TEMPLATE.format(reset=RESET_LABEL, branches=names),
+        keep_label=KEEP_BRANCHES_TEMPLATE.format(branches=names),
     )
 
 

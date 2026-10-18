@@ -651,7 +651,10 @@ is a property of the display rather than of the model:
   are shown, visibly and with the reason readable. Resetting the *trunk*
   takes every branch off the dashboard and rebuilds the case on the restarted
   run, because a trunk that has started over never passed through the instant
-  a branch was taken at; resetting a *branch* returns it to its own fork and
+  a branch was taken at. Where a branch holds elapsed time or a recorded
+  control change, the trunk's Reset asks first (`PL-W5WX`): the question comes
+  from `SimulationView._trunk_reset_question`, which `RunView.ask_before_reset`
+  hands the trunk's view. Resetting a *branch* returns it to its own fork and
   leaves the comparison standing. **The lock says which of those two Resets
   it means, in the words the screen carries** (`PL-WG73`).
   `comparing_fork_lock_text` fills its sentence from `run_label` and

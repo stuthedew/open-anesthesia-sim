@@ -65,6 +65,7 @@ __all__ = [
     "chart_grid_interval_percent",
     "format_agent_residual",
     "format_agent_volume",
+    "format_branch_discard_warning",
     "format_case_discard_warning",
     "format_chart_time_label",
     "format_delivered_label",
@@ -955,6 +956,12 @@ def _plural(noun: str, count: float) -> str:
     return noun if count == 1 else f"{noun}s"
 
 
+#: What both discard warnings end on: the loss, and that it is final.
+_DISCARD_CONSEQUENCE: Final = (
+    "will be discarded along with its chart history. This cannot be undone."
+)
+
+
 def format_case_discard_warning(
     agent_display_name: str, elapsed_s: float, control_change_count: int
 ) -> str:
@@ -983,17 +990,61 @@ def format_case_discard_warning(
         One sentence naming the run and what discarding it costs.
     """
 
-    changes = (
-        "1 recorded control change"
-        if control_change_count == 1
-        else f"{control_change_count} recorded control changes"
-    )
-
     return (
         f"The current {agent_display_name.lower()} case — "
-        f"{format_elapsed(elapsed_s)} of simulated time, {changes} — will be "
-        "discarded along with its chart history. This cannot be undone."
+        f"{format_elapsed(elapsed_s)} of simulated time, "
+        f"{_recorded_control_changes(control_change_count)} — {_DISCARD_CONSEQUENCE}"
     )
+
+
+def format_branch_discard_warning(
+    run_name: str, began_at_s: float, elapsed_s: float | None, control_change_count: int
+) -> str:
+    """State what a trunk's Reset is about to throw away of one branch it ends.
+
+    The branch's counterpart of `format_case_discard_warning`, in the same
+    words, because it costs the same two things and nothing restores either
+    (`PL-W5WX`). A branch's clock is the case's, so its simulated time is
+    stated as the two instants the clock shows rather than as a duration: the
+    instant it branched at, and the instant it has run to. A reader checks
+    both against the branch's own clock and the branch control's label.
+
+    The second instant is left out where it says nothing: where the branch
+    has not run past its fork, and where its time could not be read because
+    its snapshot refuses a value. The warning then states only what is
+    known, and never a number nothing produced.
+
+    Args:
+        run_name: What the branch is called on screen (`run_label`).
+        began_at_s: The case instant the branch began at, its fork.
+        elapsed_s: The case instant the branch has run to, or None where it
+            could not be read.
+        control_change_count: How many recorded control changes the branch
+            holds, counted as the "Control changes" panel lists them.
+
+    Returns:
+        One sentence naming the branch and what discarding it costs.
+
+    Raises:
+        ValueError: If either instant is negative or not finite, through
+            `format_elapsed`.
+    """
+
+    span = f"branched at {format_elapsed(began_at_s)}"
+
+    if elapsed_s is not None and elapsed_s > began_at_s:
+        span += f" and run to {format_elapsed(elapsed_s)}"
+
+    return (
+        f"{run_name} — {span}, {_recorded_control_changes(control_change_count)} — "
+        f"{_DISCARD_CONSEQUENCE}"
+    )
+
+
+def _recorded_control_changes(count: int) -> str:
+    """How many recorded control changes are about to be lost, as the warnings state it."""
+
+    return "1 recorded control change" if count == 1 else f"{count} recorded control changes"
 
 
 def format_subtitle(agent_display_name: str) -> str:
