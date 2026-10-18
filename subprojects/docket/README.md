@@ -4270,7 +4270,11 @@ because a rename or deletion left it naming nothing and `concurrent` then misses
 the overlap. A path no commit has held is not named, because it reads exactly as
 a file the work will create - eleven of the thirteen absent paths open items
 declared on 2026-09-30 were those - so a typo is not named either, and a shallow
-clone declines rather than answer from a truncated history (`PL-8JY7`). But it
+clone declines rather than answer from a truncated history (`PL-8JY7`). It also
+names an open item whose `verify:` command takes, as a plain argument, an
+existing file its `touches` do not cover, because another item's work on that
+file could flip the command while `concurrent` treats the two as independent
+(`PL-ZB82`). But it
 will not tell you what to work on instead, and it does not try to decide
 whether an item is still worth doing. A tool that guessed at that would produce output that looks
 authoritative and is not. Where it does fail the run — an open item whose own
