@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
 closed: 2026-10-18
+pr: 1582
 payoff: an item's fields mean one thing to every command and check that reads them
 verify: grep -q 'def test_a_lower_case_id_is_claimed_as_find_item_reads_it' subprojects/docket/tests/test_claiming.py
 ---
