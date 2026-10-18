@@ -1525,3 +1525,39 @@ def test_startable_is_open_triaged_and_not_blocked() -> None:
     assert not _item(status="blocked").is_startable
     assert not _item(status="untriaged").is_startable
     assert not _item(status="done", closed=date(2026, 8, 2)).is_startable
+
+
+def test_a_quoted_value_continued_on_a_hash_led_line_is_read_whole() -> None:
+    """`PL-B53Y`: inside an open quoted value a `#`-led line is content, as YAML reads it.
+
+    Taken for a comment, the line was skipped and the title read `"Fixed in`,
+    its opening quote kept, with nothing reported. A quoted value that closes
+    on its own line leaves a later `#`-led line a comment.
+    """
+    text = '---\nid: PL-001\ntitle: "Fixed in\n  #1377 at last"\nstatus: ready\n---\n'
+    closed = "---\nid: PL-001\ntitle: 'done' and more\n  # a comment\nstatus: ready\n---\n"
+
+    fields, _, declined = parse_front_matter(text)
+    shut, _, quiet = parse_front_matter(closed)
+
+    assert fields["title"] == "Fixed in #1377 at last"
+    assert fields["status"] == "ready"
+    assert not declined
+    assert shut["title"] == "'done' and more"
+    assert not quiet
+
+
+def test_a_comment_line_inside_a_plain_value_is_not_folded_over() -> None:
+    """`PL-B53Y`: a comment line ends a plain value, so what follows it is reported.
+
+    YAML ends a plain scalar at a comment and refuses an indented line after
+    it. The fold skipped the comment and joined the line on, reading
+    `Fixed in 1377 at last`, a value YAML does not read.
+    """
+    text = "---\nid: PL-001\ntitle: Fixed in\n# a comment\n  1377 at last\n---\n"
+
+    fields, _, declined = parse_front_matter(text)
+
+    assert fields["title"] == "Fixed in"
+    assert unread_front_matter_lines(text) == ("  1377 at last",)
+    assert declined.lines == ("  1377 at last",)

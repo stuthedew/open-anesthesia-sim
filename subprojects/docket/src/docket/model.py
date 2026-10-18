@@ -273,20 +273,65 @@ def _fold(lines: list[str]) -> tuple[list[tuple[str, str, int, list[int]]], list
     first field. Its index is returned rather than dropped, because what such a
     line usually holds is the tail of the value above it, and a reader that
     passes over it hands on that value shortened with nothing to say so.
+
+    **A comment line ends the value above it, as YAML ends a plain scalar
+    there** (YAML 1.2.2 § 6.6). An indented line after it continues nothing,
+    so it is unread and reported. It used to be folded on, which read a value
+    that YAML refuses (`PL-B53Y`). **Inside a quoted value still open, a
+    `#`-led line is content**, as YAML reads a `#` inside a quoted scalar
+    (§ 7.3), so it continues the value. Taken for a comment, it left the value
+    read short with its opening quote kept and nothing reported.
     """
     fields: list[tuple[str, str, int, list[int]]] = []
     unread: list[int] = []
+    text = ""
+    ended = False
     for index, line in enumerate(lines):
-        if not line.strip() or line.lstrip().startswith("#"):
+        continues = bool(fields) and not ended and bool(CONTINUATION_RE.match(line))
+        if continues and _quote_open(text):
+            fields[-1][3].append(index)
+            text = f"{text} {line.strip()}"
+            continue
+        if not line.strip():
+            continue
+        if line.lstrip().startswith("#"):
+            ended = True
             continue
         field_match = FIELD_RE.match(line)
         if field_match is not None:
             fields.append((field_match.group(1), field_match.group(2).strip(), index, []))
-        elif fields and CONTINUATION_RE.match(line):
+            text, ended = field_match.group(2).strip(), False
+        elif continues:
             fields[-1][3].append(index)
+            text = f"{text} {line.strip()}"
         else:
             unread.append(index)
     return fields, unread
+
+
+def _quote_open(value: str) -> bool:
+    """Whether `value` opens a quoted YAML scalar that it has not yet closed.
+
+    `''` inside single quotes is one quote, and inside double quotes a
+    backslash escapes the character after it, as YAML reads both. A value that
+    closes its quote before its end, such as a payoff opening with a quoted
+    phrase, is closed.
+    """
+    if not value or value[0] not in "\"'":
+        return False
+    quote, index = value[0], 1
+    while index < len(value):
+        char = value[index]
+        if quote == '"' and char == "\\":
+            index += 2
+            continue
+        if char == quote:
+            if quote == "'" and value[index + 1 : index + 2] == "'":
+                index += 2
+                continue
+            return False
+        index += 1
+    return True
 
 
 def _front_matter_pairs(
@@ -455,11 +500,12 @@ def front_matter_spans(text: str) -> tuple[tuple[FieldSpan, ...], int] | None:
     Each field is its key, its span and the interior lines of that span
     (`FieldSpan`). The body starts on the line after the closing `---`. Indices
     count from the opening `---`, as `text.split("\n")` does, so a reader
-    holding a match inside one field can name the line it is on. A line no
-    field holds - blank, a comment, or one `_fold` reads as no field's - is in
-    no span unless a line folded into a field stands below it, and then it is
-    in that field's span and named in its `interior`, since `_fold` reads past
-    it to the line below. `None` where `text` has no front matter.
+    holding a match inside one field can name the line it is on. A blank line,
+    or one that `_fold` reads as no field's, is in no span unless a line folded
+    into a field stands below it. Then it is in that field's span and named in
+    its `interior`, since `_fold` reads past it to the line below. A comment
+    line ends the field above it, so no folded line stands below it and it is
+    in no span. `None` where `text` has no front matter.
 
     For a reader that matches within one field at a time, since a code span or
     a quotation in one never pairs with the next field's: read as one Markdown

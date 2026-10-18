@@ -196,6 +196,7 @@ try:
         CODE,
         FENCE,
         HTML,
+        PARAGRAPH,
         PROSE,
         SOFT_BREAK,
         TABLE,
@@ -5392,8 +5393,8 @@ def _brief_pieces(
     none ends the paragraph where `_fold` reads on. A reader takes a line from
     a piece and never a column, so the indent moves nothing it reports. Two
     fields are declined instead, each named in `declined` with `where` and the
-    `unread` its readers look for: one with a blank, comment or unread line
-    inside it, since no line carries a paragraph over a blank one and `_fold`
+    `unread` its readers look for: one with a blank or unread line inside it,
+    since no line carries a paragraph over a blank one and `_fold`
     reads past it, and one continuing on a line that opens with `>`, which
     `SOFT_BREAK` drops as a block quote's marker where `_fold` reads it as text.
     """
@@ -5414,7 +5415,7 @@ def _brief_pieces(
         folded = lines[span.start + 1 : span.end]
         if span.interior:
             why, fix = (
-                "holds a blank, comment or unread line among the lines folded into it, where a "
+                "holds a blank or unread line among the lines folded into it, where a "
                 "Markdown paragraph ends and docket reads on",
                 "join the value's lines, or end it above that line",
             )
@@ -6323,9 +6324,7 @@ def check_make_targets(root: Path, documents: dict[Path, str], report: Report) -
                 )
 
 
-def workflow_commands(
-    text: str, unread: list[UnreadStatement] | None = None
-) -> Iterator[tuple[str, int]]:
+def workflow_commands(text: str) -> tuple[list[tuple[str, int]], list[UnreadStatement]]:
     """Every line of shell a workflow's `run:` steps execute, with the line number it starts on.
 
     A block scalar's body reaches bash as one script, so it is read as one,
@@ -6352,18 +6351,25 @@ def workflow_commands(
 
     **Where a step's value ends, and in which form, is read as YAML reads it**
     (`PL-R417`), through `_run_script`. A step, a job or a workflow in a form
-    either reader declines is no commands here: it goes on `unread` where the
-    caller passes one, so the check can say which it did not read and carry
-    on to the next, and is raised where none is passed, so no reading of it is
-    silent.
+    either reader declines is no commands here. It is returned beside the
+    commands instead, so the check can say which it did not read and carry on
+    to the next.
+
+    **The declines are returned, not written to a list the caller passes**
+    (`PL-GC59`). A caller that passed `[]` dropped them without a word, the
+    shape in which `tools/dead_ends.py` once dropped the walker's (`PL-DQ9C`).
     """
-    for body, script in _step_scripts(text, unread):
-        for command, offset in script_lines(body):
-            if command.strip():
-                yield command.strip(), script[body.count("\n", 0, offset)][1]
+    scripts, unread = _step_scripts(text)
+    commands = [
+        (command.strip(), script[body.count("\n", 0, offset)][1])
+        for body, script in scripts
+        for command, offset in script_lines(body)
+        if command.strip()
+    ]
+    return commands, unread
 
 
-def workflow_runs(text: str, steps: list[UnreadStatement]) -> Iterator[tuple[str, ...]]:
+def workflow_runs(text: str) -> tuple[list[tuple[str, ...]], list[UnreadStatement]]:
     """Every simple command a workflow's `run:` steps execute, each as its words.
 
     Each step's script is read in one pass of docket's `shell.shell_words`,
@@ -6373,21 +6379,23 @@ def workflow_runs(text: str, steps: list[UnreadStatement]) -> Iterator[tuple[str
     the arm `check) make check ;;` read as `check` and `make check`, a script
     the merge gate never runs.
 
-    A script that pass cannot read to its end is declined whole, on `steps`
-    at the line where the reading stops, and gives no commands. Read a line
-    at a time instead, as it was until `PL-7CQ5`, a `case` construct above
-    an unclosed quote gave `check`, `make check` and `esac` as commands, and
-    only the unreadable line was declined.
+    A script that pass cannot read to its end is declined whole, at the line
+    where the reading stops, and gives no commands. Read a line at a time
+    instead, as it was until `PL-7CQ5`, a `case` construct above an unclosed
+    quote gave `check`, `make check` and `esac` as commands, and only the
+    unreadable line was declined.
 
-    A step `workflow_commands` declines goes on `steps`, as it would there.
+    The declines come back beside the commands, as `workflow_commands`
+    returns its own: a step it declines is declined here too.
     """
-    for _, body, script in _workflow_scripts(text, steps):
-        yield from _script_runs(body, script, steps)
+    scripts, steps = _workflow_scripts(text)
+    runs = [words for _, body, script in scripts for words in _script_runs(body, script, steps)]
+    return runs, steps
 
 
 def pull_request_runs(
-    text: str, steps: list[UnreadStatement]
-) -> Iterator[tuple[tuple[str, ...], UnreadStatement | None]]:
+    text: str,
+) -> tuple[list[tuple[tuple[str, ...], UnreadStatement | None]], list[UnreadStatement]]:
     """Every simple command a workflow's steps may run on a pull request, with any doubt.
 
     `workflow_runs` reads every step, whatever its condition. This one reads
@@ -6398,20 +6406,23 @@ def pull_request_runs(
     command of a step whose condition this reader cannot evaluate comes with
     the `UnreadStatement` that names the condition. The caller can then
     decline the command rather than count it as run on every pull request.
-    Steps go on `steps` as `workflow_runs` puts them there.
+    The steps it declines come back beside the commands, as `workflow_runs`
+    returns them.
     """
     lines = split_lines(text)
-    for step, body, script in _workflow_scripts(text, steps):
+    scripts, steps = _workflow_scripts(text)
+    runs: list[tuple[tuple[str, ...], UnreadStatement | None]] = []
+    for step, body, script in scripts:
         doubt: UnreadStatement | None = None
         for key, whose in ((step.job_if, "job"), (step.keys.get("if"), "step")):
-            runs = _runs_on_pull_requests(lines, key, whose)
-            if runs is False:
+            condition = _runs_on_pull_requests(lines, key, whose)
+            if condition is False:
                 break
-            if isinstance(runs, UnreadStatement):
-                doubt = doubt or runs
+            if isinstance(condition, UnreadStatement):
+                doubt = doubt or condition
         else:
-            for words in _script_runs(body, script, steps):
-                yield words, doubt
+            runs += [(words, doubt) for words in _script_runs(body, script, steps)]
+    return runs, steps
 
 
 #: A condition on the event that started the workflow. It is the one form of
@@ -6509,36 +6520,39 @@ def _script_runs(
 
 
 def _step_scripts(
-    text: str, unread: list[UnreadStatement] | None
-) -> Iterator[tuple[str, list[tuple[str, int]]]]:
+    text: str,
+) -> tuple[list[tuple[str, list[tuple[str, int]]]], list[UnreadStatement]]:
     """Each `run:` step's script, whole and a line at a time, as `workflow_commands` reads it.
 
     The script whole is the text bash is handed, each line ending in a
-    newline; the lines carry the workflow line each sits on. A step that
-    `_step_script` declines goes on `unread`, or raises where none is passed.
+    newline; the lines carry the workflow line each sits on. The steps that
+    `_step_script` declines come back beside the scripts.
     """
-    for _, body, script in _workflow_scripts(text, unread):
-        yield body, script
+    scripts, unread = _workflow_scripts(text)
+    return [(body, script) for _, body, script in scripts], unread
 
 
 def _workflow_scripts(
-    text: str, unread: list[UnreadStatement] | None
-) -> Iterator[tuple[required_checks_check.Step, str, list[tuple[str, int]]]]:
-    """The scripts `_step_scripts` gives, each with the step that runs it."""
+    text: str,
+) -> tuple[
+    list[tuple[required_checks_check.Step, str, list[tuple[str, int]]]], list[UnreadStatement]
+]:
+    """The scripts `_step_scripts` gives, each with the step that runs it, and the declines."""
     lines = split_lines(text)
     try:
         steps = required_checks_check.steps(lines)
     except required_checks_check.Undecidable as workflow:
         steps = [required_checks_check.Step(workflow.line or 1, refused=workflow)]
+    scripts: list[tuple[required_checks_check.Step, str, list[tuple[str, int]]]] = []
+    unread: list[UnreadStatement] = []
     for step in steps:
         try:
             script = _step_script(step, lines)
         except UnreadStatement as declined:
-            if unread is None:
-                raise
             unread.append(declined)
             continue
-        yield step, "".join(f"{line}\n" for line, _ in script), script
+        scripts.append((step, "".join(f"{line}\n" for line, _ in script), script))
+    return scripts, unread
 
 
 def _step_script(step: required_checks_check.Step, lines: list[str]) -> list[tuple[str, int]]:
@@ -6774,8 +6788,8 @@ def check_workflow_paths(root: Path, report: Report) -> None:
     for path in workflows:
         relative = path.relative_to(root)
         reported: set[tuple[str, int]] = set()
-        steps: list[UnreadStatement] = []
-        for command, line in workflow_commands(path.read_text(encoding="utf-8"), steps):
+        commands, steps = workflow_commands(path.read_text(encoding="utf-8"))
+        for command, line in commands:
             words = _shell_words(f"{relative}:{line}", command, report, unread)
             for token in _command_paths(words):
                 if PurePosixPath(token).parts[0] not in top_level:
@@ -6933,8 +6947,8 @@ def check_coverage_gate(root: Path, report: Report) -> None:
     steps: list[UnreadStatement] = []
     for path in workflows:
         relative = path.relative_to(root)
-        unread: list[UnreadStatement] = []
-        for command, line in workflow_commands(path.read_text(encoding="utf-8"), unread):
+        commands, unread = workflow_commands(path.read_text(encoding="utf-8"))
+        for command, line in commands:
             origin = f"{relative}:{line}"
             if COVERAGE_GATE_MARK in command:
                 remote.append((command, origin))
@@ -7502,8 +7516,8 @@ def check_gate_parity(root: Path, report: Report) -> None:
             continue
         if not gates:
             continue
-        declined: list[UnreadStatement] = []
-        for words, doubt in pull_request_runs(text, declined):
+        runs, declined = pull_request_runs(text)
+        for words, doubt in runs:
             invocations = set(_gate_invocations(root, [words]))
             if doubt is None:
                 merge |= invocations
@@ -7601,6 +7615,75 @@ def check_math_delimiters(root: Path, report: Report) -> None:
                     "expression renders as literal text: one split across a line break, left "
                     "open, or with a backtick a code span opened before it has claimed"
                 )
+
+
+#: What may close a line after its last word: emphasis, a code span, a
+#: bracket or a quotation mark. `_ends_a_sentence` looks past these to the
+#: punctuation they follow.
+CLOSING_MARKS = "*_`)]\"'”’"
+
+#: The marks after which a line ends a sentence or introduces what follows.
+SENTENCE_ENDS = ".:!?"
+
+
+def check_wrapped_list_items(root: Path, report: Report) -> None:
+    """Refuse a list item that a line wrap opened in the middle of a sentence.
+
+    CommonMark lets a `-`, `+` or `*` item, or one numbered `1.`, start on the
+    line straight after a paragraph's last line (0.31.2 § 5.3). A wrap that
+    puts a spaced dash or plus sign at the start of a line therefore renders
+    the rest of the sentence as a list item. Nothing shows it in the raw text,
+    which is what a session reads, so it is found only on the rendered page
+    (`PL-LNNL`). `PL-DSMK`, `PL-N7LK` and `PL-T4FK` fixed nine of them by hand.
+
+    A list may interrupt a paragraph on purpose, and 21 lists in this tree did
+    so when the rule was written, beside the YAML lists in the front matter of
+    `.claude/rules/`. Each of the 21 either follows a line that
+    ends a sentence or introduces the list, such as `How it was verified:`, or
+    follows a one-line label such as `**Verification**` with an item that
+    opens with a capital letter or code. So an item is refused only when the
+    line above it ends with no `.`, `:`, `!` or `?`, and either the paragraph
+    above runs over more than one line or the item opens with a lower-case
+    letter. Both are what a wrap leaves behind: a sentence cut where it goes
+    on, and a clause that carries it on.
+
+    Every Markdown file is read but the item store. Its briefs held 83 such
+    wraps when this check was written, and those are their own item
+    (`PL-XLYK`). A file's front matter is YAML rather than Markdown, so its
+    lines are skipped, as `check_math_delimiters` skips them.
+    """
+    for path in _walk(root):
+        relative = path.relative_to(root)
+        if path.suffix != ".md" or relative.parts[:2] == ("docs", "items"):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UNREADABLE:
+            continue
+        lines = split_lines(text)
+        document = read_blocks(lines)
+        skip_to = _frontmatter_end(text)
+        ends = {block.end: block for block in document.blocks if block.kind == PARAGRAPH}
+        for item in document.items:
+            paragraph = ends.get(item.start)
+            if item.start < skip_to or paragraph is None or paragraph.depth != item.depth:
+                continue
+            opens = _from_column(lines[item.start], document.columns[item.start])
+            if _ends_a_sentence(lines[item.start - 1]):
+                continue
+            if paragraph.end - paragraph.start > 1 or opens[:1].islower():
+                report.errors.append(
+                    f"{relative}:{item.start + 1} starts a line with a list marker in the middle "
+                    "of the sentence above it, so the rest of that sentence renders as a list "
+                    "item; move the marker to the end of the line above, or put a blank line "
+                    "before a list meant as one"
+                )
+
+
+def _ends_a_sentence(line: str) -> bool:
+    """Whether `line` ends with a mark that ends a sentence or introduces a list."""
+    last = line.rstrip().rstrip(CLOSING_MARKS)
+    return bool(last) and last[-1] in SENTENCE_ENDS
 
 
 def _frontmatter_end(text: str) -> int:
@@ -8270,8 +8353,8 @@ def _yaml_comments(relative: Path, text: str, report: Report) -> Iterator[tuple[
     )
     if not any(PurePosixPath(relative.as_posix()).match(glob) for glob in WORKFLOW_GLOBS):
         return
-    unread: list[UnreadStatement] = []
-    for body, script in _step_scripts(text, unread):
+    scripts, unread = _step_scripts(text)
+    for body, script in scripts:
         yield from _script_comments(relative, body, report, [row for _, row in script])
     report.declined += [
         f"{relative}:{step.line}: {step.why}, so no host claim in its script's comments was checked"
@@ -8439,6 +8522,7 @@ def _analyze(root: Path) -> Report:
     check_ruff_cache(root, report)
     check_gate_parity(root, report)
     check_math_delimiters(root, report)
+    check_wrapped_list_items(root, report)
     check_host_claims(root, report)
     check_resident_instructions(root, report)
     check_on_demand_instructions(root, report)
