@@ -356,6 +356,29 @@ SKIP_DIRS = frozenset(
 )
 
 
+def find_root(start: Path | None = None) -> Path:
+    """The repository root, or the working directory if there is no checkout.
+
+    It is the nearest directory at or above `start` that holds `.git`. The
+    commands find their root with it, and `arming` finds where its own module
+    sits in the checkout that holds it (`PL-QFCR`).
+    """
+    current = (start or Path.cwd()).resolve()
+    for candidate in (current, *current.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return current
+
+
+def path_in_checkout(path: Path) -> str:
+    """`path` from the root of the checkout that holds it, or `""` where no checkout does."""
+    resolved = path.resolve()
+    root = find_root(resolved)
+    if not (root / ".git").exists():
+        return ""
+    return resolved.relative_to(root).as_posix()
+
+
 class Unlisted(Exception):
     """Git ran in a checkout and did not say which files the repository holds."""
 
@@ -1338,8 +1361,7 @@ def leading_ids(line: str) -> tuple[str, ...]:
 #: same directory for what arms on green, in the one module the gate holds for
 #: a read, and is kept there rather than imported from here, so that widening
 #: what arms still takes an edit the gate holds; `test_claims` pins the two
-#: equal (`PL-F6MM`). The path is this repository's layout, as
-#: `arming.TOOLING`'s is.
+#: equal (`PL-F6MM`). The path is this repository's layout.
 RECORDS = "docs/pr-bodies/"
 
 

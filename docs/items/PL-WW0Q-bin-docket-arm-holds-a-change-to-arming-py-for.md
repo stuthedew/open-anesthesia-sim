@@ -3,12 +3,14 @@ id: PL-WW0Q
 title: bin/docket arm holds a change to arming.py for a read but arms one to what its answer is read through - vcs.changed_path_args and default_base, claims.holdings, cli.cmd_arm and the test_arm_ tests - so the gate can still be loosened unread from beside it
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-25
+closed: 2026-10-18
+pr: 1587
 payoff: a pull request that could loosen arm's answer through a pinned test waits on the owner's read, at about one read in ninety docket commits
 verify: grep -q 'def test_arm_holds_a_change_to_an_existing_test_arm_test' subprojects/docket/tests/test_cli.py
 reenters: PL-K6B2
@@ -72,3 +74,27 @@ this one route: the gate's read now reaches the pinned answers in `test_arm_`
 tests as well as `arming.py`. His yes was to lift the pause on new workflow
 mechanisms for it (`PL-6Q9L`); by the time it came `#1439` had merged and no
 open item carries `generator: live`, so the build needs no lift.
+
+**Worked, 2026-10-18, re-confirmed against `3d3515a5`.** The hole still held:
+`arming.py`'s hold rule tested `path == GATE` alone. Built as answer (c).
+`arming.PINS` is `subprojects/docket/tests/test_cli.py`, found from the
+module's location as `PL-QFCR` finds the gate. When a change reaches it, `arm`
+parses both sides and holds for the owner's read when an existing pinned
+definition changes or goes. A definition is pinned when its name starts with
+`test_arm_`, `_arm` or `ARM_`, or when it is a test that uses `_arm` or
+`arming`. That last part widens the owner's "test_arm_ tests" to the arm
+tests that do not carry the prefix, such as
+`test_a_change_outside_the_owners_read_list_arms_on_green` and
+`test_the_owners_read_list_is_spelt_as_the_owner_spelt_it`, which pin answers
+just as much. A function's docstring and the file's formatting are left out of
+the comparison, so rewording loosens nothing and holds nothing. A new test
+arms. A side that will not parse leaves the answer `unknown`.
+
+`test_arm_holds_a_change_to_an_existing_test_arm_test` holds the hold itself:
+an edit, a deletion and a changed helper hold, while a new test, a reworded
+docstring and an unpinned test arm. `test_arm_holds_a_simulator_path_whatever_shape_its_change_takes`
+pins the three path classes through real git: a move from `src/` into the
+store, a path outside ASCII, and a deletion. `docs/maintainer.md` now says the
+hold covers `arming.py` and the tests that pin its answers, not its inputs.
+One residual stays open by design: a change to a shared helper such as `_put`
+or `_commit_file` arms, since most of `test_cli.py` uses them.
