@@ -536,9 +536,11 @@ class SimulationView(QWidget):
         """Build the band that holds every run's unconditional values, empty of runs.
 
         Its left column stacks every run's transport row, then every
-        notice banner, then every readout section. A later run's section
-        shows only its heading line, because its readouts join the first
-        run's panels (`RunView.show_readings_of`). Its right column holds
+        notice banner, then the first run's readout section. A later run's
+        readouts join the first run's panels (`RunView.show_readings_of`),
+        and while runs are compared each run's delivered concentration sits
+        on its own transport row, so a later run's section is not shown
+        (`PL-QLZ5`). Its right column holds
         every run's control-change record, scrolling within itself so a long
         record never makes the band taller than the rows beside it
         (`PL-J8K2` Q3). The two columns take the band's width in the shares
@@ -732,10 +734,11 @@ class SimulationView(QWidget):
 
         run.presentation_requested.connect(self.present)
         parameters = _fixed_height(run.build_parameter_controls())
+        readout_section = _holder(self._readout_column, (run.build_readout_section(),))
         placed: tuple[QWidget, ...] = (
             _holder(self._transport_column, (run.build_transport_row(),)),
             _holder(self._notice_column, (run.build_notice(),)),
-            _holder(self._readout_column, (run.build_readout_section(),)),
+            readout_section,
             _holder(self._record_column, (run.build_control_record(),), before_stretch=True),
             _holder(self._sidebar_column, (run.build_accounting_panel(),), before_stretch=True),
             _holder(self._off_scale_column, (run.build_off_scale_notice(),)),
@@ -744,8 +747,13 @@ class SimulationView(QWidget):
         )
         # A later run's readouts join the first run's panels, so two runs
         # read as one block of seven (`PL-F2YS`); they leave with the run.
+        # The first run's heading then states the substance and 1 MAC the
+        # runs share, and the later run's delivered concentration moves to its
+        # transport row, so its readout section has nothing left to show and
+        # takes no height (`PL-QLZ5`).
         if self._runs:
             placed = (*placed, *self._runs[0].show_readings_of(run))
+            readout_section.setHidden(True)
 
         self._settings_column.addWidget(parameters)
         self._require_unconditional_values(run)
