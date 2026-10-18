@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.28
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, tools/branch_id_check.py, tools/pr_title_check.py, tools/branch_sweep.py, tools/left_behind_check.py, subprojects/docket/tests/test_vcs.py, tests/unit/test_branch_sweep.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12

@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: infra, defect
+milestone: v0.5.28
 touches: .claude/settings.json, .claude/hooks/pr-body-email-guard.sh, tools/pr_body_check.py, tests/unit/test_pr_body_check.py, docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17

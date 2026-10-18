@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: refresh-before-reporting
+milestone: v0.5.28
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/rules/instruction-writing.md
 deferred-from: v0.6.0 - filed 2026-09-19 as blocked and never on the frozen list; a closing-block convenience, not safety or science, and its decision opened only when PL-QSGX closed on 2026-09-26
 added: 2026-09-19

@@ -124,7 +124,8 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.24 | Completed | **The release where a learner can branch wherever a paused run stands and at a mark the run has already passed, and where nothing in the repository may read a shared fact a second time beside the module that owns it.** 79 items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, since each new fork is v0.5.0's bookmark fork taken at an instant the case has reached, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, and every sampled state is bit-identical**: `core/` changes (`0e9255d` to `a0e4719`) because the alveolar and tissue agent amounts are held to the compartment's capacity where they are written (`PL-544D`), the two concentration crossings refuse a bare `float` (`PL-1DP1`) and the circuit states once the fresh gas flow range it accepts (`PL-7CRY`). Over 81 runs across the three agents and a branch from each, all 9,720 sampled states, 7,371 canonical states, 23,328 drawn windows and 155,520 readout strings are identical at both ends, as are three 24-hour runs, the snapshot differing only by the new accepted-range field. What a learner can see change is the two new places to branch (`PL-Y2SL`, `PL-2N43`, `PL-W4XQ`) and a control on a halted run restating the halt (`PL-V2HC`); `data/` (`7540b37`) and `tests/reference/` (`b4b0046`) resolve to the same trees, and `README.md` gains the quality badge. **It finishes five features, one of them the simulator's**, `qt-port`, and closes five generator heads spent, `PL-ZGYX`, `PL-4S6C`, `PL-8QMD`, `PL-0HLS` and `PL-KR6M`. **Eleven are Gate 2 entries**, and the gate stands at 204 of 229 cleared, from 197 of 222 at v0.5.23; `PL-9F3H`, the cut, ships in no release under `PL-KRS6`. | 79 items |
 | v0.5.25 | Completed | **The release where a run that stops itself is drawn stopped at once, where every widget of a halted run states the run the controller holds, where a cardiac output that the blood flows do not match is refused when it is written, and where the saved Workspace set exists as code.** 39 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: each new refusal sits on a route that no interface control takes, and each screen change corrects what an existing screen shows. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and every state a run plays is bit-identical**: `core/` changed (`a0e4719` to `60697e5`) because every checked field of the five run records refuses a bad value when it is written (`PL-19Y0`), the patient refuses a cardiac output that its blood flows do not match (`PL-KFNP`), and the tissue and venous closed forms, which the stepped model does not call, keep the sign of their gradient (`PL-XWFP`). Over 81 runs across the three agents, each with two branches, all 6,561,000 steps, 11,178 sampled states, 11,178 canonical states, 2,187 drawn windows and 19,447,290 formatted strings are identical at both ends, as are three 24-hour runs. `data/` changed only in three agents' source notes (`PL-0SG0`), and `tests/reference/` only in docstrings and in a table that orders the test workers' work (`PL-4Z5Y`). A learner can see a run that halts on a mark or at the supported length drawn stopped at once (`PL-T995`). A halted run's screen now has one writer, so every widget states the run the controller holds (`PL-X7D5`). The four members it closes, and `PL-85LJ`'s dial label, were reachable only through a fault that no supported setting produces. A one-run Reset also clears a refused branch (`PL-75P5`). **It finishes no feature, and closes two generator heads spent**, `PL-KFNP` and `PL-X7D5`. **Nine are Gate 2 entries**, and the gate stands at 213 of 234 cleared, from 204 of 229 at v0.5.24. `PL-TT19`, the cut, ships in no release under `PL-KRS6`. | 39 items |
 | v0.5.26 | Completed | **The release where the simulator's tests started catching wrong values they had let pass, and where `docs/MODEL.md` started saying which stored parameters the published-data comparison can detect an error in.** 44 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because nothing in `src/` changed, so a learner sees nothing different. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `src/` resolves to `ada5e66` at v0.5.25 and here, so the trajectories were not re-measured. `tests/reference/` gains published-data assertions for the first 25 minutes of wash-in (`PL-R0NL`) and cases that a changed parameter must fail (`PL-9YHR`), and four tests that claimed more than they held were renamed and narrowed (`PL-RXW0`). The unit tier now fails on an agent switch that keeps the old agent's compartments (`PL-QJXS`), a MAC-awake band left at the previous agent's values (`PL-JPS2`), and a stored MAC or MAC-awake fraction that drifts from its named source (`PL-FY35`, `PL-H1JH`). **It finishes three features**, `tests-detect-wrong-values`, `validation-resolving-power` and `friction-batch`, and closes no generator head. **Seven are Gate 2 entries**, and the gate stands at 220 of 241 cleared, from 213 of 240 at the v0.5.25 tag. `PL-L7RV`, the cut, ships in no release under `PL-KRS6`. | 44 items |
-| v0.5.27 | Completed / current baseline | **The release where `docs/MODEL.md` started recording why no stored desflurane coefficient can fix its fast early wash-in, and where each agent file started citing the largest primary blood:gas measurement beside its stored value.** Five items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because no stored value changed, so a learner sees nothing different. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/`, `app/` and `layout/` resolve to the same trees as at v0.5.26, and `data/` (`c49fb36` to `3a5407c`) changes only in source entries, notes and provenance-gap text, so the trajectories were not re-measured. The three agent files cite Esper et al. 2015 beside their adopted blood:gas values, not adopted (`PL-SWY5`); the Gas Man study at PMC7943506 is cited under its real authors, Weber et al. 2021 (`PL-4RL2`); and `docs/MODEL.md` records that no desflurane coefficient moved within its published measurements closes the 1-to-10-minute gap (`PL-CM1B`). **It finishes `validation-resolving-power` a second time**, since `PL-CM1B` joined it after v0.5.26, and closes no generator head. **Three are Gate 2 entries**, and the gate stands at 223 of 243 cleared, from 220 of 241 at the v0.5.26 tag. `PL-HFQ9`, the cut, ships in no release under `PL-KRS6`. | 5 items |
+| v0.5.27 | Completed | **The release where `docs/MODEL.md` started recording why no stored desflurane coefficient can fix its fast early wash-in, and where each agent file started citing the largest primary blood:gas measurement beside its stored value.** Five items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because no stored value changed, so a learner sees nothing different. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/`, `app/` and `layout/` resolve to the same trees as at v0.5.26, and `data/` (`c49fb36` to `3a5407c`) changes only in source entries, notes and provenance-gap text, so the trajectories were not re-measured. The three agent files cite Esper et al. 2015 beside their adopted blood:gas values, not adopted (`PL-SWY5`); the Gas Man study at PMC7943506 is cited under its real authors, Weber et al. 2021 (`PL-4RL2`); and `docs/MODEL.md` records that no desflurane coefficient moved within its published measurements closes the 1-to-10-minute gap (`PL-CM1B`). **It finishes `validation-resolving-power` a second time**, since `PL-CM1B` joined it after v0.5.26, and closes no generator head. **Three are Gate 2 entries**, and the gate stands at 223 of 243 cleared, from 220 of 241 at the v0.5.26 tag. `PL-HFQ9`, the cut, ships in no release under `PL-KRS6`. | 5 items |
+| v0.5.28 | Completed / current baseline | **The release where no tissue group or venous pool stores a blood flow of its own any more, so each flow is formed from the cardiac output in one place, and where a machine profile that opens the run off its fresh gas slider's steps is refused.** 70 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: the flows are formed from the same equation as before, and the new refusal sits on a route no shipped profile takes. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and every state a run plays is bit-identical**: `core/` changed (`60697e5` to `1ebb078`) because a compartment's flow is now `f_i × Q` formed where it is used, a perfusion fraction can be written only when its group is built, and the patient refuses a tissue set whose fractions do not sum to 1 (`PL-HQF5`, `PL-Z0HN`); `app/` changed (`3b03e6f` to `a96792e`) because the dashboard refuses a machine profile whose opening fresh gas flow is not one of its slider's steps (`PL-1KQ9`). Over 81 runs across the three agents, each with two branches, all 6,561,000 steps, 11,253 sampled states, 11,178 canonical states, 2,187 drawn windows and 19,448,865 formatted strings are identical at both ends, as are three 24-hour runs. `data/`, `layout/`, `tests/reference/` and `README.md` resolve to the same trees. **It finishes thirteen features**, among them `cardiac-output-write-consistency`, and records two live generator heads, `PL-RJLQ` and `PL-ZQ3R`, while closing `PL-MLR4` as spent. **Two are Gate 2 entries**, and the gate stands at 225 of 243 cleared, from 223 of 243 at the v0.5.27 tag. `PL-SVZD`, the cut, ships in no release under `PL-KRS6`. | 70 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -229,74 +230,103 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.27
+## Current baseline: v0.5.28
 
-v0.5.27 is the release where `docs/MODEL.md` started recording why no stored
-desflurane coefficient can fix its fast early wash-in. It is also where each
-agent file started citing the largest primary blood:gas measurement beside its
-stored value, and where the Gas Man study at PMC7943506 is cited under its real
-authors. It has five items, and it is a patch on both halves of § "Versioning
-decision"'s test. No capability boundary is crossed, because no stored value
-changed, so a learner sees nothing different. The next three minor numbers,
-v0.6.0 through v0.8.0, are given to milestone sections. Three of the items are
-Gate 2 entries. `bin/docket wave` puts the gate at 223 of 243 cleared at this
-cut, against 220 of 241 at the v0.5.26 tag. Two entries were placed on the list
-since that tag (`PL-CM1B` and `PL-4RL2`), and 20 stay open, against 21.
+v0.5.28 is the release where no tissue group or venous pool stores a blood flow
+of its own any more. Each flow is formed from the cardiac output in one place,
+so no write can leave a flow out of step with the output. It is also where a
+machine profile that opens the run at a fresh gas flow its slider cannot show
+is refused. It has 70 items, and it is a patch on both halves of § "Versioning
+decision"'s test. No capability boundary is crossed, because the flows come
+from the same equation as before and the new refusal sits on a route that no
+shipped profile takes. The next three minor numbers, v0.6.0 through v0.8.0,
+are given to milestone sections. Two of the items are Gate 2 entries.
+`bin/docket wave` puts the gate at 225 of 243 cleared at this cut, against 223
+of 243 at the v0.5.27 tag. No entry was placed on the list since that tag, and
+18 stay open, against 20.
 
-**No equation, parameter or stored value changed, and no run can differ:**
+**No equation, parameter or stored value changed, and every state a run plays is bit-identical at both ends:**
 
-| Tree | v0.5.26 | This cut | What moved |
+| Tree | v0.5.27 | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `ada5e66` | `eddc6a9` | only `data/` (`c49fb36` to `3a5407c`), and there only source entries, notes and provenance-gap text: Esper et al. 2015 in the three agent files (`PL-SWY5`), and the Weber et al. 2021 citation in the agent, circuit and reference-adult files (`PL-4RL2`); `core/`, `app/` and `layout/` are unchanged |
+| `src/` | `eddc6a9` | `81d0415` | `core/` and `app/`, below |
+| `core/` | `60697e5` | `1ebb078` | no tissue group or venous pool stores a flow: `TissueGroup.blood_flow_l_min_at` forms Q_i = f_i × Q where it is used, the venous pool's flow is the cardiac output, and `time_constant_s` and `advance()` take the flow as an argument (`PL-HQF5`); a perfusion fraction can be written only when its group is built, and the patient refuses a tissue set whose fractions do not sum to 1 (`PL-Z0HN`) |
+| `app/` | `3b03e6f` | `a96792e` | the dashboard refuses a run whose fresh gas flow in force is not one of its slider's 0.1 L/min steps, which only a machine profile's opening flow can fail (`PL-1KQ9`); the controller's and run view's docstrings now say that only a perfusion fraction written past its guard can lead a setting change or a Reset to be refused (`PL-HQF5`, `PL-Z0HN`) |
+| `data/` | `3a5407c` | `3a5407c` | nothing |
+| `layout/` | `c065b9e` | `c065b9e` | nothing |
 | `tests/reference/` | `b0c7cb3` | `b0c7cb3` | nothing |
-| `docs/MODEL.md` | `3153e3a` | `0bdd1a6` | Esper's measured blood:gas values and the gap to each stored value (`PL-SWY5`); why no desflurane coefficient moved within its measurements closes the early wash-in gap (`PL-CM1B`); the Weber et al. 2021 citation (`PL-4RL2`) |
+| `docs/MODEL.md` | `0bdd1a6` | `b714760` | § "Tissue groups", § "Supported input ranges", § "Reset behavior", the symbol table and the misuse table say that each flow is formed from the cardiac output and that a fraction is fixed once its group is built (`PL-HQF5`, `PL-Z0HN`) |
 | `README.md` | `98a0d7f` | `98a0d7f` | nothing |
 | `.github/` | `9447ac4` | `9447ac4` | nothing |
 
-`src/` changed only in text that no calculation reads, so this cut did not
-measure the trajectories. Every stored number is the same as at v0.5.26, as a
-field-by-field comparison of the five changed data files against the tag shows.
+`core/` moved, so this cut measured the trajectories rather than reading them
+off the diff. The script v0.5.25's cut used ran on the v0.5.27 tag and on this
+cut, unchanged. It played the same 81 runs through `SimulationController`: the
+three agents, each at three fresh gas flows (0.5, 2 and 8 L/min), three cardiac
+outputs (2.5, 5 and 8 L/min) and three alveolar ventilations (2, 4.5 and
+9 L/min), with the same bookmark, MAC target, four control changes and two
+branches from each run. The cardiac output change at minute 20 is the write
+`PL-HQF5` changed most, since every flow now follows it when it is read. Every
+value was compared as its exact bits.
 
-**Desflurane's fast early wash-in is now a recorded limitation with its cause
-narrowed.** This finishes `validation-resolving-power` a second time:
-v0.5.26's comparison of the early wash-in curve found desflurane rising 1.7 to
-2.1 published standard deviations faster than its 1991 cohort from 1 to 10
-minutes, and `PL-CM1B` joined the feature after that release. `PL-CM1B` moved
-each desflurane coefficient alone through the reference test's own harness.
-Only blood:gas reaches the early points. At Esper et al. 2015's measured 0.57,
-every early point lies within 0.83 SD, but the 30-minute comparison then fails
-at every fresh gas flow, from −1.35 SD at 10 L/min to −2.61 SD at 1 L/min. No
-vessel-rich or muscle coefficient inside Yasuda et al. 1989's measurements
-closes the gap. Taking Esper's values for all three agents would move
-sevoflurane and isoflurane, which agree with their curves now, 1.0 to 1.4 SD
-below them in the first 3 minutes. So nothing stored changes, and the early
-desflurane points stay held to their wider band.
+- **Every state a run plays is bit-identical.** The `state_vector()` hashes
+  after each of the 6,561,000 steps agree at both ends. All 11,253 sampled
+  states agree in `capture_state()`, in `state_vector()` and in every field of
+  the snapshot, as do the 271 snapshots taken where a mark halted a run. The
+  snapshot has the same fields at both ends.
+- **So is every state derived from the run's record.** `RunDefinition.state_at`
+  is identical at all 11,178 sampled instants, and `drawn_window` on all 2,187
+  windows drawn, which hold 1,601,046 columns. None of the 236,313 readout
+  strings and none of the 19,212,552 hover-box strings differs.
+- **Three 24-hour runs stop at 86,400 s after 864,000 steps on both trees**,
+  with every step's state identical. The script is not kept in the
+  repository.
 
-**Each agent file now cites the largest primary blood:gas measurement.**
-`PL-SWY5` adds Esper et al. 2015 (Anesth Analg 120:45-50, 120 surgical patients
-at 37 °C) to the three agent files, not adopted, and records the gap: the stored
-values sit 12.2% (sevoflurane), 10.3% (isoflurane) and 26.3% (desflurane) below
-its means. That makes desflurane, not isoflurane, the project's widest
-documented gap. The paper was read from its abstract only. `PL-4RL2` corrects
-the citation of the Gas Man study at PMC7943506 everywhere it is live. The tree
-cited it as Meybohm et al., pages 897 to 908, and PubMed gives it as Weber J,
-Schmidt J, Wirth S, Schumann S, Philip JH, Eberhart LHJ, J Clin Monit Comput
-2021;35(2):343-354 (PMID 32067148). Closed briefs, release notes and pull
-request bodies keep the old name as records of their day.
+**A blood flow can no longer disagree with the cardiac output.** Before this
+release each tissue group and the venous pool kept its own copy of its flow,
+and the patient kept the copies equal to f_i × Q. Three kinds of write could
+still put a copy out of step: a compartment's `set_blood_flow`, a changed
+perfusion fraction, and a copy of the patient at another output that shared
+the original's compartments. The run then halted at the next step or at Reset.
+`PL-HQF5` deletes the copies, so each compartment's time constant,
+τ_i = V_i λ_i:b / Q_i, takes the flow formed from the output in force.
+`PL-Z0HN` fixes each perfusion fraction once its group is built. No learner
+could reach any of the three writes from the interface. This finishes
+`cardiac-output-write-consistency`.
 
-The other two items are the apparatus's. `PL-9NMR` and `PL-H710`, both in
-`one-answer`, make `docket.shell` read two shapes as bash runs them: a reserved
-word written straight after a word that closes a compound command, and a `$( )`
-that a here-document's body expands. Neither shape appears in any tracked
-script, so both were latent. The release item is `PL-HFQ9`, whose `resource:
-release-train` keeps it out of every later release. Every closure carried its
-`pr:` number before the cut, so all five bullets cite their pull requests.
-`tools/pr_body_check.py` found no squash commit that lost its body.
+**A machine profile cannot open the run between two slider steps.** A profile
+opening at 2.25 L/min left the slider at 2.2 and the readout printing 2.2 over
+a run held at 2.25 (`PL-1KQ9`). The dashboard now refuses to build its
+controls for such a run, and the message names the flow, the step size and the
+range offered. No shipped profile reaches it, since the reference machine opens
+at 4.0 L/min.
 
-No pull request shipped inside v0.5.26's tag without being described there. As
-before, anything that merges on `main` after this cut is written and before its
-pull request lands ships inside the v0.5.27 tag. It is described in the next
-release, and v0.5.27's notes take a pointer to it at that release's cut.
+The other 67 items are the apparatus's. Most make one module the only reader
+of a fact that several tools read separately: an item file at a ref and a
+change's closures (`PL-86H3`), the branch `HEAD` is on (`PL-KL6B`), Markdown
+blocks (`PL-NNVJ`), docstrings and imports (`PL-8W1J`), release facts
+(`PL-5H48`), a shell command's structure (`PL-RHPK`) and hook boilerplate
+(`PL-FB77`). Others hold the readers of YAML, shell and Makefiles to a
+reference program (`PL-0MC5`, `PL-NPPV`, `PL-P6LL`, `PL-WFPB`).
+`bin/docket wave` now counts the gate entries that wait only on v0.6.0's own
+Required scope as cleared by the milestone (`PL-W9BK`), which is why it prints
+11 of those where it printed 4 at the v0.5.27 tag. The release finishes thirteen
+features: `apparatus-test-bar`, `cardiac-output-write-consistency`,
+`closed-item-claims`, `contrast-base-entry-reading`, `decision-ownership`,
+`evidence-declines`, `exact-gates`, `gate-list-integrity`,
+`gate-prerequisites`, `pr-body-integrity`, `pre-fork-content`,
+`refresh-before-reporting` and `worker-instructions`. `PL-SH4H` records two
+live generator heads, `PL-RJLQ` for an item's queue state and `PL-ZQ3R` for
+gate parity, and `PL-MLR4` closes as a spent head. The release item is
+`PL-SVZD`, whose `resource: release-train` keeps it out of every later
+release. Every closure carried its `pr:` number before the cut, so all 70
+bullets cite their pull requests. `tools/pr_body_check.py` found no squash
+commit that lost its body.
+
+No pull request shipped inside v0.5.27's tag without being described there. As before, anything that merges on `main` after this cut is written
+and before its pull request lands ships inside the v0.5.28 tag. It is
+described in the next release, and v0.5.28's notes take a pointer to it at that
+release's cut.
 
 ## The plan
 

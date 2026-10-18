@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: workflow-stress-2026-09
+milestone: v0.5.28
 touches: docs/items/PL-RB9W-on-or-after-2026-10-09-count-pl-2866-s.md
 added: 2026-09-25
 closed: 2026-10-18

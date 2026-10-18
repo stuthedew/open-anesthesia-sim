@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: gate-list-integrity
+milestone: v0.5.28
 touches: .claude/skills/docket/modes/release.md
 added: 2026-10-01
 closed: 2026-10-18

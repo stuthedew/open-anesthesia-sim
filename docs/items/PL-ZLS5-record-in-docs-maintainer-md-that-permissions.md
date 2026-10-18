@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: worker-instructions
+milestone: v0.5.28
 touches: docs/maintainer.md
 added: 2026-09-16
 closed: 2026-10-18

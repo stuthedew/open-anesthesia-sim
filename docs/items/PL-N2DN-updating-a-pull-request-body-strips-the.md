@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: pr-body-integrity
+milestone: v0.5.28
 touches: CLAUDE.md
 added: 2026-09-22
 closed: 2026-10-18

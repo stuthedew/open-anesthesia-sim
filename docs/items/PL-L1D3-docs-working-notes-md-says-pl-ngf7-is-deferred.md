@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: closed-item-claims
+milestone: v0.5.28
 touches: docs/WORKING_NOTES.md
 added: 2026-09-20
 closed: 2026-10-18
