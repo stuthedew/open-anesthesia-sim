@@ -3505,6 +3505,47 @@ def test_a_quote_that_never_closes_is_declined_rather_than_read(tmp_path: Path) 
 # folds onto one line was read as several. Declined by name now (`PL-R417`).
 
 
+def test_workflow_commands_returns_its_declines() -> None:
+    """`PL-GC59`: each workflow reader returns the steps it declined beside what it read.
+
+    They used to write each decline to a list that the caller passed in. A
+    caller that passed `[]` then dropped the declines without a word, which is
+    how `tools/dead_ends.py` once dropped the walker's (`PL-DQ9C`). No reader
+    takes a list now, so a caller holds the declines by unpacking the result.
+    """
+    text = STEP_JOB + "      - run: >\n          bin/folded\n      - run: bin/read\n"
+    folded = STEP_JOB.count("\n") + 1
+
+    commands, unread = doc_check.workflow_commands(text)
+    runs, run_steps = doc_check.workflow_runs(text)
+    pull_request, pull_request_steps = doc_check.pull_request_runs(text)
+    scripts, script_steps = doc_check._step_scripts(text)
+
+    assert commands == [("bin/read", folded + 2)]
+    assert runs == [("bin/read",)]
+    assert pull_request == [(("bin/read",), None)]
+    assert [body for body, _ in scripts] == ["bin/read\n"]
+    for declined in (unread, run_steps, pull_request_steps, script_steps):
+        assert [step.line for step in declined] == [folded]
+        assert "a folded block (`>`)" in declined[0].why
+
+
+def test_the_workflow_readers_return_their_declines_in_line_order() -> None:
+    """`PL-GC59`'s review: a script's decline and a step's decline come back in step order.
+
+    The step declines were gathered first and the script declines after, so a
+    script declined above a step declined came back second.
+    """
+    text = STEP_JOB + '      - run: |\n          echo "open\n      - run: "quoted"\n'
+
+    _, run_steps = doc_check.workflow_runs(text)
+    _, pull_request_steps = doc_check.pull_request_runs(text)
+
+    below = STEP_JOB.count("\n")
+    assert [step.line - below for step in run_steps] == [2, 3]
+    assert [step.line - below for step in pull_request_steps] == [2, 3]
+
+
 def test_workflow_commands_reads_a_folded_block_as_a_step_it_declines(tmp_path: Path) -> None:
     """The brief's reproduction: YAML hands bash `python3 tools/harness/gone.py --flag`.
 
@@ -3560,9 +3601,7 @@ def test_a_defaults_run_block_is_no_step() -> None:
         "jobs:\n  checks:\n    defaults:\n      run:\n        shell: bash\n"
         "    steps:\n      - run: bin/runner check\n"
     )
-    unread: list[doc_check.UnreadStatement] = []
-
-    commands = list(doc_check.workflow_commands(text, unread))
+    commands, unread = doc_check.workflow_commands(text)
 
     assert (commands, unread) == ([("bin/runner check", 10)], [])
 
@@ -3590,7 +3629,7 @@ def test_steps_are_read_where_each_job_lists_them() -> None:
         "          run: bin/b\n"
     )
 
-    assert list(doc_check.workflow_commands(text)) == [("bin/a", 6), ("bin/b", 13)]
+    assert doc_check.workflow_commands(text) == ([("bin/a", 6), ("bin/b", 13)], [])
 
 
 @pytest.mark.parametrize(
@@ -3627,9 +3666,7 @@ def test_a_job_or_its_steps_in_a_form_this_reader_does_not_read_is_declined(
     Read a line at a time, the first three were no `run:` step and passed
     unread and unsaid, and the last read a mapping as a step.
     """
-    unread: list[doc_check.UnreadStatement] = []
-
-    read = list(doc_check.workflow_commands(workflow, unread))
+    read, unread = doc_check.workflow_commands(workflow)
 
     assert (read, [(step.line, step.why.partition(",")[0]) for step in unread]) == (
         commands,
@@ -4151,9 +4188,7 @@ def test_a_step_one_pass_cannot_read_is_declined_whole() -> None:
     the commands `check`, `make check` and `esac` reached the gate-parity check
     as what CI runs.
     """
-    unread: list[doc_check.UnreadStatement] = []
-
-    runs = list(doc_check.workflow_runs(STEP_JOB + UNREADABLE_CASE_STEP, unread))
+    runs, unread = doc_check.workflow_runs(STEP_JOB + UNREADABLE_CASE_STEP)
 
     assert runs == []
     assert [declined.line - STEP_JOB.count("\n") for declined in unread] == [5]
@@ -5284,6 +5319,121 @@ def test_math_latex_inline_delimiters_are_reported(tmp_path: Path) -> None:
     assert len(errors) == 2
     assert all("docs/NOTE.md:1" in error for error in errors)
     assert any("does not render" in error for error in errors)
+
+
+# --- list items a wrap opened -------------------------------------------------
+
+
+def _wrapped_list_errors(root: Path, name: str, body: str) -> list[str]:
+    """Errors from `check_wrapped_list_items` alone, for one Markdown file added to a repo."""
+    path = root / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body, encoding="utf-8")
+    report = doc_check.Report()
+    doc_check.check_wrapped_list_items(root, report)
+    return report.errors
+
+
+@pytest.mark.parametrize(
+    ("body", "line"),
+    [
+        pytest.param(
+            "It was decided on 2026-09-14. The design and its derivation\n"
+            "landed on v0.4.x\n- `docs/MODEL.md` carries it.\n",
+            3,
+            id="a dash after a word, as PL-DSMK fixed in ROADMAP.md",
+        ),
+        pytest.param(
+            "On Mapleson's rows, kidney + heart\n+ brain + liver is 3,820 ml/min.\n",
+            2,
+            id="a plus sign, as PL-T4FK fixed in docs/MODEL.md",
+        ),
+        pytest.param(
+            "Each case, then *invalid at a version this build reads*\n- set aside unchanged.\n",
+            2,
+            id="a dash after emphasis, as docs/ARCHITECTURE.md held",
+        ),
+        pytest.param(
+            "- **Kept.** the outgoing View's state is kept\n  - and not destroyed.\n",
+            2,
+            id="a one-line item carried on by a lower-case clause",
+        ),
+        pytest.param(
+            "A paragraph.\n\nIt ends on the date (2026-09-05)\n- which was settled on fit.\n",
+            4,
+            id="a dash after a closing parenthesis",
+        ),
+    ],
+)
+def test_a_wrapped_clause_that_renders_as_a_list_item_is_refused(
+    tmp_path: Path, body: str, line: int
+) -> None:
+    """`PL-LNNL`: a wrap that puts a list marker at a line start is refused at that line.
+
+    CommonMark renders the rest of the sentence as a list item, which nothing
+    in the raw text shows. Each case is the shape of a wrap fixed by hand.
+    """
+    errors = _wrapped_list_errors(tmp_path / "repo", "docs/NOTE.md", body)
+
+    assert len(errors) == 1
+    assert errors[0].startswith(f"docs/NOTE.md:{line} starts a line with a list marker")
+
+
+@pytest.mark.parametrize(
+    ("name", "body"),
+    [
+        pytest.param("docs/NOTE.md", "Captured on the way:\n- PL-8HSX: an audit.\n", id="a colon"),
+        pytest.param(
+            "docs/NOTE.md",
+            "**Readers changed**\n- `app/controller.py`: `began_at_s`.\n",
+            id="a label line, then code",
+        ),
+        pytest.param(
+            "docs/NOTE.md",
+            "**Riding along (queue only)**\n- Records `pr:` for six items.\n",
+            id="a label line, then a capital",
+        ),
+        pytest.param(
+            "docs/NOTE.md",
+            "This is for the owner to decide, on the one-merge test.\n- Squash-merge it.\n",
+            id="a sentence end",
+        ),
+        pytest.param(
+            "docs/NOTE.md",
+            "- PL-QYBW The axis is scaled by the peak - #959\n  - Its title is as filed.\n",
+            id="a one-line item title, then a nested item",
+        ),
+        pytest.param(
+            "docs/NOTE.md",
+            "2. For each item, in turn:\n   - Do exactly what the brief says.\n",
+            id="a numbered step that introduces its list",
+        ),
+        pytest.param(
+            "docs/NOTE.md",
+            "The design landed on v0.4.x\n\n- `docs/MODEL.md` carries it.\n",
+            id="a blank line before the list",
+        ),
+        pytest.param(
+            ".claude/rules/note.md",
+            '---\npaths:\n  - "/src/**"\n---\n\n# Note\n',
+            id="a YAML list in front matter",
+        ),
+        pytest.param(
+            "docs/items/PL-T3ST-demo.md",
+            "---\nid: PL-T3ST\n---\n\nThe design landed on v0.4.x\n- and was kept.\n",
+            id="a brief in the item store, left to its own item",
+        ),
+    ],
+)
+def test_a_list_that_interrupts_a_paragraph_on_purpose_passes(
+    tmp_path: Path, name: str, body: str
+) -> None:
+    """`PL-LNNL`: each form of the 21 lists that interrupt a paragraph on purpose passes.
+
+    Each follows a line that ends a sentence or introduces the list, or a
+    one-line label whose item opens with a capital or with code.
+    """
+    assert _wrapped_list_errors(tmp_path / "repo", name, body) == []
 
 
 def test_a_worktree_under_claude_worktrees_is_not_walked(tmp_path: Path) -> None:
@@ -7654,12 +7804,18 @@ STEP_JOB = "jobs:\n  checks:\n    steps:\n"
 def _step_commands(
     step: str, unread: list[doc_check.UnreadStatement] | None = None
 ) -> list[tuple[str, int]]:
-    """What `workflow_commands` reads from `step` under `STEP_JOB`, at the step's own lines."""
+    """What `workflow_commands` reads from `step` under `STEP_JOB`, at the step's own lines.
+
+    The steps it declines go on `unread` where one is passed, and must be none
+    where it is not.
+    """
     below = STEP_JOB.count("\n")
-    return [
-        (command, line - below)
-        for command, line in doc_check.workflow_commands(STEP_JOB + step, unread)
-    ]
+    commands, declined = doc_check.workflow_commands(STEP_JOB + step)
+    if unread is None:
+        assert declined == []
+    else:
+        unread += declined
+    return [(command, line - below) for command, line in commands]
 
 
 def _run_step(step: str) -> tuple[list[tuple[str, int]], list[tuple[int, str]]]:
@@ -7677,8 +7833,8 @@ def _run_step(step: str) -> tuple[list[tuple[str, int]], list[tuple[int, str]]]:
 
 def _step_runs(step: str) -> list[tuple[str, ...]]:
     """The simple commands `workflow_runs` reads from `step` under `STEP_JOB`, as the gate does."""
-    report, unread = doc_check.Report(), []
-    runs = list(doc_check.workflow_runs(STEP_JOB + step, unread))
+    report = doc_check.Report()
+    runs, unread = doc_check.workflow_runs(STEP_JOB + step)
     doc_check._decline_steps(report, Path("ci.yml"), unread, "unread")
     assert not report.declined and not unread
     return runs
@@ -7834,10 +7990,10 @@ OPENS_A_BLOCK = {
     "a thematic break": "  ***",
 }
 #: Each line inside a field `_fold` reads past and no Markdown paragraph can
-#: cross, or one the citation readers read otherwise: declined by name.
+#: cross, or one the citation readers read otherwise: declined by name. A
+#: comment line is not one, since it ends the field above it (`PL-B53Y`).
 DECLINED_FIELD = {
-    "a blank line": ("  delta\n", "holds a blank, comment or unread line"),
-    "a comment line": ("  delta\n  # a comment", "holds a blank, comment or unread line"),
+    "a blank line": ("  delta\n", "holds a blank or unread line"),
     "a block quote": ("  > delta", "continues on a line opening with `>`"),
 }
 
@@ -7851,8 +8007,8 @@ def test_a_front_matter_field_reaches_the_markdown_readers_as_one_statement(
     Handed over as written, a continuation line opening a list item, a fence,
     an HTML block or a thematic break ended the field's paragraph, so a
     quotation `_fold` and YAML read closed was refused as unclosed at the cut.
-    A blank or comment line no paragraph crosses, and a `>` the citation
-    readers drop as a block quote's marker, decline the field instead.
+    A blank line no paragraph crosses, and a `>` the citation readers drop
+    as a block quote's marker, decline the field instead.
     """
     if form in OPENS_A_BLOCK:
         line, why = OPENS_A_BLOCK[form], ""
