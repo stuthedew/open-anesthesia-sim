@@ -174,6 +174,26 @@ def styled_label(
     """
 
     label = QLabel(text)
+    style_label(label, color=color, size_px=size_px, bold=bold, italic=italic, wrap=wrap)
+
+    return label
+
+
+def style_label(
+    label: QLabel,
+    *,
+    color: str,
+    size_px: int | None = None,
+    bold: bool = False,
+    italic: bool = False,
+    wrap: bool = False,
+) -> None:
+    """Give a label one of the theme's colours and sizes, as `styled_label` does.
+
+    For a class that is itself a label, which `styled_label` cannot build.
+    The arguments are `styled_label`'s.
+    """
+
     label.setStyleSheet(foreground_stylesheet(color))
     label.setWordWrap(wrap)
     font = QFont(label.font())
@@ -184,8 +204,6 @@ def styled_label(
     font.setBold(bold)
     font.setItalic(italic)
     label.setFont(font)
-
-    return label
 
 
 def _advance_px(label: QLabel, text: str) -> int:

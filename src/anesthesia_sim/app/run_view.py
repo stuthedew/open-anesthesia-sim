@@ -57,6 +57,7 @@ No wall clock is read: simulation time is a count of steps taken.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 from typing import Final
 
 from PySide6.QtCore import QSignalBlocker, Qt, QTimer, Signal
@@ -90,7 +91,6 @@ from anesthesia_sim.app.controller import (
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     ACCOUNTING_INITIAL_DETAIL_TEXT,
-    ACCOUNTING_UNIT_CAPTION,
     BRANCH_AGENT_LOCK_TEXT,
     COMPARING_AGENT_LOCK_TEXT,
     CONTROL_TIMELINE_CAPTION,
@@ -105,10 +105,8 @@ from anesthesia_sim.app.dashboard_frame import (
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     START_LABEL,
-    Emphasis,
     HaltDisposition,
     NewCaseQuestion,
-    StatusWord,
     Transport,
     accounting,
     compared_panel_heading,
@@ -142,25 +140,24 @@ from anesthesia_sim.app.playback import (
     PlaybackRate,
     playback_rate_for,
 )
-from anesthesia_sim.app.qt_widgets import (
-    NewCaseDialog,
-    NoticeLabel,
-    ParameterSlider,
-    ReadoutRow,
-    styled_label,
+from anesthesia_sim.app.qt_widgets import NewCaseDialog, NoticeLabel, ReadoutRow, styled_label
+from anesthesia_sim.app.run_surfaces import (
+    AccountingPanel,
+    LiveCopies,
+    OffScaleLine,
+    ParameterControls,
+    WashInStateLine,
+    emphasised,
+    panel_frame,
 )
 from anesthesia_sim.app.stylesheets import (
     agent_selector_stylesheet,
     agent_surface_stylesheet,
     agent_text_stylesheet,
-    foreground_stylesheet,
-    panel_stylesheet,
     selector_stylesheet,
     transport_button_stylesheet,
 )
 from anesthesia_sim.app.theme import (
-    ACCENT_TEXT,
-    ACCOUNTING_STATUS_SIZE,
     AGENT_COLOR_SCHEMES,
     AGENT_SELECTOR_WIDTH,
     CONTROL_TIMELINE_ROW_SPACING,
@@ -170,7 +167,6 @@ from anesthesia_sim.app.theme import (
     PANEL_PADDING,
     PLAYBACK_RATE_SELECTOR_WIDTH,
     RUNNING_AGENT_DISPLAY_PADDING,
-    WARNING,
 )
 from anesthesia_sim.app.unconditional_set import UnconditionalValue, compartment_value
 from anesthesia_sim.core.concentration import Percent
@@ -196,15 +192,6 @@ AVAILABLE_AGENTS: Final[tuple[tuple[str, str], ...]] = tuple(
 #: snapshot to read the name off: the agent a reader has just selected, which
 #: the controller is not answering for until they confirm it.
 AGENT_DISPLAY_NAMES: Final[Mapping[str, str]] = dict(AVAILABLE_AGENTS)
-
-#: The theme colour each status emphasis is drawn in. `dashboard_frame` names
-#: the role so that it declares no colour; this is where the role meets the
-#: palette, and the only place.
-_EMPHASIS_COLOR: Final[Mapping[Emphasis, str]] = {
-    Emphasis.MUTED: MUTED,
-    Emphasis.ACCENT: ACCENT_TEXT,
-    Emphasis.WARNING: WARNING,
-}
 
 #: The clock panel's index in the readout row, from the table the row is
 #: built from rather than a literal position.
@@ -239,23 +226,6 @@ _HEADER_BADGE_NAME: Final = "agentHeaderBadge"
 _RUNNING_AGENT_DISPLAY_NAME: Final = "runningAgentDisplay"
 
 
-def _panel(object_name: str) -> QFrame:
-    """A PANEL-coloured, rounded frame scoped by name so its children keep their own colours."""
-
-    frame = QFrame()
-    frame.setObjectName(object_name)
-    frame.setStyleSheet(panel_stylesheet(object_name))
-
-    return frame
-
-
-def _emphasised(label: QLabel, word: StatusWord) -> None:
-    """Write a status word and the colour of its emphasis."""
-
-    label.setText(word.text)
-    label.setStyleSheet(foreground_stylesheet(_EMPHASIS_COLOR[word.emphasis]))
-
-
 class RunView(QWidget):
     """One run's widgets, controller, handlers, refresh and halt.
 
@@ -266,13 +236,17 @@ class RunView(QWidget):
     where a run's parts sit relative to another run's is the dashboard's
     decision.
 
-    Each returns the same widgets on every call, laid out once as the run
-    was built. A layout takes a widget from wherever it sits, so a container
-    built anew on a call took the run's live widgets off the screen, and
-    deleted them once it was dropped (`PL-N67T`, `PL-KZR1`). Handed back
-    rather than refused, because a view is to be lifted into areas a reader
-    rearranges, and placing the same widgets again is what moves them
-    (`.claude/rules/ui-areas.md`).
+    The four surfaces that may sit in an Area - the setting controls, the
+    accounting panel, the off-scale line and the wash-in state line - are
+    built anew on every call, from what the copies already built show. Each
+    copy is a class in `app/run_surfaces.py`, and every writer here writes
+    every copy Qt has not destroyed, so two Areas can show one run
+    (`PL-9LNF`). The rest are content of the unconditional region and stay
+    one per run, so their methods return the same widgets on every call,
+    laid out once as the run was built. A layout takes a widget from
+    wherever it sits, so a container built anew on a call took the run's
+    live widgets off the screen, and deleted them once it was dropped
+    (`PL-N67T`, `PL-KZR1`).
 
     Refuses at construction only a first snapshot `setting_readouts` cannot
     draw controls for, raising its `ValueError`; no shipped profile produces
@@ -373,7 +347,7 @@ class RunView(QWidget):
         # attribution depend on a label's text, which is a display detail.
         self._run_name: str | None = None
         self._status_text = styled_label("", color=MUTED, bold=True)
-        _emphasised(self._status_text, status_word(snapshot))
+        emphasised(self._status_text, status_word(snapshot))
         self._notice_text = NoticeLabel(self)
 
         self._subtitle_text = styled_label(format_subtitle(snapshot.agent_display_name), color=INK)
@@ -483,41 +457,28 @@ class RunView(QWidget):
             readouts(snapshot, self._playback_rate), reservations=READOUT_RESERVATIONS
         )
 
-        (
-            self._fresh_gas_flow_slider,
-            self._delivered_concentration_slider,
-            self._alveolar_ventilation_slider,
-            self._cardiac_output_slider,
-        ) = (ParameterSlider(setting) for setting in setting_readouts(snapshot))
-        handlers: tuple[tuple[ParameterSlider, Callable[[float], None]], ...] = (
-            (self._fresh_gas_flow_slider, self._handle_fresh_gas_flow_change),
-            (self._delivered_concentration_slider, self._handle_delivered_concentration_change),
-            (self._alveolar_ventilation_slider, self._handle_alveolar_ventilation_change),
-            (self._cardiac_output_slider, self._handle_cardiac_output_change),
+        # What this run's four surfaces that may sit in an Area last showed,
+        # and the copies of each that Qt has not destroyed. A copy built
+        # later is drawn from these, so it shows what the copies already on
+        # screen show, and every writer writes every copy (`PL-9LNF`).
+        self._settings_shown = setting_readouts(snapshot)
+        self._setting_controls: LiveCopies[ParameterControls] = LiveCopies()
+        self._accounting_shown = replace(
+            accounting(snapshot), detail=ACCOUNTING_INITIAL_DETAIL_TEXT
         )
+        self._accounting_panels: LiveCopies[AccountingPanel] = LiveCopies()
+        self._off_scale_shown: str | None = None
+        self._off_scale_lines: LiveCopies[OffScaleLine] = LiveCopies()
+        self._wash_in_state_shown = ""
+        self._wash_in_state_lines: LiveCopies[WashInStateLine] = LiveCopies()
 
-        for slider, handler in handlers:
-            slider.adjustment_started.connect(self._handle_adjustment_start)
-            slider.value_changed.connect(handler)
-
-        # The two record panels' headings. Instance labels rather than
-        # widgets built inside `_lay_out_record_panels`, because each has to
+        # The control-change panel's heading. An instance label rather than a
+        # widget built inside `_lay_out_control_record`, because it has to
         # gain and lose this run's name as the dashboard's run set changes,
         # and `set_run_name` is the one writer of that name (`PL-C3GS`).
-        self._accounting_heading_text = styled_label(ACCOUNTING_HEADING, color=INK, bold=True)
         self._control_timeline_heading_text = styled_label(
             CONTROL_TIMELINE_HEADING, color=INK, bold=True
         )
-
-        initial_accounting = accounting(snapshot)
-        self._agent_accounting_status_text = styled_label(
-            "", color=ACCENT_TEXT, size_px=ACCOUNTING_STATUS_SIZE, bold=True
-        )
-        _emphasised(self._agent_accounting_status_text, initial_accounting.status)
-        self._agent_accounting_detail_text = styled_label(
-            ACCOUNTING_INITIAL_DETAIL_TEXT, color=MUTED, wrap=True
-        )
-        self._agent_amounts_text = styled_label(initial_accounting.amounts, color=MUTED)
 
         # Wraps, because the record column is narrower than its longest
         # lines, and only between their parts (`wrapping_between_parts`).
@@ -536,18 +497,7 @@ class RunView(QWidget):
         # these widgets are already in (`PL-N67T`, `PL-KZR1`).
         self._transport_row = self._lay_out_transport_row()
         self._readout_section = self._lay_out_readout_section()
-        self._parameter_controls = self._lay_out_parameter_controls()
-        self._accounting_panel, self._control_record_panel = self._lay_out_record_panels()
-
-        # This run's rather than the chart's: whether a trace is clipped is
-        # a property of the samples this run drew, and one line over two
-        # runs could not say whose trace left the plot.
-        self._off_scale_text = styled_label(
-            "", color=WARNING, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
-        )
-        self._off_scale_text.setParent(self)
-        self._off_scale_text.setHidden(True)
-        self._wash_in_state_text = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE)
+        self._control_record_panel = self._lay_out_control_record()
 
         self._apply_agent_color_scheme(snapshot.agent_id)
 
@@ -645,24 +595,27 @@ class RunView(QWidget):
         run_frame = frame.runs[run_index]
         self._readout_row.set_readouts(readouts(snapshot, self._playback_rate))
 
-        panel = accounting(snapshot)
-        _emphasised(self._agent_accounting_status_text, panel.status)
-        self._agent_accounting_detail_text.setText(panel.detail)
-        self._agent_amounts_text.setText(panel.amounts)
+        self._accounting_shown = accounting(snapshot)
+
+        for accounting_panel in self._accounting_panels:
+            accounting_panel.show_accounting(self._accounting_shown)
 
         # Both lines go into a column the runs share, so each is named while
         # more than one run is drawn: the value is this run's, and nothing
         # else in that column says so (`PL-25DD`).
         off_scale = off_scale_notice(frame, run_index)
-        self._off_scale_text.setText(
-            compared_run_line(off_scale, frame, run_index) if off_scale is not None else ""
+        self._off_scale_shown = (
+            compared_run_line(off_scale, frame, run_index) if off_scale is not None else None
         )
-        self._off_scale_text.setHidden(off_scale is None)
-        self._wash_in_state_text.setText(
-            compared_run_line(
-                wash_in_state(snapshot, run_frame.undrawn_wash_in_stretches), frame, run_index
-            )
+        self._wash_in_state_shown = compared_run_line(
+            wash_in_state(snapshot, run_frame.undrawn_wash_in_stretches), frame, run_index
         )
+
+        for off_scale_line in self._off_scale_lines:
+            off_scale_line.show_text(self._off_scale_shown)
+
+        for wash_in_state_line in self._wash_in_state_lines:
+            wash_in_state_line.show_text(self._wash_in_state_shown)
 
         self._write_statement(
             snapshot,
@@ -724,7 +677,7 @@ class RunView(QWidget):
             self._agent_dropdown.setCurrentIndex(self._agent_dropdown.findData(statement.agent_id))
 
         self._running_agent_text.setText(statement.agent_name)
-        _emphasised(self._status_text, statement.status)
+        emphasised(self._status_text, statement.status)
         self._subtitle_text.setText(statement.subtitle)
         self._compartment_substance_text.setText(statement.substance_heading)
         self._control_timeline_text.setText(wrapping_between_parts(statement.timeline.entries))
@@ -847,9 +800,12 @@ class RunView(QWidget):
             settings: The agent and the settings in force on the run.
         """
 
-        for slider, setting in zip(self._sliders(), setting_readouts(settings), strict=True):
-            slider.set_setting(setting)
+        self._settings_shown = setting_readouts(settings)
 
+        for controls in self._setting_controls:
+            controls.show_settings(self._settings_shown)
+
+        for setting in self._settings_shown:
             if setting.control is ControlInput.DELIVERED:
                 self._delivered_text.setText(delivered_line(setting))
 
@@ -1010,16 +966,6 @@ class RunView(QWidget):
         self._running_agent_lock_text.setStyleSheet(agent_text_stylesheet(scheme))
         self._agent_dropdown.setStyleSheet(agent_selector_stylesheet(scheme))
 
-    def _sliders(self) -> tuple[ParameterSlider, ...]:
-        """The four setting controls in `dashboard_frame.PARAMETER_CONTROLS` order."""
-
-        return (
-            self._fresh_gas_flow_slider,
-            self._delivered_concentration_slider,
-            self._alveolar_ventilation_slider,
-            self._cardiac_output_slider,
-        )
-
     # ------------------------------------------------------------ settings
 
     def _apply_setting(self, apply: Callable[[], None], *, coalesce: bool = False) -> None:
@@ -1087,6 +1033,17 @@ class RunView(QWidget):
         """
 
         self.controller.begin_control_adjustment()
+
+    def _handle_setting_request(self, control: ControlInput, value: float) -> None:
+        """Apply the value a slider in any copy of the setting controls was moved to."""
+
+        handlers: Mapping[ControlInput, Callable[[float], None]] = {
+            ControlInput.FRESH_GAS_FLOW: self._handle_fresh_gas_flow_change,
+            ControlInput.DELIVERED: self._handle_delivered_concentration_change,
+            ControlInput.ALVEOLAR_VENTILATION: self._handle_alveolar_ventilation_change,
+            ControlInput.CARDIAC_OUTPUT: self._handle_cardiac_output_change,
+        }
+        handlers[control](value)
 
     # Each dial's value is built into its checked type inside the call
     # `_apply_setting` makes, so a value the model refuses is refused there
@@ -1542,7 +1499,10 @@ class RunView(QWidget):
         self._run_name_text.setText(name or "")
         self._run_name_text.setHidden(name is None)
         self._readout_row.set_run_name(name)
-        self._accounting_heading_text.setText(compared_panel_heading(ACCOUNTING_HEADING, name))
+
+        for accounting_panel in self._accounting_panels:
+            accounting_panel.show_heading(compared_panel_heading(ACCOUNTING_HEADING, name))
+
         self._control_timeline_heading_text.setText(
             compared_panel_heading(CONTROL_TIMELINE_HEADING, name)
         )
@@ -1611,36 +1571,35 @@ class RunView(QWidget):
 
         return section
 
-    def build_parameter_controls(self) -> QWidget:
-        """The four setting controls in a row, in `PARAMETER_CONTROLS` order."""
+    def build_parameter_controls(self) -> ParameterControls:
+        """A new copy of the four setting controls in a row, in `PARAMETER_CONTROLS` order.
 
-        return self._parameter_controls
-
-    def _lay_out_parameter_controls(self) -> QWidget:
-        """Build the row around this run's four setting controls; only the constructor calls it.
-
-        A second call would move the controls out of the row on screen (`PL-KZR1`).
+        Every call builds another copy showing the settings in force, and
+        every copy forwards a moved slider to this run (`PL-9LNF`).
         """
 
-        row = QWidget()
-        layout = QHBoxLayout(row)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
+        controls = ParameterControls(self._settings_shown, parent=self)
+        controls.adjustment_started.connect(self._handle_adjustment_start)
+        controls.setting_requested.connect(self._handle_setting_request)
 
-        for slider in self._sliders():
-            layout.addWidget(slider, 1)
+        return self._setting_controls.add(controls)
 
-        return row
-
-    def build_accounting_panel(self) -> QWidget:
-        """This run's mass-balance panel, for the sidebar beside the charts.
+    def build_accounting_panel(self) -> AccountingPanel:
+        """A new copy of this run's mass-balance panel, for the sidebar beside the charts.
 
         `docs/MODEL.md` requires it to be reachable rather than always
         visible, so it is the one record of a run that may sit in a surface a
-        reader can close (`PL-50PZ`).
+        reader can close (`PL-50PZ`). Every call builds another copy showing
+        what the copies already built show (`PL-9LNF`).
         """
 
-        return self._accounting_panel
+        return self._accounting_panels.add(
+            AccountingPanel(
+                self._accounting_shown,
+                compared_panel_heading(ACCOUNTING_HEADING, self._run_name),
+                parent=self,
+            )
+        )
 
     def build_control_record(self) -> QWidget:
         """This run's control-change panel, for the unconditional region.
@@ -1685,28 +1644,13 @@ class RunView(QWidget):
 
         return widgets
 
-    def _lay_out_record_panels(self) -> tuple[QWidget, QWidget]:
-        """Build the accounting and control-change panels; only the constructor calls it.
+    def _lay_out_control_record(self) -> QWidget:
+        """Build the control-change panel; only the constructor calls it.
 
-        A second call would move the labels out of the panels on screen (`PL-N67T`).
+        A second call would move the labels out of the panel on screen (`PL-N67T`).
         """
 
-        accounting_panel = _panel("accountingPanel")
-        accounting_column = QVBoxLayout(accounting_panel)
-        accounting_column.setContentsMargins(
-            PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, PANEL_PADDING
-        )
-        accounting_column.addWidget(self._accounting_heading_text)
-        accounting_column.addWidget(self._agent_accounting_status_text)
-        accounting_column.addWidget(self._agent_accounting_detail_text)
-        accounting_column.addWidget(
-            styled_label(
-                ACCOUNTING_UNIT_CAPTION, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True
-            )
-        )
-        accounting_column.addWidget(self._agent_amounts_text)
-
-        timeline_panel_frame = _panel("controlTimelinePanel")
+        timeline_panel_frame = panel_frame("controlTimelinePanel")
         timeline_column = QVBoxLayout(timeline_panel_frame)
         timeline_column.setContentsMargins(
             PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, PANEL_PADDING
@@ -1725,17 +1669,19 @@ class RunView(QWidget):
         timeline_column.addWidget(self._control_timeline_text)
         timeline_column.addWidget(self._control_timeline_overflow_text)
 
-        return accounting_panel, timeline_panel_frame
+        return timeline_panel_frame
 
-    def build_off_scale_notice(self) -> QWidget:
-        """The line naming this run's traces that are above the plot."""
+    def build_off_scale_notice(self) -> OffScaleLine:
+        """A new copy of the line naming this run's traces that are above the plot."""
 
-        return self._off_scale_text
+        return self._off_scale_lines.add(OffScaleLine(self._off_scale_shown, parent=self))
 
-    def build_wash_in_state(self) -> QWidget:
-        """The line stating what this run's F_A/F_I plot is showing."""
+    def build_wash_in_state(self) -> WashInStateLine:
+        """A new copy of the line stating what this run's F_A/F_I plot is showing."""
 
-        return self._wash_in_state_text
+        return self._wash_in_state_lines.add(
+            WashInStateLine(self._wash_in_state_shown, parent=self)
+        )
 
 
 def _bold(font: QFont) -> QFont:

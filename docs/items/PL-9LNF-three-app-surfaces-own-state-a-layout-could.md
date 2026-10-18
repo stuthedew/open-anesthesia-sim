@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: safety, anticipated, refactor
 feature: interface-areas
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/run_surfaces.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/main.py, docs/MODEL.md, tests/integration/test_simulation_view.py, tests/integration/test_run_surfaces.py, tests/unit/test_chart_frame.py
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/run_surfaces.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/main.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py, tests/integration/test_run_surfaces.py, tests/integration/test_qt_rendering.py, tests/unit/test_chart_frame.py, tests/unit/test_stylesheets.py, tools/contrast_check.py, tools/literal_home_check.py
 added: 2026-09-16
 payoff: a chart redraws when its own Area widens, so no drawn chord is wider than a pixel after a border drag, and a run's accounting panel or setting controls placed in a second Area draw a second copy instead of emptying the first
 verify: grep -q 'def test_two_accounting_panels_of_one_run_both_draw' tests/integration/test_run_surfaces.py
@@ -162,3 +162,42 @@ because it fixes a defect reachable on `main`; then the time base; then the
 run surfaces. The build waits until the display-set thread's `PL-QLZ5` has
 merged, because that item rewrites `RunView`'s transport row and readout
 heading in the same files (coordinator's sequencing, 2026-10-18).
+
+## Built, 2026-10-18
+
+All three parts landed as designed, in the three commits the design names.
+
+**What the build added to the design.**
+
+- `RunView` keeps what each of the four surfaces last showed
+  (`_settings_shown`, `_accounting_shown`, `_off_scale_shown`,
+  `_wash_in_state_shown`) beside a `LiveCopies` list of each kind. A copy is
+  built with the `RunView` as its Qt parent until a layout takes it, because
+  a parentless widget that is shown becomes a window of its own.
+- `OffScaleLine` and `WashInStateLine` are labels themselves, so
+  `qt_widgets.style_label` was split out of `styled_label` to style a label
+  that a class already is. No colour or size changed.
+- The four surfaces leave `vars(RunView)`, so the test holding every run-state
+  widget to reading alike on a drawn run and a halted one now walks each live
+  copy's widgets too. Without that change it would have stopped comparing the
+  sliders and the accounting panel.
+- `tools/contrast_check.py` cites `AccountingPanel` and `OffScaleLine` in its
+  reasons, and `tools/literal_home_check.py` moves the controls' spacing
+  literal to `ParameterControls.__init__`. Both are repairs the move forced.
+
+**Regression evidence (test-oracles rule 6).**
+
+- Column budget: `test_resizing_one_chart_redraws_it_at_its_own_width` fails
+  on the code before the fix at `assert view.presented_frames == presented + 1`
+  (2 == 3).
+- Time base: `test_the_chosen_time_base_survives_its_selector_being_closed`
+  passes on the code before the fix, because the dashboard already stored
+  `_time_base`. It is not a regression test. The change there is the shape:
+  the selector shows a width it is handed and asks for another, which
+  `test_a_second_time_base_selector_shows_the_width_a_first_one_chose`
+  exercises and which had no interface before.
+- Run surfaces: a variant of `test_two_accounting_panels_of_one_run_both_draw`
+  that needs no new interface (the placed panel reached through
+  `run._accounting_heading_text.parentWidget()`) fails on the code before the
+  fix at `assert second is not first`, because the build method handed back
+  the placed panel.

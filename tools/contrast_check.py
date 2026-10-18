@@ -548,8 +548,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "1.4.3",
         "every numeric readout and its unit (`MetricPanel` for the compartment "
         "grid, `ParameterSlider` for the four settings beside their sliders), "
-        "each panel heading (`ParameterSlider` for a setting's name, `RunView` "
-        "for the accounting and control-change panels it builds for its run, "
+        "each panel heading (`ParameterSlider` for a setting's name, "
+        "`AccountingPanel` for a run's accounting panel, `RunView` for the "
+        "control-change panel it builds for its run, "
         "`SimulationView` for the chart's and the wash-in section's), and every "
         "legend label beside a swatch (`TraceLegend` for the concentration "
         "chart's three rows, `WashInLegend` for the wash-in plot's), and the "
@@ -683,8 +684,8 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the agent-accounting status word when conservation holds "
-        "(`_agent_accounting_status_text`, in the accounting panel `RunView` "
-        "builds, written by `refresh`). Rendered at 20px bold, which is large text, "
+        "(`_agent_accounting_status_text`, in each `AccountingPanel`, written "
+        "by `RunView.refresh`). Rendered at 20px bold, which is large text, "
         "so SC 1.4.3's 3:1 would suffice - the stricter bar is applied "
         "deliberately",
     ),
@@ -729,9 +730,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the agent-accounting status word when validation fails "
-        "(`_agent_accounting_status_text`, in the accounting panel `RunView` "
-        "builds), the notice naming a compartment trace that is above the top "
-        "of the chart (`_off_scale_text`), the line of the new-case "
+        "(`_agent_accounting_status_text`, in each `AccountingPanel`), the "
+        "notice naming a compartment trace that is above the top of the chart "
+        "(`OffScaleLine`), the line of the new-case "
         "confirmation stating what a switch would discard (`NewCaseDialog`, "
         "PL-R3KB), and the title of the notice an Area shows in place of a "
         "View it cannot draw (`AreaNotice`, PL-DB5G, PL-R1WQ)",

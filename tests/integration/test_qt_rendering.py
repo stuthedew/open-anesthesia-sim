@@ -370,7 +370,7 @@ def test_the_readout_row_and_the_sidebar_are_inside_the_page(dashboard: Simulati
 
     scroll, page = _page(dashboard)
     run = dashboard.runs[0]
-    accounting_panel = run._agent_accounting_status_text.parentWidget()
+    accounting_panel = run._accounting_panels[0]._agent_accounting_status_text.parentWidget()
     timeline_panel = run._control_timeline_text.parentWidget()
 
     assert accounting_panel is not None

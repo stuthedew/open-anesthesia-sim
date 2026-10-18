@@ -136,8 +136,8 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("BookmarkDialog._build_layout", "6"): 1,
         ("ForkPanel.__init__", "8"): 2,
     },
+    "src/anesthesia_sim/app/run_surfaces.py": {("ParameterControls.__init__", "12"): 1},
     "src/anesthesia_sim/app/run_view.py": {
-        ("RunView._lay_out_parameter_controls", "12"): 1,
         ("RunView._lay_out_readout_section", "12"): 1,
         ("RunView._lay_out_readout_section", "4"): 1,
         ("RunView._lay_out_transport_row", "8"): 1,
