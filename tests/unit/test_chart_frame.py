@@ -35,6 +35,7 @@ from anesthesia_sim.app.chart_frame import (
     nearest_trace_point,
     nearest_wash_in_point,
     percent_axis_ticks,
+    resample_owed,
     run_trace_style,
     trace_style,
     wash_in_axis_ticks,
@@ -327,6 +328,31 @@ def test_chart_columns_is_one_per_pixel_boundary_and_never_below_the_floor() -> 
     for width in (-1.0, float("nan"), float("inf")):
         with pytest.raises(ValueError, match="pixels wide"):
             chart_columns(width)
+
+
+def test_a_plot_owes_a_frame_only_when_it_needs_more_columns_than_it_drew() -> None:
+    """`PL-9LNF`: a wider plot owes a resample, a narrower or equal one does not.
+
+    The expected answers come from `chart_columns`'s stated rule, one column
+    per pixel boundary: a frame sampled at 900 px has 901 columns, so a plot
+    of 900 or 899.5 px needs none more, and one of 900.5 px needs 902.
+    """
+
+    run = _run(1200.0)
+    frame = assemble_chart_frame(
+        [_input(run)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
+
+    assert frame.columns == 901
+    assert resample_owed(None, 0.0) is True
+    assert resample_owed(frame, 899.5) is False
+    assert resample_owed(frame, 900.0) is False
+    assert resample_owed(frame, 400.0) is False
+    assert resample_owed(frame, 900.5) is True
+    assert resample_owed(frame, 1800.0) is True
+
+    with pytest.raises(ValueError, match="pixels wide"):
+        resample_owed(frame, float("nan"))
 
 
 def test_no_chord_is_wider_than_one_pixel_of_time() -> None:

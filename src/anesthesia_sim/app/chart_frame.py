@@ -119,6 +119,7 @@ __all__ = [
     "nearest_trace_point",
     "nearest_wash_in_point",
     "percent_axis_ticks",
+    "resample_owed",
     "run_trace_style",
     "trace_style",
     "wash_in_axis_ticks",
@@ -691,6 +692,37 @@ class RunInput:
     adjustments: tuple[ControlAdjustment, ...]
 
 
+def resample_owed(frame: ChartFrame | None, plot_width_px: float) -> bool:
+    """Whether a plot this wide needs a frame sampled more finely than `frame`.
+
+    A frame drawn on a plot wider than the width it was sampled for leaves
+    chords wider than a pixel, which `chart_columns` exists to prevent
+    (`PL-GS3R`). A plot narrower than that width needs nothing new: its
+    columns are closer than a pixel apart, and the guarantee still holds. So
+    this asks whether the plot needs more columns than the frame has, not
+    whether the widths are equal. A plot that has drawn no frame owes one.
+
+    Each chart asks this of its own width, so a chart whose Area a reader
+    widens owes the dashboard a frame even when the window kept its size
+    (`PL-9LNF`).
+
+    Args:
+        frame: The frame the plot drew last, or None before its first.
+        plot_width_px: The plot's width now, in logical pixels.
+
+    Returns:
+        True when the plot needs a frame with more columns than `frame`.
+
+    Raises:
+        ValueError: If the width is negative or not finite (`chart_columns`).
+    """
+
+    if frame is None:
+        return True
+
+    return chart_columns(plot_width_px) > frame.columns
+
+
 def assemble_chart_frame(
     runs: Sequence[RunInput],
     time_base: ChartTimeBase | None,
@@ -712,8 +744,10 @@ def assemble_chart_frame(
         time_base: The width the reader chose, or `None` for "Fit run".
         shown: The compartments the reader has left drawn.
         plot_width_px: The width of the plot the frame will be drawn on, in
-            logical pixels - the wider of the two where both plots draw it,
-            since the wash-in stretches are formed from the same columns.
+            logical pixels. Where more than one plot draws the frame, it is
+            the widest of them, since the wash-in stretches are formed from
+            the same columns and a narrower plot loses nothing to columns
+            closer than a pixel (`resample_owed`).
             `ConcentrationChart.plot_width_px` and `WashInChart.plot_width_px`
             report it. Required rather than defaulted: a frame drawn for a
             width nobody stated would be drawn at the floor, silently.

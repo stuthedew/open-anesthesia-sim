@@ -33,7 +33,9 @@ COMPOSERS = frozenset(
 
 #: The modules that style a widget today. Held so that the walk below cannot
 #: pass by reading nothing, which a moved package or a renamed method would do.
-STYLING_MODULES = frozenset({"qt_chart.py", "qt_widgets.py", "run_view.py", "simulation_view.py"})
+STYLING_MODULES = frozenset(
+    {"qt_chart.py", "qt_widgets.py", "run_surfaces.py", "run_view.py", "simulation_view.py"}
+)
 
 
 def test_the_composers_import_with_no_toolkit_loaded() -> None:

@@ -260,7 +260,7 @@ def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
     application.processEvents()
     view.present(False)
     width = next(base for base in SELECTABLE_TIME_BASES if base.span_s == _FOLLOWING_WIDTH_S)
-    selector = view._time_base_dropdown
+    selector = view._time_base_selector
     index = selector.findData(str(width.span_s))
     assert index >= 0, "the time-base control does not offer the 15-minute width"
     selector.setCurrentIndex(index)
@@ -370,7 +370,7 @@ def test_the_readout_row_and_the_sidebar_are_inside_the_page(dashboard: Simulati
 
     scroll, page = _page(dashboard)
     run = dashboard.runs[0]
-    accounting_panel = run._agent_accounting_status_text.parentWidget()
+    accounting_panel = run._accounting_panels[0]._agent_accounting_status_text.parentWidget()
     timeline_panel = run._control_timeline_text.parentWidget()
 
     assert accounting_panel is not None
