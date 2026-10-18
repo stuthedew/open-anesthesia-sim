@@ -84,3 +84,14 @@ a branch holding elapsed time or recorded control changes, and a test in
 **Premise re-read 2026-09-22 (`PL-14QR`, triage).** `RunView._handle_reset` still goes straight
 from `self.controller.reset()` to `self.case_restarted.emit()`, with nothing
 between them.
+
+**Premise re-read 2026-10-18 at `21174fd3`, in the product decision batch's
+design round.** `RunView._handle_reset` still goes from
+`self.controller.reset()` to `self.case_restarted.emit()` with no question
+asked. `SimulationView._handle_case_restarted` still rebuilds the case on the
+trunk and removes every branch it drew. `docs/MODEL.md` § "Agent-change
+behavior" still states the discard requirement and still ends with Reset's
+exemption, with no word on a run the press was not on. The question and the
+recommendation above stand unchanged and are put to the project owner,
+because the answer decides whether a learner meets a dialog on a common
+gesture.

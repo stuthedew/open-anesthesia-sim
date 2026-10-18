@@ -3,10 +3,11 @@ id: PL-05M4
 title: The inert splitter handles keep the host's surface under a dark appearance, because a disabled widget draws from the Disabled colour group this project leaves to the platform
 priority: P3
 effort: S
-status: needs-decision
+status: blocked
 classes: ux
 feature: chrome-colour-audit
 touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_dark_appearance.py, docs/MODEL.md
+blocked-by: PL-W9P6
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-22
 ---
@@ -67,3 +68,24 @@ between a colour a learner sees on a dark host and a rule that holds elsewhere
 in the interface. The recommendation above - route 3 now, route 2 inside
 planned-milestone item 34 - is this brief's, and still waits on the project
 owner.
+
+**Decided 2026-10-18 in the product decision batch's design round: route 3
+now, and route 2 arrives with `PL-W9P6`.** The recommendation above was
+conditional on planned-milestone item 34 being scoped. It now is: `ROADMAP.md`
+§ "v0.6.0 - the layout is the reader's", Required scope entry 2, is `PL-W9P6`
+(the layout adapter), and that entry says it is "where v0.4.26's inert
+handles go live". A live handle is enabled, so it draws from the declared
+`Active` group, and the dark bar goes away with no change to the `Disabled`
+group. Route 1 was refused for the reason given above: a declared disabled
+surface under the platform's disabled text grey is a trap for any control
+added later. This is an obvious call, so it was decided here rather than put
+to the project owner.
+
+So this item is blocked on `PL-W9P6`. What is left after it is small. Invert
+the handle half of
+`tests/integration/test_dark_appearance.py::test_declaring_the_application_leaves_its_disabled_colours_to_the_platform`
+so it holds a light handle under a dark host. Then remove the known limit
+from `docs/MODEL.md` § "Color contrast, and the standard this interface is
+held to". The close-out's docs sweep will also find the sentence in
+`.claude/rules/ui-color.md` that names this item. If `PL-W9P6`'s own build makes those changes, close this item as done
+under that pull request.

@@ -204,11 +204,11 @@ from typing import NamedTuple
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.claims import RECORDS  # noqa: E402
 from docket.config import load as load_docket_config  # noqa: E402
 from docket.model import parse_front_matter  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import (  # noqa: E402
+    RECORDS,
     REMOTE,
     call_git,
     default_base,
@@ -220,7 +220,7 @@ from docket.vcs import (  # noqa: E402
 )
 
 #: Relative, as a message names a file; `RECOVERY_DIR` is where they are read.
-#: `claims.RECORDS` is the directory's one spelling (`PL-WCHF`).
+#: `vcs.RECORDS` is the directory's one spelling (`PL-WCHF`).
 RECORD_PATH = RECORDS.rstrip("/")
 RECOVERY_DIR = ROOT / RECORD_PATH
 API = "https://api.github.com"

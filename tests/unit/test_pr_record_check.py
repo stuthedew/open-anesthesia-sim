@@ -33,8 +33,12 @@ def _tree(**refs: dict[str, str]):
 
     def fake(args: list[str]) -> str:
         if args[0] == "ls-tree":
-            ref = args[3]
-            return "\n".join(f"docs/items/{name}" for name in refs.get(ref, {}))
+            # ["ls-tree", "-r", <ref>, "--", <dir>], as `vcs._item_blobs` reads it.
+            ref = args[2]
+            return "".join(
+                f"100644 blob {index:040x}\tdocs/items/{name}\n"
+                for index, name in enumerate(refs.get(ref, {}))
+            )
         if args[0] == "show":
             ref, _, path = args[1].partition(":")
             return refs.get(ref, {}).get(path.split("/")[-1], "")
@@ -122,6 +126,25 @@ def test_every_closure_is_held_to_it_and_the_refusal_names_each(
     assert "not recorded on PL-P909." in err
 
 
+def test_an_item_dropped_on_the_base_and_done_here_owes_a_number(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The base's `dropped` copy is no landed closure, as `vcs.landed_closure` reads it (`PL-86H3`).
+
+    `bin/docket record` writes the branch's number onto an item the base holds
+    dropped and the branch marks done. This check read any closed base copy as
+    landed, so it did not ask for the number `record` writes.
+    """
+    _install(
+        monkeypatch,
+        base={"PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="dropped", extra="")},
+        head={"PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="done", extra="")},
+    )
+
+    assert pr_record_check.closures("base", "head") == {"PL-K7QX": ""}
+    assert _run(monkeypatch, "1050") == 1
+
+
 def test_a_drop_owes_no_number(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -186,7 +209,7 @@ def _git_answering(**refs: dict[str, str]):
         args = list(argv[1:])
         if args[0] == "rev-parse":
             return subprocess.CompletedProcess(argv, 0, b"claude/pl-hmzz-slug\n", b"")
-        ref = args[3] if args[0] == "ls-tree" else args[1].partition(":")[0]
+        ref = args[2] if args[0] == "ls-tree" else args[1].partition(":")[0]
         if ref in refs:
             return subprocess.CompletedProcess(argv, 0, tree(args).encode(), b"")
         said = f"fatal: Not a valid object name {ref}\n"

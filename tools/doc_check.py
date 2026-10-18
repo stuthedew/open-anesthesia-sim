@@ -140,7 +140,6 @@ try:
     # A second copy of either grammar would drift from the one
     # `bin/docket check` enforces, and the drift would be in the documents that
     # say which milestone is current and what it still owes.
-    from docket.claims import RECORDS
     from docket.config import Config
     from docket.config import load as load_docket_config
 
@@ -288,6 +287,7 @@ try:
     from docket.vcs import (
         ITEM_FILE_RE,
         LONG_GIT_TIMEOUT,
+        RECORDS,
         Cut,
         GitRunner,
         GitUnanswered,
@@ -8020,7 +8020,7 @@ HOST_REFUSAL_STEM_RE = re.compile(r"block|refus|den(?:y|i)|reach", re.IGNORECASE
 #: rewrites, which is why a closed brief keeps its stale line citations
 #: (`PL-G424`).
 #: Each spelled by its owner: the store where `docket.toml` puts it,
-#: `release.NOTES_DIR` and `claims.RECORDS` (`PL-WCHF`).
+#: `release.NOTES_DIR` and `vcs.RECORDS` (`PL-WCHF`).
 def dated_records(root: Path) -> tuple[str, ...]:
     """The directories `root` keeps dated records in, as path prefixes."""
     return (load_docket_config(root).items_dir.strip("/") + "/", f"{NOTES_DIR}/", RECORDS)
