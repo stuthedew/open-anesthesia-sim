@@ -95,6 +95,10 @@ from pathlib import Path
 
 from workflow_paths_check import tracked_under
 
+# isort: split
+# After `workflow_paths_check`, whose import puts docket on the path.
+from docket.python import docstrings
+
 ROOT = Path(__file__).resolve().parent.parent
 
 #: The Python trees whose string literals can reach a reader. `app/` draws
@@ -159,26 +163,6 @@ CONFIRMED: dict[int, str] = {
 }
 
 
-def documentation(tree: ast.Module) -> set[int]:
-    """Every string node that is a bare expression statement, by identity.
-
-    That is the whole definition of documentation here - module, class,
-    function and attribute docstrings are all of them, and nothing else is one.
-    Structural rather than positional: an attribute docstring is not the first
-    statement of any scope, which is why testing for position would let `§`
-    through into a list that is supposed to record what was rendered.
-    """
-    found: set[int] = set()
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.Expr)
-            and isinstance(node.value, ast.Constant)
-            and isinstance(node.value.value, str)
-        ):
-            found.add(id(node.value))
-    return found
-
-
 def translation_keys(tree: ast.Module) -> set[int]:
     """Every string literal a `maketrans` call reads as characters to replace, by identity.
 
@@ -213,7 +197,7 @@ def python_strings(path: Path) -> Iterator[tuple[int, str]]:
     is checked and the interpolated value - which this tool cannot see - is not.
     """
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    excluded = documentation(tree) | translation_keys(tree)
+    excluded = {id(node) for node in docstrings(tree)} | translation_keys(tree)
     for node in ast.walk(tree):
         if (
             isinstance(node, ast.Constant)
