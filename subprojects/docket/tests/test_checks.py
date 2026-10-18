@@ -18,6 +18,7 @@ from docket.instructions import read as read_instructions
 from docket.model import Item, parse_item, render_item
 from docket.notes import Thread, read
 from docket.plan import OfferedReport
+from docket.release import tag_name
 from docket.render import format_check, format_digest, format_list
 from docket.roadmap import MilestoneStates, milestone_states
 from docket.vcs import (
@@ -3932,6 +3933,10 @@ def test_a_bullet_the_notes_reader_declined_is_named_rather_than_passed_over() -
 
 
 def _window_advisories(window: CutWindow | None, **kwargs: object) -> list[str]:
+    # The notes keyed as `notes_by_version` keys them, by file stem, so a test
+    # writing the bare `0.3.8` meets the lookup production makes (`PL-4DK2`).
+    if isinstance(notes := kwargs.get("notes"), dict):
+        kwargs["notes"] = {tag_name(version): named for version, named in notes.items()}
     report = analyze([_item(), _item("PL-2222")], TODAY, window=window, **kwargs)  # type: ignore[arg-type]
     return [line for line in report.advisories if "inside the tag's span" in line]
 
@@ -3944,7 +3949,7 @@ def test_the_cut_window_names_what_landed_since_the_cut() -> None:
     while `docs/releases/v0.3.8.md` names it nowhere and `v0.3.9.md` does.
     """
     advisories = _window_advisories(
-        CutWindow(version="0.3.8", landed=("PL-D9WD",)), notes={"v0.3.8": frozenset({"PL-K7QX"})}
+        CutWindow(version="0.3.8", landed=("PL-D9WD",)), notes={"0.3.8": frozenset({"PL-K7QX"})}
     )
 
     assert len(advisories) == 1
@@ -3958,7 +3963,7 @@ def test_an_id_the_cut_already_names_is_not_a_stranger() -> None:
     """The branch's own work reaches the base through the merge, which is not the seam."""
     assert (
         _window_advisories(
-            CutWindow(version="0.3.8", landed=("PL-D9WD",)), notes={"v0.3.8": frozenset({"PL-D9WD"})}
+            CutWindow(version="0.3.8", landed=("PL-D9WD",)), notes={"0.3.8": frozenset({"PL-D9WD"})}
         )
         == []
     )
