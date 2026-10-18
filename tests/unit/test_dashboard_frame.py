@@ -85,7 +85,7 @@ from anesthesia_sim.app.dashboard_frame import (
     READOUT_ROW_LADDER,
     REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE,
     REFUSED_RESET_EXIT_TEMPLATE,
-    REFUSED_RESET_REPAIR_TEXT,
+    REFUSED_RESET_WAY_OUT_TEXT,
     RENDER_INTERVAL_S,
     RESET_EXIT_TEXT,
     RESET_LABEL,
@@ -806,17 +806,19 @@ def test_a_run_statement_carries_the_locks_the_undrawn_marks_and_the_banner_it_i
 
 
 def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
-    """Reset is the door every failure wording names; a refused Reset's banner names the repair.
+    """Reset is the door every failure wording names; a refused Reset's banner names another.
 
     `SimulationController.reset()` can refuse, before it clears anything, and
     the view halts the run on it through the failed-step path (`PL-M4M0`).
     The failure wording would then end by sending the reader to the control
     that was just refused, so the exit says Reset was refused and names the
-    door open on every run: the setting the refusal names, whose dial
-    rebuilds the record, after which Reset takes. A new case was named first
-    and withdrawn in review - the agent selector, which a comparison locks,
-    which does nothing for the agent already running, and which a branch has
-    not got. Which of two wordings states the refusal turns on what the
+    door open on every run. No setting can repair the refusal, because only a
+    perfusion fraction written past its guard builds the record Reset refuses
+    (`PL-HQF5`, `PL-Z0HN`). So the exit says so, and sends the reader to close
+    and reopen the application. Until `PL-01GY` it named the setting the
+    refusal names, whose dial no longer rebuilds the record. A new case is not
+    open on every run: it is the agent selector, which a comparison locks and
+    which a branch has not got. Which of two wordings states the refusal turns on what the
     banner's reason is: a controller keeps the first failure it was given,
     so on a run that had failed for something else the exit has to carry
     the refusal itself, and on one that had not, or that this same refusal
@@ -841,14 +843,16 @@ def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
     pressed_again = refused_reset_exit(error, recorded_failure_reason=this_refusal)
     after_failure = refused_reset_exit(error, recorded_failure_reason=earlier.failure_reason)
 
-    assert first == "Reset was refused for this reason. Change the setting it names, then Reset."
-    assert first == REFUSED_RESET_EXIT_TEMPLATE.format(repair=REFUSED_RESET_REPAIR_TEXT)
-    assert pressed_again == first
-    assert after_failure == (
-        f"Reset was refused — {this_refusal}. Change the setting it names, then Reset."
+    way_out = (
+        "No setting can repair this, because only a fault in the simulator causes it. "
+        "Close and reopen the application to start a new run."
     )
+    assert first == f"Reset was refused for this reason. {way_out}"
+    assert first == REFUSED_RESET_EXIT_TEMPLATE.format(way_out=REFUSED_RESET_WAY_OUT_TEXT)
+    assert pressed_again == first
+    assert after_failure == f"Reset was refused — {this_refusal}. {way_out}"
     assert after_failure == REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE.format(
-        reason=this_refusal, repair=REFUSED_RESET_REPAIR_TEXT
+        reason=this_refusal, way_out=REFUSED_RESET_WAY_OUT_TEXT
     )
 
     drawn = notice(refusal, None, refused_reset=first)

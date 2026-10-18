@@ -222,22 +222,33 @@ REFUSED_SETTING_NOTICE_TEMPLATE: Final = (
 )
 
 # The way out when Reset is what was refused, in `refused_reset_exit`'s two
-# wordings. The door named is the repair: the record Reset is refused on
-# names the setting it cannot hold - the cardiac output the tissue flows no
-# longer sum to - and that setting's dial rebuilds the record, after which
-# the same Reset takes. It is the one door open on every run. A new case was
-# named first and withdrawn in review: it is the agent selector, which a
-# comparison replaces with `COMPARING_AGENT_LOCK_TEXT`, which does nothing
-# for the agent already running, and which a branch has not got (`PL-TFX5`).
-# Which wording states the refusal turns on what the banner's reason is: on
-# a run that had not failed, or whose recorded failure is this same refusal,
-# the halt's reason *is* the refusal, so the exit points at it; on one that
-# had failed for something else, the controller keeps that earlier reason
-# (`SimulationController.fail`), so the exit carries the refusal itself, in
-# the form the failure line gives a reason (`PL-M4M0`).
-REFUSED_RESET_EXIT_TEMPLATE: Final = "Reset was refused for this reason. {repair}"
-REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE: Final = "Reset was refused — {reason}. {repair}"
-REFUSED_RESET_REPAIR_TEXT: Final = "Change the setting it names, then Reset."
+# wordings. Reset is refused only on a settings record whose tissue flows do
+# not sum to the cardiac output. Every flow is formed from the output
+# (`PL-HQF5`), so a new output scales them all by one factor and the sum still
+# disagrees. Only a perfusion fraction written past its guard (`PL-Z0HN`) can
+# build that record, and no shipped code writes one. So no setting can repair
+# the refusal, and the banner says so rather than naming a dial. Until
+# `PL-01GY` it said to change the setting the refusal names, which stopped
+# being true with `PL-HQF5`.
+#
+# The way out it names is closing and reopening the application, because that
+# is open on every run. A new case is not: it is the agent selector, which a
+# comparison replaces with `COMPARING_AGENT_LOCK_TEXT` and which a branch has
+# not got (`PL-TFX5`). If a refusal that a setting can repair is ever added to
+# that record, this text must change with it.
+#
+# Which wording states the refusal depends on the banner's reason. On a run
+# that had not failed, or whose recorded failure is this same refusal, the
+# halt's reason is the refusal, so the exit points at it. On a run that had
+# failed for something else, the controller keeps that earlier reason
+# (`SimulationController.fail`), so the exit carries the refusal itself, in the
+# form the failure line gives a reason (`PL-M4M0`).
+REFUSED_RESET_EXIT_TEMPLATE: Final = "Reset was refused for this reason. {way_out}"
+REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE: Final = "Reset was refused — {reason}. {way_out}"
+REFUSED_RESET_WAY_OUT_TEXT: Final = (
+    "No setting can repair this, because only a fault in the simulator causes it. "
+    "Close and reopen the application to start a new run."
+)
 
 # What the chart says when a reader has unchecked every compartment. A plot
 # missing all six is a blank panel, and a blank panel reads as a display that
@@ -1352,10 +1363,10 @@ def refused_reset_exit(error: BaseException, *, recorded_failure_reason: str | N
 
     Every failure wording ends by naming Reset, the one door out of a
     stopped run; when Reset is the control that was just refused, that line
-    would send the reader back to it. So the exit says Reset was refused and
-    names the repair instead: the setting the refusal names, whose dial
-    rebuilds the record Reset was refused on, after which Reset takes
-    (`REFUSED_RESET_REPAIR_TEXT`). How it says Reset was refused depends on
+    would send the reader back to it. So the exit says Reset was refused,
+    that no setting can repair the refusal, and that closing and reopening
+    the application starts a new run (`REFUSED_RESET_WAY_OUT_TEXT`, whose
+    comment says why no setting can). How it says Reset was refused depends on
     what the banner's reason already is: a controller keeps the first
     failure it was given (`SimulationController.fail`), so on a run that had
     not failed, or that this same refusal already stopped, the recorded
@@ -1377,10 +1388,10 @@ def refused_reset_exit(error: BaseException, *, recorded_failure_reason: str | N
     _, reason = halt_disposition(error)
 
     if recorded_failure_reason is None or recorded_failure_reason == reason:
-        return REFUSED_RESET_EXIT_TEMPLATE.format(repair=REFUSED_RESET_REPAIR_TEXT)
+        return REFUSED_RESET_EXIT_TEMPLATE.format(way_out=REFUSED_RESET_WAY_OUT_TEXT)
 
     return REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE.format(
-        reason=reason, repair=REFUSED_RESET_REPAIR_TEXT
+        reason=reason, way_out=REFUSED_RESET_WAY_OUT_TEXT
     )
 
 

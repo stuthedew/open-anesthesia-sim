@@ -3630,6 +3630,16 @@ def in_tree(root: Path, path: str) -> bool:
     return (root / path).exists()
 
 
+def tree_files(root: Path, paths: Iterable[str]) -> frozenset[str]:
+    """Which of `paths` are files in the working tree now.
+
+    `in_tree`'s reading, held to files: a directory a `verify:` searches is
+    not one path its item could declare, so `PL-ZB82`'s advisory reads files
+    alone.
+    """
+    return frozenset(path for path in paths if (root / path).is_file())
+
+
 @dataclass(frozen=True)
 class TouchedPath:
     """One declared `touches` path, and what it has been through since its item was filed."""

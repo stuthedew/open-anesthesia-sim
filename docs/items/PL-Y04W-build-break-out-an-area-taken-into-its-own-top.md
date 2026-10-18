@@ -1,7 +1,7 @@
 ---
 id: PL-Y04W
 title: Build break-out: an Area taken into its own top-level window, the window lifetime that keeps the main window unclosable while break-outs exist, and the test that every window the application can be left showing carries the invariant display tier
-priority: P1
+priority: P2
 effort: L
 status: dropped
 classes: safety, anticipated, feature
