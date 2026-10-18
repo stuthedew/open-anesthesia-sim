@@ -188,13 +188,15 @@ say so and fix it, per the behavior-change rule below. This file states no
 reply format of its own, deliberately: two documents specifying one thing is
 the hazard that rule exists to remove.
 
-This governs the deliverable, not the session. Ordinary judgment inside an
+The ask-gate in this section, which stops for an answer before building a
+deliverable that differs from the one described, governs the deliverable,
+not the session. Ordinary judgment inside an
 approach already agreed — naming, structure, where a thing lives, how it is
 tested, whether the work continues here or moves to a fresh session — stays
 yours. The trigger is a deliverable that would differ materially from the one
 described, not every decision taken while building it.
 
-Nor is this license to redefine the goal, widen the scope, or substitute a
+Nor is the ask-gate a license to redefine the goal, widen the scope, or substitute a
 more interesting problem. The end state is theirs; only the route to it is
 open to argument. The bar for proposing something other than the named
 mechanism is that the alternative is clearly superior *for the same goal* —
@@ -271,7 +273,8 @@ before finishing.
   `CLAUDE.md` and unscoped rules re-injected — and keeps the branch, claim and
   pull-request watch. A file it restores counts as already read, but its
   path-scoped rules may not have come back, so read it again before the first
-  edit to it (`PL-384P`). That floor is 81,048–115,320 tokens.
+  edit to it (`PL-384P`). That floor measured 81,048–115,320 tokens on 2026-09-21 (`PL-W80S`),
+  and it moves whenever the resident set does.
   Past the budget anyway — an item that ran
   long, or a design round holding its reasoning in the conversation — finish
   the item in hand, reset the same way, and say in your reply that you stopped
@@ -312,8 +315,9 @@ context in every session that needs it. `tools/doc_check.py` and
 - **Find the decidable part and put it in code.** Anything answerable by
   reading the tree, a data file, or a diff belongs in a script wired into `make
   check`, a hook, or CI. Prefer this without being asked — it is standing
-  approval, needing no case put for it each time, suspended while any item
-  carries `generator: live` (§ "What this project is").
+  approval, needing no case put for it each time. The generator pause in
+  § "What this project is" suspends it while any open workflow-lane item
+  carries `generator: live`.
 - **Do not script the judgment.** `tools/doc_check.py` decides whether a cited
   path exists, never whether the sentence around it is still true. A tool that
   guesses at the judgment half is worse than no tool, because its output looks
@@ -636,9 +640,9 @@ deviating from a described deliverable, not acting without one.
   Waiting on review behind is neither red nor conflicted, and is not work. At
   merge time the owner's *Update branch* brings it in (`docs/maintainer.md`);
   an armed one is brought in by `update-armed.yml` on each push to `main`
-  (`PL-S5MF`), since auto-merge never updates a branch. Since 2026-10-03 the
-  refusal binds an admin too, and a session's GitHub calls are the owner's, so a
-  session squash-merges a pull request GitHub will not arm because it is already
+  (`PL-S5MF`), since auto-merge never updates a branch. The refusal binds an
+  admin too. A session's GitHub calls are the owner's, so a session
+  squash-merges a pull request that GitHub will not arm because it is already
   green and current (project owner, 2026-10-03, ratified, over the owner's
   click, `PL-NXRJ`). Sooner only on a genuine
   conflict, a notice that `main` is green again, or before editing work it will

@@ -1,6 +1,6 @@
 ---
 name: docket
-description: Read, add to, and work this repository's development queue in docs/items/. Use when the project owner asks what to work on next, what is left, what the priorities are, or whether to start the next milestone; when they have usage time available and no particular plan; when they flag a bug, cleanup, optimization, or idea to track for later; when a session's own work turns up a finding that will not be fixed in that session; when they name an item to start ("let's do PL-K7QX"); when they ask what can be worked on at the same time; and when asked to triage, reprioritize, groom, or ship a release.
+description: Read, add to, and work this repository's development queue in docs/items/. Use it for every queue workflow - choosing what to work on next or what can run at the same time, including when the owner has time and no plan; recording an idea, bug or finding that this session will not fix; turning an idea into items; starting a named item ("let's do PL-K7QX"); running a design round on a needs-decision item; triaging, reprioritizing or grooming; freezing a debt gate or shipping a release; closing an item out; and filing repository work that no item names, such as a merge, a stale ref or a stranded item.
 ---
 
 # docket
@@ -18,15 +18,11 @@ work rather than on the queue. Read an item's file when implementing it.
 
 ## Always
 
-Kept at the top deliberately, and that reason now shapes the whole page.
 Auto-compaction re-attaches an invoked skill "keeping the first 5,000 tokens
 of each" ([skills](https://code.claude.com/docs/en/skills)), so anything past
-that is cut off mid-sentence in every session that compacts. The modes used to
-sit past it: this file ran 93,454 characters, about 23,400 tokens, and four
-fifths of it - `start an item`, `triage`, `ship a release` and `close out`
-among them - could not survive a compaction. They are separate files now,
-reached by a read the cap does not touch, and what is left here is sized to
-come back whole.
+that is cut off mid-sentence in every session that compacts. This page is sized
+to come back whole. Each mode lives in its own file, reached by a read that the
+cap does not touch (`PL-2XM2`).
 
 
 **Check repository state; never recall it.** Rule 14 of
@@ -83,6 +79,5 @@ compaction cap does not reach it.
 | Scoping a milestone's debt gate, or there is finished work to ship | `.claude/skills/docket/modes/release.md` |
 | An item's work is done and wants closing out | `.claude/skills/docket/modes/close-out.md` |
 
-Nothing was cut in the move: each file holds its modes verbatim, and
 `cat .claude/skills/docket/SKILL.md .claude/skills/docket/modes/*.md` is the
 whole skill for a session that wants it end to end.

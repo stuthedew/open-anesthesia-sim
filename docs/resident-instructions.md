@@ -520,12 +520,14 @@ merged, its branch was deleted, the base moved twice and a third session pushed
 a branch re-adding a file this session had renamed - all inside one turn, none
 of it visible without a fetch.
 
-**What it costs and what should retire it.** About 500 characters. It names
-three commands because no one command answers the question, and `PL-CM40` is
-the item that would collapse it to one - at which point this block shrinks
-rather than growing. `PL-QSGX` removes the sharpest edge separately:
-`bin/docket flight` does not fetch where its siblings do, so the rule currently
-has to say so out loud.
+**What it costs and what should retire it.** About 500 characters. It first
+named three commands, `git fetch origin`, `bin/docket flight` and `bin/docket
+stranded`, because no one command answered the question. `PL-CM40` is the item
+that would collapse it to one, at which point this block shrinks rather than
+grows. `PL-QSGX` made `bin/docket flight` fetch as its siblings do. So the
+separate `git fetch origin` step was dropped on 2026-10-18 (`PL-ZKT8`), and the
+rule now names two commands. The outcome the owner specified, a refresh before
+every closing block, is unchanged.
 
 ## The attribution sentence, added 2026-09-24
 

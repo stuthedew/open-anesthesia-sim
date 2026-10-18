@@ -157,9 +157,9 @@ rules, "phases," or "closed loops" in the output itself.
       and existing work that would fix or unblock what the discussion found
       — name that one, glossed per rule 7, and say which comes first.
     - Re-verify by refreshing, every time, before writing this block — not
-      only when something looks stale (project owner, 2026-09-19). Three
-      commands: `git fetch origin`, then `bin/docket flight` and `bin/docket
-      stranded`. Cheap, and the default has to be refresh-first because a
+      only when something looks stale (project owner, 2026-09-19). Run
+      `bin/docket flight` and `bin/docket stranded`. Each one fetches before
+      it reads. Cheap, and the default has to be refresh-first because a
       session cannot feel its own copy going out of date: the session-start
       digest is written once and resent every turn, its refs line dates that
       moment rather than this one (`PL-XBV4`), and a

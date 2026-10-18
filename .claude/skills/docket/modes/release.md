@@ -55,17 +55,17 @@ target"). A class-computed list is not closed under its own prerequisites, and
 `verify:` command tests for the presence of the fix and never for the presence
 of the fault, so an entry whose problem was solved another way fails forever and
 reads as outstanding work — and nothing in the store marks it, so it is ranked,
-offered by `bin/docket next`, and counted into this gate. The one pass that has
-run found 12 of 134 items dead and 31 more overtaken, 32% of the lane, and a
+offered by `bin/docket next`, and counted into this gate. Two passes have run.
+`PL-6ZQY` found 12 of 134 items dead and 31 more overtaken, 32% of the lane.
+`PL-C4W8` found 3 of Gate 2's 168 entries dead and 8 overstated, about 6.5%. A
 churn advisory was built, measured against its verdicts and rejected, so there
 is no mechanical substitute (`PL-LKGL`). Read each frozen entry against the
 tree, drop what no longer reproduces with its `reason`, and correct the briefs
 that overstate what is left. **File the pass as its own item under `feature:
 gate-staleness-sweep`, and do not look for a standing one** — an item named as
 the instrument can close, and the next gate's session then reads `done`
-(`PL-D8KW`). `PL-6ZQY`, the one pass that has run, carries a 134-item map whose
-verification phase never finished; nothing in it may be acted on without
-re-checking against the tree.
+(`PL-D8KW`). `PL-6ZQY`'s 134-item map never finished its verification phase,
+so nothing in it may be acted on without re-checking against the tree.
 
 **Recorded debt is cleared before a new milestone begins.** `ROADMAP.md` §
 "The debt gate" is the rule: open items classed `defect`, `safety`, `science`,
@@ -230,11 +230,12 @@ marks the capability boundary a release crosses, which no class label carries.
 The dry run still prints the mechanical guess, as a reference point and not an
 answer.
 
-`release` stops before tagging on purpose: review the bump and the generated
-notes, then commit and tag. It **refuses to cut a release while the previous
-one is untagged**, because a release cut without a tag leaves a permanent gap
-— `git describe --contains` resolves nothing across its span — and the gap
-cannot be repaired with confidence once the history has moved on.
+`release` stops before committing on purpose: review the bump and the
+generated notes, then commit them. The tag is the workflow's, as described
+below. It **refuses to cut a release while the previous one is untagged**,
+because a release cut without a tag leaves a permanent gap — `git describe
+--contains` resolves nothing across its span — and the gap cannot be repaired
+with confidence once the history has moved on.
 
 It **also refuses to cut a release another session already has** (`PL-66FP`,
 two sessions cut v0.3.7 independently), on any of three facts, and it
@@ -325,14 +326,9 @@ the session, which they run from Actions > tag-release > Run workflow or as
 `python3 tools/tag_release.py --apply` from a clone, since a session's own tag
 push is dropped without an error (`PL-N936`); and a tag origin already holds on
 another commit. Whether GitHub lets a session dispatch is not measured yet -
-the workflow has tagged every release since it landed, v0.5.20 to v0.5.22 -
+the workflow has tagged every release since it landed at v0.5.20 -
 so the first untagged release is the measurement, and the session that meets it says in its reply what the call
 returned. Say the tag is outstanding until `git ls-remote`
 shows it, and check rather than assume: `tools/doc_check.py` will not catch the
 gap, because a local checkout cannot tell a release never tagged from one
 tagged since it last fetched (the advisory that tried was removed in v0.3.4).
-
-File no tag-step item. `status` used to read an open `Tag v0.3.0 on ...` item
-against the clone's tags and mark it `[TAGGED: v0.3.0 exists - close it]`
-(`PL-53Y6`); the last one, `PL-WT9L`, closed with v0.5.19, and the mark went
-with the step (`PL-2FY6`).

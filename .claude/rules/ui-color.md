@@ -29,16 +29,15 @@ true fails there rather than sitting on.
 
 **`tools/agent_identity_check.py` decides one thing the ratios cannot reach: no
 control carrying agent identity may be *rendered* disabled** (project owner,
-2026-09-08). A toolkit paints a disabled control's text from a palette role the
-theme never declares — Flet/Material's disabled-content grey, and in Qt the
-`QPalette` disabled role, which greys text over whatever a stylesheet set for
-the enabled state — so the requirement above keeps measuring a pair that has
-stopped being drawn, which is what `PL-61WW` was. A control may be disabled
-where the same expression also hides it, since it then draws nothing:
-`disabled = E` with `visible = not E`, `setDisabled(E)` with `setHidden(E)`, or
-`setEnabled(not E)` with `setVisible(not E)`, the operand structurally
-identical on both lines. Otherwise carry the identity in a control with no
-disabled state, as `_running_agent_display` does. A control given an agent
+2026-09-08). Qt paints a disabled control's text from the `QPalette` disabled
+role, which the theme never declares. That grey replaces whatever a stylesheet
+set for the enabled state. So the requirement above keeps measuring a pair
+that has stopped being drawn, which is what `PL-61WW` was. A control may be
+disabled where the same expression also hides it, since it then draws nothing:
+`setDisabled(E)` with `setHidden(E)`, or `setEnabled(not E)` with
+`setVisible(not E)`, the operand structurally identical on both lines.
+Otherwise carry the identity in a control with no disabled state, as
+`_running_agent_display` does. A control given an agent
 colour anywhere outside `_apply_agent_color_scheme` — where it is constructed,
 by a later property write such as `self.X.color = ...`, or by a later
 `setStyleSheet` or `setItemData` — must also be written by that method, which is
