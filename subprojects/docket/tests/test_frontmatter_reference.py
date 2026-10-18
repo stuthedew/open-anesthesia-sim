@@ -19,7 +19,8 @@ key's line, alone on the line under a key or entry, after a list entry's `- `
 and after a nested key's `:`, its later lines carried on at any indent past
 the column of the key or entry holding it, which YAML asks of them
 (`PL-P6LL`), shallower than the node's own opening included, and shaped like a
-key or a list entry there. A block
+key or a list entry there. Some end with YAML's document-end marker, `...`,
+and blank or comment lines after it (`PL-G8ZN`). A block
 scalar's lines and a plain scalar's continuation lines are drawn in the same
 shapes, since a reader that took them for structure would read a key out of
 them. The helpers take the one `draw` and build no strategy of their own, which
@@ -105,6 +106,7 @@ VALUE = st.sampled_from(("inline", "inline", "below", "list", "mapping", "empty"
 LIST_COLUMN = st.sampled_from((0, 2))
 MAPPING_COLUMN = st.sampled_from((2, 4))
 BETWEEN = st.sampled_from(("", "# between keys"))
+DOCUMENT_END = st.sampled_from(("...", "... # end", "...  "))
 
 
 def _quoted(draw: st.DrawFn, column: int, holder: int) -> list[str]:
@@ -249,6 +251,10 @@ def front_matters(draw: st.DrawFn) -> list[str]:
             block.append(draw(BETWEEN))
         first, *under = _value(draw)
         block.extend([f"{name}:{first}", *under])
+    if draw(st.integers(0, 5)) == 0:
+        # YAML's document-end marker, after which only comments may follow (`PL-G8ZN`).
+        block.append(draw(DOCUMENT_END))
+        block.extend(draw(st.lists(st.sampled_from(("", "# after", "  # indented")), max_size=2)))
     numbers = itertools.count()
     return [re.sub("&anchor", lambda _: f"&a{next(numbers)}", line) for line in block]
 
