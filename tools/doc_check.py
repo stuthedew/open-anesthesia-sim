@@ -1889,6 +1889,52 @@ def _split_markers(lines: Sequence[str]) -> dict[int, str]:
     return split
 
 
+def _misplaced_markers(lines: Sequence[str], prose: Sequence[str]) -> dict[int, str]:
+    """Each marker written where it is not read, by the index of its line, with its kind.
+
+    A marker is read only where it is a line of its own that opens an HTML
+    block (`_marker_lines`). CommonMark also reads the comment at a sentence's
+    end, as inline raw HTML (0.31.2 § 6.6), and inside a block quote or a list
+    item, as an HTML block in that container (§ 5.1, § 5.2). Read as nothing
+    there, a marker beside a well-formed one elsewhere let a stale value in
+    `docs/MODEL.md`'s prose pass (`PL-Y6LP`), so each is refused by name.
+
+    `prose` is `lines` with code blanked (`_without_code`), so a marker quoted
+    in a code span or shown in a fence is no marker. A line inside a longer
+    comment is that comment's (`PL-7454`), and a marker split across lines is
+    `_split_markers`' to report.
+    """
+    if not any("<!--" in line for line in lines):
+        return {}
+    inside = {
+        index
+        for block in read_blocks(lines).blocks
+        if block.kind == HTML
+        for index in range(block.start + 1, block.end)
+    }
+    openings = _marker_lines(lines)
+    split = _split_markers(lines)
+    misplaced: dict[int, str] = {}
+    for index, line in enumerate(lines):
+        opening = MARKER_OPENING_RE.search(prose[index]) if index < len(prose) else None
+        if opening is None or index in inside or index in split:
+            continue
+        if index in openings and _is_marker(line):
+            continue
+        misplaced[index] = opening.group("kind")
+    return misplaced
+
+
+def _misplaced_marker(document: Path, line: int, kind: str) -> str:
+    """What a marker `_misplaced_markers` finds is told."""
+    return (
+        f"{document}:{line}: this `{kind}:` marker does not stand on a line of its own - it "
+        "ends a sentence, sits in a block quote or list item, or shares its line - and a "
+        "marker is read only on a line of its own, so this one was read as nothing; move it "
+        "onto a line of its own under its paragraph"
+    )
+
+
 def _marker_lines(lines: Sequence[str]) -> frozenset[int]:
     """The index of each line a marker can stand on: one that opens an HTML block.
 
@@ -2005,7 +2051,9 @@ def check_prose_provenance(root: Path, report: Report) -> None:
 
     A marker is read where its line opens an HTML block (`_marker_lines`), so
     one closing a comment opened above it is that comment's, set aside with
-    the paragraph it was about, and is held to nothing (`PL-7454`).
+    the paragraph it was about, and is held to nothing (`PL-7454`). One written
+    anywhere else - at a sentence's end, in a block quote - is refused by name
+    (`_misplaced_markers`, `PL-Y6LP`).
     """
     path = root / MODEL
     if not path.is_file():
@@ -2016,6 +2064,9 @@ def check_prose_provenance(root: Path, report: Report) -> None:
     fenced = _fenced_lines(text)
     split = {index: kind for index, kind in _split_markers(lines).items() if kind != "absent"}
     openings = _marker_lines(lines)
+    for index, kind in _misplaced_markers(lines, _without_code(text)).items():
+        if kind != "absent":
+            report.errors.append(_misplaced_marker(MODEL, index + 1, kind))
     markers = 0
     for index, line in enumerate(lines):
         # A marker inside a code fence is the format being *shown*, not a claim
@@ -5187,11 +5238,15 @@ def _absent_paths(
     `<!--` opens no comment, and read as Markdown one a value left open hid the
     body's paragraphs down to the next `-->` (`PL-WX79`). Nor is one closing a
     comment opened above it, which is that comment's (`_marker_lines`,
-    `PL-7454`).
+    `PL-7454`). One written anywhere a marker is not read is refused by name
+    (`_misplaced_markers`, `PL-Y6LP`).
     """
     lines = _body_lines(split_lines(without_fences(text)))
     split = _split_markers(lines)
     openings = _marker_lines(lines)
+    for index, kind in _misplaced_markers(lines, _without_code(text)).items():
+        if kind == "absent":
+            report.errors.append(_misplaced_marker(path, index + 1, kind))
     declared: dict[int, set[str]] = {}
     for index, line in enumerate(lines):
         if split.get(index) == "absent":

@@ -647,6 +647,44 @@ def test_a_correct_derived_figure_is_left_alone(tmp_path: Path) -> None:
     assert _errors(root) == []
 
 
+@pytest.mark.parametrize(
+    "prose",
+    [
+        ("The coefficient is 0.9. " + MARKER.format("0.9"),),
+        ("> The coefficient is 0.9.", "> " + MARKER.format("0.9")),
+    ],
+    ids=["sentence-end", "block-quote"],
+)
+def test_a_marker_at_a_sentence_end_or_in_a_block_quote_is_read_or_refused(
+    tmp_path: Path, prose: tuple[str, ...]
+) -> None:
+    """CommonMark reads both comments, so neither may be read as nothing (`PL-Y6LP`).
+
+    Beside the fixture's well-formed marker, a marker in either place was
+    read as no marker at all, so prose stating 0.9 where the file holds 0.5
+    passed the provenance check.
+    """
+    root = _repo(tmp_path, model=_model_with(*prose))
+
+    assert any("does not stand on a line of its own" in error for error in _errors(root))
+
+
+def test_an_absent_marker_ending_a_sentence_is_refused(tmp_path: Path) -> None:
+    """An `absent:` marker is held to the same rule (`PL-Y6LP`)."""
+    readme = f"{README}\nThis project has no `setup.py`. <!-- absent: setup.py -->\n"
+
+    errors = _errors(_repo(tmp_path, readme=readme))
+
+    assert any("`absent:` marker does not stand on a line of its own" in e for e in errors)
+
+
+def test_a_marker_quoted_in_a_code_span_is_no_marker(tmp_path: Path) -> None:
+    """A sentence explaining the convention quotes a marker; that is no claim (`PL-Y6LP`)."""
+    root = _repo(tmp_path, model=_model_with("Write `" + MARKER.format("0.9") + "` under it."))
+
+    assert _errors(root) == []
+
+
 def test_a_marker_shown_inside_a_code_fence_is_not_read_as_a_claim(tmp_path: Path) -> None:
     """The document explains the convention by printing one; that is not a claim.
 
