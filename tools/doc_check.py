@@ -110,6 +110,7 @@ import subprocess
 import sys
 import textwrap
 import tokenize
+import unicodedata
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -117,6 +118,7 @@ from decimal import Decimal
 from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path, PurePath, PurePosixPath
+from urllib.parse import unquote
 
 # `ROADMAP.md`'s release-train grammar lives in `docket`, which reasons about
 # project state for a living and reads the same table to report which beat of
@@ -608,6 +610,8 @@ class _InlineReader:
         self.text = text
         self.spans: list[re.Match[str]] = []
         self.links: list[Link] = []
+        #: Where each link's or image's text ends - its `]` - by the link's start.
+        self.labels: dict[int, int] = {}
         self._ends: dict[tuple[int, int], int] = {}
 
     def read(self, start: int, end: int, depth: int = 0) -> None:
@@ -630,6 +634,7 @@ class _InlineReader:
                     continue
                 link, label = found
                 self.links.append(link)
+                self.labels[link.start] = label
                 if not link.image:
                     self.read(position + 1, label, depth + 1)
                 position = link.end
@@ -704,6 +709,113 @@ class _InlineReader:
         if cursor >= end or text[cursor] != ")":
             return None
         return Link(position, cursor + 1, text[at[0] : at[1]], at, image), label
+
+
+def _rendered_text(text: str) -> str:
+    """The text a renderer shows for one statement of inline Markdown, markup gone.
+
+    A code span gives its content, a link or an image its text, an autolink
+    its address, and raw HTML nothing; an escape gives the character it
+    escapes, a character reference the one it names, and the delimiters of
+    each emphasis CommonMark pairs are gone (0.31.2 § 6). GitHub slugs a
+    heading's anchor from this text rather than from its Markdown, so a
+    heading holding a code span or a link has the anchor `_github_slugs`
+    gives (`PL-9XP0`). An image's text is read as written, markup and all.
+    """
+    reader = _InlineReader(text)
+    reader.read(0, len(text))
+    edits = [(span.start(), span.end(), _span_text(span["content"])) for span in reader.spans]
+    tails = [(reader.labels[link.start], link.end) for link in reader.links]
+    for link, (label, end) in zip(reader.links, tails, strict=True):
+        edits += [(link.start, link.start + (2 if link.image else 1), ""), (label, end, "")]
+    literals = [(span.start(), span.end()) for span in reader.spans] + tails
+    for run in emphasis(text, literals):
+        edits += [(run.start, run.start + run.width, ""), (run.end - run.width, run.end, "")]
+    shown: list[str] = []
+    position = 0
+    for start, end, replacement in sorted(edits):
+        if start >= position:
+            shown += [_plain_text(text[position:start]), replacement]
+            position = end
+    shown.append(_plain_text(text[position:]))
+    return "".join(shown)
+
+
+def _span_text(content: str) -> str:
+    """A code span's content as rendered: line endings as spaces, one space trimmed from each end.
+
+    Trimmed only where both ends have one and the content is not all spaces
+    (CommonMark 0.31.2 § 6.1).
+    """
+    content = content.replace("\n", " ")
+    if content.startswith(" ") and content.endswith(" ") and content.strip(" "):
+        return content[1:-1]
+    return content
+
+
+def _plain_text(text: str) -> str:
+    """`text`, holding no code span, link or emphasis, as rendered: see `_rendered_text`."""
+    shown: list[str] = []
+    position = 0
+    while position < len(text):
+        if text[position] == "<":
+            found = AUTOLINK_RE.match(text, position) or RAW_HTML_RE.match(text, position)
+            if found is not None:
+                shown.append(found.group()[1:-1] if found.re is AUTOLINK_RE else "")
+                position = found.end()
+                continue
+        end = text.find("<", position + 1)
+        end = len(text) if end < 0 else end
+        shown.append(ESCAPE_OR_REFERENCE_RE.sub(_decoded, text[position:end]))
+        position = end
+    return "".join(shown)
+
+
+#: The Unicode general categories github-slugger strips from a heading's text:
+#: other numbers, every punctuation but connectors such as `_` and the hyphen,
+#: symbols, controls, private use, format and unassigned characters, and
+#: separators but the space (`script/generate-regex.js` at
+#: https://github.com/Flet/github-slugger, read 2026-10-18). It keeps a
+#: character Unicode calls alphabetic in any of them, which `str.isalpha` reads
+#: only for letters, so a circled letter such as `ⓐ` is dropped here and kept
+#: there - the one place this reading parts from it.
+SLUG_STRIPPED = frozenset(("No", "Pe", "Pf", "Pi", "Ps", "Po", "Pd", "Cc", "Co", "Cf", "Cn"))
+
+
+def _slug_keeps(character: str) -> bool:
+    """Whether github-slugger keeps `character` in a slug; see `SLUG_STRIPPED`."""
+    if character in " -" or character.isalpha():
+        return True
+    category = unicodedata.category(character)
+    return category not in SLUG_STRIPPED and category[0] not in "SZ"
+
+
+def _github_slugs(titles: Iterable[str]) -> list[str]:
+    """The anchor GitHub gives each heading of a document, in order, from its rendered title.
+
+    github-slugger's rule, whose README says it slugs "just like GitHub does
+    for markdown headings": the text lower-cased, every character of a
+    stripped category gone (`SLUG_STRIPPED`, and `S` and `Z` but the space,
+    and `-` kept), and each space written as a hyphen. A slug met before
+    takes `-1`, `-2` and so on, counting from that slug, until it is new
+    (`index.js`, read 2026-10-18). This tool slugged the raw Markdown, kept
+    only `[a-z0-9-]` and never suffixed a repeat (`PL-9XP0`).
+    """
+    seen: dict[str, int] = {}
+    slugs: list[str] = []
+    for title in titles:
+        slug = "".join(
+            "-" if character == " " else character
+            for character in _rendered_text(title).lower()
+            if _slug_keeps(character)
+        )
+        result = slug
+        while result in seen:
+            seen[slug] += 1
+            result = f"{slug}-{seen[slug]}"
+        seen[result] = 0
+        slugs.append(result)
+    return slugs
 
 
 def _run_end(text: str, position: int, end: int) -> int:
@@ -5026,9 +5138,11 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                 linked_text = documents.get(linked)
                 if linked_text is None:
                     linked_text = resolved.read_text(encoding="utf-8")
-                titles = _hash_headings(linked_text)
-                slugs = {re.sub(r"[^a-z0-9-]", "", h.lower().replace(" ", "-")) for h in titles}
-                if anchor.lower() not in slugs:
+                # GitHub anchors a heading a block quote or a list item holds
+                # too, so every heading is read (`PL-9XP0`).
+                lines = _body_lines(split_lines(linked_text))
+                titles = [heading.title for heading in read_headings(lines, nested=True)]
+                if unquote(anchor).lower() not in _github_slugs(titles):
                     report.errors.append(
                         f"{path}:{line}: links to {target}, but {linked} has no such heading"
                     )

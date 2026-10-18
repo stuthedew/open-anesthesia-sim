@@ -1662,6 +1662,27 @@ def test_a_link_anchor_naming_a_bold_marker_is_an_error(tmp_path: Path) -> None:
     ]
 
 
+def test_a_link_anchor_is_read_as_github_slugs_its_heading(tmp_path: Path) -> None:
+    """Each anchor is the one github-slugger gives the heading's rendered text (`PL-9XP0`).
+
+    The check slugged the raw Markdown and kept only `[a-z0-9-]`, so it
+    refused `#make_targets` and `#notes-1`, which GitHub opens, and passed
+    `#maketargets`, which GitHub gives no heading.
+    """
+    model = MODEL + (
+        "\n## make_targets\n\n## Notes\n\n## Notes\n\n## `make check`\n\n"
+        "## [Linked](https://example.invalid/) *em*\n\n> ## Quoted\n\n## Café\n"
+    )
+    good = ["make_targets", "notes-1", "make-check", "linked-em", "quoted", "café", "caf%C3%A9"]
+    links = " ".join(f"[{at}](docs/MODEL.md#{at})" for at in [*good, "maketargets", "notes-2"])
+
+    assert _link_errors(tmp_path, f"# Demo\n\nSee {links}.\n", model) == [
+        f"README.md:3: links to docs/MODEL.md#{at}, but docs/MODEL.md has no such heading"
+        for at in ("maketargets", "notes-2")
+    ]
+    assert doc_check._github_slugs(["a", "a", "a-1", "a"]) == ["a", "a-1", "a-1-1", "a-2"]
+
+
 # --- citations of a path .gitignore covers ----------------------------------
 
 
