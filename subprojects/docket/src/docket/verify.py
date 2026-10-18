@@ -1772,6 +1772,29 @@ def command_paths(command: str) -> frozenset[str]:
     return frozenset(found)
 
 
+def file_arguments(command: str) -> frozenset[str]:
+    """The paths this `verify:` command names as plain arguments: `command_paths`, held strict.
+
+    `command_paths` over-reports on purpose, for the replay. A check that
+    advises on a path has to name only real reads, so this keeps a candidate
+    only where it stands as a whole word that is neither quoted nor globbed.
+    A pattern such as `grep -qF '/.claude/rules/**'` is then a pattern, not a
+    path (`PL-ZB82`). A quoted path argument is missed, which costs an advisory
+    and never raises a false one.
+    """
+    candidates = command_paths(command)
+    reading = shell_words(command)
+    return frozenset(
+        token.text
+        for clause in reading.every_clause()
+        for token in clause.tokens
+        if isinstance(token, Word)
+        and not token.quoted
+        and not token.globbed
+        and token.text in candidates
+    )
+
+
 #: Command words whose answer is a fact about the world rather than about the
 #: tree: the first element is `git` followed by one of its network subcommands,
 #: the rest stand alone. Kept as command words rather than substrings because

@@ -40,6 +40,7 @@ from .model import (
     RESOURCES,
     STATUSES,
     Item,
+    covers,
     generator_defect_faults,
     generator_faults,
     is_generator,
@@ -79,7 +80,7 @@ from .vcs import (
     RecordReport,
     WrittenReport,
 )
-from .verify import LandedReport, never_fails, reads_check_output, reenters_verify
+from .verify import LandedReport, file_arguments, never_fails, reads_check_output, reenters_verify
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
 DONE_WHEN = "**Done when.**"
@@ -2833,6 +2834,47 @@ def _check_filenames(report: Report, config: Config) -> None:
     )
 
 
+def _check_verify_reads_undeclared(report: Report, verify_files: frozenset[str] | None) -> None:
+    """Advise on an open item whose `verify:` reads a file its `touches` does not declare.
+
+    A neighbour's work on that file can flip the command, so the replay blames
+    the wrong item and `bin/docket concurrent` answers as if the two were
+    independent (`PL-3DXV`, `PL-LBW5`). Five such commands were repaired by
+    hand before this check existed (`PL-ZB82`).
+
+    It reads only a plain path argument that is a file in the tree
+    (`file_arguments`, `verify_files`). A file the work will create, and a
+    path written in quotes, are left unreported rather than guessed at. An
+    advisory, because declaring the file is not always right: the reader
+    judges whether the command should read a declared file instead.
+    """
+    if verify_files is None:
+        return
+    found = [
+        f"{item.identifier} reads {', '.join(paths)}"
+        for item in sorted(report.items, key=lambda i: i.identifier)
+        if item.is_open
+        and item.verify
+        and (
+            paths := sorted(
+                path
+                for path in file_arguments(item.verify)
+                if path in verify_files and not any(covers(entry, path) for entry in item.touches)
+            )
+        )
+    ]
+    if not found:
+        return
+    one = len(found) == 1
+    report.advisories.append(
+        f"{len(found)} open item{'' if one else 's'} run{'s' if one else ''} a `verify:` "
+        f"reading a file {'its' if one else 'their'} `touches` do{'es' if one else ''} not "
+        f"declare, so a neighbour's work could flip {'it' if one else 'them'} "
+        f"(`PL-ZB82`): {'; '.join(found)}. Declare the file, or point the command at "
+        "one the item declares"
+    )
+
+
 def _check_gone_touches(report: Report, gone: GoneReport | None, config: Config) -> None:
     """Advise on an open item whose `touches` names a path the tree has lost (`PL-8JY7`).
 
@@ -4375,6 +4417,7 @@ def analyze(
     settings_source: SettingsSource | None = None,
     written: WrittenReport | None = None,
     gone: GoneReport | None = None,
+    verify_files: frozenset[str] | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
@@ -4435,6 +4478,11 @@ def analyze(
     held (`PL-8JY7`), read from the filesystem and git, which this module reads
     neither of. A caller that does not supply it leaves the advisory unraised.
 
+    `verify_files` is which of the paths open items' `verify:` commands name
+    are files in the tree (`PL-ZB82`), read from the filesystem, which this
+    module does not read. A caller that does not supply it leaves the advisory
+    unraised.
+
     `settings_source` is which `docket.toml` the caller resolved `config` from,
     and whether it was there. It is the one input that says nothing about the
     store and everything about the reading of it, which is why it cannot be
@@ -4457,6 +4505,7 @@ def analyze(
     _check_touched_items(report, settings)
     _check_filenames(report, settings)
     _check_gone_touches(report, gone, settings)
+    _check_verify_reads_undeclared(report, verify_files)
     _check_milestones(report, version)
     _check_release_notes(report, notes, version)
     _check_notes_references(report, unreferenced, unread_notes)

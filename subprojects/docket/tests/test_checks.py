@@ -1113,6 +1113,42 @@ def test_an_answer_heading_inside_a_list_item_is_an_answer() -> None:
         assert _has(errors, 'beneath a recorded answer, "Answers 2026-10-01"'), answer
 
 
+def _verify_read_advisories(item: Item, files: frozenset[str] | None) -> list[str]:
+    report = analyze([item], TODAY, verify_files=files)
+    return [a for a in report.advisories if "`touches` do" in a]
+
+
+def test_a_verify_reading_a_path_its_touches_omit_is_reported() -> None:
+    """`PL-ZB82`: a neighbour editing the undeclared file can flip the command.
+
+    Only a plain argument that is a file in the tree counts. The quoted
+    pattern names a path and reads none, and the declared file and a file
+    under a declared directory are the item's own.
+    """
+    command = (
+        "grep -q 'def test_x' tests/test_a.py && grep -qF 'docs/b.md' c.md && grep -q y lib/d.py"
+    )
+    files = frozenset({"tests/test_a.py", "docs/b.md", "c.md", "lib/d.py"})
+    item = _item(verify=command, touches=("c.md", "lib/"))
+
+    advisories = _verify_read_advisories(item, files)
+
+    assert len(advisories) == 1
+    assert "PL-K7QX reads tests/test_a.py." in advisories[0]
+    assert "docs/b.md" not in advisories[0]
+
+
+def test_a_verify_read_is_not_judged_where_it_cannot_be() -> None:
+    """A closed item's command is a record, a file the work will create is not
+    yet in the tree, and a caller that read nothing leaves the question unasked."""
+    command = "grep -q 'def test_x' tests/test_a.py"
+    files = frozenset({"tests/test_a.py"})
+
+    assert _verify_read_advisories(_item(verify=command, status="done", closed=TODAY), files) == []
+    assert _verify_read_advisories(_item(verify=command), frozenset()) == []
+    assert _verify_read_advisories(_item(verify=command), None) == []
+
+
 def test_safety_work_may_not_sit_in_a_low_band() -> None:
     assert _has(_errors(_item(classes=("safety",), priority="P2")), "starts at P0 or P1")
 
