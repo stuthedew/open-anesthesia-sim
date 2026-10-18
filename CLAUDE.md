@@ -78,9 +78,11 @@ session, and picks from `bin/docket next product`. An apparatus finding stops
 one only when it blocks it: a hard gate refusing correct work, a state answer
 that would lose or duplicate work, or a gap in a safety-floor guard. Any other
 is captured as always and the product item finished. Root causes are worked in
-parallel by the Projects trial's coordinator (`PL-NZC0`), not in the owner's
-sessions. It holds until the owner ends it, and ending it deletes this
-paragraph.
+parallel by the Projects trial's coordinator (`PL-NZC0`) while that trial runs,
+not in the owner's sessions. A product session that finds one
+while the trial is paused ends its reply with a ready-to-paste prompt for a
+fresh session on it, as the generator rule below says (`PL-0GWD`). It holds until the owner
+ends it, and ending it deletes this paragraph.
 
 ## Working with the project owner
 
