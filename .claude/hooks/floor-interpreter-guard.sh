@@ -117,9 +117,9 @@ if cut is None:
     sys.exit(0)
 
 # Bare, and bare is the whole point: a name with no slash in it is the one
-# resolved through PATH, where this container answers 3.11. `shell_split.PYTHON`
-# is the one spelling of the name, which the gate guard reads too (`PL-Y3TZ`).
-INTERPRETER = shell_split.PYTHON
+# resolved through PATH, where this container answers 3.11. `is_python` in
+# `docket.shell` is the one spelling of the name, which the gate guard and
+# `verify` read too (`PL-Y3TZ`, `PL-RHPK`), and it also takes a path.
 # `src/anesthesia_sim/app/` sits under `src/`, so naming it again would only
 # widen the pattern. The first lookbehind lets a leading `./` or an absolute
 # path through while keeping `mysrc/` out. The second keeps out
@@ -157,7 +157,7 @@ for segment, _ in cut:
     # `PL-K9QL`), and a wrapper such as `timeout` or `env` finds the
     # interpreter it names on PATH, as the bare call does (`PL-TRMN`).
     rest = shell_split.program_words(segment)
-    if not rest or not INTERPRETER.match(rest[0]):
+    if not rest or "/" in rest[0] or not shell_split.is_python(rest[0]):
         continue
     arguments = rest[1:]
     kind, operand, after = shell_split.python_operand(arguments)
