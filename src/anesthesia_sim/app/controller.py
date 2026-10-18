@@ -594,6 +594,7 @@ class SimulationController:
             uptake_system.state_vector(),
             opened_at_s=CaseInstant(0.0),
         )
+        self._note_recorded_settings()
         # A run built here is a trunk, so it opens at the case's own zero.
         # `resumed_at()` is what sets this, and a branch built there opens its
         # definition at the fork instead - on the same axis, which is why
@@ -1599,6 +1600,7 @@ class SimulationController:
         # which is the identical expression `resume_point.fork.state` came
         # from.
         self._run_definition.record_change(settings)
+        self._note_recorded_settings()
         self._opened_from = resume_point
         self._clear_control_timeline()
         self._stand_on(resume_point.crossing)
@@ -2157,6 +2159,7 @@ class SimulationController:
         self._run_definition = RunDefinition(
             settings, uptake_system.state_vector(), opened_at_s=CaseInstant(0.0)
         )
+        self._note_recorded_settings()
         self._clear_control_timeline()
 
     # No `set_circuit_volume` here, deliberately (`PL-GYH2`). The circuit
@@ -2237,6 +2240,67 @@ class SimulationController:
 
         self._open_adjustment_control = None
 
+    def _note_recorded_settings(self) -> None:
+        """Remember the core's settings as the run definition now records them.
+
+        Called after every write to `_run_definition` that can change its
+        settings: where a run is built, where a branch opens, at Reset and at
+        a recorded control change. `_require_core_settings_recorded` compares
+        against what this stores.
+        """
+
+        self._recorded_settings_key = self._state.uptake_system.settings_key()
+
+    def _require_core_settings_recorded(self) -> None:
+        """Refuse a step once the core's settings differ from the run's record.
+
+        The readouts come from the steps, which run at whatever the core
+        holds. The chart comes from the run definition, which holds only the
+        settings this controller recorded. So a setting written onto the core
+        past this controller, such as `AgentUptakeSystem.set_cardiac_output`
+        or a compartment's own setter, would make the two show different
+        runs. This check stops the run before the first step at the
+        unrecorded setting instead (`PL-XRN8`). Nothing in `app/` writes to
+        the core that way. The check is there so that a future caller fails
+        here, visibly, rather than drawing a chart that disagrees with the
+        values beside it.
+
+        Where the settings now on the core are inconsistent, building the
+        settings record refuses them first, with the more specific message
+        that names the values that disagree.
+
+        Reset starts a new run from the settings the core holds, so it clears
+        the refusal.
+
+        A setting changed through this controller is not checked here.
+        `_record_control_change` records the whole settings record, so the
+        run definition then matches the core again, whatever else had moved.
+        Checking before the write would also refuse a perfusion fraction
+        written past its guard before `_record_control_change` could write the
+        setting back, which `PL-VCP4`'s tests hold.
+
+        Raises:
+            SimulationConfigurationError: If the settings on the core fail the
+                settings record's own checks.
+            SimulationExecutionError: If they pass those checks but differ
+                from the settings the run definition records.
+        """
+
+        system = self._state.uptake_system
+
+        if system.settings_key() == self._recorded_settings_key:
+            return
+
+        system.equation_settings()
+
+        raise SimulationExecutionError(
+            "A setting was changed on the simulation core without "
+            "SimulationController recording it, so the chart, which is drawn "
+            "from the recorded settings, would no longer match the values "
+            "shown. Change settings through SimulationController. Reset starts "
+            "a new run from the settings the core now holds."
+        )
+
     def _record_control_change(
         self,
         control: ControlInput,
@@ -2311,6 +2375,7 @@ class SimulationController:
         # from the four setters, because this is the one place that means "the
         # core accepted a setting change".
         self._run_definition.record_change(settings)
+        self._note_recorded_settings()
 
         if control is not self._open_adjustment_control:
             self._adjustment_count += 1
@@ -2489,6 +2554,8 @@ class SimulationController:
 
         if not self._is_running:
             return
+
+        self._require_core_settings_recorded()
 
         # Taking a step means the run is no longer standing on the crossing it
         # last halted at, whether or not this step then completes.

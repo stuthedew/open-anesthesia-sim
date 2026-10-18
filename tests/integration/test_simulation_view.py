@@ -2577,6 +2577,39 @@ def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_
     assert run._cardiac_output_slider.value() == 5.0
 
 
+def test_a_run_whose_core_setting_moved_past_its_controller_halts_on_the_last_recorded_step(
+    application: QApplication,
+) -> None:
+    """A setting the run never recorded halts the run before chart and readouts part (`PL-XRN8`).
+
+    The readouts come from the steps and the chart from the run definition.
+    A cardiac output written onto the core past `SimulationController` would
+    step at 6.0 L/min while the chart was drawn at 5.0, so the run halts on
+    the step before, and the banner says why.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    run._start_button.click()
+    _steps(run, 5)
+    before = controller.snapshot()
+
+    controller._state.uptake_system.set_cardiac_output(CardiacOutput(6.0))
+
+    _steps(run, 1)
+
+    after = controller.snapshot()
+    notice = run._notice_text.notice()
+
+    assert controller.has_failed is True
+    assert after.elapsed_s == before.elapsed_s > 0.0
+    assert after.alveolar_partial_pressure_fraction == before.alveolar_partial_pressure_fraction
+    assert controller.run_segments[-1].settings.cardiac_output_l_min == 5.0
+    assert notice is not None
+    assert "without SimulationController recording it" in notice
+
+
 def test_a_refused_branch_reset_halts_the_branch_and_names_the_same_repair(
     application: QApplication,
 ) -> None:
