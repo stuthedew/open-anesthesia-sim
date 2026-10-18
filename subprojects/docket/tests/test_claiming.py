@@ -217,6 +217,32 @@ def test_claim_accepts_an_item_blocked_before_the_branch_touched_it(
     ]
 
 
+def test_a_block_the_base_has_since_lifted_is_refused_after_the_fetch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-0JDP`: the inherited block is asked again against the base the read-back uses.
+
+    This checkout last saw the base with the item blocked, so the block in
+    `HEAD`'s copy looked inherited. The base has since unblocked it, so the
+    block is now this branch's own, and a claim would read back released.
+    """
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    unblock = remote.clone("unblock")
+    unblock.commit(
+        "PL-D3D3: ready again (#2)",
+        when=T0 - HOUR,
+        files={"docs/items/PL-D3D3-stopped.md": _item("PL-D3D3")},
+    )
+    unblock.git("push", "-q", "origin", "main")
+    before = work.head()
+
+    assert _claim(monkeypatch, work, "PL-D3D3") == claiming.REFUSED
+
+    assert "which releases a claim as soon as it is written" in capsys.readouterr().out
+    assert work.head() == before
+
+
 def test_an_item_another_branch_holds_first_exits_3_and_writes_nothing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

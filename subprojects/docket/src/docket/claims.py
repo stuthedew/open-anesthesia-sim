@@ -651,7 +651,9 @@ def holdings(
             state, released_by = (LIVE if unbroken else LAPSED), ""
 
         tokens = {claim.session for claim in episode[episode.index(holder) :] if claim.session}
-        if branch not in branches and state != LIVE:
+        # The checkout's own branch keeps every state, so that `yield` can see
+        # a yield it wrote and could not push, and retry it (`PL-NNLM`).
+        if branch not in branches and state != LIVE and branch != here:
             continue
         hold = Hold(
             key=key,

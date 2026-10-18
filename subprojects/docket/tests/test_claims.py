@@ -1020,6 +1020,35 @@ def test_a_claim_on_a_branch_whose_only_content_another_pull_request_landed_stay
     assert landed == ()
 
 
+def test_a_yield_on_a_branch_the_base_took_whole_reads_on_that_branch(tmp_path: Path) -> None:
+    """`yield` retries a yield it could not push, so the checkout's own branch keeps it.
+
+    On a branch the base took whole only live claims are read, which would
+    hide a yield this checkout wrote: `yield` would then find nothing to yield
+    and never push it (`PL-NNLM`). From any other checkout the branch holds
+    nothing once its claim is yielded.
+    """
+    repo = _Repo(tmp_path / "repo")
+    files = {"docs/items/PL-D4D4-new.md": _item("PL-D4D4")}
+    repo.branch("claude/capture")
+    repo.commit("PL-C2C2: capture", when=T0, files=files)
+    repo.branch("claude/stacked", "claude/capture")
+    repo.claim("PL-C2C2", when=T0 + HOUR)
+    repo.git("checkout", "-q", "main")
+    repo.commit("PL-C2C2: capture (#1)", when=T0 + 2 * HOUR, files=files)
+    repo.git("checkout", "-q", "claude/stacked")
+    repo.commit(
+        "PL-C2C2: yield\n\nYield: PL-C2C2 claude/stacked\nCo-Authored-By: T <t@example.com>",
+        when=T0 + 3 * HOUR,
+    )
+
+    [own] = holdings(repo.root, now=T0 + 4 * HOUR).holds
+    elsewhere = holdings(repo.root, now=T0 + 4 * HOUR, include_head=False).holds
+
+    assert (own.state, own.released_by) == (RELEASED, BY_YIELD)
+    assert elsewhere == ()
+
+
 def test_holder_is_the_first_live_claim_whose_item_names_the_resource(tmp_path: Path) -> None:
     """Two release items claimed on two branches: the earlier claim holds the train.
 

@@ -4409,6 +4409,33 @@ def test_orphaned_reports_a_left_behind_commit_that_also_deletes_a_file(
     assert taken
 
 
+def test_a_deletion_the_base_made_on_its_own_is_no_evidence_of_a_merge(tmp_path: Path) -> None:
+    """A branch's deletion that another pull request also made proves no squash (`PL-TFF9`).
+
+    The branch never merged: one commit deletes `old.txt`, which a different
+    pull request also deleted on the base, and one commit is real work. Read as
+    taken whole, the deletion made the branch look merged with work left
+    behind, and that report's recipe deletes the ref.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", old_txt="old\n", b_txt="b\n")
+    repo.git("checkout", "-qb", "claude/live")
+    repo.git("rm", "-q", "old.txt")
+    repo.git("commit", "-qm", "PL-0001: retire old")
+    repo.commit("PL-0001: the work", w_txt="w\n")
+    repo.git("checkout", "-q", "main")
+    repo.git("rm", "-q", "old.txt")
+    repo.git("commit", "-qm", "PL-0002: retire old too (#5)")
+    repo.commit("PL-0003: other work (#6)", b_txt="edited\n")
+    repo.git("checkout", "-q", "claude/live")
+
+    assert not landed_whole("main", repo.root, _run_git)
+    repo.git("checkout", "-q", "main")
+    report = orphaned(repo.root)
+    assert report.known, report.declined
+    assert report.branches == ()
+
+
 def test_a_later_merge_touching_the_file_is_not_work_left_behind(tmp_path: Path) -> None:
     """A one-path commit its own squash took stays landed when a later merge edits the file.
 

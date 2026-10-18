@@ -6108,6 +6108,7 @@ def _commits_by_landing(
     root: Path,
     run: Runner,
     config: Config,
+    deleted: frozenset[str] = frozenset(),
 ) -> tuple[tuple[OrphanedCommit, ...], bool]:
     """One walk of the ref's commits, read for both halves of the rule.
 
@@ -6169,6 +6170,13 @@ def _commits_by_landing(
     under it has no wholly landed commit either, and a post-merge push to it
     goes unreported.
 
+    **Nor is a commit that only deletes.** `deleted` names the landed paths
+    that are deletions the base's tip shows (`_Landings.deletions`). Another
+    pull request deleting the same file converges with a branch that deleted
+    it, and a one-path deletion converges more easily than a one-path write,
+    so a commit whose every path is one of those proves no merge (`PL-TFF9`).
+    It still counts beside a write the base took in the same commit.
+
     **A commit that only wrote to the queue is not merge evidence either, and
     that is the last of the convergence shapes** (`PL-JBRC`). The unit test
     above holds because a squash takes whole commits while convergence scatters
@@ -6214,7 +6222,11 @@ def _commits_by_landing(
             found.append(
                 OrphanedCommit(commit=commit.strip(), subject=subject.strip(), paths=touched)
             )
-        elif all(path in landed for path in touched) and not _annotates_only(list(touched), config):
+        elif (
+            all(path in landed for path in touched)
+            and not _annotates_only(list(touched), config)
+            and not all(path in deleted for path in touched)
+        ):
             took_one_whole = True
     return tuple(found), took_one_whole
 
@@ -6286,13 +6298,14 @@ def landed_whole(
     split = landings.split(ref)
     if split is None:
         return False
-    landed = (*split[0], *landings.deletions(ref)[0])
+    dropped = landings.deletions(ref)[0]
+    landed = (*split[0], *dropped)
     if not landed:
         return False
     # No outstanding set: the whole-commit verdict reads the landed half alone,
     # and the commits it would list as left behind are discarded here.
     _, took_one_whole = _commits_by_landing(
-        ref, base, frozenset(landed), frozenset(), root, run, config or Config()
+        ref, base, frozenset(landed), frozenset(), root, run, config or Config(), frozenset(dropped)
     )
     return took_one_whole
 
@@ -6415,7 +6428,14 @@ def orphaned(
         if not outstanding:
             continue
         left, took_one_whole = _commits_by_landing(
-            name, base, frozenset(landed), frozenset(outstanding), root, run, settings
+            name,
+            base,
+            frozenset(landed),
+            frozenset(outstanding),
+            root,
+            run,
+            settings,
+            frozenset(dropped),
         )
         # A split alone is not enough in either direction, and the branch that
         # taught each half is named in `_commits_by_landing`. The split says

@@ -270,6 +270,9 @@ def claim(
     closed = _closed_on_base(root, read.base, wanted, items_dir, run)
     if closed:
         return Written(REFUSED, (*notes, *closed))
+    released = _released_as_written(root, read.base, wanted, items_dir, run)
+    if released:
+        return Written(REFUSED, (*notes, *released))
     copied, told = _second_adds(
         root, wanted, items_dir=items_dir, base=read.base, branch=branch, opened=opened, run=run
     )
@@ -584,6 +587,35 @@ def _branch(
                 "as it is written; set its status first"
             )
     return branch, tuple(problems), tuple(absent)
+
+
+def _released_as_written(
+    root: Path, base: str, keys: Sequence[str], items_dir: str, run: Runner
+) -> tuple[str, ...]:
+    """Why each item asked for is refused because its claim would be released at once.
+
+    `_branch` asks the same question before the fetch, against the base this
+    checkout last saw. A block `HEAD` inherited from a base that has since
+    unblocked the item passed there, and the claim was then written, pushed
+    and read back released, reported as a defect in docket. Asked again here,
+    against the base the read-back uses, so the rule refusing a claim is the
+    rule that would have released it.
+    """
+    here = _items_at("HEAD", root, items_dir, run)
+    there = _items_at(base, root, items_dir, run)
+    refused: list[str] = []
+    for key in keys:
+        if key not in here:
+            continue
+        status = _status(run, "HEAD", here[key], root)
+        on_base = _status(run, base, there[key], root) if key in there else ""
+        if releases(status, on_base):
+            refused.append(
+                f"claim: {key} is `{status}` in HEAD's copy and `{on_base or 'absent'}` on "
+                f"{base}, which releases a claim as soon as it is written; set its status "
+                "first; nothing was written"
+            )
+    return tuple(refused)
 
 
 def _status(run: Runner, ref: str, path: str, root: Path) -> str:
