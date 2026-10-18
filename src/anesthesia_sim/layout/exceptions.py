@@ -35,6 +35,9 @@ interface acts on:
 - `WorkspaceFileError` - the store could not write, copy or set aside a file.
   The message names the path and the operating system's reason, so the action
   that asked for the write can report both where it was invoked.
+- `ShippedWorkspaceError` - a Workspace file shipped under `data/workspaces/`
+  does not read as one. That is a defect of this build, never the reader's
+  doing, so nothing sets the file aside or falls back from it.
 """
 
 from __future__ import annotations
@@ -51,6 +54,7 @@ __all__ = [
     "LayoutRefused",
     "NotInLayout",
     "NotInWorkspaceSet",
+    "ShippedWorkspaceError",
     "UnsupportedSchemaVersion",
     "WorkspaceFileError",
 ]
@@ -138,3 +142,13 @@ class WorkspaceFileError(LayoutError):
         super().__init__(f"could not {doing} {path}: {error}")
         self.path = path
         self.error = error
+
+
+class ShippedWorkspaceError(LayoutError):
+    """Raised when a Workspace file shipped with the application does not read as one.
+
+    The message names the file and what is wrong with it. The shipped set is
+    what a first run shows and what every fallback in `layout/store.py` falls
+    back to, so there is nothing further to fall back on: the build is broken,
+    and saying so is the only safe answer.
+    """

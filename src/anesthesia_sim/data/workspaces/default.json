@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "active": 0,
+  "workspaces": [
+    {
+      "name": "Default",
+      "origin": "shipped:default",
+      "layout": {
+        "next_area_id": 3,
+        "windows": [
+          {
+            "tree": {
+              "split": "row",
+              "sizes": [
+                0.75,
+                0.25
+              ],
+              "children": [
+                {
+                  "area": 1,
+                  "view": "concentration_chart"
+                },
+                {
+                  "area": 2,
+                  "view": "parameter_controls"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "view_state": {}
+    }
+  ]
+}
