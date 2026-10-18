@@ -568,6 +568,31 @@ def test_the_front_matter_joins_find_its_edges_through_docket(tmp_path: Path) ->
     assert _found(tmp_path) == [("exact", 3, JOINED), ("space", 3, JOINED), ("tab", 3, JOINED)]
 
 
+#: A skill's front matter whose `description:` carries an id over an escaped
+#: line break, then YAML's document-end marker `...`, then the closing `---`.
+ENDED_DESCRIPTION = '---\nname: x\ndescription: "see {}\\\n  {}"\n...{}\n---\nbody\n'
+
+
+def test_a_document_end_marker_closes_the_front_matter(tmp_path: Path) -> None:
+    """A first-column `...` ends the YAML document, and the joins read the keys above it (`PL-G8ZN`).
+
+    `docket.frontmatter.quoted` refused the block as a line opening no key, so
+    nothing in it was joined. PyYAML 6.0.3 reads the keys above the marker, so
+    the malformed `PL-K7QXZ` passed, and the well-formed `PL-K7QX` was
+    reported as `PL-K7`. A comment after the marker reads the same.
+    """
+    for name, (head, tail), after in (
+        ("malformed", ("PL-K7QX", "Z"), ""),
+        ("commented", ("PL-K7QX", "Z"), " # done"),
+        ("well-formed", ("PL-K7", "QX"), ""),  # not-an-id
+    ):
+        _write(
+            tmp_path, f".claude/skills/{name}/SKILL.md", ENDED_DESCRIPTION.format(head, tail, after)
+        )
+
+    assert _found(tmp_path) == [("commented", 3, JOINED), ("malformed", 3, JOINED)]
+
+
 def test_a_comma_ending_a_plain_scalar_opens_no_quoted_scalar(tmp_path: Path) -> None:
     """A quote inside a plain scalar after a comma or a bracket opens nothing (`PL-YPLM`).
 

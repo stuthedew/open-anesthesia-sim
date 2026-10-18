@@ -3,11 +3,12 @@ id: PL-G8ZN
 title: docket.frontmatter's keys and quoted raise Unread on a first-column ... line, where YAML reads a document-end marker and PyYAML 6.0.3 reads the front matter above it whole, so fixture_id_check joins none of that block's escaped line breaks - a malformed PL-K7QXZ passes and a well-formed PL-K7QX is reported as PL-K7 - and every other reader of the block declines it; latent (found closing PL-YPLM)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/frontmatter.py, subprojects/docket/tests/test_frontmatter.py, subprojects/docket/tests/test_frontmatter_reference.py, tests/unit/test_fixture_id_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+closed: 2026-10-18
 payoff: a skill's front matter closed with YAML's end marker is read as YAML reads it, so the id check neither passes a malformed id nor fails a correct one there
 verify: grep -q 'def test_a_document_end_marker_closes_the_front_matter' tests/unit/test_fixture_id_check.py
 ---
@@ -56,3 +57,17 @@ and since `PL-S4JL` `docket.frontmatter.closing` is its one reader, so this is
 that record wrong at one form - YAML's `...` document-end marker - rather than a
 second reader beside it. No head's `misread:` states it; `PL-ZJ6X`'s, which
 strings are valid item ids, is the symptom here and not the fact.
+
+**Built 2026-10-18.** `docket.frontmatter._keys` now reads a first-column `...`
+followed by white space or the line's end as YAML's document-end marker. The
+keys above it are read. A comment on the marker's line or after it is recorded
+as a comment, and any other line after it raises `Unread`, since it would open
+a second document. `...x` is still a plain scalar that opens no key. The
+reference test's generator now ends some front matters with `...`, `... # end`
+or `...  `, then blank or comment lines, and its three corpora pass on the fix.
+On `docket.frontmatter` from before the fix they fail, as do the three new unit
+tests in `test_frontmatter.py` and
+`test_a_document_end_marker_closes_the_front_matter`, which pins both rows above
+plus the commented form: the well-formed id read as `PL-K7` and the malformed
+one passing (`uv run pytest -o "pythonpath=<old>/subprojects/docket/src tools
+.claude/hooks" tests/unit/test_fixture_id_check.py -k document_end`).

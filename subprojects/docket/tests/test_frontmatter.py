@@ -12,6 +12,7 @@ from docket.frontmatter import (
     Unread,
     closing,
     closing_quote,
+    comments,
     key,
     keys,
     plain,
@@ -58,6 +59,35 @@ def test_a_key_holding_nothing_on_its_line_holds_a_list_at_its_column() -> None:
 
 def test_blank_lines_and_first_column_comments_after_a_value_are_no_part_of_it() -> None:
     assert _extents("a: 1\n\n# trailing\n\nb: 2") == [("a", 0, 1), ("b", 4, 5)]
+
+
+def test_a_document_end_marker_ends_the_keys_and_only_comments_may_follow_it() -> None:
+    """`...` at the first column ends the YAML document, as PyYAML 6.0.3 reads it (`PL-G8ZN`).
+
+    `keys` refused it as a line opening no key, so every reader of the block
+    declined a front matter YAML reads whole.
+    """
+    text = 'name: x\ndescription: "a\\\n  b"\n... # end\n\n# after'
+
+    assert _extents(text) == [("name", 0, 1), ("description", 1, 3)]
+    assert comments(text.split("\n")) == ((3, 4), (5, 0))
+    assert _extents("a: 1\n...") == [("a", 0, 1)]
+    assert _extents("a: |\n  text\n...\t") == [("a", 0, 2)]
+
+
+@pytest.mark.parametrize(
+    "block", [["a: 1", "...", "b: 2"], ["a: 1", "...", "  b"], ["a: 1", "... b"]]
+)
+def test_a_node_after_a_document_end_marker_is_refused(block: list[str]) -> None:
+    """A node after `...` opens a second document, which no front matter holds."""
+    with pytest.raises(Unread, match="follows the `...` that ends the YAML document"):
+        keys(block)
+
+
+def test_a_marker_with_text_run_on_to_it_is_no_marker() -> None:
+    """`...x` is a plain scalar at the first column, which opens no key."""
+    with pytest.raises(Unread, match="opens no key"):
+        keys(["a: 1", "...x"])
 
 
 def test_a_quoted_key_is_read_without_its_quotes() -> None:
