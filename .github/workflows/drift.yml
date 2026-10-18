@@ -27,6 +27,10 @@ name: drift
 # run without changing a decision is a defect in the check. A red result should
 # be news. If it becomes weather, this file is the thing to delete, not the
 # thing to work around.
+#
+# The `order` job at the end asks a different question, whether any test
+# depends on the order the tests run in. It shares this file for its schedule
+# and its report-only stance, and its own comment explains it (`PL-75D9`).
 on:
   schedule:
     # 06:00 UTC on the first of the month. Monthly rather than weekly because
@@ -35,6 +39,10 @@ on:
     # libraries here move in weeks, so a month is short enough that a break is
     # still one version wide when it is found.
     - cron: '0 6 1 * *'
+    # 06:00 UTC each Monday, for the `order` job alone (`PL-75D9`). A new
+    # order dependence between tests can arrive with any pull request, so it
+    # is looked for weekly rather than monthly.
+    - cron: '0 6 * * 1'
   # So the owner can run it on demand - before a long gap, on returning from
   # one, or to confirm a change to this file actually works.
   workflow_dispatch:
@@ -51,6 +59,8 @@ jobs:
   # broke us within a range we already said we accept - which makes it
   # actionable without any judgment about whether to widen a bound.
   dependencies:
+    # The monthly schedule and a manual run; the weekly one is `order`'s.
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 1 * *'
     runs-on: ubuntu-latest
     # Both jobs here re-resolve every dependency from scratch (`--upgrade`,
     # no cache) and then run the suite, so they are legitimately slower than
@@ -122,6 +132,8 @@ jobs:
   # correct for every other job here and is exactly what this one needs to see
   # past. The edit is confined to the runner's checkout and is never committed.
   interpreter:
+    # The monthly schedule and a manual run; the weekly one is `order`'s.
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 1 * *'
     runs-on: ubuntu-latest
     # Both jobs here re-resolve every dependency from scratch (`--upgrade`,
     # no cache) and then run the suite, so they are legitimately slower than
@@ -222,3 +234,39 @@ jobs:
       # Same flags and the same reasoning as the `dependencies` job's pytest
       # line above, which carries it in full. `PL-55JM`.
       - run: uv run pytest -n auto --dist worksteal
+
+  # Does any test pass only because of the tests that ran before it?
+  #
+  # Every other run keeps one order: pytest's file order, dealt to workers by
+  # `--dist worksteal` in contiguous slices. A test that relies on what an
+  # earlier test left behind passes there forever, and a test that fails only
+  # when it runs before another is never tried. This job shuffles the order
+  # with pytest-randomly, which `pyproject.toml`'s `addopts` turns off
+  # everywhere else (`PL-75D9`). The seed is the date, so each week tries a new
+  # order and a red run names the seed in its header. To reproduce one, run
+  # `uv run pytest -n 4 --dist worksteal -p randomly --randomly-seed=SEED`,
+  # with the worker count the runner had, since the order a worker meets
+  # depends on how many workers share the collection.
+  #
+  # It reports and gates nothing, like the rest of this file. A red result
+  # names two tests that share state, and that is a defect in one of them.
+  order:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 * * 1'
+    runs-on: ubuntu-latest
+    # The same bound as the jobs above, chosen past any honest run because
+    # the failure being bounded is a hang. This one installs from the lock
+    # rather than re-resolving, so it is faster than they are.
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v9.0.0
+
+      # `--locked`, unlike the jobs above: this job varies the order alone,
+      # so the versions are the ones every other run tests.
+      - run: uv sync --locked --dev
+
+      - run: uv run pytest -n auto --dist worksteal -p randomly --randomly-seed="$(date -u +%Y%m%d)"
