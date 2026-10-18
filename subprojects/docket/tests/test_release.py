@@ -1540,19 +1540,19 @@ def test_status_never_names_an_item_that_cannot_start() -> None:
     from docket.render import format_status
 
     items = [
-        _open("PL-AA01", feature="mixed", status="untriaged"),
+        _open("PL-BB01", feature="mixed", status="untriaged"),
         _open("PL-RD02", feature="mixed"),
         _open("PL-DN03", feature="mixed", status="done"),
-        _open("PL-AA04", feature="held", status="untriaged"),
+        _open("PL-BB04", feature="held", status="untriaged"),
         _open("PL-BL05", feature="held", status="blocked"),
         _open("PL-DN06", feature="held", status="done"),
-        _open("PL-AA07", status="untriaged"),
+        _open("PL-BB07", status="untriaged"),
     ]
     status = format_status(Report(items=items), None, None, _marked_plan())
 
     assert "next: PL-RD02" in status
     assert "nothing remaining can start: every open item is blocked or untriaged" in status
-    assert "PL-AA0" not in status
+    assert "PL-BB0" not in status
 
 
 def test_status_defines_the_unmarked_row_rather_than_leaving_it_silent() -> None:
