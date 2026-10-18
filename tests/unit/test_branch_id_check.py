@@ -62,9 +62,9 @@ def _install(
     `listed=False` is a store listing git did not answer, in either copy.
     """
     log = "\n".join(f"{parents}\x1f{subject}" for subject in subjects)
-    # `ls-tree -r`'s long form, which `vcs._item_blobs` reads (`PL-86H3`).
+    # `ls-tree -r -z`'s long form, which `vcs._item_blobs` reads (`PL-86H3`).
     listing = "".join(
-        f"100644 blob {index:040x}\tdocs/items/{key}-an-item.md\n" for index, key in enumerate(HELD)
+        f"100644 blob {index:040x}\tdocs/items/{key}-an-item.md\0" for index, key in enumerate(HELD)
     )
 
     def fake(args: list[str]) -> str:

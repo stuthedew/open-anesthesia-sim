@@ -11370,3 +11370,27 @@ def test_a_source_the_parser_refuses_declines_its_docstrings(tmp_path: Path) -> 
     assert len(report.declined) == 1
     assert report.declined[0].startswith("tools/demo.py:3: Python ")
     assert "so no host claim in its docstrings was checked" in report.declined[0]
+
+
+def test_the_resident_baseline_reads_a_non_ascii_rule_file(tmp_path: Path) -> None:
+    """`PL-JTCQ`: the default branch's rule files are listed by their real names.
+
+    Without `-z` git listed `.claude/rules/café.md` as
+    `".claude/rules/caf\\303\\251.md"`, quotes included, which ends in `"`
+    rather than `.md`, so the baseline left the file out and measured the
+    default branch's resident set as smaller than it is.
+    """
+    root = tmp_path / "repo"
+    (root / ".claude" / "rules").mkdir(parents=True)
+    (root / ".claude" / "rules" / "café.md").write_text("# A rule\n", encoding="utf-8")
+    _git_run(root, "init", "-q")
+    _git_run(root, "config", "user.email", "test@example.invalid")
+    _git_run(root, "config", "user.name", "Test")
+    _git_run(root, "add", "-A")
+    _git_run(root, "commit", "-qm", "a rule")
+    _git_run(root, "update-ref", "refs/remotes/origin/main", "HEAD")
+
+    baseline = doc_check._resident_baseline(root)
+
+    assert baseline is not None
+    assert [row.name for row in baseline[1]] == [".claude/rules/café.md"]

@@ -258,6 +258,64 @@ def listed_paths(listing: str) -> tuple[str, ...]:
     return tuple(path for path in listing.split("\0") if path)
 
 
+#: The escapes git writes inside a quoted path, beside `\\ooo` for a byte.
+_QUOTED_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13, '"': 34, "\\": 92}
+
+
+def unquoted_path(field: str) -> str:
+    """A path as git printed it, with git's C-style quoting taken off.
+
+    Git quotes a path holding a byte above 0x7f, a control character, `"` or
+    `\\` in double quotes, writing each such byte as an escape. `-z` turns that
+    off in a listing, but a patch's `diff --git` header and its `---` and
+    `+++` lines are quoted under `-z` too (measured on git 2.43.0,
+    2026-10-04), so a reader of a patch takes the quoting off here
+    (`PL-MR8Z`). A field that does not open and close with `"` is returned as
+    it is; the bytes are read as UTF-8, as every other git answer here is.
+    """
+    if len(field) < 2 or not (field.startswith('"') and field.endswith('"')):
+        return field
+    raw = bytearray()
+    body = field[1:-1]
+    at = 0
+    while at < len(body):
+        char = body[at]
+        if char != "\\" or at + 1 == len(body):
+            raw += char.encode()
+            at += 1
+        elif body[at + 1 : at + 4].isdigit() and len(body[at + 1 : at + 4]) == 3:
+            raw.append(int(body[at + 1 : at + 4], 8) & 0xFF)
+            at += 4
+        else:
+            raw.append(_QUOTED_ESCAPES.get(body[at + 1], ord(body[at + 1]) & 0xFF))
+            at += 2
+    return raw.decode("utf-8", errors="replace")
+
+
+def logged_fields(listing: str, marker: str = "\x1e") -> list[tuple[str, tuple[str, ...]]]:
+    """Each commit of a `-z` `git log` listing, as its header and the fields that follow it.
+
+    The one parse of a log whose `--format` opens each commit with `marker`.
+    Under `-z` git ends the header and every field after it with NUL, and opens
+    the fields with one `\\n` that belongs to none of them. So a path is the
+    field as written, quotes and escapes never added, which a bare listing does
+    not give: it C-quotes a path holding a byte above 0x7f, a tab, `"` or `\\`
+    (`PL-4YDJ`). The fields are paths under `--name-only`, a status and its
+    path or paths under `--name-status`, and counts and paths under
+    `--numstat`. The header is returned without `marker`.
+    """
+    records: list[tuple[str, list[str]]] = []
+    for token in listing.split("\0"):
+        if token.startswith(marker):
+            records.append((token[len(marker) :], []))
+        elif records:
+            fields = records[-1][1]
+            field = token.removeprefix("\n") if not fields else token
+            if field:
+                fields.append(field)
+    return [(header, tuple(fields)) for header, fields in records]
+
+
 def uncommitted_paths(root: Path, run: Runner) -> tuple[str, ...]:
     """Every path whose change the checkout holds and `HEAD` does not, sorted.
 
@@ -3943,9 +4001,8 @@ def _notes_on(ref: str, notes_dir: str, root: Path, run: Runner) -> frozenset[st
     out a version the base already holds, so that the two agree about which.
     """
     return frozenset(
-        line.strip().rsplit("/", 1)[-1]
-        for line in split_lines(run(["ls-tree", "--name-only", ref, f"{notes_dir}/"], root))
-        if line.strip()
+        path.rsplit("/", 1)[-1]
+        for path in listed_paths(run(["ls-tree", "-z", "--name-only", ref, f"{notes_dir}/"], root))
     )
 
 
@@ -4092,11 +4149,16 @@ def cut_window(
         return CutWindow(declined=f"this checkout has no {base} to compare against")
     prefix = notes_dir.strip("/") + "/"
     added = [
-        line.strip()
-        for line in split_lines(
-            run(["diff", "--name-only", "--diff-filter=A", f"{base}...HEAD", "--", notes_dir], root)
+        path
+        for path in listed_paths(
+            run(
+                changed_path_args(
+                    "diff", "--name-only", "--diff-filter=A", f"{base}...HEAD", "--", notes_dir
+                ),
+                root,
+            )
         )
-        if line.strip().startswith(prefix)
+        if path.startswith(prefix)
     ]
     # By the version each notes file is named for, so a README or a draft added
     # beside them is not a cut, and the newest by number rather than by name,
@@ -4360,9 +4422,10 @@ def notes_added(
     text = run(
         [
             "log",
+            "-z",
             "--no-walk",
             *CUT_FLAGS,
-            "--format=%x00%H",
+            "--format=%x1e%H",
             "--name-only",
             *commits,
             "--",
@@ -4373,11 +4436,8 @@ def notes_added(
     if not answered(text):
         return None
     added: dict[str, set[str]] = {commit: set() for commit in commits}
-    for block in text.split("\0")[1:]:
-        commit, _, paths = block.partition("\n")
-        added.setdefault(commit.strip(), set()).update(
-            line.strip() for line in split_lines(paths) if line.strip()
-        )
+    for commit, paths in logged_fields(text):
+        added.setdefault(commit.strip(), set()).update(paths)
     return {commit: frozenset(paths) for commit, paths in added.items()}
 
 
@@ -4572,9 +4632,10 @@ def item_additions(root: Path, ref: str, prefix: str, run: Runner) -> ItemAdditi
     log = run(
         [
             "log",
+            "-z",
             ref,
             "--diff-filter=A",
-            "--format=%x00%H%x01%s",
+            "--format=%x1e%H%x01%s",
             "--name-status",
             "--",
             f"{directory}/",
@@ -4582,27 +4643,25 @@ def item_additions(root: Path, ref: str, prefix: str, run: Runner) -> ItemAdditi
         root,
     )
     commits: list[ItemAddition] = []
-    commit = subject = ""
-    added: list[str] = []
-
-    def close() -> None:
-        if commit:
-            commits.append(ItemAddition(commit, subject, tuple(dict.fromkeys(added))))
-
-    # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
-    for line in log.split("\n"):
-        if line.startswith("\x00"):
-            close()
-            commit, _, subject = line[1:].partition("\x01")
-            added = []
-            continue
-        if not commit or not line.strip() or not line.split("\t")[0].startswith("A"):
-            continue
-        folder, _, name = line.split("\t")[-1].rpartition("/")
-        match = ITEM_FILE_RE.match(name) if folder == directory else None
-        if match is not None:
-            added.append(match.group(1))
-    close()
+    for header, fields in logged_fields(log):
+        commit, _, subject = header.partition("\x01")
+        added: list[str] = []
+        # A status, then its path, or for a copy or a rename the two paths it
+        # pairs; under `--diff-filter=A` only the first kind arrives, and a
+        # pair is stepped over whole rather than read as a status and a path.
+        at = 0
+        while at < len(fields):
+            status = fields[at]
+            width = 2 if status[:1] in ("R", "C") else 1
+            path = fields[at + width] if at + width < len(fields) else ""
+            at += width + 1
+            if not status.startswith("A"):
+                continue
+            folder, _, name = path.rpartition("/")
+            match = ITEM_FILE_RE.match(name) if folder == directory else None
+            if match is not None:
+                added.append(match.group(1))
+        commits.append(ItemAddition(commit, subject, tuple(dict.fromkeys(added))))
     return ItemAdditions(commits=tuple(commits))
 
 
@@ -4970,8 +5029,9 @@ def _item_blobs(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, 
 
     The long form rather than `--name-only`, so the object id is in the line:
     `<mode> <type> <object>\t<path>`, with everything after the first tab
-    taken as the path because a path may contain one and git quotes what it
-    cannot print.
+    taken as the path because a path may contain one. `-z` ends each entry
+    with NUL and leaves the path as written, where a bare listing quotes one
+    holding a byte above 0x7f, a tab, `"` or `\\` (`PL-4YDJ`).
 
     **This is the one listing of the item files at a ref** (`PL-86H3`).
     `_items_at` is its path half, and `claims`, `claiming`, `verify`,
@@ -4983,10 +5043,10 @@ def _item_blobs(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, 
     """
     directory = items_dir.strip("/")
     found: dict[str, tuple[str, str]] = {}
-    for line in split_lines(run(["ls-tree", "-r", ref, "--", items_dir], root)):
-        head, _, path = line.partition("\t")
+    for entry in listed_paths(run(["ls-tree", "-r", "-z", ref, "--", items_dir], root)):
+        head, _, path = entry.partition("\t")
         fields = head.split()
-        folder, _, name = path.strip().rpartition("/")
+        folder, _, name = path.rpartition("/")
         match = ITEM_FILE_RE.match(name) if len(fields) == 3 and folder == directory else None
         if match is not None:
             found.setdefault(match.group(1), (fields[2], f"{folder}/{name}"))
@@ -6067,15 +6127,11 @@ def _commits_by_landing(
     # `_landing_split`'s, which holds only the paths a change puts content at,
     # so a rename's deleted side would match neither set and leave the commit
     # unclassified (`PL-KR69`).
-    output = run(["log", "--format=%x1e%H%x1f%s", "--name-only", f"^{base}", ref, "--"], root)
+    output = run(["log", "-z", "--format=%x1e%H%x1f%s", "--name-only", f"^{base}", ref, "--"], root)
     found: list[OrphanedCommit] = []
     took_one_whole = False
-    for record in output.split("\x1e"):
-        if not record.strip():
-            continue
-        header, _, body = record.partition("\n")
+    for header, touched in logged_fields(output):
         commit, _, subject = header.partition("\x1f")
-        touched = tuple(line.strip() for line in split_lines(body) if line.strip())
         if not touched:
             # A merge commit, which lists no paths of its own: it introduces no
             # work to leave behind and proves no merge of this branch either.
@@ -6385,13 +6441,13 @@ class Churn:
 
 
 def _numstat_path(text: str) -> str:
-    """The path a numstat line names, after any rename notation.
+    """The path a bare numstat line names, after any rename notation.
 
-    Rename detection is left on, so a file moved without being edited costs
-    nothing rather than counting its whole length twice. The price is that
-    git writes the pair in one field, in either of two shapes - `old => new`
-    and `dir/{old => new}/file` - and the second is not a prefix of the path
-    it describes, so a moved file would be bucketed by a name beginning `{`.
+    Without `-z` git writes a rename's pair in one field, in either of two
+    shapes - `old => new` and `dir/{old => new}/file` - and the second is not
+    a prefix of the path it describes, so a moved file would be bucketed by a
+    name beginning `{`. `churn` asks for `-z` instead, which writes the two
+    paths as fields of their own and quotes neither (`PL-4YDJ`).
     """
     if "=>" not in text:
         return text
@@ -6414,26 +6470,38 @@ def churn(root: Path, *, runner: Runner | None = None) -> Churn:
 
     Binary files are skipped rather than counted as zero: git reports them as
     `-`, and a repository's images have no line count to attribute.
+
+    Rename detection is left on, so a file moved without being edited costs
+    nothing rather than counting its whole length twice; the lines are
+    counted under the name the file has after the move.
     """
     run = _Silences(runner or _run_git)
-    out = run(["log", "--no-merges", "--numstat", CHURN_FORMAT], root)
+    out = run(["log", "-z", "--no-merges", "--numstat", CHURN_FORMAT], root)
     by_day: dict[date, Counter[str]] = {}
-    when: date | None = None
-    for line in split_lines(out):
-        if line.startswith("\x01"):
-            try:
-                when = date.fromisoformat(line[1:].strip())
-            except ValueError:
-                when = None
-            continue
-        parts = line.split("\t", 2)
-        if when is None or len(parts) != 3 or parts[0] == "-" or parts[1] == "-":
-            continue
+    for stamp, fields in logged_fields(out, "\x01"):
         try:
-            lines = int(parts[0]) + int(parts[1])
+            when = date.fromisoformat(stamp.strip())
         except ValueError:
             continue
-        by_day.setdefault(when, Counter())[_numstat_path(parts[2])] += lines
+        at = 0
+        while at < len(fields):
+            parts = fields[at].split("\t", 2)
+            at += 1
+            if len(parts) != 3:
+                continue
+            path = parts[2]
+            if not path:
+                # A rename or a copy: `-z` leaves the path field empty and
+                # writes the old and the new path as the next two fields.
+                path = fields[at + 1] if at + 1 < len(fields) else ""
+                at += 2
+            if not path or parts[0] == "-" or parts[1] == "-":
+                continue
+            try:
+                lines = int(parts[0]) + int(parts[1])
+            except ValueError:
+                continue
+            by_day.setdefault(when, Counter())[path] += lines
     return Churn({day: dict(counts) for day, counts in by_day.items()}, declined=run.reason)
 
 

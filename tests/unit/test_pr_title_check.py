@@ -41,10 +41,10 @@ def _tree(**refs: dict[str, str]):
 
     def fake(args: list[str]) -> str:
         if args[0] == "ls-tree":
-            # ["ls-tree", "-r", <ref>, "--", <dir>], as `vcs._item_blobs` reads it.
-            ref = args[2]
+            # ["ls-tree", "-r", "-z", <ref>, "--", <dir>], as `vcs._item_blobs` reads it.
+            ref = args[3]
             return "".join(
-                f"100644 blob {index:040x}\tdocs/items/{name}\n"
+                f"100644 blob {index:040x}\tdocs/items/{name}\0"
                 for index, name in enumerate(refs.get(ref, {}))
             )
         if args[0] == "show":
@@ -185,7 +185,7 @@ def _git_answering(**refs: dict[str, str]):
             return subprocess.CompletedProcess(argv, 0, b"claude/pl-1pbv-slug\n", b"")
         if args == ["remote"]:
             return subprocess.CompletedProcess(argv, 0, b"origin\n", b"")
-        ref = args[2] if args[0] == "ls-tree" else args[1].partition(":")[0]
+        ref = args[3] if args[0] == "ls-tree" else args[1].partition(":")[0]
         if ref in refs:
             return subprocess.CompletedProcess(argv, 0, tree(args).encode(), b"")
         said = f"fatal: Not a valid object name {ref}\n"
@@ -552,3 +552,30 @@ def test_a_working_tree_with_no_items_on_disk_declines_rather_than_closes_nothin
     assert "the working tree could not be read" in captured.err
     assert "not checked" in captured.err
     assert "closes no item" not in captured.out
+
+
+def test_a_closed_item_whose_path_git_would_quote_is_read(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`PL-4YDJ`: a closed item in a file git would quote still owes the title its id.
+
+    Built on real git, since what is under test is how git spells the path.
+    Without `-z` the listing named `"docs/items/PL-BCDF-caf\\303\\251.md"`,
+    quotes included, and the `git show` of that path read nothing.
+    """
+    root = tmp_path / "repo"
+    (root / "docs" / "items").mkdir(parents=True)
+    (root / "docs" / "items" / "PL-BCDF-café.md").write_text(
+        CLOSED.format(id="PL-BCDF", status="done"), encoding="utf-8"
+    )
+    for command in (
+        ("init", "-q"),
+        ("config", "user.email", "test@example.invalid"),
+        ("config", "user.name", "Test"),
+        ("add", "-A"),
+        ("commit", "-qm", "PL-BCDF: close it"),
+    ):
+        subprocess.run(("git", *command), cwd=root, check=True, capture_output=True)
+    monkeypatch.setattr(pr_title_check, "ROOT", root)
+
+    assert list(pr_title_check.closed_items_at("HEAD")) == ["PL-BCDF"]
