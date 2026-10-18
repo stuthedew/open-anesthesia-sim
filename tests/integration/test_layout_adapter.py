@@ -11,7 +11,7 @@ pixels, never read back from the adapter. They render under the `offscreen`
 platform `tests/conftest.py` selects.
 """
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Mapping
 
 import pytest
 from PySide6.QtCore import QEvent, QPoint, QPointF, Qt
@@ -19,9 +19,9 @@ from PySide6.QtGui import QEnterEvent, QImage
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QSplitter, QWidget
 
-from anesthesia_sim.app.area_layout import AreaLayout, AreaNotice
+from anesthesia_sim.app.area_layout import AreaFrame, AreaLayout, AreaNotice, ViewChooser
 from anesthesia_sim.app.theme import AREA_HANDLE_LINE_WIDTH, AREA_HANDLE_WIDTH, PRIMARY
-from anesthesia_sim.app.view_registry import RegisteredView, registry
+from anesthesia_sim.app.view_registry import RegisteredView, RetiredTag, registry, retirements
 from anesthesia_sim.layout.model import Handle, LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, Window
 
@@ -139,6 +139,14 @@ def _drag(application: QApplication, splitter: QSplitter, index: int, by_px: int
     application.processEvents()
 
 
+def _content(widget: QWidget) -> QWidget:
+    """What the Area `widget` draws shows under its header: its View or its notice."""
+
+    assert isinstance(widget, AreaFrame), f"{widget!r} is not an Area's frame"
+
+    return widget.content
+
+
 def _tree(container: AreaLayout) -> Node:
     return container.model.windows[0].tree
 
@@ -168,9 +176,9 @@ def test_each_split_is_a_splitter_and_each_area_its_view(
     assert splitters[()].orientation() == Qt.Orientation.Vertical
     assert splitters[(0,)].orientation() == Qt.Orientation.Horizontal
     assert splitters[()].widget(0) is splitters[(0,)]
-    assert splitters[()].widget(1) is views.by_id[3]
-    assert splitters[(0,)].widget(0) is views.by_id[1]
-    assert splitters[(0,)].widget(1) is views.by_id[2]
+    assert _content(splitters[()].widget(1)) is views.by_id[3]
+    assert _content(splitters[(0,)].widget(0)) is views.by_id[1]
+    assert _content(splitters[(0,)].widget(1)) is views.by_id[2]
     assert sorted(views.asked) == [1, 2, 3]
 
 
@@ -196,7 +204,8 @@ def test_a_layout_of_one_area_is_its_view_alone(
     container = _show(application, shown, LayoutModel.single_area(_VIEW), views)
 
     assert _splitters(container) == {}
-    assert views.by_id[1].parentWidget() is container
+    assert views.by_id[1].parentWidget() is container.frame(AreaId(1))
+    assert container.frame(AreaId(1)).parentWidget() is container
     assert views.by_id[1].isVisible()
 
 
@@ -380,8 +389,8 @@ def test_a_swap_moves_each_view_to_the_other_area(
     application.processEvents()
     splitter = _splitters(container)[()]
 
-    assert splitter.widget(0) is second
-    assert splitter.widget(1) is first
+    assert _content(splitter.widget(0)) is second
+    assert _content(splitter.widget(1)) is first
     assert first.isVisible() and second.isVisible()
     assert splitter.sizes() == [100, 300]
 
@@ -398,7 +407,7 @@ def test_a_view_the_new_layout_does_not_hold_leaves_the_container(
     application.processEvents()
 
     assert _splitters(container) == {}
-    assert views.by_id[1].parentWidget() is container
+    assert views.by_id[1].parentWidget() is container.frame(AreaId(1))
     assert removed.parentWidget() is None
 
 
@@ -409,7 +418,7 @@ def test_a_view_the_new_layout_does_not_hold_leaves_the_container(
 _NOTICE_TITLE = "This Area's View is not in this build."
 _NOTICE_BODY = (
     "It was saved as the View kind 'retired_view'. This build does not know it. "
-    "The saved name is kept, so saving this layout loses nothing."
+    "Choose a View from the menu above. The saved name is kept until you do."
 )
 
 
@@ -427,10 +436,10 @@ def test_an_area_of_an_unknown_kind_shows_the_notice_and_nothing_else(
     model = _layout(_row((0.25, 0.5, 0.25), _area(1), Area(AreaId(2), _UNKNOWN), _area(3)), 4)
     container = _show(application, shown, model, views, (800 + 2 * AREA_HANDLE_WIDTH, 400))
     splitter = _splitters(container)[()]
-    notice = splitter.widget(1)
+    notice = _content(splitter.widget(1))
 
-    assert splitter.widget(0) is views.by_id[1]
-    assert splitter.widget(2) is views.by_id[3]
+    assert _content(splitter.widget(0)) is views.by_id[1]
+    assert _content(splitter.widget(2)) is views.by_id[3]
     assert isinstance(notice, AreaNotice)
     assert notice.isVisible()
     assert _texts(notice) == [_NOTICE_TITLE, _NOTICE_BODY]
@@ -475,7 +484,7 @@ def test_a_rebuild_deletes_the_notices_the_old_layout_drew(
     application.processEvents()
 
     assert container.findChildren(AreaNotice) == []
-    assert _splitters(container)[()].widget(1) is views.by_id[2]
+    assert _content(_splitters(container)[()].widget(1)) is views.by_id[2]
 
 
 def test_the_default_registry_holds_no_test_kind(application: QApplication, views: _Views) -> None:
@@ -534,3 +543,235 @@ def test_a_handle_draws_nothing_at_rest_and_lights_its_whole_line_under_the_poin
         0,
         0,
     ]
+
+
+# ------------------------------------------------- the header and the chooser
+
+_OTHER = ViewKind("other_view")
+_THIRD = ViewKind("third_view")
+
+# Three kinds, so the chooser's order and its one checked entry are told apart
+# from an order or a check that only happens to match.
+_THREE = registry(
+    RegisteredView(_VIEW, "Test view"),
+    RegisteredView(_OTHER, "Other view"),
+    RegisteredView(_THIRD, "Third view"),
+)
+
+
+class _ViewsByKind(_Views):
+    """Hands each Area a widget of its own for its kind, or None for `_THIRD`."""
+
+    def __call__(self, area: Area) -> QWidget | None:  # type: ignore[override]
+        if area.view == _THIRD:
+            self.asked.append(area.id)
+            return None
+
+        return super().__call__(Area(AreaId(area.id * 10 + (area.view == _OTHER)), area.view))
+
+
+def _show_with(
+    application: QApplication,
+    shown: list[AreaLayout],
+    model: LayoutModel,
+    view_for: Callable[[Area], QWidget | None],
+    registered: Mapping[str, RegisteredView] = _THREE,
+    retired: Mapping[str, RetiredTag] | None = None,
+) -> AreaLayout:
+    container = AreaLayout(
+        model, view_for, registered=registered, retired={} if retired is None else retired
+    )
+    container.resize(800 + AREA_HANDLE_WIDTH, 400)
+    container.show()
+    application.processEvents()
+    shown.append(container)
+
+    return container
+
+
+def _entries(chooser: ViewChooser) -> list[tuple[str, bool]]:
+    menu = chooser.menu()
+    assert menu is not None
+
+    return [(action.text(), action.isChecked()) for action in menu.actions()]
+
+
+def _pick(application: QApplication, chooser: ViewChooser, title: str) -> None:
+    """Trigger the chooser's menu entry `title`, as a reader's click on it does."""
+
+    menu = chooser.menu()
+    assert menu is not None
+    (action,) = [action for action in menu.actions() if action.text() == title]
+    action.trigger()
+    application.processEvents()
+
+
+def test_every_area_has_a_header_whose_chooser_names_its_view(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-MS34` Q2: the chooser is the header's first control and shows the View's title."""
+
+    model = _layout(_row((0.5, 0.5), Area(AreaId(1), _VIEW), Area(AreaId(2), _OTHER)), 3)
+    container = _show_with(application, shown, model, _ViewsByKind())
+
+    for area_id, title in ((1, "Test view"), (2, "Other view")):
+        frame = container.frame(AreaId(area_id))
+
+        assert frame.chooser.text() == title
+        assert frame.header.layout().itemAt(0).widget() is frame.chooser
+        assert frame.header.isVisible() and frame.chooser.isVisible()
+        assert frame.header.geometry().bottom() < frame.content.geometry().top()
+        assert frame.chooser.focusPolicy() == Qt.FocusPolicy.StrongFocus
+
+
+def test_the_chooser_lists_every_registered_kind_in_order_with_the_current_one_checked(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-RBXL` Q2: a plain menu in registry order, whatever the layout names."""
+
+    model = _layout(_row((0.5, 0.5), Area(AreaId(1), _OTHER), Area(AreaId(2), _OTHER)), 3)
+    container = _show_with(application, shown, model, _ViewsByKind())
+
+    assert _entries(container.frame(AreaId(1)).chooser) == [
+        ("Test view", False),
+        ("Other view", True),
+        ("Third view", False),
+    ]
+
+
+def test_choosing_a_view_sets_it_in_that_area_and_nowhere_else(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    views = _ViewsByKind()
+    model = _layout(_row((0.5, 0.5), Area(AreaId(1), _VIEW), Area(AreaId(2), _VIEW)), 3)
+    container = _show_with(application, shown, model, views)
+    changed: list[LayoutModel] = []
+    container.layout_changed.connect(changed.append)
+    kept = views.by_id[20]
+
+    _pick(application, container.frame(AreaId(1)).chooser, "Other view")
+
+    expected = _layout(_row((0.5, 0.5), Area(AreaId(1), _OTHER), Area(AreaId(2), _VIEW)), 3)
+    assert container.model == expected
+    assert changed == [expected]
+    assert container.frame(AreaId(1)).content is views.by_id[11]
+    assert container.frame(AreaId(1)).chooser.text() == "Other view"
+    assert container.frame(AreaId(2)).content is kept
+    assert views.by_id[10].parentWidget() is None
+
+
+def test_choosing_the_view_already_shown_changes_nothing(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    views = _ViewsByKind()
+    model = _layout(_row((0.5, 0.5), Area(AreaId(1), _VIEW), Area(AreaId(2), _OTHER)), 3)
+    container = _show_with(application, shown, model, views)
+    frame = container.frame(AreaId(1))
+    changed: list[LayoutModel] = []
+    container.layout_changed.connect(changed.append)
+
+    _pick(application, frame.chooser, "Test view")
+
+    assert container.model == model
+    assert changed == []
+    assert container.frame(AreaId(1)) is frame
+
+
+# The notices' text, written out here rather than read from the module.
+_UNPLACED_TITLE = "This View cannot be shown in an Area of its own yet."
+_UNPLACED_BODY = (
+    "This build cannot put 'Third view' in an Area yet. Choose a View from the menu above."
+)
+_ELSEWHERE_TITLE = "This View is already shown in another Area."
+_ELSEWHERE_BODY = "This build draws one 'Test view' at a time. Choose a View from the menu above."
+
+
+def test_a_view_the_caller_cannot_draw_yet_is_a_notice_in_its_area(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """Choosing a registered kind with no widget to give shows a notice, not a crash."""
+
+    views = _ViewsByKind()
+    model = _layout(_row((0.5, 0.5), Area(AreaId(1), _VIEW), Area(AreaId(2), _OTHER)), 3)
+    container = _show_with(application, shown, model, views)
+
+    _pick(application, container.frame(AreaId(2)).chooser, "Third view")
+    notice = container.frame(AreaId(2)).content
+
+    assert isinstance(notice, AreaNotice)
+    assert _texts(notice) == [_UNPLACED_TITLE, _UNPLACED_BODY]
+    assert container.frame(AreaId(1)).content is views.by_id[10]
+    assert container.model.area(AreaId(2)).view == _THIRD
+    assert container.frame(AreaId(2)).chooser.text() == "Third view"
+
+
+def test_one_widget_handed_out_for_two_areas_draws_in_the_first_and_a_notice_in_the_second(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """A widget cannot sit in two places, so the second Area says why it shows no View."""
+
+    single = QWidget()
+    single.setMinimumSize(10, 10)
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+    container = _show_with(application, shown, model, lambda area: single)
+    second = container.frame(AreaId(2)).content
+
+    assert container.frame(AreaId(1)).content is single
+    assert isinstance(second, AreaNotice)
+    assert _texts(second) == [_ELSEWHERE_TITLE, _ELSEWHERE_BODY]
+
+
+def test_an_unknown_kind_can_be_replaced_from_its_own_chooser(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """The notice's chooser lists every kind, none checked, and a choice replaces the notice."""
+
+    views = _ViewsByKind()
+    model = _layout(_row((0.5, 0.5), Area(AreaId(1), _VIEW), Area(AreaId(2), _UNKNOWN)), 3)
+    container = _show_with(application, shown, model, views)
+    chooser = container.frame(AreaId(2)).chooser
+
+    assert chooser.text() == "retired_view"
+    assert [checked for _, checked in _entries(chooser)] == [False, False, False]
+
+    _pick(application, chooser, "Other view")
+
+    assert container.frame(AreaId(2)).content is views.by_id[21]
+    assert container.findChildren(AreaNotice) == []
+
+
+def test_a_renamed_kind_is_offered_its_new_tag_and_never_mapped_to_it(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-R1WQ` Q3: the notice offers the rename, and only the reader's click takes it."""
+
+    views = _ViewsByKind()
+    retired = retirements(_THREE, RetiredTag(_UNKNOWN, "0.7.0", _OTHER))
+    model = _layout(_row((0.5, 0.5), Area(AreaId(1), _VIEW), Area(AreaId(2), _UNKNOWN)), 3)
+    container = _show_with(application, shown, model, views, retired=retired)
+    notice = container.frame(AreaId(2)).content
+
+    assert isinstance(notice, AreaNotice)
+    assert notice.offer_button is not None
+    assert notice.offer_button.text() == "Show 'Other view'"
+    assert container.model.area(AreaId(2)).view == _UNKNOWN
+
+    notice.offer_button.click()
+    application.processEvents()
+
+    assert container.model.area(AreaId(2)).view == _OTHER
+    assert container.frame(AreaId(2)).content is views.by_id[21]
+
+
+def test_a_removed_or_unknown_kind_offers_no_button(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    gone = ViewKind("gone_view")
+    retired = retirements(_THREE, RetiredTag(gone, "0.7.0"))
+    model = _layout(_row((0.5, 0.5), Area(AreaId(1), gone), Area(AreaId(2), _UNKNOWN)), 3)
+    container = _show_with(application, shown, model, _ViewsByKind(), retired=retired)
+
+    for area_id in (1, 2):
+        notice = container.frame(AreaId(area_id)).content
+        assert isinstance(notice, AreaNotice)
+        assert notice.offer_button is None
