@@ -37,7 +37,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import markdown
-from .frontmatter import closing
+from .frontmatter import body_lines
 from .lines import split_lines
 from .store import ID_PATTERN
 
@@ -123,9 +123,7 @@ def read(path: Path) -> tuple[Thread, ...]:
     # read as Markdown, its keys were one paragraph its closing `---` underlines,
     # a heading naming whatever item a key names (`PL-2MLT`).
     lines = split_lines(text)
-    fence = closing(lines)
-    opening = 0 if fence is None else fence + 1
-    headings = markdown.headings([""] * opening + lines[opening:])
+    headings = markdown.headings(body_lines(lines))
     found = [h for h in headings if h.level == THREAD_HEADING_LEVEL]
     threads: list[Thread] = []
     for position, heading in enumerate(found):

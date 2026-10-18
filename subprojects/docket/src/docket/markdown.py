@@ -61,6 +61,13 @@ from collections.abc import Collection, Iterator, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 
+#: A soft break (§ 6.8) in text whose containers' markers `unmarked` has
+#: blanked: the line ending and the white space on either side of it. A
+#: pattern that reads a phrase across a wrap takes this as one of its gaps, so
+#: a block quote's `>` is never read here: `unmarked` blanks it where it is a
+#: container's marker and keeps it where it is text (`PL-NNVJ`).
+SOFT_BREAK = r"(?>[ \t]*\n[ \t]*)"
+
 #: The kinds of leaf block (§ 4).
 PARAGRAPH = "paragraph"
 HEADING = "heading"
@@ -308,7 +315,7 @@ def statement_lines(
             yield block.start, block.end
 
 
-def unmarked(lines: Sequence[str]) -> tuple[str, ...]:
+def unmarked(lines: Sequence[str], onto: Sequence[str] | None = None) -> tuple[str, ...]:
     """Each of `lines` with its containers' markers blanked, its length kept (`PL-YCJJ`).
 
     A block quote's `>` and a list item's marker and indent hold a statement
@@ -318,9 +325,15 @@ def unmarked(lines: Sequence[str]) -> tuple[str, ...]:
     line is still an offset into the line `lines` holds, the way `checks`
     blanks a code span. A tab standing before a line's text is a space like
     any other character there.
+
+    `onto` is a copy of `lines` with some of its text blanked by the caller,
+    every line at its length: where it is given, the markers `lines` holds are
+    blanked in it instead, so a reader that has already blanked a link's
+    destination keeps that blanking (`PL-NNVJ`).
     """
     columns = read(lines).columns
-    return tuple(_blanked_to(line, column) for line, column in zip(lines, columns, strict=True))
+    texts = lines if onto is None else onto
+    return tuple(_blanked_to(line, column) for line, column in zip(texts, columns, strict=True))
 
 
 def block_lines(lines: Sequence[str], kinds: Collection[str]) -> frozenset[int]:
@@ -380,12 +393,27 @@ def cells(row: str) -> tuple[str, ...]:
     as a pipe inside its cell, which is where markdown-it-py's `escapedSplit`
     splits too.
     """
-    parts = _CELL_BREAK.split(row.strip())
-    if parts and parts[0] == "":
-        parts.pop(0)
-    if parts and parts[-1] == "":
-        parts.pop()
-    return tuple(part.replace("\\|", "|").strip() for part in parts)
+    return tuple(row[start:end].replace("\\|", "|").strip() for start, end in cell_spans(row))
+
+
+def cell_spans(row: str) -> tuple[tuple[int, int], ...]:
+    """Where each of a table row's cells is in `row`, as `cells` splits them.
+
+    Each cell is its offsets into `row`, white space around its text included
+    and its pipes left out. An outer pipe opens or closes no cell. A reader
+    that needs a cell's place in its line, to read the inlines inside it, takes
+    this rather than splitting the row again (`PL-NNVJ`).
+    """
+    row = row.removesuffix("\n")
+    left = len(row) - len(row.lstrip())
+    right = len(row.rstrip())
+    edges = [left - 1, *(pipe.start() for pipe in _CELL_BREAK.finditer(row, left, right)), right]
+    spans = [(edges[index] + 1, edges[index + 1]) for index in range(len(edges) - 1)]
+    if spans and spans[0][0] == spans[0][1]:
+        spans.pop(0)
+    if spans and spans[-1][0] == spans[-1][1]:
+        spans.pop()
+    return tuple(spans)
 
 
 def emphasis(text: str, literals: Collection[tuple[int, int]] = ()) -> tuple[Emphasis, ...]:

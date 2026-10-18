@@ -1270,6 +1270,23 @@ def test_a_section_mark_citation_is_checked_like_a_comma_one(tmp_path: Path) -> 
     )
 
 
+def test_a_four_column_quote_marker_is_paragraph_text(tmp_path: Path) -> None:
+    """A `>` four columns into a paragraph's next line is its text, and a quotation keeps it.
+
+    CommonMark 0.31.2 reads `    > b` after `a` as the paragraph going on
+    (§ 4.8), since a block quote's marker opens no more than three columns in.
+    `doc_check` dropped the `>` from every wrapped line, so a quotation of a
+    heading that holds one compared as words the file does not hold. The
+    marks are now `docket.markdown`'s to blank, which blanks only a block
+    quote's (`PL-NNVJ`).
+    """
+    assert doc_check._comparable_statements("a\n    > b\n") == "a > b"
+    assert doc_check._comparable_statements("> a\n> b\n") == "a b"
+    root = _repo(tmp_path, model=MODEL + "\n## Gas a > b\n\nText.\n")
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` § "Gas a\n    > b".\n')
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
 def test_a_section_mark_citation_that_resolves_is_not_an_error(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` § "Known limitations".\n')

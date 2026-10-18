@@ -3,12 +3,14 @@ id: PL-NNVJ
 title: doc_check, roadmap, instructions and notes copy Markdown block readers docket.markdown and instructions already hold - container markers, table cells, list markers, a front matter blanked from the body (three copies) and _markdown_under - and the container-marker regexes read 'a' then '    > b' differently
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: tools/doc_check.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/notes.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/notes.py, subprojects/docket/src/docket/frontmatter.py, subprojects/docket/src/docket/checks.py, tools/fact_home_check.py, tests/unit/test_doc_check.py, tests/unit/test_inline_reference.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1566
 payoff: a document's block structure is read by docket.markdown wherever docket or a tool reads it
 verify: grep -q 'def test_a_four_column_quote_marker_is_paragraph_text' tests/unit/test_doc_check.py
 ---

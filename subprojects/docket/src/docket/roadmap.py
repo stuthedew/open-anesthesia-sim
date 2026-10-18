@@ -50,9 +50,6 @@ LAZY_ENTRY = (
     "part of that entry and the list walker does not; indent it to keep it in the entry, "
     "or put a blank line before it"
 )
-#: A list item's marker and the gap after it (CommonMark 0.31.2 § 5.2), which an
-#: entry's text is read without.
-ENTRY_MARKER_RE = re.compile(r" {0,3}(?:[-+*]|\d{1,9}[.)])(?:[ \t]+|$)")
 #: Where a sentence of prose ends: its stop, any closing emphasis, code,
 #: parenthesis or bracket, and the space after it. A soft break is a space.
 SENTENCE_BREAK = re.compile(r"[.!?][*`)\]]*\s")
@@ -612,7 +609,9 @@ def _scope_ids(entries: Sequence[GateEntry], scope_ids: Iterable[str]) -> tuple[
     return _deduped([identifier for entry in entries for identifier in entry.ids] + list(scope_ids))
 
 
-def _entry_text(lines: Sequence[str], first: int, end: int, prose: Collection[int]) -> str:
+def _entry_text(
+    lines: Sequence[str], bare: Sequence[str], first: int, end: int, prose: Collection[int]
+) -> str:
     """An entry's span of `lines` joined into one line, less its marker: the lines of its prose.
 
     The text a `GateEntry` and a `ScopeEntry` carry. Every line of the entry is
@@ -623,9 +622,12 @@ def _entry_text(lines: Sequence[str], first: int, end: int, prose: Collection[in
     too, since CommonMark reads both as the entry's (`PL-YSMD`); a fence, an
     indented code block and an HTML block inside it do not, holding a literal or
     a comment, so only its prose blocks are read (`PL-KR6M`).
+
+    The marker is the one `markdown` reads its item open on, blanked in `bare`,
+    the entry's lines as `markdown.unmarked` gives them: a second spelling of
+    it here parted from `markdown`'s on a thematic break (`PL-NNVJ`).
     """
-    marker = ENTRY_MARKER_RE.match(lines[first])
-    parts = [lines[first][marker.end() if marker else 0 :].strip()] if first in prose else []
+    parts = [bare[first].strip()] if first in prose else []
     parts.extend(lines[index].strip() for index in range(first + 1, end) if index in prose)
     return " ".join(part for part in parts if part)
 
@@ -807,7 +809,7 @@ def _gate_entries(
     for first, end in spans:
         ids = leading_ids(next(prose.within(first, end), ""))
         if ids:
-            text = _entry_text(lines, first, end, prose_lines)
+            text = _entry_text(lines, prose.bare, first, end, prose_lines)
             entries.append(GateEntry(line=first + 1, ids=ids, text=text))
     return tuple(entries), declined
 
@@ -829,7 +831,7 @@ def _scope_entries(
     for first, end in spans:
         statements = list(prose.within(first, end))
         ids = _deduped(identifier for text in statements for identifier in _declared_ids(text))
-        text = _entry_text(lines, first, end, prose_lines)
+        text = _entry_text(lines, prose.bare, first, end, prose_lines)
         entries.append(
             ScopeEntry(line=first + 1, ids=ids, text=text, lead=statements[0] if statements else "")
         )
