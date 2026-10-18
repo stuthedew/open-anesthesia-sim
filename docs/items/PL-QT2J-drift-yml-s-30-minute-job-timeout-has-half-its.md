@@ -4,13 +4,12 @@ title: drift.yml's 30-minute job timeout has half its margin left: the interpret
 priority: P3
 effort: S
 status: ready
-classes: infra
-feature: drift-visibility
-touches: .github/workflows/drift.yml, docs/items/PL-QT2J-drift-yml-s-30-minute-job-timeout-has-half-its.md
+classes: infra, perf
+touches: .github/workflows/drift.yml
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
-payoff: the monthly drift jobs keep a timeout that only a hang can reach, so they do not start failing on the suite's growth and reporting weather instead of drift
-verify: grep -qE '^\*\*Timed 2026-[0-9-]+\.\*\*' docs/items/PL-QT2J-drift-yml-s-30-minute-job-timeout-has-half-its.md
+payoff: drift.yml's job limit is set from a measurement of what slows the interpreter job, with a margin stated beside it
+verify: grep -q 'PL-QT2J' .github/workflows/drift.yml
 ---
 
 **Problem.** Each `drift.yml` job has `timeout-minutes: 30`. The comment says
@@ -43,19 +42,10 @@ Second, whether `quality.yml`'s worker count, twice the CPU count, shortens
 these jobs as much as it shortens `quality.yml`. Measure both before
 changing the limit.
 
-**Triaged 2026-10-18.** Run 39157643905 was dispatched on a branch and
-tested CPython 3.14.8 from the runner's toolcache, not 3.15. Its `interpreter`
-job printed pytest's header 2 min 4 s after the step started and the first
-line of dots 3 min 20 s after that. The `dependencies` job ran the same suite
-on the 3.14 interpreter uv chose from `.python-version` in 9 min 29 s. So the
-slow start is not 3.15's. The toolcache interpreter is the likely cause, which
-is inferred and not yet measured.
+**Done when.** The two questions above have measured answers recorded here,
+and `timeout-minutes` in `.github/workflows/drift.yml` is set from them, with
+the margin over the slowest measured job stated in the comment beside it.
 
-**Done when.** The cause of the `interpreter` job's slow start, and the effect
-of running twice as many workers as CPUs, are each measured on runs dispatched
-from a branch. The result and the timeout it leads to are recorded in this
-item under a paragraph that opens `**Timed DATE.**`, and `drift.yml` is changed
-where the measurement calls for it.
-
-**Generator check.** One-off. It is a margin the suite's growth used up, not a
-fact any item misread.
+**Generator check.** Not an instance of a closed head's fact: a limit set from
+an old measurement, with nothing that re-reads it. `PL-JTWV` is what would show
+the timeout failing.
