@@ -225,9 +225,13 @@ def test_a_dotted_store_path_loads_normalized(tmp_path: Path, written: str) -> N
     assert load(tmp_path).items_dir == "docs/items"
 
 
-@pytest.mark.parametrize("written", ["/docs/items", "docs/../items", "../items", ".", ""])
-def test_an_items_dir_outside_the_project_fails_to_load(tmp_path: Path, written: str) -> None:
+@pytest.mark.parametrize(
+    ("written", "read"), [("/srv/items/", "/srv/items"), ("../elsewhere//", "../elsewhere")]
+)
+def test_a_store_outside_the_checkout_keeps_its_meaning(
+    tmp_path: Path, written: str, read: str
+) -> None:
+    """Only the spelling changes; `cli._tracked` gives such a store the empty prefix (`PL-3T2Q`)."""
     (tmp_path / "docket.toml").write_text(f'[docket]\nitems_dir = "{written}"\n', encoding="utf-8")
 
-    with pytest.raises(ValueError, match="items_dir"):
-        load(tmp_path)
+    assert load(tmp_path).items_dir == read

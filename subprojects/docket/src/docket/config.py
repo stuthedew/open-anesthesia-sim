@@ -412,24 +412,21 @@ def _str(value: object, fallback: str, name: str) -> str:
 
 
 def _store_dir(value: object, fallback: str, name: str) -> str:
-    """Read a directory inside the project, in the one spelling git prints for it.
+    """Read the item store's directory in the one spelling git prints for it.
 
     Twelve readers build a git-path prefix from `items_dir` by hand, and none
     removes a leading `./`, so `./docs/items` read the store through `pathlib`
     while every `startswith` test against git's paths matched nothing - the
-    in-flight guard among them (`PL-F66M`). Collapsing `./` and doubled
-    slashes here gives every reader one spelling. A path outside the project,
-    absolute or climbing out with `..`, fails to load, since no git path the
-    readers compare it with can lie there.
+    in-flight guard among them (`PL-F66M`). `PurePosixPath` collapses `./`,
+    doubled slashes and a trailing slash, so every reader gets one spelling.
+
+    An absolute path and one that climbs out with `..` keep their meaning. A
+    store outside the checkout is a supported case: `cli._tracked` gives it
+    the empty prefix, and the readers that cannot ask git about it skip or
+    refuse it by name (`PL-3T2Q`).
     """
     text = _str(value, fallback, name)
-    path = PurePosixPath(text)
-    if path.is_absolute() or ".." in path.parts:
-        raise ValueError(f"{name}: {text!r} is not a directory inside the project")
-    normal = path.as_posix().strip("/")
-    if normal in ("", "."):
-        raise ValueError(f"{name}: {text!r} names no directory")
-    return normal
+    return PurePosixPath(text).as_posix() if text.strip() else text
 
 
 def _int(value: object, fallback: int, name: str) -> int:
