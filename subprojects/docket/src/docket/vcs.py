@@ -258,6 +258,64 @@ def listed_paths(listing: str) -> tuple[str, ...]:
     return tuple(path for path in listing.split("\0") if path)
 
 
+#: The escapes git writes inside a quoted path, beside `\\ooo` for a byte.
+_QUOTED_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13, '"': 34, "\\": 92}
+
+
+def unquoted_path(field: str) -> str:
+    """A path as git printed it, with git's C-style quoting taken off.
+
+    Git quotes a path holding a byte above 0x7f, a control character, `"` or
+    `\\` in double quotes, writing each such byte as an escape. `-z` turns that
+    off in a listing, but a patch's `diff --git` header and its `---` and
+    `+++` lines are quoted under `-z` too (measured on git 2.43.0,
+    2026-10-04), so a reader of a patch takes the quoting off here
+    (`PL-MR8Z`). A field that does not open and close with `"` is returned as
+    it is; the bytes are read as UTF-8, as every other git answer here is.
+    """
+    if len(field) < 2 or not (field.startswith('"') and field.endswith('"')):
+        return field
+    raw = bytearray()
+    body = field[1:-1]
+    at = 0
+    while at < len(body):
+        char = body[at]
+        if char != "\\" or at + 1 == len(body):
+            raw += char.encode()
+            at += 1
+        elif body[at + 1 : at + 4].isdigit() and len(body[at + 1 : at + 4]) == 3:
+            raw.append(int(body[at + 1 : at + 4], 8) & 0xFF)
+            at += 4
+        else:
+            raw.append(_QUOTED_ESCAPES.get(body[at + 1], ord(body[at + 1]) & 0xFF))
+            at += 2
+    return raw.decode("utf-8", errors="replace")
+
+
+def logged_fields(listing: str, marker: str = "\x1e") -> list[tuple[str, tuple[str, ...]]]:
+    """Each commit of a `-z` `git log` listing, as its header and the fields that follow it.
+
+    The one parse of a log whose `--format` opens each commit with `marker`.
+    Under `-z` git ends the header and every field after it with NUL, and opens
+    the fields with one `\\n` that belongs to none of them. So a path is the
+    field as written, quotes and escapes never added, which a bare listing does
+    not give: it C-quotes a path holding a byte above 0x7f, a tab, `"` or `\\`
+    (`PL-4YDJ`). The fields are paths under `--name-only`, a status and its
+    path or paths under `--name-status`, and counts and paths under
+    `--numstat`. The header is returned without `marker`.
+    """
+    records: list[tuple[str, list[str]]] = []
+    for token in listing.split("\0"):
+        if token.startswith(marker):
+            records.append((token[len(marker) :], []))
+        elif records:
+            fields = records[-1][1]
+            field = token.removeprefix("\n") if not fields else token
+            if field:
+                fields.append(field)
+    return [(header, tuple(fields)) for header, fields in records]
+
+
 def uncommitted_paths(root: Path, run: Runner) -> tuple[str, ...]:
     """Every path whose change the checkout holds and `HEAD` does not, sorted.
 

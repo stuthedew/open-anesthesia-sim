@@ -2107,15 +2107,29 @@ def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
     return file_text(_git(["diff", f"{base}...HEAD"], root))
 
 
-#: The post-image path out of a `diff --git a/x b/x` header. A header this
-#: cannot read yields `""`, which `is_assertion_line` reads as "could be code"
-#: rather than as "is not" - an unreadable header stays on the reporting side.
-DIFF_HEADER_RE = re.compile(r"^diff --git a/(?:.*) b/(?P<path>.*)$")
+#: The post-image path out of a `diff --git a/x b/x` header. Git quotes either
+#: side that holds a byte it will not print, so the quoted post-image is read
+#: first and its quoting taken off by `vcs.unquoted_path` (`PL-MR8Z`). A
+#: header this cannot read yields `""`, which `is_assertion_line` reads as
+#: "could be code" rather than as "is not" - an unreadable header stays on the
+#: reporting side.
+DIFF_HEADER_RE = re.compile(
+    r'^diff --git (?:"a/(?:[^"\\]|\\.)*"|a/.*) (?P<quoted>"b/(?:[^"\\]|\\.)*")$'
+    r"|^diff --git a/(?:.*) b/(?P<path>.*)$"
+)
 
 #: A merge's file header in the combined diff `git show` writes for one, and
-#: the path git names; a quoted one is read as `""`, as an unread two-way
-#: header is (`PL-W6ZD`).
+#: the path git names, quoted as a two-way header's is (`PL-W6ZD`).
 COMBINED_HEADER_RE = re.compile(r"^diff --(?:cc|combined) (?P<path>.*)$")
+
+
+def _header_path(header: re.Match[str] | None) -> str:
+    """The post-image path a `DIFF_HEADER_RE` match names, unquoted, or `""`."""
+    if header is None:
+        return ""
+    if quoted := header.group("quoted"):
+        return vcs.unquoted_path(quoted).removeprefix("b/")
+    return header.group("path")
 
 
 def _net_line_changes(
@@ -2183,6 +2197,10 @@ def _net_line_changes(
     # two-way section.
     combined = False
     columns: list[tuple[Counter[str], Counter[str]]] = []
+    # Whether a two-way section has reached its first hunk. The lines before
+    # it are the file's header, `---` and `+++` among them; every `+` or `-`
+    # line after it is content, a removed `--1` or an added `++2` included.
+    in_hunk = False
 
     def fold() -> None:
         if not columns:
@@ -2197,14 +2215,15 @@ def _net_line_changes(
     for line in split_lines(diff):
         if line.startswith("diff "):
             fold()
-            combined, columns = False, []
+            combined, columns, in_hunk = False, [], False
         if line.startswith("diff --git "):
-            current = line
-            header = DIFF_HEADER_RE.match(line)
-            path = header.group("path") if header else ""
+            path = _header_path(DIFF_HEADER_RE.match(line))
+            # A quoted header is keyed by the path it names, as a merge's is
+            # below, so the fold runs across both spellings of one file.
+            current = f"diff --git a/{path} b/{path}" if path and line.endswith('"') else line
             continue
         if merged := COMBINED_HEADER_RE.match(line):
-            path = "" if merged.group("path").startswith('"') else merged.group("path")
+            path = vcs.unquoted_path(merged.group("path"))
             # Keyed as the file's two-way patches are, so the fold runs across both.
             current, combined = f"diff --git a/{path} b/{path}" if path else line, True
             continue
@@ -2218,11 +2237,12 @@ def _net_line_changes(
                     if mark in "+-":
                         column[0 if mark == "+" else 1][text] += 1
             continue
-        # The `+++`/`---` header lines are excluded by the second test, exactly
-        # as they were before the fold.
-        if line.startswith("+") and line[1:2] != "+":
+        if not in_hunk:
+            in_hunk = line.startswith("@@")
+            continue
+        if line.startswith("+"):
             side = 0
-        elif line.startswith("-") and line[1:2] != "-":
+        elif line.startswith("-"):
             side = 1
         else:
             continue
@@ -2564,7 +2584,7 @@ def _added_record(root: Path, base: str, path: str) -> bool:
     folder, _, name = path.rpartition("/")
     if f"{folder}/" != RECORDS or not RECORD_NAME_RE.fullmatch(name):
         return False
-    if _git(["ls-tree", "--name-only", base, "--", path], root).strip():
+    if _git(["ls-tree", "-z", "--name-only", base, "--", path], root).strip("\0"):
         return False
     text = vcs.call_git(["show", f"HEAD:{path}"], root).answer
     if not text:
