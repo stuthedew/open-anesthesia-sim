@@ -4197,9 +4197,7 @@ CONDITIONED_STEPS = (
 )
 
 
-def test_gate_parity_leaves_out_a_step_whose_if_excludes_pull_requests(
-    tmp_path: Path,
-) -> None:
+def test_gate_parity_leaves_out_a_step_whose_if_excludes_pull_requests(tmp_path: Path) -> None:
     """`PL-ZXM1`'s reproduction: a script CI runs only on a push to `main` gates no merge.
 
     Before the step's `if:` was read, `x_check.py` passed as covered and the
