@@ -14,6 +14,7 @@ closed: 2026-09-26
 pr: 1036
 payoff: docket show stops inviting work on an item that is closed or blocked
 verify: grep -q 'def test_show_calls_an_edited_item_startable_only_when_its_status_allows' subprojects/docket/tests/test_cli.py
+reenters: PL-6T44
 recurrences: 2026-09-24 PL-TS8G
 ---
 
