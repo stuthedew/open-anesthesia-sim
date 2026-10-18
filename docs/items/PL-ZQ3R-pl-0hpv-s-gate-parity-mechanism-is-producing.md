@@ -3,16 +3,18 @@ id: PL-ZQ3R
 title: PL-0HPV's gate-parity mechanism is producing again: tools/doc_check.py's check_gate_parity counts a command as run by a gate without reading the mode or condition it runs under, and four filings re-entered PL-0HPV after it closed spent
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect
 feature: gate-parity-conditions
-touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/items
+touches: tools/doc_check.py, tools/required_checks_check.py, tests/unit/test_doc_check.py, tests/unit/test_makefile_reference.py, docs/items
 deferred-from: v0.6.0 - captured after the freeze, workflow lane and not safety or science; as a live generator head it ranks above every band whatever the gate says
 added: 2026-10-18
+closed: 2026-10-18
+pr: 1580
 payoff: make check and CI are compared on what each actually runs on a pull request, so a check one gate skips under a condition or a mode is reported rather than counted as covered, and PL-0HPV's fact stops re-entering
 verify: grep -q '^generator: spent' docs/items/PL-ZQ3R-*.md
 root-cause-of: PL-RW3T, PL-ZXM1, PL-HSB3, PL-5M36
-generator: live - check_gate_parity counts a command as run by a gate without reading the mode or the condition it runs under; four filings arrived from ordinary work after PL-0HPV closed on 2026-09-22, the last on 2026-10-10, and PL-ZXM1 and PL-HSB3 are still open
+generator: spent - check_gate_parity now reads what each command runs under on both sides: a script's mode (PL-RW3T), the if: of a workflow step and of its job, and a Makefile conditional, which it declines; a condition it cannot evaluate is declined by name, so no command reaches either gate's set without its condition read, and a new condition form can only add a decline, never a false match
 misread: The checks the local gate and the merge gate each run, and where the two sets differ
 reenters: PL-0HPV
 ---
@@ -71,3 +73,13 @@ stopped for length before claiming it, so a fresh thread takes it up.
 5. Pin each with a test that fails on the code before the fix. Then record
    the bound in this item's `generator:` as `spent - <why>`, which its
    `verify:` tests, and close all three.
+
+**Fixed 2026-10-18, with `PL-ZXM1` and `PL-HSB3`.** One rule now applies to
+both gates: a command counts as run by a gate only where every pull request
+runs it, and a condition the reader cannot settle is declined by name. On the
+merge gate, `pull_request_runs` reads each step's and job's `if:`. On the
+local gate, `_target_recipes` declines a recipe line inside a Makefile
+conditional. With `PL-RW3T`'s mode reading, the three ways a command could be
+counted without its condition read are closed. `PL-5M36` already made any
+decline stop the comparison. A new condition form can now only add a decline,
+which the check prints, and never a false match, so the mechanism is spent.
