@@ -8,6 +8,7 @@ classes: infra
 touches: pyproject.toml, uv.lock, .github/workflows/drift.yml, ROADMAP.md
 added: 2026-10-18
 closed: 2026-10-18
+pr: 1600
 payoff: the package declares the CPython 3.15 support that a green drift run has shown, while every routine run stays on the pinned 3.14
 verify: grep -qF 'requires-python = ">=3.14,<3.16"' pyproject.toml && grep -qF 'requires-python = ">=3.14, <3.16"' uv.lock
 ---
