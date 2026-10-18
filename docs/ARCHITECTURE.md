@@ -357,8 +357,10 @@ next step would be refused identically. Neither can be resumed, only cleared
 by `reset()` or by starting a fresh run with `set_agent()` - and `reset()`
 can itself refuse, for a settings record the definition cannot open on, which
 it does before it clears anything; `RunView._handle_reset` halts the run on
-that refusal through the same path, the banner naming the setting to change
-as the way out, since Reset is the door it names otherwise (`PL-M4M0`). A
+that refusal through the same path (`PL-M4M0`). Reset is the door the banner
+names otherwise, so this banner says instead that no setting can repair the
+refusal and that closing and reopening the application starts a new run
+(`PL-01GY`). A
 control used on a run whose snapshot refuses meets the same halt rather than
 a raise the toolkit prints: `RunView._handle_agent_change` and the label
 rewrite a dragged slider owes at once both read the snapshot inside a slot, so
