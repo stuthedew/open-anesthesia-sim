@@ -1,10 +1,15 @@
 ---
 paths:
   - "/subprojects/docket/**"
+  - "/bin/**"
   - "/tools/**"
   - "/.claude/**"
   - "/.github/**"
+  - "/CLAUDE.md"
   - "/docs/worker.md"
+  - "/docs/maintainer.md"
+  - "/docs/apparatus.md"
+  - "/docs/resident-instructions.md"
 ---
 
 # The bar for the workflow apparatus

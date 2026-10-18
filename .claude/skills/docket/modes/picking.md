@@ -195,14 +195,11 @@ the same breath — "PL-K7QX is the workflow lane's pick; three items span both
 halves and are waiting for a session that can take the lot." An item invisible
 in both lanes and mentioned in neither is how work goes missing for months.
 
-**Every item you offer carries its relation to the gate, and this rule is not
-confined to this mode** (project owner, 2026-09-13). It applies wherever a next
-item is named: a `next` answer, the closing line of a design round, the last
-paragraph of a session that just finished something else. That last one is
-where it was missed — `PL-FZ6T` was offered as "the natural continuation" of
-the item that had just unblocked it, with nothing said about the gate, which
-reads as *what the project should do next* while sitting outside what the
-project said it was doing (`PL-J790`).
+**Every item you offer carries its relation to the gate.**
+`.claude/skills/docket/SKILL.md` § "Always" states the rule, because it binds every mode that names a next item
+and not only this one (`PL-J790`, `PL-B1R4`). An item offered without its
+relation reads as *what the project should do next* even when it sits outside
+what the project said it was doing.
 
 There are four relations, and `docket next` prints all but the last in its
 reason line under each item:
