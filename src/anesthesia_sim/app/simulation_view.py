@@ -50,7 +50,6 @@ from dataclasses import dataclass
 from typing import Final
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QResizeEvent
 from PySide6.QtWidgets import (
     QAbstractButton,
     QBoxLayout,
@@ -67,12 +66,7 @@ from PySide6.QtWidgets import (
 
 from anesthesia_sim.app.area_layout import AreaLayout
 from anesthesia_sim.app.chart_frame import ChartFrame, RunInput, assemble_chart_frame
-from anesthesia_sim.app.chart_time_base import (
-    FIT_RUN_KEY,
-    SELECTABLE_TIME_BASES,
-    ChartTimeBase,
-    time_base_for_span,
-)
+from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import (
     INITIAL_COMPARTMENT_SELECTION,
     CompartmentSelection,
@@ -80,7 +74,6 @@ from anesthesia_sim.app.compartment_selection import (
 from anesthesia_sim.app.controller import BranchedCase, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     CHART_HEADING,
-    FIT_RUN_LABEL,
     FORK_NOTHING_SELECTED_TEXT,
     MAX_DISPLAYED_RUNS,
     NO_TRACES_SHOWN_TEXT,
@@ -108,8 +101,14 @@ from anesthesia_sim.app.dashboard_frame import (
     time_axis_caption,
     trunk_reset_question,
 )
-from anesthesia_sim.app.formatting import format_time_base, mac_multiple
-from anesthesia_sim.app.qt_chart import ConcentrationChart, TraceLegend, WashInChart, WashInLegend
+from anesthesia_sim.app.formatting import mac_multiple
+from anesthesia_sim.app.qt_chart import (
+    ConcentrationChart,
+    TimeBaseSelector,
+    TraceLegend,
+    WashInChart,
+    WashInLegend,
+)
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, BookmarksPanel, ForkPanel, styled_label
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_view import RunView
@@ -118,7 +117,6 @@ from anesthesia_sim.app.stylesheets import (
     page_stylesheet,
     panel_stylesheet,
     scroll_area_stylesheet,
-    selector_stylesheet,
 )
 from anesthesia_sim.app.theme import (
     GRIDLINE,
@@ -129,7 +127,6 @@ from anesthesia_sim.app.theme import (
     PAGE_SPACING,
     PANEL_PADDING,
     SECTION_DIVIDER_HEIGHT,
-    TIME_BASE_SELECTOR_WIDTH,
     WARNING,
 )
 from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set, window_region
@@ -296,6 +293,14 @@ class SimulationView(QWidget):
     simply no longer told, and a second is told the same (`PL-VN6M`).
     """
 
+    time_base_changed = Signal(object)
+    """Emitted with the time base a frame was drawn at, None for "Fit run", once both plots drew it.
+
+    Every time-base control is connected to it rather than called, so one
+    that has been closed is simply no longer told, and a second is told the
+    same (`PL-9LNF`), as `compartment_selection_changed` is for the legend.
+    """
+
     def __init__(
         self,
         controllers: Sequence[SimulationController],
@@ -385,19 +390,23 @@ class SimulationView(QWidget):
 
         self._concentration_chart = ConcentrationChart()
         self._wash_in_chart = WashInChart()
+        # Every chart one frame is drawn on. The frame's width and the render
+        # tick's question of whether a chart has outgrown it are read over
+        # these rather than over two charts named in place, because once each
+        # chart is a View in its own Area either may be absent and a second
+        # of one kind may be open at another width (`PL-9LNF`).
+        self._charts: tuple[ConcentrationChart | WashInChart, ...] = (
+            self._concentration_chart,
+            self._wash_in_chart,
+        )
         self._legend = TraceLegend()
         self.compartment_selection_changed.connect(self._legend.show_selection)
         self._wash_in_legend = WashInLegend()
-        self._time_base_dropdown = QComboBox()
-        self._time_base_dropdown.setFixedWidth(TIME_BASE_SELECTOR_WIDTH)
-        self._time_base_dropdown.setStyleSheet(selector_stylesheet())
-        self._time_base_dropdown.addItem(FIT_RUN_LABEL, userData=FIT_RUN_KEY)
-
-        for time_base in SELECTABLE_TIME_BASES:
-            self._time_base_dropdown.addItem(
-                format_time_base(time_base.span_s), userData=str(time_base.span_s)
-            )
-
+        # The control shows this view's time base and asks to change it; it
+        # holds none of its own, so closing it takes nothing with it and a
+        # second shows the same width (`PL-9LNF`).
+        self._time_base_selector = TimeBaseSelector()
+        self.time_base_changed.connect(self._time_base_selector.show_time_base)
         self._time_axis_caption = styled_label("", color=MUTED)
         self._mac_reference_text = styled_label("", color=MUTED)
         self._mac_awake_reference_text = styled_label("", color=MUTED)
@@ -439,7 +448,7 @@ class SimulationView(QWidget):
         for controller in controllers:
             self._place_run(controller)
 
-        self._time_base_dropdown.currentIndexChanged.connect(self._handle_time_base_change)
+        self._time_base_selector.time_base_requested.connect(self._handle_time_base_request)
         self._legend.compartment_requested.connect(self._handle_compartment_request)
 
         self._render_timer = QTimer(self)
@@ -651,7 +660,7 @@ class SimulationView(QWidget):
         heading.setSpacing(8)
         heading.addWidget(styled_label(CHART_HEADING, color=INK, bold=True, wrap=True), 1)
         heading.addWidget(styled_label(TIME_BASE_LABEL, color=MUTED))
-        heading.addWidget(self._time_base_dropdown)
+        heading.addWidget(self._time_base_selector)
         column.addLayout(heading)
         column.addWidget(self._time_axis_caption)
         column.addWidget(self._mac_reference_text)
@@ -1251,8 +1260,7 @@ class SimulationView(QWidget):
         behind a display that had stopped.
 
         A frame drawn now discharges one owed, so drawing at once clears the
-        pending flag first: the resize `show()` delivers owes a frame, and
-        the first presentation that follows it is that frame.
+        pending flag first.
 
         Args:
             coalesce: True to mark a frame owed and let the render tick draw
@@ -1275,13 +1283,16 @@ class SimulationView(QWidget):
         """Draw a frame if a run is running or one is owed; halt every run if drawing fails.
 
         A frame is owed when a change asked for one (`present(True)`), when
-        the run set differs from the one the last frame was drawn over, and
-        when a run's record differs from the one its view last wrote
-        (`RunView.owes_a_frame`). The last two are read from the runs rather
-        than asked for by whatever changed them, so a run that stops itself
-        inside its own step tick is redrawn within one tick (`PL-T995`), a
-        run added without a frame is drawn on the next (`PL-0LG6`), and a
-        path added later is covered without being named (`PL-X7D5`).
+        the run set differs from the one the last frame was drawn over, when
+        a run's record differs from the one its view last wrote
+        (`RunView.owes_a_frame`), and when a chart is wider than the frame it
+        drew was sampled for (`ConcentrationChart.owes_a_frame`). The last
+        three are read from the runs and the charts rather than asked for by
+        whatever changed them, so a run that stops itself inside its own step
+        tick is redrawn within one tick (`PL-T995`), a run added without a
+        frame is drawn on the next (`PL-0LG6`), a chart whose Area a reader
+        widens is redrawn although the window kept its size (`PL-9LNF`), and
+        a path added later is covered without being named (`PL-X7D5`).
 
         The pending flag is cleared before the frame is drawn, so a frame
         that raises cannot leave the change that asked for it owed forever;
@@ -1294,6 +1305,7 @@ class SimulationView(QWidget):
             and not self._render_pending
             and len(self._runs) == self._drawn_run_count
             and not any(run.owes_a_frame for run in self._runs)
+            and not any(chart.owes_a_frame for chart in self._charts)
         ):
             return
 
@@ -1307,8 +1319,11 @@ class SimulationView(QWidget):
     def _refresh_view(self) -> None:
         """Read every run once, assemble one frame, draw both plots, then refresh every run.
 
-        The frame is assembled for the wider of the two plots, so neither
-        draws a chord wider than a pixel (`PL-GS3R`). The MAC-awake line is
+        The frame is assembled for the widest of the charts, so none draws
+        a chord wider than a pixel (`PL-GS3R`). One frame rather than one per
+        chart at its own width: the two plots differ by about 53 px at every
+        window width measured, so a frame each would assemble twice on every
+        tick (`PL-9LNF`). The MAC-awake line is
         the reference run's, because the frame carries the band's edges and
         not the published fraction it was drawn from. Both legends are told
         what the frame drew once both plots have drawn it, and not before,
@@ -1324,6 +1339,7 @@ class SimulationView(QWidget):
         # set is answered by the halt it raises, and is not retried every tick.
         self._drawn_run_count = len(self._runs)
         selection = self._compartment_selection
+        time_base = self._time_base
         snapshots = tuple(run.snapshot() for run in self._runs)
         inputs = tuple(
             RunInput(run_label(index), run.controller, snapshot, run.adjustments(snapshot))
@@ -1331,15 +1347,16 @@ class SimulationView(QWidget):
         )
         frame = assemble_chart_frame(
             inputs,
-            self._time_base,
+            time_base,
             selection.shown,
-            plot_width_px=max(
-                self._concentration_chart.plot_width_px(), self._wash_in_chart.plot_width_px()
-            ),
+            plot_width_px=max(chart.plot_width_px() for chart in self._charts),
         )
-        self._concentration_chart.draw(frame)
-        self._wash_in_chart.draw(frame)
+
+        for chart in self._charts:
+            chart.draw(frame)
+
         self.compartment_selection_changed.emit(selection)
+        self.time_base_changed.emit(time_base)
         self._wash_in_legend.set_run_count(len(frame.runs))
         self._time_axis_caption.setText(time_axis_caption(frame))
         self._mac_reference_text.setText(mac_reference_caption(frame))
@@ -1559,24 +1576,14 @@ class SimulationView(QWidget):
         selected = marks[index]
         self._apply_to_every_run(lambda run: run.remove_mac_target(selected))
 
-    def _handle_time_base_change(self, index: int) -> None:
-        """Take the width the reader chose and draw it at once.
+    def _handle_time_base_request(self, time_base: ChartTimeBase | None) -> None:
+        """Answer a reader's pick of a width, None for "Fit run": take it and draw at once.
 
-        Touches no simulation state: the time base is a view control, never
-        disabled, and Reset leaves it alone (`PL-012`).
-
-        Raises:
-            ValueError: If the control offers a width not on the ladder
-                (`time_base_for_span`) - a divergence between the two tables
-                is a defect to surface.
+        The control only asks. Touches no simulation state: the time base is
+        a view control, never disabled, and Reset leaves it alone (`PL-012`).
         """
 
-        key = self._time_base_dropdown.itemData(index)
-
-        if key is None:
-            return
-
-        self._time_base = None if key == FIT_RUN_KEY else time_base_for_span(float(key))
+        self._time_base = time_base
         self.present(False)
 
     def _handle_compartment_request(self, quantity: RecordedQuantity, shown: bool) -> None:
@@ -1594,19 +1601,6 @@ class SimulationView(QWidget):
 
         self._compartment_selection = self._compartment_selection.with_compartment(quantity, shown)
         self.present(False)
-
-    def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.
-        """Owe the render tick one frame from the new width.
-
-        A frame is assembled for the plot width it is drawn on, one column
-        per pixel, so the frame on screen is only right for the width it
-        was drawn at: after a resize while paused, with nothing running and
-        nothing owed, the columns drawn for the old width would stand on
-        the new one at a chord wider than a pixel (`PL-GS3R`, `PL-25KS`).
-        """
-
-        super().resizeEvent(event)
-        self._render_pending = True
 
     def _halt_every_run(self, error: BaseException) -> None:
         """Stop every run for a raise out of the shared render path, say so, then try to draw.

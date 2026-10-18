@@ -136,7 +136,7 @@ from anesthesia_sim.app.playback import (
     PlaybackRate,
     playback_rate_for,
 )
-from anesthesia_sim.app.qt_chart import TraceLegend
+from anesthesia_sim.app.qt_chart import TimeBaseSelector, TraceLegend
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, MarkListingLabel, ParameterSlider
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
@@ -327,7 +327,7 @@ def _record_panels(run: RunView) -> tuple[QWidget, QWidget]:
     (`PL-N67T`).
     """
 
-    accounting = run._accounting_heading_text.parentWidget()
+    accounting = run._accounting_panels[0]._accounting_heading_text.parentWidget()
     timeline = run._control_timeline_heading_text.parentWidget()
     assert accounting is not None and timeline is not None, "a sidebar heading is in no panel"
 
@@ -385,11 +385,15 @@ def _drag(control: ParameterSlider, value: float, decimals: int) -> None:
 
 
 def _set_fresh_gas_flow(run: RunView, flow_l_min: float) -> None:
-    _drag(run._fresh_gas_flow_slider, flow_l_min, FLOW_DISPLAY_DECIMALS)
+    _drag(run._setting_controls[0]._fresh_gas_flow_slider, flow_l_min, FLOW_DISPLAY_DECIMALS)
 
 
 def _set_delivered_percent(run: RunView, percent: float) -> None:
-    _drag(run._delivered_concentration_slider, percent, CONCENTRATION_DISPLAY_DECIMALS)
+    _drag(
+        run._setting_controls[0]._delivered_concentration_slider,
+        percent,
+        CONCENTRATION_DISPLAY_DECIMALS,
+    )
 
 
 def _select_playback_rate(run: RunView, multiplier: int) -> None:
@@ -400,7 +404,7 @@ def _select_playback_rate(run: RunView, multiplier: int) -> None:
 
 
 def _select_time_base(view: SimulationView, key: str) -> None:
-    combo = view._time_base_dropdown
+    combo = view._time_base_selector
     index = combo.findData(key)
     assert index >= 0, f"the time-base control does not offer {key!r}"
     combo.setCurrentIndex(index)
@@ -918,13 +922,21 @@ def test_the_integer_sliders_span_the_supported_input_ranges(application: QAppli
     run = _shown_view(application, SimulationController()).runs[0]
 
     for control, minimum, maximum in (
-        (run._fresh_gas_flow_slider, MINIMUM_FRESH_GAS_FLOW_L_MIN, MAXIMUM_FRESH_GAS_FLOW_L_MIN),
         (
-            run._alveolar_ventilation_slider,
+            run._setting_controls[0]._fresh_gas_flow_slider,
+            MINIMUM_FRESH_GAS_FLOW_L_MIN,
+            MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+        ),
+        (
+            run._setting_controls[0]._alveolar_ventilation_slider,
             MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
             MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
         ),
-        (run._cardiac_output_slider, MINIMUM_CARDIAC_OUTPUT_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN),
+        (
+            run._setting_controls[0]._cardiac_output_slider,
+            MINIMUM_CARDIAC_OUTPUT_L_MIN,
+            MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+        ),
     ):
         assert control.slider.minimum() == slider_position(minimum, FLOW_DISPLAY_DECIMALS)
         assert control.slider.maximum() == slider_position(maximum, FLOW_DISPLAY_DECIMALS)
@@ -938,10 +950,10 @@ def test_every_slider_endpoint_reaches_the_core_and_is_accepted(application: QAp
     run = view.runs[0]
 
     for control in (
-        run._fresh_gas_flow_slider,
-        run._alveolar_ventilation_slider,
-        run._cardiac_output_slider,
-        run._delivered_concentration_slider,
+        run._setting_controls[0]._fresh_gas_flow_slider,
+        run._setting_controls[0]._alveolar_ventilation_slider,
+        run._setting_controls[0]._cardiac_output_slider,
+        run._setting_controls[0]._delivered_concentration_slider,
     ):
         for endpoint in (control.slider.minimum(), control.slider.maximum()):
             control.slider.setValue(endpoint)
@@ -959,7 +971,7 @@ def test_fresh_gas_flow_slider_forwards_value_to_controller(application: QApplic
     _set_fresh_gas_flow(run, 7.0)
 
     assert controller.snapshot().fresh_gas_flow_l_min == 7.0
-    assert run._fresh_gas_flow_slider.value_label.text() == "7.0 L/min"
+    assert run._setting_controls[0]._fresh_gas_flow_slider.value_label.text() == "7.0 L/min"
 
 
 def test_the_delivered_dial_reaches_the_core_as_the_percent_dialled(
@@ -978,7 +990,7 @@ def test_the_delivered_dial_reaches_the_core_as_the_percent_dialled(
 
     assert controller.snapshot().delivered_concentration_percent == 6.5
     assert controller.snapshot().delivered_partial_pressure_fraction == pytest.approx(0.065)
-    assert run._delivered_concentration_slider.value_label.text() == "6.50%"
+    assert run._setting_controls[0]._delivered_concentration_slider.value_label.text() == "6.50%"
 
 
 def test_alveolar_ventilation_slider_forwards_value_to_controller(
@@ -987,20 +999,20 @@ def test_alveolar_ventilation_slider_forwards_value_to_controller(
     controller = SimulationController()
     run = _shown_view(application, controller).runs[0]
 
-    _drag(run._alveolar_ventilation_slider, 8.0, FLOW_DISPLAY_DECIMALS)
+    _drag(run._setting_controls[0]._alveolar_ventilation_slider, 8.0, FLOW_DISPLAY_DECIMALS)
 
     assert controller.snapshot().alveolar_ventilation_l_min == 8.0
-    assert run._alveolar_ventilation_slider.value_label.text() == "8.0 L/min"
+    assert run._setting_controls[0]._alveolar_ventilation_slider.value_label.text() == "8.0 L/min"
 
 
 def test_cardiac_output_slider_forwards_value_to_controller(application: QApplication) -> None:
     controller = SimulationController()
     run = _shown_view(application, controller).runs[0]
 
-    _drag(run._cardiac_output_slider, 6.5, FLOW_DISPLAY_DECIMALS)
+    _drag(run._setting_controls[0]._cardiac_output_slider, 6.5, FLOW_DISPLAY_DECIMALS)
 
     assert controller.snapshot().cardiac_output_l_min == 6.5
-    assert run._cardiac_output_slider.value_label.text() == "6.5 L/min"
+    assert run._setting_controls[0]._cardiac_output_slider.value_label.text() == "6.5 L/min"
 
 
 def test_the_sliders_declare_an_adjustment_boundary_when_a_drag_begins(
@@ -1026,7 +1038,7 @@ def test_the_sliders_declare_an_adjustment_boundary_when_a_drag_begins(
         controller.set_fresh_gas_flow(FreshGasFlow(3.0))
         controller.advance(SIMULATION_STEP_S)
 
-        control: ParameterSlider = getattr(run, slider_name)
+        control: ParameterSlider = getattr(run._setting_controls[0], slider_name)
         control.slider.sliderPressed.emit()
         controller.set_fresh_gas_flow(FreshGasFlow(2.0))
 
@@ -1057,7 +1069,7 @@ def test_a_drag_of_one_slider_is_marked_and_listed_once(application: QApplicatio
     controller.start()
     _advance(controller, 10.0)
 
-    run._delivered_concentration_slider.slider.sliderPressed.emit()
+    run._setting_controls[0]._delivered_concentration_slider.slider.sliderPressed.emit()
 
     for percent in (3.0, 3.5, 4.0):
         _set_delivered_percent(run, percent)
@@ -1114,7 +1126,9 @@ def test_a_refused_setting_is_reported_without_stopping_the_run(
     # The control must not keep showing a dial position the simulation is
     # not running at: that is the correct number under the wrong label.
     assert controller.snapshot().delivered_concentration_percent == delivered_before
-    assert run._delivered_concentration_slider.value() == pytest.approx(delivered_before)
+    assert run._setting_controls[0]._delivered_concentration_slider.value() == pytest.approx(
+        delivered_before
+    )
 
 
 def test_a_refusal_notice_clears_once_a_setting_is_accepted(application: QApplication) -> None:
@@ -1160,7 +1174,7 @@ def test_every_slider_handler_refuses_without_escaping_into_the_toolkit(
     notice = run._notice_text.notice()
     assert notice is not None
     assert "Setting refused" in notice
-    control: ParameterSlider = getattr(run, slider_name)
+    control: ParameterSlider = getattr(run._setting_controls[0], slider_name)
     assert control.value() >= 0.0
 
 
@@ -1342,7 +1356,7 @@ def test_a_dragged_slider_leaves_its_frame_to_the_render_tick(application: QAppl
     _set_fresh_gas_flow(run, 7.0)
 
     assert controller.snapshot().fresh_gas_flow_l_min == 7.0
-    assert run._fresh_gas_flow_slider.value_label.text() == "7.0 L/min"
+    assert run._setting_controls[0]._fresh_gas_flow_slider.value_label.text() == "7.0 L/min"
     assert view.presented_frames == presented
     assert view._render_pending is True
 
@@ -2026,7 +2040,7 @@ def test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial(
     controller = _paused_run_with_history()
     view = _shown_view(application, controller)
     run = view.runs[0]
-    dial = run._fresh_gas_flow_slider
+    dial = run._setting_controls[0]._fresh_gas_flow_slider
     assert dial.value_label.text() == "2.0 L/min"
     _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
     capfd.readouterr()
@@ -2108,7 +2122,10 @@ def test_a_halt_after_an_agent_change_names_one_agent(
     assert controller.agent_id == "desflurane"
     assert controller.has_failed is True
     assert run._status_text.text() == STATUS_FAILED_TEXT
-    assert run._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
+    assert (
+        run._setting_controls[0]._delivered_concentration_slider.name_label.text()
+        == "Delivered desflurane"
+    )
     assert run._subtitle_text.text() == format_subtitle("Desflurane")
     assert run._running_agent_text.text() == "Desflurane"
     assert run._compartment_substance_text.text() == "Modelled concentrations: Desflurane"
@@ -2166,15 +2183,15 @@ FRAME_WIDGETS: dict[str, str] = {
         "values of the snapshot a frame drew from. The clock stays with its "
         "readouts, so no row pairs one instant's clock with another's values."
     ),
-    "_agent_amounts_text": (
+    "_accounting_panels[0]._agent_amounts_text": (
         "the accounting panel's amounts, which are the snapshot's mass balance "
         "and so compartment values."
     ),
-    "_off_scale_text": (
+    "_off_scale_lines[0]": (
         "which drawn traces are above the plot, read from the points the frame "
         "drew (`dashboard_frame.off_scale_notice`)."
     ),
-    "_wash_in_state_text": (
+    "_wash_in_state_lines[0]": (
         "what the wash-in plot shows, from the snapshot's alveolar and inspired "
         "fractions and the frame's undrawn stretches."
     ),
@@ -2188,7 +2205,11 @@ FRAME_WIDGETS: dict[str, str] = {
 
 
 def _widget_attributes(run: RunView) -> dict[str, QWidget]:
-    """Every widget a `RunView` holds as an attribute, by name, and each of a tuple of them."""
+    """Every widget a `RunView` holds as an attribute, by name, and each of a tuple of them.
+
+    Each live copy of a run surface is included with every widget it holds,
+    named by its place in the run's list of copies (`PL-9LNF`).
+    """
 
     widgets: dict[str, QWidget] = {}
 
@@ -2197,6 +2218,16 @@ def _widget_attributes(run: RunView) -> dict[str, QWidget]:
             widgets[name] = value
         elif isinstance(value, tuple) and value and all(isinstance(v, QWidget) for v in value):
             widgets.update({f"{name}[{index}]": item for index, item in enumerate(value)})
+        elif isinstance(value, list) and all(isinstance(v, QWidget) for v in value):
+            for index, copy in enumerate(value):
+                widgets[f"{name}[{index}]"] = copy
+                widgets.update(
+                    {
+                        f"{name}[{index}].{inner}": item
+                        for inner, item in vars(copy).items()
+                        if isinstance(item, QWidget)
+                    }
+                )
 
     return widgets
 
@@ -2268,7 +2299,7 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
     controller.pause()
     view = _shown_view(application, controller)
     run = view.runs[0]
-    assert run._off_scale_text.isHidden() is False, "no trace is above the axis to go stale"
+    assert run._off_scale_lines[0].isHidden() is False, "no trace is above the axis to go stale"
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
     _select_agent(run, "desflurane")
@@ -2620,8 +2651,8 @@ def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_
         after.mixed_venous_partial_pressure_fraction
         == before.mixed_venous_partial_pressure_fraction
     )
-    assert run._cardiac_output_slider.value_label.text() == "5.0 L/min"
-    assert run._cardiac_output_slider.value() == 5.0
+    assert run._setting_controls[0]._cardiac_output_slider.value_label.text() == "5.0 L/min"
+    assert run._setting_controls[0]._cardiac_output_slider.value() == 5.0
     assert notice is not None
     assert "perfused at 6.0 L/min in total but cardiac output is 5.0 L/min" in notice
     assert "The values shown are the last completed step." in notice
@@ -2629,8 +2660,8 @@ def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_
     run._reset_button.click()
 
     assert controller.run_segments[-1].settings == ran_under
-    assert run._cardiac_output_slider.value_label.text() == "5.0 L/min"
-    assert run._cardiac_output_slider.value() == 5.0
+    assert run._setting_controls[0]._cardiac_output_slider.value_label.text() == "5.0 L/min"
+    assert run._setting_controls[0]._cardiac_output_slider.value() == 5.0
 
 
 def test_a_run_whose_core_setting_moved_past_its_controller_halts_on_the_last_recorded_step(
@@ -3168,7 +3199,10 @@ def test_the_delivered_label_on_screen_names_the_current_agent(application: QApp
 
     run = _shown_view(application, SimulationController(agent_id="desflurane")).runs[0]
 
-    assert run._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
+    assert (
+        run._setting_controls[0]._delivered_concentration_slider.name_label.text()
+        == "Delivered desflurane"
+    )
 
 
 def test_a_built_in_agent_without_an_identification_colour_fails_at_import() -> None:
@@ -3277,7 +3311,10 @@ def test_a_confirmed_agent_change_starts_the_new_case(application: QApplication)
     assert after.elapsed_s == 0.0
     assert after.control_timeline == ()
     assert run._agent_dropdown.currentData() == "desflurane"
-    assert run._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
+    assert (
+        run._setting_controls[0]._delivered_concentration_slider.name_label.text()
+        == "Delivered desflurane"
+    )
     assert dialog.isVisible() is False
     assert run._new_case_dialog is None
 
@@ -3783,14 +3820,14 @@ def test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it(
     view = _shown_view(application, controller)
     run = view.runs[0]
 
-    assert run._off_scale_text.isHidden() is False
-    assert "Circuit" in run._off_scale_text.text()
-    assert "Alveolar" not in run._off_scale_text.text()
-    assert "readouts above" in run._off_scale_text.text()
+    assert run._off_scale_lines[0].isHidden() is False
+    assert "Circuit" in run._off_scale_lines[0].text()
+    assert "Alveolar" not in run._off_scale_lines[0].text()
+    assert "readouts above" in run._off_scale_lines[0].text()
 
     _set_trace_shown(application, view, RecordedQuantity.CIRCUIT, False)
 
-    assert run._off_scale_text.isHidden() is True
+    assert run._off_scale_lines[0].isHidden() is True
 
 
 def test_the_control_timeline_is_not_regrouped_when_it_has_not_grown(
@@ -3838,7 +3875,7 @@ def test_the_chart_defaults_to_fitting_the_whole_run(application: QApplication) 
     view = _shown_view(application, controller)
     frame = view._concentration_chart.frame
 
-    assert view._time_base_dropdown.currentData() == FIT_RUN_KEY
+    assert view._time_base_selector.currentData() == FIT_RUN_KEY
     assert view._time_base is None
     assert frame is not None
     assert frame.fitted is True
@@ -3849,7 +3886,7 @@ def test_the_chart_defaults_to_fitting_the_whole_run(application: QApplication) 
 def test_the_time_base_selector_offers_fit_run_and_the_settled_widths(
     application: QApplication,
 ) -> None:
-    combo = _shown_view(application, SimulationController())._time_base_dropdown
+    combo = _shown_view(application, SimulationController())._time_base_selector
 
     assert [combo.itemData(index) for index in range(combo.count())] == [
         FIT_RUN_KEY,
@@ -3967,7 +4004,59 @@ def test_the_time_base_is_never_disabled(application: QApplication) -> None:
     view.present(False)
 
     assert view.runs[0]._agent_dropdown.isEnabled() is False
-    assert view._time_base_dropdown.isEnabled() is True
+    assert view._time_base_selector.isEnabled() is True
+
+
+def test_the_chosen_time_base_survives_its_selector_being_closed(application: QApplication) -> None:
+    """`PL-9LNF`: the dashboard owns the width both plots are drawn at, not the control.
+
+    Before, the dropdown was the state: the handler read the width back out
+    of it. Closing the control must leave the next frame at the width the
+    reader chose, and the caption beside the plots must still state it.
+    """
+
+    controller = _paused_run_with_history(1800.0)
+    view = _shown_view(application, controller)
+    _select_time_base(view, "1800.0")
+
+    view._time_base_selector.deleteLater()
+    _settle(application)
+    view.present(False)
+
+    frame = view._concentration_chart.frame
+    assert frame is not None
+    assert frame.fitted is False
+    assert frame.time_base == time_base_for_span(1800.0)
+    assert view._wash_in_chart.frame is frame
+    assert format_time_base(1800.0) in view._time_axis_caption.text()
+
+
+def test_a_second_time_base_selector_shows_the_width_a_first_one_chose(
+    application: QApplication,
+) -> None:
+    """Two controls on one dashboard show one width, because each shows what it is handed.
+
+    The second selector stands for a second chart View in another Area. It
+    is told the dashboard's width once a frame has drawn it, and a pick on
+    either is a request the dashboard answers for both.
+    """
+
+    view = _shown_view(application, SimulationController())
+    second = TimeBaseSelector()
+    view.time_base_changed.connect(second.show_time_base)
+    second.time_base_requested.connect(view._handle_time_base_request)
+
+    _select_time_base(view, "1800.0")
+
+    assert second.currentData() == "1800.0"
+
+    second.setCurrentIndex(second.findData(FIT_RUN_KEY))
+
+    assert view._time_base is None
+    assert view._time_base_selector.currentData() == FIT_RUN_KEY
+    frame = view._concentration_chart.frame
+    assert frame is not None
+    assert frame.fitted is True
 
 
 def test_reset_leaves_the_selected_time_base_alone(application: QApplication) -> None:
@@ -3977,7 +4066,7 @@ def test_reset_leaves_the_selected_time_base_alone(application: QApplication) ->
     view.runs[0]._reset_button.click()
 
     assert view._time_base == time_base_for_span(1800.0)
-    assert view._time_base_dropdown.currentData() == "1800.0"
+    assert view._time_base_selector.currentData() == "1800.0"
 
 
 def test_the_mac_axis_and_references_follow_the_agent(application: QApplication) -> None:
@@ -4086,7 +4175,7 @@ def test_a_real_run_draws_the_ratio_of_its_own_recorded_compartments(
 
     assert last_time == pytest.approx(snapshot.elapsed_s)
     assert last_ratio == pytest.approx(reading.plotted_ratio)
-    assert format_wash_in_ratio(last_ratio) in view.runs[0]._wash_in_state_text.text()
+    assert format_wash_in_ratio(last_ratio) in view.runs[0]._wash_in_state_lines[0].text()
 
 
 # ------------------------------------------- the whole interface, walked
@@ -4180,7 +4269,7 @@ def test_nothing_between_the_chart_heading_and_the_plot_is_a_sentence(
     strings = _strings_between(
         None,
         view._concentration_chart,
-        skip=(view._hidden_traces_text, view.runs[0]._off_scale_text),
+        skip=(view._hidden_traces_text, view.runs[0]._off_scale_lines[0]),
     )
 
     for value in strings:
@@ -4204,7 +4293,7 @@ def test_nothing_between_the_wash_in_heading_and_its_plot_is_a_sentence(
 
     view = _shown_view(application, SimulationController())
     strings = _strings_between(
-        view._concentration_chart, view._wash_in_chart, skip=(view.runs[0]._wash_in_state_text,)
+        view._concentration_chart, view._wash_in_chart, skip=(view.runs[0]._wash_in_state_lines[0],)
     )
 
     for value in strings:
@@ -4611,7 +4700,7 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
     assert scroll.horizontalScrollBar().maximum() == 0
     assert view._chart_column.minimumSizeHint().width() < 1000
 
-    for slider in view.runs[0]._sliders():
+    for slider in view.runs[0]._setting_controls[0].sliders:
         right_edge = slider.mapTo(page, slider.rect().bottomRight()).x()
 
         assert right_edge <= page.width(), "a setting control is laid beyond the page"
@@ -4644,7 +4733,7 @@ def test_the_sidebar_panels_measured_are_the_ones_the_page_holds(application: QA
 def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
     application: QApplication,
 ) -> None:
-    """Asking a run for its accounting or control-change panel again hands back the one it placed.
+    """Asking a run again for its accounting or control-change panel leaves the placed one drawn.
 
     The method that built both used to build two new panels on every call and
     lay the run's own labels into them, and a layout takes a widget from
@@ -4656,6 +4745,9 @@ def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
     overflow line is hidden while nothing overflows, so it is held to its
     column alone. Since `PL-NWTM` the accounting panel is in the sidebar and
     the control-change panel in the unconditional region's record column.
+    Since `PL-9LNF` the accounting panel may sit in an Area, so a second call
+    builds a second copy for another Area and leaves the first where it is.
+    The control-change panel stays in the region, so it is handed back.
     """
 
     view = _shown_view(application, SimulationController())
@@ -4664,10 +4756,10 @@ def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
     records = view._record_column.parentWidget()
     placed = _record_panels(run)
     shown = (
-        (run._accounting_heading_text, sidebar),
-        (run._agent_accounting_status_text, sidebar),
-        (run._agent_accounting_detail_text, sidebar),
-        (run._agent_amounts_text, sidebar),
+        (run._accounting_panels[0]._accounting_heading_text, sidebar),
+        (run._accounting_panels[0]._agent_accounting_status_text, sidebar),
+        (run._accounting_panels[0]._agent_accounting_detail_text, sidebar),
+        (run._accounting_panels[0]._agent_amounts_text, sidebar),
         (run._control_timeline_heading_text, records),
         (run._control_timeline_text, records),
     )
@@ -4690,12 +4782,12 @@ def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
         )
 
     assert records.isAncestorOf(run._control_timeline_overflow_text)
-    assert again[0] is placed[0], "a second call built a new accounting panel"
+    assert again[0] is not placed[0], "a second call handed back the placed accounting panel"
     assert again[1] is placed[1], "a second call built a new control-change panel"
 
 
 def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QApplication) -> None:
-    """Asking a run again for its transport row, readouts or controls hands back the placed one.
+    """Asking a run again for its transport row or readouts hands back the placed one.
 
     Each of the three used to lay the run's live widgets into a new container
     on every call, so a second call took the Start button, the substance
@@ -4705,7 +4797,9 @@ def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QAppl
     after it, and each shown one stays shown, so the test cannot pass on a
     row that never showed them. Each case names a widget that has to be
     shown to begin with; the lone run's name and the agent chip are hidden
-    in this state, so they are held to the page alone.
+    in this state, so they are held to the page alone. The setting controls
+    are not among the cases, because since `PL-9LNF` a second call builds a
+    second copy for another Area (`tests/integration/test_run_surfaces.py`).
     """
 
     view = _shown_view(application, SimulationController())
@@ -4722,11 +4816,9 @@ def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QAppl
         run._status_text,
     )
     readouts = (run._compartment_substance_text, run._interpretation_text, run._readout_row)
-    controls = tuple(run._sliders())
     cases = (
         ("transport row", run.build_transport_row, run._start_button, transport),
         ("readout section", run.build_readout_section, run._compartment_substance_text, readouts),
-        ("setting controls", run.build_parameter_controls, run._fresh_gas_flow_slider, controls),
     )
 
     for name, build, witness, widgets in cases:
@@ -4808,8 +4900,10 @@ def test_two_run_views_drive_two_controllers(application: QApplication) -> None:
     assert lean.snapshot().fresh_gas_flow_l_min == pytest.approx(1.0)
     assert generous.snapshot().fresh_gas_flow_l_min == pytest.approx(6.0)
 
-    assert lean_run._fresh_gas_flow_slider.value_label.text() == format_flow(1.0)
-    assert generous_run._fresh_gas_flow_slider.value_label.text() == format_flow(6.0)
+    lean_flow = lean_run._setting_controls[0]._fresh_gas_flow_slider
+    generous_flow = generous_run._setting_controls[0]._fresh_gas_flow_slider
+    assert lean_flow.value_label.text() == format_flow(1.0)
+    assert generous_flow.value_label.text() == format_flow(6.0)
     assert lean_run._elapsed_time_text.text() == format_elapsed(120.0)
     assert generous_run._elapsed_time_text.text() == format_elapsed(60.0)
 
@@ -5794,10 +5888,10 @@ def test_the_wash_in_state_and_off_scale_lines_name_their_run(application: QAppl
 
     for index, run in enumerate(view.runs):
         opening = f"{run_label(index)} — "
-        assert run._wash_in_state_text.text().startswith(opening)
-        assert run._off_scale_text.isHidden() is False
-        assert run._off_scale_text.text().startswith(opening)
-        assert "Circuit" in run._off_scale_text.text()
+        assert run._wash_in_state_lines[0].text().startswith(opening)
+        assert run._off_scale_lines[0].isHidden() is False
+        assert run._off_scale_lines[0].text().startswith(opening)
+        assert "Circuit" in run._off_scale_lines[0].text()
 
 
 def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplication) -> None:
@@ -5815,11 +5909,11 @@ def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplicat
     view = _shown_view(application, controller)
     run = view.runs[0]
 
-    assert run._off_scale_text.isHidden() is False
-    assert run._off_scale_text.text().startswith("Above the top of the plot:")
-    assert run._wash_in_state_text.text().startswith("Now: F_A/F_I =")
-    assert run_label(0) not in run._off_scale_text.text()
-    assert run_label(0) not in run._wash_in_state_text.text()
+    assert run._off_scale_lines[0].isHidden() is False
+    assert run._off_scale_lines[0].text().startswith("Above the top of the plot:")
+    assert run._wash_in_state_lines[0].text().startswith("Now: F_A/F_I =")
+    assert run_label(0) not in run._off_scale_lines[0].text()
+    assert run_label(0) not in run._wash_in_state_lines[0].text()
 
 
 #: A dial position above every agent's calibrated vaporizer maximum, so the core
@@ -5993,7 +6087,10 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
 
     for index, run in enumerate(view.runs):
         name = run_label(index)
-        headings = (run._accounting_heading_text, run._control_timeline_heading_text)
+        headings = (
+            run._accounting_panels[0]._accounting_heading_text,
+            run._control_timeline_heading_text,
+        )
 
         assert headings[0].text() == f"{ACCOUNTING_HEADING} — {name}"
         assert headings[1].text() == f"{CONTROL_TIMELINE_HEADING} — {name}"
@@ -6092,7 +6189,7 @@ def test_a_run_whose_region_lacks_a_declared_value_is_refused(
         if misplaced == "missing":
             del widgets[UnconditionalValue.ONE_MAC]
         else:
-            widgets[UnconditionalValue.ONE_MAC] = run._fresh_gas_flow_slider
+            widgets[UnconditionalValue.ONE_MAC] = run._setting_controls[0]._fresh_gas_flow_slider
 
         return widgets
 
@@ -6116,9 +6213,9 @@ def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QAppl
     view = _shown_view(application, controller)
     run = view.runs[0]
 
-    assert run._accounting_heading_text.text() == ACCOUNTING_HEADING
+    assert run._accounting_panels[0]._accounting_heading_text.text() == ACCOUNTING_HEADING
     assert run._control_timeline_heading_text.text() == CONTROL_TIMELINE_HEADING
-    assert run_label(0) not in run._accounting_heading_text.text()
+    assert run_label(0) not in run._accounting_panels[0]._accounting_heading_text.text()
     assert run_label(0) not in run._control_timeline_heading_text.text()
 
 
@@ -6151,6 +6248,77 @@ def test_dragging_the_border_beside_the_sidebar_changes_the_layout_model(
     assert splitter.sizes() == [chart_px - 100, sidebar_px + 100]
     assert tree.sizes[0] == pytest.approx((chart_px - 100) / (chart_px + sidebar_px), abs=1e-2)
     assert view.layout_container.frame(AreaId(1)).content is view._chart_column
+
+
+def _drag_area_border(application: QApplication, view: SimulationView, by_px: int) -> None:
+    """Drag the border between the chart panel and the sidebar by `by_px`, as a mouse does."""
+
+    splitter = view.layout_container.findChild(QSplitter)
+    assert splitter is not None, "the dashboard's Areas are not in a splitter"
+    handle = splitter.handle(1)
+    start = handle.rect().center()
+    end = QPoint(start.x() + by_px, start.y())
+
+    QTest.mousePress(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start)
+    QTest.mouseMove(handle, end)
+    QTest.mouseRelease(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, end)
+    application.processEvents()
+
+
+def test_resizing_one_chart_redraws_it_at_its_own_width(application: QApplication) -> None:
+    """`PL-9LNF`: widening a chart's Area while paused redraws it, though the window kept its size.
+
+    The frame on screen is sampled for the width it was drawn at (`PL-GS3R`).
+    A drag of the Area border changes the chart's width and not the
+    dashboard's, so a guard on the dashboard's own resize never fired: on
+    `main` at `512fdaed` the tick after the drag drew nothing and the widened
+    plot kept 2 px chords. Thirty minutes of history, so the frame has more
+    instants than the narrowed plot has pixels and the chord is set by the
+    columns rather than by the run.
+    """
+
+    controller = _paused_run_with_history(1800.0)
+    view = _shown_view(application, controller)
+    window_px = view.width()
+    _drag_area_border(application, view, -400)
+    view.present(False)
+    narrowed_px = view._concentration_chart.plot_width_px()
+    presented = view.presented_frames
+
+    _drag_area_border(application, view, 400)
+
+    assert view.width() == window_px, "the drag resized the dashboard, not only the Area"
+    assert view._concentration_chart.plot_width_px() > narrowed_px + 300
+    assert _widest_chord_px(view) > 1, "the drag did not widen the plot under the old frame"
+
+    view.render_tick()
+
+    assert view.presented_frames == presented + 1
+    assert _widest_chord_px(view) <= 1
+
+    view.render_tick()
+
+    assert view.presented_frames == presented + 1, "the tick kept drawing with nothing owed"
+
+
+def test_narrowing_a_chart_owes_no_frame(application: QApplication) -> None:
+    """A plot narrower than its frame's width draws chords closer than a pixel, and needs nothing.
+
+    So only a widening is owed a frame (`resample_owed`); a tick after a
+    narrowing drag draws nothing while paused, and no drawn chord is wider
+    than a pixel.
+    """
+
+    controller = _paused_run_with_history(1800.0)
+    view = _shown_view(application, controller)
+    view.render_tick()
+    presented = view.presented_frames
+
+    _drag_area_border(application, view, -400)
+    view.render_tick()
+
+    assert view.presented_frames == presented
+    assert _widest_chord_px(view) <= 1
 
 
 def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplication) -> None:

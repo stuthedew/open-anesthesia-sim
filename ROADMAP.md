@@ -126,7 +126,8 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.26 | Completed | **The release where the simulator's tests started catching wrong values they had let pass, and where `docs/MODEL.md` started saying which stored parameters the published-data comparison can detect an error in.** 44 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because nothing in `src/` changed, so a learner sees nothing different. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `src/` resolves to `ada5e66` at v0.5.25 and here, so the trajectories were not re-measured. `tests/reference/` gains published-data assertions for the first 25 minutes of wash-in (`PL-R0NL`) and cases that a changed parameter must fail (`PL-9YHR`), and four tests that claimed more than they held were renamed and narrowed (`PL-RXW0`). The unit tier now fails on an agent switch that keeps the old agent's compartments (`PL-QJXS`), a MAC-awake band left at the previous agent's values (`PL-JPS2`), and a stored MAC or MAC-awake fraction that drifts from its named source (`PL-FY35`, `PL-H1JH`). **It finishes three features**, `tests-detect-wrong-values`, `validation-resolving-power` and `friction-batch`, and closes no generator head. **Seven are Gate 2 entries**, and the gate stands at 220 of 241 cleared, from 213 of 240 at the v0.5.25 tag. `PL-L7RV`, the cut, ships in no release under `PL-KRS6`. | 44 items |
 | v0.5.27 | Completed | **The release where `docs/MODEL.md` started recording why no stored desflurane coefficient can fix its fast early wash-in, and where each agent file started citing the largest primary blood:gas measurement beside its stored value.** Five items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because no stored value changed, so a learner sees nothing different. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/`, `app/` and `layout/` resolve to the same trees as at v0.5.26, and `data/` (`c49fb36` to `3a5407c`) changes only in source entries, notes and provenance-gap text, so the trajectories were not re-measured. The three agent files cite Esper et al. 2015 beside their adopted blood:gas values, not adopted (`PL-SWY5`); the Gas Man study at PMC7943506 is cited under its real authors, Weber et al. 2021 (`PL-4RL2`); and `docs/MODEL.md` records that no desflurane coefficient moved within its published measurements closes the 1-to-10-minute gap (`PL-CM1B`). **It finishes `validation-resolving-power` a second time**, since `PL-CM1B` joined it after v0.5.26, and closes no generator head. **Three are Gate 2 entries**, and the gate stands at 223 of 243 cleared, from 220 of 241 at the v0.5.26 tag. `PL-HFQ9`, the cut, ships in no release under `PL-KRS6`. | 5 items |
 | v0.5.28 | Completed | **The release where no tissue group or venous pool stores a blood flow of its own any more, so each flow is formed from the cardiac output in one place, and where a machine profile that opens the run off its fresh gas slider's steps is refused.** 70 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: the flows are formed from the same equation as before, and the new refusal sits on a route no shipped profile takes. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and every state a run plays is bit-identical**: `core/` changed (`60697e5` to `1ebb078`) because a compartment's flow is now `f_i × Q` formed where it is used, a perfusion fraction can be written only when its group is built, and the patient refuses a tissue set whose fractions do not sum to 1 (`PL-HQF5`, `PL-Z0HN`); `app/` changed (`3b03e6f` to `a96792e`) because the dashboard refuses a machine profile whose opening fresh gas flow is not one of its slider's steps (`PL-1KQ9`). Over 81 runs across the three agents, each with two branches, all 6,561,000 steps, 11,253 sampled states, 11,178 canonical states, 2,187 drawn windows and 19,448,865 formatted strings are identical at both ends, as are three 24-hour runs. `data/`, `layout/`, `tests/reference/` and `README.md` resolve to the same trees. **It finishes thirteen features**, among them `cardiac-output-write-consistency`, and records two live generator heads, `PL-RJLQ` and `PL-ZQ3R`, while closing `PL-MLR4` as spent. **Two are Gate 2 entries**, and the gate stands at 225 of 243 cleared, from 223 of 243 at the v0.5.27 tag. `PL-SVZD`, the cut, ships in no release under `PL-KRS6`. | 70 items |
-| v0.5.29 | Completed / current baseline | **The release where the parts of v0.6.0 that have landed reach a learner: the required readouts sit in a band above the splitters, the splitter handles can be dragged, and two runs share one readout row.** 61 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 26 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and every state a run plays is bit-identical**: `core/` changed (`1ebb078` to `92e04de`) because `AgentUptakeSystem.settings_key()` lets the controller halt a run before a step at settings its definition never recorded (`PL-XRN8`). The band (`PL-NWTM`, `PL-W54S`), the live borders (`PL-W9P6`, `PL-L8RN`), the View registry (`PL-R1WQ`) and the shared readout row (`PL-F2YS`) change `app/`; three default Workspaces ship as data in `data/` and `layout/`, which no part of the interface reads yet (`PL-KXTL`). A learner also sees Branch scroll the chart into view (`PL-562Z`), the trunk's Reset ask before it discards a branch (`PL-W5WX`), no branch offered on a failed frame (`PL-T2Q2`), and a late mark read the same way on every run (`PL-1ZQ4`). **It finishes sixteen features**, among them `reset-aftermath`, and closes two generator heads spent, `PL-ZQ3R` and `PL-RJLQ`. **Seven are Gate 2 entries**, and the gate stands at 232 of 246 cleared, from 225 of 243 at the v0.5.28 tag. `PL-YBQM`, the cut, ships in no release under `PL-KRS6`. | 61 items |
+| v0.5.29 | Completed | **The release where the parts of v0.6.0 that have landed reach a learner: the required readouts sit in a band above the splitters, the splitter handles can be dragged, and two runs share one readout row.** 61 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 26 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and every state a run plays is bit-identical**: `core/` changed (`1ebb078` to `92e04de`) because `AgentUptakeSystem.settings_key()` lets the controller halt a run before a step at settings its definition never recorded (`PL-XRN8`). The band (`PL-NWTM`, `PL-W54S`), the live borders (`PL-W9P6`, `PL-L8RN`), the View registry (`PL-R1WQ`) and the shared readout row (`PL-F2YS`) change `app/`; three default Workspaces ship as data in `data/` and `layout/`, which no part of the interface reads yet (`PL-KXTL`). A learner also sees Branch scroll the chart into view (`PL-562Z`), the trunk's Reset ask before it discards a branch (`PL-W5WX`), no branch offered on a failed frame (`PL-T2Q2`), and a late mark read the same way on every run (`PL-1ZQ4`). **It finishes sixteen features**, among them `reset-aftermath`, and closes two generator heads spent, `PL-ZQ3R` and `PL-RJLQ`. **Seven are Gate 2 entries**, and the gate stands at 232 of 246 cleared, from 225 of 243 at the v0.5.28 tag. `PL-YBQM`, the cut, ships in no release under `PL-KRS6`. | 61 items |
+| v0.5.30 | Completed / current baseline | **The release where two compared runs each take one line above one shared heading, so the concentration chart gets back 63 px on the laptop reference, and where a failed drift run reaches the next session.** Three items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 27 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` resolves to `92e04de` at v0.5.29 and here, and `data/` and `layout/` resolve to the same trees, so the trajectories were not re-measured. `app/` changed (`6d1a9c6` to `48d6a4a`) because in compare mode each run's transport controls and delivered concentration share one line, and the substance, 1 MAC and model the two runs share are stated once above the paired readouts (`PL-QLZ5`). On the 1366 by 700 reference that takes the region from 366 px to 303 px and leaves the chart about 264 px, still under the 360 px one run keeps, which the project owner accepted (`PL-JG82`). **It finishes `claim-integrity`**, and closes no generator head. **One is a Gate 2 entry**, and the gate stands at 233 of 246 cleared, from 232 of 246 at the v0.5.29 tag. `PL-JLK6` and `PL-JTWV` shipped inside the v0.5.29 tag and are described here. `PL-1BL8`, the cut, ships in no release under `PL-KRS6`. | 3 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -231,110 +232,71 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.29
+## Current baseline: v0.5.30
 
-v0.5.29 is the release where the parts of v0.6.0 that have landed reach a
-learner. The required readouts now sit in a band above the dashboard's
-splitters, and the splitter handles can be dragged. The View registry names
-each kind of View an Area can show. Three default Workspaces ship as data,
-though no part of the interface reads them yet.
-It is also where a run stops before a step that a setting written past the
-controller would put out of step with the chart. It has 61 items, and it is a
-patch on both halves of § "Versioning decision"'s test. No capability boundary
-is crossed, because v0.6.0's capability, a layout the reader arranges, is not
-finished: 26 of the 39 ids in its Required scope are closed. The
-next three minor numbers, v0.6.0 through v0.8.0, are given to milestone
-sections. Seven of the items are Gate 2 entries. `bin/docket wave`
-puts the gate at 232 of 246 cleared at this cut, against
-225 of 243 at the v0.5.28 tag. Three entries were placed on the list since that tag, `PL-F2YS`, `PL-JG82` and `PL-QLZ5`, and 14 stay open,
-against 18.
+v0.5.30 is the release where two compared runs each take one line above one
+shared heading, so the concentration chart gets back some of the height that
+compare mode costs it. It is also where a failed run of the `drift.yml` checks
+reaches the next session. It has three items, and it is a patch on both halves
+of § "Versioning decision"'s test. No capability boundary is crossed, because
+v0.6.0's capability, a layout the reader arranges, is not finished: 27 of the
+39 ids in its Required scope are closed. The next three minor numbers, v0.6.0
+through v0.8.0, are given to milestone sections. One of the items, `PL-QLZ5`,
+is a Gate 2 entry. `bin/docket wave` puts the gate at 233 of 246 cleared at
+this cut, against 232 of 246 at the v0.5.29 tag, and 13 entries stay open.
 
-**No equation, parameter or stored value changed, and every state a run plays is bit-identical at both ends:**
+**No equation, parameter or stored value changed, and no run can differ:**
 
-| Tree | v0.5.28 | This cut | What moved |
+| Tree | v0.5.29 | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `d633fe1` | `76b408a` | `core/`, `app/`, `data/` and `layout/`, below |
-| `core/` | `1ebb078` | `92e04de` | `AgentUptakeSystem.settings_key()` returns every compartment value the settings record holds, which the propagator cache already compared and the controller now reads before each step (`PL-XRN8`) |
-| `app/` | `1da8fd4` | `6d1a9c6` | the required readouts move into a band above the splitters (`PL-NWTM`), and `window_region` says what each top-level window's band must hold (`PL-W54S`); `area_layout.py` drives the widget tree from the `LayoutModel` and makes the borders draggable (`PL-W9P6`, `PL-L8RN`); `view_registry.py` names each View kind and shows a notice in an Area whose kind it does not know (`PL-R1WQ`); the record column takes the sidebar's width and two runs share one readout row (`PL-F2YS`); Branch scrolls the chart into view and the trunk's Reset asks before it discards a branch (`PL-562Z`, `PL-W5WX`); a trunk whose shared frame failed offers no branch (`PL-T2Q2`); the controller reads a late mark the same way on every run (`PL-1ZQ4`) and halts before a step at settings its definition never recorded (`PL-XRN8`) |
-| `data/` | `3a5407c` | `af2d672` | three Workspaces, Default, Induction and Maintenance, ship as JSON under `data/workspaces/` (`PL-KXTL`) |
-| `layout/` | `c065b9e` | `42c1c40` | `layout/shipped.py` reads the shipped Workspaces with the reader a learner's own file goes through (`PL-KXTL`); dragging a border moves only the borders on the dragged line (`PL-5HSG`); joining two Areas no longer depends on which split was made first (`PL-G60V`); `MAIN_WINDOW` moves here from `app/` (`PL-W54S`) |
+| `src/` | `76b408a` | `0bb97af` | `app/` only, below |
+| `core/` | `92e04de` | `92e04de` | nothing |
+| `app/` | `6d1a9c6` | `48d6a4a` | in compare mode `RunView` puts each run's transport controls and delivered concentration on one line, and `SimulationView` states the substance, 1 MAC and model the two runs share once, on a heading line above the paired readouts (`PL-QLZ5`) |
+| `data/` | `af2d672` | `af2d672` | nothing |
+| `layout/` | `42c1c40` | `42c1c40` | nothing |
 | `tests/reference/` | `b0c7cb3` | `b0c7cb3` | nothing |
-| `docs/MODEL.md` | `b93b316` | `d3f0fc3` | § "Minimum displayed outputs" says what each top-level window's region holds (`PL-W54S`) and pairs two runs' readouts in one row (`PL-F2YS`); it says what sets the readout row's rung and where the use disclaimer lives (`PL-JSY5`), that the required readouts sit outside the splitters (`PL-NWTM`), that a machine profile opening off the slider's steps is refused (`PL-V9S0`), and that the trunk's Reset asks before it discards a branch (`PL-W5WX`) |
+| `docs/MODEL.md` | `d3f0fc3` | `8e5fdd6` | § "Minimum displayed outputs" says that each run's delivered concentration sits on its own line, and that the values the two runs share are stated once, because a second run must be on the first run's agent (`PL-QLZ5`) |
 | `README.md` | `98a0d7f` | `98a0d7f` | nothing |
-| `.github/` | `9447ac4` | `a17ea9c` | `drift.yml` installs the libraries PySide6 needs, keeps the tracked `.python-version`, and reaches a new CPython (`PL-FPCK`) |
+| `.github/` | `a17ea9c` | `a17ea9c` | nothing |
 
-`core/` moved, so this cut measured the trajectories rather than reading them
-off the diff. The script v0.5.25's cut used ran on the v0.5.28 tag and on this
-cut, unchanged. It played the same 81 runs through `SimulationController`: the
-three agents, each at three fresh gas flows (0.5, 2 and 8 L/min), three cardiac
-outputs (2.5, 5 and 8 L/min) and three alveolar ventilations (2, 4.5 and
-9 L/min), with the same bookmark, MAC target, four control changes and two
-branches from each run. Every value was compared as its exact bits.
+`core/`, `data/` and `layout/` resolve to the same trees at the v0.5.29 tag and
+at this cut, so no step a run takes can differ, and this cut did not measure
+the trajectories again. The `app/` change moves where values are drawn and
+computes none of them.
 
-- **Every state a run plays is bit-identical.** The `state_vector()` hashes
-  after each of the 6,561,000 steps agree at both ends. All 11,253 sampled
-  states agree in `capture_state()`, in `state_vector()` and in every field of
-  the snapshot, as do the 271 snapshots taken where a mark halted a run. The
-  snapshot has the same fields at both ends.
-- **So is every state derived from the run's record.** `RunDefinition.state_at`
-  is identical at all 11,178 sampled instants, and `drawn_window` on all 2,187
-  windows drawn, which hold 1,601,046 columns. None of the 236,313 readout
-  strings and none of the 19,212,552 hover-box strings differs.
-- **Three 24-hour runs stop at 86,400 s after 864,000 steps on both trees**,
-  with every step's state identical.
-- **What the script does not reach.** It sets every mark before its run
-  reaches it, so it does not test `PL-1ZQ4`'s late marks, whose answer this
-  release changes on purpose. It writes no setting past the controller, so it
-  never meets `PL-XRN8`'s new halt. The script is not kept in the repository.
+**What a learner sees change.** With two runs compared, each run used to have
+a transport row that wrapped onto two lines at 1366 px, and a heading line of
+its own under it. Each run now has one line holding its name, its transport
+controls and its delivered concentration. The substance, the agent's 1 MAC and
+the version and model are the same for both runs, so they are stated once, on
+the heading line above the paired readouts (`PL-QLZ5`). Measured on the
+offscreen font at 1366 by 700, the region above the chart drops from 366 px to
+303 px with two runs. That leaves the concentration chart about 264 px, up from
+about 201 px and still 96 px under the 360 px minimum that one run keeps. The
+project owner accepted a shorter chart in compare mode on that reference, on
+the condition that layout wins back what it can (`PL-JG82`). The estimate of 70
+to 80 px was not reached, because the version badge now sits on the shared
+heading line. `PL-T91K` records the other 24 px, the spacing of the empty
+notice column. With one run nothing changes, and the region stays 175 px.
 
-**What a learner sees change.** The page no longer opens with a title row.
-One band across the top holds each run's transport row, notice, readout heading
-and seven readout cards, with the control-change record in its right column
-(`PL-NWTM`). The band sits outside the splitters, so no later layout can close
-or replace a value that docs/MODEL.md says every Workspace keeps. The splitter
-handles under the band can now be dragged, through the one adapter module that
-drives the Qt widget tree from the `LayoutModel` (`PL-W9P6`, `PL-L8RN`).
-The control-change record is as wide as the sidebar under it, and two runs now share one row of seven readout panels, each value under its run's name, as docs/MODEL.md specified (`PL-F2YS`). In compare mode the chart on the 1366 by 700 reference is left about 201 px, under the 360 px minimum one run keeps, which the project owner accepted (`PL-JG82`); `PL-QLZ5` folds each run's transport row to win some of it back. Taking a branch scrolls the page so the concentration chart is wholly
-in view (`PL-562Z`). Pressing Reset on Run 1 while Run 2 holds simulated time or
-a recorded change now asks before it discards Run 2 (`PL-W5WX`). A trunk whose
-shared frame failed offers no branch, where the Branch button used to open one
-that the same frame halted at once (`PL-T2Q2`).
+**The apparatus.** `tools/main_ci_status.py` now reads `drift.yml` as well as
+`quality.yml`, so the session-start digest names each `drift.yml` job whose
+newest run on `main` did not pass (`PL-JTWV`). A failed run on 2026-10-01 had
+gone unread for 17 days. For a live claim on a branch that the base took whole,
+`bin/docket flight` now names the branch's head commit and `bin/docket arm`
+gives its `--self` hint (`PL-JLK6`). That finishes the `claim-integrity`
+feature. No generator head
+closes. The release item is `PL-1BL8`, whose `resource: release-train` keeps
+it out of every later release. Every closure carried its `pr:` number before
+the cut, so all three bullets cite their pull requests.
+`tools/pr_body_check.py` found no squash commit that lost its body.
 
-**Two runs can no longer answer a mark differently.** A mark added after the
-step that crossed it was read three ways. The trunk read a late MAC target as
-not reached where a branch opened on that step read it as reached. A mark
-added to a branch after it opened was never asked of its opening step. A fork
-at a keyframe the trunk halted on opened on no crossing, where "Branch here" at
-the same instant opened on the halt's. Every run now reads a mark inside the
-step it opened on or stands on as crossed by that step (`PL-1ZQ4`).
-
-**A setting written past the controller stops the run.** A core setter such as
-`set_cardiac_output`, called past `SimulationController`, changed what the steps
-ran at without changing the run's definition. The readouts, which come from the
-steps, and the chart, which comes from the definition, then disagreed until
-Reset. The controller now compares the core's settings with the definition's
-before each step and halts the run on the last step at which the two agree
-(`PL-XRN8`). The check costs about 1.8 µs against a 49.2 µs step. No interface
-control writes a setting past the controller.
-
-42 of the 61 items are the apparatus's. Many make one module the only
-reader of a fact several tools read on their own: an item's field predicates
-(`PL-4DK2`), git's spelling of an unusual path (`PL-4YDJ`, `PL-JTCQ`,
-`PL-MR8Z`) and an item's queue state (`PL-RJLQ`). `tools/doc_check.py`'s gate
-parity check now reads the mode or condition a command runs under (`PL-ZQ3R`,
-`PL-ZXM1`, `PL-HSB3`). `bin/docket arm` leaves alone a pull request whose
-auto-merge the owner switched off (`PL-8TPV`), and holds a change to what its
-answer is read through (`PL-WW0Q`). The release finishes sixteen
-features: `arm-follows-owner`, `brief-state-agreement`, `cardiac-output-write-consistency`, `claim-record`, `convergence-visibility`, `front-matter-round-trip`, `gate-parity-conditions`, `generator-identification`, `one-answer`, `owner-attention`, `reader-checks`, `reset-aftermath`, `review-hold`, `slug-rename-on-write`, `verify-close-out` and `verify-command-health`. `PL-ZQ3R` and `PL-RJLQ`, the two live generator heads
-v0.5.28 recorded, close as spent. The release item is `PL-YBQM`, whose
-`resource: release-train` keeps it out of every later release. Every closure
-carried its `pr:` number before the cut, so all 61 bullets cite their pull
-requests. `tools/pr_body_check.py` found no squash commit that lost its body.
-
-Two pull requests merged after v0.5.28's cut was written and before it landed, so they ship inside the v0.5.28 tag: `#1553` (`PL-2GY0`, `PL-3GKR`, `PL-9HHC`, `PL-B5LB`, `PL-GTSL`, `PL-MXLV`, `PL-ZB82`) and `#1572` (`PL-01GY`). They are described here, and v0.5.28's notes now point to this release for them. As before, anything that merges on `main` after this cut is written
-and before its pull request lands ships inside the v0.5.29 tag. It is
-described in the next release, and v0.5.29's notes take a pointer to it at that
-release's cut.
+`#1607` merged after v0.5.29's cut was written and before it landed, so it
+ships inside the v0.5.29 tag. Its two closed items, `PL-JLK6` and `PL-JTWV`,
+are described here, and v0.5.29's notes now point to this release for them.
+As before, anything that merges on `main` after this cut is written and before
+its pull request lands ships inside the v0.5.30 tag. It is described in the
+next release, and v0.5.30's notes take a pointer to it at that release's cut.
 
 ## The plan
 
