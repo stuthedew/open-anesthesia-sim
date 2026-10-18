@@ -34,6 +34,7 @@ from docket.store import ID_RE
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
 import generator_check
+import item_reads
 
 
 def _git(repo: Path, *args: str) -> None:
@@ -463,3 +464,39 @@ def test_a_history_git_cannot_read_leaves_the_ratio_unmeasured_rather_than_zero(
     assert "r = 0.00" not in out
     with pytest.raises(generator_check.GitUnanswered):
         generator_check.creation_parents(tmp_path)
+
+
+def test_a_shallow_clone_credits_no_commit_with_filing(
+    repo: Path, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    """A shallow clone declines here as `vcs.filed_with_work` declines (`PL-86H3`).
+
+    The boundary commit of a shallow clone shows every file it holds as added.
+    `creation_parents` read that as the boundary commit filing every older
+    item, so each one got the boundary's leading ids as its parents.
+    """
+    _write(repo, "PL-8888", touches="src/a.py", status="done")
+    _commit(repo, "PL-8888: capture")
+    _write(repo, "PL-BBBB", touches="src/a.py", status="ready")
+    _commit(repo, "PL-CCCC: later work that filed a finding")
+    clone = tmp_path_factory.mktemp("shallow") / "clone"
+    _git(repo, "clone", "-q", "--depth", "1", f"file://{repo}", str(clone))
+
+    assert vcs.is_shallow(clone) is True
+    with pytest.raises(generator_check.GitUnanswered, match="shallow"):
+        generator_check.creation_parents(clone)
+    assert "shallow" in vcs.filed_with_work(frozenset({"PL-8888"}), clone).declined
+
+
+def test_an_id_named_only_in_root_cause_of_is_cited_by_both_readers(repo: Path) -> None:
+    """Which items an item cites is `docket.store.cited_ids`' reading (`PL-86H3`).
+
+    `generator_check` read the whole file and `item_reads` the body only, so an
+    id named only in `root-cause-of:` counted for one and not the other.
+    """
+    _write(repo, "PL-8888", touches="src/a.py", status="ready")
+    head = _write(repo, "PL-BBBB", touches="src/a.py", status="ready", root_cause_of="PL-8888")
+    _commit(repo, "PL-8888, PL-BBBB: capture two findings")
+
+    assert generator_check.citations(repo, {"PL-8888", "PL-BBBB"})["PL-8888"] == 1
+    assert item_reads.citations(head, "PL-BBBB") == {"PL-8888"}

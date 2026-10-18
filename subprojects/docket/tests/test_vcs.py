@@ -18,7 +18,8 @@ from pathlib import Path
 import pytest
 
 from docket.checks import Report
-from docket.claims import BY_LANDING, LIVE, holdings
+from docket.claims import BY_LANDING, LIVE, holdings, work_outside_queue
+from docket.config import Config
 from docket.store import ID_PATTERN
 from docket.vcs import (
     _PATHSPEC_BYTES,
@@ -56,6 +57,7 @@ from docket.vcs import (
     StrandedReport,
     SubjectPullRequest,
     Unlisted,
+    _items_at,
     _landed_since,
     _landing_split,
     _Landings,
@@ -3847,6 +3849,26 @@ def test_a_squash_of_the_branch_is_landed_after_the_base_edits_it(tmp_path: Path
     assert landed_whole("main", repo.root, _run_git, ref="topic") is True
 
 
+def test_a_roadmap_only_commit_is_queue_work_to_both_readers(tmp_path: Path) -> None:
+    """A commit writing only `ROADMAP.md` is no merge evidence (`PL-86H3`).
+
+    A triage pass places an item on the gate in `ROADMAP.md` and writes nothing
+    else. `claims.work_outside_queue` read that as queue work, while
+    `landed_whole` read only the items directory as the queue and took the
+    commit, squashed onto the base, as proof the branch had merged.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", seed_txt="seed\n", ROADMAP_md="# Roadmap\n")
+    repo.git("switch", "-qc", "topic")
+    repo.commit("PL-K7QX: put it on the gate", ROADMAP_md="# Roadmap\n\n- PL-K7QX\n")
+    repo.git("switch", "-q", "main")
+    repo.git("merge", "-q", "--squash", "topic")
+    repo.git("commit", "-qm", "PL-K7QX: put it on the gate (#1)")
+
+    assert work_outside_queue(repo.root, "main~1", "topic", Config()) is False
+    assert landed_whole("main", repo.root, _run_git, ref="topic") is False
+
+
 def test_landed_whole_reads_no_supersession(tmp_path: Path) -> None:
     """The verdict reads only the landed half, so the other half costs no git call (`PL-F5CF`).
 
@@ -4081,6 +4103,27 @@ def test_a_staged_edit_restored_in_the_working_copy_is_listed(tmp_path: Path) ->
     assert uncommitted_paths(repo.root, _run_git) == ("seed.txt",)
     assert "seed.txt" in working_paths(repo.root).paths
     assert changed_paths(repo.root, "HEAD") == ("seed.txt",)
+
+
+def test_item_files_below_the_store_are_no_items(tmp_path: Path) -> None:
+    """The one listing of a ref's item files reads the store's own level only (`PL-86H3`).
+
+    `store.read_items` reads no subdirectory. `_item_blobs` listed the tree
+    recursively and counted `docs/items/sub/PL-BBBB-b.md`, while the one-level
+    listing `claims` and `claiming` read did not.
+    """
+    repo = _Repo(tmp_path / "repo")
+    (repo.root / "docs" / "items" / "sub").mkdir(parents=True)
+    (repo.root / "docs" / "items" / "PL-K7QX-a.md").write_text("a\n", encoding="utf-8")
+    (repo.root / "docs" / "items" / "sub" / "PL-B1C2-b.md").write_text("b\n", encoding="utf-8")
+    repo.commit("PL-K7QX: capture")
+
+    assert _items_at("HEAD", repo.root, "docs/items", _run_git) == {
+        "PL-K7QX": "docs/items/PL-K7QX-a.md"
+    }
+    assert _items_at("HEAD", repo.root, "docs/items/", _run_git) == {
+        "PL-K7QX": "docs/items/PL-K7QX-a.md"
+    }
 
 
 def test_filed_with_work_reads_a_path_holding_a_space() -> None:

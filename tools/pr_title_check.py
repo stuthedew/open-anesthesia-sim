@@ -85,14 +85,13 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_config  # noqa: E402
-from docket.lines import split_lines  # noqa: E402
 from docket.model import CLOSED_STATUSES, Item, parse_item  # noqa: E402
 from docket.store import read_items  # noqa: E402
-from docket.vcs import ITEM_FILE_RE, default_base, leading_ids, read_git  # noqa: E402
 
 # `GitUnanswered` is docket's, raised for a ref git did not read and for a
 # `WORKING_TREE` the disk did not, so a reader of either catches one class.
 from docket.vcs import GitUnanswered as GitUnanswered  # noqa: E402
+from docket.vcs import _items_at, default_base, leading_ids, read_git  # noqa: E402
 
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
 
@@ -132,13 +131,13 @@ def closed_items_at(ref: str) -> dict[str, Item]:
     if ref == WORKING_TREE:
         return _closed_on_disk()
     closed: dict[str, Item] = {}
-    listing = _git(["ls-tree", "-r", "--name-only", ref, "--", ITEMS_DIR])
-    for path in split_lines(listing):
-        name = path.strip().split("/")[-1]
-        if not ITEM_FILE_RE.match(name):
-            continue
-        text = _git(["show", f"{ref}:{path.strip()}"])
-        item = parse_item(text, name)
+    # Which files hold the items is `vcs._items_at`'s listing, as docket reads
+    # it (`PL-86H3`). Each is keyed by the id its front matter declares, which
+    # is the id a title and a `pr:` record name; a file whose name leads with
+    # another id is `docket check`'s slug advisory.
+    for path in _items_at(ref, ROOT, ITEMS_DIR, lambda args, _root: _git(args)).values():
+        text = _git(["show", f"{ref}:{path}"])
+        item = parse_item(text, path.rsplit("/", 1)[-1])
         if item.status in CLOSED_STATUSES and item.identifier:
             closed[item.identifier] = item
     return closed

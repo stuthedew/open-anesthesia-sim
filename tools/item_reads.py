@@ -41,8 +41,8 @@ sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_config  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
-from docket.model import CLOSED_STATUSES, parse_front_matter, parse_item  # noqa: E402
-from docket.store import ID_PATTERN  # noqa: E402
+from docket.model import CLOSED_STATUSES, parse_item  # noqa: E402
+from docket.store import ID_PATTERN, cited_ids  # noqa: E402
 from docket.vcs import ITEM_FILE_RE  # noqa: E402
 
 #: The hook's `LOG_NAME`, spelled again because a tool may import nothing
@@ -86,9 +86,9 @@ def store() -> tuple[dict[str, Path], set[str]]:
 
 
 def citations(path: Path, self_id: str) -> set[str]:
-    # Set aside on purpose: only the body's citations are read here.
-    _fields, body, _declined = parse_front_matter(path.read_text(encoding="utf-8"))
-    return set(ITEM_ID.findall(body)) - {self_id}
+    # The whole file, front matter included, as `docket.store.cited_ids`
+    # reads an item's citations for `generator_check` too (`PL-86H3`).
+    return set(cited_ids(path.read_text(encoding="utf-8"), self_id))
 
 
 def parse_log() -> list[tuple[str, str, str, str]]:

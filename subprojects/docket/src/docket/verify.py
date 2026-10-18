@@ -2242,12 +2242,18 @@ def _net_line_changes(
     return added, removed
 
 
-def _store_at(root: Path, base: str, items_dir: str) -> tuple[str, ...] | None:
-    """The item filenames the base ref holds, or `None` where its store cannot be read."""
-    listing = vcs.call_git(["ls-tree", "--name-only", f"{base}:{items_dir}"], root).answer
-    if not vcs.answered(listing):
+def _store_at(root: Path, base: str, items_dir: str) -> dict[str, str] | None:
+    """Each item id the base ref holds, mapped to its file, or `None` where git did not list it.
+
+    `vcs._items_at`, the one listing of a ref's item files (`PL-86H3`). A
+    store git lists as empty is read as unread too, since a tree holds no
+    empty directory and the base with no store is the case this declines on.
+    """
+    try:
+        held = vcs._items_at(base, root, items_dir, _git)
+    except vcs.GitUnanswered:
         return None
-    return tuple(line.strip() for line in split_lines(listing) if line.strip())
+    return held or None
 
 
 def _listed_copy(root: Path, spec: str) -> str | None:
@@ -2260,20 +2266,6 @@ def _listed_copy(root: Path, spec: str) -> str | None:
     call = vcs.call_git(["show", spec], root)
     text = call.answer
     return text if call.code == 0 and vcs.answered(text) else None
-
-
-def _base_copy(held: tuple[str, ...], identifier: str) -> str:
-    """The file among `held` that is `identifier`'s, by the grammar `vcs.ITEM_FILE_RE` states.
-
-    Read rather than respelt as a `startswith`, so the next change to how an
-    item file is named reaches this audit's two readers of the base's copy
-    without a second edit (`PL-24BC`).
-    """
-    for name in held:
-        match = vcs.ITEM_FILE_RE.match(name)
-        if match and match.group(1) == identifier:
-            return name
-    return ""
 
 
 #: A `pr:` value as `cmd_record` writes it, a number and nothing else, matched
@@ -2722,15 +2714,15 @@ def read_commission(root: Path, base: str, items_dir: str, item: Item) -> Commis
     held = _store_at(root, base, items_dir)
     if held is None:
         return Commission(unread=f"no item store at {base}:{items_dir} to read the commission from")
-    was = _base_copy(held, item.identifier)
+    was = held.get(item.identifier, "")
     if not was:
         return Commission()
-    before = _listed_copy(root, f"{base}:{items_dir}/{was}")
+    before = _listed_copy(root, f"{base}:{was}")
     if before is None:
-        return Commission(unread=f"{base}:{items_dir}/{was} could not be read")
+        return Commission(unread=f"{base}:{was} could not be read")
     fields, _body, declined = parse_front_matter(before)
     if declined:
-        return Commission(unread=f"{base}:{items_dir}/{was} declines {declined}")
+        return Commission(unread=f"{base}:{was} declines {declined}")
     return Commission(fields=fields)
 
 
@@ -2873,19 +2865,15 @@ def front_matter_check(
             advisory=advisory,
             commission=True,
         )
-    was = _base_copy(held, item.identifier)
+    was = held.get(item.identifier, "")
     if not was:
         return Check(
             name, True, f"a new item file - {base} holds no copy to differ from", commission=True
         )
-    before = _listed_copy(root, f"{base}:{items_dir}/{was}")
+    before = _listed_copy(root, f"{base}:{was}")
     if before is None:
         return Check(
-            name,
-            False,
-            f"{base}:{items_dir}/{was} could not be read",
-            advisory=advisory,
-            commission=True,
+            name, False, f"{base}:{was} could not be read", advisory=advisory, commission=True
         )
     old, _body, was_declined = parse_front_matter(before)
     new, _body, now_declined = parse_front_matter(after)
