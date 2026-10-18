@@ -8,6 +8,7 @@ classes: docs
 touches: subprojects/docket/src/docket/markdown.py, subprojects/docket/tests/test_roadmap.py, tests/unit/test_doc_check.py
 added: 2026-10-06
 closed: 2026-10-18
+pr: 1586
 payoff: A reader checking a soft-break citation against CommonMark lands on the soft-break rule rather than the hard-break one
 verify: grep -qF '(§ 6.8) and a lazy continuation' subprojects/docket/src/docket/markdown.py && grep -qF '(0.31.2 § 6.8)' subprojects/docket/tests/test_roadmap.py && grep -qF '§ 6.8) and a code span' tests/unit/test_doc_check.py
 ---
