@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: test
 feature: reader-checks
-touches: tests/unit/test_makefile_reference.py
+touches: tests/unit/test_makefile_reference.py, docket.toml
 added: 2026-10-12
 closed: 2026-10-18
 payoff: a Makefile form doc_check's readers misread fails the pull request that first writes it, rather than surfacing as an item after it merges
