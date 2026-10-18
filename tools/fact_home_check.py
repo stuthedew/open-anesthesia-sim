@@ -208,7 +208,6 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
     },
     "subprojects/docket/src/docket/claiming.py": {("definition", "ID"): 1, ("git", "_git"): 1},
     "subprojects/docket/src/docket/claims.py": {("definition", "ID"): 1},
-    "subprojects/docket/src/docket/cli.py": {("shell-lexer", "_run_forge_command"): 1},
     "subprojects/docket/src/docket/frontmatter.py": {("definition", "FENCE"): 1},
     "subprojects/docket/src/docket/grep.py": {("definition", "MARKER"): 1},
     "subprojects/docket/src/docket/markdown.py": {

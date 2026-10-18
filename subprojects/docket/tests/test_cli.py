@@ -29,7 +29,7 @@ import pytest
 from docket import arming, claims, cli, render, vcs
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.claims import SESSION_VARIABLE, Holdings
-from docket.cli import build_parser, main, merge_shared
+from docket.cli import _run_forge_command, build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
 from docket.release import TAG_SCRIPT, tag_confirmation
@@ -12046,3 +12046,19 @@ def test_show_reads_an_item_from_origin_main_where_its_copy_is_newer(
     ) in out
     # Closed, so no invitation to re-confirm the brief before starting it.
     assert "re-confirm" not in out
+
+
+def test_a_forge_command_is_split_as_bash_splits_it(tmp_path: Path) -> None:
+    """`PL-RHPK`: a configured command's words are the ones `docket.shell` reads.
+
+    `shlex.split` handed the forge a comment's `#` and `newest` as words, and
+    read `$'.[0]'` as `$.[0]`. A command that only a shell could run is
+    refused rather than run without one.
+    """
+    done = _run_forge_command("echo asked # newest", tmp_path, "branch")
+    assert not isinstance(done, str)
+    assert done.stdout == "asked branch\n"
+    done = _run_forge_command("printf %s $'.[0]'", tmp_path)
+    assert not isinstance(done, str)
+    assert done.stdout == ".[0]"
+    assert "not one simple command" in str(_run_forge_command("echo a | cat", tmp_path))

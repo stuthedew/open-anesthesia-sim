@@ -98,6 +98,17 @@ OPERATORS = (
 #: `tail -5 log` is one list (POSIX.1-2017 XCU §2.10.2, `linebreak`).
 HEADS = frozenset((";", ";;", ";&", ";;&", "&", "&&", "||", "|", "|&", "("))
 
+#: The operators that pipe a command's output into the next one's input: `|`,
+#: and `|&`, which carries its standard error too.
+PIPES = frozenset(("|", "|&"))
+
+#: The operators that end a command and run the next one apart from it, as
+#: `shell_words` spells them inside a clause: every one of `HEADS` but a pipe,
+#: a subshell's `(` and `&&`, which cuts the clauses and so never stands
+#: inside one. `verify` and `checks` each spelt a subset of these by hand,
+#: and parted on `;;` (`PL-RHPK`).
+COMMAND_ENDS = HEADS - PIPES - {"(", "&&"}
+
 #: The operators that redirect, each taking the word after it; only those
 #: opening with `<` or `>` take a descriptor written against them (Bash
 #: Reference Manual §3.6 "Redirections"). The rest of `OPERATORS` end a
@@ -192,7 +203,7 @@ class Word(_Value):
     their word (`PL-X1VN`).
     """
 
-    _fields = __slots__ = ("text", "quoted", "globbed", "bang", "case_syntax")
+    _fields = __slots__ = ("text", "quoted", "globbed", "bang", "case_syntax", "opens")
 
     def __init__(
         self,
@@ -201,6 +212,7 @@ class Word(_Value):
         globbed: bool = False,
         bang: bool = False,
         case_syntax: bool = False,
+        opens: bool = False,
     ) -> None:
         self.text = text
         #: Some character of it stood inside quotes or after a backslash.
@@ -213,6 +225,11 @@ class Word(_Value):
         #: `in`, a pattern or its `esac` - which no command the construct runs
         #: is handed (`PL-M3M4`).
         self.case_syntax = case_syntax
+        #: It is a reserved word bash reads with a command after it, or an
+        #: option `time` reads ahead of its pipeline: the flat reading's
+        #: `Reserved`, so `then` in `then make check` heads no command
+        #: (`PL-RHPK`).
+        self.opens = opens
 
 
 class Clause(_Value):
@@ -825,7 +842,7 @@ class _Lexer:
                     and names_a_descriptor(word)
                 )
                 case = grammar.word(word, quoted)
-                tokens.append(Word(word, quoted, globbed, bang, case))
+                tokens.append(Word(word, quoted, globbed, bang, case, grammar.opens))
                 spans.append((begin, index))
                 if self.introducer is not None:  # the word after `<<` names the delimiter
                     frame.pending.append((word, self.introducer, not quoted))
@@ -1822,20 +1839,47 @@ class SimpleCommand(_Value):
     among them, and neither is a word of a `case` construct's own syntax.
     """
 
-    _fields = __slots__ = ("words", "start", "assignments")
+    _fields = __slots__ = ("words", "start", "assignments", "spans")
 
-    def __init__(self, words: tuple[str, ...], start: int, assignments: int = 0) -> None:
+    def __init__(
+        self,
+        words: tuple[str, ...],
+        start: int,
+        assignments: int = 0,
+        spans: tuple[tuple[int, int], ...] = (),
+    ) -> None:
         self.words = words
         #: The offset of its first word in the command read.
         self.start = start
         #: How many of its words, from the first, are assignments bash makes
         #: for the command rather than words of it: `FOO=1` in `FOO=1 make check`.
         self.assignments = assignments
+        #: Where each of its words stands in the command read, as `(start, end)`
+        #: offsets, one per word.
+        self.spans = spans
 
     @property
     def program(self) -> str | None:
         """Its command word, the first word past its assignments, or `None` where it has none."""
         return self.words[self.assignments] if self.assignments < len(self.words) else None
+
+    def runs(self, *, uv_run: bool = False) -> int | None:
+        """Where the program it runs stands among its words, past each wrapper, or `None`.
+
+        The command word, or past each wrapper `WRAPPERS` names to the command
+        it runs, and past a `uv run` too where `uv_run` asks. `None` where it
+        has no command word or a wrapper runs none (`run_by`).
+        """
+        return program_index(self.words, self.assignments, uv_run=uv_run)
+
+    def invokes(self) -> tuple[str, int] | None:
+        """What it runs, past wrappers and a `uv run`, and where the words handed that start.
+
+        `invocation` read on its words past its assignments, with the index
+        counted among all its words.
+        """
+        found = invocation(self.words[self.assignments :])
+        return None if found is None else (found[0], self.assignments + found[1])
 
 
 def simple_commands(reading: Reading, command: str) -> tuple[SimpleCommand, ...]:
@@ -1857,38 +1901,365 @@ def simple_commands(reading: Reading, command: str) -> tuple[SimpleCommand, ...]
     program, so `{fd}>log` and `FOO=1 make check` read differently there
     (`PL-7DXZ`).
     """
+    return tuple(
+        run for clause in reading.every_clause() for run in clause_commands(clause, command)
+    )
+
+
+def clause_commands(clause: Clause, command: str) -> tuple[SimpleCommand, ...]:
+    """The simple commands one clause of `shell_words(command)` runs, cut as `simple_commands` cuts.
+
+    A reserved word opening a command, and an option `time` reads, ends the
+    command before it and is no word of the one after, so `time python3 x.py`
+    runs `python3` and `then make check` runs `make` (`Word.opens`,
+    `PL-RHPK`).
+    """
     commands: list[SimpleCommand] = []
-    for clause in reading.every_clause():
-        cut: list[list[tuple[str, int, bool]]] = [[]]
-        target = descriptor = False
-        previous = -1
-        for token, (start, end) in zip(clause.tokens, clause.spans, strict=True):
-            words = cut[-1]
-            if isinstance(token, Word):
-                if not (target or token.case_syntax):
-                    assigning = _assigning(token.text)
-                    bare = bool(assigning) and command.startswith(assigning, start)
-                    words.append((token.text, start, bare))
-                descriptor = not (target or token.quoted or token.case_syntax) and (
-                    names_a_descriptor(token.text)
-                )
-                target = False
-            elif token in REDIRECTIONS:
-                if descriptor and start == previous and token[0] in "<>":
-                    words.pop()
-                target, descriptor = True, False
-            else:
-                cut.append([])
-                target = descriptor = False
-            previous = end
-        for words in cut:
-            if words:
-                assignments = next(
-                    (at for at, (_, _, bare) in enumerate(words) if not bare), len(words)
-                )
-                texts = tuple(text for text, _, _ in words)
-                commands.append(SimpleCommand(texts, words[0][1], assignments))
+    cut: list[list[tuple[str, int, int, bool]]] = [[]]
+    target = descriptor = False
+    previous = -1
+    for token, (start, end) in zip(clause.tokens, clause.spans, strict=True):
+        words = cut[-1]
+        if isinstance(token, Word) and token.opens and not target:
+            cut.append([])
+            descriptor = False
+        elif isinstance(token, Word):
+            if not (target or token.case_syntax):
+                assigning = _assigning(token.text)
+                bare = bool(assigning) and command.startswith(assigning, start)
+                words.append((token.text, start, end, bare))
+            descriptor = not (target or token.quoted or token.case_syntax) and (
+                names_a_descriptor(token.text)
+            )
+            target = False
+        elif token in REDIRECTIONS:
+            if descriptor and start == previous and token[0] in "<>":
+                words.pop()
+            target, descriptor = True, False
+        else:
+            cut.append([])
+            target = descriptor = False
+        previous = end
+    for words in cut:
+        if words:
+            assignments = next(
+                (at for at, (_, _, _, bare) in enumerate(words) if not bare), len(words)
+            )
+            texts = tuple(text for text, _, _, _ in words)
+            spans = tuple((start, end) for _, start, end, _ in words)
+            commands.append(SimpleCommand(texts, words[0][1], assignments, spans))
     return tuple(commands)
+
+
+#: A command's words, as a hook's flat tokens or a `SimpleCommand`'s texts hold them.
+Words = list[str] | tuple[str, ...]
+
+
+class Grammar:
+    """How one wrapper reads the words ahead of the command it runs, as GNU getopt reads them.
+
+    A plain class rather than a `NamedTuple`, whose `typing` would cost every
+    guard's import on every Bash call (`PL-JNYL`).
+    """
+
+    def __init__(
+        self,
+        valued: str = "",
+        optional: str = "",
+        flags: str = "",
+        long_valued: tuple[str, ...] = (),
+        long_other: tuple[str, ...] = (),
+        stops: frozenset[str] = frozenset(("help", "version")),
+        operands: int = 0,
+    ) -> None:
+        # Short options whose value is the rest of the word, or else the next word.
+        self.valued = valued
+        # Short options whose value is only ever the rest of the word.
+        self.optional = optional
+        # Short options taking no value, which a bundle may run on after.
+        self.flags = flags
+        # Long options whose value follows an `=`, or else is the next word; each
+        # may be abbreviated to any prefix no other long option shares.
+        self.long_valued = long_valued
+        # Long options taking a value only after an `=`, and those taking none.
+        self.long_other = long_other
+        # Options after which no program is read: one that describes a command
+        # rather than running it, or one that runs a string this does not split.
+        self.stops = stops
+        # The words read between the options and the command: a duration.
+        self.operands = operands
+
+
+#: The programs that run a command named after their own options, finding it on
+#: PATH as bash would, from `timeout --help`, `env --help`, `nice --help` and
+#: `nohup --help` in coreutils 9.4, `xargs --help` in findutils 4.9.0, and `help
+#: command` and `help exec` in bash 5.2.21, each spelling run to see which word
+#: it ran (`PL-TRMN`). Every one stops reading options at its first word that is
+#: not one, so an option after the command is the command's: `timeout 5 echo -s
+#: x` prints `-s x`. The guard hooks held this grammar until `PL-RHPK` moved it
+#: here, so `verify`, `checks` and `tools/doc_check.py` read past a wrapper as
+#: they do.
+WRAPPERS = {
+    "timeout": Grammar(
+        valued="ks",
+        flags="v",
+        long_valued=("kill-after", "signal"),
+        long_other=("foreground", "preserve-status", "verbose"),
+        operands=1,
+    ),
+    "env": Grammar(
+        valued="uCS",
+        flags="i0v",
+        long_valued=("unset", "chdir", "split-string"),
+        long_other=(
+            "ignore-environment",
+            "null",
+            "block-signal",
+            "default-signal",
+            "ignore-signal",
+            "list-signal-handling",
+            "debug",
+        ),
+        stops=frozenset(("help", "version", "S", "split-string")),
+    ),
+    "nice": Grammar(valued="n", long_valued=("adjustment",)),
+    "nohup": Grammar(),
+    "xargs": Grammar(
+        valued="adEILnPs",
+        optional="eil",
+        flags="0oprtx",
+        long_valued=(
+            "arg-file",
+            "delimiter",
+            "max-lines",
+            "max-args",
+            "max-procs",
+            "max-chars",
+            "process-slot-var",
+        ),
+        long_other=(
+            "null",
+            "eof",
+            "replace",
+            "open-tty",
+            "interactive",
+            "no-run-if-empty",
+            "show-limits",
+            "verbose",
+            "exit",
+        ),
+    ),
+    # `command -v` and `-V` describe the command and run nothing.
+    "command": Grammar(flags="p", stops=frozenset(("help", "v", "V"))),
+    "exec": Grammar(valued="a", flags="cl"),
+}
+
+
+def basename(word: str) -> str:
+    """`word`'s last path component: the program a word naming one by path runs."""
+    return word.rsplit("/", 1)[-1]
+
+
+def _nice_adjustment(word: str) -> bool:
+    """Whether `word` is `nice`'s older spelling of an adjustment: `-5`, `--5` or `-+5`."""
+    rest = word[1:]
+    if rest[:1] in ("-", "+"):
+        rest = rest[1:]
+    return word.startswith("-") and rest[:1].isdigit()
+
+
+def _long_option(grammar: Grammar, written: str) -> str | None:
+    """The long option `written` names, whole or as an abbreviation getopt accepts, or None."""
+    names = (*grammar.long_valued, *grammar.long_other, "help", "version")
+    if written in names:
+        return written
+    matching = [name for name in names if name.startswith(written)]
+    return matching[0] if len(matching) == 1 else None
+
+
+def run_by(words: Words, grammars: dict[str, Grammar], at: int = 0) -> int | None:
+    """Where the command the wrapper `words[at]` runs starts, read by its grammar in `grammars`.
+
+    `None` where it runs none: an option that describes a command rather than
+    running it, one its grammar does not know, or no command after its
+    options. An `Operator` ends the words it reads.
+    """
+    name = basename(words[at])
+    grammar = grammars[name]
+    at += 1
+    while at < len(words):
+        word = words[at]
+        if isinstance(word, Operator) or not word.startswith("-") or word == "-":
+            break
+        at += 1
+        if word == "--":
+            break
+        if name == "nice" and _nice_adjustment(word):
+            continue
+        if word.startswith("--"):
+            written, equals, _ = word[2:].partition("=")
+            option = _long_option(grammar, written)
+            if option is None or option in grammar.stops:
+                return None
+            if option in grammar.long_valued and not equals:
+                at += 1
+            continue
+        for position, letter in enumerate(word[1:], 2):
+            if letter in grammar.stops:
+                return None
+            if letter in grammar.valued:
+                # The value is the rest of the word, or the next word if none is left.
+                if position == len(word):
+                    at += 1
+                break
+            if letter in grammar.optional:
+                break
+            if letter not in grammar.flags:
+                return None
+    if name == "env":
+        # A lone `-` is `-i`, and each `NAME=VALUE` sets the command's environment.
+        if at < len(words) and words[at] == "-":
+            at += 1
+        while at < len(words) and "=" in words[at] and not isinstance(words[at], Operator):
+            at += 1
+    at += grammar.operands
+    if at >= len(words) or isinstance(words[at], Operator):
+        return None
+    return at
+
+
+def program_index(words: Words, at: int = 0, *, uv_run: bool = False) -> int | None:
+    """Where the program `words[at:]` runs stands, past each wrapper and, if asked, a `uv run`.
+
+    `timeout 60 nice -n 5 git fetch` runs `git` (`PL-TRMN`). A `uv run` is
+    read past only where `uv_run` asks, since uv finds the program it runs in
+    the project's environment rather than on PATH: the floor guard asks which
+    interpreter bash finds, and the gate guard which gate runs. `None` where
+    no program runs.
+    """
+    while at < len(words):
+        if basename(words[at]) in WRAPPERS:
+            found = run_by(words, WRAPPERS, at)
+            if found is None:
+                return None
+            at = found
+        elif (
+            uv_run
+            and basename(words[at]) == "uv"
+            and at + 1 < len(words)
+            and words[at + 1] == "run"
+        ):
+            at += 2
+        else:
+            return at
+    return None
+
+
+def is_python(word: str) -> bool:
+    """Whether `word` names a Python interpreter, bare or by path: `python3`, `python3.11`."""
+    name = basename(word)
+    if not name.startswith("python"):
+        return False
+    version = name[len("python") :]
+    if version in ("", "3"):
+        return True
+    minor = version[2:]
+    return version.startswith("3.") and minor.isdigit() and minor.isascii()
+
+
+#: The options a Python interpreter reads ahead of what it runs (`python3
+#: --help`). `-W` and `-X` take a value, glued on or in the next word, and
+#: `--check-hash-based-pycs` takes one in the next word. `-c` and `-m` end the
+#: options and take what they run in the same two ways: a string of code, or a
+#: module.
+PYTHON_VALUED = "WX"
+PYTHON_RUNS = "cm"
+
+
+def python_operand(arguments: Words) -> tuple[str, str, int]:
+    """What a Python interpreter given `arguments` runs, and where the words it passes on start.
+
+    Returns a kind, an operand and an index into `arguments`. The kind is `-c`
+    for a string of code, `-m` for a module, `-` for a script read from standard
+    input, `file` for a script named by path, and an empty string where the
+    options use up every word, which also reads standard input. The operand is
+    the code, the module or the script's path, and is empty for the last two
+    kinds. The index is that of the first word Python hands what it runs as
+    `sys.argv[1:]`. Python never parses those words itself, so the floor and
+    gate guards both read an invocation through this (`PL-6X0C`, `PL-CDZ8`).
+    `--` ends the options, so the word after it is a script even when it starts
+    with `-`, unless it is `-` itself.
+    """
+    index = 0
+    while index < len(arguments):
+        token = arguments[index]
+        if not token.startswith("-") or token == "-":
+            break
+        index += 1
+        if token == "--":
+            break
+        if token == "--check-hash-based-pycs":
+            index += 1
+        if token.startswith("--"):
+            continue
+        for position, flag in enumerate(token[1:], 1):
+            glued = token[position + 1 :]
+            if flag in PYTHON_RUNS:
+                if glued:
+                    return "-" + flag, glued, index
+                operand = arguments[index] if index < len(arguments) else ""
+                return "-" + flag, operand, index + 1
+            if flag in PYTHON_VALUED:
+                if not glued:
+                    index += 1
+                break
+    if index >= len(arguments):
+        return "", "", len(arguments)
+    if arguments[index] == "-":
+        return "-", "", index + 1
+    return "file", arguments[index], index + 1
+
+
+def invocation(words: Words) -> tuple[str, int] | None:
+    """What a command's words run, by name, and where the words handed it start.
+
+    `words` start at the command word, past any assignments. The name is the
+    program's, read past each wrapper and a `uv run`, without its path; or,
+    where that program is a Python interpreter running a module, the
+    module's. So `bin/docket check`, `uv run docket check` and `python3 -m
+    docket check` all run `docket` with `check` first, and `timeout 60 python
+    -m pytest -k x` runs `pytest`. A `-c` string is code nothing here reads,
+    so it runs the interpreter alone. `None` where no program runs.
+    `verify`, `checks` and the gate guard each decided this their own way
+    (`PL-RHPK`).
+    """
+    at = program_index(words, uv_run=True)
+    if at is None:
+        return None
+    if is_python(words[at]):
+        kind, operand, after = python_operand(words[at + 1 :])
+        if kind == "-m" and operand:
+            return operand, at + 1 + after
+    return basename(words[at]), at + 1
+
+
+def argv(command: str) -> tuple[str, ...] | None:
+    """The words `command` hands the program it names, as bash reads them, or `None`.
+
+    For a command a project configures and docket runs without a shell.
+    Quotes are removed as bash removes them, `$'...'` escapes included, and a
+    comment is no word, so `gh pr list # newest` runs `gh pr list`, where
+    `shlex.split` handed `gh` the words `#` and `newest` (`PL-RHPK`). `None`
+    where it is not one simple command of words: bash would refuse it, or it
+    holds an operator, a redirection or a substitution, which only a shell
+    runs.
+    """
+    reading = shell_words(command)
+    if reading.substitutions or len(reading.clauses) != 1:
+        return None
+    tokens = reading.clauses[0].tokens
+    words = tuple(token.text for token in tokens if isinstance(token, Word))
+    return words if words and len(words) == len(tokens) else None
 
 
 def flat_reading(command: str) -> FlatReading:

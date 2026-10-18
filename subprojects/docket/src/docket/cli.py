@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import shlex
 import subprocess
 import sys
 from collections.abc import Callable, Collection, Mapping, Sequence
@@ -139,6 +138,7 @@ from .release import (
     unreferenced_by_version,
 )
 from .roadmap import IN_SCOPE, MilestoneStates, Scope, Wave, latest_gate, milestone_states, wave
+from .shell import argv
 from .store import (
     ID_PREFIX,
     find_item,
@@ -5029,13 +5029,18 @@ def _run_forge_command(
 
     Both forge commands run through here, from the repository root and under
     `OPEN_LOOKUP_TIMEOUT`, so a timeout, a command that is not there and one
-    `shlex` cannot split fail one way for both. `extra` is appended to the
-    command's own words. Every exception is a failure, never a raise: the
-    commands asking are reports with an answer of their own to fall back on.
+    that is not a single simple command fail one way for both. Its words are
+    the ones bash would hand the program, read by `docket.shell.argv`
+    (`PL-RHPK`), and `extra` is appended to them. Every exception is a
+    failure, never a raise: the commands asking are reports with an answer of
+    their own to fall back on.
     """
+    words = argv(command)
+    if words is None:
+        return "it could not be run (it is not one simple command of words)"
     try:
         return subprocess.run(
-            [*shlex.split(command), *extra],
+            [*words, *extra],
             cwd=root,
             capture_output=True,
             text=True,
