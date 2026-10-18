@@ -3,11 +3,12 @@ id: PL-0MC5
 title: required_checks_check reads workflow YAML by hand with no reference parser: hold triggers and steps to a YAML parser over generated workflows, as test_frontmatter_reference.py holds docket.frontmatter
 priority: P3
 effort: M
-status: ready
+status: done
 classes: test
 feature: reader-checks
 touches: tests/unit/test_required_checks_reference.py
 added: 2026-10-12
+closed: 2026-10-18
 payoff: a workflow form required_checks_check misreads fails the pull request that first writes it, rather than surfacing as an item after it merges
 verify: grep -rq 'def test_required_checks_reads_generated_workflows_as_yaml_does' tests/unit
 ---
@@ -59,3 +60,15 @@ match.
 **Generator check.** Work the owner asked for. The closed members misread the
 fact `PL-848V`'s head names; this item is the oracle that would have caught
 them, not another instance.
+
+**Built 2026-10-18.** `tests/unit/test_required_checks_reference.py` draws
+1,000 workflows with Hypothesis, derandomized, and holds `triggers` and `steps`
+to PyYAML 6.0.3's composed nodes. Reading nodes rather than loaded values keeps
+the key's text `on`, so nothing has to be mapped back from `True`. The strategy
+draws the forms the closed items name, and a second test holds the tracked
+workflows the same way. On `main` at `684c1f66` both readers answered all
+1,000 drawn workflows, with no decline, and agreed with PyYAML on every one.
+Four planted reader bugs each turned the generated test red: a filter list cut
+to its first name, a `run:` key's column off by one, a list entry's line off
+by one, and a list at its key's column read as ending the value. The generated
+test takes about 8 seconds.

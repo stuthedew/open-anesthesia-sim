@@ -3,11 +3,12 @@ id: PL-WFPB
 title: doc_check's Makefile readers are held to no reference program: hold make_targets, _target_recipes and _recipe_commands to GNU make's own reading (make -pqRr, make -n) over generated Makefiles, as test_shell.py holds docket.shell to bash
 priority: P3
 effort: M
-status: ready
+status: done
 classes: test
 feature: reader-checks
 touches: tests/unit/test_makefile_reference.py
 added: 2026-10-12
+closed: 2026-10-18
 payoff: a Makefile form doc_check's readers misread fails the pull request that first writes it, rather than surfacing as an item after it merges
 verify: grep -rq 'def test_the_makefile_readers_read_generated_makefiles_as_make_does' tests/unit
 ---
@@ -60,3 +61,19 @@ fix removes its own entry.
 **Generator check.** Work the owner asked for, not a misread: it is the oracle
 the closed Makefile items lacked, and no head's `misread:` names a missing
 reference program.
+
+**Built 2026-10-18.** `tests/unit/test_makefile_reference.py` draws 300
+Makefiles with Hypothesis, derandomized, and holds `make_targets`,
+`_target_recipes` and `_recipe_commands` to GNU make 4.3. `make -pqRr -f -
+NO_SUCH_GOAL` gives the targets, their prerequisites and each recipe's first
+line, and `make -n` with every other file named by `-o` gives each target's own
+commands. `SHELL=/bin/true` keeps a `+` line from running, and the environment
+holds `PATH` alone, so `make check`'s `MAKEFLAGS` cannot reach the inner make.
+The generator draws no `$`, since the readers keep make's spelling of `$$` and
+`$(MAKE)` where `make -n` expands them, so the tracked Makefile is compared on
+its targets and prerequisites alone. `PL-QYF4` closed before this was built,
+so `KNOWN_DEPARTURES` pins two rows, `PL-GSJ6`'s `.RECIPEPREFIX` and
+`PL-HSB3`'s conditional. The generated test passed on `main` at `684c1f66` and
+failed on `tools/doc_check.py` from before each of three fixes: `#1436`
+(`PL-5M36` and `PL-QYF4`, an `@` kept on a command), `#1385` (`PL-GZXY`) and
+`#1338` (`PL-G2FY`). It takes about 5 seconds.
