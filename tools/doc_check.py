@@ -6236,15 +6236,25 @@ def _make_joined(parts: list[str]) -> str:
     return " ".join(piece for piece in pieces if piece)
 
 
-def _make_runs(line: str) -> bool:
-    """Whether a recipe line hands the shell a command, as GNU make 4.3 decides it.
+#: What make passes over ahead of a recipe line's command: blanks and the `@`
+#: (no echo), `-` (ignore a failure) and `+` (run under `-n`) prefixes, in any
+#: mix (GNU make manual §5.2 "Recipe Echoing", §5.5 "Errors in Recipes", §9.3
+#: "Instead of Executing Recipes"). Run through GNU make 4.3 on 2026-10-18,
+#: `@ - +echo one` ran `echo one`.
+RECIPE_PREFIXES = "@-+ \t"
 
-    `start_job_command` in `src/job.c` passes over the blanks and the `@`, `-`
-    and `+` prefixes ahead of a command and starts nothing where nothing is
-    left, so a tab-only line, or one holding `@` alone, runs nothing (run
-    through make 4.3 on 2026-10-12, `PL-5M36`).
+
+def _recipe_command(line: str) -> str:
+    """The command a recipe line hands the shell, as GNU make 4.3 reads it, or "" for none.
+
+    `start_job_command` in `src/job.c` passes over `RECIPE_PREFIXES` and starts
+    nothing where nothing is left, so a tab-only line, or one holding `@`
+    alone, runs nothing (run through make 4.3 on 2026-10-12, `PL-5M36`). What
+    is left is the command, so `@ruff check src` runs `ruff check src`; read
+    with its prefix, an `@`-led cached `ruff check` passed the ruff-cache check
+    (`PL-QYF4`).
     """
-    return bool(line.lstrip(" \t@-+"))
+    return line.strip().lstrip(RECIPE_PREFIXES)
 
 
 def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
@@ -6267,7 +6277,7 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
     variable declares one (`PL-HR4V`). `.PHONY` declares its prerequisites,
     not itself, being make's special target rather than one a document runs;
     and a recipe after a `;` on the rule's own line is a recipe (`PL-GZXY`). A
-    recipe line `_make_runs` finds no command in is none, so a target whose
+    recipe line `_recipe_command` finds no command in is none, so a target whose
     only recipe line is a tab is one that exits 0 without running, as make
     says "Nothing to be done" for it (`PL-5M36`). Raises `UnreadStatement`
     where `_make_lines` does.
@@ -6277,7 +6287,7 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
     current: tuple[str, ...] = ()
     for line, _ in _make_lines(text):
         if line.startswith("\t"):
-            if _make_runs(line):
+            if _recipe_command(line):
                 with_recipe.update(current)
             continue
         rule = _make_rule(line) or NO_TARGETS
@@ -6748,14 +6758,6 @@ COVERAGE_PART = re.compile(r" --cov-report= --part (?P<index>\d+)/(?P<parts>\d+)
 COVERAGE_REPORT = re.compile(r"^uv run coverage report\b.* --fail-under=(?P<threshold>\S+)$")
 
 
-#: What make removes from the front of a recipe line before it hands the rest
-#: to the shell: `@` (no echo), `-` (ignore a failure) and `+` (run under `-n`),
-#: in any mix, with blanks between them (GNU make manual §5.2 "Recipe Echoing",
-#: §5.5 "Errors in Recipes", §9.3 "Instead of Executing Recipes"). Run through
-#: GNU make 4.3 on 2026-10-18, `@ - +echo one` ran `echo one`.
-RECIPE_PREFIXES = "@-+ \t"
-
-
 def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
     """Every command a Makefile recipe hands the shell, with the line it opens on.
 
@@ -6769,12 +6771,11 @@ def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
     command a backslash continues is one, spelled as make hands it over; read a
     physical line at a time it was two, the first ending in the backslash
     (`PL-G2FY`). A line in a `define` body is a variable's value and no command
-    (`PL-4MLK`). Make's recipe prefixes are gone from what is handed back, as
-    `RECIPE_PREFIXES` says, so an `@ruff check src` is the `ruff check src` it
-    runs (`PL-QYF4`). Raises `UnreadStatement` where `_recipe_statements` does.
+    (`PL-4MLK`). Each is the command `_recipe_command` reads, make's prefixes
+    gone (`PL-QYF4`). Raises `UnreadStatement` where `_recipe_statements` does.
     """
     for line, number in _recipe_statements(text):
-        if line.startswith("\t") and (command := line.strip().lstrip(RECIPE_PREFIXES)):
+        if line.startswith("\t") and (command := _recipe_command(line)):
             yield command, number
 
 
@@ -7239,8 +7240,9 @@ def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str
     prerequisites, which make gathers across every rule line naming a target,
     though not in the order make runs them (`PL-HR4V`); a recipe after a `;`
     on the rule's own line is its first command (`PL-GZXY`). A recipe line
-    `_make_runs` finds no command in is none here, as it is none to
-    `make_targets` (`PL-5M36`). Raises `UnreadStatement` where
+    `_recipe_command` finds no command in is none here, as it is none to
+    `make_targets` (`PL-5M36`), and a line's command is that one, make's
+    prefixes gone (`PL-QYF4`). Raises `UnreadStatement` where
     `_recipe_statements` does, a Makefile naming `.ONESHELL` included
     (`PL-X43T`).
     """
@@ -7249,8 +7251,9 @@ def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str
     current: tuple[str, ...] = ()
     for line, _ in _recipe_statements(text):
         if line.startswith("\t"):
-            for target in current if _make_runs(line) else ():
-                recipes[target].append(line.strip())
+            command = _recipe_command(line)
+            for target in current if command else ():
+                recipes[target].append(command)
             continue
         rule = _make_rule(line) or NO_TARGETS
         current = rule.targets

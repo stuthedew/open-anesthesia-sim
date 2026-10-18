@@ -2499,7 +2499,7 @@ def test_every_target_a_rule_names_carries_its_recipe(targets: str, tmp_path: Pa
 
     assert doc_check.make_targets(makefile) == ({"fix", "lint", "sync"},) * 2
     assert doc_check._target_recipes(makefile) == (
-        {"fix": ["@echo ran-$@"], "lint": ["@echo ran-$@"], "sync": ["@echo sync"]},
+        {"fix": ["echo ran-$@"], "lint": ["echo ran-$@"], "sync": ["echo sync"]},
         {"fix": ["sync"], "lint": ["sync"], "sync": []},
     )
     assert _errors(root) == []
@@ -2557,12 +2557,12 @@ def test_a_rule_with_an_inline_recipe_carries_a_recipe(tmp_path: Path) -> None:
 
     assert doc_check.make_targets(makefile) == ({"inline", "lint", "empty"}, {"inline", "lint"})
     assert doc_check._target_recipes(makefile) == (
-        {"inline": ["@echo RECIPE-RAN # kept"], "lint": ["@echo lint"], "empty": []},
+        {"inline": ["echo RECIPE-RAN # kept"], "lint": ["echo lint"], "empty": []},
         {"inline": ["lint"], "lint": [], "empty": []},
     )
     assert list(doc_check._recipe_commands(makefile)) == [
-        ("@echo RECIPE-RAN # kept", 1),
-        ("@echo lint", 3),
+        ("echo RECIPE-RAN # kept", 1),
+        ("echo lint", 3),
     ]
     assert _errors(root) == []
 
@@ -8607,7 +8607,7 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     ),
     "target recipes, a conditional line ends no rule": (
         lambda _: doc_check._target_recipes(BRANCHED_RECIPE),
-        ({"check": ["@echo x", "@echo y"]}, {"check": []}),
+        ({"check": ["echo x", "echo y"]}, {"check": []}),
     ),
     "make targets, a rule line led by spaces": (
         lambda _: doc_check.make_targets("  check:\n\t@echo ok\n"),
@@ -8619,13 +8619,13 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
                 "\tGATE := pytest --cov-fail-under=100\nall:\n\t@echo $(GATE)\n"
             )
         ),
-        [("@echo $(GATE)", 3)],
+        [("echo $(GATE)", 3)],
     ),
     "recipe commands, a tab-led assignment after a variable is no command": (
         lambda _: list(
             doc_check._recipe_commands("all:\n\t@echo a\nX = 1\n\tY = 2\nshow:\n\t@echo $(Y)\n")
         ),
-        [("@echo a", 2), ("@echo $(Y)", 6)],
+        [("echo a", 2), ("echo $(Y)", 6)],
     ),
     "make lines, a continued tab-led assignment is joined as an assignment": (
         lambda _: _make_lines_refusal(
@@ -8643,11 +8643,11 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     ),
     "recipe commands, a rule naming no target drops its recipe": (
         lambda _: list(doc_check._recipe_commands(": c\n\t@echo dropped\nall:\n\t@echo all\n")),
-        [("@echo all", 4)],
+        [("echo all", 4)],
     ),
     "recipe commands, a colon in a reference is not the rule's": (
         lambda _: list(doc_check._recipe_commands("SRC = a.c\n$(SRC:.c=.o):\n\t@echo built\n")),
-        [("@echo built", 3)],
+        [("echo built", 3)],
     ),
     # Under `.ONESHELL` a recipe is one script, which no reader of recipe
     # lines reads, so the Makefile is declined by name (`PL-X43T`).
