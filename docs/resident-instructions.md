@@ -946,7 +946,7 @@ it: whether a title is plain is judgment, which `CLAUDE.md` refuses to script.
 
 **Why nothing is cut.** No resident sentence said what a title's words after
 its ids are for, so there was nothing to replace. The paragraph and examples
-add about 1,400 characters to the resident set, by the count `make check`
+add about 1,200 characters to the resident set, by the count `make check`
 applies.
 
 ## The pause's lane clause and the fourth friction test, amended 2026-10-17
