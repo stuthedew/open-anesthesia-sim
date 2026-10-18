@@ -3,11 +3,13 @@ id: PL-75D9
 title: Bit-for-bit determinism is tested only within one interpreter process, and CI never randomizes test order, so hash-seed-dependent iteration or a new order dependence between tests would pass every gate
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: test-effectiveness-measurement
 touches: tests/integration/test_cross_process_determinism.py, .github/workflows/drift.yml, pyproject.toml, uv.lock, ROADMAP.md
 added: 2026-10-17
+closed: 2026-10-18
+pr: 1525
 payoff: a run gives bit-identical results in a second process with a different hash seed, and a new order dependence between tests turns a weekly run red with the seed that reproduces it
 verify: grep -rq 'PYTHONHASHSEED' tests/integration && grep -q 'randomly' .github/workflows/drift.yml
 ---
