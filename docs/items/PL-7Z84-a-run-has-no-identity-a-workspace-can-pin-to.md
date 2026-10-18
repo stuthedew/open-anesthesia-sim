@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: safety, anticipated
 feature: interface-areas
-touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, src/anesthesia_sim/layout/workspace.py
 blocked-by: PL-WV9K
 added: 2026-09-16
 payoff: a run carries an identity stable across serialization and drawing order, a Workspace pins one by it, and a pinned run that is absent shows a named state rather than another run

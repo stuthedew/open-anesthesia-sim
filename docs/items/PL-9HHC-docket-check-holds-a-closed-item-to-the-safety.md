@@ -3,11 +3,13 @@ id: PL-9HHC
 title: docket check holds a closed item to the safety band, so dropping an anticipated safety item that sat at P2 while blocked is refused until its priority is rewritten to P1 - a band that ranks nothing on a closed item and misstates the one it held: PL-Y04W's drop on 2026-09-26 needed it, as PL-TBMX's did
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, docs/items/PL-Y04W-build-break-out-an-area-taken-into-its-own-top.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-10-18
+pr: 1553
 payoff: an anticipated safety item that waited at P2 can be dropped as it stands, so its record keeps the priority it held rather than a P1 written only to pass the check
 verify: grep -q 'def test_a_dropped_anticipated_safety_item_keeps_the_band_it_held' subprojects/docket/tests/test_checks.py
 ---

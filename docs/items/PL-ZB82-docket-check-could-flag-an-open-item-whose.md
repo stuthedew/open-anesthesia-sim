@@ -3,11 +3,13 @@ id: PL-ZB82
 title: docket check could flag an open item whose verify: discriminating clause reads a path its touches omit, using verify.command_paths: a fifth instance (PL-DHJ7) turned up after PL-LBW5's four were repaired by hand
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: verify-command-health
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/items/PL-7Z84-a-run-has-no-identity-a-workspace-can-pin-to.md, docs/items/PL-8TPV-bin-docket-arm-still-says-to-arm-a-pull-request.md, docs/items/PL-GL5X-load-factory-preferences-needs-shipped-defaults.md, docs/items/PL-NWTM-the-unconditional-displayed-set-has-no.md
 added: 2026-09-30
+closed: 2026-10-18
+pr: 1553
 payoff: a verify command a neighbour's work could flip is caught when it is written, not after the replay blames the wrong item
 verify: grep -q 'def test_a_verify_reading_a_path_its_touches_omit_is_reported' subprojects/docket/tests/test_checks.py
 ---

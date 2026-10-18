@@ -52,7 +52,9 @@ One required job, `checks`, and it runs:
   sake — though a behavior change owes you a test regardless (below);
 - `tools/doc_check.py`, which refuses documentation naming a file, package,
   make target or citation the repository does not hold. If it fires, a
-  reference in the docs went stale rather than your code being wrong.
+  reference in the docs went stale rather than your code being wrong. It also
+  holds the Makefile's own invocations to CI's, so a failure about a `make`
+  recipe means that recipe and its CI step disagree.
 
 A second job, `pr-title`, checks the pull request title **only when your branch
 closes an item in `docs/items/`**. If it does not — and a contributor's branch
