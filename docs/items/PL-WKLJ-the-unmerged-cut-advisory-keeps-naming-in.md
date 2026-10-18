@@ -3,12 +3,14 @@ id: PL-WKLJ
 title: The unmerged-cut advisory keeps naming in-progress work after the absorb route is taken, because cut_window reads landed ids off commit subjects and a re-cut can only fold in closures; reading each landed id's status on the base would leave only what the notes should name
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: release-process
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
+closed: 2026-10-18
+pr: 1601
 payoff: a release session that has taken the absorb route stops being told to absorb unfinished work, so the advisory names only closures the notes really miss and stays worth reading
 verify: grep -rq 'def test_a_capture_landing_during_the_cut_is_not_named_after_the_absorb_route' subprojects/docket/tests/
 ---

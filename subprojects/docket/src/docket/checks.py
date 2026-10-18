@@ -1783,7 +1783,13 @@ def _check_cut_window(
         "merge commit. Either absorb it - merge the base in and re-run "
         f"`make release VERSION={window.version}`, which reclaims what this cut already "
         "stamped - or let it go to the next release, which is often right. Read from commit "
-        "subjects, so an id here may be in-progress work rather than a closure"
+        "subjects, then from each item's status on the base, so an id open there is left out"
+        + (
+            f"; the base's copy of {_named(unread)} could not be read, so it may be in-progress "
+            "work rather than a closure"
+            if (unread := sorted(set(window.unread) & set(strangers)))
+            else ""
+        )
     )
 
 

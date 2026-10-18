@@ -4180,24 +4180,36 @@ class CutWindow:
     still in progress, is reported until the cut merges: the base merge that
     used to end it sooner decided nothing about either.
 
-    `landed` is **subject-derived**, and the advisory that prints it says so.
-    `_landed_since` reads leading ids off the base's new subjects, which names
-    a commit's own item and not necessarily a *closure*. That is the right
-    accuracy for something a person is asked to look at and would be the wrong
-    accuracy for anything acting on its own - `PL-8M8H` is the case where the
-    same read had to be refused for exactly that reason.
+    `landed` starts **subject-derived**: `_landed_since` reads leading ids off
+    the base's new subjects, which names a commit's own item and not
+    necessarily a *closure*. A capture, a design round or a triage pass leads
+    with an id it does not close, and a re-cut stamps only finished work, so
+    those ids stayed named after the absorb route had been taken (`PL-WKLJ`).
+    So each id is then read on the base's own copy of its item, and one whose
+    copy there is open is left out. One whose copy cannot be read stays in, and
+    in `unread` too, so the advisory says which it could not check rather than
+    dropping it. `PL-8M8H` is where the subject read alone had to be refused
+    for a reader acting on its own; this one only asks a person to look.
     """
 
     #: The version this checkout is cutting, without its `v`; empty when none.
     version: str = ""
     #: The ids leading subjects the base holds and the commit adding the notes
-    #: cannot reach: what the base gained since the cut was written.
+    #: cannot reach, less those whose copy on the base is open: what the base
+    #: closed since the cut was written, and what could not be checked.
     landed: tuple[str, ...] = ()
+    #: The ids in `landed` whose copy on the base could not be read, so whether
+    #: they closed there is not known.
+    unread: tuple[str, ...] = ()
     declined: str = ""
 
 
 def cut_window(
-    root: Path, *, notes_dir: str = NOTES_DIR, runner: Runner | None = None
+    root: Path,
+    *,
+    notes_dir: str = NOTES_DIR,
+    items_dir: str = "docs/items",
+    runner: Runner | None = None,
 ) -> CutWindow:
     """Whether this checkout carries an unmerged cut, and what landed since.
 
@@ -4208,6 +4220,8 @@ def cut_window(
     Args:
         root: Repository root.
         notes_dir: Where a cut writes its notes file.
+        items_dir: The item store, relative to `root`, whose base copies say
+            which landed ids closed there.
         runner: The git runner; the module default when omitted.
 
     Returns:
@@ -4257,9 +4271,38 @@ def cut_window(
         return CutWindow(
             version=version, declined=f"this clone shares no readable history with {base}"
         )
-    return CutWindow(
-        version=version, landed=_landed_since(written[0], base, root, run), declined=run.reason
+    landed, unread = _closed_on(
+        base, _landed_since(written[0], base, root, run), root, run, items_dir
     )
+    return CutWindow(version=version, landed=landed, unread=unread, declined=run.reason)
+
+
+def _closed_on(
+    base: str, identifiers: tuple[str, ...], root: Path, run: Runner, items_dir: str
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """`identifiers` less those whose copy on `base` is open, and those whose copy is unreadable.
+
+    The status is read from the base's tree, not from this checkout's store:
+    before the base is merged in, the store still holds the base's closures as
+    open (`PL-WKLJ`). `landed_closure` decides what counts as closed there. An
+    id the base's tree holds no file for, or whose file `git show` will not
+    print, is kept and returned in the second tuple, since leaving it out
+    would read as "not closed" when nothing was read.
+    """
+    if not identifiers:
+        return (), ()
+    held = _items_at(base, root, items_dir, run)
+    kept: list[str] = []
+    unread: list[str] = []
+    for identifier in identifiers:
+        path = held.get(identifier, "")
+        text = run(["show", f"{base}:{path}"], root) if path else ""
+        if not text:
+            kept.append(identifier)
+            unread.append(identifier)
+        elif landed_closure(parse_item(text, path.rsplit("/", 1)[-1]).status):
+            kept.append(identifier)
+    return tuple(kept), tuple(unread)
 
 
 def cuts_in_flight(

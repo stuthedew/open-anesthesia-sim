@@ -1001,7 +1001,7 @@ def _complete_report(
         # only while the cut is unmerged, which is where this runs: on the
         # release branch and on its pull request, where re-running the cut
         # still absorbs the newcomers.
-        window=None if git is None else cut_window(root, runner=git),
+        window=None if git is None else cut_window(root, items_dir=tracked, runner=git),
         # The running cross-session log, split at its `##` headings - a
         # different file from the release notes two lines up. One read of one
         # file, and only where the project names one: a project configuring no
