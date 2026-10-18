@@ -35,18 +35,22 @@ around that sentence; never cut the sentence. A citation to a published
 reference case, a tolerance and the reason for it, and a named `PL-` id are all
 facts rather than prose.
 
-**Three files are out of scope**, and by the project's own boundary rather than
-by preference: `tests/unit/test_contrast_check.py`,
-`tests/unit/test_doc_check.py` and `tests/unit/test_import_boundary_check.py`
-are named in `docket.toml`'s `workflow_paths`, which counts them apparatus
-rather than product - so `.claude/rules/apparatus-standard.md` governs them,
-not the specialist standard this item applies. The
-same reasoning kept `docs/WORKING_NOTES.md` out of the prose split.
+**Apparatus tests are out of scope**, by the project's own boundary rather
+than by preference. A file under `tests/` that does not import
+`anesthesia_sim` is apparatus. `tools/workflow_paths_check.py` decides that
+from the file itself, and `docket.toml`'s `workflow_paths` lists every such
+file. `.claude/rules/apparatus-standard.md` governs those files, not the
+specialist standard this item applies. The rule is stated here instead of a
+list, because the list grows each time `tools/` gains a test: it named three
+files when this brief was written and 35 by 2026-09-27 (`PL-6X56`). Print the
+current set with `sed -n '/^workflow_paths = \[/,/^\]/p' docket.toml | grep
+'"tests/'`, which listed 51 on 2026-10-18. The same reasoning kept
+`docs/WORKING_NOTES.md` out of the prose split.
 
-**Where.** `tests/`, less the three files above. Counts are measured 2026-09-05 and rounded because they move every release; re-measure before starting rather than trusting them - they are here for ordering, not as a claim.
+**Where.** `tests/`, apart from the files `workflow_paths` lists. Counts are measured 2026-09-05 and rounded because they move every release; re-measure before starting rather than trusting them - they are here for ordering, not as a claim.
 
-**Done when.** Every comment and docstring under `tests/` outside those three
-files has been read and, where it was padded, cut: nothing restating the line
+**Done when.** Every comment and docstring under `tests/` outside the files
+`workflow_paths` lists has been read and, where it was padded, cut: nothing restating the line
 below it, no docstring paragraph repeating its own first sentence. Every
 statement of what a test defends, every reference citation and every tolerance
 rationale is still on the page. `make check` passes, with the
