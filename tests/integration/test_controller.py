@@ -3771,8 +3771,10 @@ def test_a_mark_added_behind_a_running_trunk_is_not_called_still_reachable() -> 
 def test_a_branch_taken_at_a_control_event_agrees_with_its_trunk_about_a_mark_there() -> None:
     """Case E, at the door that predates bookmark forks entirely.
 
-    `resumed_at` opens at a keyframe rather than at a crossing, so there is no
-    crossing to seed from and the clock is the only thing that can answer it.
+    The trunk halted on the mark and a setting was then changed there, so the
+    halt is a keyframe too. `resumed_at` asks the step ending at it what it
+    crossed, as `resumed_here` does, so the branch opens standing on the halt's
+    crossing rather than on none (`PL-1ZQ4`, case 3).
     """
 
     marked = SimulationController()
@@ -3785,7 +3787,8 @@ def test_a_branch_taken_at_a_control_event_agrees_with_its_trunk_about_a_mark_th
     branch = marked.resumed_at(CaseInstant(30.0))
 
     assert branch.opened_from is not None
-    assert branch.opened_from.crossing is None, "the premise: a keyframe carries no crossing"
+    assert branch.opened_from.crossing == BookmarkCrossing(CaseInstant(30.0), (at_the_keyframe,))
+    assert branch.opened_from == marked.resumed_here().opened_from
     assert marked.snapshot().bookmark_standings.of_time_bookmark(at_the_keyframe) is (
         MarkStanding.PASSED
     )
@@ -3795,7 +3798,7 @@ def test_a_branch_taken_at_a_control_event_agrees_with_its_trunk_about_a_mark_th
 
 
 def test_a_mark_removed_and_re_added_at_a_branch_s_fork_instant_still_reads_passed() -> None:
-    """Case F: `_forget_unmarked` drops the seeded entry, and the clock still answers.
+    """Case F: `_forget_unmarked` drops what the run did with it, and the clock still answers.
 
     Removing a mark clears what the run did with it, which is right - the row
     is gone. An equal mark added afterwards is a new question about the same
@@ -3817,12 +3820,12 @@ def test_a_mark_removed_and_re_added_at_a_branch_s_fork_instant_still_reads_pass
 
 
 def test_resetting_a_branch_leaves_it_standing_on_the_crossing_it_opened_at() -> None:
-    """Case G: seeding done at fork time has to survive a reset, or it returns.
+    """Case G: the crossing a branch opened on has to survive a reset, or it returns.
 
     A branch's reset returns it to its fork, which is the crossing it opens
     on - so the halt it is standing at and what it has crossed are part of
     where it is rather than of what an earlier run did. `_open_at` is reset's
-    path as well as the fork's, which is what makes the two seed identically.
+    path as well as the fork's, which is what makes the two stand identically.
     """
 
     marked = SimulationController()
@@ -3845,7 +3848,7 @@ def test_resetting_a_branch_leaves_it_standing_on_the_crossing_it_opened_at() ->
 
 
 def test_a_mark_unmarked_on_a_branch_does_not_come_back_with_its_reset() -> None:
-    """The seeding is filtered by what is marked *now*, not by what was.
+    """The crossing a branch stands on is filtered by what is marked *now*, not by what was.
 
     A halt naming a row the panel no longer draws is the stale state
     `_forget_unmarked` exists to prevent, and a reset re-seeding from the fork
@@ -4318,6 +4321,115 @@ def test_a_height_crossed_on_the_step_that_reached_a_passed_mark_is_stood_on_too
     assert branch.opened_from is not None
     assert branch.opened_from.crossing == BookmarkCrossing(crossed_at_s, (instant,), (target,))
     assert branch.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
+
+
+def test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run() -> None:
+    """One answer per mark, whichever run is asked and whichever order the mark and branch came in.
+
+    The three cases `PL-1ZQ4` reproduced, each built on the step a 0.3 xMAC
+    alveolar target is crossed on. A finder run halts there to name it. Each
+    case asks that one step about marks added after it was taken:
+
+    1. A trunk paused on the step, with the target added afterwards, read
+       the target as still running while a branch opened there read it as
+       reached. They still disagreed 300 s later.
+    2. A trunk halted on the step by a time mark. Marks added before
+       `fork_here` read passed and reached on the branch; added to both runs
+       after it, before this branch and still running.
+    3. The same halt with a setting changed on it, so the halt is a keyframe
+       too. `fork_at` there opened on no crossing where `fork_here` opened on
+       the halt's.
+
+    Every run here stands on that step or opened on it, so each mark inside
+    the step reads as crossed by it: the late time mark passed and the target
+    reached (`docs/MODEL.md` § "Halting on a marked crossing").
+    """
+
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.3))
+    finder = SimulationController()
+    finder.add_mac_target(target)
+    finder.start()
+    _advance_until_halted(finder, limit_s=400.0)
+    crossing_steps = finder._state.step_count
+    crossed_at_s = finder.snapshot().elapsed_s
+    # Both lie inside the crossing step, which ends at `crossed_at_s`: the
+    # first halts the run there, and the second is added after the halt.
+    halting = TimeBookmark(CaseInstant(crossed_at_s - 0.05), "halts the run")
+    late = TimeBookmark(CaseInstant(crossed_at_s - 0.07), "added late")
+
+    def standings(run: SimulationController) -> tuple[MarkStanding, ...]:
+        answers = run.snapshot().bookmark_standings
+
+        return tuple(answers.of_time_bookmark(mark) for mark in (halting, late)) + (
+            answers.of_mac_target(target),
+        )
+
+    def halted_on_the_step() -> SimulationController:
+        run = SimulationController()
+        run.add_time_bookmark(halting)
+        run.start()
+        _advance_until_halted(run, limit_s=400.0)
+        assert run.snapshot().elapsed_s == crossed_at_s, "the premise: the halt is the step's"
+
+        return run
+
+    def add_late_marks(*runs: SimulationController) -> None:
+        for run in runs:
+            run.add_time_bookmark(late)
+            run.add_mac_target(target)
+
+    reached = (MarkStanding.PASSED, MarkStanding.PASSED, MarkStanding.REACHED)
+
+    # Case 1: a plain pause, the target added afterwards, and the time marks
+    # added with it so every run is asked about the same three.
+    paused = SimulationController()
+    paused.start()
+
+    for _ in range(crossing_steps):
+        paused.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+
+    paused.pause()
+    paused.add_time_bookmark(halting)
+    add_late_marks(paused)
+    from_the_pause = BranchedCase(paused).fork_here()
+
+    assert standings(paused) == standings(from_the_pause) == reached
+
+    for run in (paused, from_the_pause):
+        run.start()
+        _advance_for(run, duration_s=300.0)
+        run.pause()
+
+    assert paused.snapshot().elapsed_s == from_the_pause.snapshot().elapsed_s
+    assert standings(paused) == standings(from_the_pause) == reached
+
+    # Case 2: the late marks added before the branch, and after it to both.
+    marked_first = halted_on_the_step()
+    add_late_marks(marked_first)
+    branched_after_marking = BranchedCase(marked_first).fork_here()
+
+    branched_first = halted_on_the_step()
+    branched_before_marking = BranchedCase(branched_first).fork_here()
+    add_late_marks(branched_first, branched_before_marking)
+
+    assert standings(marked_first) == standings(branched_after_marking) == reached
+    assert standings(branched_first) == standings(branched_before_marking) == reached
+
+    # Case 3: the halt made a keyframe by a setting change, then both doors.
+    changed_on_the_halt = halted_on_the_step()
+    changed_on_the_halt.set_fresh_gas_flow(FreshGasFlow(3.0))
+    add_late_marks(changed_on_the_halt)
+    case = BranchedCase(changed_on_the_halt)
+    at_the_keyframe = case.fork_at(CaseInstant(crossed_at_s))
+    where_it_stands = case.fork_here()
+
+    assert at_the_keyframe.opened_from is not None
+    assert at_the_keyframe.opened_from.crossing == BookmarkCrossing(
+        CaseInstant(crossed_at_s), (halting, late), (target,)
+    )
+    assert at_the_keyframe.opened_from == where_it_stands.opened_from
+    assert standings(changed_on_the_halt) == reached
+    assert standings(at_the_keyframe) == standings(where_it_stands) == reached
 
 
 def test_a_mark_at_the_case_s_opening_returns_to_induction_with_no_crossing() -> None:
