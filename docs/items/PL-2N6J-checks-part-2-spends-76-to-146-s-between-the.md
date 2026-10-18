@@ -17,6 +17,43 @@ owner set the bar for CI work at low-hanging fruit, not a new problem to
 troubleshoot, so this ranks `P3`. Pick it up only if CI time becomes a
 problem again.
 
+**Taken up** (project owner, 2026-10-18, ratified, over leaving it tabled).
+`PL-ZWQS` found that part 2 finishes last on every run where both parts get
+the same class of runner. The owner agreed to work this item first and then
+re-measure the gap.
+
+**Findings so far, 2026-10-18.**
+
+- **Cold bytecode is not the cause.** A local timing on a 4-core container
+  started pytest with all 8 workers and selected no tests. It took 38 to 41 s
+  for either part, with or without `__pycache__` directories. Collection alone
+  took 14 to 17 s, and cold bytecode added at most 3 s.
+- **Locally, the header is not late.** In a full local run of part 2, pytest
+  printed its session header and `created: 8/8 workers` 0.5 s after start. It
+  printed `8 workers [5702 items]`, the end of collection, at 36 s. The first
+  72 results arrived at 112 s, because part 2's first tests build the costly
+  computations. The run took 290 s.
+- **On CI, the log stamps the header at the end of collection.** In run
+  39173547056, the header, `created: 8/8 workers` and `8 workers [N items]`
+  all carry the same timestamp, in both parts. Part 2's header came 161 s
+  after its step started, and part 1's came 49.5 s after. Part 2's first
+  result line came 37 s after its header, and part 1's came 0.2 s after.
+  Setting `CI=true` and `GITHUB_ACTIONS=true` locally did not delay the
+  header. So it is not yet known whether part 2's 161 s is collection,
+  buffering, or its first tests.
+- **The measurement in flight.** Draft pull request `#1615` runs both
+  pytest steps with `PYTHONUNBUFFERED=1`, so the log stamps each line when
+  pytest prints it.
+
+**Next steps.** Read the `#1615` run's logs for both parts. Compare the
+step's start with the header line, with `8 workers [N items]` and with the
+first result line. If collection ends at about the same time in both parts,
+the extra wait is part 2's costly tests running first. That is test work for
+`PL-ZWQS`'s balance, not start-up, and this item closes on that finding. Then
+decide whether to keep `PYTHONUNBUFFERED`, which makes CI's timestamps true
+for every later timing, or revert it. If collection itself is slower in part
+2, find what part 2's workers do differently during collection.
+
 **Problem.** In `quality.yml`, `checks-part-2` waits much longer than
 `checks-part-1` before pytest starts. The gap is measured from the pytest
 step's `##[group]Run` line to pytest's `test session starts` header, which
