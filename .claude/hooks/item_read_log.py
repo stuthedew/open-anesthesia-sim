@@ -40,10 +40,10 @@ Standard library only, and parses at the floor
 from __future__ import annotations
 
 import json
-import os
 import sys
 from datetime import UTC, datetime
-from pathlib import Path
+
+from hook_input import project_root
 
 LOG_NAME = ".docket-reads.log"
 
@@ -60,13 +60,6 @@ MAX_LOG_BYTES = 4_000_000
 # `path` and `pattern` are Grep and Glob. Order matters only in that the first
 # hit wins, and a tool never sets two of them meaningfully.
 PATH_KEYS = ("file_path", "path", "notebook_path")
-
-
-def repo_root() -> Path:
-    env = os.environ.get("CLAUDE_PROJECT_DIR")
-    if env:
-        return Path(env)
-    return Path(__file__).resolve().parents[2]
 
 
 def interesting(payload: dict[str, object]) -> tuple[str, str] | None:
@@ -118,7 +111,7 @@ def main() -> int:
             return 0
         tool, target = hit
 
-        log = repo_root() / LOG_NAME
+        log = project_root() / LOG_NAME
         if log.exists() and log.stat().st_size > MAX_LOG_BYTES:
             return 0
 

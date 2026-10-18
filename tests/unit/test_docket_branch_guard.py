@@ -217,12 +217,21 @@ def test_branch_guard_says_nothing_when_the_base_has_not_moved(tmp_path: Path) -
 
 
 def test_branch_guard_lets_the_edit_through_when_it_cannot_run(tmp_path: Path) -> None:
-    """Every failure is the session's to ignore: it edits normally regardless."""
+    """Every failure is the session's to ignore: it edits normally regardless.
+
+    The checkout named here holds no `bin/docket`. An unset `CLAUDE_PROJECT_DIR`
+    no longer stops the hook, since it then acts on its own clone (`PL-FB77`).
+    """
     (tmp_path / "markers").mkdir()
+    (tmp_path / "bare").mkdir()
     result = subprocess.run(
         ["bash", str(HOOK)],
         input='{"session_id": "s3"}',
-        env={"PATH": "/usr/bin:/bin:/usr/local/bin", "TMPDIR": str(tmp_path / "markers")},
+        env={
+            "CLAUDE_PROJECT_DIR": str(tmp_path / "bare"),
+            "PATH": "/usr/bin:/bin:/usr/local/bin",
+            "TMPDIR": str(tmp_path / "markers"),
+        },
         capture_output=True,
         text=True,
         check=False,
@@ -275,6 +284,36 @@ def test_branch_guard_says_to_claim_before_the_first_edit_that_is_work(tmp_path:
     context = json.loads(first.stdout)["hookSpecificOutput"]["additionalContext"]
     assert "this branch claims nothing: `bin/docket claim <id>`" in context
     assert again.stdout == ""
+
+
+def test_an_unset_project_dir_falls_back_as_the_other_hooks_do(tmp_path: Path) -> None:
+    """With `CLAUDE_PROJECT_DIR` unset it acts on the clone it sits in, as every hook does.
+
+    It used to exit at once and say nothing, where the other hooks fell back to
+    their own clone (`PL-FB77`).
+    """
+    (tmp_path / "markers").mkdir()
+    work = _clone_of_a_moved_remote(tmp_path, moved=False, branch="claude/some-session-a1b2c3")
+    _with_the_check(work)
+    hooks = work / ".claude" / "hooks"
+    hooks.mkdir(parents=True)
+    for name in ("docket-branch-guard.sh", "hook_input.py"):
+        shutil.copy(HOOK.parent / name, hooks / name)
+    env = _guard_env(work, tmp_path)
+    del env["CLAUDE_PROJECT_DIR"]
+    payload = {"session_id": "s1", "tool_name": "Edit", "tool_input": {"file_path": "src/w.py"}}
+
+    result = subprocess.run(
+        ["bash", str(hooks / "docket-branch-guard.sh")],
+        cwd=tmp_path,
+        input=json.dumps(payload),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert "this branch claims nothing" in result.stdout
 
 
 def test_branch_guard_keeps_the_claim_question_past_a_capture(tmp_path: Path) -> None:

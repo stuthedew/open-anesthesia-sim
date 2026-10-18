@@ -51,7 +51,8 @@ if [ -n "$hook_input" ] &&
   echo "Compacted: a file restored with the summary counts as already read, and its path-scoped rules may not have come back with it. Read it again before the first edit to it (PL-384P)."
 fi
 
-root="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+# The checkout, as every hook finds it (`hook_input.py`, `PL-FB77`).
+root=$(python3 "$(dirname "${BASH_SOURCE[0]}")/hook_input.py") || exit 0
 [ -x "$root/bin/docket" ] || exit 0
 [ -d "$root/docs/items" ] || exit 0
 
