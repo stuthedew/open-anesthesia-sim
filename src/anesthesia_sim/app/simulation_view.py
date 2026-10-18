@@ -39,7 +39,7 @@ from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import Final
 
-from PySide6.QtCore import QEvent, QObject, Qt, QTimer, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QResizeEvent
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -387,19 +387,6 @@ class SimulationView(QWidget):
         self._chart_column = self._build_chart_column()
         self._build_page()
 
-        # Every widget whose geometry places the chart on the page, from the
-        # chart up to the splitter the page lays out. A branch's readouts
-        # arrive above the chart as several passes of layout, so the page
-        # follows the chart through each of them rather than scrolling once
-        # to where the first pass happened to leave it.
-        for placing in (
-            self._concentration_chart,
-            self._chart_column,
-            self._charts_and_sidebar,
-            self._sections,
-        ):
-            placing.installEventFilter(self)
-
         for controller in controllers:
             self._place_run(controller)
 
@@ -503,6 +490,9 @@ class SimulationView(QWidget):
         # keys, the bar - and not for a scroll this view makes, so it is
         # what tells the view to stop holding the chart in view.
         scroll.verticalScrollBar().actionTriggered.connect(self._release_chart_view)
+        # The page's height changes with each pass of layout that moves the
+        # chart, so the bar's range changing is when to follow it.
+        scroll.verticalScrollBar().rangeChanged.connect(self._follow_chart)
         self._page_scroll = scroll
         outer = _spaced_column(self, 0)
         outer.addWidget(scroll)
@@ -992,8 +982,8 @@ class SimulationView(QWidget):
 
         The new run's widgets reach their final size over several passes of
         layout after the press returns, and each pass moves the chart. So
-        the scroll is made now and again each time the chart moves
-        (`eventFilter`), until the reader scrolls the page themselves or the
+        the scroll is made now and again each time the page's height changes
+        (`_follow_chart`), until the reader scrolls the page themselves or the
         trunk's Reset ends the comparison. It scrolls as little as Qt's
         `ensureWidgetVisible` needs to, so nothing moves where the chart is
         already in view. The scroll goes when v0.6.0's tiled layout replaces
@@ -1008,18 +998,11 @@ class SimulationView(QWidget):
 
         self._chart_view_owed = False
 
-    def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # Qt spells this in camelCase.
-        """Follow the chart while a branch's layout settles, and let every event through.
+    def _follow_chart(self) -> None:
+        """Bring the chart back into view after a pass of layout, while the page is holding it."""
 
-        Installed on the chart and on each widget that places it on the
-        page. Scrolling moves the page inside the scroll area rather than
-        any of these widgets, so a scroll made here raises no event here.
-        """
-
-        if self._chart_view_owed and event.type() in (QEvent.Type.Move, QEvent.Type.Resize):
+        if self._chart_view_owed:
             self._page_scroll.ensureWidgetVisible(self._concentration_chart, 0, 0)
-
-        return super().eventFilter(watched, event)
 
     def _restate_fork_panel(self) -> None:
         """Restate both branch controls from the case on a halt, and offer nothing if that raises.

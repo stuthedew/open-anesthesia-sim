@@ -71,8 +71,11 @@ branch's readouts reach their final size over several passes of layout after
 the press returns. A single scroll at the press, or one on a zero timer,
 landed while the page was 1,568 px or 1,830 px tall and left the chart's lower
 edge below the fold (measured with a scratch probe at 1600 x 1000). So the
-view watches the chart and the widgets that place it on the page, and scrolls
-again each time one of them moves or resizes. It stops when the reader
+view scrolls again each time the page's height changes, which the scroll bar
+reports through `rangeChanged`. An event filter on the chart and its parents
+did the same, but it ran on views being garbage-collected in
+`tests/integration/test_dark_appearance.py` after their attributes had gone,
+and printed 96 `AttributeError` tracebacks in `make check`. It stops when the reader
 scrolls the page themselves, through the scroll bar's `actionTriggered`
 signal, or when the trunk's Reset ends the comparison.
 
