@@ -8780,7 +8780,7 @@ opens on four. Two runs open on seven at the same width, because two runs'
 rows raise the left column's minimum width to 1044 px. One run first opens on
 seven at 1398 px. So the outcome recorded above for a 1366 px screen no longer
 holds now that the control-change record shares the region's width with the
-readouts (`PL-J8K2`). The region's exact division is `PL-W54S`'s to settle (`ROADMAP.md` § "v0.6.0 - the
+readouts (`PL-J8K2`). The region's exact division is `PL-F2YS`'s to settle (`ROADMAP.md` § "v0.6.0 - the
 layout is the reader's", Required scope entry 20).
 
 **Why not a significant-figures rule.** A significant-figures rule gives the
