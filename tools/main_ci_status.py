@@ -341,40 +341,6 @@ def failing_steps(steps: tuple[tuple[str, str], ...]) -> tuple[str, ...]:
     return tuple(name for name, conclusion in steps if conclusion in STEP_FAILURES)
 
 
-# GitHub appends one of these per `uses:` action, to run its cleanup, and names
-# it `Post ` plus the step it follows. They are skipped along with everything
-# else below a failure, and counting them inflates the number the line prints:
-# measured across the 93 recorded replay failures, every one carries exactly two,
-# so an unfiltered count says six to eleven where the truth is four to nine.
-# A step of this repository's own that began with `Post ` would be excluded too,
-# and that error runs the safe way - it under-counts what was skipped, where the
-# bug being fixed over-counted it.
-_CLEANUP_PREFIX = "Post "
-
-
-def unrun_after(steps: tuple[tuple[str, str], ...], name: str) -> int:
-    """How many of the job's own steps after `name` never ran, its failure skipping them.
-
-    Load-bearing rather than decoration. `quality.yml` puts four to nine checks
-    *below* the replay - `contrast_check`, `import_boundary_check`,
-    `core_vocabulary_check` and `glyph_check` among them, all of which read
-    `src/` and `app/` - and a failing step skips every one. So a replay failure
-    leaves those unrun, and a line that called the tree clean on the strength of
-    the steps above it would be claiming a guarantee nobody checked.
-
-    The number is printed, so it is the repository's own steps rather than every
-    skipped row: `_CLEANUP_PREFIX` says why.
-    """
-    for index, (step, _) in enumerate(steps):
-        if step == name:
-            return sum(
-                1
-                for later, c in steps[index + 1 :]
-                if c == "skipped" and not later.startswith(_CLEANUP_PREFIX)
-            )
-    return 0
-
-
 def _quoted(step: str) -> str:
     """One step name, quoted and cut to `STEP_WIDTH` with the cut made visible."""
     if len(step) <= STEP_WIDTH:
@@ -423,12 +389,12 @@ def advisory(run: dict[str, object], steps: tuple[tuple[str, str], ...] = ()) ->
     something already pushed past; `steps` answers the second, which is whether
     this is the tree or the queue.
 
-    **The queue reading never claims the tree is clean**, and that distinction is
-    the point rather than a hedge. What can be said is that the replay was the
-    only step that failed and that the checks above it passed. What cannot is
-    that the tree is sound, because the replay's own failure skipped every check
-    below it - `unrun_after` counts them and the line says so, so a reader is
-    never handed a green they did not get.
+    **The queue reading says only what the run shows.** The replay was the
+    only step that failed, and `bin/docket check` passed above it on the same
+    tree. The replay is the last step of its job, and
+    `test_the_whole_store_replay_is_the_last_step_in_the_job` in
+    `tests/unit/test_quality_step_order.py` keeps it there. So its failure
+    skipped no check of that job.
     """
     conclusion = run.get("conclusion")
     if conclusion == "success":
@@ -438,17 +404,11 @@ def advisory(run: dict[str, object], steps: tuple[tuple[str, str], ...] = ()) ->
     url = run.get("html_url", "")
     head = f"main's quality run #{number} on {sha} concluded {conclusion}"
     if _is_queue_failure(run, steps):
-        unrun = unrun_after(steps, REPLAY_STEP)
-        tail = (
-            f" The {unrun} step(s) below it were skipped, so they are unrun rather than green."
-            if unrun
-            else ""
-        )
         return (
             f'{head} at "{REPLAY_STEP}", the only step that failed; `bin/docket check` passed '
             "above it on the same tree, so this is an open item's `verify:` command that has "
             "flipped to passing rather than the tree. `bin/docket check --verify` reproduces "
-            f"it here.{tail} {url}"
+            f"it here. {url}"
         )
     failed = failing_steps(steps)
     where = f" at {', '.join(_quoted(name) for name in failed)}" if failed else ""

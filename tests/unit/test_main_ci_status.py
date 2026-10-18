@@ -246,9 +246,8 @@ def _pairs(steps: list[tuple[str, str]]) -> tuple[tuple[str, str], ...]:
 
 
 # `quality.yml`'s real shape on a replay failure: the bare `bin/docket check`,
-# ruff, mypy and the suite pass above it, and four to nine checks below it -
-# among them the four that read `src/` and `app/` - never run at all, with
-# GitHub's two cleanup rows skipped alongside them and counted as neither.
+# ruff, mypy and the suite pass above it. The replay is the job's last step, so
+# only GitHub's two cleanup rows follow it.
 _REPLAY_STEPS = [
     ("Set up job", "success"),
     (main_ci_status.BARE_CHECK_STEP, "success"),
@@ -257,8 +256,6 @@ _REPLAY_STEPS = [
     ("Run uv run pytest", "success"),
     ("verify replay, scoped to what this branch changed", "skipped"),
     (main_ci_status.REPLAY_STEP, "failure"),
-    ("Run uv run python tools/import_boundary_check.py", "skipped"),
-    ("Run uv run python tools/glyph_check.py", "skipped"),
     # GitHub's own cleanup rows, one per `uses:` action. Every real job carries
     # them and every recorded replay failure carries exactly two.
     ("Post Run astral-sh/setup-uv@v9.0.0", "skipped"),
@@ -535,33 +532,6 @@ class TestStepConclusions:
         """Parsed JSON the API has promised nothing about; the caller degrades."""
         assert main_ci_status.step_conclusions(jobs) == ()
 
-    def test_counts_the_steps_a_failure_left_unrun(self) -> None:
-        assert main_ci_status.unrun_after(_pairs(_REPLAY_STEPS), main_ci_status.REPLAY_STEP) == 2
-
-    def test_does_not_count_githubs_own_cleanup_rows(self) -> None:
-        """They are skipped with everything else and are not checks.
-
-        Every one of the 93 recorded replay failures carries exactly two, so an
-        unfiltered count printed six to eleven where the truth was four to nine
-        (`PL-T83R`). The fixture carries a skipped one, which this pins.
-        """
-        pairs = _pairs(_REPLAY_STEPS)
-        assert any(n.startswith("Post ") and c == "skipped" for n, c in pairs), "fixture"
-        assert main_ci_status.unrun_after(pairs, main_ci_status.REPLAY_STEP) == 2
-
-    def test_counts_nothing_for_a_step_that_is_not_there(self) -> None:
-        assert main_ci_status.unrun_after(_pairs(_REPLAY_STEPS), "no such step") == 0
-
-    def test_counts_only_the_steps_that_were_skipped(self) -> None:
-        """A step below the failure that ran and passed is not unrun."""
-        pairs = _pairs(
-            [("x", "failure"), ("ran", "success"), ("never", "skipped"), ("also", "skipped")]
-        )
-        assert main_ci_status.unrun_after(pairs, "x") == 2
-
-    def test_counts_nothing_when_the_failure_was_the_last_step(self) -> None:
-        assert main_ci_status.unrun_after(_pairs([("only", "failure")]), "only") == 0
-
 
 class TestAdvisoryNamesTheCause:
     def test_says_the_failure_is_the_queue_when_the_replay_failed_alone(self) -> None:
@@ -569,17 +539,6 @@ class TestAdvisoryNamesTheCause:
         assert main_ci_status.REPLAY_STEP in line
         assert "the only step that failed" in line
         assert "bin/docket check --verify" in line, "the reader needs the command, not the cause"
-
-    def test_never_calls_the_tree_clean_on_steps_the_failure_skipped(self) -> None:
-        """The blocking half. `quality.yml` runs six to eleven checks *below* the
-        replay - `import_boundary_check`, `core_vocabulary_check`, `glyph_check`
-        and `contrast_check` among them, all reading `src/` and `app/` - and a
-        failing step skips every one. A line calling the tree clean would be
-        handing the reader a guarantee nobody checked.
-        """
-        line = main_ci_status.advisory(_run("failure", 1553), _pairs(_REPLAY_STEPS))
-        assert "unrun rather than green" in line
-        assert "2 step(s) below it were skipped" in line
 
     def test_the_queue_line_still_carries_the_run_number_sha_and_url(self) -> None:
         """The longer sentence must not have pushed out what identifies the run."""
