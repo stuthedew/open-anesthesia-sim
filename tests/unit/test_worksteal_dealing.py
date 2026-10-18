@@ -140,15 +140,33 @@ def test_the_predicted_slices_are_the_ones_worksteal_deals(tests: int, workers: 
     )
 
 
-@pytest.mark.parametrize("parts", [1, 2, 3])
-def test_the_parts_run_every_test_exactly_once(parts: int) -> None:
+@pytest.mark.parametrize(
+    ("parts", "shares"), [(1, None), (2, None), (3, None), (2, (2, 3)), (3, (1, 3, 2))]
+)
+def test_the_parts_run_every_test_exactly_once(parts: int, shares: tuple[int, ...] | None) -> None:
     tests = list(range(23))
     runs = [
         test
         for index in range(1, parts + 1)
-        for test in DEALING.part(tests, {3, 4, 17}, index, parts)
+        for test in DEALING.part(tests, {3, 4, 17}, index, parts, shares)
     ]
     assert sorted(runs) == tests
+
+
+def test_each_part_takes_its_share_of_each_cycle_of_ordinary_tests() -> None:
+    """With shares 2 and 3, part 1 takes the first 2 of each 5 ordinary tests."""
+
+    tests = list(range(12))
+    assert DEALING.part(tests, {0}, 1, 2, (2, 3)) == [1, 2, 6, 7, 11]
+    assert DEALING.part(tests, {0}, 2, 2, (2, 3)) == [0, 3, 4, 5, 8, 9, 10]
+
+
+@pytest.mark.parametrize("shares", [(2,), (2, 3, 1), (0, 3), (2, -1)])
+def test_shares_that_do_not_name_one_positive_count_per_part_are_refused(
+    shares: tuple[int, ...],
+) -> None:
+    with pytest.raises(ValueError, match="2 parts need 2 shares"):
+        DEALING.part(list(range(5)), set(), 1, 2, shares)
 
 
 def test_the_costly_tests_run_in_the_last_part_and_the_rest_alternate() -> None:
