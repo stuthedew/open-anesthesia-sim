@@ -4053,6 +4053,20 @@ def test_a_closed_generator_is_not_asked_for_a_verdict() -> None:
     assert not _has(errors, "`generator:`")
 
 
+def test_a_closed_head_cannot_stay_live() -> None:
+    """`PL-MT3R` closed with `generator: live`, and nothing said so (`PL-JLBD`).
+
+    `docket generators` listed it drained while its front matter said live, so
+    the record and the register built from it disagreed.
+    """
+    head = _item("PL-K7QX", root_cause_of=_EXPLAINS, status="done", generator=_LIVE)
+    errors = _errors(head, *_explained())
+
+    assert _has(errors, "says `live` on a done item")
+    spent = _item("PL-K7QX", root_cause_of=_EXPLAINS, status="done", generator="spent - drained")
+    assert not _has(_errors(spent, *_explained()), "`generator:`")
+
+
 _MISREAD = "Who holds an item now, and whether that holder is still live"
 
 

@@ -10,7 +10,7 @@ closed: 2026-10-03
 pr: 1326
 verify: uv run pytest -q tests/unit/test_literal_home_check.py && uv run python tools/literal_home_check.py
 root-cause-of: PL-T5J5, PL-TCW5, PL-QRBB, PL-DJYF, PL-4YY1, PL-8DJ7, PL-017, PL-NH53
-generator: live - three of its members were filed on 2026-10-03 alone (PL-T5J5 and its two derived-state siblings PL-8H2R and PL-5291), and nothing in make check yet refuses a second literal copy of a named value
+generator: spent - closed 2026-10-03 by #1326: tools/literal_home_check.py now fails make check on a second literal copy of a named value under src/, with a baseline that only shrinks
 misread: the value of a named constant, read from its one definition rather than typed again at the use
 ---
 

@@ -3,11 +3,13 @@ id: PL-JLBD
 title: PL-MT3R is done and bin/docket generators lists it drained, yet its front matter still carries generator: live and docket check is silent, so the field and the register disagree about one head while the pause rule reads only open items
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-18
+pr: 1594
 payoff: a closed head's record and the generator register agree, so whether the pause binds is read from the store rather than measured
 verify: grep -q 'def test_a_closed_head_cannot_stay_live' subprojects/docket/tests/test_checks.py
 recurrences: 2026-10-01 PL-DHGC withdrawn 2026-10-01 PL-KGYT, 2026-10-04 PL-LNDJ withdrawn 2026-10-04 PL-R417
