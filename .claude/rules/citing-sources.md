@@ -187,8 +187,15 @@ Four limits decide what a citation may claim:
   (`PL-SHG5`), restored without reopening it.
 
   Attach it with `add_repo` (owner `stuthedew`, repo
-  `open-anesthesia-sim-references`, access `read`), then `git clone --depth 1
-  https://github.com/stuthedew/open-anesthesia-sim-references`. The GitHub
+  `open-anesthesia-sim-references`, access `read`). Then clone it outside the
+  working tree, into the scratchpad directory your system prompt names:
+  `git clone --depth 1 https://github.com/stuthedew/open-anesthesia-sim-references
+  "$SCRATCHPAD/open-anesthesia-sim-references"`, with `SCRATCHPAD` set to that
+  path. A session with no scratchpad clones beside the checkout, into
+  `../open-anesthesia-sim-references`. A clone without a destination lands in
+  the repository root as a nested git repository, and `git add -A` then records
+  it as a gitlink this repository cannot resolve (`PL-548V`). `.gitignore`
+  ignores that directory name at the root as a backstop. The GitHub
   proxy authenticates the clone, so no token enters the sandbox and the
   environment's Network access setting does not need to change. Reading a PDF
   needs `pdftotext`, from `poppler-utils`. The base image carried it on
