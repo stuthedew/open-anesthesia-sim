@@ -3,11 +3,13 @@ id: PL-JTWV
 title: A failed drift.yml run reaches no session: the 2026-10-01 failure went unread for 17 days because tools/main_ci_status.py reads only quality.yml
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
+closed: 2026-10-18
+pr: 1607
 payoff: the session-start digest prints one line when the newest drift.yml run on main failed, so a red drift result reaches the next session
 verify: grep -q 'def test_a_failed_drift_run_is_named' tests/unit/test_main_ci_status.py
 ---
