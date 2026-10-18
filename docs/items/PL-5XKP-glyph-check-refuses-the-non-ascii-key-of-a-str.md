@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: exact-gates
+milestone: v0.5.28
 touches: tools/glyph_check.py, tests/unit/test_glyph_check.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25

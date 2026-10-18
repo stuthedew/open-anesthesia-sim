@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.5.28
 touches: docs/maintainer.md
 added: 2026-09-30
 closed: 2026-10-18

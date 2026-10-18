@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: model-evidence
+milestone: v0.5.28
 touches: docs/maintainer.md
 added: 2026-10-17
 closed: 2026-10-18
