@@ -814,7 +814,7 @@ def test_a_join_too_deep_cut_one_way_is_taken_cut_the_other() -> None:
 
 
 def test_a_join_too_deep_for_its_split_is_taken_by_cutting_a_split_above_first() -> None:
-    """Whether a join fits the depth maximum depends on the rectangles, not on which tree holds them.
+    """Whether a join fits the depth maximum depends on the rectangles, not on the tree.
 
     The two trees hold the same rectangles: a cut down at x = 0.75 and a cut
     across at y = 0.25 meet at a point, and each tree takes a different one
@@ -849,7 +849,7 @@ def test_a_join_too_deep_for_its_split_is_taken_by_cutting_a_split_above_first()
 
 
 def test_a_join_that_merges_into_the_split_above_may_reach_the_depth_maximum() -> None:
-    """A re-sliced region one level deeper than its place is taken when it merges into the split above.
+    """A region one level deeper than its place is taken when it merges into the split above.
 
     Joining Areas 1 and 2 leaves a column holding the merged Area beside a
     row of Areas 4 and 5 and, under it, Area 3 beside them. Cut down first,
@@ -1058,7 +1058,7 @@ def test_a_drag_refuses_a_gap_the_stored_sizes_would_round_away() -> None:
 
 
 def test_a_drag_leaves_a_split_off_its_line_exactly_as_it_was() -> None:
-    """A split whose extent does not change and which holds no moved handle keeps its sizes as stored.
+    """A split whose extent is the same and which holds no moved handle keeps its sizes as stored.
 
     Worked out again from where its borders lie, a row of a tenth, two tenths
     and seven tenths comes back with 0.20000000000000004 for its middle size.
