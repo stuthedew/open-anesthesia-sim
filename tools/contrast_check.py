@@ -2307,7 +2307,8 @@ def format_report(report: Report, *, matrix: bool) -> str:
     if report.made_worse:
         lines.append("")
         lines.append(
-            f"Listed as a known shortfall and made worse than its entry excused (base {report.base}):"
+            "Listed as a known shortfall and made worse than its entry excused "
+            f"(base {report.base}):"
         )
         for worse in report.made_worse:
             requirement = worse.result.requirement
