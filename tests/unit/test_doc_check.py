@@ -286,6 +286,22 @@ def _versioned(tmp_path: Path, roadmap: str = VERSIONED_ROADMAP, version: str = 
     return root
 
 
+def test_the_digest_hook_runs_without_the_callers_virtualenv(tmp_path: Path) -> None:
+    """Under `uv run`, the hook's bare `python3` was the virtualenv's (`PL-HDMP`)."""
+    venv = tmp_path / ".venv"
+    environ = {
+        "VIRTUAL_ENV": str(venv),
+        "PATH": f"{venv / 'bin'}:/usr/local/bin:{tmp_path / '.venvish'}:/usr/bin",
+        "HOME": "/root",
+    }
+
+    assert doc_check.session_environment(environ) == {
+        "PATH": f"/usr/local/bin:{tmp_path / '.venvish'}:/usr/bin",
+        "HOME": "/root",
+    }
+    assert doc_check.session_environment({"PATH": "/usr/bin"}) == {"PATH": "/usr/bin"}
+
+
 def test_clean_repository_reports_nothing(tmp_path: Path) -> None:
     assert _errors(_repo(tmp_path)) == []
 

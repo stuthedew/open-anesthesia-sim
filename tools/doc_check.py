@@ -7965,6 +7965,29 @@ def measure_resident(root: Path) -> list[ResidentFile]:
     return measured
 
 
+def session_environment(environ: Mapping[str, str]) -> dict[str, str]:
+    """The environment a session runs the SessionStart hook in, rebuilt from the caller's.
+
+    `make check` and CI run this tool under `uv run`, which sets `VIRTUAL_ENV`
+    and puts the virtualenv's `bin` first on `PATH`. Passed on as it was, the
+    hook's bare `python3` became the virtualenv's interpreter, while a session
+    runs the hook with the system's. On 2026-09-24 the two printed digests 276
+    characters apart, from one line the virtualenv's interpreter printed and
+    the system's did not (`PL-HDMP`). So `VIRTUAL_ENV` is dropped, and so is
+    each `PATH` entry inside it.
+    """
+    virtualenv = environ.get("VIRTUAL_ENV", "")
+    kept = {name: value for name, value in environ.items() if name != "VIRTUAL_ENV"}
+    if virtualenv and "PATH" in environ:
+        inside = Path(virtualenv).resolve()
+        kept["PATH"] = os.pathsep.join(
+            entry
+            for entry in environ["PATH"].split(os.pathsep)
+            if not entry or not Path(entry).resolve().is_relative_to(inside)
+        )
+    return kept
+
+
 def measure_digest(root: Path) -> ResidentFile | None:
     """What the SessionStart hook emits into every session, by running it.
 
@@ -8014,7 +8037,7 @@ def measure_digest(root: Path) -> ResidentFile | None:
             text=True,
             timeout=DIGEST_TIMEOUT,
             check=False,
-            env={**os.environ, "CLAUDE_PROJECT_DIR": str(root)},
+            env={**session_environment(os.environ), "CLAUDE_PROJECT_DIR": str(root)},
         )
     except GIT_UNAVAILABLE:
         return None

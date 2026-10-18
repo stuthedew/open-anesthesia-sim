@@ -3,12 +3,14 @@ id: PL-HDMP
 title: doc_check measures the session-start digest by running .claude/hooks/docket-digest.sh with the calling interpreter's PATH, so under uv run - how make check runs it since PL-MB3F, and CI's uv step always - the hook's bare python3 is the venv's 3.14, and the reported resident total (5151 characters of digest) is not what a session running bare 3.11 receives (4875)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: resident-gauge-basis
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-24
+closed: 2026-10-18
+pr: 1601
 payoff: the resident total make check prints in a container is the one a session actually receives, so a figure quoted in CLAUDE.md or a commit is not 0.4% high
 verify: grep -q 'def test_the_digest_is_measured_without_the_calling_virtualenv' tests/unit/test_doc_check.py
 ---
@@ -69,3 +71,14 @@ it. The nearest is `PL-YRYR`, on the machine's git config setting what the
 docket suite's test commits cost, which is a different fact. The defect is a
 side effect of `PL-MB3F` moving `doc_check` under `uv run` on 2026-09-24, and
 that item's close found it.
+
+**Done 2026-10-18 on #1601.** Re-measured first, with a `.venv` and network
+this time: run directly, the hook printed the same 7,048 characters under
+`uv run` as without it, because `left_behind_check.py` now reaches GitHub
+under both interpreters. The mechanism was still there, so it is fixed.
+`measure_digest` now runs the hook in `session_environment(os.environ)`,
+which drops `VIRTUAL_ENV` and every `PATH` entry inside it. After the fix,
+`uv run python tools/doc_check.py check` and bare `python3` report the
+same digest size, 7,018 characters over 31 lines. The certificate failure
+the brief asked about did not recur, so nothing is filed for it.
+
