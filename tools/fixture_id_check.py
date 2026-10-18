@@ -161,6 +161,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.fences import blocks  # noqa: E402
 from docket.frontmatter import Unread, closing, quoted  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
+from docket.python import docstrings  # noqa: E402
 from docket.shell import joined_text  # noqa: E402
 from docket.store import ID_RE  # noqa: E402
 
@@ -210,7 +211,8 @@ SPEC_WIDTH_RE = re.compile(r"0(\d+)d\Z")
 #: looked for. `tests/unit/test_workflow_paths_check.py` has two of that shape.
 MARKER = "not-an-id"
 
-DOCSTRING_HOLDERS = (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+#: The fields of a node that hold a list of statements, where a docstring can stand.
+STATEMENT_LISTS = ("body", "orelse", "finalbody")
 
 #: The one tree whose prose is scanned, as the first part of a path relative to
 #: the root. See the module docstring for why it is this tree and not `docs/`.
@@ -296,17 +298,26 @@ def values(node: ast.AST) -> Iterator[tuple[int, int, str]]:
 
 
 def without_docstrings(tree: ast.Module) -> ast.Module:
-    """The same tree with every docstring dropped, so prose is not scanned."""
-    for node in ast.walk(tree):
-        if not isinstance(node, DOCSTRING_HOLDERS) or not node.body:
-            continue
-        first = node.body[0]
-        if (
-            isinstance(first, ast.Expr)
-            and isinstance(first.value, ast.Constant)
-            and isinstance(first.value.value, str)
-        ):
-            node.body = node.body[1:]
+    """The same tree with every docstring dropped, so prose is not scanned.
+
+    A docstring is what `docket.python.docstrings` says one is, an attribute
+    docstring included. Dropping only the first statement of a module, class
+    or function scanned an attribute docstring as a value (`PL-8W1J`).
+    """
+    prose = {id(node) for node in docstrings(tree)}
+    for node in list(ast.walk(tree)):
+        for field in STATEMENT_LISTS:
+            statements = getattr(node, field, None)
+            if isinstance(statements, list):
+                setattr(
+                    node,
+                    field,
+                    [
+                        statement
+                        for statement in statements
+                        if not (isinstance(statement, ast.Expr) and id(statement.value) in prose)
+                    ],
+                )
     return tree
 
 

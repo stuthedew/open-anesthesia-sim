@@ -130,8 +130,10 @@ from pathlib import Path
 
 from workflow_paths_check import tracked_under
 
-#: Call names whose first literal string argument names a module.
-_DYNAMIC_IMPORTERS = frozenset({"import_module", "__import__"})
+# isort: split
+# After `workflow_paths_check`, whose import puts docket on the path.
+from docket.python import Imported
+from docket.python import imports as read_imports
 
 #: The directory a module's dotted name is read from: `src/anesthesia_sim/core/x.py`
 #: is `anesthesia_sim.core.x`, whose relative imports resolve against
@@ -365,19 +367,6 @@ BOUNDARIES: tuple[Boundary, ...] = (
 
 
 @dataclass(frozen=True)
-class Imported:
-    """One import statement found in one module, and every dotted name it makes available."""
-
-    names: tuple[str, ...]
-    line: int
-    statement: str
-
-    def reaches(self, package: str) -> bool:
-        """Does any name equal `package`, or continue it past a dot?"""
-        return any(name == package or name.startswith(package + ".") for name in self.names)
-
-
-@dataclass(frozen=True)
 class Violation:
     """A module importing a package its boundary confines elsewhere."""
 
@@ -386,51 +375,10 @@ class Violation:
     imported: Imported
 
 
-def _dynamic_name(node: ast.Call) -> str | None:
-    """The module a dynamic import names, where the name is a literal.
-
-    Returns `None` for anything undecidable by reading the source: a computed
-    name, a keyword-only call, or a relative name, which resolves against a
-    `package` argument this does not evaluate.
-    """
-    function = node.func
-    if isinstance(function, ast.Attribute):
-        name = function.attr
-    elif isinstance(function, ast.Name):
-        name = function.id
-    else:
-        return None
-    if name not in _DYNAMIC_IMPORTERS or not node.args:
-        return None
-    first = node.args[0]
-    if not (isinstance(first, ast.Constant) and isinstance(first.value, str)):
-        return None
-    if first.value.startswith("."):
-        return None
-    return first.value or None
-
-
-def _resolve(module: str | None, level: int, package: str | None) -> str | None:
-    """The absolute module a `from` statement names, relative or not.
-
-    importlib's own rule. `None` where it cannot be decided: a relative import
-    read without the importing module's package, or one climbing past the top
-    of it, which would fail at import time anyway.
-    """
-    if not level:
-        return module
-    if not package:
-        return None
-    bits = package.rsplit(".", level - 1)
-    if len(bits) < level:
-        return None
-    return f"{bits[0]}.{module}" if module else bits[0]
-
-
 def module_imports(
     source: str, filename: str = "<unknown>", package: str | None = None
 ) -> tuple[Imported, ...]:
-    """Every import one module makes, by any form this can decide.
+    """Every import one module makes, as `docket.python.imports` reads its parsed text.
 
     Args:
         source: The module's text.
@@ -443,26 +391,7 @@ def module_imports(
         One entry per import statement, in source order, each carrying every
         dotted name the statement makes available.
     """
-    tree = ast.parse(source, filename=filename)
-    found: list[Imported] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                found.append(Imported((alias.name,), node.lineno, f"import {alias.name}"))
-        elif isinstance(node, ast.ImportFrom):
-            module = _resolve(node.module, node.level, package)
-            if module is None:
-                continue
-            members = [alias.name for alias in node.names if alias.name != "*"]
-            names = (module, *(f"{module}.{member}" for member in members))
-            written = "." * node.level + (node.module or "")
-            imported = ", ".join(alias.name for alias in node.names)
-            found.append(Imported(names, node.lineno, f"from {written} import {imported}"))
-        elif isinstance(node, ast.Call):
-            name = _dynamic_name(node)
-            if name is not None:
-                found.append(Imported((name,), node.lineno, f"a dynamic import of {name!r}"))
-    return tuple(sorted(found, key=lambda entry: (entry.line, entry.statement)))
+    return read_imports(ast.parse(source, filename=filename), package)
 
 
 def _package_of(root: Path, path: Path) -> str | None:

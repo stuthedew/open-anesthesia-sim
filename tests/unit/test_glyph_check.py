@@ -22,10 +22,13 @@ tool refuses rather than guesses.
 
 from __future__ import annotations
 
+import ast
 import json
 import unicodedata
 from pathlib import Path
 
+import doc_check
+import fixture_id_check
 import glyph_check
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -124,6 +127,24 @@ def test_documentation_is_exempt_wherever_it_sits(tmp_path: Path) -> None:
     )
 
     assert glyph_check.problems(_tree(tmp_path, app=app)) == []
+
+
+def test_an_attribute_docstring_is_read_as_the_other_checks_read_it(tmp_path: Path) -> None:
+    """`PL-8W1J`: the three checks reading docstrings now agree on an attribute docstring.
+
+    `glyph_check` exempted it, `fixture_id_check` scanned it as a value and
+    `doc_check` read no citation in it. All three read `docket.python.docstrings`.
+    """
+    source = 'LIMIT = 3\n"""See PL-ZZZZ and docs/MODEL.md \u00a7 "Limits"."""\n'  # not-an-id
+    module = tmp_path / "limits.py"
+    module.write_text(source, encoding="utf-8")
+    tree = ast.parse(source)
+
+    assert list(glyph_check.python_strings(module)) == []
+    assert fixture_id_check.scan_python(module) == []
+    assert [text for _, text in doc_check._docstrings(tree)] == [
+        'See PL-ZZZZ and docs/MODEL.md \u00a7 "Limits".'  # not-an-id
+    ]
 
 
 def test_an_f_string_literal_part_is_read_around_the_interpolation(tmp_path: Path) -> None:
