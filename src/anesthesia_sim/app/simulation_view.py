@@ -1011,8 +1011,8 @@ class SimulationView(QWidget):
         so a halt whose frame failed left "Branch here" live over a trunk
         every other control said had failed, and a press was refused with the
         refusal lost to the next failing frame (`PL-MMNX`). The case answers
-        from the trunk's own state, and `BranchedCase.here_fork_point` is
-        None on a failed trunk, so the restatement needs no frame.
+        from the trunk's own state, so the restatement needs no frame. On a
+        trunk whose frame failed it offers nothing (`PL-T2Q2`).
 
         Guarded, because it runs inside the halt path, where a raise would
         escape the render path's own guard into the toolkit. A case whose
@@ -1458,12 +1458,14 @@ class SimulationView(QWidget):
         or a snapshot whose own values refuse - and a halt presented only
         through it would never be seen (`PL-25KS`, `PL-7DJK`). The branch
         controls are restated from the case for the same reason
-        (`_restate_fork_panel`, `PL-MMNX`). A presentation that fails
-        afterwards cannot unwind the halt.
+        (`_restate_fork_panel`, `PL-MMNX`). The trunk records that its frame
+        failed, so the case then offers no branch at all: one opened now would
+        be drawn by the same frame and halt on it (`PL-T2Q2`). A presentation
+        that fails afterwards cannot unwind the halt.
         """
 
         for run in self._runs:
-            run.halt(error)
+            run.halt(error, in_frame=True)
 
         for run in self._runs:
             run.present_halt()
