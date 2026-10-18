@@ -31,7 +31,7 @@ from .config import Config
 from .grep import read_grep
 from .instructions import Assertion
 from .lines import split_lines
-from .markdown import statement_lines
+from .markdown import SOFT_BREAK, statement_lines
 from .model import (
     CLOSED_STATUSES,
     EFFORTS,
@@ -2951,15 +2951,15 @@ SEQUENCING_CUES = (
 CLOSED_PREREQUISITE_CUES = (*DECLARING_CUES, *SEQUENCING_CUES)
 
 
-#: A soft break and the whitespace either side of it, which the gaps below
-#: count as one character, the one space it renders as: CommonMark reads the
-#: line ending as a soft break and strips a paragraph continuation line's
-#: leading whitespace (0.31.2 § 6.8, § 4.8), where `_unmarked` leaves that
-#: indent, and a container's markers, as spaces. Counted a column at a time, a
-#: third-level list item's indent filled the 40-character gap between a cue
-#: and its id (`PL-BVBB`). Atomic, so a gap that fails does not retry it a
-#: space at a time.
-SOFT_BREAK = r"(?>[ \t]*\n[ \t]*)"
+# A soft break and the whitespace either side of it is `markdown.SOFT_BREAK`,
+# which the gaps below count as one character, the one space it renders as:
+# CommonMark reads the line ending as a soft break and strips a paragraph
+# continuation line's leading whitespace (0.31.2 § 6.8, § 4.8), where
+# `_unmarked` leaves that indent, and a container's markers, as spaces. Counted
+# a column at a time, a third-level list item's indent filled the 40-character
+# gap between a cue and its id (`PL-BVBB`). It is atomic, so a gap that fails
+# does not retry it a space at a time. It was spelt here and in
+# `tools/doc_check.py` until `PL-NNVJ`.
 
 
 def _cue_pattern(cues: tuple[str, ...]) -> re.Pattern[str]:

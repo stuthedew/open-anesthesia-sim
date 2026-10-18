@@ -209,6 +209,21 @@ def closing(lines: Sequence[str]) -> int | None:
     return None
 
 
+def body_lines(lines: Sequence[str]) -> list[str]:
+    """`lines` with a closed front matter blanked, both its `---` lines included.
+
+    What a reader of a document's Markdown reads, every line in its place. A
+    front matter is no Markdown: read as Markdown, a fence-shaped line in a
+    block scalar opened a fence that ran on into the body and hid its prose
+    (`PL-WX79`), and its keys were one paragraph that its closing `---`
+    underlined as a heading (`PL-2MLT`). `tools/doc_check.py`,
+    `docket.instructions` and `docket.notes` each blanked it inline before
+    this (`PL-NNVJ`).
+    """
+    fence = closing(lines)
+    return list(lines) if fence is None else [""] * (fence + 1) + list(lines[fence + 1 :])
+
+
 @dataclass
 class _Passed:
     """What a reading of a block passes on the way to each key's end."""
