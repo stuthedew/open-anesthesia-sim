@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: stranded-report-fidelity
+milestone: v0.5.29
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25

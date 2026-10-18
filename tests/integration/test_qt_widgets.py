@@ -13,7 +13,7 @@ new-case dialog's default keeps the case, and where the window opens
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtCore import QRect, QSize, Qt
+from PySide6.QtCore import QEvent, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QFontMetrics, QPalette
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
@@ -376,6 +376,72 @@ def test_a_readout_row_refuses_the_wrong_number_of_readouts(application: QApplic
 
     with pytest.raises(ValueError, match="7 panels and was given 1 readouts"):
         row.set_readouts([_clock_readout("0s")])
+
+
+def test_a_readout_row_refuses_readings_of_other_quantities(application: QApplication) -> None:
+    """A value shown under another quantity's name is the wrong value (`PL-F2YS`)."""
+
+    row = _row(application, 1400)
+    snapshot = SimulationController().snapshot()
+    shorter = ReadoutRow(
+        readouts(snapshot, SUPPORTED_PLAYBACK_RATES[0])[:6], reservations=READOUT_RESERVATIONS[:6]
+    )
+    reordered = ReadoutRow(
+        readouts(snapshot, SUPPORTED_PLAYBACK_RATES[0])[::-1],
+        reservations=READOUT_RESERVATIONS[::-1],
+    )
+
+    for other in (shorter, reordered):
+        with pytest.raises(ValueError, match="cannot show the readings of a row"):
+            row.add_readings(other)
+
+    assert all(len(panel.findChildren(QLabel)) == 5 for panel in row.panels)
+
+
+def test_a_readout_row_carries_a_second_row_s_readings_under_one_name_each(
+    application: QApplication,
+) -> None:
+    """Each panel gains the other run's value, its second unit and its run's name.
+
+    The other row is hidden, and deleting the readings it returns leaves each
+    panel with its own five labels again, as dropping a branch does.
+    """
+
+    row = _row(application, 1400)
+    other = _row(application, 1400)
+
+    readings = row.add_readings(other)
+    row.set_run_name("Run 1")
+    other.set_run_name("Run 2")
+    application.processEvents()
+
+    assert other.isHidden()
+    assert len(readings) == len(row.panels) == 7
+
+    for panel, compared, reading in zip(row.panels, other.panels, readings, strict=True):
+        assert reading is compared.reading
+        assert panel.isAncestorOf(compared.value_label)
+        assert panel.isAncestorOf(compared.secondary_label)
+        assert panel.run_name_label.text() == "Run 1"
+        assert compared.run_name_label.text() == "Run 2"
+        assert compared.run_name_label.isVisibleTo(panel)
+        assert compared.run_name_label.y() < compared.value_label.y()
+
+    for reading in readings:
+        reading.setParent(None)
+        reading.deleteLater()
+
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
+    assert all(len(panel.findChildren(QLabel)) == 5 for panel in row.panels)
+
+
+def test_a_lone_run_s_panel_shows_no_run_name(application: QApplication) -> None:
+    row = _row(application, 1400)
+    row.set_run_name("Run 1")
+    row.set_run_name(None)
+
+    assert all(panel.run_name_label.isHidden() for panel in row.panels)
 
 
 # ----------------------------------------------------------------- sliders

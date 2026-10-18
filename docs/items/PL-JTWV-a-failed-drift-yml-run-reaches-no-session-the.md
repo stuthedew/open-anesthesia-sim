@@ -1,8 +1,17 @@
 ---
 id: PL-JTWV
 title: A failed drift.yml run reaches no session: the 2026-10-01 failure went unread for 17 days because tools/main_ci_status.py reads only quality.yml
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
+touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
+closed: 2026-10-18
+pr: 1607
+payoff: the session-start digest prints one line when the newest drift.yml run on main failed, so a red drift result reaches the next session
+verify: grep -q 'def test_a_failed_drift_run_is_named' tests/unit/test_main_ci_status.py
 ---
 
 **Problem.** `drift.yml` reports and does not gate, so its whole value is that
@@ -30,3 +39,12 @@ other lines. It follows `CLAUDE.md`'s rule that an advisory goes to the moment
 when its decision is taken, and that moment is the start of a session. This
 item was not built in the session that filed it, because the owner asked a
 question there and did not ask for a new mechanism.
+
+**Done when.** `tools/main_ci_status.py` prints one line, naming the run, its
+date and its failed jobs, when the newest completed `drift.yml` run on `main`
+concluded `failure`, and prints nothing for that workflow otherwise. A test in
+`tests/unit/test_main_ci_status.py` pins both cases.
+
+**Generator check.** Not an instance of a closed head's fact. Nothing records
+that a scheduled run failed except the run itself, and the fix reads that run
+from the module that already reads `main`'s CI.

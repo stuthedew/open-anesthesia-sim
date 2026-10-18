@@ -7314,12 +7314,23 @@ no visual signature at all: the block looks identical whichever run is selected,
 so a reader who has forgotten reads one management's number as the other's.
 Stating the selection warns after the fact where showing both prevents. Pairing
 the two values under one compartment label is what keeps that from doubling the
-block's height: it grows in width instead, which preserves the one-row
-comparative reading this document requires the resolution to be uniform for —
-a reader seeing the circuit lead the alveoli lead the tissues. What that costs
-is width at narrow windows, which `PL-3355` bounds: a readout panel reserves
-the width of the widest value it can show, so a value is never wrapped away
-from its unit at any width the row is laid out at.
+block's height. The second run's value and its second unit stand under the
+first run's in the same panel, and each value has its run's name on the line
+above it. So the block keeps one row of seven panels and grows by those lines
+rather than by a second row (`PL-F2YS`). That preserves the one-row comparative
+reading this document requires the resolution to be uniform for — a reader
+seeing the circuit lead the alveoli lead the tissues. The two values are
+stacked rather than placed side by side because stacking keeps each panel at
+its one-run width, which keeps the row seven across at 1366 px; side by side
+would roughly double each panel's width. Each run's delivered concentration
+sits on that run's own line, beside its name and its transport controls. The
+values the two runs share are stated once, on the heading line above the
+paired block: the substance, the agent's 1 MAC and the version and model. They
+are the same for both runs because a second run must be on the first run's
+agent, and a branch's MAC is checked against its trunk's when it is opened
+(`PL-QLZ5`). `PL-3355` still applies: a readout panel reserves the width of
+the widest value it can show, so a value is never wrapped away from its unit
+at any width the row is laid out at.
 
 **No difference readout is required, and none may be added without a stated
 sign convention.** The arithmetic difference of two alveolar fractions is not a
@@ -8773,21 +8784,25 @@ the layout is the reader's";
 join, a border drag or a Workspace switch never changes the width the row is
 laid out at. Two things do: the window's width, and how the region divides that
 width. Since `PL-J8K2`, the region holds the runs' rows in a left column and the
-control-change record in a right column, in the 3:1 proportion that the charts
-and the sidebar take, and the left column never narrows below its own minimum
-width. At whatever width that leaves, the reservation rule above (`PL-3355`)
+control-change record in a right column. Since `PL-F2YS` the two columns take
+the shares of the width that the chart panel's Area and the sidebar's Area take,
+0.82 and 0.18, so the record is as wide as the sidebar under it, as `PL-J8K2`
+Q3 ratified. The left column never narrows below its own minimum width. At whatever width that leaves, the reservation rule above (`PL-3355`)
 still applies: every rung lays each panel out at its full reserved width, so
 no value is wrapped away from its unit.
 
-**Measured 2026-10-18: a 1366 px window no longer opens on seven with one
-run.** On the offscreen font, a 1366 px window with one run gives the region
-1320 px and the left column 1002 px. Seven across needs 1005 px, so the row
-opens on four. Two runs open on seven at the same width, because two runs'
-rows raise the left column's minimum width to 1044 px. One run first opens on
-seven at 1398 px. So the outcome recorded above for a 1366 px screen no longer
-holds now that the control-change record shares the region's width with the
-readouts (`PL-J8K2`). The region's exact division is `PL-F2YS`'s to settle (`ROADMAP.md` § "v0.6.0 - the
-layout is the reader's", Required scope entry 20).
+**Measured 2026-10-18: a 1366 px window opens on seven again, with one run or
+two.** On the offscreen font, a 1366 px window gives the region 1320 px. The
+record column takes 235 px and the readout column 1073 px, 68 px more than the
+1005 px that seven across needs. Two runs share that one row
+(`test_two_runs_share_one_readout_block_whose_values_name_their_runs`), so the
+outcome recorded above for a 1366 px screen holds in compare mode too
+(`test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns`,
+`PL-F2YS`). Before `PL-F2YS` the record took a 3:1 share, and the readout
+column was 3 px short of seven at one point in the build of v0.6.0. At 235 px
+the longest control-change lines no longer fit on one line, so the record
+wraps them, and only after the time and after the arrow, which keeps every
+value beside its unit (`wrapping_between_parts`).
 
 **Why not a significant-figures rule.** A significant-figures rule gives the
 smallest values the most decimal places, and the small values are exactly

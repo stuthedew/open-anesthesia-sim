@@ -46,6 +46,16 @@ import main_ci_status
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _no_drift_runs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every test reads no `drift.yml` runs unless it supplies some (`PL-JTWV`).
+
+    `main` asks for them after the quality lines, so without this a test of
+    those lines would reach the network.
+    """
+    monkeypatch.setattr(main_ci_status, "fetch_drift_runs", lambda slug: [])
+
+
 def _workflow() -> str:
     return (
         pathlib.Path(__file__).resolve().parents[2] / ".github/workflows/quality.yml"
@@ -1196,3 +1206,166 @@ class TestThePytestStepMatchesTheWorkflow:
     def test_every_pytest_step_is_unnamed_and_github_names_it_with_the_prefix(self) -> None:
         names = _pytest_step_names()
         assert all(name.startswith(main_ci_status.PYTEST_STEP_PREFIX) for name in names), names
+
+
+def _offline(*a: object, **k: object) -> list[object]:
+    """A read of the API that fails as an unreachable host does."""
+    raise urllib.error.URLError("offline")
+
+
+def _drift_run(conclusion: str, number: int, created: str = "2026-10-01T06:00:12Z") -> dict:
+    """One `drift.yml` run, dated as the API dates it."""
+    return {**_run(conclusion, number), "created_at": created}
+
+
+class TestDriftLine:
+    """A failed `drift.yml` job reaches the session-start digest (`PL-JTWV`).
+
+    The run of 2026-10-01 failed and went unread for 17 days, because this
+    script read only `quality.yml`. Each job is judged by its own newest
+    result, because the weekly schedule runs only `order` and concludes
+    `success` while the monthly jobs it skipped are still broken.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _origin(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _github_origin(monkeypatch)
+        monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: [_run("success", 1553)])
+        monkeypatch.setattr(main_ci_status, "pytest_time_line", lambda slug, runs: None)
+
+    def _page(
+        self, monkeypatch: pytest.MonkeyPatch, runs: list[tuple[str, int, dict[str, str]]]
+    ) -> list[object]:
+        """Serve `runs`, newest first, with their jobs, and return the runs whose jobs were read."""
+        asked: list[object] = []
+        jobs: dict[object, list[dict[str, str]]] = {
+            99000000 + number: [{"name": n, "conclusion": c} for n, c in conclusions.items()]
+            for _, number, conclusions in runs
+        }
+        monkeypatch.setattr(
+            main_ci_status,
+            "fetch_drift_runs",
+            lambda slug: [_drift_run(conclusion, number) for conclusion, number, _ in runs],
+        )
+        monkeypatch.setattr(
+            main_ci_status, "fetch_jobs", lambda slug, run_id: asked.append(run_id) or jobs[run_id]
+        )
+        return asked
+
+    def test_a_failed_drift_run_is_named(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        jobs = {"dependencies": "success", "interpreter": "failure", "order": "skipped"}
+        asked = self._page(monkeypatch, [("failure", 12, jobs)])
+
+        assert main_ci_status.main() == 0
+        out = capsys.readouterr().out
+
+        assert asked == [99000012]
+        assert (
+            'drift.yml has jobs whose newest result on main is not a pass: "interpreter" '
+            "(failure in #12 on 2026-10-01). "
+        ) in out
+        assert out.endswith("https://github.com/o/r/actions/runs/12\n")
+        assert out.count("\n") == 1
+
+    def test_a_weekly_pass_that_skips_the_monthly_jobs_leaves_them_named(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        weekly = {"dependencies": "skipped", "interpreter": "skipped", "order": "success"}
+        monthly = {"dependencies": "failure", "interpreter": "success", "order": "skipped"}
+        self._page(monkeypatch, [("success", 13, weekly), ("failure", 12, monthly)])
+
+        assert main_ci_status.main() == 0
+        out = capsys.readouterr().out
+
+        assert '"dependencies" (failure in #12 on 2026-10-01)' in out
+        assert '"interpreter"' not in out
+        assert '"order"' not in out
+
+    def test_a_newer_pass_of_a_job_clears_it_and_a_newer_failure_names_it(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        weekly = {"dependencies": "skipped", "interpreter": "skipped", "order": "failure"}
+        monthly = {"dependencies": "success", "interpreter": "success", "order": "skipped"}
+        older = {"dependencies": "failure", "interpreter": "success", "order": "skipped"}
+        asked = self._page(
+            monkeypatch, [("failure", 14, weekly), ("success", 13, monthly), ("failure", 12, older)]
+        )
+
+        assert main_ci_status.main() == 0
+        out = capsys.readouterr().out
+
+        assert sorted(asked) == [99000012, 99000013, 99000014]
+        assert '"order" (failure in #14 on 2026-10-01)' in out
+        assert '"dependencies"' not in out
+
+    def test_a_cancelled_job_is_named_since_a_hung_job_may_end_that_way(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._page(monkeypatch, [("cancelled", 12, {"interpreter": "cancelled"})])
+
+        assert main_ci_status.main() == 0
+        assert '"interpreter" (cancelled in #12 on 2026-10-01)' in capsys.readouterr().out
+
+    def test_a_page_where_every_run_passed_prints_nothing_and_asks_for_no_jobs(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        runs = [_drift_run("success", 13), _drift_run("success", 12)]
+        monkeypatch.setattr(main_ci_status, "fetch_drift_runs", lambda slug: runs)
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", _offline)
+
+        assert main_ci_status.main() == 0
+        assert capsys.readouterr().out == ""
+
+    def test_failed_jobs_that_cannot_be_read_say_so(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        monkeypatch.setattr(
+            main_ci_status, "fetch_drift_runs", lambda slug: [_drift_run("failure", 12)]
+        )
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", _offline)
+
+        assert main_ci_status.main() == 0
+        assert (
+            "drift.yml's run #12 on 2026-10-01 concluded failure, and whether its jobs have "
+            "passed since could not be read"
+        ) in capsys.readouterr().out
+
+    def test_an_unread_drift_listing_says_so(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        monkeypatch.setattr(main_ci_status, "fetch_drift_runs", _offline)
+
+        assert main_ci_status.main() == 0
+        assert "a failed drift job would not show here" in capsys.readouterr().out
+
+    def test_asks_for_drift_runs_of_any_event_on_the_branch_docket_names(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        urls: list[str] = []
+
+        class _Response:
+            def __enter__(self) -> io.BytesIO:
+                return io.BytesIO(json.dumps({"workflow_runs": []}).encode())
+
+            def __exit__(self, *exc: object) -> None:
+                return None
+
+        def _open(request: urllib.request.Request, timeout: float = 0) -> _Response:
+            urls.append(request.full_url)
+            return _Response()
+
+        monkeypatch.undo()
+        monkeypatch.setattr(main_ci_status, "default_branch", lambda root: "trunk")
+        monkeypatch.setattr(main_ci_status.urllib.request, "urlopen", _open)
+
+        assert main_ci_status.fetch_drift_runs("o/r") == []
+        assert urls == [
+            "https://api.github.com/repos/o/r/actions/workflows/drift.yml/runs"
+            "?branch=trunk&status=completed&per_page=10"
+        ]
+
+    def test_names_the_workflow_file_that_exists(self) -> None:
+        workflow = pathlib.Path(__file__).resolve().parents[2] / ".github/workflows"
+        assert (workflow / main_ci_status.DRIFT_WORKFLOW).is_file()

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: doc-consistency-checks
+milestone: v0.5.29
 touches: docs/apparatus.md, CONTRIBUTING.md
 added: 2026-09-15
 closed: 2026-10-18

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: convergence-visibility
+milestone: v0.5.29
 touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/tests/test_inflow.py
 deferred-from: v0.6.0 - a counting fix in the apparatus's release alarm, which changes nothing a learner sees
 added: 2026-10-18

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: owner-attention
+milestone: v0.5.29
 touches: .claude/rules/instruction-writing.md
 added: 2026-10-18
 closed: 2026-10-18
