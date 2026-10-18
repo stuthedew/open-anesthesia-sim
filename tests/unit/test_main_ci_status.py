@@ -547,6 +547,31 @@ class TestAdvisoryNamesTheCause:
         assert "9c6ebd29" in line
         assert line.endswith("https://github.com/o/r/actions/runs/1553")
 
+    def test_reads_the_queue_through_the_checks_jobs_failed_parts_gate(self) -> None:
+        """A part failing fails the `checks` job's gate step too, on every red run.
+
+        Since `PL-T9X9` split the suite, the replay runs in `checks-part-1` and
+        the `checks` job's first step fails because that part did. Counting it
+        as a second failure meant the queue reading could never fire.
+        """
+        gate = {
+            "name": "checks",
+            "steps": [
+                {"name": "Set up job", "conclusion": "success"},
+                {"name": main_ci_status.PARTS_GATE_STEP, "conclusion": "failure"},
+                {"name": "Run uv run coverage report", "conclusion": "skipped"},
+            ],
+        }
+        steps = main_ci_status.step_conclusions([_REPLAY_ONLY, gate])
+        line = main_ci_status.advisory(_run("failure", 1553), steps)
+        assert "bin/docket check --verify" in line
+        assert main_ci_status.PARTS_GATE_STEP not in line
+
+    def test_names_the_parts_gate_when_it_is_the_only_failing_step(self) -> None:
+        """A part that was cancelled leaves the gate as the run's one clue."""
+        pairs = _pairs([("Set up job", "success"), (main_ci_status.PARTS_GATE_STEP, "failure")])
+        assert main_ci_status.failing_steps(pairs) == (main_ci_status.PARTS_GATE_STEP,)
+
     def test_does_not_claim_the_queue_when_another_step_failed_too(self) -> None:
         """The whole claim rests on the replay being the only failure."""
         steps = [*_REPLAY_STEPS[:4], ("Run uv run mypy", "failure"), *_REPLAY_STEPS[5:]]
@@ -699,6 +724,9 @@ class TestStepNamesMatchTheWorkflow:
 
     def test_the_replay_step_is_named_in_quality_yml(self) -> None:
         assert f"name: {main_ci_status.REPLAY_STEP}" in _workflow()
+
+    def test_the_parts_gate_step_is_named_in_quality_yml(self) -> None:
+        assert f"- name: {main_ci_status.PARTS_GATE_STEP}\n" in _workflow()
 
     def test_the_bare_check_step_is_the_run_line_github_names_it_after(self) -> None:
         """It has no `name:`, so GitHub calls it `Run ` plus the `run:` line verbatim."""

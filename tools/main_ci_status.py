@@ -190,6 +190,12 @@ REPLAY_STEP = "verify replay, the whole store"
 # workflow by a test alongside `REPLAY_STEP`.
 BARE_CHECK_STEP = "Run bin/docket check"
 
+# The first step of the `checks` job, which needs both test parts and fails
+# unless both succeeded (`PL-T9X9`). It fails because a part did, so it names no
+# cause of its own, and `failing_steps` leaves it out whenever another step
+# failed. Held to the workflow by a test alongside `REPLAY_STEP`.
+PARTS_GATE_STEP = "both parts succeeded"
+
 # `skipped` is every step after the failure, and `cancelled` is a job that lost
 # its runner. Neither names a cause, and printing them would bury the one that
 # does. `timed_out` is a failure but not an answer - a step the 15-minute job
@@ -337,8 +343,17 @@ def step_conclusions(jobs: list[object]) -> tuple[tuple[str, str], ...]:
 
 
 def failing_steps(steps: tuple[tuple[str, str], ...]) -> tuple[str, ...]:
-    """The names of the steps that did not pass, in run order."""
-    return tuple(name for name, conclusion in steps if conclusion in STEP_FAILURES)
+    """The names of the steps that did not pass, in run order.
+
+    `PARTS_GATE_STEP` is left out when another step failed, because its failure
+    only repeats that one. Counted, it would also stop a replay failure from
+    ever being the only failing step, which `_is_queue_failure` requires. It
+    stays in when it is the only failure, since then it is the one clue the run
+    gives, as when a part was cancelled.
+    """
+    failed = tuple(name for name, conclusion in steps if conclusion in STEP_FAILURES)
+    causes = tuple(name for name in failed if name != PARTS_GATE_STEP)
+    return causes or failed
 
 
 def _quoted(step: str) -> str:
