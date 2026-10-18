@@ -3,12 +3,14 @@ id: PL-HK4J
 title: The printed tag line can tag the wrong commit in a shallow clone: the oldest fetched commit reads as adding every file, so a cut older than the clone's depth resolves to that commit (release.tag_commands; cli._cut_seen_here and doc_check already refuse to name a cut there)
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect
 feature: release-process
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-10-18
+reason: gone: PL-2FY6 (#1250, 2026-09-30) retired the printed tag line release.tag_commands made; tools/tag_release.py now tags each cut, declines a shallow clone before it looks the cut up (is_shallow, tools/tag_release.py:118), and tests/unit/test_tag_release.py::test_a_shallow_clone_is_declined pins it; checked 2026-10-18 at origin/main 03d9d272
 payoff: a tag line run in a shallow clone stops instead of tagging the clone's oldest fetched commit as the release
 verify: grep -q 'def test_tag_line_refuses_a_shallow_clone' subprojects/docket/tests/test_release.py
 reenters: PL-QHCW
