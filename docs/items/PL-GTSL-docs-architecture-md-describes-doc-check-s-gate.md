@@ -3,10 +3,12 @@ id: PL-GTSL
 title: docs/ARCHITECTURE.md describes doc_check's gate-count, version-table and release-tag checks but never the resident-instruction check, the one whose output prints on every run
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: docs/apparatus.md
 added: 2026-09-05
+closed: 2026-10-18
+pr: 1553
 verify: grep -q 'check_resident_instructions' docs/apparatus.md
 ---
 

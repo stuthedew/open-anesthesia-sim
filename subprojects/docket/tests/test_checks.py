@@ -763,6 +763,30 @@ def test_a_coined_status_is_read_bare_and_an_english_one_is_not() -> None:
     assert _status_advisories("blocked", "The fix left ready work untouched.") == []
 
 
+def test_a_sentence_about_other_items_leaving_a_status_is_no_claim() -> None:
+    """`PL-JNWS`'s "Every one of the 17 then left `needs-decision`" narrates
+    other items departing a status, and says nothing of this item's (`PL-2GY0`).
+    The passive "left" still reads as this item's, at a sentence's start or
+    after "is" or "are", while "left at" reads as this item's wherever it
+    stands."""
+    for departing in (
+        "Every one of the 17 then left `needs-decision`.",
+        "The rot stayed invisible until the item left `blocked`.",
+        "It is `ready` rather than left `blocked`.",
+        "It was left `blocked` for a week.",
+    ):
+        assert _status_advisories("ready", departing) == [], departing
+
+    for standing in (
+        "Left `needs-decision` rather than closed.",
+        "**Left `blocked`**, with the real blocker written in.",
+        "See the count. Left `blocked` on purpose.",
+        "They are left `blocked` at their own band.",
+        "The 17 then left at `needs-decision` a while.",
+    ):
+        assert _status_advisories("ready", standing), standing
+
+
 def test_a_status_phrase_about_another_item_is_not_this_items() -> None:
     """`PL-X4RX`'s title: the phrase is about `PL-SYG4`, which the sentence
     names before it."""
@@ -1089,6 +1113,42 @@ def test_an_answer_heading_inside_a_list_item_is_an_answer() -> None:
         assert _has(errors, 'beneath a recorded answer, "Answers 2026-10-01"'), answer
 
 
+def _verify_read_advisories(item: Item, files: frozenset[str] | None) -> list[str]:
+    report = analyze([item], TODAY, verify_files=files)
+    return [a for a in report.advisories if "`touches` do" in a]
+
+
+def test_a_verify_reading_a_path_its_touches_omit_is_reported() -> None:
+    """`PL-ZB82`: a neighbour editing the undeclared file can flip the command.
+
+    Only a plain argument that is a file in the tree counts. The quoted
+    pattern names a path and reads none, and the declared file and a file
+    under a declared directory are the item's own.
+    """
+    command = (
+        "grep -q 'def test_x' tests/test_a.py && grep -qF 'docs/b.md' c.md && grep -q y lib/d.py"
+    )
+    files = frozenset({"tests/test_a.py", "docs/b.md", "c.md", "lib/d.py"})
+    item = _item(verify=command, touches=("c.md", "lib/"))
+
+    advisories = _verify_read_advisories(item, files)
+
+    assert len(advisories) == 1
+    assert "PL-K7QX reads tests/test_a.py." in advisories[0]
+    assert "docs/b.md" not in advisories[0]
+
+
+def test_a_verify_read_is_not_judged_where_it_cannot_be() -> None:
+    """A closed item's command is a record, a file the work will create is not
+    yet in the tree, and a caller that read nothing leaves the question unasked."""
+    command = "grep -q 'def test_x' tests/test_a.py"
+    files = frozenset({"tests/test_a.py"})
+
+    assert _verify_read_advisories(_item(verify=command, status="done", closed=TODAY), files) == []
+    assert _verify_read_advisories(_item(verify=command), frozenset()) == []
+    assert _verify_read_advisories(_item(verify=command), None) == []
+
+
 def test_safety_work_may_not_sit_in_a_low_band() -> None:
     assert _has(_errors(_item(classes=("safety",), priority="P2")), "starts at P0 or P1")
 
@@ -1103,6 +1163,28 @@ def test_blocked_anticipated_safety_work_may_sit_anywhere() -> None:
     )
 
     assert not _has(_errors(blocked), "starts at P0 or P1")
+
+
+def test_a_dropped_anticipated_safety_item_keeps_the_band_it_held() -> None:
+    """A closed item's priority is its record and ranks nothing (`PL-9HHC`).
+
+    `PL-Y04W` waited blocked at P2 as anticipated safety work, and its drop was
+    refused until the record was rewritten to a P1 it never held. A closed item
+    of either kind keeps the band it held, while open safety work at P2 is still
+    refused.
+    """
+    for status, reason in (("dropped", "the feature was cut"), ("done", "")):
+        closed = _item(
+            classes=("safety", "anticipated"),
+            priority="P2",
+            status=status,
+            reason=reason,
+            closed=date(2026, 9, 26),
+        )
+
+        assert not _has(_errors(closed), "starts at P0 or P1"), status
+
+    assert _has(_errors(_item(classes=("safety",), priority="P2")), "starts at P0 or P1")
 
 
 def test_the_exemption_is_claimed_rather_than_inferred() -> None:
@@ -2046,20 +2128,20 @@ def test_a_drifted_filename_names_the_items_whose_touches_declare_it() -> None:
         touches=("docs/items/PL-TFWR-a-title-it-no-longer-has.md",),
     )
 
-    advisories = analyze([drifted, declarer], TODAY).advisories
+    errors = analyze([drifted, declarer], TODAY).errors
 
-    assert _has(advisories, "Another item's `touches` declares PL-TFWR (by PL-3V6C)")
-    assert _has(advisories, "repair those entries in the same commit")
+    assert _has(errors, "Another item's `touches` declares PL-TFWR (by PL-3V6C)")
+    assert _has(errors, "repair those entries in the same commit")
 
 
 def test_a_drifted_filename_nobody_declares_says_nothing_about_declarations() -> None:
     """No coupling, no sentence: the common case stays one line."""
     drifted = _item("PL-TFWR", path="PL-TFWR-a-title-it-no-longer-has.md")
 
-    advisories = analyze([drifted], TODAY).advisories
+    errors = analyze([drifted], TODAY).errors
 
-    assert _has(advisories, "no longer generates")
-    assert not _has(advisories, "Another item's `touches` declares")
+    assert _has(errors, "no longer generates")
+    assert not _has(errors, "Another item's `touches` declares")
 
 
 def test_a_filename_that_does_not_match_its_title_is_reported() -> None:
@@ -2070,33 +2152,50 @@ def test_a_filename_that_does_not_match_its_title_is_reported() -> None:
     """
     drifted = _item("PL-K7QX", path="PL-K7QX-do-some-entirely-other-thing.md")
 
-    advisories = analyze([drifted], TODAY).advisories
+    errors = analyze([drifted], TODAY).errors
 
-    assert _has(advisories, "1 item file carries a slug its title no longer generates")
-    assert _has(advisories, "PL-K7QX")
+    assert _has(errors, "1 item file carries a slug its title no longer generates")
+    assert _has(errors, "PL-K7QX")
+
+
+def test_a_drifted_item_filename_is_an_error() -> None:
+    """`PL-3GKR`: at a drift count of zero, an error keeps it there.
+
+    An open item and a closed one alike, since a closed item is what a later
+    session looks up by name, and the finding is no longer an advisory.
+    """
+    for status, closed in (("ready", None), ("done", TODAY)):
+        drifted = _item(
+            "PL-K7QX", path="PL-K7QX-a-title-it-no-longer-has.md", status=status, closed=closed
+        )
+        report = analyze([drifted], TODAY)
+
+        assert _has(report.errors, "1 item file carries a slug its title no longer generates")
+        assert not _has(report.advisories, "no longer generates"), status
 
 
 def test_a_filename_matching_its_title_is_not_reported() -> None:
     matching = _item("PL-K7QX", path="PL-K7QX-do-the-thing.md")
 
     assert not _has(analyze([matching], TODAY).advisories, "no longer generates")
+    assert not _has(analyze([matching], TODAY).errors, "no longer generates")
 
 
 def test_an_item_with_no_filename_is_not_checked_for_drift() -> None:
     """Built in memory rather than read from disk: there is no name to disagree."""
     assert not _has(analyze([_item()], TODAY).advisories, "no longer generates")
+    assert not _has(analyze([_item()], TODAY).errors, "no longer generates")
 
 
 def test_every_drifted_filename_is_named_on_one_line() -> None:
     """One line, not one per file.
 
-    Nine advisory lines is the disease `PL-CW14` describes in the same
-    function: an advisory nobody can clear in the moment, printed often enough
-    to train a session to skim the one below it.
+    A store that drifts in several places reads as one finding to fix rather
+    than a wall of lines.
     """
     drifted = [_item(f"PL-B1B{n}", path=f"PL-B1B{n}-a-title-it-no-longer-has.md") for n in range(3)]
 
-    named = [m for m in analyze(drifted, TODAY).advisories if "no longer generates" in m]
+    named = [m for m in analyze(drifted, TODAY).errors if "no longer generates" in m]
 
     assert len(named) == 1
     assert "3 item files carry" in named[0]
