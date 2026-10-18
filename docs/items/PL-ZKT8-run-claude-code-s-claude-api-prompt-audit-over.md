@@ -116,3 +116,15 @@ changes a rule the owner wrote in their own words, and its reason is given.
 
 The other low-confidence flags (A5-A8, B13-B14, C9-C12, D14-D15, E8-E10)
 are dated wording or minor drift with no proposed edit.
+
+### Owner answers
+
+**2026-10-18: apply all 38 hunks** (project owner, 2026-10-18, ratified,
+over taking only the high-confidence ones). This includes B3, which reopens
+the refresh rule the owner specified on 2026-09-19. The outcome they
+specified, a refresh before every closing block, is unchanged. Only the
+`git fetch origin` step goes, because `flight` and `stranded` fetch for
+themselves.
+
+The four flags that need a decision (B10, B11, E4 and A9) were not answered
+here and stay open on this item.
