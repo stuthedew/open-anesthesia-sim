@@ -75,6 +75,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      # `quality.yml`'s step and its reason: Qt's offscreen platform plugin
+      # links `libEGL.so.1`, which `ubuntu-latest` does not carry, so every
+      # test module importing `PySide6.QtGui` dies at collection without it
+      # (`PL-VHLZ`). This file went without it until `PL-FPCK`, and its first
+      # run after the Qt port failed on that alone.
+      - name: Qt's system libraries, for the offscreen platform plugin
+        run: sudo apt-get update && sudo apt-get install -y libegl1
+
       - uses: astral-sh/setup-uv@v9.0.0
 
       # `--upgrade` rather than `--locked`: ignore uv.lock and re-resolve.
@@ -156,12 +164,16 @@ jobs:
         with:
           python-version: '3.x'
 
+      # The same step as the `dependencies` job's, for the same reason.
+      - name: Qt's system libraries, for the offscreen platform plugin
+        run: sudo apt-get update && sudo apt-get install -y libegl1
+
       - uses: astral-sh/setup-uv@v9.0.0
 
       - name: relax the interpreter pin for this run only
         run: |
           set -euo pipefail
-          # Recorded before `.python-version` is deleted, so the step after the
+          # Recorded before `.python-version` is rewritten, so the step after the
           # sync can say whether this run actually reached past the pin. Without
           # it the job reports success identically whether it tested the next
           # CPython or the current one (`PL-CGSS`).
@@ -201,7 +213,10 @@ jobs:
           p.write_text(new, encoding="utf-8")
           PY
           # `.python-version` would otherwise win over the interpreter above.
-          rm -f .python-version
+          # It is rewritten to name that interpreter rather than deleted,
+          # because it is a tracked file and a test asserts that the files git
+          # lists exist (`PL-FPCK`).
+          python3 -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' > .python-version
           python3 --version
 
       - run: uv sync --upgrade --dev --python "$(which python3)"
@@ -262,6 +277,10 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
+
+      # The same step as the `dependencies` job's, for the same reason.
+      - name: Qt's system libraries, for the offscreen platform plugin
+        run: sudo apt-get update && sudo apt-get install -y libegl1
 
       - uses: astral-sh/setup-uv@v9.0.0
 
