@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: test
 feature: reader-checks
+milestone: v0.5.28
 touches: tests/unit/test_makefile_reference.py, docket.toml
 added: 2026-10-12
 closed: 2026-10-18

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: decision-ownership
+milestone: v0.5.28
 touches: .claude/skills/docket/modes/triage.md, .claude/skills/docket/modes/design.md
 added: 2026-10-12
 closed: 2026-10-18

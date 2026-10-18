@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: test, infra
 feature: workflow-stress-2026-09
+milestone: v0.5.28
 touches: subprojects/docket/tests/test_multisession.py, subprojects/docket/tests/conftest.py
 blocked-by: PL-5DZ8, PL-8QMD, PL-ZGYX
 added: 2026-09-25

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: reader-checks
+milestone: v0.5.28
 touches: subprojects/docket/src/docket/frontmatter.py, subprojects/docket/tests/test_frontmatter_suite.py, subprojects/docket/tests/yaml-test-suite, subprojects/docket/tests/test_frontmatter.py, subprojects/docket/tests/test_frontmatter_reference.py, tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed at capture, 2026-10-12
 added: 2026-10-12

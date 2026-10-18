@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, infra
 feature: worker-instructions
+milestone: v0.5.28
 touches: CLAUDE.md, .claude/rules/expert-review.md, .claude/rules/apparatus-standard.md, tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py, docs/apparatus.md, docs/maintainer.md
 added: 2026-09-13
 closed: 2026-10-18

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.5.28
 touches: docs/items/PL-Y55Q-re-measure-whether-prose-written-under-the.md
 added: 2026-10-17
 closed: 2026-10-18
