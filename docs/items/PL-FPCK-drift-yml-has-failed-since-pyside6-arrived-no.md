@@ -1,6 +1,6 @@
 ---
 id: PL-FPCK
-title: drift.yml has failed since PySide6 arrived: no job installs libegl1, and the interpreter job deletes the tracked .python-version that a test lists
+title: drift.yml has failed since PySide6 arrived: no job installs libegl1, the interpreter job deletes the tracked .python-version that a test lists, and it never reaches a new CPython
 priority: P2
 effort: S
 status: ready
@@ -8,7 +8,7 @@ classes: infra
 touches: .github/workflows/drift.yml
 added: 2026-10-18
 payoff: every drift.yml job reaches its test results on an unchanged tree, so a red run means a dependency, a new interpreter or a test order broke the suite, and not the runner
-verify: grep -q 'Qt.s system libraries, for the offscreen platform plugin' .github/workflows/drift.yml && grep -q 'version_info.:3.). > .python-version' .github/workflows/drift.yml && ! grep -q 'rm -f .python-version' .github/workflows/drift.yml
+verify: grep -q 'check-latest: true' .github/workflows/drift.yml && grep -q 'Qt.s system libraries, for the offscreen platform plugin' .github/workflows/drift.yml && grep -q 'version_info.:3.). > .python-version' .github/workflows/drift.yml && ! grep -q 'rm -f .python-version' .github/workflows/drift.yml
 ---
 
 **Problem.** The only scheduled `drift` run since the Qt port,
@@ -30,8 +30,16 @@ two causes, and neither was the drift that the workflow exists to find.
    `.python-version` is the 50th. So the job fails a test that passes on every
    other runner.
 
+3. **The interpreter job never reached a new CPython.** `setup-python`'s
+   `check-latest` defaults to false, so `python-version: '3.x'` takes the
+   newest version already on the runner image. A run on this branch on
+   2026-10-18 tested 3.14.8, while `actions/python-versions` already listed
+   3.15.0 as stable. The job's own comment says '3.x' is "the version this job
+   exists to try", so this is a gap against its stated intent, and the runner
+   image can lag a new minor release by weeks.
+
 The seven modules that never ran on 2026-10-01 may hide other failures. Only a
-run with both fixes can say.
+run with these fixes can say.
 
 **Why it matters.** `drift.yml` is the only thing that notices when a
 dependency release or a new CPython breaks this tree. While it fails on its own
@@ -46,6 +54,7 @@ check so that the retirement question is asked about a check that works.
 - In the interpreter job, overwrite `.python-version` with the version of the
   interpreter that setup-python installed, instead of deleting the file. uv
   still uses that interpreter, and the tracked file still exists.
+- Set `check-latest: true` on the interpreter job's `setup-python` step.
 
 **Done when.** The `verify:` line holds, and a `workflow_dispatch` run of
 `drift.yml` on the branch gets past test collection in all three jobs. Any test

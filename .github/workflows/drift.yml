@@ -62,8 +62,9 @@ jobs:
     # The monthly schedule and a manual run; the weekly one is `order`'s.
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 1 * *'
     runs-on: ubuntu-latest
-    # Both jobs here re-resolve every dependency from scratch (`--upgrade`,
-    # no cache) and then run the suite, so they are legitimately slower than
+    # Both jobs here re-resolve every dependency (`--upgrade` ignores
+    # `uv.lock`; setup-uv still restores its download cache, which a run on
+    # 2026-10-18 showed) and then run the suite, so they are slower than
     # `quality.yml`'s and have no measured baseline - this workflow runs
     # monthly. 30 minutes is chosen to be past any plausible honest run rather
     # than tight, because the failure being bounded is a hang, not slowness.
@@ -143,8 +144,9 @@ jobs:
     # The monthly schedule and a manual run; the weekly one is `order`'s.
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 1 * *'
     runs-on: ubuntu-latest
-    # Both jobs here re-resolve every dependency from scratch (`--upgrade`,
-    # no cache) and then run the suite, so they are legitimately slower than
+    # Both jobs here re-resolve every dependency (`--upgrade` ignores
+    # `uv.lock`; setup-uv still restores its download cache, which a run on
+    # 2026-10-18 showed) and then run the suite, so they are slower than
     # `quality.yml`'s and have no measured baseline - this workflow runs
     # monthly. 30 minutes is chosen to be past any plausible honest run rather
     # than tight, because the failure being bounded is a hang, not slowness.
@@ -156,13 +158,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      # '3.x' resolves to the newest stable CPython the runner image offers,
-      # which is the version this job exists to try. Deliberately not read from
-      # `.python-version` - that names the pinned interpreter, the one version
-      # this job is not testing.
+      # '3.x' asks for the newest stable CPython, which is the version this
+      # job exists to try. Deliberately not read from `.python-version` - that
+      # names the pinned interpreter, the one version this job is not testing.
+      #
+      # `check-latest` is what makes '3.x' mean the newest release rather than
+      # the newest one the runner image happens to carry. It defaults to
+      # false, and then setup-python takes the image's own copy. On 2026-10-18
+      # that was 3.14.8, while `actions/python-versions` already listed 3.15.0
+      # as stable, so the job tested the pinned series and said so (`PL-FPCK`).
       - uses: actions/setup-python@v7.0.0
         with:
           python-version: '3.x'
+          check-latest: true
 
       # The same step as the `dependencies` job's, for the same reason.
       - name: Qt's system libraries, for the offscreen platform plugin
