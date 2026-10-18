@@ -1,6 +1,6 @@
 """Tests for `tools/context_reading.py`, the live read of a session's own context.
 
-Six defects are pinned here, and each is one this script would otherwise have
+Seven defects are pinned here, and each is one this script would otherwise have
 shipped with, because each arises from the transcript's real shape rather than
 from a hypothetical one.
 
@@ -21,6 +21,12 @@ and counted back on an `unread` line - dropping it silently would hand over a
 partial reading as a complete one. And a missing transcript exits non-zero:
 zero context is a reading a session would act on, and "I could not find the
 file" is not that.
+
+The seventh is a reading with the wrong floor. A session whose working
+directory moved has a transcript in each directory it worked in, and reading
+one of them alone printed a spend of -127,536 (`PL-PLT9`). The script now reads
+them all, and prints no spend when the first request it read is not the
+session's first.
 """
 
 from __future__ import annotations
@@ -64,6 +70,111 @@ def user(text: str = "hello", *, tool_result: bool = False) -> str:
     if tool_result:
         row["toolUseResult"] = {"stdout": "ok"}
     return json.dumps(row)
+
+
+def linked(uuid: str, parent: str | None, at: str, request_id: str, context: int) -> str:
+    """An assistant record with the chain fields and the timestamp a real transcript carries."""
+    row = json.loads(assistant(request_id, context))
+    row.update({"uuid": uuid, "parentUuid": parent, "timestamp": at})
+    return json.dumps(row)
+
+
+def test_a_negative_spend_is_not_printed() -> None:
+    """`PL-PLT9`: a first request larger than the last is not a floor, so no spend is given."""
+    reading = context_reading.read(
+        "\n".join([user(), assistant("req_1", 381_829), assistant("req_2", 254_293)])
+    )
+
+    assert reading.spend is None
+    report = "\n".join(context_reading.report(reading))
+    assert "-127,536" not in report
+    assert "unknown" in report
+    assert "smaller than the first one read" in report
+
+
+def test_a_transcript_that_starts_partway_through_gives_no_spend() -> None:
+    """A first record that names a parent continues a session whose start was not read."""
+    reading = context_reading.read(
+        "\n".join(
+            [
+                linked("u3", "u2", "2026-10-17T19:00:00.000Z", "req_3", 200_000),
+                linked("u4", "u3", "2026-10-17T19:05:00.000Z", "req_4", 250_000),
+            ]
+        )
+    )
+
+    assert reading.spend is None
+    assert "first request was not read" in reading.spend_unread
+
+
+def test_a_transcript_that_starts_the_session_gives_its_spend() -> None:
+    """The record that starts a session has no parent, so the floor it gives is real."""
+    reading = context_reading.read(
+        "\n".join(
+            [
+                linked("u1", None, "2026-10-17T18:00:00.000Z", "req_1", 84_000),
+                linked("u2", "u1", "2026-10-17T18:05:00.000Z", "req_2", 90_000),
+            ]
+        )
+    )
+
+    assert reading.spend == 6_000
+    assert reading.spend_unread == ""
+
+
+def test_every_transcript_of_a_moved_session_is_read_in_time_order(tmp_path: Path) -> None:
+    """`PL-PLT9`'s case: the working directory moved to /home/user and back.
+
+    The file under the `/home/user` directory sorts first and holds only the
+    middle of the session, which alone reads baseline 381,829, context 254,293
+    and spend -127,536. Read with the session's own file, the floor is the
+    session's first request and the latest request is the one made after the
+    move back.
+    """
+    home = tmp_path / "projects" / "-home-user"
+    repo = tmp_path / "projects" / "-home-user-open-anesthesia-sim"
+    home.mkdir(parents=True)
+    repo.mkdir(parents=True)
+    (repo / "sess_mv.jsonl").write_text(
+        "\n".join(
+            [
+                linked("u1", None, "2026-10-17T18:00:00.000Z", "req_1", 84_000),
+                linked("u2", "u1", "2026-10-17T18:30:00.000Z", "req_2", 300_000),
+                linked("u5", "u4", "2026-10-17T20:00:00.000Z", "req_5", 260_000),
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (home / "sess_mv.jsonl").write_text(
+        "\n".join(
+            [
+                linked("u3", "u2", "2026-10-17T19:00:00.000Z", "req_3", 381_829),
+                linked("u4", "u3", "2026-10-17T19:30:00.000Z", "req_4", 254_293),
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [sys.executable, str(TOOL), "--json"],
+        capture_output=True,
+        text=True,
+        env={
+            "PATH": "/usr/bin:/bin",
+            "HOME": str(tmp_path),
+            "CLAUDE_CONFIG_DIR": str(tmp_path),
+            "CLAUDE_CODE_SESSION_ID": "sess_mv",
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    reading = json.loads(result.stdout)
+    assert reading["baseline"] == 84_000
+    assert reading["context"] == 260_000
+    assert reading["spend"] == 176_000
+    assert reading["requests"] == 5
+    assert reading["transcript"] == f"{home / 'sess_mv.jsonl'}, {repo / 'sess_mv.jsonl'}"
+    assert "spend_unread" not in reading
 
 
 def test_repeated_request_id_is_one_request_not_three() -> None:
