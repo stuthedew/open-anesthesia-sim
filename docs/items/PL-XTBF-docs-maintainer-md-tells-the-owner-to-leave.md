@@ -3,12 +3,13 @@ id: PL-XTBF
 title: docs/maintainer.md tells the owner to leave auto-merge armed while a session fixes a held pull request's failed check, but bin/docket arm's hold tells that session to leave auto-merge off and disarm an armed one, so the fix may stall unarmed where the owner expects it to land
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: arm-follows-owner
-touches: docs/maintainer.md, subprojects/docket/src/docket/arming.py
+touches: docs/maintainer.md, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-18
 payoff: a session repairing a held pull request the owner has armed leaves it armed, so the fix lands where the owner expects it instead of sitting green and unarmed
 verify: grep -qF 'armed it after reading' subprojects/docket/src/docket/arming.py
 recurrences: 2026-10-17 PL-8TPV
@@ -71,3 +72,14 @@ reading, and the repair rides it, as `docs/maintainer.md` already says; where
 exception as prose. A repair of two carriers that disagree is a defect in what
 exists, so the pause on new workflow mechanisms does not hold it. Reopening
 this is on ordinary evidence: a repair that landed unread and should not have.
+
+**Built 2026-10-18.** The hold line now ends with the exception for a repair,
+as decided. `arming.REPAIR_EXCEPTION` says that a pull request that already
+held before this push and is armed was armed by the owner after reading it,
+so the session leaves it armed and auto-merge lands the fix. A hold that a
+claim makes keeps the draft line and names no repair, since the owner never
+armed a draft. `docs/maintainer.md` now says that `arm` tells the session the
+same. Three tests in the new `subprojects/docket/tests/test_arming.py` pin the
+line's place after the disarm line, its absence beside a claim, and its
+absence from an `arm` answer. They fail before the fix, where
+`arming.REPAIR_EXCEPTION` does not exist.
