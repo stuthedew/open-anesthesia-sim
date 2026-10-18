@@ -470,7 +470,7 @@ class AgentUptakeSystem:
                 TissueGroupEquationSettings(
                     name=tissue.name,
                     volume_l=tissue.volume_l,
-                    blood_flow_l_min=tissue.blood_flow_l_min,
+                    blood_flow_l_min=tissue.blood_flow_l_min_at(patient.cardiac_output_l_min),
                     tissue_blood_partition_coefficient=tissue.tissue_blood_partition_coefficient,
                 )
                 for tissue in patient.tissues
@@ -534,8 +534,10 @@ class AgentUptakeSystem:
         settings, and it costs at most one rebuild per run, where a run's
         maximum differs from the last run's (`PL-BBMG`).
 
-        Flows are the litres per minute the compartments hold, which is what
-        the settings hold too since `PL-SM5V`, and the delivered concentration
+        Flows are in litres per minute, which is what the settings hold too
+        since `PL-SM5V`. The tissue flows are formed by the same
+        `TissueGroup.blood_flow_l_min_at` call as the settings' are
+        (`PL-HQF5`), and the delivered concentration
         is the percent the circuit holds, as the settings have since
         `PL-NJPB`, so equal settings and an equal key compare the same numbers.
 
@@ -565,7 +567,7 @@ class AgentUptakeSystem:
                 for tissue in patient.tissues
                 for value in (
                     tissue.volume_l,
-                    tissue.blood_flow_l_min,
+                    tissue.blood_flow_l_min_at(patient.cardiac_output_l_min),
                     tissue.tissue_blood_partition_coefficient,
                 )
             ),

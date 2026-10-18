@@ -22,8 +22,9 @@ from anesthesia_sim.core.validation import (
 class VenousBloodCompartmentState:
     """The venous pool's run state: what a step can change.
 
-    Volume, partition coefficient and blood flow are absent for the reason
-    given on `TissueGroupState`.
+    Volume and partition coefficient are absent for the reason given on
+    `TissueGroupState`. The pool stores no blood flow at all: its flow is the
+    patient's cardiac output, which only the patient stores (`PL-HQF5`).
     """
 
     agent_amount_l: float
@@ -35,7 +36,6 @@ class VenousBloodCompartment:
 
     volume_l: float
     blood_gas_partition_coefficient: float
-    blood_flow_l_min: float
     agent_amount_l: float = 0.0
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
@@ -67,16 +67,14 @@ class VenousBloodCompartment:
             is a volume or a coefficient too small for the amount already held
             (`require_room_for_the_agent_held`). The constructor writes the
             amount last, after both factors have passed their own checks, so a
-            factor is held to the amount only once there is one. The relation
-            the patient holds between this pool's blood flow and the cardiac
-            output is the patient's, not this record's (`PatientCompartments`).
+            factor is held to the amount only once there is one.
 
             Raises:
                 TypeError: `value` is not an `int` or a `float`
                     (`require_a_number`).
                 SimulationConfigurationError: the volume or the partition
-                    coefficient is not positive and finite; the blood flow or
-                    the agent amount is negative or not finite; or the agent
+                    coefficient is not positive and finite; the agent amount
+                    is negative or not finite; or the agent
                     amount would be more than the pool holds at a partial
                     pressure of one atmosphere, whichever of the amount, the
                     volume and the coefficient is the one written.
@@ -106,8 +104,6 @@ class VenousBloodCompartment:
                         "venous blood",
                         "Blood compartments",
                     )
-            elif name == "blood_flow_l_min":
-                require_nonnegative_finite(name, value)
             elif name == "agent_amount_l":
                 require_nonnegative_finite(name, value)
 
@@ -133,8 +129,7 @@ class VenousBloodCompartment:
 
         return self.agent_amount_l / self.capacity_l
 
-    @property
-    def time_constant_s(self) -> float:
+    def time_constant_s(self, blood_flow_l_min: float) -> float:
         """The venous mixing time constant $`\\tau_v = V_v/Q`$.
 
         `docs/MODEL.md` § "Venous blood" defines it. No partition coefficient
@@ -145,24 +140,21 @@ class VenousBloodCompartment:
         time.
 
         `inf` at zero flow, as there: nothing circulates, so nothing mixes.
-        """
 
-        if self.blood_flow_l_min == 0.0:
-            return inf
-
-        return SECONDS_PER_MINUTE * self.volume_l / self.blood_flow_l_min
-
-    def set_blood_flow(self, blood_flow_l_min: float) -> None:
-        """Change blood flow without changing stored agent.
+        The flow $`Q`$ is an argument, because the pool stores none. For the
+        pool in a patient, it is the patient's cardiac output.
 
         Raises:
             TypeError: the flow is not an `int` or a `float`.
             SimulationConfigurationError: the flow is negative or not finite.
-                Both are the write's own, in `__setattr__`, and nothing is
-                written when it is refused.
         """
 
-        self.blood_flow_l_min = blood_flow_l_min
+        require_nonnegative_finite("blood_flow_l_min", blood_flow_l_min)
+
+        if blood_flow_l_min == 0.0:
+            return inf
+
+        return SECONDS_PER_MINUTE * self.volume_l / blood_flow_l_min
 
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         """Set venous state from an equilibrium fraction.
@@ -178,9 +170,12 @@ class VenousBloodCompartment:
         self.agent_amount_l = self.capacity_l * partial_pressure_fraction
 
     def advance(
-        self, tissue_return_partial_pressure_fraction: Fraction, simulation_step_s: float
+        self,
+        tissue_return_partial_pressure_fraction: Fraction,
+        simulation_step_s: float,
+        blood_flow_l_min: float,
     ) -> float:
-        """Mix tissue return into venous blood exactly, for a constant return.
+        """Mix tissue return into venous blood exactly, for a constant return and flow.
 
         This pool's own closed form, and not how a run advances: the tissue
         return a run presents changes continuously as the tissues fill, and
@@ -197,24 +192,26 @@ class VenousBloodCompartment:
                 `Fraction`, which is what checks it against 0 to 1
                 (`core/concentration.py`).
             SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite. Both are checked before anything changes. Or the
-                amount held is already past the capacity, which only a write
-                past `__setattr__` can have stored: the amount advanced is
-                written through it, at zero flow too, where it is the amount
-                held, unchanged.
+                and finite, or `blood_flow_l_min` is negative or not finite.
+                All three are checked before anything changes. Or the amount
+                held is already past the capacity, which only a write past
+                `__setattr__` can have stored: the amount advanced is written
+                through it, at zero flow too, where it is the amount held,
+                unchanged.
         """
 
         require_fraction(
             "tissue_return_partial_pressure_fraction", tissue_return_partial_pressure_fraction
         )
         require_positive_finite("simulation_step_s", simulation_step_s)
+        time_constant_s = self.time_constant_s(blood_flow_l_min)
 
         initial_amount_l = self.agent_amount_l
         self.agent_amount_l = exponential_approach(
             initial_amount_l,
             self.capacity_l * tissue_return_partial_pressure_fraction,
             simulation_step_s,
-            self.time_constant_s,
+            time_constant_s,
         )
 
         return self.agent_amount_l - initial_amount_l

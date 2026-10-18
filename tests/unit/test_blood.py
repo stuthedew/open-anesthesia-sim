@@ -9,11 +9,15 @@ from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
+BLOOD_FLOW_L_MIN = 5.0
+"""The flow these tests mix the pool at, in L/min, unless a test says otherwise.
 
-def _build_venous_blood(*, blood_flow_l_min: float = 5.0) -> VenousBloodCompartment:
-    return VenousBloodCompartment(
-        volume_l=1.0, blood_gas_partition_coefficient=0.65, blood_flow_l_min=blood_flow_l_min
-    )
+The pool stores no flow since `PL-HQF5`, so each closed form takes it.
+"""
+
+
+def _build_venous_blood() -> VenousBloodCompartment:
+    return VenousBloodCompartment(volume_l=1.0, blood_gas_partition_coefficient=0.65)
 
 
 def test_rejects_agent_amount_above_venous_blood_capacity() -> None:
@@ -21,10 +25,7 @@ def test_rejects_agent_amount_above_venous_blood_capacity() -> None:
         SimulationConfigurationError, match="^agent_amount_l exceeds venous blood capacity$"
     ):
         VenousBloodCompartment(
-            volume_l=1.0,
-            blood_gas_partition_coefficient=0.65,
-            blood_flow_l_min=5.0,
-            agent_amount_l=0.66,
+            volume_l=1.0, blood_gas_partition_coefficient=0.65, agent_amount_l=0.66
         )
 
 
@@ -78,17 +79,10 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
         ),
         pytest.param(
             "blood_flow_l_min",
-            -1.0,
-            SimulationConfigurationError,
-            "^blood_flow_l_min must be nonnegative and finite$",
-            id="negative-blood-flow",
-        ),
-        pytest.param(
-            "blood_flow_l_min",
-            inf,
-            SimulationConfigurationError,
-            "^blood_flow_l_min must be nonnegative and finite$",
-            id="infinite-blood-flow",
+            5.0,
+            AttributeError,
+            "^'VenousBloodCompartment' object has no attribute 'blood_flow_l_min'",
+            id="blood-flow-is-no-field",
         ),
         pytest.param(
             "agent_amount_l",
@@ -185,9 +179,7 @@ def test_a_coefficient_is_held_to_the_agent_through_the_capacity_it_leaves() -> 
     held; 0.3 leaves 0.6 L and is refused (`PL-19Y0`).
     """
 
-    venous = VenousBloodCompartment(
-        volume_l=2.0, blood_gas_partition_coefficient=0.65, blood_flow_l_min=5.0
-    )
+    venous = VenousBloodCompartment(volume_l=2.0, blood_gas_partition_coefficient=0.65)
     venous.set_partial_pressure_fraction(Fraction(0.5))
 
     venous.blood_gas_partition_coefficient = 0.4
@@ -198,17 +190,34 @@ def test_a_coefficient_is_held_to_the_agent_through_the_capacity_it_leaves() -> 
         venous.blood_gas_partition_coefficient = 0.3
 
 
-def test_a_refused_blood_flow_leaves_the_flow_as_it_was() -> None:
-    """`set_blood_flow` refuses through the write's own guard, and writes nothing (`PL-19Y0`)."""
+@pytest.mark.parametrize("blood_flow_l_min", [-1.0, inf, nan])
+def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float) -> None:
+    """A flow the closed form cannot be read at is refused, and the step changes nothing.
+
+    The flow was a stored field until `PL-HQF5`, and its write refused it
+    (`PL-19Y0`). It is now the argument of `time_constant_s` and `advance`,
+    which refuse it in the same words before anything changes.
+    """
 
     venous = _build_venous_blood()
+    venous.set_partial_pressure_fraction(Fraction(0.4))
+    held = astuple(venous)
 
     with pytest.raises(
         SimulationConfigurationError, match="^blood_flow_l_min must be nonnegative and finite$"
     ):
-        venous.set_blood_flow(-1.0)
+        venous.time_constant_s(blood_flow_l_min)
 
-    assert venous.blood_flow_l_min == 5.0
+    with pytest.raises(
+        SimulationConfigurationError, match="^blood_flow_l_min must be nonnegative and finite$"
+    ):
+        venous.advance(
+            tissue_return_partial_pressure_fraction=Fraction(1.0),
+            simulation_step_s=1.0,
+            blood_flow_l_min=blood_flow_l_min,
+        )
+
+    assert astuple(venous) == held
 
 
 def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> None:
@@ -246,22 +255,25 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
 
     venous.advance(
         tissue_return_partial_pressure_fraction=Fraction(1.0),
-        simulation_step_s=venous.time_constant_s,
+        simulation_step_s=venous.time_constant_s(BLOOD_FLOW_L_MIN),
+        blood_flow_l_min=BLOOD_FLOW_L_MIN,
     )
 
     assert venous.partial_pressure_fraction == pytest.approx(1.0 - exp(-1.0))
 
 
 def test_zero_blood_flow_preserves_venous_state() -> None:
-    venous = _build_venous_blood(blood_flow_l_min=0.0)
+    venous = _build_venous_blood()
     venous.set_partial_pressure_fraction(Fraction(0.25))
 
     amount_before = venous.agent_amount_l
     amount_change = venous.advance(
-        tissue_return_partial_pressure_fraction=Fraction(1.0), simulation_step_s=60.0
+        tissue_return_partial_pressure_fraction=Fraction(1.0),
+        simulation_step_s=60.0,
+        blood_flow_l_min=0.0,
     )
 
-    assert venous.time_constant_s == inf
+    assert venous.time_constant_s(0.0) == inf
     assert amount_change == 0.0
     assert venous.agent_amount_l == amount_before
 
@@ -271,22 +283,13 @@ def test_washout_returns_negative_amount_change() -> None:
     venous.set_partial_pressure_fraction(Fraction(0.5))
 
     amount_change = venous.advance(
-        tissue_return_partial_pressure_fraction=Fraction(0.0), simulation_step_s=10.0
+        tissue_return_partial_pressure_fraction=Fraction(0.0),
+        simulation_step_s=10.0,
+        blood_flow_l_min=BLOOD_FLOW_L_MIN,
     )
 
     assert amount_change < 0.0
     assert 0.0 < venous.partial_pressure_fraction < 0.5
-
-
-def test_changing_flow_preserves_stored_agent() -> None:
-    venous = _build_venous_blood()
-    venous.set_partial_pressure_fraction(Fraction(0.25))
-    amount_before = venous.agent_amount_l
-
-    venous.set_blood_flow(7.0)
-
-    assert venous.blood_flow_l_min == 7.0
-    assert venous.agent_amount_l == amount_before
 
 
 def test_reset_clears_agent_and_preserves_parameters() -> None:
@@ -297,4 +300,19 @@ def test_reset_clears_agent_and_preserves_parameters() -> None:
 
     assert venous.agent_amount_l == 0.0
     assert venous.volume_l == 1.0
-    assert venous.blood_flow_l_min == 5.0
+
+
+def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
+    """`time_constant_s` is $`60 V_v/Q`$ at the flow passed in (`PL-HQF5`).
+
+    The expected values are worked out by hand for a 2.0 L pool:
+    60 x 2.0 / 4.0 = 30 s at 4.0 L/min and 60 x 2.0 / 6.0 = 20 s at 6.0 L/min.
+    Neither flow is 5 L/min, so a time constant formed at the reference
+    patient's output fails. The volume is not 1 L, so dividing by it instead
+    of multiplying fails too.
+    """
+
+    venous = VenousBloodCompartment(volume_l=2.0, blood_gas_partition_coefficient=0.65)
+
+    assert venous.time_constant_s(4.0) == pytest.approx(30.0, rel=1e-15)
+    assert venous.time_constant_s(6.0) == pytest.approx(20.0, rel=1e-15)

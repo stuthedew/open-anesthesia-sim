@@ -73,21 +73,38 @@ def _advance_for(controller: SimulationController, duration_s: float) -> None:
 
 
 def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
-    """Set each tissue's blood flow from `cardiac_output_l_min`, bypassing the patient.
+    """Make the tissue flows sum to `cardiac_output_l_min`, past the tissues' guard.
 
-    A tissue group does not know which patient it belongs to, so its own
-    `set_blood_flow` accepts a flow that the patient's cardiac output does not
-    give it (`PL-HQF5`). Nothing in the application makes that call except
-    the patient's setter. The patient keeps its output. The settings record
-    that a run's definition opens on then refuses the tissue flows, because
-    they no longer sum to the output. It refuses them at the next step and at
-    Reset (`PL-M4M0`). Before `PL-KFNP`, this helper assigned the output to
-    the patient directly, bypassing `set_cardiac_output`, and the patient now
-    refuses that.
+    Each tissue's perfusion fraction is scaled by `cardiac_output_l_min` over
+    the patient's output, and written past the tissue's own guard. The patient
+    keeps its output. The settings record that a run's definition opens on
+    then refuses the tissue flows, because they no longer sum to the output.
+    It refuses them at the next step and at Reset (`PL-M4M0`), and no setting
+    repairs them. No guarded write can make this record now. Every flow is
+    formed from the output (`PL-HQF5`), and a fraction is written once
+    (`PL-Z0HN`). Until then, a tissue's `set_blood_flow` made it, and a
+    cardiac output change repaired it. `_with_the_tissue_fractions_put_back`
+    stands in for that repair.
     """
 
-    for tissue in controller._state.uptake_system.patient.tissues:
-        tissue.set_blood_flow(cardiac_output_l_min * tissue.perfusion_fraction)
+    patient = controller._state.uptake_system.patient
+    scale = cardiac_output_l_min / patient.cardiac_output_l_min
+
+    for tissue in patient.tissues:
+        object.__setattr__(tissue, "perfusion_fraction", tissue.perfusion_fraction * scale)
+
+
+def _with_the_tissue_fractions_put_back(controller: SimulationController) -> None:
+    """Write back the reference adult's perfusion fractions, past the tissues' guard.
+
+    The fractions are typed from `data/patients/reference_adult.json`. With
+    them back, the settings record no longer refuses the tissue flows.
+    """
+
+    for tissue, fraction in zip(
+        controller._state.uptake_system.patient.tissues, (0.76, 0.18, 0.06), strict=True
+    ):
+        object.__setattr__(tissue, "perfusion_fraction", fraction)
 
 
 def test_default_controller_starts_with_sevoflurane() -> None:
@@ -843,7 +860,6 @@ def _controller_one_setting_from_a_failed_step() -> SimulationController:
         perfusion_fraction=original.perfusion_fraction,
         blood_gas_partition_coefficient=original.blood_gas_partition_coefficient,
         tissue_gas_partition_coefficient=original.tissue_gas_partition_coefficient,
-        blood_flow_l_min=original.blood_flow_l_min,
         agent_amount_l=original.agent_amount_l,
     )
 
@@ -1593,17 +1609,22 @@ def test_a_setting_the_record_refuses_leaves_the_run_on_its_previous_setting(
     """A setting that its compartment accepted and the settings record refused is written back.
 
     A compartment checks only its own value, but the settings record checks
-    the fields against each other. On a run whose tissue flows were set
-    directly on the tissues, the record refuses every setting except the
-    cardiac output, and it does so after the setter has written the new
-    value. Before `PL-VCP4`, the compartment kept the new value and the dial
-    showed it. The open segment of the run's definition and the timeline
-    kept the old value, and the banner said that the simulation was
-    unchanged and still running its previous setting. Now the previous value
-    is written back before the error is raised, so the banner is right. A
-    cardiac output change repairs the mismatch instead of being refused,
-    because it sets every compartment's flow from the new output. After it,
-    the setting that was refused before is accepted.
+    the fields against each other. On a run whose tissue flows no longer sum
+    to the cardiac output, the record refuses every setting, and it does so
+    after the setter has written the new value. Before `PL-VCP4`, the
+    compartment kept the new value and the dial showed it. The open segment
+    of the run's definition and the timeline kept the old value, and the
+    banner said that the simulation was unchanged and still running its
+    previous setting. Now the previous value is written back before the
+    error is raised, so the banner is right.
+
+    Until `PL-HQF5`, a cardiac output change repaired the mismatch, because
+    it set every compartment's flow from the new output. The only way left to
+    the mismatch is a perfusion fraction written past its guard, which no
+    output repairs. So the cardiac output is refused and written back too,
+    and its write-back leaves every tissue flow where it was, which it could
+    not do while a changed fraction moved the flows it set (`PL-Z0HN`). With
+    the fractions put back, the output and then the setting are accepted.
     """
 
     controller = SimulationController()
@@ -1627,6 +1648,25 @@ def test_a_setting_the_record_refuses_leaves_the_run_on_its_previous_setting(
     assert after.is_running is True
     assert controller.has_failed is False
 
+    patient = controller._state.uptake_system.patient
+    flows_before = [
+        tissue.blood_flow_l_min_at(patient.cardiac_output_l_min) for tissue in patient.tissues
+    ]
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="perfused at 7.2 L/min in total but cardiac output is 6.0 L/min",
+    ):
+        controller.set_cardiac_output(CardiacOutput(6.0))
+
+    assert controller.snapshot().cardiac_output_l_min == before.cardiac_output_l_min == 5.0
+    assert [
+        tissue.blood_flow_l_min_at(patient.cardiac_output_l_min) for tissue in patient.tissues
+    ] == flows_before
+    assert controller.run_segments == segments
+    assert controller.snapshot().control_timeline == before.control_timeline
+
+    _with_the_tissue_fractions_put_back(controller)
     controller.set_cardiac_output(CardiacOutput(6.0))
     change(controller)
 

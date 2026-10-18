@@ -11,6 +11,7 @@ from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.exponential_approach import exponential_approach
+from anesthesia_sim.core.supported_ranges import CardiacOutput, require_cardiac_output
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_nonnegative_finite,
@@ -25,11 +26,11 @@ PERFUSION_FRACTION_UPPER_BOUND = 1.0
 class TissueGroupState:
     """One tissue group's run state: what a step can change.
 
-    Name, volume, perfusion fraction, partition coefficients and blood flow
-    are absent for the reason given on `BreathingCircuitState`: they are
-    parameters and settings, not trajectory. Blood flow in particular is
-    derived from cardiac output by `PatientCompartments`, and restoring it
-    from a snapshot would undo a cardiac-output change the user made.
+    Name, volume, perfusion fraction and partition coefficients are absent
+    for the reason given on `BreathingCircuitState`: they are parameters, not
+    trajectory. A tissue group stores no blood flow at all. Its flow is its
+    perfusion fraction of the patient's cardiac output, formed by
+    `blood_flow_l_min_at` wherever it is read (`PL-HQF5`).
     """
 
     agent_amount_l: float
@@ -44,7 +45,6 @@ class TissueGroup:
     perfusion_fraction: float
     blood_gas_partition_coefficient: float
     tissue_gas_partition_coefficient: float
-    blood_flow_l_min: float = 0.0
     agent_amount_l: float = 0.0
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
@@ -75,10 +75,18 @@ class TissueGroup:
             amount's own check never consulted (`PL-544D`, found at review;
             `require_room_for_the_agent_held`). The constructor writes the
             amount last, after both factors have passed their own checks, so a
-            factor is held to the amount only once there is one. The relations
-            the patient holds between a tissue's blood flow, its perfusion
-            fraction and the cardiac output are the patient's, not this
-            record's (`PatientCompartments`).
+            factor is held to the amount only once there is one.
+
+            The perfusion fraction is written once, when the group is built,
+            and a later write is refused (`PL-Z0HN`). The patient checks that
+            its three fractions sum to 1 only when it is built, and a tissue
+            group does not know which patient it belongs to. So a fraction
+            changed afterwards would move the group's blood flow, which is its
+            fraction of the cardiac output, with no check that the flows still
+            add up to the output. The new value is checked first, so a value
+            the constructor would refuse is refused in the constructor's
+            words. A copy and a pickle write the fraction onto a new group,
+            which has none yet, so both still work.
 
             Raises:
                 TypeError: `name` is `name` and `value` is not a `str`, or the
@@ -87,8 +95,9 @@ class TissueGroup:
                 SimulationConfigurationError: the name is blank; the volume, a
                     partition coefficient or the perfusion fraction is not
                     positive and finite, or the perfusion fraction is above 1;
-                    the blood flow or the agent amount is negative or not
-                    finite; or the agent amount would be more than the tissue
+                    the perfusion fraction is written to a group that already
+                    has one; the agent amount is negative or not finite; or
+                    the agent amount would be more than the tissue
                     holds at a partial pressure of one atmosphere, whichever of
                     the amount, the volume and the tissue:gas coefficient is
                     the one written.
@@ -119,6 +128,15 @@ class TissueGroup:
 
                 if value > PERFUSION_FRACTION_UPPER_BOUND:
                     raise SimulationConfigurationError("perfusion_fraction must not exceed 1")
+
+                if hasattr(self, "perfusion_fraction"):
+                    raise SimulationConfigurationError(
+                        f"the {self.name} tissue group's perfusion fraction of "
+                        f"{self.perfusion_fraction} cannot be written again, as {value}, once "
+                        "the group is built, because the patient checks that its tissue "
+                        "fractions sum to 1 only when it is built (docs/MODEL.md, "
+                        '"Tissue groups"): build a new patient with the new fractions'
+                    )
             elif name == "blood_gas_partition_coefficient":
                 require_positive_finite(name, value)
             elif name == "tissue_gas_partition_coefficient":
@@ -133,8 +151,6 @@ class TissueGroup:
                         f"{self.name} tissue",
                         "Tissue compartments",
                     )
-            elif name == "blood_flow_l_min":
-                require_nonnegative_finite(name, value)
             elif name == "agent_amount_l":
                 require_nonnegative_finite(name, value)
 
@@ -145,6 +161,24 @@ class TissueGroup:
                     )
 
             super().__setattr__(name, value)
+
+        def __delattr__(self, name: str) -> None:
+            """Refuse to delete any field.
+
+            The write-once check above asks whether the group already has a
+            fraction. A fraction deleted and written again would pass it
+            (`PL-Z0HN`, found at review). No field of a built group is ever
+            meant to be absent, so every deletion is refused.
+
+            Raises:
+                SimulationConfigurationError: always.
+            """
+
+            raise SimulationConfigurationError(
+                f"the {self.name} tissue group's {name} cannot be deleted, because a value "
+                "written after it would bypass the checks made when the group is built: "
+                "build a new patient"
+            )
 
     @property
     def capacity_l(self) -> float:
@@ -199,43 +233,58 @@ class TissueGroup:
 
         return self.partial_pressure_fraction
 
-    @property
-    def time_constant_s(self) -> float:
+    def blood_flow_l_min_at(self, cardiac_output_l_min: CardiacOutput) -> float:
+        """Return this group's blood flow $`Q_i = f_iQ`$ at a cardiac output, in L/min.
+
+        The flow is the group's perfusion fraction of the cardiac output
+        (`docs/MODEL.md` § "Tissue groups"), and this is the only place the
+        product is formed. The group stores no flow of its own, so no write
+        can leave its flow out of step with the output (`PL-HQF5`). Its
+        callers pass the output of the patient the group belongs to.
+
+        Raises:
+            TypeError: `cardiac_output_l_min` was not built as a
+                `CardiacOutput` (`core/supported_ranges.py`).
+        """
+
+        require_cardiac_output(cardiac_output_l_min)
+
+        return cardiac_output_l_min * self.perfusion_fraction
+
+    def time_constant_s(self, blood_flow_l_min: float) -> float:
         """The perfusion-limited tissue time constant $`\\tau_i = V_i\\lambda_{i:b}/Q_i`$.
 
         `docs/MODEL.md` § "Tissue uptake and return" defines it, and gives the
         zero-flow case this returns `inf` for: an unperfused tissue exchanges
         nothing, so it never reaches equilibrium. The seconds-per-minute factor
-        is here because $`Q_i`$ is held in litres per minute at this boundary
-        while every time in the model is in seconds.
+        is here because $`Q_i`$ is given in litres per minute while every time
+        in the model is in seconds.
 
         The step does not read this. `core/governing_equations.py` carries the
         same quantity as `washin_rate_s`, its reciprocal, which states the
         zero-flow case without a branch; this is the form a reader of the
         specification is looking for.
+
+        The flow $`Q_i`$ is an argument, because the group stores none. For a
+        group in a patient, it is `blood_flow_l_min_at` the patient's cardiac
+        output.
+
+        Raises:
+            TypeError: the flow is not an `int` or a `float`.
+            SimulationConfigurationError: the flow is negative or not finite.
         """
 
-        if self.blood_flow_l_min == 0.0:
+        require_nonnegative_finite("blood_flow_l_min", blood_flow_l_min)
+
+        if blood_flow_l_min == 0.0:
             return inf
 
         return (
             SECONDS_PER_MINUTE
             * self.volume_l
             * self.tissue_blood_partition_coefficient
-            / self.blood_flow_l_min
+            / blood_flow_l_min
         )
-
-    def set_blood_flow(self, blood_flow_l_min: float) -> None:
-        """Change tissue blood flow without changing stored agent.
-
-        Raises:
-            TypeError: the flow is not an `int` or a `float`.
-            SimulationConfigurationError: the flow is negative or not finite.
-                Both are the write's own, in `__setattr__`, and nothing is
-                written when it is refused.
-        """
-
-        self.blood_flow_l_min = blood_flow_l_min
 
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         """Set tissue state from a partial-pressure-equivalent fraction.
@@ -251,9 +300,12 @@ class TissueGroup:
         self.agent_amount_l = self.capacity_l * partial_pressure_fraction
 
     def advance(
-        self, arterial_partial_pressure_fraction: Fraction, simulation_step_s: float
+        self,
+        arterial_partial_pressure_fraction: Fraction,
+        simulation_step_s: float,
+        blood_flow_l_min: float,
     ) -> float:
-        """Advance exactly for constant arterial fraction and blood flow.
+        """Advance exactly for a constant arterial fraction and blood flow.
 
         This tissue group's own closed form, and not how a run advances: the
         arterial fraction a run presents changes continuously, and the step
@@ -272,22 +324,24 @@ class TissueGroup:
                 which is what checks it against 0 to 1
                 (`core/concentration.py`).
             SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite. Both are checked before anything changes. Or the
-                amount held is already past the capacity, which only a write
-                past `__setattr__` can have stored: the amount advanced is
-                written through it, at zero flow too, where it is the amount
-                held, unchanged.
+                and finite, or `blood_flow_l_min` is negative or not finite.
+                All three are checked before anything changes. Or the amount
+                held is already past the capacity, which only a write past
+                `__setattr__` can have stored: the amount advanced is written
+                through it, at zero flow too, where it is the amount held,
+                unchanged.
         """
 
         require_fraction("arterial_partial_pressure_fraction", arterial_partial_pressure_fraction)
         require_positive_finite("simulation_step_s", simulation_step_s)
+        time_constant_s = self.time_constant_s(blood_flow_l_min)
 
         initial_amount_l = self.agent_amount_l
         self.agent_amount_l = exponential_approach(
             initial_amount_l,
             self.capacity_l * arterial_partial_pressure_fraction,
             simulation_step_s,
-            self.time_constant_s,
+            time_constant_s,
         )
 
         return self.agent_amount_l - initial_amount_l

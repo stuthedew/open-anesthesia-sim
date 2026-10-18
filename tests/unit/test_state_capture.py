@@ -101,17 +101,13 @@ def _tissue_group() -> TissueGroup:
         perfusion_fraction=1.0,
         blood_gas_partition_coefficient=0.65,
         tissue_gas_partition_coefficient=1.14,
-        blood_flow_l_min=3.75,
         agent_amount_l=0.41,
     )
 
 
 def _venous_blood() -> VenousBloodCompartment:
     return VenousBloodCompartment(
-        volume_l=5.0,
-        blood_gas_partition_coefficient=0.65,
-        blood_flow_l_min=5.0,
-        agent_amount_l=0.23,
+        volume_l=5.0, blood_gas_partition_coefficient=0.65, agent_amount_l=0.23
     )
 
 
@@ -153,7 +149,6 @@ COMPARTMENTS = (
                 "perfusion_fraction",
                 "blood_gas_partition_coefficient",
                 "tissue_gas_partition_coefficient",
-                "blood_flow_l_min",
             }
         ),
     ),
@@ -161,9 +156,7 @@ COMPARTMENTS = (
         label="VenousBloodCompartment",
         build=_venous_blood,
         run_state_fields=frozenset({"agent_amount_l"}),
-        setting_fields=frozenset(
-            {"volume_l", "blood_gas_partition_coefficient", "blood_flow_l_min"}
-        ),
+        setting_fields=frozenset({"volume_l", "blood_gas_partition_coefficient"}),
     ),
     _Compartment(
         label="AgentSimulationValidator",
@@ -217,7 +210,12 @@ def _perturb_every_field(compartment: Any) -> dict[str, object]:
 
         assert replacement != original, compartment_field.name
 
-        setattr(compartment, compartment_field.name, replacement)
+        if compartment_field.name == "perfusion_fraction":
+            # A tissue's fraction can be written only once, when the group is
+            # built (`PL-Z0HN`), so the changed value is written past that guard.
+            object.__setattr__(compartment, compartment_field.name, replacement)
+        else:
+            setattr(compartment, compartment_field.name, replacement)
         perturbed[compartment_field.name] = replacement
 
     return perturbed
@@ -463,7 +461,10 @@ def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
             "the vaporizer maximum, which no equation reads and the record carries (PL-BBMG)",
         ),
         (lambda s: setattr(s.patient.tissues[0], "volume_l", 9.0), "a tissue volume"),
-        (lambda s: setattr(s.patient.tissues[1], "blood_flow_l_min", 1.5), "a tissue blood flow"),
+        (
+            lambda s: object.__setattr__(s.patient.tissues[1], "perfusion_fraction", 0.2),
+            "a tissue blood flow, moved through a perfusion fraction written past its guard",
+        ),
         (
             lambda s: setattr(s.patient.tissues[2], "tissue_gas_partition_coefficient", 90.0),
             "a tissue partition coefficient, moved through the gas coefficient it derives from",
