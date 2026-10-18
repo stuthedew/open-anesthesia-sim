@@ -7,6 +7,7 @@ in a way git accepts is proved against a real checkout in `test_cli.py`.
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import os
 import subprocess
@@ -57,6 +58,7 @@ from docket.vcs import (
     StrandedReport,
     SubjectPullRequest,
     Unlisted,
+    _commits_by_landing,
     _cut_date,
     _items_at,
     _landed_since,
@@ -91,6 +93,7 @@ from docket.vcs import (
     head_branch,
     landed_whole,
     listed_paths,
+    logged_fields,
     lost,
     merged_pull_requests,
     open_pull_requests,
@@ -107,6 +110,7 @@ from docket.vcs import (
     tracked_files,
     tracked_under,
     uncommitted_paths,
+    unquoted_path,
     untracked_path_args,
     with_newest_pull_request,
     working_paths,
@@ -127,11 +131,19 @@ def _tree_lines(entries: Mapping[str, str]) -> str:
     get the same id and a path whose text changes gets a different one. A fake
     that has only paths to give passes the path as its own text, which is
     sound for every read that never compares two of them.
+
+    The `-z` form, each entry ended with NUL, which every listing of a tree
+    sends so that a path git would quote arrives as written (`PL-4YDJ`).
     """
     return "".join(
-        f"100644 blob {hashlib.sha1(text.encode()).hexdigest()}\t{path}\n"
+        f"100644 blob {hashlib.sha1(text.encode()).hexdigest()}\t{path}\0"
         for path, text in entries.items()
     )
+
+
+def _tree_ref(args: list[str]) -> str:
+    """The tree an `ls-tree` read names: its first argument that is not an option."""
+    return next(arg for arg in args[1:] if not arg.startswith("-"))
 
 
 def _blob(entry: str | tuple[str, str]) -> str:
@@ -972,7 +984,10 @@ def _tree_runner(
             return raw(forked[ref], trees.get(ref, {}), args)
         if args[0] == "ls-tree":
             return _tree_lines(
-                {f"docs/items/{name}": text for name, text in trees.get(args[2], {}).items()}
+                {
+                    f"docs/items/{name}": text
+                    for name, text in trees.get(_tree_ref(args), {}).items()
+                }
             )
         if args[0] == "show":
             ref, _, path = args[1].partition(":")
@@ -1786,7 +1801,7 @@ def _base_tree_runner(on_base: dict[str, str], log: list[list[str]] | None = Non
             return on_base.get(path.split("/")[-1], "") if revision == BASE else ""
         if args[0] == "ls-tree":
             return "".join(
-                f"100644 blob {index:040x}\tdocs/items/{name}\n"
+                f"100644 blob {index:040x}\tdocs/items/{name}\0"
                 for index, name in enumerate(on_base)
             )
         return _default_run(args, root)
@@ -2042,7 +2057,7 @@ def _closed_by_runner(
         if args[0] == "diff":
             return _name_only(touched, args)
         if args[0] == "ls-tree":
-            prefix = f"{args[2]}:"
+            prefix = f"{_tree_ref(args)}:"
             return _tree_lines({k[len(prefix) :]: k for k in sorted(trees) if k.startswith(prefix)})
         if args[0] == "show":
             return trees.get(args[-1], "")
@@ -2639,7 +2654,7 @@ def _base_runner(declared: str = '[project]\nversion = "0.3.8"\n', notes: tuple[
         if args[0] == "show":
             return declared
         if args[0] == "ls-tree":
-            return "".join(f"docs/releases/{name}\n" for name in notes)
+            return "".join(f"docs/releases/{name}\0" for name in notes)
         return _default_run(args, root)
 
     return run
@@ -2714,7 +2729,7 @@ def test_the_base_is_read_from_the_ref_rather_than_the_working_tree() -> None:
     released_on_base(ROOT, version_file="pyproject.toml", notes_dir="docs/releases", runner=run)
 
     assert ["show", f"{BASE}:pyproject.toml"] in log
-    assert ["ls-tree", "--name-only", BASE, "docs/releases/"] in log
+    assert ["ls-tree", "-z", "--name-only", BASE, "docs/releases/"] in log
 
 
 def test_an_explicit_base_is_read_instead_of_the_default_one() -> None:
@@ -3236,7 +3251,7 @@ def _cut_window_runner(
             return f"{BASE}\n" if args[-1] == BASE else ""
         if args[0] == "rev-parse":
             return f"{BASE}\n" if args[-1] == BASE else ""
-        if args[:2] == ["diff", "--name-only"]:
+        if args[0] == "diff" and "--name-only" in args:
             return _name_only(added, args)
         if args[0] == "merge-base":
             return f"{fork}\n" if fork else ""
@@ -3339,14 +3354,16 @@ def _filing_runner(shallow: str, log: str, changed: dict[str, list[str]] | None 
 
 # #635's shape: one commit files six items and lands 385 lines of `vcs.py`.
 # `PL-QQQQ` is the item the same commit filed and did not name - the ordinary
-# capture in passing, and the case the subject clause exists to suppress.
+# capture in passing, and the case the subject clause exists to suppress. The
+# `-z` form `item_additions` asks for: the format line ended with NUL, then one
+# `\n`, and each status and each path ended with NUL.
 FILED_LOG = "".join(
     (
-        "\x00ff4be610\x01PL-XD3C, PL-MMVF, PL-0J9K: make digest's git calls",
-        " measurable (#635)\n\n",
-        "A\tdocs/items/PL-0J9K-git-cat-file-batch.md\n",
-        "A\tdocs/items/PL-MMVF-memoize-the-runner.md\n",
-        "A\tdocs/items/PL-QQQQ-something-else-entirely.md\n",
+        "\x1eff4be610\x01PL-XD3C, PL-MMVF, PL-0J9K: make digest's git calls",
+        " measurable (#635)\0\n",
+        "A\0docs/items/PL-0J9K-git-cat-file-batch.md\0",
+        "A\0docs/items/PL-MMVF-memoize-the-runner.md\0",
+        "A\0docs/items/PL-QQQQ-something-else-entirely.md\0",
     )
 )
 
@@ -4850,7 +4867,7 @@ def test_a_subject_differing_only_past_a_line_separator_is_not_duplicated_histor
 
 def test_a_filing_subject_holding_a_line_separator_keeps_its_pull_request() -> None:
     subject = "PL-0J9K: file the item\u2028and fix the reader it names (#635)"
-    log = f"\x00ff4be610\x01{subject}\n\nA\tdocs/items/PL-0J9K-git-cat-file-batch.md\n"
+    log = f"\x1eff4be610\x01{subject}\0\nA\0docs/items/PL-0J9K-git-cat-file-batch.md\0"
     changed = {
         "ff4be610": [
             "docs/items/PL-0J9K-git-cat-file-batch.md",
@@ -5285,3 +5302,117 @@ def test_a_rebased_cut_is_dated_by_its_author_date(tmp_path: Path) -> None:
     assert written.commit == repo.git("rev-parse", "HEAD")
     assert written.at == datetime(2026, 1, 1, 12, tzinfo=UTC)
     assert _cut_date("main", "docs/releases", "1.2.3", repo.root, _run_git) == date(2026, 1, 1)
+
+
+def test_an_item_file_git_would_quote_is_read_by_its_path(tmp_path: Path) -> None:
+    """`PL-4YDJ`: the one listing of a ref's item files names each by its real path.
+
+    Without `-z` git listed `PL-BCDF-café.md` as
+    `"docs/items/PL-BCDF-caf\\303\\251.md"`. The id was still found, so
+    nothing looked wrong, but the path it mapped to names no file, and the
+    `git show` that follows it reads nothing.
+    """
+    repo = _Repo(tmp_path / "repo")
+    (repo.root / "docs" / "items").mkdir(parents=True)
+    (repo.root / "docs" / "items" / "PL-BCDF-caf\u00e9.md").write_text("a\n", encoding="utf-8")
+    (repo.root / "docs" / "items" / "PL-GHJK-plain.md").write_text("b\n", encoding="utf-8")
+    repo.commit("PL-BCDF, PL-GHJK: capture")
+
+    assert _items_at("HEAD", repo.root, "docs/items", _run_git) == {
+        "PL-BCDF": "docs/items/PL-BCDF-caf\u00e9.md",
+        "PL-GHJK": "docs/items/PL-GHJK-plain.md",
+    }
+
+
+def test_a_non_ascii_path_is_read_as_git_wrote_it(tmp_path: Path) -> None:
+    """`PL-JTCQ`: the walk `orphaned` classifies commits by names each path as written.
+
+    A commit touching only `src/café.py`, a path the base holds, took nothing
+    the base lacks. Read without `-z`, the path arrived quoted, matched neither
+    set, and the commit went unclassified.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("base", seed_txt="seed\n")
+    base = repo.git("rev-parse", "HEAD")
+    (repo.root / "src").mkdir()
+    (repo.root / "src" / "caf\u00e9.py").write_text("x = 1\n", encoding="utf-8")
+    repo.commit("PL-K7QX: the work")
+
+    left, took_one_whole = _commits_by_landing(
+        "HEAD", base, frozenset({"src/caf\u00e9.py"}), frozenset(), repo.root, _run_git, Config()
+    )
+
+    assert left == ()
+    assert took_one_whole
+
+
+def test_a_quoted_path_loses_its_quoting_and_a_plain_one_is_kept() -> None:
+    """Git's C-style quoting, as a patch header prints it under `-z` too (`PL-MR8Z`)."""
+    assert unquoted_path('"b/caf\\303\\251.py"') == "b/caf\u00e9.py"
+    assert unquoted_path('"a\\tb \\"c\\" d\\\\e"') == 'a\tb "c" d\\e'
+    assert unquoted_path("b/plain.py") == "b/plain.py"
+
+
+def test_a_log_listing_is_split_into_each_commit_and_its_fields() -> None:
+    """The `-z` shape: the header ended with NUL, one newline, then each field ended with NUL."""
+    listing = "\x1eaaa\0\nsrc/caf\u00e9.py\0tools/a\tb.py\0\x1ebbb\0\x1eccc\0\nREADME.md\0"
+
+    assert logged_fields(listing) == [
+        ("aaa", ("src/caf\u00e9.py", "tools/a\tb.py")),
+        ("bbb", ()),
+        ("ccc", ("README.md",)),
+    ]
+
+
+#: The flags that make git print a path in a listing, which it C-quotes
+#: unless the read also asks for `-z`.
+PATH_LISTING_FLAGS = frozenset(
+    {"--name-only", "--name-status", "--numstat", "--raw", "--stat", "ls-tree", "ls-files"}
+)
+
+
+def _path_listings_without_z(path: Path) -> list[str]:
+    """Each argv literal in one module that asks git for a path listing and not for `-z`."""
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    built: set[int] = set()
+    for node in ast.walk(tree):
+        # `changed_path_args` adds `-z` to whatever it is given.
+        name = getattr(node, "func", None)
+        if isinstance(node, ast.Call) and getattr(name, "id", getattr(name, "attr", "")) == (
+            "changed_path_args"
+        ):
+            built.add(id(node))
+    found = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.List | ast.Tuple):
+            elements = node.elts
+        elif isinstance(node, ast.Call) and id(node) not in built:
+            elements = node.args
+        else:
+            continue
+        words = {
+            element.value
+            for element in elements
+            if isinstance(element, ast.Constant) and isinstance(element.value, str)
+        }
+        if (flags := words & PATH_LISTING_FLAGS) and "-z" not in words:
+            found.append(f"{path.name}:{node.lineno} {sorted(flags)}")
+    return found
+
+
+def test_every_path_listing_read_in_docket_asks_for_z() -> None:
+    """`PL-4YDJ`: no read in docket or the tools takes git's quoted spelling of a path.
+
+    Without `-z` git C-quotes a path holding a byte above 0x7f, a tab, `"` or
+    `\\`, and three items were each a reader that took the quoted spelling for
+    the path. This refuses the next one where it is written, rather than where
+    a sweep finds it. A read whose argv is built by `changed_path_args`, which
+    adds `-z`, passes; a patch, which git quotes under `-z` too, is read
+    through `unquoted_path` and lists no path this way.
+    """
+    repository = Path(__file__).resolve().parents[3]
+    modules = sorted((repository / "subprojects" / "docket" / "src" / "docket").glob("*.py"))
+    modules += sorted((repository / "tools").glob("*.py"))
+
+    assert modules, "no module was found to read"
+    assert [found for module in modules for found in _path_listings_without_z(module)] == []

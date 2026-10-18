@@ -160,7 +160,8 @@ def _runner(output: str) -> tuple[Runner, list[list[str]]]:
 
 def test_churn_sums_additions_and_deletions_by_day() -> None:
     run, _ = _runner(
-        "\x012026-08-25\n10\t2\tsrc/core.py\n1\t1\ttools/x.py\n\x012026-08-26\n5\t0\tsrc/core.py\n"
+        "\x012026-08-25\0\n10\t2\tsrc/core.py\x001\t1\ttools/x.py\0"
+        "\x012026-08-26\0\n5\t0\tsrc/core.py\0"
     )
     report = churn(ROOT, runner=run)
 
@@ -177,13 +178,30 @@ def test_churn_excludes_merges_so_a_merged_change_is_not_counted_twice() -> None
 
 
 def test_a_binary_file_is_skipped_rather_than_counted_as_zero() -> None:
-    run, _ = _runner("\x012026-08-25\n-\t-\tassets/logo.png\n3\t1\tsrc/core.py\n")
+    run, _ = _runner("\x012026-08-25\0\n-\t-\tassets/logo.png\x003\t1\tsrc/core.py\0")
 
     assert churn(ROOT, runner=run).by_day[date(2026, 8, 25)] == {"src/core.py": 4}
 
 
 def test_a_checkout_that_cannot_run_git_reports_nothing_rather_than_failing() -> None:
     assert not churn(ROOT, runner=_runner("")[0])
+
+
+def test_a_moved_file_is_counted_under_the_name_it_now_has() -> None:
+    """Under `-z` git writes a rename's two paths as fields of their own (`PL-4YDJ`).
+
+    The counts' own field is then left with no path, and a reader that took it
+    for one bucketed the lines under the empty string or under the old name.
+    """
+    run, asked = _runner(
+        "\x012026-08-25\0\n2\t1\t\0tools/old.py\0tools/new.py\x004\t0\tsrc/caf\u00e9.py\0"
+    )
+
+    assert churn(ROOT, runner=run).by_day[date(2026, 8, 25)] == {
+        "tools/new.py": 3,
+        "src/caf\u00e9.py": 4,
+    }
+    assert "-z" in asked[0]
 
 
 def test_a_renamed_path_is_read_as_the_name_it_now_has() -> None:

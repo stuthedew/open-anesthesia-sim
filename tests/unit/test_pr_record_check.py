@@ -33,10 +33,10 @@ def _tree(**refs: dict[str, str]):
 
     def fake(args: list[str]) -> str:
         if args[0] == "ls-tree":
-            # ["ls-tree", "-r", <ref>, "--", <dir>], as `vcs._item_blobs` reads it.
-            ref = args[2]
+            # ["ls-tree", "-r", "-z", <ref>, "--", <dir>], as `vcs._item_blobs` reads it.
+            ref = args[3]
             return "".join(
-                f"100644 blob {index:040x}\tdocs/items/{name}\n"
+                f"100644 blob {index:040x}\tdocs/items/{name}\0"
                 for index, name in enumerate(refs.get(ref, {}))
             )
         if args[0] == "show":
@@ -209,7 +209,7 @@ def _git_answering(**refs: dict[str, str]):
         args = list(argv[1:])
         if args[0] == "rev-parse":
             return subprocess.CompletedProcess(argv, 0, b"claude/pl-hmzz-slug\n", b"")
-        ref = args[2] if args[0] == "ls-tree" else args[1].partition(":")[0]
+        ref = args[3] if args[0] == "ls-tree" else args[1].partition(":")[0]
         if ref in refs:
             return subprocess.CompletedProcess(argv, 0, tree(args).encode(), b"")
         said = f"fatal: Not a valid object name {ref}\n"
