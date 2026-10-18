@@ -1890,6 +1890,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("misread", "misread"),
     ("impairs-generators", "impairs_generators"),
     ("reenters", "reenters"),
+    ("no-successor", "no_successor"),
 )
 
 
@@ -5874,6 +5875,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("--blocked-by", "PL-XXXX,vX.Y.Z"),
         ("--root-cause-of", "PL-XXXX,PL-YYYY,PL-ZZZZ"),
         ("--reenters", "PL-XXXX"),
+        ("--no-successor", "PL-XXXX"),
     ):
         setter.add_argument(
             flag, action="append", metavar=metavar, help="comma-separated; may be repeated"

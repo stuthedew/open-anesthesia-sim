@@ -35,9 +35,9 @@ data/  --loaded by-->  core/  --read by-->  app/
   `core/` it reads only `core/checked_number.py`'s naming of a refused value.
   Its `store.py` is the one module in the package, and the first under `src/`,
   that writes outside the tree: the reader's saved Workspaces, under § "User
-  state: the saved Workspaces" below. The adapter that builds the widget tree
-  from it is `PL-W9P6`'s, and until it lands nothing in `app/` reads the
-  package.
+  state: the saved Workspaces" below. `app/area_layout.py` builds the widget
+  tree from it (`PL-W9P6`), and `app/view_registry.py` is the one list of the
+  View kinds a layout may name (`PL-R1WQ`), since the package holds none.
 - **`data/`** holds versioned, schema-validated parameter files (JSON) with
   citations, in three kinds — the agent, the patient, and the machine in front
   of them. Every scientific constant a shipped run uses comes from one of them:
@@ -93,19 +93,21 @@ src/anesthesia_sim/
 ├── app/                  # user interface - PySide6 and pyqtgraph since PL-25KS (ROADMAP.md § "Completed: v0.4.26 - the interface moves to Qt")
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots; ResumePoint and BranchedCase: where a branch opened, and the trunk it belongs to
 │   ├── run_series.py               # the vocabulary a run's drawn values are addressed by, and the window one frame reads them from: RecordedQuantity, RecordedSeries, DrawnWindow; toolkit-independent
-│   ├── unconditional_set.py        # docs/MODEL.md's unconditional set as data: UnconditionalValue, its tiers, SubstanceInstance and INHALED_AGENT, read by the region that holds it (PL-NWTM); toolkit-independent
+│   ├── unconditional_set.py        # docs/MODEL.md's unconditional set as data: UnconditionalValue, its tiers, SubstanceInstance and INHALED_AGENT, read by the region that holds it (PL-NWTM); window_region, what each top-level window's region owes (PL-W54S); toolkit-independent
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_UNITS, ControlChange; toolkit-independent
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed, which SimulationController.advance supplies each step
 │   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the charts, the legend and the compartment selection it shows, the time base, the captions, the wash-in section, the render tick, and the layout model the Areas below the settings are drawn from; no domain logic
-│   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6)
+│   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6); an Area whose View kind is not registered shows an AreaNotice instead (PL-R1WQ)
+│   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry, and RETIRED_TAGS for a tag renamed or removed; the text of the notice an unregistered kind shows; toolkit-independent (PL-R1WQ)
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
+│   ├── run_surfaces.py             # the four parts of a run that may sit in an Area, each built any number of times from the values it draws: ParameterControls, AccountingPanel, OffScaleLine, WashInStateLine, and keep_until_destroyed, which keeps the list of live copies RunView writes (PL-9LNF)
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; toolkit-independent
 │   ├── dashboard_frame.py          # what the dashboard claims about one run at one instant, as plain values: the status word, the notice and its precedence, the readouts and their glosses, the setting controls, the transport enablement, the accounting panel, the control-change list, the captions and the new-case question; toolkit-independent
 │   ├── chart_frame.py              # what one frame of both plots draws, as plain values: the trace table, the window, the axes' ticks, the references, the marks, the wash-in stretches and the hover text; toolkit-independent
 │   ├── compartment_selection.py    # CompartmentSelection: which compartments the chart draws, as a value the dashboard owns and the legend shows (PL-VN6M); held inside the compared cap, and a reader's click over it drops the longest-standing; toolkit-independent
-│   ├── qt_chart.py                 # the concentration chart, the wash-in plot and the legend on pyqtgraph, moved per frame to match a chart_frame.ChartFrame, the legend showing a CompartmentSelection it is handed; declares no colour and formats no value
+│   ├── qt_chart.py                 # the concentration chart, the wash-in plot, the legend and the time base selector on pyqtgraph and Qt, moved per frame to match a chart_frame.ChartFrame, the legend showing a CompartmentSelection and the selector a time base it is handed; each chart says when it owes a frame at a wider width (PL-9LNF); declares no colour and formats no value
 │   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; toolkit-independent
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; toolkit-independent
 │   ├── wash_in.py                  # F_A/F_I and the domain it holds on; toolkit-independent
@@ -959,6 +961,11 @@ in it, or a line left behind after a deletion, fails `make check`.
   the literals that predate it and only shrinks, and a finding names any
   constant of the same value without deciding that it is the same quantity,
   which stays the reader's call (`PL-40SJ`).
+- A new View kind → its tag as a literal in `app/view_registry.py`, with a
+  `RegisteredView` entry beside it. The tag is what saved layouts name, so it
+  never changes: a View renamed or removed goes into `RETIRED_TAGS` with the
+  release that retired it, and its old tag is never registered again
+  (`PL-R1WQ`).
 - A new display panel or control → what it *claims*, as a plain value with a
   test in `tests/unit/test_dashboard_frame.py`, in `app/dashboard_frame.py`;
   the widget that draws it, deciding nothing, in `app/qt_widgets.py`; and its

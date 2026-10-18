@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, defect
 feature: prose-renders-as-written
+milestone: v0.5.29
 touches: docs/WORKING_NOTES.md, docs/maintainer.md, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04

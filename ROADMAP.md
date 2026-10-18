@@ -125,7 +125,9 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.25 | Completed | **The release where a run that stops itself is drawn stopped at once, where every widget of a halted run states the run the controller holds, where a cardiac output that the blood flows do not match is refused when it is written, and where the saved Workspace set exists as code.** 39 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: each new refusal sits on a route that no interface control takes, and each screen change corrects what an existing screen shows. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and every state a run plays is bit-identical**: `core/` changed (`a0e4719` to `60697e5`) because every checked field of the five run records refuses a bad value when it is written (`PL-19Y0`), the patient refuses a cardiac output that its blood flows do not match (`PL-KFNP`), and the tissue and venous closed forms, which the stepped model does not call, keep the sign of their gradient (`PL-XWFP`). Over 81 runs across the three agents, each with two branches, all 6,561,000 steps, 11,178 sampled states, 11,178 canonical states, 2,187 drawn windows and 19,447,290 formatted strings are identical at both ends, as are three 24-hour runs. `data/` changed only in three agents' source notes (`PL-0SG0`), and `tests/reference/` only in docstrings and in a table that orders the test workers' work (`PL-4Z5Y`). A learner can see a run that halts on a mark or at the supported length drawn stopped at once (`PL-T995`). A halted run's screen now has one writer, so every widget states the run the controller holds (`PL-X7D5`). The four members it closes, and `PL-85LJ`'s dial label, were reachable only through a fault that no supported setting produces. A one-run Reset also clears a refused branch (`PL-75P5`). **It finishes no feature, and closes two generator heads spent**, `PL-KFNP` and `PL-X7D5`. **Nine are Gate 2 entries**, and the gate stands at 213 of 234 cleared, from 204 of 229 at v0.5.24. `PL-TT19`, the cut, ships in no release under `PL-KRS6`. | 39 items |
 | v0.5.26 | Completed | **The release where the simulator's tests started catching wrong values they had let pass, and where `docs/MODEL.md` started saying which stored parameters the published-data comparison can detect an error in.** 44 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because nothing in `src/` changed, so a learner sees nothing different. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `src/` resolves to `ada5e66` at v0.5.25 and here, so the trajectories were not re-measured. `tests/reference/` gains published-data assertions for the first 25 minutes of wash-in (`PL-R0NL`) and cases that a changed parameter must fail (`PL-9YHR`), and four tests that claimed more than they held were renamed and narrowed (`PL-RXW0`). The unit tier now fails on an agent switch that keeps the old agent's compartments (`PL-QJXS`), a MAC-awake band left at the previous agent's values (`PL-JPS2`), and a stored MAC or MAC-awake fraction that drifts from its named source (`PL-FY35`, `PL-H1JH`). **It finishes three features**, `tests-detect-wrong-values`, `validation-resolving-power` and `friction-batch`, and closes no generator head. **Seven are Gate 2 entries**, and the gate stands at 220 of 241 cleared, from 213 of 240 at the v0.5.25 tag. `PL-L7RV`, the cut, ships in no release under `PL-KRS6`. | 44 items |
 | v0.5.27 | Completed | **The release where `docs/MODEL.md` started recording why no stored desflurane coefficient can fix its fast early wash-in, and where each agent file started citing the largest primary blood:gas measurement beside its stored value.** Five items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because no stored value changed, so a learner sees nothing different. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/`, `app/` and `layout/` resolve to the same trees as at v0.5.26, and `data/` (`c49fb36` to `3a5407c`) changes only in source entries, notes and provenance-gap text, so the trajectories were not re-measured. The three agent files cite Esper et al. 2015 beside their adopted blood:gas values, not adopted (`PL-SWY5`); the Gas Man study at PMC7943506 is cited under its real authors, Weber et al. 2021 (`PL-4RL2`); and `docs/MODEL.md` records that no desflurane coefficient moved within its published measurements closes the 1-to-10-minute gap (`PL-CM1B`). **It finishes `validation-resolving-power` a second time**, since `PL-CM1B` joined it after v0.5.26, and closes no generator head. **Three are Gate 2 entries**, and the gate stands at 223 of 243 cleared, from 220 of 241 at the v0.5.26 tag. `PL-HFQ9`, the cut, ships in no release under `PL-KRS6`. | 5 items |
-| v0.5.28 | Completed / current baseline | **The release where no tissue group or venous pool stores a blood flow of its own any more, so each flow is formed from the cardiac output in one place, and where a machine profile that opens the run off its fresh gas slider's steps is refused.** 70 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: the flows are formed from the same equation as before, and the new refusal sits on a route no shipped profile takes. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and every state a run plays is bit-identical**: `core/` changed (`60697e5` to `1ebb078`) because a compartment's flow is now `f_i × Q` formed where it is used, a perfusion fraction can be written only when its group is built, and the patient refuses a tissue set whose fractions do not sum to 1 (`PL-HQF5`, `PL-Z0HN`); `app/` changed (`3b03e6f` to `a96792e`) because the dashboard refuses a machine profile whose opening fresh gas flow is not one of its slider's steps (`PL-1KQ9`). Over 81 runs across the three agents, each with two branches, all 6,561,000 steps, 11,253 sampled states, 11,178 canonical states, 2,187 drawn windows and 19,448,865 formatted strings are identical at both ends, as are three 24-hour runs. `data/`, `layout/`, `tests/reference/` and `README.md` resolve to the same trees. **It finishes thirteen features**, among them `cardiac-output-write-consistency`, and records two live generator heads, `PL-RJLQ` and `PL-ZQ3R`, while closing `PL-MLR4` as spent. **Two are Gate 2 entries**, and the gate stands at 225 of 243 cleared, from 223 of 243 at the v0.5.27 tag. `PL-SVZD`, the cut, ships in no release under `PL-KRS6`. | 70 items |
+| v0.5.28 | Completed | **The release where no tissue group or venous pool stores a blood flow of its own any more, so each flow is formed from the cardiac output in one place, and where a machine profile that opens the run off its fresh gas slider's steps is refused.** 70 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: the flows are formed from the same equation as before, and the new refusal sits on a route no shipped profile takes. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and every state a run plays is bit-identical**: `core/` changed (`60697e5` to `1ebb078`) because a compartment's flow is now `f_i × Q` formed where it is used, a perfusion fraction can be written only when its group is built, and the patient refuses a tissue set whose fractions do not sum to 1 (`PL-HQF5`, `PL-Z0HN`); `app/` changed (`3b03e6f` to `a96792e`) because the dashboard refuses a machine profile whose opening fresh gas flow is not one of its slider's steps (`PL-1KQ9`). Over 81 runs across the three agents, each with two branches, all 6,561,000 steps, 11,253 sampled states, 11,178 canonical states, 2,187 drawn windows and 19,448,865 formatted strings are identical at both ends, as are three 24-hour runs. `data/`, `layout/`, `tests/reference/` and `README.md` resolve to the same trees. **It finishes thirteen features**, among them `cardiac-output-write-consistency`, and records two live generator heads, `PL-RJLQ` and `PL-ZQ3R`, while closing `PL-MLR4` as spent. **Two are Gate 2 entries**, and the gate stands at 225 of 243 cleared, from 223 of 243 at the v0.5.27 tag. `PL-SVZD`, the cut, ships in no release under `PL-KRS6`. | 70 items |
+| v0.5.29 | Completed | **The release where the parts of v0.6.0 that have landed reach a learner: the required readouts sit in a band above the splitters, the splitter handles can be dragged, and two runs share one readout row.** 61 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 26 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and every state a run plays is bit-identical**: `core/` changed (`1ebb078` to `92e04de`) because `AgentUptakeSystem.settings_key()` lets the controller halt a run before a step at settings its definition never recorded (`PL-XRN8`). The band (`PL-NWTM`, `PL-W54S`), the live borders (`PL-W9P6`, `PL-L8RN`), the View registry (`PL-R1WQ`) and the shared readout row (`PL-F2YS`) change `app/`; three default Workspaces ship as data in `data/` and `layout/`, which no part of the interface reads yet (`PL-KXTL`). A learner also sees Branch scroll the chart into view (`PL-562Z`), the trunk's Reset ask before it discards a branch (`PL-W5WX`), no branch offered on a failed frame (`PL-T2Q2`), and a late mark read the same way on every run (`PL-1ZQ4`). **It finishes sixteen features**, among them `reset-aftermath`, and closes two generator heads spent, `PL-ZQ3R` and `PL-RJLQ`. **Seven are Gate 2 entries**, and the gate stands at 232 of 246 cleared, from 225 of 243 at the v0.5.28 tag. `PL-YBQM`, the cut, ships in no release under `PL-KRS6`. | 61 items |
+| v0.5.30 | Completed / current baseline | **The release where two compared runs each take one line above one shared heading, so the concentration chart gets back 63 px on the laptop reference, and where a failed drift run reaches the next session.** Three items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 27 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` resolves to `92e04de` at v0.5.29 and here, and `data/` and `layout/` resolve to the same trees, so the trajectories were not re-measured. `app/` changed (`6d1a9c6` to `48d6a4a`) because in compare mode each run's transport controls and delivered concentration share one line, and the substance, 1 MAC and model the two runs share are stated once above the paired readouts (`PL-QLZ5`). On the 1366 by 700 reference that takes the region from 366 px to 303 px and leaves the chart about 264 px, still under the 360 px one run keeps, which the project owner accepted (`PL-JG82`). **It finishes `claim-integrity`**, and closes no generator head. **One is a Gate 2 entry**, and the gate stands at 233 of 246 cleared, from 232 of 246 at the v0.5.29 tag. `PL-JLK6` and `PL-JTWV` shipped inside the v0.5.29 tag and are described here. `PL-1BL8`, the cut, ships in no release under `PL-KRS6`. | 3 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -230,103 +232,71 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.28
+## Current baseline: v0.5.30
 
-v0.5.28 is the release where no tissue group or venous pool stores a blood flow
-of its own any more. Each flow is formed from the cardiac output in one place,
-so no write can leave a flow out of step with the output. It is also where a
-machine profile that opens the run at a fresh gas flow its slider cannot show
-is refused. It has 70 items, and it is a patch on both halves of § "Versioning
-decision"'s test. No capability boundary is crossed, because the flows come
-from the same equation as before and the new refusal sits on a route that no
-shipped profile takes. The next three minor numbers, v0.6.0 through v0.8.0,
-are given to milestone sections. Two of the items are Gate 2 entries.
-`bin/docket wave` puts the gate at 225 of 243 cleared at this cut, against 223
-of 243 at the v0.5.27 tag. No entry was placed on the list since that tag, and
-18 stay open, against 20.
+v0.5.30 is the release where two compared runs each take one line above one
+shared heading, so the concentration chart gets back some of the height that
+compare mode costs it. It is also where a failed run of the `drift.yml` checks
+reaches the next session. It has three items, and it is a patch on both halves
+of § "Versioning decision"'s test. No capability boundary is crossed, because
+v0.6.0's capability, a layout the reader arranges, is not finished: 27 of the
+39 ids in its Required scope are closed. The next three minor numbers, v0.6.0
+through v0.8.0, are given to milestone sections. One of the items, `PL-QLZ5`,
+is a Gate 2 entry. `bin/docket wave` puts the gate at 233 of 246 cleared at
+this cut, against 232 of 246 at the v0.5.29 tag, and 13 entries stay open.
 
-**No equation, parameter or stored value changed, and every state a run plays is bit-identical at both ends:**
+**No equation, parameter or stored value changed, and no run can differ:**
 
-| Tree | v0.5.27 | This cut | What moved |
+| Tree | v0.5.29 | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `eddc6a9` | `81d0415` | `core/` and `app/`, below |
-| `core/` | `60697e5` | `1ebb078` | no tissue group or venous pool stores a flow: `TissueGroup.blood_flow_l_min_at` forms Q_i = f_i × Q where it is used, the venous pool's flow is the cardiac output, and `time_constant_s` and `advance()` take the flow as an argument (`PL-HQF5`); a perfusion fraction can be written only when its group is built, and the patient refuses a tissue set whose fractions do not sum to 1 (`PL-Z0HN`) |
-| `app/` | `3b03e6f` | `a96792e` | the dashboard refuses a run whose fresh gas flow in force is not one of its slider's 0.1 L/min steps, which only a machine profile's opening flow can fail (`PL-1KQ9`); the controller's and run view's docstrings now say that only a perfusion fraction written past its guard can lead a setting change or a Reset to be refused (`PL-HQF5`, `PL-Z0HN`) |
-| `data/` | `3a5407c` | `3a5407c` | nothing |
-| `layout/` | `c065b9e` | `c065b9e` | nothing |
+| `src/` | `76b408a` | `0bb97af` | `app/` only, below |
+| `core/` | `92e04de` | `92e04de` | nothing |
+| `app/` | `6d1a9c6` | `48d6a4a` | in compare mode `RunView` puts each run's transport controls and delivered concentration on one line, and `SimulationView` states the substance, 1 MAC and model the two runs share once, on a heading line above the paired readouts (`PL-QLZ5`) |
+| `data/` | `af2d672` | `af2d672` | nothing |
+| `layout/` | `42c1c40` | `42c1c40` | nothing |
 | `tests/reference/` | `b0c7cb3` | `b0c7cb3` | nothing |
-| `docs/MODEL.md` | `0bdd1a6` | `b714760` | § "Tissue groups", § "Supported input ranges", § "Reset behavior", the symbol table and the misuse table say that each flow is formed from the cardiac output and that a fraction is fixed once its group is built (`PL-HQF5`, `PL-Z0HN`) |
+| `docs/MODEL.md` | `d3f0fc3` | `8e5fdd6` | § "Minimum displayed outputs" says that each run's delivered concentration sits on its own line, and that the values the two runs share are stated once, because a second run must be on the first run's agent (`PL-QLZ5`) |
 | `README.md` | `98a0d7f` | `98a0d7f` | nothing |
-| `.github/` | `9447ac4` | `9447ac4` | nothing |
+| `.github/` | `a17ea9c` | `a17ea9c` | nothing |
 
-`core/` moved, so this cut measured the trajectories rather than reading them
-off the diff. The script v0.5.25's cut used ran on the v0.5.27 tag and on this
-cut, unchanged. It played the same 81 runs through `SimulationController`: the
-three agents, each at three fresh gas flows (0.5, 2 and 8 L/min), three cardiac
-outputs (2.5, 5 and 8 L/min) and three alveolar ventilations (2, 4.5 and
-9 L/min), with the same bookmark, MAC target, four control changes and two
-branches from each run. The cardiac output change at minute 20 is the write
-`PL-HQF5` changed most, since every flow now follows it when it is read. Every
-value was compared as its exact bits.
+`core/`, `data/` and `layout/` resolve to the same trees at the v0.5.29 tag and
+at this cut, so no step a run takes can differ, and this cut did not measure
+the trajectories again. The `app/` change moves where values are drawn and
+computes none of them.
 
-- **Every state a run plays is bit-identical.** The `state_vector()` hashes
-  after each of the 6,561,000 steps agree at both ends. All 11,253 sampled
-  states agree in `capture_state()`, in `state_vector()` and in every field of
-  the snapshot, as do the 271 snapshots taken where a mark halted a run. The
-  snapshot has the same fields at both ends.
-- **So is every state derived from the run's record.** `RunDefinition.state_at`
-  is identical at all 11,178 sampled instants, and `drawn_window` on all 2,187
-  windows drawn, which hold 1,601,046 columns. None of the 236,313 readout
-  strings and none of the 19,212,552 hover-box strings differs.
-- **Three 24-hour runs stop at 86,400 s after 864,000 steps on both trees**,
-  with every step's state identical. The script is not kept in the
-  repository.
+**What a learner sees change.** With two runs compared, each run used to have
+a transport row that wrapped onto two lines at 1366 px, and a heading line of
+its own under it. Each run now has one line holding its name, its transport
+controls and its delivered concentration. The substance, the agent's 1 MAC and
+the version and model are the same for both runs, so they are stated once, on
+the heading line above the paired readouts (`PL-QLZ5`). Measured on the
+offscreen font at 1366 by 700, the region above the chart drops from 366 px to
+303 px with two runs. That leaves the concentration chart about 264 px, up from
+about 201 px and still 96 px under the 360 px minimum that one run keeps. The
+project owner accepted a shorter chart in compare mode on that reference, on
+the condition that layout wins back what it can (`PL-JG82`). The estimate of 70
+to 80 px was not reached, because the version badge now sits on the shared
+heading line. `PL-T91K` records the other 24 px, the spacing of the empty
+notice column. With one run nothing changes, and the region stays 175 px.
 
-**A blood flow can no longer disagree with the cardiac output.** Before this
-release each tissue group and the venous pool kept its own copy of its flow,
-and the patient kept the copies equal to f_i × Q. Three kinds of write could
-still put a copy out of step: a compartment's `set_blood_flow`, a changed
-perfusion fraction, and a copy of the patient at another output that shared
-the original's compartments. The run then halted at the next step or at Reset.
-`PL-HQF5` deletes the copies, so each compartment's time constant,
-τ_i = V_i λ_i:b / Q_i, takes the flow formed from the output in force.
-`PL-Z0HN` fixes each perfusion fraction once its group is built. No learner
-could reach any of the three writes from the interface. This finishes
-`cardiac-output-write-consistency`.
+**The apparatus.** `tools/main_ci_status.py` now reads `drift.yml` as well as
+`quality.yml`, so the session-start digest names each `drift.yml` job whose
+newest run on `main` did not pass (`PL-JTWV`). A failed run on 2026-10-01 had
+gone unread for 17 days. For a live claim on a branch that the base took whole,
+`bin/docket flight` now names the branch's head commit and `bin/docket arm`
+gives its `--self` hint (`PL-JLK6`). That finishes the `claim-integrity`
+feature. No generator head
+closes. The release item is `PL-1BL8`, whose `resource: release-train` keeps
+it out of every later release. Every closure carried its `pr:` number before
+the cut, so all three bullets cite their pull requests.
+`tools/pr_body_check.py` found no squash commit that lost its body.
 
-**A machine profile cannot open the run between two slider steps.** A profile
-opening at 2.25 L/min left the slider at 2.2 and the readout printing 2.2 over
-a run held at 2.25 (`PL-1KQ9`). The dashboard now refuses to build its
-controls for such a run, and the message names the flow, the step size and the
-range offered. No shipped profile reaches it, since the reference machine opens
-at 4.0 L/min.
-
-The other 67 items are the apparatus's. Most make one module the only reader
-of a fact that several tools read separately: an item file at a ref and a
-change's closures (`PL-86H3`), the branch `HEAD` is on (`PL-KL6B`), Markdown
-blocks (`PL-NNVJ`), docstrings and imports (`PL-8W1J`), release facts
-(`PL-5H48`), a shell command's structure (`PL-RHPK`) and hook boilerplate
-(`PL-FB77`). Others hold the readers of YAML, shell and Makefiles to a
-reference program (`PL-0MC5`, `PL-NPPV`, `PL-P6LL`, `PL-WFPB`).
-`bin/docket wave` now counts the gate entries that wait only on v0.6.0's own
-Required scope as cleared by the milestone (`PL-W9BK`), which is why it prints
-11 of those where it printed 4 at the v0.5.27 tag. The release finishes thirteen
-features: `apparatus-test-bar`, `cardiac-output-write-consistency`,
-`closed-item-claims`, `contrast-base-entry-reading`, `decision-ownership`,
-`evidence-declines`, `exact-gates`, `gate-list-integrity`,
-`gate-prerequisites`, `pr-body-integrity`, `pre-fork-content`,
-`refresh-before-reporting` and `worker-instructions`. `PL-SH4H` records two
-live generator heads, `PL-RJLQ` for an item's queue state and `PL-ZQ3R` for
-gate parity, and `PL-MLR4` closes as a spent head. The release item is
-`PL-SVZD`, whose `resource: release-train` keeps it out of every later
-release. Every closure carried its `pr:` number before the cut, so all 70
-bullets cite their pull requests. `tools/pr_body_check.py` found no squash
-commit that lost its body.
-
-No pull request shipped inside v0.5.27's tag without being described there. As before, anything that merges on `main` after this cut is written
-and before its pull request lands ships inside the v0.5.28 tag. It is
-described in the next release, and v0.5.28's notes take a pointer to it at that
-release's cut.
+`#1607` merged after v0.5.29's cut was written and before it landed, so it
+ships inside the v0.5.29 tag. Its two closed items, `PL-JLK6` and `PL-JTWV`,
+are described here, and v0.5.29's notes now point to this release for them.
+As before, anything that merges on `main` after this cut is written and before
+its pull request lands ships inside the v0.5.30 tag. It is described in the
+next release, and v0.5.30's notes take a pointer to it at that release's cut.
 
 ## The plan
 
@@ -4238,8 +4208,8 @@ already written down. Every one of them is `anticipated`, and since 2026-09-16
 that is a rule rather than a ground this subsection states for itself
 (`PL-83LS`): § "The gate is a snapshot, not a moving target" makes an
 `anticipated` finding **not debt until the hazard it describes exists**. The
-splitter handles are inert today, so none of these hazards exists until the
-milestone that creates them is built, and a gate that clears debt *before* a
+splitter handles only resize an Area today, so none of these hazards exists
+until the milestone that creates them is built, and a gate that clears debt *before* a
 milestone cannot clear a hazard that milestone introduces. So these are not
 deferred here: they are not debt against this gate at all, and the placement
 named for each above - v0.6.0's `Required scope`, v0.7.0's, or neither - is the
@@ -4253,9 +4223,11 @@ the code) and `PL-W54S` (what a broken-out top-level window owes that set). The
 presence rule re-entered them here regardless of when they were found, and this
 subsection then had to argue them back out one hazard at a time - which is the
 argument `PL-83LS` turned into the rule above. Each is classed `anticipated`, so
-none of the four is debt against this gate: the splitter handles are inert today
-(`src/anesthesia_sim/app/qt_widgets.py`'s `inert_splitter`), and no reader can
-close, replace or cover a required value until item 34 makes them live.
+none of the four is debt against this gate. Since `PL-W9P6` (2026-10-18) the
+handles are live, but they only resize an Area
+(`src/anesthesia_sim/app/area_layout.py`'s `AreaLayout`), and no reader can
+close, replace or cover a required value until item 34's docking operations
+are built.
 
 Each of the four is named in v0.6.0's `Required scope`, which is where the rule
 puts a hazard rather than where a deferral would leave it: the milestone that
@@ -5700,6 +5672,13 @@ layout half of what Required scope entry 20 handed `PL-W54S`: the region's
 width at 1366 px, and compare mode against the chart's 360 px minimum. It was
 split out when `PL-W54S` was re-confirmed as the per-window declaration of the
 unconditional set, and entry 20 names it, so it is cleared by v0.6.0 itself.
+**`PL-JG82` joined it the same day, also as a `safety` entry.** It is the
+compare-mode half that `PL-F2YS`'s build measured and could not settle: the
+chart at about 200 px against the 360 px minimum, which is a decision for the
+project owner. Entry 20's budget names it, so it is cleared by v0.6.0 itself.
+`PL-QLZ5` followed from the owner's answer the same day: compare mode folds each
+run's transport row and heading into one line to give the chart back what
+layout can, and entry 20 names it too.
 
 **What this list is not swept for yet.** Beat 3 of the cadence requires a
 staleness pass before any of it is worked - a `verify:` command tests for the
@@ -5710,7 +5689,7 @@ filed as its own item under `feature: gate-staleness-sweep` and runs against
 this list before implementation of this milestone begins; no standing item is
 named here, for the reason beat 3 gives.
 
-**Cleared by v0.6.0 itself - 15 entries**
+**Cleared by v0.6.0 itself - 17 entries**
 
 - PL-9LNF (L) Three app/ surfaces own state a layout could duplicate or relocate beside PL-VN6M's TraceLegend: RunView's build_ accessors hand out the same widget object on every call, the chart time base is owned by a dropdown inside one plot's panel, and the chart's column budget is read from sibling plots
 - PL-NWTM (L) The unconditional displayed set has no structural home in the code, so the guarantee docs/MODEL.md states as structural - a region outside the area system - exists only as prose
@@ -5723,9 +5702,11 @@ named here, for the reason beat 3 gives.
 - PL-K285 (M) An Area that cannot be given the size its View needs says so rather than collapsing it, which is the second of the three properties docs/interface-provenance.md records Blender not supplying
 - PL-L8RN (M) Nothing enforces the one-adapter QSplitter confinement PL-C842 decided, because import_boundary_check.py confines root packages and PySide6 is one root package
 - PL-PGZF (M) PL-GS3R made the chart's column budget follow the window width, so assemble_chart_frame costs 8.4 ms at 150 columns and 15.4 ms at 1601 - PL-CNCF measured only the fixed 150-column budget, and 15.4 ms is essentially a whole 60 fps frame
+- PL-QLZ5 (M) In compare mode, fold each run's transport row and readout heading line into one line, so the 1366 by 700 laptop reference gives the concentration chart back roughly 70 to 80 px (PL-JG82)
 - PL-TH35 (M) Define the common View contract every app/ view implements so any view is interchangeable in any area
 - PL-VN6M (M) TraceLegend owns the compartment-visibility state inside a widget, which an area system will have to move out
 - PL-W54S (M) Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
+- PL-JG82 (S) Compare mode leaves the concentration chart about 200 px on the 1366 by 700 laptop reference, 159 px under PL-84QX's 360 px minimum, after PL-F2YS paired the readouts
 - PL-JSY5 (S) docs/MODEL.md's readout-row rung and its educational-disclaimer line both assume one window's width and one always-on-screen surface, which the area system makes false
 
 **Cleared before v0.6.0 begins unless deferred, the product lane - 100 entries**
@@ -6332,8 +6313,8 @@ removed, and this file's history before that change holds their text.
 
 20. **The look and the edge states of every surface this milestone creates**
     (queue items `PL-QW1Z`, `PL-MS34`, `PL-RQT1`, `PL-30L5`, `PL-RBXL`,
-    `PL-DB5G`, `PL-J8K2` and `PL-84QX`, and `PL-F2YS`, which joined on
-    2026-10-18; the entry itself was `PL-M3X6`).
+    `PL-DB5G`, `PL-J8K2` and `PL-84QX`, and `PL-F2YS`, `PL-JG82` and
+    `PL-QLZ5`, which joined on 2026-10-18; the entry itself was `PL-M3X6`).
     Every surface this milestone brings into existence
     has its appearance and its edge states decided here - not inherited from
     the toolkit, not deferred to the visual pass. Entries 1-19 are mechanism:
@@ -6392,9 +6373,16 @@ removed, and this file's history before that change holds their text.
     with the parameter View visible; the furniture above the first Area is
     capped at two text rows (the tab strip and one Area header) plus 8 px per
     handle; and the region gives back the in-page title row (`PL-J8K2`).
-    Compare mode is past that minimum on that screen before any furniture,
-    and is `PL-F2YS`'s to settle, split out of `PL-W54S` on 2026-10-18 with
-    the region's width at 1366 px. Entry 13's shipped Workspaces are composed
+    Compare mode is past that minimum on that screen. `PL-F2YS` paired the
+    two runs' readouts in one block on 2026-10-18 and measured what is left:
+    about 200 px for the chart, 159 px short. Compare mode accepts that
+    shorter chart on this screen, and layout wins back what it can by folding
+    each run's transport row and heading into one line (project owner,
+    2026-10-18, ratified, over scrolling the page and over refusing the
+    chart's Area, `PL-JG82`; the folding is `PL-QLZ5`). `PL-QLZ5` folded
+    them on 2026-10-18 and measured the result on the offscreen font: the
+    region drops from 366 px to 303 px with two runs, which leaves the chart
+    about 264 px, 96 px short. Entry 13's shipped Workspaces are composed
     within it. **All eight were decided on 2026-10-11** (project owner,
     ratified, over the alternatives each item names); the items carry the
     decisions, and the build items they name carry the look.
@@ -6538,8 +6526,8 @@ removed, and this file's history before that change holds their text.
 owner decides. Nothing upgrades on a schedule, and nothing gates on it.**
 
 This is a multi-year project, so every version constraint in `pyproject.toml`
-will be wrong eventually — `requires-python` pins a single CPython minor and
-CPython ships one a year; Flet is pre-1.0 and its 1.0 is excluded by an upper
+will be wrong eventually — `requires-python` admits two CPython minors, 3.14 and
+3.15, and CPython ships one a year; Flet is pre-1.0 and its 1.0 is excluded by an upper
 bound; the dev tools are unbounded floors whose behaviour changes underneath
 the gate. The failure being guarded against is not a stale pin. It is returning
 after a gap to a tree that no longer builds, where the upgrade that would fix
@@ -6725,10 +6713,11 @@ list behind a marker nothing enforces, and over leaving the rule as it stands
 and putting the 2026-09-16 area-model findings on v0.5.0's list). The paragraph
 above is unconditional about *when* a finding was made; this says what it takes
 to be a finding against the current gate at all. An item classed `anticipated`
-describes a hazard a later milestone will create — the splitter handles are
-inert today (`src/anesthesia_sim/app/qt_widgets.py`'s `inert_splitter`), so no reader can
-close, replace or cover a required value until planned-milestone item 34 makes
-them live — and a gate that exists to clear debt *before* a milestone begins
+describes a hazard a later milestone will create — the splitter handles only
+resize an Area today (`src/anesthesia_sim/app/area_layout.py`'s `AreaLayout`,
+live since `PL-W9P6` on 2026-10-18), so no reader can close, replace or cover a
+required value until planned-milestone item 34's docking operations are built —
+and a gate that exists to clear debt *before* a milestone begins
 cannot clear a hazard that milestone introduces. It is § "What counts"'s own
 live-mechanism test — "Process work is debt once the mechanism is live, not
 before ... The distinction is state, not layer" — applied to a hazard rather

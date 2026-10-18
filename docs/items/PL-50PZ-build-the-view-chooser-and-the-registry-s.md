@@ -1,14 +1,16 @@
 ---
 id: PL-50PZ
 title: Build the View chooser and the registry's required-reachable flag, which is what makes docs/MODEL.md's accounting tier reachable from every Workspace and not removable from the application
-status: blocked
-feature: interface-areas
-added: 2026-09-16
-priority: P2
+priority: P1
 effort: M
-blocked-by: PL-R1WQ, PL-WV9K
+status: ready
 classes: safety, anticipated
+feature: interface-areas
 touches: src/anesthesia_sim/app/, docs/MODEL.md, tests/integration
+blocked-by: PL-R1WQ, PL-WV9K
+added: 2026-09-16
+payoff: the agent accounting can be brought on screen from every Workspace through the interface alone, and a build that does not register it fails
+verify: grep -q '    required_reachable:' src/anesthesia_sim/app/view_registry.py
 ---
 
 **Problem.** Build the View chooser and the registry's required-reachable flag, which is what makes docs/MODEL.md's accounting tier reachable from every Workspace and not removable from the application
@@ -80,3 +82,14 @@ ratified, over the alternative each names). The one decision the owner
 specified otherwise is `PL-WV9K` Q4: layouts are saved by an explicit "Save
 as default" action in the layout menu, not automatically; `PL-WV9K`
 § "Answers 2026-09-27" carries that design.
+
+## Ready since `PL-R1WQ`, 2026-10-18
+
+The registry is `src/anesthesia_sim/app/view_registry.py`, and the Workspace
+is `PL-WV9K`'s, so both blockers are done. `required_reachable` is a new field
+on `RegisteredView`, and the check that a build lacking a required kind fails
+belongs beside `retirements` in that module. The chooser also owes the Area
+notice two things `PL-R1WQ` left out because no menu existed: `PL-DB5G` Q2's
+line "Choose a View from the menu above. The saved name is kept until you
+do.", and the explicit offer of a renamed View's new tag (`PL-R1WQ` Q3).
+`missing_view_text` writes the notice's body.

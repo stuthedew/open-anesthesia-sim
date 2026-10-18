@@ -778,7 +778,9 @@ swapping *region* lists, with per-view state living in the regions; the shape to
 copy is that the outgoing view's state is kept rather than destroyed.
 
 **A view kind is a tag plus a registry lookup, never a subclass.** Nothing in
-the layout layer knows a concrete view type exists.
+the layout layer knows a concrete view type exists. The registry is
+`app/view_registry.py`, and each tag in it is a literal written once, so a
+renamed class cannot change what a saved file means (`PL-R1WQ`).
 
 **Context above tools.** The strip that says *what the numbers are about*
 outranks and sits above anything that acts on them — Blender's own information
@@ -834,7 +836,9 @@ treats mis-contexted presentation as a safety failure. A saved workspace naming
 a view this build does not have must say so, visibly, and must not quietly
 present a different view in that pane. Blender's own asymmetry — it *does* warn
 about an unknown region type ten lines away — suggests this is an oversight to
-avoid rather than a design to follow.
+avoid rather than a design to follow. Here `app/area_layout.py` draws an
+`AreaNotice` in that Area alone, naming the saved kind, and the model keeps the
+kind so a later save writes it back (`PL-R1WQ`, `PL-DB5G`).
 
 **A required value is never hidden to make room.** Blender's answer when a
 region will not fit is `RGN_FLAG_TOO_SMALL` and collapse to zero extent. For a

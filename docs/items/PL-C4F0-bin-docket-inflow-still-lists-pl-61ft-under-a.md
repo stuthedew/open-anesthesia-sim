@@ -3,12 +3,15 @@ id: PL-C4F0
 title: bin/docket inflow still lists PL-61FT under 'a generator whose fix did not hold' though the owner answered it 'no successor head' on 2026-10-12 (PL-4097, ratified): an answer naming no successor lives only in prose, so PL-0WT0's successor split cannot see it and every run re-asks it
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: generator-heads
-touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/README.md, docs/items
+milestone: v0.5.29
+touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/README.md, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1603
 payoff: bin/docket inflow stops re-asking PL-61FT's line, which the owner answered, so its 'fix did not hold' heading lists only the lines still waiting for an answer
 verify: grep -q 'def test_a_line_answered_with_no_successor_is_listed_apart' subprojects/docket/tests/test_inflow.py
 ---
@@ -66,3 +69,15 @@ wrote that record; this item writes the other half, so it completes the one
 record rather than adding a third reader beside it, and no head's `misread:`
 states the fact (`bin/docket generators --misread`, 2026-10-17). `PL-0WT0` was
 the narrower fix by its own Done-when, so `reenters:` is not set.
+
+**Closed 2026-10-18.** The field is `no-successor:` on the answering item, as
+recommended, and `bin/docket set --no-successor` writes it. The answer dates
+from the answering item's `added:`. The review found that dating it from
+`closed:` let closing the item hide filings made in between, and `added:` is
+the conservative choice: it can only reopen a line sooner.
+`inflow.Inflow.answered` holds each answered line, and `format_inflow` lists
+it under a third heading naming the answering item. `PL-4097` carries
+`no-successor: PL-61FT`, and on that day `bin/docket inflow --no-fetch` lists
+`PL-61FT` under the new heading and prints no open heading at all. No check
+holds the field's ids to real items: an id that names no re-entered line has
+no effect, which `bin/docket inflow` shows by not listing it.

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.29
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/trend.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_claiming.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_store.py, subprojects/docket/tests/test_trend.py, tools/doc_check.py, tools/pr_body_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12

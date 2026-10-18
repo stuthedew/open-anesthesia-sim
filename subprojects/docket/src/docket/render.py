@@ -4146,22 +4146,40 @@ def format_inflow(report: Inflow) -> str:
     # A line a successor head answers is listed apart, naming the head: under
     # the first heading it read as a question nobody had answered, and only a
     # reader who knew which filings were heads could tell (`PL-0WT0`).
-    unanswered = {c: f for c, f in report.reentered.items() if c not in report.successors}
-    answered = {c: f for c, f in report.reentered.items() if c in report.successors}
+    unanswered = {
+        c: f
+        for c, f in report.reentered.items()
+        if c not in report.successors and c not in report.answered
+    }
+    succeeded = {c: f for c, f in report.reentered.items() if c in report.successors}
+    owed_none = {c: f for c, f in report.reentered.items() if c in report.answered}
     if unanswered:
         lines += ["", "Re-entered by three or more filings, a generator whose fix did not hold:"]
         lines += [f"  {closed}  by {', '.join(filed)}" for closed, filed in unanswered.items()]
-    if answered:
+    if succeeded:
         lines += [
             "",
             "Re-entered by three or more filings and answered by a successor: a head whose own",
             "reenters: names the line, so the question is that head's rather than this list's:",
         ]
-        for closed, filed in answered.items():
+        for closed, filed in succeeded.items():
             heads = ", ".join(
                 f"{head.identifier} ({head.status})" for head in report.successors[closed]
             )
             lines += [f"  {closed}  by {', '.join(filed)}", f"           successor {heads}"]
+    # A line answered with no successor owed is listed apart too, naming the
+    # item that records the answer (`PL-C4F0`).
+    if owed_none:
+        lines += [
+            "",
+            "Re-entered by three or more filings and answered with no successor owed: an item",
+            "whose no-successor: names the line holds the reason, until three later filings:",
+        ]
+        for closed, filed in owed_none.items():
+            answers = ", ".join(
+                f"{answer.identifier} ({answer.status})" for answer in report.answered[closed]
+            )
+            lines += [f"  {closed}  by {', '.join(filed)}", f"           answered by {answers}"]
     return "\n".join(lines)
 
 

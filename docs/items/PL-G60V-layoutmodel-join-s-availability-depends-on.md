@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, ux
 feature: interface-areas
+milestone: v0.5.29
 touches: src/anesthesia_sim/layout/model.py, src/anesthesia_sim/layout/tree.py, tests/unit/test_layout_model.py, docs/interface-provenance.md, docs/items/PL-2KXB-build-the-docking-affordances-a-reader-uses.md
 added: 2026-10-12
 closed: 2026-10-18

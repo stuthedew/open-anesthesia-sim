@@ -174,6 +174,26 @@ def styled_label(
     """
 
     label = QLabel(text)
+    style_label(label, color=color, size_px=size_px, bold=bold, italic=italic, wrap=wrap)
+
+    return label
+
+
+def style_label(
+    label: QLabel,
+    *,
+    color: str,
+    size_px: int | None = None,
+    bold: bool = False,
+    italic: bool = False,
+    wrap: bool = False,
+) -> None:
+    """Give a label one of the theme's colours and sizes, as `styled_label` does.
+
+    For a class that is itself a label, which `styled_label` cannot build.
+    The arguments are `styled_label`'s.
+    """
+
     label.setStyleSheet(foreground_stylesheet(color))
     label.setWordWrap(wrap)
     font = QFont(label.font())
@@ -184,8 +204,6 @@ def styled_label(
     font.setBold(bold)
     font.setItalic(italic)
     label.setFont(font)
-
-    return label
 
 
 def _advance_px(label: QLabel, text: str) -> int:
@@ -482,9 +500,20 @@ class MetricPanel(QFrame):
     changes length every tick, cannot shift its panel as components appear
     and fall away.
 
+    The value and the second unit form the panel's *reading*, one widget
+    under the name and the gloss. While two runs are compared, the second
+    run's reading joins the first run's panel rather than standing in a
+    second panel of its own, so the readout block grows by a few lines and
+    not by a second row (`docs/MODEL.md` § "Minimum displayed outputs",
+    `PL-F2YS`). Each reading then names its run on a line above its value.
+
     Attributes:
         name_label: The modeled quantity, in the model's own terms.
         qualifier_label: What a clinician would compare it against.
+        reading: The run name, the value and the second unit, in one widget
+            that `add_reading` can give to another run's panel.
+        run_name_label: The run the reading belongs to, hidden while no
+            name is set.
         value_label: The reading with its unit; never wraps.
         secondary_label: The reading in its second unit; never wraps.
         minimum_value_width_px: The width reserved for the panel: the
@@ -524,6 +553,8 @@ class MetricPanel(QFrame):
         self.secondary_label = styled_label(
             readout.secondary, color=MUTED, size_px=METRIC_SECONDARY_VALUE_SIZE
         )
+        self.run_name_label = styled_label("", color=INK, size_px=METRIC_QUALIFIER_SIZE, bold=True)
+        self.run_name_label.setHidden(True)
 
         value_advance = _advance_px(self.value_label, widest_value)
         secondary_advance = _advance_px(self.secondary_label, widest_secondary)
@@ -540,17 +571,43 @@ class MetricPanel(QFrame):
         )
         self.setMinimumWidth(self.minimum_value_width_px)
 
-        column = QVBoxLayout(self)
-        column.setContentsMargins(PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, PANEL_PADDING)
-        column.setSpacing(0)
+        self.reading = QWidget()
+        reading_column = QVBoxLayout(self.reading)
+        reading_column.setContentsMargins(0, 0, 0, 0)
+        reading_column.setSpacing(0)
 
-        for label in (
-            self.name_label,
-            self.qualifier_label,
-            self.value_label,
-            self.secondary_label,
-        ):
-            column.addWidget(label)
+        for label in (self.run_name_label, self.value_label, self.secondary_label):
+            reading_column.addWidget(label)
+
+        self._column = QVBoxLayout(self)
+        self._column.setContentsMargins(PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, PANEL_PADDING)
+        self._column.setSpacing(0)
+
+        for widget in (self.name_label, self.qualifier_label, self.reading):
+            self._column.addWidget(widget)
+
+    def set_run_name(self, name: str | None) -> None:
+        """Name the run this panel's own reading belongs to, or show no name.
+
+        Args:
+            name: The run's name from `dashboard_frame.run_label`, or `None`
+                for a lone run, which has nothing to be told apart from.
+        """
+
+        self.run_name_label.setText(name or "")
+        self.run_name_label.setHidden(name is None)
+
+    def add_reading(self, reading: QWidget) -> None:
+        """Show another run's reading of the same quantity under this one's.
+
+        The reading stays the other run's widget, written by that run's
+        view, and leaves this panel when it is deleted.
+
+        Args:
+            reading: The other panel's `reading`.
+        """
+
+        self._column.addWidget(reading)
 
     def set_readout(self, readout: Readout) -> None:
         """Write the four lines from this tick's readout.
@@ -659,6 +716,55 @@ class ReadoutRow(QWidget):
 
         for panel, readout in zip(self.panels, readouts, strict=True):
             panel.set_readout(readout)
+
+    def set_run_name(self, name: str | None) -> None:
+        """Name the run every panel's own reading belongs to, or show no name.
+
+        Args:
+            name: The run's name from `dashboard_frame.run_label`, or `None`
+                for a lone run.
+        """
+
+        for panel in self.panels:
+            panel.set_run_name(name)
+
+    def add_readings(self, other: ReadoutRow) -> tuple[QWidget, ...]:
+        """Show another run's readings in this row's panels, and hide its row.
+
+        This is how two runs share one readout block: each panel carries
+        both runs' values under one name, each value naming its run, so a
+        second run adds three lines to the block rather than a second row of
+        seven panels (`PL-F2YS`).
+
+        Args:
+            other: The second run's row. It is hidden, because its panels no
+                longer hold their readings.
+
+        Returns:
+            The readings moved, in row order. Deleting them takes them out
+            of this row's panels again.
+
+        Raises:
+            ValueError: If the rows do not name the same quantities in the
+                same order, which would put a value under another quantity's
+                name.
+        """
+
+        names = tuple(panel.name_label.text() for panel in self.panels)
+        compared_names = tuple(panel.name_label.text() for panel in other.panels)
+
+        if compared_names != names:
+            raise ValueError(
+                f"a row naming {', '.join(names)} cannot show the readings of a row "
+                f"naming {', '.join(compared_names)}"
+            )
+
+        for panel, compared in zip(self.panels, other.panels, strict=True):
+            panel.add_reading(compared.reading)
+
+        other.setHidden(True)
+
+        return tuple(compared.reading for compared in other.panels)
 
     def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
         """One column wide, and as tall as the grid is at its current count."""

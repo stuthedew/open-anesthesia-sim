@@ -126,6 +126,19 @@ is paid only when a line will print, but the median is itself the reading, so
 it cannot wait for one. When any of the reads fails, the line says so and gives
 no figure, because a figure from an earlier read could be out of date.
 
+**It also names a failed `drift.yml` job** (`PL-JTWV`). That workflow tests the
+tree against newer dependencies, the next interpreter and a shuffled test
+order. It reports and never gates, so a red run matters only if a session reads
+it. The run of 2026-10-01 failed, and nobody mentioned it until the project
+owner asked 17 days later, because nothing a session read included it. So this
+script lists `drift.yml`'s newest runs on `main` and judges each job by its own
+newest result, not by its run's conclusion. A weekly run runs only the `order`
+job and skips the rest, so its `success` says nothing about them. The line
+names every job whose newest result is not a pass, and it stays until a newer
+run passes that job. On a page where every run passed, this costs one request.
+Otherwise it costs one more for each run back to the oldest one that did not
+pass, sent at once on threads.
+
 Standard library only, and parsing at the 3.11 floor `tools/ruff.toml` sets, so
 a bare checkout with no virtualenv can run it — from the session-start hook, or
 by hand at any moment, which is the half a hook alone cannot give: `main` can
@@ -183,6 +196,25 @@ VERDICTS = frozenset({"success"} | FAILED)
 # than every verdict, its commit has none, which the line below reports rather
 # than letting an older commit's verdict stand as `main`'s (`PL-JTHW`).
 UNJUDGED = {"cancelled": "was cancelled", "action_required": "concluded action_required"}
+
+#: The workflow that tests the tree on a toolchain nobody pinned. It runs on a
+#: schedule and by hand, never on a push, and it reports without gating, so its
+#: runs are read here without the `push` filter `fetch_runs` uses (`PL-JTWV`).
+DRIFT_WORKFLOW = "drift.yml"
+
+#: How many of `drift.yml`'s newest runs are listed. The weekly schedule runs only
+#: the `order` job and the monthly one only the others, so the newest monthly run
+#: can sit behind five weekly runs and a manual one or two.
+DRIFT_RUNS = 10
+
+#: A drift job's conclusions that answer whether it passed. Each job is judged by
+#: its own newest answer rather than by its run's conclusion, because a weekly run
+#: skips the monthly jobs and concludes `success` while they are still broken.
+#: `skipped` answers nothing. `cancelled` is counted as not passing, because a job
+#: that reaches `timeout-minutes` may end as `cancelled`, and a hung job is what
+#: those limits exist to catch (`PL-FSH9`).
+DRIFT_RED = frozenset({"failure", "timed_out", "cancelled", "startup_failure"})
+DRIFT_ANSWERS = DRIFT_RED | {"success"}
 
 # The name `.github/workflows/quality.yml` gives the whole-store replay step,
 # which is the one step whose failure is a fact about the queue rather than
@@ -645,9 +677,25 @@ def fetch_runs(slug: str) -> list[object]:
     is read, which keeps the script runnable from a bare checkout and keeps a
     credential out of a session-start path.
     """
+    return _workflow_runs(slug, WORKFLOW, "&event=push", 10)
+
+
+def fetch_drift_runs(slug: str) -> list[object]:
+    """Fetch recent completed `drift.yml` runs on the default branch, of any event.
+
+    Unauthenticated like `fetch_runs`, and for the same reason.
+    """
+    return _workflow_runs(slug, DRIFT_WORKFLOW, "", DRIFT_RUNS)
+
+
+def _workflow_runs(slug: str, workflow: str, event: str, count: int) -> list[object]:
+    """Fetch one workflow's newest `count` completed runs on the default branch.
+
+    `event` is a query filter such as `"&event=push"`, or empty for every event.
+    """
     url = (
-        f"{API}/repos/{slug}/actions/workflows/{WORKFLOW}/runs"
-        f"?branch={default_branch(ROOT)}&event=push&status=completed&per_page=10"
+        f"{API}/repos/{slug}/actions/workflows/{workflow}/runs"
+        f"?branch={default_branch(ROOT)}{event}&status=completed&per_page={count}"
     )
     request = urllib.request.Request(
         url, headers={"Accept": "application/vnd.github+json", "User-Agent": "docket-digest"}
@@ -656,6 +704,86 @@ def fetch_runs(slug: str) -> list[object]:
         payload = json.load(response)
     runs = payload.get("workflow_runs")
     return runs if isinstance(runs, list) else []
+
+
+def drift_red_jobs(
+    runs: list[dict[str, object]], payloads: list[list[object]]
+) -> tuple[tuple[str, str, dict[str, object]], ...]:
+    """Return each job whose newest answer in these runs is not a pass, with that answer's run.
+
+    `runs` is newest first and `payloads` holds each run's jobs. A job's answer
+    is its newest conclusion in `DRIFT_ANSWERS`, so a run that skipped the job
+    leaves the answer to an older run.
+    """
+    answered: dict[str, tuple[str, dict[str, object]]] = {}
+    for run, jobs in zip(runs, payloads, strict=True):
+        for job in jobs:
+            if not isinstance(job, dict):
+                continue
+            name, conclusion = job.get("name"), job.get("conclusion")
+            if isinstance(name, str) and isinstance(conclusion, str):
+                if conclusion in DRIFT_ANSWERS:
+                    answered.setdefault(name, (conclusion, run))
+    return tuple(
+        (name, conclusion, run)
+        for name, (conclusion, run) in answered.items()
+        if conclusion in DRIFT_RED
+    )
+
+
+def _run_label(run: dict[str, object]) -> str:
+    """A run as a line names it: its number and the date it started."""
+    started = _instant(run.get("created_at"))
+    when = f" on {started.date().isoformat()}" if started is not None else ""
+    return f"#{run.get('run_number', '?')}{when}"
+
+
+def drift_advisory(red: tuple[tuple[str, str, dict[str, object]], ...]) -> str:
+    """Return the line naming each `drift.yml` job whose newest answer is not a pass."""
+    jobs = ", ".join(
+        f'"{name}" ({conclusion} in {_run_label(run)})' for name, conclusion, run in red
+    )
+    urls = " ".join(dict.fromkeys(str(run.get("html_url", "")) for _, _, run in red))
+    return (
+        f"drift.yml has jobs whose newest result on main is not a pass: {jobs}. That workflow "
+        "reports and does not gate, so no other check reads it: fix what it found, or record "
+        f"it as an item, then re-run the workflow by hand. {urls}"
+    )
+
+
+def drift_line(slug: str) -> str | None:
+    """Return the line for `drift.yml` jobs whose newest answer is not a pass, or None.
+
+    The jobs of every run back to the oldest one on the page that did not
+    conclude `success` are read, because a run that concluded `success` holds
+    no job that failed. A run whose jobs cannot be read leaves the answer
+    unknown, and the line says so, because silence here means every job's
+    newest answer passed.
+    """
+    try:
+        listed = fetch_drift_runs(slug)
+    except NETWORK_FAILURES as error:
+        return (
+            f"drift.yml's runs on main could not be read ({error}), so a failed drift job "
+            "would not show here."
+        )
+    runs = [run for run in listed if isinstance(run, dict)]
+    unpassed = [index for index, run in enumerate(runs) if run.get("conclusion") != "success"]
+    if not unpassed:
+        return None
+    reading = runs[: unpassed[-1] + 1]
+    try:
+        with ThreadPoolExecutor(max_workers=len(reading)) as pool:
+            payloads = list(pool.map(lambda run: fetch_jobs(slug, run.get("id")), reading))
+    except NETWORK_FAILURES as error:
+        oldest = runs[unpassed[-1]]
+        return (
+            f"drift.yml's run {_run_label(oldest)} concluded {oldest.get('conclusion')}, and "
+            f"whether its jobs have passed since could not be read ({error}). "
+            f"{oldest.get('html_url', '')}"
+        )
+    red = drift_red_jobs(reading, payloads)
+    return drift_advisory(red) if red else None
 
 
 def fetch_jobs(slug: str, run_id: object) -> list[object]:
@@ -734,6 +862,12 @@ def main() -> int:
     time_line = pytest_time_line(slug, runs)
     if time_line is not None:
         print(time_line)
+
+    # After the quality lines, because a toolchain nobody pinned matters less
+    # than `main` itself.
+    drift = drift_line(slug)
+    if drift is not None:
+        print(drift)
     return 0
 
 

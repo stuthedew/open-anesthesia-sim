@@ -1693,13 +1693,21 @@ item three filings re-enter is named under the table as a generator whose fix
 did not hold. Where a head's own `reenters:` names that item, the head is its
 successor (`PL-4097`), and the line is listed apart under a heading of its own,
 naming the successor and its status, so a settled line does not read as an open
-one (`PL-0WT0`). Like `trend`, it decides nothing and prints no score.
+one (`PL-0WT0`). A line answered with no successor owed is listed apart under a
+third heading. The item that records that answer names the line in its own
+`no-successor:` field, and the list names that item and its status
+(`PL-C4F0`). Three filings that re-enter the line after the answer's date,
+which is the answering item's `added:`, list the line as open again. Closing
+the answering item does not move that date. Like `trend`, it decides nothing and prints no score.
 
 `docket release` prints the one verdict, and only when it is unwelcome: when
 the last complete week broke one of `PL-04KR`'s pre-registered predictions -
-more than 0.13 new apparatus paths a filing, a `P0` or `P1` apparatus filing
-outside the generator tier, or more re-entries than the week before - the cut
-names it, and otherwise says nothing about inflow at all.
+more than 0.13 new apparatus paths a filing, a `P0` or `P1` apparatus filing,
+or more re-entries than the week before - the cut names it, and otherwise says
+nothing about inflow at all. Two kinds of `P0` or `P1` filing are left out of
+that count. One is an item in the generator tier. The other is a class-pinned
+item, whose `safety` or `science` class holds it at `P1`, when its only
+apparatus paths are instruction files (`PL-00TR`).
 
 ### The digest and the ranking cannot disagree
 
@@ -2760,7 +2768,10 @@ session having to notice it — and it is deliberately not a third field that
 changes a queue position. Each entry is a date and the id of a capture that
 `docket new` matched to this item: the filing happened, so the defect fired
 again, and `CLAUDE.md`'s reason for pulling a root cause is that every session
-it stands through pays it again. At two distinct recurrences — which is
+it stands through pays it again. `docket new` matches a capture against open
+items only, so the count follows closed anchors: `plan.recurrence_chains` adds
+the filings recorded on each closed item that an open item re-files, and the
+filings of any closed item further back on that chain (`PL-RX3H`). At two distinct recurrences — which is
 three filings, the item itself being the first, and so the generator rule's own
 number counted in filings rather than in items — `docket next` and the
 session-start digest name the item as a promotion candidate and stop there.
@@ -2837,6 +2848,13 @@ where a recurrence is the same defect filed again. Neither `recurrences` nor
 that may still be open, and the second records members filed while their head
 was open, two in the whole store after it closed. `docket inflow` counts it
 per period and names any closed item three filings re-enter (`PL-WXKD`).
+
+`no-successor` records the answer to such a line when no successor head is
+owed. It goes on the item that gives the answer, through `docket set
+--no-successor`, and names the closed item whose line it answers. The reason
+is written in that item's brief. The record carries the answering item's own
+date, so the answer stops applying once three more filings re-enter the line
+after it (`PL-C4F0`).
 
 An item at `ready` must carry one of them: the command that would prove it
 done, or a recorded reason why no command can. The gate sits at `ready` rather
@@ -3601,6 +3619,10 @@ the cut rendered the notes and the number was written afterwards (`PL-W7WL`,
 filed four times from four separate cuts). The edit is an append — the id and
 the title stay exactly as they went out — so a release never changes what it
 claims, and re-cutting a released version to regenerate it stays refused.
+A bullet it cannot read, such as one whose title carries on from the margin
+with no indent, is left byte for byte as it was. `record --merge` names each
+such bullet by file and line with the reason, so its report does not read as a
+complete repair (`PL-K23D`).
 `docket check` reports what is left as an advisory, counting only bullets the
 store can actually supply a reference for.
 

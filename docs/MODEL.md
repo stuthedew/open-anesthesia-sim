@@ -6674,8 +6674,11 @@ than optimisations:
 
 - **The columns sit on a grid anchored to the case's zero**, at absolute
   multiples of the spacing the selected time base and the width of the plot
-  imply: one column per pixel boundary of the plot the frame is drawn on, and
-  never fewer than 150 (`chart_columns` in `app/chart_frame.py`, `PL-GS3R`).
+  imply: one column per pixel boundary of the widest plot the frame is drawn
+  on, and never fewer than 150 (`chart_columns` in `app/chart_frame.py`,
+  `PL-GS3R`). A plot that becomes wider than its frame was sampled for, by a
+  window resize or by a reader dragging an Area border, is redrawn on the next
+  render tick, running or paused (`resample_owed`, `PL-9LNF`).
   A window following the run therefore keeps every column it had
   and gains at most one, so a steady trace is not redrawn on every frame. A
   grid anchored to the viewport instead would move on every scroll and resize,
@@ -7121,10 +7124,12 @@ exists only where a curve does.
 **Where the unconditional set lives in the build.** `app/unconditional_set.py`
 states the two tiers and the control-input record as data, with the inhaled
 instance as `INHALED_AGENT`. Each run's values sit in one region across the
-top of the dashboard, above the splitter that every other surface sits in. The
+top of the dashboard, outside the Areas that `app/area_layout.py` lays out.
+Since `PL-W9P6` (2026-10-18) the setting sections sit in a plain column
+between the region and the Areas, so they are not in an Area either. The
 dashboard refuses to place a run whose region lacks a declared value, so a
-value moved into the splitter fails at once rather than becoming closeable
-when the area system arrives (`PL-NWTM`, laid out to `PL-J8K2`).
+value moved into an Area fails at once rather than becoming closeable when the
+area system's docking operations arrive (`PL-NWTM`, laid out to `PL-J8K2`).
 
 **Where the educational-use disclaimer lives** (`PL-JSY5`, 2026-10-18). The
 use disclaimer, `USE_DISCLAIMER_TEXT`, is a standing statement rather than one
@@ -7312,12 +7317,23 @@ no visual signature at all: the block looks identical whichever run is selected,
 so a reader who has forgotten reads one management's number as the other's.
 Stating the selection warns after the fact where showing both prevents. Pairing
 the two values under one compartment label is what keeps that from doubling the
-block's height: it grows in width instead, which preserves the one-row
-comparative reading this document requires the resolution to be uniform for —
-a reader seeing the circuit lead the alveoli lead the tissues. What that costs
-is width at narrow windows, which `PL-3355` bounds: a readout panel reserves
-the width of the widest value it can show, so a value is never wrapped away
-from its unit at any width the row is laid out at.
+block's height. The second run's value and its second unit stand under the
+first run's in the same panel, and each value has its run's name on the line
+above it. So the block keeps one row of seven panels and grows by those lines
+rather than by a second row (`PL-F2YS`). That preserves the one-row comparative
+reading this document requires the resolution to be uniform for — a reader
+seeing the circuit lead the alveoli lead the tissues. The two values are
+stacked rather than placed side by side because stacking keeps each panel at
+its one-run width, which keeps the row seven across at 1366 px; side by side
+would roughly double each panel's width. Each run's delivered concentration
+sits on that run's own line, beside its name and its transport controls. The
+values the two runs share are stated once, on the heading line above the
+paired block: the substance, the agent's 1 MAC and the version and model. They
+are the same for both runs because a second run must be on the first run's
+agent, and a branch's MAC is checked against its trunk's when it is opened
+(`PL-QLZ5`). `PL-3355` still applies: a readout panel reserves the width of
+the widest value it can show, so a value is never wrapped away from its unit
+at any width the row is laid out at.
 
 **No difference readout is required, and none may be added without a stated
 sign convention.** The arithmetic difference of two alveolar fractions is not a
@@ -8268,9 +8284,13 @@ mid-grey to none.
 
 Two things still follow the host, both by the rule rather than by omission. A
 **disabled** widget draws from the `Disabled` colour group all three mechanisms
-leave to the platform, so the inert splitter handles keep the host's surface
-(`PL-05M4`); declaring a disabled colour is a decision under
-`.claude/rules/ui-color.md` and this interface has exactly one, measured above.
+leave to the platform. Declaring a disabled colour is a decision under
+`.claude/rules/ui-color.md`, and this interface has exactly one, measured above.
+The splitter handles used to be disabled and so kept the host's dark surface.
+Since `PL-W9P6` (2026-10-18) they are enabled, and the border between two Areas
+shows the page's `BACKGROUND` under a dark host too, which
+`test_the_border_between_two_areas_shows_the_page_rather_than_the_host` checks
+(`PL-05M4`).
 And a **tooltip** draws from `ToolTipBase` and `ToolTipText`, which are outside
 the declared role set; this interface uses no tooltip today.
 
@@ -8767,21 +8787,25 @@ the layout is the reader's";
 join, a border drag or a Workspace switch never changes the width the row is
 laid out at. Two things do: the window's width, and how the region divides that
 width. Since `PL-J8K2`, the region holds the runs' rows in a left column and the
-control-change record in a right column, in the 3:1 proportion that the charts
-and the sidebar take, and the left column never narrows below its own minimum
-width. At whatever width that leaves, the reservation rule above (`PL-3355`)
+control-change record in a right column. Since `PL-F2YS` the two columns take
+the shares of the width that the chart panel's Area and the sidebar's Area take,
+0.82 and 0.18, so the record is as wide as the sidebar under it, as `PL-J8K2`
+Q3 ratified. The left column never narrows below its own minimum width. At whatever width that leaves, the reservation rule above (`PL-3355`)
 still applies: every rung lays each panel out at its full reserved width, so
 no value is wrapped away from its unit.
 
-**Measured 2026-10-18: a 1366 px window no longer opens on seven with one
-run.** On the offscreen font, a 1366 px window with one run gives the region
-1320 px and the left column 1002 px. Seven across needs 1005 px, so the row
-opens on four. Two runs open on seven at the same width, because two runs'
-rows raise the left column's minimum width to 1044 px. One run first opens on
-seven at 1398 px. So the outcome recorded above for a 1366 px screen no longer
-holds now that the control-change record shares the region's width with the
-readouts (`PL-J8K2`). The region's exact division is `PL-F2YS`'s to settle (`ROADMAP.md` § "v0.6.0 - the
-layout is the reader's", Required scope entry 20).
+**Measured 2026-10-18: a 1366 px window opens on seven again, with one run or
+two.** On the offscreen font, a 1366 px window gives the region 1320 px. The
+record column takes 235 px and the readout column 1073 px, 68 px more than the
+1005 px that seven across needs. Two runs share that one row
+(`test_two_runs_share_one_readout_block_whose_values_name_their_runs`), so the
+outcome recorded above for a 1366 px screen holds in compare mode too
+(`test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns`,
+`PL-F2YS`). Before `PL-F2YS` the record took a 3:1 share, and the readout
+column was 3 px short of seven at one point in the build of v0.6.0. At 235 px
+the longest control-change lines no longer fit on one line, so the record
+wraps them, and only after the time and after the arrow, which keeps every
+value beside its unit (`wrapping_between_parts`).
 
 **Why not a significant-figures rule.** A significant-figures rule gives the
 smallest values the most decimal places, and the small values are exactly

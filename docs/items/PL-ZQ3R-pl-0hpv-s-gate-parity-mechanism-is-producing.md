@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: gate-parity-conditions
+milestone: v0.5.29
 touches: tools/doc_check.py, tools/required_checks_check.py, tests/unit/test_doc_check.py, tests/unit/test_makefile_reference.py, docs/items
 deferred-from: v0.6.0 - captured after the freeze, workflow lane and not safety or science; as a live generator head it ranks above every band whatever the gate says
 added: 2026-10-18

@@ -1,6 +1,6 @@
 [project]
 name = "anesthesia-sim"
-version = "0.5.28"
+version = "0.5.30"
 # "volatile" here where `README.md` says "inhaled", deliberately rather than by
 # drift: a package Summary describes the artifact, and this release models
 # sevoflurane, isoflurane and desflurane only. README "What it does not
@@ -12,7 +12,7 @@ license-files = ["LICENSE"]
 authors = [
     { name = "Stuart Feichtinger", email = "stuthedew@users.noreply.github.com" }
 ]
-requires-python = ">=3.14,<3.15"
+requires-python = ">=3.14,<3.16"
 
 # The package's machine-readable statement of maturity, audience and subject.
 # Every string below is an exact row of <https://pypi.org/classifiers/>, read

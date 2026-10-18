@@ -63,13 +63,15 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 1 * *'
     runs-on: ubuntu-latest
     # Both jobs here re-resolve every dependency (`--upgrade` ignores
-    # `uv.lock`; setup-uv still restores its download cache, which a run on
-    # 2026-10-18 showed) and then run the suite, so they are slower than
-    # `quality.yml`'s and have no measured baseline - this workflow runs
-    # monthly. 30 minutes is chosen to be past any plausible honest run rather
-    # than tight, because the failure being bounded is a hang, not slowness.
-    # `PL-FSH9`.
-    timeout-minutes: 30
+    # `uv.lock`, though setup-uv still restores its download cache) and then
+    # run the suite. The limit bounds a hang, not slowness, so it sits well
+    # past any honest run (`PL-FSH9`). Timed on 2026-10-18 at 9,425 tests, the
+    # slowest job here took about 15 minutes, with a pytest step of 842 s.
+    # That was the `interpreter` job on an AMD EPYC 7763 runner, which is
+    # about twice as slow as the EPYC 9V45 runners GitHub also hands out. 60
+    # minutes leaves four times that, where 30 had left two while the suite
+    # grew by 71% in 17 days. The timings are in `PL-QT2J`.
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v7.0.1
@@ -112,6 +114,11 @@ jobs:
       # is dependency versions alone. Wall clock is not the argument - this
       # runs monthly, gates nothing and blocks nobody's iteration - though the
       # CI minutes are real on a private repository.
+      #
+      # `quality.yml` runs twice as many workers as CPUs. Here that was slower:
+      # on two EPYC 7763 runners on 2026-10-18, `-n 8` took 625 s and 629 s
+      # against 566 s for `-n auto` on a third (`PL-QT2J`). So this line keeps
+      # `-n auto`.
       - run: uv run pytest -n auto --dist worksteal
       - run: uv run mypy
 
@@ -130,11 +137,12 @@ jobs:
 
   # Does the tree work on a CPython newer than the one it pins?
   #
-  # `pyproject.toml` pins `requires-python = ">=3.14,<3.15"` - a single minor
-  # version - and repeats that number in `[tool.ruff] target-version`,
-  # `[tool.mypy] python_version` and `.python-version`. CPython ships a minor
-  # release a year, so this pin is wrong within twelve months and several times
-  # over this project's horizon.
+  # `pyproject.toml` bounds `requires-python = ">=3.14,<3.16"`, and pins 3.14
+  # in `[tool.ruff] target-version`, `[tool.mypy] python_version` and
+  # `.python-version`. The bound was widened to take in 3.15 after this job
+  # passed on 3.15.0 (`PL-J0P8`). CPython ships a minor release a year, so the
+  # bound and the pin are wrong within twelve months and several times over
+  # this project's horizon.
   #
   # The upper bound has to be relaxed in the runner for the question to be
   # asked at all: uv refuses an interpreter outside `requires-python`, which is
@@ -145,13 +153,15 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 1 * *'
     runs-on: ubuntu-latest
     # Both jobs here re-resolve every dependency (`--upgrade` ignores
-    # `uv.lock`; setup-uv still restores its download cache, which a run on
-    # 2026-10-18 showed) and then run the suite, so they are slower than
-    # `quality.yml`'s and have no measured baseline - this workflow runs
-    # monthly. 30 minutes is chosen to be past any plausible honest run rather
-    # than tight, because the failure being bounded is a hang, not slowness.
-    # `PL-FSH9`.
-    timeout-minutes: 30
+    # `uv.lock`, though setup-uv still restores its download cache) and then
+    # run the suite. The limit bounds a hang, not slowness, so it sits well
+    # past any honest run (`PL-FSH9`). Timed on 2026-10-18 at 9,425 tests, the
+    # slowest job here took about 15 minutes, with a pytest step of 842 s.
+    # That was the `interpreter` job on an AMD EPYC 7763 runner, which is
+    # about twice as slow as the EPYC 9V45 runners GitHub also hands out. 60
+    # minutes leaves four times that, where 30 had left two while the suite
+    # grew by 71% in 17 days. The timings are in `PL-QT2J`.
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v7.0.1
@@ -249,7 +259,7 @@ jobs:
           if [ "$resolved" = "$PINNED_MINOR" ]; then
             line="No newer CPython exists yet. Tested ${full}, which is the pinned ${PINNED_MINOR} series. This run confirms the pin still works and is not evidence about the next interpreter."
           else
-            line="Tested past the pin: resolved ${full} against a pinned ${PINNED_MINOR}. Green here is evidence that requires-python's upper bound can move; red is the next interpreter breaking this tree."
+            line="Tested past the pin: resolved ${full} against a pinned ${PINNED_MINOR}. Green here is evidence that the pin, or requires-python's upper bound, can move; red is the next interpreter breaking this tree."
           fi
           echo "$line"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
@@ -277,9 +287,10 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 * * 1'
     runs-on: ubuntu-latest
     # The same bound as the jobs above, chosen past any honest run because
-    # the failure being bounded is a hang. This one installs from the lock
-    # rather than re-resolving, so it is faster than they are.
-    timeout-minutes: 30
+    # the failure being bounded is a hang. This one installs from the lock and
+    # runs the interpreter the `dependencies` job runs, so it takes about as
+    # long as that job and less than the `interpreter` job.
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v7.0.1

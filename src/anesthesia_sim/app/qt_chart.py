@@ -58,6 +58,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QBrush, QColor, QImage, QMouseEvent, QPainter, QPaintEvent, QPen
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QGraphicsView,
     QHBoxLayout,
     QLabel,
@@ -77,9 +78,16 @@ from anesthesia_sim.app.chart_frame import (
     TraceStyle,
     nearest_trace_point,
     nearest_wash_in_point,
+    resample_owed,
     run_trace_style,
     trace_style,
     wash_in_axis_ticks,
+)
+from anesthesia_sim.app.chart_time_base import (
+    FIT_RUN_KEY,
+    SELECTABLE_TIME_BASES,
+    ChartTimeBase,
+    time_base_for_span,
 )
 from anesthesia_sim.app.compartment_selection import (
     INITIAL_COMPARTMENT_SELECTION,
@@ -90,6 +98,7 @@ from anesthesia_sim.app.dashboard_frame import (
     COMPARED_TRACE_LEGEND_CAPTION,
     CONTROL_MARK_LEGEND_LABEL,
     EQUILIBRIUM_LEGEND_LABEL,
+    FIT_RUN_LABEL,
     MAC_AWAKE_BAND_LEGEND_LABEL,
     MAX_DISPLAYED_RUNS,
     TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE,
@@ -98,10 +107,10 @@ from anesthesia_sim.app.dashboard_frame import (
     run_label,
     trace_legend_label,
 )
-from anesthesia_sim.app.formatting import format_chart_time_label
+from anesthesia_sim.app.formatting import format_chart_time_label, format_time_base
 from anesthesia_sim.app.qt_widgets import FlowLayout, declare_interface_colours
 from anesthesia_sim.app.run_series import RecordedQuantity
-from anesthesia_sim.app.stylesheets import foreground_stylesheet
+from anesthesia_sim.app.stylesheets import foreground_stylesheet, selector_stylesheet
 from anesthesia_sim.app.theme import (
     BAND_SWATCH_HEIGHT,
     BAND_SWATCH_WIDTH,
@@ -128,6 +137,7 @@ from anesthesia_sim.app.theme import (
     ONE_MAC_LINE_DASH_PATTERN,
     ONE_MAC_LINE_STROKE_WIDTH,
     PANEL,
+    TIME_BASE_SELECTOR_WIDTH,
     WASH_IN_CHART_HEIGHT,
     WASH_IN_COLOR,
     WASH_IN_STROKE_WIDTH,
@@ -828,11 +838,22 @@ class ConcentrationChart(QWidget):
     def plot_width_px(self) -> float:
         """The width of the plot area in logical pixels, for `assemble_chart_frame`.
 
-        Hand `chart_frame` the wider of this and the other plot's, so that
-        neither draws a chord wider than a pixel (`PL-GS3R`).
+        The dashboard samples one frame at the widest of its charts' widths,
+        so that none draws a chord wider than a pixel (`PL-GS3R`).
         """
 
         return _plot_width_px(self._plot)
+
+    @property
+    def owes_a_frame(self) -> bool:
+        """Whether this plot is now wider than the frame it drew was sampled for.
+
+        The dashboard's render tick reads it from every chart, so a chart
+        whose Area a reader widens is redrawn on the next tick even when the
+        window kept its size (`resample_owed`, `PL-9LNF`).
+        """
+
+        return resample_owed(self._frame, self.plot_width_px())
 
     def drawn_points(
         self, run: int, quantity: RecordedQuantity
@@ -1144,11 +1165,22 @@ class WashInChart(QWidget):
     def plot_width_px(self) -> float:
         """The width of the plot area in logical pixels, for `assemble_chart_frame`.
 
-        Hand `chart_frame` the wider of this and the other plot's, so that
-        neither draws a chord wider than a pixel (`PL-GS3R`).
+        The dashboard samples one frame at the widest of its charts' widths,
+        so that none draws a chord wider than a pixel (`PL-GS3R`).
         """
 
         return _plot_width_px(self._plot)
+
+    @property
+    def owes_a_frame(self) -> bool:
+        """Whether this plot is now wider than the frame it drew was sampled for.
+
+        The dashboard's render tick reads it from every chart, so a chart
+        whose Area a reader widens is redrawn on the next tick even when the
+        window kept its size (`resample_owed`, `PL-9LNF`).
+        """
+
+        return resample_owed(self._frame, self.plot_width_px())
 
     def drawn_stretches(self, run: int) -> tuple[tuple[tuple[float, float], ...], ...]:
         """Each shown stretch of one run, as its drawn (time, ratio) points."""
@@ -1539,6 +1571,74 @@ def _legend_entry(swatch: QWidget, label: QWidget) -> QWidget:
     pair.addWidget(label, alignment=Qt.AlignmentFlag.AlignVCenter)
 
     return entry
+
+
+class TimeBaseSelector(QComboBox):
+    """The time-base control: "Fit run" and the settled widths, showing a time base it is handed.
+
+    The width both plots are drawn at is the dashboard's, not this
+    control's. The control shows the time base it is handed by
+    `show_time_base` and asks for another through `time_base_requested`,
+    the shape `TraceLegend` has for the compartment selection (`PL-VN6M`).
+    So closing it takes nothing with it, and a second one shows the same
+    width (`PL-9LNF`).
+
+    Attributes:
+        time_base_requested: Emitted with the `ChartTimeBase` a reader
+            picked, or None for "Fit run". Never emitted by `show_time_base`.
+    """
+
+    time_base_requested = Signal(object)
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setFixedWidth(TIME_BASE_SELECTOR_WIDTH)
+        self.setStyleSheet(selector_stylesheet())
+        self.addItem(FIT_RUN_LABEL, userData=FIT_RUN_KEY)
+
+        for time_base in SELECTABLE_TIME_BASES:
+            self.addItem(format_time_base(time_base.span_s), userData=str(time_base.span_s))
+
+        self._showing = False
+        self.currentIndexChanged.connect(self._handle_pick)
+
+    def show_time_base(self, time_base: ChartTimeBase | None) -> None:
+        """Show this time base, or "Fit run" for None, without reading it as a request.
+
+        Raises:
+            ValueError: `time_base` is not one this control offers. The two
+                tables diverging is a defect to surface, not a width to
+                show as something else.
+        """
+
+        key = FIT_RUN_KEY if time_base is None else str(time_base.span_s)
+        index = self.findData(key)
+
+        if index < 0:
+            raise ValueError(f"the time-base control does not offer a {key} s width")
+
+        self._showing = True
+
+        try:
+            self.setCurrentIndex(index)
+        finally:
+            self._showing = False
+
+    def _handle_pick(self, index: int) -> None:
+        """Ask for the width the reader picked.
+
+        Raises:
+            ValueError: The control offers a width not on the ladder
+                (`time_base_for_span`).
+        """
+
+        key = self.itemData(index)
+
+        if self._showing or key is None:
+            return
+
+        picked = None if key == FIT_RUN_KEY else time_base_for_span(float(key))
+        self.time_base_requested.emit(picked)
 
 
 class TraceLegend(QWidget):

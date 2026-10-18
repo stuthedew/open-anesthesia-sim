@@ -3,12 +3,15 @@ id: PL-PRCS
 title: Review new prose against the plain-writing rule at close-out, since 47% of prose written under the resident rule still read awkwardly in PL-Y55Q's blind re-measure
 priority: P3
 effort: M
-status: ready
+status: done
 classes: docs, session-cost
 feature: prose-quality
+milestone: v0.5.29
 touches: .claude/skills/docket/modes/close-out.md, tools/new_prose.py, tests/unit/test_new_prose.py
 deferred-from: v0.6.0 - a workflow cost decision, not part of the layout milestone's scope
 added: 2026-10-18
+closed: 2026-10-18
+pr: 1598
 payoff: new prose reads plainly to a careful newcomer, where the resident rule alone left 47% of new test prose awkward
 verify: grep -qF 'tools/new_prose.py' .claude/skills/docket/modes/close-out.md
 ---
@@ -161,3 +164,42 @@ The build records the step's measured cost on its own branch, and files the
 re-measure as an item: after 30 long simulator units written under the step
 have merged, rate them blind with the `PL-Y55Q` rubric, keep the step at 30%
 awkward or less, and retire it above.
+
+## Build, 2026-10-18
+
+`tools/new_prose.py` lists the units, and step 8 of
+`.claude/skills/docket/modes/close-out.md` hands them to one fresh reviewer
+with a fixed prompt. The tool reuses the repository's existing readers: which
+strings are docstrings comes from `docket.python.docstrings`, comment runs from
+`doc_check._python_comments`, changed rows from `diff_mutation.changed_rows`,
+and whether a test file is the simulator's from `docket.arming.imports_product`.
+
+**One choice taken in the build.** A support module under `tests/` that
+imports the simulator, such as a reference gate under `tests/reference/`, is
+included as well as test files. `tools/workflow_paths_check.py` already places
+such a module on the simulator's side, and its prose describes the simulator.
+
+**Measured cost.** The tool was run on six merged simulator pull requests:
+
+| Pull request | Long units printed | Output size |
+| --- | --- | --- |
+| `#1549` (`PL-1KQ9`) | 6 | 6.6 KB |
+| `#1574` (`PL-XRN8`) | 6 | 8.4 KB |
+| `#1572` (`PL-01GY`) | 9 | 14.1 KB |
+| `#1575` (`PL-1ZQ4`) | 22 | 43.8 KB |
+| `#1592` (`PL-W9P6`, `PL-L8RN`) | 36 | 44.2 KB |
+| `#1585` (`PL-NWTM`) | 41 | 44.7 KB |
+
+A reviewer given step 8's prompt and `#1574`'s output used 91,705 tokens, one
+turn and 74 seconds (*verified*: the harness's usage report for the subagent).
+It opened no file. It rewrote all 6 units and kept every number and
+identifier. It added the unit L/min to a bare 5.0, and it named one sentence
+it could not interpret rather than guessing. That is close to the 80,000-token
+starting context the round inferred, against 118,411 tokens and 7 tool calls
+in the round's trial, where the reviewer opened files. A 44 KB output adds
+about 11,000 tokens of input, so a large branch should cost about 105,000
+tokens (*inferred*, not measured). These simulator branches carry more long
+units than the round's all-lanes median of 1, because simulator pull requests
+are larger.
+
+`PL-J6CK` is the pre-registered re-measure.
