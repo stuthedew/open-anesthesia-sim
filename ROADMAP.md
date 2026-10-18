@@ -1903,7 +1903,7 @@ Four grounds survive:
    own disposition of it.
 5. **Packaging and dependencies** (queue item `PL-3SQT`). PySide6-Essentials,
    pyqtgraph and numpy enter; `flet` and `flet-charts` leave. numpy arriving under a plotting
-   library reopens the scope of `docs/WORKING_NOTES.md`'s "Decided: no numpy"
+   library reopens the scope of `docs/WORKING_NOTES.md` § "Decided: no numpy"
    rather than contradicting its conclusion, and that note is re-argued rather
    than cited either way.
 6. **Headless rendering tests** (queue item `PL-YCWZ`), which is what `PL-2QMK`

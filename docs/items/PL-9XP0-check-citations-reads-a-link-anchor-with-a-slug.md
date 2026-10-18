@@ -3,12 +3,14 @@ id: PL-9XP0
 title: check_citations reads a link anchor with a slug that is not GitHub's - it drops _ and non-ASCII letters, slugs a heading's raw Markdown rather than its rendered text, and ignores the -1 a repeated heading takes - so a correct anchor is reported and a wrong one can pass; latent, no link in the 38 documents carries an anchor
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: tools/doc_check.py, tests/unit
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
+closed: 2026-10-18
+pr: 1527
 payoff: a link to a heading is checked against the anchor GitHub actually gives it, so a correct link is not refused and one GitHub opens at the page's top does not pass
 verify: grep -q 'def test_a_link_anchor_is_read_as_github_slugs_its_heading' tests/unit/test_doc_check.py
 ---

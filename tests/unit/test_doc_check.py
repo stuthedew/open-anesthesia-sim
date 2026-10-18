@@ -647,6 +647,44 @@ def test_a_correct_derived_figure_is_left_alone(tmp_path: Path) -> None:
     assert _errors(root) == []
 
 
+@pytest.mark.parametrize(
+    "prose",
+    [
+        ("The coefficient is 0.9. " + MARKER.format("0.9"),),
+        ("> The coefficient is 0.9.", "> " + MARKER.format("0.9")),
+    ],
+    ids=["sentence-end", "block-quote"],
+)
+def test_a_marker_at_a_sentence_end_or_in_a_block_quote_is_read_or_refused(
+    tmp_path: Path, prose: tuple[str, ...]
+) -> None:
+    """CommonMark reads both comments, so neither may be read as nothing (`PL-Y6LP`).
+
+    Beside the fixture's well-formed marker, a marker in either place was
+    read as no marker at all, so prose stating 0.9 where the file holds 0.5
+    passed the provenance check.
+    """
+    root = _repo(tmp_path, model=_model_with(*prose))
+
+    assert any("does not stand on a line of its own" in error for error in _errors(root))
+
+
+def test_an_absent_marker_ending_a_sentence_is_refused(tmp_path: Path) -> None:
+    """An `absent:` marker is held to the same rule (`PL-Y6LP`)."""
+    readme = f"{README}\nThis project has no `setup.py`. <!-- absent: setup.py -->\n"
+
+    errors = _errors(_repo(tmp_path, readme=readme))
+
+    assert any("`absent:` marker does not stand on a line of its own" in e for e in errors)
+
+
+def test_a_marker_quoted_in_a_code_span_is_no_marker(tmp_path: Path) -> None:
+    """A sentence explaining the convention quotes a marker; that is no claim (`PL-Y6LP`)."""
+    root = _repo(tmp_path, model=_model_with("Write `" + MARKER.format("0.9") + "` under it."))
+
+    assert _errors(root) == []
+
+
 def test_a_marker_shown_inside_a_code_fence_is_not_read_as_a_claim(tmp_path: Path) -> None:
     """The document explains the convention by printing one; that is not a claim.
 
@@ -1624,6 +1662,27 @@ def test_a_link_anchor_naming_a_bold_marker_is_an_error(tmp_path: Path) -> None:
     ]
 
 
+def test_a_link_anchor_is_read_as_github_slugs_its_heading(tmp_path: Path) -> None:
+    """Each anchor is the one github-slugger gives the heading's rendered text (`PL-9XP0`).
+
+    The check slugged the raw Markdown and kept only `[a-z0-9-]`, so it
+    refused `#make_targets` and `#notes-1`, which GitHub opens, and passed
+    `#maketargets`, which GitHub gives no heading.
+    """
+    model = MODEL + (
+        "\n## make_targets\n\n## Notes\n\n## Notes\n\n## `make check`\n\n"
+        "## [Linked](https://example.invalid/) *em*\n\n> ## Quoted\n\n## Café\n"
+    )
+    good = ["make_targets", "notes-1", "make-check", "linked-em", "quoted", "café", "caf%C3%A9"]
+    links = " ".join(f"[{at}](docs/MODEL.md#{at})" for at in [*good, "maketargets", "notes-2"])
+
+    assert _link_errors(tmp_path, f"# Demo\n\nSee {links}.\n", model) == [
+        f"README.md:3: links to docs/MODEL.md#{at}, but docs/MODEL.md has no such heading"
+        for at in ("maketargets", "notes-2")
+    ]
+    assert doc_check._github_slugs(["a", "a", "a-1", "a"]) == ["a", "a-1", "a-1-1", "a-2"]
+
+
 # --- citations of a path .gitignore covers ----------------------------------
 
 
@@ -2440,7 +2499,7 @@ def test_every_target_a_rule_names_carries_its_recipe(targets: str, tmp_path: Pa
 
     assert doc_check.make_targets(makefile) == ({"fix", "lint", "sync"},) * 2
     assert doc_check._target_recipes(makefile) == (
-        {"fix": ["@echo ran-$@"], "lint": ["@echo ran-$@"], "sync": ["@echo sync"]},
+        {"fix": ["echo ran-$@"], "lint": ["echo ran-$@"], "sync": ["echo sync"]},
         {"fix": ["sync"], "lint": ["sync"], "sync": []},
     )
     assert _errors(root) == []
@@ -2498,12 +2557,12 @@ def test_a_rule_with_an_inline_recipe_carries_a_recipe(tmp_path: Path) -> None:
 
     assert doc_check.make_targets(makefile) == ({"inline", "lint", "empty"}, {"inline", "lint"})
     assert doc_check._target_recipes(makefile) == (
-        {"inline": ["@echo RECIPE-RAN # kept"], "lint": ["@echo lint"], "empty": []},
+        {"inline": ["echo RECIPE-RAN # kept"], "lint": ["echo lint"], "empty": []},
         {"inline": ["lint"], "lint": [], "empty": []},
     )
     assert list(doc_check._recipe_commands(makefile)) == [
-        ("@echo RECIPE-RAN # kept", 1),
-        ("@echo lint", 3),
+        ("echo RECIPE-RAN # kept", 1),
+        ("echo lint", 3),
     ]
     assert _errors(root) == []
 
@@ -3331,6 +3390,21 @@ def test_a_substitution_in_an_unquoted_body_is_a_command_bash_runs(tmp_path: Pat
     ]
 
 
+def test_a_fenced_make_run_is_found_past_an_assignment() -> None:
+    """A fenced `make` is found where docket's shell reading finds the program (`PL-7DXZ`).
+
+    `_make_mentions` took the first word for the program, so `FOO=1 make
+    check` named no target, and the descriptor in `{fd}>log` was kept as an
+    argument where docket's lexer reads one.
+    """
+    fence = "```bash\nFOO=1 make check\nexec {fd}>log make lint\nmake A=1\n```\n"
+
+    assert list(doc_check._make_mentions(fence)) == [("check", 2)]
+    assert doc_check._simple_commands(
+        doc_check.shell_words("exec {fd}>log 2>&1 x"), "exec {fd}>log 2>&1 x"
+    ) == (("exec", "x"),)
+
+
 def test_a_command_continued_past_its_line_is_read_whole(tmp_path: Path) -> None:
     """Its path is checked where it was declined, at the line it starts on.
 
@@ -3826,6 +3900,23 @@ def test_ci_is_not_held_to_the_flag(tmp_path: Path) -> None:
     )
 
     assert _errors(root) == []
+
+
+@pytest.mark.parametrize("prefix", ["@", "-", "+", "@-", "@ - +"])
+def test_a_recipe_prefix_is_stripped_before_the_command_is_read(
+    tmp_path: Path, prefix: str
+) -> None:
+    """Make runs the line after its `@`, `-` and `+`, so the checks read that (`PL-QYF4`).
+
+    `_recipe_commands` kept the prefix on the command, so an `@`-led cached
+    `ruff check` passed the ruff-cache check, and an `@`-led coverage run read
+    as differing from CI's identical one.
+    """
+    ruffed = _ruffed(_repo(tmp_path / "ruff"), check=f"{prefix}uv run ruff check .")
+    gated = _gated(_repo(tmp_path / "gate"), make=f"{prefix}{GATE}")
+
+    assert any("without `--no-cache`" in message for message in _errors(ruffed))
+    assert _errors(gated) == []
 
 
 def test_this_repository_runs_every_ruff_check_cache_free() -> None:
@@ -8516,7 +8607,7 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     ),
     "target recipes, a conditional line ends no rule": (
         lambda _: doc_check._target_recipes(BRANCHED_RECIPE),
-        ({"check": ["@echo x", "@echo y"]}, {"check": []}),
+        ({"check": ["echo x", "echo y"]}, {"check": []}),
     ),
     "make targets, a rule line led by spaces": (
         lambda _: doc_check.make_targets("  check:\n\t@echo ok\n"),
@@ -8528,13 +8619,13 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
                 "\tGATE := pytest --cov-fail-under=100\nall:\n\t@echo $(GATE)\n"
             )
         ),
-        [("@echo $(GATE)", 3)],
+        [("echo $(GATE)", 3)],
     ),
     "recipe commands, a tab-led assignment after a variable is no command": (
         lambda _: list(
             doc_check._recipe_commands("all:\n\t@echo a\nX = 1\n\tY = 2\nshow:\n\t@echo $(Y)\n")
         ),
-        [("@echo a", 2), ("@echo $(Y)", 6)],
+        [("echo a", 2), ("echo $(Y)", 6)],
     ),
     "make lines, a continued tab-led assignment is joined as an assignment": (
         lambda _: _make_lines_refusal(
@@ -8552,11 +8643,11 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     ),
     "recipe commands, a rule naming no target drops its recipe": (
         lambda _: list(doc_check._recipe_commands(": c\n\t@echo dropped\nall:\n\t@echo all\n")),
-        [("@echo all", 4)],
+        [("echo all", 4)],
     ),
     "recipe commands, a colon in a reference is not the rule's": (
         lambda _: list(doc_check._recipe_commands("SRC = a.c\n$(SRC:.c=.o):\n\t@echo built\n")),
-        [("@echo built", 3)],
+        [("echo built", 3)],
     ),
     # Under `.ONESHELL` a recipe is one script, which no reader of recipe
     # lines reads, so the Makefile is declined by name (`PL-X43T`).

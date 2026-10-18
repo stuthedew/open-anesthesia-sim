@@ -110,6 +110,7 @@ import subprocess
 import sys
 import textwrap
 import tokenize
+import unicodedata
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -117,6 +118,7 @@ from decimal import Decimal
 from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path, PurePath, PurePosixPath
+from urllib.parse import unquote
 
 # `ROADMAP.md`'s release-train grammar lives in `docket`, which reasons about
 # project state for a living and reads the same table to report which beat of
@@ -261,7 +263,7 @@ try:
     # read `python3 "tools/my file.py"` as `tools/my` (`PL-CWBJ`), and a step's
     # script is cut into those lines by the same reading (`PL-Q9LK`), as are a
     # script's comments, which the host-claim check reads (`PL-W9VC`).
-    from docket.shell import REDIRECTIONS, Reading, Word, script_lines, shell_words
+    from docket.shell import Reading, Word, script_lines, shell_words, simple_commands
     from docket.shell import comments as shell_comments
     from docket.store import ID_PATTERN, read_items
 
@@ -608,6 +610,8 @@ class _InlineReader:
         self.text = text
         self.spans: list[re.Match[str]] = []
         self.links: list[Link] = []
+        #: Where each link's or image's text ends - its `]` - by the link's start.
+        self.labels: dict[int, int] = {}
         self._ends: dict[tuple[int, int], int] = {}
 
     def read(self, start: int, end: int, depth: int = 0) -> None:
@@ -630,6 +634,7 @@ class _InlineReader:
                     continue
                 link, label = found
                 self.links.append(link)
+                self.labels[link.start] = label
                 if not link.image:
                     self.read(position + 1, label, depth + 1)
                 position = link.end
@@ -704,6 +709,113 @@ class _InlineReader:
         if cursor >= end or text[cursor] != ")":
             return None
         return Link(position, cursor + 1, text[at[0] : at[1]], at, image), label
+
+
+def _rendered_text(text: str) -> str:
+    """The text a renderer shows for one statement of inline Markdown, markup gone.
+
+    A code span gives its content, a link or an image its text, an autolink
+    its address, and raw HTML nothing; an escape gives the character it
+    escapes, a character reference the one it names, and the delimiters of
+    each emphasis CommonMark pairs are gone (0.31.2 § 6). GitHub slugs a
+    heading's anchor from this text rather than from its Markdown, so a
+    heading holding a code span or a link has the anchor `_github_slugs`
+    gives (`PL-9XP0`). An image's text is read as written, markup and all.
+    """
+    reader = _InlineReader(text)
+    reader.read(0, len(text))
+    edits = [(span.start(), span.end(), _span_text(span["content"])) for span in reader.spans]
+    tails = [(reader.labels[link.start], link.end) for link in reader.links]
+    for link, (label, end) in zip(reader.links, tails, strict=True):
+        edits += [(link.start, link.start + (2 if link.image else 1), ""), (label, end, "")]
+    literals = [(span.start(), span.end()) for span in reader.spans] + tails
+    for run in emphasis(text, literals):
+        edits += [(run.start, run.start + run.width, ""), (run.end - run.width, run.end, "")]
+    shown: list[str] = []
+    position = 0
+    for start, end, replacement in sorted(edits):
+        if start >= position:
+            shown += [_plain_text(text[position:start]), replacement]
+            position = end
+    shown.append(_plain_text(text[position:]))
+    return "".join(shown)
+
+
+def _span_text(content: str) -> str:
+    """A code span's content as rendered: line endings as spaces, one space trimmed from each end.
+
+    Trimmed only where both ends have one and the content is not all spaces
+    (CommonMark 0.31.2 § 6.1).
+    """
+    content = content.replace("\n", " ")
+    if content.startswith(" ") and content.endswith(" ") and content.strip(" "):
+        return content[1:-1]
+    return content
+
+
+def _plain_text(text: str) -> str:
+    """`text`, holding no code span, link or emphasis, as rendered: see `_rendered_text`."""
+    shown: list[str] = []
+    position = 0
+    while position < len(text):
+        if text[position] == "<":
+            found = AUTOLINK_RE.match(text, position) or RAW_HTML_RE.match(text, position)
+            if found is not None:
+                shown.append(found.group()[1:-1] if found.re is AUTOLINK_RE else "")
+                position = found.end()
+                continue
+        end = text.find("<", position + 1)
+        end = len(text) if end < 0 else end
+        shown.append(ESCAPE_OR_REFERENCE_RE.sub(_decoded, text[position:end]))
+        position = end
+    return "".join(shown)
+
+
+#: The Unicode general categories github-slugger strips from a heading's text:
+#: other numbers, every punctuation but connectors such as `_` and the hyphen,
+#: symbols, controls, private use, format and unassigned characters, and
+#: separators but the space (`script/generate-regex.js` at
+#: https://github.com/Flet/github-slugger, read 2026-10-18). It keeps a
+#: character Unicode calls alphabetic in any of them, which `str.isalpha` reads
+#: only for letters, so a circled letter such as `ⓐ` is dropped here and kept
+#: there - the one place this reading parts from it.
+SLUG_STRIPPED = frozenset(("No", "Pe", "Pf", "Pi", "Ps", "Po", "Pd", "Cc", "Co", "Cf", "Cn"))
+
+
+def _slug_keeps(character: str) -> bool:
+    """Whether github-slugger keeps `character` in a slug; see `SLUG_STRIPPED`."""
+    if character in " -" or character.isalpha():
+        return True
+    category = unicodedata.category(character)
+    return category not in SLUG_STRIPPED and category[0] not in "SZ"
+
+
+def _github_slugs(titles: Iterable[str]) -> list[str]:
+    """The anchor GitHub gives each heading of a document, in order, from its rendered title.
+
+    github-slugger's rule, whose README says it slugs "just like GitHub does
+    for markdown headings": the text lower-cased, every character of a
+    stripped category gone (`SLUG_STRIPPED`, and `S` and `Z` but the space,
+    and `-` kept), and each space written as a hyphen. A slug met before
+    takes `-1`, `-2` and so on, counting from that slug, until it is new
+    (`index.js`, read 2026-10-18). This tool slugged the raw Markdown, kept
+    only `[a-z0-9-]` and never suffixed a repeat (`PL-9XP0`).
+    """
+    seen: dict[str, int] = {}
+    slugs: list[str] = []
+    for title in titles:
+        slug = "".join(
+            "-" if character == " " else character
+            for character in _rendered_text(title).lower()
+            if _slug_keeps(character)
+        )
+        result = slug
+        while result in seen:
+            seen[slug] += 1
+            result = f"{slug}-{seen[slug]}"
+        seen[result] = 0
+        slugs.append(result)
+    return slugs
 
 
 def _run_end(text: str, position: int, end: int) -> int:
@@ -1889,6 +2001,52 @@ def _split_markers(lines: Sequence[str]) -> dict[int, str]:
     return split
 
 
+def _misplaced_markers(lines: Sequence[str], prose: Sequence[str]) -> dict[int, str]:
+    """Each marker written where it is not read, by the index of its line, with its kind.
+
+    A marker is read only where it is a line of its own that opens an HTML
+    block (`_marker_lines`). CommonMark also reads the comment at a sentence's
+    end, as inline raw HTML (0.31.2 § 6.6), and inside a block quote or a list
+    item, as an HTML block in that container (§ 5.1, § 5.2). Read as nothing
+    there, a marker beside a well-formed one elsewhere let a stale value in
+    `docs/MODEL.md`'s prose pass (`PL-Y6LP`), so each is refused by name.
+
+    `prose` is `lines` with code blanked (`_without_code`), so a marker quoted
+    in a code span or shown in a fence is no marker. A line inside a longer
+    comment is that comment's (`PL-7454`), and a marker split across lines is
+    `_split_markers`' to report.
+    """
+    if not any("<!--" in line for line in lines):
+        return {}
+    inside = {
+        index
+        for block in read_blocks(lines).blocks
+        if block.kind == HTML
+        for index in range(block.start + 1, block.end)
+    }
+    openings = _marker_lines(lines)
+    split = _split_markers(lines)
+    misplaced: dict[int, str] = {}
+    for index, line in enumerate(lines):
+        opening = MARKER_OPENING_RE.search(prose[index]) if index < len(prose) else None
+        if opening is None or index in inside or index in split:
+            continue
+        if index in openings and _is_marker(line):
+            continue
+        misplaced[index] = opening.group("kind")
+    return misplaced
+
+
+def _misplaced_marker(document: Path, line: int, kind: str) -> str:
+    """What a marker `_misplaced_markers` finds is told."""
+    return (
+        f"{document}:{line}: this `{kind}:` marker does not stand on a line of its own - it "
+        "ends a sentence, sits in a block quote or list item, or shares its line - and a "
+        "marker is read only on a line of its own, so this one was read as nothing; move it "
+        "onto a line of its own under its paragraph"
+    )
+
+
 def _marker_lines(lines: Sequence[str]) -> frozenset[int]:
     """The index of each line a marker can stand on: one that opens an HTML block.
 
@@ -2005,7 +2163,9 @@ def check_prose_provenance(root: Path, report: Report) -> None:
 
     A marker is read where its line opens an HTML block (`_marker_lines`), so
     one closing a comment opened above it is that comment's, set aside with
-    the paragraph it was about, and is held to nothing (`PL-7454`).
+    the paragraph it was about, and is held to nothing (`PL-7454`). One written
+    anywhere else - at a sentence's end, in a block quote - is refused by name
+    (`_misplaced_markers`, `PL-Y6LP`).
     """
     path = root / MODEL
     if not path.is_file():
@@ -2016,6 +2176,9 @@ def check_prose_provenance(root: Path, report: Report) -> None:
     fenced = _fenced_lines(text)
     split = {index: kind for index, kind in _split_markers(lines).items() if kind != "absent"}
     openings = _marker_lines(lines)
+    for index, kind in _misplaced_markers(lines, _without_code(text)).items():
+        if kind != "absent":
+            report.errors.append(_misplaced_marker(MODEL, index + 1, kind))
     markers = 0
     for index, line in enumerate(lines):
         # A marker inside a code fence is the format being *shown*, not a claim
@@ -4975,9 +5138,11 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                 linked_text = documents.get(linked)
                 if linked_text is None:
                     linked_text = resolved.read_text(encoding="utf-8")
-                titles = _hash_headings(linked_text)
-                slugs = {re.sub(r"[^a-z0-9-]", "", h.lower().replace(" ", "-")) for h in titles}
-                if anchor.lower() not in slugs:
+                # GitHub anchors a heading a block quote or a list item holds
+                # too, so every heading is read (`PL-9XP0`).
+                lines = _body_lines(split_lines(linked_text))
+                titles = [heading.title for heading in read_headings(lines, nested=True)]
+                if unquote(anchor).lower() not in _github_slugs(titles):
                     report.errors.append(
                         f"{path}:{line}: links to {target}, but {linked} has no such heading"
                     )
@@ -5187,11 +5352,15 @@ def _absent_paths(
     `<!--` opens no comment, and read as Markdown one a value left open hid the
     body's paragraphs down to the next `-->` (`PL-WX79`). Nor is one closing a
     comment opened above it, which is that comment's (`_marker_lines`,
-    `PL-7454`).
+    `PL-7454`). One written anywhere a marker is not read is refused by name
+    (`_misplaced_markers`, `PL-Y6LP`).
     """
     lines = _body_lines(split_lines(without_fences(text)))
     split = _split_markers(lines)
     openings = _marker_lines(lines)
+    for index, kind in _misplaced_markers(lines, _without_code(text)).items():
+        if kind == "absent":
+            report.errors.append(_misplaced_marker(path, index + 1, kind))
     declared: dict[int, set[str]] = {}
     for index, line in enumerate(lines):
         if split.get(index) == "absent":
@@ -6067,15 +6236,25 @@ def _make_joined(parts: list[str]) -> str:
     return " ".join(piece for piece in pieces if piece)
 
 
-def _make_runs(line: str) -> bool:
-    """Whether a recipe line hands the shell a command, as GNU make 4.3 decides it.
+#: What make passes over ahead of a recipe line's command: blanks and the `@`
+#: (no echo), `-` (ignore a failure) and `+` (run under `-n`) prefixes, in any
+#: mix (GNU make manual §5.2 "Recipe Echoing", §5.5 "Errors in Recipes", §9.3
+#: "Instead of Executing Recipes"). Run through GNU make 4.3 on 2026-10-18,
+#: `@ - +echo one` ran `echo one`.
+RECIPE_PREFIXES = "@-+ \t"
 
-    `start_job_command` in `src/job.c` passes over the blanks and the `@`, `-`
-    and `+` prefixes ahead of a command and starts nothing where nothing is
-    left, so a tab-only line, or one holding `@` alone, runs nothing (run
-    through make 4.3 on 2026-10-12, `PL-5M36`).
+
+def _recipe_command(line: str) -> str:
+    """The command a recipe line hands the shell, as GNU make 4.3 reads it, or "" for none.
+
+    `start_job_command` in `src/job.c` passes over `RECIPE_PREFIXES` and starts
+    nothing where nothing is left, so a tab-only line, or one holding `@`
+    alone, runs nothing (run through make 4.3 on 2026-10-12, `PL-5M36`). What
+    is left is the command, so `@ruff check src` runs `ruff check src`; read
+    with its prefix, an `@`-led cached `ruff check` passed the ruff-cache check
+    (`PL-QYF4`).
     """
-    return bool(line.lstrip(" \t@-+"))
+    return line.strip().lstrip(RECIPE_PREFIXES)
 
 
 def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
@@ -6098,7 +6277,7 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
     variable declares one (`PL-HR4V`). `.PHONY` declares its prerequisites,
     not itself, being make's special target rather than one a document runs;
     and a recipe after a `;` on the rule's own line is a recipe (`PL-GZXY`). A
-    recipe line `_make_runs` finds no command in is none, so a target whose
+    recipe line `_recipe_command` finds no command in is none, so a target whose
     only recipe line is a tab is one that exits 0 without running, as make
     says "Nothing to be done" for it (`PL-5M36`). Raises `UnreadStatement`
     where `_make_lines` does.
@@ -6108,7 +6287,7 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
     current: tuple[str, ...] = ()
     for line, _ in _make_lines(text):
         if line.startswith("\t"):
-            if _make_runs(line):
+            if _recipe_command(line):
                 with_recipe.update(current)
             continue
         rule = _make_rule(line) or NO_TARGETS
@@ -6156,10 +6335,11 @@ def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
                     if (command := FENCED_MAKE_RE.match(line)) is not None:
                         yield command.group("name"), first + at
                 continue
-            for words, at in _placed_commands(reading):
-                if len(words) > 1 and words[0] == "make":
-                    if (name := MAKE_TARGET_WORD_RE.match(words[1])) is not None:
-                        yield name.group(), first + piece.count("\n", 0, at)
+            for run in simple_commands(reading, piece):
+                arguments = run.words[run.assignments + 1 :]
+                if run.program == "make" and arguments:
+                    if (name := MAKE_TARGET_WORD_RE.match(arguments[0])) is not None:
+                        yield name.group(), first + piece.count("\n", 0, run.start)
 
 
 def check_make_targets(root: Path, documents: dict[Path, str], report: Report) -> None:
@@ -6263,7 +6443,7 @@ def workflow_runs(text: str, steps: list[UnreadStatement]) -> Iterator[tuple[str
     for body, script in _step_scripts(text, steps):
         reading = shell_words(body)
         if reading.clauses:
-            yield from _simple_commands(reading)
+            yield from _simple_commands(reading, body)
             continue
         # `script_lines` hands the line where the reading stops on, with every
         # line after it, as its last piece.
@@ -6464,53 +6644,23 @@ def _shell_commands(
     `python3 tools/x.py --check | tee log`, `tee` and `log` are not its
     arguments. So the words are cut where bash ends a simple command, at each
     control operator. A redirection does not end one, and neither its file nor
-    the descriptor written against it - the `2` of `2>&1` - is an argument, so
-    both are left out: digits touching an operator that opens with `<` or `>`
-    are a descriptor (POSIX Shell Command Language §2.10.1, "IO_NUMBER").
+    the descriptor written against it - the `2` of `2>&1`, the `{fd}` of
+    `{fd}>log` - is an argument, so both are left out, as `_simple_commands`
+    says.
     """
     reading = _shell_reading(where, command, report, unread)
-    return () if reading is None else _simple_commands(reading)
+    return () if reading is None else _simple_commands(reading, command)
 
 
-def _simple_commands(reading: Reading) -> tuple[tuple[str, ...], ...]:
-    """The simple commands a reading runs, each as its words, cut where `_shell_commands` says.
+def _simple_commands(reading: Reading, command: str) -> tuple[tuple[str, ...], ...]:
+    """The simple commands a reading of `command` runs, each as its words.
 
-    A word of a `case` construct's own syntax - the word it matches, `in`, a
-    pattern, `esac` - is no word of a command; docket's reading marks each
-    (`PL-M3M4`).
+    Cut, and their redirections lifted out, by docket's `shell.simple_commands`,
+    the one reading of where bash ends a simple command and what it hands one
+    (`PL-7DXZ`). A word of a `case` construct's own syntax - the word it
+    matches, `in`, a pattern, `esac` - is no word of a command (`PL-M3M4`).
     """
-    return tuple(words for words, _ in _placed_commands(reading))
-
-
-def _placed_commands(reading: Reading) -> tuple[tuple[tuple[str, ...], int], ...]:
-    """`_simple_commands`, each with the offset of its first word in the command read.
-
-    A substitution's body is placed where it stands in the command, so a
-    command inside a `$( )` carried across lines is placed on its own line
-    rather than on the substitution's first (`PL-5M36`).
-    """
-    commands: list[list[tuple[str, int]]] = []
-    for clause in reading.every_clause():
-        words: list[tuple[str, int]] = []
-        target = descriptor = False
-        previous = -1
-        for token, (start, end) in zip(clause.tokens, clause.spans, strict=True):
-            if isinstance(token, Word):
-                if not (target or token.case_syntax):
-                    words.append((token.text, start))
-                digits = token.text.isascii() and token.text.isdecimal()
-                descriptor = digits and not (target or token.quoted or token.case_syntax)
-                target = False
-            elif token in REDIRECTIONS:
-                if descriptor and start == previous and token[0] in "<>":
-                    words.pop()
-                target, descriptor = True, False
-            else:
-                commands.append(words)
-                words, target, descriptor = [], False, False
-            previous = end
-        commands.append(words)
-    return tuple((tuple(text for text, _ in words), words[0][1]) for words in commands if words)
+    return tuple(run.words for run in simple_commands(reading, command))
 
 
 def _shell_reading(where: str, command: str, report: Report, unread: str) -> Reading | None:
@@ -6621,11 +6771,12 @@ def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
     command a backslash continues is one, spelled as make hands it over; read a
     physical line at a time it was two, the first ending in the backslash
     (`PL-G2FY`). A line in a `define` body is a variable's value and no command
-    (`PL-4MLK`). Raises `UnreadStatement` where `_recipe_statements` does.
+    (`PL-4MLK`). Each is the command `_recipe_command` reads, make's prefixes
+    gone (`PL-QYF4`). Raises `UnreadStatement` where `_recipe_statements` does.
     """
     for line, number in _recipe_statements(text):
-        if line.startswith("\t") and line.strip():
-            yield line.strip(), number
+        if line.startswith("\t") and (command := _recipe_command(line)):
+            yield command, number
 
 
 def _recipe_statements(text: str) -> list[tuple[str, int]]:
@@ -7089,8 +7240,9 @@ def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str
     prerequisites, which make gathers across every rule line naming a target,
     though not in the order make runs them (`PL-HR4V`); a recipe after a `;`
     on the rule's own line is its first command (`PL-GZXY`). A recipe line
-    `_make_runs` finds no command in is none here, as it is none to
-    `make_targets` (`PL-5M36`). Raises `UnreadStatement` where
+    `_recipe_command` finds no command in is none here, as it is none to
+    `make_targets` (`PL-5M36`), and a line's command is that one, make's
+    prefixes gone (`PL-QYF4`). Raises `UnreadStatement` where
     `_recipe_statements` does, a Makefile naming `.ONESHELL` included
     (`PL-X43T`).
     """
@@ -7099,8 +7251,9 @@ def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str
     current: tuple[str, ...] = ()
     for line, _ in _recipe_statements(text):
         if line.startswith("\t"):
-            for target in current if _make_runs(line) else ():
-                recipes[target].append(line.strip())
+            command = _recipe_command(line)
+            for target in current if command else ():
+                recipes[target].append(command)
             continue
         rule = _make_rule(line) or NO_TARGETS
         current = rule.targets

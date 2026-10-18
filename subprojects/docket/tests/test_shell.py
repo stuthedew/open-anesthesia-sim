@@ -39,6 +39,7 @@ from docket.shell import (
     joined_text,
     script_lines,
     shell_words,
+    simple_commands,
 )
 
 
@@ -1553,3 +1554,23 @@ def test_an_escaped_paren_bash_cuts_at_is_read_as_found() -> None:
     the reading is checked alone: it keeps `p deep`.
     """
     assert _lexer_runs("p <<E\n$(p $(p deep <<F\nF) x\\))\nE\np after\n")[("p", "deep")] == 1
+
+
+def test_simple_commands_lift_a_name_descriptor_and_count_assignments() -> None:
+    """`{fd}` before a redirection is a descriptor, and a bare `name=` opens the assignments.
+
+    `tools/doc_check.py` read both with a copy of its own, digits-only and
+    first-word-as-program, so it kept `{fd}` as an argument and found no
+    program in `FOO=1 make check` (`PL-7DXZ`).
+    """
+    command = 'exec {fd}>log; FOO=1 X="a b" make check 2>&1 | tail; "Y"=1 z; make A=1'
+    runs = simple_commands(shell_words(command), command)
+
+    assert [(run.words, run.assignments, run.program) for run in runs] == [
+        (("exec",), 0, "exec"),
+        (("FOO=1", "X=a b", "make", "check"), 2, "make"),
+        (("tail",), 0, "tail"),
+        (("Y=1", "z"), 0, "Y=1"),
+        (("make", "A=1"), 0, "make"),
+    ]
+    assert command.startswith("FOO=1", runs[1].start)
