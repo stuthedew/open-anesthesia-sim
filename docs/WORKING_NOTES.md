@@ -1271,6 +1271,53 @@ establish what latency does under a running 49 ms frame. Nothing in the decision
 turns on it - 49 ms of a 200 ms budget leaves the loop idle three quarters of
 the time - but it is not measured.
 
+### The read measured at the window-following budget (2026-10-18, `PL-PGZF`)
+
+Every figure above was taken at the fixed 150-column budget. `PL-GS3R` later
+made the budget follow the plot: `chart_columns` in `app/chart_frame.py` draws
+one column per pixel of plot width, with 150 as the floor. So the cost of the
+chart's read now grows with the window, and the tables above describe the
+narrowest window a learner will use. The figures below were measured at the
+window-following budget. Each is the best of three repeats of ten calls to
+`assemble_chart_frame`, with all six compartment traces shown and the "Fit run"
+time base, on the 4-vCPU container (Xeon at 2.10 GHz, Python 3.14.7,
+`QT_QPA_PLATFORM=offscreen`). The same frame is assembled each time, so the
+propagators that `PL-CNCF` keeps between frames are already formed, as they are
+on every frame after the first while a run plays.
+
+| Plot width | Columns | One 20-minute sevoflurane run, one dial change | Two such runs compared | One 120-minute run, ten dial changes |
+| ---: | ---: | ---: | ---: | ---: |
+| 149 px | 150 | 1.2 ms | 2.3 ms | 1.8 ms |
+| 900 px | 901 | 6.6 ms | 12.9 ms | 10.5 ms |
+| 1 600 px | 1 601 | 12.0 ms | 22.9 ms | 17.2 ms |
+| 1 920 px | 1 921 | 13.7 ms | 27.5 ms | 21.3 ms |
+| 2 560 px | 2 561 | 18.9 ms | 37.2 ms | 29.5 ms |
+| 3 840 px | 3 841 | 28.4 ms | 55.9 ms | 43.1 ms |
+
+The cost grows linearly, by about 7.5 us per column for each run drawn. At 150
+columns it is 1.2 ms, against the 8.4 ms that `PL-3SQT` measured on 2026-09-16,
+before `PL-CNCF` kept the propagators between frames.
+
+**The margin is adequate for the read.** `PL-PGZF` compared 15.4 ms with a
+60 fps frame of 16.7 ms. The interface does not draw at 60 fps. It draws one
+frame every `RENDER_INTERVAL_S`, which `app/dashboard_frame.py` sets to 0.2 s.
+Against that 200 ms frame, the read costs 6% of the frame for one run on a
+1 600 px plot. The worst case measured here is two compared runs on a 3 840 px
+plot, at 28% of the frame. On 2026-09-10 the owner's machine ran `refresh`
+about 1.7 times slower than this container did (8.84 ms against 5.2 ms, above).
+At that ratio the worst case would take about 95 ms, which is still under half
+the frame.
+
+**Paint is the open half, and this container cannot measure it.** On the
+owner's machine, paint grew with the number of drawn points: 21.6 ms for 3 204
+points (the 600-column reading above). A drawn point is one drawn instant of one
+trace of one run. One run on a 1 600 px plot draws about 6 400 points, and two
+runs on a 3 840 px plot draw about 30 700. If paint stays linear at about
+6.7 us per point, those frames would paint in about 43 ms and about 207 ms. The
+second is past the 200 ms frame. That is an extrapolation from a single
+reading, not a measurement. `PL-0KPD` carries it, because only the owner's
+hardware can measure paint.
+
 ## Settled, then measured: root-cause batching does lower the spawn rate, but the design cannot say why - PL-CSHL, PL-BHVM
 
 `PL-CSHL` was a pre-registered test with its prediction fixed before the work:
