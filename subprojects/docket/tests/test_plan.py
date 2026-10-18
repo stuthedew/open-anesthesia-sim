@@ -8,6 +8,7 @@ starting something new of equal priority.
 from __future__ import annotations
 
 from collections.abc import Collection
+from dataclasses import replace
 from datetime import date
 
 import pytest
@@ -31,6 +32,7 @@ from docket.plan import (
     placement_mark,
     promotable,
     recommend,
+    recurrence_chains,
     recurring,
     set_aside,
     tier_standings,
@@ -101,6 +103,26 @@ def test_a_third_recurrence_surfaces_a_promotion_candidate() -> None:
     )
 
     assert [item.identifier for item in recurring([at_three])] == ["PL-2222"]
+
+
+def test_a_closed_anchor_s_filings_chain_onto_the_open_item_that_re_filed_it() -> None:
+    """`PL-K5PW` <- `PL-T441` <- `PL-WF3X`: three filings, one recurrence on each of two items.
+
+    `PL-T441` was filed against `PL-K5PW`, which then closed, so `PL-WF3X`
+    could only be matched to `PL-T441`. Counted an item at a time, neither
+    reached the floor; followed through the closed anchor, the chain does
+    (`PL-RX3H`). An open item on the chain keeps its own count, so the walk
+    adds nothing to it from the open item it re-filed.
+    """
+    first = _item("PL-K5PW", status="done", recurrences=("2026-09-20 PL-T441",))
+    second = _item("PL-T441", recurrences=("2026-09-22 PL-WF3X",))
+    third = _item("PL-WF3X", status="done")
+
+    assert recurrence_chains([first, second, third]) == {"PL-T441": ("PL-K5PW", "PL-WF3X")}
+    assert [item.identifier for item in recurring([first, second, third])] == ["PL-T441"]
+
+    still_open = replace(first, status="ready", commit="")
+    assert recurring([still_open, second, third]) == []
 
 
 def test_the_floor_is_two_recurrences_because_the_item_is_the_first_filing() -> None:

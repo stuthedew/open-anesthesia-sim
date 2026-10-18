@@ -487,6 +487,17 @@ NEW_CASE_DIALOG_SPACING = 12
 # record column inside it, and the sidebar.
 PAGE_SPACING = 12
 
+# The gap between two Areas, in px, which is also what a reader grabs to resize
+# them (`PL-RQT1` Q1). It draws nothing at rest, so the page's BACKGROUND shows
+# between two PANEL surfaces. 8 px is Blender's 10 px hit band less the rounded
+# corners this interface does not draw. The width, and the line below, are
+# placeholders for planned-milestone item 33's visual pass.
+AREA_HANDLE_WIDTH = 8
+
+# The line drawn down the middle of each handle a drag would move, in px, while
+# the pointer is over one of them (`PL-RQT1` Q2). It is drawn in PRIMARY.
+AREA_HANDLE_LINE_WIDTH = 2
+
 # One width for the selector and for the chip that stands in its place, so the
 # transport controls beside them do not move when a run starts. A header that
 # reflows on Start announces a mode change by motion in the wrong place, and

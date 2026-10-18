@@ -4186,13 +4186,15 @@ def test_a_declaration_added_on_the_branch_folds_nothing(tmp_path: Path) -> None
 
 
 def test_a_branch_declaration_names_the_window_it_missed(tmp_path: Path) -> None:
-    """Refusing is half an answer; the advisory owes the pass that could have written it.
+    """Refusing is half an answer; the advisory owes the route that still folds it.
 
     `PL-YZJD`: the refusal above names the rule and leaves the reader with no
-    move, because on this branch there is none. The window shut at the first
-    commit, so the only session that could have declared the line is the triage
-    pass - and a message that does not say so reads as a step this session
-    skipped.
+    move, and a message that names none reads as a step this session skipped.
+    The base's copy is read at its tip, so the move is to declare the line
+    there from an item-only branch and re-audit (`PL-TKFD`). The advisory said
+    instead that the window shut at the first commit and that triage was the
+    only pass that could write the line, which steered a session away from the
+    one route left (`PL-PLV0`).
     """
     root = _repo(tmp_path)
     (root / "tests" / "test_thing.py").write_text(PINNED)
@@ -4204,7 +4206,8 @@ def test_a_branch_declaration_names_the_window_it_missed(tmp_path: Path) -> None
 
     note = _check(report, "the `falsifies:` declaration holds")
     assert "before this branch's first commit" in note.detail
-    assert "triage is the only pass that can write it" in note.detail
+    assert "from an item-only branch, let that merge" in note.detail
+    assert "and re-audit" in note.detail
 
 
 def test_an_unreadable_commission_says_so_rather_than_folding_nothing_silently(

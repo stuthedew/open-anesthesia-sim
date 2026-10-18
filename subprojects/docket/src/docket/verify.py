@@ -3367,16 +3367,17 @@ def _check_item(
         # The second sentence is the actionable half, and it was missing
         # (`PL-YZJD`). The first says the declaration did not count and why the
         # rule exists; a session reading only that concludes it made an
-        # avoidable procedural slip and looks for the step it skipped. There is
-        # none: by the time this branch exists the window has shut, so the
-        # sentence has to name the pass that could still have written the line.
+        # avoidable procedural slip and looks for the step it skipped. The base's
+        # copy is read at its tip when this runs, not as of the fork, so a line
+        # merged onto the base mid-work does fold, and the sentence names that
+        # route (`PL-PLV0`, `PL-TKFD`).
         claim = (
             f"`{item.falsifies}` is declared on this branch and not in {base}'s copy of the "
             "item, so nothing was folded: the declaration is the commission's, written "
             "before the work, and one added beside the deletion it excuses is the worker's "
-            f"own word for it. Nothing on this branch could have changed that - the line had "
-            f"to reach {base} before this branch's first commit, so triage is the only pass "
-            "that can write it"
+            f"own word for it. To fold it, declare the line on {base} from an item-only "
+            f"branch, let that merge, bring {base} into this branch and re-audit. Triage, "
+            "before this branch's first commit, is the pass that writes it for nothing"
         )
     elif declared and not folded:
         source = "this closure declares" if self_declared else f"{base} declares"

@@ -2,14 +2,14 @@
 
 The toolkit half of everything on the dashboard that is not a plot: a
 readout panel and the row of them, a setting slider, the notice banner, the
-new-case confirmation, the inert splitter between sections, and the window's
-opening geometry. Each is written from a `dashboard_frame` value - a
-`Readout`, a `SettingReadout`, a `NewCaseQuestion` - and reads nothing from
-the simulation, formats no number and chooses between no two strings, so
-every claim a reader sees stays where `tests/unit/test_dashboard_frame.py`
-can hold it without a display (`PL-25KS`, decision D2). What a widget does
-own is layout arithmetic: how wide a panel must be, how many columns a row
-gets at a width, where the window opens.
+new-case confirmation and the window's opening geometry. Each is written
+from a `dashboard_frame` value - a `Readout`, a `SettingReadout`, a
+`NewCaseQuestion` - and reads nothing from the simulation, formats no number
+and chooses between no two strings, so every claim a reader sees stays where
+`tests/unit/test_dashboard_frame.py` can hold it without a display
+(`PL-25KS`, decision D2). What a widget does own is layout arithmetic: how
+wide a panel must be, how many columns a row gets at a width, where the
+window opens.
 
 **A readout value never wraps away from its unit** (`PL-3355`). Each of a
 panel's four lines is a `QLabel` without word wrap, and the panel reserves
@@ -60,7 +60,6 @@ from PySide6.QtWidgets import (
     QListWidget,
     QPushButton,
     QSlider,
-    QSplitter,
     QVBoxLayout,
     QWidget,
 )
@@ -247,9 +246,9 @@ def declare_interface_colours(widget: QWidget) -> None:
     `Inactive` groups are written here, from the widget's own palette
     outwards, so nothing in this interface chooses a disabled colour that no
     requirement measures. `test_dark_appearance.py` holds it. Nothing this is
-    applied to is disabled today: the whole disabled set is the inert
-    splitter handle, the agent selector, which is hidden by the same
-    expression, and the three transport buttons.
+    applied to is disabled today: the whole disabled set is the agent
+    selector, which is hidden by the same expression, and the three
+    transport buttons.
 
     The colours are `app/theme.py`'s, and every pair they make is already
     measured: `tools/contrast_check.py` holds INK on PANEL for the text a
@@ -298,11 +297,10 @@ def declare_application_colours(application: QApplication) -> None:
 
     **What it does not cover, and why that is the rule rather than a gap:**
     the `Disabled` colour group is left exactly as the platform supplied it,
-    for the reason `declare_interface_colours` gives - so the splitter handles
-    `freeze_splitter_handles` disables keep drawing the host's surface, which
-    `PL-05M4` carries. Declaring a disabled colour is a decision under
-    `.claude/rules/ui-color.md` rather than a style choice, and this interface
-    has exactly one, measured.
+    for the reason `declare_interface_colours` gives, so a disabled control
+    with no colour of its own keeps drawing the host's. Declaring a disabled
+    colour is a decision under `.claude/rules/ui-color.md` rather than a style
+    choice, and this interface has exactly one, measured.
 
     **The per-widget declarations stay.** They are not made redundant by this:
     a view is built by tests, and could be embedded, without `main()` ever
@@ -1531,53 +1529,6 @@ def _refill(widget: QListWidget, rows: Sequence[str]) -> None:
 
         if 0 <= selected < widget.count():
             widget.setCurrentRow(selected)
-
-
-def inert_splitter(orientation: Qt.Orientation, widgets: Sequence[QWidget]) -> QSplitter:
-    """A splitter whose sections a reader cannot yet drag.
-
-    Every surface of the dashboard is an independent widget inside nested
-    splitters (`PL-25KS`), so that a later item can let a reader resize
-    them by enabling the handles. Until then the handles are disabled and
-    show the arrow cursor, and no section can be collapsed: a readout row
-    dragged to nothing would be a display that appears to have failed.
-    The handles stay visible so the sections read as sections.
-
-    Args:
-        orientation: Which way the sections stack.
-        widgets: The sections, in order.
-
-    Returns:
-        The splitter, with `widgets` added.
-    """
-
-    splitter = QSplitter(orientation)
-    splitter.setChildrenCollapsible(False)
-
-    for widget in widgets:
-        splitter.addWidget(widget)
-
-    freeze_splitter_handles(splitter)
-
-    return splitter
-
-
-def freeze_splitter_handles(splitter: QSplitter) -> None:
-    """Disable every handle of `splitter`, including ones added since it was built.
-
-    Qt creates a handle with each section and enables it, so a splitter that
-    gains a section after construction - the dashboard, when a learner takes
-    a branch - would come to hold one draggable handle among inert ones.
-    Called again after any restacking, which is cheap and idempotent.
-
-    Args:
-        splitter: The splitter whose handles are to be inert.
-    """
-
-    for index in range(1, splitter.count()):
-        handle = splitter.handle(index)
-        handle.setEnabled(False)
-        handle.setCursor(Qt.CursorShape.ArrowCursor)
 
 
 def initial_window_geometry(available: QRect, minimum: QSize, fraction: float) -> QRect:

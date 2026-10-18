@@ -5,8 +5,8 @@ decides nothing; these tests hold the few things the widgets *do* own -
 that a readout value cannot wrap away from its unit (`PL-3355`), that a
 slider position is exactly the printed value (`PL-25KS`, D4), that a
 snapshot written into a slider never comes back out as a change, that the
-new-case dialog's default keeps the case, that the splitter handles are
-inert, and where the window opens (`PL-005`). They render under the
+new-case dialog's default keeps the case, and where the window opens
+(`PL-005`). They render under the
 `offscreen` platform `tests/conftest.py` selects.
 """
 
@@ -53,7 +53,6 @@ from anesthesia_sim.app.qt_widgets import (
     NoticeLabel,
     ParameterSlider,
     ReadoutRow,
-    inert_splitter,
     initial_window_geometry,
     styled_label,
 )
@@ -695,45 +694,6 @@ def test_the_discard_button_is_drawn_before_the_keep_button(application: QApplic
 
     assert dialog.discard_button.geometry().right() < dialog.keep_button.geometry().left()
     assert dialog.discard_button.geometry().top() == dialog.keep_button.geometry().top()
-
-
-# ----------------------------------------------------------- the splitter
-
-
-def test_the_splitter_handles_are_inert(application: QApplication) -> None:
-    sections = [QWidget() for _ in range(3)]
-
-    for section in sections:
-        section.setMinimumSize(50, 50)
-
-    splitter = inert_splitter(Qt.Orientation.Horizontal, sections)
-    splitter.resize(600, 200)
-    splitter.show()
-    application.processEvents()
-    sizes = splitter.sizes()
-
-    assert not splitter.childrenCollapsible()
-    assert splitter.count() == 3
-
-    for index in range(1, splitter.count()):
-        handle = splitter.handle(index)
-
-        assert not handle.isEnabled()
-        assert handle.cursor().shape() == Qt.CursorShape.ArrowCursor
-
-    handle = splitter.handle(1)
-    start = handle.rect().center()
-    QTest.mousePress(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start)
-    QTest.mouseMove(handle, start + type(start)(120, 0))
-    QTest.mouseRelease(
-        handle,
-        Qt.MouseButton.LeftButton,
-        Qt.KeyboardModifier.NoModifier,
-        start + type(start)(120, 0),
-    )
-    application.processEvents()
-
-    assert splitter.sizes() == sizes
 
 
 # ------------------------------------------------------------- the window

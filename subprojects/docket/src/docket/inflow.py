@@ -86,6 +86,25 @@ def _generator_tier(item: Item) -> bool:
     return bool(item.root_cause_of or item.impairs_generators)
 
 
+def _pinned_by_class(item: Item, config: Config, apparatus: frozenset[str]) -> bool:
+    """Whether `item`'s band records its class rather than an apparatus severity.
+
+    `docket check` pins a `safety_classes` item to `P0` or `P1`. A simulator
+    item of that kind often also declares an instruction file, such as a rule
+    under `.claude/rules/` that the change keeps true, and so counts as an
+    apparatus filing. Counted as an unexpected band, it reported a broken
+    prediction that nothing in the apparatus broke: `PL-HQF5` and `PL-4RL2` in
+    the week to 2026-10-18 (`PL-00TR`). A pinned item that reaches any other
+    apparatus path still counts, because a safety-classed defect in the
+    apparatus is the severity the prediction is about.
+    """
+    return (
+        any(cls in config.safety_classes for cls in item.classes)
+        and bool(config.instruction_paths)
+        and all(is_under(path, config.instruction_paths) for path in apparatus)
+    )
+
+
 @dataclass(frozen=True)
 class InflowPeriod:
     """One window of filings."""
@@ -113,7 +132,8 @@ class InflowPeriod:
     #: `by_head`, so a campaign cannot read as fixes failing.
     reentries: int = 0
     #: Of `filed`, those in `UNEXPECTED_BANDS` for a reason other than the
-    #: generator tier: what `PL-04KR`'s prediction is about.
+    #: generator tier or a class pin on a simulator item: what `PL-04KR`'s
+    #: prediction is about.
     severe: Mapping[str, int] = field(default_factory=dict)
 
     @property
@@ -232,7 +252,9 @@ def analyze(
                     Counter(
                         item.priority
                         for item in organic
-                        if item.priority in UNEXPECTED_BANDS and not _generator_tier(item)
+                        if item.priority in UNEXPECTED_BANDS
+                        and not _generator_tier(item)
+                        and not _pinned_by_class(item, config, named[item.identifier])
                     )
                 ),
             )

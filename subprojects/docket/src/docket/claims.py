@@ -45,17 +45,19 @@ inherits the dead claim's place rather than queueing behind claims made while
 it stood.
 
 **A claim ends in one of five ways**: a `Yield:` on its branch, the branch's
-own copy of the item reaching a status in `RELEASING_STATUSES`, a takeover, a
-lapse, or landing. Landing is derived, at two levels. A branch the base
-contains, or whose content it holds, is never offered by
-`vcs._unlanded_refs`. Within a branch still offered, a claim on an item the
-base has closed is spent, and so is every claim the branch's *landed prefix*
-takes in: some commit descending from the claim adds content, all of it
-content the base has held, and the branch's own work through it is all on
-the base. That is the shape a squash merge leaves on a branch that goes on
-committing (`PL-8JQQ`), and continuing work there claims again. Descent, not
-place in the walk, because a merge of the base brings in commits that sort
-after a claim without descending from it.
+own copy of the item reaching a status in `RELEASING_STATUSES` (`releases`), a
+takeover, a lapse, or landing. Landing is derived, at two levels. A branch the
+base contains holds nothing. A branch whose content the base holds is read for
+its live claims alone, because a branch that took another pull request's head
+and then claimed holds nothing of its own until it commits work, and the base
+taking that head must not end a claim minutes old (`PL-7XGR`). Within a
+branch, a claim on an item the base has closed is spent, and so is every claim
+the branch's *landed prefix* takes in: some commit descending from the claim
+adds content, all of it content the base has held, and the branch's own work
+through it is all on the base. That is the shape a squash merge leaves on a
+branch that goes on committing (`PL-8JQQ`), and continuing work there claims
+again. Descent, not place in the walk, because a merge of the base brings in
+commits that sort after a claim without descending from it.
 
 **Three other kinds of hold ride the same read, and none is a claim.** A
 *disposition* is a branch whose copy of an item has moved its `status:` away
@@ -146,7 +148,25 @@ LEASE_TERM = timedelta(days=7)
 #: (2026-09-24, ratified, over holding the claim until the item is `done` or
 #: `dropped`, `PL-KWCY`'s rule): a session that blocks its own item has stopped
 #: working it, and holding the claim strands a queue-only branch that never arms.
+#: A block the base already shows does not count, which `releases` decides.
 RELEASING_STATUSES = CLOSED_STATUSES + ("blocked",)
+
+
+def releases(status: str, on_base: str) -> bool:
+    """Whether the branch's copy of an item at `status` releases the branch's claim on it.
+
+    `on_base` is the base's copy's status. Only a block the branch writes
+    releases its claim (project owner, 2026-09-26, ratified, over keeping the
+    refusal and saying in `start.md` that such a round cannot claim,
+    `PL-0JDP`). A block the branch inherited from the base is somebody else's,
+    and a design round on an item another session blocked is still working
+    it. `RELEASING_STATUSES` was tested alone before, and a branch forked from
+    a base that showed the block read as having released its claim.
+    """
+    if status == "blocked":
+        return on_base != "blocked"
+    return status in RELEASING_STATUSES
+
 
 #: The first git whose `%(trailers:...)` placeholder takes `key=`, `valueonly` and
 #: `separator=` (git 2.22.0 release notes), which is what reads one trailer key's
@@ -528,7 +548,26 @@ def holdings(
         else:
             histories[branch] = history
 
-    claims, yields, malformed = _events(histories, branches, remotes)
+    # A branch the base took whole is read for its claims alone, and keeps only
+    # those still live (`PL-7XGR`). It carries no work of its own, so it is no
+    # holder of anything else - no disposition, name, cut or edit - and a claim
+    # the landed prefix spent, or one its lease let lapse, is the merged branch
+    # it always read as. Unread history leaves it unread, as before.
+    taken: dict[str, list[str]] = {}
+    for name in refs.taken:
+        if name in candidates:
+            taken.setdefault(_head_name(name, remotes), []).append(name)
+    claimed = dict(branches)
+    claimed_histories = dict(histories)
+    for branch, names in taken.items():
+        if branch in branches:
+            continue
+        history = _history(names, base, root, run)
+        if history is not None:
+            claimed[branch] = names
+            claimed_histories[branch] = history
+
+    claims, yields, malformed = _events(claimed_histories, claimed, remotes)
     episodes = _episodes(claims, yields)
     successors = _takeovers(claims, remotes)
     superseded = set(successors.values())
@@ -548,9 +587,9 @@ def holdings(
     copies: dict[str, dict[str, str]] = {}
     renewals = {
         branch: sorted(entry.committed for entry in history)
-        for branch, history in histories.items()
+        for branch, history in claimed_histories.items()
     }
-    tips = {branch: _newest(branches[branch], root, run) for branch in histories}
+    tips = {branch: _newest(claimed[branch], root, run) for branch in claimed_histories}
     touched = {branch: _touched(history, prefix) for branch, history in histories.items()}
 
     def status(ref: str, key: str) -> str:
@@ -572,8 +611,8 @@ def holdings(
             for claim in standing
             if not _landed_through(
                 claim,
-                histories[branch],
-                branches[branch],
+                claimed_histories[branch],
+                claimed[branch],
                 refs.landings,
                 root,
                 run,
@@ -602,7 +641,7 @@ def holdings(
             state, released_by = RELEASED, BY_OVER
         elif yielded is not None:
             state, released_by = RELEASED, BY_YIELD
-        elif current in RELEASING_STATUSES:
+        elif releases(current, status(base, key)):
             state, released_by = RELEASED, BY_STATUS
         elif status(base, key) in CLOSED_STATUSES:
             state, released_by = RELEASED, BY_CLOSED
@@ -612,9 +651,13 @@ def holdings(
             state, released_by = (LIVE if unbroken else LAPSED), ""
 
         tokens = {claim.session for claim in episode[episode.index(holder) :] if claim.session}
+        # The checkout's own branch keeps every state, so that `yield` can see
+        # a yield it wrote and could not push, and retry it (`PL-NNLM`).
+        if branch not in branches and state != LIVE and branch != here:
+            continue
         hold = Hold(
             key=key,
-            ref=branches[branch][0],
+            ref=claimed[branch][0],
             kind=CLAIM,
             state=state,
             since=holder.authored,
@@ -712,7 +755,11 @@ def holdings(
 
     holds = tuple(hold for *_, hold in ranked)
     held = {hold.key for hold in (*holds, *dispositions, *named.values()) if hold.state == LIVE}
-    last = {branches[branch][0]: dates[-1] for branch, dates in renewals.items() if dates}
+    last = {
+        branches[branch][0]: dates[-1]
+        for branch, dates in renewals.items()
+        if dates and branch in branches
+    }
     cuts = _cuts(histories, branches, tips, last, base, notes_dir, root, run, moment)
     editing = _editing(touched, branches, tips, last, held, base, root, run, copies)
     return Holdings(
