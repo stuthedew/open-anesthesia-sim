@@ -3,11 +3,13 @@ id: PL-RX3H
 title: The recurrence count never chains across items, so one mechanism re-filed as three different items (PL-X9NB on PL-P757, PL-T441 on PL-K5PW, PL-WF3X on PL-T441) is never summed toward the generator tier
 priority: P3
 effort: M
-status: ready
+status: done
 classes: feature
 feature: generator-identification
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-22
+closed: 2026-10-18
+pr: 1594
 payoff: a mechanism re-filed at sibling sites is counted as one cluster even after the item it first matched closes, instead of restarting at one filing per item
 not-delegable: its first step re-runs the chain count, and that count decides between building the chaining and dropping the item with the count recorded; no command can prove an outcome the count has not chosen yet
 ---
@@ -86,3 +88,10 @@ what its fix does. The design fact is that `anchor` chooses among open items
 only, so the evidence starts over when its anchor closes.
 `duplicates.near_duplicates` documents that choice, and no other open item
 stands on it.
+
+**Built 2026-10-18.** `plan.recurrence_chains` follows each open item's
+filings back through the closed items it re-files, and `plan.recurring`,
+`cli._say_recurring` and the digest line read it. On the store at build time,
+`bin/docket next` newly names `PL-YHR3` (2 filings: `PL-5JTH`, `PL-MMNX`),
+the live case the re-count found, beside `PL-JWBW` and `PL-ZWQS`, which chain
+through the closed `PL-T9X9`.
