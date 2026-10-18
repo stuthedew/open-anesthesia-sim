@@ -246,19 +246,19 @@ ASK_RISK = ("risk", "checked", "look")
 #: it is `Owner-read: not needed`, never a question made up to fill the form.
 READ_ASK = (
     "  Send the owner nothing about this pull request yet: no Owner-ask record on a commit "
-    "since its newest change outside the store says what to ask. A hold reaches the owner "
-    "only with something to decide or to review. A question whose answer is obvious is "
-    "wrong, as on #1516, whose ask invented two points to judge (PL-DKBG). Record one of "
-    "two forms in the last paragraph of a commit, beside its Co-authored-by line, then ask "
-    f"again. For a decision, with at least two options a careful person could each pick: "
-    f"`{OWNER_ASK}: <question>? | <option>: <what it changes for the owner or a learner> | "
-    f"<option>: <what it changes> | {ASK_RECOMMEND} <option> - <why>`. For a high-risk change "
-    f"with no choice in it: `{OWNER_ASK}: {ASK_RISK[0]} - <what could go wrong, for whom> | "
-    f"{ASK_RISK[1]} - <what was checked to rule it out> | {ASK_RISK[2]} - <the one thing to "
-    "look at>`. If neither form can be filled honestly, nothing needs the owner: record "
-    f"`{OWNER_READ}: {READ_NOT_NEEDED} - <why>` instead, and the change merges on green. A "
-    "change to the gate or to a test pinning its answers holds whatever that record says, "
-    "so for one of those use the risk form."
+    "since its newest change outside the store and the pull request bodies says what to "
+    "ask. A hold reaches the owner only with something to decide or to review. A question "
+    "whose answer is obvious is wrong, as on #1516, whose ask invented two points to judge "
+    "(PL-DKBG). Record one of two forms in the last paragraph of a commit, beside its "
+    "Co-authored-by line, then ask again. For a decision, with at least two options a "
+    f"careful person could each pick: `{OWNER_ASK}: <question>? | <option>: <what it changes "
+    f"for the owner or a learner> | <option>: <what it changes> | {ASK_RECOMMEND} <option> - "
+    f"<why>`. For a high-risk change with no choice in it: `{OWNER_ASK}: {ASK_RISK[0]} - "
+    f"<what could go wrong, for whom> | {ASK_RISK[1]} - <what was checked to rule it out> | "
+    f"{ASK_RISK[2]} - <the one thing to look at>`. If neither form can be filled honestly, "
+    f"nothing needs the owner: record `{OWNER_READ}: {READ_NOT_NEEDED} - <why>` instead, and "
+    "the change merges on green. A change to the gate or to a test pinning its answers holds "
+    "whatever that record says, so for one of those use the risk form."
 )
 
 #: What a hold for the owner's read prints before the line its `OWNER_ASK`
@@ -653,12 +653,15 @@ def parse_owner_ask(value: str) -> tuple[str, str]:
     if [word.strip().lower() for word, _, _ in named] == list(ASK_RISK):
         if not all(dash and said.strip() for _, dash, said in named):
             return "", "a risk review needs a value after each of risk, checked and look"
-        risk, checked, look = (said.strip() for _, _, said in named)
+        risk, checked, look = (said.strip().rstrip(".") for _, _, said in named)
         return f"Risk to review: {risk}. Checked: {checked}. Please look at: {look}.", ""
     question, options = fields[0], fields[1:-1]
     recommend = fields[-1] if len(fields) > 1 else ""
     if not question.endswith("?"):
-        return "", "it is neither a risk review nor a decision whose first field is a question"
+        return "", (
+            "it is neither a risk review nor a decision whose first field is a question, and "
+            f"{ASK_SEPARATOR.strip()!r} with a space either side separates its fields"
+        )
     word, _, rest = recommend.partition(" ")
     pick, dash, why = rest.partition(" - ")
     if word.lower() != ASK_RECOMMEND or not dash or not pick.strip() or not why.strip():
@@ -1128,15 +1131,22 @@ def _switched_off_here(root: Path, run: Runner, base: str, at: str) -> tuple[boo
     return False, ()
 
 
-def _since_change(root: Path, run: Runner, base: str, paths: Sequence[str]) -> list[str] | None:
+def _since_change(
+    root: Path, run: Runner, base: str, paths: Sequence[str], *, merges: bool = True
+) -> list[str] | None:
     """The revisions `git log` walks for a record made since the newest commit changing `paths`.
 
     With no `paths`, every commit of the branch. `None` when no commit of the
-    branch changed them, so no record can be for them.
+    branch changed them, so no record can be for them. Without `merges`, a
+    merge does not count as a change, so bringing the base in, which the
+    owner's *Update branch* does, leaves a record standing.
     """
     span = ["HEAD", f"^{base}"]
     if paths:
-        newest = run(["log", "-1", "--format=%H", f"{base}..HEAD", "--", *paths], root).strip()
+        skip = [] if merges else ["--no-merges"]
+        newest = run(
+            ["log", "-1", *skip, "--format=%H", f"{base}..HEAD", "--", *paths], root
+        ).strip()
         if not newest:
             return None
         parents = run(["rev-parse", f"{newest}^@"], root).split()
@@ -1166,9 +1176,10 @@ def _owner_ask(
     `paths` are what the branch changes outside the store and the records, so
     an ask made before a later change to the work does not cover it, while
     the closure, `record` and claim commits that follow the work do not
-    disturb it.
+    disturb it, and nor does a merge of the base: the ask has already gone to
+    the owner by then, and a merge brings in no work of the branch's.
     """
-    span = _since_change(root, run, base, paths)
+    span = _since_change(root, run, base, paths, merges=False)
     if span is None:
         return None, ""
     commit, value = _newest_trailer(root, run, span, OWNER_ASK)

@@ -11533,10 +11533,37 @@ def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
         line.startswith("  The Owner-ask record on ")
         and line.endswith(
             " was not read: it is "
-            "neither a risk review nor a decision whose first field is a question."
+            "neither a risk review nor a decision whose first field is a question, and '|' "
+            "with a space either side separates its fields."
         )
         for line in lines
     )
+
+
+def test_arm_keeps_a_recorded_ask_through_a_merge_of_the_base(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Bringing the base in changes no work, so the ask the owner already has still stands.
+
+    A merge in which both sides changed one file differs from both parents
+    there, so `git log` names it as that file's newest change.
+    """
+    root, git = _arm_repo(tmp_path)
+    shared = "docs/PL-D3D3-drafted.md"
+    text = (root / shared).read_text(encoding="utf-8")
+    _commit_file(git, root, shared, text + "branch\n", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:00:10+00:00")
+    _record_ask(git, ARM_DECISION, "2026-09-01T12:00:20+00:00")
+    git("checkout", "-q", "main")
+    _commit_file(git, root, shared, "main\n" + text, "2026-09-01T12:00:30+00:00")
+    git("push", "-q", "origin", "main")
+    git("checkout", "-q", ARM_BRANCH)
+    git("merge", "-q", "--no-edit", "main", when="2026-09-01T12:00:40+00:00")
+
+    assert _arm(root) == 1
+    lines = capsys.readouterr().out.splitlines()
+    assert arming.ASK_LINE in lines
+    assert arming.READ_ASK not in lines
 
 
 @pytest.mark.parametrize(
@@ -11551,7 +11578,7 @@ def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
         ),
         (
             "Risk - a dose label could read mg for mcg | checked - the formatter tests pin "
-            "the unit | look - the infusion panel's label",
+            "the unit. | look - the infusion panel's label",
             "Risk to review: a dose label could read mg for mcg. Checked: the formatter tests "
             "pin the unit. Please look at: the infusion panel's label.",
             "",
@@ -11564,7 +11591,8 @@ def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
         (
             "none - held by rule",
             "",
-            "it is neither a risk review nor a decision whose first field is a question",
+            "it is neither a risk review nor a decision whose first field is a question, and "
+            "'|' with a space either side separates its fields",
         ),
         ("Merge it?", "", "its last field is not 'recommend <option> - <why>'"),
         ("Q? | A: x | recommend A - y", "", "a decision needs at least two options"),
