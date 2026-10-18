@@ -1257,7 +1257,7 @@ class RunView(QWidget):
 
     # ---------------------------------------------------------------- halt
 
-    def halt(self, error: BaseException) -> None:
+    def halt(self, error: BaseException, *, in_frame: bool = False) -> None:
         """Stop the run for a raise, recording it as the disposition the raise earns.
 
         Draws nothing and writes nothing; `_halt_run` and
@@ -1265,9 +1265,16 @@ class RunView(QWidget):
 
         Args:
             error: What was raised.
+            in_frame: True where the raise came from the frame every run is
+                drawn in, rather than from this run's own step or setting. The
+                controller records that as well, and a trunk with that record
+                offers no branch (`SimulationController.record_failed_frame`).
         """
 
         disposition, reason = halt_disposition(error)
+
+        if in_frame:
+            self.controller.record_failed_frame(reason)
 
         if disposition is HaltDisposition.SUPPORTED_LIMIT:
             self.controller.halt_at_supported_limit(reason)

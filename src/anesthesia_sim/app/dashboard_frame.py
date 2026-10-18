@@ -1932,7 +1932,8 @@ class ForkOffer:
             offers this list and never a free instant. Each instant is
             rendered by `format_elapsed` - the form the run clock and every
             bookmark row use, so a learner reads one quantity one way
-            wherever it appears.
+            wherever it appears. Empty once the trunk's frame has failed,
+            and the panel then withdraws the selector (`PL-T2Q2`).
         locked: Whether the control is replaced by its reason. True while a
             comparison is already on the chart.
         lock_reason: What stands where the control stood, or the empty

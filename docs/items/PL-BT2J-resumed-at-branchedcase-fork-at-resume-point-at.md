@@ -3,12 +3,14 @@ id: PL-BT2J
 title: resumed_at, BranchedCase.fork_at, _resume_point_at and _setting_at take a case instant under the name elapsed_s, while the Keyframe it is matched against names the same instant instant_s
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: core-domain-language
-touches: src/anesthesia_sim/app/controller.py
+touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-22
+closed: 2026-10-18
+pr: 1583
 payoff: the case instant a branch opens at is read under one name from the public door to the keyframe, so no reader meets a clock reading's name on a point in case time
 verify: grep -q "def resumed_at(self, instant_s: CaseInstant)" src/anesthesia_sim/app/controller.py && grep -q "def fork_at(self, instant_s: CaseInstant)" src/anesthesia_sim/app/controller.py && grep -q "def _resume_point_at(self, instant_s: CaseInstant)" src/anesthesia_sim/app/controller.py && ! grep -q "def _setting_at(self, control: ControlInput, elapsed_s" src/anesthesia_sim/app/controller.py
 ---
@@ -72,3 +74,12 @@ by keyword, so the rename changes signatures and docstrings only. The
 alternative, keeping `elapsed_s` because a caller may pass a clock reading,
 was refused: since the parameters became `CaseInstant`, the type already says
 "an instant", and only the name still says "a duration".
+
+**Built 2026-10-18.** All four parameters are `instant_s`, with their
+docstrings, and `docs/ARCHITECTURE.md`'s bullet on `resumed_at` follows. No call
+site changed, as measured above. One assertion changed with the name:
+`test_a_fork_instant_not_built_as_a_case_instant_is_refused` matched the
+`TypeError` that names the parameter, so its `match=` now reads `instant_s of`
+where it read `elapsed_s of`. `bin/docket verify --self` reports that as a
+removed assertion, which is the settled shape for a changed output string
+(`PL-K4R5`).

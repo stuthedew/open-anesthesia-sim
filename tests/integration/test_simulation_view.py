@@ -6319,6 +6319,85 @@ def test_a_failing_frame_on_a_paused_trunk_withdraws_branch_here(
     assert here.isEnabled() is False
 
 
+def test_a_trunk_halted_by_a_failing_frame_offers_no_branch_at_all(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A trunk halted by the shared frame offers no keyframe, no mark and no "Branch here".
+
+    A branch opened there would be drawn by the same failing frame and halt
+    on the next one, so each of the three could only fail (`PL-T2Q2`). Before
+    this, the keyframe selector's Branch button stayed live and `fork_at`
+    opened the branch. The case refuses the doors as well as the offer.
+    """
+
+    case = _branched_case()
+    mark = TimeBookmark(CaseInstant(30.0), "check")
+    case.trunk.add_time_bookmark(mark)
+    view = _case_view(application, case)
+    panel = view._fork_panel
+    # Induction, the mark the trunk passed and its one setting change.
+    assert panel.point_selector.count() == 3, "the trunk offers no keyframe or mark to withdraw"
+    assert panel.here_button.isHidden() is False, "the paused trunk offers no branch here"
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.present(False)
+
+    assert case.trunk.has_failed is True
+    assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
+    assert panel.point_selector.count() == 0
+    assert panel.point_selector.isHidden() is True
+    assert panel.take_button.isHidden() is True
+    assert panel.take_button.isEnabled() is False
+    assert panel.here_button.isHidden() is True
+    assert case.fork_points_s == ()
+    assert case.mark_fork_points == ()
+
+    with pytest.raises(SimulationConfigurationError, match="the frame this run is drawn in failed"):
+        case.fork_at(CaseInstant(60.0))
+
+    with pytest.raises(SimulationConfigurationError, match="the frame this run is drawn in failed"):
+        case.fork_at_mark(mark)
+
+    assert case.branches == ()
+
+
+def test_a_trunk_failed_on_its_own_step_keeps_its_earlier_keyframes_branchable(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A trunk whose own step failed keeps the keyframes it recorded, and a branch opens at one.
+
+    Each keyframe is a state the run computed before the failure, and the
+    frame still draws, so "go back and try something else" stays on offer
+    (`PL-T2Q2`). Only the frame's failure withdraws it. The instants are the
+    fixture's own: induction, and the setting change it made at 60 s.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    trunk = case.trunk
+
+    def failing_advance(simulation_step_s: float) -> NoReturn:
+        raise _real_step_failure()
+
+    trunk.start()
+    monkeypatch.setattr(trunk, "advance", failing_advance)
+
+    _steps(view.runs[0], 1)
+
+    assert trunk.has_failed is True
+    assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
+    assert _offered_fork_instants(view) == (0.0, 60.0)
+    assert view._fork_panel.take_button.isHidden() is False
+
+    _take_fork(view, 60.0)
+
+    assert len(case.branches) == 1
+    assert len(view.runs) == 2
+    opened_from = case.branches[0].opened_from
+    assert opened_from is not None
+    assert opened_from.fork.instant_s == 60.0
+
+
 def test_a_fork_panel_the_case_cannot_restate_on_a_halt_offers_nothing(
     application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
 ) -> None:
