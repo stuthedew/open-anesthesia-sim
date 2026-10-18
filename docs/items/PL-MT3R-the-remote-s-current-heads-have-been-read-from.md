@@ -15,7 +15,7 @@ pr: 1116
 payoff: what the remote holds is one record every command reads, so a new reader stops taking a clone's copy for the remote's and costing an item
 verify: grep -q 'def test_holdings_reads_no_hold_from_a_branch_the_remote_deleted' subprojects/docket/tests/test_claims.py
 root-cause-of: PL-WX87, PL-KX73, PL-C3MN, PL-21KN
-generator: live - five readers in claiming.py, arming.py, claims.py and vcs.py still take a local copy for the remote's: claiming._on_copy a rival's tracking ref, arming.arm HEAD for the pull request's branch, claims.holdings and vcs.cuts_in_flight every refs/remotes ref as live, one for a branch the remote deleted included, and claiming.yield_claims the local branch; only claiming._on_remote asks the remote, for the checkout's own branch, so each new reader picks its own copy again
+generator: spent - closed 2026-09-26 by #1116, which gave each command one listing of the remote's branches for its readers to share, so a branch the remote deleted holds nothing; the register lists it drained
 misread: The remote's current refs and tags, and whether the clone's local copies still match them
 reenters: PL-4Q9B
 ---

@@ -62,6 +62,7 @@ from .plan import (
     placement_clause,
     placement_mark,
     recommend,
+    recurrence_chains,
     recurring,
     set_aside,
 )
@@ -695,7 +696,12 @@ def format_digest(
     # left to move (`PL-CJ5R`).
     repeats = recurring(report.items, flight.ids)
     if repeats:
-        named = ", ".join(f"{item.identifier} ({recurrence_count(item)})" for item in repeats[:3])
+        chains = recurrence_chains(report.items)
+        named = ", ".join(
+            f"{item.identifier} ({len(chains[item.identifier])}: "
+            f"{', '.join(chains[item.identifier])})"
+            for item in repeats[:3]
+        )
         rest = f", +{len(repeats) - 3} more" if len(repeats) > 3 else ""
         lines.append(
             f"  Filed more than once, never promoted for it: {named}{rest}. "

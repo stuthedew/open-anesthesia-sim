@@ -35,6 +35,7 @@ from .markdown import SOFT_BREAK, statement_lines
 from .model import (
     CLOSED_STATUSES,
     EFFORTS,
+    GENERATOR_VERDICTS,
     OPEN_STATUSES,
     PRIORITIES,
     RESOURCES,
@@ -2477,6 +2478,18 @@ def _check_generator_verdicts(report: Report, known: set[str]) -> None:
     for.
     """
     for item in report.items:
+        if (
+            item.status in CLOSED_STATUSES
+            and split_generator_verdict(item.generator)[0] == GENERATOR_VERDICTS[0]
+        ):
+            # A closed head is asked for no verdict, but one saying `live`
+            # disagrees with `docket generators`, which lists the head drained,
+            # and a reader believes whichever it opens first (`PL-JLBD`).
+            report.errors.append(
+                f"{_where(item)}: `generator:` says `{GENERATOR_VERDICTS[0]}` on a "
+                f"{item.status} item. Closed, its mechanism hands it no member it would "
+                f"record, so write `{GENERATOR_VERDICTS[1]} - <why>` or reopen the item"
+            )
         faults = generator_faults(item, known)
         if not faults:
             continue
