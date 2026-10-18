@@ -40,3 +40,13 @@ no longer depends on this.
 **Done when.** The answer below is recorded, and either taking a branch leaves the concentration chart in view at 1600 x 1000, held by a test, or the item closes into the v0.6.0 `Required scope` entry that owns the page's arrangement.
 
 **Decision needed.** Whether to fix this before v0.6.0 replaces the single scrolling page, and how: (a) scroll the chart into view when a branch is taken - one `ensureWidgetVisible` call from the fork handler and a test; (b) re-order the page so the readouts do not sit above the chart; or (c) leave it to v0.6.0, whose tiled layout gives the chart its own view. **Recommended: (a).** It answers the click that asked for the comparison, v0.6.0 deletes it along with the page, and v0.6.0 is 4 L, 16 M and 3 S away. Its cost is a page that moves on a click; (b) is layout work v0.6.0 owns and would be redone, and (c) leaves every branch until then showing 152 of the chart's 360 px. It is the owner's because it is behaviour a learner sees.
+
+**Re-read 2026-10-18 at `21174fd3`, in the product decision batch's design
+round.** `app/simulation_view.py` still makes no call that scrolls the page
+when a branch is taken. The pixel figures above were measured on 2026-10-01
+and were not re-measured here. A build under (a) re-measures them in its
+test. v0.6.0's build has not started: its gate has 20 entries open, and the
+layout adapter (`PL-W9P6`) is blocked behind it. So under (c) the chart stays
+mostly below the fold until that build ships. The recommendation stays (a),
+and the question is put to the project owner, because the answer decides
+what a learner sees after pressing Branch.
