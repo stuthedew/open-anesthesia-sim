@@ -9,6 +9,7 @@ touches: tools/dead_ends.py, tests/unit/test_dead_ends.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
 closed: 2026-10-18
+pr: 1548
 payoff: A dead end written in any bullet form CommonMark opens reaches the digest and the id check, or is refused by name, instead of vanishing
 verify: grep -q 'def test_an_entry_in_every_bullet_form_is_read_or_refused' tests/unit/test_dead_ends.py
 ---

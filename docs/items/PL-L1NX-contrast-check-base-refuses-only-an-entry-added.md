@@ -10,6 +10,7 @@ touches: tools/contrast_check.py, tests/unit/test_contrast_check.py, .claude/rul
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-09-30
 closed: 2026-10-18
+pr: 1548
 payoff: an excused contrast shortfall can only stay as bad as it was when excused, never get worse unnoticed
 verify: grep -q 'def test_a_listed_pair_made_worse_is_refused' tests/unit/test_contrast_check.py
 ---

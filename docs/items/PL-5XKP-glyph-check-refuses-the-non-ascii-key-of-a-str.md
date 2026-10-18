@@ -10,6 +10,7 @@ touches: tools/glyph_check.py, tests/unit/test_glyph_check.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 closed: 2026-10-18
+pr: 1548
 payoff: code that strips an undrawable character from displayed text either passes glyph_check or meets a written reason it cannot, and the chr() blind spot is recorded where the next session reads it
 verify: grep -q 'def test_a_translation_table_key' tests/unit/test_glyph_check.py
 ---

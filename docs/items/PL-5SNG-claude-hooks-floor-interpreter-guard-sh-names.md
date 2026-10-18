@@ -8,6 +8,7 @@ classes: docs
 touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpreter_guard.py
 added: 2026-09-24
 closed: 2026-10-18
+pr: 1548
 payoff: a session that hits the 3.11 floor is told the true set of collisions and uv-run tools, so it does not re-derive a second SyntaxError on main as a defect
 verify: grep -qF 'app/bookmarks.py' .claude/hooks/floor-interpreter-guard.sh && grep -qF 'the `Makefile` is the list' .claude/hooks/floor-interpreter-guard.sh && ! grep -qF 'The collision is one line' .claude/hooks/floor-interpreter-guard.sh && ! grep -qF 'the CI floor section run these bare on purpose' tests/unit/test_floor_interpreter_guard.py
 reenters: PL-G424

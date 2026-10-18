@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: tools/glyph_check.py
 added: 2026-09-16
 closed: 2026-10-18
+pr: 1548
 verify: uv run python tools/glyph_check.py && grep -q 'Qt build' tools/glyph_check.py
 ---
 
