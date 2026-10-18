@@ -140,6 +140,11 @@ def _either(
     )
 
 
+def _listed(ratio: float) -> contrast_check.Shortfall:
+    """A `KNOWN_SHORTFALLS` entry for the fixture item, excusing `ratio`."""
+    return contrast_check.Shortfall("PL-DDDD", ratio)
+
+
 def _exemption(background: str, why: str = "a fixture") -> contrast_check.Exemption:
     return contrast_check.Exemption(
         background=background, drawn_as="a fixture's ruling", ground="a fixture's ground", why=why
@@ -152,7 +157,7 @@ def declare(monkeypatch: pytest.MonkeyPatch):
 
     def _declare(
         requirements: tuple[contrast_check.AnyRequirement, ...],
-        shortfalls: dict[tuple[str, str], str] | None = None,
+        shortfalls: dict[tuple[str, str], contrast_check.Shortfall] | None = None,
         exempt: dict[str, tuple[contrast_check.Exemption, ...]] | None = None,
     ) -> None:
         monkeypatch.setattr(contrast_check, "REQUIREMENTS", requirements)
@@ -267,7 +272,8 @@ def test_a_pair_below_its_minimum_is_an_error(tmp_path: Path, declare) -> None:
 
 def test_a_declared_shortfall_does_not_fail_the_build(tmp_path: Path, declare) -> None:
     declare(
-        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),), {("FAINT", "PANEL"): "PL-DDDD"}
+        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),),
+        {("FAINT", "PANEL"): _listed(2.32)},
     )
 
     report = contrast_check.analyze(_repo(tmp_path))
@@ -279,7 +285,9 @@ def test_a_declared_shortfall_does_not_fail_the_build(tmp_path: Path, declare) -
 
 def test_a_shortfall_that_starts_passing_is_an_error(tmp_path: Path, declare) -> None:
     """The list cannot rot: fixing a shortfall forces its entry out."""
-    declare((_requirement("INK", "PANEL", contrast_check.AA_TEXT),), {("INK", "PANEL"): "PL-DDDD"})
+    declare(
+        (_requirement("INK", "PANEL", contrast_check.AA_TEXT),), {("INK", "PANEL"): _listed(11.5)}
+    )
 
     report = contrast_check.analyze(_repo(tmp_path))
 
@@ -305,7 +313,7 @@ def test_a_shortfall_naming_no_declared_requirement_is_an_error(tmp_path: Path, 
                 ("demoflurane.fill", "demoflurane.foreground"), "PANEL", contrast_check.AA_NON_TEXT
             ),
         ),
-        {("demoflurane.fill", "PANEL"): "PL-DDDD"},
+        {("demoflurane.fill", "PANEL"): _listed(1.0)},
     )
 
     report = contrast_check.analyze(_repo(tmp_path))
@@ -340,7 +348,7 @@ def _based(
     ledger = root / contrast_check.SHORTFALLS_SOURCE
     ledger.parent.mkdir(parents=True)
     ledger.write_text(
-        f"KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {shortfalls}\n", encoding="utf-8"
+        f"KNOWN_SHORTFALLS: dict[tuple[str, str], Shortfall] = {shortfalls}\n", encoding="utf-8"
     )
     _git(root, "init", "-q", "-b", "main")
     _git(root, "add", "-A")
@@ -349,13 +357,14 @@ def _based(
 
 
 @pytest.mark.parametrize(
-    ("base_theme", "theme", "foreground", "expected"),
+    ("base_theme", "theme", "foreground", "expected", "ratio"),
     [
         pytest.param(
             THEME_SOURCE,
             THEME_SOURCE + 'NEW_BADGE = "#AAAAAA"\n',
             "NEW_BADGE",
             "NEW_BADGE is new since the base",
+            2.32,
             id="new colour",
         ),
         pytest.param(
@@ -363,6 +372,7 @@ def _based(
             THEME_SOURCE,
             "FAINT",
             "FAINT is altered since the base, from #767676 to #AAAAAA",
+            2.32,
             id="altered colour",
         ),
         pytest.param(
@@ -370,12 +380,19 @@ def _based(
             THEME_SOURCE.replace('PANEL = "#FFFFFF"', 'PANEL = "#F4F4F4"'),
             "FAINT",
             "PANEL is altered since the base, from #FFFFFF to #F4F4F4",
+            2.11,
             id="altered background",
         ),
     ],
 )
 def test_an_entry_added_with_the_colour_it_excuses_fails(
-    tmp_path: Path, declare, base_theme: str, theme: str, foreground: str, expected: str
+    tmp_path: Path,
+    declare,
+    base_theme: str,
+    theme: str,
+    foreground: str,
+    expected: str,
+    ratio: float,
 ) -> None:
     """The use `.claude/rules/ui-color.md` forbids: a change makes a pair fail and lists it.
 
@@ -387,7 +404,7 @@ def test_an_entry_added_with_the_colour_it_excuses_fails(
     (root / contrast_check.THEME).write_text(theme, encoding="utf-8")
     declare(
         (_requirement(foreground, "PANEL", contrast_check.AA_TEXT),),
-        {(foreground, "PANEL"): "PL-DDDD"},
+        {(foreground, "PANEL"): _listed(ratio)},
     )
 
     report = contrast_check.analyze(root, base="main")
@@ -411,7 +428,8 @@ def test_an_entry_for_a_colour_the_change_leaves_alone_passes(tmp_path: Path, de
     """
     root = _based(tmp_path)
     declare(
-        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),), {("FAINT", "PANEL"): "PL-DDDD"}
+        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),),
+        {("FAINT", "PANEL"): _listed(2.32)},
     )
 
     report = contrast_check.analyze(root, base="main")
@@ -447,12 +465,13 @@ def test_an_entry_the_base_already_has_is_not_added_by_a_partial_fix(
     root = _based(
         tmp_path,
         theme=THEME_SOURCE.replace('"#AAAAAA"', '"#BBBBBB"'),
-        shortfalls='{("FAINT", "PANEL"): "PL-DDDD"}',
+        shortfalls='{("FAINT", "PANEL"): Shortfall("PL-DDDD", 1.92)}',
     )
     # 1.92:1 at the base, 2.32:1 now: better, and still under 4.5.
     (root / contrast_check.THEME).write_text(THEME_SOURCE, encoding="utf-8")
     declare(
-        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),), {("FAINT", "PANEL"): "PL-DDDD"}
+        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),),
+        {("FAINT", "PANEL"): _listed(2.32)},
     )
 
     assert not contrast_check.analyze(root, base="main").errors
@@ -471,10 +490,105 @@ def test_a_colour_the_base_changed_after_the_branch_left_is_not_this_change(
     _git(root, "commit", "-q", "-am", "main moves on")
     _git(root, "checkout", "-q", "work")
     declare(
-        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),), {("FAINT", "PANEL"): "PL-DDDD"}
+        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),),
+        {("FAINT", "PANEL"): _listed(2.32)},
     )
 
     assert contrast_check.analyze(root, base="main").added_with_colour == ()
+
+
+def test_a_listed_pair_made_worse_is_refused(tmp_path: Path, declare) -> None:
+    """PL-L1NX. An entry the base holds excuses its pair only as bad as it was.
+
+    The base lists FAINT at 2.32:1. This change lightens FAINT to 1.92:1 and
+    lowers the entry to match, which is the edit that used to stay green
+    because the entry was already on the base.
+    """
+    root = _based(tmp_path, shortfalls='{("FAINT", "PANEL"): Shortfall("PL-DDDD", 2.32)}')
+    (root / contrast_check.THEME).write_text(
+        THEME_SOURCE.replace('"#AAAAAA"', '"#BBBBBB"'), encoding="utf-8"
+    )
+    declare(
+        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),),
+        {("FAINT", "PANEL"): _listed(1.92)},
+    )
+
+    report = contrast_check.analyze(root, base="main")
+    output = contrast_check.format_report(report, matrix=False)
+
+    assert report.error_count == len(report.made_worse) == 1
+    assert "made worse than its entry excused (base main):" in output
+    assert "  FAINT on PANEL: 1.92, below the 2.32 the base's entry excused" in output
+    assert contrast_check.analyze(root).made_worse == (), "only a base says what was excused"
+
+
+def test_a_listed_ratio_the_pair_does_not_measure_is_an_error(tmp_path: Path, declare) -> None:
+    """PL-L1NX. The entry records the gap it excuses, so a stale ratio is refused without a base."""
+    declare(
+        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),),
+        {("FAINT", "PANEL"): _listed(1.5)},
+    )
+
+    report = contrast_check.analyze(_repo(tmp_path))
+    output = contrast_check.format_report(report, matrix=False)
+
+    assert report.error_count == len(report.misrecorded) == 1
+    assert "  FAINT on PANEL: measures 2.32, listed at 1.50, tracked by PL-DDDD" in output
+
+
+def test_renaming_a_listed_colour_passes_the_base_check(tmp_path: Path, declare) -> None:
+    """PL-NDGS. A rename that keeps the value moves the base's entry rather than adding one."""
+    root = _based(tmp_path, shortfalls='{("FAINT", "PANEL"): Shortfall("PL-DDDD", 2.32)}')
+    (root / contrast_check.THEME).write_text(
+        THEME_SOURCE.replace("FAINT =", "HINT_TEXT ="), encoding="utf-8"
+    )
+    declare(
+        (_requirement("HINT_TEXT", "PANEL", contrast_check.AA_TEXT),),
+        {("HINT_TEXT", "PANEL"): _listed(2.32)},
+    )
+
+    assert not contrast_check.analyze(root, base="main").errors
+
+
+def test_a_renamed_listed_colour_made_worse_is_still_refused(tmp_path: Path, declare) -> None:
+    """A rename carries the base's ratio with it, so it is no way round PL-L1NX's refusal."""
+    root = _based(tmp_path, shortfalls='{("FAINT", "PANEL"): Shortfall("PL-DDDD", 2.32)}')
+    (root / contrast_check.THEME).write_text(
+        THEME_SOURCE.replace("FAINT =", "HINT_TEXT =").replace(
+            'PANEL = "#FFFFFF"', 'PANEL = "#F4F4F4"'
+        ),
+        encoding="utf-8",
+    )
+    declare(
+        (_requirement("HINT_TEXT", "PANEL", contrast_check.AA_TEXT),),
+        {("HINT_TEXT", "PANEL"): _listed(2.11)},
+    )
+
+    report = contrast_check.analyze(root, base="main")
+
+    assert [worse.excused for worse in report.made_worse] == [2.32]
+
+
+def test_a_new_constant_reusing_a_listed_value_is_still_a_new_colour(
+    tmp_path: Path, declare
+) -> None:
+    """PL-NDGS's limit. The old name is still defined, so nothing was renamed."""
+    root = _based(tmp_path, shortfalls='{("FAINT", "PANEL"): Shortfall("PL-DDDD", 2.32)}')
+    (root / contrast_check.THEME).write_text(
+        THEME_SOURCE + 'HINT_TEXT = "#AAAAAA"\n', encoding="utf-8"
+    )
+    declare(
+        (
+            _requirement("FAINT", "PANEL", contrast_check.AA_TEXT),
+            _requirement("HINT_TEXT", "PANEL", contrast_check.AA_TEXT),
+        ),
+        {("FAINT", "PANEL"): _listed(2.32), ("HINT_TEXT", "PANEL"): _listed(2.32)},
+    )
+
+    report = contrast_check.analyze(root, base="main")
+
+    assert [added.colour for added in report.added_with_colour] == ["HINT_TEXT"]
+    assert report.added_with_colour[0].was is None
 
 
 def test_a_base_that_cannot_be_read_fails_and_says_what(
@@ -496,12 +610,19 @@ def test_a_base_that_cannot_be_read_fails_and_says_what(
         pytest.param("NOTHING = {}\n", id="no such name"),
         pytest.param("KNOWN_SHORTFALLS = dict()\n", id="not a literal mapping"),
         pytest.param("KNOWN_SHORTFALLS = {PAIR: 'PL-DDDD'}\n", id="key is a name"),
+        pytest.param("KNOWN_SHORTFALLS = {('A', 'B'): 'PL-DDDD'}\n", id="value is an id alone"),
+        pytest.param(
+            "KNOWN_SHORTFALLS = {('A', 'B'): Shortfall('PL-DDDD')}\n", id="value has no ratio"
+        ),
+        pytest.param(
+            "KNOWN_SHORTFALLS = {('A', 'B'): Shortfall('PL-DDDD', RATIO)}\n", id="ratio is a name"
+        ),
     ],
 )
 def test_a_base_ledger_that_cannot_be_read_is_refused(source: str) -> None:
     """Which entries the base holds is the whole comparison, so every way of losing it is loud."""
     with pytest.raises(contrast_check.BaseUnreadable):
-        contrast_check.shortfall_keys(source)
+        contrast_check.shortfall_entries(source)
 
 
 # --- exemptions: a use the criterion does not bind (PL-HKTB) -----------------
@@ -656,7 +777,7 @@ def test_a_two_channel_shortfall_is_excused_under_both_names(tmp_path: Path, dec
     """A disjunction is keyed by what the report prints, so its entry is findable."""
     declare(
         (_either(("demoflurane.foreground", "FAINT"), "PANEL", contrast_check.AA_NON_TEXT),),
-        {("demoflurane.foreground or FAINT", "PANEL"): "PL-DDDD"},
+        {("demoflurane.foreground or FAINT", "PANEL"): _listed(2.32)},
     )
 
     report = contrast_check.analyze(_repo(tmp_path))
@@ -899,7 +1020,7 @@ def test_every_known_shortfall_names_an_item_that_exists() -> None:
         for path in (REPO_ROOT / "docs" / "items").glob("PL-*.md")
     }
 
-    for pair, item in contrast_check.KNOWN_SHORTFALLS.items():
+    for pair, (item, _ratio) in contrast_check.KNOWN_SHORTFALLS.items():
         assert item in filed, f"{pair[0]} on {pair[1]} is excused by {item}, which is not filed"
 
 
