@@ -172,6 +172,19 @@ def test_values_are_grouped_by_the_tier_of_their_adopted_source(
     )
 
 
+def test_a_shipped_workspace_file_is_not_counted(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`data/workspaces/` holds layout rather than parameters, so it adds no line and no value."""
+    files = _files()
+    alone = _run(_tree(tmp_path / "alone", files), capsys)
+    workspace = {"schema_version": 1, "active": 0, "sizes": [0.75, 0.25]}
+    beside = _run(
+        _tree(tmp_path / "beside", files | {"workspaces/default.json": workspace}), capsys
+    )
+    assert beside == alone
+
+
 def test_a_file_that_adopts_nothing_still_totals_every_tier(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -257,9 +270,11 @@ def test_the_real_tree_counts_each_stored_value_once(capsys: pytest.CaptureFixtu
     code, out, err = _run(root, capsys)
     assert code == 0, err
 
+    data = root / "src" / "anesthesia_sim" / "data"
     stored = sum(
         len(list(doc_check._leaf_numbers(json.loads(path.read_text(encoding="utf-8")))))
-        for path in (root / "src" / "anesthesia_sim" / "data").rglob("*.json")
+        for path in data.rglob("*.json")
+        if not doc_check.NON_PARAMETER_DATA_DIRS.intersection(path.relative_to(data).parts)
     )
     totals = next(line for line in out.splitlines() if line.startswith("All files: "))
     match = TOTALS_RE.fullmatch(totals)

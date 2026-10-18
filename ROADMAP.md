@@ -6259,14 +6259,16 @@ removed, and this file's history before that change holds their text.
     single-version rule is correct for files that ship with the code and wrong
     for a file the learner wrote, so the rule is decided rather than inherited.
 
-13. **The shipped default Workspaces** (queue item `PL-KXTL`). The central-graph
+13. **The shipped default Workspaces** (queue items `PL-KXTL` and `PL-L59K`). The central-graph
     default with the other Views arranged around it, an induction Workspace
     with the concentration graph zoomed in, and a big-picture maintenance one -
     as validated versioned JSON beside the other shipped parameter files, with
     the provenance line `docs/interface-provenance.md` asks of anything derived
     from Blender's own named task Workspaces.
     The three are composed within the pixel budget entry 20 sets
-    (`PL-84QX`).
+    (`PL-84QX`). The induction Workspace's zoom is the chart's own
+    saved state, so `PL-L59K` adds it once the View contract (entry 5,
+    `PL-TH35`) says what that state holds.
 
 14. **The operations a reader performs** (queue item `PL-2KXB`). Border drag
     moving the collinear chain the `borders()` query returns; corner drag to

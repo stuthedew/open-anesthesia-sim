@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "active": 0,
+  "workspaces": [
+    {
+      "name": "Induction",
+      "origin": "shipped:induction",
+      "layout": {
+        "next_area_id": 4,
+        "windows": [
+          {
+            "tree": {
+              "split": "row",
+              "sizes": [
+                0.75,
+                0.25
+              ],
+              "children": [
+                {
+                  "split": "column",
+                  "sizes": [
+                    0.6,
+                    0.4
+                  ],
+                  "children": [
+                    {
+                      "area": 1,
+                      "view": "concentration_chart"
+                    },
+                    {
+                      "area": 2,
+                      "view": "wash_in"
+                    }
+                  ]
+                },
+                {
+                  "area": 3,
+                  "view": "parameter_controls"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "view_state": {}
+    }
+  ]
+}
