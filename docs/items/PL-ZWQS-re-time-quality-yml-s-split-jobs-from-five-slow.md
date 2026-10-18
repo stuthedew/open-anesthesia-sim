@@ -62,6 +62,22 @@ minutes apart whatever the split. The 2-in-5 share is kept because it should
 help the median, by about 35 s. Judge it by the median of several runs on
 `main`, never by a single run. The owner approved merging `#1523` on 2026-10-17.
 
+**Runner speed is confirmed as the cause of the gap, measured 2026-10-18.**
+Twelve successful `main` push runs followed `#1519`, from c50b5ce to 81b9176.
+Part 2's pytest step had two modes with nothing between them. Three runs took
+224 to 228 s and nine took 369 to 480 s. In six of those runs, part 2's job
+logs show the same image (`ubuntu-24.04`, version 20261012.334.1), 8 workers
+and the same 5,261 to 5,315 tests in both modes. Part 2 started 222 to 226 s
+of tests on the three `centralus` runners in that sample. It took 432 to 447 s
+on the two `eastus` runners and the one `westcentralus` runner. Six runs are
+too few to call the region the cause. Part 1's pytest time tracks its own
+`doc_check` step, 119 s at 16 s and 212 s at 27 s. Part 2 finished last on 10
+of the 12 runs, the 10 where its runner was slow. The split's median wall time
+over the 12 runs is 434.5 s against the single job's 621 s, a saving of about
+3.1 minutes. `PL-2N6J` records a second, smaller gap that is the project's own
+and not the runner's: part 2 waits 35 to 100 s longer than part 1 before
+pytest starts.
+
 **What is left is the re-timing.** It needs five successful slow-runner runs
 on `main` after `#1519` merges, so no branch can do it. The timeouts, the
 `checks` job's 5 minutes and `PYTEST_BASELINE_S` stay as they are until then.
