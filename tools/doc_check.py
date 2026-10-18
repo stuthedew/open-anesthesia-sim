@@ -6385,12 +6385,13 @@ def workflow_runs(text: str) -> tuple[list[tuple[str, ...]], list[UnreadStatemen
     quote gave `check`, `make check` and `esac` as commands, and only the
     unreadable line was declined.
 
-    The declines come back beside the commands, as `workflow_commands`
-    returns its own: a step it declines is declined here too.
+    The declines come back beside the commands in the order of their lines,
+    as `workflow_commands` returns its own: a step it declines is declined
+    here too.
     """
     scripts, steps = _workflow_scripts(text)
     runs = [words for _, body, script in scripts for words in _script_runs(body, script, steps)]
-    return runs, steps
+    return runs, sorted(steps, key=lambda step: step.line)
 
 
 def pull_request_runs(
@@ -6422,7 +6423,7 @@ def pull_request_runs(
                 doubt = doubt or condition
         else:
             runs += [(words, doubt) for words in _script_runs(body, script, steps)]
-    return runs, steps
+    return runs, sorted(steps, key=lambda step: step.line)
 
 
 #: A condition on the event that started the workflow. It is the one form of

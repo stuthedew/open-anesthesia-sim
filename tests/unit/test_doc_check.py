@@ -3530,6 +3530,22 @@ def test_workflow_commands_returns_its_declines() -> None:
         assert "a folded block (`>`)" in declined[0].why
 
 
+def test_the_workflow_readers_return_their_declines_in_line_order() -> None:
+    """`PL-GC59`'s review: a script's decline and a step's decline come back in step order.
+
+    The step declines were gathered first and the script declines after, so a
+    script declined above a step declined came back second.
+    """
+    text = STEP_JOB + '      - run: |\n          echo "open\n      - run: "quoted"\n'
+
+    _, run_steps = doc_check.workflow_runs(text)
+    _, pull_request_steps = doc_check.pull_request_runs(text)
+
+    below = STEP_JOB.count("\n")
+    assert [step.line - below for step in run_steps] == [2, 3]
+    assert [step.line - below for step in pull_request_steps] == [2, 3]
+
+
 def test_workflow_commands_reads_a_folded_block_as_a_step_it_declines(tmp_path: Path) -> None:
     """The brief's reproduction: YAML hands bash `python3 tools/harness/gone.py --flag`.
 

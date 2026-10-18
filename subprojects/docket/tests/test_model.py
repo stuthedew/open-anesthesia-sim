@@ -1561,3 +1561,17 @@ def test_a_comment_line_inside_a_plain_value_is_not_folded_over() -> None:
     assert fields["title"] == "Fixed in"
     assert unread_front_matter_lines(text) == ("  1377 at last",)
     assert declined.lines == ("  1377 at last",)
+
+
+def test_a_comment_line_before_a_value_begins_ends_nothing() -> None:
+    """`PL-B53Y`'s review: YAML reads `key:` over a comment over a value as that value.
+
+    A comment line ended every value, so the value after it was reported
+    unread and the field read empty.
+    """
+    text = "---\nid: PL-001\ntitle:\n  # a comment\n  Fixed in 1377\n---\n"
+
+    fields, _, _ = parse_front_matter(text)
+
+    assert fields["title"] == "Fixed in 1377"
+    assert unread_front_matter_lines(text) == ()

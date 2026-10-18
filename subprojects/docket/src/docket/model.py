@@ -274,8 +274,9 @@ def _fold(lines: list[str]) -> tuple[list[tuple[str, str, int, list[int]]], list
     line usually holds is the tail of the value above it, and a reader that
     passes over it hands on that value shortened with nothing to say so.
 
-    **A comment line ends the value above it, as YAML ends a plain scalar
-    there** (YAML 1.2.2 § 6.6). An indented line after it continues nothing,
+    **A comment line ends the plain value above it, as YAML ends a plain
+    scalar there** (YAML 1.2.2 § 6.6), once the value has begun
+    (`_plain_begun`). An indented line after it continues nothing,
     so it is unread and reported. It used to be folded on, which read a value
     that YAML refuses (`PL-B53Y`). **Inside a quoted value still open, a
     `#`-led line is content**, as YAML reads a `#` inside a quoted scalar
@@ -295,7 +296,7 @@ def _fold(lines: list[str]) -> tuple[list[tuple[str, str, int, list[int]]], list
         if not line.strip():
             continue
         if line.lstrip().startswith("#"):
-            ended = True
+            ended = ended or _plain_begun(text)
             continue
         field_match = FIELD_RE.match(line)
         if field_match is not None:
@@ -307,6 +308,17 @@ def _fold(lines: list[str]) -> tuple[list[tuple[str, str, int, list[int]]], list
         else:
             unread.append(index)
     return fields, unread
+
+
+def _plain_begun(value: str) -> bool:
+    """Whether `value` is a plain scalar that has begun, which a comment line ends.
+
+    A comment line before a value begins ends nothing, as YAML reads
+    `key:` over a comment over an indented value. Nor does one end a block
+    scalar (`|`, `>`) or a block sequence (`- `): `_fold` folds neither as
+    YAML does, and reports neither as unread.
+    """
+    return bool(value) and value[0] not in "|>" and not value.startswith("- ")
 
 
 def _quote_open(value: str) -> bool:
