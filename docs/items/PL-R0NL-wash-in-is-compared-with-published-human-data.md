@@ -3,11 +3,13 @@ id: PL-R0NL
 title: Wash-in is compared with published human data at one instant, 30 minutes, so the first 15 minutes of the F_A/F_I rise, the phase the simulator most displays, are compared against nothing published and a doubled FRC that moves F_A/F_I at 1 min by -0.118 passes every gate
 priority: P1
 effort: L
-status: ready
+status: done
 classes: science, test
 feature: validation-resolving-power
 touches: tests/reference/test_published_wash_in_and_elimination.py, docs/references, docs/MODEL.md
 added: 2026-10-17
+closed: 2026-10-18
+pr: 1526
 payoff: the first minutes of the wash-in curve, the phase the simulator shows most, are checked against published human data rather than against nothing
 verify: grep -q 'def test_early_wash_in_matches_published_human_measurement' tests/reference/test_published_wash_in_and_elimination.py
 ---
@@ -150,3 +152,49 @@ What a disagreement would mean:
 In cases 2 to 5 the test asserts a stated regression band at the points that
 disagree, as the elimination half does, and the disagreement is filed as its
 own item rather than fixed here.
+
+## Resolution, 2026-10-18
+
+**The early curve exists in both papers, and it is now compared point by
+point.** Figure 2 of each paper was read from its page scan, and the values,
+the reading method and its error are recorded in
+`docs/references/yasuda-1991-figure-2-wash-in.md`. The comparison drives the
+shipped patient with F_I held at the airway and compares 37 points, from 1 to
+25 minutes, in
+`test_early_wash_in_matches_published_human_measurement`.
+
+**Against the pre-registration.** Sevoflurane and both isoflurane cohorts fell
+in case 1: every point within 1 SD, apart from the *Anesthesiology*
+isoflurane at 12.5 minutes, at +1.06 SD. That point is within the figure's
+reading error of the band, and it is held to the regression band. Desflurane
+matched no case as written. It rises too fast from 1 to 10 minutes, at +1.70
+to +2.10 SD, and agrees from 12.5 minutes on. Case 2 named ventilation and the
+lung volume as the first candidates for a fast rise. The data rule them out,
+because the isoflurane breathed by the same eight volunteers agrees, and an
+operating-point error would move both agents together. The pre-registration
+did not foresee a disagreement confined to one agent. The cause is filed as
+`PL-CM1B`. Its five points from 1 to 10 minutes, and the isoflurane point at
+12.5 minutes, are held to a band from -1 SD to +2.5 SD.
+
+**What the gate can resolve now.** The edge search was repeated with the
+early points in the gate. The alveolar gas volume that `PL-9YHR` found
+unseen is now caught from above: doubled, it moves sevoflurane's 1-minute
+F_A/F_I from 0.537 to 0.429, -2.85 SD, and the gate fails at +19% to +33%.
+Blood:gas and the vessel-rich group are now held to a few percent on both
+sides for sevoflurane and isoflurane. Many of those edges are narrow because
+the model already sits at +0.75 to +0.94 SD at 12.5 and 15 minutes, and
+`docs/MODEL.md` § "What the published-data gate can and cannot resolve" says
+so beside the table. Smaller circuits and fat still go unseen.
+
+**What changed in the resolving-power cases.** The edge search showed that
+three changes the gate could not see before are now detected: vessel-rich
+tissue:gas x0.80, the alveolar gas volume halved for isoflurane, and the
+venous pool doubled for sevoflurane and isoflurane. They left
+`UNDETECTED_CHANGES`. `DETECTED_CHANGES` now uses blood:gas x0.90 and x1.15,
+vessel-rich tissue:gas x0.80 and x1.75, and alveolar gas volume x1.50.
+
+**Not done here.** The points before 1 minute were not taken, because the
+first-breath and 0.75-minute markers crowd the axis. The early comparison
+runs only at the papers' own square-wave delivery, so the shipped circuit's
+filling is not part of it. Both papers gave nitrous oxide as background,
+which the model does not carry, and `docs/MODEL.md` says so.
