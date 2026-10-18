@@ -6409,7 +6409,10 @@ removed, and this file's history before that change holds their text.
     shorter chart on this screen, and layout wins back what it can by folding
     each run's transport row and heading into one line (project owner,
     2026-10-18, ratified, over scrolling the page and over refusing the
-    chart's Area, `PL-JG82`; the folding is `PL-QLZ5`). Entry 13's shipped Workspaces are composed
+    chart's Area, `PL-JG82`; the folding is `PL-QLZ5`). `PL-QLZ5` folded
+    them on 2026-10-18 and measured the result on the offscreen font: the
+    region drops from 366 px to 303 px with two runs, which leaves the chart
+    about 264 px, 96 px short. Entry 13's shipped Workspaces are composed
     within it. **All eight were decided on 2026-10-11** (project owner,
     ratified, over the alternatives each item names); the items carry the
     decisions, and the build items they name carry the look.

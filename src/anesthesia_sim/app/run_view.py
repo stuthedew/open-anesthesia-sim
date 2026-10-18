@@ -60,8 +60,9 @@ from collections.abc import Callable, Mapping
 from typing import Final
 
 from PySide6.QtCore import QSignalBlocker, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QColor, QFont, QFontMetrics
 from PySide6.QtWidgets import (
+    QBoxLayout,
     QComboBox,
     QDialog,
     QFrame,
@@ -90,6 +91,8 @@ from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     ACCOUNTING_INITIAL_DETAIL_TEXT,
     ACCOUNTING_UNIT_CAPTION,
+    BRANCH_AGENT_LOCK_TEXT,
+    COMPARING_AGENT_LOCK_TEXT,
     CONTROL_TIMELINE_CAPTION,
     CONTROL_TIMELINE_HEADING,
     INTERPRETATION_DISCLAIMER_TEXT,
@@ -98,6 +101,7 @@ from anesthesia_sim.app.dashboard_frame import (
     READOUT_PANELS,
     READOUT_RESERVATIONS,
     RESET_LABEL,
+    RUNNING_AGENT_LOCK_TEXT,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     START_LABEL,
@@ -211,6 +215,23 @@ _CLOCK_PANEL_INDEX: Final = next(
 #: The header badge's inset. Narrower than the chip's, which carries two lines
 #: and sits among controls; a bare spacing literal is decision D9's interim.
 _HEADER_BADGE_PADDING: Final = 6
+
+#: Every caption the agent chip can carry under the agent's name, which is
+#: `dashboard_frame.transport`'s set of lock reasons. While two runs are
+#: compared the chip is as wide as the widest of them on one line, so both
+#: runs' chips are one width and the controls after them line up.
+_LOCK_CAPTIONS: Final = (RUNNING_AGENT_LOCK_TEXT, BRANCH_AGENT_LOCK_TEXT, COMPARING_AGENT_LOCK_TEXT)
+
+#: The gap between the agent's name and the lock caption when the chip lays
+#: them on one line while two runs are compared. A bare spacing literal is
+#: decision D9's interim.
+_CHIP_CAPTION_GAP: Final = 8
+
+#: The inset above and below the chip's text and the badge's while two runs
+#: are compared, so neither is taller than the selector beside the chip and
+#: each compared run's line is one control high. A bare spacing literal is
+#: decision D9's interim.
+_FOLDED_VERTICAL_PADDING: Final = 2
 
 #: Object names the agent-coloured surfaces are styled through, so a surface's
 #: stylesheet reaches that frame and not the labels inside it.
@@ -326,6 +347,11 @@ class RunView(QWidget):
         # fact and not this view's; it reaches the transport as the third
         # reason an agent selector may be replaced by the chip.
         self._comparing = False
+        # The run whose readout heading also states this run's substance and
+        # 1 MAC, set while this run's readouts are drawn in that run's panels
+        # (`show_readings_of`). Both runs are on one agent, so the one heading
+        # is true of both (`PL-QLZ5`).
+        self._heading_shown_by: RunView | None = None
 
         # What this run is called, where the chart's legend calls it that.
         # Its own label rather than a word inside the agent badge, because the
@@ -355,6 +381,7 @@ class RunView(QWidget):
         self._agent_header_badge = QFrame()
         self._agent_header_badge.setObjectName(_HEADER_BADGE_NAME)
         badge = QHBoxLayout(self._agent_header_badge)
+        self._badge_layout = badge
         badge.setContentsMargins(
             _HEADER_BADGE_PADDING,
             _HEADER_BADGE_PADDING,
@@ -396,6 +423,7 @@ class RunView(QWidget):
         self._running_agent_display.setObjectName(_RUNNING_AGENT_DISPLAY_NAME)
         self._running_agent_display.setFixedWidth(AGENT_SELECTOR_WIDTH)
         chip = QVBoxLayout(self._running_agent_display)
+        self._chip_layout: QBoxLayout = chip
         chip.setContentsMargins(
             RUNNING_AGENT_DISPLAY_PADDING,
             RUNNING_AGENT_DISPLAY_PADDING,
@@ -437,12 +465,6 @@ class RunView(QWidget):
         )
         self._playback_rate_dropdown.currentIndexChanged.connect(self._handle_playback_rate_change)
 
-        # Which run the heading line's values belong to, while more than one
-        # is shown. The paired readouts sit under the first run's heading,
-        # so a later run's heading is not beside its own values and its
-        # position names nothing (`PL-F2YS`).
-        self._heading_run_name_text = styled_label("", color=INK, bold=True)
-        self._heading_run_name_text.setHidden(True)
         self._compartment_substance_text = styled_label(
             substance_heading(snapshot), color=INK, bold=True
         )
@@ -864,14 +886,87 @@ class RunView(QWidget):
 
         Called by the dashboard whenever its run set changes, so a selector
         locked by a fork is locked from the frame the branch appears rather
-        than from the next tick.
+        than from the next tick. It also moves the values each run states
+        once into the run's own transport row, or back (`_fold_heading_into_transport`).
 
         Args:
             comparing: Whether more than one run is displayed.
         """
 
+        if comparing != self._comparing:
+            self._fold_heading_into_transport(comparing)
+
         self._comparing = comparing
         self._write_transport(self._transport_lock(self.controller.status()))
+
+    def _fold_heading_into_transport(self, folded: bool) -> None:
+        """Give each compared run one line, or give a lone run its two lines back.
+
+        With two runs compared, each run's transport row and its readout
+        heading line stood one above the other, and the two runs' four lines
+        took the height the concentration chart needs on a 1366 by 700
+        laptop (`PL-JG82`). Folded, a run's transport row also carries its
+        delivered concentration, which is the one heading value that differs
+        between the runs. The agent chip lays its caption beside the agent's
+        name rather than under it, at one width for every run, and the chip
+        and the badge lose most of their inset above and below. The values
+        the runs share stay on the first run's heading line, above the paired
+        readouts: the substance, the interpretation line, the agent's 1 MAC
+        and the version-and-model badge. `add_run` refuses a run on another
+        agent, and a branch's MAC is checked against its trunk's when it is
+        opened, so one statement of each is true of both runs (`PL-QLZ5`).
+
+        Args:
+            folded: Whether to fold, which is whether more than one run is displayed.
+        """
+
+        if folded:
+            self._heading_layout.removeWidget(self._delivered_text)
+            self._transport_layout.removeWidget(self._agent_header_badge)
+            self._transport_layout.addWidget(self._delivered_text)
+            self._heading_layout.addWidget(self._agent_header_badge)
+            self._chip_layout.setDirection(QBoxLayout.Direction.LeftToRight)
+            self._chip_layout.setSpacing(_CHIP_CAPTION_GAP)
+            self._running_agent_display.setFixedWidth(self._one_line_chip_width())
+            chip_vertical = badge_vertical = _FOLDED_VERTICAL_PADDING
+        else:
+            self._transport_layout.removeWidget(self._delivered_text)
+            self._heading_layout.removeWidget(self._agent_header_badge)
+            self._heading_layout.insertWidget(
+                self._heading_layout.indexOf(self._one_mac_text), self._delivered_text
+            )
+            self._transport_layout.addWidget(self._agent_header_badge)
+            self._chip_layout.setDirection(QBoxLayout.Direction.TopToBottom)
+            self._chip_layout.setSpacing(0)
+            self._running_agent_display.setFixedWidth(AGENT_SELECTOR_WIDTH)
+            chip_vertical = RUNNING_AGENT_DISPLAY_PADDING
+            badge_vertical = _HEADER_BADGE_PADDING
+
+        self._chip_layout.setContentsMargins(
+            RUNNING_AGENT_DISPLAY_PADDING,
+            chip_vertical,
+            RUNNING_AGENT_DISPLAY_PADDING,
+            chip_vertical,
+        )
+        self._badge_layout.setContentsMargins(
+            _HEADER_BADGE_PADDING, badge_vertical, _HEADER_BADGE_PADDING, badge_vertical
+        )
+
+    def _one_line_chip_width(self) -> int:
+        """The chip's width with the widest agent name and the widest caption on one line.
+
+        Measured from the two labels' own fonts, so every compared run's chip
+        is one width whichever agent it runs and whichever caption it carries.
+        """
+
+        name = QFontMetrics(self._running_agent_text.font())
+        caption = QFontMetrics(self._running_agent_lock_text.font())
+        widest_name = max(
+            name.size(0, display_name).width() for _, display_name in AVAILABLE_AGENTS
+        )
+        widest_caption = max(caption.size(0, text).width() for text in _LOCK_CAPTIONS)
+
+        return 2 * RUNNING_AGENT_DISPLAY_PADDING + widest_name + _CHIP_CAPTION_GAP + widest_caption
 
     def _write_transport(self, lock: Transport) -> None:
         """Write the transport's enablement and which of the selector and the chip is shown.
@@ -1395,6 +1490,7 @@ class RunView(QWidget):
         layout = QHBoxLayout(row)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
+        self._transport_layout = layout
         layout.addWidget(self._run_name_text)
         layout.addWidget(self._agent_dropdown)
         layout.addWidget(self._running_agent_display)
@@ -1445,8 +1541,6 @@ class RunView(QWidget):
         self._run_name = name
         self._run_name_text.setText(name or "")
         self._run_name_text.setHidden(name is None)
-        self._heading_run_name_text.setText(name or "")
-        self._heading_run_name_text.setHidden(name is None)
         self._readout_row.set_run_name(name)
         self._accounting_heading_text.setText(compared_panel_heading(ACCOUNTING_HEADING, name))
         self._control_timeline_heading_text.setText(
@@ -1475,8 +1569,9 @@ class RunView(QWidget):
         `docs/MODEL.md` § "Minimum displayed outputs" pairs two runs' values
         under one compartment name, so comparing them is one row's reading
         rather than two rows' (`PL-F2YS`). `other` keeps writing its own
-        values; only where they are drawn changes. Its readout section keeps
-        its heading line, and its own row is hidden.
+        values; only where they are drawn changes. Its own row is hidden, and
+        this run's heading line states its substance and 1 MAC, so nothing
+        in its readout section is left for the dashboard to show (`PL-QLZ5`).
 
         Args:
             other: The run being compared with this one.
@@ -1486,7 +1581,10 @@ class RunView(QWidget):
             removing `other` does, takes them out again.
         """
 
-        return self._readout_row.add_readings(other._readout_row)
+        moved = self._readout_row.add_readings(other._readout_row)
+        other._heading_shown_by = self
+
+        return moved
 
     def _lay_out_readout_section(self) -> QWidget:
         """Build the section around this run's heading and readouts; only the constructor calls it.
@@ -1502,7 +1600,7 @@ class RunView(QWidget):
         heading = QHBoxLayout(heading_row)
         heading.setContentsMargins(0, 0, 0, 0)
         heading.setSpacing(12)
-        heading.addWidget(self._heading_run_name_text)
+        self._heading_layout = heading
         heading.addWidget(self._compartment_substance_text)
         heading.addWidget(self._interpretation_text)
         heading.addStretch(1)
@@ -1560,21 +1658,24 @@ class RunView(QWidget):
         `SimulationView` builds its unconditional region from this, and
         refuses a run whose set names a value this mapping lacks, so the
         declaration in `app/unconditional_set.py` is what decides what the
-        region must hold (`PL-NWTM`).
+        region must hold (`PL-NWTM`). While another run's panels carry this
+        run's readouts, that run's heading line draws this run's substance
+        and 1 MAC, because the two runs share them (`PL-QLZ5`).
 
         Returns:
             One widget per value of `unconditional_set(INHALED_AGENT)`.
         """
 
         clock = self._readout_row.panels[_CLOCK_PANEL_INDEX]
+        heading = self._heading_shown_by or self
         widgets: dict[UnconditionalValue, QWidget] = {
             UnconditionalValue.SIMULATED_TIME: clock.value_label,
             UnconditionalValue.PLAYBACK_RATE: self._playback_rate_text,
             UnconditionalValue.RUN_STATE: self._status_text,
             UnconditionalValue.HALT_REASON: self._notice_text,
-            UnconditionalValue.ADMINISTERED_SUBSTANCE: self._compartment_substance_text,
+            UnconditionalValue.ADMINISTERED_SUBSTANCE: heading._compartment_substance_text,
             UnconditionalValue.DELIVERED_CONCENTRATION: self._delivered_text,
-            UnconditionalValue.ONE_MAC: self._one_mac_text,
+            UnconditionalValue.ONE_MAC: heading._one_mac_text,
             UnconditionalValue.CONTROL_INPUT_RECORD: self._control_record_panel,
         }
 
