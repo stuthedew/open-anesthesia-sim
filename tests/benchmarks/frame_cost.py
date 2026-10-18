@@ -285,15 +285,16 @@ def _bring_chart_into_view(view: SimulationView) -> None:
     one-run dashboard's is at this size, nothing moves.
 
     Raises:
-        ValueError: If the dashboard does not hold exactly one scrolling
-            page and one concentration chart, since which to scroll would
-            then be a guess.
+        ValueError: If the dashboard does not hold exactly one concentration
+            chart, and exactly one scroll area around it, since which to
+            scroll would then be a guess. The control-change record scrolls
+            within itself too, but it does not hold the chart.
         RuntimeError: If the chart is still not wholly in view, as it
             would not be in a window shorter than the chart.
     """
 
-    (page,) = view.findChildren(QScrollArea)
     (chart,) = view.findChildren(ConcentrationChart)
+    (page,) = (area for area in view.findChildren(QScrollArea) if area.isAncestorOf(chart))
     page.ensureWidgetVisible(chart, 0, 0)
     viewport = page.viewport()
     top = chart.mapTo(viewport, QPoint(0, 0)).y()

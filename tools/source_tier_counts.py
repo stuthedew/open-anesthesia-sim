@@ -1,6 +1,6 @@
 """Print how many stored values rest on a source of each tier, read from the data files.
 
-For each data file under `src/anesthesia_sim/data/`, the stored values are
+For each parameter file under `src/anesthesia_sim/data/`, the stored values are
 listed by the tier of the `sources` entry adopted as their authority - tier 1
 (primary), 2 (secondary) or 3 (reference implementation), numbered as
 `docs/MODEL.md` § "Source hierarchy" numbers them - with each entry's citation
@@ -126,9 +126,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     documents: dict[str, Any] = {}
-    for data_path in doc_check._walk(data_root):
-        if data_path.suffix != ".json":
-            continue
+    for data_path in doc_check.parameter_data_files(root):
         relative = data_path.relative_to(root / doc_check.PACKAGE_ROOT).as_posix()
         try:
             documents[relative] = json.loads(data_path.read_text(encoding="utf-8"))

@@ -14,6 +14,9 @@ closed: 2026-10-03
 pr: 1300
 payoff: A path citation's verdict depends on the repository alone, so root and the CI runner agree on the same commit - which is what PL-1RTM needs before it hands the queue's 22 absolute tokens to check_citations.
 verify: grep -q 'def test_an_absolute_citation_is_repository_anchored' tests/unit/test_doc_check.py
+root-cause-of: PL-F933, PL-MXSL, PL-D1NT
+generator: spent - doc_check now resolves a citation against the repository alone: PL-MXSL's _covered_by_gitignore (#593) closed the ignored-directory half and PL-H0CF's _repository_paths (#1300) the absolute-path half, and no member has been filed since 2026-10-03
+misread: Whether a cited path is in the repository, rather than on the disk of the machine running the check
 ---
 
 **Problem.** doc_check resolves an absolute-path citation against the container filesystem, so one tree gives root and CI different verdicts on the same line
@@ -157,3 +160,10 @@ one assertion that rewrite removed, that `/docs/*.md` is an error: it is the
 behaviour this brief commissioned changing, and is accepted as that (project
 owner, 2026-10-03, ratified, over a pull request declaring `falsifies:` on
 `main` first).
+
+**Recorded as a head 2026-10-18 by `PL-K046`.** Two refuters agreed that
+`PL-F933`, `PL-MXSL`, `PL-D1NT` and this item misread one fact: whether a
+cited path is in the repository, rather than on the disk of the machine running
+the check. This item carries the `root-cause-of:` because `_repository_paths`
+is the one place a citation becomes a repository path. `PL-K046` has the
+reasoning.

@@ -49,6 +49,9 @@ data/  --loaded by-->  core/  --read by-->  app/
   reached from `core/circuit.py` and were therefore invisible to
   `tools/doc_check.py`'s provenance walk, which can only see a constant that
   entered a data file.
+  `data/workspaces/` holds the shipped Workspaces, which are layout rather
+  than parameters: `layout/shipped.py` reads them, and nothing in `core/`
+  does.
 
 Three rules rest on this layering, and this section is where the first is
 stated. Simulation code stays independent of the UI toolkit:
@@ -90,9 +93,10 @@ src/anesthesia_sim/
 ├── app/                  # user interface - PySide6 and pyqtgraph since PL-25KS (ROADMAP.md § "Completed: v0.4.26 - the interface moves to Qt")
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots; ResumePoint and BranchedCase: where a branch opened, and the trunk it belongs to
 │   ├── run_series.py               # the vocabulary a run's drawn values are addressed by, and the window one frame reads them from: RecordedQuantity, RecordedSeries, DrawnWindow; toolkit-independent
+│   ├── unconditional_set.py        # docs/MODEL.md's unconditional set as data: UnconditionalValue, its tiers, SubstanceInstance and INHALED_AGENT, read by the region that holds it (PL-NWTM); toolkit-independent
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_UNITS, ControlChange; toolkit-independent
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed, which SimulationController.advance supplies each step
-│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the charts, the legend and the compartment selection it shows, the time base, the captions, the wash-in section, the render tick, the splitter layout; no domain logic
+│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the charts, the legend and the compartment selection it shows, the time base, the captions, the wash-in section, the render tick, the splitter layout; no domain logic
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, inert_splitter, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
@@ -114,11 +118,13 @@ src/anesthesia_sim/
 │   ├── workspace.py                # Workspace and WorkspaceSet: a named layout with each View's saved state per Area and kind, and the ordered set a reader works in; removing the last Workspace is refused by the type (PL-WV9K)
 │   ├── migrations.py               # LAYOUT_SCHEMA_VERSION, and the steps that read a set document an older build wrote, each one version; the table is empty at version 1 and the chain is checked at import (PL-SSQW Q5)
 │   ├── store.py                    # WorkspaceStore: the reader's workspaces.json - the atomic save on "Save as default", and what a launch does with a file that is missing, older, newer, invalid or unreadable, none of it silent (PL-SSQW)
+│   ├── shipped.py                  # the shipped Workspaces read from data/workspaces/ by the reader the learner's file goes through, one file per Workspace, held to the current schema_version (PL-KXTL)
 │   └── exceptions.py               # what the package refuses, and what each refusal means to a caller
-└── data/                 # versioned, cited parameter files
+└── data/                 # versioned, cited parameter files, and the shipped Workspaces
     ├── agents/{sevoflurane,isoflurane,desflurane}.json
     ├── machines/reference_circle_system.json
-    └── patients/reference_adult.json
+    ├── patients/reference_adult.json
+    └── workspaces/{default,induction,maintenance}.json
 ```
 
 ## Data flow
@@ -803,9 +809,12 @@ disk; that was true until this store landed.
   state. `core/parameters.py`'s one-version rule is right for files that ship
   with the code and wrong for one the reader wrote, which is why this policy is
   decided rather than inherited.
-- **The shipped set** the store falls back to is `PL-KXTL`'s, under
-  `data/workspaces/`, read by the same reader as the learner's file.
-  <!-- absent: data/workspaces/ -->
+- **The shipped set** the store falls back to is `PL-KXTL`'s: three
+  Workspaces under `data/workspaces/`, one JSON file each, every file a set
+  document holding one Workspace. `layout/shipped.py` reads them with the
+  reader the learner's file goes through and holds them to the current
+  `schema_version`, since a shipped file is never migrated. "Reset this
+  Workspace" reads one file again by its id.
 
 ## Dependencies
 

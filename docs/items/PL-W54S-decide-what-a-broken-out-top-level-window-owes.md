@@ -1,14 +1,16 @@
 ---
 id: PL-W54S
 title: Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
-priority: P2
+priority: P1
 effort: M
-status: blocked
+status: ready
 classes: safety, anticipated
 feature: interface-areas
-blocked-by: PL-NWTM
 touches: docs/MODEL.md, ROADMAP.md
+blocked-by: PL-NWTM
 added: 2026-09-16
+payoff: each top-level window's region carries the invariant tier and the name of its run, and the per-substance tier has one home in the main window, so a break-out window adds a window rather than rebuilding the region
+verify: grep -q 'def test_every_window_region_carries_the_invariant_tier_and_its_run_name' tests/unit/test_unconditional_set.py
 ---
 
 **Problem.** Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings

@@ -3,12 +3,14 @@ id: PL-W9P6
 title: Build the one adapter module that drives the Qt widget tree from the LayoutModel, and turn the Qt port's inert splitter handles live
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: feature
 feature: interface-areas
 touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, tests/integration
 blocked-by: PL-NWTM, PL-5HSG
 added: 2026-09-16
+payoff: a reader can drag a border and the layout model changes with it, from one adapter module that is the only code in the app building splitters
+verify: grep -q 'def test_a_drag_on_a_border_changes_the_layout_model' tests/integration/test_layout_adapter.py
 ---
 
 **Problem.** Build the one adapter module that drives the Qt widget tree from the LayoutModel, and turn the Qt port's inert splitter handles live
@@ -29,7 +31,7 @@ than the widget tree alone.
 *Scope.* `ROADMAP.md` § "v0.6.0 - the layout is the reader's" -> "Required
 scope" item 2.
 
-## Blocked on `PL-NWTM`, 2026-10-12
+## [superseded 2026-10-18] Blocked on `PL-NWTM`, 2026-10-12
 
 Set by `PL-1FT6`'s close-out. The model this item drives exists now. What
 holds it is the readout section, still placed in the vertical splitter by
@@ -42,10 +44,17 @@ also drag the readouts to nothing, since a `QSplitter` child is collapsible by
 default. `PL-R1WQ`'s registry is built with this item, its first consumer, and
 `PL-TH35`'s contract after it.
 
-## Blocked on `PL-5HSG` as well, 2026-10-12
+## [superseded 2026-10-18] Blocked on `PL-5HSG` as well, 2026-10-12
 
 [superseded 2026-10-18] `PL-5HSG` closed on 2026-10-18 in `#1579`, so a drag
 already moves only the borders on its line when this item starts. The owner answered `PL-5HSG` on 2026-10-12 (ratified): a drag moves only the
 borders on its line, as Blender's does, and that lands before this item. The
 handles this item turns live give a reader their first drag, so a border they
 did not touch must not move under it from the start.
+
+**`PL-NWTM` done, 2026-10-18.** The unconditional values now sit in
+`SimulationView.unconditional_region`, above the splitter, and
+`SimulationView.layout_container` names the splitter tree this item builds
+from the model. `_place_run` refuses a run whose region lacks a value that
+`app/unconditional_set.py` declares, so the adapter cannot move one into an
+Area without failing at construction. `PL-5HSG` still blocks this item.
