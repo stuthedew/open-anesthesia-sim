@@ -9,6 +9,7 @@ touches: subprojects/docket/src/docket/frontmatter.py, subprojects/docket/tests/
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
 closed: 2026-10-18
+pr: 1569
 payoff: a skill's front matter closed with YAML's end marker is read as YAML reads it, so the id check neither passes a malformed id nor fails a correct one there
 verify: grep -q 'def test_a_document_end_marker_closes_the_front_matter' tests/unit/test_fixture_id_check.py
 ---
