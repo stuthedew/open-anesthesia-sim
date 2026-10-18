@@ -78,6 +78,42 @@ over the 12 runs is 434.5 s against the single job's 621 s, a saving of about
 and not the runner's: part 2 waits 35 to 100 s longer than part 1 before
 pytest starts.
 
+**On a larger sample, the gap is the split's and not the runners', measured
+2026-10-18.** The sample is every completed `quality.yml` run from 2026-10-17
+19:31 UTC to 2026-10-18 22:45 UTC in which both parts' pytest steps passed:
+293 runs, pull requests and pushes to `main` together, read from the Actions
+API's job and step timings. Each part's runner was sorted into one of three
+speed classes by a measure that the part's own split does not affect. Part 1's
+`python3 tools/doc_check.py check` step does fixed work, and it took about
+16 s, 21 to 22 s or 27 to 28 s, with little in between. Part 2 has no such
+step, so its pytest step's own three clusters were used: below 290 s, 290 to
+384 s, and 385 s or more. The two parts drew the classes in the same shares,
+so GitHub does not hand part 2 the slow runners more often:
+
+| runner class | part 1 | part 2 |
+| --- | --- | --- |
+| fast | 46 (16%) | 57 (19%) |
+| middle | 66 (23%) | 51 (17%) |
+| slow | 181 (62%) | 185 (63%) |
+
+The two parts' classes were independent: both parts drew a slow runner in 121
+runs, against 114 expected by chance. On runners of the same class, part 2's
+pytest step took 1.96 to 2.23 times as long as part 1's (medians 243 s against
+124 s on fast runners, 344 s against 154 s on middle ones, 462 s against 209 s
+on slow ones). Part 2's job finished last in all 141 runs where both parts
+drew the same class. It finished last in 249 of the 293 runs overall. Part 1
+finished last only in the 43 runs where part 2 drew a faster runner than part
+1. The median job times were 318 s for part 1 and 460 s for part 2, a gap of
+about 140 s against the 30 s target. The 17 s gap measured on `#1519` was one
+such lucky pairing: part 1's pytest step took 206 s, the slow class, and part
+2's took 278 s, the fast class. So the statement above that runner speed sets
+the gap holds for a single run, but the median gap is the split's own.
+`PL-2N6J`'s start-up delay in part 2, 76 to 146 s against 33 to 44 s in part
+1, falls inside the pytest step and so accounts for roughly 40 to 100 s of the
+140 s. Recommendation: work `PL-2N6J` first, then re-measure the median gap
+over at least 20 runs. Re-deal ordinary tests from part 2 to part 1 only if
+the gap is still more than 30 s.
+
 **What is left is the re-timing.** It needs five successful slow-runner runs
 on `main` after `#1519` merges, so no branch can do it. The timeouts, the
 `checks` job's 5 minutes and `PYTEST_BASELINE_S` stay as they are until then.
