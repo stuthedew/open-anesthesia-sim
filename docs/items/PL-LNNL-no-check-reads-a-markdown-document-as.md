@@ -3,12 +3,14 @@ id: PL-LNNL
 title: No check reads a Markdown document as CommonMark does, so a prose wrap that puts a spaced hyphen or plus sign at a line start renders a clause as a list item unnoticed - PL-DSMK's four in ROADMAP.md, PL-N7LK's four and PL-T4FK's one - and a rule refusing it must tell those apart from the 31 lists that interrupt a paragraph on purpose
 priority: P3
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-renders-as-written
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md
 blocked-by: PL-5DZ8, PL-8QMD, PL-ZGYX
 added: 2026-10-04
+closed: 2026-10-18
+pr: 1597
 payoff: a prose wrap that would render a clause as a stray list item fails make check where it is written, instead of being found on the rendered page one capture at a time
 verify: grep -q 'def test_a_wrapped_clause_that_renders_as_a_list_item_is_refused' tests/unit/test_doc_check.py && grep -q 'def test_a_list_that_interrupts_a_paragraph_on_purpose_passes' tests/unit/test_doc_check.py
 ---
@@ -65,3 +67,17 @@ stop the next instance.
 `bin/docket generators` marked still generating, so the generator pause that
 held this item has ended (`CLAUDE.md` § "What this project is"), and the
 `verify:` and `payoff:` written above stand.
+
+**Closed 2026-10-18.** `check_wrapped_list_items` in `tools/doc_check.py`
+reads each document's blocks through `docket.markdown`, which already decides
+where CommonMark lets a list item interrupt a paragraph. It refuses an item
+that interrupts a paragraph when the line above ends with no `.`, `:`, `!` or
+`?` (looking past closing emphasis, code, brackets and quotes), and either the
+paragraph runs over more than one line or the item opens with a lower-case
+letter. Measured on that day, the rule refuses the one wrap left outside the
+store, in `docs/ARCHITECTURE.md`, fixed here, and passes all 21 lists that
+interrupt a paragraph on purpose. The 12 YAML lists in `.claude/rules/` front
+matter are skipped as front matter. A one-line label such as
+`**Verification**` followed by a capitalised item is why the paragraph's
+length is part of the rule. The item store is skipped: it holds 83 such wraps
+in 82 briefs, filed as `PL-XLYK`.
