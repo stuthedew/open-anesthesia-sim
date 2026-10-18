@@ -110,6 +110,7 @@ from .vcs import (
     _unlanded_refs,
     base_copies,
     default_base,
+    head_branch,
     remote_heads,
 )
 
@@ -525,9 +526,9 @@ def _branch(
     depends on where the item is, which is read after the fetch (`_absent`).
     """
     remotes = _remotes(root, run)
-    name = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
+    name = head_branch(root, run, remotes)
     empty = _Branch(name="", remotes=remotes)
-    if name in {"", "HEAD"}:
+    if not name:
         return empty, (f"{command}: HEAD is detached; a claim names the branch it is on",), ()
     base = _head_name(default_base(root, runner=run), remotes)
     if name == base:

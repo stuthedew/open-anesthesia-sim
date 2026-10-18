@@ -130,6 +130,7 @@ from docket.claims import (  # noqa: E402
     LIVE,
     Hold,
     Holdings,
+    agent_branch,
     claims_bound,
     claims_nothing,
     holdings,
@@ -149,6 +150,7 @@ from docket.vcs import (  # noqa: E402
     answered,
     call_git,
     default_base,
+    head_branch,
     in_queue,
     leading_ids,
     queue_records,
@@ -208,7 +210,7 @@ def branch_name() -> str:
     head_ref = os.environ.get("GITHUB_HEAD_REF", "").strip()
     if head_ref:
         return head_ref
-    return _git(["rev-parse", "--abbrev-ref", "HEAD"]).strip()
+    return head_branch(ROOT, _runner)
 
 
 def _runner(argv: list[str], _root: Path) -> str:
@@ -253,7 +255,7 @@ def in_agent_namespace(name: str) -> bool:
     """
     if not name or name == "HEAD":
         return True
-    return name.lower().startswith(AGENT_BRANCH_PREFIX)
+    return agent_branch(name)
 
 
 def held(base: str) -> tuple[frozenset[str], str]:

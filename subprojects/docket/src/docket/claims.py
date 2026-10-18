@@ -99,7 +99,7 @@ from pathlib import Path
 from .config import Config
 from .lines import split_lines
 from .model import CLOSED_STATUSES, parse_front_matter
-from .release import NOTES_DIR, notes_name
+from .release import NOTES_DIR
 from .store import ID_PATTERN
 from .vcs import (
     BRANCH_ID_RE,
@@ -123,7 +123,9 @@ from .vcs import (
     _unlanded_refs,
     answered,
     changed_path_args,
+    cut_written,
     default_base,
+    head_branch,
     in_queue,
     leading_ids,
     listed_paths,
@@ -170,6 +172,17 @@ NAMED = "named"
 #: as `tools/branch_id_check.py`, and the two must read one definition
 #: (`PL-FFR0`).
 AGENT_BRANCH_PREFIX = "claude/"
+
+
+def agent_branch(name: str) -> bool:
+    """Whether a branch, named without its remote, sits in the agent namespace.
+
+    Compared lowercased, so `Claude/x` is an agent branch to every reader
+    (`PL-KL6B`). Git branch names are case-sensitive, so lowercasing can only
+    widen the scope, and no harness produces such a name.
+    """
+    return name.lower().startswith(AGENT_BRANCH_PREFIX)
+
 
 #: `Hold.state`: holding the item at `now`, out of lease, or ended.
 LIVE = "live"
@@ -934,7 +947,7 @@ def claims_nothing(
     """
     if (
         claims_bound(read, branch, remotes)
-        or not branch.lower().startswith(AGENT_BRANCH_PREFIX)
+        or not agent_branch(branch)
         or any(_head_name(hold.ref, remotes) == branch for hold in read.named)
     ):
         return False
@@ -1023,8 +1036,7 @@ def _local_branches(root: Path, run: Runner) -> frozenset[str]:
 
 def _checked_out(root: Path, run: Runner, remotes: frozenset[str]) -> str:
     """The branch `HEAD` is on, by the name a claim token uses, or `""` when detached."""
-    name = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
-    return "" if name in {"", "HEAD"} else _head_name(name, remotes)
+    return head_branch(root, run, remotes)
 
 
 def _history(names: list[str], base: str, root: Path, run: Runner) -> list[_Commit] | None:
@@ -1453,15 +1465,9 @@ def _cuts(
         head = run(["rev-parse", tip], root).strip()
         mine = bool(head) and run(["merge-base", head, "HEAD"], root).strip() == head
         for version in _cut_versions(tip, base, notes_dir, released, root, run):
-            written = run(
-                ["log", "-1", "--format=%H%x1f%aI", tip, "--", f"{prefix}{notes_name(version)}"],
-                root,
-            )
-            commit, _, stamp = written.strip().partition("\x1f")
-            try:
-                since = datetime.fromisoformat(stamp)
-            except ValueError:
-                since = last.get(name, moment)
+            written = cut_written(tip, notes_dir, version, root, run)
+            commit = written.commit
+            since = written.at or last.get(name, moment)
             found.append(
                 Hold(
                     key=version,
