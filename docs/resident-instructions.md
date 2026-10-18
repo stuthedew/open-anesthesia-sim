@@ -1049,3 +1049,27 @@ determinism bullet when a check, rather than the reference tests, compares two
 runs of one input; the test bullet when a gate demands a test for every changed
 `core/` path; and the data-file bullet when no evaluator can be added without
 failing a check, which none decides today.
+
+## The merge hold's clause, rewritten 2026-10-17
+
+`PL-DKBG` rewrote `CLAUDE.md`'s commit-and-push bullet on the owner's rule of
+that day: a pull request reaches the owner only for a real decision or a
+high-risk change, and housekeeping merges on green. The `hold` clause had
+named the read list, five simulator paths and `arming.py`. It now names what
+holds instead: a claim, a simulator change no `Owner-read:` record covers, a
+record saying `needed`, and `arming.py`. The fix-now rule's third condition
+said "a fix on the owner's read list" and now says "a fix that needs the
+owner's read", the same test under the new hold.
+
+The carrier test is unchanged from `PL-KKHD`'s rewrite of the same clause: a
+session meets `arm`'s answer at a push, after its reads, and would arm before
+thinking to look anything up. What a record must say, and what counts as
+high-risk, is printed by `bin/docket arm` under the hold, the moment a session
+needs it, so it stays out of the resident set. How a decision is put to the
+owner is not restated anywhere new: the ask points at
+`.claude/skills/docket/modes/design.md` step 4.
+
+**What was replaced, and the cost.** The list of paths and the provenance
+clause for `PL-KKHD`, which `arming.py`'s decision record and
+`docs/maintainer.md` still carry, paid for the new sentence. The file grows by
+18 characters, 54,160 to 54,178.

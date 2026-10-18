@@ -10254,7 +10254,7 @@ def test_arm_arms_a_branch_carrying_only_item_files_whatever_another_branch_clai
 
     assert _arm(root) == 0
     out = capsys.readouterr().out
-    assert out.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
+    assert out.startswith(f"arm - {ARM_BRANCH} waits on no read from the owner")
 
 
 @pytest.mark.parametrize(
@@ -10316,12 +10316,12 @@ def test_arm_names_a_path_outside_the_store_beside_an_arm_and_a_move_in_is_still
 
     assert _arm(root) == 0
     out = capsys.readouterr().out
-    assert out.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
+    assert out.startswith(f"arm - {ARM_BRANCH} waits on no read from the owner")
     assert (
         "\n  It changes 1 path outside docs/items, subprojects/docket and docs/pr-bodies, which "
-        "arm on green under the owner's read list unless the change raises a question "
-        "for them - this session's judgment, not this answer's - so name it in the report as "
-        "the hold's reason:\n  docs/PL-D3D3-drafted.md\n"
+        "arm on green unless the change needs the owner's read - this session's judgment, "
+        "recorded as `Owner-read: needed - <why>`, not this answer's - so name it in the "
+        "report:\n  docs/PL-D3D3-drafted.md\n"
     ) in out
     assert "keep the pull request a draft" not in out
 
@@ -10463,7 +10463,9 @@ def test_arm_reads_the_pull_requests_branch_on_the_remote_not_head(
     git("pull", "-q", "--no-rebase", "--no-edit", "origin", ARM_BRANCH)
     if pushed == "second-writer":
         assert _arm(root) == 1
-        assert capsys.readouterr().out.startswith(f"hold - {ARM_BRANCH}: it changes 1 path")
+        assert capsys.readouterr().out.startswith(
+            f"hold - {ARM_BRANCH}: it changes 1 simulator path"
+        )
     else:
         assert _arm(root) == 0
         assert capsys.readouterr().out.startswith(f"arm - {ARM_BRANCH}")
@@ -10752,9 +10754,7 @@ def test_arm_arms_a_docket_only_pull_request_on_green(
     assert _arm(root) == 0
     out = capsys.readouterr().out
     assert out.startswith(
-        f"arm - {ARM_BRANCH} changes nothing on the owner's read list (src/, tests/ but a "
-        "test importing no anesthesia_sim, docs/MODEL.md, src/anesthesia_sim/data/, "
-        "README.md and docket's arming.py), holds no open claim"
+        f"arm - {ARM_BRANCH} waits on no read from the owner, holds no open claim"
     )
     assert "outside docs/items" not in out
 
@@ -10773,7 +10773,7 @@ def test_arm_arms_a_pull_request_body_record_on_green(
 
     assert _arm(root) == 0
     out = capsys.readouterr().out
-    assert out.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
+    assert out.startswith(f"arm - {ARM_BRANCH} waits on no read from the owner")
     assert "outside docs/items" not in out
 
 
@@ -10805,8 +10805,8 @@ def test_arm_holds_for_a_read_a_path_on_the_owners_read_list(
     assert _arm(root) == 1
     out = capsys.readouterr().out
     assert out.startswith(
-        f"hold - {ARM_BRANCH}: it changes 1 path on the owner's read list, so its pull request "
-        "waits on a read\n"
+        f"hold - {ARM_BRANCH}: it changes 1 simulator path and no Owner-read record on a "
+        "commit since its newest change there says whether the owner must read it\n"
     )
     assert f"\n  {path}\n" in out
     assert "subprojects/docket/src/docket/render.py" not in out
@@ -10837,7 +10837,7 @@ def test_arm_arms_a_workflow_path_the_owner_released_on_green(
 
     assert _arm(root) == 0
     first, *rest = capsys.readouterr().out.splitlines()
-    assert first.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
+    assert first.startswith(f"arm - {ARM_BRANCH} waits on no read from the owner")
     if path.startswith("subprojects/docket/"):
         assert rest == []
     else:
@@ -10848,8 +10848,8 @@ def test_arm_arms_a_workflow_path_the_owner_released_on_green(
     assert _arm(root) == 1
     out = capsys.readouterr().out
     assert out.startswith(
-        f"hold - {ARM_BRANCH}: it changes 1 path on the owner's read list, so its pull request "
-        "waits on a read\n"
+        f"hold - {ARM_BRANCH}: it changes 1 simulator path and no Owner-read record on a "
+        "commit since its newest change there says whether the owner must read it\n"
     )
     assert "\n  src/anesthesia_sim/core/uptake.py\n" in out
     assert path not in out
@@ -10890,14 +10890,13 @@ def test_a_change_outside_the_owners_read_list_arms_on_green(
 
     assert _arm(root) == 0
     first, *rest = capsys.readouterr().out.splitlines()
-    assert first.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
+    assert first.startswith(f"arm - {ARM_BRANCH} waits on no read from the owner")
     if path.startswith("subprojects/docket/"):
         assert rest == []
     else:
         assert rest[0].startswith(
             "  It changes 1 path outside docs/items, subprojects/docket and docs/pr-bodies, "
-            "which arm on green under the owner's read list unless the change raises a "
-            "question for them"
+            "which arm on green unless the change needs the owner's read"
         )
         assert rest[1] == f"  {path}"
         assert "subprojects/docket/src/docket/render.py" not in rest[1]
@@ -10972,7 +10971,7 @@ def test_arm_arms_a_test_of_the_tooling_under_tests_on_green(
 
     assert _arm(root) == 0
     first, *rest = capsys.readouterr().out.splitlines()
-    assert first.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
+    assert first.startswith(f"arm - {ARM_BRANCH} waits on no read from the owner")
     assert rest[0].startswith("  It changes 3 paths outside docs/items")
     assert rest[1:] == [
         "  tests/unit/test_doc_check.py, tests/unit/test_gone_check.py, "
@@ -11012,8 +11011,8 @@ def test_arm_holds_a_test_that_imports_the_simulator_on_either_side_of_the_chang
     assert _arm(root) == 1
     out = capsys.readouterr().out
     assert out.startswith(
-        f"hold - {ARM_BRANCH}: it changes 1 path on the owner's read list, so its pull request "
-        f"waits on a read\n  {path}\n"
+        f"hold - {ARM_BRANCH}: it changes 1 simulator path and no Owner-read record on a "
+        f"commit since its newest change there says whether the owner must read it\n  {path}\n"
     )
     assert "note:" not in out
 
@@ -11136,9 +11135,9 @@ def test_arm_holds_a_change_to_arming_py_for_a_read_although_it_lies_under_the_t
     out = capsys.readouterr().out
     assert out.startswith(
         f"hold - {ARM_BRANCH}: it changes {ARM_GATE}, the gate itself, "
-        "so its pull request waits on a read\n"
+        "so its pull request waits on the owner's read\n"
     )
-    assert "owner's read list" not in out
+    assert "simulator path" not in out
 
 
 def test_arm_names_the_gate_beside_the_paths_on_the_read_list(
@@ -11152,70 +11151,202 @@ def test_arm_names_the_gate_beside_the_paths_on_the_read_list(
     assert _arm(root) == 1
     out = capsys.readouterr().out
     assert out.startswith(
-        f"hold - {ARM_BRANCH}: it changes 1 path on the owner's read list and it changes "
-        f"{ARM_GATE}, the gate itself, so its pull request waits on a read\n"
+        f"hold - {ARM_BRANCH}: it changes 1 simulator path and no Owner-read record on a "
+        "commit since its newest change there says whether the owner must read it and it "
+        f"changes {ARM_GATE}, the gate itself, so its pull request waits on the owner's read\n"
         "  src/anesthesia_sim/core/uptake.py\n"
     )
 
 
-@pytest.mark.parametrize(
-    "path", ["src/anesthesia_sim/core/uptake.py", ARM_GATE], ids=["outside", "gate"]
-)
-def test_a_read_hold_asks_for_a_plain_language_summary_once_no_claim_holds_the_branch(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
-) -> None:
-    """Every pre-merge read the owner is asked for carries a plain-language summary.
+def _record_read(git: Callable[..., str], value: str, when: str) -> None:
+    """A commit carrying the session's `Owner-read` record, beside its attribution line."""
+    git(
+        "commit",
+        "-q",
+        "--allow-empty",
+        "-m",
+        f"PL-B1B1: judge the read\n\nOwner-read: {value}\n"
+        "Co-authored-by: Claude <noreply@anthropic.com>",
+        when=when,
+    )
 
-    The owner asked for it as the default on 2026-09-27, and only the Projects
-    instructions carried it (`PL-8XQS`). While a claim holds the branch its
-    pull request is a draft, which nobody is asked to read, so the line waits
-    for the read to be the only hold.
+
+def test_arm_holds_a_simulator_change_until_an_owner_read_record_covers_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A simulator change waits for the session's judgment, and the judgment decides who reads.
+
+    The owner's rule of 2026-10-17 sends them a pull request only for a real
+    decision or a high-risk change, and lets housekeeping merge on green
+    (`PL-DKBG`). A session that never judges holds rather than arms, and a
+    judgment made before a later simulator change does not cover it.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "src/anesthesia_sim/core/uptake.py", "2026-09-01T12:00:00+00:00")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it changes 1 simulator path and no Owner-read record on a "
+        "commit since its newest change there says whether the owner must read it\n"
+    )
+    assert "`Owner-read: needed - <why>` or `Owner-read: not needed - <why>`" in out
+    assert "the owner's read\n" not in out
+    assert "closing block" not in out
+
+    _record_read(
+        git, "not needed - a refactor with its outputs pinned", "2026-09-01T12:01:00+00:00"
+    )
+
+    assert _arm(root) == 0
+    first, *rest = capsys.readouterr().out.splitlines()
+    assert first.startswith(f"arm - {ARM_BRANCH} waits on no read from the owner")
+    assert rest[0].startswith("  It changes 1 simulator path, which the Owner-read record on ")
+    assert rest[0].endswith(
+        "judges need no read: a refactor with its outputs pinned. Say so in the pull request "
+        "body, with the paths:"
+    )
+    assert rest[1] == "  src/anesthesia_sim/core/uptake.py"
+
+    _commit_file(
+        git, root, "src/anesthesia_sim/core/uptake.py", "X = 2\n", "2026-09-01T12:02:00+00:00"
+    )
+
+    assert _arm(root) == 1
+    assert "no Owner-read record on a commit since its newest change" in capsys.readouterr().out
+
+    _record_read(git, "needed - it changes the uptake equation", "2026-09-01T12:03:00+00:00")
+
+    assert _arm(root) == 1
+    first, *rest = capsys.readouterr().out.splitlines()
+    assert first.startswith(f"hold - {ARM_BRANCH}: the Owner-read record on ")
+    assert first.endswith(
+        "asks for the owner's read: it changes the uptake equation, so its pull request "
+        "waits on the owner's read"
+    )
+    assert any(line == arming.READ_ASK for line in rest)
+    assert not any(line == arming.JUDGE_ASK for line in rest)
+
+
+def test_an_owner_read_record_saying_needed_holds_any_change_and_the_newest_decides(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A session can ask for the owner's eyes on a workflow change, and change its mind."""
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:01:00+00:00")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert "asks for the owner's read: a rule sessions run under" in out
+    assert "simulator path" not in out
+
+    _record_read(git, "not needed - the owner asked for it", "2026-09-01T12:02:00+00:00")
+
+    assert _arm(root) == 0
+    assert capsys.readouterr().out.startswith(f"arm - {ARM_BRANCH} waits on no read")
+
+
+def test_an_owner_read_record_in_neither_form_is_said_and_covers_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A record `arm` cannot read never arms: a simulator change holds, anything else is unknown."""
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "probably fine", "2026-09-01T12:01:00+00:00")
+
+    assert _arm(root) == 2
+    out = capsys.readouterr().out
+    assert out.startswith("unknown - the Owner-read record on ")
+    assert "so it was not read: probably fine" in out
+
+    _put(git, root, "src/anesthesia_sim/core/uptake.py", "2026-09-01T12:02:00+00:00")
+    _record_read(git, "not needed", "2026-09-01T12:03:00+00:00")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert "no Owner-read record on a commit since its newest change" in out
+    assert "so it was not read: not needed" in out
+
+
+def test_the_gate_waits_on_the_owner_whatever_the_owner_read_record_says(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A change to `arming.py` changes what merges without the owner, so it cannot judge itself."""
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, ARM_GATE, "2026-09-01T12:00:00+00:00")
+    _record_read(git, "not needed - housekeeping", "2026-09-01T12:01:00+00:00")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it changes {ARM_GATE}, the gate itself, so its pull request "
+        "waits on the owner's read\n"
+    )
+    assert arming.READ_ASK in out
+
+
+@pytest.mark.parametrize(
+    ("value", "parsed"),
+    [
+        ("needed - a clinical value changes", (True, "a clinical value changes")),
+        ("Not needed - a tightened test", (False, "a tightened test")),
+        ("not needed", None),
+        ("needed -  ", None),
+        ("maybe - unsure", None),
+    ],
+)
+def test_parse_owner_read_takes_two_forms_and_requires_the_reason(
+    value: str, parsed: tuple[bool, str] | None
+) -> None:
+    assert arming.parse_owner_read(value) == parsed
+
+
+def test_a_read_hold_asks_once_no_claim_holds_the_branch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """While a claim holds the branch its pull request is a draft, which nobody is asked to read.
+
+    So the ask waits for the read to be the only hold (`PL-8XQS`).
     """
     root, git = _arm_repo(tmp_path)
     _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
-    _put(git, root, path, "2026-09-01T12:00:30+00:00")
+    _put(git, root, ARM_GATE, "2026-09-01T12:00:30+00:00")
 
     assert _arm(root) == 1
     out = capsys.readouterr().out
     assert "keep the pull request a draft" in out
-    assert "plain-language summary" not in out
+    assert arming.READ_ASK not in out
 
     closed = _item_document("PL-B1B1", "done")
     _commit_file(git, root, "docs/items/PL-B1B1-held.md", closed, "2026-09-01T12:00:40+00:00")
 
     assert _arm(root) == 1
     first, *rest = capsys.readouterr().out.splitlines()
-    assert first.endswith("so its pull request waits on a read")
-    (ask,) = (line for line in rest if "plain-language summary" in line)
-    parts = (
-        "one sentence of what the change does, what was wrong and what changed",
-        "in terms a clinician recognises",
-        "numbered points for the owner to judge",
-        "what needs no review",
-    )
-    places = [ask.index(part) for part in parts]
-    assert places == sorted(places)
+    assert first.endswith("so its pull request waits on the owner's read")
+    assert arming.READ_ASK in rest
 
 
-def test_a_read_hold_puts_its_ask_in_the_closing_block_line() -> None:
-    """The ask is the line the owner acts on, so it carries the points itself.
+def test_a_read_hold_puts_a_decision_or_a_case_in_the_closing_block_line() -> None:
+    """The ask carries the owner's two reasons to be asked, and never an obvious call.
 
     Worded as what the ask opens with, it was followed to the letter: three
-    sessions opened the reply with the summary and closed on a bare "read #N",
-    the line the owner acts on, with housekeeping among the points (`PL-9KHK`).
-    In review the owner put the need as finding what matters in long text, so
-    the points run most important first.
+    sessions closed on a bare "read #N" (`PL-9KHK`). On `#1516` a measured
+    figure and an option the model's run length ruled out were put as points
+    to judge, and the owner asked what the trade-off was (`PL-DKBG`).
     """
     parts = (
         "the closing block's own line",
         "never as 'read #N'",
         "every later reply that still waits on it",
         "short enough to take in at a glance",
-        "numbered points for the owner to judge, most important first",
-        "a risk to what already works",
+        "For a real decision: the question",
+        "each option with what it costs, and the recommendation",
+        "For a high-risk change",
+        "in terms a clinician recognises",
+        "the case for it and its risks",
         "what needs no review",
-        "housekeeping",
-        "With no point to judge",
+        "design.md step 4 makes it the owner's",
         "the merge word alone",
     )
     places = [arming.READ_ASK.index(part) for part in parts]
