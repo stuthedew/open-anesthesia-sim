@@ -126,6 +126,18 @@ is paid only when a line will print, but the median is itself the reading, so
 it cannot wait for one. When any of the reads fails, the line says so and gives
 no figure, because a figure from an earlier read could be out of date.
 
+**It also names a failed `drift.yml` run** (`PL-JTWV`). That workflow tests the
+tree against newer dependencies, the next interpreter and a shuffled test
+order. It reports and never gates, so a red run matters only if a session reads
+it. The run of 2026-10-01 failed, and nobody mentioned it until the project
+owner asked 17 days later, because nothing a session read included it. So this
+script reads the newest completed `drift.yml` run on `main` that reached a
+verdict. It prints a line only when that run failed, naming the run, its date
+and the jobs that failed. The line stays until a newer run passes, because the
+failure is still news until somebody fixes it or records it and re-runs the
+workflow. This costs one more request at every session start, and one more
+again only when the run failed.
+
 Standard library only, and parsing at the 3.11 floor `tools/ruff.toml` sets, so
 a bare checkout with no virtualenv can run it — from the session-start hook, or
 by hand at any moment, which is the half a hook alone cannot give: `main` can
@@ -183,6 +195,11 @@ VERDICTS = frozenset({"success"} | FAILED)
 # than every verdict, its commit has none, which the line below reports rather
 # than letting an older commit's verdict stand as `main`'s (`PL-JTHW`).
 UNJUDGED = {"cancelled": "was cancelled", "action_required": "concluded action_required"}
+
+#: The workflow that tests the tree on a toolchain nobody pinned. It runs on a
+#: schedule and by hand, never on a push, and it reports without gating, so its
+#: runs are read here without the `push` filter `fetch_runs` uses (`PL-JTWV`).
+DRIFT_WORKFLOW = "drift.yml"
 
 # The name `.github/workflows/quality.yml` gives the whole-store replay step,
 # which is the one step whose failure is a fact about the queue rather than
@@ -377,7 +394,7 @@ def idle_jobs(jobs: list[object]) -> tuple[str, ...]:
 
 
 def _jobs_phrase(names: tuple[str, ...]) -> str:
-    """The idle jobs as the line names them."""
+    """Jobs, quoted, as a line names them."""
     quoted = ", ".join(f'"{name}"' for name in names)
     return f"the job {quoted}" if len(names) == 1 else f"the jobs {quoted}"
 
@@ -645,9 +662,25 @@ def fetch_runs(slug: str) -> list[object]:
     is read, which keeps the script runnable from a bare checkout and keeps a
     credential out of a session-start path.
     """
+    return _workflow_runs(slug, WORKFLOW, "&event=push", 10)
+
+
+def fetch_drift_runs(slug: str) -> list[object]:
+    """Fetch recent completed `drift.yml` runs on the default branch, of any event.
+
+    Unauthenticated like `fetch_runs`, and for the same reason.
+    """
+    return _workflow_runs(slug, DRIFT_WORKFLOW, "", 5)
+
+
+def _workflow_runs(slug: str, workflow: str, event: str, count: int) -> list[object]:
+    """Fetch one workflow's newest `count` completed runs on the default branch.
+
+    `event` is a query filter such as `"&event=push"`, or empty for every event.
+    """
     url = (
-        f"{API}/repos/{slug}/actions/workflows/{WORKFLOW}/runs"
-        f"?branch={default_branch(ROOT)}&event=push&status=completed&per_page=10"
+        f"{API}/repos/{slug}/actions/workflows/{workflow}/runs"
+        f"?branch={default_branch(ROOT)}{event}&status=completed&per_page={count}"
     )
     request = urllib.request.Request(
         url, headers={"Accept": "application/vnd.github+json", "User-Agent": "docket-digest"}
@@ -656,6 +689,54 @@ def fetch_runs(slug: str) -> list[object]:
         payload = json.load(response)
     runs = payload.get("workflow_runs")
     return runs if isinstance(runs, list) else []
+
+
+def drift_advisory(run: dict[str, object], jobs: list[object]) -> str:
+    """Return the line for a failed `drift.yml` run, naming the jobs that failed.
+
+    `jobs` is the run's jobs payload. Where no failed job can be read from it,
+    the line says so rather than naming none, because a run with no named job
+    still failed.
+    """
+    failed = tuple(
+        job.get("name") if isinstance(job.get("name"), str) else UNNAMED_STEP
+        for job in jobs
+        if isinstance(job, dict) and job.get("conclusion") in STEP_FAILURES
+    )
+    where = (
+        f"in {_jobs_phrase(failed)}" if failed else "and which of its jobs failed could not be read"
+    )
+    started = _instant(run.get("created_at"))
+    when = f" on {started.date().isoformat()}" if started is not None else ""
+    return (
+        f"drift.yml's newest run on main, #{run.get('run_number', '?')}{when}, concluded "
+        f"{run.get('conclusion')} {where}. That workflow reports and does not gate, so no "
+        "other check reads it: fix what it found, or record it as an item, then re-run the "
+        f"workflow by hand. {run.get('html_url', '')}"
+    )
+
+
+def drift_line(slug: str) -> str | None:
+    """Return the line for a failed `drift.yml` run, or None when its newest verdict passed.
+
+    A read that fails says so, because silence here means the newest verdict
+    passed, and an unread one would otherwise pass for that.
+    """
+    try:
+        runs = fetch_drift_runs(slug)
+    except NETWORK_FAILURES as error:
+        return (
+            f"drift.yml's runs on main could not be read ({error}), so a failed drift run "
+            "would not show here."
+        )
+    run = pick_run(runs)
+    if run is None or run.get("conclusion") not in FAILED:
+        return None
+    try:
+        jobs = fetch_jobs(slug, run.get("id"))
+    except NETWORK_FAILURES:
+        jobs = []
+    return drift_advisory(run, jobs)
 
 
 def fetch_jobs(slug: str, run_id: object) -> list[object]:
@@ -734,6 +815,12 @@ def main() -> int:
     time_line = pytest_time_line(slug, runs)
     if time_line is not None:
         print(time_line)
+
+    # After the quality lines, because a toolchain nobody pinned matters less
+    # than `main` itself.
+    drift = drift_line(slug)
+    if drift is not None:
+        print(drift)
     return 0
 
 
