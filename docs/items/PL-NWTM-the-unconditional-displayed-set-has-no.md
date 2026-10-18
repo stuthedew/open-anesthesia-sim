@@ -181,3 +181,14 @@ and 3.00% is 1.50 ×MAC, worked by hand rather than read from the view.
 they move from `P2` to `P1`, as `docket check` requires of safety work.
 
 **Fix-now:** none.
+
+## Answered 2026-10-18: the heading line
+
+**The heading line stays** (project owner, 2026-10-18, ratified, over an eighth
+"Delivered" card and over dropping both values from the tier), given in the
+project thread at 17:40 UTC as "Agree with recs". In the same message the owner
+said that look-and-feel choices like this one are placeholders for now, while
+the structure and function are developed. So the heading line's wording and
+placement are not settled design. The requirement under it is: `docs/MODEL.md`
+still requires the delivered concentration and the 1 MAC divisor to be on
+screen in every layout.
