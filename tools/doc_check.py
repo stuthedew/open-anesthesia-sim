@@ -5790,7 +5790,7 @@ class _OpenRule:
 NO_RULE = _OpenRule("none")
 
 
-def _make_lines(text: str) -> Iterator[tuple[str, int]]:
+def _make_lines(text: str, every_branch: bool = True) -> Iterator[tuple[str, int]]:
     """Every statement of a Makefile, as make reads it, with the line it opens on.
 
     The one reading of where a Makefile statement ends (`PL-R417`), which every
@@ -5831,7 +5831,11 @@ def _make_lines(text: str) -> Iterator[tuple[str, int]]:
     make takes turns on variables this reader does not evaluate. Where a branch
     changes which rule is open, the line after it may be read under a rule make
     does not have open, so a line led by a tab is declined until a statement
-    after the branch settles the rule again.
+    after the branch settles the rule again. That suits a reader that holds
+    every command make might run. A reader that asks what a target runs in
+    every configuration passes `every_branch` false, and a recipe line inside a
+    conditional is then declined, since make runs it only in its branch
+    (`PL-HSB3`).
 
     **A `define` is one statement, through the `endef` closing it**
     (`PL-4MLK`). The lines between are a variable's value (GNU make manual,
@@ -5849,9 +5853,10 @@ def _make_lines(text: str) -> Iterator[tuple[str, int]]:
     (run through GNU make 4.3 on 2026-10-05); a line led by a tab where no rule
     is open that is no assignment, directive or conditional, which make refuses
     where it reads it; a line led by a tab after a branch that changed which
-    rule is open (both run through make 4.3 on 2026-10-06); and a rule line
+    rule is open (both run through make 4.3 on 2026-10-06); a rule line
     escaping what its names end at, which make unquotes (`MAKE_ESCAPED_NAME_RE`,
-    `PL-5M36`), where every reader of a rule took the names as written.
+    `PL-5M36`), where every reader of a rule took the names as written; and,
+    with `every_branch` false, a recipe line inside a conditional.
     """
     lines = split_lines(text)
     index = 0
@@ -5871,6 +5876,7 @@ def _make_lines(text: str) -> Iterator[tuple[str, int]]:
                     "takes, which this reader does not evaluate",
                 )
             if rule.kind == "targets":
+                _one_branch(branches, every_branch, opens + 1)
                 recipe = [parts[0], *(part.removeprefix("\t") for part in parts[1:])]
                 yield "\n".join(recipe), opens + 1
             continue
@@ -5933,10 +5939,26 @@ def _make_lines(text: str) -> Iterator[tuple[str, int]]:
                 written = [parts[0], *(part.removeprefix("\t") for part in parts[1:])]
                 _, inline = _make_rule_line("\n".join(written))
                 if inline is not None and inline.strip(MAKE_SPACE):
+                    _one_branch(branches, every_branch, opens + 1)
                     yield line, opens + 1
                     yield f"\t{inline.lstrip(MAKE_SPACE)}", opens + 1
                     continue
         yield line, opens + 1
+
+
+def _one_branch(branches: list[tuple[int, _OpenRule]], every_branch: bool, line: int) -> None:
+    """Decline a recipe line inside a conditional, for a reader that needs every branch.
+
+    Raises `UnreadStatement` naming the conditional, as `_make_lines` declines
+    the line for a reader that passes `every_branch` false (`PL-HSB3`).
+    """
+    if branches and not every_branch:
+        raise UnreadStatement(
+            line,
+            f"this recipe line sits inside the conditional on line {branches[-1][0]}, so make "
+            "runs it only in that branch, and which branch make takes turns on variables "
+            "this reader does not evaluate",
+        )
 
 
 def _make_branch(
@@ -6218,12 +6240,14 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
     recipe line `_recipe_command` finds no command in is none, so a target whose
     only recipe line is a tab is one that exits 0 without running, as make
     says "Nothing to be done" for it (`PL-5M36`). Raises `UnreadStatement`
-    where `_make_lines` does.
+    where `_make_lines` does, and at a recipe line inside a conditional, since
+    whether the target carries a recipe then turns on the branch make takes
+    (`PL-HSB3`).
     """
     declared: set[str] = set()
     with_recipe: set[str] = set()
     current: tuple[str, ...] = ()
-    for line, _ in _make_lines(text):
+    for line, _ in _make_lines(text, every_branch=False):
         if line.startswith("\t"):
             if _recipe_command(line):
                 with_recipe.update(current)
@@ -6380,23 +6404,131 @@ def workflow_runs(text: str, steps: list[UnreadStatement]) -> Iterator[tuple[str
 
     A step `workflow_commands` declines goes on `steps`, as it would there.
     """
-    for body, script in _step_scripts(text, steps):
-        reading = shell_words(body)
-        if reading.clauses:
-            yield from _simple_commands(reading, body)
-            continue
-        # `script_lines` hands the line where the reading stops on, with every
-        # line after it, as its last piece.
-        stop = script_lines(body)[-1][1]
-        steps.append(
-            UnreadStatement(
-                script[body.count("\n", 0, stop)][1],
-                "this `run:` step's script cannot be read to its end from this line - a "
-                "quote, a command substitution or a backslash runs past it, or a `<<` has "
-                "no delimiter - and none of the step was read, since a line of it read "
-                "alone can be a fragment of a command bash runs, such as a `case` arm",
-            )
+    for _, body, script in _workflow_scripts(text, steps):
+        yield from _script_runs(body, script, steps)
+
+
+def pull_request_runs(
+    text: str, steps: list[UnreadStatement]
+) -> Iterator[tuple[tuple[str, ...], UnreadStatement | None]]:
+    """Every simple command a workflow's steps may run on a pull request, with any doubt.
+
+    `workflow_runs` reads every step, whatever its condition. This one reads
+    the `if:` of each step and of the job that holds it, through
+    `_runs_on_pull_requests`. A step that either condition keeps off the
+    `pull_request` event gives no commands, so a script that runs only on a
+    push to `main` is not counted as merge-gate coverage (`PL-ZXM1`). Each
+    command of a step whose condition this reader cannot evaluate comes with
+    the `UnreadStatement` that names the condition. The caller can then
+    decline the command rather than count it as run on every pull request.
+    Steps go on `steps` as `workflow_runs` puts them there.
+    """
+    lines = split_lines(text)
+    for step, body, script in _workflow_scripts(text, steps):
+        doubt: UnreadStatement | None = None
+        for key, whose in ((step.job_if, "job"), (step.keys.get("if"), "step")):
+            runs = _runs_on_pull_requests(lines, key, whose)
+            if runs is False:
+                break
+            if isinstance(runs, UnreadStatement):
+                doubt = doubt or runs
+        else:
+            for words in _script_runs(body, script, steps):
+                yield words, doubt
+
+
+#: A condition on the event that started the workflow. It is the one form of
+#: `if:` that `_runs_on_pull_requests` evaluates, beside `always()` and
+#: `success()`. A GitHub expression writes a string in single quotes only
+#: ("Evaluate expressions in workflows and actions", docs.github.com, read
+#: 2026-10-18).
+EVENT_CONDITION_RE = re.compile(r"github\.event_name (?P<op>==|!=) '(?P<event>[a-z_]+)'")
+
+#: Conditions under which a step runs whenever the steps before it succeeded.
+ALWAYS_CONDITIONS = frozenset({"always()", "success()"})
+
+#: A condition under which a pull request may skip a step that still counts as
+#: the merge gate's, and why. The key is the condition as
+#: `_runs_on_pull_requests` reads it, with no `${{ }}` and its blanks collapsed.
+#: Like `GATE_ONLY`, it records a difference between the gates on purpose, so a
+#: session that puts a gate script under a new condition has to say here why the
+#: merge gate still asks it, or the comparison is declined.
+GATE_CONDITIONS: dict[str, str] = {
+    "steps.scope.outputs.scope != 'items'": (
+        "the item-only fast path (`PL-DXD4`). It is false only on a pull request "
+        "that `bin/docket ci-scope` finds changes nothing but item files, and "
+        "`quality.yml` puts under it only steps whose result no item file can "
+        "change. A push to `main` runs every step"
+    )
+}
+
+
+def _runs_on_pull_requests(
+    lines: Sequence[str], key: tuple[int, int] | None, whose: str
+) -> bool | UnreadStatement:
+    """Whether the `if:` at `key` lets a `pull_request` event run what it guards.
+
+    `key` is the line index and column of the `if:` key, as
+    `required_checks_check` gives a step's keys. `None` means there is no
+    `if:`, so the step runs. The value is read as a plain scalar on its own
+    line. A `${{ }}` around it is taken off, and its runs of blanks become one
+    space. Only three forms are evaluated: `always()`, `success()`, and
+    `github.event_name` compared with one event by `==` or `!=`. Those are the
+    forms the workflows here use to guard a gate script, beside the conditions
+    `GATE_CONDITIONS` records.
+
+    Any other condition comes back as an `UnreadStatement` that names it, as
+    does a value that is quoted, written as a block or carried onto the next
+    line. Guessing would count a check as run when a pull request may skip it
+    (`PL-ZQ3R`).
+    """
+    if key is None:
+        return True
+    index, column = key
+    value = lines[index][column:].removeprefix("if:")
+    condition = re.split(r"\s#", value, maxsplit=1)[0].strip()
+    below = next((line for line in lines[index + 1 :] if line.strip()), "")
+    if not condition or condition[0] in "'\"|>&*!{[" or _indent(below) > column:
+        return UnreadStatement(
+            index + 1,
+            f"this {whose}'s `if:` is quoted, written as a block or carried past its line, "
+            "which this reader does not read, so whether a pull request runs it is not known",
         )
+    if condition.startswith("${{") and condition.endswith("}}"):
+        condition = condition[3:-2]
+    condition = " ".join(condition.split())
+    if condition in ALWAYS_CONDITIONS or condition in GATE_CONDITIONS:
+        return True
+    event = EVENT_CONDITION_RE.fullmatch(condition)
+    if event is None:
+        return UnreadStatement(
+            index + 1,
+            f"this {whose}'s `if:` is `{condition}`, which this reader does not evaluate, so "
+            "whether a pull request runs it is not known",
+        )
+    return (event["event"] in MERGE_GATE_EVENTS) == (event["op"] == "==")
+
+
+def _script_runs(
+    body: str, script: list[tuple[str, int]], steps: list[UnreadStatement]
+) -> Iterator[tuple[str, ...]]:
+    """The simple commands of one step's script, as `workflow_runs` reads them."""
+    reading = shell_words(body)
+    if reading.clauses:
+        yield from _simple_commands(reading, body)
+        return
+    # `script_lines` hands the line where the reading stops on, with every
+    # line after it, as its last piece.
+    stop = script_lines(body)[-1][1]
+    steps.append(
+        UnreadStatement(
+            script[body.count("\n", 0, stop)][1],
+            "this `run:` step's script cannot be read to its end from this line - a "
+            "quote, a command substitution or a backslash runs past it, or a `<<` has "
+            "no delimiter - and none of the step was read, since a line of it read "
+            "alone can be a fragment of a command bash runs, such as a `case` arm",
+        )
+    )
 
 
 def _step_scripts(
@@ -6408,6 +6540,14 @@ def _step_scripts(
     newline; the lines carry the workflow line each sits on. A step that
     `_step_script` declines goes on `unread`, or raises where none is passed.
     """
+    for _, body, script in _workflow_scripts(text, unread):
+        yield body, script
+
+
+def _workflow_scripts(
+    text: str, unread: list[UnreadStatement] | None
+) -> Iterator[tuple[required_checks_check.Step, str, list[tuple[str, int]]]]:
+    """The scripts `_step_scripts` gives, each with the step that runs it."""
     lines = split_lines(text)
     try:
         steps = required_checks_check.steps(lines)
@@ -6421,7 +6561,7 @@ def _step_scripts(
                 raise
             unread.append(declined)
             continue
-        yield "".join(f"{line}\n" for line, _ in script), script
+        yield step, "".join(f"{line}\n" for line, _ in script), script
 
 
 def _step_script(step: required_checks_check.Step, lines: list[str]) -> list[tuple[str, int]]:
@@ -6719,7 +6859,7 @@ def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
             yield command, number
 
 
-def _recipe_statements(text: str) -> list[tuple[str, int]]:
+def _recipe_statements(text: str, every_branch: bool = True) -> list[tuple[str, int]]:
     """`_make_lines`' statements, for a reader that takes each recipe line for a command.
 
     That is how GNU make 4.3 hands a recipe to the shell by default, a line to
@@ -6732,9 +6872,9 @@ def _recipe_statements(text: str) -> list[tuple[str, int]]:
     than read as one script, the cheaper of `PL-X43T`'s two endings. Read a
     line at a time, a `ruff check` in a here-document's body was a command the
     ruff cache check refused. Raises `UnreadStatement` at the line naming it,
-    and where `_make_lines` does.
+    and where `_make_lines` does, with `every_branch` passed on to it.
     """
-    statements = list(_make_lines(text))
+    statements = list(_make_lines(text, every_branch))
     for statement, line in statements:
         if statement.startswith("\t"):
             continue
@@ -7086,26 +7226,11 @@ GATE_ONLY: dict[str, tuple[str, str]] = {
         "check` asks everything it asks inside its `--verify` run, which only adds the "
         "replay",
     ),
-    "bin/docket check --verify": (
-        "ci",
-        "the whole-store sweep, which `quality.yml` runs on a push to `main` and its "
-        "step's `if:` keeps off every pull request - recorded here because this rule "
-        "does not read an `if:` yet (`PL-ZXM1`). It finds work that merged without its "
-        "item being closed, which a branch cannot have changed (`PL-P3B6`), so both "
-        "gates run the `--verify-base` form on a branch instead",
-    ),
     "bin/docket ci-scope --base --github-output": (
         "ci",
         "the item-only fast path's question: `quality.yml` asks it on a pull request "
         "to decide which steps to skip, and `make check` runs every check whatever a "
         "branch changed, so it has nothing to decide (`PL-DXD4`)",
-    ),
-    "tools/contrast_check.py": (
-        "ci",
-        "the run without a base, which `quality.yml` makes on a push to `main` and its "
-        "step's `if:` keeps off every pull request, where the pull request's run with "
-        "`--base` was the gate - recorded here because this rule does not read an `if:` "
-        "yet (`PL-ZXM1`). Both gates run the `--base` form on a branch (`PL-VJFQ`)",
     ),
     "tools/pr_record_check.py": (
         "ci",
@@ -7184,12 +7309,15 @@ def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str
     `make_targets` (`PL-5M36`), and a line's command is that one, make's
     prefixes gone (`PL-QYF4`). Raises `UnreadStatement` where
     `_recipe_statements` does, a Makefile naming `.ONESHELL` included
-    (`PL-X43T`).
+    (`PL-X43T`), and at a recipe line inside a conditional, since what the
+    target runs then turns on the branch make takes. Read with every branch
+    taken, `check:` over `ifdef X` ran both branches' commands, where make runs
+    one (`PL-HSB3`).
     """
     recipes: dict[str, list[str]] = {}
     prerequisites: dict[str, list[str]] = {}
     current: tuple[str, ...] = ()
-    for line, _ in _recipe_statements(text):
+    for line, _ in _recipe_statements(text, every_branch=False):
         if line.startswith("\t"):
             command = _recipe_command(line)
             for target in current if command else ():
@@ -7344,6 +7472,15 @@ def check_gate_parity(root: Path, report: Report) -> None:
     `tools/pr_title_check.py` the worked example rather than a fourth finding:
     it is `make check`-only within `quality.yml` and has a workflow of its own.
 
+    **A command counts only where every pull request runs it** (`PL-ZQ3R`).
+    `pull_request_runs` reads the `if:` of each step and of the job holding
+    it. A step that a condition keeps off pull requests runs nothing here, and
+    a condition it cannot evaluate is declined where the step runs a gate
+    script. On the other side, `_target_recipes` declines a recipe line inside
+    a Makefile conditional, since make runs it only in that branch. Until then,
+    a script that CI ran only on a push to `main`, or that `make check` ran in
+    one configuration, counted as run by that gate on every pull request.
+
     Silent where either file is missing, so a partial checkout is not failed
     for what it does not carry; declined where `_make_lines` declines the
     Makefile, since what `make check` runs is then not known; and reporting no
@@ -7389,7 +7526,12 @@ def check_gate_parity(root: Path, report: Report) -> None:
         if not gates:
             continue
         declined: list[UnreadStatement] = []
-        merge |= set(_gate_invocations(root, workflow_runs(text, declined)))
+        for words, doubt in pull_request_runs(text, declined):
+            invocations = set(_gate_invocations(root, [words]))
+            if doubt is None:
+                merge |= invocations
+            elif invocations:
+                declined.append(doubt)
         _decline_steps(report, where, declined, unread)
     # A workflow, a step or a line of the `check:` recipe left unread may hold
     # a script that side runs, so a difference would not be a fact; the

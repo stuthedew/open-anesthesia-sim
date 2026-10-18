@@ -34,11 +34,15 @@ column and after a tab, `define` blocks, assignments that end a rule, and
 `.ONESHELL`. Where a reader raises `UnreadStatement`, the test accepts the
 decline. Where it answers, the answer must match make's.
 
-Two forms are left out of the generator because the readers depart from make
-on them today, each recorded by the open item that will fix it: a Makefile
-that sets `.RECIPEPREFIX` (`PL-GSJ6`) and a conditional (`PL-HSB3`).
-`KNOWN_DEPARTURES` pins each one's present reading, so a fix fails that row
-and the fix removes it and adds the form to the generator.
+One form is left out of the generator because the readers depart from make on
+it today, recorded by the open item that will fix it: a Makefile that sets
+`.RECIPEPREFIX` (`PL-GSJ6`). `KNOWN_DEPARTURES` pins its present reading, so a
+fix fails that row and the fix removes it and adds the form to the generator.
+
+A conditional is drawn, and `make_targets` and `_target_recipes` decline a
+recipe line inside one, since make runs it only in its branch (`PL-HSB3`).
+`_recipe_commands` holds every command make might run, every branch's
+included, so its commands are not compared for a Makefile holding one.
 
 The test needs GNU make on `PATH`, as `make check`, which runs it, does.
 CI's runners and the cloud containers both carry GNU make 4.3.
@@ -154,8 +158,17 @@ def _recipe(draw: st.DrawFn) -> list[str]:
     """A rule's recipe lines, and the comment and blank lines a rule runs on past."""
     lines: list[str] = []
     for _ in range(draw(st.integers(0, 3))):
-        form = draw(st.sampled_from(("command", "command", "continued", "tab", "comments")))
-        if form == "command":
+        form = draw(
+            st.sampled_from(("command", "command", "continued", "tab", "comments", "conditional"))
+        )
+        if form == "conditional":
+            lines.append("ifdef X")
+            lines.extend("\t" + draw(COMMAND) for _ in range(draw(st.integers(0, 1))))
+            if draw(st.booleans()):
+                lines.append("else")
+                lines.extend("\t" + draw(COMMAND) for _ in range(draw(st.integers(0, 1))))
+            lines.append("endif")
+        elif form == "command":
             lines.append("\t" + draw(PREFIX) + draw(COMMAND))
         elif form == "continued":
             lines.extend(["\t" + draw(PREFIX) + draw(COMMAND) + " \\", "\t  " + draw(COMMAND)])
@@ -244,7 +257,7 @@ def _held_to_make(text: str, commands_compared: bool = True) -> None:
             assert set(prerequisites.get(name, [])) == target.prerequisites, (name, text)
             if commands_compared:
                 assert _printed(recipes.get(name, [])) == printed[name], (name, text)
-    if not commands_compared:
+    if not commands_compared or "\nifdef X\n" in f"\n{text}":
         return
     try:
         commands = [command for command, _ in doc_check._recipe_commands(text)]
@@ -280,13 +293,7 @@ def test_the_makefile_readers_read_the_tracked_makefile_as_make_does() -> None:
 #: Makefiles the readers read differently from make today: each row's Makefile, its item,
 #: the commands make runs for `check`, and the commands `_target_recipes` reads under it.
 KNOWN_DEPARTURES = [
-    pytest.param(".RECIPEPREFIX = >\ncheck:\n>@echo ran\n", "echo ran\n", [], id="PL-GSJ6"),
-    pytest.param(
-        "check:\nifdef X\n\t@echo x\nelse\n\t@echo y\nendif\n",
-        "echo y\n",
-        ["echo x", "echo y"],
-        id="PL-HSB3",
-    ),
+    pytest.param(".RECIPEPREFIX = >\ncheck:\n>@echo ran\n", "echo ran\n", [], id="PL-GSJ6")
 ]
 
 

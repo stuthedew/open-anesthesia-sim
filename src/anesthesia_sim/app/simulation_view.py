@@ -76,12 +76,16 @@ from anesthesia_sim.app.dashboard_frame import (
     REMOVE_NOTHING_SELECTED_TEXT,
     RENDER_INTERVAL_S,
     TIME_BASE_LABEL,
+    TRUNK_RUN_INDEX,
     USE_DISCLAIMER_TEXT,
     WASH_IN_DENOMINATOR_TEXT,
     WASH_IN_HEADING,
     WASH_IN_MODELLED_TEXT,
+    BranchAtStake,
+    NewCaseQuestion,
     RunMarks,
     bookmark_panel,
+    branch_at_stake,
     comparing_fork_lock_text,
     compartment_cap_notice,
     fork_offer,
@@ -91,6 +95,7 @@ from anesthesia_sim.app.dashboard_frame import (
     refused_setting_notice,
     run_label,
     time_axis_caption,
+    trunk_reset_question,
 )
 from anesthesia_sim.app.formatting import format_time_base, mac_multiple
 from anesthesia_sim.app.qt_chart import ConcentrationChart, TraceLegend, WashInChart, WashInLegend
@@ -324,6 +329,10 @@ class SimulationView(QWidget):
         # draws when the run set has changed since (`PL-0LG6`).
         self._drawn_run_count = 0
         self.presented_frames = 0
+        # Whether the page is holding the concentration chart in view, from
+        # a branch taken until the reader scrolls the page themselves
+        # (`_keep_chart_in_view`, `PL-562Z`).
+        self._chart_view_owed = False
 
         self._concentration_chart = ConcentrationChart()
         self._wash_in_chart = WashInChart()
@@ -477,6 +486,14 @@ class SimulationView(QWidget):
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setStyleSheet(scroll_area_stylesheet())
         scroll.setWidget(page)
+        # `actionTriggered` fires for the reader's own scrolling - wheel,
+        # keys, the bar - and not for a scroll this view makes, so it is
+        # what tells the view to stop holding the chart in view.
+        scroll.verticalScrollBar().actionTriggered.connect(self._release_chart_view)
+        # The page's height changes with each pass of layout that moves the
+        # chart, so the bar's range changing is when to follow it.
+        scroll.verticalScrollBar().rangeChanged.connect(self._follow_chart)
+        self._page_scroll = scroll
         outer = _spaced_column(self, 0)
         outer.addWidget(scroll)
 
@@ -579,6 +596,7 @@ class SimulationView(QWidget):
             # returns it to the fork it opened at, which leaves the case and
             # every other run of it standing.
             run.case_restarted.connect(self._handle_case_restarted)
+            run.ask_before_reset(self._trunk_reset_question)
 
         run.presentation_requested.connect(self.present)
         readouts = _fixed_height(run.build_readout_section())
@@ -704,7 +722,7 @@ class SimulationView(QWidget):
         not to how many runs are drawn**, so both are cleared on every trunk
         Reset, a one-run one included. A refusal names an instant of the run
         that has just started over, so it goes as the setting refusal
-        `RunView._handle_reset` clears does (`PL-75P5`). The case is a record
+        `RunView._reset_now` clears does (`PL-75P5`). The case is a record
         of the trunk's run rather than of the display, so it is rebuilt
         whatever is on screen: a branch it kept but never drew, which
         `PL-08SS`'s fork leaves, would otherwise outlive the run it was taken
@@ -716,6 +734,7 @@ class SimulationView(QWidget):
 
         self._case = BranchedCase(self._runs[0].controller)
         self._fork_refusal = None
+        self._chart_view_owed = False
 
         if len(self._runs) == 1:
             return
@@ -729,6 +748,53 @@ class SimulationView(QWidget):
 
         self._restack_sections()
         self._rename_runs()
+
+    def _trunk_reset_question(self) -> NewCaseQuestion | None:
+        """What the trunk's Reset must ask, or None where it discards no branch's work.
+
+        The trunk's Reset drops every branch drawn beside it
+        (`_handle_case_restarted`), and a branch is not the run the reader
+        pressed Reset on. So the press asks first wherever a drawn branch
+        holds elapsed time or a recorded control change (`PL-W5WX`). A
+        dashboard with no case drops nothing on a Reset, so it asks nothing.
+        """
+
+        if self._case is None:
+            return None
+
+        branches = (
+            self._branch_at_stake(index, run)
+            for index, run in enumerate(self._runs)
+            if index != TRUNK_RUN_INDEX
+        )
+        at_stake = tuple(branch for branch in branches if branch is not None)
+
+        if not at_stake:
+            return None
+
+        return trunk_reset_question(run_label(TRUNK_RUN_INDEX), at_stake)
+
+    @staticmethod
+    def _branch_at_stake(index: int, run: RunView) -> BranchAtStake | None:
+        """What discarding the branch drawn at `index` would lose, or None where it holds nothing.
+
+        A branch whose snapshot refuses a value still holds work, so it is
+        stated from what its controller can say without one: its fork and
+        its recorded control changes (`branch_at_stake`). The refusal is
+        not handled here. It is the branch's own halt, which its own frame
+        states.
+        """
+
+        try:
+            snapshot: SimulationSnapshot | None = run.snapshot()
+        except Exception:
+            snapshot = None
+
+        record = run.controller.record() if snapshot is None else snapshot
+
+        return branch_at_stake(
+            run_label(index), run.controller.began_at_s, snapshot, len(run.adjustments(record))
+        )
 
     def _remove_run(self, run: RunView, slots: _RunSlots) -> None:
         """Stop a run's timer, take its widgets out of every shared layout, and delete both.
@@ -855,9 +921,7 @@ class SimulationView(QWidget):
 
             return
 
-        self._fork_refusal = None
-        self.add_run(branch)
-        self.present(False)
+        self._show_branch(branch)
 
     def _handle_here_fork(self) -> None:
         """Take the branch where the trunk is paused, stopped on a mark or not.
@@ -898,9 +962,47 @@ class SimulationView(QWidget):
 
             return
 
+        self._show_branch(branch)
+
+    def _show_branch(self, branch: SimulationController) -> None:
+        """Draw a branch just taken beside the trunk, and bring the chart comparing them into view.
+
+        Both branch controls end here. The new run's readouts are laid out
+        above the chart, so without the scroll the chart the learner branched
+        to compare on falls mostly below the fold (`PL-562Z`).
+        """
+
         self._fork_refusal = None
         self.add_run(branch)
         self.present(False)
+        self._keep_chart_in_view()
+
+    def _keep_chart_in_view(self) -> None:
+        """Scroll the page to the concentration chart, and keep it there until the reader scrolls.
+
+        The new run's widgets reach their final size over several passes of
+        layout after the press returns, and each pass moves the chart. So
+        the scroll is made now and again each time the page's height changes
+        (`_follow_chart`), until the reader scrolls the page themselves or the
+        trunk's Reset ends the comparison. It scrolls as little as Qt's
+        `ensureWidgetVisible` needs to, so nothing moves where the chart is
+        already in view. The scroll goes when v0.6.0's tiled layout replaces
+        the scrolling page.
+        """
+
+        self._chart_view_owed = True
+        self._page_scroll.ensureWidgetVisible(self._concentration_chart, 0, 0)
+
+    def _release_chart_view(self) -> None:
+        """Stop holding the chart in view, because the reader has scrolled the page."""
+
+        self._chart_view_owed = False
+
+    def _follow_chart(self) -> None:
+        """Bring the chart back into view after a pass of layout, while the page is holding it."""
+
+        if self._chart_view_owed:
+            self._page_scroll.ensureWidgetVisible(self._concentration_chart, 0, 0)
 
     def _restate_fork_panel(self) -> None:
         """Restate both branch controls from the case on a halt, and offer nothing if that raises.

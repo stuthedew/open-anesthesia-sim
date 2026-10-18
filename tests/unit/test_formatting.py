@@ -39,6 +39,7 @@ from anesthesia_sim.app.formatting import (
     chart_grid_interval_percent,
     format_agent_residual,
     format_agent_volume,
+    format_branch_discard_warning,
     format_case_discard_warning,
     format_chart_time_label,
     format_delivered_label,
@@ -1020,6 +1021,36 @@ def test_the_discard_warning_counts_control_changes_in_agreeing_grammar(
     """
 
     assert expected in format_case_discard_warning("Sevoflurane", 60.0, control_change_count)
+
+
+def test_the_branch_discard_warning_states_both_instants_the_clock_showed() -> None:
+    """`PL-W5WX`: a branch's time is two instants on the case's clock, not a duration.
+
+    The literal is written from `format_elapsed`'s stated grammar - `1m`,
+    `5m30.5s` - rather than from a call, so a change to the clock's form
+    fails here instead of being followed.
+    """
+
+    assert format_branch_discard_warning("Run 2", 60.0, 330.5, 2) == (
+        "Run 2 — branched at 1m and run to 5m30.5s, 2 recorded control changes — will be "
+        "discarded along with its chart history. This cannot be undone."
+    )
+
+
+@pytest.mark.parametrize("elapsed_s", [60.0, None])
+def test_the_branch_discard_warning_states_no_second_instant_it_cannot_stand_behind(
+    elapsed_s: float | None,
+) -> None:
+    """A branch not run past its fork, or whose time could not be read, is given its fork alone.
+
+    "Run to 1m" beside "branched at 1m" says nothing, and an unread instant
+    must not be printed as though it were known.
+    """
+
+    assert format_branch_discard_warning("Run 2", 60.0, elapsed_s, 1) == (
+        "Run 2 — branched at 1m, 1 recorded control change — will be discarded along with "
+        "its chart history. This cannot be undone."
+    )
 
 
 @pytest.mark.parametrize(
