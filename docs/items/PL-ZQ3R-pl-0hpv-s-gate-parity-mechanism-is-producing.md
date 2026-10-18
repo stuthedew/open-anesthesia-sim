@@ -10,6 +10,7 @@ touches: tools/doc_check.py, tools/required_checks_check.py, tests/unit/test_doc
 deferred-from: v0.6.0 - captured after the freeze, workflow lane and not safety or science; as a live generator head it ranks above every band whatever the gate says
 added: 2026-10-18
 closed: 2026-10-18
+pr: 1580
 payoff: make check and CI are compared on what each actually runs on a pull request, so a check one gate skips under a condition or a mode is reported rather than counted as covered, and PL-0HPV's fact stops re-entering
 verify: grep -q '^generator: spent' docs/items/PL-ZQ3R-*.md
 root-cause-of: PL-RW3T, PL-ZXM1, PL-HSB3, PL-5M36

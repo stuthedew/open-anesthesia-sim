@@ -9,6 +9,7 @@ touches: tools/doc_check.py, tools/required_checks_check.py, tests/unit/test_doc
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
 closed: 2026-10-18
+pr: 1580
 payoff: a script CI runs only on a push to main can no longer pass gate parity as merge-gate coverage, so a check cannot merge unenforced behind a step condition
 verify: grep -q 'def test_gate_parity_leaves_out_a_step_whose_if_excludes_pull_requests' tests/unit/test_doc_check.py
 reenters: PL-0HPV
