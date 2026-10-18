@@ -9,6 +9,7 @@ feature: interface-areas
 touches: src/anesthesia_sim/app/, tests/integration, docs/MODEL.md
 added: 2026-10-18
 closed: 2026-10-18
+pr: 1604
 payoff: a 1366 px laptop opens the seven readouts in one row, and two runs compared share one readout block as docs/MODEL.md specifies, so compare mode keeps the chart at its minimum or the shortfall reaches the owner
 verify: grep -q 'def test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns' tests/integration/test_simulation_view.py
 ---
