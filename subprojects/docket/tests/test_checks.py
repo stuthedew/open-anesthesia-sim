@@ -763,6 +763,30 @@ def test_a_coined_status_is_read_bare_and_an_english_one_is_not() -> None:
     assert _status_advisories("blocked", "The fix left ready work untouched.") == []
 
 
+def test_a_sentence_about_other_items_leaving_a_status_is_no_claim() -> None:
+    """`PL-JNWS`'s "Every one of the 17 then left `needs-decision`" narrates
+    other items departing a status, and says nothing of this item's (`PL-2GY0`).
+    The passive "left" still reads as this item's, at a sentence's start or
+    after "is" or "are", while "left at" reads as this item's wherever it
+    stands."""
+    for departing in (
+        "Every one of the 17 then left `needs-decision`.",
+        "The rot stayed invisible until the item left `blocked`.",
+        "It is `ready` rather than left `blocked`.",
+        "It was left `blocked` for a week.",
+    ):
+        assert _status_advisories("ready", departing) == [], departing
+
+    for standing in (
+        "Left `needs-decision` rather than closed.",
+        "**Left `blocked`**, with the real blocker written in.",
+        "See the count. Left `blocked` on purpose.",
+        "They are left `blocked` at their own band.",
+        "The 17 then left at `needs-decision` a while.",
+    ):
+        assert _status_advisories("ready", standing), standing
+
+
 def test_a_status_phrase_about_another_item_is_not_this_items() -> None:
     """`PL-X4RX`'s title: the phrase is about `PL-SYG4`, which the sentence
     names before it."""

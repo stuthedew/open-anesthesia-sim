@@ -3051,7 +3051,9 @@ SUPERSEDED = re.compile(r"\[superseded(?:[ \t]+|[ \t]*\n[ \t>]*)\d{4}-\d{2}-\d{2
 # them - `PL-X5PK`'s "**Left untriaged deliberately.**" under `status: ready`
 # has no backticks - while `ready`, `blocked`, `done` and `dropped` are English
 # words, and count only in the backticks the store spells a status in. Present
-# tense only: "it stayed `blocked` for a week" is history, not a claim.
+# tense only: "it stayed `blocked` for a week" is history, not a claim. A bare
+# "left" is also English for departing, so `_left_statuses` reads it as a claim
+# only where `BARE_LEFT` and `STANDING_LEFT` say it is passive (`PL-2GY0`).
 OWN_STATUS_PHRASES = (
     r"left(?:\s+at)?",
     r"kept\s+at",
@@ -3065,6 +3067,17 @@ OWN_STATUS = re.compile(
     rf"\b(?:{'|'.join(OWN_STATUS_PHRASES)})\s+"
     rf"(?:`({_STATUS_WORDS})`|(needs-decision|untriaged))(?![\w-])",
     re.IGNORECASE,
+)
+
+# "left" with no "at" after it, which `OWN_STATUS` also matches. "It is left
+# `blocked`" and "**Left `blocked`, with the real blocker written in**" say the
+# item still sits there, while "the 17 then left `needs-decision`" and "until the
+# item left `blocked`" say something departed it. The passive form opens its
+# sentence or follows a present form of "be"; the departing form follows its
+# subject (`PL-2GY0`). "was left" is history, which present tense only excludes.
+BARE_LEFT = re.compile(r"left\s+(?!at\b)", re.IGNORECASE)
+STANDING_LEFT = re.compile(
+    r"(?:\A|[.!?:]\s|\b(?:is|are|be|been|being)\s)[\s*_>`-]*\Z", re.IGNORECASE
 )
 
 _ANY_ID = re.compile(ID_PATTERN)
@@ -3351,7 +3364,9 @@ def _left_statuses(item: Item) -> list[tuple[int, str]]:
     taken for it is the plainest one that separates the store's instances: a
     phrase is read as this item's when no other item is named earlier in its
     sentence. `PL-X4RX`'s title, "PL-SYG4's brief says it is left at
-    needs-decision", is about `PL-SYG4`, and says so before the phrase.
+    needs-decision", is about `PL-SYG4`, and says so before the phrase. A
+    bare "left" is read as this item's status only in its passive sense,
+    at a sentence's start or after "is" or "are" (`BARE_LEFT`, `PL-2GY0`).
 
     Read a statement at a time, as `_prerequisite_matches` reads, so a phrase
     in a fence is a literal and a heading's last word does not read on into the
@@ -3363,13 +3378,17 @@ def _left_statuses(item: Item) -> list[tuple[int, str]]:
     seen: set[tuple[str, int]] = set()
     text = _unmarked(item.body)
     matches = (
-        match
+        (start, match)
         for start, end in _statements(item.body)
         for match in OWN_STATUS.finditer(text, start, end)
     )
-    for match in matches:
+    for start, match in matches:
         named = (match.group(1) or match.group(2)).lower()
         if named == item.status or not _standing(item.body, match.start()):
+            continue
+        if BARE_LEFT.match(match.group(0)) and not STANDING_LEFT.search(
+            text[start : match.start()]
+        ):
             continue
         if _names_another_item(item, match.start()):
             continue
