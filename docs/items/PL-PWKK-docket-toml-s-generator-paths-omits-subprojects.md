@@ -3,11 +3,13 @@ id: PL-PWKK
 title: docket.toml's generator_paths omits subprojects/docket/src/docket/inflow.py, though its re-entered list is where triage's three-post-close rule finds a generator whose fix did not hold, so a defect confined to inflow.py cannot carry impairs-generators (found triaging PL-C4F0, 2026-10-17)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra, defect
 touches: docket.toml
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
+closed: 2026-10-18
+pr: 1536
 payoff: a defect in the re-entry count that finds a generator whose fix did not hold can be ranked with the generators instead of waiting on its band
 verify: grep -qF '"subprojects/docket/src/docket/inflow.py"' docket.toml
 ---
