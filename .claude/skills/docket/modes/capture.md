@@ -18,8 +18,10 @@ pass and the cap per branch; the door has one copy, and a second one here is
 how the two drift apart. Read it there, and treat everything below as being
 about a finding that is being recorded.
 
-**This is the opposite case to the one above, and the difference is whether a
-design conversation is happening.** A thought dropped in passing — "the
+**A passing thought is the opposite case to an idea being designed, and the
+difference is whether a design conversation is happening.** The idea being
+designed is `.claude/skills/docket/modes/ideas.md` § "Mode: turn an idea into
+work". A thought dropped in passing — "the
 induction curve looks wrong at low flows" — is captured immediately, because
 the owner has moved on and nothing is lost by recording it. An idea being
 worked through with you is not captured yet, because it is still changing. If
@@ -81,7 +83,7 @@ five commits on 2026-09-16 carried no feature at all (`PL-N638`).
 when" the owner would notice closing: `session-start-cost` at 5 items,
 `doc-consistency-checks` at 4, `core-boundaries` closed at 6. Not a standing
 theme - `dev-tooling` reached 220 items without ever answering whether anything
-finished, so `docket.toml`'s `retired_features` now lists it with
+finished, so `docket.toml`'s `retired_features` lists it with
 `parallel-sessions` and `queue-hygiene`, and `bin/docket check` refuses an open
 item carrying one (`PL-S0MB`). The big end already has a home: anything
 release-sized is a `ROADMAP.md` milestone, so the gap this closes is at the
@@ -122,7 +124,7 @@ copy with the older one, which is what `PL-XLQ5` cost (`PL-KBFN`, `PL-39B7`).
 **A second list below it names items `main` already holds, and hands a `git
 diff` rather than a recovery.** An item file is created once and appended to by
 every session that learns something about it, so the unmerged *section* is the
-commoner loss and nothing used to report it (`PL-KSCW`). Read the diff and
+commoner loss, and this list is what reports it (`PL-KSCW`). Read the diff and
 carry across what is worth keeping - a section appended to a brief usually
 whole, a field both sides have edited never from a command line. There is no
 `git checkout` for these on purpose: `main` holds a copy of its own, and
@@ -146,7 +148,7 @@ git fetch origin main
 git checkout -B <branch> origin/main
 ```
 
-**`bin/docket branch` now names this case while the commit is still
+**`bin/docket branch` names this case while the commit is still
 recoverable**, which is the cheaper end of the same problem: it prints the
 restart advice above rather than "merge the base in" where the base already
 holds a whole commit of the branch (`PL-8M8H`). That is the session holding the
@@ -188,7 +190,7 @@ below: prune and `branch -dr` clear local refs and nothing else, so neither one
 finishes the job.
 
 **These commands destroy a branch, so confirm the merge before running
-them.** The check now requires the base to have taken one of the branch's
+them.** The check requires the base to have taken one of the branch's
 commits whole, which is what a squash merge leaves and what two sessions
 writing identical `docket record` lines does not (`PL-5TRV`, `#372` reported
 as merged while its pull request was open with two commits on it). That
@@ -216,7 +218,7 @@ refs without being on a diverged branch.
 branch nobody merged, which is why `fetch_remote` does not prune and what
 `stranded` recovers - `PL-HKF4` came within one prune of exactly that.
 `.claude/hooks/no-prune-guard.sh` refuses the call and prints these three
-commands, which is why the prohibition is no longer resident in `CLAUDE.md`
+commands, which is why `CLAUDE.md` does not state the prohibition
 (`PL-JK0M`); `PL-1Q3S` and `PL-PF8H` are the two ways such a ref arises.
 
 ## Mode: housekeeping nobody filed

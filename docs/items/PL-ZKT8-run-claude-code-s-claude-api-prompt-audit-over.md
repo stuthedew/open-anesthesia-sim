@@ -3,11 +3,13 @@ id: PL-ZKT8
 title: Run Claude Code's /claude-api prompt-audit over the resident instructions and the docket skill against Opus 5.5, and bring its proposed diff to the owner hunk by hunk
 priority: P2
 effort: M
-status: ready
+status: done
 classes: session-cost
 feature: model-evidence
-touches: CLAUDE.md, .claude/rules, .claude/skills/docket
+touches: CLAUDE.md, .claude/rules, .claude/skills/docket, docs/WORKING_NOTES.md, docs/resident-instructions.md
 added: 2026-10-17
+closed: 2026-10-18
+pr: 1528
 payoff: instructions written for older models stop costing tool rounds and accuracy on Opus 5.5, with every change approved by the owner
 verify: grep -q 'the files under' .claude/rules/citation-drift.md
 ---
@@ -94,10 +96,10 @@ changes a rule the owner wrote in their own words, and its reason is given.
 | D7 | `release.md:328` | high | - | Tag range "since v0.5.20", now that tags run to v0.5.25 |
 | D8 | `start.md:11,21` | medium | - | Drops the separate `git fetch origin`, since `show` fetches (`PL-XBV4`); keeps the 2026-09-01 incident |
 | D9 | `start.md:38` | medium | - | Splits the 16-line exit-4 sentence; keeps every id, the disarm and the `git push` ban |
-| D10 | `release.md:335` | medium | - | Removes the tag-step history that line 289 already states as a rule |
+| D10 | `release.md`, the tag step | medium | - | Removes the tag-step history that line 289 already states as a rule |
 | D11 | `picking.md:260` | medium | - | Payoff rule in the present tense: required for items added from 2026-09-20 |
 | D12 | `picking.md:168` | medium | - | Drops "now" from the lane-line sentence |
-| E1 | `triage.md:601` | high | unrecorded | Points at `CLAUDE.md`'s four friction tests instead of listing three |
+| E1 | `triage.md`, its last section | high | unrecorded | Points at `CLAUDE.md`'s four friction tests instead of listing three |
 | E2 | `triage.md:516` | high | - | Dates "14 of the 179 closed items" to 2026-09-04 |
 | E3 | `triage.md:333` | high | - | Dates "all six commands" to 2026-08-30 |
 | E5 | `triage.md:409` | medium | - | Removes the dated `-k` refusal paragraph, which the admitted-shapes list covers |
@@ -128,3 +130,15 @@ themselves.
 
 The four flags that need a decision (B10, B11, E4 and A9) were not answered
 here and stay open on this item.
+
+### Applied
+
+All 38 hunks were applied on 2026-10-18 with `git apply`, unchanged from the
+audited diff. Two stale copies outside the audit's files were repaired in the
+same commit. `docs/WORKING_NOTES.md` no longer calls `CLAUDE.md`'s
+compounding-friction tests "three", and `docs/resident-instructions.md` no
+longer says `bin/docket flight` does not fetch.
+
+The resident set grew by 238 characters, almost all of it in `CLAUDE.md`
+(hunks A1 to A4). Nothing was cut to pay for it. The growth names what a bare
+"this" or an undated number referred to, which is the fix the owner approved.
