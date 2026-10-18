@@ -13,7 +13,6 @@ closed: 2026-10-18
 pr: 1567
 payoff: docket answers which program a verify: command runs, and where its status ends, by one grammar
 verify: grep -q 'def test_a_command_program_is_read_through_docket_shell' subprojects/docket/tests/test_verify.py
-falsifies: assert list(doc_check._make_mentions(fence)) == [("check", 2)]
 ---
 
 **Problem.** verify and checks each decide a command's structure beside docket.shell - verify's SHELL_PREFIXES, INTERPRETERS, _programs and _docket_runs, checks' _STATUS_REPLACED and _after_pytest, gate-status-guard.sh's DOCKET_GATES, cli's shlex.split - so time python3, ;;, python3 -c pytest.main and python3 -m docket check each read two ways
