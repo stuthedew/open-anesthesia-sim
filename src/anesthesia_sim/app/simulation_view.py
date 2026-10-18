@@ -133,11 +133,12 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set
+from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, CONCENTRATION_CHART
 from anesthesia_sim.core.concentration import fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 from anesthesia_sim.layout.model import LayoutModel
-from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, Window
+from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 
 #: The unconditional region gives the run rows three parts of its width and
 #: the control-change records one, the proportion the Flet build's 9:3 grid
@@ -145,18 +146,13 @@ from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKin
 _CHART_COLUMN_STRETCH: Final = 3
 _SIDEBAR_STRETCH: Final = 1
 
-#: The View kinds of the dashboard's two Areas. The chart panel still holds
-#: the wash-in plot, the marks and the branch control under the concentration
-#: plot, until each is a View of its own (`PL-TH35`, `PL-9LNF`), so it carries
-#: the tag of the View it leads with. The sidebar holds each run's agent
-#: accounting, under the tag `PL-50PZ` gives that View.
-_CONCENTRATION_CHART: Final = ViewKind("concentration_chart")
-_AGENT_ACCOUNTING: Final = ViewKind("agent_accounting")
-
 #: The dashboard's Areas: the chart panel beside the sidebar, in one row
-#: (`PL-W9P6`). The sidebar's 0.18 gives it about the 228 px it had beside the
-#: charts in a 1366 px window before the row was an Area layout, when it stood
-#: at its own minimum width at every window size. A placeholder until the
+#: (`PL-W9P6`). The chart panel still holds the wash-in plot, the marks and the
+#: branch control under the concentration plot, until each is a View of its
+#: own (`PL-TH35`, `PL-9LNF`), so it carries the tag of the View it leads with.
+#: The sidebar's 0.18 gives it about the 228 px it had beside the charts in a
+#: 1366 px window before the row was an Area layout, when it stood at its own
+#: minimum width at every window size. A placeholder until the
 #: shipped Workspaces replace this layout.
 _DASHBOARD_LAYOUT: Final = LayoutModel(
     (
@@ -164,7 +160,7 @@ _DASHBOARD_LAYOUT: Final = LayoutModel(
             Split(
                 Orientation.ROW,
                 (0.82, 0.18),
-                (Area(AreaId(1), _CONCENTRATION_CHART), Area(AreaId(2), _AGENT_ACCOUNTING)),
+                (Area(AreaId(1), CONCENTRATION_CHART), Area(AreaId(2), AGENT_ACCOUNTING)),
             )
         ),
     ),
@@ -611,12 +607,15 @@ class SimulationView(QWidget):
         """The widget `area` draws: the chart panel, or the sidebar of accounting panels.
 
         Raises:
-            LookupError: `area` names a View kind the dashboard does not
-                draw. `_DASHBOARD_LAYOUT` names only these two, so this is a
-                defect in that layout rather than a reader's file.
+            LookupError: `area` names a registered View kind the dashboard
+                does not draw as a View of its own yet, such as the wash-in
+                plot. `_DASHBOARD_LAYOUT` names only these two, so this is a
+                defect in that layout rather than a reader's file. A kind the
+                registry does not hold never reaches here: the adapter draws
+                its failure notice instead.
         """
 
-        views = {_CONCENTRATION_CHART: self._chart_column, _AGENT_ACCOUNTING: self._sidebar}
+        views = {CONCENTRATION_CHART: self._chart_column, AGENT_ACCOUNTING: self._sidebar}
 
         if area.view not in views:
             raise LookupError(f"the dashboard draws no View of the kind {area.view!r}")

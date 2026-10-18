@@ -22,35 +22,60 @@ the model has it.
 children out from the model again whenever it is resized, so rounding to whole
 pixels cannot carry the layout away from the model over many resizes.
 
+**Each Area's View kind is looked up in the View registry.** An Area whose
+kind `app/view_registry.py` registers draws the widget the caller's
+`view_for` returns for it. An Area whose kind is not registered draws the
+failure notice in its place, and `view_for` is never asked for it
+(`PL-R1WQ`). The notice names the saved kind and says what became of it. It
+shows no value from any run, and the model keeps the kind, so the Area's
+neighbours draw as usual and a later save writes back what was read. The
+notice's look is `PL-DB5G`'s: a bold title in `WARNING` over a body in
+`INK`, on the panel surface, with no fill, border or icon. The caller builds
+each registered View until `PL-TH35`'s contract gives the registry a factory.
+
 **What is not here yet.** A minimum size for each View, and what an Area shows
 when it cannot be given that size, are `PL-K285`'s. Until then Qt holds each
 View to its own minimum size hint, so a split narrower than that in the model
 is drawn at the minimum instead. Shift to move one handle alone, Escape to
 cancel a drag and the warning line at a minimum are `PL-2KXB`'s, with the
-corner drag and the swap a reader performs. Looking a View kind up in a
-registry, and the failure an unknown kind shows in its Area, are `PL-R1WQ`'s.
-Until then the caller passes a function that returns each Area's View. Only
-the main window is drawn, because v0.6.0 opens one (`ROADMAP.md` § "v0.6.0 -
-the layout is the reader's", "Explicitly out of scope for v0.6.0").
+corner drag and the swap a reader performs. Only the main window is drawn,
+because v0.6.0 opens one (`ROADMAP.md` § "v0.6.0 - the layout is the
+reader's", "Explicitly out of scope for v0.6.0").
 """
 
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from functools import partial
 from typing import Final
 
 from PySide6.QtCore import QEvent, QRect, Qt, Signal
 from PySide6.QtGui import QColor, QEnterEvent, QPainter, QPaintEvent, QResizeEvent
-from PySide6.QtWidgets import QSplitter, QSplitterHandle, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QSplitter, QSplitterHandle, QVBoxLayout, QWidget
 
-from anesthesia_sim.app.theme import AREA_HANDLE_LINE_WIDTH, AREA_HANDLE_WIDTH, PRIMARY
+from anesthesia_sim.app.qt_widgets import styled_label
+from anesthesia_sim.app.stylesheets import panel_stylesheet
+from anesthesia_sim.app.theme import (
+    AREA_HANDLE_LINE_WIDTH,
+    AREA_HANDLE_WIDTH,
+    INK,
+    METRIC_NAME_SIZE,
+    PANEL_PADDING,
+    PRIMARY,
+    WARNING,
+)
+from anesthesia_sim.app.view_registry import (
+    MISSING_VIEW_TITLE,
+    REGISTERED,
+    RegisteredView,
+    missing_view_text,
+)
 from anesthesia_sim.layout.exceptions import LayoutRefused
 from anesthesia_sim.layout.model import Handle, LayoutModel
 from anesthesia_sim.layout.tree import Area, Node, Orientation, Split
 
-__all__ = ["AreaLayout", "ViewFor"]
+__all__ = ["AreaLayout", "AreaNotice", "ViewFor"]
 
 type ViewFor = Callable[[Area], QWidget]
 """What gives the adapter each Area's View: the widget to draw in that Area."""
@@ -75,6 +100,14 @@ class AreaLayout(QWidget):
             drag has changed it. `set_model` does not emit it, because the
             caller already holds the layout it passed.
 
+    Args:
+        model: The layout to draw.
+        view_for: Gives the widget for each Area whose View kind is
+            registered.
+        parent: The Qt parent.
+        registered: The View kinds this build can draw. A test passes a
+            registry of its own.
+
     Raises:
         TypeError: `model` is not a `LayoutModel`.
         ValueError: `model` holds more than one window.
@@ -83,15 +116,22 @@ class AreaLayout(QWidget):
     layout_changed = Signal(object)
 
     def __init__(
-        self, model: LayoutModel, view_for: ViewFor, parent: QWidget | None = None
+        self,
+        model: LayoutModel,
+        view_for: ViewFor,
+        parent: QWidget | None = None,
+        *,
+        registered: Mapping[str, RegisteredView] = REGISTERED,
     ) -> None:
         super().__init__(parent)
         self._view_for = view_for
+        self._registered = registered
         self._column = QVBoxLayout(self)
         self._column.setContentsMargins(0, 0, 0, 0)
         self._model = _drawable(model)
         self._root: QWidget | None = None
         self._views: list[QWidget] = []
+        self._notices: list[AreaNotice] = []
         self._splitters: dict[tuple[int, ...], _AreaSplitter] = {}
         self._hovered: _AreaHandle | None = None
         self._build()
@@ -110,7 +150,8 @@ class AreaLayout(QWidget):
         Otherwise the splitters are built again and each Area's View is asked
         for again. A View the new layout still draws is moved into the new
         splitters. A View it no longer draws is taken out of this widget and
-        left to whatever made it.
+        left to whatever made it. Each failure notice is built again with the
+        splitters.
 
         Raises:
             TypeError: `model` is not a `LayoutModel`.
@@ -134,7 +175,9 @@ class AreaLayout(QWidget):
 
         previous_root = self._root
         previous_views = self._views
+        previous_notices = self._notices
         self._views = []
+        self._notices = []
         self._splitters = {}
         self._hovered = None
         root = self._widget_for(self._model.windows[_MAIN_WINDOW].tree, ())
@@ -142,6 +185,10 @@ class AreaLayout(QWidget):
         for view in previous_views:
             if not any(view is kept for kept in self._views):
                 view.setParent(None)
+
+        for notice in previous_notices:
+            notice.setParent(None)
+            notice.deleteLater()
 
         if previous_root is not None:
             self._column.removeWidget(previous_root)
@@ -158,6 +205,14 @@ class AreaLayout(QWidget):
         """The widget drawing `node`: its View for an Area, a splitter for a split."""
 
         if isinstance(node, Area):
+            if node.view not in self._registered:
+                notice = AreaNotice(
+                    MISSING_VIEW_TITLE, missing_view_text(node.view, self._registered)
+                )
+                self._notices.append(notice)
+
+                return notice
+
             view = self._view_for(node)
             self._views.append(view)
 
@@ -253,6 +308,38 @@ class AreaLayout(QWidget):
 
                 if isinstance(handle, _AreaHandle):
                     handle.set_lit(any(handle is member for member in lit))
+
+
+class AreaNotice(QFrame):
+    """What an Area shows in place of a View it cannot draw: a title and a body, and nothing else.
+
+    `PL-DB5G` decided one notice for every state in which an Area shows no
+    View, so a reader learns its shape once (project owner, 2026-10-11,
+    ratified). The title is bold, in `WARNING`, and the body is regular, in
+    `INK`, both at `METRIC_NAME_SIZE` and wrapped to the Area's width. They sit
+    at the top left of the panel surface, inset by `PANEL_PADDING`. The notice
+    has no fill colour of its own, no border and no icon, and it never shows a
+    value from a run, since a plausible number in a failure state could be read
+    as a View's. An unknown View kind is the one state built so far.
+
+    Attributes:
+        title_label: The title.
+        body_label: The body.
+    """
+
+    def __init__(self, title: str, body: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("areaNotice")
+        self.setStyleSheet(panel_stylesheet(self.objectName()))
+        self.title_label = styled_label(
+            title, color=WARNING, size_px=METRIC_NAME_SIZE, bold=True, wrap=True
+        )
+        self.body_label = styled_label(body, color=INK, size_px=METRIC_NAME_SIZE, wrap=True)
+        column = QVBoxLayout(self)
+        column.setContentsMargins(PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, PANEL_PADDING)
+        column.addWidget(self.title_label)
+        column.addWidget(self.body_label)
+        column.addStretch(1)
 
 
 class _AreaSplitter(QSplitter):
