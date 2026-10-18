@@ -137,6 +137,34 @@ def selector_stylesheet() -> str:
     )
 
 
+def view_chooser_stylesheet() -> str:
+    """The View chooser in an Area's header: a flat menu button, INK on its surface.
+
+    `PL-RBXL` Q1 decided its look. At rest it has no frame and no fill, so the
+    title reads as the header's own text, INK on the header's PANEL. Under the
+    pointer, and while its menu is open, it is filled in BACKGROUND, the
+    page's colour, with the title still in INK. With the keyboard focus it
+    carries a 1px INK edge, which the transparent edge at rest keeps from
+    moving the title. `tools/contrast_check.py` measures INK on both surfaces.
+    """
+
+    return (
+        f"QToolButton {{ color: {INK}; background-color: transparent; "
+        f"border: 1px solid transparent; border-radius: {PANEL_RADIUS}px; padding: 2px 6px; }} "
+        f"QToolButton:hover, QToolButton:open {{ background-color: {BACKGROUND}; }} "
+        f"QToolButton:focus {{ border-color: {INK}; }}"
+    )
+
+
+def menu_stylesheet() -> str:
+    """A menu a button opens: PANEL fill, INK entries, a PRIMARY selection, as a popup draws."""
+
+    return (
+        f"QMenu {{ background-color: {PANEL}; color: {INK}; border: 1px solid {MUTED}; }} "
+        f"QMenu::item:selected {{ background-color: {PRIMARY}; color: {PANEL}; }}"
+    )
+
+
 def transport_button_stylesheet() -> str:
     """Start, Pause and Reset in both states: PANEL fill, MUTED edge, INK or MUTED label.
 

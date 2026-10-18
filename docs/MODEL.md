@@ -7101,6 +7101,24 @@ made wrong by their absence from a particular workspace, so a layout may leave
 them out. They must stay reachable in every layout, and must not be removable
 from the application.
 
+**What "reachable" means** (`PL-50PZ`, project owner, 2026-09-27, ratified,
+over leaving the word undefined). A View kind is reachable in a Workspace when
+a reader can bring it on screen from that Workspace through the interface
+alone, in a bounded number of steps, without a drag or a file edit. Two parts
+of the build make that true for every Workspace at once. Every Area's header
+carries a View chooser whose menu lists every View kind the build registers,
+whatever the Workspace names, and choosing one shows it in that Area
+(`app/area_layout.py`). The registry, `app/view_registry.py`, marks the
+accounting View `required_reachable`, and a build that does not register it
+fails when the module is imported. A layout always holds at least one Area,
+so there is always a chooser to use. None of the shipped Workspaces names the
+accounting View, so the chooser is its route in the shipped set, and
+`tests/integration/test_view_chooser.py` checks that route from every Area of
+each of them. *Until each View can be built once per Area* (`PL-TH35`), the
+dashboard draws one accounting sidebar. Where two Areas name it, the one
+first in reading order shows it and the other shows a notice saying it is
+shown elsewhere, so it stays on screen either way.
+
 **Conditional. These bind a surface only when that surface is shown.** A
 concentration chart carries the MAC-awake band, the 1 MAC line, the control
 marks, and the statement of how much simulated time it is showing and whether

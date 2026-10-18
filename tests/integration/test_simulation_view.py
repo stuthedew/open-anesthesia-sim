@@ -191,7 +191,7 @@ from anesthesia_sim.core.supported_ranges import (
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.units import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
-from anesthesia_sim.layout.tree import Split
+from anesthesia_sim.layout.tree import AreaId, Split
 
 # The size every dashboard here is shown at: wide enough for the seven
 # readouts to stand side by side and for a chart column with pixels to
@@ -6150,7 +6150,7 @@ def test_dragging_the_border_beside_the_sidebar_changes_the_layout_model(
     assert isinstance(tree, Split)
     assert splitter.sizes() == [chart_px - 100, sidebar_px + 100]
     assert tree.sizes[0] == pytest.approx((chart_px - 100) / (chart_px + sidebar_px), abs=1e-2)
-    assert splitter.widget(0) is view._chart_column
+    assert view.layout_container.frame(AreaId(1)).content is view._chart_column
 
 
 def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplication) -> None:
