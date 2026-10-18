@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import bisect
 import functools
+import json
 import os
 import re
 import shutil
@@ -679,11 +680,13 @@ def _handed_word(recorded: str) -> str:
 
 
 #: The operators that end one simple command and start another, once `&&` has cut the clauses.
-ENDS = frozenset((";", "\n", "&", "|", "|&", "(", ")", ";;", ";&", ";;&"))
+ENDS = frozenset((";", "\n", "&", "|", "|&", "||", "(", ")", ";;", ";&", ";;&"))
 #: The operators whose next word is where the redirection points rather than an argument.
 REDIRECTIONS = frozenset(("<", ">", ">>", ">|", "<>", "<&", ">&", "&>", "&>>", "<<", "<<-", "<<<"))
 #: The reserved words at a command's head that no command is handed.
-RESERVED = frozenset(("if", "then", "fi", "{", "}", "time", "do", "done"))
+RESERVED = frozenset(
+    ("if", "then", "elif", "else", "fi", "{", "}", "!", "time", "while", "until", "do", "done")
+)
 DESCRIPTOR = re.compile(r"\d+|\{[A-Za-z_]\w*\}")
 ASSIGNMENT = re.compile(r"[A-Za-z_]\w*\+?=")
 #: A parameter no script sets, so its expansion is nothing.
@@ -961,6 +964,12 @@ REDIRECT = (
     "</dev/null",
     "{v}>/dev/null",
     "&>/dev/null",
+    ">>/dev/null",
+    ">|/dev/null",
+    "<>/dev/null",
+    "&>>/dev/null",
+    # A descriptor closed: 4, since `p` writes its record to 3.
+    "4>&-",
 )
 
 
@@ -1028,6 +1037,25 @@ def _here_document(draw: st.DrawFn, nested: bool) -> tuple[str, str]:
     ) + closing + "\n"
 
 
+def _if(draw: st.DrawFn, depth: int) -> str:
+    """An `if`, perhaps with `elif` and `else`, that runs each condition and one body.
+
+    A condition that `!` makes fail skips its body, so the bodies skipped are
+    an assignment, which runs no command.
+    """
+    body = _list(draw, depth + 1, lines=False)
+    test = _simple(draw, depth + 1, None)
+    form = draw(st.sampled_from(("then", "else", "elif", "elif else")))
+    if form == "then":
+        return f"if {test}; then {body}; fi"
+    if form == "else":
+        return f"if ! {test}; then v=1; else {body}; fi"
+    second = _simple(draw, depth + 1, None)
+    if form == "elif":
+        return f"if ! {test}; then v=1; elif {second}; then {body}; fi"
+    return f"if ! {test}; then v=1; elif ! {second}; then v=1; else {body}; fi"
+
+
 def _case(draw: st.DrawFn, depth: int, lines: bool) -> str:
     """A `case` every arm of which runs: `;;&` tries the next, `;&` runs it, `;;` ends."""
     subject = draw(st.sampled_from(("x", '"x"', "'x'", "$( p subject)")))
@@ -1065,6 +1093,8 @@ COMPOUND = (
     "subshell",
     "if",
     "time",
+    "negated",
+    "loop",
     "assign",
     "array",
     "case",
@@ -1080,9 +1110,15 @@ def _statement(
     """A pipeline's element: a simple command, or at shallow depth a compound one.
 
     `leads` where it opens its pipeline, the one place bash reads `time` as
-    the reserved word: after a `|` it is the name of a command.
+    the reserved word: after a `|` it is the name of a command. A loop opens
+    a pipeline too, since its flag is cleared by a command of its own, which
+    would join the pipeline before it and leave the loop the flag a sibling set.
     """
-    kinds: tuple[str, ...] = ("simple",) * 3 + (COMPOUND if leads else COMPOUND[:3] + COMPOUND[4:])
+    kinds: tuple[str, ...] = ("simple",) * 3 + (
+        COMPOUND
+        if leads
+        else tuple(kind for kind in COMPOUND if kind not in ("time", "negated", "loop"))
+    )
     if depth >= 2:
         kinds = ("simple",)
     elif depth:
@@ -1097,9 +1133,20 @@ def _statement(
     if kind == "subshell":
         return "( " + _list(draw, depth + 1, lines=False) + " )"
     if kind == "if":
-        return (
-            f"if {_simple(draw, depth + 1, None)}; then {_list(draw, depth + 1, lines=False)}; fi"
-        )
+        return _if(draw, depth)
+    if kind == "negated":
+        # `!` makes the pipeline after it fail, so `||` runs its right side:
+        # both run, and the pair succeeds as the right side does.
+        negated = _statement(draw, depth + 1, None, lines=False, leads=False)
+        return f"! {negated} || " + _statement(draw, depth + 1, None, lines=False, leads=False)
+    if kind == "loop":
+        # The flag is set inside the body, so the condition runs twice and the
+        # body once. Each depth has its own, so a loop in the body, in a
+        # pipeline's subshell or not, leaves this one's alone.
+        flag = f"w{depth}"
+        body = _list(draw, depth + 1, lines=False)
+        test = draw(st.sampled_from((f"while [[ -z ${flag} ]]", f"until [[ -n ${flag} ]]")))
+        return f"{flag}=; {test}; do {flag}=1; {body}; done"
     if kind == "time":
         timed = _statement(draw, depth + 1, None, lines=False, leads=False)
         return draw(st.sampled_from(("time ", "time -p "))) + timed
@@ -1278,10 +1325,12 @@ def test_the_lexer_reads_generated_commands_as_bash_does(script: str) -> None:
     exactly: words in every quoting, continuations and comments; `$( )`,
     nested backquotes, `${...}` with a default, and process substitutions;
     arithmetic expansions, a substitution inside some (`PL-3Z8B`);
-    redirections, descriptors and a `{v}` among them, here-strings, and
+    redirections, `>>`, `>|`, `<>`, `&>>`, a closed descriptor, a `{v}`
+    and other descriptors among them, here-strings, and
     here-documents under every quoting of their delimiter, `<<-` too, inside
     substitutions as well; `;`, `&`, `&&`, `|`, `|&` and an operator a
     continuation splits; and groups, subshells, `if`, `time` and `time -p`,
+    `if` with `elif` and `else`, `while` and `until`, `!` with `||`,
     assignments, arrays, `for` and the arithmetic `for`, `(( ))`, `[[ ]]`
     with `!`, groups, `&&`, `||`, `<`, `>`, `=~` and extglob patterns
     (`PL-X1VN`), and `case` with `;;`, `;&` and `;;&`.
@@ -1297,6 +1346,57 @@ def test_the_lexer_reads_generated_commands_as_bash_does(script: str) -> None:
 
     assert _lexer_runs(script) == expected, script
     assert _lexer_runs_by_piece(script) == expected, script
+
+
+#: mvdan/sh's parser inputs, vendored with their licence (`PL-NPPV`).
+MVDAN_CASES = json.loads(
+    (Path(__file__).parent / "mvdan-sh" / "cases.json").read_text(encoding="utf-8")
+)
+#: The inputs `bash -n` accepts and bash refuses on running, which the lexer
+#: refuses too: a backquote that holds a lone `"`. `bash -n` does not parse a
+#: command substitution's body, and running it stops at "unexpected EOF while
+#: looking for matching `"'" (bash 5.2.21). mvdan/sh lists both among its error
+#: cases, at lines 1425 and 2102 of `syntax/parser_test.go`.
+BASH_RUN_REFUSES = frozenset(('`"`', '`"`\\'))
+
+
+def _bash_n_accepts(text: str) -> bool:
+    """Whether `bash -n` reads `text` with nothing but warnings, as the 2026-10-12 probe did."""
+    run = subprocess.run(
+        [_bash(), "--norc", "--noprofile", "-n", "-c", text],
+        capture_output=True,
+        timeout=10,
+        check=False,
+    )
+    errors = [
+        line
+        for line in run.stderr.decode(errors="replace").splitlines()
+        if line.strip() and "warning:" not in line
+    ]
+    return run.returncode == 0 and not errors
+
+
+def test_the_lexer_agrees_with_bash_n_on_mvdan_sh_cases() -> None:
+    """The lexer reads complete every mvdan/sh input that bash both parses and runs.
+
+    The generator draws only what this repository thought to draw. mvdan/sh's
+    1,165 parse and error inputs were written by others and confirmed against
+    bash, dash, mksh and zsh. So an input `bash -n` accepts and the lexer calls
+    incomplete would make a Bash guard refuse, or misread, a command bash
+    runs. The other direction is not held. Of the 284 inputs bash refuses, the
+    lexer reads 187 complete, since it reads tokens rather than bash's
+    grammar. On 2026-10-18, with bash 5.2.21, `bash -n` accepted 881 inputs,
+    and the lexer called two of them incomplete, the two `BASH_RUN_REFUSES`
+    names. The whole run takes about 3 seconds.
+    """
+    assert len(MVDAN_CASES) == 1165
+    accepted = [case["input"] for case in MVDAN_CASES if _bash_n_accepts(case["input"])]
+    incomplete = {text for text in accepted if not flat_reading(text).complete}
+
+    assert incomplete == BASH_RUN_REFUSES
+    # A floor rather than the count, which another bash may move: it fails
+    # where `bash -n` refuses everything, which would pass the first check.
+    assert len(accepted) > 800, f"bash -n accepted only {len(accepted)} of the 881 measured"
 
 
 #: A `$'...'` for every escape bash 5.2.21's `ansicstr` reads, each grammar at

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import shlex
 import subprocess
 import sys
 from collections.abc import Callable, Collection, Mapping, Sequence
@@ -139,6 +138,7 @@ from .release import (
     unreferenced_by_version,
 )
 from .roadmap import IN_SCOPE, MilestoneStates, Scope, Wave, latest_gate, milestone_states, wave
+from .shell import argv
 from .store import (
     ID_PREFIX,
     find_item,
@@ -153,7 +153,6 @@ from .trend import BY_DAY, BY_WEEK
 from .trend import analyze as analyze_trend
 from .vcs import (
     CURRENT,
-    DEFAULT_BRANCHES,
     FETCHED,
     PULL_STATES,
     REMOTE,
@@ -208,6 +207,7 @@ from .vcs import (
     stranded,
     tags,
     tree_files,
+    unresolved_base_cause,
     with_newest_pull_request,
     working_paths,
 )
@@ -4519,8 +4519,8 @@ def cmd_delegable(args: argparse.Namespace) -> int:
     return 0
 
 
-def _guessed_base_refusal() -> str:
-    """Refuse the audit where no candidate default branch resolved.
+def _guessed_base_refusal(base: str) -> str:
+    """Refuse the audit where no default branch was established.
 
     The commission audit is a claim about what a branch changed *against a
     base*, so a base nobody established makes every one of its findings
@@ -4545,9 +4545,8 @@ def _guessed_base_refusal() -> str:
     """
     return "\n".join(
         [
-            "Cannot verify: no candidate default branch resolved in this checkout,",
-            "so there is no base to audit the commission against "
-            f"(tried {', '.join(DEFAULT_BRANCHES)}).",
+            f"Cannot verify: {unresolved_base_cause(base)},",
+            "so there is no base to audit the commission against.",
             "",
             "Every finding here is a claim about what this branch changed relative to",
             "a base, so a guessed one would report paths that do not exist and pass",
@@ -4598,7 +4597,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     root = inv.root
     base = args.base or default_base(root, runner=inv.git)
     if not resolved(base):
-        print(_guessed_base_refusal())
+        print(_guessed_base_refusal(base))
         return 1
     reports = verify_batch(root, wanted, config, base, self_audit=args.self_audit)
     own = frozenset() if args.self_audit else _own_branch_refused(args, reports)
@@ -4963,9 +4962,16 @@ def cmd_branch(args: argparse.Namespace) -> int:
         state = with_newest_pull_request(state, lookup, inv.root, runner=inv.git)
     if args.if_stale and state.disposition == CURRENT:
         return 0
+    # The full answer adds `stranded`'s one line, so a reply's closing block is
+    # one command rather than three (`PL-CM40`); `--brief` and `--if-stale`
+    # are the hook's, and leave it out.
+    full = not (args.brief or args.if_stale)
     print(
         render.format_branch_state(
-            state, None if args.brief else _flight(args), rests_on=_refs_line(args)
+            state,
+            None if args.brief else _flight(args),
+            rests_on=_refs_line(args),
+            stranded=_stranded(_load(args)[1], args) if full else None,
         )
     )
     return 0
@@ -5029,13 +5035,18 @@ def _run_forge_command(
 
     Both forge commands run through here, from the repository root and under
     `OPEN_LOOKUP_TIMEOUT`, so a timeout, a command that is not there and one
-    `shlex` cannot split fail one way for both. `extra` is appended to the
-    command's own words. Every exception is a failure, never a raise: the
-    commands asking are reports with an answer of their own to fall back on.
+    that is not a single simple command fail one way for both. Its words are
+    the ones bash would hand the program, read by `docket.shell.argv`
+    (`PL-RHPK`), and `extra` is appended to them. Every exception is a
+    failure, never a raise: the commands asking are reports with an answer of
+    their own to fall back on.
     """
+    words = argv(command)
+    if words is None:
+        return "it could not be run (it is not one simple command of words)"
     try:
         return subprocess.run(
-            [*shlex.split(command), *extra],
+            [*words, *extra],
             cwd=root,
             capture_output=True,
             text=True,

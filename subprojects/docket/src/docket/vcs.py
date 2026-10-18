@@ -158,6 +158,25 @@ class GuessedBase(str):
 GUESSED_BASE = GuessedBase("main")
 
 
+def unresolved_base_cause(base: str) -> str:
+    """Why `base` is a guess, as a clause a decline prints before its verdict.
+
+    Two cases reach a `GuessedBase`, and a decline has to name the one that
+    happened, because the reader picks a remedy from it (`PL-27VL`). Where no
+    candidate resolved, `default_base` returns the `GUESSED_BASE` singleton,
+    so identity tells it apart from a name that resolved after git left a
+    candidate ahead of it unanswered. Both declines that print this, `bin/docket
+    verify` and `tools/branch_id_check.py`, read it here so they cannot drift.
+    """
+    tried = ", ".join(DEFAULT_BRANCHES)
+    if base is GUESSED_BASE:
+        return f"no candidate default branch resolved here (tried {tried})"
+    return (
+        f"`{base}` resolved only after git did not answer a candidate ahead of it "
+        f"(tried {tried}), so it is not established as the default branch"
+    )
+
+
 def resolved(base: str) -> bool:
     """Whether `base` is the ref this repository calls for, as against a guess.
 
@@ -1427,13 +1446,31 @@ def _written_since(fork_point: str, base: str, root: Path, run: Runner) -> froze
     missing commits, and a read git refused all read as "not landed", the safe
     direction `_landing_split` documents.
 
+    **A truncated clone's boundary commit writes nothing here** (`PL-29RM`).
+    Git shows a grafted commit with no parents, so `--raw` lists its whole tree
+    as added, content the base held long before the fork included. A branch
+    restoring a file to that content then read as landed, `#1118`'s shape
+    again. `--min-parents=1` leaves out every commit with no parents. A
+    repository's true root is an ancestor of every fork point, so `^fork`
+    already excludes it, and only a graft is dropped. What the boundary commit
+    really changed goes unread with it, which reads as "not landed".
+
     Measured 2026-09-27 on this checkout, 1,466 commits on `origin/main`: its
     20 candidate refs forked at 10 points, read in 0.098 s in all, and one read
     of the whole history takes 0.211 s, which bounds a fork of any age. None of
     the 20 changed verdict against the whole-history set it replaced.
     """
     listing = run(
-        changed_path_args("log", "--raw", "--no-abbrev", "--format=", f"^{fork_point}", base, "--"),
+        changed_path_args(
+            "log",
+            "--raw",
+            "--no-abbrev",
+            "--format=",
+            "--min-parents=1",
+            f"^{fork_point}",
+            base,
+            "--",
+        ),
         root,
     )
     return frozenset(blob for blob, _ in _raw_writes(listing))

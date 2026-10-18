@@ -4922,3 +4922,67 @@ def test_the_readers_take_bash_s_reading_of_quotes_comments_and_pipes() -> None:
     )
     # An unclosed substitution is a command bash refuses, so it runs nothing.
     assert reenters_verify('echo "$(bin/docket verify PL-K7QX"') is False
+
+
+# --- the command grammar is docket.shell's (`PL-RHPK`) -----------------------
+#
+# Each reader below asked its own question of a command's structure beside
+# `docket.shell`, and each pins the input on which the two readings parted.
+
+
+def test_a_command_program_is_read_through_docket_shell() -> None:
+    """The program is the one `docket.shell` reads, so the path it runs is no path read.
+
+    `verify` took the word after `time` for a path the command reads, and knew
+    `python3.11` as no interpreter, where `docket.shell` and the guard hooks
+    take `python3` and `python3.11` for the program (`PL-RHPK`). An assignment,
+    a wrapper, `uv run`, a reserved word and a pipe each come before a program.
+    """
+    for command in (
+        "time python3 tools/x.py docs/a.md",
+        "python3.11 tools/x.py docs/a.md",
+        "FOO=1 timeout 60 uv run python3 -X dev tools/x.py docs/a.md",
+        "if true; then python3 tools/x.py docs/a.md; fi",
+        "grep -c x docs/a.md | python3 tools/x.py",
+        "time bash tools/x.py docs/a.md",
+    ):
+        paths = command_paths(command)
+
+        assert "tools/x.py" not in paths, command
+        assert "docs/a.md" in paths, command
+    # A `-c` string is code rather than a script, so the path after it is read.
+    assert "tools/x.py" in command_paths("python3 -c 'import sys' tools/x.py")
+
+
+def test_a_docket_run_is_what_a_command_invokes() -> None:
+    """`docket <subcommand>` runs where a simple command invokes docket, as the gate guard reads it.
+
+    `python3 -m docket check` was a run to `verify` and no gate to the hook,
+    and `echo docket verify` was a run to `verify` though it runs `echo`
+    (`PL-RHPK`).
+    """
+    assert reenters_verify("python3 -m docket verify PL-K7QX")
+    assert reenters_verify("timeout 60 bin/docket verify PL-K7QX")
+    assert reenters_verify("FOO=1 uv run docket verify PL-K7QX")
+    assert not reenters_verify("echo docket verify")
+    assert not reenters_verify("grep -q 'docket verify' docs/items/")
+    assert reads_check_output("python3 -m docket check 2>&1 | grep -q x") == (
+        "pipes its output into another command"
+    )
+    # A `case` terminator ends the command, so the pipe after it is the next one's.
+    assert reads_check_output("case x in x) bin/docket check;; y) a | b;; esac") == ""
+
+
+def test_a_pytest_run_is_what_a_command_invokes() -> None:
+    """pytest runs where a simple command invokes it, as `checks` reads it (`PL-RHPK`).
+
+    `verify` matched the text `pytest`, so a `python3 -c` string calling
+    `pytest.main` was a pytest run to it and none to the `-k` rule in `checks`.
+    It runs the interpreter, so neither reads it as one now, and a wrapper
+    ahead of `python -m pytest` hides nothing.
+    """
+    assert not selects_no_test(
+        "python3 -c \"import pytest,sys; sys.exit(pytest.main(['-k','x','tests/unit']))\"", 5
+    )
+    assert not selects_no_test("echo pytest", 5)
+    assert selects_no_test("timeout 60 python3 -m pytest -k gate", 5)

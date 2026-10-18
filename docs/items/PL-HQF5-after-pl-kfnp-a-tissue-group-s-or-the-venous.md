@@ -3,11 +3,13 @@ id: PL-HQF5
 title: After PL-KFNP a tissue group's or the venous pool's blood flow is still settable past its patient's cardiac output through TissueGroup.set_blood_flow and VenousBloodCompartment.set_blood_flow, which nothing in src/ but PatientCompartments._update_blood_flows calls, so the record PatientCompartments.__post_init__ refuses stays reachable by a caller mypy does not read and halts only at the next step or at Reset (PL-M4M0); decide whether a compartment's blood flow stays a field of its own that a caller can set (found in PL-KFNP's design round)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, refactor, safety
 feature: cardiac-output-write-consistency
-touches: src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md, tests/unit/test_patient.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_compartment_primitives.py, tests/unit/test_state_capture.py, tests/unit/test_uptake_system_failure.py, tests/integration/test_controller.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/uptake_system.py, docs/MODEL.md, tests/unit/test_patient.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_compartment_primitives.py, tests/unit/test_state_capture.py, tests/unit/test_uptake_system_failure.py, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/app/controller.py, tests/unit/test_concentration.py, tests/unit/test_supported_range_edges.py, tests/unit/test_supported_ranges.py, src/anesthesia_sim/app/run_view.py, .claude/rules/core-domain.md
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1537
 payoff: a tissue's or the venous pool's blood flow can no longer disagree with the patient's cardiac output, so no record the core refuses, and no silent second copy of the output, can be built
 verify: grep -q 'def test_a_compartment_blood_flow_is_the_patients_output_and_nothing_else' tests/unit/test_patient.py
 ---
@@ -182,3 +184,33 @@ a flow gets in, say so. `PL-VCP4` and `PL-J39J` closed in
 `test_a_compartment_blood_flow_is_the_patients_output_and_nothing_else` in
 `tests/unit/test_patient.py` pins that changing the output moves every
 compartment's flow and that no write moves one alone.
+
+**Built, 2026-10-18.** The flows are derived, not stored.
+`TissueGroup.blood_flow_l_min_at(cardiac_output)` is the one place
+$`Q_i = f_iQ`$ is formed, and it takes a `CardiacOutput`, so a bare `float`
+is refused. Each compartment's `time_constant_s` and `advance()` take the flow
+as an argument, matching $`\tau_i = V_i\lambda_{i:b}/Q_i`$. The patient's
+`_update_blood_flows`, `_compartment_not_perfused_at` and
+`_require_rewrite_perfused_at` are gone, so a direct assignment of the cardiac
+output, a copy, `dataclasses.replace` and a pickle now move every flow with
+the output. The tests that reached the stale record now reach it by writing
+the tissue fractions past their guard with `object.__setattr__`, which is the
+only way left to make one. `PL-VCP4`'s controller test reaches the cardiac
+output's restore that way, and `PL-Z0HN`'s Done-when asks for that.
+
+Bit-identity: three agents (sevoflurane, desflurane, isoflurane) at their
+defaults, 0.1 s steps for one hour, with the cardiac output set to 3.0 L/min
+at 30 minutes. The state vector at every tenth of the run matched bit for bit
+(`float.hex`) between the base `88960a11` and this change.
+
+Regression proof (`.claude/rules/test-oracles.md` rule 6). On `88960a11`,
+`fat.set_blood_flow(1.0)` on the default patient was accepted and left flows
+of `[3.8, 0.9, 1.0]` against a cardiac output of 5.0 L/min. The new test, run
+there with `PYTHONPATH=$BASE/src python -m pytest
+tests/unit/test_patient.py -k blood_flow_is_the_patients_output`, fails with
+`AssertionError: assert not True ... hasattr(TissueGroup(...), 'blood_flow_l_min')`.
+
+Two findings filed rather than fixed: `PL-XRN8` (a setting written onto the
+core past `SimulationController` moves the steps but not the run's
+definition) and `PL-01GY` (the refused-Reset banner names a setting that no
+longer repairs the mismatch).

@@ -66,7 +66,19 @@ from .python import (
     refusal,
 )
 from .release import CODE_SPAN_PATTERN
-from .shell import Clause, Word, shell_words
+from .shell import (
+    COMMAND_ENDS,
+    PIPES,
+    Clause,
+    SimpleCommand,
+    Word,
+    basename,
+    clause_commands,
+    is_python,
+    python_operand,
+    shell_words,
+    simple_commands,
+)
 
 # Suppressions matched as text. `noqa` is deliberately absent: a project whose
 # ruff configuration does not enable a rule carries `noqa` directives that
@@ -1465,14 +1477,6 @@ TIMED_OUT = 1000
 # (`a && b` exits 1 either way), and work finished under a different name from
 # the one a `grep` pins is not decidable by anything that reads a status.
 
-# Matched as text because the command is a shell line, not a parsed argv:
-# `pytest`, `uv run pytest`, `python -m pytest` and a compound command whose
-# last clause is one of those all reach here as a string. Word-bounded so that
-# a file named `test_pytest_helpers.py` in the arguments is not mistaken for
-# the runner - `_` is a word character, so no boundary falls before that
-# `pytest`.
-PYTEST_RE = re.compile(r"\bpytest\b")
-
 
 def selects_no_test(command: str, status: int) -> bool:
     """Whether a command ran and matched no test, rather than failing.
@@ -1492,41 +1496,52 @@ def selects_no_test(command: str, status: int) -> bool:
     as an empty selection would be guessing - the error this check exists to
     stop, made by the check itself.
 
-    False negatives are accepted and are silent, which is the state today: a
-    suite invoked through a wrapper that does not spell `pytest`, or a
-    compound command whose last clause masks the status, is not classified.
-    A false positive would put a wrong sentence in front of a reader, so the
-    test is deliberately the narrow one.
+    A command names pytest where one of its simple commands runs it, as
+    `docket.shell.invocation` reads one: `pytest`, `uv run pytest`, `timeout
+    60 python -m pytest`. A `python3 -c` string that calls `pytest.main` runs
+    the interpreter, as `checks` reads it too, so neither classifies it
+    (`PL-RHPK`). False negatives are accepted and are silent: a suite run
+    from a string or a script, or a compound command whose last clause masks
+    the status, is not classified. A false positive would put a wrong
+    sentence in front of a reader, so the test is deliberately the narrow one.
     """
-    return status == NO_TESTS_COLLECTED and bool(PYTEST_RE.search(command))
+    if status != NO_TESTS_COLLECTED:
+        return False
+    return any(_invoked(run) == "pytest" for run in simple_commands(shell_words(command), command))
+
+
+def _invoked(run: SimpleCommand) -> str | None:
+    """The name of what `run` invokes, past wrappers, `uv run` and `python -m`, or `None`."""
+    found = run.invokes()
+    return None if found is None else found[0]
 
 
 # The one `docket` subcommand a `verify:` command must never name, and the other
-# one that executes a `verify:`. Both are read as words off `shell_words`, the
-# one reading every rule over a command takes (`PL-P7J7`), rather than matched
-# as text. That is what keeps the shape the recursion rule leaves allowed from
-# tripping it: `grep -q 'docket verify' docs/items/` reads the store rather than
-# running it, and the pattern is one quoted word. A substitution's body is a
-# command the shell runs, so `test -z "$(bin/docket check)"` runs one too.
+# one that executes a `verify:`. Both are read off the simple commands
+# `docket.shell` cuts, the one reading every rule over a command takes
+# (`PL-P7J7`), rather than matched as text. That is what keeps the shape the
+# recursion rule leaves allowed from tripping it: `grep -q 'docket verify'
+# docs/items/` runs `grep`, and the pattern is one quoted word. A
+# substitution's body is a command the shell runs, so `test -z "$(bin/docket
+# check)"` runs one too.
 
 
-def _docket_runs(tokens: Sequence[Word | str], subcommand: str) -> list[int]:
-    """Where `docket <subcommand>` runs among a clause's tokens, as the index of each `docket`.
+def _docket_runs(clause: Clause, command: str, subcommand: str) -> list[int]:
+    """Where `docket <subcommand>` runs in a clause, as the end offset of each subcommand word.
 
-    `docket` is the word itself or a path ending in it - `bin/docket`, `uv run
-    docket`, `python3 -m docket` - and it takes no options before its
-    subcommand, so the subcommand is the very next word.
+    `docket` is what a simple command invokes, as `docket.shell.invocation`
+    reads it and the gate guard reads it too: `bin/docket`, `uv run docket`,
+    `timeout 60 bin/docket` or `python3 -m docket` (`PL-RHPK`). It takes no
+    options before its subcommand, so the subcommand is the next word.
     """
     found: list[int] = []
-    for at, token in enumerate(tokens[:-1]):
-        following = tokens[at + 1]
-        if (
-            isinstance(token, Word)
-            and (token.text == "docket" or token.text.endswith("/docket"))
-            and isinstance(following, Word)
-            and following.text == subcommand
-        ):
-            found.append(at)
+    for run in clause_commands(clause, command):
+        invoked = run.invokes()
+        if invoked is None or invoked[0] != "docket":
+            continue
+        at = invoked[1]
+        if at < len(run.words) and run.words[at] == subcommand:
+            found.append(run.spans[at][1])
     return found
 
 
@@ -1603,17 +1618,8 @@ def reenters_verify(command: str) -> bool:
     the next one (`PL-P7J7`), or inside a `$( )` or backquotes.
     """
     return any(
-        _docket_runs(clause.tokens, "verify") for clause in shell_words(command).every_clause()
+        _docket_runs(clause, command, "verify") for clause in shell_words(command).every_clause()
     )
-
-
-#: What ends a command inside an `&&` clause, as `shell_words` spells the
-#: operators - `&&` itself cuts the clauses, so never stands inside one. A `|`
-#: or `|&` after `docket check` and before one of these is a pipe reading its
-#: output; after one, it belongs to the next command. `>|` is a redirection,
-#: and the lexer reads it as one operator rather than as a pipe.
-COMMAND_ENDS = frozenset({"||", ";", "&", ";;", ";&", ";;&"})
-PIPES = frozenset({"|", "|&"})
 
 
 def reads_check_output(command: str) -> str:
@@ -1634,20 +1640,26 @@ def reads_check_output(command: str) -> str:
     advisory can name it: a `docket check` inside a substitution's body
     captures it, and one followed by a pipe before its command ends pipes it.
     Where a command does both, the one standing first names the shape.
+
+    `docket.shell` names what ends a command, `COMMAND_ENDS`, and what pipes
+    it, `PIPES`: a `|` after `docket check` and before a command end pipes its
+    output, and one after the end belongs to the next command.
     """
     reading = shell_words(command)
     found: list[tuple[int, str]] = []
     for body in reading.substitutions:
         for clause in body:
-            for at in _docket_runs(clause.tokens, "check"):
-                found.append((clause.spans[at][0], "captures its output in a command substitution"))
+            for end in _docket_runs(clause, command, "check"):
+                found.append((end, "captures its output in a command substitution"))
     for clause in reading.clauses:
-        for at in _docket_runs(clause.tokens, "check"):
-            for token in clause.tokens[at + 2 :]:
-                if isinstance(token, str) and token in COMMAND_ENDS:
+        for end in _docket_runs(clause, command, "check"):
+            for token, (start, _) in zip(clause.tokens, clause.spans, strict=True):
+                if start < end or not isinstance(token, str):
+                    continue
+                if token in COMMAND_ENDS:
                     break
-                if isinstance(token, str) and token in PIPES:
-                    found.append((clause.spans[at][0], "pipes its output into another command"))
+                if token in PIPES:
+                    found.append((end, "pipes its output into another command"))
                     break
     return min(found)[1] if found else ""
 
@@ -1669,48 +1681,36 @@ PATH_TOKEN_RE = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_./+-]*")
 # tests/unit/test_x.py` - is what the clause reads, and is what can change the
 # command's outcome while nobody touches the item.
 #
-# The first word of a command is its program. These come before it and are not.
-SHELL_PREFIXES = frozenset({"!", "(", "{", "then", "do", "else"})
+# The program a command runs is the one `docket.shell` reads: past its
+# assignments, a reserved word or `time`, each wrapper `shell.WRAPPERS` names
+# and a `uv run`, as the guard hooks read it (`PL-RHPK`).
 
-#: Programs whose first non-flag argument is a script they execute, so that
-#: argument is a program too. Every other command takes its arguments as data.
-#: A wrapped interpreter - `uv run python3 tools/x.py` - is not recognised, so
-#: its script counts as read: that widens the scope rather than narrowing it,
-#: which is the direction this reader errs in everywhere.
-INTERPRETERS = frozenset({"python", "python3", "bash", "sh", "zsh", "dash", "node", "perl", "ruby"})
+#: Programs other than Python whose first non-flag argument is a script they
+#: execute, so that argument is a program too. Every other command takes its
+#: arguments as data. A Python interpreter's script is the one
+#: `shell.python_operand` finds, in any spelling `shell.is_python` names.
+SCRIPT_RUNNERS = frozenset({"bash", "sh", "zsh", "dash", "node", "perl", "ruby"})
 
-#: Interpreter flags after which what follows is code rather than a script.
+#: Their flags after which what follows is code rather than a script.
 INLINE_CODE = frozenset({"-c", "-m"})
 
 
-def _commands(clause: Clause) -> list[list[tuple[Word, tuple[int, int]]]]:
-    """The words of each command in an `&&` clause, with their spans, cut at `COMMAND_ENDS`.
-
-    `|` does not cut: the command after a pipe reads the previous one's output
-    rather than a file of its own, so its name is read like any other word.
-    """
-    commands: list[list[tuple[Word, tuple[int, int]]]] = [[]]
-    for token, span in zip(clause.tokens, clause.spans, strict=True):
-        if isinstance(token, Word):
-            commands[-1].append((token, span))
-        elif token in COMMAND_ENDS:
-            commands.append([])
-    return commands
-
-
-def _programs(command: str, words: Sequence[tuple[Word, tuple[int, int]]]) -> set[int]:
+def _programs(command: str, run: SimpleCommand) -> set[int]:
     """Where each path this command runs rather than reads starts, as an offset into `command`."""
-    index = 0
-    while index < len(words) and words[index][0].text in SHELL_PREFIXES:
-        index += 1
-    if index >= len(words):
+    at = run.runs(uv_run=True)
+    if at is None:
         return set()
-    runs = [words[index][1]]
-    if words[index][0].text in INTERPRETERS:
-        for word, span in words[index + 1 :]:
-            if word.text in INLINE_CODE:  # what follows is code, not a script
+    runs = [run.spans[at]]
+    name = basename(run.words[at])
+    if is_python(name):
+        kind, _, after = python_operand(run.words[at + 1 :])
+        if kind == "file":
+            runs.append(run.spans[at + after])
+    elif name in SCRIPT_RUNNERS:
+        for word, span in zip(run.words[at + 1 :], run.spans[at + 1 :], strict=True):
+            if word in INLINE_CODE:  # what follows is code, not a script
                 break
-            if word.text.startswith("-"):
+            if word.startswith("-"):
                 continue
             runs.append(span)
             break
@@ -1732,13 +1732,12 @@ def command_paths(command: str) -> frozenset[str]:
     of their items. Six recorded breaks were that case, and each was reported
     only by the whole-store sweep after the merge (`PL-XMNC`).
 
-    Read by `shell_words`, and cut into commands at `&&` and at each of
-    `COMMAND_ENDS`, because a command's first word is its program rather than
-    a path it reads, and a substitution's body is cut the same way. `|` does
-    not cut: the command after a pipe reads the previous one's output rather
-    than a file of its own. Each clause is then scanned as written, from its
-    first token to its last, so a trailing comment, which bash never reads,
-    names no path.
+    Read by `shell_words`, and cut into simple commands where bash ends one,
+    a pipe included, because each command's program is a path it runs rather
+    than one it reads, and a substitution's body is cut the same way
+    (`shell.simple_commands`). Each clause is then scanned as written, from
+    its first token to its last, so a trailing comment, which bash never
+    reads, names no path.
 
     Deliberately textual, and deliberately loose. Nothing here is asked of the
     filesystem, so a path a branch is *creating* is matched like any other -
@@ -1750,7 +1749,7 @@ def command_paths(command: str) -> frozenset[str]:
 
     What it cannot read it over-reports rather than skipping. A quoted span is
     scanned for paths even though the clause may only be matching the text; a
-    wrapped interpreter's script counts as read; and a command the shell
+    script run by a program `SCRIPT_RUNNERS` does not name counts as read; and a command the shell
     cannot read at all reports every path-shaped token in it, its programs
     included. Each puts an extra command in a replay, which costs a second;
     the other direction costs the finding.
@@ -1759,9 +1758,8 @@ def command_paths(command: str) -> frozenset[str]:
     if not reading.clauses:  # unreadable, so there is no program to tell apart
         return frozenset(PATH_TOKEN_RE.findall(command))
     runs: set[int] = set()
-    for clause in reading.every_clause():
-        for words in _commands(clause):
-            runs |= _programs(command, words)
+    for run in simple_commands(reading, command):
+        runs |= _programs(command, run)
     found: set[str] = set()
     for clause in reading.clauses:
         if not clause.spans:

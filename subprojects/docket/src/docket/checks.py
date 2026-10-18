@@ -31,7 +31,7 @@ from .config import Config
 from .grep import read_grep
 from .instructions import Assertion
 from .lines import split_lines
-from .markdown import statement_lines
+from .markdown import SOFT_BREAK, statement_lines
 from .model import (
     CLOSED_STATUSES,
     EFFORTS,
@@ -68,7 +68,7 @@ from .release import (
     version_key,
 )
 from .roadmap import SENTENCE_BREAK, MilestoneStates, gate_status
-from .shell import Clause, Word, shell_words
+from .shell import COMMAND_ENDS, PIPES, Clause, Word, clause_commands, shell_words
 from .store import ID_PATTERN, ID_RE, declared_item_file, filename_for
 from .vcs import (
     DEFAULT_BRANCHES,
@@ -1143,18 +1143,32 @@ _PYTEST_VALUE_OPTIONS = frozenset(
 
 #: Shell operators after which a clause's exit status is no longer the pytest
 #: run's own: a pipeline answers with its last command's, `||` replaces a
-#: failure, and `;` or `&` discards it.
-_STATUS_REPLACED = frozenset({"|", "|&", "||", ";", "&"})
+#: failure, and `;` or `&` discards it. `;&` and `;;&` go on to run another
+#: `case` clause's commands. `;;` ends a command too, but it ends the `case`
+#: as well, which then exits with the status of the last command it ran
+#: (Bash Reference Manual §3.2.5.2 "Conditional Constructs"). Both sets are
+#: `docket.shell`'s, so `verify` reads where a command ends as this does
+#: (`PL-RHPK`).
+_STATUS_REPLACED = PIPES | (COMMAND_ENDS - {";;"})
 
 
-def _after_pytest(tokens: Sequence[Word | str]) -> list[Word | str] | None:
+def _after_pytest(clause: Clause, command: str) -> list[Word | str] | None:
     """The tokens following the pytest executable, or `None` if nothing runs it.
 
-    Only a word can be the executable, since an operator is never a command.
+    `command` is the line `clause` was read from. pytest runs where a simple
+    command invokes it, by name or by path, past a wrapper or `uv run`, or as
+    `python -m pytest`, as `docket.shell.invocation` reads it, so a word
+    `pytest` handed to another program runs nothing (`PL-RHPK`).
     """
-    for index, token in enumerate(tokens):
-        if isinstance(token, Word) and (token.text == "pytest" or token.text.endswith("/pytest")):
-            return list(tokens[index + 1 :])
+    for run in clause_commands(clause, command):
+        found = run.invokes()
+        if found is not None and found[0] == "pytest":
+            end = run.spans[found[1] - 1][1]
+            return [
+                token
+                for token, (start, _) in zip(clause.tokens, clause.spans, strict=True)
+                if start >= end
+            ]
     return None
 
 
@@ -1179,7 +1193,7 @@ def _run_targets(arguments: Sequence[str]) -> list[str]:
     return targets
 
 
-def _pytest_targets(clause: Clause) -> list[str] | None:
+def _pytest_targets(clause: Clause, command: str) -> list[str] | None:
     """The paths a pytest clause runs, or `None` if it is not one to read.
 
     `None` covers two cases that are both "this is not a redundant health
@@ -1197,7 +1211,7 @@ def _pytest_targets(clause: Clause) -> list[str] | None:
     `pytest` with no path runs the whole suite, which is exactly what
     `check_command` runs.
     """
-    rest = _after_pytest(clause.tokens)
+    rest = _after_pytest(clause, command)
     if rest is None:
         return None
     arguments = _texts(rest)
@@ -1239,11 +1253,11 @@ def _redundant_pytest_clause(command: str, collected: tuple[str, ...]) -> str | 
     clauses = shell_words(command).clauses
     if len(clauses) < 2:
         return None
-    pytest_clauses = [clause for clause in clauses if _pytest_targets(clause) is not None]
+    pytest_clauses = [clause for clause in clauses if _pytest_targets(clause, command) is not None]
     if not pytest_clauses or len(pytest_clauses) == len(clauses):
         return None
     for clause in pytest_clauses:
-        targets = _pytest_targets(clause) or []
+        targets = _pytest_targets(clause, command) or []
         if all(is_under(target, collected) for target in targets):
             return clause.text
     return None
@@ -1290,7 +1304,7 @@ def _k_selector_clause(command: str, collected: tuple[str, ...]) -> str | None:
     if not collected:
         return None
     for clause in shell_words(command).clauses:
-        rest = _after_pytest(clause.tokens)
+        rest = _after_pytest(clause, command)
         if rest is None or any(
             isinstance(token, str) and token in _STATUS_REPLACED for token in rest
         ):
@@ -2996,15 +3010,15 @@ SEQUENCING_CUES = (
 CLOSED_PREREQUISITE_CUES = (*DECLARING_CUES, *SEQUENCING_CUES)
 
 
-#: A soft break and the whitespace either side of it, which the gaps below
-#: count as one character, the one space it renders as: CommonMark reads the
-#: line ending as a soft break and strips a paragraph continuation line's
-#: leading whitespace (0.31.2 § 6.8, § 4.8), where `_unmarked` leaves that
-#: indent, and a container's markers, as spaces. Counted a column at a time, a
-#: third-level list item's indent filled the 40-character gap between a cue
-#: and its id (`PL-BVBB`). Atomic, so a gap that fails does not retry it a
-#: space at a time.
-SOFT_BREAK = r"(?>[ \t]*\n[ \t]*)"
+# A soft break and the whitespace either side of it is `markdown.SOFT_BREAK`,
+# which the gaps below count as one character, the one space it renders as:
+# CommonMark reads the line ending as a soft break and strips a paragraph
+# continuation line's leading whitespace (0.31.2 § 6.8, § 4.8), where
+# `_unmarked` leaves that indent, and a container's markers, as spaces. Counted
+# a column at a time, a third-level list item's indent filled the 40-character
+# gap between a cue and its id (`PL-BVBB`). It is atomic, so a gap that fails
+# does not retry it a space at a time. It was spelt here and in
+# `tools/doc_check.py` until `PL-NNVJ`.
 
 
 def _cue_pattern(cues: tuple[str, ...]) -> re.Pattern[str]:
@@ -4255,7 +4269,7 @@ def _discriminating_clauses(command: str, config: Config) -> list[str]:
         text = clause.text.strip()
         if not text or never_fails(text) or text in config.health_clauses:
             continue
-        targets = _pytest_targets(clause)
+        targets = _pytest_targets(clause, command)
         if (
             targets is not None
             and config.collected_test_paths

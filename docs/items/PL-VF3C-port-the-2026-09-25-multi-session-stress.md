@@ -3,12 +3,14 @@ id: PL-VF3C
 title: Port the 2026-09-25 multi-session stress harness into subprojects/docket/tests as a regression suite: each reproduced violation a named scenario test, the seeded random interleavings behind a slow marker, and a fake forge that can say merged and closed as well as open
 priority: P3
 effort: M
-status: ready
+status: done
 classes: test, infra
 feature: workflow-stress-2026-09
 touches: subprojects/docket/tests/test_multisession.py, subprojects/docket/tests/conftest.py
 blocked-by: PL-5DZ8, PL-8QMD, PL-ZGYX
 added: 2026-09-25
+closed: 2026-10-18
+pr: 1564
 payoff: the distributed-state defects the 2026-09-25 harness reproduced are held by named tests in the docket suite, so the next regression in a claim or flight read fails CI instead of arriving as an item from whichever session trips it
 verify: grep -q 'def test_v1_' subprojects/docket/tests/test_multisession.py && grep -q 'def test_v8_' subprojects/docket/tests/test_multisession.py
 ---
@@ -39,3 +41,34 @@ Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
 `bin/docket generators` marked still generating, so the generator pause that
 held this item has ended (`CLAUDE.md` § "What this project is"), and the
 `verify:` and `payoff:` written above stand.
+
+**Re-confirmed and built 2026-10-18.** All eight items behind V1 to V8 had
+closed by then, and seven of them (all but `PL-KX73`) had already pinned their
+own fix with a unit test of the one command each changed. So the xfail markers
+the brief planned are not needed, and the scenario tests here do a different
+job. Each replays its harness scenario in a multi-session world and asserts the
+invariant across every reader: `flight`, `show` and `next` name one holder, a
+claim that exits 0 is visible to a fetched clone, and a landed squash holds
+nothing. The world is built in the test rather than cloned from the real
+repository, with three seed items, so the eight tests take about 9 seconds.
+
+- `test_v1_` to `test_v8_` in `subprojects/docket/tests/test_multisession.py`.
+  Each was run against the docket source as it stood before its fix
+  (`git archive <fix>^ subprojects/docket/src`, then `pytest -o pythonpath=...`),
+  and each failed there: V1 before `#1028`, V2 before `#1026`, V3 before
+  `#1058`, V4 and V7 before `#1054`, V5 before `#1147`, V6 before `#1409`, and
+  V8 before `#1020`.
+- The fake forge answers both `open_pull_requests_command` and
+  `newest_pull_request_command`, so a pull request can be open, merged or
+  closed, and the forge can be down.
+- `test_random_interleavings` runs 20 seeds of 30 random steps and checks the
+  invariants after each step. It is marked `slow`, and
+  `subprojects/docket/tests/conftest.py` deselects it unless `-m slow` names
+  it, because `-ra` would otherwise print a line for every skip on every run.
+  All 20 seeds pass on `main` (about 2 minutes 20 seconds at `-n 8`). Against
+  the claim code before `#1026`, 14 of the 20 fail, each on a session told it
+  holds an item that no other clone can see.
+- Two of the harness's invariants were narrowed to what the design says. A
+  squash of nothing but an empty claim commit proves no landing, so its
+  branch's claims still apply (`docket.claims`). And a yield that exits 4 was
+  written, and is published by the next push.

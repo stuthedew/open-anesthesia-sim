@@ -7,12 +7,14 @@ interpreter that may run it (`PL-TC2D`).
 
 from __future__ import annotations
 
+import ast
 import tokenize
 from collections.abc import Callable, Iterator
 
 import pytest
 
-from docket.python import UNTOKENIZABLE, places, read_logical_lines, refusal
+from docket.arming import imports_product
+from docket.python import UNTOKENIZABLE, docstrings, imports, places, read_logical_lines, refusal
 
 
 def test_an_error_token_is_a_refusal(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -93,3 +95,46 @@ def test_a_statement_belongs_to_its_definition_and_a_decorator_to_the_one_it_dec
         "TestX",
         "",
     )
+
+
+def test_an_attribute_docstring_is_a_docstring() -> None:
+    """`PL-8W1J`: a string standing alone under an assignment documents it.
+
+    `glyph_check` read it as documentation, `fixture_id_check` scanned it as a
+    value, and `doc_check` read no citation in it. A string that is a value is
+    not documentation wherever it sits.
+    """
+    tree = ast.parse(
+        '"""The module."""\n'
+        "LIMIT = 3\n"
+        '"""The attribute."""\n'
+        'NAME = "a value"\n'
+        "def f():\n"
+        '    """The function."""\n'
+        '    "a note in the body"\n'
+        '    return "returned"\n'
+    )
+
+    assert [node.value for node in docstrings(tree)] == [
+        "The module.",
+        "The attribute.",
+        "The function.",
+        "a note in the body",
+    ]
+
+
+def test_a_literal_importlib_name_is_an_import_to_arming_and_the_boundary_check() -> None:
+    """`PL-8W1J`: `importlib.import_module("anesthesia_sim.core")` imports the simulator.
+
+    `tools/import_boundary_check.py` read the call as an import and
+    `arming.imports_product` did not, so a test loading the simulator that way
+    was the tooling's to `arm` and the simulator's to the boundary check.
+    """
+    dynamic = ast.parse('import importlib\ncore = importlib.import_module("anesthesia_sim.core")\n')
+    computed = ast.parse('import importlib\ncore = importlib.import_module(NAME + ".core")\n')
+
+    assert [entry.names for entry in imports(dynamic)] == [("importlib",), ("anesthesia_sim.core",)]
+    assert imports_product(dynamic)
+    assert not imports_product(computed)
+    assert imports_product(ast.parse("from anesthesia_sim.core import patient\n"))
+    assert not imports_product(ast.parse('"""import anesthesia_sim"""\nimport os\n'))

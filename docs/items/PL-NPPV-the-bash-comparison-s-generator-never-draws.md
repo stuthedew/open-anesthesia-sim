@@ -3,11 +3,13 @@ id: PL-NPPV
 title: The bash comparison's generator never draws while, until, elif or else, !, || between commands, >>, >|, <>, &>> or a closed descriptor, and no test holds the lexer's refusals to bash -n over mvdan/sh's published parser and error cases
 priority: P3
 effort: M
-status: ready
+status: done
 classes: test
 feature: reader-checks
 touches: subprojects/docket/tests/test_shell.py, subprojects/docket/tests/mvdan-sh
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1563
 payoff: a lexer change that misreads a loop, a negation, an || or an append redirection fails CI, and the lexer's refusals are held to bash -n over 1,165 published cases
 verify: grep -q 'def test_the_lexer_agrees_with_bash_n_on_mvdan_sh_cases' subprojects/docket/tests/test_shell.py
 ---
@@ -64,3 +66,23 @@ reports incomplete an input `bash -n` accepts and bash runs.
 
 **Generator check.** Work the owner asked for: regression cover for forms the
 lexer already reads correctly.
+
+**Resolved 2026-10-18.** The generator in `subprojects/docket/tests/test_shell.py`
+now draws each form the done-when names. An `if` may carry `elif` and `else`.
+Each condition that `!` makes fail skips a body that is only an assignment, so
+every command still runs once. A `while` or `until` loop runs its body once,
+because the body sets a flag the condition reads. Each depth has its own flag,
+and a loop only opens a pipeline, since its flag is cleared by a command of
+its own. `! S1 || S2` runs both sides. The redirections add `>>`, `>|`, `<>`,
+`&>>` and `4>&-`, descriptor 4 because `p` writes its record to 3. The
+harness's `RESERVED` took `elif`, `else`, `!`, `while` and `until`, and its
+`ENDS` took `||`. An unseeded run of 3,000 scripts drew each new form between
+467 and 1,909 times and disagreed with bash 5.2.21 on none.
+
+`subprojects/docket/tests/mvdan-sh/` vendors mvdan/sh's 1,165 parse and error
+inputs from commit `c873cb44a6a0ade219d132c7dcd837ff631a4173`, with its BSD
+3-Clause notice and a README saying how they were taken.
+`test_the_lexer_agrees_with_bash_n_on_mvdan_sh_cases` holds that the lexer
+reads complete every input `bash -n` accepts, except the two inputs bash
+refuses on running, a backquote holding a lone `"`. `bash -n` accepted 881 of
+the inputs. The test takes about 3 seconds.

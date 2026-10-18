@@ -203,27 +203,36 @@ def _step_circuit(circuit: BreathingCircuit, simulation_step_s: float) -> float:
     return exchange.delivered_agent_l + exchange.exhausted_agent_l
 
 
-def _build_tissue(blood_flow_l_min: float) -> TissueGroup:
+@dataclass(frozen=True, slots=True)
+class _Perfused[CompartmentT: (TissueGroup, VenousBloodCompartment)]:
+    """A patient compartment and the blood flow its closed form is read at.
+
+    Neither patient compartment stores a flow since `PL-HQF5`, so the flow a
+    case walks is carried beside the compartment and passed to each call.
+    """
+
+    compartment: CompartmentT
+    blood_flow_l_min: float
+
+
+def _build_tissue(blood_flow_l_min: float) -> _Perfused[TissueGroup]:
     tissue = TissueGroup(
         name="vessel_rich",
         volume_l=6.0,
         perfusion_fraction=0.76,
         blood_gas_partition_coefficient=0.65,
         tissue_gas_partition_coefficient=1.0,
-        blood_flow_l_min=blood_flow_l_min,
     )
     tissue.set_partial_pressure_fraction(LOADED_FRACTION)
 
-    return tissue
+    return _Perfused(tissue, blood_flow_l_min)
 
 
-def _build_venous_blood(blood_flow_l_min: float) -> VenousBloodCompartment:
-    venous_blood = VenousBloodCompartment(
-        volume_l=1.222, blood_gas_partition_coefficient=0.65, blood_flow_l_min=blood_flow_l_min
-    )
+def _build_venous_blood(blood_flow_l_min: float) -> _Perfused[VenousBloodCompartment]:
+    venous_blood = VenousBloodCompartment(volume_l=1.222, blood_gas_partition_coefficient=0.65)
     venous_blood.set_partial_pressure_fraction(LOADED_FRACTION)
 
-    return venous_blood
+    return _Perfused(venous_blood, blood_flow_l_min)
 
 
 PRIMITIVES = (
@@ -239,22 +248,28 @@ PRIMITIVES = (
     CompartmentPrimitive(
         name="TissueGroup.advance",
         build=_build_tissue,
-        step=lambda tissue, step_s: tissue.advance(
-            arterial_partial_pressure_fraction=DRIVING_FRACTION, simulation_step_s=step_s
+        step=lambda tissue, step_s: tissue.compartment.advance(
+            arterial_partial_pressure_fraction=DRIVING_FRACTION,
+            simulation_step_s=step_s,
+            blood_flow_l_min=tissue.blood_flow_l_min,
         ),
-        stored_agent_l=lambda tissue: tissue.agent_amount_l,
-        time_constant_s=lambda tissue: tissue.time_constant_s,
+        stored_agent_l=lambda tissue: tissue.compartment.agent_amount_l,
+        time_constant_s=lambda tissue: tissue.compartment.time_constant_s(tissue.blood_flow_l_min),
         capacity_l=6.0 * 1.0,
         nominal_flow_l_min=3.8,
     ),
     CompartmentPrimitive(
         name="VenousBloodCompartment.advance",
         build=_build_venous_blood,
-        step=lambda venous_blood, step_s: venous_blood.advance(
-            tissue_return_partial_pressure_fraction=DRIVING_FRACTION, simulation_step_s=step_s
+        step=lambda venous_blood, step_s: venous_blood.compartment.advance(
+            tissue_return_partial_pressure_fraction=DRIVING_FRACTION,
+            simulation_step_s=step_s,
+            blood_flow_l_min=venous_blood.blood_flow_l_min,
         ),
-        stored_agent_l=lambda venous_blood: venous_blood.agent_amount_l,
-        time_constant_s=lambda venous_blood: venous_blood.time_constant_s,
+        stored_agent_l=lambda venous_blood: venous_blood.compartment.agent_amount_l,
+        time_constant_s=lambda venous_blood: venous_blood.compartment.time_constant_s(
+            venous_blood.blood_flow_l_min
+        ),
         capacity_l=1.222 * 0.65,
         nominal_flow_l_min=5.0,
     ),
@@ -283,18 +298,18 @@ class PatientPrimitive:
     capacity_l: Callable[[Any], float]
 
 
-def _tissue_holding(blood_flow_l_min: float, held_fraction: Fraction) -> TissueGroup:
+def _tissue_holding(blood_flow_l_min: float, held_fraction: Fraction) -> _Perfused[TissueGroup]:
     tissue = _build_tissue(blood_flow_l_min)
-    tissue.set_partial_pressure_fraction(held_fraction)
+    tissue.compartment.set_partial_pressure_fraction(held_fraction)
 
     return tissue
 
 
 def _venous_blood_holding(
     blood_flow_l_min: float, held_fraction: Fraction
-) -> VenousBloodCompartment:
+) -> _Perfused[VenousBloodCompartment]:
     venous_blood = _build_venous_blood(blood_flow_l_min)
-    venous_blood.set_partial_pressure_fraction(held_fraction)
+    venous_blood.compartment.set_partial_pressure_fraction(held_fraction)
 
     return venous_blood
 
@@ -303,20 +318,24 @@ PATIENT_PRIMITIVES = (
     PatientPrimitive(
         name="TissueGroup.advance",
         build=_tissue_holding,
-        step=lambda tissue, driving_fraction, step_s: tissue.advance(
-            arterial_partial_pressure_fraction=driving_fraction, simulation_step_s=step_s
+        step=lambda tissue, driving_fraction, step_s: tissue.compartment.advance(
+            arterial_partial_pressure_fraction=driving_fraction,
+            simulation_step_s=step_s,
+            blood_flow_l_min=tissue.blood_flow_l_min,
         ),
-        stored_agent_l=lambda tissue: tissue.agent_amount_l,
-        capacity_l=lambda tissue: tissue.capacity_l,
+        stored_agent_l=lambda tissue: tissue.compartment.agent_amount_l,
+        capacity_l=lambda tissue: tissue.compartment.capacity_l,
     ),
     PatientPrimitive(
         name="VenousBloodCompartment.advance",
         build=_venous_blood_holding,
-        step=lambda venous_blood, driving_fraction, step_s: venous_blood.advance(
-            tissue_return_partial_pressure_fraction=driving_fraction, simulation_step_s=step_s
+        step=lambda venous_blood, driving_fraction, step_s: venous_blood.compartment.advance(
+            tissue_return_partial_pressure_fraction=driving_fraction,
+            simulation_step_s=step_s,
+            blood_flow_l_min=venous_blood.blood_flow_l_min,
         ),
-        stored_agent_l=lambda venous_blood: venous_blood.agent_amount_l,
-        capacity_l=lambda venous_blood: venous_blood.capacity_l,
+        stored_agent_l=lambda venous_blood: venous_blood.compartment.agent_amount_l,
+        capacity_l=lambda venous_blood: venous_blood.compartment.capacity_l,
     ),
 )
 
@@ -627,7 +646,7 @@ def test_a_compartment_holding_a_written_amount_never_reports_uptake_as_a_return
 
     for flow_l_min in (0.0, *GRADIENT_FLOWS_L_MIN):
         compartment = primitive.build(flow_l_min, LOADED_FRACTION)
-        compartment.agent_amount_l = held_amount_l
+        compartment.compartment.agent_amount_l = held_amount_l
         capacity_l = primitive.capacity_l(compartment)
         equilibrium_agent_l = capacity_l * driving_fraction
 

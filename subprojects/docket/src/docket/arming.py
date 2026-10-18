@@ -155,6 +155,7 @@ from pathlib import Path, PurePosixPath
 from .claiming import _git
 from .claims import LAPSED, RELEASED, Hold, holdings
 from .lines import split_lines
+from .python import imports
 from .vcs import (
     REMOTE,
     MergedPullRequest,
@@ -302,30 +303,18 @@ READ_LIST = (
 )
 
 
-def imported_modules(tree: ast.Module) -> set[str]:
-    """Every module name one file imports, in either import form.
-
-    `ast` rather than a regular expression because the question is about
-    imports and not about text: a package named in a docstring, in a fixture
-    path or in a comment is not a dependency, and several of the apparatus
-    tests here write `src/anesthesia_sim/...` as fixture data precisely because
-    they check tools that read the tree.
-    """
-    found: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            found.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            found.add(node.module)
-    return found
-
-
 def imports_product(tree: ast.Module) -> bool:
-    """Whether a file imports the simulator, which makes any file under `tests/` the simulator's."""
-    return any(
-        module == PRODUCT_PACKAGE or module.startswith(PRODUCT_PACKAGE + ".")
-        for module in imported_modules(tree)
-    )
+    """Whether a file imports the simulator, which makes any file under `tests/` the simulator's.
+
+    Read from the parsed tree by `python.imports`, rather than by a regular
+    expression, because the question is about imports and not about text: a
+    package named in a docstring, in a fixture path or in a comment is not a
+    dependency. A dynamic import of a literal name counts, as it does for
+    `tools/import_boundary_check.py`, which reads the same function. A file
+    loading `anesthesia_sim.core` through `importlib.import_module` read as
+    importing nothing here until `PL-8W1J`.
+    """
+    return any(imported.reaches(PRODUCT_PACKAGE) for imported in imports(tree))
 
 
 def is_test_file(name: str) -> bool:

@@ -258,7 +258,7 @@ def test_a_doubled_single_quote_reads_as_docket_reads_it() -> None:
 @pytest.mark.parametrize(
     ("item", "why"),
     [
-        ('  - "/src/**" extra', "holds `extra` after its quoted glob"),
+        ('  - "/src/**" extra', "holds `extra` after its closing quote"),
         ('  - "/src/\\q"', "a quoted glob YAML refuses"),
         ("  -", "holds no glob"),
     ],
@@ -267,3 +267,125 @@ def test_a_glob_yaml_refuses_or_one_holding_nothing_is_unreadable(item: str, why
     """A tail after the quote was read into the glob, and a bare `-` named as no item."""
     with pytest.raises(rules_paths_check.Unreadable, match=why):
         rules_paths_check.entries(["paths:", item])
+
+
+def _apparatus(
+    tmp_path: Path,
+    *,
+    claude: str = "`tools/`, `docs/worker.md`",
+    review: str = "`tools/`, `docs/worker.md`",
+    globs: tuple[str, ...] = ("/tools/**", "/docs/worker.md"),
+    workflow: tuple[str, ...] = ("tools", "docs/worker.md", "Makefile"),
+) -> Path:
+    """A root holding the apparatus set's three copies and a `docket.toml`."""
+    (tmp_path / "CLAUDE.md").write_text(
+        "The workflow apparatus that exists so agent sessions can be productive — "
+        f"{claude} — is held to a lower bar.\n",
+        encoding="utf-8",
+    )
+    rules = tmp_path / ".claude" / "rules"
+    rules.mkdir(parents=True)
+    (rules / "expert-review.md").write_text(
+        f"It is not the bar for the\napparatus ({review}), which is held lower.\n", encoding="utf-8"
+    )
+    (rules / "apparatus-standard.md").write_text(_frontmatter(*globs), encoding="utf-8")
+    listed = "".join(f'  "{entry}",\n' for entry in workflow)
+    (tmp_path / "docket.toml").write_text(
+        f"[docket]\nworkflow_paths = [\n{listed}]\n", encoding="utf-8"
+    )
+    return tmp_path
+
+
+@pytest.fixture
+def lane_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(rules_paths_check, "LANE_ONLY", ("Makefile",))
+
+
+@pytest.mark.usefixtures("lane_only")
+def test_three_copies_that_agree_with_workflow_paths_pass(tmp_path: Path) -> None:
+    assert rules_paths_check.apparatus_set_problems(_apparatus(tmp_path)) == []
+
+
+@pytest.mark.usefixtures("lane_only")
+def test_a_path_missing_from_one_copy_is_named(tmp_path: Path) -> None:
+    """The incident shape: `docs/maintainer.md` was in none of them, `.github/` once in two."""
+    root = _apparatus(tmp_path, review="`tools/`")
+
+    found = rules_paths_check.apparatus_set_problems(root)
+
+    assert found == [
+        "apparatus set: .claude/rules/expert-review.md does not name docs/worker.md, "
+        "which another copy of the set names"
+    ]
+
+
+@pytest.mark.usefixtures("lane_only")
+def test_a_workflow_path_in_neither_list_is_named(tmp_path: Path) -> None:
+    """A file added to the apparatus lane has to be placed, not left to a sweep."""
+    root = _apparatus(tmp_path, workflow=("tools", "docs/worker.md", "Makefile", "bin"))
+
+    found = rules_paths_check.apparatus_set_problems(root)
+
+    assert len(found) == 1
+    assert "workflow_paths' bin is in neither the apparatus set nor LANE_ONLY" in found[0]
+
+
+@pytest.mark.usefixtures("lane_only")
+def test_a_directory_listed_by_a_path_beneath_it_is_placed(tmp_path: Path) -> None:
+    """`subprojects` is in the lane, and the set names `subprojects/docket/` beneath it."""
+    root = _apparatus(
+        tmp_path,
+        claude="`subprojects/docket/`",
+        review="`subprojects/docket/`",
+        globs=("/subprojects/docket/**",),
+        workflow=("subprojects", "Makefile"),
+    )
+
+    assert rules_paths_check.apparatus_set_problems(root) == []
+
+
+@pytest.mark.usefixtures("lane_only")
+def test_an_apparatus_path_outside_workflow_paths_is_named(tmp_path: Path) -> None:
+    root = _apparatus(tmp_path, workflow=("tools", "Makefile"))
+
+    found = rules_paths_check.apparatus_set_problems(root)
+
+    assert found == [
+        "apparatus set: docs/worker.md is not in docket.toml's workflow_paths, so its "
+        "items take the simulator's lane while the apparatus standard governs it"
+    ]
+
+
+def test_a_stale_lane_only_entry_is_named(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(rules_paths_check, "LANE_ONLY", ("Makefile", "gone.md"))
+
+    found = rules_paths_check.apparatus_set_problems(_apparatus(tmp_path))
+
+    assert found == ["apparatus set: LANE_ONLY's gone.md is no longer in workflow_paths; drop it"]
+
+
+@pytest.mark.usefixtures("lane_only")
+def test_a_copy_whose_opening_words_moved_says_it_was_not_compared(tmp_path: Path) -> None:
+    """A list the check cannot find is reported, never read as empty or skipped."""
+    root = _apparatus(tmp_path)
+    (root / "CLAUDE.md").write_text("The apparatus is `tools/`.\n", encoding="utf-8")
+
+    found = rules_paths_check.apparatus_set_problems(root)
+
+    assert len(found) == 1
+    assert "CLAUDE.md no longer holds the words" in found[0]
+    assert "so it was not compared with the others" in found[0]
+
+
+@pytest.mark.usefixtures("lane_only")
+def test_a_glob_naming_no_one_path_is_refused(tmp_path: Path) -> None:
+    root = _apparatus(tmp_path, globs=("/tools/**", "/docs/worker.md", "/docs/*.md"))
+
+    found = rules_paths_check.apparatus_set_problems(root)
+
+    assert len(found) == 1
+    assert '"/docs/*.md" names no one path' in found[0]
+
+
+def test_this_repository_s_apparatus_set_agrees() -> None:
+    assert rules_paths_check.apparatus_set_problems(ROOT) == []

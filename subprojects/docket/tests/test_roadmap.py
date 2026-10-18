@@ -479,6 +479,38 @@ def test_an_entry_the_milestone_names_and_a_later_release_holds_reads_as_blocked
     ) == len(plan.gate.outstanding)
 
 
+def test_an_entry_waiting_only_on_its_milestones_own_scope_is_cleared_by_it() -> None:
+    """`PL-W9BK`: work the milestone's `Required scope` names is cleared by implementing it.
+
+    `PL-SLF9` is in that scope and waits on `PL-MNPQ`, which the scope also
+    names, so nothing it waits on lies outside the milestone. `wave` read 11
+    such v0.6.0 entries as blocked outside the gate, where the roadmap's own
+    "Cleared by" group put all 14. One more link to work outside the scope, at
+    any depth, still holds it outside.
+    """
+    inside = _wave(
+        "0.2.5",
+        frozenset(),
+        roadmap=SELF_CLEARING,
+        blockers={"PL-SLF9": ("PL-MNPQ",)},
+        known=SELF_KNOWN,
+    )
+    assert inside.gate is not None
+    assert [entry.ids for entry in inside.gate.self_cleared] == [("PL-SLF9",)]
+    assert inside.gate.blocked_outside == () and not inside.gate.prerequisites
+
+    beyond = _wave(
+        "0.2.5",
+        frozenset(),
+        roadmap=SELF_CLEARING,
+        blockers={"PL-SLF9": ("PL-MNPQ",), "PL-MNPQ": ("PL-QRST",)},
+        known=SELF_KNOWN,
+    )
+    assert beyond.gate is not None
+    assert [entry.ids for entry in beyond.gate.blocked_outside] == [("PL-SLF9",)]
+    assert not beyond.gate.self_cleared
+
+
 def test_the_wave_block_names_what_the_milestone_clears_itself() -> None:
     """The split is only worth computing if the reader is told which of the
     three a given id is in, which is where the beat's own count comes from."""

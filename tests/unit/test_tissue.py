@@ -7,17 +7,23 @@ import pytest
 
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.supported_ranges import CardiacOutput
 from anesthesia_sim.core.tissue import TissueGroup
 
+BLOOD_FLOW_L_MIN = 1.0
+"""The flow these tests perfuse a tissue at, in L/min, unless a test says otherwise.
 
-def _build_tissue(*, blood_flow_l_min: float = 1.0) -> TissueGroup:
+A tissue group stores no flow since `PL-HQF5`, so each closed form takes it.
+"""
+
+
+def _build_tissue() -> TissueGroup:
     return TissueGroup(
         name="test",
         volume_l=2.0,
         perfusion_fraction=0.2,
         blood_gas_partition_coefficient=0.5,
         tissue_gas_partition_coefficient=2.0,
-        blood_flow_l_min=blood_flow_l_min,
     )
 
 
@@ -207,25 +213,19 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
             id="tissue-gas-coefficient-under-the-agent-held",
         ),
         pytest.param(
-            "blood_flow_l_min",
-            -1.0,
+            "perfusion_fraction",
+            0.3,
             SimulationConfigurationError,
-            "^blood_flow_l_min must be nonnegative and finite$",
-            id="negative-blood-flow",
+            "^the test tissue group's perfusion fraction of 0.2 cannot be written again, "
+            "as 0.3, once the group is built",
+            id="perfusion-fraction-rewritten",
         ),
         pytest.param(
             "blood_flow_l_min",
-            inf,
-            SimulationConfigurationError,
-            "^blood_flow_l_min must be nonnegative and finite$",
-            id="infinite-blood-flow",
-        ),
-        pytest.param(
-            "blood_flow_l_min",
-            True,
-            TypeError,
-            "^blood_flow_l_min of True has type bool",
-            id="bool-blood-flow",
+            1.0,
+            AttributeError,
+            "^'TissueGroup' object has no attribute 'blood_flow_l_min'",
+            id="blood-flow-is-no-field",
         ),
         pytest.param(
             "volume",
@@ -243,7 +243,9 @@ def test_a_direct_write_is_held_to_the_constructors_checks(
 
     Until `PL-19Y0` only the agent amount was checked at the write
     (`PL-544D`), so `perfusion_fraction = 7.0` and `volume_l = -1.0` were each
-    accepted on a built tissue. A volume or a tissue:gas coefficient is also
+    accepted on a built tissue. A valid perfusion fraction is refused too,
+    because the fraction is written once (`PL-Z0HN`), and a blood flow is no
+    field to write (`PL-HQF5`). A volume or a tissue:gas coefficient is also
     held to the agent the tissue holds, since either shrinks the capacity the
     partial pressure is the amount over: 0.5 under the 2.0 L held would put
     this tissue at two atmospheres. A name that is no field passes the guard
@@ -302,17 +304,49 @@ def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() 
     assert tissue.partial_pressure_fraction == 1.0
 
 
-def test_a_refused_blood_flow_leaves_the_flow_as_it_was() -> None:
-    """`set_blood_flow` refuses through the write's own guard, and writes nothing (`PL-19Y0`)."""
+@pytest.mark.parametrize("blood_flow_l_min", [-1.0, inf, nan])
+def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float) -> None:
+    """A flow the closed form cannot be read at is refused, and the step changes nothing.
+
+    The flow was a stored field until `PL-HQF5`, and its write refused it
+    (`PL-19Y0`). It is now the argument of `time_constant_s` and `advance`,
+    which refuse it in the same words before anything changes.
+    """
 
     tissue = _build_tissue()
+    tissue.set_partial_pressure_fraction(Fraction(0.4))
+    held = astuple(tissue)
 
     with pytest.raises(
         SimulationConfigurationError, match="^blood_flow_l_min must be nonnegative and finite$"
     ):
-        tissue.set_blood_flow(-1.0)
+        tissue.time_constant_s(blood_flow_l_min)
 
-    assert tissue.blood_flow_l_min == 1.0
+    with pytest.raises(
+        SimulationConfigurationError, match="^blood_flow_l_min must be nonnegative and finite$"
+    ):
+        tissue.advance(
+            arterial_partial_pressure_fraction=Fraction(1.0),
+            simulation_step_s=1.0,
+            blood_flow_l_min=blood_flow_l_min,
+        )
+
+    assert astuple(tissue) == held
+
+
+def test_a_tissue_is_perfused_at_its_fraction_of_the_cardiac_output() -> None:
+    """$`Q_i = f_iQ`$: a 0.2 fraction of 6.5 L/min is 1.3 L/min, formed where it is read.
+
+    The expected flow is worked by hand. A bare `float` is refused, because
+    only a `CardiacOutput` carries the supported range (`PL-HQF5`).
+    """
+
+    tissue = _build_tissue()
+
+    assert tissue.blood_flow_l_min_at(CardiacOutput(6.5)) == pytest.approx(1.3, rel=1e-15)
+
+    with pytest.raises(TypeError, match="CardiacOutput"):
+        tissue.blood_flow_l_min_at(6.5)  # type: ignore[arg-type]
 
 
 def test_capacity_uses_volume_and_tissue_gas_coefficient() -> None:
@@ -331,7 +365,9 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
     tissue = _build_tissue()
 
     tissue.advance(
-        arterial_partial_pressure_fraction=Fraction(1.0), simulation_step_s=tissue.time_constant_s
+        arterial_partial_pressure_fraction=Fraction(1.0),
+        simulation_step_s=tissue.time_constant_s(BLOOD_FLOW_L_MIN),
+        blood_flow_l_min=BLOOD_FLOW_L_MIN,
     )
 
     assert tissue.partial_pressure_fraction == pytest.approx(1.0 - exp(-1.0))
@@ -347,8 +383,8 @@ def test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant() -> None:
     factors: the second raises the volume alone, and the third raises the
     tissue:gas coefficient alone, which raises $\\lambda_{i:b}$ because the
     blood:gas coefficient is held fixed. The intermediate assertions state
-    that each variant moved only its own factor and that flow really is held
-    constant, so a change to the fixture cannot leave the directional claims
+    that each variant moved only its own factor, and the one flow is passed to
+    all three, so a change to the fixture cannot leave the directional claims
     below passing for the wrong reason.
     """
 
@@ -359,7 +395,6 @@ def test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant() -> None:
         perfusion_fraction=0.2,
         blood_gas_partition_coefficient=0.5,
         tissue_gas_partition_coefficient=2.0,
-        blood_flow_l_min=1.0,
     )
     more_soluble = TissueGroup(
         name="more soluble",
@@ -367,10 +402,7 @@ def test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant() -> None:
         perfusion_fraction=0.2,
         blood_gas_partition_coefficient=0.5,
         tissue_gas_partition_coefficient=3.0,
-        blood_flow_l_min=1.0,
     )
-
-    assert baseline.blood_flow_l_min == larger.blood_flow_l_min == more_soluble.blood_flow_l_min
 
     assert larger.volume_l > baseline.volume_l
     assert larger.tissue_blood_partition_coefficient == (
@@ -382,20 +414,24 @@ def test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant() -> None:
         baseline.tissue_blood_partition_coefficient
     )
 
-    assert larger.time_constant_s > baseline.time_constant_s
-    assert more_soluble.time_constant_s > baseline.time_constant_s
+    assert larger.time_constant_s(BLOOD_FLOW_L_MIN) > baseline.time_constant_s(BLOOD_FLOW_L_MIN)
+    assert more_soluble.time_constant_s(BLOOD_FLOW_L_MIN) > baseline.time_constant_s(
+        BLOOD_FLOW_L_MIN
+    )
 
 
 def test_zero_flow_preserves_tissue_state() -> None:
-    tissue = _build_tissue(blood_flow_l_min=0.0)
+    tissue = _build_tissue()
     tissue.set_partial_pressure_fraction(Fraction(0.25))
 
     amount_before = tissue.agent_amount_l
     amount_change = tissue.advance(
-        arterial_partial_pressure_fraction=Fraction(1.0), simulation_step_s=60.0
+        arterial_partial_pressure_fraction=Fraction(1.0),
+        simulation_step_s=60.0,
+        blood_flow_l_min=0.0,
     )
 
-    assert tissue.time_constant_s == inf
+    assert tissue.time_constant_s(0.0) == inf
     assert amount_change == 0.0
     assert tissue.agent_amount_l == amount_before
     assert tissue.partial_pressure_fraction == 0.25
@@ -406,7 +442,9 @@ def test_washout_returns_agent_to_blood() -> None:
     tissue.set_partial_pressure_fraction(Fraction(0.8))
 
     amount_change = tissue.advance(
-        arterial_partial_pressure_fraction=Fraction(0.0), simulation_step_s=10.0
+        arterial_partial_pressure_fraction=Fraction(0.0),
+        simulation_step_s=10.0,
+        blood_flow_l_min=BLOOD_FLOW_L_MIN,
     )
 
     assert amount_change < 0.0
@@ -417,23 +455,20 @@ def test_exact_update_is_independent_of_step_size() -> None:
     one_step = _build_tissue()
     many_steps = _build_tissue()
 
-    one_step.advance(arterial_partial_pressure_fraction=Fraction(0.08), simulation_step_s=60.0)
+    one_step.advance(
+        arterial_partial_pressure_fraction=Fraction(0.08),
+        simulation_step_s=60.0,
+        blood_flow_l_min=BLOOD_FLOW_L_MIN,
+    )
 
     for _ in range(600):
-        many_steps.advance(arterial_partial_pressure_fraction=Fraction(0.08), simulation_step_s=0.1)
+        many_steps.advance(
+            arterial_partial_pressure_fraction=Fraction(0.08),
+            simulation_step_s=0.1,
+            blood_flow_l_min=BLOOD_FLOW_L_MIN,
+        )
 
     assert many_steps.agent_amount_l == pytest.approx(one_step.agent_amount_l, rel=1e-12)
-
-
-def test_changing_flow_preserves_stored_agent() -> None:
-    tissue = _build_tissue()
-    tissue.set_partial_pressure_fraction(Fraction(0.4))
-    amount_before = tissue.agent_amount_l
-
-    tissue.set_blood_flow(3.0)
-
-    assert tissue.blood_flow_l_min == 3.0
-    assert tissue.agent_amount_l == amount_before
 
 
 def test_reset_clears_agent_and_preserves_parameters() -> None:
@@ -445,7 +480,6 @@ def test_reset_clears_agent_and_preserves_parameters() -> None:
     assert tissue.agent_amount_l == 0.0
     assert tissue.partial_pressure_fraction == 0.0
     assert tissue.volume_l == 2.0
-    assert tissue.blood_flow_l_min == 1.0
 
 
 @pytest.mark.parametrize("invalid_value", [0.0, -1.0, float("inf"), float("nan")])
@@ -506,3 +540,18 @@ def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> No
 
     assert tissue.agent_amount_l == captured.agent_amount_l
     assert tissue.partial_pressure_fraction > 1.0
+
+
+def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
+    """`time_constant_s` is $`60 V_i\\lambda_{i:b}/Q_i`$ at the flow passed in (`PL-HQF5`).
+
+    The expected values are worked out by hand from the test tissue's
+    parameters: a 2.0 L group with a tissue:blood coefficient of
+    2.0 / 0.5 = 4.0. So 60 x 2.0 x 4.0 / 2.0 = 240 s at 2.0 L/min, and 96 s
+    at 5.0 L/min. Two flows, so a time constant formed at any fixed flow fails.
+    """
+
+    tissue = _build_tissue()
+
+    assert tissue.time_constant_s(2.0) == pytest.approx(240.0, rel=1e-15)
+    assert tissue.time_constant_s(5.0) == pytest.approx(96.0, rel=1e-15)

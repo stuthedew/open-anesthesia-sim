@@ -25,6 +25,7 @@ names it on its page even where this read it.
 
 from __future__ import annotations
 
+import ast
 import io
 import tokenize
 from collections.abc import Sequence
@@ -252,3 +253,120 @@ def refusal(error: Exception) -> str:
     message, *rest = error.args or (type(error).__name__,)
     where = rest[0] if rest and isinstance(rest[0], tuple) and rest[0] else ()
     return f"{message}, line {where[0]}" if where else str(message)
+
+
+# --- what a parsed module documents and imports (`PL-8W1J`) -----------------
+#
+# These two read a parsed tree rather than tokens. Each is the one reading of
+# its fact for docket and `tools/`. Until `PL-8W1J` three checks each decided
+# which strings are docstrings, and two decided which modules a file imports,
+# and they disagreed on an attribute docstring and on `importlib.import_module`.
+
+
+def docstrings(tree: ast.AST) -> list[ast.Constant]:
+    """Every string that is a statement of its own, which is every docstring there is.
+
+    A module, class or function docstring is one, and so is an attribute
+    docstring: the string a statement after an assignment holds, as PEP 257
+    § "What is a Docstring?" describes. Defining a docstring by its position
+    as the first statement of a scope would miss the attribute docstring,
+    which no scope opens with. So a string is documentation when it stands
+    alone as a statement, wherever it stands. Returned in `ast.walk` order.
+    """
+    return [
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Expr)
+        and isinstance(node.value, ast.Constant)
+        and isinstance(node.value.value, str)
+    ]
+
+
+#: The call names whose first argument, where it is a literal string, names a
+#: module: `importlib.import_module` and the builtin `__import__`.
+DYNAMIC_IMPORTERS = frozenset({"import_module", "__import__"})
+
+
+@dataclass(frozen=True)
+class Imported:
+    """One import statement found in one module, and every dotted name it makes available."""
+
+    names: tuple[str, ...]
+    line: int
+    statement: str
+
+    def reaches(self, package: str) -> bool:
+        """Does any name equal `package`, or continue it past a dot?"""
+        return any(name == package or name.startswith(package + ".") for name in self.names)
+
+
+def _dynamic_name(node: ast.Call) -> str | None:
+    """The module a dynamic import names, where the name is a literal.
+
+    Returns `None` for anything undecidable by reading the source: a computed
+    name, a keyword-only call, or a relative name, which resolves against a
+    `package` argument this does not evaluate.
+    """
+    function = node.func
+    if isinstance(function, ast.Attribute):
+        name = function.attr
+    elif isinstance(function, ast.Name):
+        name = function.id
+    else:
+        return None
+    if name not in DYNAMIC_IMPORTERS or not node.args:
+        return None
+    first = node.args[0]
+    if not (isinstance(first, ast.Constant) and isinstance(first.value, str)):
+        return None
+    if first.value.startswith("."):
+        return None
+    return first.value or None
+
+
+def _resolve(module: str | None, level: int, package: str | None) -> str | None:
+    """The absolute module a `from` statement names, relative or not.
+
+    importlib's own rule. `None` where it cannot be decided: a relative import
+    read without the importing module's package, or one climbing past the top
+    of it, which would fail at import time anyway.
+    """
+    if not level:
+        return module
+    if not package:
+        return None
+    bits = package.rsplit(".", level - 1)
+    if len(bits) < level:
+        return None
+    return f"{bits[0]}.{module}" if module else bits[0]
+
+
+def imports(tree: ast.AST, package: str | None = None) -> tuple[Imported, ...]:
+    """Every import one module makes, by any form this can decide.
+
+    `import x`, `from x import y` and a dynamic import of a literal name all
+    count. A relative import resolves against `package`, the importing
+    module's package, `anesthesia_sim.core` for `core/x.py`, and is left out
+    where no package is given, since it cannot then be decided. The result has
+    one entry per import, in source order, each carrying every dotted name the
+    import makes available.
+    """
+    found: list[Imported] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                found.append(Imported((alias.name,), node.lineno, f"import {alias.name}"))
+        elif isinstance(node, ast.ImportFrom):
+            module = _resolve(node.module, node.level, package)
+            if module is None:
+                continue
+            members = [alias.name for alias in node.names if alias.name != "*"]
+            names = (module, *(f"{module}.{member}" for member in members))
+            written = "." * node.level + (node.module or "")
+            imported = ", ".join(alias.name for alias in node.names)
+            found.append(Imported(names, node.lineno, f"from {written} import {imported}"))
+        elif isinstance(node, ast.Call):
+            name = _dynamic_name(node)
+            if name is not None:
+                found.append(Imported((name,), node.lineno, f"a dynamic import of {name!r}"))
+    return tuple(sorted(found, key=lambda entry: (entry.line, entry.statement)))

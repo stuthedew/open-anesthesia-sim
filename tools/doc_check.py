@@ -166,6 +166,7 @@ try:
     # reader of prose here (`PL-WX79`). `tools/rules_paths_check.py` reads
     # `paths:` through it too.
     from docket.frontmatter import Unread as UnreadFrontMatter
+    from docket.frontmatter import body_lines as _body_lines
     from docket.frontmatter import closing as frontmatter_closing
     from docket.frontmatter import comments as yaml_comments
     from docket.frontmatter import keys as frontmatter_keys
@@ -188,13 +189,18 @@ try:
     # each statement ends, so a code span or a bold run is read within its own
     # (`PL-FP7J`, `PL-VQBY`), where an HTML block runs (`PL-GT0J`), and which
     # lines are a heading, so a `#` line inside a fence is none (`PL-T1X0`).
+    # Which marks on a line are a container's, where a table row's cells are,
+    # and what a soft break is once those marks are blanked are its readings
+    # too (`PL-NNVJ`).
     from docket.markdown import (
         CODE,
         FENCE,
         HTML,
         PROSE,
+        SOFT_BREAK,
         TABLE,
         block_lines,
+        cell_spans,
         emphasis,
         statement_lines,
         unmarked,
@@ -213,7 +219,7 @@ try:
     # so `def test_ghost():` inside a fixture string defines nothing, and a
     # changed line counts toward the definition whose statement holds it, a
     # signature wrapped over several lines included (`PL-V2HK`).
-    from docket.python import UNTOKENIZABLE, definition, read_logical_lines, refusal
+    from docket.python import UNTOKENIZABLE, definition, docstrings, read_logical_lines, refusal
     from docket.release import (
         AUTOLINK_RE,
         CODE_SPAN_AT,
@@ -499,22 +505,21 @@ TREE_ROOT_RE = re.compile(r"^(?P<path>[\w./-]+/)$")
 REFERENCE_FILE_RE = re.compile(r"[\w][\w.-]*\.(?:pdf|txt|csv|json)")
 TREE_ENTRY_RE = re.compile(r"^(?P<indent>(?:(?:│   )|(?:    ))*)(?:├──|└──) (?P<name>\S+)")
 
-#: A soft break (CommonMark 0.31.2 § 6.8): a line ending inside a statement,
-#: and the indent and block quote markers that open the line it carries on to.
-#: Every reader of a phrase the documents may wrap takes its whitespace from
-#: here, rather than each meeting the wrap one capture at a time (`PL-R417`).
-#: It reads the gap and never where a statement ends, so it refuses no line:
-#: every reader built on it matches within one statement of `statement_lines`
-#: (`_statement_matches`), which decides the end (`PL-Z1R7`). It once refused
-#: each line that might open a block, and an ordered marker past 1, a pipe line
-#: and a block's opening indented four columns or more each carry a paragraph
-#: on wherever `statement_lines` reads one going on, so a closed quotation
-#: wrapped onto `2026. Notes follow` was refused as unclosed and a link wrapped
-#: onto it was never read (`PL-BCZQ`). The one line it misreads opens with a
-#: `>` four or more columns in, which CommonMark reads as text and this as a
-#: block quote's marker, and `tests/unit/test_inline_reference.py` fails on any
-#: tracked document that writes one.
-SOFT_BREAK = r"[ \t]*+\n[ \t]*+(?:>[ \t]*+)*+"
+# A soft break (CommonMark 0.31.2 § 6.8) is `markdown.SOFT_BREAK`, imported
+# above. Every reader of a phrase the documents may wrap takes its whitespace
+# from it, rather than each meeting the wrap one capture at a time
+# (`PL-R417`). It reads the gap and never where a statement ends, so it refuses
+# no line: every reader built on it matches within one statement of
+# `statement_lines` (`_statement_matches`), which decides the end (`PL-Z1R7`).
+# It once refused each line that might open a block, and an ordered marker past
+# 1, a pipe line and a block's opening indented four columns or more each carry
+# a paragraph on wherever `statement_lines` reads one going on, so a closed
+# quotation wrapped onto `2026. Notes follow` was refused as unclosed and a
+# link wrapped onto it was never read (`PL-BCZQ`). It reads no `>`: every
+# reader matches in text whose container markers `markdown.unmarked` has
+# blanked (`_unmarked_text`). Spelt here with the markers, it read a `>` four
+# or more columns into a paragraph's next line as a block quote's marker, where
+# CommonMark reads it as text (`PL-NNVJ`).
 #: The space between two words of a Markdown phrase: spaces or tabs, or a soft
 #: break.
 GAP = rf"(?:[ \t]++|{SOFT_BREAK})"
@@ -2486,11 +2491,12 @@ def _gate_groups(lines: Sequence[str], section: MilestoneSection) -> Iterator[_G
     there, and a correct list failed its counts (`PL-V7CG`).
     """
     end = _subsection_end(lines, section.gate_line)
+    blanked = unmarked(lines)
     headings: list[tuple[int, str, int, int | None]] = []
     for index, stop in statement_lines(lines):
         if not section.gate_line <= index < end or not lines[index].startswith("*"):
             continue  # what `GATE_GROUP_RE` opens with, so no other line is one
-        heading = _normalized("\n".join(lines[index:stop]))
+        heading = _normalized("\n".join(blanked[index:stop]))
         match = GATE_GROUP_RE.match(heading, 0, _opening_emphasis_end(heading))
         if match is None:
             continue
@@ -2909,10 +2915,12 @@ SCOPE_EXCLUSION_MARKERS = ("not in scope", "out of scope", "stays at gate", "sta
 #: A test function's name, as the whole of a code span names one, e.g.
 #: `` `test_washout` ``.
 TEST_NAME_RE = re.compile(r"test_[A-Za-z0-9_]+")
-#: A line ending inside a code span, with the indent and blockquote markers of
-#: the line it carries on to. No test name holds a space, so a name broken here
-#: was broken by the wrap, and is read with the break taken out (`PL-6SRZ`).
-SPAN_BREAK_RE = re.compile(r"\n[ \t]*(?:>[ \t]*)*")
+#: A line ending inside a code span, a soft break as `markdown.SOFT_BREAK`
+#: reads one: a span's content is read from text whose container markers are
+#: blanked (`_code_spans`), so the next line's `>` is gone before this sees it.
+#: No test name holds a space, so a name broken here was broken by the wrap,
+#: and is read with the break taken out (`PL-6SRZ`).
+SPAN_BREAK_RE = re.compile(SOFT_BREAK)
 #: Where test functions are defined: the product suite and the apparatus one.
 TEST_ROOTS = (Path("tests"), Path("subprojects/docket/tests"))
 
@@ -3717,7 +3725,7 @@ def _version_claim(
     if match is None:
         return frozenset(), [], 0
     line = first_line + body[: match.start()].count("\n")
-    named = _version_list(body, match.end(), match.endpos)
+    named = _version_list(match.string, match.end(), match.endpos)
 
     stated = match.group("count")
     count = int(stated) if stated.isdigit() else NUMBER_WORDS.get(stated.casefold())
@@ -4677,19 +4685,18 @@ def _covered_by_gitignore(root: Path, token: str) -> bool:
     return True
 
 
-#: The blockquote and list continuation markers that open a *wrapped* line.
-#: A quotation inside a `>` blockquote carries the marker of every line it
-#: wraps onto, so `§ "v0.5.1 -\n> the interface moves to Qt"` compared as
-#: `v0.5.1 - > the interface moves to Qt` and failed against a heading that is
-#: there. Eleven citations across the queue were reported stale that way, all
-#: of one correct heading (`PL-V13T`). Only a marker that *opens* a continued
-#: line is dropped; one inside the text is left alone.
-CONTINUATION_RE = re.compile(r"\n[ \t]*(?:>[ \t]*)+")
-
-
 def _normalized(text: str) -> str:
-    """`text` on one line, so a quotation that wrapped compares as written."""
-    return " ".join(CONTINUATION_RE.sub("\n", text).split())
+    """`text`, read with its container markers blanked, on one line.
+
+    So a quotation that wrapped compares as written. A quotation inside a `>`
+    blockquote carries the marker of every line it wraps onto, so
+    `§ "v0.5.1 -\n> the interface moves to Qt"` once compared as
+    `v0.5.1 - > the interface moves to Qt` and failed against a heading that
+    is there (`PL-V13T`). Every caller hands this text `_unmarked_text` has
+    blanked, which drops a `>` that marks a block quote and keeps one that is
+    a paragraph's text (`PL-NNVJ`).
+    """
+    return " ".join(text.split())
 
 
 #: Typography that differs between a passage and an honest quotation of it.
@@ -4716,10 +4723,11 @@ def _comparable_statements(text: str) -> str:
     its words are the file's, so each is one too, read whole.
     """
     lines = split_lines(text)
+    blanked = split_lines(_unmarked_text(text))
     blocks = read_blocks(_body_lines(lines)).blocks
     fences = [(block.start, block.end) for block in blocks if block.kind == FENCE]
     return "\n".join(
-        _comparable("\n".join(lines[first:end])) for first, end in [*_statements(lines), *fences]
+        _comparable("\n".join(blanked[first:end])) for first, end in [*_statements(lines), *fences]
     )
 
 
@@ -4872,35 +4880,32 @@ def _inline(text: str) -> tuple[tuple[re.Match[str], ...], tuple[Link, ...]]:
 
 
 def _unmarked(text: str, lines: Sequence[str]) -> str:
-    """`text` with each line's container markers blanked, as `markdown.unmarked` blanks them.
+    """`text` with the container markers `lines` holds blanked, as `markdown.unmarked` blanks them.
 
-    Offsets are kept, so an offset into it is one into `text`; a line the
-    blanking would hand back at another length is kept as written.
+    `lines` is the document `text` was cut from, read as Markdown, and `text`
+    may have blanked some of its own text since, every line at its length.
+    Offsets are kept, so an offset into it is one into `text`.
     """
-    pieces = []
-    for raw, blanked in zip(split_lines(text, keepends=True), unmarked(lines), strict=True):
-        body = raw.removesuffix("\n")
-        pieces.append(blanked + raw[len(body) :] if len(blanked) == len(body) else raw)
-    return "".join(pieces)
+    raw = split_lines(text, keepends=True)
+    blanked = unmarked(lines, [line.removesuffix("\n") for line in raw])
+    return "".join(line + piece[len(line) :] for line, piece in zip(blanked, raw, strict=True))
 
 
-#: A pipe that ends a table cell: one no backslash escapes (GFM 0.29 § 4.10),
-#: where `markdown.cells` and markdown-it-py split a row.
-CELL_BREAK_RE = re.compile(r"(?<!\\)\|")
+@lru_cache(maxsize=1024)
+def _unmarked_text(text: str) -> str:
+    """`text`, a document, with its body's container markers blanked and its front matter kept.
+
+    What every reader of a phrase matches in, so a gap read across a soft break
+    meets the next line's words where CommonMark does (`SOFT_BREAK`). Kept for
+    as many documents as the tree holds, since `sweep` asks `mentions` of
+    every document once per token.
+    """
+    return _unmarked(text, _body_lines(split_lines(text)))
 
 
 def _cells(text: str, start: int, end: int) -> list[tuple[int, int]]:
-    """The cells of the table row from `start` to `end`, as offsets, its outer pipes dropped."""
-    row = text[start:end].removesuffix("\n")
-    left = start + len(row) - len(row.lstrip())
-    right = start + len(row.rstrip())
-    edges = [left - 1, *(pipe.start() for pipe in CELL_BREAK_RE.finditer(text, left, right))]
-    cells = list(zip((edge + 1 for edge in edges), [*edges[1:], right], strict=True))
-    if cells and cells[0][0] == cells[0][1]:
-        cells.pop(0)
-    if cells and cells[-1][0] == cells[-1][1]:
-        cells.pop()
-    return cells
+    """The cells of the table row from `start` to `end`, as offsets, as `cell_spans` splits it."""
+    return [(start + first, start + stop) for first, stop in cell_spans(text[start:end])]
 
 
 def _statement_offsets(
@@ -4941,17 +4946,6 @@ def _statements(
     # grammar rather than YAML, a field to a line, which is the reading it gets.
     spans, _declined = frontmatter_statements(lines[1:fence])
     return [*((1 + a, 1 + b) for a, b in spans), *body]
-
-
-def _body_lines(lines: Sequence[str]) -> list[str]:
-    """`lines` with a YAML front matter blanked, both its `---` lines included.
-
-    What a reader of a document's Markdown reads, every line in its place: a
-    fence-shaped line in a block scalar opened a fence there (CommonMark 0.31.2
-    § 4.5) that ran on into the body and hid its prose (`PL-WX79`).
-    """
-    fence = frontmatter_closing(lines)
-    return list(lines) if fence is None else [""] * (fence + 1) + list(lines[fence + 1 :])
 
 
 def _fenced_lines(text: str) -> frozenset[int]:
@@ -5006,11 +5000,14 @@ def _statement_matches(
     rather than wherever the next line's opening allows one to go on
     (`PL-Z1R7`). A fence is no statement, so none is read in one. Each match
     keeps its bounds as `pos` and `endpos`, so a reader looking before or after
-    it - a mark, a direction - looks no further than its statement. Offsets are
+    it - a mark, a direction - looks no further than its statement. Each is
+    matched in `_unmarked_text(text)`, which is its `string`, so a reader
+    looking around it reads that rather than `text` (`PL-NNVJ`). Offsets are
     `text`'s.
     """
+    blanked = _unmarked_text(text)
     for start, end in _statement_offsets(text, kinds):
-        yield from pattern.finditer(text, start, end)
+        yield from pattern.finditer(blanked, start, end)
 
 
 def _unresolved(token: str) -> str:
@@ -5103,14 +5100,14 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
             # A code-spanned source directly before the mark says where the
             # section lives: a document, or an item brief no heading here
             # answers, and `check_quoted_sources` holds either by containment.
-            before = prose[max(match.pos, match.start() - 200) : match.start() + 1]
+            before = match.string[max(match.pos, match.start() - 200) : match.start() + 1]
             if _inside(match.start(), spans) or QUALIFIED_RE.search(before):
                 continue
             line = _line_of(prose, match.start())
             if match["unclosed"] is not None:
                 report.errors.append(_unclosed(f"{path}:{line}", "this §", "the section it names"))
                 continue
-            term, same_file = _cited_section(prose, match)
+            term, same_file = _cited_section(match.string, match)
             if same_file:
                 if not _cites_heading(term, headings[path]):
                     report.errors.append(
@@ -5125,7 +5122,7 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                 )
 
         for match in _statement_matches(UNMARKED_CITATION_RE, prose, PROSE):
-            before = prose[max(match.pos, match.start() - 200) : match.start() + 1]
+            before = match.string[max(match.pos, match.start() - 200) : match.start() + 1]
             if (
                 _inside(match.start(), spans)
                 or MARKED_RE.search(before)
@@ -5142,7 +5139,7 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                     )
                 )
                 continue
-            term, same_file = _cited_section(prose, match)
+            term, same_file = _cited_section(match.string, match)
             if _cites_heading(term, headings[path] if same_file else every_heading):
                 report.advisories.append(
                     f'{path}:{_line_of(prose, match.start())}: "{term}" names a section '
@@ -5558,12 +5555,15 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
 
 
 def _docstrings(tree: ast.Module) -> Iterator[tuple[int, str]]:
-    """Every module, class and function docstring, with the line it starts on."""
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        if (docstring := ast.get_docstring(node, clean=False)) is not None:
-            yield node.body[0].lineno, docstring
+    """Every docstring, an attribute docstring included, with the line it starts on.
+
+    `docket.python.docstrings` decides which strings those are. Reading only a
+    module's, a class's and a function's left a citation in an attribute
+    docstring unchecked (`PL-8W1J`).
+    """
+    for node in docstrings(tree):
+        if isinstance(node.value, str):  # always, and how the type checker learns it
+            yield node.lineno, node.value
 
 
 def _unread_source(relative: Path, error: Exception, unread: str = "citation") -> str:
@@ -6281,8 +6281,10 @@ def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
                         yield command.group("name"), first + at
                 continue
             for run in simple_commands(reading, piece):
-                arguments = run.words[run.assignments + 1 :]
-                if run.program == "make" and arguments:
+                # Past a wrapper, as `timeout 600 make check` runs `make` (`PL-RHPK`).
+                program = run.runs()
+                arguments = run.words[program + 1 :] if program is not None else ()
+                if program is not None and run.words[program] == "make" and arguments:
                     if (name := MAKE_TARGET_WORD_RE.match(arguments[0])) is not None:
                         yield name.group(), first + piece.count("\n", 0, run.start)
 
@@ -8024,7 +8026,7 @@ def _undated_host_claims(
     hook's `.sh` is never a host.
     """
     lines = split_lines(text)
-    unlinked = split_lines(_without_destinations(text))
+    unlinked = split_lines(_unmarked(_without_destinations(text), _body_lines(lines)))
     for first, end in _statements(lines, PROSE):
         statement = "\n".join(unlinked[first:end])
         for start, stop in _sentences(statement):
@@ -8782,7 +8784,7 @@ def mentions(term: str, text: str, spans: Sequence[re.Match[str]] | None = None)
     phrase = GAP.join(re.escape(word) for word in term.split())
     statements: list[tuple[int, int]] | None = None
     lines: list[int] = []
-    for match in re.finditer(rf"(?<!\w){phrase}(?!\w)", text):
+    for match in re.finditer(rf"(?<!\w){phrase}(?!\w)", _unmarked_text(text)):
         if not distinctive and not _marks_code(text, spans or (), match.start(), match.end()):
             continue
         line = _line_of(text, match.start())

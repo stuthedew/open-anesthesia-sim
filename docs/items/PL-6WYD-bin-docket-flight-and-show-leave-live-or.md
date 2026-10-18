@@ -3,12 +3,14 @@ id: PL-6WYD
 title: bin/docket flight and show leave live-or-abandoned to a branch's age, though each claim records its holder's session id and get_session on it answers directly; flight prints no id, and its 'live' means only inside the 7-day lease
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: claim-record
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_claims.py, .claude/skills/docket/modes/start.md
 deferred-from: v0.6.0 - new since the freeze (e6cdfd93, 2026-09-21): the claim's session token and flight's lease-state column both arrived with PL-3FYK (#983) and PL-N162 (#1002) on 2026-09-24, and not safety or science
 added: 2026-09-25
+closed: 2026-10-18
+pr: 1555
 payoff: a reader of flight or show gets the one call that says whether a claim's session is still running, instead of judging from the branch's age
 verify: grep -q 'def test_flight_s_claim_rows_print_the_holder_s_session' subprojects/docket/tests/test_claims.py
 ---
@@ -39,6 +41,16 @@ The row's `live` is `claims.LIVE`, a lease state: inside `LEASE_TERM`, seven day
 - The state printed on a row no longer reads as "a session is on it" (`held`, say, or `in lease`); the state can stay `claims.LIVE` in code.
 - `.claude/skills/docket/modes/start.md`'s prefix sentence says `get_session` takes the `cse_` token as printed.
 - `test_flight_s_claim_rows_print_the_holder_s_session` in `subprojects/docket/tests/test_claims.py` pins the token on the row and the caveat's wording.
+
+**Closed 2026-10-18 with the row's state still printed as `live`.** The
+done-when bullet asking for a new word (`held`, `in lease`) was a session's
+suggestion, and the problem it served was one screen using `live` in two
+senses. The `flight` caveat now defines it on the same screen ("`live` means
+only that a hold is inside its 7-day lease", read from `claims.LEASE_TERM`)
+and names `get_session` on the row's token as what says whether the session
+is running. Renaming the column would have rewritten eight pinned assertions
+across `test_cli.py` and `test_claims.py`, each needing a `falsifies:` on the
+base first, for no reading the definition does not already give.
 
 **Generator check.** Not a member of `PL-MB2W`'s head. The fact at issue is whether a recorded holder is still running, not who holds the item; the claim record answers "who" and carries the token, so this is a presentation gap at the two readers that print it - a one-off.
 

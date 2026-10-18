@@ -5428,3 +5428,20 @@ def test_a_roadmap_sentence_naming_an_item_disposes_of_nothing() -> None:
     (error,) = _gate_errors(_item("PL-ZZZZ"), roadmap=roadmap)
 
     assert OWED in error
+
+
+def test_a_k_selector_is_read_where_a_command_invokes_pytest() -> None:
+    """pytest runs where `docket.shell` reads a simple command invoking it (`PL-RHPK`).
+
+    The rule found the executable as any word `pytest`, so a run behind
+    `python3 -m` was no run to it, and `verify` read a `python3 -c` string
+    calling `pytest.main` as one. A string of code runs the interpreter, so
+    neither reads it as a pytest run now.
+    """
+    assert _has(_selector_errors(verify="timeout 600 python3 -m pytest tests/unit -k x"), NARROWS)
+    for command in (
+        "python3 -c \"import pytest,sys; sys.exit(pytest.main(['-k','x','tests/unit']))\"",
+        "echo pytest tests/unit -k x",
+        "uv run pytest tests/unit -k x ;& true",
+    ):
+        assert not _has(_selector_errors(verify=command), NARROWS), command

@@ -65,8 +65,8 @@ set -uo pipefail
 payload=$(cat)
 
 command -v python3 >/dev/null 2>&1 || exit 0
-root="${CLAUDE_PROJECT_DIR:-}"
-[ -n "$root" ] || exit 0
+# The checkout, as every hook finds it (`hook_input.py`, `PL-FB77`).
+root=$(python3 "$(dirname "${BASH_SOURCE[0]}")/hook_input.py") || exit 0
 [ -x "$root/bin/docket" ] || exit 0
 
 # The id and the event, read as JSON as the rest of the payload is, so an id

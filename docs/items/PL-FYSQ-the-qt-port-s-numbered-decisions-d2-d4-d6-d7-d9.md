@@ -3,10 +3,12 @@ id: PL-FYSQ
 title: The Qt port's numbered decisions D2, D4, D6, D7, D9 and D10 are cited 15 times in app/ docstrings and one test, as (PL-25KS, decision Dn), but no file in the tree defines them: not PL-25KS's brief and not docs/pr-bodies/588.md
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: docs/items/PL-25KS-port-the-dashboard-to-pyside6-the-readout-row.md
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1556
 payoff: a reader following (PL-25KS, decision D4) from a docstring finds the decision and every other site it governs
 verify: grep -qF 'D10' docs/items/PL-25KS*.md
 ---

@@ -891,10 +891,10 @@ class RunView(QWidget):
         which setting was refused. Any other exception halts the run through
         `_halt_run`; a raise from outside the project's hierarchy is still a
         run that cannot continue (`PL-YK2V`). An accepted setting clears a
-        standing refusal, and the way out a refused Reset left on the banner:
-        the setting may be the repair that Reset needed - `set_cardiac_output`
-        recomputes the tissue flows - and the next Reset is refused or not on
-        the record as it then stands (`PL-M4M0`).
+        standing refusal, and the way out a refused Reset left on the banner.
+        The next Reset is then refused or not on the record as it then stands
+        (`PL-M4M0`). Until `PL-HQF5` a cardiac output change could repair
+        that record, because it recomputed the stored tissue flows.
 
         The frame is left to the render tick only when `coalesce` is set
         and no refusal was standing before or is standing after: a refusal,
