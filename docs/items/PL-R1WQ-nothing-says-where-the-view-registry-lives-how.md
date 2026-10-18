@@ -3,11 +3,13 @@ id: PL-R1WQ
 title: Nothing says where the view registry lives, how a view-kind tag is allocated so a class rename does not trip the loud failure meant for a missing view, or how a pure-Python LayoutModel validates a kind tag without importing a Qt view
 priority: P2
 effort: M
-status: ready
+status: done
 classes: planning
 feature: interface-areas
-touches: src/anesthesia_sim/app/, tests/integration, docs/ARCHITECTURE.md
+touches: src/anesthesia_sim/app/, tests/integration, tests/unit, docs/ARCHITECTURE.md, docs/interface-provenance.md, tools/contrast_check.py, docs/items
 added: 2026-09-16
+closed: 2026-10-18
+pr: 1599
 payoff: an Area whose View kind this build does not know shows a failure in that Area rather than a wrong View, and renaming a class cannot change what a saved layout means
 verify: grep -qr --include=view_registry.py 'ViewKind' src/anesthesia_sim/app
 ---
@@ -121,3 +123,42 @@ widgets and raises `LookupError` for any other tag. That function is the seam
 this item's registry replaces. Q1's `app/view_registry.py` and the per-Area
 failure state are still to build, so the work now reaches `app/` and the
 integration tests as well as `docs/ARCHITECTURE.md`.
+
+## Built 2026-10-18
+
+`src/anesthesia_sim/app/view_registry.py` is Q1's registry, and
+`AreaLayout` looks each Area's tag up in it. An unregistered tag draws an
+`AreaNotice` in its own Area, `view_for` is never called for it, and the model
+keeps the tag. Q3's tags are the four literals the shipped Workspaces and the
+dashboard name, and `RETIRED_TAGS` is empty and checked at import: a retired
+tag cannot be registered, and a successor must be. Q4's first test is
+`test_every_shipped_workspace_names_only_registered_kinds` in
+`tests/unit/test_view_registry.py`. The tests in
+`tests/integration/test_layout_adapter.py` assert that a failed Area's visible
+strings are the notice's two lines and nothing else (`PL-DB5G` Q4).
+
+Choices made while building, inside the ratified design:
+
+- **The entry is `RegisteredView`, not `ViewKind`.** `layout.tree.ViewKind`
+  already names the tag's type, so Q1's `ViewKind(tag, ...)` entry took
+  another name rather than shadowing it.
+- **The entry has no `factory` yet.** Q1 lists one, and `PL-TH35` Q2 decides
+  what it is called with: a `ViewContext` holding the run binding, the shared
+  state and the saved state. A factory written before that context exists
+  would take nothing a View could honestly be built from, since the
+  dashboard's widgets are not yet constructible one per Area (`PL-9LNF`). So
+  `AreaLayout` keeps the caller's `view_for` for a registered kind, and
+  `PL-TH35` adds the field with its contract. Q4's second test, that every
+  registered kind has a factory, arrives with the field. `minimum_size` and
+  `required_reachable` stay `PL-K285`'s and `PL-50PZ`'s.
+- **The titles are placeholders** ("Concentrations", "Wash-in",
+  "Parameters", "Agent accounting"). Nothing shows them until the View
+  chooser, Required scope entry 16, is built.
+- **The notice leaves out `PL-DB5G` Q2's last line**, "Choose a View from the
+  menu above", because no such menu exists yet. It says instead that the
+  saved name is kept, so saving loses nothing. The chooser's item adds the
+  line, and the explicit rename offer for a tag with a successor, when the
+  menu exists. Placeholder wording.
+- **The adapter takes `registered=` as a keyword**, defaulting to
+  `REGISTERED`, so the adapter's tests draw a test-only kind without adding it
+  to the shipped list.
