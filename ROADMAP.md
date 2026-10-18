@@ -5718,7 +5718,7 @@ named here, for the reason beat 3 gives.
 - PL-W54S (M) Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
 - PL-JSY5 (S) docs/MODEL.md's readout-row rung and its educational-disclaimer line both assume one window's width and one always-on-screen surface, which the area system makes false
 
-**Cleared before v0.6.0 begins unless deferred, the product lane - 99 entries**
+**Cleared before v0.6.0 begins unless deferred, the product lane - 100 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-0FJ8 (S) A MAC divisor's positivity is checked in five app/formatting.py functions and by nothing that holds it: AgentParameters admits Percent(0.0) built directly, only the loader's PositivePercent refuses one, and format_mac_reference checks nothing, directly or through another
@@ -5754,6 +5754,7 @@ named here, for the reason beat 3 gives.
 - PL-BBMG (M) RunDefinition accepts a delivered concentration above the agent's vaporizer maximum - 20% sevoflurane against an 8% maximum ran on 2026-10-04 - because UptakeEquationSettings carries no agent and no vaporizer maximum, so a run built from a settings record bounds the dial only at 100%, and the BreathingCircuit that refuses it is never built
 - PL-BMY5 (S) SimulationState can be constructed already past the supported run length, and only the next advance refuses it
 - PL-CBDX (M) Read every simulator diff merged unread since 2026-09-23 against the safety-critical standard, since the review hold was clicked through rather than read
+- PL-CM1B (M) Desflurane's F_A/F_I rises 1.7 to 2.1 published SD faster than its Anesthesiology 1991 cohort from 1 to 10 minutes with F_I held at the airway, while the same volunteers' isoflurane and the sevoflurane cohort follow their curves, so something only desflurane has is too low
 - PL-CN5S (M) A case instant and a run's step count are a bare float and a bare int checked by hand where each enters - require_supported_case_instant at RunDefinition's two ways in, _require_step_count in SimulationState - so a new way in for either repeats the check or skips it; slice 2 of PL-51B7 gives each a checked type, CaseInstant in s and StepCount, an int subclass checking what a count can be checked for alone
 - PL-CZTR (S) ResumePoint.elapsed_s is the fork instant on the case's axis and should be named fork_instant_s, now that the definition's own instants are instant_s
 - PL-DBGT (S) desflurane.json points at 'the five other candidates ruled out' in a MODEL.md table that now has nine rows, and names tests/reference/test_published_wash_in.py, which does not exist
@@ -5939,11 +5940,12 @@ named here, for the reason beat 3 gives.
 - PL-Z9K5 (S) bin/docket record normalizes an item's whole front matter as well as inserting pr:, so PL-ZYQC's 'pr, not counted' exemption misses and the close-out audit reports files the skill told the session to touch
 - PL-ZM48 (S) docs/worker.md records remote-branch deletion as exit status 0, and PL-3V6C as two incompatible causes, but one 2026-09-20 transcript carries the 403 and the Everything up-to-date line together at exit 1
 
-**Cleared before v0.6.0 begins unless deferred, in neither lane - 12 entries**
+**Cleared before v0.6.0 begins unless deferred, in neither lane - 13 entries**
 
 - PL-1RTM (M) doc_check resolves path citations only in DOC_GLOBS, so the queue - most of this project's prose - has its citations unchecked
 - PL-316G (M) Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
 - PL-4L49 (M) tools/contrast_check.py measures only declared pairs, so a control that declares no colour reads as covered when nothing measures it
+- PL-4RL2 (S) The Gas Man simulation study at PMC7943506 is cited as Meybohm P, et al., J Clin Monit Comput 2021;35:897-908 in the reference adult, the three agent files, the circuit file, docs/MODEL.md and tests/unit/test_parameters.py, but PubMed gives it as Weber J, Schmidt J, Wirth S, Schumann S, Philip JH, Eberhart LHJ, J Clin Monit Comput 2021;35(2):343-354 (PMID 32067148), so a reader following the citation cannot find the paper by its authors or pages (found working PL-SWY5)
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
 - PL-65HT (M) A core/ dataclass numeric field default other than 0 or 1 that appears in no provenance-table value is an unsourced scientific constant, and nothing checks for one
 - PL-B396 (M) Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
@@ -6028,7 +6030,7 @@ found at `PL-7DJK`. `PL-0FJ8` (`safety`, 2026-10-11) is `AgentParameters`
 admitting a zero MAC, which `format_mac_reference` prints as `1 MAC sevoflurane
 = 0.0%`, and `PL-1DP1` (`safety`, 2026-10-11) the two concentration conversions
 taking a bare float as either form. `PL-QPN8` (`science`, 2026-10-11) is the
-reference adult's Meybohm et al. 2021 note, whose tables can now be read at the
+reference adult's Weber et al. 2021 note, whose tables can now be read at the
 source. The triage pass that classed them placed all five in the product lane.
 `PL-QJXS`, `PL-JPS2`, `PL-ZH1F` and `PL-H1JH` (`safety`, 2026-10-17) are the
 test-effectiveness audit's safety findings: no test compares an agent-switched
@@ -6040,6 +6042,14 @@ MAC-awake fractions and spreads carry no pin from their primary source.
 published-data gates cannot resolve most stored parameters, and wash-in is
 compared with published human data at 30 minutes alone. The triage pass that
 classed them placed all six in the product lane.
+
+`PL-CM1B` (`science`, 2026-10-18) is what `PL-R0NL`'s comparison of the
+early wash-in curve turned up: desflurane rises faster than its 1991 cohort
+from 1 to 10 minutes. The triage pass that classed it placed it in the product
+lane. `PL-4RL2` (`science`, 2026-10-18) is what `PL-SWY5`'s reading of the
+Gas Man study at PMC7943506 turned up: the tree cited it under the wrong
+authors and pages. It also corrects a rule file, so the same pass placed it in
+neither lane.
 
 `PL-YVV4` (`planning`, filed 2026-09-13) was let in on 2026-10-03 and sits in
 the workflow lane with `PL-VV6N`, which waits on it. It was in the store at the
@@ -7756,7 +7766,7 @@ specified.
     formula with its own provenance, and an unsourced scalar in front of the
     dominant compartment is the "plausible but incorrect clinical value"
     `CLAUDE.md` forbids just as surely as no scalar at all. Whichever rule is
-    chosen, it is sourced before it ships. `Meybohm et al. 2021`, already
+    chosen, it is sourced before it ships. `Weber et al. 2021`, already
     cited in `data/patients/reference_adult.json`, is the obese case explored
     with the same reference simulator this project draws its parameters from,
     and is where scoping should start reading.
