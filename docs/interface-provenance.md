@@ -878,14 +878,32 @@ share, and that leaves two differences. Two borders a drag brings into line are
 one line from then on here, where Blender's border drag merges no vertices -
 `area_move_exit` in `screen_ops.cc` removes duplicate edges and nothing else
 (`blender/blender` `main`, read 2026-10-12) - so its two edges stay two until
-the reader merges them on purpose. And `LayoutModel.resize()` keeps the
-proportions inside each of the two children a moved handle divides, so a
-border nested in one of them moves with it although it lies on no moved line:
-in `row[1, column[row[2, 4], 3]]`, dragging the root border from one half to a
-quarter widens Area 4 from a quarter of the window to three eighths. Blender's
-`area_move_apply_do`, in the same file, moves only the vertices flagged as on
-the dragged line (`editflag`), so there a nested border keeps its place and
-Area 4 its width. Which a reader should get is `PL-5HSG`'s decision.
+the reader merges them on purpose. That is the one difference left in a drag.
+`LayoutModel.resize()` moves only the borders on the dragged line, as
+Blender's `area_move_apply_do`, in the same file, moves only the vertices
+flagged as on it (`editflag`; read again 2026-10-18). Every other border keeps
+its place in the window, so in `row[1, column[row[2, 4], 3]]`, dragging the
+root border from one half to a quarter leaves Area 4 a quarter of the window
+wide (`PL-5HSG`; project owner, 2026-10-12, ratified, over keeping the
+proportions inside each child of the dragged split).
+
+**A join reads the rectangles, as Blender's does.** Blender decides whether two
+Areas can join from their corners alone: `area_getorientation`
+(`source/blender/editors/screen/screen_edit.cc`, `blender/blender` `main`,
+read 2026-10-18) compares the two rectangles' edges, and
+`screen_area_join_aligned` then moves the vertices, so no build order exists
+for a join to depend on. A tree has one, wherever four Areas meet at a point:
+a 2x2 grid is a column of two rows or a row of two columns. So
+`LayoutModel.join()` does not look for the pair in one split. It merges the two
+rectangles and divides the region of the lowest split holding both again by
+straight cuts, and every join Blender takes between two Areas sharing a whole
+edge is taken here, with two exceptions. One is a join that leaves an
+arrangement no straight cut divides, which `PL-3J2P` refused. The other is a
+join that would nest a split past the tree's depth maximum, which `split`
+refuses too (`PL-G60V`; project owner, 2026-10-12, ratified, over taking or
+refusing such a join by which split came first). Blender's join also trims two
+Areas that share only part of an edge, as the measurement above found; this
+model joins only Areas that share a whole edge.
 
 **Prune the contract; do not let it accumulate.** Blender's `SpaceType` carries
 hooks nothing implements and a field nothing assigns, and nothing in the design

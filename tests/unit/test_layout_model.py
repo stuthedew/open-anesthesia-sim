@@ -157,6 +157,52 @@ def nested(depth: int) -> Split:
     return tree
 
 
+def buried(tree: Split, levels: int) -> LayoutModel:
+    """`tree` nested `levels` splits deep: each split around it holds one more Area, from id 100.
+
+    The splits alternate in orientation outward from `tree`'s own, so `tree`
+    is `levels + 1` deep and the splits it holds sit deeper still.
+    """
+
+    orientation = tree.orientation
+
+    for level in range(levels):
+        orientation = COLUMN if orientation is ROW else ROW
+        tree = Split(orientation, (0.5, 0.5), (tree, area(100 + level)))
+
+    return layout(tree)
+
+
+def joined_places(
+    places: dict[int, tuple[float, float, float, float]], keep: int, remove: int
+) -> dict[int, tuple[float, float, float, float]]:
+    """Each Area's rectangle after a join, from the rectangles before it: `keep` takes both."""
+
+    kept, removed = places[keep], places[remove]
+    after = {number: place for number, place in places.items() if number != remove}
+    after[keep] = (
+        min(kept[0], removed[0]),
+        min(kept[1], removed[1]),
+        max(kept[2], removed[2]),
+        max(kept[3], removed[3]),
+    )
+
+    return after
+
+
+def assert_places(
+    model: LayoutModel, expected: dict[int, tuple[float, float, float, float]]
+) -> None:
+    """Assert each Area of the main window lies where `expected` says, to within rounding."""
+
+    found = rectangles(model)
+
+    assert found.keys() == expected.keys()
+
+    for number, place in expected.items():
+        assert found[number] == pytest.approx(place), number
+
+
 # --- The package is pure Python --------------------------------------------------
 
 
@@ -512,9 +558,9 @@ def test_a_join_the_tree_cannot_express_is_refused() -> None:
     five-Area pinwheel no sequence of full-span cuts produces. This builds
     those six - the pinwheel with its left bar cut at two thirds - and asks
     for the join. The two parts share their whole edge, as the independent
-    geometry below confirms, and sit in different splits; the tree refuses
-    rather than return a layout other than the one asked for, and the layout
-    it was asked of is unchanged.
+    geometry below confirms. No straight cut divides the five Areas the join
+    would leave, so the tree refuses rather than return a layout other than
+    the one asked for, and the layout it was asked of is unchanged.
     """
 
     third, two_thirds = 1 / 3, 2 / 3
@@ -535,7 +581,7 @@ def test_a_join_the_tree_cannot_express_is_refused() -> None:
     assert (upper[0], upper[2]) == pytest.approx((lower[0], lower[2]))
     assert upper[3] == pytest.approx(lower[1])
 
-    with pytest.raises(LayoutRefused, match="only where they sit next to each other"):
+    with pytest.raises(LayoutRefused, match="no straight cut divides the Areas the join would"):
         six.join(AreaId(4), AreaId(6))
 
     assert layout_to_json(six) == copy
@@ -567,16 +613,17 @@ def test_a_join_of_areas_that_do_not_share_a_whole_edge_is_refused() -> None:
         apart.join(AreaId(2), AreaId(2))
 
 
-def test_where_four_areas_meet_a_join_depends_on_which_cut_came_first() -> None:
-    """A 2x2 grid is two trees, and the one form a tree takes does not choose between them.
+def test_where_four_areas_meet_a_join_is_taken_whichever_cut_came_first() -> None:
+    """A 2x2 grid is two trees, and a join reads the rectangles, never which tree holds them.
 
     Cut across first, the grid is a column of two rows; cut down first, a row
-    of two columns. The four rectangles are the same, but which two Areas sit
-    in one split differs, so joining the top-left Area to the one below it is
-    refused in the first and allowed in the second, and joining it to the one
-    beside it the reverse. This holds today's behaviour. Whether a join should
-    re-slice a junction where four Areas meet, so that both are allowed, is an
-    open decision filed as `PL-G60V`.
+    of two columns. Which two Areas sit in one split differs between them,
+    and before `PL-G60V` a join depended on it: Area 1 could join the Area
+    beside it in one tree and the Area below it in the other. Now each join
+    of two Areas that share an edge is taken from both trees, in either
+    order, and gives the rectangles worked out here from the grid's
+    quarters. The two pairs that meet only at the centre share no edge and
+    are refused from both.
     """
 
     across_first = layout(
@@ -585,14 +632,21 @@ def test_where_four_areas_meet_a_join_depends_on_which_cut_came_first() -> None:
     down_first = layout(
         row((0.5, 0.5), column((0.5, 0.5), area(1), area(3)), column((0.5, 0.5), area(2), area(4)))
     )
+    quarters = {
+        1: (0.0, 0.0, 0.5, 0.5),
+        2: (0.5, 0.0, 1.0, 0.5),
+        3: (0.0, 0.5, 0.5, 1.0),
+        4: (0.5, 0.5, 1.0, 1.0),
+    }
 
-    assert rectangles(across_first) == rectangles(down_first)
+    assert rectangles(across_first) == rectangles(down_first) == quarters
 
-    with pytest.raises(LayoutRefused, match="only where they sit next to each other"):
-        across_first.join(AreaId(1), AreaId(3))
+    for first, second in ((1, 2), (1, 3), (2, 4), (3, 4)):
+        for keep, remove in ((first, second), (second, first)):
+            for model in (across_first, down_first):
+                joined = model.join(AreaId(keep), AreaId(remove))
 
-    with pytest.raises(LayoutRefused, match="only where they sit next to each other"):
-        down_first.join(AreaId(1), AreaId(2))
+                assert rectangles(joined) == joined_places(quarters, keep, remove)
 
     assert down_first.join(AreaId(1), AreaId(3)).windows[0].tree == row(
         (0.5, 0.5), area(1), column((0.5, 0.5), area(2), area(4))
@@ -600,6 +654,164 @@ def test_where_four_areas_meet_a_join_depends_on_which_cut_came_first() -> None:
     assert across_first.join(AreaId(1), AreaId(2)).windows[0].tree == column(
         (0.5, 0.5), area(1), row((0.5, 0.5), area(3), area(4))
     )
+    assert across_first.join(AreaId(1), AreaId(3)).windows[0].tree == row(
+        (0.5, 0.5), area(1), column((0.5, 0.5), area(2), area(4))
+    )
+    assert down_first.join(AreaId(1), AreaId(2)).windows[0].tree == column(
+        (0.5, 0.5), area(1), row((0.5, 0.5), area(3), area(4))
+    )
+
+    for model in (across_first, down_first):
+        for keep, remove in ((1, 4), (2, 3)):
+            with pytest.raises(LayoutRefused, match="only where they sit next to each other"):
+                model.join(AreaId(keep), AreaId(remove))
+
+
+def test_a_join_across_a_junction_cuts_the_region_into_every_strip_it_holds() -> None:
+    """Three columns of two rows: joining two Areas of the first column leaves three strips.
+
+    The rows hold Areas 1, 2, 3 above and 4, 5, 6 below, so Areas 1 and 4
+    sit in different splits. Joined, the left third is one Area, and the
+    region is cut down at both thirds at once, since a row never holds a
+    row: one split of three children, not two nested ones.
+    """
+
+    third = 1 / 3
+    model = layout(
+        column(
+            (0.5, 0.5),
+            row((third, third, 1 - 2 * third), area(1), area(2), area(3)),
+            row((third, third, 1 - 2 * third), area(4), area(5), area(6)),
+        )
+    )
+
+    joined = model.join(AreaId(1), AreaId(4))
+    tree = joined.windows[0].tree
+
+    assert_places(joined, joined_places(rectangles(model), 1, 4))
+    assert isinstance(tree, Split)
+    assert tree.orientation is ROW
+    assert [_areas(child) for child in tree.children] == [
+        [area(1)],
+        [area(2), area(5)],
+        [area(3), area(6)],
+    ]
+
+
+def test_a_join_merges_a_re_sliced_region_into_the_split_above_it() -> None:
+    """A row inside a row is one wider row, so a region re-sliced down continues the row above.
+
+    The grid fills the right half of a row. Joining its two left Areas
+    leaves the grid's region cut down its middle, along the row's own axis,
+    so the merged Area and the column beside it become children of the row.
+    """
+
+    model = layout(
+        row(
+            (0.5, 0.5),
+            area(5),
+            column(
+                (0.5, 0.5), row((0.5, 0.5), area(1), area(2)), row((0.5, 0.5), area(3), area(4))
+            ),
+        )
+    )
+
+    assert model.join(AreaId(1), AreaId(3)).windows[0].tree == row(
+        (0.5, 0.25, 0.25), area(5), area(1), column((0.5, 0.5), area(2), area(4))
+    )
+
+
+def test_a_join_keeps_the_splits_beside_it_as_they_were() -> None:
+    """A subtree beside the pair is kept whole, even where its own border could cut the region.
+
+    The grid beside Areas 1 and 2 has a border down its middle that crosses
+    the whole window. Joining Areas 1 and 2 needs no cut there, so the grid
+    stays a column of two rows rather than being opened into the window's
+    row.
+    """
+
+    grid = column((0.5, 0.5), row((0.5, 0.5), area(3), area(4)), row((0.5, 0.5), area(5), area(6)))
+    model = layout(row((0.25, 0.25, 0.5), area(1), area(2), grid))
+
+    assert model.join(AreaId(1), AreaId(2)).windows[0].tree == row((0.5, 0.5), area(1), grid)
+
+
+def test_a_join_opens_a_split_beside_it_where_that_splits_border_is_the_only_cut() -> None:
+    """Where only a border inside a subtree beside the pair divides the region, the join opens it.
+
+    Areas 7 and 9 share their whole edge, and joined they span two thirds
+    of the window's width along its foot. The only straight cut through the
+    result runs down at one third, through the middle of the row holding
+    Areas 2 and 3, which holds neither Area joined. Kept whole, that row
+    would leave no cut at all, so the join is taken from the Areas
+    themselves, and Areas 2 and 3 end in different splits.
+    """
+
+    third = 1 / 3
+    model = layout(
+        row(
+            (2 * third, 1 - 2 * third),
+            column(
+                (0.5, 0.5),
+                row((0.5, 0.5), area(2), area(3)),
+                row((0.5, 0.5), area(4), column((0.5, 0.5), area(5), area(7))),
+            ),
+            column((0.75, 0.25), area(8), area(9)),
+        )
+    )
+
+    joined = model.join(AreaId(9), AreaId(7))
+
+    assert_places(joined, joined_places(rectangles(model), 9, 7))
+
+
+def test_a_join_needing_a_split_past_the_depth_maximum_is_refused() -> None:
+    """A join can need a level more than the tree held, and is refused past the maximum depth.
+
+    Below Area 1 lie two rows of two, their borders in line. Joining the two
+    right-hand Areas leaves a column on the left inside a row, one level
+    deeper than the rows were, and no other tree holds those rectangles.
+    With the rows at the maximum depth the join is refused, and one level
+    higher it is taken.
+    """
+
+    eighth = 0.125
+    rows = column(
+        (0.75, eighth, eighth),
+        area(1),
+        row((1 - eighth, eighth), area(2), area(3)),
+        row((1 - eighth, eighth), area(4), area(5)),
+    )
+    deepest = buried(rows, TREE_DEPTH_MAXIMUM - 2)
+    higher = buried(rows, TREE_DEPTH_MAXIMUM - 3)
+
+    with pytest.raises(LayoutRefused, match=f"more than {TREE_DEPTH_MAXIMUM} deep"):
+        deepest.join(AreaId(5), AreaId(3))
+
+    assert_places(higher.join(AreaId(5), AreaId(3)), joined_places(rectangles(higher), 5, 3))
+
+
+def test_a_join_too_deep_cut_one_way_is_taken_cut_the_other() -> None:
+    """Where cutting along the split's own axis would pass the depth maximum, the join cuts across.
+
+    Three rows of two lie at the maximum depth inside a row. Joining the top
+    two left Areas, a cut across first would leave the merged Area and a
+    column beside it in a row one level deeper. A cut down first gives two
+    columns, which join the row above, so the join is taken that way.
+    """
+
+    third = 1 / 3
+    grid = column(
+        (third, third, 1 - 2 * third),
+        row((0.5, 0.5), area(1), area(2)),
+        row((0.5, 0.5), area(3), area(4)),
+        row((0.5, 0.5), area(5), area(6)),
+    )
+    model = buried(grid, TREE_DEPTH_MAXIMUM - 2)
+
+    joined = model.join(AreaId(1), AreaId(3))
+
+    assert_places(joined, joined_places(rectangles(model), 1, 3))
 
 
 def test_an_id_is_never_handed_out_twice() -> None:
@@ -658,16 +870,19 @@ def test_resize_places_a_nested_border_where_it_is_dragged() -> None:
     assert rectangles(moved)[3][2] == pytest.approx(0.7)
 
 
-def test_a_drag_keeps_each_childs_proportions_so_a_border_inside_one_moves() -> None:
-    """Where this differs from Blender's border drag, held as it is until `PL-5HSG` decides.
+def test_a_drag_moves_only_the_borders_on_its_line() -> None:
+    """`PL-5HSG`: a border no reader touched keeps its place in the window, as in Blender.
 
     The root border here divides Area 1 from a column whose upper row holds
-    Areas 2 and 4. Dragged from 0.5 to 0.25, the column widens and its rows
-    keep their proportions, so Area 4 widens from 0.25 to 0.375 of the
-    window and the border between Areas 2 and 4 moves from 0.75 to 0.625,
-    though it lies on no moved line. Blender moves only the vertices on the
-    dragged line (`area_move_apply_do`), so there Area 4 would keep its
-    width; `docs/interface-provenance.md` names the difference.
+    Areas 2 and 4. Dragged from 0.5 to 0.25, the column widens, but the
+    border between Areas 2 and 4 lies on no moved line, so it stays at 0.75.
+    Area 2 takes all the width the drag gives, and Area 4 keeps its quarter
+    of the window. Blender's `area_move_apply_do` moves only the vertices on
+    the dragged line, which is what the project owner chose. The row's sizes
+    are worked out again, as fractions of its new width. The same holds with
+    that border at 0.625, where the row comes out halved, and with a third
+    Area in the row. Area 3, below, has no edge on the line and only widens
+    with the column, and the column's own border does not move.
     """
 
     model = layout(
@@ -677,9 +892,59 @@ def test_a_drag_keeps_each_childs_proportions_so_a_border_inside_one_moves() -> 
     moved = model.resize(Handle(0, (), 0), 0.25)
 
     assert rectangles(model)[4] == (0.75, 0.0, 1.0, 0.5)
+    assert rectangles(moved)[4] == pytest.approx((0.75, 0.0, 1.0, 0.5))
+    assert rectangles(moved)[2] == pytest.approx((0.25, 0.0, 0.75, 0.5))
+    assert rectangles(moved)[3] == pytest.approx((0.25, 0.5, 1.0, 1.0))
+    assert split_at(moved, (1, 0)).sizes == pytest.approx((2 / 3, 1 / 3))
+
+    model = layout(
+        row((0.5, 0.5), area(1), column((0.5, 0.5), row((0.25, 0.75), area(2), area(4)), area(3)))
+    )
+
+    moved = model.resize(Handle(0, (), 0), 0.25)
+
     assert rectangles(moved)[4] == pytest.approx((0.625, 0.0, 1.0, 0.5))
     assert rectangles(moved)[2] == pytest.approx((0.25, 0.0, 0.625, 0.5))
     assert split_at(moved, (1, 0)).sizes == (0.5, 0.5)
+
+    three = layout(
+        row(
+            (0.5, 0.5),
+            area(1),
+            column((0.5, 0.5), row((0.25, 0.25, 0.5), area(2), area(4), area(5)), area(3)),
+        )
+    )
+
+    widened = three.resize(Handle(0, (), 0), 0.25)
+
+    assert rectangles(widened)[2] == pytest.approx((0.25, 0.0, 0.625, 0.5))
+    assert rectangles(widened)[4] == pytest.approx(rectangles(three)[4])
+    assert rectangles(widened)[5] == pytest.approx(rectangles(three)[5])
+
+
+def test_a_drag_past_a_border_beside_its_line_is_refused() -> None:
+    """A border that stays put limits a drag, as the window's edge does.
+
+    Dragged from 0.5 to 0.75 or past it, the root border would reach the
+    border between Areas 2 and 4, which does not move, and leave Area 2 no
+    room. While each child kept its proportions that border moved ahead of
+    the drag, and the drag was taken. Short of it, the drag is taken and
+    Area 2 narrows to what is left.
+    """
+
+    model = layout(
+        row((0.5, 0.5), area(1), column((0.5, 0.5), row((0.5, 0.5), area(2), area(4)), area(3)))
+    )
+    copy = layout_to_json(model)
+
+    for position in (0.75, 0.8):
+        with pytest.raises(LayoutRefused, match="no room for Area 2$"):
+            model.resize(Handle(0, (), 0), position)
+
+    assert layout_to_json(model) == copy
+    assert rectangles(model.resize(Handle(0, (), 0), 0.7))[2] == pytest.approx(
+        (0.7, 0.0, 0.75, 0.5)
+    )
 
 
 def test_a_drag_to_where_the_border_lies_returns_an_equal_layout() -> None:
@@ -984,9 +1249,10 @@ def test_every_operation_works_on_sizes_the_reader_accepts_at_the_edge_of_the_to
     writes such sizes, and the reader accepts them as written. The operation
     beside each once
     carried the sum past the tolerance by its own rounding and raised
-    `InvalidLayout`, which no operation's Raises list names; each split an
-    operation rebuilds is now rescaled to sum to one first, so the result
-    sums to one and reads back equal.
+    `InvalidLayout`, which no operation's Raises list names. Each split an
+    operation rebuilds is now rescaled to sum to one first, or has its sizes
+    worked out afresh from where its borders lie, so the result sums to one
+    and reads back equal.
     """
 
     def joined(model: LayoutModel) -> LayoutModel:

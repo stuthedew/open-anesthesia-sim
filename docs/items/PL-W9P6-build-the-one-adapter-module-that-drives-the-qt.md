@@ -44,7 +44,8 @@ default. `PL-R1WQ`'s registry is built with this item, its first consumer, and
 
 ## Blocked on `PL-5HSG` as well, 2026-10-12
 
-The owner answered `PL-5HSG` on 2026-10-12 (ratified): a drag moves only the
+[superseded 2026-10-18] `PL-5HSG` closed on 2026-10-18 in `#1579`, so a drag
+already moves only the borders on its line when this item starts. The owner answered `PL-5HSG` on 2026-10-12 (ratified): a drag moves only the
 borders on its line, as Blender's does, and that lands before this item. The
 handles this item turns live give a reader their first drag, so a border they
 did not touch must not move under it from the start.

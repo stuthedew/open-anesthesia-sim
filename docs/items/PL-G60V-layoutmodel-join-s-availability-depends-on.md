@@ -3,11 +3,13 @@ id: PL-G60V
 title: LayoutModel.join's availability depends on which split was made first wherever four Areas meet at a point: a 2x2 grid built columns-first refuses joining its two left Areas, which rows-first allows, so decide whether join re-slices a cross junction
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature, ux
 feature: interface-areas
-touches: src/anesthesia_sim/layout/model.py, src/anesthesia_sim/layout/tree.py, tests/unit/test_layout_model.py
+touches: src/anesthesia_sim/layout/model.py, src/anesthesia_sim/layout/tree.py, tests/unit/test_layout_model.py, docs/interface-provenance.md, docs/items/PL-2KXB-build-the-docking-affordances-a-reader-uses.md
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1579
 payoff: a join a reader is offered depends only on the rectangles they see, never on which split happened to come first
 verify: grep -q 'def test_where_four_areas_meet_a_join_is_taken_whichever_cut_came_first' tests/unit/test_layout_model.py
 falsifies: only where they sit next to each other
@@ -73,3 +75,20 @@ today's refusal,
 passages that call it an open decision or name the split as the rule
 (`layout/tree.py`'s module docstring, and `join`'s docstring and refusal
 wording in `layout/model.py`) say what the model now does.
+
+**Built 2026-10-18 (`#1579`).** `join` no longer looks for the pair in one
+split. It merges the two rectangles and divides the region of the lowest split
+holding both again by straight cuts (`_resliced`). It tries first with each
+subtree beside the pair kept whole, so that it changes no split it need not,
+and then from every Area in the region, because a subtree's own border can be
+the only line that divides the region. The refusals left are a pair that
+shares no whole edge, an arrangement no straight cut divides (`PL-3J2P`), and a
+result past `TREE_DEPTH_MAXIMUM`, which a join can need one level more than
+the tree held. Blender's join was read at source this time:
+`area_getorientation` and `screen_area_join_aligned` in
+`source/blender/editors/screen/screen_edit.cc` (`blender/blender` `main`,
+read 2026-10-18) decide and make a join from the two Areas' corners alone,
+which confirms the inference above. A randomized check against an independent
+area-level slicing oracle, on four seeds and about 180,000 joins, found no join
+taken or refused differently from the rectangles; its first run is what found
+the case where a subtree had to be opened.
