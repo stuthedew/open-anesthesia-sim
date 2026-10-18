@@ -3,11 +3,12 @@ id: PL-W54S
 title: Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, anticipated
 feature: interface-areas
-touches: src/anesthesia_sim/app/unconditional_set.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_unconditional_set.py, docs/MODEL.md, ROADMAP.md
+touches: src/anesthesia_sim/app/unconditional_set.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/layout/model.py, tests/unit/test_unconditional_set.py, docs/MODEL.md, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-16
+closed: 2026-10-18
 payoff: each top-level window's region carries the invariant tier and the name of its run, and the per-substance tier has one home in the main window, so a break-out window adds a window rather than rebuilding the region
 verify: grep -q 'def test_every_window_region_carries_the_invariant_tier_and_its_run_name' tests/unit/test_unconditional_set.py
 ---
@@ -143,3 +144,38 @@ changing `src/anesthesia_sim/app/` now, and this item follows it.
 **`PL-W9P6` built, 2026-10-18 (`#1592`).** `AreaLayout` draws one window and
 refuses a layout holding two, so the per-window region is built where a
 second window is first drawn.
+
+## Built 2026-10-18
+
+**What was built.** `app/unconditional_set.py` now has `window_region`, which
+returns what one top-level window's region owes, given the run's set, the
+window's index in `LayoutModel.windows` and how many windows the layout holds.
+Every window gets the invariant tier. Every window also gets the run's name,
+as the new value `UnconditionalValue.RUN_NAME` in a tier of its own, once more
+than one window is open. Only the main window gets the per-substance tier and
+the control-input record. The name is in no tier of `UnconditionalSet`, because
+a window owes it and the run does not.
+`SimulationView._require_unconditional_values` now checks what `window_region`
+returns for the main window of the layout `AreaLayout` draws, rather than the
+whole set. With one window the two are the same, which
+`test_the_lone_main_window_owes_exactly_the_whole_set` holds.
+
+**`MAIN_WINDOW` has one home.** It was a private constant in
+`app/area_layout.py`. It is now `layout.model.MAIN_WINDOW`, beside the
+docstring that says `windows[0]` is the main window, and both
+`app/area_layout.py` and `app/unconditional_set.py` import it.
+
+**Point 3, the disclaimer's foot line in each window's frame, waits for a
+second window.** `AreaLayout` refuses a layout holding two windows, so there is
+no second frame to carry it. `docs/MODEL.md` § "Minimum displayed outputs"
+already says each window carries the line once break-out exists, and break-out
+is planned-milestone item 34's second half. Nothing here owes a widget for
+`RUN_NAME` yet for the same reason: no window owes the name until a second one
+opens.
+
+**Rode along, at the coordinator's request.** The three sentences `PL-W9P6`
+left stale: `docs/MODEL.md`'s "above the splitter" and "the inert splitter
+handles keep the host's surface" (which closes `PL-05M4`), and `ROADMAP.md`'s
+"the splitter handles are inert today", in the three places it is said in the
+present tense. The two dated places in `ROADMAP.md` that name `inert_splitter`
+as it stood on 2026-09-16 are left as written.

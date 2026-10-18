@@ -3,12 +3,13 @@ id: PL-05M4
 title: The inert splitter handles keep the host's surface under a dark appearance, because a disabled widget draws from the Disabled colour group this project leaves to the platform
 priority: P3
 effort: S
-status: ready
+status: done
 classes: ux
 feature: chrome-colour-audit
 touches: docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-22
+closed: 2026-10-18
 payoff: docs/MODEL.md stops telling a reader that the Area borders show the host's dark surface, which they no longer do
 verify: ! grep -q 'the inert splitter handles keep the host' docs/MODEL.md
 ---
@@ -101,3 +102,13 @@ is the known-limit sentence in `docs/MODEL.md` § "Color contrast, and the
 standard this interface is held to", which another thread holds this week.
 Removing it closes this item.
 
+## Re-confirmed 2026-10-18: gone, and the sentence fixed
+
+`PL-W9P6` (`#1592`) made the splitter handles live, so they are enabled and no
+longer draw from the `Disabled` colour group.
+`test_the_border_between_two_areas_shows_the_page_rather_than_the_host` in
+`tests/integration/test_dark_appearance.py` holds that the border shows the
+page's `BACKGROUND` under a dark host. Route 2 above happened as part of item
+34, as the recommendation expected. What was left was the `docs/MODEL.md`
+sentence, which now says the handles used to keep the host's surface and no
+longer do. Fixed in `PL-W54S`'s pull request.

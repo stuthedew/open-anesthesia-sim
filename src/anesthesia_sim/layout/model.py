@@ -68,7 +68,7 @@ from anesthesia_sim.layout.tree import (
     areas_in,
 )
 
-__all__ = ["BORDER_ALIGNMENT_TOLERANCE", "Handle", "LayoutModel"]
+__all__ = ["BORDER_ALIGNMENT_TOLERANCE", "MAIN_WINDOW", "Handle", "LayoutModel"]
 
 # How far apart, as a fraction of the window, two borders may lie and still be
 # read as one line by `LayoutModel.borders()`. It absorbs the rounding of the
@@ -76,6 +76,11 @@ __all__ = ["BORDER_ALIGNMENT_TOLERANCE", "Handle", "LayoutModel"]
 # few units in the last place of it - and nothing visible: two borders a pixel
 # apart are two lines, as two edges with separate vertices are in Blender.
 BORDER_ALIGNMENT_TOLERANCE: Final = 1e-9
+
+# The main window's index in `LayoutModel.windows`. A layout always has this
+# window, and only it may hold the per-substance tier of the unconditional
+# set (`PL-HJPY`, `app/unconditional_set.py`).
+MAIN_WINDOW: Final = 0
 
 
 @dataclass(frozen=True, slots=True)

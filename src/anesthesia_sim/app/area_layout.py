@@ -47,7 +47,7 @@ from PySide6.QtWidgets import QSplitter, QSplitterHandle, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.theme import AREA_HANDLE_LINE_WIDTH, AREA_HANDLE_WIDTH, PRIMARY
 from anesthesia_sim.layout.exceptions import LayoutRefused
-from anesthesia_sim.layout.model import Handle, LayoutModel
+from anesthesia_sim.layout.model import MAIN_WINDOW, Handle, LayoutModel
 from anesthesia_sim.layout.tree import Area, Node, Orientation, Split
 
 __all__ = ["AreaLayout", "ViewFor"]
@@ -62,9 +62,6 @@ _QT_ORIENTATION: Final = {
     Orientation.ROW: Qt.Orientation.Horizontal,
     Orientation.COLUMN: Qt.Orientation.Vertical,
 }
-
-# The main window's index in `LayoutModel.windows`, the only window drawn.
-_MAIN_WINDOW: Final = 0
 
 
 class AreaLayout(QWidget):
@@ -118,8 +115,8 @@ class AreaLayout(QWidget):
         """
 
         model = _drawable(model)
-        same_shape = _shape(model.windows[_MAIN_WINDOW].tree) == _shape(
-            self._model.windows[_MAIN_WINDOW].tree
+        same_shape = _shape(model.windows[MAIN_WINDOW].tree) == _shape(
+            self._model.windows[MAIN_WINDOW].tree
         )
         self._model = model
 
@@ -137,7 +134,7 @@ class AreaLayout(QWidget):
         self._views = []
         self._splitters = {}
         self._hovered = None
-        root = self._widget_for(self._model.windows[_MAIN_WINDOW].tree, ())
+        root = self._widget_for(self._model.windows[MAIN_WINDOW].tree, ())
 
         for view in previous_views:
             if not any(view is kept for kept in self._views):
@@ -185,7 +182,7 @@ class AreaLayout(QWidget):
             # be deleted.
             return
 
-        split = _split_at(self._model.windows[_MAIN_WINDOW].tree, splitter.path)
+        split = _split_at(self._model.windows[MAIN_WINDOW].tree, splitter.path)
         extent = (
             splitter.width()
             if splitter.orientation() == Qt.Orientation.Horizontal
@@ -201,7 +198,7 @@ class AreaLayout(QWidget):
         same index, and `Handle.index` counts the gaps from 0.
         """
 
-        handle = Handle(_MAIN_WINDOW, splitter.path, index - 1)
+        handle = Handle(MAIN_WINDOW, splitter.path, index - 1)
         sizes = splitter.sizes()
         total = sum(sizes)
 
@@ -244,7 +241,7 @@ class AreaLayout(QWidget):
                 index for index in range(1, splitter.count()) if splitter.handle(index) is hovered
             )
 
-            for member in self._model.borders(Handle(_MAIN_WINDOW, splitter.path, index - 1)):
+            for member in self._model.borders(Handle(MAIN_WINDOW, splitter.path, index - 1)):
                 lit.append(self._splitters[member.path].handle(member.index + 1))
 
         for splitter in self._splitters.values():
