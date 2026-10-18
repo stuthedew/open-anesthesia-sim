@@ -1,13 +1,14 @@
 ---
 id: PL-KBBJ
 title: Record that look, wording and placement choices are placeholders while structure and function are built, so sessions decide them rather than putting them to the owner
-status: ready
 priority: P2
 effort: S
-classes: workflow
+status: done
+classes: planning
 feature: owner-attention
 touches: .claude/rules/instruction-writing.md
 added: 2026-10-18
+closed: 2026-10-18
 payoff: a session decides a look, wording or placement call itself and records it as a placeholder, so the owner is not asked about styling while the structure is being built
 verify: grep -q 'Look, wording and placement are not among them for now' .claude/rules/instruction-writing.md
 ---
