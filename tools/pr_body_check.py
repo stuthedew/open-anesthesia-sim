@@ -25,6 +25,12 @@ recovered), and none of the 39 after it. In its first day the record produced
 four items of its own (`PL-F6MM`, `PL-K9XQ`, `PL-7VWK`, `PL-X2XP`). The files
 it wrote stay, with their `recorded:` header.
 
+**`--screen` keeps an email address out of a body before GitHub has it**
+(`PL-7K31`). It is the PreToolUse hook `.claude/settings.json` runs on
+`create_pull_request` and `update_pull_request`, and `screen` says why it
+refuses. It lives here because the body it guards is the one this file
+recovers.
+
 **What `--recover` writes** (`PL-PNJF`, `PL-73G8`): `pr:`, then `note:`,
 which says the file is a historical record nobody maintains (`PL-TDBT`), then
 `recovered:`, the date it was fetched, because the API serves the body as it
@@ -728,13 +734,84 @@ def anchors(ref: str | None) -> int:
     return 1
 
 
+#: An email address as a person writes one: a local part, `@`, and a domain
+#: ending in a label of letters. A version pin such as `react@18.3.1` ends in
+#: digits, so it is not one.
+EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
+
+#: The one address a pull request may carry: the `Co-authored-by` trailer
+#: `CLAUDE.md` requires on every commit names it, and it is no person's.
+ALLOWED_EMAILS = frozenset({"noreply@anthropic.com"})
+
+#: The GitHub tools whose `title` and `body` GitHub publishes at once.
+SCREENED_TOOLS = ("__create_pull_request", "__update_pull_request")
+
+
+def screen(payload: str) -> str | None:
+    """The PreToolUse refusal for a pull request call that would publish an email address.
+
+    `payload` is the JSON a hook receives on stdin. A body is public as soon
+    as it is sent, it stays in the description's edit history after it is
+    removed, and the squash merge copies it into `main`'s history. So the only
+    point at which an address can be kept out is before the call (`PL-7K31`,
+    found when `#1480` opened with the owner's address). The result is the
+    JSON for the hook to print, which names each address found, or `None` to
+    let the call through. A payload that cannot be read, or one for another
+    tool, is let through: the matcher in `.claude/settings.json` has already
+    chosen these calls, and a false refusal blocks correct work.
+    """
+    try:
+        call = json.loads(payload)
+    except ValueError:
+        return None
+    if not isinstance(call, dict):
+        return None
+    tool = call.get("tool_name")
+    if not isinstance(tool, str) or not tool.endswith(SCREENED_TOOLS):
+        return None
+    arguments = call.get("tool_input")
+    if not isinstance(arguments, dict):
+        return None
+    found: list[str] = []
+    for field in ("title", "body"):
+        text = arguments.get(field)
+        if isinstance(text, str):
+            for address in EMAIL_RE.findall(text):
+                if address.lower() not in ALLOWED_EMAILS and address not in found:
+                    found.append(address)
+    if not found:
+        return None
+    reason = (
+        "Refused: this pull request's title or body holds the email address(es) "
+        + ", ".join(f"`{address}`" for address in found)
+        + ". GitHub publishes a body as soon as it is sent and keeps it in the edit "
+        "history after it is removed, and the squash merge copies it into `main`'s "
+        "history. Remove the address, or name the person by their GitHub login, and "
+        "send the call again (`PL-7K31`)."
+    )
+    decision = {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "deny",
+        "permissionDecisionReason": reason,
+    }
+    return json.dumps({"hookSpecificOutput": decision})
+
+
 def main(argv: list[str]) -> int:
     """Run the mode `argv` names.
 
     The default mode, `--recover` and `--compare` report and always exit 0,
     since a merge made what they find rather than the branch that runs them.
     `--anchors` exits 1 where it fails, because `make check` rests on it.
+    `--screen` is the PreToolUse hook on a pull request call: it reads the
+    call from stdin, prints a refusal where `screen` finds one, and exits 0
+    either way, as a hook that decides must.
     """
+    if "--screen" in argv:
+        refusal = screen(sys.stdin.read())
+        if refusal is not None:
+            print(refusal)
+        return 0
     ref = default_branch_ref()
     if "--anchors" in argv:
         return anchors(ref)

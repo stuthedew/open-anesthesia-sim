@@ -3,11 +3,13 @@ id: PL-7K31
 title: Nothing refuses an email address in a pull request body before it is sent: no hook in .claude/settings.json matches create_pull_request or update_pull_request (the only GitHub matcher is merge_pull_request), and tools/pr_body_check.py recovers and anchors bodies rather than screening them, so an address a session writes into a body is public on GitHub at once, stays in the description's edit history after it is removed, and would land in main's history at the merge because the squash message is the body (found when #1480 opened with the owner's address, 2026-10-17)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra, defect
 touches: .claude/settings.json, tools/pr_body_check.py, tests/unit/test_pr_body_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
+closed: 2026-10-18
+pr: 1536
 payoff: an email address a session writes into a pull request is refused before GitHub publishes it, so it never reaches the description history or main's squash message
 verify: grep -q 'def test_an_email_address_in_a_pull_request_body_is_refused' tests/unit/test_pr_body_check.py
 ---

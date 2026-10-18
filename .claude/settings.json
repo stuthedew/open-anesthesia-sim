@@ -84,6 +84,15 @@
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/direct-merge-guard.sh\""
           }
         ]
+      },
+      {
+        "matcher": "^mcp__.+__(create|update)_pull_request$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/pr_body_check.py\" --screen"
+          }
+        ]
       }
     ],
     "PostToolUse": [
