@@ -3,11 +3,13 @@ id: PL-5N7T
 title: Nothing checks a prose enumeration of quality.yml's bare-interpreter commands against the workflow, so it has drifted silently twice in one day
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: project-introduction
 touches: docs/apparatus.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
+closed: 2026-10-18
+pr: 1601
 verify: grep -q 'def test_a_marked_enumeration_missing_a_run_step_fails' tests/unit/test_doc_check.py && uv run pytest tests/unit/test_doc_check.py
 ---
 
@@ -138,3 +140,18 @@ after it says six, while the bare-interpreter section of
 `.github/workflows/quality.yml` runs seven: the list omits
 `python3 tools/pr_body_check.py --anchors`. That is a fifth recurrence of the
 drift this item predicts, recorded here rather than repaired in the move.
+
+**Done 2026-10-18 on #1601.** Re-confirmed first: the list named the eight
+commands the floor section runs, plus `bin/docket ci-scope` in the next
+sentence, so it agreed that day. `docs/apparatus.md` now brackets the list
+with `<!-- floor-commands -->` and `<!-- /floor-commands -->`, written inline
+so the paragraph still renders as one. `tools/doc_check.py`'s
+`check_floor_list` reads the floor section as the `run:` steps between the
+`actions/setup-python` step and the next `astral-sh/setup-uv` step of
+`.github/workflows/quality.yml`, through the same step reader
+`check_workflow_paths` uses. It compares each side by a command's first two
+words, stopping at an option, and reports a command left out or one the floor
+no longer runs. It is not a `BOUND_FAMILIES` entry as the 2026-09-19 note
+expected: a bound family asks each member to name a test, and this asks the
+list to equal a set read from another file.
+

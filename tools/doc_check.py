@@ -6796,6 +6796,114 @@ def _command_paths(words: Iterable[str]) -> Iterator[str]:
         yield token
 
 
+QUALITY_WORKFLOW = Path(".github/workflows/quality.yml")
+# The floor section is the `run:` steps after the step that installs the
+# floor's interpreter and before the step that installs uv. `docs/apparatus.md`
+# lists them between these two markers.
+FLOOR_OPENS = "actions/setup-python@"
+FLOOR_CLOSES = "astral-sh/setup-uv@"
+FLOOR_LIST_OPENS = "<!-- floor-commands -->"
+FLOOR_LIST_CLOSES = "<!-- /floor-commands -->"
+
+
+def _command_key(command: str) -> str:
+    """A command's first two words, stopping at an option, which is how the floor list names one.
+
+    `python3 tools/pr_body_check.py --anchors` and `python3
+    tools/pr_body_check.py` are the same tool here. The list in
+    `docs/apparatus.md` drifted by gaining and losing whole commands, never by
+    an argument, and `bin/docket ci-scope` is quoted there without its
+    arguments.
+    """
+    words: list[str] = []
+    for word in command.split()[:2]:
+        if word.startswith("-"):
+            break
+        words.append(word)
+    return " ".join(words)
+
+
+def floor_commands(text: str) -> tuple[list[tuple[str, int]], list[UnreadStatement]] | None:
+    """The commands `quality.yml`'s floor section runs, or None where it has no such section."""
+    lines = split_lines(text)
+    scripts, unread = _workflow_scripts(text)
+    commands: list[tuple[str, int]] = []
+    inside = False
+    for step, _, script in scripts:
+        if "uses" in step.keys:
+            index, column = step.keys["uses"]
+            action = lines[index][column:].removeprefix("uses:").strip()
+            if action.startswith(FLOOR_OPENS):
+                inside = True
+                continue
+            if inside and action.startswith(FLOOR_CLOSES):
+                return commands, unread
+        if inside:
+            commands.extend(script)
+    return None
+
+
+def check_floor_list(root: Path, report: Report) -> None:
+    """Hold `docs/apparatus.md`'s list of the CI floor commands to the workflow.
+
+    The list was written by hand, and it drifted five times between 2026-09-05
+    and 2026-10-11: commands were added to the floor section and removed from
+    it, and nothing compared the two (`PL-5N7T`). `check_workflow_paths`
+    resolves the paths each command names, which is a different question. A
+    path that exists says nothing about whether the list is complete.
+
+    The list is the code spans between `FLOOR_LIST_OPENS` and
+    `FLOOR_LIST_CLOSES` that start with `python3 ` or `bin/`. Each side is
+    compared by `_command_key`. A workflow with no floor section, or no
+    workflow, is not held, and a list whose markers are missing while the
+    floor section exists is an error.
+    """
+    workflow = root / QUALITY_WORKFLOW
+    if not workflow.is_file():
+        return
+    read = floor_commands(workflow.read_text(encoding="utf-8"))
+    document = root / APPARATUS
+    text = document.read_text(encoding="utf-8") if document.is_file() else ""
+    opens, closes = text.find(FLOOR_LIST_OPENS), text.find(FLOOR_LIST_CLOSES)
+    if read is None:
+        if opens != -1:
+            report.errors.append(
+                f"{APPARATUS}: lists the floor section's commands, but {QUALITY_WORKFLOW} "
+                f"has no step using {FLOOR_OPENS} followed by one using {FLOOR_CLOSES}"
+            )
+        return
+    commands, unread = read
+    for declined in unread:
+        report.declined.append(
+            f"{QUALITY_WORKFLOW}:{declined.line}: a step was not read ({declined.why}), "
+            f"so the floor list in {APPARATUS} may be held to fewer commands than run"
+        )
+    if opens == -1 or closes < opens:
+        report.errors.append(
+            f"{APPARATUS}: no list of the floor section's commands between "
+            f"{FLOOR_LIST_OPENS} and {FLOOR_LIST_CLOSES}, so nothing holds it to "
+            f"{QUALITY_WORKFLOW}"
+        )
+        return
+    listed = {
+        _command_key(span["content"])
+        for span in code_spans(text, opens, closes)
+        if span["content"].startswith(("python3 ", "bin/"))
+    }
+    run = {_command_key(command): line for command, line in commands}
+    line = text.count("\n", 0, opens) + 1
+    for key in sorted(run.keys() - listed):
+        report.errors.append(
+            f"{APPARATUS}:{line}: the floor list leaves out `{key}`, which "
+            f"{QUALITY_WORKFLOW}:{run[key]} runs in the floor section"
+        )
+    for key in sorted(listed - run.keys()):
+        report.errors.append(
+            f"{APPARATUS}:{line}: the floor list names `{key}`, which the floor section "
+            f"of {QUALITY_WORKFLOW} does not run"
+        )
+
+
 def check_workflow_paths(root: Path, report: Report) -> None:
     """Resolve every repository path a CI step runs.
 
@@ -8551,6 +8659,7 @@ def _analyze(root: Path) -> Report:
     check_release_row_item_count(root, report)
     check_make_targets(root, documents, report)
     check_workflow_paths(root, report)
+    check_floor_list(root, report)
     check_coverage_gate(root, report)
     check_ruff_cache(root, report)
     check_gate_parity(root, report)

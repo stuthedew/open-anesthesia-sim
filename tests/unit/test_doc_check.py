@@ -3265,6 +3265,60 @@ def _with_workflow(root: Path, body: str = WORKFLOW) -> Path:
     return root
 
 
+FLOOR_WORKFLOW = """name: quality
+on: push
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v7.0.0
+      - run: python3 tools/harness/thing.py check
+      - run: bin/runner --fast
+      - uses: astral-sh/setup-uv@v9.0.0
+      - run: uv run pytest
+"""
+
+
+def _floor_list_errors(tmp_path: Path, listed: str | None) -> list[str]:
+    """Run `check_floor_list` over a floor section of two commands and a list in prose."""
+    root = _with_workflow(_repo(tmp_path), body=FLOOR_WORKFLOW)
+    if listed is not None:
+        (root / "docs" / "apparatus.md").write_text(
+            f"The floor runs <!-- floor-commands --> {listed} <!-- /floor-commands -->.\n",
+            encoding="utf-8",
+        )
+    report = doc_check.Report()
+    doc_check.check_floor_list(root, report)
+    return report.errors
+
+
+def test_a_marked_enumeration_missing_a_run_step_fails(tmp_path: Path) -> None:
+    """The list in `docs/apparatus.md` drifted five times with nothing to say so (`PL-5N7T`)."""
+    errors = _floor_list_errors(tmp_path, "`python3 tools/harness/thing.py check`")
+
+    assert errors == [
+        "docs/apparatus.md:1: the floor list leaves out `bin/runner`, which "
+        ".github/workflows/quality.yml:9 runs in the floor section"
+    ]
+
+
+def test_a_marked_enumeration_naming_a_command_the_floor_does_not_run_fails(tmp_path: Path) -> None:
+    """A removal is the worse drift: the prose then names a command as run that is not."""
+    listed = "`python3 tools/harness/thing.py check`, `bin/runner` and `python3 tools/gone.py`"
+
+    assert _floor_list_errors(tmp_path, listed) == [
+        "docs/apparatus.md:1: the floor list names `python3 tools/gone.py`, which the "
+        "floor section of .github/workflows/quality.yml does not run"
+    ]
+
+
+def test_a_floor_section_with_no_marked_list_fails(tmp_path: Path) -> None:
+    root_errors = _floor_list_errors(tmp_path, None)
+
+    assert len(root_errors) == 1
+    assert "no list of the floor section's commands" in root_errors[0]
+
+
 def test_a_workflow_whose_paths_resolve_is_quiet(tmp_path: Path) -> None:
     assert _errors(_with_workflow(_repo(tmp_path))) == []
 

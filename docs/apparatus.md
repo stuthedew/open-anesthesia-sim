@@ -601,13 +601,15 @@ All of those are approximations run under the project virtualenv — a syntax
 gate rather than an older parser, and the wrong interpreter's
 `sys.stdlib_module_names`. The floor section of
 `.github/workflows/quality.yml`'s `checks-part-1` job performs the run they stand in
-for: `actions/setup-python` at the declared floor, then
+for: `actions/setup-python` at the declared floor, then <!-- floor-commands -->
 `python3 tools/doc_check.py check`, `python3 tools/possessive_section_check.py`,
 `python3 tools/branch_id_check.py`, `python3 tools/rules_paths_check.py`,
 `python3 tools/pr_body_check.py --anchors`, `python3 tools/dead_ends.py check`,
 `python3 tools/fact_home_check.py` and `bin/docket check` under it. On a pull
 request, `bin/docket ci-scope` runs under it first, to decide whether the run
-takes the item-only fast path (`PL-DXD4`). `dead_ends.py` and `bin/docket
+takes the item-only fast path (`PL-DXD4`). <!-- /floor-commands -->
+`tools/doc_check.py`'s `check_floor_list` holds the commands between those
+two markers to the steps the floor section runs (`PL-5N7T`). `dead_ends.py` and `bin/docket
 check` joined the section under `PL-PBP5`, which found them enforced by `make
 check` alone; `tools/doc_check.py`'s `check_gate_parity` now refuses that
 asymmetry in both directions, so this list cannot fall behind the Makefile's
