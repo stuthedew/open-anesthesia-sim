@@ -124,6 +124,12 @@ dev = [
     "numpy>=2.5.3",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
+    # Shuffles the test order, for `drift.yml`'s weekly `order` job only. The
+    # `-p no:randomly` in `addopts` below keeps every other run in file order,
+    # and the job turns it back on with `-p randomly` and a dated seed, so a
+    # test that passes only after another one fails there with a seed that
+    # reproduces it (`PL-75D9`).
+    "pytest-randomly>=5.0.0",
     "pytest-xdist>=3.8.0",
     # `docket.frontmatter` reads a rule's or skill's YAML front matter by hand,
     # because docket and the tools run on the standard library alone; a
@@ -155,7 +161,11 @@ required-version = ">=0.12.5"
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "subprojects/docket/tests"]
-addopts = "-ra"
+# `-p no:randomly` keeps pytest-randomly from shuffling any run but the one
+# that asks for it, which is `drift.yml`'s `order` job (`PL-75D9`). It sits
+# here rather than on each command line, so a session's own `uv run pytest`
+# keeps the file order too.
+addopts = "-ra -p no:randomly"
 # `tools/` holds repo tooling that is not part of the shipped package, and
 # `subprojects/docket/` is a standalone package this repository also uses.
 pythonpath = ["tools", ".claude/hooks", "subprojects/docket/src"]
