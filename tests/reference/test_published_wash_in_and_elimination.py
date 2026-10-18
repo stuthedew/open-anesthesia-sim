@@ -213,43 +213,42 @@ That bound is looser than this docstring said before 2026-10-17, and the next
 section gives the numbers.
 
 **How sharp a gate this is, measured rather than assumed.** A validation is
-only worth what it can detect. So on 2026-10-17 each stored parameter was
-multiplied by a factor, for one agent at a time, and the factor was searched
-until some published-data assertion failed. The published-data gate means
-the assertions whose expected value is a published measurement: the wash-in
-band for each cohort at every swept fresh gas flow, the sign of the
-elimination disagreement for each cohort, and both solubility orderings.
-`_published_data_gate_failures()` runs exactly that set, and
-`StoredParameterChange` applies each change. The regression pins are left
-out. A pin fails on any change at all, so it shows that something moved and
-never that a published value would have caught the change.
+only worth what it can detect. So each stored parameter was multiplied by a
+factor, for one agent at a time, and the factor was searched until some
+published-data assertion failed. This was first done on 2026-10-17
+(`PL-9YHR`) and repeated on 2026-10-18, once the early wash-in points had
+joined the gate (`PL-R0NL`). The published-data gate means the assertions
+whose expected value is a published measurement: the early wash-in points
+from 1 to 25 minutes, the 30-minute wash-in band for each cohort at every
+swept fresh gas flow, the sign of the elimination disagreement for each
+cohort, and both solubility orderings. `_published_data_gate_failures()` runs
+exactly that set, and `StoredParameterChange` applies each change. The
+regression pins are left out. A pin fails on any change at all, so it shows
+that something moved and never that a published value would have caught the
+change.
 
 `docs/MODEL.md` § "What the published-data gate can and cannot resolve" holds
 the measured table, and these are its main points:
 
-- **Blood:gas is the parameter the gate resolves best.** A stored value
-  passes from -14% to +5% for sevoflurane, from -11% to +12% for isoflurane
-  and from -3% to +10% for desflurane. This is still a coarse gate. A pass
-  excludes a structurally wrong model, not a mis-parameterized one.
-  Desflurane is tightest in the direction of lower solubility, because it
-  already sits at +0.79 SD on wash-in and has little room left above the
-  mean.
-- **The flow sweep sets almost every upper edge**, at its 1 L/min point. A
-  change that survives at 10 L/min often does not survive at 1 L/min. That is
-  why `test_agreement_survives_every_fresh_gas_flow` compares each flow
-  against the published values rather than checking that the flows agree
-  with each other.
-- **The vessel-rich group is held only loosely.** Its tissue:gas coefficient
-  passes from -46% to +24% for sevoflurane, from -46% to +48% for isoflurane
-  and from -22% to +55% for desflurane. The upper edges come from the wash-in
-  flow sweep. The lower edges come from the elimination: with a much less
-  soluble vessel-rich group an agent eliminates faster than its published
-  cohort, or out of the published order.
+- **Blood:gas and the vessel-rich group are resolved on both sides.** A
+  stored blood:gas value passes from -5% to +5% for sevoflurane, from -1% to
+  +5% for isoflurane and from -1% to +10% for desflurane. The vessel-rich
+  tissue:gas coefficient passes from -15% to +15%, from -4% to +11% and from
+  -6% to +55%. A pass still excludes a structurally wrong model, not a
+  mis-parameterized one.
+- **A narrow edge is not a narrow uncertainty.** Most lower edges come from
+  the 12.5- and 15-minute points, where the shipped model already sits at
+  +0.75 to +0.94 SD. A small change crosses +1 SD there, so a -1% edge says
+  the model has used most of the band, not that the coefficient is known to
+  1%. The figure's reading error is about 0.3 SD.
+- **The early points see the alveolar gas volume from above.** It passes
+  only up to +19% for sevoflurane, +21% for isoflurane and +33% for
+  desflurane, through the 1-minute point.
 - **The gate cannot see fat for sevoflurane or isoflurane.** Both pass with
   the fat tissue:gas coefficient, or the fat volume, anywhere from a tenth to
-  four times the stored value. Smaller venous pool, alveolar gas and circuit
-  volumes pass down to a tenth for those two agents as well. Muscle is held
-  only loosely.
+  four times the stored value. A smaller circuit passes down to a tenth for
+  those two agents as well, because the early points hold F_I at the airway
+  and never see the circuit. Muscle is held only loosely.
 
 Before 2026-10-17 this docstring said the elimination point held the
 vessel-rich coefficient to about a fifth either way. That figure came from an
@@ -260,10 +259,10 @@ published value, so it never measured what a published value can detect.
 
 `test_the_published_data_gate_fails_at_a_stated_perturbation` and
 `test_the_published_data_gate_passes_at_a_stated_perturbation` hold the
-table to the code. The first fails if the gate stops detecting a blood:gas or
-vessel-rich change that it detects today. The second fails if the gate starts
-detecting a change that the documentation says it cannot, so that the table
-is measured again rather than left stale.
+table to the code. The first fails if the gate stops detecting a blood:gas,
+vessel-rich or alveolar gas volume change that it detects today. The second
+fails if the gate starts detecting a change that the documentation says it
+cannot, so that the table is measured again rather than left stale.
 
 The two ratios respond to almost disjoint parts of the parameter set. Here is
 the movement per +10% in one coefficient, in each ratio's own published SD
@@ -297,7 +296,7 @@ import pytest
 
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
-from anesthesia_sim.core.concentration import Fraction, Percent
+from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.parameters import (
     load_agent_parameters,
     load_reference_adult_parameters,
@@ -650,6 +649,178 @@ PUBLISHED_MEASUREMENTS = (
 )
 
 AGENT_IDS = ("sevoflurane", "isoflurane", "desflurane")
+
+
+@dataclass(frozen=True, slots=True)
+class PublishedTimePoint:
+    """One point on a published F_A/F_I curve during administration.
+
+    Both papers give the early time course only as Figure 2, a plot of mean
+    and SD with each SD drawn as a one-sided bar. So every value here was read
+    from a scan of the printed figure, not from a table. Reading the same
+    figures' 30-minute points this way lands within 0.006 of the 30-minute
+    means the papers' text states, which is the size of a reading error here.
+    The note `docs/references/yasuda-1991-figure-2-wash-in.md` gives the
+    method, the figure and page, and every value read.
+
+    Attributes:
+        agent_id: the agent.
+        time_min: minutes from the start of administration. It is the
+            protocol's sample time that the plotted point sits at.
+        mean: the cohort's mean F_A/F_I, read from the figure.
+        standard_deviation: the cohort's SD of F_A/F_I, read as the length of
+            the error bar.
+        standard_deviation_read_at_min: the sample time whose error bar gave
+            `standard_deviation`. It equals `time_min` except at 1 minute for
+            three cohorts, where the bar is lost among overlapping marks near
+            the axis. There the SD is the cohort's next readable bar, a stand-in
+            and not a reading of the 1-minute bar.
+        cohort_size: the number of volunteers.
+        source: the paper, as `PublishedMeasurement.source` names it.
+    """
+
+    agent_id: str
+    time_min: float
+    mean: float
+    standard_deviation: float
+    standard_deviation_read_at_min: float
+    cohort_size: int
+    source: str
+
+    @property
+    def label(self) -> str:
+        return f"{self.agent_id}/{self.source}/{self.time_min:g}min"
+
+    def distance_in_standard_deviations(self, ratio: float) -> float:
+        """How far a modeled F_A/F_I sits from this point's mean, in its SD."""
+
+        return (ratio - self.mean) / self.standard_deviation
+
+
+def _time_course(
+    agent_id: str, source: str, cohort_size: int, rows: tuple[tuple[float, ...], ...]
+) -> tuple[PublishedTimePoint, ...]:
+    """Build one cohort's points from rows of (time, mean, SD, time the SD was read at)."""
+
+    return tuple(
+        PublishedTimePoint(
+            agent_id=agent_id,
+            time_min=time_min,
+            mean=mean,
+            standard_deviation=standard_deviation,
+            standard_deviation_read_at_min=read_at_min,
+            cohort_size=cohort_size,
+            source=source,
+        )
+        for time_min, mean, standard_deviation, read_at_min in rows
+    )
+
+
+# Figure 2 of each paper, read from the page scans on 2026-10-18 (`PL-R0NL`).
+# The 30-minute points are left out because `PUBLISHED_MEASUREMENTS` holds the
+# values the text states for them. Desflurane's 20-minute point is left out
+# because its error bar is hidden behind the marker, so its SD is known only to
+# be less than about 0.011. Each row is (minutes, mean, SD, minutes the SD was
+# read at).
+PUBLISHED_WASH_IN_TIME_COURSE = (
+    # Anesth Analg 1991;72:316-24, Figure 2, printed page 320.
+    *_time_course(
+        "sevoflurane",
+        "Anesth Analg 1991;72:316-24",
+        7,
+        (
+            (1.0, 0.563, 0.047, 2.0),
+            (2.0, 0.641, 0.047, 2.0),
+            (3.0, 0.683, 0.034, 3.0),
+            (5.0, 0.733, 0.034, 5.0),
+            (7.5, 0.760, 0.031, 7.5),
+            (10.0, 0.791, 0.028, 10.0),
+            (12.5, 0.801, 0.029, 12.5),
+            (15.0, 0.814, 0.025, 15.0),
+            (20.0, 0.829, 0.024, 20.0),
+            (25.0, 0.839, 0.024, 25.0),
+        ),
+    ),
+    *_time_course(
+        "isoflurane",
+        "Anesth Analg 1991;72:316-24",
+        7,
+        (
+            (1.0, 0.436, 0.048, 2.0),
+            (2.0, 0.495, 0.048, 2.0),
+            (3.0, 0.529, 0.040, 3.0),
+            (5.0, 0.579, 0.040, 5.0),
+            (7.5, 0.616, 0.041, 7.5),
+            (10.0, 0.651, 0.038, 10.0),
+            (12.5, 0.664, 0.037, 12.5),
+            (15.0, 0.682, 0.034, 15.0),
+            (20.0, 0.701, 0.035, 20.0),
+            (25.0, 0.718, 0.034, 25.0),
+        ),
+    ),
+    # Anesthesiology 1991;74:489-98, Figure 2, printed page 493. This figure
+    # plots no point at 1.5 or 2 minutes.
+    *_time_course(
+        "desflurane",
+        "Anesthesiology 1991;74:489-98",
+        8,
+        (
+            (1.0, 0.580, 0.019, 3.0),
+            (3.0, 0.731, 0.019, 3.0),
+            (5.0, 0.792, 0.019, 5.0),
+            (7.5, 0.832, 0.019, 7.5),
+            (10.0, 0.840, 0.020, 10.0),
+            (12.5, 0.872, 0.020, 12.5),
+            (15.0, 0.880, 0.020, 15.0),
+            (25.0, 0.900, 0.020, 25.0),
+        ),
+    ),
+    *_time_course(
+        "isoflurane",
+        "Anesthesiology 1991;74:489-98",
+        8,
+        (
+            (1.0, 0.414, 0.027, 1.0),
+            (3.0, 0.520, 0.028, 3.0),
+            (5.0, 0.569, 0.032, 5.0),
+            (7.5, 0.621, 0.028, 7.5),
+            (10.0, 0.641, 0.041, 10.0),
+            (12.5, 0.662, 0.028, 12.5),
+            (15.0, 0.682, 0.028, 15.0),
+            (20.0, 0.708, 0.032, 20.0),
+            (25.0, 0.724, 0.027, 25.0),
+        ),
+    ),
+)
+
+# Every sample time some cohort is compared at, in order. One clamped run per
+# agent is read at each of them.
+EARLY_WASH_IN_SAMPLE_TIMES_MIN = tuple(
+    sorted({point.time_min for point in PUBLISHED_WASH_IN_TIME_COURSE})
+)
+
+# The points where the model sat outside one SD when the early comparison was
+# first run, on 2026-10-18, named by `PublishedTimePoint.label`. The item
+# `PL-R0NL` pre-registered that such points get a stated regression band
+# rather than the agreement band, and the disagreement is filed as its own
+# item. `test_early_wash_in_matches_published_human_measurement` gives the
+# distances.
+EARLY_WASH_IN_DISAGREEMENTS = frozenset(
+    {
+        "desflurane/Anesthesiology 1991;74:489-98/1min",
+        "desflurane/Anesthesiology 1991;74:489-98/3min",
+        "desflurane/Anesthesiology 1991;74:489-98/5min",
+        "desflurane/Anesthesiology 1991;74:489-98/7.5min",
+        "desflurane/Anesthesiology 1991;74:489-98/10min",
+        "isoflurane/Anesthesiology 1991;74:489-98/12.5min",
+    }
+)
+
+# The top of that regression band. The worst point was +2.11 SD when the
+# comparison was first run, and a reading error of 0.006 in a mean is about
+# 0.3 SD at desflurane's spread, so 2.5 SD leaves room for the reading and
+# catches a change that moves the model further from the measurement.
+EARLY_WASH_IN_DISAGREEMENT_CEILING_SD = 2.5
 
 # Every inspired concentration the two protocols used, taken from the cited
 # rows above so that the linearity check below covers exactly the range the
@@ -1170,6 +1341,144 @@ def _eliminate_without_rebreathing(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class ClampedWashInReading:
+    """What one wash-in with the inspired fraction held at the airway gives.
+
+    Attributes:
+        ratios: F_A/F_I at each of `EARLY_WASH_IN_SAMPLE_TIMES_MIN`, keyed by
+            the time in minutes.
+        peak_inspired_deviation: the largest relative distance the circuit's
+            F_I reached from the held value at the end of a step, before the
+            driver set it back. It is how far from a true clamp the driver
+            got, and `test_the_inspired_clamp_holds_the_inspired_fraction`
+            reads it.
+        agent_accounting: the model's own conservation check at the end of
+            the run.
+    """
+
+    ratios: dict[float, float]
+    peak_inspired_deviation: float
+    agent_accounting: AgentSimulationValidationResult
+
+
+def _hold_inspired_fraction(system: AgentUptakeSystem, inspired_fraction: Fraction) -> None:
+    """Set the circuit back to `inspired_fraction`, and record where the agent went.
+
+    This is the whole of what makes the driver below a non-rebreathing
+    circuit with the inspired fraction held at the airway. Like
+    `_discard_circuit_contents()`, it records the agent it adds as delivered
+    and the agent it removes as exhausted. So the model's conservation
+    identity `initial + delivered = exhausted + stored` still holds exactly,
+    which `test_the_inspired_clamp_neither_creates_nor_loses_agent` asserts.
+    """
+
+    before_l = system.circuit.agent_amount_l
+    system.circuit.set_inspired_partial_pressure_fraction(inspired_fraction)
+    after_l = system.circuit.agent_amount_l
+    system.agent_simulation_validator.record_external_agent_transfer(
+        delivered_agent_l=max(after_l - before_l, 0.0),
+        exhausted_agent_l=max(before_l - after_l, 0.0),
+    )
+
+
+@cache
+def _clamped_wash_in(
+    agent_id: str, change: StoredParameterChange | None = None
+) -> ClampedWashInReading:
+    """Wash in with the inspired fraction held at the airway from the first breath.
+
+    **This is a test-only driver, and no setting of the shipped simulator
+    reaches the condition it creates.** The shipped circuit starts empty and
+    fills at its own time constant, so its F_I lags the dial for the first
+    minute or more. Both papers gave the agents as a square wave from a
+    non-rebreathing circuit, so their F_I was the cylinder's from the first
+    breath (Yasuda et al., Anesth Analg 1991;72:316-24, page 317). Dividing
+    the shipped run's F_A by its own lagging F_I would compare a different
+    experiment with the published curve.
+
+    The mechanism is `_hold_inspired_fraction()`, applied before the first
+    step and after every step. The equations, the propagator, the
+    compartments, the step and the patient's operating point are the shipped
+    ones, so what this isolates is the breathing system and nothing else.
+    The fresh gas flow does not reach the result, because the circuit is set
+    back after every step, and the circuit volume reaches it only through the
+    size of that within-step drift.
+
+    **It holds F_I to within one step, not exactly.** Within a step the
+    patient exhales into the circuit at the alveolar ventilation, so F_I
+    drifts toward F_A by at most `V_A * step / circuit volume` of F_I. That
+    is 1.1e-3 at the shipped 4 L/min, 0.1 s and 6 L, and
+    `test_the_inspired_clamp_holds_the_inspired_fraction` fails if it grows.
+
+    `change` is the resolving-power tests' override, and
+    `StoredParameterChange` documents it.
+    """
+
+    system = _configured_system(agent_id, change=change)
+    inspired_fraction = fraction_from_percent(Percent(DELIVERED_PERCENT))
+    sample_steps = {
+        round(time_min * SECONDS_PER_MINUTE / SIMULATION_STEP_S): time_min
+        for time_min in EARLY_WASH_IN_SAMPLE_TIMES_MIN
+    }
+    ratios: dict[float, float] = {}
+    peak_inspired_deviation = 0.0
+
+    _hold_inspired_fraction(system, inspired_fraction)
+
+    for step in range(1, max(sample_steps) + 1):
+        system.advance(SIMULATION_STEP_S)
+        peak_inspired_deviation = max(
+            peak_inspired_deviation,
+            abs(system.circuit.inspired_partial_pressure_fraction - inspired_fraction)
+            / inspired_fraction,
+        )
+        _hold_inspired_fraction(system, inspired_fraction)
+
+        if step in sample_steps:
+            ratios[sample_steps[step]] = (
+                system.alveoli.partial_pressure_fraction / inspired_fraction
+            )
+
+    return ClampedWashInReading(
+        ratios=ratios,
+        peak_inspired_deviation=peak_inspired_deviation,
+        agent_accounting=system.agent_simulation_validation,
+    )
+
+
+def _early_wash_in_failure(
+    point: PublishedTimePoint, change: StoredParameterChange | None = None
+) -> str | None:
+    """Say why the model's F_A/F_I at one published time point is outside its band, or `None`.
+
+    The band is one SD either side of the published mean, as at 30 minutes,
+    except at the points in `EARLY_WASH_IN_DISAGREEMENTS`. There the model
+    already sat above the band when the comparison was first run, so the
+    band is a regression band: no lower than one SD below the mean and no
+    higher than `EARLY_WASH_IN_DISAGREEMENT_CEILING_SD` above it.
+    """
+
+    ratio = _clamped_wash_in(point.agent_id, change).ratios[point.time_min]
+    distance = point.distance_in_standard_deviations(ratio)
+    ceiling = (
+        EARLY_WASH_IN_DISAGREEMENT_CEILING_SD
+        if point.label in EARLY_WASH_IN_DISAGREEMENTS
+        else AGREEMENT_TOLERANCE_SD
+    )
+
+    if -AGREEMENT_TOLERANCE_SD <= distance <= ceiling:
+        return None
+
+    return (
+        f"{point.agent_id} with F_I held at the airway washes in to F_A/F_I {ratio:.4f} at "
+        f"{point.time_min:g} min, {distance:+.2f} SD from the {point.mean} +/- "
+        f"{point.standard_deviation} read from Figure 2 of {point.source} "
+        f"(n={point.cohort_size}); the band here is {-AGREEMENT_TOLERANCE_SD:+.1f} to "
+        f"{ceiling:+.1f} SD"
+    )
+
+
 def _wash_in_band_failure(
     measurement: PublishedMeasurement,
     fresh_gas_flow_l_min: float,
@@ -1285,9 +1594,11 @@ def _published_data_gate_failures(
 
     "The published-data gate" is the set of assertions in this module whose
     expected value is a published human measurement rather than this model's
-    own output. They are the wash-in band for each of the agent's cohorts at
-    every swept fresh gas flow, the sign of the elimination disagreement for
-    each cohort, and both solubility orderings. The regression pins and the
+    own output. They are the band at each point of the agent's published
+    early wash-in curves, the 30-minute wash-in band for each of the agent's
+    cohorts at every swept fresh gas flow, the sign of the elimination
+    disagreement for each cohort, and both solubility orderings. The early
+    points come first because one clamped run answers all of them. The regression pins and the
     diagnostics are left out, because a pin fails on any change and so says
     nothing about whether a published value could detect one. The gate passes
     when nothing is yielded. It is a generator so that a caller that needs
@@ -1296,6 +1607,11 @@ def _published_data_gate_failures(
 
     measurements = [m for m in PUBLISHED_MEASUREMENTS if m.agent_id == agent_id]
     checks: list[Callable[[], str | None]] = [
+        *(
+            partial(_early_wash_in_failure, point, change)
+            for point in PUBLISHED_WASH_IN_TIME_COURSE
+            if point.agent_id == agent_id
+        ),
         *(
             partial(_wash_in_band_failure, measurement, fresh_gas_flow_l_min, change)
             for measurement in measurements
@@ -1344,6 +1660,131 @@ def test_thirty_minute_ratio_matches_published_human_measurement(
     failure = _wash_in_band_failure(measurement, FRESH_GAS_FLOW_L_MIN)
 
     assert failure is None, failure
+
+
+@pytest.mark.parametrize(
+    "point",
+    PUBLISHED_WASH_IN_TIME_COURSE,
+    ids=[point.label for point in PUBLISHED_WASH_IN_TIME_COURSE],
+)
+def test_early_wash_in_matches_published_human_measurement(point: PublishedTimePoint) -> None:
+    """The model's F_A/F_I must follow the published curve from 1 to 25 minutes.
+
+    The run is `_clamped_wash_in()`, which holds F_I at the airway as both
+    papers' non-rebreathing circuits did. The expected values were read from
+    Figure 2 of each paper (`PublishedTimePoint` says how), and none of them
+    came from this model.
+
+    Measured 2026-10-18 at the shipped defaults, as distance from each
+    point's mean in that point's SD:
+
+    | Cohort | 1 to 3 min | 5 min | 7.5 to 25 min |
+    | --- | --- | --- | --- |
+    | Sevoflurane, n=7 | -0.54 to -0.69 SD | -0.22 SD | +0.48 to +0.77 SD |
+    | Isoflurane, n=7 | -0.70 to -0.83 SD | -0.19 SD | +0.34 to +0.76 SD |
+    | Isoflurane, n=8 | -0.60 to -0.67 SD | +0.08 SD | +0.32 to +1.06 SD |
+    | Desflurane, n=8 | +1.79 to +1.82 SD | +1.82 SD | +2.10 SD at 10 min, then +0.94 to +0.28 SD |
+
+    So sevoflurane and isoflurane follow the published curves within one SD,
+    a little slow in the first 3 minutes and a little fast after 7.5. The
+    one isoflurane point past one SD, +1.06 SD at 12.5 minutes, is within
+    the figure's reading error of the band.
+
+    **Desflurane rises faster than its cohort from 1 to 10 minutes**, by
+    0.034 to 0.042 in F_A/F_I, and agrees from 12.5 minutes on. The
+    operating point is an unlikely cause. The isoflurane breathed by the same eight volunteers
+    in the same sitting follows its curve, and sevoflurane and isoflurane
+    both sit slightly *below* their curves early, where a ventilation or
+    lung volume error would move every agent the same way. So the candidate
+    is something only desflurane has, such as its blood:gas or vessel-rich
+    tissue:gas coefficient. `PL-RFLN`'s elimination residual is the same
+    agent. Those points are held to a regression band, as
+    `EARLY_WASH_IN_DISAGREEMENTS` says, so the disagreement cannot grow
+    unseen.
+
+    **What this comparison can detect.** It is part of the published-data
+    gate, and `docs/MODEL.md` § "What the published-data gate can and cannot
+    resolve" gives the factor at which each stored parameter leaves it. A
+    doubled alveolar gas volume moves sevoflurane's 1-minute F_A/F_I from
+    0.537 to 0.429, -2.85 SD, so the early points catch the error the
+    30-minute comparison at 10 L/min could not.
+    """
+
+    failure = _early_wash_in_failure(point)
+
+    assert failure is None, failure
+
+
+def test_every_named_early_disagreement_is_a_published_point() -> None:
+    """A label in `EARLY_WASH_IN_DISAGREEMENTS` must name a point that exists.
+
+    A label that matched no point would name a regression band that applies
+    to nothing, and the reader of the set would believe a disagreement is
+    being held that is not.
+    """
+
+    labels = {point.label for point in PUBLISHED_WASH_IN_TIME_COURSE}
+
+    assert EARLY_WASH_IN_DISAGREEMENTS <= labels, (
+        f"{sorted(EARLY_WASH_IN_DISAGREEMENTS - labels)} name no point in "
+        f"PUBLISHED_WASH_IN_TIME_COURSE"
+    )
+
+
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+def test_the_inspired_clamp_holds_the_inspired_fraction(agent_id: str) -> None:
+    """Show that the clamped wash-in is the condition it claims to be.
+
+    Each step starts with the circuit at the held F_I. Within the step the
+    patient exhales alveolar gas into the circuit at the alveolar
+    ventilation, so F_I moves toward F_A by at most `V_A * step / V_circuit`
+    of the distance between them, which is at most F_I itself. The fresh gas
+    carries the same fraction, so it moves F_I nowhere. The bound is
+    computed here from the parameter files the run uses. Measured
+    2026-10-18, the peak is 1.1075e-3 against a bound of 1.1111e-3 for each
+    agent.
+    """
+
+    patient_parameters = load_reference_adult_parameters()
+    circuit_volume_l = AgentUptakeSystem.for_agent(agent_id).circuit.circuit_volume_l
+    bound = (
+        patient_parameters.default_alveolar_ventilation_l_min
+        / SECONDS_PER_MINUTE
+        * SIMULATION_STEP_S
+        / circuit_volume_l
+    )
+
+    peak = _clamped_wash_in(agent_id).peak_inspired_deviation
+
+    assert peak <= bound, (
+        f"{agent_id}'s F_I moves {peak:.6e} of its held value inside a step of the "
+        f"clamped wash-in, above the {bound:.6e} that {SIMULATION_STEP_S} s of exhalation "
+        f"at {patient_parameters.default_alveolar_ventilation_l_min} L/min into "
+        f"{circuit_volume_l} L can produce; the driver no longer holds F_I at the airway"
+    )
+
+
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+def test_the_inspired_clamp_neither_creates_nor_loses_agent(agent_id: str) -> None:
+    """The clamp must record the agent it adds and removes, not create or delete it.
+
+    `_hold_inspired_fraction()` writes the circuit directly, outside
+    `advance()`'s own accounting. Agent added and not recorded would read as
+    agent the model created. So the model's own conservation check is read
+    at the end of the run. Measured 2026-10-18, its relative error is 3e-13
+    for each agent, which is rounding.
+    """
+
+    accounting = _clamped_wash_in(agent_id).agent_accounting
+
+    assert accounting.passes_validation, (
+        f"the clamped wash-in leaves {accounting.unaccounted_agent_l:.3e} L of {agent_id} "
+        f"unaccounted for: {accounting.initial_agent_l:.4f} L initial plus "
+        f"{accounting.delivered_agent_l:.4f} L delivered against "
+        f"{accounting.exhausted_agent_l:.4f} L exhausted and "
+        f"{accounting.currently_stored_agent_l:.4f} L stored, a relative error of "
+        f"{accounting.relative_error:.2e}"
+    )
 
 
 @pytest.mark.parametrize("agent_id", sorted({m.agent_id for m in PUBLISHED_MEASUREMENTS}))
@@ -1537,7 +1978,7 @@ class ResolvingPowerCase:
     """One agent run with one stored parameter changed, and what the gate should say.
 
     The factors were chosen with margin from the edges measured on
-    2026-10-17, which `docs/MODEL.md` § "What the published-data gate can and
+    2026-10-18, which `docs/MODEL.md` § "What the published-data gate can and
     cannot resolve" tabulates. A case sits well past an edge or well inside
     one, so an unrelated change of a few hundredths of an SD does not flip
     it. A test placed at an edge itself would sit 0.01 to 0.03 SD from
@@ -1562,41 +2003,40 @@ def _cases(
     return tuple(ResolvingPowerCase(agent_id=agent_id, change=change) for agent_id in agent_ids)
 
 
-# Changes the gate detects for every agent. Blood:gas is the coefficient the
-# wash-in band responds to, and the vessel-rich tissue:gas coefficient is the
-# one the elimination sign and ordering respond to. x1.10 is not used for
-# blood:gas because isoflurane passes it: its upper edge is x1.12.
+# Changes the gate detects for every agent, measured 2026-10-18 with the early
+# wash-in points in the gate (`PL-R0NL`). The early points set most of these
+# edges. Blood:gas leaves the gate at x0.95 to x0.99 below and x1.05 to x1.10
+# above, so x1.10 is not used: desflurane passes it, at an edge of x1.097. The
+# vessel-rich tissue:gas coefficient leaves it at x0.85 to x0.97 below and
+# x1.11 to x1.55 above. The alveolar gas volume leaves it at x1.19 to x1.33
+# above, through the 1-minute point.
 DETECTED_CHANGES = (
-    *_cases("blood_gas_partition_coefficient", 0.80, "blood-gas-x0.80"),
-    *_cases("blood_gas_partition_coefficient", 1.20, "blood-gas-x1.20"),
-    *_cases("vessel_rich_tissue_gas_partition_coefficient", 0.40, "vessel-rich-tissue-gas-x0.40"),
-    *_cases("vessel_rich_tissue_gas_partition_coefficient", 2.00, "vessel-rich-tissue-gas-x2.00"),
+    *_cases("blood_gas_partition_coefficient", 0.90, "blood-gas-x0.90"),
+    *_cases("blood_gas_partition_coefficient", 1.15, "blood-gas-x1.15"),
+    *_cases("vessel_rich_tissue_gas_partition_coefficient", 0.80, "vessel-rich-tissue-gas-x0.80"),
+    *_cases("vessel_rich_tissue_gas_partition_coefficient", 1.75, "vessel-rich-tissue-gas-x1.75"),
+    *_cases(ALVEOLAR_GAS_VOLUME_FIELD, 1.50, "alveolar-gas-volume-x1.50"),
 )
 
 # Changes the gate cannot detect. Each one is a stored value wrong by the
 # stated factor that passes every published-data assertion, so a green gate
-# says nothing about whether that value is right. Two rows leave desflurane
-# out because its edge lies inside the factor. It fails the elimination sign
-# below alveolar gas volume x0.53, and at vessel-rich tissue:gas x0.80 it sits
-# only 0.12 SD above its elimination mean. Fat volume runs for one agent only.
-# A tissue's capacity is its volume times its tissue:gas coefficient, so
-# doubling either moves a run identically, and the 2026-10-17 edge search
-# found the same edges for both, for every agent.
+# says nothing about whether that value is right. A row that names agents
+# leaves out the others because their edge lies inside the factor. Isoflurane
+# and desflurane fail with the alveolar gas volume halved, below x0.61 and
+# x0.92. Sevoflurane and isoflurane fail with the venous pool doubled, above
+# x1.86 and x1.60, and isoflurane's lower venous pool edge is x0.50 itself.
+# Fat volume runs for one agent only. A tissue's capacity is its volume times
+# its tissue:gas coefficient, so doubling either moves a run identically, and
+# the edge searches of 2026-10-17 and 2026-10-18 found the same edges for
+# both, for every agent.
 UNDETECTED_CHANGES = (
     *_cases("fat_tissue_gas_partition_coefficient", 0.50, "fat-tissue-gas-x0.50"),
     *_cases("fat_tissue_gas_partition_coefficient", 2.00, "fat-tissue-gas-x2.00"),
     *_cases("fat_volume_l", 2.00, "fat-volume-x2.00", ("sevoflurane",)),
     *_cases("muscle_tissue_gas_partition_coefficient", 1.50, "muscle-tissue-gas-x1.50"),
-    *_cases(
-        "vessel_rich_tissue_gas_partition_coefficient",
-        0.80,
-        "vessel-rich-tissue-gas-x0.80",
-        ("sevoflurane", "isoflurane"),
-    ),
-    *_cases(
-        ALVEOLAR_GAS_VOLUME_FIELD, 0.50, "alveolar-gas-volume-x0.50", ("sevoflurane", "isoflurane")
-    ),
-    *_cases("venous_pool_volume_l", 2.00, "venous-pool-x2.00"),
+    *_cases(ALVEOLAR_GAS_VOLUME_FIELD, 0.50, "alveolar-gas-volume-x0.50", ("sevoflurane",)),
+    *_cases("venous_pool_volume_l", 0.50, "venous-pool-x0.50", ("sevoflurane", "desflurane")),
+    *_cases("venous_pool_volume_l", 2.00, "venous-pool-x2.00", ("desflurane",)),
     *_cases(CIRCUIT_VOLUME_FIELD, 0.50, "circuit-volume-x0.50"),
 )
 
@@ -1623,8 +2063,8 @@ def test_the_published_data_gate_fails_at_a_stated_perturbation(case: ResolvingP
 
     This turns the resolving-power table in `docs/MODEL.md` into an
     assertion. A parameter or solver change that made the gate blind along
-    blood:gas or vessel-rich tissue:gas would otherwise leave that table
-    claiming a resolving power the gate no longer has.
+    blood:gas, vessel-rich tissue:gas or the alveolar gas volume would
+    otherwise leave that table claiming a resolving power the gate no longer has.
     """
 
     first_failure = next(_published_data_gate_failures(case.agent_id, case.change), None)
