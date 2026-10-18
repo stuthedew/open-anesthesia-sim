@@ -4159,42 +4159,86 @@ transfers to whatever `PL-N092` writes in its place.
    published mean curves" records its size and direction hour by hour
    (`PL-KK1Q`), and asserts no agreement.
 
-**How sharp a gate this is, measured rather than assumed.** The discriminating
-power was re-measured on 2026-09-06 with the elimination point included, by
-perturbing each agent's blood:gas partition coefficient until some assertion
-in the module failed. The perturbation rebuilds the system from a modified
-parameter set so that every compartment sees the same coefficient, with
-tissue:gas coefficients held shipped — so tissue:blood moves inversely,
-exactly as it would if the blood:gas measurement alone were wrong:
+#### What the published-data gate can and cannot resolve
 
-| Agent | $`\lambda_{b:g}`$ | Reference point alone | With the flow sweep | With elimination |
-| --- | --- | --- | --- | --- |
-| Sevoflurane | 0.65 | −14% / +21% | −14% / +6% | −14% / +6% |
-| Isoflurane | 1.3 | −11% / +24% | −11% / +12% | −11% / +12% |
-| Desflurane | 0.42 | −3% / +30% | −3% / +10% | −3% / +10% |
+**A green gate shows only that no stored value is wrong by more than the gate
+can detect, and for most stored values that is a lot** (`PL-9YHR`,
+2026-10-17). The published-data gate is the set of assertions whose expected
+value is a published human measurement rather than this model's own output.
+They are the wash-in band for each cohort at every fresh gas flow from 1 to
+10 L/min, the sign of the elimination disagreement for each cohort, and both
+solubility orderings. The regression pins are not part of it. A pin, such as
+the 5-minute elimination pin above, `PINNED_REFERENCE_STATES` in
+`tests/reference/test_coupled_dynamics.py` or the late-washout tables, fails
+on any change at all. It detects an accidental edit, and it says nothing about
+whether a published value would have caught a wrong one, so none of them may
+be cited as validation of a stored value.
+
+To measure what the gate can detect, each stored parameter was multiplied by
+a factor, for one agent at a time, with every other value as shipped. The
+factor was searched to half a percentage point until some published-data
+assertion failed, between a tenth and four times the stored value. A changed
+blood:gas coefficient reaches every compartment with the tissue:gas
+coefficients held as shipped, so tissue:blood moves inversely, exactly as it
+would if the stored blood:gas value alone were wrong. Each cell is the range
+of the change that still passes every published-data assertion:
+
+| Stored parameter | Sevoflurane | Isoflurane | Desflurane |
+| --- | --- | --- | --- |
+| Blood:gas coefficient | −14% / +5% | −11% / +12% | −3% / +10% |
+| Vessel-rich tissue:gas, or vessel-rich volume | −46% / +24% | −46% / +48% | −22% / +55% |
+| Muscle tissue:gas, or muscle volume | −52% / +102% | −47% / past +300% | −11% / +105% |
+| Fat tissue:gas, or fat volume | past −90% / past +300% | past −90% / past +300% | −84% / past +300% |
+| Venous pool volume | past −90% / +268% | past −90% / past +300% | past −90% / past +300% |
+| Alveolar gas volume (FRC) | past −90% / +82% | past −90% / +291% | −47% / +92% |
+| Circuit volume | past −90% / +76% | past −90% / +253% | −85% / +98% |
+
+The first row is relative to the stored blood:gas coefficients, which are
+0.65 for sevoflurane, 1.3 for isoflurane and 0.42 for desflurane.
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 <!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
 <!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
 
-The first two columns reproduce the 2026-09-02 measurement to within a
-percentage point everywhere — isoflurane's edges move by one and desflurane's
-lower edge by one — which is the resolution of the search rather than a change
-in the model.
+"Past" means the gate still passed at the end of the search, a tenth or four
+times the stored value. A tissue's volume and its tissue:gas coefficient give
+the same edges because a run depends only on their product, the tissue's
+capacity. That was measured, not assumed: the search found the same edges for
+both.
 
-This is a coarse gate. At the reference point alone a solubility error of a
-fifth survives for two of the three agents — wider than the spread between
-published human measurements of the same coefficient — so a pass excludes a
-structurally wrong model rather than a mis-parameterized one. The flow sweep
-roughly halves the tolerated upward error and is therefore part of the gate
-rather than decoration. Desflurane is the tightest row and is tight in one
-direction only, because it already sits at +0.79 SD with little room above
-the mean; a change that moves it out of the band is a disagreement to
-explain, not a tolerance to widen.
+**What a reader may conclude from a pass:**
 
-**The elimination point adds nothing to that table**, and blood:gas is the
-wrong parameter to judge it on. The two ratios respond to almost disjoint
-parts of the parameter set, measured the same day as movement per +10% in one
-coefficient, in each ratio's own published standard deviation:
+- **Blood:gas is resolved best, and still coarsely.** A pass excludes a
+  structurally wrong model, not a mis-parameterized one. Desflurane is
+  tightest, and in the direction of lower solubility, because it already sits
+  at +0.79 SD on wash-in with little room left above its mean.
+- **The flow sweep sets almost every upper edge**, at its 1 L/min point. A
+  change that survives at 10 L/min often does not survive at 1 L/min, so the
+  sweep is part of the gate rather than decoration.
+- **The vessel-rich group is held only to about a half below and a quarter to
+  a half above.** Its upper edges come from the wash-in flow sweep. Its lower
+  edges come from the elimination: with a much less soluble vessel-rich group
+  an agent eliminates faster than its published cohort, or out of the
+  published order. This page said until 2026-10-17 that the elimination held
+  the vessel-rich coefficient to about a fifth either way. That figure came
+  from an assertion that held the model's own elimination ratio to within one
+  published SD. It was a regression pin with a wide band, and `PL-RXW0` has
+  since narrowed it to $`1\times10^{-4}`$, so it never measured what a
+  published value can detect.
+- **The gate cannot see fat for sevoflurane or isoflurane at all**, which is
+  what a 30-minute load and a 5-minute washout should look like. Fat
+  solubility and fat volume set the hours-long tail of washout that a learner
+  reads emergence from, and nothing here checks them against a measurement.
+  § "The first 24 hours of elimination against the published mean curves"
+  compares that tail with the published fits, and it asserts no agreement.
+- **Making the venous pool, the alveolar gas volume or the circuit smaller
+  goes unseen** for sevoflurane and isoflurane, down to a tenth of the stored
+  value. Muscle is held only loosely. `PL-R0NL` carries the early wash-in
+  comparison that the alveolar gas and circuit volumes would need.
+
+The two ratios respond to almost disjoint parts of the parameter set, which
+is why the edges fall where they do. Here is the movement per +10% in one
+coefficient, in each ratio's own published standard deviation, measured on
+2026-09-06:
 
 | Perturbed coefficient | Wash-in | Elimination |
 | --- | --- | --- |
@@ -4204,32 +4248,32 @@ coefficient, in each ratio's own published standard deviation:
 | Fat tissue:gas | −0.00 | −0.00 |
 
 Wash-in at 30 minutes is a blood:gas measurement that barely sees the
-vessel-rich group; elimination at five minutes is a vessel-rich measurement
-that barely sees blood:gas. That does not compete with the rebreathing
-explanation above: the circuit sets *where* the elimination ratio sits against
-the published mean, as an offset fixed by the operating point, while among the
-model's own parameters it is vessel-rich solubility the ratio moves with. Neither sees fat, which is what a 30-minute load
-followed by a 5-minute washout should look like, and is a further reason
-neither may be read as covering the slow tail. Repeating the perturbation
-search on the vessel-rich coefficient gives what the second direction is
-worth:
-
-| Agent | Wash-in and its flow sweep | With elimination |
-| --- | --- | --- |
-| Sevoflurane | at least −90% / +25% | −16% / +19% |
-| Isoflurane | at least −90% / +50% | −13% / +16% |
-| Desflurane | at least −90% / +57% | −20% / +24% |
-
-The lower edges in the middle column are the search bound rather than a
-measurement: the wash-in comparison and its flow sweep were still passing at
-a tenth of the shipped vessel-rich tissue:gas coefficient. Downward, that
-parameter was essentially unconstrained by anything in this repository until
-an elimination was compared; the elimination point closes it to about a fifth
-either way. That, rather than the blood:gas column, is what the second
-direction buys — together with being the only place the size and sign of this
-model's departure from a *measured* human washout is written down; its
+vessel-rich group, and elimination at five minutes is a vessel-rich
+measurement that barely sees blood:gas. That does not compete with the
+rebreathing explanation above. The circuit sets *where* the elimination ratio
+sits against the published mean, as an offset fixed by the operating point.
+Among the model's own parameters, it is vessel-rich solubility that the ratio
+moves with. This section is also the only place where the size and sign of
+this model's departure from a *measured* human washout are written down. Its
 departure from the fitted mean curves over the rest of the day is
 § "The first 24 hours of elimination against the published mean curves".
+
+**Two tests hold the table to the code.**
+`test_the_published_data_gate_fails_at_a_stated_perturbation` asserts that
+the gate fails for every agent at blood:gas ×0.80 and ×1.20 and at
+vessel-rich tissue:gas ×0.40 and ×2.00. ×1.10 is not used for blood:gas,
+because isoflurane passes it.
+`test_the_published_data_gate_passes_at_a_stated_perturbation` asserts that
+the gate still passes at fat tissue:gas ×0.50 and ×2.00, fat volume ×2.00,
+muscle tissue:gas ×1.50, vessel-rich tissue:gas ×0.80, alveolar gas volume
+×0.50, venous pool volume ×2.00 and circuit volume ×0.50. Desflurane is left
+out of the two rows whose factor lies at or past its edge. Each factor sits
+well clear of its edge, because a test placed at an edge would sit 0.01 to
+0.03 SD from flipping. The first test fails if the gate goes blind along a
+direction it resolves today. The second fails if the gate starts to resolve
+a change that this section says it cannot, so the table is measured again
+rather than left stale. Neither widens nor narrows `AGREEMENT_TOLERANCE_SD`:
+the limit is the published spread, not the band.
 
 #### The first 24 hours of elimination against the published mean curves
 

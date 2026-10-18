@@ -206,56 +206,68 @@ agreement.
 
 What the elimination comparison adds is different rather than more of the
 same. The three agents rank correctly on the way out as well as on the way
-in; the size and sign of this model's departure from a human elimination
-measurement are recorded rather than unknown; and the vessel-rich tissue
-coefficient, which the wash-in comparison barely constrains at all, is held
-to about a fifth either way. The sharpness measurements below are where that
-last claim comes from.
+in, and the size and sign of this model's departure from a human elimination
+measurement are recorded rather than unknown. It also puts a lower bound on
+the vessel-rich tissue coefficient, which the wash-in comparison barely sees.
+That bound is looser than this docstring said before 2026-10-17, and the next
+section gives the numbers.
 
 **How sharp a gate this is, measured rather than assumed.** A validation is
-only worth what it can detect, so the discriminating power was re-measured
-with the elimination point in it, by perturbing each agent's blood:gas
-partition coefficient until some assertion in this module failed. The
-perturbation rebuilds the system from a modified `AgentParameters`, so every
-compartment sees the same coefficient; tissue:gas coefficients stay shipped,
-which means tissue:blood moves inversely, exactly as it would if the
-blood:gas measurement alone were wrong (2026-09-06):
+only worth what it can detect. So on 2026-10-17 each stored parameter was
+multiplied by a factor, for one agent at a time, and the factor was searched
+until some published-data assertion failed. The published-data gate means
+the assertions whose expected value is a published measurement: the wash-in
+band for each cohort at every swept fresh gas flow, the sign of the
+elimination disagreement for each cohort, and both solubility orderings.
+`_published_data_gate_failures()` runs exactly that set, and
+`StoredParameterChange` applies each change. The regression pins are left
+out. A pin fails on any change at all, so it shows that something moved and
+never that a published value would have caught the change.
 
-| Agent | lambda_b:g | Reference point alone | With the flow sweep | With elimination |
-| --- | --- | --- | --- | --- |
-| Sevoflurane | 0.65 | -14% / +21% | -14% / +6% | -14% / +6% |
-| Isoflurane | 1.3 | -11% / +24% | -11% / +12% | -11% / +12% |
-| Desflurane | 0.42 | -3% / +30% | -3% / +10% | -3% / +10% |
+`docs/MODEL.md` § "What the published-data gate can and cannot resolve" holds
+the measured table, and these are its main points:
 
-The first two columns are a re-measurement of the table this module carried
-from 2026-09-02, and reproduce it to within a percentage point everywhere
-(isoflurane's edges move by one, desflurane's lower edge by one), which is
-the resolution of the search rather than a change in the model.
+- **Blood:gas is the parameter the gate resolves best.** A stored value
+  passes from -14% to +5% for sevoflurane, from -11% to +12% for isoflurane
+  and from -3% to +10% for desflurane. This is still a coarse gate. A pass
+  excludes a structurally wrong model, not a mis-parameterized one.
+  Desflurane is tightest in the direction of lower solubility, because it
+  already sits at +0.79 SD on wash-in and has little room left above the
+  mean.
+- **The flow sweep sets almost every upper edge**, at its 1 L/min point. A
+  change that survives at 10 L/min often does not survive at 1 L/min. That is
+  why `test_agreement_survives_every_fresh_gas_flow` compares each flow
+  against the published values rather than checking that the flows agree
+  with each other.
+- **The vessel-rich group is held only loosely.** Its tissue:gas coefficient
+  passes from -46% to +24% for sevoflurane, from -46% to +48% for isoflurane
+  and from -22% to +55% for desflurane. The upper edges come from the wash-in
+  flow sweep. The lower edges come from the elimination: with a much less
+  soluble vessel-rich group an agent eliminates faster than its published
+  cohort, or out of the published order.
+- **The gate cannot see fat for sevoflurane or isoflurane.** Both pass with
+  the fat tissue:gas coefficient, or the fat volume, anywhere from a tenth to
+  four times the stored value. Smaller venous pool, alveolar gas and circuit
+  volumes pass down to a tenth for those two agents as well. Muscle is held
+  only loosely.
 
-Three things follow, and all three bear on how a run may be described.
-The third is the longest, because what the elimination point is worth is
-not visible in the table above it.
+Before 2026-10-17 this docstring said the elimination point held the
+vessel-rich coefficient to about a fifth either way. That figure came from an
+elimination assertion that held the model's own ratio to within one published
+SD. It was a regression pin with a wide band, not a comparison with the
+published value, so it never measured what a published value can detect.
+`PL-RXW0` has since narrowed that pin to 1e-4.
 
-This is a **coarse gate**. At the reference point alone a solubility error of
-a fifth would survive for two of the three agents — larger than the spread
-between published human measurements of the same coefficient — so a pass
-excludes a structurally wrong model, not a mis-parameterized one. It is
-tightest for desflurane and in the direction of *lower* solubility, because
-that agent already sits at +0.79 SD on wash-in and has little room left above
-the mean.
+`test_the_published_data_gate_fails_at_a_stated_perturbation` and
+`test_the_published_data_gate_passes_at_a_stated_perturbation` hold the
+table to the code. The first fails if the gate stops detecting a blood:gas or
+vessel-rich change that it detects today. The second fails if the gate starts
+detecting a change that the documentation says it cannot, so that the table
+is measured again rather than left stale.
 
-The **flow sweep is doing real work**, not decoration: it roughly halves the
-tolerated upward error for every agent, because a parameter change that
-survives at one flow does not survive at all of them. That is the reason
-`test_agreement_survives_every_fresh_gas_flow` is written as a comparison
-against the published values at each flow rather than as a check that the
-flows agree with each other.
-
-The **elimination point adds nothing to that table**, which is the honest
-reading of its last column — and it is not the whole measurement, because
-blood:gas is the wrong parameter to judge it on. The two ratios respond to
-almost disjoint parts of the parameter set. Movement per +10% in one
-coefficient, in each ratio's own published SD (2026-09-06):
+The two ratios respond to almost disjoint parts of the parameter set. Here is
+the movement per +10% in one coefficient, in each ratio's own published SD
+(2026-09-06):
 
 | Perturbed coefficient | Wash-in | Elimination |
 | --- | --- | --- |
@@ -264,46 +276,34 @@ coefficient, in each ratio's own published SD (2026-09-06):
 | Muscle tissue:gas | -0.08 to -0.15 | -0.09 to -0.12 |
 | Fat tissue:gas | -0.00 | -0.00 |
 
-Wash-in is a blood:gas measurement that barely sees the vessel-rich group;
-elimination at five minutes is a vessel-rich measurement that barely sees
-blood:gas. That is not in tension with the rebreathing above: the circuit
-sets *where* the elimination ratio sits against Yasuda, as a fixed offset of
-the operating point, while among the model's own parameters it is
-vessel-rich solubility the ratio moves with.
-
-Neither sees fat at all, which is what a 30-minute load and a 5-minute
-washout should look like, and is a further reason not to read either
-comparison as covering the slow tail.
-
-Repeating the perturbation search on the vessel-rich coefficient instead
-gives what the elimination point is actually worth:
-
-| Agent | Wash-in and its flow sweep | With elimination |
-| --- | --- | --- |
-| Sevoflurane | at least -90% / +25% | -16% / +19% |
-| Isoflurane | at least -90% / +50% | -13% / +16% |
-| Desflurane | at least -90% / +57% | -20% / +24% |
-
-The lower edges in the middle column are the search bound rather than a
-measurement: the wash-in comparison and its flow sweep were still passing at
-a tenth of the shipped vessel-rich coefficient, so before this module
-compared an elimination that parameter was, downward, essentially
-unconstrained by anything in this repository. The elimination point closes it
-to about a fifth either way. That is what the second direction buys, and it
-is worth more than the blood:gas column suggests.
+Wash-in at 30 minutes is a blood:gas measurement that barely sees the
+vessel-rich group, and elimination at five minutes is a vessel-rich
+measurement that barely sees blood:gas. That is not in tension with the
+rebreathing above. The circuit sets *where* the elimination ratio sits
+against Yasuda, as a fixed offset of the operating point. Among the model's
+own parameters, it is vessel-rich solubility that the ratio moves with.
+Neither ratio sees fat, which is what a 30-minute load and a 5-minute washout
+should look like. That is a further reason not to read either comparison as
+covering the slow tail.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, replace
-from functools import cache
+from functools import cache, partial
 
 import pytest
 
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import Fraction, Percent
-from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.parameters import (
+    load_agent_parameters,
+    load_reference_adult_parameters,
+    load_reference_circle_system_parameters,
+)
+from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
@@ -658,6 +658,93 @@ PUBLISHED_INSPIRED_PERCENTS = tuple(
     sorted({m.published_inspired_percent for m in PUBLISHED_MEASUREMENTS})
 )
 
+# The fresh gas flows at which every wash-in comparison is made. The 30-minute
+# comparison runs at `FRESH_GAS_FLOW_L_MIN`, the last of them, and the flow
+# sweep runs at all six.
+SWEPT_FRESH_GAS_FLOWS_L_MIN = (1.0, 2.0, 4.0, 6.0, 8.0, 10.0)
+
+# The stored parameters a resolving-power case may change, by the record that
+# holds each one. Each name is a field of that record, so `getattr` reads the
+# shipped value and `dataclasses.replace` builds the changed record.
+AGENT_PARAMETER_FIELDS = (
+    "blood_gas_partition_coefficient",
+    "vessel_rich_tissue_gas_partition_coefficient",
+    "muscle_tissue_gas_partition_coefficient",
+    "fat_tissue_gas_partition_coefficient",
+)
+PATIENT_COMPARTMENT_FIELDS = (
+    "vessel_rich_volume_l",
+    "muscle_volume_l",
+    "fat_volume_l",
+    "venous_pool_volume_l",
+)
+ALVEOLAR_GAS_VOLUME_FIELD = "alveolar_gas_volume_l"
+CIRCUIT_VOLUME_FIELD = "circuit_volume_l"
+
+
+@dataclass(frozen=True, slots=True)
+class StoredParameterChange:
+    """One stored parameter multiplied by a factor before a run starts.
+
+    The resolving-power tests use this to ask whether the published-data
+    gate would notice a stored value that is wrong by `factor`. The change
+    is applied to the parameter record the value is stored in, and the part
+    of the system built from that record is rebuilt from the changed copy
+    by the code the shipped system uses. So a changed blood:gas coefficient
+    reaches every compartment, and the tissue:blood ratios move inversely,
+    exactly as they would if the stored blood:gas value alone were wrong.
+
+    Attributes:
+        parameter: the field name, one of `AGENT_PARAMETER_FIELDS`,
+            `PATIENT_COMPARTMENT_FIELDS`, `ALVEOLAR_GAS_VOLUME_FIELD` or
+            `CIRCUIT_VOLUME_FIELD`.
+        factor: what the stored value is multiplied by.
+        label: a short name for the test id and the failure message.
+    """
+
+    parameter: str
+    factor: float
+    label: str
+
+    def apply(self, agent_id: str, system: AgentUptakeSystem) -> None:
+        """Rebuild the part of an unstepped `system` that this change reaches.
+
+        It must be applied before the first step, while every compartment
+        holds no agent and no propagator has been built for the old value.
+        Each rebuilt part goes through the constructor or setter that checks
+        a shipped value, so a changed value outside what that code accepts
+        is refused rather than run.
+
+        Raises:
+            ValueError: `parameter` names no field this class knows.
+        """
+
+        agent = load_agent_parameters(agent_id)
+        patient = load_reference_adult_parameters()
+
+        if self.parameter in AGENT_PARAMETER_FIELDS:
+            changed_agent = replace(
+                agent, **{self.parameter: getattr(agent, self.parameter) * self.factor}
+            )
+            system.patient = PatientCompartments.from_parameters(
+                agent=changed_agent, patient=patient
+            )
+        elif self.parameter in PATIENT_COMPARTMENT_FIELDS:
+            changed_patient = replace(
+                patient, **{self.parameter: getattr(patient, self.parameter) * self.factor}
+            )
+            system.patient = PatientCompartments.from_parameters(
+                agent=agent, patient=changed_patient
+            )
+        elif self.parameter == ALVEOLAR_GAS_VOLUME_FIELD:
+            system.alveoli.gas_volume_l = patient.alveolar_gas_volume_l * self.factor
+        elif self.parameter == CIRCUIT_VOLUME_FIELD:
+            system.circuit.set_circuit_volume(
+                load_reference_circle_system_parameters().circuit_volume_l * self.factor
+            )
+        else:
+            raise ValueError(f"no stored parameter is named {self.parameter!r}")
+
 
 def _configured_system(
     agent_id: str,
@@ -666,6 +753,7 @@ def _configured_system(
     fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
     delivered_percent: float = DELIVERED_PERCENT,
     vessel_rich_tissue_gas_partition_coefficient: float | None = None,
+    change: StoredParameterChange | None = None,
 ) -> AgentUptakeSystem:
     """Return a fresh system at the published protocol's operating point.
 
@@ -691,6 +779,9 @@ def _configured_system(
     coefficient exactly as it checks a shipped one. Every other caller leaves
     it `None` and gets the
     shipped parameter set.
+
+    `change` is the resolving-power tests' override, and `StoredParameterChange`
+    documents it. Every comparison against a published value leaves it `None`.
     """
 
     patient_parameters = load_reference_adult_parameters()
@@ -701,6 +792,9 @@ def _configured_system(
             system.patient.vessel_rich,
             tissue_gas_partition_coefficient=vessel_rich_tissue_gas_partition_coefficient,
         )
+
+    if change is not None:
+        change.apply(agent_id, system)
 
     system.set_fresh_gas_flow(FreshGasFlow(fresh_gas_flow_l_min))
     system.set_delivered_concentration_percent(Percent(delivered_percent))
@@ -729,11 +823,12 @@ def _wash_in_system(
     cardiac_output_l_min: float | None = None,
     fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
     delivered_percent: float = DELIVERED_PERCENT,
+    change: StoredParameterChange | None = None,
 ) -> AgentUptakeSystem:
     """Return the system after 30 minutes of wash-in at one operating point.
 
     The operating point is `_configured_system()`'s, which documents what
-    `None` means for the patient flows.
+    `None` means for the patient flows and what `change` does.
 
     F_I is the *circuit* fraction at the moment of measurement, not the
     vaporizer dial. That is the quantity the published studies measured — an
@@ -748,6 +843,7 @@ def _wash_in_system(
         cardiac_output_l_min,
         fresh_gas_flow_l_min,
         delivered_percent,
+        change=change,
     )
 
     for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
@@ -762,6 +858,7 @@ def _wash_in_ratio(
     cardiac_output_l_min: float | None = None,
     fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
     delivered_percent: float = DELIVERED_PERCENT,
+    change: StoredParameterChange | None = None,
 ) -> float:
     """F_A/F_I after 30 minutes of wash-in at one operating point.
 
@@ -778,6 +875,7 @@ def _wash_in_ratio(
         cardiac_output_l_min,
         fresh_gas_flow_l_min,
         delivered_percent,
+        change,
     )
 
     return (
@@ -792,6 +890,7 @@ def _private_washed_in_system(
     fresh_gas_flow_l_min: float,
     delivered_percent: float,
     vessel_rich_tissue_gas_partition_coefficient: float | None = None,
+    change: StoredParameterChange | None = None,
 ) -> AgentUptakeSystem:
     """Return an unshared system after the published 30 minutes of wash-in.
 
@@ -805,8 +904,8 @@ def _private_washed_in_system(
     Both elimination drivers open from this rather than keeping a copy of the
     setup each, and the setup itself is `_configured_system()`'s, which also
     documents the one parameter override
-    (`vessel_rich_tissue_gas_partition_coefficient`) and what `None` means for
-    the patient flows.
+    (`vessel_rich_tissue_gas_partition_coefficient`), the resolving-power
+    override (`change`) and what `None` means for the patient flows.
     """
 
     system = _configured_system(
@@ -816,6 +915,7 @@ def _private_washed_in_system(
         fresh_gas_flow_l_min,
         delivered_percent,
         vessel_rich_tissue_gas_partition_coefficient,
+        change,
     )
 
     for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
@@ -863,6 +963,7 @@ def _eliminate(
     cardiac_output_l_min: float | None = None,
     fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
     delivered_percent: float = DELIVERED_PERCENT,
+    change: StoredParameterChange | None = None,
 ) -> EliminationReading:
     """Wash in for the published 30 minutes, then eliminate for five.
 
@@ -877,6 +978,9 @@ def _eliminate(
     `_wash_in_system()`, whose cached instance is shared with every wash-in
     comparison in this module; stepping that one into elimination would leave
     every later wash-in reading measuring a washed-out system.
+
+    `change` is the resolving-power override that `_configured_system()`
+    documents, and it reaches both limbs of the run.
     """
 
     system = _private_washed_in_system(
@@ -885,6 +989,7 @@ def _eliminate(
         cardiac_output_l_min,
         fresh_gas_flow_l_min,
         delivered_percent,
+        change=change,
     )
     alveolar_fraction_at_discontinuation = system.alveoli.partial_pressure_fraction
 
@@ -1065,6 +1170,150 @@ def _eliminate_without_rebreathing(
     )
 
 
+def _wash_in_band_failure(
+    measurement: PublishedMeasurement,
+    fresh_gas_flow_l_min: float,
+    change: StoredParameterChange | None = None,
+) -> str | None:
+    """Say why the 30-minute F_A/F_I is outside one cohort's spread, or `None`.
+
+    This is the wash-in half of the published-data gate, at one fresh gas
+    flow. `test_thirty_minute_ratio_matches_published_human_measurement` and
+    `test_agreement_survives_every_fresh_gas_flow` assert that it returns
+    `None` for the shipped parameter set, and `_published_data_gate_failures()`
+    asks it again with a stored parameter changed.
+    """
+
+    ratio = _wash_in_ratio(
+        measurement.agent_id, fresh_gas_flow_l_min=fresh_gas_flow_l_min, change=change
+    )
+    distance = measurement.wash_in_distance_in_standard_deviations(ratio)
+
+    if abs(distance) <= AGREEMENT_TOLERANCE_SD:
+        return None
+
+    return (
+        f"{measurement.agent_id} at {fresh_gas_flow_l_min} L/min fresh gas washes in to "
+        f"F_A/F_I {ratio:.4f} at 30 min, {distance:+.2f} SD from the "
+        f"{measurement.wash_in_mean} +/- {measurement.wash_in_standard_deviation} measured in "
+        f"{measurement.cohort_size} volunteers ({measurement.source})"
+    )
+
+
+def _elimination_direction_failure(
+    measurement: PublishedMeasurement, change: StoredParameterChange | None = None
+) -> str | None:
+    """Say why the model no longer eliminates more slowly than a cohort, or `None`.
+
+    This is the elimination half of the published-data gate. It is the sign
+    of the disagreement and not its size, because the size is a regression
+    pin of the model's own output (`ELIMINATION_RATIO_PIN_TOLERANCE`), which
+    any change at all fails and which is therefore no evidence about any one
+    parameter.
+    """
+
+    ratio = _eliminate(measurement.agent_id, change=change).ratio
+
+    if ratio > measurement.elimination_mean:
+        return None
+
+    return (
+        f"{measurement.agent_id} now eliminates to F_A/F_A0 {ratio:.4f}, at or below the "
+        f"{measurement.elimination_mean} measured in {measurement.cohort_size} volunteers "
+        f"({measurement.source}); the direction this module documents has reversed"
+    )
+
+
+def _ordering_failure(
+    ratio_of: Callable[[str], float], expected_order: tuple[str, str, str], what: str
+) -> str | None:
+    """Say why three agents' ratios are not in a published order, or `None`.
+
+    Both papers were run to show that a less soluble agent approaches its
+    inspired fraction faster and leaves faster. `expected_order` lists the
+    agents from the highest ratio to the lowest, and `ratio_of` gives each
+    agent's ratio.
+    """
+
+    ratios = {agent_id: ratio_of(agent_id) for agent_id in expected_order}
+    highest, middle, lowest = expected_order
+
+    if ratios[highest] > ratios[middle] > ratios[lowest]:
+        return None
+
+    return f"the {what} ratios {ratios} are not in the published order {expected_order}"
+
+
+# The published wash-in order, highest F_A/F_I at 30 minutes first, and the
+# published elimination order, highest F_A/F_A0 at 5 minutes first.
+WASH_IN_ORDER = ("desflurane", "sevoflurane", "isoflurane")
+ELIMINATION_ORDER = ("isoflurane", "sevoflurane", "desflurane")
+
+
+def _wash_in_ordering_failure(
+    changed_agent_id: str | None = None, change: StoredParameterChange | None = None
+) -> str | None:
+    """Check the wash-in order, with `change` applied to `changed_agent_id` alone."""
+
+    return _ordering_failure(
+        lambda agent_id: _wash_in_ratio(
+            agent_id, change=change if agent_id == changed_agent_id else None
+        ),
+        WASH_IN_ORDER,
+        "30-minute wash-in",
+    )
+
+
+def _elimination_ordering_failure(
+    changed_agent_id: str | None = None, change: StoredParameterChange | None = None
+) -> str | None:
+    """Check the elimination order, with `change` applied to `changed_agent_id` alone."""
+
+    return _ordering_failure(
+        lambda agent_id: (
+            _eliminate(agent_id, change=change if agent_id == changed_agent_id else None).ratio
+        ),
+        ELIMINATION_ORDER,
+        "5-minute elimination",
+    )
+
+
+def _published_data_gate_failures(
+    agent_id: str, change: StoredParameterChange | None = None
+) -> Iterator[str]:
+    """Yield each published-data assertion that one agent's run fails.
+
+    "The published-data gate" is the set of assertions in this module whose
+    expected value is a published human measurement rather than this model's
+    own output. They are the wash-in band for each of the agent's cohorts at
+    every swept fresh gas flow, the sign of the elimination disagreement for
+    each cohort, and both solubility orderings. The regression pins and the
+    diagnostics are left out, because a pin fails on any change and so says
+    nothing about whether a published value could detect one. The gate passes
+    when nothing is yielded. It is a generator so that a caller that needs
+    only the first failure stops the runs there.
+    """
+
+    measurements = [m for m in PUBLISHED_MEASUREMENTS if m.agent_id == agent_id]
+    checks: list[Callable[[], str | None]] = [
+        *(
+            partial(_wash_in_band_failure, measurement, fresh_gas_flow_l_min, change)
+            for measurement in measurements
+            for fresh_gas_flow_l_min in SWEPT_FRESH_GAS_FLOWS_L_MIN
+        ),
+        *(
+            partial(_elimination_direction_failure, measurement, change)
+            for measurement in measurements
+        ),
+        partial(_wash_in_ordering_failure, agent_id, change),
+        partial(_elimination_ordering_failure, agent_id, change),
+    ]
+
+    for check in checks:
+        if (failure := check()) is not None:
+            yield failure
+
+
 @pytest.mark.parametrize(
     "measurement", PUBLISHED_MEASUREMENTS, ids=[m.label for m in PUBLISHED_MEASUREMENTS]
 )
@@ -1092,15 +1341,9 @@ def test_thirty_minute_ratio_matches_published_human_measurement(
     widen.
     """
 
-    ratio = _wash_in_ratio(measurement.agent_id)
-    distance = measurement.wash_in_distance_in_standard_deviations(ratio)
+    failure = _wash_in_band_failure(measurement, FRESH_GAS_FLOW_L_MIN)
 
-    assert abs(distance) <= AGREEMENT_TOLERANCE_SD, (
-        f"{measurement.agent_id} washes in to F_A/F_I {ratio:.4f} at 30 min, "
-        f"{distance:+.2f} SD from the {measurement.wash_in_mean} +/- "
-        f"{measurement.wash_in_standard_deviation} measured in {measurement.cohort_size} "
-        f"volunteers ({measurement.source})"
-    )
+    assert failure is None, failure
 
 
 @pytest.mark.parametrize("agent_id", sorted({m.agent_id for m in PUBLISHED_MEASUREMENTS}))
@@ -1142,9 +1385,9 @@ def test_published_agents_are_ordered_by_solubility() -> None:
     overlap.
     """
 
-    by_agent = {agent_id: _wash_in_ratio(agent_id) for agent_id in AGENT_IDS}
+    failure = _wash_in_ordering_failure()
 
-    assert by_agent["desflurane"] > by_agent["sevoflurane"] > by_agent["isoflurane"]
+    assert failure is None, failure
 
 
 def test_operating_point_is_the_parameter_files_own_defaults() -> None:
@@ -1197,7 +1440,7 @@ def test_ratio_does_not_depend_on_the_delivered_fraction(agent_id: str) -> None:
 @pytest.mark.parametrize(
     "measurement", PUBLISHED_MEASUREMENTS, ids=[m.label for m in PUBLISHED_MEASUREMENTS]
 )
-@pytest.mark.parametrize("fresh_gas_flow_l_min", (1.0, 2.0, 4.0, 6.0, 8.0, 10.0))
+@pytest.mark.parametrize("fresh_gas_flow_l_min", SWEPT_FRESH_GAS_FLOWS_L_MIN)
 def test_agreement_survives_every_fresh_gas_flow(
     measurement: PublishedMeasurement, fresh_gas_flow_l_min: float
 ) -> None:
@@ -1216,13 +1459,9 @@ def test_agreement_survives_every_fresh_gas_flow(
     zero and the ratio is undefined rather than wrong.
     """
 
-    ratio = _wash_in_ratio(measurement.agent_id, fresh_gas_flow_l_min=fresh_gas_flow_l_min)
-    distance = measurement.wash_in_distance_in_standard_deviations(ratio)
+    failure = _wash_in_band_failure(measurement, fresh_gas_flow_l_min)
 
-    assert abs(distance) <= AGREEMENT_TOLERANCE_SD, (
-        f"{measurement.agent_id} at {fresh_gas_flow_l_min} L/min fresh gas gives "
-        f"F_A/F_I {ratio:.4f}, {distance:+.2f} SD from {measurement.source}"
-    )
+    assert failure is None, failure
 
 
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
@@ -1291,6 +1530,133 @@ def test_agreement_is_sensitive_to_ventilation_and_cardiac_output(agent_id: str)
             f"{cardiac_output_l_min} L/min; the sensitivity this module documents has "
             f"changed and its table must be re-measured"
         )
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvingPowerCase:
+    """One agent run with one stored parameter changed, and what the gate should say.
+
+    The factors were chosen with margin from the edges measured on
+    2026-10-17, which `docs/MODEL.md` § "What the published-data gate can and
+    cannot resolve" tabulates. A case sits well past an edge or well inside
+    one, so an unrelated change of a few hundredths of an SD does not flip
+    it. A test placed at an edge itself would sit 0.01 to 0.03 SD from
+    flipping (`PL-9YHR`).
+    """
+
+    agent_id: str
+    change: StoredParameterChange
+
+    @property
+    def label(self) -> str:
+        return f"{self.agent_id}-{self.change.label}"
+
+
+def _cases(
+    parameter: str, factor: float, label: str, agent_ids: tuple[str, ...] = AGENT_IDS
+) -> tuple[ResolvingPowerCase, ...]:
+    """Build one case per agent for one stored parameter and factor."""
+
+    change = StoredParameterChange(parameter=parameter, factor=factor, label=label)
+
+    return tuple(ResolvingPowerCase(agent_id=agent_id, change=change) for agent_id in agent_ids)
+
+
+# Changes the gate detects for every agent. Blood:gas is the coefficient the
+# wash-in band responds to, and the vessel-rich tissue:gas coefficient is the
+# one the elimination sign and ordering respond to. x1.10 is not used for
+# blood:gas because isoflurane passes it: its upper edge is x1.12.
+DETECTED_CHANGES = (
+    *_cases("blood_gas_partition_coefficient", 0.80, "blood-gas-x0.80"),
+    *_cases("blood_gas_partition_coefficient", 1.20, "blood-gas-x1.20"),
+    *_cases("vessel_rich_tissue_gas_partition_coefficient", 0.40, "vessel-rich-tissue-gas-x0.40"),
+    *_cases("vessel_rich_tissue_gas_partition_coefficient", 2.00, "vessel-rich-tissue-gas-x2.00"),
+)
+
+# Changes the gate cannot detect. Each one is a stored value wrong by the
+# stated factor that passes every published-data assertion, so a green gate
+# says nothing about whether that value is right. Two rows leave desflurane
+# out because its edge lies inside the factor. It fails the elimination sign
+# below alveolar gas volume x0.53, and at vessel-rich tissue:gas x0.80 it sits
+# only 0.12 SD above its elimination mean. Fat volume runs for one agent only.
+# A tissue's capacity is its volume times its tissue:gas coefficient, so
+# doubling either moves a run identically, and the 2026-10-17 edge search
+# found the same edges for both, for every agent.
+UNDETECTED_CHANGES = (
+    *_cases("fat_tissue_gas_partition_coefficient", 0.50, "fat-tissue-gas-x0.50"),
+    *_cases("fat_tissue_gas_partition_coefficient", 2.00, "fat-tissue-gas-x2.00"),
+    *_cases("fat_volume_l", 2.00, "fat-volume-x2.00", ("sevoflurane",)),
+    *_cases("muscle_tissue_gas_partition_coefficient", 1.50, "muscle-tissue-gas-x1.50"),
+    *_cases(
+        "vessel_rich_tissue_gas_partition_coefficient",
+        0.80,
+        "vessel-rich-tissue-gas-x0.80",
+        ("sevoflurane", "isoflurane"),
+    ),
+    *_cases(
+        ALVEOLAR_GAS_VOLUME_FIELD, 0.50, "alveolar-gas-volume-x0.50", ("sevoflurane", "isoflurane")
+    ),
+    *_cases("venous_pool_volume_l", 2.00, "venous-pool-x2.00"),
+    *_cases(CIRCUIT_VOLUME_FIELD, 0.50, "circuit-volume-x0.50"),
+)
+
+
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+def test_the_published_data_gate_passes_the_shipped_parameter_set(agent_id: str) -> None:
+    """The gate the resolving-power tests ask about must pass unchanged.
+
+    `_published_data_gate_failures()` restates no criterion of its own: it
+    calls the same checks the published-data tests above assert. This test
+    asserts that it returns nothing for the shipped parameter set, so a
+    detection below is a response to the change and not a gate that fails
+    on everything.
+    """
+
+    failures = list(_published_data_gate_failures(agent_id))
+
+    assert not failures, failures
+
+
+@pytest.mark.parametrize("case", DETECTED_CHANGES, ids=[case.label for case in DETECTED_CHANGES])
+def test_the_published_data_gate_fails_at_a_stated_perturbation(case: ResolvingPowerCase) -> None:
+    """The gate must detect a stored value wrong by the stated factor.
+
+    This turns the resolving-power table in `docs/MODEL.md` into an
+    assertion. A parameter or solver change that made the gate blind along
+    blood:gas or vessel-rich tissue:gas would otherwise leave that table
+    claiming a resolving power the gate no longer has.
+    """
+
+    first_failure = next(_published_data_gate_failures(case.agent_id, case.change), None)
+
+    assert first_failure is not None, (
+        f"{case.agent_id} with {case.change.parameter} x{case.change.factor} passes every "
+        f"published-data assertion; the gate no longer resolves this change, so the "
+        f"resolving-power table in docs/MODEL.md must be re-measured"
+    )
+
+
+@pytest.mark.parametrize(
+    "case", UNDETECTED_CHANGES, ids=[case.label for case in UNDETECTED_CHANGES]
+)
+def test_the_published_data_gate_passes_at_a_stated_perturbation(case: ResolvingPowerCase) -> None:
+    """The gate must still be unable to detect these changes, as the docs say.
+
+    `docs/MODEL.md` tells a reader that a green gate says nothing about these
+    stored values. This test holds that statement true. If a model change
+    made the gate sensitive to one of them, the statement would understate
+    what the gate shows, and this test fails so that the table is
+    re-measured rather than left stale. A failure here is not a defect in the
+    model. It is a measurement to redo.
+    """
+
+    failures = list(_published_data_gate_failures(case.agent_id, case.change))
+
+    assert not failures, (
+        f"{case.agent_id} with {case.change.parameter} x{case.change.factor} now fails the "
+        f"published-data gate: {failures}; docs/MODEL.md says the gate cannot resolve this "
+        f"change, so its resolving-power table must be re-measured"
+    )
 
 
 @pytest.mark.parametrize(
@@ -1375,13 +1741,9 @@ def test_the_model_eliminates_more_slowly_than_every_published_cohort(
     would be wrong.
     """
 
-    ratio = _eliminate(measurement.agent_id).ratio
+    failure = _elimination_direction_failure(measurement)
 
-    assert ratio > measurement.elimination_mean, (
-        f"{measurement.agent_id} now eliminates to F_A/F_A0 {ratio:.4f}, at or below the "
-        f"{measurement.elimination_mean} measured in {measurement.cohort_size} volunteers "
-        f"({measurement.source}); the direction this module documents has reversed"
-    )
+    assert failure is None, failure
 
 
 def test_eliminated_agents_are_ordered_by_solubility() -> None:
@@ -1404,9 +1766,9 @@ def test_eliminated_agents_are_ordered_by_solubility() -> None:
     way in.
     """
 
-    by_agent = {agent_id: _eliminate(agent_id).ratio for agent_id in AGENT_IDS}
+    failure = _elimination_ordering_failure()
 
-    assert by_agent["desflurane"] < by_agent["sevoflurane"] < by_agent["isoflurane"]
+    assert failure is None, failure
 
 
 @pytest.mark.parametrize("agent_id", AGENT_IDS)

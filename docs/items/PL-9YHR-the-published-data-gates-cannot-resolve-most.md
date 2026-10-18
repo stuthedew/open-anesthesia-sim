@@ -3,11 +3,13 @@ id: PL-9YHR
 title: The published-data gates cannot resolve most stored parameters - fat tissue:gas x2 and x0.5, fat volume x2, muscle tissue:gas x1.5 and vessel-rich tissue:gas x0.8 each pass every Yasuda-tied assertion, and only 6 of 25 simulation-affecting x1.10 perturbations fail one - while the gate's resolving power is recorded only for alveolar ventilation and cardiac output
 priority: P1
 effort: L
-status: ready
+status: done
 classes: science, test, docs
 feature: validation-resolving-power
-touches: tests/reference/test_published_wash_in_and_elimination.py, docs/MODEL.md
+touches: tests/reference/test_published_wash_in_and_elimination.py, docs/MODEL.md, docs/items/PL-R0NL-wash-in-is-compared-with-published-human-data.md
 added: 2026-10-17
+closed: 2026-10-17
+pr: 1521
 payoff: docs/MODEL.md's validation claim says which stored parameters the published-data gates can and cannot detect an error in, so a green gate is not read as validating values it cannot resolve
 verify: grep -q 'def test_the_published_data_gate_fails_at_a_stated_perturbation' tests/reference/test_published_wash_in_and_elimination.py
 ---
@@ -137,3 +139,69 @@ perturbation, oracle classification and regression-test replay, and an
 adversarial second agent verified each finding. Its scratch files are not
 durable, so the evidence is written out above. Symbols re-checked against
 `9ea87a3c`.
+
+**Resolution (2026-10-17).** `tests/reference/test_published_wash_in_and_elimination.py`
+now names the published-data gate as one function,
+`_published_data_gate_failures()`. It yields every failure among the wash-in
+band for each cohort at every swept fresh gas flow, the sign of the
+elimination disagreement, and both orderings, and it calls the same checks
+the published-data tests themselves assert, so the criteria have one home.
+`StoredParameterChange` multiplies one stored value and rebuilds the part of
+the system built from it, through `PatientCompartments.from_parameters`, the
+alveolar gas volume field or `BreathingCircuit.set_circuit_volume`. Three
+tests use them:
+
+- `test_the_published_data_gate_passes_the_shipped_parameter_set`, so that a
+  detection below is a response to the change and not a gate that fails on
+  everything.
+- `test_the_published_data_gate_fails_at_a_stated_perturbation`: blood:gas
+  x0.80 and x1.20 and vessel-rich tissue:gas x0.40 and x2.00, for every
+  agent.
+- `test_the_published_data_gate_passes_at_a_stated_perturbation`: the changes
+  the gate cannot see, so `docs/MODEL.md`'s "cannot resolve" statements are
+  held true and a gate that grows sharper is re-measured rather than left
+  understated.
+
+`docs/MODEL.md` § "What the published-data gate can and cannot resolve"
+replaces § "How sharp a gate this is" with the measured edge for every
+stored parameter, agent and direction. The edge search is
+`/mnt/project-files/v0.6.0/validation-resolving-power/edge_search.py`, which
+imports the test module's own gate. Its results on 2026-10-17, as the last
+passing factor (bounds 0.1 and 4.0, resolution 0.005):
+
+```
+parameter                      sevoflurane      isoflurane       desflurane
+blood:gas                      0.863 - 1.053    0.888 - 1.117    0.972 - 1.097
+vessel-rich tissue:gas/volume  0.543 - 1.237    0.540 - 1.478    0.779 - 1.551
+muscle tissue:gas/volume       0.480 - 2.020    0.525 - >4       0.891 - 2.052
+fat tissue:gas/volume          <0.1 - >4        <0.1 - >4        0.163 - >4
+venous pool volume             <0.1 - 3.684     <0.1 - >4        <0.1 - >4
+alveolar gas volume            <0.1 - 1.820     <0.1 - 3.912     0.529 - 1.920
+circuit volume                 <0.1 - 1.759     <0.1 - 3.525     0.153 - 1.984
+```
+
+Almost every upper edge is the flow sweep's 1 L/min point. The vessel-rich
+lower edges are the elimination sign (desflurane) and ordering (the other
+two).
+
+**The module docstring and `docs/MODEL.md` had overstated the vessel-rich
+bound.** Both said the elimination point held the vessel-rich coefficient to
+about a fifth either way (-16% / +19% for sevoflurane). That figure was
+measured on 2026-09-06 against an elimination assertion that held the
+model's own ratio to one published SD, a regression pin with a wide band,
+which `PL-RXW0` narrowed to 1e-4. Against the published values alone the
+bound is about -46% / +24%. Both texts now say so.
+
+**Decided in the work.** Recommended step 2, a test that pins the exact edge
+factor per parameter and cohort, was not built. The item's own measurement
+puts a test at an edge 0.01 to 0.03 SD from flipping, so it would fail on
+unrelated changes. The bracketing cases sit well clear of each edge and hold
+the same claims, and the table records the edges with their date. Step 5,
+source-transcription tests of the stored values, stays with `PL-H536`, which
+already carries it. `AGREEMENT_TOLERANCE_SD` is unchanged, as step 4 says.
+
+**Evidence that the new detection test detects.** With
+`AGREEMENT_TOLERANCE_SD` set to 5.0, 9 of the 12 detection cases failed.
+The three that still passed are vessel-rich tissue:gas x0.40, which the
+elimination sign catches rather than the band. The 35 new cases add about
+90 s of CPU to the suite, run across the xdist workers.
