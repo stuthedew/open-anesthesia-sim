@@ -230,23 +230,23 @@ def test_a_line_answered_with_no_successor_is_listed_apart() -> None:
     line after the answer's date list it as open again, since the mechanism
     has then started producing again.
     """
-    filings = [_item(f"PL-0RA{n}", date(2026, 9, n), reenters=("PL-FXD0",)) for n in (1, 2, 3)]
-    answer = _item("PL-0ANS", date(2026, 9, 2), closed=date(2026, 9, 4), no_successor=("PL-FXD0",))
+    filings = [_item(f"PL-0RQ{n}", date(2026, 9, n), reenters=("PL-FXD0",)) for n in (1, 2, 3)]
+    answer = _item("PL-0NSW", date(2026, 9, 2), closed=date(2026, 9, 4), no_successor=("PL-FXD0",))
 
     report = analyze([FIXED, *filings, answer], CONFIG, today=date(2026, 9, 7))
 
     assert report.answered == {"PL-FXD0": (answer,)}
     text = format_inflow(report)
     assert "a generator whose fix did not hold:" not in text
-    assert "PL-FXD0  by PL-0RA1, PL-0RA2, PL-0RA3" in text.split("no successor owed")[1]
-    assert "answered by PL-0ANS (done)" in text
+    assert "PL-FXD0  by PL-0RQ1, PL-0RQ2, PL-0RQ3" in text.split("no successor owed")[1]
+    assert "answered by PL-0NSW (done)" in text
 
-    later = [_item(f"PL-0RL{n}", date(2026, 9, n), reenters=("PL-FXD0",)) for n in (5, 6, 7)]
+    later = [_item(f"PL-0RT{n}", date(2026, 9, n), reenters=("PL-FXD0",)) for n in (5, 6, 7)]
     reopened = analyze([FIXED, *filings, answer, *later], CONFIG, today=date(2026, 9, 14))
 
     assert reopened.answered == {}
     closed_later = _item(
-        "PL-0ANS", date(2026, 9, 2), closed=date(2026, 9, 10), no_successor=("PL-FXD0",)
+        "PL-0NSW", date(2026, 9, 2), closed=date(2026, 9, 10), no_successor=("PL-FXD0",)
     )
     still_open = analyze([FIXED, *filings, closed_later, *later], CONFIG, today=date(2026, 9, 14))
     assert still_open.answered == {}  # closing the answer does not move its date
