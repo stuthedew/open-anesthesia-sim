@@ -1383,8 +1383,7 @@ def test_an_ansi_c_word_reads_as_bash_reads_it_in_the_c_locale(word: str) -> Non
 #: reads from it whole and a piece of `script_lines` at a time. The generator
 #: leaves each form out; the fix deletes its row and lets the generator draw it.
 #: Empty since `PL-55R2` fixed the last of `PL-C4XY`'s, so pytest reports the
-#: test below as skipped, for an empty parameter set; one bash warns running is
-#: a row of `WARNED_DEPARTURES` instead.
+#: test below as skipped, for an empty parameter set.
 KNOWN_DEPARTURES: list[object] = []
 
 
@@ -1405,45 +1404,43 @@ def test_each_known_departure_from_bash_reads_as_its_row_records(
     assert _lexer_runs_by_piece(script) == Counter(pieces)
 
 
-#: Departures bash 5.2.21 warns running, read as `KNOWN_DEPARTURES` are:
-#: `PL-H710`'s, where bash runs a body's substitution in a child that re-reads
-#: its text, so each reads every command bash runs, and more (`PL-54MD`).
-WARNED_DEPARTURES: list[object] = [
-    # The child runs the line ahead of the one the cut leaves open, and that one is one error.
+#: Scripts in which bash runs a substitution from a here-document's body, and
+#: a line inside the substitution ended a here-document early, with the
+#: commands bash 5.2.21 runs from each. Bash runs the substitution's text in a
+#: child, which reads it as a script of its own, as `_Lexer.child` reads it.
+CHILD_RUNS = [
+    # The child runs the line ahead of the one the cut leaves open, and that line is one error.
     (
         "p <<E\n$(p a\np $(p deep <<F\nF))\nE\np after\n",
         {("p",): 1, ("p", "a"): 1, ("p", "after"): 1},
-        {("p",): 2, ("p", "a"): 1, ("p", "after"): 1, ("p", "deep"): 1},
-        {("p",): 2, ("p", "a"): 1, ("p", "after"): 1, ("p", "deep"): 1},
     ),
     # Its top level ends no body early, so it reads the lines after `<<F` as `F`'s body.
     (
         "p <<E\n$(p inner <<F\nF ')'\n)\nE\np after\n",
         {("p",): 1, ("p", "after"): 1, ("p", "inner"): 1},
-        {(")",): 1, ("p",): 1, ("p", "after"): 1, ("p", "inner"): 1},
-        {(")",): 1, ("p",): 1, ("p", "after"): 1, ("p", "inner"): 1},
     ),
     # And there the rest of `F`'s line, where the cut is, is body too.
     (
         "p <<E\n$(p inner <<'F'\nF p y; $(p w))\nE\np after\n",
         {("p",): 1, ("p", "after"): 1, ("p", "inner"): 1},
-        {("p",): 1, ("p", "after"): 1, ("p", "inner"): 1, ("p", "w"): 1, ("p", "y"): 1},
-        {("p",): 1, ("p", "after"): 1, ("p", "inner"): 1, ("p", "w"): 1, ("p", "y"): 1},
     ),
 ]
 
 
-@pytest.mark.parametrize(("script", "bash", "whole", "pieces"), WARNED_DEPARTURES)
-def test_each_known_departure_bash_warns_on_reads_as_its_row_records(
-    script: str,
-    bash: dict[tuple[str, ...], int],
-    whole: dict[tuple[str, ...], int],
-    pieces: dict[tuple[str, ...], int],
+@pytest.mark.parametrize(("script", "runs"), CHILD_RUNS)
+def test_a_body_s_substitution_reads_as_bash_s_child_runs_it(
+    script: str, runs: dict[tuple[str, ...], int]
 ) -> None:
-    """As `test_each_known_departure_from_bash_reads_as_its_row_records`, where bash warns."""
-    assert _bash_runs(script, warns=True) == Counter(bash)
-    assert _lexer_runs(script) == Counter(whole)
-    assert _lexer_runs_by_piece(script) == Counter(pieces)
+    """The lexer read `p deep`, a command `)`, and `p y` and `p w` from these.
+
+    It read the substitution as the parse bash finds its end with reads it.
+    Bash's child reads the text again with no early end to a here-document at
+    its top level, and runs only the lines before the first one it cannot
+    parse. So the lexer read commands bash never runs.
+    """
+    assert _bash_runs(script, warns=True) == Counter(runs)
+    assert _lexer_runs(script) == Counter(runs)
+    assert _lexer_runs_by_piece(script) == Counter(runs)
 
 
 #: Scripts whose here-document bodies hold a substitution, and the pieces
