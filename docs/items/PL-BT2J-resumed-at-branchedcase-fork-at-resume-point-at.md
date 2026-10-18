@@ -3,13 +3,14 @@ id: PL-BT2J
 title: resumed_at, BranchedCase.fork_at, _resume_point_at and _setting_at take a case instant under the name elapsed_s, while the Keyframe it is matched against names the same instant instant_s
 priority: P3
 effort: S
-status: needs-decision
+status: ready
 classes: refactor
 feature: core-domain-language
 touches: src/anesthesia_sim/app/controller.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-22
 payoff: the case instant a branch opens at is read under one name from the public door to the keyframe, so no reader meets a clock reading's name on a point in case time
+verify: grep -q "def resumed_at(self, instant_s: CaseInstant)" src/anesthesia_sim/app/controller.py && grep -q "def fork_at(self, instant_s: CaseInstant)" src/anesthesia_sim/app/controller.py && grep -q "def _resume_point_at(self, instant_s: CaseInstant)" src/anesthesia_sim/app/controller.py && ! grep -q "def _setting_at(self, control: ControlInput, elapsed_s" src/anesthesia_sim/app/controller.py
 ---
 
 **Problem.** resumed_at, BranchedCase.fork_at, _resume_point_at and _setting_at take a case instant under the name elapsed_s, while the Keyframe it is matched against names the same instant instant_s
@@ -57,3 +58,17 @@ internal name with no behaviour behind it, not a question for the project owner.
 `_setting_at` take `instant_s`, their docstrings say "instant", and nothing in
 `app/controller.py` compares an `elapsed_s` parameter with a keyframe's
 `instant_s`.
+
+**Decided 2026-10-18 in the product decision batch's design round: rename
+all four to `instant_s`.** This is the recommendation above, taken as an
+obvious call rather than put to the project owner. It is one internal name
+with no behaviour behind it, and two settled items, `PL-ZMRT` and `PL-CZTR`,
+already chose `instant_s` for every other keyframe instant. The premise was
+re-read at `21174fd3`. `resumed_at`, `_resume_point_at` and `BranchedCase.fork_at`
+still take `elapsed_s: CaseInstant`, and `_resume_point_at` still compares it
+with `segment.opening.instant_s`. `_setting_at` takes `elapsed_s: float`. A
+search of `src/` and `tests/` still finds no call that passes any of the four
+by keyword, so the rename changes signatures and docstrings only. The
+alternative, keeping `elapsed_s` because a caller may pass a clock reading,
+was refused: since the parameters became `CaseInstant`, the type already says
+"an instant", and only the name still says "a duration".
