@@ -146,10 +146,12 @@ class MarkStanding(StrEnum):
     """
 
     REACHED = "reached"
-    """This run has halted on this mark at least once.
+    """This run has stood on this mark at least once.
 
-    Historical and about a MAC target only, which is the one kind no clock
-    orders.
+    It halted on the mark, or the mark lies inside a step the run stands on
+    or opened on, asked of the marks as they stand when the standings are
+    read (`PL-1ZQ4`). Historical and about a MAC target only, which is the one
+    kind no clock orders.
     """
 
     NOT_REACHED_WITHIN_CAP = "not_reached_within_cap"
@@ -722,11 +724,13 @@ class BookmarkSet:
         cap" this item exists to replace.
 
         Args:
-            reached_instants_s: The instants this run has already halted on.
+            reached_instants_s: The instants this run has already halted on
+                or stood on: those inside the step it opened on, if it is a
+                branch, or the step it stands on while stopped.
             reached_crossings: The `MacTarget.crossing_key`s it has already
-                halted on. Both are matched the way `without_time_bookmark`
-                and `without_mac_target` match, so relabelling a mark does not
-                reset what the run did.
+                halted on or stood on, in the same sense. Both are matched the
+                way `without_time_bookmark` and `without_mac_target` match, so
+                relabelling a mark does not reset what the run did.
             opened_at_s: Where this run began, in the case's own time: zero on
                 a trunk, and `ResumePoint.fork.instant_s` on a branch. A time
                 bookmark before it is `BEFORE_THIS_BRANCH`, because a reset
@@ -832,7 +836,8 @@ def _time_bookmark_standing(
        at or one step past the marked instant, and for an instant that is not
        a multiple of the step in binary it is past it by a few parts in 1e16.
        `45.3` marked, `45.300000000000004` forked at: the branch opens after
-       its own mark, and only the seeded halt set knows they are one crossing.
+       its own mark, and only the step it opened on, asked again, knows they
+       are one crossing.
     2. **`opened_at_s <= instant_s <= elapsed_s`** — the run has been at that
        instant, whatever put it there.
     3. **`BEFORE_THIS_BRANCH`**, at its strict `<`, for what is behind the
