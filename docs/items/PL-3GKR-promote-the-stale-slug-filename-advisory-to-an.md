@@ -3,11 +3,13 @@ id: PL-3GKR
 title: Promote the stale-slug filename advisory to an error now the count is zero, once PL-Y5JX's touches-coupling warning exists to make renaming safe
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: slug-rename-on-write
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/items/PL-08SS-simulationview-handle-fork-and-handle-here-fork.md, docs/items/PL-ZWQS-balance-quality-yml-s-two-test-parts-whose.md, docs/items/PL-Y2SL-a-learner-who-pauses-the-trunk-can-branch-there.md, docs/items/PL-75P5-a-refused-branch-stays-on-screen-through-a.md
 added: 2026-09-19
+closed: 2026-10-18
+pr: 1553
 verify: grep -q 'def test_a_drifted_item_filename_is_an_error' subprojects/docket/tests/test_checks.py
 falsifies: _has(advisories
 ---

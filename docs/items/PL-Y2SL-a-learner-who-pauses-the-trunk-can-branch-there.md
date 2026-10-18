@@ -7,7 +7,7 @@ status: done
 classes: feature
 feature: scenario-branching
 milestone: v0.5.24
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/run_definition.py, docs/ARCHITECTURE.md, docs/MODEL.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py, tests/unit/test_chart_frame.py, docs/items/PL-0LG6-simulationview-add-run-leaves-no-frame-owed-so.md, docs/items/PL-08SS-simulationview-handle-fork-and-handle-halt-fork.md
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/run_definition.py, docs/ARCHITECTURE.md, docs/MODEL.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py, tests/unit/test_chart_frame.py, docs/items/PL-0LG6-simulationview-add-run-leaves-no-frame-owed-so.md, docs/items/PL-08SS-simulationview-handle-fork-and-handle-here-fork.md
 added: 2026-10-12
 closed: 2026-10-12
 pr: 1453

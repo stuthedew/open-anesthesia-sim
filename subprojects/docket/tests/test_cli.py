@@ -33,6 +33,7 @@ from docket.cli import build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
 from docket.release import TAG_SCRIPT, tag_confirmation
+from docket.store import filename_for
 from docket.vcs import FETCHED, Fetch, commands_written_here, leading_ids, lost, records_on_base
 from docket.verify import LANDED_GUARD, GitUnanswered
 
@@ -53,12 +54,36 @@ added: 2026-08-01
 """
 
 
-def _store(tmp_path: Path, *documents: str) -> Path:
+def _store(tmp_path: Path, *documents: str, positional: bool = False) -> Path:
+    """A store holding `documents`, each under the name `docket` would give it.
+
+    `positional` names each `item-N.md` instead, for a test that never runs
+    `check` and reads its files back by position. Such a name has drifted from
+    its title, which `check` refuses since `PL-3GKR`.
+    """
     items = tmp_path / "items"
     items.mkdir()
     for index, document in enumerate(documents):
-        (items / f"item-{index}.md").write_text(document, encoding="utf-8")
+        path = items / (f"item-{index}.md" if positional else _filename(document, index))
+        if path.exists():  # a duplicate id, which a broken-store test writes on purpose
+            path = items / f"item-{index}.md"
+        path.write_text(document, encoding="utf-8")
+        _FIRST_WRITTEN.setdefault(items, path)
     return items
+
+
+#: The first file each `_store` call wrote, which `_item_text` reads back.
+_FIRST_WRITTEN: dict[Path, Path] = {}
+
+
+def _filename(document: str, index: int = 0) -> str:
+    """The name `docket` would give `document`, since a drifted one is an error (`PL-3GKR`).
+
+    A document with no id or title has no such name, so it falls back to its
+    position in the store, which is what every test wrote before the promotion.
+    """
+    item = parse_item(document)
+    return filename_for(item) if item.identifier and item.title else f"item-{index}.md"
 
 
 def _own_settings(root: Path) -> None:
@@ -494,7 +519,7 @@ def test_a_withdrawal_warns_where_the_brief_has_not_declared_the_file_it_changes
     that fires every run is one nobody reads (`PL-ZBJ0`).
     """
     undeclared = WITHDRAWING.replace("touches: items\n", "touches: a.py\n")
-    store = _store(tmp_path, MATCHED, undeclared)
+    store = _store(tmp_path, MATCHED, undeclared, positional=True)
 
     assert (
         _run("withdraw", "PL-D2D2", "PL-F6F6", "--because", "PL-H8H8", "--items", str(store)) == 0
@@ -1046,7 +1071,7 @@ def test_verify_refuses_a_base_no_candidate_resolved(
         subprocess.run(["git", "config", setting, value], cwd=tmp_path, check=True)
     store = tmp_path / "docs" / "items"
     store.mkdir(parents=True)
-    (store / "item-0.md").write_text(MARKING, encoding="utf-8")
+    (store / _filename(MARKING)).write_text(MARKING, encoding="utf-8")
     subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
     subprocess.run(["git", "commit", "--quiet", "-m", "PL-M4RK Seed"], cwd=tmp_path, check=True)
 
@@ -1160,7 +1185,7 @@ def _reading_repo(tmp_path: Path) -> tuple[Path, str]:
     """
     root = tmp_path / "repo"
     (root / "items").mkdir(parents=True)
-    (root / "items" / "PL-R34D-reading.md").write_text(READING, encoding="utf-8")
+    (root / "items" / _filename(READING)).write_text(READING, encoding="utf-8")
     (root / "README.md").write_text("nothing here yet\n", encoding="utf-8")
     # A real checkout, for the reason `_release_repo` gives: the scope is read
     # from a diff, so a stub would test the stub.
@@ -1282,7 +1307,7 @@ def test_the_replay_scope_reads_the_store_the_run_was_pointed_at(tmp_path: Path)
     """
     root, base = _reading_repo(tmp_path)
     store = root / "items"
-    item = store / "PL-R34D-reading.md"
+    item = store / _filename(READING)
     item.write_text(
         item.read_text(encoding="utf-8").replace("classes: perf", "classes: perf, defect"),
         encoding="utf-8",
@@ -2874,7 +2899,7 @@ def test_triage_decides_nothing_and_writes_nothing(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Priority, effort, classes and feature are judgment and stay with the session."""
-    store = _store(tmp_path, UNTRIAGED)
+    store = _store(tmp_path, UNTRIAGED, positional=True)
     before = (store / "item-0.md").read_text()
 
     assert _run("triage", "--items", str(store)) == 0
@@ -3463,10 +3488,8 @@ def test_settings_are_read_from_the_repository_root_not_the_store_s_parent(
     (root / "docket.toml").write_text('[docket]\nknown_classes = ["weather"]\n', encoding="utf-8")
     store = root / "docs" / "items"
     store.mkdir(parents=True)
-    (store / "PL-0001-forecast.md").write_text(
-        READY.replace("PL-B1B1", "PL-0001").replace("classes: perf", "classes: weather"),
-        encoding="utf-8",
-    )
+    forecast = READY.replace("PL-B1B1", "PL-0001").replace("classes: perf", "classes: weather")
+    (store / _filename(forecast)).write_text(forecast, encoding="utf-8")
 
     assert _run("check", "--items", str(store)) == 0
 
@@ -5580,8 +5603,9 @@ def _shallow_pair(tmp_path: Path) -> Path:
     """
     origin = tmp_path / "origin"
     (origin / "items").mkdir(parents=True)
-    (origin / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
-    (origin / "items" / "PL-M1BC-claimed.md").write_text(READY.replace("PL-B1B1", "PL-M1BC"))
+    for identifier in ("PL-0001", "PL-M1BC"):
+        document = READY.replace("PL-B1B1", identifier)
+        (origin / "items" / _filename(document)).write_text(document)
     dated = os.environ | {
         "GIT_AUTHOR_DATE": "2026-08-20T12:00:00+00:00",
         "GIT_COMMITTER_DATE": "2026-08-20T12:00:00+00:00",
@@ -6564,9 +6588,11 @@ def test_record_needs_a_number(tmp_path: Path) -> None:
 def _owed_project(tmp_path: Path, *, store: str = "docs/items") -> Path:
     """A clone whose `origin/main` holds a shipped closure recording no `pr`, plus work.
 
-    Under a drifted file name as well, which is what gives the grooming counts
-    below an advisory: the missing `pr` was one when this was written and is
-    the error `check` raises on a landed closure since `PL-HMZZ`. It stays in
+    And an open item whose `verify:` reads a file its `touches` omit, which is
+    what gives the grooming counts below an advisory. The missing `pr` was one
+    when this was written and is the error `check` raises on a landed closure
+    since `PL-HMZZ`. A drifted file name was the advisory after that, and is an
+    error since `PL-3GKR`. It stays in
     the fixture because it is the one finding about a closure that a git read
     stands behind - the read that `PL-T441` had taking its path from the wrong
     place.
@@ -6585,7 +6611,7 @@ def _owed_project(tmp_path: Path, *, store: str = "docs/items") -> Path:
     origin = tmp_path / "origin"
     items = origin / store
     items.mkdir(parents=True)
-    closed = "PL-K7QX-an-older-title.md"
+    closed = _filename(RECORD_ITEM.format(id="PL-K7QX", status="ready", extra=""))
 
     def git(*args: str) -> None:
         subprocess.run(["git", *args], cwd=origin, check=True, capture_output=True)
@@ -6597,7 +6623,10 @@ def _owed_project(tmp_path: Path, *, store: str = "docs/items") -> Path:
     )
     for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
         git("config", key, value)
-    (items / "PL-B1B1-a-ready-item.md").write_text(READY, encoding="utf-8")
+    (items / _filename(READY)).write_text(
+        READY.replace("added:", "verify: grep -q z notes.md\nadded:"), encoding="utf-8"
+    )
+    (origin / "notes.md").write_text("z\n", encoding="utf-8")
     (items / closed).write_text(
         RECORD_ITEM.format(id="PL-K7QX", status="ready", extra=""), encoding="utf-8"
     )
@@ -7786,7 +7815,7 @@ def _written_repo(tmp_path: Path) -> Path:
     """A checkout whose base holds one open item with a legacy command, and a branch."""
     root = tmp_path / "repo"
     (root / "docs" / "items").mkdir(parents=True)
-    (root / "docs" / "items" / "PL-K7QX-a.md").write_text(OPEN_ITEM, encoding="utf-8")
+    (root / "docs" / "items" / _filename(OPEN_ITEM)).write_text(OPEN_ITEM, encoding="utf-8")
     (root / "docket.toml").write_text(
         '[docket]\nverify_allowlist_from = "2026-09-24"\n', encoding="utf-8"
     )
@@ -7800,7 +7829,7 @@ def _written_repo(tmp_path: Path) -> Path:
 
 
 def _edit_item(root: Path, old: str, new: str) -> None:
-    path = root / "docs" / "items" / "PL-K7QX-a.md"
+    path = root / "docs" / "items" / _filename(OPEN_ITEM)
     path.write_text(path.read_text(encoding="utf-8").replace(old, new), encoding="utf-8")
 
 
@@ -8124,7 +8153,7 @@ def test_check_advises_on_a_stale_touches_path_in_a_real_repository(
     """
     root = tmp_path / "repo"
     (root / "items").mkdir(parents=True)
-    (root / "items" / "PL-B1B1-ready.md").write_text(
+    (root / "items" / _filename(READY)).write_text(
         READY.replace("touches: a.py", "touches: a.py, gone.py, old/, planned.py")
     )
 
@@ -8208,7 +8237,7 @@ def test_show_says_an_undated_item_has_no_known_age_and_a_closed_one_nothing(
 
 def test_set_writes_a_payoff(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """The field is written by command, like every other field triage answers."""
-    store = _store(tmp_path, READY)
+    store = _store(tmp_path, READY, positional=True)
     line = "a renamed CI job stops blocking merges forever"
 
     assert _run("set", "PL-B1B1", "--payoff", line, "--items", str(store)) == 0
@@ -8225,7 +8254,7 @@ def test_set_writes_a_deferral_and_refuses_one_with_no_reason(
     A value naming no reason is refused at the write, in `docket check`'s own
     words, because that half of the rule needs no roadmap to decide.
     """
-    store = _store(tmp_path, READY)
+    store = _store(tmp_path, READY, positional=True)
 
     assert _run("set", "PL-B1B1", "--deferred-from", "v0.6.0", "--items", str(store)) == 1
     assert "gives no reason" in capsys.readouterr().out
@@ -8480,7 +8509,8 @@ added: 2026-08-20
 
 
 def _item_text(store: Path) -> str:
-    return (store / "item-0.md").read_text(encoding="utf-8")
+    """The text of the first item `_store` wrote into `store`, whatever its name."""
+    return _FIRST_WRITTEN.get(store, store / "item-0.md").read_text(encoding="utf-8")
 
 
 def test_set_writes_fields_in_canonical_order(tmp_path: Path) -> None:
@@ -8490,7 +8520,7 @@ def test_set_writes_fields_in_canonical_order(tmp_path: Path) -> None:
     reordered prose or renamed the file would put a change nobody asked for
     into a diff about something else (`PL-LBR6`).
     """
-    store = _store(tmp_path, SCRAMBLED)
+    store = _store(tmp_path, SCRAMBLED, positional=True)
 
     assert _run("set", "PL-C3C3", "--feature", "tidy", "--items", str(store)) == 0
 
@@ -8511,7 +8541,7 @@ def test_set_refuses_an_unknown_field(tmp_path: Path, capsys: pytest.CaptureFixt
     exists, `docket record` is its writer, and an abbreviation that lands on a
     different field is the silent acceptance this refusal exists to stop.
     """
-    store = _store(tmp_path, READY)
+    store = _store(tmp_path, READY, positional=True)
     for flag in ("--priorty", "--pr"):
         with pytest.raises(SystemExit) as stop:
             _run("set", "PL-B1B1", flag, "2", "--items", str(store))
@@ -8542,7 +8572,7 @@ def test_set_refuses_to_replace_a_recorded_value_unless_told_to(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Replacing a value nobody looked at is the duplicate-key hazard through the front door."""
-    store = _store(tmp_path, READY)
+    store = _store(tmp_path, READY, positional=True)
 
     assert _run("set", "PL-B1B1", "--priority", "P2", "--items", str(store)) == 1
 
@@ -8557,7 +8587,7 @@ def test_set_refuses_to_replace_a_recorded_value_unless_told_to(
 
 def test_set_moves_a_status_without_being_told_to_overwrite(tmp_path: Path) -> None:
     """A status is a position in a lifecycle, and moving it is what triage does."""
-    store = _store(tmp_path, CAPTURED)
+    store = _store(tmp_path, CAPTURED, positional=True)
 
     assert (
         _run(
@@ -8589,7 +8619,7 @@ def test_set_refuses_a_write_the_checker_would_fail_and_says_why(
     `ready` owes a priority and an effort; a safety class owes the top band.
     Neither rule is restated by `set`, and either refuses the write whole.
     """
-    store = _store(tmp_path, CAPTURED)
+    store = _store(tmp_path, CAPTURED, positional=True)
 
     assert _run("set", "PL-D4D4", "--status", "ready", "--items", str(store)) == 1
     out = capsys.readouterr().out
@@ -8685,7 +8715,7 @@ def test_set_holds_a_command_it_writes_to_the_admitted_shapes_whatever_the_item_
     (`PL-1P5V`).
     """
     old = OPEN_ITEM.replace("id: PL-K7QX", "id: PL-F6F6")
-    store = _store(tmp_path, old)
+    store = _store(tmp_path, old, positional=True)
     (tmp_path / "docket.toml").write_text(
         '[docket]\nverify_allowlist_from = "2026-09-24"\n', encoding="utf-8"
     )
@@ -8721,7 +8751,7 @@ def test_set_refuses_a_verify_that_already_passes(
     The command runs with the line written, which is the only tree it passes
     on, and a refusal puts the file back as it was.
     """
-    store = _store(tmp_path, OPEN_ITEM)
+    store = _store(tmp_path, OPEN_ITEM, positional=True)
     probe = "grep -qF 'self-match-probe' items/item-0.md"
 
     assert _run("set", "PL-K7QX", "--verify", probe, "--overwrite", "--items", str(store)) == 1
@@ -8744,7 +8774,7 @@ def test_set_refuses_a_verify_whose_phrase_its_file_wraps(
     whatever the work does, so it was written at exit 0; its `! grep` passes
     and was refused as work already landed. Both are refused naming the lines.
     """
-    store = _store(tmp_path, OPEN_ITEM)
+    store = _store(tmp_path, OPEN_ITEM, positional=True)
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "MODEL.md").write_text("It feeds two rates and\none volume.\n")
     write = ("set", "PL-K7QX", "--overwrite", "--items", str(store), "--verify")
@@ -8779,7 +8809,7 @@ def test_set_refuses_a_file_it_could_not_rewrite_faithfully(
     scalar = READY.replace("touches: a.py\n", "touches: a.py\npayoff: >-\n  buys a thing\n")
     for name, document in (("a", doubled), ("b", unknown), ("c", unread), ("d", scalar)):
         (tmp_path / name).mkdir()
-        store = _store(tmp_path / name, document)
+        store = _store(tmp_path / name, document, positional=True)
 
         assert _run("set", "PL-B1B1", "--feature", "x", "--items", str(store)) == 1
 
@@ -8798,7 +8828,7 @@ def test_new_and_set_refuse_a_value_holding_a_newline(
     store is as it was - for `new` with two titles, the clean one included,
     since a refusal after the first write would leave half a capture.
     """
-    store = _store(tmp_path, READY)
+    store = _store(tmp_path, READY, positional=True)
 
     assert _run("new", "first line\nsecond line", "--items", str(store)) == 1
     out = capsys.readouterr().out
@@ -8831,7 +8861,7 @@ def test_new_strips_the_space_around_a_title_rather_than_refusing_it(tmp_path: P
 def test_set_removes_a_field_given_an_empty_value(tmp_path: Path) -> None:
     """The renderer omits what is empty, so an empty value is how a field is unset."""
     withheld = READY.replace("added:", "not-delegable: wants the strongest model\nadded:")
-    store = _store(tmp_path, withheld)
+    store = _store(tmp_path, withheld, positional=True)
 
     assert _run("set", "PL-B1B1", "--not-delegable", "", "--overwrite", "--items", str(store)) == 0
 
@@ -9846,7 +9876,7 @@ def test_generators_misread_sorts_by_the_fact_and_puts_missing_lines_last(
     each was typed in. A head stating none is listed last, never left out.
     """
     store = _overlapping_heads(tmp_path)
-    (store / "item-1.md").write_text(
+    (store / "PL-5050-another-reader-of-one-record.md").write_text(
         _clustered(
             "PL-5050",
             "Another reader of one record",

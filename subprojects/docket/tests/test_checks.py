@@ -2128,20 +2128,20 @@ def test_a_drifted_filename_names_the_items_whose_touches_declare_it() -> None:
         touches=("docs/items/PL-TFWR-a-title-it-no-longer-has.md",),
     )
 
-    advisories = analyze([drifted, declarer], TODAY).advisories
+    errors = analyze([drifted, declarer], TODAY).errors
 
-    assert _has(advisories, "Another item's `touches` declares PL-TFWR (by PL-3V6C)")
-    assert _has(advisories, "repair those entries in the same commit")
+    assert _has(errors, "Another item's `touches` declares PL-TFWR (by PL-3V6C)")
+    assert _has(errors, "repair those entries in the same commit")
 
 
 def test_a_drifted_filename_nobody_declares_says_nothing_about_declarations() -> None:
     """No coupling, no sentence: the common case stays one line."""
     drifted = _item("PL-TFWR", path="PL-TFWR-a-title-it-no-longer-has.md")
 
-    advisories = analyze([drifted], TODAY).advisories
+    errors = analyze([drifted], TODAY).errors
 
-    assert _has(advisories, "no longer generates")
-    assert not _has(advisories, "Another item's `touches` declares")
+    assert _has(errors, "no longer generates")
+    assert not _has(errors, "Another item's `touches` declares")
 
 
 def test_a_filename_that_does_not_match_its_title_is_reported() -> None:
@@ -2152,33 +2152,50 @@ def test_a_filename_that_does_not_match_its_title_is_reported() -> None:
     """
     drifted = _item("PL-K7QX", path="PL-K7QX-do-some-entirely-other-thing.md")
 
-    advisories = analyze([drifted], TODAY).advisories
+    errors = analyze([drifted], TODAY).errors
 
-    assert _has(advisories, "1 item file carries a slug its title no longer generates")
-    assert _has(advisories, "PL-K7QX")
+    assert _has(errors, "1 item file carries a slug its title no longer generates")
+    assert _has(errors, "PL-K7QX")
+
+
+def test_a_drifted_item_filename_is_an_error() -> None:
+    """`PL-3GKR`: at a drift count of zero, an error keeps it there.
+
+    An open item and a closed one alike, since a closed item is what a later
+    session looks up by name, and the finding is no longer an advisory.
+    """
+    for status, closed in (("ready", None), ("done", TODAY)):
+        drifted = _item(
+            "PL-K7QX", path="PL-K7QX-a-title-it-no-longer-has.md", status=status, closed=closed
+        )
+        report = analyze([drifted], TODAY)
+
+        assert _has(report.errors, "1 item file carries a slug its title no longer generates")
+        assert not _has(report.advisories, "no longer generates"), status
 
 
 def test_a_filename_matching_its_title_is_not_reported() -> None:
     matching = _item("PL-K7QX", path="PL-K7QX-do-the-thing.md")
 
     assert not _has(analyze([matching], TODAY).advisories, "no longer generates")
+    assert not _has(analyze([matching], TODAY).errors, "no longer generates")
 
 
 def test_an_item_with_no_filename_is_not_checked_for_drift() -> None:
     """Built in memory rather than read from disk: there is no name to disagree."""
     assert not _has(analyze([_item()], TODAY).advisories, "no longer generates")
+    assert not _has(analyze([_item()], TODAY).errors, "no longer generates")
 
 
 def test_every_drifted_filename_is_named_on_one_line() -> None:
     """One line, not one per file.
 
-    Nine advisory lines is the disease `PL-CW14` describes in the same
-    function: an advisory nobody can clear in the moment, printed often enough
-    to train a session to skim the one below it.
+    A store that drifts in several places reads as one finding to fix rather
+    than a wall of lines.
     """
     drifted = [_item(f"PL-B1B{n}", path=f"PL-B1B{n}-a-title-it-no-longer-has.md") for n in range(3)]
 
-    named = [m for m in analyze(drifted, TODAY).advisories if "no longer generates" in m]
+    named = [m for m in analyze(drifted, TODAY).errors if "no longer generates" in m]
 
     assert len(named) == 1
     assert "3 item files carry" in named[0]

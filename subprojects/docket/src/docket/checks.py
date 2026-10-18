@@ -2776,21 +2776,18 @@ def _check_filenames(report: Report, config: Config) -> None:
     session finds an item by hand, so a stale slug sends it to the wrong
     mental model of what the item is about.
 
-    An advisory rather than an error, and the reason is the remedy rather
-    than the rule. Deriving the slug and comparing it is exactly decidable,
-    which is what `CLAUDE.md` reserves hard failure for; renaming the file is
-    not, because the session that would do it has to know who else is holding
-    that file first. A rename arriving as a side effect of an unrelated
-    command is how `PL-36R4` became a rename-against-edit conflict for
-    whoever merged second, on 2026-09-08, and an error here would force
-    exactly that: nine files on this store carry drift today, so `make check`
-    would fail until someone renamed all nine in one pass, against whatever
-    branches were open at the time.
+    An error, since `PL-3GKR`. Deriving the slug and comparing it is exactly
+    decidable, which is what `CLAUDE.md` reserves hard failure for. It was an
+    advisory while nine files carried drift, because an error would have
+    forced one rename pass against whatever branches were open, and a rename
+    against someone else's edit is how `PL-36R4` conflicted on 2026-09-08. The
+    advisory then fired for weeks with nobody acting on it. At a count of
+    zero, an error keeps it at zero: the session that edits a title renames
+    its one file in the same commit. It holds closed items too, because a
+    closed item is what a later session looks up by name.
 
-    Named in one line rather than one per file. Nine advisory lines is the
-    disease `PL-CW14` describes in the same function - an advisory nobody can
-    clear in the moment, printed often enough to train a session to skim the
-    one below it.
+    Named in one line rather than one per file, so a store that drifts in
+    several places reads as one finding to fix rather than a wall of lines.
 
     Declines on an item carrying no path: those are built in memory rather
     than read from disk, and there is no filename to disagree with.
@@ -2798,7 +2795,7 @@ def _check_filenames(report: Report, config: Config) -> None:
     **And it says when the rename it proposes would break a declaration.**
     Another item's `touches` may name the file by full path, which is
     legitimate - `PL-3V6C`'s whole deliverable was editing two briefs - so
-    without this the advisory is an instruction to break a declaration, issued
+    without this the error is an instruction to break a declaration, issued
     to a reader with no reason to look (`PL-Y5JX`). `_check_touched_items`
     above catches the break afterwards; naming it here is what lets a session
     repair both halves in the one commit, which is the difference between a
@@ -2819,7 +2816,7 @@ def _check_filenames(report: Report, config: Config) -> None:
         for item in in_order
         if item.path in declared
     ]
-    report.advisories.append(
+    report.errors.append(
         f"{len(drifted)} item file{'' if one else 's'} carr{'ies' if one else 'y'} a slug "
         f"{'its' if one else 'their'} title no longer generates "
         f"({', '.join(item.identifier for item in in_order)}); "
