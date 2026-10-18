@@ -36,10 +36,13 @@ session. Where the two standards compete for a session, the simulator wins.
 **Effort follows this standard too, for the work a session controls.** A session
 cannot change its own effort level - that is the owner's lever and
 `docs/maintainer.md` carries it - but it sets the effort of every subagent and
-workflow agent it spawns. Apparatus work here does not warrant `max`: `high` is
-the default, and a mechanical sweep is a candidate for lower. Reserve the top of
-the range for the simulator, where the safety-critical standard applies (project
-owner, 2026-09-19, ratified, over running every agent at `max`).
+workflow agent it spawns. Apparatus work here does not warrant `xhigh` or
+`max`. Use `high` by default, and consider a lower level for a mechanical
+sweep. Reserve the top of the range for the simulator, where the
+safety-critical standard applies (project owner, 2026-09-19, ratified, over
+running every agent at `max`). On Opus 5.5 the owner chose `high` over `xhigh`
+for apparatus sessions too (`docs/maintainer.md`, 2026-10-17, ratified,
+`PL-SW0B`).
 
 ## What a test on this side is for
 

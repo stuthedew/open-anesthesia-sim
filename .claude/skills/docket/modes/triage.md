@@ -37,13 +37,11 @@ file is already edited on <branch>` is that case: not work in flight, so
 answer here is still a second resolution of the same file. Skip it the same
 way, and say in the reply which branch you left it to.
 
-**The mark now means the edit is genuinely unmerged, which it did not before.**
-It used to be computed from the item files a branch's commits touched, without
-asking whether the base already held them — and a squash merge keeps none of a
-branch's commits, so the branch stayed ahead forever and kept reporting edits
-that had landed. One pass was told to skip four of its five items and all four
-were byte-identical to `origin/main`'s copies (`PL-8MJ3`). It is now checked
-against the base's own tip, so a skip is worth obeying.
+**The mark means the edit is genuinely unmerged, so a skip is worth obeying.**
+It is checked against the base's own tip, because a squash merge keeps none of
+a branch's commits. Read from those commits alone, the mark went on reporting
+edits that had already landed. One pass was told to skip four of its five
+items, and all four were byte-identical to `origin/main`'s copies (`PL-8MJ3`).
 
 What it still cannot promise is that the ref it names is the *only* one. In that
 same pass one of the four was a real collision, answered an hour later on a
@@ -330,13 +328,12 @@ Triaging an item to `ready` means naming the command that proves it done.
 commitment to do work and "what would prove this?" is the first thing that
 becomes answerable.
 
-**Run the command before you write it into the item.** All six commands that
-ever existed here were wrong in the same two ways and none had been executed:
-`--cov=` was given a file path where `pytest-cov` expects a dotted module, and
-the run was scoped to one test file, which makes lines covered by the rest of
-the suite read as uncovered and puts `--cov-fail-under=100` out of reach. An
-unrun command fails after a worker has done the work, which costs a round trip
-and the owner's attention.
+**Run the command before you write it into the item.** An unrun command fails
+after a worker has done the work, which costs a round trip and the owner's
+attention. On 2026-08-30 the six commands recorded so far had never been run,
+and all six were wrong in the same two ways. `--cov=` was given a file path
+where `pytest-cov` expects a dotted module, and the run was scoped to one test
+file. The list of admitted shapes below refuses both mistakes.
 
 **Run it and watch it fail, not merely run it.** A command that passes on a
 tree without the work proves nothing: `docket verify` accepts a delegated
@@ -406,15 +403,6 @@ the store are in the same state, which is context rather than a backlog to
 clear in one pass — a command written away from its work is how every wrong one
 here came to exist, so each is repaired as its item is started.
 
-**From 2026-09-23 a `-k` is refused rather than remembered.** `docket check`
-errors on, and `docket set` will not write, a command captured from that date
-whose `&&` chain narrows a `pytest` run over `tests/` or
-`subprojects/docket/tests/` with `-k` - wherever the clause stands, since ahead
-of the `grep` it answers 5 and behind it it re-proves `make check` (`PL-Q8RQ`).
-A run piped into another command, one carrying `--cov`, and one over any other
-tree are left alone. The five open commands of the shape on 2026-09-22 are
-grandfathered, and lose it as their items are started.
-
 **What the exit status is read to mean once the command is recorded** is one
 contract - `subprojects/docket/README.md` § "What a `verify:` exit status
 proves, and to whom" - and two of its consequences fall on the author. Exit 0
@@ -471,16 +459,10 @@ then fails was most of what that replay would have cost. So a legacy command
 now leads with its `grep` and runs the health check behind it, and what is
 stripped as its item starts is still that trailing clause.
 
-**The `pytest` half of that is now refused rather than remembered.** `docket
-set` will not write, and `docket check` errors on, a command captured from
-2026-09-20 that runs `pytest` over `tests/` or `subprojects/docket/tests/`
-while another clause stands beside it - the shape 82 open commands carried
-when this rule landed, 57 on 2026-09-22, and `PL-FZ58` costed at 59% of a
-whole-store replay. The rest of it - `doc_check.py check` and `bin/docket
-check`, which that rule left to prose because which clause discriminates
-depends on the item's work (`PL-09G9`) - is refused from 2026-09-24 by the
-list above, which admits neither; an item whose work is making one of them
-pass says so in `not-delegable:`.
+**The list admits none of these health checks.** `docket set` will not write,
+and `docket check` errors on, a new command that runs the file's `pytest`,
+`doc_check.py check` or `bin/docket check`. An item whose work is making one of
+the last two pass says so in `not-delegable:`.
 
 The coverage run is the one that goes wrong loudly, and the list refuses both
 ways it has. `--cov=` takes the **dotted module**
@@ -513,9 +495,10 @@ means writing a command with nothing left to run it against.
 **Once the item is closed the command is a record, and it is not rewritten.** A
 closed `verify:` says what was run — it failed before the work and passed after,
 on a tree that no longer exists — rather than what still runs today. It stops
-resolving as a matter of course: 14 of the 179 closed items carrying one no
-longer do, and each of the 14 is later work correctly consuming what its
-predecessor established, four of them `grep '^blocked-by: PL-…'` commands
+resolving as a matter of course. On 2026-09-04, 14 of the 179 closed items
+carrying one no longer resolved. Each of the 14 was later work correctly
+consuming what its predecessor established, four of them
+`grep '^blocked-by: PL-…'` commands
 written in the expectation of stopping. So a dead command on a closed item is
 not a defect and there is nothing to repair. Re-pointing one replaces the
 command that proved the work with one that never ran it, which is why `docket
@@ -598,9 +581,10 @@ branch opened for an item it just triaged, a design question resolved, a pull
 request shepherded through review. The pull is strongest where the finding is
 most interesting, and interesting is not the test.
 
-**Escalate only a `P0` or a compounding-friction finding** - `CLAUDE.md`'s three
-tests: a check passing while its guarantee is void, an advisory being routed
-around, something upstream of every other command. Name it in a sentence or two
+**Escalate only a `P0` or a compounding-friction finding.** A finding
+compounds when it meets any of the four tests in the `CLAUDE.md` bullet
+"Friction that compounds is recommended the moment it is found, not filed".
+Name it in a sentence or two
 and hand over the means to act on it *elsewhere* - `bin/docket next` where the
 queue already holds the work, or the exact line to paste into a fresh session,
 per **Mode: recommend what to work on** in

@@ -41,7 +41,7 @@ what you did:
 
 ```bash
 docket new --feature run-scrubbing \
-  "Keep the full run in the controller's history buffer" \
+  "Draw the chart and readouts at a scrubbed instant from the run definition" \
   "Add a scrub control to the chart axis" \
   "Decide what the readouts show while scrubbed away from now"
 ```

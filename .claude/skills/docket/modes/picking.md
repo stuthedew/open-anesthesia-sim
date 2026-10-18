@@ -165,9 +165,9 @@ why they want it. `PL-0D4X` is what the older reading cost — a session prompte
 "Next workflow item" ran the bare command, was handed the product lane's pick,
 and started it.
 
-`docket next` now names the lane of its own answer and the other lane's pick,
-so a bare call in a lane-named session says so in its own output. Read that
-line before the item.
+`docket next` names the lane of its own answer and the other lane's pick, so
+a bare call in a lane-named session shows the mismatch in its own output. Read
+that line before the item.
 
 **Otherwise ask for a lane only when another session is genuinely running.**
 The owner runs two sessions at once precisely so one can take the simulator
@@ -175,6 +175,9 @@ while the other takes the apparatus, and a bare `docket next` in both hands
 them the same item. Told nothing at all, ask for neither: a lane narrows the
 queue, and narrowing it for a session that is the only one running is how the
 next piece of work is worse than the one the whole queue would have offered.
+The exception is product focus. While it holds, a session given no particular
+work runs `docket next product` (`CLAUDE.md` § "What this project is",
+`PL-2866`).
 
 Two lanes and no more, because two sessions can hold a repository between them
 and four cannot. `product` is what `CLAUDE.md` holds to the specialist standard
@@ -257,11 +260,11 @@ something they already have an opinion about, and an apparatus item's does not.
 `bin/docket next` prints each lane pick's band and gate relation, which is the
 decidable half.
 
-**The sentence itself is now a field, so write it once into the item rather
-than into the reply** (`PL-WYKF`). `payoff:` holds it - one line, required at
-`ready` from 2026-09-20 - and `bin/docket show`, `next` and the digest print it
-wherever they name an item. Composing it is still judgment and still yours;
-what has changed is that composing it again next session is not. So when you
+**Write the sentence once, into the item, rather than into the reply**
+(`PL-WYKF`). `payoff:` holds it - one line, required at `ready` for items
+added from 2026-09-20 - and `bin/docket show`, `next` and the digest print it
+wherever they name an item. Composing it is judgment and yours, but it is done
+once rather than again in every session. So when you
 meet an item that has none, write it as you start the item - the advisory
 `bin/docket check` raises names exactly the ones `next` is about to offer - and
 when an item has one, offer it rather than paraphrasing it:
@@ -289,9 +292,10 @@ grounds are the ones this project already states, not a new list: a `P0`, which
 precedes feature work by its own rule in
 `.claude/skills/docket/modes/start.md`; `ROADMAP.md`'s own exception for a
 finding that is `safety` or `science`, or whose problem predates the freeze;
-and `CLAUDE.md`'s three compounding-friction tests — a check passing while the
+and `CLAUDE.md`'s four compounding-friction tests — a check passing while the
 guarantee it stands for is void, an advisory being routed around, something
-sitting upstream of every other command. Being the obvious next step of the
+sitting upstream of every other command, and a cost paid again on every run,
+session or commit at a measured rate. Being the obvious next step of the
 conversation is **not** one of them, and neither is wanting to do it. Where
 none of the grounds hold, the item is still worth naming — say plainly that it
 is off-gate and let the owner weigh it, rather than dressing it as what the

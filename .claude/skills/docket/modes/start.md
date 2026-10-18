@@ -8,8 +8,8 @@ page and decides which file a session reads.
 
 ## Mode: start an item
 
-**First, ask whether anybody else is already on it: `git fetch origin` and
-then `bin/docket show <id>`, which marks it `IN FLIGHT` where a branch has
+**First, ask whether anybody else is already on it: `bin/docket show <id>`,
+which fetches before it reads and marks the item `IN FLIGHT` where a branch has
 claimed it or is named for it, `STATUS HELD` where a branch moved its status
 (a triage or grooming pass, or a close-out), and names the refs it could not read.** This is the one step with no other guard. `docket next`
 excludes in-flight work, so a session that got here through `next` is already
@@ -18,16 +18,13 @@ covered — but an item named by the project owner skips `next` entirely, and
 backwards: naming an item is the higher-confidence path and was the one with
 no check.
 
-**The fetch is not optional, and it is the half that was missed.** Since
-`PL-XBV4` every read command - `show` and `flight` among them - fetches once
-before it reads, and prints which moment its refs are from whenever they are
-not its own fetch; `--no-fetch` is for a bare or offline checkout, and the
-line the command then prints says what the answer rests on. Read that line:
-without a fetch the answer is as old as the last one. Observed
-2026-09-01: a session checked, was told nothing was in flight, and a branch
-carrying the item was pushed four minutes later — the owner caught it, not the
-tooling. Even fetched, the answer is bounded to what has been *pushed*, so
-read a clean result as "nothing visible", never "nothing".
+**Read the line that says which moment the refs are from.** Every read
+command, `show` and `flight` among them, fetches once before it reads
+(`PL-XBV4`). Under `--no-fetch`, for a bare or offline checkout, the command
+says what its answer rests on instead. Even fetched, the answer covers only
+what has been *pushed*. On 2026-09-01 a session was told nothing was in
+flight, and a branch carrying the item was pushed four minutes later. So read
+a clean result as "nothing visible", never "nothing".
 
 **Then claim it before any work: `bin/docket claim <id>`, passing each
 attribution line your commits must end with as `--trailer "Key: value"`.** It
@@ -36,21 +33,17 @@ item first, and otherwise makes one empty commit - subject `<id>: start`, a
 `Claim: <id> <branch> <session>` trailer - with the attribution lines in the
 same paragraph, since git reads a trailer from the last paragraph alone and one
 added below it afterwards turns the claim into prose. On a branch the remote
-does not have yet it pushes with `--set-upstream`, fetches again and re-reads,
-so a claim another session pushed in the same minute is seen: exit 3 then
-prints the line to yield by, and exit 4 means the claim is only in this
-checkout - the push failed, or the branch was already on the remote with a pull
-request open on it or a forge that could not be asked, and none was tried - so
-nobody else can see it until `claim` publishes it (`PL-1X56`),
-or that the remote could not be asked whether it has the branch, so nothing was
-pushed, or that git could not say whether the branch's copy there carries the
-claim, since another writer moved it after this clone fetched (`PL-20DL`). Run
-the `claim` the message prints - the same command again after a failed push, an
-unanswered remote or an uncompared copy, `--push` added once auto-merge is disarmed
-on a branch the remote has - and not `git push`, which skips the check for a
-claim another session published meanwhile (`PL-ZLJ9`, below). An upstream
-naming the default branch, which is how the web harness starts some sessions,
-is not refused as pushing elsewhere (`PL-KX73`). Who holds
+does not have yet, it pushes with `--set-upstream`, fetches again and re-reads,
+so it sees a claim another session pushed in the same minute. Exit 3 then
+prints the line to yield by. Exit 4 means the claim is only in this checkout,
+so nobody else can see it yet. The message says why: the push failed, the
+remote could not be asked, git could not compare the remote's copy, or the
+branch is already on the remote where a pull request may be armed (`PL-1X56`,
+`PL-20DL`). Run the `claim` command that the message prints, and disarm
+auto-merge first where it says to. Do not use `git push`, because it skips the
+check for a claim another session published meanwhile (`PL-ZLJ9`, below). An
+upstream naming the default branch is not refused as pushing elsewhere,
+because the web harness starts some sessions that way (`PL-KX73`). Who holds
 an item is that recorded claim, read by `claims.holdings` (`PL-MB2W` § "Design
 round, 2026-09-24"), and not whatever shape the first push happens to take;
 `show`, `flight` and `next` answer from the same read, so a takeover or a yield
@@ -292,8 +285,10 @@ answer: `.claude/skills/docket/modes/design.md`.
 
 Then decide where the work happens and act on it — do not ask. Continue here when
 this session's context is an asset (short, already about this item, just
-diagnosed it). Start fresh when it is a liability (already completed
-something else, long, or the item wants a model this session is not running).
+diagnosed it). When the session is only long, reset it in place: push, then
+ask for `/compact` (`CLAUDE.md` § "Session and tool-use efficiency",
+`PL-YJG1`). Start fresh when this session already completed something else, or
+when the item wants a model this session is not running.
 
 Then name the work after the item, because a session list is unsearchable
 otherwise:

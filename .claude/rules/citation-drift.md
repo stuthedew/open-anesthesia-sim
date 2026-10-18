@@ -23,8 +23,9 @@ loads on the files it governs.
 
 **The skills glob reaches past `SKILL.md` on purpose.** A skill whose body
 outgrows compaction's 5,000-token re-attachment cap is split into a front page
-and the mode files it points at, and `.claude/skills/docket/` is now seven such
-files carrying most of that skill's prose and nearly all of its tree facts.
+and the mode files it points at. In the docket skill, the files under
+`.claude/skills/docket/modes/` carry most of its prose and nearly all of its
+tree facts.
 Scoped to `SKILL.md` alone, this rule would have stopped loading for exactly the
 files it governs, and `tools/rules_paths_check.py` could not have said so - the
 glob still resolves, because `SKILL.md` still exists (`PL-2XM2`).
@@ -104,15 +105,6 @@ Dangling ids were counted too and are not a problem: 8 in the standing documents
 and 57 in briefs, of which every distinct one is an illustrative placeholder
 (`PL-K7QX`, `PL-B1C2`, `PL-XXXX`). A "does this id exist" check would fire only
 on documentation examples.
-
-The set above is the placeholders as they now stand, not the three literals the
-sweep met: `PL-3BZS` retired the second of them and `PL-B1C2` is its
-replacement, because the original was outside `store.ID_ALPHABET` — Crockford
-base32 *minus the vowels* — and so was an id `new_id` can never mint and
-`ID_PATTERN` never matches. The count is untouched; what changed is that this
-paragraph had been teaching a grammar the store does not have, in the document
-a session reads to learn what a placeholder *is*. `tools/fixture_id_check.py`
-now refuses one anywhere under `.claude/`.
 
 ## What the script decides, and what stays yours
 

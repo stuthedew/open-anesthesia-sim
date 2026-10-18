@@ -1933,7 +1933,7 @@ promoting process work into that band to move it up the order.
 
 **They are one problem, which is why they move together.** Each is a check or a
 report that answers confidently and wrongly, which is the first of `CLAUDE.md`'s
-three compounding-friction tests — a check passing while the guarantee it stands
+compounding-friction tests — a check passing while the guarantee it stands
 for is void:
 
 - `PL-VKGJ` — the session-start digest under-reports the grooming debt. Filed
@@ -2360,8 +2360,8 @@ from the brief's own sample and `git log origin/main`).
 **Why the queue did not offer it.** `docket next` sorts by band, placement and
 feature-nearest-done; effort is a filter, `payoff:` is prose, and nothing counts
 how often a cost recurs. Product focus sends unprompted sessions to `next
-product`, and the three compounding-friction tests in `CLAUDE.md` do not reach
-"paid every run with a measured cost". The larger gap is detection: the `checks`
+product`, and the three compounding-friction tests `CLAUDE.md` had then did not
+reach "paid every run with a measured cost". A fourth test now does (`PL-KBVW`). The larger gap is detection: the `checks`
 job's pytest step grew from 144-359 s on 2026-09-28 to about 9 minutes by
 2026-10-17 and no tool said so; `PL-H9KW` was filed by feel.
 
