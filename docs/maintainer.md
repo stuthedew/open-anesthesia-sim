@@ -460,7 +460,8 @@ behind, which re-runs each one's checks, and the next to go green merges.
 If a check fails after the update, the branch and the new `main` do not work
 together. That is the merge skew the setting now stops at the pull request
 instead of on `main`. Leave auto-merge armed and ask a session to fix the
-branch; auto-merge lands it once the fix is green. If the merge box shows
+branch; auto-merge lands it once the fix is green. The session's `bin/docket
+arm` tells it the same, so it leaves your arm in place. If the merge box shows
 conflicts and no Update branch, do not use **Resolve conflicts**. Ask a
 session to merge `main` in and resolve them.
 
