@@ -3,11 +3,11 @@ id: PL-W54S
 title: Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
 priority: P1
 effort: M
-status: ready
+status: blocked
 classes: safety, anticipated
 feature: interface-areas
-touches: docs/MODEL.md, ROADMAP.md
-blocked-by: PL-NWTM
+touches: src/anesthesia_sim/app/unconditional_set.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_unconditional_set.py, docs/MODEL.md, ROADMAP.md
+blocked-by: PL-W9P6
 added: 2026-09-16
 payoff: each top-level window's region carries the invariant tier and the name of its run, and the per-substance tier has one home in the main window, so a break-out window adds a window rather than rebuilding the region
 verify: grep -q 'def test_every_window_region_carries_the_invariant_tier_and_its_run_name' tests/unit/test_unconditional_set.py
@@ -97,3 +97,46 @@ at break-out.
 
 *Scope.* `ROADMAP.md` § "v0.6.0 - the layout is the reader's" -> "Required
 scope" item 7, beside `PL-NWTM`.
+
+## Re-confirmed 2026-10-18: changed shape, and blocked on the adapter
+
+**What is built, and what is left.** `PL-NWTM` built the unconditional set as
+data in `src/anesthesia_sim/app/unconditional_set.py` and put every run's
+values in `SimulationView.unconditional_region`, above the layout container.
+That module still says "which tier each window carries is `PL-W54S`'s". So the
+decision is recorded and the per-window shape is not built. `PL-HJPY` already
+gives the layout a tuple of windows with `windows[0]` as the main window
+(`src/anesthesia_sim/layout/model.py`).
+
+**The build, decided here** (session's call: the shape follows from the
+ratified 2026-09-16 answer above, and no placement or wording choice is in it):
+
+1. `unconditional_set.py` declares what each window's region holds, by the
+   window's place in the layout. The main window, `windows[0]`, holds the
+   invariant tier, the per-substance tier and the control-input record. Any
+   other window holds the invariant tier and the name of the run it shows.
+   The main window names its run too once another window is open. The
+   control-input record stays with the per-substance tier in the main window,
+   because like that tier it is a statement about the whole run rather than
+   about one surface.
+2. `_place_run` checks the main window's declaration rather than the set as a
+   whole, so the region is built in that shape and break-out adds a window
+   that reads the other declaration.
+3. Each window's frame also carries the use disclaimer's foot line, which
+   `PL-JSY5` stated on 2026-10-18 in `docs/MODEL.md` § "Minimum displayed
+   outputs". That line is a standing statement and not a value of the set.
+4. `tests/unit/test_unconditional_set.py` gains
+   `test_every_window_region_carries_the_invariant_tier_and_its_run_name`,
+   which the `verify:` names. The main window's refusal to close while
+   another is open stays break-out's, as the answer above says.
+
+**Moved out to `PL-F2YS`.** `ROADMAP.md` Required scope entry 20 also gave
+this item the region's width and compare mode against the chart's minimum.
+Those are layout, not the per-window declaration, and measured on 2026-10-18
+both are short: one run opens the readout row on four columns at 1366 px, and
+two runs stack two readout blocks where `docs/MODEL.md` pairs them in one.
+`PL-F2YS` carries them, and entry 20 now names it.
+
+**Blocked on `PL-W9P6`.** The adapter builds each window from the layout, so
+the per-window region is built where that code builds a window. Its thread is
+changing `src/anesthesia_sim/app/` now, and this item follows it.
