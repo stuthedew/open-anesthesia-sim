@@ -8,6 +8,7 @@ classes: infra
 touches: .github/workflows/drift.yml
 added: 2026-10-18
 closed: 2026-10-18
+pr: 1596
 payoff: every drift.yml job reaches its test results on an unchanged tree, so a red run means a dependency, a new interpreter or a test order broke the suite, and not the runner
 verify: grep -q 'check-latest: true' .github/workflows/drift.yml && grep -q 'Qt.s system libraries, for the offscreen platform plugin' .github/workflows/drift.yml && grep -q 'version_info.:3.). > .python-version' .github/workflows/drift.yml && ! grep -q 'rm -f .python-version' .github/workflows/drift.yml
 ---
