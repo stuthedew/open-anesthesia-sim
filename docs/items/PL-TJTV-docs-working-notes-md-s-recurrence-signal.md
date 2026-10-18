@@ -3,10 +3,12 @@ id: PL-TJTV
 title: docs/WORKING_NOTES.md's recurrence-signal thread names the feature as four items and lists PL-TZ7T, but bin/docket feature recurrence-signal holds five and not that one, so the thread's membership list is drifted in both directions
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: docs/WORKING_NOTES.md
 added: 2026-09-21
+closed: 2026-10-18
+pr: 1538
 payoff: the recurrence-signal thread stops describing a different feature than the store holds, so a session picking it up is not reconciling a membership list the store answers in one command
 verify: ! grep -qF ', four items.**' docs/WORKING_NOTES.md
 ---

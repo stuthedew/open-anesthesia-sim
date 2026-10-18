@@ -127,6 +127,17 @@ would see or the safety-critical standard reaches. `CLAUDE.md` divides it in
 one sentence: "The division of labour is theirs to set direction and yours to
 make it real."
 
+**Reopening a ratified decision means choosing what it was chosen over.**
+`CLAUDE.md` asks every ratified record to name, in one clause, the alternative
+it was chosen over, and putting a decision back to the owner means picking one
+of those alternatives. An answer that extends the mechanism the decision chose
+picks none of them: the same guard at a further write, a further field, a
+further site. That answer is a session's call, even though it touches a
+ratified decision. `PL-KFNP` is the worked example. Refusing a stale cardiac
+output at the write extends the guard `PL-LBQY` chose, and picks neither frozen
+compartments nor the accepted window. It was still put to the owner as a
+reopening, and the owner asked why it was theirs (`PL-JZV8`).
+
 **Resting on what the project wants does not by itself make a question
 theirs** (project owner, 2026-09-19). How a milestone records a fact about
 itself, which of two defensible phrasings a section carries, where a note

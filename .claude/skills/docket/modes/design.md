@@ -55,7 +55,10 @@ The procedure, in the order it runs:
    rule 14 carries the test, and triage.md's paragraph opening "And
    `needs-decision` says the next step is a decision, never whose" the sort:
    the owner's are the consequential questions, and resting on what the
-   project wants does not by itself make a question theirs. A round whose every question is an obvious
+   project wants does not by itself make a question theirs. The paragraph
+   after it says what counts as reopening a ratified decision, so an answer
+   that only extends the mechanism a decision chose is not put to the owner.
+   A round whose every question is an obvious
    call closes or readies its items in the round and arms its pull request
    without waiting (`#1298`).
 5. **Push item files only, and stop for the answer.** A question put to the

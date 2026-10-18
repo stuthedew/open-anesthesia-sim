@@ -3,11 +3,13 @@ id: PL-60CQ
 title: docs/WORKING_NOTES.md's PL-024 entry still says the venous pool is 1.0 L and cited twice in reference_adult.json; both stopped being true when PL-8ZJQ adopted Davis and Mapleson's 1.222 L
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: model-spec-accuracy
 touches: docs/WORKING_NOTES.md
 added: 2026-09-08
+closed: 2026-10-18
+pr: 1538
 verify: ! grep -qF '1.0 L is the Gas Man reference value' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 
@@ -55,3 +57,11 @@ unrecorded elsewhere - the v0.4.7 release row and `reference_adult.json`'s Davis
 and Mapleson entry between them appear to carry all of it. Amending it a second
 time is the outcome to avoid: the thread is resolved, so the entry has no reason
 to exist whatever numbers it holds.
+
+**Closed 2026-10-18, on a corrected premise.** The approach above says `PL-024`
+is retired, but it is still open (`status: ready`), so the thread was not fully
+resolved. The entry was deleted anyway, for the reason `docs/WORKING_NOTES.md`'s
+preamble gives: one item's own reasoning belongs in that item. `PL-024`'s brief
+already carries the entry's content, and its 2026-09-22 grooming note corrects
+the three false facts. The thread now points at `PL-024` in one sentence and is
+headed `Settled:`, since every other id it cites has closed.
