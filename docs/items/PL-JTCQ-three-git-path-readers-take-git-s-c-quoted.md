@@ -3,11 +3,12 @@ id: PL-JTCQ
 title: Three git path readers take git's C-quoted spelling of an unusual path for the path - vcs._commits_by_landing reads log --name-only and doc_check._baseline reads ls-tree, both without -z, and doc_check._deleted_paths unsets quotePath but not -z - so orphaned misses a commit that only adds a non-ASCII file, and the resident-size baseline drops a non-ASCII rule file; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/vcs.py, tools/doc_check.py, subprojects/docket/tests/test_vcs.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-06
+closed: 2026-10-18
 payoff: orphaned and the resident-size baseline read a non-ASCII path as the path it is, so a commit adding one is not lost from stranded and a rule file is not dropped from the measurement
 verify: grep -q 'def test_a_non_ascii_path_is_read_as_git_wrote_it' subprojects/docket/tests/test_vcs.py && grep -q 'def test_the_resident_baseline_reads_a_non_ascii_rule_file' tests/unit/test_doc_check.py
 falsifies: assert "-z" not in args
