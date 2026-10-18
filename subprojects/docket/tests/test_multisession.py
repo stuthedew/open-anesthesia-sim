@@ -38,10 +38,11 @@ import pytest
 
 from docket.claims import SESSION_VARIABLE
 from docket.cli import main
+from docket.store import ID_PATTERN
 
 T0 = datetime(2026, 9, 25, 13, 0, tzinfo=UTC)
 ATTRIBUTION = "Co-Authored-By: T <t@example.com>"
-ID = re.compile(r"\bPL-[0-9A-Z]{4}\b")
+ID = re.compile(rf"\b{ID_PATTERN}")
 
 #: The three ready items the seed holds, which `next` offers at the start.
 X, Y, Z = "PL-X1X1", "PL-Y2Y2", "PL-Z3Z3"
@@ -283,7 +284,7 @@ class World:
         _, out = self.docket(who, "flight")
         held: dict[str, list[str]] = {}
         for line in out.splitlines():
-            row = re.match(r"^(PL-[0-9A-Z]{4})  (\S+)\s+live\b", line)
+            row = re.match(rf"^({ID_PATTERN})  (\S+)\s+live\b", line)
             if row:
                 held.setdefault(row.group(1), []).append(row.group(2))
         return held
@@ -292,7 +293,7 @@ class World:
         """The items `next` offers, in its order."""
         _, out = self.docket(who, "next", "--limit", "50")
         return [
-            found.group(1) for found in re.finditer(r"^\s+\d+\. P\d (PL-[0-9A-Z]{4}) ", out, re.M)
+            found.group(1) for found in re.finditer(rf"^\s+\d+\. P\d ({ID_PATTERN}) ", out, re.M)
         ]
 
     def holder(self, who: str, item: str) -> str:
