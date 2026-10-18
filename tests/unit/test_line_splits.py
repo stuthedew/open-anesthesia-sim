@@ -97,6 +97,7 @@ TEXT_MODE_RUNNERS: dict[tuple[str, str], str] = {
     ): "runs recorded shell commands, and its git reads print hashes, C-quoted paths, "
     "blobs and patches",
     ("tools/doc_check.py", "measure_digest"): "runs the session-start hook under bash to size it",
+    ("tools/diff_mutation.py", "_mutmut"): "runs mutmut, whose output is its own and not git's",
     ("tools/ignore_check.py", "run_mypy"): "runs mypy, whose report is its own and not git's",
 }
 
