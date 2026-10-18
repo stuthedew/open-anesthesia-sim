@@ -39,8 +39,10 @@ a run actually steps, and names both conditions it raises on.
 for an unperfused tissue, and says that the step does not read it — the step uses
 the reciprocal in `src/anesthesia_sim/core/governing_equations.py`, which states
 the zero-flow case without a branch — because this is the form a reader of the
-specification is looking for. A property kept for the reader rather than for the
-arithmetic is what "reads like the domain" costs, and it is worth it.
+specification is looking for. It takes the blood flow as an argument, as
+$`\tau_i = V_i\lambda_{i:b}/Q_i`$ does, since a tissue group stores no flow of its
+own (`PL-HQF5`). A method kept for the reader rather than for the arithmetic is
+what "reads like the domain" costs, and it is worth it.
 
 ## A quantity with a check of its own is a type, checked once
 
