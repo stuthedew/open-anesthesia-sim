@@ -68,21 +68,22 @@ def sites(root: Path, declined: list[str]) -> list[str]:
     source's own interpreter can, and a skip said nothing (`PL-MB3F`). So is a
     live brief's front-matter field `doc_check._brief_pieces` declines to hand
     over as one statement (`PL-4J5H`).
+
+    Whether a quotation names a heading is `doc_check._cites_heading`'s answer,
+    the one the `§` form is held to, so a quotation reported here resolves once
+    it is rewritten. This check kept its own: it casefolded and kept a trailing
+    period, so `"Known limitations."` named the heading for `doc_check` and not
+    here (`PL-HHYL`).
     """
     documents = doc_check.read_docs(root)
-    headings = {
-        str(path): [doc_check._comparable(title) for title in doc_check._hash_headings(text)]
-        for path, text in documents.items()
-    }
+    headings = {str(path): doc_check._hash_headings(text) for path, text in documents.items()}
     found: list[str] = []
     for path, offset, text in doc_check._quoting_sources(root, documents, declined):
         for match in doc_check._statement_matches(POSSESSIVE_RE, doc_check.without_fences(text)):
-            quoted = doc_check._comparable(match.group("quoted"))
-            titles = headings.get(match.group("document"), ())
-            if not any(title == quoted or title.startswith(quoted + " ") for title in titles):
+            written = doc_check._normalized(match.group("quoted"))
+            if not doc_check._cites_heading(written, headings.get(match.group("document"), ())):
                 continue
             line = offset + doc_check._line_of(text, match.start()) - 1
-            written = doc_check._normalized(match.group("quoted"))
             found.append(
                 f'{path}:{line}: `{match.group("document")}`\'s "{written}" names a section; '
                 f'write it as `{match.group("document")}` § "{written}"'

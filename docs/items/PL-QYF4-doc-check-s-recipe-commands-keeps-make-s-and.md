@@ -3,12 +3,14 @@ id: PL-QYF4
 title: doc_check's _recipe_commands keeps make's @, - and + recipe prefixes on the command it hands back, so check_ruff_cache never holds an @-led ruff check to a cache-free run, and check_coverage_gate reads an @-led coverage run as differing from CI's identical one; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
+closed: 2026-10-18
+pr: 1527
 payoff: an @, - or + on a recipe line no longer switches off the ruff-cache check or invents a Makefile-versus-CI coverage difference
 verify: grep -q 'def test_a_recipe_prefix_is_stripped_before_the_command_is_read' tests/unit/test_doc_check.py
 ---
