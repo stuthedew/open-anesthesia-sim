@@ -158,6 +158,25 @@ class GuessedBase(str):
 GUESSED_BASE = GuessedBase("main")
 
 
+def unresolved_base_cause(base: str) -> str:
+    """Why `base` is a guess, as a clause a decline prints before its verdict.
+
+    Two cases reach a `GuessedBase`, and a decline has to name the one that
+    happened, because the reader picks a remedy from it (`PL-27VL`). Where no
+    candidate resolved, `default_base` returns the `GUESSED_BASE` singleton,
+    so identity tells it apart from a name that resolved after git left a
+    candidate ahead of it unanswered. Both declines that print this, `bin/docket
+    verify` and `tools/branch_id_check.py`, read it here so they cannot drift.
+    """
+    tried = ", ".join(DEFAULT_BRANCHES)
+    if base is GUESSED_BASE:
+        return f"no candidate default branch resolved here (tried {tried})"
+    return (
+        f"`{base}` resolved only after git did not answer a candidate ahead of it "
+        f"(tried {tried}), so it is not established as the default branch"
+    )
+
+
 def resolved(base: str) -> bool:
     """Whether `base` is the ref this repository calls for, as against a guess.
 

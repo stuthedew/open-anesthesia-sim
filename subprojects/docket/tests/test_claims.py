@@ -1685,6 +1685,33 @@ def test_flight_s_rows_carry_the_kind_and_state_of_the_hold_behind_each(tmp_path
     assert "  live  " not in bare
 
 
+def test_flight_s_claim_rows_print_the_holder_s_session(tmp_path: Path) -> None:
+    """A claim row carries its session token, and the caveat names the call that reads it.
+
+    A branch's age cannot tell a running session from an ended one, and
+    `get_session` on the token the claim records can (`PL-6WYD`). A claim made
+    with no session prints no token, and no pointer to a call it cannot take.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/claimed-a1b2c3")
+    repo.claim("PL-B1B1", when=T0, session="cse_01SessionToken")
+    repo.branch("claude/tokenless-d4e5f6", "main")
+    repo.claim("PL-C2C2", when=T0)
+
+    read = holdings(repo.root, now=T0 + HOUR)
+    printed = render.format_flight(read.flight(), T0 + HOUR, read=read)
+
+    rows = {line[:7]: line for line in printed.splitlines() if line.startswith("PL-")}
+    assert rows["PL-B1B1"].endswith("  session cse_01SessionToken")
+    assert "session" not in rows["PL-C2C2"]
+    assert "`live` means only that a hold is inside its 7-day lease" in printed
+    assert "`get_session` on a row's session token says whether the session" in printed
+
+    repo.git("branch", "-q", "-D", "claude/claimed-a1b2c3")
+    tokenless = holdings(repo.root, now=T0 + HOUR)
+    assert "get_session" not in render.format_flight(tokenless.flight(), T0 + HOUR, read=tokenless)
+
+
 def test_a_lapsed_claim_beside_a_later_live_claim_is_no_lapsed_row(tmp_path: Path) -> None:
     """The ordinary takeover of a dead claim: the heading would say `next` offers a held item.
 

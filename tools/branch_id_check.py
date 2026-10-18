@@ -142,7 +142,6 @@ from docket.lines import split_lines  # noqa: E402
 from docket.model import SEMVER_PATTERN  # noqa: E402
 from docket.vcs import (  # noqa: E402
     BRANCH_ID_RE,
-    DEFAULT_BRANCHES,
     _head_name,
     _items_at,
     _remotes,
@@ -155,6 +154,7 @@ from docket.vcs import (  # noqa: E402
     leading_ids,
     queue_records,
     resolved,
+    unresolved_base_cause,
     working_paths,
 )
 
@@ -530,8 +530,7 @@ def main() -> int:
         # resolved past an unanswered one, it would walk the wrong ref. Say
         # what happened instead of certifying.
         print(
-            f"branch-id: no candidate default branch resolved here "
-            f"(tried {', '.join(DEFAULT_BRANCHES)}), so there is nothing to walk from; "
+            f"branch-id: {unresolved_base_cause(base)}, so there is no base to walk from; "
             f"not checked. `git fetch origin`, or pass --base <ref>."
         )
         return 0
