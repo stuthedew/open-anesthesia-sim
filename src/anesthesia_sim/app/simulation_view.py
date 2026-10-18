@@ -132,12 +132,12 @@ from anesthesia_sim.app.theme import (
     TIME_BASE_SELECTOR_WIDTH,
     WARNING,
 )
-from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set
+from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set, window_region
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, CONCENTRATION_CHART
 from anesthesia_sim.core.concentration import fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
-from anesthesia_sim.layout.model import LayoutModel
+from anesthesia_sim.layout.model import MAIN_WINDOW, LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 
 #: The unconditional region gives the run rows three parts of its width and
@@ -535,8 +535,8 @@ class SimulationView(QWidget):
         proportion the charts and the sidebar take theirs. A box layout gives
         the record more than the splitter gives the sidebar: about 300 px at
         a 1366 px window, against the sidebar's 228, where today's record
-        lines are cut off. The seven readouts still stand in one row beside
-        it, and the exact width is `PL-W54S`'s to settle. Nothing new is
+        lines are cut off. The exact width, and whether the seven readouts
+        stand in one row beside it at that width, are `PL-F2YS`'s. Nothing new is
         drawn around the region (`PL-J8K2` Q4).
 
         Returns:
@@ -947,7 +947,9 @@ class SimulationView(QWidget):
 
         The run's set is read from `app/unconditional_set.py`, so the
         declaration rather than this method decides what the region must
-        hold. Every agent this build loads is an inhaled agent, so every run
+        hold. The region is the main window's, so it owes what
+        `window_region` returns for the main window of the layout the Areas
+        draw. Every agent this build loads is an inhaled agent, so every run
         owes `INHALED_AGENT`'s tier.
 
         Args:
@@ -963,7 +965,11 @@ class SimulationView(QWidget):
         widgets = run.unconditional_widgets()
         misplaced = []
 
-        for value in unconditional_set(INHALED_AGENT).values:
+        owed = window_region(
+            unconditional_set(INHALED_AGENT), MAIN_WINDOW, len(self._areas.model.windows)
+        )
+
+        for value in owed:
             widget = widgets.get(value)
 
             if widget is None or not _within(widget, self._unconditional_region):

@@ -104,7 +104,15 @@ STATUSES = OPEN_STATUSES + CLOSED_STATUSES
 # lower priority bands however small the task looks.
 SAFETY_CLASSES = ("safety", "science")
 
-LIST_FIELDS = ("classes", "touches", "blocked-by", "root-cause-of", "reenters", "recurrences")
+LIST_FIELDS = (
+    "classes",
+    "touches",
+    "blocked-by",
+    "root-cause-of",
+    "reenters",
+    "no-successor",
+    "recurrences",
+)
 
 # What a `resource:` may name: the one thing in the repository that more than
 # one item can want at once, so a claim on an item carrying it holds the thing
@@ -881,6 +889,13 @@ class Item:
     #: 2026-10-11, ratified, over recording it going forward only).
     #: `reentry_faults` holds each id to a `done` item closed by the filing.
     reenters: tuple[str, ...] = ()
+    #: The closed items this item answers "no successor head is owed" for:
+    #: each is a line `docket inflow` names as re-entered by three or more
+    #: filings, and this item is where the reason none is owed is written
+    #: (`PL-C4F0`). The answer dates from this item's `added:`, which closing
+    #: it does not move, so three filings that re-enter the line after that
+    #: date open the line again.
+    no_successor: tuple[str, ...] = ()
     #: The gate this item is excused from, and why, as `vX.Y.Z - why`: the
     #: version of the milestone whose gate does not hold the item, never a gate
     #: it goes to. Two kinds of item carry it: a finding made after that gate's
@@ -1793,6 +1808,7 @@ def parse_item(text: str, path: str = "") -> Item:
         misread=fields.get("misread", ""),
         impairs_generators=fields.get("impairs-generators", ""),
         reenters=lists["reenters"],
+        no_successor=lists["no-successor"],
         recurrences=lists["recurrences"],
         deferred_from=fields.get("deferred-from", ""),
         resource=fields.get("resource", ""),
@@ -1841,6 +1857,7 @@ FIELD_ORDER = (
     "misread",
     "impairs-generators",
     "reenters",
+    "no-successor",
     "recurrences",
 )
 
@@ -1879,6 +1896,7 @@ def _front_matter_values(item: Item) -> dict[str, str]:
         "misread": item.misread,
         "impairs-generators": item.impairs_generators,
         "reenters": ", ".join(item.reenters),
+        "no-successor": ", ".join(item.no_successor),
         "recurrences": ", ".join(item.recurrences),
     }
 
