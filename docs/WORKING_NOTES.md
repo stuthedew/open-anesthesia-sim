@@ -289,7 +289,7 @@ below out-of-scope work. Another section's exclusions stay silent - one the
 project has passed says what was true then, and one it has not reached is a
 decision that milestone's own scoping round may revisit.
 
-## Open thread: what the v0.2.0 architecture review left behind - PL-024, PL-6GS0
+## Settled: what the v0.2.0 architecture review left behind - PL-6GS0
 
 An independent architecture review of the v0.2.0 baseline (commit `3251ebf`)
 reported 21 findings and shipped an executable harness under `tools/` rather
@@ -317,24 +317,10 @@ be re-found: it is a standing property of equal-and-opposite accounting,
 recorded in `docs/MODEL.md` § "Selected method (as implemented)" and gated by
 the independent-solution test beside it.
 
-**PL-024 - the venous pool's grip on the first minute.** The one check that
-still reproduced at retirement, and a documentation and presentation gap
-rather than a defect: 1.0 L is the Gas Man reference value and is cited twice
-in `reference_adult.json`, so the number is the one the reference
-implementation uses and its meaning is unstated. (Amended 2026-09-03: this
-originally read "so the number is right", which is the inference
-`docs/MODEL.md` § "Source hierarchy" now forbids — a tier-3 citation says
-what a program runs on, not that a value was measured. `PL-6Q8N` carries the
-sourcing question for this parameter and the other ten.)
-Its mixing time constant is 60 - V/Q̇ = 12 s at the reference 1.0 L and
-5 L/min, which dominates the displayed mixed-venous value early in wash-in.
-Measured against a near-instant 0.01 L pool, sevoflurane at 5% delivered:
-
-```text
-t=  30 s   pooled 0.00013   near-instant 0.00030    -55.5%
-t=  60 s   pooled 0.00100   near-instant 0.00152    -34.5%
-t= 120 s   pooled 0.00482   near-instant 0.00582    -17.2%
-```
+The one finding still open is `PL-024` (document what the venous pool does to
+early mixed-venous readings). Its reasoning, corrected for the 1.222 L pool
+adopted on 2026-09-07, is in its own item rather than here (2026-10-18,
+`PL-60CQ`).
 
 **PL-6GS0 - the exact-step question.** The review's central architectural
 recommendation was that the coupled system is linear and time-invariant within
@@ -419,8 +405,11 @@ and this thread now lives in `ROADMAP.md`** — Planned-milestone item 33, "Run
 the interface pass", with the interface-pass row of "The timeline" giving it a
 position. What was decided that day: that position, written `v0.5.x` and
 sitting between v0.5.0 and v0.6.0, and that the structural half of an
-overhaul is not polish and does not wait for it (`PL-2CS8` consolidates the display constants,
-`PL-NGF7` decides the theme object, `PL-B9PY` is the component seam). No design
+overhaul is not polish and does not wait for it. Three items made up that
+structural half: `PL-2CS8` was to consolidate the display constants, `PL-NGF7`
+to let `tools/contrast_check.py` measure the disabled-state colours, and
+`PL-B9PY` to cut the component seam. All three have since closed, as the next
+paragraph records. No design
 round was authorised, so the paragraph below still governs the mockups
 themselves: they are a record of what was tried, not a starting point.
 
@@ -435,9 +424,18 @@ PySide6) was built to from the start rather than ported into, on 2026-09-15:
 `RunView` in `app/run_view.py`, `SimulationView` in `app/simulation_view.py`,
 and what either claims in `app/dashboard_frame.py`. Of the
 three named above, `PL-2CS8` (consolidate the scattered display constants)
-closed in `v0.4.11`; `PL-NGF7` (`contrast_check.py` can see no disabled-state
-colour) is deferred to the Qt port, which dissolves it rather than fixing it, and
-its expected disposition is `dropped`.
+closed in `v0.4.11`, and `PL-B9PY` closed in `v0.4.25`. `PL-NGF7`
+(`contrast_check.py` can see no disabled-state colour) was deferred to the Qt
+port on the prediction that the port would dissolve it, with an expected
+disposition of `dropped`. It closed `done` in `v0.4.26` instead (2026-09-16),
+having measured that prediction false: Qt's palette supplies the disabled
+colours, so the port's `theme.py` declares none of them either. It recorded
+disabled states as out of the contrast check's scope in
+`tools/contrast_check.py`'s module docstring, and added a check, now
+`check_authored_disabled_colours_are_measured`, that fails the build when a
+module under `app/` authors a disabled-state colour that no contrast
+requirement covers. That check was named
+`check_disabled_states_are_the_style_s` when it landed.
 
 **The interface-pass row moved twice after 2026-09-08, and each move was its
 own decision.** On 2026-09-16 it moved after item 34 and became `v0.7.x`, behind
@@ -618,7 +616,8 @@ failure is today:
   likely.
 
 **Closed 2026-09-05.** `PL-LLWN` added `tools/rules_paths_check.py`, wired
-into `make check` and CI's `floor` job, and anchored the nine entries that were
+into `make check` and into CI's `checks` job, where `PL-D551` folded the former
+`floor` job the same day, and anchored the nine entries that were
 still bare. The rule is exact - every `paths:` entry begins with `/` - so it is
 a hard error, and the message names the replacement spelling rather than only
 the offence. The `./` row above is called out separately in it, since "add a
@@ -931,8 +930,14 @@ against that ceiling today.
   reasoning does not cover a rendering backend. Option 3 reopens that
   question rather than being covered by it.
 - **It gives back `PL-KP7H`.** The paused-only hover is Flet controls
-  answering a hover. matplotlib's WebAgg canvas has its own event model, so
-  `PL-KP7H` and `PL-YLKR` would both be rebuilt against it.
+  answering a hover. matplotlib's WebAgg canvas has its own event model, so on
+  2026-09-08 this costing counted `PL-KP7H` and `PL-YLKR` as work to redo
+  against it. *(Corrected 2026-10-18, `PL-0R06`: neither was. `PL-KP7H` had
+  closed in `v0.4.11`. `PL-YLKR` closed on 2026-09-14 as design only, a
+  derivation in `docs/MODEL.md` with no code, so it carries over to any
+  canvas. The hover readout it designed was split out as `PL-YVHK` and built
+  on pyqtgraph in `v0.4.26`, so that build is what a WebAgg canvas would have
+  cost.)*
 
 **And one benefit that cuts the other way, which is not a performance
 argument.** `PL-2QMK` records that no session in the web container can
@@ -2072,11 +2077,20 @@ meant to recur - sixteen triage passes, plus release cuts and tags. Shared
 puts the true duplicate in the top 3 for 8 of 9. `PL-TZ7T` carries the full
 table.
 
-**The feature is `recurrence-signal`, four items.** `PL-TZ7T` (detect at
-`docket new`, key corrected), `PL-X5JR` (record the recurrence and surface at
-three), `PL-THLT` (infer candidate paths from the working tree, the gap
-`PL-0KQP` fell through), `PL-4JHS` (backfill what the store already paid for).
-`PL-G21K` is the separate defect underneath the cluster that started this.
+**The feature was planned on 2026-09-20 as `recurrence-signal`, four items:**
+`PL-TZ7T` (detect at `docket new`, key corrected), `PL-X5JR` (record the
+recurrence and surface at three), `PL-THLT` (infer candidate paths from the
+working tree, the gap `PL-0KQP` fell through), `PL-4JHS` (backfill what the
+store already paid for). `PL-G21K` is the separate defect underneath the
+cluster that started this.
+
+**Corrected 2026-10-18 (`PL-TJTV`): the feature the store holds is eight
+items, and all eight are closed.** `bin/docket feature recurrence-signal`
+lists them. Three come from the plan above: `PL-X5JR`, `PL-THLT` and
+`PL-4JHS`. Five were filed while it was built: `PL-DGP0`, `PL-S6FL`,
+`PL-CJ5R`, `PL-0HLS` and `PL-9VPH`. `PL-TZ7T` is not one of them, although
+the plan named it: it closed in `v0.5.0` under the `slug-rename-on-write`
+feature.
 
 **Amended 2026-09-20 on build, both halves measured** (project owner, ratified).
 Two constants moved from what this section specified, and they turned out to be

@@ -3,13 +3,15 @@ id: PL-FH61
 title: generator_check.py matches a touches path exactly, so an item declaring docs/items/<one file> is a singleton cluster: 6 of PL-G424's 21 members are invisible to it that way, and concurrent's 'same area' containment reading is the general form of the rule that would gather them
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: infra
 feature: generator-identification
 touches: tools/generator_check.py, tests/unit/test_generator_check.py
 added: 2026-09-19
+closed: 2026-10-18
+reason: Measured 2026-10-18: a containment reading would add the 7 open single-item-file declarers to docs/items (17 to 24 open) with 7 different features, so no new concentration, and would grow tests from 3 open items to 127 and docs from 0 to 101, clusters that would signal every run. Exact match is right; the module docstring now says so and names concurrent's containment reading as deliberately different.
 payoff: settles whether the generator scan hides real clusters or is right to match exactly, so the apparatus-drift family stops being re-argued from scratch
-verify: grep -q 'def test_an_item_declaring_one_item_file_joins_its_directory_cluster' tests/unit/test_generator_check.py
+verify: grep -qF 'Exact match is deliberate' tools/generator_check.py
 ---
 
 **Problem.** generator_check.py matches a touches path exactly, so an item declaring docs/items/<one file> is a singleton cluster: 6 of PL-G424's 21 members are invisible to it that way, and concurrent's 'same area' containment reading is the general form of the rule that would gather them

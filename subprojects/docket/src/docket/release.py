@@ -176,8 +176,29 @@ def is_untagged(version: str, existing: frozenset[str]) -> bool:
     """
     if not version or not existing:
         return False
-    name = version.lstrip("v")
-    return f"v{name}" not in existing and name not in existing
+    return not is_tagged(version, existing)
+
+
+def tag_name(version: str) -> str:
+    """The tag a version's release is named by: `v0.5.0` for `0.5.0` and for `v0.5.0` alike.
+
+    The one spelling of the name, because the version reaches each caller
+    written either way. A version file may declare `v0.5.0`, and a tagger that
+    wrote `f"v{version}"` named that release `vv0.5.0` (`PL-5H48`).
+    """
+    return f"v{version.strip().lstrip('v')}"
+
+
+def is_tagged(version: str, existing: frozenset[str]) -> bool:
+    """Whether a tag in `existing` names this version, the tag written with or without its `v`.
+
+    The version may be written either way too. `doc_check` and `is_untagged`
+    both ask this, and asked it two ways until `PL-5H48`: one stripped the
+    version's `v` and the other did not, so `v0.4.8` against a tag `0.4.8`
+    read tagged to one and untagged to the other.
+    """
+    name = tag_name(version)
+    return name in existing or name.removeprefix("v") in existing
 
 
 def notes_name(version: str) -> str:
@@ -268,7 +289,7 @@ def tag_confirmation(version: str, remote: str | None = None) -> str:
     from .vcs import REMOTE  # `vcs` reads this module's version grammar: a cycle at import.
 
     remote = REMOTE if remote is None else remote
-    return f"git ls-remote --tags {remote} refs/tags/v{version.strip().lstrip('v')}"
+    return f"git ls-remote --tags {remote} refs/tags/{tag_name(version)}"
 
 
 #: Where a notes file stops claiming work and starts pointing at it. Bullets
@@ -639,6 +660,31 @@ def release_notes(milestone: Milestone, today: date) -> str:
 CODE_SPAN = r"(?P<run>`+)(?!`)(?P<content>(?:(?!\n[ \t]*\n)[\s\S])+?)(?<!`)(?P=run)(?!`)"
 CODE_SPAN_AT = re.compile(CODE_SPAN)
 
+#: An autolink (CommonMark 0.31.2 § 6.5): a URI, or an email address, in angle
+#: brackets.
+AUTOLINK = (
+    r"<(?:[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\x00-\x20]*"
+    r"|[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+    r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*)>"
+)
+AUTOLINK_RE = re.compile(AUTOLINK)
+#: An attribute of an HTML tag (§ 6.6): its name, and a value where one is given.
+HTML_ATTRIBUTE = (
+    r"(?:\s+[A-Za-z_:][A-Za-z0-9_.:-]*"
+    r"""(?:\s*=\s*(?:[^"'=<>`\x00-\x20]+|'[^']*'|"[^"]*"))?)"""
+)
+#: Raw HTML (§ 6.6): an open or a closing tag, a comment, a processing
+#: instruction, a declaration or a CDATA section.
+RAW_HTML = (
+    rf"<[A-Za-z][A-Za-z0-9-]*{HTML_ATTRIBUTE}*\s*/?>"
+    r"|</[A-Za-z][A-Za-z0-9-]*\s*>"
+    r"|<!---?>|<!--(?:[^-]|-[^-]|--[^>])*-->"
+    r"|<\?[\s\S]*?\?>"
+    r"|<![A-Za-z][^>]*>"
+    r"|<!\[CDATA\[[\s\S]*?\]\]>"
+)
+RAW_HTML_RE = re.compile(RAW_HTML)
+
 #: Where a span may open, as a left-to-right scan finds it (CommonMark 0.31.2
 #: § 6.1): a backslash escape is stepped over whole, so an escaped backtick
 #: opens nothing (§ 2.4), and a run no closer matches is stepped over whole,
@@ -648,12 +694,15 @@ CODE_SPAN_AT = re.compile(CODE_SPAN)
 #: alternatives the scan consumes, and a caller keeps the matches whose `run`
 #: is set: `code_spans` and `replace_code_spans` do. The pattern carries no
 #: flags, so `verify.NON_CODE_RE` takes it into an alternation as it stands,
-#: blanking the escape and the stray run with the span. An autolink or raw HTML
-#: opening first takes a backtick inside it (§ 6.1), which only
-#: `tools/doc_check.py`'s inline reader reads; it matches `CODE_SPAN_AT` where
-#: its own scan stands on a run, so the grammar is this one.
+#: blanking the escape and the stray run with the span.
 CODE_SPAN_PATTERN = rf"\\[\s\S]|{CODE_SPAN}|`+"
-CODE_SPAN_SCAN = re.compile(CODE_SPAN_PATTERN)
+#: The same scan over Markdown, which also steps over an autolink or raw HTML
+#: whole, because one that opens first takes a backtick inside it (§ 6.1). On
+#: `<http://a`b> and `c``, the span is `c` (`PL-Q80R`). `tools/doc_check.py`'s
+#: inline reader reads the two from here, so each has one copy. They are kept
+#: out of `CODE_SPAN_PATTERN` because `verify` blanks Python with it, and
+#: `RAW_HTML` matches `<b and c>` in `if a<b and c>d:`.
+CODE_SPAN_SCAN = re.compile(rf"{AUTOLINK}|{RAW_HTML}|{CODE_SPAN_PATTERN}")
 
 
 def code_spans(text: str, start: int = 0, end: int | None = None) -> list[re.Match[str]]:

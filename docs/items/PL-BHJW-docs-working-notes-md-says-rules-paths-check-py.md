@@ -3,10 +3,12 @@ id: PL-BHJW
 title: docs/WORKING_NOTES.md says rules_paths_check.py is wired into CI's floor job, which PL-D551 folded into checks
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: docs/WORKING_NOTES.md
 added: 2026-09-06
+closed: 2026-10-18
+pr: 1538
 verify: ! grep -qE "into .make check. and CI.s .floor. job" docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 

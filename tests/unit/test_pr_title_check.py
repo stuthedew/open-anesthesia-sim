@@ -183,6 +183,8 @@ def _git_answering(**refs: dict[str, str]):
         args = list(argv[1:])
         if args[0] == "rev-parse":
             return subprocess.CompletedProcess(argv, 0, b"claude/pl-1pbv-slug\n", b"")
+        if args == ["remote"]:
+            return subprocess.CompletedProcess(argv, 0, b"origin\n", b"")
         ref = args[2] if args[0] == "ls-tree" else args[1].partition(":")[0]
         if ref in refs:
             return subprocess.CompletedProcess(argv, 0, tree(args).encode(), b"")
@@ -332,6 +334,8 @@ def test_no_pull_request_to_read_is_a_silent_skip_that_never_reads_the_trees(
     def explode(args: list[str]) -> str:
         if args[:2] == ["rev-parse", "--abbrev-ref"]:
             return "branch\n"
+        if args == ["remote"]:
+            return "origin\n"
         raise AssertionError(f"the trees must not be read when there is nothing to check: {args}")
 
     monkeypatch.setattr(pr_title_check, "_git", explode)

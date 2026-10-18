@@ -91,7 +91,7 @@ from docket.store import read_items  # noqa: E402
 # `GitUnanswered` is docket's, raised for a ref git did not read and for a
 # `WORKING_TREE` the disk did not, so a reader of either catches one class.
 from docket.vcs import GitUnanswered as GitUnanswered  # noqa: E402
-from docket.vcs import _items_at, default_base, leading_ids, read_git  # noqa: E402
+from docket.vcs import _items_at, default_base, head_branch, leading_ids, read_git  # noqa: E402
 
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
 
@@ -182,12 +182,12 @@ def closes(base: str, head: str) -> list[str]:
 def _branch() -> str | None:
     """The current branch name, or None on a detached HEAD or where git cannot say."""
     try:
-        name = _git(["rev-parse", "--abbrev-ref", "HEAD"]).strip()
+        name = head_branch(ROOT, lambda args, _root: _git(args))
     except GitUnanswered:
         # A skip under `--discover`, the only caller, like every other way the
         # lookup can fail.
         return None
-    return name if name and name != "HEAD" else None
+    return name or None
 
 
 def open_pull_request(slug: str, branch: str) -> tuple[int, str] | None:

@@ -155,6 +155,7 @@ from pathlib import Path, PurePosixPath
 from .claiming import _git
 from .claims import LAPSED, RELEASED, Hold, holdings
 from .lines import split_lines
+from .python import imports
 from .vcs import (
     REMOTE,
     MergedPullRequest,
@@ -169,6 +170,7 @@ from .vcs import (
     carried_merge,
     changed_path_args,
     default_base,
+    head_branch,
     listed_paths,
     remote_heads,
     resolved,
@@ -301,30 +303,18 @@ READ_LIST = (
 )
 
 
-def imported_modules(tree: ast.Module) -> set[str]:
-    """Every module name one file imports, in either import form.
-
-    `ast` rather than a regular expression because the question is about
-    imports and not about text: a package named in a docstring, in a fixture
-    path or in a comment is not a dependency, and several of the apparatus
-    tests here write `src/anesthesia_sim/...` as fixture data precisely because
-    they check tools that read the tree.
-    """
-    found: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            found.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            found.add(node.module)
-    return found
-
-
 def imports_product(tree: ast.Module) -> bool:
-    """Whether a file imports the simulator, which makes any file under `tests/` the simulator's."""
-    return any(
-        module == PRODUCT_PACKAGE or module.startswith(PRODUCT_PACKAGE + ".")
-        for module in imported_modules(tree)
-    )
+    """Whether a file imports the simulator, which makes any file under `tests/` the simulator's.
+
+    Read from the parsed tree by `python.imports`, rather than by a regular
+    expression, because the question is about imports and not about text: a
+    package named in a docstring, in a fixture path or in a comment is not a
+    dependency. A dynamic import of a literal name counts, as it does for
+    `tools/import_boundary_check.py`, which reads the same function. A file
+    loading `anesthesia_sim.core` through `importlib.import_module` read as
+    importing nothing here until `PL-8W1J`.
+    """
+    return any(imported.reaches(PRODUCT_PACKAGE) for imported in imports(tree))
 
 
 def is_test_file(name: str) -> bool:
@@ -392,7 +382,7 @@ def arms_on_green(path: str, tooling: Collection[str] = ()) -> bool:
     while the change raises no question for them - a judgment this module
     does not make - and asks for the reason in the report.
 
-    It is not `claims.in_queue`, which asks whether a change owes a claim and
+    It is not `vcs.in_queue`, which asks whether a change owes a claim and
     counts the roadmap and the notes as queue records, since a triage pass and
     a design round write them and nothing else (`PL-3CTW`). The two answers
     were kept apart on purpose: `ROADMAP.md` and `docs/WORKING_NOTES.md` owe
@@ -671,17 +661,17 @@ def arm(
             )
     run = _Silences(ran)
     remotes = _remotes(root, run)
-    name = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
+    name = head_branch(root, run, remotes)
     # A git that answered nothing is said as that, not as the "no branch" or
     # "no base" it would otherwise read as (`vcs.branch_state` has the case).
-    if run.reason or name in {"", "HEAD"}:
+    if run.reason or not name:
         reason = run.reason or "HEAD is on no branch, so there is no pull request to answer for"
         return Verdict(UNKNOWN, unread=(reason, *unread))
     base = default_base(root, runner=run)
     if not resolved(base):
         reason = run.reason or f"no default branch could be established to compare {name} with"
         return Verdict(UNKNOWN, branch=name, unread=(reason, *unread))
-    branch = _head_name(name, remotes)
+    branch = name
     if branch == _head_name(base, remotes):
         reason = f"HEAD is on {name}, the default branch, which opens no pull request of its own"
         return Verdict(UNKNOWN, branch=name, base=base, unread=(reason,))

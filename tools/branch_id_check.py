@@ -130,6 +130,7 @@ from docket.claims import (  # noqa: E402
     LIVE,
     Hold,
     Holdings,
+    agent_branch,
     claims_bound,
     claims_nothing,
     holdings,
@@ -141,7 +142,6 @@ from docket.lines import split_lines  # noqa: E402
 from docket.model import SEMVER_PATTERN  # noqa: E402
 from docket.vcs import (  # noqa: E402
     BRANCH_ID_RE,
-    DEFAULT_BRANCHES,
     _head_name,
     _items_at,
     _remotes,
@@ -149,10 +149,12 @@ from docket.vcs import (  # noqa: E402
     answered,
     call_git,
     default_base,
+    head_branch,
     in_queue,
     leading_ids,
     queue_records,
     resolved,
+    unresolved_base_cause,
     working_paths,
 )
 
@@ -208,7 +210,7 @@ def branch_name() -> str:
     head_ref = os.environ.get("GITHUB_HEAD_REF", "").strip()
     if head_ref:
         return head_ref
-    return _git(["rev-parse", "--abbrev-ref", "HEAD"]).strip()
+    return head_branch(ROOT, _runner)
 
 
 def _runner(argv: list[str], _root: Path) -> str:
@@ -253,7 +255,7 @@ def in_agent_namespace(name: str) -> bool:
     """
     if not name or name == "HEAD":
         return True
-    return name.lower().startswith(AGENT_BRANCH_PREFIX)
+    return agent_branch(name)
 
 
 def held(base: str) -> tuple[frozenset[str], str]:
@@ -528,8 +530,7 @@ def main() -> int:
         # resolved past an unanswered one, it would walk the wrong ref. Say
         # what happened instead of certifying.
         print(
-            f"branch-id: no candidate default branch resolved here "
-            f"(tried {', '.join(DEFAULT_BRANCHES)}), so there is nothing to walk from; "
+            f"branch-id: {unresolved_base_cause(base)}, so there is no base to walk from; "
             f"not checked. `git fetch origin`, or pass --base <ref>."
         )
         return 0

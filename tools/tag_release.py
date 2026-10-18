@@ -47,7 +47,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_config  # noqa: E402
 from docket.lines import file_text, record_text, split_lines  # noqa: E402
-from docket.release import notes_path, version_in  # noqa: E402
+from docket.release import notes_path, tag_name, version_in  # noqa: E402
 from docket.vcs import REMOTE, default_branch, find_cut, is_shallow  # noqa: E402
 
 #: `git ls-remote --exit-code`'s status where the remote answered and holds no
@@ -114,7 +114,7 @@ def run(root: Path, *, apply: bool, remote: str = REMOTE, branch: str | None = N
     if not version:
         print(f"Declined: {ref} declares no version in {version_file}, so no tag can be named.")
         return 1
-    name = f"v{version}"
+    name = tag_name(version)
     if is_shallow(root) is not False:
         print(
             "Declined: this clone is shallow, or git will not say, and a shallow"

@@ -35,13 +35,18 @@
 # purpose, so the 3.11 on PATH is a tested guarantee rather than a stale
 # default.
 #
-# The collision is one line. `src/anesthesia_sim/app_metadata.py` writes
-# `except OSError, subprocess.SubprocessError:`, the unparenthesised form PEP
-# 758 added in 3.14, so `python3 -m compileall src/` under the floor reports
-# `SyntaxError: multiple exception types must be parenthesized` in a file that
-# is correct. Sessions and exploration subagents have repeatedly reported that
-# as a syntax error on `main` and spent a round proving it is not. `PL-JQJQ`
-# carries the count and the reasoning.
+# The collision is not one file, and the list of files grows. Several modules
+# under `src/` and `tests/` use syntax the floor cannot parse: the
+# unparenthesised `except A, B:` that PEP 758 added in 3.14, as in
+# `src/anesthesia_sim/app_metadata.py` and `src/anesthesia_sim/layout/store.py`,
+# and the type parameters PEP 695 added in 3.12, as in
+# `src/anesthesia_sim/app/bookmarks.py` and `tests/conftest.py`. So
+# `python3.11 -m compileall src/` reports a SyntaxError in each, in files that
+# are correct. This names examples rather than the whole list, because the
+# list changes whenever a module adopts newer syntax, and a list here would go
+# stale. Sessions and exploration subagents have repeatedly reported such a
+# SyntaxError as a defect on `main` and spent a round proving it is not.
+# `PL-JQJQ` carries the count and the reasoning.
 #
 # **It refuses the invocation rather than explaining the traceback, because
 # only the refusal reaches a subagent.** Hooks configured in settings files run
@@ -63,11 +68,14 @@
 #
 # **Narrow on purpose: a guarded path in the command, nothing inferred.** A
 # tool under `tools/` that *parses* 3.14 source has the same exposure without
-# naming a tree here - which is why `make check` runs six of them under `uv run
-# python` - but deciding which tool reads which tree is a list that would
-# drift, and `CLAUDE.md` is explicit that a tool guessing at the judgment half
-# is worse than no tool. The deny message carries that half as prose instead of
-# the pattern carrying it.
+# naming a tree here - which is why `make check` runs every such tool under `uv
+# run python`, and the `Makefile` is the list - but deciding which tool reads
+# which tree is a list that would drift, and `CLAUDE.md` is explicit that a tool
+# guessing at the judgment half is worse than no tool. The deny message carries
+# that half as prose instead of the pattern carrying it. Two of those tools,
+# `doc_check.py` and `possessive_section_check.py`, also run bare in the floor
+# section of `.github/workflows/quality.yml`: there they name each file they
+# cannot parse and decline to judge it, rather than fail.
 #
 # Fails open in every error path - no python3, an unreadable payload, a command
 # bash itself would refuse, `shell_split.py` missing from beside it - like
@@ -83,17 +91,13 @@ PAYLOAD="$payload" HOOKS="$hooks" python3 -c '
 import json, os, re, sys
 
 sys.path.insert(0, os.environ["HOOKS"])
+import hook_input
 import shell_split
 
-try:
-    data = json.loads(os.environ["PAYLOAD"])
-except (ValueError, KeyError):
+call = hook_input.bash_call(os.environ.get("PAYLOAD", ""))
+if call is None:
     sys.exit(0)
-if data.get("tool_name") != "Bash":
-    sys.exit(0)
-command = data.get("tool_input", {}).get("command")
-if not isinstance(command, str):
-    sys.exit(0)
+command = call.command
 
 # Split the way bash splits it, by `shell_split.py` beside this file, which the
 # four Bash guards share (`PL-PVW2`). A regex would not do, because the failing
@@ -113,9 +117,9 @@ if cut is None:
     sys.exit(0)
 
 # Bare, and bare is the whole point: a name with no slash in it is the one
-# resolved through PATH, where this container answers 3.11. `shell_split.PYTHON`
-# is the one spelling of the name, which the gate guard reads too (`PL-Y3TZ`).
-INTERPRETER = shell_split.PYTHON
+# resolved through PATH, where this container answers 3.11. `is_python` in
+# `docket.shell` is the one spelling of the name, which the gate guard and
+# `verify` read too (`PL-Y3TZ`, `PL-RHPK`), and it also takes a path.
 # `src/anesthesia_sim/app/` sits under `src/`, so naming it again would only
 # widen the pattern. The first lookbehind lets a leading `./` or an absolute
 # path through while keeping `mysrc/` out. The second keeps out
@@ -153,7 +157,7 @@ for segment, _ in cut:
     # `PL-K9QL`), and a wrapper such as `timeout` or `env` finds the
     # interpreter it names on PATH, as the bare call does (`PL-TRMN`).
     rest = shell_split.program_words(segment)
-    if not rest or not INTERPRETER.match(rest[0]):
+    if not rest or "/" in rest[0] or not shell_split.is_python(rest[0]):
         continue
     arguments = rest[1:]
     kind, operand, after = shell_split.python_operand(arguments)
@@ -190,24 +194,27 @@ if offender is None:
     sys.exit(0)
 
 reason = (
-    "A bare `python3` on PATH here is the 3.11 tools floor, and `src/` and "
-    "`tests/` target 3.14. Parsing them with it reports a SyntaxError in code "
-    "that is correct:\n\n"
+    "A bare `python3` on PATH here is the tools interpreter, held to a 3.11 "
+    "floor, and `src/` and `tests/` target 3.14. Parsing them with it reports a "
+    "SyntaxError in code that is correct, in more than one module. For "
+    "example:\n\n"
     "    src/anesthesia_sim/app_metadata.py\n"
     "        except OSError, subprocess.SubprocessError:\n"
     "    SyntaxError: multiple exception types must be parenthesized\n\n"
-    "That is PEP 758, which 3.14 added and 3.11 cannot parse. It is expected, "
-    "it is not a defect on `main`, and it does not need investigating - "
-    "`PL-JQJQ` exists because it has been re-derived from scratch more than "
-    "once.\n\n"
+    "That is PEP 758, which 3.14 added. The type parameters PEP 695 added in "
+    "3.12 fail the same way under 3.11, as in "
+    "`src/anesthesia_sim/app/bookmarks.py`. Each is expected, none is a defect "
+    "on `main`, and none needs investigating - `PL-JQJQ` exists because this "
+    "has been re-derived from scratch more than once.\n\n"
     "Use the project interpreter instead:\n\n"
     "    uv run python -m compileall src/\n"
     "    uv run pytest tests/unit/...\n\n"
     "The same applies to a tool that reads 3.14 source without naming a tree "
-    "on the command line: `make check` runs `contrast_check.py`, "
-    "`agent_identity_check.py`, `import_boundary_check.py`, "
-    "`workflow_paths_check.py`, `core_vocabulary_check.py` and "
-    "`glyph_check.py` under `uv run python` for exactly that reason.\n\n"
+    "on the command line: `make check` runs every such tool under `uv run "
+    "python` for exactly that reason, and the `Makefile` is the list. "
+    "`doc_check.py` and `possessive_section_check.py` also run bare in the CI "
+    "floor section, where they name each file they cannot parse and decline "
+    "to judge it rather than fail.\n\n"
     "Do not \"fix\" this by changing the interpreter on PATH. The 3.11 is a "
     "tested guarantee: `tools/`, `.claude/hooks/` and `bin/docket` must run "
     "with no virtualenv, and the bare invocation in `make check` is what "

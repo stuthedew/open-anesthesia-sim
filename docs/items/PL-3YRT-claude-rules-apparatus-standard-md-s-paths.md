@@ -3,12 +3,14 @@ id: PL-3YRT
 title: .claude/rules/apparatus-standard.md's paths: match none of the 35 apparatus tests under tests/unit/, so the apparatus test bar its section on tests states never loads when a session opens one
 priority: P3
 effort: M
-status: ready
+status: done
 classes: docs, infra
 feature: apparatus-test-bar
 touches: .claude/rules/apparatus-standard.md, .claude/rules/where-new-code-goes.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-28 triage pass
 added: 2026-09-27
+closed: 2026-10-18
+pr: 1556
 payoff: a session editing an apparatus test under tests/unit/ is told which bar it is held to, instead of applying the simulator's by default
 verify: grep -qF 'apparatus-standard.md' .claude/rules/where-new-code-goes.md
 ---

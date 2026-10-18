@@ -39,8 +39,7 @@ no agent selector, and a comparison hides the trunk's. The constant is renamed
 `REFUSED_RESET_WAY_OUT_TEXT`, since it no longer names a repair. An accepted
 setting still lifts the exit, because a setting is accepted only once the
 record builds again, and then Reset takes. No learner can reach this banner,
-so the wording is not the owner's question under rule 14's test. It rides
-`#1537`, whose owner read covers it.
+so the wording is not the owner's question under rule 14's test.
 
 **Done when.** The refused-Reset exit names no setting and tells the reader to
 close and reopen the application. A test pins that sentence from a literal,

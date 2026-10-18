@@ -16,8 +16,11 @@ broke a reader: plain, quoted, flow and block scalar values, lists at the key's
 column and under it, nested mappings and a mapping in a list entry, comments,
 anchors and tags, and every node that runs to a close of its own opened on the
 key's line, alone on the line under a key or entry, after a list entry's `- `
-and after a nested key's `:`, its later lines carried on at any indent, the
-first column included, and shaped like a key or a list entry there. A block
+and after a nested key's `:`, its later lines carried on at any indent past
+the column of the key or entry holding it, which YAML asks of them
+(`PL-P6LL`), shallower than the node's own opening included, and shaped like a
+key or a list entry there. Some end with YAML's document-end marker, `...`,
+and blank or comment lines after it (`PL-G8ZN`). A block
 scalar's lines and a plain scalar's continuation lines are drawn in the same
 shapes, since a reader that took them for structure would read a key out of
 them. The helpers take the one `draw` and build no strategy of their own, which
@@ -83,8 +86,8 @@ FLOW_ITEM = st.one_of(
 CONTINUED = st.one_of(
     WORDS, st.sampled_from(('"open', "'open", "- item", "[open", "{open", "| bar"))
 )
-#: How far a quoted scalar's or a flow collection's later line is indented.
-CARRIED = st.sampled_from((0, 0, 1, 2, 4))
+#: How far past its holder's column a quoted scalar's or a flow collection's later line is indented.
+CARRIED = st.sampled_from((1, 1, 2, 3, 5))
 #: What may follow a node's close on its line.
 AFTER = st.sampled_from(("", " # after"))
 #: An anchor or a tag before a node, which names it and changes nothing in it.
@@ -103,22 +106,23 @@ VALUE = st.sampled_from(("inline", "inline", "below", "list", "mapping", "empty"
 LIST_COLUMN = st.sampled_from((0, 2))
 MAPPING_COLUMN = st.sampled_from((2, 4))
 BETWEEN = st.sampled_from(("", "# between keys"))
+DOCUMENT_END = st.sampled_from(("...", "... # end", "...  "))
 
 
-def _quoted(draw: st.DrawFn, column: int) -> list[str]:
-    """A quoted scalar opening at `column`, its later lines carried on at any indent."""
+def _quoted(draw: st.DrawFn, column: int, holder: int) -> list[str]:
+    """A quoted scalar opening at `column`, its later lines carried on past `holder`."""
     quote = draw(QUOTE)
     pieces = draw(QUOTED_TEXT)
     if quote == "'" and draw(st.booleans()):
         pieces[0] += " it''s"
     lines = [" " * column + quote + pieces[0]]
-    lines.extend(" " * draw(CARRIED) + piece for piece in pieces[1:])
+    lines.extend(" " * (holder + draw(CARRIED)) + piece for piece in pieces[1:])
     lines[-1] += quote + draw(AFTER)
     return lines
 
 
-def _flow(draw: st.DrawFn, column: int) -> list[str]:
-    """A flow sequence or mapping opening at `column`, its later lines carried on at any indent."""
+def _flow(draw: st.DrawFn, column: int, holder: int) -> list[str]:
+    """A flow sequence or mapping opening at `column`, its later lines carried on past `holder`."""
     entries = draw(st.lists(FLOW_ITEM, min_size=1, max_size=4))
     mapping = draw(st.booleans())
     if mapping:
@@ -128,7 +132,7 @@ def _flow(draw: st.DrawFn, column: int) -> list[str]:
     for index, entry in enumerate(entries):
         if index and draw(st.booleans()):
             lines[-1] += draw(AFTER)
-            lines.append(" " * draw(CARRIED))
+            lines.append(" " * (holder + draw(CARRIED)))
         lines[-1] += entry + ("," if index < len(entries) - 1 else "")
     lines[-1] += ("}" if mapping else "]") + draw(AFTER)
     return lines
@@ -169,9 +173,9 @@ def _node(draw: st.DrawFn, holder: int) -> list[str]:
     if kind == "plain":
         lines = _plain(draw, 0, holder)
     elif kind == "quoted":
-        lines = _quoted(draw, 0)
+        lines = _quoted(draw, 0, holder)
     elif kind == "flow":
-        lines = _flow(draw, 0)
+        lines = _flow(draw, 0, holder)
     else:
         lines = _block_scalar(draw, holder)
     return [draw(PREFIX) + lines[0], *lines[1:]]
@@ -182,7 +186,7 @@ def _below(draw: st.DrawFn, column: int, holder: int) -> list[str]:
     kind = draw(BELOW)
     if kind == "plain":
         return _plain(draw, column, holder)
-    return _quoted(draw, column) if kind == "quoted" else _flow(draw, column)
+    return _quoted(draw, column, holder) if kind == "quoted" else _flow(draw, column, holder)
 
 
 def _entry(draw: st.DrawFn, column: int, indicator: str, nested: bool = True) -> list[str]:
@@ -247,6 +251,10 @@ def front_matters(draw: st.DrawFn) -> list[str]:
             block.append(draw(BETWEEN))
         first, *under = _value(draw)
         block.extend([f"{name}:{first}", *under])
+    if draw(st.integers(0, 5)) == 0:
+        # YAML's document-end marker, after which only comments may follow (`PL-G8ZN`).
+        block.append(draw(DOCUMENT_END))
+        block.extend(draw(st.lists(st.sampled_from(("", "# after", "  # indented")), max_size=2)))
     numbers = itertools.count()
     return [re.sub("&anchor", lambda _: f"&a{next(numbers)}", line) for line in block]
 

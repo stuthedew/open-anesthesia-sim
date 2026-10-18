@@ -1067,6 +1067,12 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
             offer no accepted setting fails visibly rather than offering a
             refused one. No shipped range reaches it; a machine profile
             declaring a fresh gas flow range narrower than one step could.
+            Also if the fresh gas flow in force is not one of the steps its
+            slider offers. Every flow a slider sets is a step, so only a
+            machine profile's opening flow can reach it, and the run is
+            refused rather than opened with the slider and its readout each
+            showing a flow the run does not hold (`PL-1KQ9`, `PL-25KS`
+            decision D4). No shipped profile reaches it.
     """
 
     delivered = settings.delivered_partial_pressure_fraction
@@ -1123,6 +1129,18 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
             )
 
         minimum, maximum = offered
+
+        if control.control is ControlInput.FRESH_GAS_FLOW and not _is_offered_step(
+            value, offered, control.decimals
+        ):
+            raise ValueError(
+                f"{name} is {value} {control.unit}, which the slider cannot show: it offers "
+                f"{slider_value(1, control.decimals)} {control.unit} steps from {minimum} to "
+                f"{maximum} {control.unit}, so a machine profile must open the run on one of "
+                "those steps (docs/MODEL.md, \"The model's envelope and a machine's "
+                'deliverable range are two claims")'
+            )
+
         readouts.append(
             SettingReadout(
                 control=control.control,
@@ -1139,6 +1157,31 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
         )
 
     return tuple(readouts)
+
+
+def _is_offered_step(value: float, offered: tuple[float, float], decimals: int) -> bool:
+    """Whether a setting is one of the steps a slider offers, so the slider can show it.
+
+    A step is compared as the value the slider emits for it, `slider_value`,
+    so a setting the slider wrote is always one. A machine profile's
+    stated opening flow is the one setting no slider wrote (`PL-1KQ9`).
+
+    Args:
+        value: The setting in force, in the control's unit.
+        offered: The slider's floor and ceiling, from `offered_range`.
+        decimals: The control's `SettingReadout.decimals`.
+
+    Returns:
+        True where `value` is a step of the slider's resolution between its
+        floor and its ceiling.
+    """
+
+    minimum, maximum = offered
+
+    return (
+        minimum <= value <= maximum
+        and slider_value(slider_position(value, decimals), decimals) == value
+    )
 
 
 def slider_position(value: float, decimals: int) -> int:

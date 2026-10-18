@@ -127,6 +127,31 @@ def test_a_checkout_with_no_default_branch_says_so_rather_than_passing(
     assert "no id is owed" not in out
 
 
+def test_a_base_resolved_past_an_unanswered_candidate_says_so(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The local `main` resolved, but only after git left `origin/main` unanswered (`PL-27VL`).
+
+    The verdict was already right: such a base is not walked. The reason was
+    not. It said no candidate default branch resolved, where one did.
+    """
+    _install(monkeypatch, ["Clear the stale origin ref"], base="main")
+    served = branch_id_check._git
+
+    def fake(args: list[str]) -> str:
+        if args[0] == "rev-parse" and args[-1] == "origin/main":
+            return SILENT
+        return served(args)
+
+    monkeypatch.setattr(branch_id_check, "_git", fake)
+
+    assert branch_id_check.main() == 0
+    out = capsys.readouterr().out
+    assert "not checked" in out
+    assert "`main` resolved only after git did not answer a candidate ahead of it" in out
+    assert "no candidate default branch resolved" not in out
+
+
 def test_a_subject_leading_with_an_id_passes(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

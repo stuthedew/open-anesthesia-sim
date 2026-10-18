@@ -3,10 +3,12 @@ id: PL-S641
 title: docs/maintainer.md has no section for re-running tag-release.yml where a session cannot - a dispatch GitHub refuses the session, or a tag origin holds on another commit - so the owner meets those steps only through bin/docket release's refusal, where § 'Sweep branches now' is the precedent for an owner-run workflow
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: docs/maintainer.md
 added: 2026-09-30
+closed: 2026-10-18
+pr: 1554
 payoff: the owner can tag a release a session could not, from their own runbook, without a session to read the steps out
 verify: grep -qiE '^## .*tag-release' docs/maintainer.md
 ---
