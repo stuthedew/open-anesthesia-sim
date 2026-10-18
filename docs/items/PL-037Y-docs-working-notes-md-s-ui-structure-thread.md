@@ -3,11 +3,13 @@ id: PL-037Y
 title: docs/WORKING_NOTES.md's UI-structure thread glosses PL-NGF7 as 'decides the theme object', which is not what that item is or does
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: closed-item-claims
 touches: docs/WORKING_NOTES.md
 added: 2026-09-14
+closed: 2026-10-18
+pr: 1538
 verify: ! grep -q '`PL-NGF7` decides the theme object' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 
