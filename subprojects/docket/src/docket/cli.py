@@ -206,6 +206,7 @@ from .vcs import (
     snapshot,
     stranded,
     tags,
+    tree_files,
     unresolved_base_cause,
     with_newest_pull_request,
     working_paths,
@@ -216,6 +217,7 @@ from .verify import (
     Verification,
     already_passing,
     changed_paths,
+    file_arguments,
     items_reading,
     verify_batch,
 )
@@ -977,6 +979,10 @@ def _complete_report(
             else gone_paths(
                 root, (path for i in items if i.is_open for path in i.touches), runner=git
             )
+        ),
+        # Open items' `verify:` file arguments only, a stat each (`PL-ZB82`).
+        verify_files=tree_files(
+            root, (path for i in items if i.is_open for path in file_arguments(i.verify))
         ),
         # Read rather than asked of git: a stamped `milestone:` is judged
         # against the version the project is actually on, and an absent

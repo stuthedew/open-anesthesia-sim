@@ -3,12 +3,14 @@ id: PL-2GY0
 title: docket check's own-status reader reads 'left `needs-decision`' in the sense of departing it as a claim the item still sits there: PL-JNWS's brief tripped it with 'Every one of the 17 then left `needs-decision`', a past-tense sentence about seventeen other items, so OWN_STATUS's optional 'at' cannot tell 'left at X' from 'left X'
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: brief-state-agreement
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-09-30
+closed: 2026-10-18
+pr: 1553
 payoff: the brief-state check stops flagging a sentence that narrates other items leaving a status, so correct prose is never reworded to satisfy it
 verify: grep -q 'def test_a_sentence_about_other_items_leaving_a_status_is_no_claim' subprojects/docket/tests/test_checks.py
 ---

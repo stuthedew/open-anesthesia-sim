@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: arm-follows-owner
-touches: subprojects/docket/src/docket/arming.py
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
 payoff: a pull request the owner holds back by switching auto-merge off stays off, so sessions stop merging work out of the order the owner chose

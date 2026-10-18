@@ -3,10 +3,12 @@ id: PL-MXLV
 title: docs/ARCHITECTURE.md says contrast_check.py reads colours with ast because 'these tools run under a bare python3', which has not been true of it since PL-L17Q and which the same file contradicts at line 1158
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: docs/apparatus.md
 added: 2026-09-22
+closed: 2026-10-18
+pr: 1553
 payoff: the architecture page stops holding contrast_check.py to an interpreter floor it left, and stops contradicting itself about it
 verify: ! grep -qF 'these tools run under a bare' docs/apparatus.md
 ---

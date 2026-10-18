@@ -40,6 +40,7 @@ from .model import (
     RESOURCES,
     STATUSES,
     Item,
+    covers,
     generator_defect_faults,
     generator_faults,
     is_generator,
@@ -79,7 +80,7 @@ from .vcs import (
     RecordReport,
     WrittenReport,
 )
-from .verify import LandedReport, never_fails, reads_check_output, reenters_verify
+from .verify import LandedReport, file_arguments, never_fails, reads_check_output, reenters_verify
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
 DONE_WHEN = "**Done when.**"
@@ -921,7 +922,13 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             "its own item, or drop the `housekeeping` class and write the brief"
         )
     safety = tuple(c for c in item.classes if c in config.safety_classes)
-    exempt = item.status == "blocked" and "anticipated" in item.classes
+    # A closed item's priority is its record and ranks nothing, so the band
+    # binds open work only. Held on a closed item, it refused the drop of an
+    # anticipated safety item that waited at P2 until its record was rewritten
+    # to a P1 it never held (`PL-9HHC`).
+    exempt = item.status in CLOSED_STATUSES or (
+        item.status == "blocked" and "anticipated" in item.classes
+    )
     if safety and not exempt and item.priority in ("P2", "P3"):
         blocked_hint = (
             "; if the concern does not exist until a later feature is built, class it "
@@ -2783,21 +2790,18 @@ def _check_filenames(report: Report, config: Config) -> None:
     session finds an item by hand, so a stale slug sends it to the wrong
     mental model of what the item is about.
 
-    An advisory rather than an error, and the reason is the remedy rather
-    than the rule. Deriving the slug and comparing it is exactly decidable,
-    which is what `CLAUDE.md` reserves hard failure for; renaming the file is
-    not, because the session that would do it has to know who else is holding
-    that file first. A rename arriving as a side effect of an unrelated
-    command is how `PL-36R4` became a rename-against-edit conflict for
-    whoever merged second, on 2026-09-08, and an error here would force
-    exactly that: nine files on this store carry drift today, so `make check`
-    would fail until someone renamed all nine in one pass, against whatever
-    branches were open at the time.
+    An error, since `PL-3GKR`. Deriving the slug and comparing it is exactly
+    decidable, which is what `CLAUDE.md` reserves hard failure for. It was an
+    advisory while nine files carried drift, because an error would have
+    forced one rename pass against whatever branches were open, and a rename
+    against someone else's edit is how `PL-36R4` conflicted on 2026-09-08. The
+    advisory then fired for weeks with nobody acting on it. At a count of
+    zero, an error keeps it at zero: the session that edits a title renames
+    its one file in the same commit. It holds closed items too, because a
+    closed item is what a later session looks up by name.
 
-    Named in one line rather than one per file. Nine advisory lines is the
-    disease `PL-CW14` describes in the same function - an advisory nobody can
-    clear in the moment, printed often enough to train a session to skim the
-    one below it.
+    Named in one line rather than one per file, so a store that drifts in
+    several places reads as one finding to fix rather than a wall of lines.
 
     Declines on an item carrying no path: those are built in memory rather
     than read from disk, and there is no filename to disagree with.
@@ -2805,7 +2809,7 @@ def _check_filenames(report: Report, config: Config) -> None:
     **And it says when the rename it proposes would break a declaration.**
     Another item's `touches` may name the file by full path, which is
     legitimate - `PL-3V6C`'s whole deliverable was editing two briefs - so
-    without this the advisory is an instruction to break a declaration, issued
+    without this the error is an instruction to break a declaration, issued
     to a reader with no reason to look (`PL-Y5JX`). `_check_touched_items`
     above catches the break afterwards; naming it here is what lets a session
     repair both halves in the one commit, which is the difference between a
@@ -2826,7 +2830,7 @@ def _check_filenames(report: Report, config: Config) -> None:
         for item in in_order
         if item.path in declared
     ]
-    report.advisories.append(
+    report.errors.append(
         f"{len(drifted)} item file{'' if one else 's'} carr{'ies' if one else 'y'} a slug "
         f"{'its' if one else 'their'} title no longer generates "
         f"({', '.join(item.identifier for item in in_order)}); "
@@ -2838,6 +2842,47 @@ def _check_filenames(report: Report, config: Config) -> None:
             if coupled
             else ""
         )
+    )
+
+
+def _check_verify_reads_undeclared(report: Report, verify_files: frozenset[str] | None) -> None:
+    """Advise on an open item whose `verify:` reads a file its `touches` does not declare.
+
+    A neighbour's work on that file can flip the command, so the replay blames
+    the wrong item and `bin/docket concurrent` answers as if the two were
+    independent (`PL-3DXV`, `PL-LBW5`). Five such commands were repaired by
+    hand before this check existed (`PL-ZB82`).
+
+    It reads only a plain path argument that is a file in the tree
+    (`file_arguments`, `verify_files`). A file the work will create, and a
+    path written in quotes, are left unreported rather than guessed at. An
+    advisory, because declaring the file is not always right: the reader
+    judges whether the command should read a declared file instead.
+    """
+    if verify_files is None:
+        return
+    found = [
+        f"{item.identifier} reads {', '.join(paths)}"
+        for item in sorted(report.items, key=lambda i: i.identifier)
+        if item.is_open
+        and item.verify
+        and (
+            paths := sorted(
+                path
+                for path in file_arguments(item.verify)
+                if path in verify_files and not any(covers(entry, path) for entry in item.touches)
+            )
+        )
+    ]
+    if not found:
+        return
+    one = len(found) == 1
+    report.advisories.append(
+        f"{len(found)} open item{'' if one else 's'} run{'s' if one else ''} a `verify:` "
+        f"reading a file {'its' if one else 'their'} `touches` do{'es' if one else ''} not "
+        f"declare, so a neighbour's work could flip {'it' if one else 'them'} "
+        f"(`PL-ZB82`): {'; '.join(found)}. Declare the file, or point the command at "
+        "one the item declares"
     )
 
 
@@ -3065,7 +3110,9 @@ SUPERSEDED = re.compile(r"\[superseded(?:[ \t]+|[ \t]*\n[ \t>]*)\d{4}-\d{2}-\d{2
 # them - `PL-X5PK`'s "**Left untriaged deliberately.**" under `status: ready`
 # has no backticks - while `ready`, `blocked`, `done` and `dropped` are English
 # words, and count only in the backticks the store spells a status in. Present
-# tense only: "it stayed `blocked` for a week" is history, not a claim.
+# tense only: "it stayed `blocked` for a week" is history, not a claim. A bare
+# "left" is also English for departing, so `_left_statuses` reads it as a claim
+# only where `BARE_LEFT` and `STANDING_LEFT` say it is passive (`PL-2GY0`).
 OWN_STATUS_PHRASES = (
     r"left(?:\s+at)?",
     r"kept\s+at",
@@ -3079,6 +3126,17 @@ OWN_STATUS = re.compile(
     rf"\b(?:{'|'.join(OWN_STATUS_PHRASES)})\s+"
     rf"(?:`({_STATUS_WORDS})`|(needs-decision|untriaged))(?![\w-])",
     re.IGNORECASE,
+)
+
+# "left" with no "at" after it, which `OWN_STATUS` also matches. "It is left
+# `blocked`" and "**Left `blocked`, with the real blocker written in**" say the
+# item still sits there, while "the 17 then left `needs-decision`" and "until the
+# item left `blocked`" say something departed it. The passive form opens its
+# sentence or follows a present form of "be"; the departing form follows its
+# subject (`PL-2GY0`). "was left" is history, which present tense only excludes.
+BARE_LEFT = re.compile(r"left\s+(?!at\b)", re.IGNORECASE)
+STANDING_LEFT = re.compile(
+    r"(?:\A|[.!?:]\s|\b(?:is|are|be|been|being)\s)[\s*_>`-]*\Z", re.IGNORECASE
 )
 
 _ANY_ID = re.compile(ID_PATTERN)
@@ -3365,7 +3423,9 @@ def _left_statuses(item: Item) -> list[tuple[int, str]]:
     taken for it is the plainest one that separates the store's instances: a
     phrase is read as this item's when no other item is named earlier in its
     sentence. `PL-X4RX`'s title, "PL-SYG4's brief says it is left at
-    needs-decision", is about `PL-SYG4`, and says so before the phrase.
+    needs-decision", is about `PL-SYG4`, and says so before the phrase. A
+    bare "left" is read as this item's status only in its passive sense,
+    at a sentence's start or after "is" or "are" (`BARE_LEFT`, `PL-2GY0`).
 
     Read a statement at a time, as `_prerequisite_matches` reads, so a phrase
     in a fence is a literal and a heading's last word does not read on into the
@@ -3377,13 +3437,17 @@ def _left_statuses(item: Item) -> list[tuple[int, str]]:
     seen: set[tuple[str, int]] = set()
     text = _unmarked(item.body)
     matches = (
-        match
+        (start, match)
         for start, end in _statements(item.body)
         for match in OWN_STATUS.finditer(text, start, end)
     )
-    for match in matches:
+    for start, match in matches:
         named = (match.group(1) or match.group(2)).lower()
         if named == item.status or not _standing(item.body, match.start()):
+            continue
+        if BARE_LEFT.match(match.group(0)) and not STANDING_LEFT.search(
+            text[start : match.start()]
+        ):
             continue
         if _names_another_item(item, match.start()):
             continue
@@ -4364,6 +4428,7 @@ def analyze(
     settings_source: SettingsSource | None = None,
     written: WrittenReport | None = None,
     gone: GoneReport | None = None,
+    verify_files: frozenset[str] | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
@@ -4424,6 +4489,11 @@ def analyze(
     held (`PL-8JY7`), read from the filesystem and git, which this module reads
     neither of. A caller that does not supply it leaves the advisory unraised.
 
+    `verify_files` is which of the paths open items' `verify:` commands name
+    are files in the tree (`PL-ZB82`), read from the filesystem, which this
+    module does not read. A caller that does not supply it leaves the advisory
+    unraised.
+
     `settings_source` is which `docket.toml` the caller resolved `config` from,
     and whether it was there. It is the one input that says nothing about the
     store and everything about the reading of it, which is why it cannot be
@@ -4446,6 +4516,7 @@ def analyze(
     _check_touched_items(report, settings)
     _check_filenames(report, settings)
     _check_gone_touches(report, gone, settings)
+    _check_verify_reads_undeclared(report, verify_files)
     _check_milestones(report, version)
     _check_release_notes(report, notes, version)
     _check_notes_references(report, unreferenced, unread_notes)
