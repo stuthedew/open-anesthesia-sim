@@ -5694,6 +5694,13 @@ it moved to `blocked` when this deferral was recorded, on 2026-10-03. Until the
 field, that blocker was also what kept `wave` from counting it among the
 entries this gate can clear (`PL-D388`).
 
+**`PL-F2YS` joined this list after the freeze, on 2026-10-18, as a `safety`
+entry**, which re-enters whenever it is found, as `PL-TBMX` did. It is the
+layout half of what Required scope entry 20 handed `PL-W54S`: the region's
+width at 1366 px, and compare mode against the chart's 360 px minimum. It was
+split out when `PL-W54S` was re-confirmed as the per-window declaration of the
+unconditional set, and entry 20 names it, so it is cleared by v0.6.0 itself.
+
 **What this list is not swept for yet.** Beat 3 of the cadence requires a
 staleness pass before any of it is worked - a `verify:` command tests for the
 presence of the fix and never for the presence of the fault, so an entry whose
@@ -5703,7 +5710,7 @@ filed as its own item under `feature: gate-staleness-sweep` and runs against
 this list before implementation of this milestone begins; no standing item is
 named here, for the reason beat 3 gives.
 
-**Cleared by v0.6.0 itself - 14 entries**
+**Cleared by v0.6.0 itself - 15 entries**
 
 - PL-9LNF (L) Three app/ surfaces own state a layout could duplicate or relocate beside PL-VN6M's TraceLegend: RunView's build_ accessors hand out the same widget object on every call, the chart time base is owned by a dropdown inside one plot's panel, and the chart's column budget is read from sibling plots
 - PL-NWTM (L) The unconditional displayed set has no structural home in the code, so the guarantee docs/MODEL.md states as structural - a region outside the area system - exists only as prose
@@ -5711,6 +5718,7 @@ named here, for the reason beat 3 gives.
 - PL-7Z84 (M) A run has no identity a workspace can pin to - the dashboard addresses runs by their position in its own drawing order, and ROADMAP item 34 commits a workspace to pinning which run it shows
 - PL-904Y (M) Split the whole-interface visibility predicate out of PL-W54S: interface_strings answers is-this-string-in-this-widget-subtree, which stops meaning can-the-reader-see-it once a layout can close an area or move it to another window
 - PL-CNCF (M) controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
+- PL-F2YS (M) The unconditional region opens a 1366 px laptop's readout row on four columns and stacks two runs' readouts in two rows where docs/MODEL.md pairs them in one, so compare mode leaves the chart below its 360 px minimum
 - PL-G5SX (M) Headless tests that drive every layout operation and assert after each that the unconditional display set is still on screen, that the accounting tier is still reachable, and that a required value never left with the surface that drew it
 - PL-K285 (M) An Area that cannot be given the size its View needs says so rather than collapsing it, which is the second of the three properties docs/interface-provenance.md records Blender not supplying
 - PL-L8RN (M) Nothing enforces the one-adapter QSplitter confinement PL-C842 decided, because import_boundary_check.py confines root packages and PySide6 is one root package
@@ -6324,7 +6332,8 @@ removed, and this file's history before that change holds their text.
 
 20. **The look and the edge states of every surface this milestone creates**
     (queue items `PL-QW1Z`, `PL-MS34`, `PL-RQT1`, `PL-30L5`, `PL-RBXL`,
-    `PL-DB5G`, `PL-J8K2` and `PL-84QX`; the entry itself was `PL-M3X6`).
+    `PL-DB5G`, `PL-J8K2` and `PL-84QX`, and `PL-F2YS`, which joined on
+    2026-10-18; the entry itself was `PL-M3X6`).
     Every surface this milestone brings into existence
     has its appearance and its edge states decided here - not inherited from
     the toolkit, not deferred to the visual pass. Entries 1-19 are mechanism:
@@ -6384,7 +6393,8 @@ removed, and this file's history before that change holds their text.
     capped at two text rows (the tab strip and one Area header) plus 8 px per
     handle; and the region gives back the in-page title row (`PL-J8K2`).
     Compare mode is past that minimum on that screen before any furniture,
-    and is `PL-W54S`'s to settle. Entry 13's shipped Workspaces are composed
+    and is `PL-F2YS`'s to settle, split out of `PL-W54S` on 2026-10-18 with
+    the region's width at 1366 px. Entry 13's shipped Workspaces are composed
     within it. **All eight were decided on 2026-10-11** (project owner,
     ratified, over the alternatives each item names); the items carry the
     decisions, and the build items they name carry the look.
