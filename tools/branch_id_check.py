@@ -83,7 +83,7 @@ for the reason the ids above come from `docket`'s own parsers.
 - *A work branch that claims nothing is refused.* Work is a non-merge commit
   changing a path outside the queue - the items, the roadmap, the working notes
   and the pull requests' body records, the records a queue workflow writes
-  (`claims.queue_records`). The question is per branch, never per id: a
+  (`vcs.queue_records`). The question is per branch, never per id: a
   capture or a triage pass, whose ids lead its subjects, is never pushed into
   claiming them (`PL-3CTW`). A claim counts in any state. A branch releases
   its claim by closing its item in its own copy, so "no live claim" would
@@ -133,9 +133,7 @@ from docket.claims import (  # noqa: E402
     claims_bound,
     claims_nothing,
     holdings,
-    in_queue,
     named_id,
-    queue_records,
 )
 from docket.config import Config  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
@@ -145,13 +143,15 @@ from docket.vcs import (  # noqa: E402
     BRANCH_ID_RE,
     DEFAULT_BRANCHES,
     _head_name,
-    _item_paths_on,
+    _items_at,
     _remotes,
     _Silences,
     answered,
     call_git,
     default_base,
+    in_queue,
     leading_ids,
+    queue_records,
     resolved,
     working_paths,
 )
@@ -270,10 +270,7 @@ def held(base: str) -> tuple[frozenset[str], str]:
     """
     run = _Silences(_runner)
     items_dir = load_config(ROOT).items_dir
-    ids = {
-        *_item_paths_on(base, items_dir, ROOT, run),
-        *_item_paths_on("HEAD", items_dir, ROOT, run),
-    }
+    ids = {*_items_at(base, ROOT, items_dir, run), *_items_at("HEAD", ROOT, items_dir, run)}
     return frozenset(ids), run.reason
 
 

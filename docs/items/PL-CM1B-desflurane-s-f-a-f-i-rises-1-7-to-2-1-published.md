@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: science
 feature: validation-resolving-power
+milestone: v0.5.27
 touches: docs/MODEL.md
 added: 2026-10-18
 closed: 2026-10-18

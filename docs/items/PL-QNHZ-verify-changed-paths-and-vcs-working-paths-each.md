@@ -3,12 +3,14 @@ id: PL-QNHZ
 title: verify.changed_paths and vcs.working_paths each list the checkout's uncommitted paths, by status --porcelain and by diff HEAD plus ls-files, and a staged edit whose working copy is restored to HEAD is listed by one only - PL-8HSX measured it and kept the pair
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_vcs.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1534
 payoff: docket answers which paths a checkout changed by one reading
 verify: grep -q 'def test_a_staged_edit_restored_in_the_working_copy_is_listed' subprojects/docket/tests/test_vcs.py
 ---

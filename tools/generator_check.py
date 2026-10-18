@@ -72,7 +72,6 @@ it can decide.
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -82,7 +81,6 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_config  # noqa: E402
-from docket.lines import split_lines  # noqa: E402
 from docket.model import (  # noqa: E402
     CLOSED_STATUSES,
     MIN_ROOT_CAUSE_ITEMS,
@@ -90,11 +88,12 @@ from docket.model import (  # noqa: E402
     Item,
     parse_item,
 )
-from docket.store import ID_PATTERN  # noqa: E402
+from docket.store import cited_ids  # noqa: E402
 from docket.vcs import (  # noqa: E402
     ITEM_FILE_RE,
     LONG_GIT_TIMEOUT,
     GitUnanswered,
+    item_additions,
     leading_ids,
     read_git,
 )
@@ -117,15 +116,6 @@ NOT_SHRINKING = 1.0
 
 #: How many clusters to print. A display limit; the rest are counted.
 SHOW = 6
-
-#: The store's own grammar, borrowed rather than restated. The pattern this
-#: replaced was `PL-[A-Z0-9]{4}`, which is blind to the 43 historical
-#: three-digit ids `store.ID_PATTERN` still accepts: 219 citation edges and
-#: 44 item filenames went unread, so `citations` undercounted exactly the
-#: oldest items and `creation_parents` attributed none of them (`PL-KYW3`).
-#: It reads the ids an item cites; which file is an item's, and whose, is
-#: `vcs.ITEM_FILE_RE`, built on the same pattern (`PL-5QG4`).
-ID_RE = re.compile(ID_PATTERN)
 
 
 @dataclass(frozen=True)
@@ -223,40 +213,31 @@ def creation_parents(repo: Path) -> dict[str, set[str]]:
     """Map each item id to the ids of the items whose work created its file.
 
     Raises `GitUnanswered` where git will not give the history - no repository,
-    no git, a log that failed. An empty map would say the history was read and
+    no git, a log that failed, a shallow clone. An empty map would say the history was read and
     no item had a parent, and every cluster's spawn count would then print as
     measured and zero (`PL-1PBV`).
     """
-    items_dir = load_config(repo).items_dir.strip("/")
+    items_dir = load_config(repo).items_dir
+
     # `vcs.read_git`, so a log that failed, a git that hangs and a subject that
     # is not text here all decline alike, as docket reads them (`PL-S9JK`).
-    # Decoded as written, so a raw `\r` in a subject stays in it (`PL-0R4M`).
-    out = read_git(
-        ["log", "--diff-filter=A", "--name-only", "--format=\x01%s", "--", items_dir],
-        repo,
-        timeout=LONG_GIT_TIMEOUT,
-    )
+    def run(args: list[str], root: Path) -> str:
+        return read_git(args, root, timeout=LONG_GIT_TIMEOUT)
+
+    # Which commit added each item file is `vcs.item_additions`' answer, which
+    # `filed_with_work` reads too, so a shallow clone declines here as it does
+    # there rather than crediting its boundary commit (`PL-86H3`).
+    additions = item_additions(repo, "HEAD", items_dir, run)
+    if additions.declined:
+        raise GitUnanswered(additions.declined)
     parents: dict[str, set[str]] = {}
-    for block in out.split("\x01")[1:]:
-        subject, _, body = block.partition("\n")
-        leading = set(leading_ids(subject))
-        created = set()
-        for line in split_lines(body):
-            line = line.strip()
-            if not line.startswith(f"{items_dir}/"):
-                continue
-            # Whose file it is, as `item_files` reads one. An id searched for
-            # anywhere in the upper-cased name, underscores read as hyphens,
-            # stood here: it answered alike on each of the 1,945 paths ever
-            # added to the store on `main` by 2026-10-03, and differently on a
-            # name `docket` reads as no item's (`PL-5QG4`).
-            found = ITEM_FILE_RE.match(Path(line).name)
-            if found:
-                created.add(found.group(1))
+    for addition in additions.commits:
+        created = set(addition.item_ids)
         # A capture commit leads with the ids of the items it is creating, and
         # `bin/docket new` takes several titles at once - so every id this
         # commit creates is excluded, not just the one being attributed.
         # Otherwise two items captured together become each other's parent.
+        leading = set(leading_ids(addition.subject))
         for identifier in created:
             parents.setdefault(identifier, leading - created)
     return parents
@@ -278,9 +259,8 @@ def citations(repo: Path, open_ids: set[str]) -> Counter[str]:
         source = parse_item(text).identifier
         if source not in open_ids:
             continue
-        for target in set(ID_RE.findall(text)) & open_ids:
-            if target != source:
-                counts[target] += 1
+        for target in cited_ids(text, source) & open_ids:
+            counts[target] += 1
     return counts
 
 

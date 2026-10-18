@@ -3,12 +3,15 @@ id: PL-9NMR
 title: docket.shell's grammar takes no word after fi, done, esac, }, ]], a closing )) or a subshell's ) for a command's head, where bash reads a reserved word, so if [[ a ]] then case ... inside a $( ) closes the substitution at its pattern's parenthesis and if (( 1 )) then ((1 + is cut at its newline; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.27
 touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1532
 payoff: the shell reader shared by verify, doc_check and the Bash guards reads a reserved word after a closing word as bash does, so none of them cuts such a command short
 verify: grep -qF 'if [[ a ]] then case' subprojects/docket/tests/test_shell.py
 ---

@@ -533,6 +533,26 @@ def block_scalar_keys(text: str) -> tuple[str, ...]:
     return block_scalars
 
 
+def folded_keys(text: str) -> tuple[str, ...]:
+    """Fields whose value the reader folded from indented continuation lines, sorted.
+
+    A folded value is read correctly: the lines are joined with a single
+    space, as YAML joins a plain scalar. What the fold does not keep is where
+    the lines broke, and that matters for `verify:` alone. The value is a
+    shell command, and the shell removes a backslash-newline, where the fold
+    leaves the backslash in front of a space. So a command continued with a
+    backslash runs with an escaped space instead, and a `! grep -q` then
+    passes on grep's exit 2. Recorded here, as `block_list_keys` records a
+    block list, so `checks.py` can refuse a continued `verify:` by name; the
+    newline it looked for before can never survive the fold (`PL-1R9S`).
+    """
+    match = FRONT_MATTER_RE.match(text)
+    if match is None:
+        return ()
+    fields, _unread = _fold(match.group(1).split("\n"))
+    return tuple(sorted({key for key, _head, _index, folded in fields if folded}))
+
+
 def unread_front_matter_lines(text: str) -> tuple[str, ...]:
     """Front-matter lines no field reads, as written and in file order.
 
@@ -829,6 +849,9 @@ class Item:
     #: does not read either: the value arrives empty rather than opening with
     #: the header (`PL-LNDJ`).
     block_scalar_fields: tuple[str, ...] = field(default_factory=tuple)
+    #: Fields the file continues onto indented lines, which the reader folds
+    #: into one line (`folded_keys`). Only `verify:` is refused for it.
+    folded_fields: tuple[str, ...] = field(default_factory=tuple)
     #: Front-matter lines belonging to no field, as written: a column-zero
     #: line that is not `key: value`, or an indented one above the first
     #: field. Usually the tail of the value above, which every reader otherwise
@@ -1674,6 +1697,7 @@ def parse_item(text: str, path: str = "") -> Item:
         duplicate_fields=repeated_front_matter_keys(text),
         block_list_fields=declined.block_lists,
         block_scalar_fields=declined.block_scalars,
+        folded_fields=folded_keys(text),
         unread_lines=declined.lines,
     )
 

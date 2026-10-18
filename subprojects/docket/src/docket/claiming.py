@@ -104,7 +104,7 @@ from .vcs import (
     RemoteHeads,
     Runner,
     _head_name,
-    _item_paths_on,
+    _items_at,
     _remotes,
     _run_git,
     _unlanded_refs,
@@ -556,7 +556,7 @@ def _branch(
     branch = _Branch(name=name, remotes=remotes)
     problems: list[str] = []
     absent: list[str] = []
-    copies = _item_paths_on("HEAD", items_dir, root, run) if keys else {}
+    copies = _items_at("HEAD", root, items_dir, run) if keys else {}
     for key in keys:
         path = copies.get(key, "")
         if not path:
@@ -635,7 +635,7 @@ def _other_copies(
         name = _head_name(ref, branch.remotes)
         if not ref or name in skip or ref in branch.remotes:
             continue
-        held = _item_paths_on(ref, items_dir, root, run)
+        held = _items_at(ref, root, items_dir, run)
         for key in keys:
             if key in held:
                 found.setdefault(key, {}).setdefault(name, ref)
@@ -787,7 +787,7 @@ def _second_adds(
     from it is the reader's call `bin/docket stranded` leaves them, so it is
     not mentioned at all.
     """
-    on_base = _item_paths_on(base, items_dir, root, run)
+    on_base = _items_at(base, root, items_dir, run)
     outside = [key for key in keys if key not in on_base]
     if not outside:
         return (), ()
@@ -858,7 +858,7 @@ def _closed_on_base(
     not be read the refusal says only what it knows.
     """
     newer = base_copies(root, base, items_dir=items_dir, keys=keys, runner=run)
-    paths = _item_paths_on(base, items_dir, root, run)
+    paths = _items_at(base, root, items_dir, run)
     refused: list[str] = []
     for key in keys:
         copy = newer.of(key)

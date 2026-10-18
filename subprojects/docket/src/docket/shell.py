@@ -119,6 +119,13 @@ OPENS_A_COMMAND = frozenset(
 #: §3.2.3 "Pipelines", §3.2.6 "Coprocesses", §3.3 "Shell Functions").
 LEADS = frozenset(("time", "coproc", "function"))
 
+#: The reserved words that close a compound command, after which bash still
+#: reads a reserved word, so `if [[ a ]] then` and `fi case` open what they
+#: name: `fi`, `done`, `esac` and `}`, among the tokens `reserved_word_acceptable`
+#: in bash 5.2.21's parse.y takes, beside `]]` and an arithmetic command's `))`,
+#: which close words of their own (`PL-9NMR`).
+CLOSES_A_COMMAND = frozenset(("fi", "done", "esac", "}"))
+
 #: The tests of a conditional expression that take one operand, and those that
 #: take two, an unquoted word each; bash reads `<` and `>` there as the two
 #: string comparisons (`test_unop` and `test_binop` in bash 5.2.21's test.c,
@@ -515,11 +522,14 @@ class _Grammar:
     after a word in `OPENS_A_COMMAND`, after a function definition's `()`, and
     past what a word in `LEADS` takes before its command - `time`'s `-p` and
     then `--`, the name after `function`, and the one `coproc` may take
-    (`PL-0CJC`). Not yet after a closing word bash also names there, such as
-    `fi` or `]]` (`PL-9NMR`). A `)` heads a command too, whether it closes a
-    subshell or a function definition's `()`: `if (true) then` runs, and
-    bash 5.2.21 reads `(true) if` as a misplaced `if` (`PL-Y3TZ`). One per
-    read, since a substitution's body is a list of its own.
+    (`PL-0CJC`). It takes one after a word that closes a compound command too:
+    a word in `CLOSES_A_COMMAND` read at a head, the `]]` that closes a
+    conditional, and an arithmetic command, as `if (( 1 )) then` and
+    `if [[ a ]] then` run in bash 5.2.21 (`PL-9NMR`). A `)` heads a command
+    too, whether it closes a subshell or a function definition's `()`:
+    `if (true) then` runs, and bash 5.2.21 reads `(true) if` as a misplaced
+    `if` (`PL-Y3TZ`). One per read, since a substitution's body is a list of
+    its own.
     """
 
     def __init__(self) -> None:
@@ -567,18 +577,21 @@ class _Grammar:
             return True
         if state == "pattern" and reserved == "esac":
             self.cases.pop()
+            self.head = True
             return True
         if state in ("pattern", "patterns"):
             self.cases[-1] = "patterns"
             return True
         if self.conditional:
             self.condition(reserved, operator=False)
+            self.head = not self.conditional  # the `]]` that closed it
             return False
         if head and reserved == "case":
             self.cases.append("word")
             return True
         if head and reserved == "esac" and state == "clause":
             self.cases.pop()
+            self.head = True
             return True
         if head and reserved == "[[":
             self.conditional, self.groups = "term", 0
@@ -598,6 +611,7 @@ class _Grammar:
             self.opens = reserved == "time"
         else:
             self.head = self.opens = head and reserved in OPENS_A_COMMAND
+            self.head = self.head or (head and reserved in CLOSES_A_COMMAND)
             self.counting = head and reserved == "for"
         return False
 
@@ -729,6 +743,13 @@ class _Lexer:
         #: body is read outside every substitution: each is a piece of
         #: `script_lines` (`PL-55R2`).
         self.expansions: list[tuple[int, int]] = []
+        #: Where the text bash's child runs starts and ends, for a `$( )` an
+        #: expanded body runs in which a line ended a here-document's body
+        #: early. `substitution_body` reads that text again (`PL-H710`).
+        self.ran: tuple[int, int] | None = None
+        #: The span of each line of that text the child runs, which
+        #: `expanded` hands on in place of the substitution's own span.
+        self.child_lines: list[tuple[int, int]] | None = None
 
     def refuse(self, reason: str) -> None:
         if self.refusal is None:
@@ -746,6 +767,7 @@ class _Lexer:
         they are read.
         """
         command = self.command
+        first = index
         frame = _Frame(compat=closes)
         frame.extracted = closes and bool(self.frames) and self.frames[-1].expansion
         self.frames.append(frame)
@@ -925,12 +947,16 @@ class _Lexer:
                     # An arithmetic command, or an arithmetic `for`'s
                     # expressions: one word that runs no command (`PL-3Z8B`).
                     self.refuse("carries `(`, which no admitted shape uses")
+                    command_word = grammar.head
                     start()
                     end = self.arithmetic(index, stop)
                     text.append(command[index:end])
                     spelled.append(self.kept(index, end))
                     index = end
                     finish()  # bash reads what follows the `))` as a token of its own
+                    # A reserved word may follow an arithmetic command, though
+                    # not a `for`'s expressions, which `counting` reads past.
+                    grammar.head = grammar.head or command_word
                     continue
                 against = begin >= 0 and not quoted and names_a_descriptor("".join(text))
                 finish(redirected=operator[0] in "<>" and not grammar.conditional)
@@ -958,7 +984,9 @@ class _Lexer:
                 if not grammar.pattern(operator):  # a pattern's `)` neither nests nor closes
                     if closes and operator == ")" and not depth:
                         if frame.extracted:
-                            self.slipped(frame, index, end, tokens)
+                            ran = self.slipped(frame, index, end, tokens)
+                            if frame.pushed is not None:
+                                self.ran = (first, ran)
                         flat.append(Operator(operator))
                         self.frames.pop()
                         # Bash reads the bodies still waiting after the line this closes on.
@@ -1126,11 +1154,83 @@ class _Lexer:
 
         The offset past that `)` is returned.
         """
+        marks = self.marks()
         self.nested += 1
         clauses, end = self.read(index, stop, closes=True, flat=flat)
         self.nested -= 1
+        if self.ran is not None and self.ran[0] == index:
+            ran, self.ran = self.ran[1], None
+            child = self.child(index, ran, flat, marks)
+            if child is None:
+                raise _Cut(end)
+            clauses = child
         self.bodies.append((opening, clauses))
         return end
+
+    def marks(self) -> tuple[int, int, int, int, int, dict[int, int]]:
+        """How far each record a body's reading adds to runs, for `child` to put back."""
+        return (
+            len(self.bodies),
+            len(self.substituted),
+            len(self.joins),
+            len(self.removed),
+            len(self.comments),
+            dict(self.jumps),
+        )
+
+    def child(
+        self,
+        index: int,
+        ran: int,
+        flat: list[str],
+        marks: tuple[int, int, int, int, int, dict[int, int]],
+    ) -> tuple[Clause, ...] | None:
+        """Read the text from `index` to `ran` as bash's child runs it, not as the parse read it.
+
+        The `$( )` an expanded here-document body runs is the text bash's
+        parse for its end found, which bash 5.2.21 runs in a child with
+        `parse_and_execute` (`command_substitute` in subst.c). At the child's
+        top level no line ends a here-document early, since that is a rule
+        of a `$( )`'s body. The child also parses and runs one command at a
+        time and stops at the first syntax error. So the text is read here as
+        a script of its own, as `bash -c` reads a string, and where a line
+        cannot be read only the lines before it are kept. `None` where it
+        runs nothing. What the parse's reading recorded since `marks` is put
+        back first, and the child's reading is recorded in its place. Each
+        line the child runs goes to `child_lines`, for `script_lines` to hand
+        on as a piece of its own, since no reading of the substitution as it
+        is spelled runs what the child runs (`PL-H710`).
+        """
+        bodies, substituted, joins, removed, comments, jumps = marks
+        del self.bodies[bodies:], self.substituted[substituted:], self.joins[joins:]
+        del self.removed[removed:], self.comments[comments:]
+        self.jumps = jumps
+        command = self.command
+        reader = _Lexer(command, bash_c=True)
+        sink: list[str] = []
+        failed = False
+        stop = ran
+        try:
+            clauses, _ = reader.read(index, ran, closes=False, flat=sink)
+        except _Unreadable:
+            if not reader.breaks:
+                return None
+            failed, stop = True, reader.breaks[-1][1]  # past the last whole line, and its bodies
+            reader, sink = _Lexer(command, bash_c=True), []
+            clauses, _ = reader.read(index, stop, closes=False, flat=sink)
+        flat[:] = [*sink, Operator(")")]
+        self.child_lines = []
+        start = index
+        for end, resume in [*reader.breaks, (stop if failed else ran, -1)]:
+            if command[start:end].strip():
+                self.child_lines.append((start, end))
+            start = resume
+        self.bodies += reader.bodies
+        self.substituted += reader.substituted
+        self.joins += reader.joins
+        self.removed += reader.removed
+        self.comments += reader.comments
+        return clauses
 
     def backquote(self, index: int, stop: int, quoted: bool = False) -> int:
         """The offset past the backquote closing the one at `index`, having read the command inside.
@@ -1431,7 +1531,7 @@ class _Lexer:
             if not frame.compat:
                 return
 
-    def slipped(self, frame: _Frame, index: int, end: int, tokens: list[Word | str]) -> None:
+    def slipped(self, frame: _Frame, index: int, end: int, tokens: list[Word | str]) -> int:
         """Read the end bash finds for the `$( )` an expanded body runs, its `)` at `index`.
 
         Bash 5.2.21 finds it with a parse of its own (`xparse_dolparen` in
@@ -1445,13 +1545,13 @@ class _Lexer:
         one for the end, runs the text up to it, and expands what follows as
         text, which the `_Cut` it raises goes on past. The text leaves open
         what that `)` closed, so where the substitution holds no newline of
-        its own, bash's run is one syntax error and runs nothing; with one, the
-        lines before it run, and an escaped `)` closes nothing, so both are
-        read as the parse found them, every command bash runs among what it
-        reads (`PL-54MD`, `PL-H710`).
+        its own, bash's run is one syntax error and runs nothing. With one,
+        the lines before it run. The offset where the text bash runs ends is
+        returned, for `child` to read that text as bash's child runs it
+        (`PL-54MD`, `PL-H710`).
         """
         if frame.pushed is None or not frame.pushed[0] <= index < frame.pushed[1]:
-            return
+            return index
         command = self.command
         before = index - 1
         while command[before] == "\n" and before - 1 in self.joins:  # bash removed the pair
@@ -1463,6 +1563,7 @@ class _Lexer:
             escapes += 1
         if not escapes % 2 and "\n" not in tokens:
             raise _Cut(end)
+        return before
 
     def body(
         self, index: int, stop: int, delimiter: str, strip_tabs: bool, joined: bool, compat: bool
@@ -1550,6 +1651,7 @@ class _Lexer:
             introducer, jumps, expansions = self.introducer, dict(self.jumps), len(self.expansions)
             # Its own reading: a here-document it leaves unended is not carried out.
             self.frames.append(_Frame(compat=False, expansion=True))
+            self.child_lines = None
             try:
                 after = self.substitution(at, end)
             except (_Unreadable, _Cut) as stopped:
@@ -1562,8 +1664,9 @@ class _Lexer:
                 at = stopped.after  # it runs nothing, and the expansion goes on past it
                 continue
             self.frames.pop()
+            lines, self.child_lines = self.child_lines, None
             if not nested and len(self.bodies) > bodies:  # a `${x}` or `$((1))` runs nothing
-                self.expansions.append((at, after))
+                self.expansions += [(at, after)] if lines is None else lines
             at = after
 
     def body_line(self, index: int, stop: int, joined: bool) -> tuple[str, int]:
@@ -1826,8 +1929,11 @@ def script_lines(script: str) -> tuple[tuple[str, int], ...]:
     quoted part, which bash expands and so runs (`PL-P95F`): each is a piece
     of its own after its line's, spelled from its `$` or backquote, so
     `shell_words` reads it as one word whose substitution is the command bash
-    runs (`PL-55R2`). A body a `<<` ahead of a substitution opened starts
-    after the line the substitution closes on, as bash reads it (`PL-QSN5`).
+    runs (`PL-55R2`). Where bash's child runs such a substitution's text as
+    a script of its own, each line it runs is a piece instead, as
+    `_Lexer.child` reads them (`PL-H710`). A body a `<<` ahead of a
+    substitution opened starts after the line the substitution closes on, as
+    bash reads it (`PL-QSN5`).
     A newline after `&&` or `|` ends a piece too: the command goes on, and
     each piece still reads whole.
 

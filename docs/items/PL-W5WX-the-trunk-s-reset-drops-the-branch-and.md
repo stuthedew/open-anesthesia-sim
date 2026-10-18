@@ -3,12 +3,14 @@ id: PL-W5WX
 title: The trunk's Reset drops the branch and everything it simulated with no statement and no confirmation, and docs/MODEL.md does not say whether the exemption it grants Reset reaches a run the learner did not aim at
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: ux, docs
 feature: reset-aftermath
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, docs/MODEL.md, tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-22
+payoff: a Reset never throws away a branch's simulated work without first saying so and asking
+verify: grep -q "def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work" tests/integration/test_simulation_view.py
 ---
 
 **Problem.** The trunk's Reset drops the branch and everything it simulated with no statement and no confirmation, and docs/MODEL.md does not say whether the exemption it grants Reset reaches a run the learner did not aim at
@@ -84,3 +86,31 @@ a branch holding elapsed time or recorded control changes, and a test in
 **Premise re-read 2026-09-22 (`PL-14QR`, triage).** `RunView._handle_reset` still goes straight
 from `self.controller.reset()` to `self.case_restarted.emit()`, with nothing
 between them.
+
+**Premise re-read 2026-10-18 at `21174fd3`, in the product decision batch's
+design round.** `RunView._handle_reset` still goes from
+`self.controller.reset()` to `self.case_restarted.emit()` with no question
+asked. `SimulationView._handle_case_restarted` still rebuilds the case on the
+trunk and removes every branch it drew. `docs/MODEL.md` § "Agent-change
+behavior" still states the discard requirement and still ends with Reset's
+exemption, with no word on a run the press was not on. The question and the
+recommendation above stand unchanged and are put to the project owner,
+because the answer decides whether a learner meets a dialog on a common
+gesture.
+
+**Answered 2026-10-18: confirm** (project owner, 2026-10-18, ratified,
+over no dialog with `docs/MODEL.md` saying the exemption covers every run the
+press takes with it). Stuart tapped "Confirm first" on the product decision
+batch's card at 03:59Z. The build does three things. The trunk's Reset states
+what each branch it would drop holds and asks before dropping it, reusing
+`format_case_discard_warning`'s wording. It asks only when a branch is drawn
+and holds elapsed simulated time or a recorded control change, so an ordinary
+start-over sees no dialog. Declining leaves every run as it was. And
+`docs/MODEL.md` § "Agent-change behavior" says that Reset's exemption covers
+the run the button is on and no other run.
+
+**Done when** (decided form). The trunk's Reset confirms before it drops a
+branch holding elapsed time or recorded control changes, and does not ask when
+no branch holds anything. A test in `tests/integration/test_simulation_view.py`
+holds both cases and the decline. `docs/MODEL.md` § "Agent-change behavior"
+states that the exemption stops at the button's own run.

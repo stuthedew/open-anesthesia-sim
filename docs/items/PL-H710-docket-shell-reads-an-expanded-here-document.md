@@ -3,12 +3,15 @@ id: PL-H710
 title: docket.shell reads an expanded here-document body's $( ) as the parse bash finds its end with reads it, though bash's child re-parses that text with no compatibility end at its top level and runs only the lines before one a cut leaves open, so after a line ending a body of the $( )'s own, or a cut after a line of its own, docket reads commands bash never runs, never fewer; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.27
 touches: subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, docs/items/PL-54MD-docket-shell-reads-the-commands-of-a-nested-in.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by its own triage, 2026-10-12
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1532
 payoff: a here-document body's substitution is read as bash's child runs its text, so no reader of the shared lexer names a command no run makes there
 verify: ! grep -qF 'PL-H710' subprojects/docket/tests/test_shell.py
 ---
