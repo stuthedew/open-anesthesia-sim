@@ -39,6 +39,21 @@ def test_a_possessive_quotation_of_a_heading_is_reported(tmp_path: Path) -> None
     assert 'docs/MODEL.md` § "Known limitations"' in found[0]
 
 
+def test_a_trailing_period_cites_the_heading_as_doc_check_reads_it(tmp_path: Path) -> None:
+    """One function decides a heading citation for both checks (`PL-HHYL`).
+
+    US style closes a sentence's period inside the quotation marks, and
+    `doc_check` reads `"Known limitations."` as the heading, so this check
+    reports it too. A quotation in another case is no heading to `doc_check`,
+    whose `§` form would then be refused, so it is not reported here either.
+    """
+    period = _repo(tmp_path / "period", '`docs/MODEL.md`\'s "Known limitations." says it.\n')
+    lower = _repo(tmp_path / "lower", '`docs/MODEL.md`\'s "known limitations" says it.\n')
+
+    assert len(possessive_section_check.sites(period, [])) == 1
+    assert possessive_section_check.sites(lower, []) == []
+
+
 def test_a_possessive_quotation_of_a_sentence_is_left_alone(tmp_path: Path) -> None:
     """Correct as written: it quotes prose, and `§` would call it a section."""
     root = _repo(tmp_path, '`docs/MODEL.md`\'s "The venous pool is lumped" is the claim.\n')

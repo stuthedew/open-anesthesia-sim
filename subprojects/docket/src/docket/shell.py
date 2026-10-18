@@ -466,7 +466,7 @@ def _arithmetic(command: str, index: int, stop: int) -> bool:
     return command.startswith(")", close, stop)
 
 
-def _names_a_descriptor(text: str) -> bool:
+def names_a_descriptor(text: str) -> bool:
     """Whether `text` is what a descriptor written against a redirection is: digits, or `{name}`."""
     if text.isascii() and text.isdecimal():
         return True
@@ -800,7 +800,7 @@ class _Lexer:
                     redirected
                     and not quoted
                     and self.introducer is None
-                    and _names_a_descriptor(word)
+                    and names_a_descriptor(word)
                 )
                 case = grammar.word(word, quoted)
                 tokens.append(Word(word, quoted, globbed, bang, case))
@@ -932,7 +932,7 @@ class _Lexer:
                     index = end
                     finish()  # bash reads what follows the `))` as a token of its own
                     continue
-                against = begin >= 0 and not quoted and _names_a_descriptor("".join(text))
+                against = begin >= 0 and not quoted and names_a_descriptor("".join(text))
                 finish(redirected=operator[0] in "<>" and not grammar.conditional)
                 if grammar.conditional:
                     # Inside `[[ ]]` its own operators are words of it, which no
@@ -1709,6 +1709,83 @@ def shell_words(command: str) -> Reading:
         return Reading((), lexer.refusal or str(unreadable))
     bodies = tuple(body for _, body in sorted(lexer.bodies, key=lambda opened: opened[0]))
     return Reading(clauses, lexer.refusal, bodies)
+
+
+class SimpleCommand(_Value):
+    """One simple command bash runs: its words, where it starts, and its assignments.
+
+    Its words are those bash hands the command, in order: a redirection's
+    operator, the word it names and a descriptor written against it are not
+    among them, and neither is a word of a `case` construct's own syntax.
+    """
+
+    _fields = __slots__ = ("words", "start", "assignments")
+
+    def __init__(self, words: tuple[str, ...], start: int, assignments: int = 0) -> None:
+        self.words = words
+        #: The offset of its first word in the command read.
+        self.start = start
+        #: How many of its words, from the first, are assignments bash makes
+        #: for the command rather than words of it: `FOO=1` in `FOO=1 make check`.
+        self.assignments = assignments
+
+    @property
+    def program(self) -> str | None:
+        """Its command word, the first word past its assignments, or `None` where it has none."""
+        return self.words[self.assignments] if self.assignments < len(self.words) else None
+
+
+def simple_commands(reading: Reading, command: str) -> tuple[SimpleCommand, ...]:
+    """The simple commands `reading` runs, each cut where bash ends one.
+
+    `reading` is `shell_words(command)`. A command ends at each control
+    operator, so in `python3 x.py --check | tee log`, `tee` and `log` are no
+    words of the first. A redirection ends none, and is lifted out with the
+    word it names and any descriptor written against its operator: digits, or
+    a `{name}` (POSIX XCU §2.10.1 "IO_NUMBER", Bash Reference Manual §3.6
+    "Redirections"). An assignment counts only ahead of the command word and
+    where its `name=` stands bare in `command`, so `"X"=1` is a command named
+    `X=1` (Bash Reference Manual §3.4 "Shell Parameters"). A substitution's
+    body is placed where it stands in `command`, so a command inside a `$( )`
+    carried across lines starts on its own line (`PL-5M36`).
+
+    `tools/doc_check.py` read commands this way with its own copy of these
+    rules, which took only digits for a descriptor and the first word for the
+    program, so `{fd}>log` and `FOO=1 make check` read differently there
+    (`PL-7DXZ`).
+    """
+    commands: list[SimpleCommand] = []
+    for clause in reading.every_clause():
+        cut: list[list[tuple[str, int, bool]]] = [[]]
+        target = descriptor = False
+        previous = -1
+        for token, (start, end) in zip(clause.tokens, clause.spans, strict=True):
+            words = cut[-1]
+            if isinstance(token, Word):
+                if not (target or token.case_syntax):
+                    assigning = _assigning(token.text)
+                    bare = bool(assigning) and command.startswith(assigning, start)
+                    words.append((token.text, start, bare))
+                descriptor = not (target or token.quoted or token.case_syntax) and (
+                    names_a_descriptor(token.text)
+                )
+                target = False
+            elif token in REDIRECTIONS:
+                if descriptor and start == previous and token[0] in "<>":
+                    words.pop()
+                target, descriptor = True, False
+            else:
+                cut.append([])
+                target = descriptor = False
+            previous = end
+        for words in cut:
+            if words:
+                assignments = next(
+                    (at for at, (_, _, bare) in enumerate(words) if not bare), len(words)
+                )
+                texts = tuple(text for text, _, _ in words)
+                commands.append(SimpleCommand(texts, words[0][1], assignments))
+    return tuple(commands)
 
 
 def flat_reading(command: str) -> FlatReading:

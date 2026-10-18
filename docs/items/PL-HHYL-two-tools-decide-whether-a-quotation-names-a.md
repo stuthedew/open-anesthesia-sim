@@ -3,12 +3,14 @@ id: PL-HHYL
 title: Two tools decide whether a quotation names a heading - doc_check._cites_heading strips a trailing period and compares case-sensitively, possessive_section_check keeps the period and casefolds - so "Known limitations." cites the heading in one and not the other
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: tools/doc_check.py, tools/possessive_section_check.py, tests/unit/test_possessive_section_check.py
+touches: tools/doc_check.py, tools/possessive_section_check.py, tests/unit/test_possessive_section_check.py, ROADMAP.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed and classed by PL-5DZ8's closing sweep, 2026-10-12
 added: 2026-10-12
+closed: 2026-10-18
+pr: 1527
 payoff: a section citation resolves to the same heading in both checks that read one
 verify: grep -q 'def test_a_trailing_period_cites_the_heading_as_doc_check_reads_it' tests/unit/test_possessive_section_check.py
 ---
