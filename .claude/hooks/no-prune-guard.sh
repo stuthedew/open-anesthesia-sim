@@ -59,6 +59,7 @@ PAYLOAD="$payload" HOOKS="$hooks" python3 -c '
 import json, os, re, sys
 
 sys.path.insert(0, os.environ["HOOKS"])
+import hook_input
 import shell_split
 
 # Which word is the git command, past the options git reads as its own and
@@ -66,15 +67,10 @@ import shell_split
 # `shell_split` has put the `src` of docket on the path (`PL-ZXCN`).
 from docket.gitargv import is_git, own_options
 
-try:
-    data = json.loads(os.environ["PAYLOAD"])
-except (ValueError, KeyError):
+call = hook_input.bash_call(os.environ.get("PAYLOAD", ""))
+if call is None:
     sys.exit(0)
-if data.get("tool_name") != "Bash":
-    sys.exit(0)
-command = data.get("tool_input", {}).get("command")
-if not isinstance(command, str):
-    sys.exit(0)
+command = call.command
 
 # Where each command starts is the answer `shell_split.py` gives, which the
 # four Bash guards share (`PL-PVW2`), and this guard reads every command it

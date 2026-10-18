@@ -403,7 +403,9 @@ says so rather than claiming the history it could not read.
 
 `docket branch` reports where the working branch stands against the default
 branch, names the command that repairs it, and lists the items that landed
-while the branch sat.
+while the branch sat. Run in full, without `--brief`, it also prints what is in
+flight on a branch and `stranded`'s answer in one line, so the refresh before a
+reply's closing block is this one command (`PL-CM40`).
 
 It was fifty lines of bash in the session-start hook, and that was the whole
 problem: a hook runs once, at session start, and the condition it guards

@@ -1103,9 +1103,12 @@ class GateStatus:
     #: cannot honestly ask for before the milestone begins.
     #:
     #: Disjoint from `blocked_outside`, which is computed first and wins. An
-    #: entry that is milestone work *and* waits on work off the list is not
-    #: something the milestone can simply clear, and filing it under this
-    #: heading would hide the constraint behind the reassuring half of it.
+    #: entry that is milestone work *and* waits on work outside the milestone
+    #: is not something the milestone can simply clear, and filing it under
+    #: this heading would hide the constraint behind the reassuring half of it.
+    #: An entry waiting only on work the same `Required scope` names, at every
+    #: depth, is here rather than there, since implementing the milestone
+    #: clears what it waits on too (`PL-W9BK`).
     self_cleared: tuple[GateEntry, ...]
     #: Ids the gate names that the store does not hold. A gate cannot be shown
     #: clear while one of these stands: the entry may be a typo or a file that
@@ -2173,7 +2176,7 @@ def gate_status(
         )
         if frontier:
             outside[entry] = frontier
-    blocked_outside = tuple(entry for entry in outstanding if entry in outside)
+    waiting = tuple(entry for entry in outstanding if entry in outside)
     prerequisites = {
         entry: frozenset().union(
             *(
@@ -2182,8 +2185,26 @@ def gate_status(
                 if identifier not in closed_ids
             )
         )
-        for entry in blocked_outside
+        for entry in waiting
     }
+    own_scope = frozenset(milestone.own_scope_ids)
+    # An entry the milestone's `Required scope` names, waiting at every depth
+    # only on work that scope also names, is cleared by implementing the
+    # milestone, so it is not blocked *outside* anything (`PL-W9BK`). It falls
+    # through to `self_cleared` below, which is the bucket the roadmap's own
+    # "Cleared by" group, held to Required scope by `tools/doc_check.py`, puts
+    # it in. `PL-FD5Q` drew the same line for the blockers themselves.
+    within_scope = {
+        entry
+        for entry in waiting
+        if prerequisites[entry] <= own_scope
+        and all(
+            identifier in closed_ids or (identifier in known_ids and identifier in own_scope)
+            for identifier in entry.ids
+        )
+    }
+    blocked_outside = tuple(entry for entry in waiting if entry not in within_scope)
+    prerequisites = {entry: prerequisites[entry] for entry in blocked_outside}
     sequenced: list[Sequenced] = []
     gate_row = train.row(milestone) if train is not None else None
     if train is not None and gate_row is not None:
@@ -2193,7 +2214,6 @@ def gate_status(
             if len(ahead) == len(rows):
                 sequenced.append(Sequenced(entry=entry, row=train.steps[max(ahead)].label))
     held = set(blocked_outside) | excused
-    own_scope = frozenset(milestone.own_scope_ids)
     # Every *open* id, rather than every id: an entry holding a closed id and an
     # open one is asked only for the half that is left. An unknown id counts
     # against it, because an id the store cannot place is not one the milestone

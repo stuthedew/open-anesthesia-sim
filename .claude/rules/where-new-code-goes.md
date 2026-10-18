@@ -21,6 +21,15 @@ current, and then two places disagree about where a compartment goes. One of the
 is the map `tools/doc_check.py` already holds to the tree on disk in both
 directions. This file only says to go and read it.
 
+## Which bar a test under `tests/` is held to
+
+A test's imports decide it, by the rule `tools/workflow_paths_check.py` and
+`docket.arming` already apply. A test that imports `anesthesia_sim` is the
+simulator's, and `CLAUDE.md`'s safety-critical standard applies to it. A test
+that imports none of it is apparatus, held to
+`.claude/rules/apparatus-standard.md` § "What a test on this side is for".
+That rule does not load on this path by itself, so open it (`PL-3YRT`).
+
 ## Then read one existing instance end-to-end before writing yours
 
 Not a survey — one canonical instance, read whole, and yours written to match

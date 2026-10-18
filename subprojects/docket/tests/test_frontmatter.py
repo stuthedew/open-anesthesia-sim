@@ -33,15 +33,15 @@ def test_it_closes_on_a_first_column_fence_and_never_on_an_indented_one() -> Non
     assert closing(["a: 1", "---"]) is None
 
 
-def test_a_quoted_value_runs_to_its_close_at_any_indentation() -> None:
+def test_a_quoted_value_runs_to_its_close_past_its_key_s_column() -> None:
     """The line it carries onto is no key, though it opens like one (`PL-BM8T`)."""
-    text = 'description: "Loads at launch, since no\npaths: key defers it"\nname: x'
+    text = 'description: "Loads at launch, since no\n paths: key defers it"\nname: x'
 
     assert _extents(text) == [("description", 0, 2), ("name", 2, 3)]
 
 
 def test_a_flow_collection_runs_to_its_close_past_a_quote_its_word_holds() -> None:
-    assert _extents("paths: [don't, 'x,\ny']\nnext: z") == [("paths", 0, 2), ("next", 2, 3)]
+    assert _extents("paths: [don't, 'x,\n y']\nnext: z") == [("paths", 0, 2), ("next", 2, 3)]
 
 
 def test_a_block_scalar_holds_every_indented_line_a_comment_shaped_one_included() -> None:

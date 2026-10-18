@@ -63,6 +63,7 @@ PAYLOAD="$payload" HOOKS="$hooks" python3 -c '
 import json, os, subprocess, sys, time
 
 sys.path.insert(0, os.environ["HOOKS"])
+import hook_input
 import shell_split
 
 # Which word is the git command, past the options git reads as its own and
@@ -70,15 +71,10 @@ import shell_split
 # `shell_split` has put the `src` of docket on the path (`PL-ZXCN`).
 from docket.gitargv import is_git, own_options
 
-try:
-    data = json.loads(os.environ["PAYLOAD"])
-except (ValueError, KeyError):
+call = hook_input.bash_call(os.environ.get("PAYLOAD", ""))
+if call is None:
     sys.exit(0)
-if data.get("tool_name") != "Bash":
-    sys.exit(0)
-command = data.get("tool_input", {}).get("command")
-if not isinstance(command, str):
-    sys.exit(0)
+command = call.command
 
 # From `git push -h` (git 2.43): the options taking the next word as their value
 # where no `=` joins one, the letter among them, and what sends nothing.
@@ -190,7 +186,7 @@ def excerpt(text):
     return "\n".join(lines)
 
 
-where = data.get("cwd") or os.getcwd()
+where = call.cwd or os.getcwd()
 targets = []
 for words in shell_split.commands(command):
     if words[0] == "cd":
@@ -206,7 +202,7 @@ from pathlib import Path
 from docket import vcs
 
 run = vcs.GitRunner()
-project = os.environ.get("CLAUDE_PROJECT_DIR") or os.path.join(os.environ["HOOKS"], "..", "..")
+project = str(hook_input.project_root())
 ours = common_directory(project)
 trees = []
 for target in targets:

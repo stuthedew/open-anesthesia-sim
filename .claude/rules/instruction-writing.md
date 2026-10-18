@@ -159,15 +159,15 @@ rules, "phases," or "closed loops" in the output itself.
       — name that one, glossed per rule 7, and say which comes first.
     - Re-verify by refreshing, every time, before writing this block — not
       only when something looks stale (project owner, 2026-09-19). Run
-      `bin/docket flight` and `bin/docket stranded`. Each one fetches before
-      it reads. Cheap, and the default has to be refresh-first because a
-      session cannot feel its own copy going out of date: the session-start
+      `bin/docket branch`, which fetches before it reads. Cheap, and the
+      default has to be refresh-first because a session cannot feel its own
+      copy going out of date: the session-start
       digest is written once and resent every turn, its refs line dates that
       moment rather than this one (`PL-XBV4`), and a
       pull request can merge, a branch be deleted and the base move inside one
       turn — all three happened in the sitting that produced this rule.
-      An ideation reply runs it too. The two commands read no document, so
-      they are not the detour that `CLAUDE.md` keeps ideation free of
+      An ideation reply runs it too. It reads no document, so it is not
+      the detour that `CLAUDE.md` keeps ideation free of
       (`PL-MR2V`).
     - Re-verify every carried-over item before repeating it. An action that
       was outstanding earlier in the session may have been done since — by

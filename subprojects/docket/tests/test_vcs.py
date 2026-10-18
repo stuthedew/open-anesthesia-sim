@@ -3833,6 +3833,43 @@ def test_a_restore_to_content_main_held_before_the_fork_is_not_landed(tmp_path: 
     assert landed_whole("main", repo.root, _run_git, ref="topic") is False
 
 
+def test_a_restore_to_the_horizon_tree_does_not_read_as_landed(tmp_path: Path) -> None:
+    """A truncated clone's boundary commit is not a root that wrote its whole tree (`PL-29RM`).
+
+    `main` merged a side line forked from below the branch's fork, and the
+    clone's horizon cuts that line. Git shows the cut commit with no parents,
+    so `log --raw` lists its whole tree as added, the first version of the
+    workflow among it. The branch restoring that version then read as landed,
+    `#1118`'s shape again. A full clone shows the same commit adding one file.
+    """
+    origin = _Repo(tmp_path / "origin")
+    first = "on: pull_request\n"
+    root = origin.commit("the workflow as the base first wrote it", workflow_yml=first)
+    origin.commit("the base replaces it", workflow_yml="on: pull_request_target\n")
+    origin.git("switch", "-qc", "topic")
+    origin.commit("PL-K7QX put the workflow back", workflow_yml=first)
+    origin.git("switch", "-qc", "side", root)
+    cut = origin.commit("side one", s1_txt="s1\n")
+    origin.commit("side two", s2_txt="s2\n")
+    origin.git("switch", "-q", "main")
+    origin.git("merge", "-q", "--no-edit", "side")
+    origin.commit("the tip", tip_txt="tip\n")
+    work = tmp_path / "work"
+    for args, cwd in (
+        (["clone", "-q", "--depth=4", "--branch", "main", origin.root.as_uri(), str(work)], None),
+        (["fetch", "-q", "origin", "topic:refs/remotes/origin/topic"], work),
+    ):
+        subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+    fork = _run_git(["merge-base", "origin/main", "origin/topic"], work).strip()
+
+    written = _written_since(fork, "origin/main", work, _run_git)
+
+    assert cut in (work / ".git" / "shallow").read_text(encoding="utf-8").split()
+    assert _landing_split("origin/topic", fork, written, work, _run_git) == ((), ("workflow.yml",))
+    # The cut commit's own write goes unread with its tree, the safe side.
+    assert written < _written_since(fork, "main", origin.root, _run_git)
+
+
 def test_a_squash_of_the_branch_is_landed_after_the_base_edits_it(tmp_path: Path) -> None:
     """The narrower evidence still convicts the merge `landed_whole` exists for.
 

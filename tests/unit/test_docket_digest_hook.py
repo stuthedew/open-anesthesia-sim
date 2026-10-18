@@ -300,3 +300,54 @@ def test_the_hook_runs_under_the_interpreter_running_this_suite(tmp_path: Path) 
     ).stdout.strip()
 
     assert found == sys.version, f"the hook gets {found}, not this suite's {sys.version}"
+
+
+def install_python_below_the_floor(bin_dir: Path) -> str:
+    """Replace the `python3` in `bin_dir` with one that reports itself as 3.10.
+
+    No machine is known to carry an interpreter below docket's 3.11 floor, so
+    this runs the suite's own and sets `sys.version_info` before docket's real
+    `__main__` reads it. The refusal a test then sees is the one `run` in
+    `subprojects/docket/src/docket/__main__.py` words, not a copy of it. Every
+    other use of `python3` gets the real interpreter, as a hook's own JSON
+    writer would on an old machine. Returns the refusal's opening words.
+    """
+    fake = bin_dir / "python3"
+    fake.unlink()
+    pretend = (
+        "import runpy, sys; sys.version_info = (3, 10, 20, 'final', 0); "
+        "runpy.run_module('docket', run_name='__main__', alter_sys=True)"
+    )
+    fake.write_text(
+        "#!/bin/sh\n"
+        'if [ "$1" = -m ] && [ "$2" = docket ]; then\n'
+        "  shift 2\n"
+        f'  exec "{sys.executable}" -c "{pretend}" "$@"\n'
+        "fi\n"
+        f'exec "{sys.executable}" "$@"\n',
+        encoding="utf-8",
+    )
+    fake.chmod(0o755)
+    return "docket needs Python 3.11 or newer; this is Python 3.10.20"
+
+
+def test_a_python_below_the_floor_is_named_at_session_start(tmp_path: Path) -> None:
+    """The floor refusal reaches the session once, and the hook still exits 0.
+
+    Both `bin/docket` calls used to send stderr to `/dev/null`, so a session on
+    an old `python3` started with no digest and nothing saying why (`PL-QHCP`).
+    """
+    work = _shallow_clone_of_a_moved_remote(tmp_path)
+    refusal = install_python_below_the_floor(work / "bin")
+
+    result = subprocess.run(
+        ["bash", str(HOOK)],
+        cwd=work,
+        env=_hook_env(work),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout.count(refusal) == 1, result.stdout

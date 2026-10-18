@@ -359,6 +359,54 @@ away from `src/`. `PL-6SBB` is what the second one costs when it is scoped
 wrongly: a session quoted the apparatus bar as the standard for `src/`,
 correctly, from a sentence whose scope was three sentences away.
 
+## What published measurements say about file size and adherence
+
+`PL-H253` concluded that session length, not the size of the resident set, is
+what moves adherence. It rested on this project's own count: the resident set
+was 2.5-5.6% of the contexts measured. `PL-YJG1` later found two of its three
+outside sources overstated. The measurements below were published since, and
+they are recorded here so that the next proposal to trim the resident set for
+adherence meets them (`PL-RLS3`). All three papers are preprints. Their
+summaries below come from the arXiv abstracts as read on 2026-10-04 and again on
+2026-10-18. Neither read was verbatim: the abstract pages were reached only
+through a fetch tool that summarizes, because this container cannot reach
+arXiv directly. Check a figure against the abstract before quoting it. The full
+texts were not read, so the range of file sizes each paper tested is not
+recorded.
+
+- **McMillan D**, "Instruction Adherence in Coding Agent Configuration Files: A
+  Factorial Study of Four File-Structure Variables", arXiv:2605.10039, May 2026,
+  https://arxiv.org/abs/2605.10039. Across 1,650 Claude Code sessions, file
+  size, instruction position, file architecture and contradictions in adjacent
+  files had no detectable effect on compliance after correction for multiple
+  testing. The largest effect was within a session: each further function
+  generated lowered the odds of compliance by about 5.6% (OR = 0.944).
+- **Gloaguen T, Mündler-Sasahara N, Müller MN, Raychev V, Vechev M**,
+  "Evaluating AGENTS.md: Are Repository-Level Context Files Helpful for Coding
+  Agents?", arXiv:2602.11988, February 2026, https://arxiv.org/abs/2602.11988.
+  Context files did not generally improve task success and raised inference
+  cost by over 20% on average. Repository overviews did not help, and the
+  files were useful for stating non-standard coding practices. Its outcome is task success on a benchmark,
+  not adherence to a project's own rules.
+- **Jaroslawicz D, Whiting B, Shah P, Maamari K**, "How Many Instructions Can
+  LLMs Follow at Once?", arXiv:2507.11538, July 2025,
+  https://arxiv.org/abs/2507.11538. Accuracy fell as the number of
+  instructions rose, and models favoured earlier instructions.
+- **Anthropic**, "How Claude remembers your project",
+  https://code.claude.com/docs/en/memory, read verbatim on 2026-10-18: "target under 200
+  lines per CLAUDE.md file. Longer files consume more context and reduce
+  adherence."
+
+**The sources disagree about adherence and agree about cost.** Anthropic's
+documentation says longer files reduce adherence; McMillan's study found no
+detectable effect of size. Both Anthropic and Gloaguen et al. say a longer file
+costs more context, which is the cost the routing rule in `CLAUDE.md` already
+pays down. McMillan's within-session effect points the same way as this
+project's own count: the length of the session is the lever. So none of these
+is a reason to trim a resident rule. The finding that would reopen the question
+is an adherence failure traced to where a rule sits in a file, and none has
+been recorded.
+
 ## Reductions considered and refused
 
 - **A ceiling on `check_resident_instructions`.** Refused in the code itself,
