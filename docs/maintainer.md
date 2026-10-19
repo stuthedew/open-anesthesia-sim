@@ -329,7 +329,8 @@ clinical change unread. `not needed` arms it on green, with the reason in the
 pull request body. `needed` holds it for you on any path.
 `subprojects/docket/src/docket/arming.py` decides what merges without you. A
 change to it waits on you only when it changes or deletes an existing test
-that pins `arm`'s answers, and otherwise merges on green (project owner,
+that pins `arm`'s answers, moves the file, or carries a `needed` record, and
+otherwise merges on green (project owner,
 2026-10-19, ratified, over holding every change to it, `PL-9JHM`). Until then
 every change to it waited on you (`PL-VKHD`). A pinned test is one in
 `subprojects/docket/tests/test_cli.py`: a `test_arm_` test, a test that runs
@@ -398,8 +399,9 @@ test, because `arm` reads the file before and after the change. So do
 `tests/conftest.py` and every other file pytest does not collect, which serve
 the simulator's tests whatever they import, and any test `arm` could not read,
 with the reason beside the hold. The rule is the one
-`tools/workflow_paths_check.py` sorts the lanes by, spelt once in `arming.py`,
-so changing it still waits on your read.
+`tools/workflow_paths_check.py` sorts the lanes by, spelt once in `arming.py`.
+Since 2026-10-19 changing it waits on your read only where the change edits a
+test pinning `arm`'s answers (`PL-9JHM`).
 
 ## Merge on the Mac or by auto-merge, never in the GitHub app
 

@@ -79,41 +79,43 @@ has already merged; what went unread is said beside it.
   read, this module included (2026-09-25, ratified, over holding every path
   outside the store, `PL-SQTR`, built by `PL-K6B2`): the hold fired on every
   docket change and was clicked through, so it guarded nothing, the simulator
-  included. This module stays held so that the gate cannot loosen itself;
+  included. This module stays held so that the gate cannot loosen itself
+  (until 2026-10-19, below);
 - a body record arms on green beside them (2026-09-25, ratified with the
   record's form, over every pull request holding on the record it writes
   before its merge, `PL-979D`): the record is a copy of the body, never a
   change to read;
 - only the owner's read list waits on a read - `src/`, `tests/` outside
-  `subprojects/`, `docs/MODEL.md`, `src/anesthesia_sim/data/`, `README.md`
-  and this module - and every other path arms on green, named beside the
-  answer, unless the change raises a question for the owner (the Projects
-  trial's instructions, 2026-10-03, kind unrecorded, over holding every path
-  outside the store, the tooling and the records; built by `PL-KKHD`). The
-  rule was written there alone, so on one day `#1298` armed under it while
-  `#1308` held under the old one. It reopened `PL-0JGZ` (project owner,
-  2026-09-26, ratified), which kept `ROADMAP.md` and `docs/WORKING_NOTES.md`
-  off what arms because the roadmap is where the owner sets direction:
-  neither is on the list, so both arm, and the owner settled it so (project
-  owner, 2026-10-03, ratified, over holding them as before). `.github/workflows/`
-  and `.claude/hooks/` joined the list the same day, since they decide merges
-  and tags as this module does (project owner, 2026-10-03, ratified, over
-  leaving them armed on green; `PL-KKHD` records both answers), until the
-  owner's rule of 2026-10-12 below;
-- docket's lexer, `docket/shell.py`, joined the list when `PL-JNYL` made it the
-  reader every guard hook reads a Bash call through, so that a change to what
-  the guards refuse still waited on a read outside `.claude/hooks/` (project
-  owner, 2026-10-10, ratified, over arming lexer changes on green; `PL-JNYL`
-  records the answer), until the same rule;
+  `subprojects/`, `docs/MODEL.md`, `src/anesthesia_sim/data/`, `README.md` and
+  this module, until 2026-10-19 - and every other path arms on green, named
+  beside the answer, unless the change raises a question for the owner (the
+  Projects trial's instructions, 2026-10-03, kind unrecorded, over holding
+  every path outside the store, the tooling and the records; built by
+  `PL-KKHD`). The rule was written there alone, so on one day `#1298` armed
+  under it while `#1308` held under the old one. It reopened `PL-0JGZ`
+  (project owner, 2026-09-26, ratified), which kept `ROADMAP.md` and
+  `docs/WORKING_NOTES.md` off what arms because the roadmap is where the owner
+  sets direction: neither is on the list, so both arm, and the owner settled
+  it so (project owner, 2026-10-03, ratified, over holding them as before).
+  `.github/workflows/` and `.claude/hooks/` joined the list the same day,
+  since they decide merges and tags as this module does (project owner,
+  2026-10-03, ratified, over leaving them armed on green; `PL-KKHD` records
+  both answers), until the owner's rule of 2026-10-12 below;
+- docket's lexer, `docket/shell.py`, joined the list when `PL-JNYL` made it
+  the reader every guard hook reads a Bash call through, so that a change to
+  what the guards refuse still waited on a read outside `.claude/hooks/`
+  (project owner, 2026-10-10, ratified, over arming lexer changes on green;
+  `PL-JNYL` records the answer), until the same rule;
 - workflow items need no merge confirmation (project owner, 2026-10-12: "don't
   need to ask me for merge confirmation for workflow items"), so
-  `.github/workflows/`, `.claude/hooks/` and the lexer left the list and arm on
-  green with the rest of the workflow lane, while a product path waits as
+  `.github/workflows/`, `.claude/hooks/` and the lexer left the list and arm
+  on green with the rest of the workflow lane, while a product path waits as
   before, in a change crossing both lanes too (`PL-KPM2`). This module stays
   on the list so that the gate still cannot loosen itself: a change to it
   could drop `src/` from the list and merge unread (project owner, 2026-10-12,
   ratified, over arming a change to it on green with the rest of the workflow
-  lane; `PL-VKHD` records the answer);
+  lane; `PL-VKHD` records the answer), until the owner's answer of 2026-10-19
+  below;
 - a test of the tooling under `tests/` - a file pytest collects that imports
   no `anesthesia_sim` on either side of the change - arms on green, as
   `subprojects/docket/tests/` does, and the rest of `tests/` stays on the list
@@ -128,18 +130,19 @@ has already merged; what went unread is said beside it.
   green: widening what arms still takes an edit the gate holds (`PL-0JGZ`);
 - a pull request reaches the owner only for a real decision or a high-risk
   change, and housekeeping merges on green (project owner, 2026-10-17: "Model
-  comes to me only when there is a real decision as discussed or making a
-  high risk change you want a second set of eyes on then you should present
-  the case for the change, the risks etc. but house keeping stuff I don't
-  need to sign off everything"; built by `PL-DKBG`). The read list had held
-  `#1516`'s measured figures and tightened tests exactly as it would a changed
-  equation, and its ask invented two points to judge. So the list no longer
-  holds by itself: a change to it waits for the session's recorded judgment,
-  `Owner-read: needed - <why>` or `not needed - <why>`, which `arm` reads
-  from the branch's commits, and only `needed` and this module wait on the
-  owner. Chosen over dropping the list and leaving the judgment to prose,
-  which fails open on a session that never makes it, and over keeping the
-  list and rewording the ask, which leaves housekeeping waiting on the owner.
+  comes to me only when there is a real decision as discussed or making a high
+  risk change you want a second set of eyes on then you should present the
+  case for the change, the risks etc. but house keeping stuff I don't need to
+  sign off everything"; built by `PL-DKBG`). The read list had held `#1516`'s
+  measured figures and tightened tests exactly as it would a changed equation,
+  and its ask invented two points to judge. So the list no longer holds by
+  itself: a change to it waits for the session's recorded judgment,
+  `Owner-read: needed - <why>` or `not needed - <why>`, which `arm` reads from
+  the branch's commits, and only `needed` and this module wait on the owner
+  (this module until 2026-10-19, below). Chosen over dropping the list and
+  leaving the judgment to prose, which fails open on a session that never
+  makes it, and over keeping the list and rewording the ask, which leaves
+  housekeeping waiting on the owner.
 - a hold for the owner's read carries its ask as an `Owner-ask` record, a
   decision with at least two options and a recommendation or a risk review,
   and `arm` prints it as the ask's opening line (project owner, 2026-10-18:
@@ -162,11 +165,11 @@ has already merged; what went unread is said beside it.
   that no test pins merges unread, and so would one that also rewrote the
   check reading the pins, since this module judges its own change;
 - the gate's read covers the existing tests that pin its answers as well as
-  this module, so a loosening through what the answer is read through has to
-  edit one (project owner, 2026-10-12, ratified, over holding `vcs.py`,
-  `claims.py`, `cli.py` and `test_cli.py` whole, and over leaving it;
-  `PL-WW0Q`). It reopens, for that one route, `PL-SQTR`'s line at this
-  module alone.
+  this module, and since 2026-10-19 those tests alone (`PL-9JHM`), so a
+  loosening through what the answer is read through has to edit one (project
+  owner, 2026-10-12, ratified, over holding `vcs.py`, `claims.py`, `cli.py`
+  and `test_cli.py` whole, and over leaving it; `PL-WW0Q`). It reopens, for
+  that one route, `PL-SQTR`'s line at this module alone.
 
 Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
 holds"): a triage pass moving statuses is the queue-only work auto-merge
@@ -349,8 +352,10 @@ JUDGE_ASK = (
 #: because it is a directory a tool writes and not a part of the package.
 RECORDS = "docs/pr-bodies/"
 
-#: The one file under `TOOLING` that still waits on a read: this module, which
-#: decides the answer, so a change to it could loosen the rule it states. It is
+#: This module, which decides the answer. Since 2026-10-19 a change to it
+#: waits on a read only when it edits a test pinning its answers or moves it
+#: off the path the base holds it at (`PL-9JHM`), and `arm` names it beside an
+#: `arm`. It is
 #: the module's own path from the root of the checkout holding it, so a move
 #: cannot leave it naming a file nothing reads, and the package spells none of
 #: this repository's layout (`PL-QFCR`). It is read from the module rather than
@@ -405,8 +410,9 @@ TESTS = "tests/"
 #: `tools/workflow_paths_check.py` holds `docket.toml`'s `workflow_paths` to
 #: (`PL-JBZK`), and since 2026-10-05 the one that lets a test under `TESTS`
 #: arm on green (`PL-552M`). Spelt here, in the module the gate holds, and
-#: imported by the lane check, so the two read one rule and neither can
-#: change it without an edit that waits on the owner's read.
+#: imported by the lane check, so the two read one rule. Since 2026-10-19 an
+#: edit to it waits on the owner's read only where it edits a pinned test
+#: (`PL-9JHM`).
 PRODUCT_PACKAGE = "anesthesia_sim"
 
 #: What pytest collects as a test module: its default `python_files`, which
@@ -524,8 +530,8 @@ def arms_on_green(path: str, tooling: Collection[str] = ()) -> bool:
     `PL-0JGZ`), because the roadmap is the milestone map the owner sets
     direction in. The owner's read list leaves both off, so they arm now;
     `PL-KKHD` records the reopening. The rule is spelt here, in the one
-    module the gate holds, rather than beside `in_queue`, so that widening
-    what arms still takes an edit the gate holds (2026-09-26, ratified, over
+    module the gate is, rather than beside `in_queue`, so that widening what
+    arms takes an edit to the gate and to its pinned tests (2026-09-26, ratified, over
     two named predicates in `claims`, `PL-0JGZ`), as `RECORDS` is kept here
     for `PL-F6MM`, and the import rule for `PL-552M`.
     """
@@ -705,7 +711,9 @@ class Verdict:
     `OWNER_ASK` record made since the branch's newest change outside the store,
     and `misasked` why such a record did not parse, `outside` the paths it would
     land outside the store, the tooling and the records that arm all the same
-    and are named, `gate` whether it would change this module, `pinned` the
+    and are named, `gate` whether it would change this module, `moved`
+    whether it brings the module in at a path the base does not hold it at,
+    `pinned` the
     existing tests in `PINS` pinning its answers that it would change or
     delete, `switched_off` when the owner switched its auto-merge off, and
     `behind`
@@ -727,6 +735,7 @@ class Verdict:
     misasked: str = ""
     outside: tuple[str, ...] = ()
     gate: bool = False
+    moved: bool = False
     pinned: tuple[str, ...] = ()
     switched_off: str = ""
     behind: int = 0
@@ -747,11 +756,13 @@ class Verdict:
     def needs_owner(self) -> bool:
         """Whether the pull request waits on the owner's read.
 
-        It does for a change to a test pinning the gate's answers, and for a
-        record saying needed. A change to the gate itself does not, since
-        2026-10-19 (`PL-9JHM`).
+        It does for a change to a test pinning the gate's answers, for a move
+        of the gate, and for a record saying needed. Any other change to the
+        gate itself does not, since 2026-10-19 (`PL-9JHM`). A move does,
+        because `PINS` is found from where the module is, so a module moved to
+        another depth reads a test file that does not exist and finds no pin.
         """
-        return bool(self.pinned) or (self.record is not None and self.record.needed)
+        return self.moved or bool(self.pinned) or (self.record is not None and self.record.needed)
 
     @property
     def lines(self) -> tuple[str, ...]:
@@ -904,11 +915,17 @@ class Verdict:
                 f"auto-merge was switched off at {self.switched_off}, after it was armed, and "
                 "no commit since records this session doing it"
             )
+        if self.moved:
+            reasons.append(
+                f"it brings in {GATE}, the gate itself, at a path the base does not hold it at, "
+                f"so {PINS} may not be the file that pins its answers"
+            )
         if self.pinned:
             count = len(self.pinned)
             tests = "test" if count == 1 else "tests"
+            gate = f"it changes {GATE}, the gate itself, and " if self.gate else "it "
             reasons.append(
-                f"it changes or deletes {count} {tests} in {PINS} pinning the gate's answers: "
+                f"{gate}changes or deletes {count} {tests} in {PINS} pinning the gate's answers: "
                 f"{self._shown(self.pinned)}"
             )
         return reasons
@@ -1035,6 +1052,7 @@ def arm(
     outside: tuple[str, ...] = ()
     worked: tuple[str, ...] = ()
     gate = False
+    moved = False
     pinned: tuple[str, ...] = ()
     if answered(changed):
         paths = set(listed_paths(changed))
@@ -1043,6 +1061,10 @@ def arm(
         # back out of what `arms_on_green` holds.
         gate = GATE in paths
         rest = paths - {GATE}
+        if gate:
+            fork = run(["merge-base", base, "HEAD"], root).strip()
+            held = run(["ls-tree", "--name-only", fork, "--", GATE], root) if fork else ""
+            moved = held.strip() != GATE
         tooling, unreadable = _tests_of_the_tooling(sorted(rest), base, root, run)
         unread.extend(unreadable)
         if PINS is not None and PINS in paths:
@@ -1099,6 +1121,7 @@ def arm(
         misasked=misasked,
         outside=outside,
         gate=gate,
+        moved=moved,
         pinned=pinned,
         switched_off=switched_off,
         behind=behind,

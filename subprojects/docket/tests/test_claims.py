@@ -1689,8 +1689,8 @@ def test_the_queue_is_the_items_the_roadmap_the_notes_and_the_body_records() -> 
 def test_the_gate_keeps_its_own_copy_of_the_body_records() -> None:
     """`arming.RECORDS` spells the body records again, and the two spellings must agree.
 
-    The gate holds `arming.py` for a read so that it cannot loosen itself, and
-    this module arms on green. Imported from here, a one-line widening of the
+    Until 2026-10-19 the gate held `arming.py` for a read so that it could not
+    loosen itself, and this module arms on green. Imported from here, a one-line widening of the
     records would merge unread and then arm whatever it newly admitted, so the
     held file keeps its own copy (`PL-F6MM`; project owner, 2026-09-26,
     ratified, over `arming` importing this one). This keeps the two one answer.

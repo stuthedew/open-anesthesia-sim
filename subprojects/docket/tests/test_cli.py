@@ -11213,6 +11213,36 @@ def test_a_test_of_the_tooling_is_a_collected_test_importing_no_simulator_on_eit
     )
 
 
+def _arm_gate_on_base(git: Callable[..., str], root: Path) -> None:
+    """Put the gate on `main`, publish it, and bring it into `ARM_BRANCH`, as the tree holds it."""
+    git("checkout", "-q", "main")
+    _put(git, root, ARM_GATE, "2026-08-01T12:00:00+00:00")
+    git("push", "-q", "origin", "main")
+    git("checkout", "-q", ARM_BRANCH)
+    git("merge", "-q", "--ff-only", "main")
+
+
+def test_arm_holds_the_gate_brought_in_at_a_path_the_base_does_not_hold(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A gate moved to another depth would read a pinned-test file that does not exist.
+
+    `PINS` is found from where the module is, so a move that also edits a
+    pinned test would find no pin and arm. In a fixture the running module
+    never moves, so the gate brought in new on the branch stands for it.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, ARM_GATE, ARM_T0)
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it brings in {ARM_GATE}, the gate itself, at a path the base "
+        "does not hold it at"
+    )
+    assert out.splitlines()[0].endswith("so its pull request waits on the owner's read")
+
+
 @pytest.mark.parametrize("change", ["edit", "move"])
 def test_arm_arms_a_change_to_arming_py_that_edits_no_pinned_test_and_names_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], change: str
@@ -11224,11 +11254,7 @@ def test_arm_arms_a_change_to_arming_py_that_edits_no_pinned_test_and_names_it(
     the deletion is what names it.
     """
     root, git = _arm_repo(tmp_path)
-    git("checkout", "-q", "main")
-    _put(git, root, ARM_GATE, "2026-08-01T12:00:00+00:00")
-    git("push", "-q", "origin", "main")
-    git("checkout", "-q", ARM_BRANCH)
-    git("merge", "-q", "--ff-only", "main")
+    _arm_gate_on_base(git, root)
     if change == "edit":
         _commit_file(git, root, ARM_GATE, "X = 2\n", ARM_T0)
     else:
@@ -11242,12 +11268,13 @@ def test_arm_arms_a_change_to_arming_py_that_edits_no_pinned_test_and_names_it(
     assert "simulator path" not in out
 
 
-def test_arm_names_the_gate_beside_the_paths_on_the_read_list(
+def test_arm_holds_a_gate_change_beside_a_simulator_path_for_the_simulator_path_alone(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """The simulator path holds the branch, and the gate beside it adds no reason of its own."""
     root, git = _arm_repo(tmp_path)
-    _put(git, root, ARM_GATE)
+    _arm_gate_on_base(git, root)
+    _commit_file(git, root, ARM_GATE, "X = 2\n", ARM_T0)
     _put(git, root, "src/anesthesia_sim/core/uptake.py")
 
     assert _arm(root) == 1
@@ -11375,7 +11402,8 @@ def test_a_change_to_the_gate_waits_on_the_owner_only_as_any_change_does(
 ) -> None:
     """A change to `arming.py` arms, and a record saying needed still holds it (`PL-9JHM`)."""
     root, git = _arm_repo(tmp_path)
-    _put(git, root, ARM_GATE, "2026-09-01T12:00:00+00:00")
+    _arm_gate_on_base(git, root)
+    _commit_file(git, root, ARM_GATE, "X = 2\n", "2026-09-01T12:00:00+00:00")
     _record_read(git, "not needed - housekeeping", "2026-09-01T12:01:00+00:00")
 
     assert _arm(root) == 0
@@ -11616,9 +11644,10 @@ def test_parse_owner_ask_takes_a_decision_or_a_risk_review(value: str, line: str
 
 
 def test_the_gate_arm_holds_for_a_read_is_the_module_that_decides_the_answer() -> None:
-    """A move of `arming.py` would leave the exception naming a file nothing reads.
+    """A move of `arming.py` would leave `GATE` naming a file nothing reads.
 
-    The moved module would then arm on green, which is the gate loosening itself.
+    Then neither the line naming a gate change nor the hold on a moved gate
+    would fire, and `PINS` would point at a file that may not exist.
     """
     root = Path(__file__).resolve().parents[3]
 

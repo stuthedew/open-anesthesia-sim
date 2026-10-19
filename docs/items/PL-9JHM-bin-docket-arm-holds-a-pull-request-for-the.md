@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: review-hold
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md, CLAUDE.md, subprojects/docket/tests/test_claims.py
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md, CLAUDE.md, subprojects/docket/tests/test_claims.py, docs/resident-instructions.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; the owner asked for it on 2026-10-18
 added: 2026-10-18
 closed: 2026-10-19
