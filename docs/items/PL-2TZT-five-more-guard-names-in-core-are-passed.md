@@ -114,3 +114,7 @@ trajectories included, passes unchanged. The 1 ms floor the compartments now
 take is the floor the run already had, and the capacity refusals need a
 factor near 1e200 or 1e-200. What is left to judge is whether the reworded
 refusal messages read clearly to a learner.
+None of the reworded refusals is reachable from the app with the shipped
+files. The agent-amount refusals can appear only inside the halted-run
+notice, when a step fails numerically. The field refusals need a notebook or
+an edited data file.
