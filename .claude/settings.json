@@ -1,5 +1,6 @@
 {
   "subagentPromptCacheTtl": "1h",
+  "effortLevel": "high",
   "permissions": {
     "allow": [
       "Read",

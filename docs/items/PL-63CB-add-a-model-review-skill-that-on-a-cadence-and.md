@@ -90,3 +90,45 @@ points at the skill; and the first review has run and written its findings to
 the register.
 
 **Generator check.** Work the owner asked for on 2026-10-17; a one-off.
+
+**Effort monitoring (project owner, 2026-10-19).** From 2026-10-19 every
+session opens at `high`, as the owner's own judgement (`docs/maintainer.md`,
+`PL-6XZG`). The owner asked to be told when there is statistically significant
+evidence that working at `high` caused real-world issues, such as a poor design
+choice that needed rework or unintended behavior. Each monthly run does this:
+
+1. **Unit and groups.** The unit is a closed item, joined to the sessions that
+   worked it through the ledger. Items worked only at `high` on Opus 5.5 form
+   one group. Items worked only at `xhigh` or `max` on Opus 5.5 form the other.
+   Items worked at mixed levels are counted and left out.
+2. **Outcomes.** The outcome measures `PL-4SFQ` defines: later items naming it
+   as the cause of rework, recurrences and reopenings, red CI runs on its pull
+   request, review findings, and churn on its files within 30 days.
+3. **Adequate data first.** Before any test, compute the number of items each
+   group needs to detect the smallest difference worth acting on, and state
+   it. Until both groups reach it, report the counts and "not yet adequate",
+   not a result.
+4. **Adjust and correct.** Compare the groups within lane (product or
+   workflow) and item size, for example with a logistic regression or a
+   stratified comparison. Monthly looks at the same question inflate false
+   positives, so correct the significance level for repeated looks.
+5. **Say what it cannot show.** Every session after 2026-10-19 runs at `high`,
+   so later comparison groups are historical. Some overlap exists already: from
+   2026-09-22 to 2026-10-19 the ledger holds Opus 5.5 sessions at `high` (189),
+   `max` (242) and `xhigh` (59). But 174 of the 189 at `high` are Projects
+   threads, a different way of working, and only 71 of the 242 at `max` are.
+   So compare within origin as well. The groups also differ in date, project
+   phase (product focus began 2026-09-25) and the apparatus around them. A significant difference is therefore an association that points at
+   a cause, not proof of one. The report says so.
+6. **The trial, once `PL-HYRM` starts it.** Each new cloud session is
+   assigned `xhigh` or `high` automatically, and the assignment is recorded
+   (`docs/maintainer.md`, `PL-HYRM`). Analyze sessions by the level they were
+   assigned (intention to treat), and report as a second result the level
+   they actually ran at. Report how many ran at a
+   level other than the one assigned. This comparison is randomized, so it
+   is the primary result once it has adequate data. The historical
+   comparison above becomes a supporting one. Projects threads are not
+   assigned and are analyzed apart.
+7. **Report.** When the corrected test is significant, put it to the owner:
+   the effect with its 95% confidence interval, the counts, the confounders,
+   and a recommendation.
