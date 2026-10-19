@@ -10,6 +10,7 @@ touches: tools/headless_worker.py, tests/unit/test_headless_worker.py, docs/main
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-19
 closed: 2026-10-19
+pr: 1687
 payoff: the owner's machine stops gaining a full repository clone per credit run, while a failed run's clone stays for diagnosis
 verify: grep -q 'def test_a_pushed_run_removes_its_clone_and_a_failed_run_keeps_it' tests/unit/test_headless_worker.py
 ---
