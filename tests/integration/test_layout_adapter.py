@@ -21,7 +21,7 @@ import pytest
 from PySide6.QtCore import QCoreApplication, QEvent, QPoint, QPointF, Qt
 from PySide6.QtGui import QEnterEvent, QImage
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QLabel, QSplitter, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QSplitter, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.area_layout import (
     AREA_MENU_LABEL,
@@ -56,6 +56,7 @@ from anesthesia_sim.app.view_contract import (
 from anesthesia_sim.app.view_registry import RegisteredView, RetiredTag, registry, retirements
 from anesthesia_sim.layout.model import Handle, LayoutModel
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
+from anesthesia_sim.layout.sizing import PixelSize
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, Window
 
 _VIEW = ViewKind("test_view")
@@ -123,9 +124,11 @@ class _ThirdView(_TestView):
 # The tests draw a View kind of their own, so they register it themselves.
 _REGISTERED = registry(RegisteredView(_VIEW, "Test view", _TestView))
 
-# A container this size leaves 400 px for the children of a split of two, once
-# the 8 px handle is taken out, so a fraction reads straight off as pixels.
-_SIDE_PX = 400 + AREA_HANDLE_WIDTH
+# A container this size leaves 800 px for the children of a split of two, once
+# the 8 px handle is taken out, so a fraction reads straight off as pixels. A
+# quarter of it is wider than an Area's header, which an Area is never drawn
+# narrower than (`PL-K285`).
+_SIDE_PX = 800 + AREA_HANDLE_WIDTH
 
 
 def _area(number: int) -> Area:
@@ -288,11 +291,11 @@ def test_a_layout_of_one_area_is_its_view_alone(
 def test_the_splitters_take_the_sizes_the_model_holds(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """A quarter and three quarters of 400 px are 100 px and 300 px."""
+    """A quarter and three quarters of 800 px are 200 px and 600 px."""
 
     container = _show(application, shown, _layout(_row((0.25, 0.75), _area(1), _area(2)), 3))
 
-    assert _splitters(container)[()].sizes() == [100, 300]
+    assert _splitters(container)[()].sizes() == [200, 600]
 
 
 def test_a_layout_of_two_windows_is_refused() -> None:
@@ -310,19 +313,19 @@ def test_a_layout_of_two_windows_is_refused() -> None:
 def test_a_drag_on_a_border_changes_the_layout_model(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """Dragging the border 100 px right of the middle of 400 px leaves it three quarters across."""
+    """Dragging the border 200 px right of the middle of 800 px leaves it three quarters across."""
 
     container = _show(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
     changed: list[LayoutModel] = []
     container.layout_changed.connect(changed.append)
 
-    _drag(application, _splitters(container)[()], 1, 100)
+    _drag(application, _splitters(container)[()], 1, 200)
 
     tree = _tree(container)
     assert isinstance(tree, Split)
-    assert tree.sizes == pytest.approx((0.75, 0.25), abs=1 / 400)
+    assert tree.sizes == pytest.approx((0.75, 0.25), abs=1 / 800)
     assert changed == [container.model]
-    assert _splitters(container)[()].sizes() == [300, 100]
+    assert _splitters(container)[()].sizes() == [600, 200]
 
 
 def test_a_drag_moves_every_handle_on_the_dragged_line(
@@ -344,17 +347,17 @@ def test_a_drag_moves_every_handle_on_the_dragged_line(
     container = _show(application, shown, model)
     splitters = _splitters(container)
 
-    _drag(application, splitters[(0,)], 1, -100)
+    _drag(application, splitters[(0,)], 1, -200)
 
     tree = _tree(container)
     assert isinstance(tree, Split)
 
     for row in tree.children:
         assert isinstance(row, Split)
-        assert row.sizes == pytest.approx((0.25, 0.75), abs=1 / 400)
+        assert row.sizes == pytest.approx((0.25, 0.75), abs=1 / 800)
 
-    assert splitters[(0,)].sizes() == [100, 300]
-    assert splitters[(1,)].sizes() == [100, 300]
+    assert splitters[(0,)].sizes() == [200, 600]
+    assert splitters[(1,)].sizes() == [200, 600]
 
 
 def test_a_drag_leaves_a_border_on_another_line_where_it_was(
@@ -371,14 +374,14 @@ def test_a_drag_leaves_a_border_on_another_line_where_it_was(
     container = _show(application, shown, model)
     splitters = _splitters(container)
 
-    _drag(application, splitters[(0,)], 1, -100)
+    _drag(application, splitters[(0,)], 1, -200)
 
     tree = _tree(container)
     assert isinstance(tree, Split)
     bottom = tree.children[1]
     assert isinstance(bottom, Split)
     assert bottom.sizes == (0.7, 0.3)
-    assert splitters[(1,)].sizes() == [280, 120]
+    assert splitters[(1,)].sizes() == [560, 240]
 
 
 def _press(
@@ -401,7 +404,7 @@ _PAST_A_NEIGHBOUR = _layout(
     _column(
         (0.5, 0.5),
         _row((0.5, 0.5), _area(1), _area(2)),
-        _row((0.5, 0.1, 0.4), _area(3), _area(4), _area(5)),
+        _row((0.5, 0.3, 0.2), _area(3), _area(4), _area(5)),
     ),
     6,
 )
@@ -413,23 +416,23 @@ def test_a_drag_stops_where_a_neighbour_reaches_its_least_size_and_its_line_turn
     """`PL-RQT1` Q3: the border goes no further, and both handles on its line say so.
 
     The bottom row's first border is on the top border's line, so it moves
-    with it. Area 4 lies between that border and the next one, at 0.6 of
-    the window. A drag of 100 px to the right would carry the line to 0.75,
-    past 0.6. So the line stops where Area 4 is as narrow as Qt would draw
-    it: its frame's minimum size hint, plus the handle width the adapter
-    allows for, short of 0.6 of the container's width.
+    with it. Area 4 lies between that border and the next one, at 0.8 of
+    the window. A drag of 300 px to the right would carry the line to 0.875,
+    past 0.8. So the line stops where Area 4 is as narrow as Qt would draw
+    it: the least size its frame is held at, plus the handle width the
+    adapter allows for, short of 0.8 of the container's width.
     """
 
     container = _show(application, shown, _PAST_A_NEIGHBOUR)
     splitters = _splitters(container)
     top, bottom = splitters[(0,)].handle(1), splitters[(1,)].handle(1)
-    least = container.frame(AreaId(4)).minimumSizeHint().width()
-    expected = 0.6 - (least + AREA_HANDLE_WIDTH) / container.width()
+    least = container.frame(AreaId(4)).minimumWidth()
+    expected = 0.8 - (least + AREA_HANDLE_WIDTH) / container.width()
     assert isinstance(top, _AreaHandle) and isinstance(bottom, _AreaHandle)
 
     start = _press(top)
     back = top.mapToGlobal(start + _along(splitters[(0,)], 10))
-    QTest.mouseMove(top, start + _along(splitters[(0,)], 100))
+    QTest.mouseMove(top, start + _along(splitters[(0,)], 300))
     application.processEvents()
 
     assert container.model.position(Handle(0, (0,), 0)) == pytest.approx(expected, abs=1e-5)
@@ -443,7 +446,7 @@ def test_a_drag_stops_where_a_neighbour_reaches_its_least_size_and_its_line_turn
     application.processEvents()
 
     assert not top.warning
-    assert container.model.position(Handle(0, (0,), 0)) == pytest.approx(210 / 400)
+    assert container.model.position(Handle(0, (0,), 0)) == pytest.approx(410 / 800)
 
     QTest.mouseRelease(
         top, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start + QPoint(10, 0)
@@ -470,13 +473,13 @@ def test_a_drag_with_shift_moves_only_the_border_under_the_pointer(
     assert isinstance(top, _AreaHandle) and isinstance(bottom, _AreaHandle)
 
     start = _press(top, Qt.KeyboardModifier.ShiftModifier)
-    QTest.mouseMove(top, start + QPoint(-100, 0))
+    QTest.mouseMove(top, start + QPoint(-200, 0))
     application.processEvents()
 
     assert top.lit and not bottom.lit
 
     QTest.mouseRelease(
-        top, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.ShiftModifier, start + QPoint(-100, 0)
+        top, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.ShiftModifier, start + QPoint(-200, 0)
     )
     application.processEvents()
 
@@ -484,10 +487,10 @@ def test_a_drag_with_shift_moves_only_the_border_under_the_pointer(
     assert isinstance(tree, Split)
     upper, lower = tree.children
     assert isinstance(upper, Split) and isinstance(lower, Split)
-    assert upper.sizes == pytest.approx((0.25, 0.75), abs=1 / 400)
+    assert upper.sizes == pytest.approx((0.25, 0.75), abs=1 / 800)
     assert lower.sizes == (0.5, 0.5)
-    assert splitters[(0,)].sizes() == [100, 300]
-    assert splitters[(1,)].sizes() == [200, 200]
+    assert splitters[(0,)].sizes() == [200, 600]
+    assert splitters[(1,)].sizes() == [400, 400]
 
 
 def test_escape_returns_a_border_drag_to_where_it_started(
@@ -503,39 +506,39 @@ def test_escape_returns_a_border_drag_to_where_it_started(
     handle = splitter.handle(1)
 
     start = _press(handle)
-    QTest.mouseMove(handle, start + QPoint(100, 0))
+    QTest.mouseMove(handle, start + QPoint(200, 0))
     application.processEvents()
 
-    assert splitter.sizes() == [300, 100]
+    assert splitter.sizes() == [600, 200]
 
     QTest.keyClick(handle, Qt.Key.Key_Escape)
     QTest.mouseRelease(
-        handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start + QPoint(100, 0)
+        handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start + QPoint(200, 0)
     )
     application.processEvents()
 
     assert container.model == model
-    assert splitter.sizes() == [200, 200]
+    assert splitter.sizes() == [400, 400]
     assert changed[-1] == model and len(changed) == 2
 
 
 def test_a_resize_keeps_the_fractions_and_changes_no_model(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """After a drag to three quarters, a window twice as wide draws 600 px and 200 px."""
+    """After a drag to three quarters, a window twice as wide draws 1200 px and 400 px."""
 
     container = _show(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
-    _drag(application, _splitters(container)[()], 1, 100)
+    _drag(application, _splitters(container)[()], 1, 200)
     dragged = container.model
     changed: list[LayoutModel] = []
     container.layout_changed.connect(changed.append)
 
-    container.resize(800 + AREA_HANDLE_WIDTH, _SIDE_PX)
+    container.resize(1600 + AREA_HANDLE_WIDTH, _SIDE_PX)
     application.processEvents()
 
     assert container.model == dragged
     assert changed == []
-    assert _splitters(container)[()].sizes() == [600, 200]
+    assert _splitters(container)[()].sizes() == [1200, 400]
 
 
 # ---------------------------------------------------- a layout set in code
@@ -555,7 +558,7 @@ def test_new_sizes_keep_every_view_where_it_is(
 
     assert container.model == resized
     assert _splitters(container)[()] is splitter
-    assert splitter.sizes() == [100, 300]
+    assert splitter.sizes() == [200, 600]
     assert changed == []
     assert len(_BUILT) == 2
 
@@ -575,7 +578,7 @@ def test_a_swap_moves_each_view_to_the_other_area(
     assert _content(splitter.widget(0)) is second
     assert _content(splitter.widget(1)) is first
     assert first.isVisible() and second.isVisible()
-    assert splitter.sizes() == [100, 300]
+    assert splitter.sizes() == [200, 600]
     assert _BUILT == [first, second]
 
 
@@ -1536,3 +1539,312 @@ def test_the_overlay_draws_the_split_line_in_primary_and_a_refused_one_in_warnin
 
     assert painted.pixelColor(30, 300).name().upper() == WARNING.upper()
     container.corner_cancelled()
+
+
+# ------------------------------------------- an Area too small for its View
+
+_BIG = ViewKind("big_view")
+
+
+class _BigView(_TestView):
+    """The View of `_BIG`, whose registry entry declares a minimum of 300 by 200 px."""
+
+
+# The test View and one that declares a minimum, so a test can tell an Area
+# held at its View's need from one held only at its header.
+_SIZED = registry(
+    RegisteredView(_VIEW, "Test view", _TestView),
+    RegisteredView(_BIG, "Big view", _BigView, minimum=PixelSize(300, 200)),
+)
+
+# Under its header, a View is drawn below the header row and the 1 px rule.
+_CHROME_PX = 27
+
+
+def _show_sized(
+    application: QApplication, shown: list[AreaLayout], model: LayoutModel, size: tuple[int, int]
+) -> AreaLayout:
+    container = AreaLayout(model, _REQUESTS, registered=_SIZED, retired={})
+    container.resize(*size)
+    container.show()
+    application.processEvents()
+    shown.append(container)
+
+    return container
+
+
+@pytest.fixture
+def hosts(application: QApplication) -> Iterator[list[QWidget]]:
+    """Every host a test shows a container in, closed after it."""
+
+    shown_hosts: list[QWidget] = []
+    yield shown_hosts
+
+    for host in shown_hosts:
+        host.close()
+        host.deleteLater()
+
+    application.processEvents()
+
+
+def _host_sized(
+    application: QApplication, hosts: list[QWidget], model: LayoutModel, size: tuple[int, int]
+) -> tuple[QWidget, AreaLayout]:
+    """Show `model` filling a window held at `size`, as a screen too small for it holds one.
+
+    The window cannot grow to the layout's least size, so the layout is
+    given less than its Areas need.
+    """
+
+    host = QWidget()
+    column = QVBoxLayout(host)
+    column.setContentsMargins(0, 0, 0, 0)
+    container = AreaLayout(model, _REQUESTS, registered=_SIZED, retired={})
+    column.addWidget(container)
+    host.setFixedSize(*size)
+    host.show()
+    application.processEvents()
+    hosts.append(host)
+
+    return host, container
+
+
+def _too_small_texts(width_px: int, height_px: int) -> list[str]:
+    """The notice's two lines for a Big view in an Area `width_px` by `height_px` under its header.
+
+    Written out here rather than read from the module that writes them
+    (`PL-DB5G` Q3).
+    """
+
+    return [
+        "Too small for Big view.",
+        f"It needs at least 300 by 200 px; this Area is {width_px} by {height_px}. "
+        "Drag a border to enlarge it, or choose a smaller View from the menu above.",
+    ]
+
+
+def test_the_header_and_the_rule_are_the_chrome_these_tests_allow_for(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    container = _show_sized(application, shown, LayoutModel.single_area(_BIG), (608, 600))
+    frame = container.frame(AreaId(1))
+
+    assert frame.content.geometry().top() == _CHROME_PX
+    assert frame.content.height() == 600 - _CHROME_PX
+
+
+def test_a_split_into_halves_too_small_shows_the_size_the_view_needs_and_nothing_else(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-30L5` Q2: the split is allowed, and each half states what it lacks (`PL-DB5G` Q4).
+
+    500 px less the 8 px handle leaves two halves of 246 px, short of the
+    View's 300. Each View is hidden, not deleted, and no Area shows a value.
+    """
+
+    container = _show_sized(application, shown, LayoutModel.single_area(_BIG), (500, 600))
+    operation = _operation(container, 1, SPLIT_SIDE_BY_SIDE_LABEL)
+    assert operation.available
+
+    container.perform(operation)
+    application.processEvents()
+
+    assert _splitters(container)[()].sizes() == [246, 246]
+    assert [entry.area_id for entry in container.too_small()] == [AreaId(1), AreaId(2)]
+
+    for area_id in (AreaId(1), AreaId(2)):
+        frame = container.frame(area_id)
+        assert not frame.content.isVisible()
+        assert _texts(frame) == _too_small_texts(246, 600 - _CHROME_PX)
+
+    assert len(_BUILT) == 2
+
+
+def test_the_notice_restates_the_size_as_the_area_grows_and_clears_once_it_is_enough(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """At 560 px each half is 276; at 608 px each is the 300 the View needs, and draws it."""
+
+    model = _layout(_row((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)), 3)
+    host, container = _host_sized(application, hosts, model, (500, 600))
+    first = container.frame(AreaId(1))
+    assert _texts(first) == _too_small_texts(246, 600 - _CHROME_PX)
+
+    host.setFixedSize(560, 600)
+    application.processEvents()
+
+    assert _texts(first) == _too_small_texts(276, 600 - _CHROME_PX)
+
+    host.setFixedSize(608, 600)
+    application.processEvents()
+
+    assert container.too_small() == ()
+    assert _splitters(container)[()].sizes() == [300, 300]
+    assert first.content.isVisible() and _texts(first) == []
+    assert container.model == model
+
+
+def test_a_drag_stops_where_the_neighbour_reaches_its_views_declared_need(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-K285` Q1: a drag cannot make an Area too small for the View it draws.
+
+    The right-hand Area's View needs 300 px. A drag of 200 px right from the
+    middle of 800 px would leave it 200, so the border stops with it at 300.
+    """
+
+    model = _layout(_row((0.5, 0.5), _area(1), Area(AreaId(2), _BIG)), 3)
+    container = _show_sized(application, shown, model, (_SIDE_PX, 600))
+
+    _drag(application, _splitters(container)[()], 1, 200)
+
+    # The border stops the handle's width short of the Area's need, as
+    # `PL-RQT1` Q3's stop does for any neighbour.
+    assert container.model.position(Handle(0, (), 0)) == pytest.approx(
+        1 - (300 + AREA_HANDLE_WIDTH) / _SIDE_PX, abs=1e-5
+    )
+    assert _splitters(container)[()].sizes()[1] >= 300
+    assert container.too_small() == ()
+
+
+def test_a_view_chosen_for_an_area_too_small_for_it_is_shown_as_too_small(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-K285` Q3: choosing it is allowed, and the Area states the size it needs.
+
+    Each half of 392 px is 196. The Big view needs 300, which would leave
+    its neighbour less than its header, so the neighbour keeps its View and
+    the chosen one is too small.
+    """
+
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+    container = _show_sized(application, shown, model, (400, 600))
+
+    container.choose_view(AreaId(2), _BIG)
+    application.processEvents()
+
+    assert [(entry.area_id, entry.needed) for entry in container.too_small()] == [
+        (AreaId(2), PixelSize(300, 200 + _CHROME_PX))
+    ]
+    assert _texts(container.frame(AreaId(2))) == _too_small_texts(196, 600 - _CHROME_PX)
+    assert container.frame(AreaId(1)).content.isVisible()
+    assert _splitters(container)[()].sizes() == [196, 196]
+
+
+def test_a_neighbour_gives_way_to_hold_a_chosen_view_at_its_need(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """Where the neighbour can give the room and keep its header, it does, and the model stays."""
+
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+    container = _show_sized(application, shown, model, (_SIDE_PX, 600))
+
+    container.choose_view(AreaId(2), _BIG)
+    application.processEvents()
+
+    assert container.too_small() == ()
+    assert _splitters(container)[()].sizes() == [400, 400]
+
+    container.resize(600, 600)
+    application.processEvents()
+
+    # 592 px between them: the Big view keeps its 300 and the other takes the rest.
+    assert _splitters(container)[()].sizes() == [292, 300]
+    assert container.model == model.set_view(AreaId(2), _BIG)
+
+
+def test_a_layout_opened_in_a_window_too_small_for_it_draws_no_area_below_its_header(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-K285` Q2: no Area is drawn at a zero or clipped size, and each says what it lacks.
+
+    At 400 by 300 px no Big view can have its 300 by 227, so each is too
+    small.
+    """
+
+    _, container = _host_sized(application, hosts, LayoutModel.single_area(_VIEW), (400, 300))
+    model = _layout(
+        _column(
+            (0.5, 0.5),
+            _row((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)),
+            Area(AreaId(3), _BIG),
+        ),
+        4,
+    )
+
+    container.set_model(model)
+    application.processEvents()
+
+    assert (container.width(), container.height()) == (400, 300)
+    assert {entry.area_id for entry in container.too_small()} == {AreaId(1), AreaId(2), AreaId(3)}
+
+    for area_id in (AreaId(1), AreaId(2), AreaId(3)):
+        frame = container.frame(area_id)
+        assert frame.width() >= frame.minimumWidth() > 0
+        assert frame.height() >= frame.minimumHeight() > 0
+        assert not frame.content.isVisible()
+
+
+def test_a_layout_in_a_scrolling_page_makes_the_page_the_size_its_areas_need(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-K285` Q2: no Area is too small where its host can grow, as the dashboard's page does.
+
+    The page fills a 400 px viewport until the layout needs more. Two Big
+    views side by side need 608 px, so the page grows to that and scrolls.
+    """
+
+    page = QScrollArea()
+    page.setWidgetResizable(True)
+    container = AreaLayout(LayoutModel.single_area(_VIEW), _REQUESTS, registered=_SIZED, retired={})
+    page.setWidget(container)
+    page.resize(400, 400)
+    page.show()
+    application.processEvents()
+    hosts.append(page)
+
+    container.set_model(_layout(_row((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)), 3))
+    application.processEvents()
+
+    assert container.too_small() == ()
+    assert container.width() == 608
+    assert _splitters(container)[()].sizes() == [300, 300]
+
+
+def test_the_least_size_of_the_layout_is_the_sum_of_what_its_areas_need(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-K285` Q4: Qt's minimum is the model's, so the window cannot be made smaller.
+
+    Two Big views side by side need 300 + 8 + 300 px across. Each Big view
+    needs 200 px and the 27 px header and rule, so the column needs two of
+    those with the handle between them.
+    """
+
+    model = _layout(
+        _column(
+            (0.5, 0.5),
+            _row((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)),
+            Area(AreaId(3), _BIG),
+        ),
+        4,
+    )
+    container = _show_sized(application, shown, model, (_SIDE_PX, _SIDE_PX))
+    need = 200 + _CHROME_PX
+
+    assert container.minimum_extent() == PixelSize(608, 2 * need + AREA_HANDLE_WIDTH)
+    hint = container.minimumSizeHint()
+    assert (hint.width(), hint.height()) == (608, 2 * need + AREA_HANDLE_WIDTH)
+
+
+def test_the_least_size_is_what_the_views_need_even_where_their_areas_are_too_small(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """A host that cannot give the room is still told how much would draw every View."""
+
+    model = _layout(_row((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)), 3)
+    _, container = _host_sized(application, hosts, model, (500, 600))
+
+    assert len(container.too_small()) == 2
+    hint = container.minimumSizeHint()
+    assert (hint.width(), hint.height()) == (608, 200 + _CHROME_PX)

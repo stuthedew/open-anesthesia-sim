@@ -455,6 +455,7 @@ workflow_paths = [
   "tests/unit/test_diff_mutation.py",
   "tests/unit/test_direct_merge_guard.py",
   "tests/unit/test_doc_check.py",
+  "tests/unit/test_doc_quote_check.py",
   "tests/unit/test_makefile_reference.py",
   "tests/unit/test_docket_branch_guard.py",
   "tests/unit/test_docket_digest_hook.py",
@@ -621,6 +622,14 @@ newest_pull_request_command = "python3 tools/open_pull_requests.py --newest"
 # was never switched on, or exits non-zero where it could not ask - which `arm`
 # answers `unknown` on.
 auto_merge_command = "python3 tools/open_pull_requests.py --auto-merge"
+
+# How `bin/docket arm` counts the long docstrings and comments a simulator
+# branch adds that no prose review covers (`PL-W04Z`). Close-out step 8's review
+# ran on one of six simulator branches before this hold existed. The package
+# appends the commit carrying the newest `Prose-review:` trailer, where one
+# does, and the script prints how many units added since then need a review.
+# It exits non-zero where it could not count, which `arm` holds on.
+prose_count_command = "python3 tools/new_prose.py --count"
 
 version_file = "pyproject.toml"
 

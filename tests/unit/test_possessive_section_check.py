@@ -129,3 +129,41 @@ def test_a_decline_is_printed_and_does_not_fail_the_run(
     assert "none names a section" in out
     assert "Not checked (1;" in out
     assert "  thing.py:1: Python " in out
+
+
+def test_a_citation_below_a_backslash_newline_is_reported_on_its_own_line(tmp_path: Path) -> None:
+    """`PL-PV73`: a backslash-newline removes a source line from the docstring's value.
+
+    Counting the value's newlines numbered the citation on source line 5 as
+    line 4, the line above it.
+    """
+    root = _repo(tmp_path, "Nothing cited.\n")
+    (root / "m.py").write_text(
+        'def f() -> None:\n    """One sentence \\\n    wraps.\n\n'
+        '    `docs/MODEL.md`\'s "Known limitations" says it.\n    """\n',
+        encoding="utf-8",
+    )
+
+    found = possessive_section_check.sites(root, [])
+
+    assert len(found) == 1
+    assert found[0].startswith("m.py:5: ")
+
+
+def test_a_citation_below_a_newline_escape_is_reported_on_its_own_line(tmp_path: Path) -> None:
+    """`PL-PV73`: a `\\n` escape adds a line to the docstring's value that the source lacks.
+
+    Counting the value's newlines numbered the citation on source line 4 as
+    line 5, the line below it.
+    """
+    root = _repo(tmp_path, "Nothing cited.\n")
+    (root / "m.py").write_text(
+        'def f() -> None:\n    """One line.\\nAn escaped line.\n\n'
+        '    `docs/MODEL.md`\'s "Known limitations" says it.\n    """\n',
+        encoding="utf-8",
+    )
+
+    found = possessive_section_check.sites(root, [])
+
+    assert len(found) == 1
+    assert found[0].startswith("m.py:4: ")

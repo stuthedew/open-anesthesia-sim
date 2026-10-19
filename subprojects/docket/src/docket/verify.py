@@ -48,12 +48,12 @@ from .grep import Cache, Wrap, wrapped
 from .lines import ENCODING, file_text, split_lines
 from .model import (
     CLOSED_STATUSES,
-    WITHDRAWN_MARKER,
     FrontMatterDeclines,
     Item,
     _front_matter_pairs,
     is_under,
     parse_front_matter,
+    recurrence_entry_reads,
     split_list,
 )
 from .python import (
@@ -2314,21 +2314,6 @@ def _listed_copy(root: Path, spec: str) -> str | None:
 #: something` is not read as one.
 PR_VALUE_RE = re.compile(r"[0-9]+")
 
-#: One `recurrences:` entry as the store spells it: the date a capture was
-#: filed and its id, optionally followed by the withdrawal `bin/docket withdraw`
-#: writes. The withdrawn form is admitted here so that a *later* append past a
-#: withdrawn entry is still recognisable as an append - without it, one
-#: withdrawal would make every subsequent capture on that item read as
-#: tampering (`PL-34BG`).
-RECURRENCE_ENTRY = (
-    rf"\d{{4}}-\d{{2}}-\d{{2}} \S+(?: {re.escape(WITHDRAWN_MARKER)} \d{{4}}-\d{{2}}-\d{{2}} \S+)?"
-)
-
-#: One entry whole, matched against each entry of the value as the item's
-#: reader splits it, so an entry carrying one real filing and an invented
-#: clause is not read as one.
-RECURRENCE_ENTRY_RE = re.compile(RECURRENCE_ENTRY)
-
 #: A body file's name as `tools/pr_body_check.py` writes it: the pull
 #: request's number, and nothing else.
 RECORD_NAME_RE = re.compile(r"[0-9]+\.md")
@@ -2590,7 +2575,7 @@ def _recurrences_grew(before: str, after: str) -> bool:
     return (
         len(entries_now) > len(entries_was)
         and entries_now[: len(entries_was)] == entries_was
-        and all(RECURRENCE_ENTRY_RE.fullmatch(entry) for entry in entries_now)
+        and all(recurrence_entry_reads(entry) for entry in entries_now)
     )
 
 

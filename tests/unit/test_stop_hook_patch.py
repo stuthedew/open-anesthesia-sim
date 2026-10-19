@@ -241,10 +241,11 @@ def test_the_correction_is_what_git_actually_answers(tmp_path: Path) -> None:
 
 
 def _single_branch_clone(tmp_path: Path) -> tuple[Path, Callable[..., str]]:
-    """A `--depth 1` clone of a local origin, which is what the harness makes.
+    """A `--depth 1` clone of a local origin, standing for the harness's clone.
 
     `--depth 1` implies `--single-branch`, so `remote.origin.fetch` names
-    `main` alone and no other branch can ever gain a tracking ref.
+    `main` alone and no other branch can ever gain a tracking ref. The harness
+    fetches `main` alone at depth 50, which leaves the same refspec.
     """
     origin = tmp_path / "origin.git"
     seed = tmp_path / "seed"

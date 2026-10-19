@@ -1587,18 +1587,42 @@ def recurrences_of(item: Item) -> tuple[Recurrence, ...]:
     fewer times than it did - the failure the apparatus standard's floor names
     exactly. `recurrence_faults` is what reports it.
     """
-    found: list[Recurrence] = []
-    for entry in item.recurrences:
-        parts = entry.split()
-        when = _parse_date(parts[0]) if parts else None
-        identifier = parts[1] if len(parts) > 1 else ""
-        disowned, by = _withdrawal(parts[2:])
-        found.append(
-            Recurrence(
-                when=when, identifier=identifier, raw=entry, withdrawn=disowned, withdrawn_by=by
-            )
-        )
-    return tuple(found)
+    return tuple(_recurrence(entry) for entry in item.recurrences)
+
+
+def _recurrence(entry: str) -> Recurrence:
+    """One `recurrences:` entry as `recurrences_of` reads it, whatever could be recovered."""
+    parts = entry.split()
+    when = _parse_date(parts[0]) if parts else None
+    identifier = parts[1] if len(parts) > 1 else ""
+    disowned, by = _withdrawal(parts[2:])
+    return Recurrence(
+        when=when, identifier=identifier, raw=entry, withdrawn=disowned, withdrawn_by=by
+    )
+
+
+def recurrence_entry_reads(entry: str) -> bool:
+    """Whether one `recurrences:` entry reads as a filing, withdrawn or live.
+
+    It is true exactly where `recurrence_faults` raises neither of its two
+    reading faults for the entry: it reads as `DATE PL-XXXX`, and any tail
+    reads as `withdrawn DATE PL-XXXX`. Whether the ids it names are in the
+    store is not asked, since that needs the store. `verify.py` asks this of
+    each entry an append adds, so the audit and the store read one grammar
+    (`PL-FYV7`).
+    """
+    found = _recurrence(entry)
+    return not (_unreadable(found) or _unwithdrawable(found))
+
+
+def _unreadable(found: Recurrence) -> bool:
+    """Whether an entry does not read as `DATE PL-XXXX` at all."""
+    return found.when is None or not found.identifier
+
+
+def _unwithdrawable(found: Recurrence) -> bool:
+    """Whether an entry reads as `DATE PL-XXXX` but carries a tail that is not a withdrawal."""
+    return found.withdrawn is None and len(found.raw.split()) > 2 and not _unreadable(found)
 
 
 def _withdrawal(tail: list[str]) -> tuple[date | None, str]:
@@ -1663,18 +1687,14 @@ def recurrence_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
         return ()
 
     faults: list[str] = []
-    unreadable = [f.raw for f in recurrences_of(item) if f.when is None or not f.identifier]
+    unreadable = [f.raw for f in recurrences_of(item) if _unreadable(f)]
     if unreadable:
         faults.append(
             f"records {', '.join(repr(entry) for entry in unreadable)}, which does not read "
             "as `DATE PL-XXXX` - the date the capture was filed, then its id"
         )
 
-    unwithdrawable = [
-        f.raw
-        for f in recurrences_of(item)
-        if f.withdrawn is None and len(f.raw.split()) > 2 and f.when is not None and f.identifier
-    ]
+    unwithdrawable = [f.raw for f in recurrences_of(item) if _unwithdrawable(f)]
     if unwithdrawable:
         faults.append(
             f"records {', '.join(repr(entry) for entry in unwithdrawable)}, whose tail does not "
@@ -1701,6 +1721,47 @@ def recurrence_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
     return tuple(faults)
 
 
+def _done_item_faults(
+    item: Item, ids: tuple[str, ...], by_id: Mapping[str, Item], why_done: str
+) -> tuple[list[str], list[str]]:
+    """Why ids on `item` cannot each name another `done` item, and the ids that are not itself.
+
+    `reenters:` and `no-successor:` both name closed items that shipped a fix,
+    so both refuse an id that names the item itself, no item, or an item that
+    is not `done`. `why_done` says, in the field's own terms, why `done` is
+    required.
+    """
+    faults: list[str] = []
+    named = list(dict.fromkeys(ids))
+    if item.identifier and item.identifier in named:
+        faults.append("names itself")
+    others = [i for i in named if i != item.identifier]
+    missing = [i for i in others if i not in by_id]
+    if missing:
+        faults.append(f"names {', '.join(missing)}, which no item in this store carries")
+    unshipped = [i for i in others if i in by_id and by_id[i].status != "done"]
+    if unshipped:
+        faults.append(f"names {', '.join(unshipped)}, which is not `done` - {why_done}")
+    return faults, others
+
+
+def no_successor_faults(item: Item, by_id: Mapping[str, Item]) -> tuple[str, ...]:
+    """Why a `no-successor:` id cannot be a re-entered line this item answers, or `()`.
+
+    Each id takes a line off `docket inflow`'s unanswered list, and a line is a
+    `done` item that `reenters:` ids named. So an id naming no item or the item
+    itself answers nothing, and one naming an open or dropped item answers a
+    line that cannot exist, while the line meant stays listed (`PL-21Z5`).
+    """
+    faults, _ = _done_item_faults(
+        item,
+        item.no_successor,
+        by_id,
+        "a re-entered line is a shipped fix, and an open or dropped item shipped none",
+    )
+    return tuple(faults)
+
+
 def reentry_faults(item: Item, by_id: Mapping[str, Item]) -> tuple[str, ...]:
     """Why a `reenters:` id cannot be a fix that did not hold, or `()`.
 
@@ -1711,20 +1772,12 @@ def reentry_faults(item: Item, by_id: Mapping[str, Item]) -> tuple[str, ...]:
     judgment and is checked nowhere. An id that breaks one would be counted
     by `docket inflow` as a re-entry that never happened.
     """
-    faults: list[str] = []
-    named = list(dict.fromkeys(item.reenters))
-    if item.identifier and item.identifier in named:
-        faults.append("names itself")
-    others = [i for i in named if i != item.identifier]
-    missing = [i for i in others if i not in by_id]
-    if missing:
-        faults.append(f"names {', '.join(missing)}, which no item in this store carries")
-    unshipped = [i for i in others if i in by_id and by_id[i].status != "done"]
-    if unshipped:
-        faults.append(
-            f"names {', '.join(unshipped)}, which is not `done` - a re-entry is a shipped fix "
-            "that did not hold, and an open or dropped item shipped none"
-        )
+    faults, others = _done_item_faults(
+        item,
+        item.reenters,
+        by_id,
+        "a re-entry is a shipped fix that did not hold, and an open or dropped item shipped none",
+    )
     later = [
         i
         for i in others

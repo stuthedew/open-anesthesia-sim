@@ -1409,6 +1409,36 @@ def test_a_marked_citation_of_an_item_is_held_to_its_brief(tmp_path: Path) -> No
     )
 
 
+def test_a_possessive_quotation_of_an_item_brief_is_held_to_it(tmp_path: Path) -> None:
+    """`` `PL-CNJ1`'s "writes nothing" `` claims the brief holds the words, as after a document.
+
+    Before `PL-RX0W`, only the section mark after an id was read, so a
+    misquoted brief passed. Emphasis is folded, so a faithful quotation of
+    `writes **nothing**` passes. A quotation of words the brief lacks fails.
+    """
+    readme = '# Demo\n\nThe spike is `PL-T3ST`\'s "writes nothing" case.\n'
+    root = _repo(tmp_path, readme=readme)
+    _item(root, "PL-T3ST-demo", _brief("done", "**Design.** The spike writes **nothing** there."))
+    assert not any("quotes PL-T3ST" in e for e in _errors(root))
+
+    _item(root, "PL-T3ST-demo", _brief("done", "**Design.** The spike writes everything."))
+    assert any(
+        'quotes PL-T3ST as "writes nothing", which is not in docs/items/PL-T3ST-demo.md' in e
+        for e in _errors(root)
+    )
+
+
+def test_a_quotation_keeps_a_star_that_pairs_with_nothing(tmp_path: Path) -> None:
+    """Only the delimiters CommonMark pairs are folded, so `2 * 3` is still quoted as written."""
+    readme = '# Demo\n\nThe rule is `PL-T3ST` § "2 * 3 = 6".\n'
+    root = _repo(tmp_path, readme=readme)
+    _item(root, "PL-T3ST-demo", _brief("done", "**Rule.** We know 2 * 3 = 6 here."))
+    assert not any("quotes PL-T3ST" in e for e in _errors(root))
+
+    _item(root, "PL-T3ST-demo", _brief("done", "**Rule.** We know 23 = 6 here."))
+    assert any('quotes PL-T3ST as "2 * 3 = 6"' in e for e in _errors(root))
+
+
 def test_a_marked_citation_of_an_item_no_file_holds_is_an_error(tmp_path: Path) -> None:
     """An id no brief carries resolves against nothing, which is the finding itself."""
     readme = '# Demo\n\nWho holds an item is `PL-T3ST` § "Design round".\n'
@@ -4908,6 +4938,7 @@ def test_growth_against_the_default_branch_is_an_advisory(tmp_path: Path) -> Non
     assert report.errors == []
     assert any("resident instructions grew 82 characters" in m for m in report.advisories)
     assert any("PL-H7XN" in m for m in report.advisories)
+    assert any("PL-H7XN" in m and "docs/resident-instructions.md" in m for m in report.advisories)
     assert any("Never trim other resident text" in m for m in report.advisories)
 
 
@@ -5027,6 +5058,7 @@ def test_a_trim_that_pays_for_an_addition_is_an_advisory_at_net_zero(tmp_path: P
     assert not any("grew 0 characters" in m for m in report.advisories)
     assert any("both grew and shrank" in m for m in report.advisories)
     assert any("PL-BKQW" in m for m in report.advisories)
+    assert any("PL-BKQW" in m and "docs/resident-instructions.md" in m for m in report.advisories)
     assert report.errors == []
 
 
@@ -5075,6 +5107,30 @@ def test_the_total_is_printed_even_when_nothing_else_fired(tmp_path: Path) -> No
     assert "resident instructions: 14 characters over 3 lines loaded at launch" in printed
     assert "chars/lines: CLAUDE.md 14/3" in printed
     assert "all resolve" in printed
+
+
+def test_resident_line_names_the_instruction_file_subtotal(tmp_path: Path) -> None:
+    """The line names the instruction files alone, the basis `CLAUDE.md`'s series is on.
+
+    A skill's description is payload a session carries, and is counted in the
+    total, but the series was taken before it was. Compared with the whole
+    total, the description reads as growth (`PL-DXF0`).
+    """
+    root = _instructed(_repo(tmp_path))
+    skill = root / ".claude" / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: demo\ndescription: Use it to demo.\n---\n\nBody.\n")
+
+    report = doc_check.analyze(root)
+    printed = doc_check.format_check(report)
+
+    assert report.resident is not None
+    assert report.resident.instruction_total == len(CLAUDE_BODY)
+    assert report.resident.total > report.resident.instruction_total
+    assert (
+        f"the instruction files alone come to {len(CLAUDE_BODY)} characters, the basis of the "
+        "resident-growth series in CLAUDE.md"
+    ) in printed
 
 
 def test_a_one_character_file_is_reported_in_the_singular(tmp_path: Path) -> None:
@@ -5509,8 +5565,8 @@ def test_a_wrapped_clause_that_renders_as_a_list_item_is_refused(
         ),
         pytest.param(
             "docs/items/PL-T3ST-demo.md",
-            "---\nid: PL-T3ST\n---\n\nThe design landed on v0.4.x\n- and was kept.\n",
-            id="a brief in the item store, left to its own item",
+            "---\nid: PL-T3ST\nstatus: done\n---\n\nThe design landed on v0.4.x\n- and was kept.\n",
+            id="a closed brief in the item store, left as a record",
         ),
     ],
 )
@@ -5523,6 +5579,96 @@ def test_a_list_that_interrupts_a_paragraph_on_purpose_passes(
     one-line label whose item opens with a capital or with code.
     """
     assert _wrapped_list_errors(tmp_path / "repo", name, body) == []
+
+
+@pytest.mark.parametrize(
+    ("status", "identifier", "refused"),
+    [
+        pytest.param("ready", "PL-T3ST", True, id="an open brief is refused"),
+        pytest.param("blocked", "PL-B10K", True, id="a blocked brief is refused"),
+        pytest.param("done", "PL-D0N3", False, id="a done brief is left as a record"),
+        pytest.param("dropped", "PL-DRPD", False, id="a dropped brief is left as a record"),
+    ],
+)
+def test_an_open_brief_with_a_wrapped_clause_is_refused_and_a_closed_one_passes(
+    tmp_path: Path, status: str, identifier: str, refused: bool
+) -> None:
+    """`PL-XLYK`: the item store is read for wraps, but only its open briefs.
+
+    A closed brief is a record of the tree its work was done against, which
+    `.claude/rules/citation-drift.md` decides is not a finding. An open brief
+    is where a session writes new prose, so a wrap there is refused at its line.
+    """
+    root = _repo(tmp_path)
+    _item(
+        root, f"{identifier}-demo", _brief(status, "The design landed on v0.4.x\n- and was kept.")
+    )
+    report = doc_check.Report()
+    doc_check.check_wrapped_list_items(root, report)
+
+    if refused:
+        assert len(report.errors) == 1
+        assert report.errors[0].startswith(
+            f"docs/items/{identifier}-demo.md:7 starts a line with a list marker"
+        )
+    else:
+        assert report.errors == []
+
+
+# --- literal blocks that no page shows as prose (`PL-2B0B`) --------------------
+
+#: A paragraph, then the same text as an indented code block and as an HTML
+#: comment. CommonMark 0.31.2 reads the first block as code (§ 4.4) and the
+#: second as an HTML block that GitHub does not render (§ 4.6).
+LITERAL_BLOCKS = {
+    "an indented code block": "An example:\n\n    {text}\n",
+    "an HTML comment": "An example:\n\n<!--\n{text}\n-->\n",
+}
+
+
+def test_a_marker_in_an_indented_code_block_marks_nothing(tmp_path: Path) -> None:
+    """`PL-2B0B`: an `absent:` marker shown as code is the format being shown.
+
+    It neither declares the path absent nor is held to the tree. `PL-7454`
+    (#1444) already made `_marker_lines` read a marker only where it opens an
+    HTML block, so this pins that reading for an indented code block.
+    """
+    present = "The file `docs/MODEL.md` is here.\n\n    <!-- absent: docs/MODEL.md -->\n"
+    assert _errors(_repo(tmp_path / "present", readme=f"{README}\n{present}")) == []
+
+    missing = "There is no `setup.py` here.\n\n    <!-- absent: setup.py -->\n"
+    errors = _errors(_repo(tmp_path / "missing", readme=f"{README}\n{missing}"))
+    assert any("cites `setup.py`, which does not exist" in error for error in errors)
+
+
+@pytest.mark.parametrize("block", sorted(LITERAL_BLOCKS))
+def test_a_line_citation_in_an_indented_code_block_or_a_comment_is_not_held(
+    tmp_path: Path, block: str
+) -> None:
+    """`PL-2B0B`: a line citation no page shows is not held to its file's length."""
+    text = LITERAL_BLOCKS[block].format(text="see `src/anesthesia_sim/core/thing.py:900`")
+    root = _repo(tmp_path, readme=f"{README}\n{text}")
+
+    assert not [error for error in _errors(root) if "that file has" in error]
+
+
+def test_tex_in_an_html_block_is_quiet(tmp_path: Path) -> None:
+    """`PL-2B0B`: an HTML comment renders no math, so TeX inside it is not refused."""
+    text = LITERAL_BLOCKS["an HTML comment"].format(text="The step \\(\\Delta t\\) is explicit.")
+
+    assert _math_errors(tmp_path / "repo", "docs/NOTE.md", text) == []
+
+
+@pytest.mark.parametrize("block", sorted(LITERAL_BLOCKS))
+def test_a_claim_in_an_indented_code_block_or_a_comment_is_not_read(
+    tmp_path: Path, block: str
+) -> None:
+    """`PL-2B0B`: a quotation no page shows claims nothing about the file it names."""
+    text = LITERAL_BLOCKS[block].format(text='`docs/SRC.md`\'s "words it does not hold" is it.')
+    root = _repo(tmp_path, readme=f"# Demo\n\n{text}")
+    (root / "docs" / "SRC.md").write_text("## Heading\n\nOther words.\n", encoding="utf-8")
+
+    assert _quotation_findings(root) == []
 
 
 def test_a_worktree_under_claude_worktrees_is_not_walked(tmp_path: Path) -> None:
@@ -8304,6 +8450,49 @@ def _changed_terms(tmp_path: Path, before: str, after: str) -> list[str]:
     ]
 
 
+#: Python 3.11's tokenizer reads this as one statement and raises nothing, so
+#: `test_ghost` is no definition there, while its parser refuses the file.
+#: Python 3.12 and later read three statements (PEP 701) (`PL-LCBQ`).
+NESTED_QUOTE_FSTRING = 'x = f"{"(" + s}"\ndef test_ghost(): pass\ny = f"{")" + s}"\n'
+#: Read whole by the tokenizer and refused by the parser on every interpreter.
+UNPARSED_SUITE = "def test_ghost(): pass\nx = (1 +)\n"
+#: What the close-out sweep says of a changed copy that the parser refuses.
+PARSER_REFUSED = (
+    "src/anesthesia_sim/core/thing.py: so its tokenizer's reading may be short, and its "
+    "changed lines were also read a line at a time"
+)
+
+
+@pytest.mark.parametrize(
+    ("suite", "refused"),
+    [(NESTED_QUOTE_FSTRING, sys.version_info < (3, 12)), (UNPARSED_SUITE, True)],
+    ids=["a nested quote, refused on 3.11", "a syntax error, refused everywhere"],
+)
+def test_a_file_the_running_interpreter_cannot_parse_is_named_by_the_definition_readers(
+    tmp_path: Path, suite: str, refused: bool
+) -> None:
+    """Each definition reader names a file the parser refuses, as `verify` does.
+
+    On Python 3.11 the tokenizer merges the nested-quote file into one
+    statement with no error. Before the fix, `check_named_tests` then
+    reported the cited `test_ghost` as missing, and the close-out sweep
+    dropped it from the changed definitions, each without a word.
+    """
+    (tmp_path / "cited").mkdir()
+    (tmp_path / "changed").mkdir()
+    cited = suite.replace("def test_ghost(): pass", "# test_ghost was here")
+
+    citations = _test_citations(tmp_path / "cited", cited, "test_ghost")
+    terms = _changed_terms(tmp_path / "changed", "", suite)
+
+    if refused:
+        assert citations == ["declined: docs/WORKING_NOTES.md:3: names the test `test_ghost`"]
+        assert terms == ["test_ghost", "thing", "thing.py", PARSER_REFUSED]
+    else:
+        assert citations == ["error: docs/WORKING_NOTES.md:3: names the test `test_ghost`"]
+        assert terms == ["test_ghost", "thing", "thing.py"]
+
+
 def _bump_refusal(tmp_path: Path) -> str:
     """What `prepare_bump` says of a version TOML continues across lines, or "" if it bumps."""
     pyproject = tmp_path / "pyproject.toml"
@@ -8429,6 +8618,11 @@ NO_RULE_OPEN = (
     "this line is led by a tab where no rule is open, and is no assignment, directive or "
     'conditional, which make refuses where it reads the line ("recipe commences before first '
     'target")'
+)
+#: Why `_make_lines` declines a Makefile that assigns `.RECIPEPREFIX`.
+RECIPEPREFIX_ASSIGNED = (
+    "this line assigns `.RECIPEPREFIX`, after which make opens a recipe line with that "
+    "character instead of a tab, and this reader knows a recipe line only by its tab"
 )
 #: Why it declines one after a branch that changed which rule is open.
 BRANCH_CHANGED_THE_RULE = (
@@ -9160,6 +9354,18 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "make lines, a tab-led line where no rule is open": (
         lambda _: _make_lines_refusal("\t@echo hi\nall:\n\t@echo all\n"),
         (1, NO_RULE_OPEN),
+    ),
+    "make lines, an assignment to .RECIPEPREFIX is refused by name": (
+        lambda _: _make_lines_refusal(".RECIPEPREFIX = >\ncheck:\n>@echo ran\n"),
+        (1, RECIPEPREFIX_ASSIGNED),
+    ),
+    "make lines, an overriding define of .RECIPEPREFIX is refused by name": (
+        lambda _: _make_lines_refusal("override define .RECIPEPREFIX\n>\nendef\n"),
+        (1, RECIPEPREFIX_ASSIGNED),
+    ),
+    "make lines, a reference to .RECIPEPREFIX is read": (
+        lambda _: _make_lines_refusal("X := $(.RECIPEPREFIX)\n"),
+        [("X := $(.RECIPEPREFIX)", 1)],
     ),
     "make lines, a target-specific variable opens no rule": (
         lambda _: _make_lines_refusal("check: X = 1\n\t@echo hi\n"),
@@ -11244,6 +11450,53 @@ def test_each_makefile_check_declines_a_define_no_endef_closes(
     )
 
 
+#: A Makefile that sets the recipe prefix, which GNU make 4.3 runs: `make check`
+#: prints `ran` (`PL-GSJ6`). Read by tab, it has a `check` with no recipe.
+RECIPEPREFIX_MAKEFILE = ".PHONY: check\n.RECIPEPREFIX = >\ncheck:\n>uv run ruff check .\n"
+
+
+@pytest.mark.parametrize(
+    ("check", "unchecked"),
+    [
+        (
+            lambda root, report: doc_check.check_make_targets(
+                root, {root / "README.md": "Run `make check`.\n"}, report
+            ),
+            "no documented `make` command was checked against it",
+        ),
+        (doc_check.check_coverage_gate, "the coverage gate was not compared"),
+        (
+            doc_check.check_ruff_cache,
+            "whether the Makefile runs `ruff check` without the flag was not decided",
+        ),
+        (doc_check.check_gate_parity, "the scripts `make check` runs were not compared"),
+    ],
+    ids=["make targets", "coverage gate", "ruff cache", "gate parity"],
+)
+def test_a_makefile_that_sets_recipeprefix_is_declined_by_each_check(
+    check: Callable[[Path, doc_check.Report], None], unchecked: str, tmp_path: Path
+) -> None:
+    """Each check declines at the assignment rather than read every recipe as missing.
+
+    Before the fix, `check_make_targets` read `check` as a target with no
+    recipe, and the other three compared no command and said nothing.
+    """
+    root = _with_workflow(_repo(tmp_path))
+    (root / "Makefile").write_text(RECIPEPREFIX_MAKEFILE, encoding="utf-8")
+    report = doc_check.Report()
+
+    check(root, report)
+
+    assert (report.errors, report.declined) == (
+        [],
+        [
+            "Makefile:2: this line assigns `.RECIPEPREFIX`, after which make opens a recipe "
+            "line with that character instead of a tab, and this reader knows a recipe line "
+            f"only by its tab, so {unchecked}"
+        ],
+    )
+
+
 def test_a_fence_bash_cannot_read_is_still_read_a_line_at_a_time() -> None:
     """An apostrophe in prose leaves the fence unreadable to bash from that line.
 
@@ -11289,6 +11542,22 @@ def test_a_host_block_claim_without_its_probe_date_is_refused(tmp_path: Path) ->
         "whether a host answers through the egress proxy is a probe on a day, so write the "
         "date it was probed in the same sentence (`PL-CLW5`)"
     ]
+
+
+def test_a_host_claim_below_a_backslash_newline_is_reported_on_its_own_line(tmp_path: Path) -> None:
+    """`PL-PV73`: a docstring's claim is numbered from the source, not the evaluated value.
+
+    A backslash-newline removes a source line from the value, so counting its
+    newlines named source line 4 for a claim that stands on line 5.
+    """
+    source = (
+        'def f() -> None:\n    """One sentence \\\n    wraps.\n\n'
+        '    Nothing was checked: `doi.org` is blocked by the proxy.\n    """\n'
+    )
+    errors = _host_claim_errors(tmp_path, {"tools/m.py": source})
+
+    assert len(errors) == 1
+    assert errors[0].startswith("tools/m.py:5 names `doi.org` beside a refusal")
 
 
 @pytest.mark.parametrize(

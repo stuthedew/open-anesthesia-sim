@@ -29,8 +29,11 @@ from anesthesia_sim.app.view_registry import (
     rename_offer_text,
     required_kinds,
     retirements,
+    too_small_text,
+    too_small_title,
 )
 from anesthesia_sim.layout.shipped import SHIPPED_WORKSPACE_IDS, shipped_workspace
+from anesthesia_sim.layout.sizing import PixelSize
 from anesthesia_sim.layout.tree import ViewKind
 
 OLD = ViewKind("old_view")
@@ -93,6 +96,19 @@ def test_every_registered_kind_has_a_factory() -> None:
     """`PL-R1WQ` Q4: a kind with nothing to build its View would draw an empty Area."""
 
     assert all(callable(entry.factory) for entry in REGISTERED.values())
+
+
+def test_every_registered_kind_declares_a_minimum_a_reader_can_see() -> None:
+    """`PL-K285` Q1: a View that holds nothing yet still needs this size, never none."""
+
+    assert all(
+        entry.minimum.width_px > 0 and entry.minimum.height_px > 0 for entry in REGISTERED.values()
+    )
+
+
+def test_an_entry_refuses_a_minimum_that_is_not_a_pixel_size() -> None:
+    with pytest.raises(TypeError, match="declares a minimum that is not a PixelSize: tuple"):
+        RegisteredView(OLD, "Old", _factory, minimum=(100, 100))  # type: ignore[arg-type]
 
 
 # --- Building a registry and a retirement table ------------------------------------
@@ -275,3 +291,21 @@ def test_a_removed_or_unknown_kind_is_offered_nothing() -> None:
 def test_a_registered_kind_is_offered_nothing_to_rename_to() -> None:
     with pytest.raises(ValueError, match="'wash_in' is registered"):
         rename_offer_text(WASH_IN)
+
+
+# --- The too-small notice ------------------------------------------------------------
+
+
+def test_the_too_small_notice_names_the_view_and_both_sizes() -> None:
+    """`PL-DB5G` Q3's wording, with the need first and the Area's size second."""
+
+    assert too_small_title("Wash-in") == "Too small for Wash-in."
+    assert too_small_text(PixelSize(300, 246), PixelSize(212, 97)) == (
+        "It needs at least 300 by 246 px; this Area is 212 by 97. Drag a border to enlarge it, "
+        "or choose a smaller View from the menu above."
+    )
+
+
+def test_the_too_small_notice_refuses_a_size_that_is_not_a_pixel_size() -> None:
+    with pytest.raises(TypeError, match="a size on screen is a PixelSize, not tuple"):
+        too_small_text((300, 246), PixelSize(212, 97))  # type: ignore[arg-type]

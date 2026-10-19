@@ -3,12 +3,15 @@ id: PL-XLYK
 title: 83 item briefs in docs/items hold a wrapped clause that renders as a list item, which PL-LNNL's check skips because the item store was outside its measured scope; fix the open ones and decide whether the check reads the store
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: prose-renders-as-written
+milestone: v0.5.34
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
+closed: 2026-10-19
+pr: 1629
 payoff: a wrap that renders as a stray list item in an open brief fails make check where it is written
 verify: grep -q 'def test_an_open_brief_with_a_wrapped_clause_is_refused_and_a_closed_one_passes' tests/unit/test_doc_check.py
 ---
@@ -50,3 +53,12 @@ open brief is refused and a closed one passes.
 
 **Generator check.** Not owed beyond `PL-LNNL`'s: this is the scope `PL-LNNL`
 left out on purpose, filed with it, not a re-entry of a fix.
+
+**Closed 2026-10-19.** `check_wrapped_list_items` now reads the open briefs
+through `_live_item_briefs`, which takes each status from the store's own
+parse, and still skips the closed ones. On that day six open briefs held such
+a wrap: `PL-2M9N`, `PL-507K`, `PL-DHJ7`, `PL-GQWP`, `PL-KZ99` and `PL-ZWQS`.
+`PL-05M4` no longer held one, and `PL-ZWQS` was a numbered marker (`1.`)
+rather than a dash. Each marker was moved to the end of the line above. The
+test that pinned a store brief as skipped now pins a closed one, since an open
+brief is no longer skipped.

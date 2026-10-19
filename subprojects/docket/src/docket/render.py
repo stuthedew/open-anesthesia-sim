@@ -271,9 +271,9 @@ def format_unread(flight: FlightReport) -> str:
     needs no history - so the sentence claims only what is actually missing.
 
     It says what went unread rather than what to do about it, for the reason
-    `flight` reports rather than blocks - a ref beyond a truncated clone's
-    horizon is the normal state of an agent session's container, and a tool
-    that refused to answer there would refuse to answer at all.
+    `flight` reports rather than blocks - in a shallow clone a ref beyond its
+    horizon is ordinary, and a tool that refused to answer there would refuse
+    to answer at all.
     """
     said = []
     # The whole-read decline first: a ref beyond a truncated clone's horizon is
@@ -2299,10 +2299,10 @@ def _live_claims(order: Sequence[Hold], item: str, read: Holdings, now: datetime
             "may be computing a different one. Do not stand down on it.)"
         )
     if read.unreadable:
-        # The order is over the refs that could be read, and a ref beyond a
-        # truncated clone's horizon is the normal state of an agent's
-        # container. Saying so is the same refusal to present a partial reading
-        # as a complete one that `format_unread` makes for the rest.
+        # The order is over the refs that could be read, and in a shallow clone
+        # a ref beyond its horizon is ordinary. Saying so is the same refusal
+        # to present a partial reading as a complete one that `format_unread`
+        # makes for the rest.
         lines.append(
             f"  ({_plural(len(read.unreadable), 'ref', 'refs')} went unread, so this order "
             "is over what could be read.)"

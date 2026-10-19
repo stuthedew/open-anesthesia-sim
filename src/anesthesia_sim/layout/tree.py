@@ -18,7 +18,8 @@ thing, and the adapter (`PL-W9P6`) maps them onto Qt's orientations.
 **Sizes are fractions of the split's extent**, one per child, each above zero
 and together one, never pixels, so a file reads the same on any screen
 (`PL-HJPY` Q5). How small an Area may be is a property of the screen it is
-shown on, and is `PL-K285`'s.
+shown on, so `layout/sizing.py` decides it against an extent in pixels
+(`PL-K285`).
 
 **A tree takes one form, wherever no four Areas meet at a point.** A split
 holds at least two children, and never a child split of its own orientation: a
