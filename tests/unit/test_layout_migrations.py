@@ -170,7 +170,7 @@ def test_a_schema_version_is_a_whole_number_from_one_and_a_step_takes_only_the_t
 
     for value in (True, 1.0, "1"):
         with pytest.raises(TypeError, match="a schema version is an int"):
-            SchemaVersion(value)  # type: ignore[arg-type]
+            SchemaVersion(value)
 
     with pytest.raises(TypeError, match="built as a SchemaVersion, not int"):
         Migration(1, dict)  # type: ignore[arg-type]
