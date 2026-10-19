@@ -444,6 +444,7 @@ workflow_paths = [
   "docs/session-ledger.tsv",
   "docs/stress-2026-09-25",
   "docs/worker.md",
+  "model-evidence.toml",
   "bin",
   "subprojects",
   "tests/unit/test_agent_identity_check.py",
