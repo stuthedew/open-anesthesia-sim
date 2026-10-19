@@ -1089,6 +1089,24 @@ class SettingReadout:
     secondary: str
 
 
+# The three flows a profile states the opening value of, each with the profile
+# that states it and the `docs/MODEL.md` section that holds its range. Every
+# flow a slider sets is one of its steps, so only an opening value can be off
+# the grid, and `setting_readouts` refuses one (`PL-1KQ9`, `PL-96SQ`). The
+# delivered dial is not here: its setting is a fraction converted to percent,
+# so an exact comparison with a step needs its own reading first.
+_OPENING_SOURCES: Final[Mapping[ControlInput, tuple[str, str]]] = MappingProxyType(
+    {
+        ControlInput.FRESH_GAS_FLOW: (
+            "machine profile",
+            "The model's envelope and a machine's deliverable range are two claims",
+        ),
+        ControlInput.ALVEOLAR_VENTILATION: ("patient profile", "Supported input ranges"),
+        ControlInput.CARDIAC_OUTPUT: ("patient profile", "Supported input ranges"),
+    }
+)
+
+
 def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
     """The four setting controls, in `PARAMETER_CONTROLS` order, from the settings in force.
 
@@ -1108,12 +1126,13 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
             offer no accepted setting fails visibly rather than offering a
             refused one. No shipped range reaches it; a machine profile
             declaring a fresh gas flow range narrower than one step could.
-            Also if the fresh gas flow in force is not one of the steps its
-            slider offers. Every flow a slider sets is a step, so only a
-            machine profile's opening flow can reach it, and the run is
+            Also if the fresh gas flow, alveolar ventilation or cardiac
+            output in force is not one of the steps its slider offers.
+            Every flow a slider sets is a step, so only an opening flow that
+            a machine or patient profile states can reach it, and the run is
             refused rather than opened with the slider and its readout each
-            showing a flow the run does not hold (`PL-1KQ9`, `PL-25KS`
-            decision D4). No shipped profile reaches it.
+            showing a flow the run does not hold (`PL-1KQ9`, `PL-96SQ`,
+            `PL-25KS` decision D4). No shipped profile reaches it.
     """
 
     delivered = settings.delivered_partial_pressure_fraction
@@ -1171,15 +1190,15 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
 
         minimum, maximum = offered
 
-        if control.control is ControlInput.FRESH_GAS_FLOW and not _is_offered_step(
+        if control.control in _OPENING_SOURCES and not _is_offered_step(
             value, offered, control.decimals
         ):
+            profile, section = _OPENING_SOURCES[control.control]
             raise ValueError(
                 f"{name} is {value} {control.unit}, which the slider cannot show: it offers "
                 f"{slider_value(1, control.decimals)} {control.unit} steps from {minimum} to "
-                f"{maximum} {control.unit}, so a machine profile must open the run on one of "
-                "those steps (docs/MODEL.md, \"The model's envelope and a machine's "
-                'deliverable range are two claims")'
+                f"{maximum} {control.unit}, so a {profile} must open the run on one of "
+                f'those steps (docs/MODEL.md, "{section}")'
             )
 
         readouts.append(
@@ -1204,8 +1223,9 @@ def _is_offered_step(value: float, offered: tuple[float, float], decimals: int) 
     """Whether a setting is one of the steps a slider offers, so the slider can show it.
 
     A step is compared as the value the slider emits for it, `slider_value`,
-    so a setting the slider wrote is always one. A machine profile's
-    stated opening flow is the one setting no slider wrote (`PL-1KQ9`).
+    so a setting the slider wrote is always one. An opening flow that a
+    machine or patient profile states is the one setting no slider wrote
+    (`PL-1KQ9`, `PL-96SQ`).
 
     Args:
         value: The setting in force, in the control's unit.

@@ -1658,6 +1658,87 @@ def test_an_opening_fresh_gas_flow_on_the_slider_grid_opens(
 
 
 @pytest.mark.parametrize(
+    ("control", "controller_settings", "refusal"),
+    (
+        # Between two 0.1 L/min steps: the slider would sit at 5.2, since
+        # `slider_position` rounds half to even, and the readout would print
+        # 5.2 over a run at 5.25.
+        (
+            ControlInput.ALVEOLAR_VENTILATION,
+            {"alveolar_ventilation_l_min": AlveolarVentilation(5.25)},
+            "Alveolar ventilation is 5.25 L/min, which the slider cannot show: it offers "
+            "0.1 L/min steps from 0.0 to 12.0 L/min, so a patient profile must open the run "
+            'on one of those steps (docs/MODEL.md, "Supported input ranges")',
+        ),
+        (
+            ControlInput.CARDIAC_OUTPUT,
+            {"cardiac_output_l_min": CardiacOutput(5.25)},
+            "Cardiac output is 5.25 L/min, which the slider cannot show: it offers "
+            "0.1 L/min steps from 0.0 to 10.0 L/min, so a patient profile must open the run "
+            'on one of those steps (docs/MODEL.md, "Supported input ranges")',
+        ),
+    ),
+)
+def test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused(
+    control: ControlInput, controller_settings: dict[str, Any], refusal: str
+) -> None:
+    """A run cannot open at a ventilation or cardiac output its slider cannot show (`PL-96SQ`).
+
+    The patient profile states both opening values, and the core checks them
+    only as positive and finite, so it opens the run at 5.25 L/min. The
+    controls refuse it, as they refuse an off-grid fresh gas flow
+    (`PL-1KQ9`). Otherwise the slider would stand at 5.2 beside a readout
+    printing 5.2 over a run at 5.25. The run is opened here through the
+    controller's explicit setting rather than a patient file, because the
+    refusal reads the setting in force whatever stated it.
+    """
+
+    controller = SimulationController(**controller_settings)
+
+    assert {
+        ControlInput.ALVEOLAR_VENTILATION: controller.snapshot().alveolar_ventilation_l_min,
+        ControlInput.CARDIAC_OUTPUT: controller.snapshot().cardiac_output_l_min,
+    }[control] == 5.25
+
+    with pytest.raises(ValueError) as refused:
+        setting_readouts(controller.snapshot())
+
+    assert str(refused.value) == refusal
+
+
+@pytest.mark.parametrize(
+    ("control", "controller_settings"),
+    (
+        (
+            ControlInput.ALVEOLAR_VENTILATION,
+            {"alveolar_ventilation_l_min": AlveolarVentilation(5.3)},
+        ),
+        (
+            ControlInput.ALVEOLAR_VENTILATION,
+            {"alveolar_ventilation_l_min": AlveolarVentilation(12.0)},
+        ),
+        (ControlInput.CARDIAC_OUTPUT, {"cardiac_output_l_min": CardiacOutput(5.3)}),
+        (ControlInput.CARDIAC_OUTPUT, {"cardiac_output_l_min": CardiacOutput(10.0)}),
+    ),
+)
+def test_an_opening_ventilation_or_cardiac_output_on_the_slider_grid_opens(
+    control: ControlInput, controller_settings: dict[str, Any]
+) -> None:
+    """An opening ventilation or cardiac output on a slider step opens, at the top of the range too.
+
+    The readout prints the stated value, which is the property the refusal
+    above protects.
+    """
+
+    controller = SimulationController(**controller_settings)
+    [stated] = controller_settings.values()
+    readout = _settings_by_control(controller.snapshot())[control]
+
+    assert readout.value == stated
+    assert readout.value_text == f"{stated:.1f} L/min"
+
+
+@pytest.mark.parametrize(
     ("minimum", "maximum", "decimals", "offered"),
     (
         # Whole steps are offered as they are, which is every shipped range.

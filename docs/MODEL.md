@@ -5451,6 +5451,14 @@ before any compartment or settings record can hold it (`PL-0YYV`, below).
 the constants, and its fresh gas flow slider reads the circuit's accepted
 range, which is this envelope narrowed by the mounted machine's (§ "The
 model's envelope and a machine's deliverable range are two claims", below).
+Each of the three sliders steps at 0.1 L/min. A run whose opening ventilation
+or cardiac output, as the patient profile states it, is not one of those steps
+is refused when the dashboard builds its controls, as an off-grid opening fresh
+gas flow is (`PL-96SQ`). Otherwise the slider would stand on a neighbouring
+step beside a rounded readout, and both would show a flow the run does not
+hold. `test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused`
+in `tests/unit/test_dashboard_frame.py` holds it. The shipped patient states
+4.0 and 5.0 L/min, so nothing displayed changes.
 
 **Refused, not clamped**, for the reason the vaporizer maximum is: a silently
 clamped setting would simulate, display, and chart a value the user did not

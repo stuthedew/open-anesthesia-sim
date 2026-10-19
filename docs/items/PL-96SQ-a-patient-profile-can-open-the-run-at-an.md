@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: defect, ux
-touches: src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py
+touches: src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-18
 payoff: no run opens at a ventilation or cardiac output that the slider and the readout beside it cannot both show
@@ -46,3 +46,14 @@ route: apply `_is_offered_step` to all three flow controls in the loop, in
 place of the fresh gas flow condition. Check before building that no
 control path writes an off-grid value of either, such as a restore after a
 refused setting or a branch opened from a timeline value.
+
+**Checked 2026-10-19:** still real on `main` at `6fd84bd5`: `setting_readouts`
+applied `_is_offered_step` only to the fresh gas flow. No control path writes
+an off-grid value of either flow: the sliders write steps, a branch reads its
+settings back from the timeline, and a refused setting restores the value it
+replaced. So the opening value is the only way in.
+
+**Regression test against the code before the fix.** `uv run pytest -q
+tests/unit/test_dashboard_frame.py -k ventilation_or_cardiac` on `6fd84bd5`
+with the new tests added failed both refusal cases with `Failed: DID NOT RAISE
+ValueError`; the four on-grid cases passed.
