@@ -43,11 +43,11 @@ from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
 
-#: Every View this build registers, in one Workspace, so each test finds the
-#: View it reads whichever Workspace ships first. The parameter controls run
-#: across the top, over the concentration chart and the F_A/F_I plot beside
-#: the accounting. That is the dashboard as it stood before it opened on the
-#: shipped Workspaces (`PL-2KXB`).
+#: One Workspace that holds every View this build registers. Each test then
+#: finds the View it reads, whichever Workspace is shipped first. The
+#: parameter controls run across the top. Under them, the concentration chart
+#: sits over the F_A/F_I plot, beside the accounting. That was the dashboard's
+#: layout before it began opening on the shipped Workspaces (`PL-2KXB`).
 _EVERY_VIEW = WorkspaceSet(
     (
         Workspace(

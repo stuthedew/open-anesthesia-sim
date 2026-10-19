@@ -157,15 +157,16 @@ def view_chooser_stylesheet() -> str:
 
 
 def workspace_tab_stylesheet() -> str:
-    """A Workspace tab: MUTED text on the page, the active one INK bold over a PRIMARY line.
+    """Return the style of a Workspace tab, with the active tab in bold INK over a PRIMARY line.
 
-    `PL-QW1Z` Q2 decided its look. A tab has no fill, so its label stands on
-    the page's BACKGROUND. An inactive tab is MUTED and regular, and the
-    pointer lifts it to INK. The active tab is INK and bold, with a 2px
-    PRIMARY line along its lower edge, so weight and a shape tell it apart as
-    well as colour. With the keyboard focus a tab carries a 1px INK edge on
-    its other three sides, which a transparent edge at rest keeps from moving
-    the label. `tools/contrast_check.py` measures each pair on BACKGROUND.
+    `PL-QW1Z` Q2 decided its look. A tab has no fill, so its label sits on the
+    page's BACKGROUND. An inactive tab is MUTED and regular, and turns INK
+    under the pointer. The active tab is INK and bold, with a 2px PRIMARY line
+    along its lower edge, so weight and shape tell it apart as well as colour.
+    A tab with the keyboard focus has a 1px INK edge on its other three sides.
+    At rest those sides have a transparent edge of the same width, so the
+    label does not move when the focus arrives. `tools/contrast_check.py`
+    measures each pair on BACKGROUND.
     """
 
     return (
@@ -183,10 +184,11 @@ def workspace_tab_stylesheet() -> str:
 def workspace_separator_stylesheet() -> str:
     """The rule between the shipped Workspaces' tabs and the reader's own, in MUTED.
 
-    `PL-QW1Z` Q4 asked for a GRIDLINE rule. GRIDLINE measures under SC
-    1.4.11's 3:1 on BACKGROUND, and here the rule is the one thing on screen
-    that shows where the shipped tabs end. So it is drawn in MUTED, which
-    `tools/contrast_check.py` measures on BACKGROUND (`PL-2KXB`).
+    `PL-QW1Z` Q4 asked for a GRIDLINE rule. But GRIDLINE's contrast on
+    BACKGROUND is less than the 3:1 that WCAG SC 1.4.11 requires, and this rule
+    is the one thing on screen that shows where the shipped tabs end. So it is
+    drawn in MUTED, which `tools/contrast_check.py` measures on BACKGROUND
+    (`PL-2KXB`).
     """
 
     return f"background-color: {MUTED};"

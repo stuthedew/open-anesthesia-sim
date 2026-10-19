@@ -1,4 +1,4 @@
-"""The Workspace tab strip: one tab per Workspace, directly above the Areas, in PySide6.
+"""The Workspace tab strip, with one tab per Workspace, directly above the Areas, in PySide6.
 
 `PL-QW1Z` decided its place and its look, and `PL-2KXB` builds it. The strip
 spans the layout container's width under the unconditional region, because a
@@ -6,22 +6,23 @@ tab switches the Areas and nothing above them (Q1). It holds the tabs and a
 "+" at its end, and nothing else (Q2). The shipped Workspaces' tabs come
 first, then a rule, then the reader's own (Q4).
 
-**The strip owns no Workspace.** It is drawn from the `WorkspaceSet` the
-dashboard holds, and every change a reader makes is a new set handed to the
-`change` callback. The dashboard applies it and draws the strip again with
-`show_set`. So the set has one owner, as `.claude/rules/ui-areas.md` asks of
-state the rest of the dashboard draws from.
+**The strip owns no Workspace.** It is drawn from the `WorkspaceSet` that the
+dashboard holds. Every change a reader makes produces a new set, which the
+strip hands to the `change` callback. The dashboard applies it and draws the
+strip again with `show_set`. So the set has one owner, as
+`.claude/rules/ui-areas.md` asks of any state that the rest of the dashboard
+draws from.
 
 **Each menu entry is worked out before it is shown.** `tab_operations` asks
-the set for the set each entry would make, as `AreaLayout.operations` asks
-the layout model. An entry the set refuses is shown disabled, with the reason
-as its tooltip. So the last Workspace's Delete is shown unavailable rather
-than refused after a click (`PL-WV9K` Q2).
+the set what new set each entry would make, in the same way that
+`AreaLayout.operations` asks the layout model. An entry the set refuses is
+shown disabled, with the reason as its tooltip. So the last Workspace's Delete
+is shown as unavailable rather than refused after a click (`PL-WV9K` Q2).
 
 The tab's context menu holds, in `PL-QW1Z` Q3's order: Rename, Duplicate,
 Move left, Move right, one entry to pin or unpin each open run, Reset this
-Workspace on a shipped tab, and Delete. It opens on a right-click, the Menu
-key or Shift+F10. A double-click or F2 renames a tab in place. Delete and
+Workspace (only on a shipped tab), and Delete. It opens on a right-click, the
+Menu key or Shift+F10. A double-click or F2 renames a tab in place. Delete and
 Reset ask first, because a session's Workspaces have no undo.
 """
 
@@ -138,7 +139,7 @@ class WorkspaceQuestion:
 
 @dataclass(frozen=True, slots=True)
 class TabOperation:
-    """One entry of a tab's menu: its label, and the set it makes or why it cannot.
+    """One entry in a tab's menu, with its label and the set it makes or why it cannot.
 
     Attributes:
         label: The entry's text.
@@ -178,15 +179,15 @@ def tab_operations(
     open_runs: tuple[RunId, ...],
     shipped: Callable[[ShippedWorkspaceId], Workspace] = shipped_workspace,
 ) -> tuple[TabOperation, ...]:
-    """The entries of the menu for the tab at `index`, after Rename, in `PL-QW1Z` Q3's order.
+    """Return the menu entries after Rename for the tab at `index`, in `PL-QW1Z` Q3's order.
 
     Args:
         workspaces: The set the strip is drawn from.
         index: The tab's position in the set.
         open_runs: The runs the session has open, in drawing order. A
             pinned run that is no longer open can still be unpinned.
-        shipped: Reads the shipped Workspace with a given id, which a
-            shipped tab resets to. A test passes its own.
+        shipped: Returns the shipped Workspace with a given id. A shipped
+            tab resets to that Workspace. A test passes its own.
 
     Raises:
         TypeError: `index` is not an `int`.
@@ -288,13 +289,15 @@ def _delete(workspaces: WorkspaceSet, index: int, workspace: Workspace) -> TabOp
 class WorkspaceQuestionDialog(QDialog):
     """The question asked before a Workspace is deleted or reset.
 
-    Laid out as `NewCaseDialog` is, destructive first and safe last: the
-    entry's own button is outlined and the keep button is filled and the
-    default, so Return and Escape both keep the Workspace. `accept()` means
-    "go ahead". Shown with `open()`, so a test can drive `accept()` itself.
+    The dialog is laid out like `NewCaseDialog`, with the destructive button
+    first and the safe one last. The entry's own button is outlined. The keep
+    button is filled and is the default, so Return and Escape both keep the
+    Workspace. `accept()` means "go ahead". The dialog is shown with `open()`,
+    so a test can call `accept()` itself.
 
     Attributes:
-        proceed_button: Applies the entry; `clicked` runs `accept()`.
+        proceed_button: Applies the entry. Its `clicked` signal runs
+            `accept()`.
         keep_button: Keeps the Workspace and is the default.
     """
 
@@ -328,11 +331,11 @@ class WorkspaceQuestionDialog(QDialog):
 
 
 class WorkspaceTab(QToolButton):
-    """One Workspace's tab: its name, checked while it is the current Workspace.
+    """One Workspace's tab, showing its name and checked while it is the current Workspace.
 
-    A click makes it current. A double-click or F2 renames it, the Menu key,
-    Shift+F10 or a right-click opens its menu, and Left and Right move the
-    keyboard focus to the neighbouring tab. The strip does each of these.
+    A click makes it current. A double-click or F2 renames it. The Menu key,
+    Shift+F10 or a right-click opens its menu. Left and Right move the keyboard
+    focus to the neighbouring tab. The strip carries out each of these actions.
 
     Attributes:
         index: The Workspace's position in the set the strip was drawn from.
@@ -412,11 +415,12 @@ class WorkspaceTabs(QWidget):
         workspaces: The set to draw first.
         change: Called with each set a reader's action makes. The owner
             applies it and calls `show_set` with it.
-        open_runs: Gives the runs open now, for the pin entries.
-        live: Gives the set as it stands now, where the owner's current
-            Workspace has moved on since it was drawn: a dragged border, or
-            a View's own settings. Every entry is worked out from it, so a
-            duplicate copies what the reader sees. By default, the set drawn.
+        open_runs: Returns the runs open now, for the pin entries.
+        live: Returns the set as it stands now. The owner's current Workspace
+            can change after the strip draws it, through a dragged border or
+            a View's own settings. Every entry is worked out from this set, so
+            a duplicate copies what the reader sees. By default, the set that
+            was drawn.
 
     Attributes:
         question: The question dialog open now, or `None`.
@@ -610,8 +614,9 @@ class WorkspaceTabs(QWidget):
         """Take the edited name, or show why it was not taken.
 
         Args:
-            keep_open: Where the name is refused, whether the editor stays
-                open for another try (Return) or closes (focus moved away).
+            keep_open: If the name is refused, whether the editor stays open
+                for another try (after Return) or closes (after the focus moves
+                away).
         """
 
         editor = self._editor

@@ -52,12 +52,12 @@ from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
 
-#: The charts and the accounting in one Workspace, so each test finds the
-#: View it reads whichever Workspace ships first. The concentration chart sits
-#: over the F_A/F_I plot, beside the accounting, as the dashboard stood before
-#: it opened on the shipped Workspaces (`PL-2KXB`). These tests read no setting
-#: control, so the parameter controls are left out and the plots keep the
-#: height they were drawn at then.
+#: One Workspace that holds the charts and the accounting. Each test then finds
+#: the View it reads, whichever Workspace is shipped first. The concentration
+#: chart sits over the F_A/F_I plot, beside the accounting. That was the
+#: dashboard's layout before it began opening on the shipped Workspaces
+#: (`PL-2KXB`). These tests read no setting control, so the parameter controls
+#: are left out and the plots keep the height they were drawn at then.
 _EVERY_VIEW = WorkspaceSet(
     (
         Workspace(

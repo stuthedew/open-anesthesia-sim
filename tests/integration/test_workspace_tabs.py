@@ -6,10 +6,10 @@ does not own, and hands every change a reader makes back as a new set
 first and a rule follows them, the current tab is the checked one, each menu
 entry is worked out before it is shown, Delete and Reset ask first, and a tab
 is renamed in place. The dashboard tests check what the strip does to the
-page: a tab switches the Areas and never a run, a Workspace left and come back
-to is as it was left, and a pinned Workspace draws its run alone or says that
-it is not open (`PL-WV9K` Q6). The tests render under the `offscreen` platform
-that `tests/conftest.py` selects.
+page. A tab switches the Areas and never a run. A Workspace that the reader
+leaves and comes back to is as it was left. A pinned Workspace draws its run
+alone, or says that the run is not open (`PL-WV9K` Q6). The tests render under
+the `offscreen` platform that `tests/conftest.py` selects.
 """
 
 from collections.abc import Iterator

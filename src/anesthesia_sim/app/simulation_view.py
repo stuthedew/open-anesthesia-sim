@@ -25,11 +25,12 @@ widget in the band sits inside an Area, so no split, join or close of an Area
 and no Workspace switch can affect the band.
 
 **The dashboard owns the Workspaces** (`PL-2KXB`). It holds the
-`WorkspaceSet`, opens on the current one, and switches the Areas when the tab
-strip hands it a set whose current Workspace differs. A switch changes which
-Views are drawn and never touches a run (`PL-WV9K` Q6). A Workspace pinned to
-a run draws that run alone, with its name on every Area's header, and a
-pinned run that is not open is stated in every Area in place of the Views.
+`WorkspaceSet` and opens on its current Workspace. When the tab strip hands it
+a set whose current Workspace differs from the drawn one, it switches the
+Areas. A switch changes which Views are drawn and never touches a run
+(`PL-WV9K` Q6). A Workspace pinned to a run draws that run alone, with the
+run's name on every Area's header. If the pinned run is not open, every Area
+says so in place of its Views.
 
 **One frame, every View, then every run.** `_refresh_view` reads one
 snapshot per run and assembles one `ChartFrame` through `app/chart_frame.py`.
@@ -41,11 +42,11 @@ it decides nothing that a reader interprets.
 
 **Two cadences, kept apart** (decision D7). Each run's own timer steps that
 run. This view's render timer draws, but only while a run is running or a
-frame is owed. A frame is owed after a coalesced slider change (`PL-R2YM`),
-after a change to the run set, or when a run's record differs from what its
-view last wrote (`PL-X7D5`). A frame that cannot be drawn halts every run,
-because an exception raised in the shared drawing path cannot be attributed
-to any one run. No wall clock is read anywhere.
+frame is owed, meaning a redraw is due. A frame is owed after a coalesced
+slider change (`PL-R2YM`), after a change to the run set, or when a run's
+record differs from what its view last wrote (`PL-X7D5`). A frame that cannot
+be drawn halts every run, because an exception raised in the shared drawing
+path cannot be attributed to any one run. No wall clock is read anywhere.
 
 **The legend is a frame widget** (`PL-G3K7`). The legend's View hands it the
 selection that a frame was assembled from, but only after the plot has drawn
@@ -138,12 +139,12 @@ from anesthesia_sim.layout.shipped import shipped_workspaces
 from anesthesia_sim.layout.workspace import PinnedRunAbsent, WorkspaceSet
 
 #: The fractions of the unconditional region's width that the run rows and
-#: the control-change records take. They are the shares the charts and the
-#: accounting sidebar had before the dashboard opened on the shipped
-#: Workspaces, which is the width `PL-J8K2` Q3 gave the records. At a 1366 px
-#: window the run rows' 0.82 leaves one run's readout row room for all seven
-#: panels (`PL-F2YS`). A box layout's stretch is a whole number, so each share
-#: is read in hundredths.
+#: the control-change records take. They match the shares that the charts and
+#: the accounting sidebar had before the dashboard opened on the shipped
+#: Workspaces, and that split is the width `PL-J8K2` Q3 gave the records. In a
+#: window 1366 px wide, the run rows' share of 0.82 leaves room for all seven
+#: panels in one run's readout row (`PL-F2YS`). A box layout's stretch factor
+#: is a whole number, so each share is given in hundredths.
 _RUN_ROWS_STRETCH: Final = 82
 _RECORD_COLUMN_STRETCH: Final = 18
 
@@ -319,39 +320,41 @@ class SimulationView(QWidget):
         run_identities: RunIdentities | None = None,
         workspaces: WorkspaceSet | None = None,
     ) -> None:
-        """Build the dashboard over `controllers`, one `RunView` each, drawing nothing yet.
+        """Build the dashboard with one `RunView` for each of `controllers`, and draw nothing yet.
 
-        The first presentation happens after `show()` and a settled layout,
-        because a frame is assembled from the plot's laid-out width:
+        The dashboard is first presented after `show()`, once the layout has
+        settled, because a frame is assembled from the plot's laid-out width.
         `main.py` calls `present(False)` after the window is shown.
 
         Args:
-            controllers: The runs, in drawing order; the first is the
+            controllers: The runs, in drawing order. The first is the
                 reference run for the MAC ruler and the clinical references.
             parent: The Qt parent.
-            case: The case the first run is the trunk of, where there is one.
-                It is what the branch control offers instants from and takes
-                branches through, and without it that control is not shown -
-                a dashboard handed loose controllers has no case to branch,
-                and a control that could only refuse is one presenting itself
-                as working. Given, it must be the case rooted in
-                `controllers[0]`: two runs drawn on one axis assert they are
-                one patient under two managements, and a case naming some
-                other trunk would put that assertion on the wrong run.
-            run_identities: Where each run placed takes its identity. A test
-                passes its own to pin a run by an identity it knows.
+            case: The case whose trunk is the first run, if there is one. The
+                branch control offers instants from this case and takes
+                branches through it. Without a case the branch control is not
+                shown. A dashboard given controllers that belong to no case
+                has nothing to branch, and a control that could only refuse
+                would present itself as working. When a case is given, it must
+                be the case rooted in `controllers[0]`. Two runs drawn on one
+                axis claim to be one patient under two managements. A case
+                with some other trunk would attach that claim to the wrong run.
+            run_identities: The source from which each placed run takes its
+                identity. A test passes its own to pin a run by an identity it
+                knows.
             workspaces: The Workspaces the tab strip offers, opened on the
                 current one. By default, the shipped Workspaces.
 
         Raises:
             ValueError: If no run is given, if more than
                 `MAX_DISPLAYED_RUNS` are, if the runs are not all on one
-                agent, or if `case` is not rooted in the first of them. One
-                ×MAC ruler, one MAC-awake band and one 1 MAC line are drawn
-                across a chart every run shares, and all three are the
-                agent's own published values; two agents on one axis would
-                have one run's traces read against the other's divisor - a
-                correct number under the wrong label, which `CLAUDE.md`'s
+                agent, or if `case` is not rooted in the first of them. The
+                runs must share one agent because one ×MAC ruler, one
+                MAC-awake band and one 1 MAC line are drawn across the chart
+                that every run shares. All three are the agent's own published
+                values. With two agents on one axis, one run's traces would be
+                read against the other agent's divisor. That is a correct
+                number under the wrong label, which `CLAUDE.md`'s
                 safety-critical standard treats as a failure of the value.
         """
 
@@ -384,10 +387,10 @@ class SimulationView(QWidget):
         # number is given out twice in the session and a dropped branch's is
         # never a later branch's (`PL-7Z84`).
         self._run_identities = RunIdentities() if run_identities is None else run_identities
-        # The reader's Workspaces, with the current one the Areas draw. The
-        # current Workspace's layout and View states here are those it had
-        # when it was last drawn; `workspaces` reads the Areas for the live
-        # ones (`PL-2KXB`).
+        # The reader's Workspaces, including the current one that the Areas
+        # draw. Here the current Workspace's layout and View states are the
+        # ones it had when it was last drawn. The `workspaces` property reads
+        # the live ones from the Areas (`PL-2KXB`).
         self._workspaces = shipped_workspaces() if workspaces is None else workspaces
         self._runs: tuple[RunView, ...] = ()
         self._slots: tuple[_RunSlots, ...] = ()
@@ -482,19 +485,19 @@ class SimulationView(QWidget):
         every displayed value. So a reader sees a halted run's notice before
         the values that the notice explains. Under the region comes the
         Workspace tab strip, directly above the Areas it switches (`PL-QW1Z`
-        Q1). Then come the Areas, which take the spare height. The adapter
-        draws them from the current Workspace's layout and builds each Area's
-        View through the View registry from the state the Workspace keeps for
-        it (`PL-TH35`). So a reader can drag the borders between the Areas and
-        choose any View for any Area. Under the Areas come the case's
-        controls, the marks and the branch control. The use disclaimer is the
-        page's last line.
+        Q1). Then come the Areas, which take the spare height.
+        `app/area_layout.py` draws them from the current Workspace's layout. It
+        builds each Area's View through the View registry, from the state the
+        Workspace keeps for it (`PL-TH35`). So a reader can drag the borders
+        between the Areas and choose any View for any Area. Under the Areas
+        come the case's controls, the marks and the branch control. The use
+        disclaimer is the page's last line.
 
-        No run is placed here. Every layout that a run contributes to is kept,
-        so that `_place_run` can fill the layouts in the same order at
-        construction and when a learner takes a branch. A page laid out for
-        the run set it was first built with could not gain a run without
-        being rebuilt.
+        No run is placed here. Instead, every layout that a run adds widgets
+        to is kept, so that `_place_run` can fill the layouts in the same
+        order at construction and when a learner takes a branch. A page laid
+        out for the run set it was first built with could not gain a run
+        without being rebuilt.
         """
 
         page = QWidget()
@@ -631,8 +634,9 @@ class SimulationView(QWidget):
         """The reader's Workspaces, with the current one as the Areas draw it now.
 
         The current Workspace carries the layout after every drag and the
-        state of every View drawn, so a Workspace duplicated, left or saved
-        is the one the reader sees (`PL-2KXB`).
+        state of every View drawn. So when the reader duplicates, leaves or
+        saves a Workspace, the result matches what the reader sees
+        (`PL-2KXB`).
         """
 
         current = self._workspaces.current
@@ -646,13 +650,14 @@ class SimulationView(QWidget):
         return tuple(run.run_id for run in self._runs)
 
     def _change_workspaces(self, workspaces: WorkspaceSet) -> None:
-        """Take the set the tab strip made, switching the Areas where its current Workspace differs.
+        """Take the tab strip's new set, and switch the Areas if its current Workspace differs.
 
-        A switch draws the incoming Workspace's layout with each View built
-        from the state it kept, and leaves every run as it was (`PL-WV9K`
-        Q6). A change that keeps the current Workspace's layout and Views,
-        such as a rename or a pin, keeps the Views drawn and only draws a
-        frame, since a pin changes which runs they show.
+        A switch draws the incoming Workspace's layout, builds each View from
+        the state the Workspace kept for it, and leaves every run as it was
+        (`PL-WV9K` Q6). Some changes keep the current Workspace's layout and
+        Views, such as a rename or a pin. Such a change keeps the drawn Views
+        and only draws a new frame, because a pin changes which runs the Views
+        show.
         """
 
         drawn = self.workspaces.current
@@ -1367,23 +1372,24 @@ class SimulationView(QWidget):
     def _refresh_view(self) -> None:
         """Read every run once, assemble one frame, draw every View, then refresh every run.
 
-        The frame is assembled for the widest plot that any View draws. So no
-        plot draws a chord wider than a pixel (`PL-GS3R`). A chord is the
-        straight line drawn between two neighbouring samples. The dashboard
-        assembles one frame rather than one per plot at that plot's own width.
-        The two plots differ by about 53 px at every window width measured.
-        So one frame for each plot would mean two assemblies on every tick,
-        and the two plots would not draw the same instants (`PL-9LNF`). The
-        adapter hands the frame to every View in one `ViewTick` (`PL-TH35`).
-        Each legend is told what its plot drew only after the plot has drawn
-        it. So where the frame fails, the legend goes on naming the curves
-        still on the plot (`PL-G3K7`).
+        The frame is assembled for the widest plot that any View draws. A chord
+        is the straight line drawn between two neighbouring samples. Assembling
+        for the widest plot means that no plot draws a chord wider than a pixel
+        (`PL-GS3R`). The dashboard assembles one frame, not one per plot at that
+        plot's own width. The two plots differ by about 53 px at every window
+        width measured. So one frame for each plot would mean two assemblies on
+        every tick, and the two plots would not draw the same instants
+        (`PL-9LNF`). Every View receives the frame in one `ViewTick`
+        (`PL-TH35`). Each legend is told what its plot drew only after the plot
+        has drawn it. So where the frame fails, the legend goes on naming the
+        curves still on the plot (`PL-G3K7`).
 
         **A pinned Workspace draws its run alone** (`PL-WV9K` Q6). Its Views
-        are handed a frame assembled from the pinned run only, and its name is
-        on every Area. Where the pinned run is not open, no View is drawn and
-        every Area says so. The runs themselves are refreshed from the frame
-        over every open run either way, so a pin never changes a readout.
+        are handed a frame assembled from the pinned run only, and the run's
+        name is on every Area. Where the pinned run is not open, no View is
+        drawn and every Area says so. Either way, the runs themselves are
+        refreshed from a frame assembled over every open run, so a pin never
+        changes a readout.
 
         Raises:
             ValueError: If the runs have come to use different agents since

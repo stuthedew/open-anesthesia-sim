@@ -210,11 +210,11 @@ from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
 
-#: Every View this build registers, in one Workspace, so each test finds the
-#: View it reads whichever Workspace ships first. The parameter controls run
-#: across the top, over the concentration chart and the F_A/F_I plot beside
-#: the accounting. That is the dashboard as it stood before it opened on the
-#: shipped Workspaces (`PL-2KXB`).
+#: One Workspace that holds every View this build registers. Each test then
+#: finds the View it reads, whichever Workspace is shipped first. The
+#: parameter controls run across the top. Under them, the concentration chart
+#: sits over the F_A/F_I plot, beside the accounting. That was the dashboard's
+#: layout before it began opening on the shipped Workspaces (`PL-2KXB`).
 _EVERY_VIEW = WorkspaceSet(
     (
         Workspace(
@@ -4963,15 +4963,16 @@ def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QAppl
 
 
 def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QApplication) -> None:
-    """The region stands at its own height, and the Areas take the rest.
+    """The unconditional region keeps its own height, and the Areas take the rest.
 
-    At the fixed test size the page is taller than the window and there is
-    no spare, so the Areas stand at the least size that gives every View its
-    need. A window taller than the page's own hint has some spare, and every
-    pixel of it lengthens the Areas while the region holding the readouts
-    does not move. The readout section is measured inside the region, where
-    it has been since `PL-NWTM`. The setting controls are a View in an Area
-    since `PL-2KXB`, so they take their share of the Areas' height.
+    At the fixed test size the page is taller than the window, so there is no
+    spare height. The Areas then take the smallest size that gives every View
+    the size it needs. A window taller than the page's own size hint has spare
+    height. Every pixel of it makes the Areas taller, while the region that
+    holds the readouts does not move. The readout section is measured inside
+    the region, where it has been since `PL-NWTM`. The setting controls have
+    been a View in an Area since `PL-2KXB`, so they take their share of the
+    Areas' height.
     """
 
     controller = SimulationController()
@@ -6376,12 +6377,13 @@ def test_the_readout_heading_states_the_dial_and_the_mac_it_divides_by(
 def test_a_run_whose_region_lacks_a_declared_value_is_refused(
     application: QApplication, monkeypatch: pytest.MonkeyPatch, misplaced: str
 ) -> None:
-    """The declaration decides what the region holds, so a run short of a value is not shown.
+    """The declaration decides what the region holds, so a run lacking a value is not shown.
 
-    Built with the 1 MAC statement taken out of the run's mapping, and with
-    it pointed at the first View inside the splitter tree: a dashboard
-    built either way would draw ×MAC numbers whose divisor a reader could
-    close away.
+    The test builds the dashboard in two ways. In the first, the 1 MAC
+    statement is taken out of the run's mapping. In the second, the mapping
+    points the statement at the first View inside the splitter tree. A
+    dashboard built either way would draw ×MAC numbers whose divisor a reader
+    could close away.
     """
 
     original = RunView.unconditional_widgets
@@ -6432,13 +6434,13 @@ def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QAppl
 def test_dragging_the_border_beside_the_sidebar_changes_the_layout_model(
     application: QApplication,
 ) -> None:
-    """A reader's drag of a border reaches the layout model, not only the widgets.
+    """A reader's drag of a border updates the layout model, not only the widgets.
 
     `_EVERY_VIEW` draws the chart panel and the sidebar as two Areas of one
-    row (`PL-W9P6`), under the parameter controls' Area. Dragging the
-    border between them 100 px to the left leaves the chart panel's share
-    of the row at its new width over the row's, as the pixels give it, and
-    the sidebar wider by the same 100 px.
+    row (`PL-W9P6`), under the parameter controls' Area. The test drags the
+    border between them 100 px to the left. The chart panel's share of the row
+    then equals its new pixel width divided by the row's width, and the
+    sidebar is wider by the same 100 px.
     """
 
     view = _shown_view(application, SimulationController())

@@ -413,8 +413,8 @@ class AccountingView(_RunSurfaceView):
 class ParameterControlsView(_RunSurfaceView):
     """Every displayed run's setting controls, one row of four per run.
 
-    A slider moved here sets the run. The run then shows the setting in force
-    on every copy, in whichever Areas show this View.
+    Moving a slider here changes that run's setting. The run then shows the
+    setting in force on every copy of this View, in whichever Areas show it.
 
     Args:
         context: What the View is built from.
