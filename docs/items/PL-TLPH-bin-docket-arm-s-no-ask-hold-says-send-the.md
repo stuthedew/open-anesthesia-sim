@@ -3,16 +3,18 @@ id: PL-TLPH
 title: bin/docket arm's no-ask hold says send the owner nothing only on line 5 and exits as any hold does, and nothing checks the reply, so a session reading arm through head sent the owner a bare read and merge ask on #1676
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect
 feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/hooks/gate-status-guard.sh, .claude/hooks/owner_ask_guard.py, .claude/settings.json, tests/unit/test_gate_status_guard.py, tests/unit/test_owner_ask_guard.py, docs/maintainer.md, docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; the owner agreed to the fix on 2026-10-19
 added: 2026-10-19
+closed: 2026-10-19
+pr: 1688
 payoff: a pull request reaches the owner only with arm's recorded ask in the message, because the reply tool refuses a read or merge ask that carries none
 verify: grep -q 'NO_ASK = 3' subprojects/docket/src/docket/arming.py && grep -q 'mcp__hearthbot__(reply|update_message|ask_decision)' .claude/settings.json && grep -q 'def test_a_reply_asking_for_a_read_without_a_recorded_ask_is_refused' tests/unit/test_owner_ask_guard.py && grep -q 'bin/docket arm | head -2' tests/unit/test_gate_status_guard.py
 root-cause-of: PL-9KHK, PL-DKBG, PL-9JHM
-generator: live - two read asks with nothing recorded reached the owner on 2026-10-19 (#1612, #1676) after PL-9JHM's printed fix, and every session that reads arm's output short is handed another
+generator: spent - the reply hook refuses a read or merge ask that does not carry arm's recorded line, so a short read of arm's output can no longer reach the owner
 misread: whether the owner may be sent a read or merge ask about a pull request
 reenters: PL-9JHM
 ---

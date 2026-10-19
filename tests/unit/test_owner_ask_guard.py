@@ -42,7 +42,7 @@ def _fake_arm(tmp_path: Path, code: int, said: str) -> str:
     """A stand-in for `bin/docket arm --owner-ask` that prints `said` and exits `code`."""
     script = tmp_path / "arm.py"
     script.write_text(f"import sys\nprint({said!r})\nsys.exit({code})\n", encoding="utf-8")
-    return f"{sys.executable} {script}"
+    return str(script)
 
 
 def _decision(

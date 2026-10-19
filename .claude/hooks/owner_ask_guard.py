@@ -35,8 +35,9 @@ is not the pull request's branch, so `arm` cannot answer for it there.
 that is missing, times out or exits with anything but 0 or 3. A guard that
 breaks a thread's replies costs more than the round it saves. `arm`'s own
 `unknown` exits 3 under `--owner-ask`, and is refused, because then nobody can
-say an ask is recorded. `OWNER_ASK_GUARD_ARM` replaces the `arm` command for
-the tests and is set nowhere else.
+say an ask is recorded. `OWNER_ASK_GUARD_ARM` names a Python script run in place of
+`arm` for the tests, and is set nowhere else. `NO_ASK` is read from
+`docket.arming`, found through `shell_split.py` as the Bash guards find it.
 
 Standard library only, since a hook runs before any virtualenv is known.
 """
@@ -46,13 +47,16 @@ from __future__ import annotations
 import json
 import os
 import re
-import shlex
 import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import hook_input
+import shell_split  # noqa: F401 - puts docket's src on sys.path
+
+# isort: split
+from docket.arming import NO_ASK
 
 #: The tools whose text reaches the owner in a thread, with the fields that carry it.
 TEXT_FIELDS = {
@@ -93,9 +97,6 @@ ASKS = tuple(
         r"\bmerge[ \t]+(?:(?:pull[ \t]+request|pr)[ \t]+)?#\d+[ \t]*(?:now[ \t]*)?\?",
     )
 )
-
-#: What `--owner-ask` exits with when nothing may be sent: `arming.NO_ASK`.
-NO_ASK = 3
 
 #: How long `arm` may take. It answered in 2.2 s on 2026-10-19; the wiring
 #: gives the hook 60 s, so this leaves room to fail open rather than be cut off.
@@ -146,7 +147,7 @@ def owner_ask(root: Path) -> tuple[int, str] | None:
     """The exit status and first line of `bin/docket arm --no-fetch --owner-ask`, or None."""
     override = os.environ.get("OWNER_ASK_GUARD_ARM")
     command = (
-        shlex.split(override)
+        [sys.executable, override]
         if override
         else [str(root / "bin" / "docket"), "arm", "--no-fetch", "--owner-ask"]
     )
