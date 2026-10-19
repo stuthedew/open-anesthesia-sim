@@ -157,7 +157,16 @@ above the arm. The start is unchanged: nothing is written before Friday
 resets. Still unanswered: whether the app keeps the picker's last level for
 new sessions.
 
-**Open question for the owner (asked 2026-10-19): should a session tell the
+**Decision (project owner, 2026-10-19): every session tells the owner its
+arm.** The owner said that blinding them buys nothing: the model review takes
+the outcomes from the record (rework items, recurrences, red CI runs,
+review-bot findings, churn) and judges nothing by hand. The recommendation
+below assumed the owner judged the outcomes, which was wrong. The cap also
+keeps the owner from raising a capped session's level, so knowing the arm
+cannot change the level a session runs at. Build the hook line described
+below. The analysis notes that the owner was told each session's arm.
+
+**The question as it was put (asked 2026-10-19): should a session tell the
 owner its arm?** The picker will read `xhigh` in every session, so nothing on
 screen shows a capped one. A session can announce its level cheaply. The
 `SessionStart` hook already prints the digest. It could add one line built
@@ -196,7 +205,14 @@ say that the trial was not blinded.
    model review recomputes each session's arm from the ledger's session id
    with the same function. Update `PL-63CB` § "Effort monitoring" item 6 to
    match.
-5. Delete the probe branches `claude/pl-hyrm-probe-settings-local` and
+5. Add one line to the `SessionStart` digest, built from `CLAUDE_EFFORT`,
+   such as "Effort: high (trial arm; the picker shows xhigh)". Make the
+   session repeat it in its first reply to the owner, through the rule that
+   already sets what that reply contains. Do not add a separate instruction.
+6. Add a maximum length or stopping rule to `PL-63CB` § "Effort monitoring".
+   Today the trial ends only when the power calculation says both arms are
+   large enough.
+7. Delete the probe branches `claude/pl-hyrm-probe-settings-local` and
    `claude/pl-hyrm-probe-cap`.
 
 **A route that removes unknown 3.** The draw can be a fixed function of the
