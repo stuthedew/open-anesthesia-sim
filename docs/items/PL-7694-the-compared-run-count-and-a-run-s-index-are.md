@@ -38,3 +38,30 @@ of its own is a type, checked once"), the seven functions take the types, and
 `off_scale_notice` refuses an index of -1, pinned by
 `test_off_scale_notice_refuses_a_negative_run_index` in
 `tests/unit/test_dashboard_frame.py`.
+
+**Checked 2026-10-19:** still real on `main` at `6fd84bd5`. `off_scale_notice`
+and `compared_run_line` in `app/dashboard_frame.py` both opened with
+`frame.runs[run_index]` and no check. `run_label` has since moved to take a
+`RunId` (`PL-7Z84`), so its nonnegative check is no longer one of the hand
+checks. `WashInLegend.set_run_count` is now `show_run_names`, which counted the
+names.
+
+**Built.** `RunCount` (whole, at least one) and `RunIndex` (whole,
+nonnegative) are `int` subclasses in `app/chart_frame.py`, each checked once by
+its constructor. `ChartFrame.run_count` builds the frame's count. The private
+helpers and the stored state take the types: `_hover_context`,
+`_hover_contended_value`, `_wash_in_pen`, `_RunPens`, `_RunItems`,
+`_WashInRunItems`, `run_trace_pen` and `CompartmentSelection.run_count`. The
+public functions that take a count or an index from a caller -
+`run_trace_style`, the three hover formatters, `off_scale_notice`,
+`compared_run_line` and `CompartmentSelection` - take an `int` and build the
+type once on entry, so the check lives only in the type. They take an `int`
+rather than require the type because tests and `app/simulation_view.py`, which
+another thread was changing on 2026-10-19, call them with bare counts, and
+requiring the type would have rewritten about 50 test assertions without
+making any value safer. The relation between an index and a count stays with
+the function holding both.
+
+**Regression test against the code before the fix.** `uv run pytest -q
+tests/unit/test_dashboard_frame.py -k negative_run_index` on `6fd84bd5` with
+the new test added failed with `Failed: DID NOT RAISE ValueError`.

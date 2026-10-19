@@ -41,6 +41,7 @@ from anesthesia_sim.app.bookmarks import (
 from anesthesia_sim.app.chart_frame import (
     COMPARED_COMPARTMENT_CAP,
     ChartFrame,
+    RunIndex,
     TraceStyle,
     trace_style,
 )
@@ -2376,9 +2377,10 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     than the readouts resolve: isoflurane's ceiling is 3 x 1.2, which in
     binary floating point is 3.5999999999999996, and a comparison against
     zero would report that noise as an excursion. Nothing here builds a
-    checked type: the percents and the axis top were built when the frame
-    was assembled, so this cannot refuse after the chart has drawn
-    (`PL-7DJK`).
+    checked concentration: the percents and the axis top were built when the
+    frame was assembled, so this cannot refuse a value after the chart has
+    drawn (`PL-7DJK`). The run index is built as a `RunIndex` before it is
+    used, so a negative one is refused rather than read as the last run.
 
     Args:
         frame: The frame drawn this tick.
@@ -2388,10 +2390,14 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
         The notice, or None when every drawn trace is inside the axis.
 
     Raises:
+        TypeError: If `run_index` is not an `int` (`RunIndex`).
+        ValueError: If `run_index` is negative (`RunIndex`). Python would
+            read `-1` as the last run, and answer for it under the name the
+            caller meant (`PL-7694`).
         IndexError: If `run_index` is not one of the frame's runs.
     """
 
-    run = frame.runs[run_index]
+    run = frame.runs[RunIndex(run_index)]
     off_scale = [
         trace_style(quantity).label
         for quantity in frame.visible
@@ -2567,10 +2573,13 @@ def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
         the line while more than one is.
 
     Raises:
+        TypeError: If `run_index` is not an `int` (`RunIndex`).
+        ValueError: If `run_index` is negative (`RunIndex`), for the reason
+            `off_scale_notice` refuses one.
         IndexError: If `run_index` is not one of the frame's runs.
     """
 
-    run = frame.runs[run_index]
+    run = frame.runs[RunIndex(run_index)]
 
     if len(frame.runs) <= 1:
         return line

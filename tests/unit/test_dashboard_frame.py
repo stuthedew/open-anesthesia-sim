@@ -2442,6 +2442,37 @@ def test_each_run_s_off_scale_line_is_named_while_runs_are_compared() -> None:
     )
 
 
+def test_off_scale_notice_refuses_a_negative_run_index() -> None:
+    """A run index of -1 is refused, not read as the last run under the name asked for (`PL-7694`).
+
+    Python reads `frame.runs[-1]` as the last run. Here run 1 is inside the
+    axis and run 2 is above it, so an index of -1 that reached the frame would
+    report run 2's clipped circuit trace in the slot for whichever run the
+    caller meant. `compared_run_line` takes the same index and refuses it for
+    the same reason.
+    """
+
+    inside = (
+        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1.0, 0.02, 0.018, 0.015, 0.014, 0.01, 0.005),
+    )
+    above = (
+        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1.0, 0.08, 0.01, 0.01, 0.01, 0.0, 0.0),
+    )
+    compared = _compared_frame(_fake_controller(history=inside), _fake_controller(history=above))
+
+    # The frame is what the test says: the last run is the one off scale.
+    assert off_scale_notice(compared, 0) is None
+    assert off_scale_notice(compared, 1) is not None
+
+    with pytest.raises(ValueError, match="a run index is a position among the chart's runs"):
+        off_scale_notice(compared, -1)
+
+    with pytest.raises(ValueError, match="a run index is a position among the chart's runs"):
+        compared_run_line("line", compared, -1)
+
+
 def test_each_run_s_wash_in_state_line_counts_its_own_undrawn_stretches() -> None:
     controllers = (
         _fake_controller(history=_run_history(40)),
