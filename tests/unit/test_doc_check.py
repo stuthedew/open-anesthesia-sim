@@ -4938,6 +4938,7 @@ def test_growth_against_the_default_branch_is_an_advisory(tmp_path: Path) -> Non
     assert report.errors == []
     assert any("resident instructions grew 82 characters" in m for m in report.advisories)
     assert any("PL-H7XN" in m for m in report.advisories)
+    assert any("PL-H7XN" in m and "docs/resident-instructions.md" in m for m in report.advisories)
     assert any("Never trim other resident text" in m for m in report.advisories)
 
 
@@ -5057,6 +5058,7 @@ def test_a_trim_that_pays_for_an_addition_is_an_advisory_at_net_zero(tmp_path: P
     assert not any("grew 0 characters" in m for m in report.advisories)
     assert any("both grew and shrank" in m for m in report.advisories)
     assert any("PL-BKQW" in m for m in report.advisories)
+    assert any("PL-BKQW" in m and "docs/resident-instructions.md" in m for m in report.advisories)
     assert report.errors == []
 
 
@@ -5105,6 +5107,30 @@ def test_the_total_is_printed_even_when_nothing_else_fired(tmp_path: Path) -> No
     assert "resident instructions: 14 characters over 3 lines loaded at launch" in printed
     assert "chars/lines: CLAUDE.md 14/3" in printed
     assert "all resolve" in printed
+
+
+def test_resident_line_names_the_instruction_file_subtotal(tmp_path: Path) -> None:
+    """The line names the instruction files alone, the basis `CLAUDE.md`'s series is on.
+
+    A skill's description is payload a session carries, and is counted in the
+    total, but the series was taken before it was. Compared with the whole
+    total, the description reads as growth (`PL-DXF0`).
+    """
+    root = _instructed(_repo(tmp_path))
+    skill = root / ".claude" / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: demo\ndescription: Use it to demo.\n---\n\nBody.\n")
+
+    report = doc_check.analyze(root)
+    printed = doc_check.format_check(report)
+
+    assert report.resident is not None
+    assert report.resident.instruction_total == len(CLAUDE_BODY)
+    assert report.resident.total > report.resident.instruction_total
+    assert (
+        f"the instruction files alone come to {len(CLAUDE_BODY)} characters, the basis of the "
+        "resident-growth series in CLAUDE.md"
+    ) in printed
 
 
 def test_a_one_character_file_is_reported_in_the_singular(tmp_path: Path) -> None:

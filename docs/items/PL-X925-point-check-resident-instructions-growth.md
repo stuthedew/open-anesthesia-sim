@@ -3,10 +3,12 @@ id: PL-X925
 title: Point check_resident_instructions' growth advisory at docs/resident-instructions.md, once PL-QV1F's character metric has landed
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, infra
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
+closed: 2026-10-19
+pr: 1620
 verify: grep -q 'resident-instructions' tools/doc_check.py && uv run pytest tests/unit/test_doc_check.py
 ---
 
@@ -49,3 +51,10 @@ routing is recorded. Check `tests/unit/test_doc_check.py`, which asserts on the
 advisory text.
 
 **Done when.** Both advisories name the ledger, and the doc_check tests pass.
+
+**Done 2026-10-19.** A new `RESIDENT_LEDGER` constant in `tools/doc_check.py`
+names `docs/resident-instructions.md`. The growth advisory now says that the
+ledger records what each resident block was tested against and the reductions
+already refused, and asks for it to be read before deciding. The grew-and-shrank
+advisory points at its § "What was routed out". The two existing tests of those
+advisories now also assert that each names the ledger.

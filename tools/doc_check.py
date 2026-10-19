@@ -382,6 +382,10 @@ DOC_GLOBS = (
 # `paths:` frontmatter, which defers it to the sessions that open a matching
 # file.
 RESIDENT_ROOTS = ("CLAUDE.md", ".claude/CLAUDE.md")
+#: The record of what the resident set holds and why: each block routed out or
+#: kept, and the reductions already refused. Both resident advisories name it,
+#: so a session meeting one reads the answer already written (`PL-X925`).
+RESIDENT_LEDGER = "docs/resident-instructions.md"
 SKILLS_DIR = ".claude/skills"
 WORKER_DOC = "docs/worker.md"
 # Instruction text a session loads only once something makes it load: a skill
@@ -1363,6 +1367,11 @@ class ResidentFile:
     name: str
     characters: int
     lines: int
+    #: `False` for a skill's description, which is payload but no instruction
+    #: file. `CLAUDE.md`'s resident-growth series was taken on the instruction
+    #: files alone, before `PL-44DG` added the descriptions and the digest to
+    #: the total, so the printed line names that subtotal too (`PL-DXF0`).
+    instruction_file: bool = True
 
 
 @dataclass(frozen=True)
@@ -1409,6 +1418,11 @@ class ResidentInstructions:
     def comparable_total(self) -> int:
         """The half a git ref can reproduce: the number every comparison reads."""
         return sum(row.characters for row in self.files)
+
+    @property
+    def instruction_total(self) -> int:
+        """Characters in the instruction files alone, the basis of `CLAUDE.md`'s growth series."""
+        return sum(row.characters for row in self.files if row.instruction_file)
 
     @property
     def total_lines(self) -> int:
@@ -7986,7 +8000,7 @@ def _skill_description(name: str, text: str) -> ResidentFile | None:
     if block is None:
         return None
     described = "\n".join(block)
-    return ResidentFile(f"{name} (description)", len(described), len(block))
+    return ResidentFile(f"{name} (description)", len(described), len(block), instruction_file=False)
 
 
 def _measure(name: str, text: str) -> ResidentFile | None:
@@ -8288,7 +8302,9 @@ def check_resident_instructions(root: Path, report: Report) -> None:
             "check, the `docket` skill, a path-scoped rule - or keep it and say why a "
             "session could violate it before it would look anything up. Text the project "
             "owner asked for is the second answer, already given. Never trim other "
-            "resident text to offset the number. `PL-H7XN` carries the test."
+            f"resident text to offset the number. {RESIDENT_LEDGER} records what each "
+            "resident block was tested against and the reductions already refused, so read "
+            "it before deciding. `PL-H7XN` carries the test."
         )
     if any(count > 0 for _, count in material) and any(count < 0 for _, count in material):
         moved = ", ".join(f"{name} {count:+d}" for name, count in material)
@@ -8297,7 +8313,8 @@ def check_resident_instructions(root: Path, report: Report) -> None:
             "two net out in the total, so text cut to pay for an addition never shows up "
             "as growth at all. Check that the removed lines were routed somewhere a "
             "session still reads them, rather than cut to make room - making room is not "
-            "one of the two answers to the growth advisory. `PL-BKQW` carries the test."
+            "one of the two answers to the growth advisory. A routing is recorded in "
+            f'{RESIDENT_LEDGER} § "What was routed out". `PL-BKQW` carries the test.'
         )
 
 
@@ -8805,8 +8822,18 @@ def _format_measured(label: str, when: str, measured: ResidentInstructions) -> s
 
 
 def _format_resident(resident: ResidentInstructions) -> str:
-    """One line: what every session loads, and how that compares to the base."""
-    return _format_measured("resident instructions", "loaded at launch", resident)
+    """One line: what every session loads, and how that compares to the base.
+
+    It also names the instruction files' subtotal. `CLAUDE.md`'s
+    resident-growth series is on that basis, so a reader compares it with
+    that subtotal rather than with the whole payload (`PL-DXF0`).
+    """
+    measured = _format_measured("resident instructions", "loaded at launch", resident)
+    return (
+        f"{measured}; the instruction files alone come to "
+        f"{_plural(resident.instruction_total, 'character', 'characters')}, the basis "
+        "of the resident-growth series in CLAUDE.md"
+    )
 
 
 def _format_on_demand(on_demand: ResidentInstructions) -> str:
