@@ -43,6 +43,15 @@ Haiku copies of an item whose work must never leave the machine. The clone's
 push URL is set to a name no remote answers to, so a push fails whatever the
 worker does.
 
+**A pushed run commits its record to its branch.** After a run whose branch
+reached the remote, the runner writes the run's record with
+`tools/worker_runs.py`, commits it as `<id>: record the headless run` and
+pushes it. The reviewing session adds the review's outcome, and `make check`
+fails until it does, so the repository says which items a headless worker did
+and how their reviews went (`PL-87BR`). The record is committed only where the
+clone's `HEAD` is the pushed branch, so nothing the worker left unpushed is
+published with it.
+
 **A clone is removed once nothing in it is only on this machine.** A run
 that succeeded and pushed its branch, where the remote's branch is the
 clone's `HEAD` and the clone has nothing uncommitted, removes its clone and
@@ -71,7 +80,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -81,6 +90,10 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 import docket.cli as docket_cli  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.vcs import call_git, default_base, read_git  # noqa: E402
+
+sys.path.insert(0, str(ROOT / "tools"))
+
+import worker_runs  # noqa: E402
 
 #: The model the workers run on (project owner, 2026-10-19, ratified, over
 #: Sonnet 5.5 workers, `PL-80R5`).
@@ -145,6 +158,15 @@ class Run:
     removed: bool = False
     #: The effort level the run was started at.
     effort: str | None = None
+    #: The token counts from the result's `usage`, as Claude Code reported them.
+    input_tokens: int | None = None
+    cache_read_tokens: int | None = None
+    cache_write_tokens: int | None = None
+    output_tokens: int | None = None
+    #: The record committed to the branch, as a path in the repository.
+    record: str | None = None
+    #: Why a pushed run's record could not be committed and pushed.
+    record_failure: str | None = None
 
     def line(self) -> str:
         """The run as one JSON line of the ledger."""
@@ -428,11 +450,10 @@ def work(
     subtype = result.get("subtype")
     is_error = result.get("is_error")
     reason = failure_reason(result, exit_code, stderr)
+    usage = result.get("usage")
+    usage = usage if isinstance(usage, dict) else {}
     tip = None if no_push else remote_tip(clone, branch)
-    removed = reason is None and only_on_remote(clone, tip)
-    if removed:
-        shutil.rmtree(clone)
-    return Run(
+    run = Run(
         item=item,
         model=model,
         branch=branch,
@@ -447,9 +468,52 @@ def work(
         turns=None if turns is None else int(turns),
         denials=len(denials) if isinstance(denials, list) else None,
         reason=reason,
-        removed=removed,
         effort=effort,
+        input_tokens=whole(usage.get("input_tokens")),
+        cache_read_tokens=whole(usage.get("cache_read_input_tokens")),
+        cache_write_tokens=whole(usage.get("cache_creation_input_tokens")),
+        output_tokens=whole(usage.get("output_tokens")),
     )
+    if tip is not None:
+        run = commit_record(run, clone, tip)
+        tip = remote_tip(clone, branch)
+    removed = reason is None and only_on_remote(clone, tip)
+    if removed:
+        shutil.rmtree(clone)
+    return replace(run, removed=removed)
+
+
+def whole(value: object) -> int | None:
+    """A JSON whole number as an int, or `None` for anything else.
+
+    The token counts come from the result's `usage`, whose keys are the
+    Messages API's (https://platform.claude.com/docs/en/api/messages, `usage`).
+    """
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def commit_record(run: Run, clone: Path, tip: str) -> Run:
+    """Commit the run's record to its branch and push it, or say why that failed.
+
+    Only where the clone's `HEAD` is the pushed `tip`, so a commit the worker
+    left unpushed is never published by the runner.
+    """
+    head = call_git(["rev-parse", "HEAD"], clone)
+    if head.code != 0 or head.answer.strip() != tip:
+        return replace(run, record_failure="the clone's HEAD is not the branch it pushed")
+    path = worker_runs.write(clone, {name: getattr(run, name) for name in worker_runs.RUN_FIELDS})
+    relative = path.relative_to(clone).as_posix()
+    message = f"{run.item}: record the headless run"
+    for args in (
+        ["add", "--", relative],
+        ["commit", "-q", "-m", message, "--", relative],
+        ["push", "-q", "origin", f"HEAD:refs/heads/{run.branch}"],
+    ):
+        # The push goes to GitHub, which can take longer than git's local default.
+        call = call_git(args, clone, timeout=CLONE_TIMEOUT_S)
+        if call.code != 0:
+            return replace(run, record_failure=" ".join(call.reason.split())[:300])
+    return replace(run, record=relative)
 
 
 def failure_reason(
@@ -476,6 +540,10 @@ def describe(run: Run) -> str:
         f"{run.item} on {run.model} at {run.effort} effort: "
         f"{outcome}, {cost}, {where}, {run.branch}, {kept}"
     )
+    if run.record:
+        line += f"\n  record: {run.record}, to review before the branch merges"
+    elif run.record_failure:
+        line += f"\n  no record committed: {run.record_failure}"
     return f"{line}\n  why: {run.reason}" if run.reason else line
 
 
