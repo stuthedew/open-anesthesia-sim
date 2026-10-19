@@ -41,9 +41,10 @@ from anesthesia_sim.app.area_layout import (
     ViewChooser,
     _AreaHandle,
 )
-from anesthesia_sim.app.chart_frame import RunInput, assemble_chart_frame
+from anesthesia_sim.app.chart_frame import ChartFrame, RunInput, assemble_chart_frame
+from anesthesia_sim.app.chart_time_base import ChartTimeBase, time_base_for_span
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.theme import (
@@ -54,6 +55,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.view_contract import (
     STATE_VERSION_KEY,
+    FrameRequest,
     SavedState,
     ViewContext,
     ViewRequests,
@@ -76,7 +78,7 @@ _BUILT: list[_TestView] = []
 _REFRESHED: list[_TestView] = []
 
 # A View asks the dashboard for nothing here.
-_REQUESTS = ViewRequests(lambda _time_base: None, lambda _quantity, _shown: None)
+_REQUESTS = ViewRequests(lambda: None, lambda _quantity, _shown: None)
 
 
 class _TestView(QWidget):
@@ -90,7 +92,7 @@ class _TestView(QWidget):
         super().__init__()
         self.context = context
         self.ticks: list[ViewTick] = []
-        self.width_px: float | None = None
+        self.request: FrameRequest | None = None
         self.setting = 0
         # Small enough that Qt's own minimum never stops a drag here.
         self.setMinimumSize(10, 10)
@@ -109,8 +111,8 @@ class _TestView(QWidget):
     def owes_a_frame(self) -> bool:
         return not self.ticks
 
-    def frame_width_px(self) -> float | None:
-        return self.width_px
+    def frame_request(self) -> FrameRequest | None:
+        return self.request
 
     def save_state(self) -> SavedState:
         return {STATE_VERSION_KEY: 1, "setting": self.setting}
@@ -963,39 +965,47 @@ def test_a_view_that_cannot_be_built_is_a_notice_in_its_area_alone(
         assert isinstance(container.frame(AreaId(2)).content, _OtherView)
 
 
-def _tick() -> ViewTick:
-    """A tick from one run that has not started, as the dashboard assembles one."""
+def _frames(
+    windows: tuple[ChartTimeBase | None, ...],
+) -> tuple[dict[ChartTimeBase | None, ChartFrame], SimulationSnapshot, CompartmentSelection]:
+    """A frame for each of `windows`, from one unstarted run, as the dashboard assembles them."""
 
     controller = SimulationController()
     snapshot = controller.snapshot()
     selection = CompartmentSelection(COMPARTMENT_QUANTITIES, 1)
-    frame = assemble_chart_frame(
-        [RunInput(run_label(RunId(SessionToken("0" * 32), 1)), controller, snapshot, ())],
-        None,
-        selection.shown,
-        plot_width_px=400.0,
-    )
+    inputs = [RunInput(run_label(RunId(SessionToken("0" * 32), 1)), controller, snapshot, ())]
+    frames = {
+        window: assemble_chart_frame(inputs, window, selection.shown, plot_width_px=400.0)
+        for window in windows
+    }
 
-    return ViewTick(frame, (snapshot,), (), None, selection)
+    return frames, snapshot, selection
 
 
-def test_every_view_is_drawn_from_the_one_tick_in_reading_order(
+def test_every_view_is_drawn_in_reading_order_with_the_frame_for_its_window(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """The adapter hands each View the same tick, and owes a frame until each has drawn one."""
+    """Each View gets the frame it asked for, or none, and a frame is owed until each has drawn."""
 
     model = _layout(_row((0.25, 0.5, 0.25), _area(1), Area(AreaId(2), _OTHER), _area(3)), 4)
     container = _show_with(application, shown, model)
-    tick = _tick()
+    zoomed = time_base_for_span(900.0)
+    frames, snapshot, selection = _frames((None, zoomed))
 
     for setting, view in enumerate(_BUILT):
         view.setting = setting
 
+    _BUILT[0].request = FrameRequest(None, 300.0)
+    _BUILT[2].request = FrameRequest(zoomed, 300.0)
+
     assert container.owes_a_frame
 
-    container.refresh(tick)
+    container.refresh(frames, (snapshot,), (), selection)
 
-    assert [view.ticks for view in _BUILT] == [[tick], [tick], [tick]]
+    assert [len(view.ticks) for view in _BUILT] == [1, 1, 1]
+    assert [view.ticks[0].frame for view in _BUILT] == [frames[None], None, frames[zoomed]]
+    assert all(view.ticks[0].snapshots == (snapshot,) for view in _BUILT)
+    assert all(view.ticks[0].selection is selection for view in _BUILT)
     assert _REFRESHED == _BUILT
     assert not container.owes_a_frame
     assert [text for _, text in container.painted_strings()] == [
@@ -1005,20 +1015,37 @@ def test_every_view_is_drawn_from_the_one_tick_in_reading_order(
     ]
 
 
-def test_the_frame_is_sampled_for_the_widest_view_that_draws_one(
+def test_a_view_asking_for_a_window_with_no_frame_is_refused(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """A View that draws no frame asks for no width, and with none asking the width is 0."""
+    """A View and the frames disagreeing raises, which halts every run, rather than draw another."""
 
-    model = _layout(_row((0.25, 0.5, 0.25), _area(1), _area(2), _area(3)), 4)
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
     container = _show_with(application, shown, model)
+    frames, snapshot, selection = _frames((None,))
+    _BUILT[1].request = FrameRequest(time_base_for_span(900.0), 300.0)
 
-    assert container.frame_width_px() == 0.0
+    with pytest.raises(KeyError):
+        container.refresh(frames, (snapshot,), (), selection)
 
-    _BUILT[0].width_px = 300.0
-    _BUILT[2].width_px = 650.5
 
-    assert container.frame_width_px() == 650.5
+def test_each_window_is_sampled_for_the_widest_view_that_asks_for_it(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """A View that draws no frame asks for nothing, and with none asking there is no window."""
+
+    model = _layout(_row((0.25, 0.25, 0.25, 0.25), _area(1), _area(2), _area(3), _area(4)), 5)
+    container = _show_with(application, shown, model)
+    zoomed = time_base_for_span(900.0)
+
+    assert container.frame_requests() == {}
+
+    _BUILT[0].request = FrameRequest(None, 300.0)
+    _BUILT[1].request = FrameRequest(zoomed, 200.0)
+    _BUILT[2].request = FrameRequest(None, 650.5)
+    _BUILT[3].request = FrameRequest(zoomed, 120.0)
+
+    assert container.frame_requests() == {None: 650.5, zoomed: 200.0}
 
 
 def test_an_unknown_kind_can_be_replaced_from_its_own_chooser(

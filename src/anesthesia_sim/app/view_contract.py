@@ -25,20 +25,28 @@ parent, no splitter, no controller and no reference to the Area it sits in.
 So it cannot reach another Area or the dashboard, and the same class can be
 built any number of times against the same runs (Q8). A View may hold state
 of its own, such as how it draws. State that the rest of the dashboard draws
-from, such as the time base or the compartment selection, is shown to the
-View in each tick. The View asks for a change to it through
-`ViewContext.requests`, and never holds the value itself.
+from, such as the compartment selection, is shown to the View in each tick.
+The View asks for a change to it through `ViewContext.requests`, and never
+holds the value itself.
 
-**What a View is drawn from** (Q3). The dashboard assembles one `ChartFrame`
-per tick, and the adapter hands it to every View in the `ViewTick`. The frame
-is sampled for the widest plot that any View asks for through
-`View.frame_width_px`, so no plot draws a chord wider than a pixel
-(`PL-GS3R`). One frame serves every plot, so the concentration chart and the
-F_A/F_I plot draw the same instants (`PL-9LNF`). This replaces the sketch in
-Q3, in which each chart pulled a frame at its own width. Under that sketch,
-two charts of different widths would draw different instants, and the frame
-would be assembled once per chart on every tick. A View that draws no frame
-returns None from `frame_width_px`.
+**A chart's time window is its own** (project owner, 2026-10-19, ratified,
+over one shared window saved per Workspace; `PL-L59K`). Q2 and Q7 made the
+time base shared state, which every chart showed. `ROADMAP.md` § "v0.6.0 -
+the layout is the reader's", Required scope entry 11, puts the window in each
+View's own state instead, so that one chart can be zoomed to the first minutes
+while another shows the whole run. So a chart View holds its window, sets it
+from its own control and saves it. It asks for a frame at once through
+`ViewRequests.frame` when the reader changes it. `PL-1RFZ` is the later,
+opt-in sync of windows between charts.
+
+**What a View is drawn from** (Q3). Each View says which frame it draws
+through `View.frame_request`: the window, and the plot width the frame must
+be sampled for. The dashboard assembles one `ChartFrame` per distinct window
+on each tick, sampled for the widest plot that asks for that window. So no
+plot draws a chord wider than a pixel (`PL-GS3R`), and two charts at the same
+window draw the same instants (`PL-9LNF`). The adapter hands each View the
+frame for its own window in its `ViewTick`. A View that draws no frame
+returns None from `frame_request`, and its tick carries no frame.
 
 **What a View saves** (Q4). `View.save_state` returns the View's own drawing
 settings as a JSON-shaped mapping that carries `STATE_VERSION_KEY`. The View
@@ -90,16 +98,12 @@ from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.run_series import RecordedQuantity
-from anesthesia_sim.app.run_surfaces import (
-    AccountingPanel,
-    OffScaleLine,
-    ParameterControls,
-    WashInStateLine,
-)
+from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 
 __all__ = [
     "STATE_VERSION_KEY",
     "UNREADABLE_STATE_TEXT",
+    "FrameRequest",
     "RunSurfaces",
     "SavedState",
     "View",
@@ -137,25 +141,35 @@ class RunSurfaces(Protocol):
 
     def build_accounting_panel(self) -> AccountingPanel: ...
 
-    def build_off_scale_notice(self) -> OffScaleLine: ...
-
-    def build_wash_in_state(self) -> WashInStateLine: ...
-
 
 @dataclass(frozen=True, slots=True)
 class ViewRequests:
-    """How a View asks the dashboard to change the state that every View draws from.
+    """How a View asks the dashboard for a change or for a frame.
 
     A control over shared state shows the value in each tick and calls one of
     these. It never stores the value (Q7, `PL-VN6M`).
 
     Attributes:
-        time_base: Asks for the chart window's width, or None for "Fit run".
+        frame: Asks for a frame at once, after the View changed a drawing
+            setting of its own, such as its time window.
         compartment: Asks for one compartment's trace to be shown or hidden.
     """
 
-    time_base: Callable[[ChartTimeBase | None], None]
+    frame: Callable[[], None]
     compartment: Callable[[RecordedQuantity, bool], None]
+
+
+@dataclass(frozen=True, slots=True)
+class FrameRequest:
+    """Which frame a View draws: its time window, and the plot width to sample it for.
+
+    Attributes:
+        time_base: The window's width, or None for "Fit run".
+        width_px: The plot's width in logical pixels.
+    """
+
+    time_base: ChartTimeBase | None
+    width_px: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,22 +188,21 @@ class ViewContext:
 
 @dataclass(frozen=True, slots=True)
 class ViewTick:
-    """What every View is shown on one frame.
+    """What one View is shown on one frame.
 
     Attributes:
-        frame: The chart frame assembled for this tick, over every displayed
-            run, sampled for the widest plot any View asked for.
-        snapshots: Each displayed run's snapshot, in drawing order. The frame
-            was assembled from these same reads.
+        frame: The chart frame assembled for the window this View asked for
+            through `View.frame_request`, over every displayed run. None for
+            a View that asked for none.
+        snapshots: Each displayed run's snapshot, in drawing order. Every
+            frame of the tick was assembled from these same reads.
         runs: Each displayed run's surfaces, in the same order.
-        time_base: The time base the frame was drawn at, None for "Fit run".
-        selection: The compartment selection the frame was assembled from.
+        selection: The compartment selection every frame was assembled from.
     """
 
-    frame: ChartFrame
+    frame: ChartFrame | None
     snapshots: tuple[SimulationSnapshot, ...]
     runs: tuple[RunSurfaces, ...]
-    time_base: ChartTimeBase | None
     selection: CompartmentSelection
 
 
@@ -215,13 +228,15 @@ class View(Protocol):
     def owes_a_frame(self) -> bool:
         """Whether this View needs a frame although nothing in the runs changed.
 
-        True before the View's first frame, and for a chart that has grown
-        wider than the frame it drew was sampled for (`PL-9LNF`).
+        It is True before the View's first frame. It is also True for a chart
+        that is now wider than the width its last frame was sampled for
+        (`PL-9LNF`), and for a chart whose window has changed since it last
+        drew (`PL-L59K`).
         """
         ...
 
-    def frame_width_px(self) -> float | None:
-        """The plot width this View needs its frame sampled for, or None where it draws none."""
+    def frame_request(self) -> FrameRequest | None:
+        """The frame this View draws on the next tick, or None where it draws none."""
         ...
 
     def save_state(self) -> SavedState:

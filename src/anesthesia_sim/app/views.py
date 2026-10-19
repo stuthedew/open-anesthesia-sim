@@ -3,13 +3,13 @@
 Each class here satisfies `app/view_contract.py`'s `View`, and its registry
 entry in `app/view_registry.py` names the class as its factory. So any of them
 can be built in any Area, any number of times, from a `ViewContext` alone.
-Each one is drawn from the `ViewTick` the adapter hands it on every frame
-(`PL-TH35`).
+Each one is drawn from the `ViewTick` that the adapter, `app/area_layout.py`,
+hands it on every frame (`PL-TH35`).
 
 - `ConcentrationView` is the concentration chart with its time-base control,
   captions, reference values, legend and advisories.
-- `WashInView` is the F_A/F_I plot with its captions, legend and per-run state
-  lines.
+- `WashInView` is the F_A/F_I plot with its time-base control, captions,
+  legend, per-run state lines and advisories.
 - `AccountingView` is every displayed run's mass-balance panel. `docs/MODEL.md`
   § "Minimum displayed outputs" requires it to stay reachable in every layout,
   which the registry enforces.
@@ -20,20 +20,28 @@ the run updates every copy it has built (`app/run_surfaces.py`, `PL-9LNF`). So
 two Views of one kind show the same values, and closing one View takes nothing
 with it.
 
+Each chart View holds its own time window, set from its own control and
+saved in its state (project owner, 2026-10-19, `PL-L59K`). So a chart writes
+the lines that depend on its window, such as which traces are above the axis,
+from its own frame. It writes one line per run, rather than showing a copy
+from the run.
+
 These classes compute nothing that a reader interprets. Every caption comes
 from `app/dashboard_frame.py`, and every drawn value comes from the frame.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from types import MappingProxyType
-from typing import Final
+from typing import Final, cast
 
 from PySide6.QtCore import QObject, Qt
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
+from anesthesia_sim.app.chart_frame import ChartFrame
+from anesthesia_sim.app.chart_time_base import ChartTimeBase, saved_time_base, saved_time_base_value
 from anesthesia_sim.app.dashboard_frame import (
     CHART_HEADING,
     NO_TRACES_SHOWN_TEXT,
@@ -45,7 +53,10 @@ from anesthesia_sim.app.dashboard_frame import (
     mac_awake_caption,
     mac_reference_caption,
     no_traces_shown,
+    off_scale_lines,
     time_axis_caption,
+    unmarked_changes_lines,
+    wash_in_state_lines,
 )
 from anesthesia_sim.app.qt_chart import (
     ConcentrationChart,
@@ -64,9 +75,12 @@ from anesthesia_sim.app.theme import (
     PANEL_PADDING,
     VIEW_HEADING_SPACING,
     VIEW_ROW_SPACING,
+    WARNING,
 )
 from anesthesia_sim.app.view_contract import (
     STATE_VERSION_KEY,
+    UNREADABLE_STATE_TEXT,
+    FrameRequest,
     RunSurfaces,
     SavedState,
     ViewContext,
@@ -76,17 +90,26 @@ from anesthesia_sim.app.view_contract import (
 
 __all__ = ["AccountingView", "ConcentrationView", "ParameterControlsView", "WashInView"]
 
-#: The version of the saved state of every View in this module. None of these
-#: Views has a setting of its own yet, so each saves its version and nothing
-#: else. The time base and the compartment selection are shared state, which
-#: the dashboard owns (`PL-VN6M`, `PL-9LNF`).
+#: The saved-state version for the Views here that have no setting of their
+#: own, which are the accounting View and the setting controls View. Each of
+#: them saves only this version and nothing else.
 _STATE_VERSION: Final = 1
+
+#: The version of a chart View's saved state. Version 2 added the chart's
+#: time window under `_TIME_BASE_KEY` (`PL-L59K`). Version 1 held no setting,
+#: so a chart treats a version 1 state as the default window and loses nothing.
+_CHART_STATE_VERSION: Final = 2
+_SETTINGLESS_CHART_STATE_VERSION: Final = 1
+
+#: The key under which a chart saves its window, in the form
+#: `chart_time_base.saved_time_base_value` writes.
+_TIME_BASE_KEY: Final = "time_base_s"
 
 _CONCENTRATION_VIEW_NAME: Final = "concentrationView"
 _WASH_IN_VIEW_NAME: Final = "washInView"
 
 
-class _RunCopies:
+class _RunCopies[W: QWidget]:
     """One copy of a run surface per displayed run, in drawing order, in a column of their own.
 
     A View calls `follow` with each tick's runs. A run still displayed keeps
@@ -100,16 +123,16 @@ class _RunCopies:
     showing that run's last values beside the runs still displayed.
     """
 
-    def __init__(self, build: Callable[[RunSurfaces], QWidget], spacing: int) -> None:
+    def __init__(self, build: Callable[[RunSurfaces], W], spacing: int) -> None:
         self._build = build
         self.holder = QWidget()
         self._column = QVBoxLayout(self.holder)
         self._column.setContentsMargins(0, 0, 0, 0)
         self._column.setSpacing(spacing)
-        self._copies: list[tuple[RunSurfaces, QWidget]] = []
+        self._copies: list[tuple[RunSurfaces, W]] = []
 
     @property
-    def copies(self) -> tuple[QWidget, ...]:
+    def copies(self) -> tuple[W, ...]:
         """The copies shown now, one per displayed run, in drawing order."""
 
         return tuple(copy for _, copy in self._copies)
@@ -122,7 +145,7 @@ class _RunCopies:
         if len(held) == len(runs) and all(a is b for a, b in zip(held, runs, strict=True)):
             return
 
-        kept: list[tuple[RunSurfaces, QWidget]] = []
+        kept: list[tuple[RunSurfaces, W]] = []
 
         for run in runs:
             copy = next((copy for owner, copy in self._copies if owner is run), None)
@@ -141,7 +164,7 @@ class _RunCopies:
 
         self._copies = kept
 
-    def _built_for(self, run: RunSurfaces) -> QWidget:
+    def _built_for(self, run: RunSurfaces) -> W:
         """A new copy for `run`, deleted with the run and forgotten once Qt destroys it."""
 
         copy = self._build(run)
@@ -153,17 +176,159 @@ class _RunCopies:
 
         return copy
 
-    def _forget(self, copy: QWidget, *_destroyed: object) -> None:
+    def _forget(self, copy: W, *_destroyed: object) -> None:
         self._copies = [(run, kept) for run, kept in self._copies if kept is not copy]
 
 
-def _state_notice(context: ViewContext) -> QLabel:
+class _RunLines:
+    """One conditional line per displayed run, written from a chart's own frame.
+
+    These are the lines that a chart writes from its frame, such as which
+    traces are above the axis. `show` takes the tick's runs and one entry for
+    each run, and an entry of None hides that run's line. Each line is a copy
+    held by `_RunCopies`, so it is deleted with its run, even while no frame
+    can be drawn. So a dropped run's line never stays beside the runs still
+    displayed.
+    """
+
+    def __init__(self, color: str, *, italic: bool) -> None:
+        self._copies = _RunCopies(
+            lambda _run: styled_label(
+                "", color=color, size_px=METRIC_QUALIFIER_SIZE, italic=italic, wrap=True
+            ),
+            VIEW_ROW_SPACING,
+        )
+        self.holder = self._copies.holder
+
+    @property
+    def lines(self) -> tuple[QLabel, ...]:
+        """The line shown for each displayed run, in drawing order."""
+
+        return self._copies.copies
+
+    def show(self, runs: tuple[RunSurfaces, ...], texts: Sequence[str | None]) -> None:
+        """Write one line for each of `runs`, hiding each line whose entry is None.
+
+        Raises:
+            ValueError: If there is not one entry for each run.
+        """
+
+        if len(texts) != len(runs):
+            raise ValueError(f"{len(texts)} line(s) were given for {len(runs)} run(s)")
+
+        self._copies.follow(runs)
+
+        for line, text in zip(self._copies.copies, texts, strict=True):
+            line.setText(text or "")
+            line.setHidden(text is None)
+
+
+def _read_time_base(saved: object) -> tuple[ChartTimeBase | None, str | None]:
+    """The window a chart's saved state holds, and the notice to show if it could not be read.
+
+    When nothing was saved, or the state is version 1, which held no setting,
+    the result is the default window, "Fit run". A version 2 state holds its
+    window under `_TIME_BASE_KEY`. For anything else, the function returns the
+    default window with `UNREADABLE_STATE_TEXT`, so the chart says that it is
+    not showing what was saved (Q4).
+    """
+
+    if (
+        isinstance(saved, Mapping)
+        and saved.keys() == {STATE_VERSION_KEY}
+        and type(saved[STATE_VERSION_KEY]) is int
+        and saved[STATE_VERSION_KEY] == _SETTINGLESS_CHART_STATE_VERSION
+    ):
+        return None, None
+
+    notice = unreadable_state_text(saved, _CHART_STATE_VERSION)
+
+    if notice is not None or not isinstance(saved, Mapping):
+        return None, notice
+
+    try:
+        return saved_time_base(saved.get(_TIME_BASE_KEY)), None
+    except ValueError:
+        return None, UNREADABLE_STATE_TEXT
+
+
+class _TimeWindow:
+    """A chart View's own time window, with the control that sets it and its saved form.
+
+    Each chart holds its window (project owner, 2026-10-19, `PL-L59K`). The
+    window starts from the saved state, or from "Fit run" where none was
+    saved. A reader's pick sets it and asks for a frame at once. The control
+    shows the window that the plot last drew, so where a frame fails, the
+    control goes on naming what is on the plot (`PL-G3K7`).
+
+    Args:
+        context: What the chart View is built from.
+
+    Attributes:
+        selector: The control that sets the window.
+        time_base: The window the chart draws next, or None for "Fit run".
+        notice_text: The notice to show because the saved state could not be
+            read, or None.
+    """
+
+    _NOT_DRAWN: Final = object()
+
+    def __init__(self, context: ViewContext) -> None:
+        self.time_base, self.notice_text = _read_time_base(context.saved_state)
+        self._drawn: object = self._NOT_DRAWN
+        self._request_frame = context.requests.frame
+        self.selector = TimeBaseSelector()
+        self.selector.show_time_base(self.time_base)
+        self.selector.time_base_requested.connect(self._choose)
+
+    def request(self, width_px: float) -> FrameRequest:
+        """The frame the chart asks for: this window, sampled for `width_px`."""
+
+        return FrameRequest(self.time_base, width_px)
+
+    def drew(self, frame: ChartFrame) -> None:
+        """Note the window `frame` was drawn at, and show it in the control."""
+
+        drawn = None if frame.fitted else frame.time_base
+        self._drawn = drawn
+        self.selector.show_time_base(drawn)
+
+    @property
+    def owes_a_frame(self) -> bool:
+        """Whether the window was changed since the chart last drew."""
+
+        return self._drawn is self._NOT_DRAWN or self._drawn != self.time_base
+
+    def saved_state(self) -> SavedState:
+        return MappingProxyType(
+            {
+                STATE_VERSION_KEY: _CHART_STATE_VERSION,
+                _TIME_BASE_KEY: saved_time_base_value(self.time_base),
+            }
+        )
+
+    def _choose(self, time_base: ChartTimeBase | None) -> None:
+        self.time_base = time_base
+        self._request_frame()
+
+        # A frame that drew has already shown the pick. One that failed drew
+        # nothing, so the control goes back to the window still on the plot.
+        if self._drawn is not self._NOT_DRAWN:
+            self.selector.show_time_base(cast(ChartTimeBase | None, self._drawn))
+
+
+def _state_notice_for(context: ViewContext) -> QLabel:
+    """`_state_notice` for a View whose saved state holds its version and nothing else."""
+
+    return _state_notice(unreadable_state_text(context.saved_state, _STATE_VERSION))
+
+
+def _state_notice(text: str | None) -> QLabel:
     """The line a View shows while it is drawn with defaults because its saved state was unreadable.
 
     Conditional text: hidden unless the saved state could not be read (Q4).
     """
 
-    text = unreadable_state_text(context.saved_state, _STATE_VERSION)
     notice = styled_label(
         text or "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
     )
@@ -204,15 +369,17 @@ class ConcentrationView(QWidget):
 
     The View holds the heading and the time-base control, the statement of
     the window shown, the 1 MAC and MAC-awake reference values, and the
-    legend. It also holds two advisories that appear only when they apply.
-    Above the plot, a line for each run names that run's traces. Then comes
-    the plot itself. Everything above the plot is a label, a legend entry or a
-    reference value rather than a sentence (`PL-6580`, `PL-F9TQ`).
+    legend. It also holds advisories that appear only when they apply. Above
+    the plot, a line for each run names that run's traces that are above the
+    axis, and another says how many of its control changes in the window
+    could not be marked. Then comes the plot itself. Everything above the
+    plot is a label, a legend entry or a reference value rather than a
+    sentence (`PL-6580`, `PL-F9TQ`).
 
-    The time-base control and the legend show the dashboard's time base and
-    compartment selection, and ask for a change through the context's
-    requests. Neither holds the value, so two of these Views show the same
-    window and the same compartments (`PL-VN6M`, `PL-9LNF`).
+    The time window is the View's own, set from its control and saved in its
+    state (`PL-L59K`). The legend shows the dashboard's compartment selection
+    and asks for a change through the context's requests, so two of these
+    Views show the same compartments (`PL-VN6M`).
 
     Args:
         context: What the View is built from.
@@ -220,17 +387,17 @@ class ConcentrationView(QWidget):
     Attributes:
         chart: The plot.
         legend: The compartment legend.
-        time_base_selector: The control that asks for the window's width.
+        time_base_selector: The control that sets the window's width.
     """
 
     def __init__(self, context: ViewContext) -> None:
         super().__init__()
         self._drawn = False
+        self._window = _TimeWindow(context)
         self.chart = ConcentrationChart()
         self.legend = TraceLegend()
         self.legend.compartment_requested.connect(context.requests.compartment)
-        self.time_base_selector = TimeBaseSelector()
-        self.time_base_selector.time_base_requested.connect(context.requests.time_base)
+        self.time_base_selector = self._window.selector
         self.time_axis_caption = styled_label("", color=MUTED)
         self.mac_reference_text = styled_label("", color=MUTED)
         self.mac_awake_reference_text = styled_label("", color=MUTED)
@@ -246,8 +413,9 @@ class ConcentrationView(QWidget):
             "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
         )
         self.capped_traces_text.setHidden(True)
-        self.state_notice = _state_notice(context)
-        self._off_scale = _RunCopies(lambda run: run.build_off_scale_notice(), VIEW_ROW_SPACING)
+        self.state_notice = _state_notice(self._window.notice_text)
+        self.off_scale = _RunLines(WARNING, italic=True)
+        self.unmarked_changes = _RunLines(MUTED, italic=True)
 
         column = _panel_column(self, _CONCENTRATION_VIEW_NAME)
         heading = QHBoxLayout()
@@ -263,7 +431,8 @@ class ConcentrationView(QWidget):
         column.addWidget(self.legend)
         column.addWidget(self.hidden_traces_text)
         column.addWidget(self.capped_traces_text)
-        column.addWidget(self._off_scale.holder)
+        column.addWidget(self.off_scale.holder)
+        column.addWidget(self.unmarked_changes.holder)
         column.addWidget(self.chart, 1)
 
     def refresh(self, tick: ViewTick) -> None:
@@ -274,17 +443,20 @@ class ConcentrationView(QWidget):
         what is still on the plot (`PL-G3K7`). The MAC-awake line comes from
         the reference run, because the frame carries the band's edges and not
         the published fraction that they were drawn from.
+
+        Raises:
+            ValueError: If the tick carries no frame. This View always asks
+                for one.
         """
 
-        self._off_scale.follow(tick.runs)
-        frame = tick.frame
+        frame = _frame_of(tick)
         self.chart.draw(frame)
         self._drawn = True
+        self._window.drew(frame)
         # The names before the selection, so a legend told of a second run's
         # curves already knows what that run is called (`PL-7Z84`).
         self.legend.show_run_names(tuple(run.label for run in frame.runs))
         self.legend.show_selection(tick.selection)
-        self.time_base_selector.show_time_base(tick.time_base)
         self.time_axis_caption.setText(time_axis_caption(frame))
         self.mac_reference_text.setText(mac_reference_caption(frame))
         self.mac_awake_reference_text.setText(mac_awake_caption(tick.snapshots[0]))
@@ -292,26 +464,29 @@ class ConcentrationView(QWidget):
         cap_notice = compartment_cap_notice(frame)
         self.capped_traces_text.setText(cap_notice or "")
         self.capped_traces_text.setHidden(cap_notice is None)
+        self.off_scale.show(tick.runs, off_scale_lines(frame))
+        self.unmarked_changes.show(tick.runs, unmarked_changes_lines(frame))
 
     @property
     def owes_a_frame(self) -> bool:
-        return not self._drawn or self.chart.owes_a_frame
+        return not self._drawn or self.chart.owes_a_frame or self._window.owes_a_frame
 
-    def frame_width_px(self) -> float | None:
-        return self.chart.plot_width_px()
+    def frame_request(self) -> FrameRequest | None:
+        return self._window.request(self.chart.plot_width_px())
 
     def save_state(self) -> SavedState:
-        return _saved_state()
+        return self._window.saved_state()
 
     def painted_strings(self) -> tuple[str, ...]:
         return self.chart.axis_titles()
 
 
 class WashInView(QWidget):
-    """The F_A/F_I plot, with its heading, what it shows, its legend and a state line per run.
+    """The F_A/F_I plot, with its heading, its window, what it shows, its legend and lines per run.
 
-    It draws the frame the concentration chart draws, so where both are shown
-    the two plots share their instants and their window (`ViewTick.frame`).
+    Its time window is its own, as the concentration chart's is (`PL-L59K`).
+    Where both show the same window, the dashboard hands both the same frame,
+    so the two plots draw the same instants (`PL-9LNF`).
 
     Args:
         context: What the View is built from.
@@ -319,45 +494,81 @@ class WashInView(QWidget):
     Attributes:
         chart: The plot.
         legend: The plot's legend.
+        time_base_selector: The control that sets the window's width.
     """
 
     def __init__(self, context: ViewContext) -> None:
         super().__init__()
         self._drawn = False
+        self._window = _TimeWindow(context)
         self.chart = WashInChart()
         self.legend = WashInLegend()
-        self.state_notice = _state_notice(context)
-        self._states = _RunCopies(lambda run: run.build_wash_in_state(), VIEW_ROW_SPACING)
+        self.time_base_selector = self._window.selector
+        self.time_axis_caption = styled_label("", color=MUTED)
+        self.state_notice = _state_notice(self._window.notice_text)
+        self.states = _RunLines(MUTED, italic=False)
+        self.unmarked_changes = _RunLines(MUTED, italic=True)
 
         column = _panel_column(self, _WASH_IN_VIEW_NAME)
-        column.addWidget(styled_label(WASH_IN_HEADING, color=INK, bold=True, wrap=True))
+        heading = QHBoxLayout()
+        heading.setSpacing(VIEW_HEADING_SPACING)
+        heading.addWidget(styled_label(WASH_IN_HEADING, color=INK, bold=True, wrap=True), 1)
+        heading.addWidget(styled_label(TIME_BASE_LABEL, color=MUTED))
+        heading.addWidget(self.time_base_selector)
+        column.addLayout(heading)
         column.addWidget(self.state_notice)
+        column.addWidget(self.time_axis_caption)
         column.addWidget(styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True))
         column.addWidget(styled_label(WASH_IN_MODELLED_TEXT, color=MUTED))
         column.addWidget(self.legend)
-        column.addWidget(self._states.holder)
+        column.addWidget(self.states.holder)
+        column.addWidget(self.unmarked_changes.holder)
         column.addWidget(self.chart, 1)
 
     def refresh(self, tick: ViewTick) -> None:
-        """Draw the tick's frame, and give the legend the number of runs it drew."""
+        """Draw the tick's frame, then write the legend, the control and the lines from it.
 
-        self._states.follow(tick.runs)
-        self.chart.draw(tick.frame)
+        Raises:
+            ValueError: If the tick carries no frame. This View always asks
+                for one.
+        """
+
+        frame = _frame_of(tick)
+        self.chart.draw(frame)
         self._drawn = True
-        self.legend.show_run_names(tuple(run.label for run in tick.frame.runs))
+        self._window.drew(frame)
+        self.legend.show_run_names(tuple(run.label for run in frame.runs))
+        self.time_axis_caption.setText(time_axis_caption(frame))
+        self.states.show(tick.runs, wash_in_state_lines(frame, tick.snapshots))
+        self.unmarked_changes.show(tick.runs, unmarked_changes_lines(frame))
 
     @property
     def owes_a_frame(self) -> bool:
-        return not self._drawn or self.chart.owes_a_frame
+        return not self._drawn or self.chart.owes_a_frame or self._window.owes_a_frame
 
-    def frame_width_px(self) -> float | None:
-        return self.chart.plot_width_px()
+    def frame_request(self) -> FrameRequest | None:
+        return self._window.request(self.chart.plot_width_px())
 
     def save_state(self) -> SavedState:
-        return _saved_state()
+        return self._window.saved_state()
 
     def painted_strings(self) -> tuple[str, ...]:
         return self.chart.axis_titles()
+
+
+def _frame_of(tick: ViewTick) -> ChartFrame:
+    """Return the frame that a chart View asked for. Every tick handed to the View carries it.
+
+    Raises:
+        ValueError: If the tick carries no frame. The adapter hands a frame
+            to every View that asks for one, so a tick without one means
+            the adapter and the View disagree.
+    """
+
+    if tick.frame is None:
+        raise ValueError("a chart View was handed a tick without the frame it asked for")
+
+    return tick.frame
 
 
 class _RunSurfaceView(QWidget):
@@ -366,7 +577,7 @@ class _RunSurfaceView(QWidget):
     def __init__(self, context: ViewContext, build: Callable[[RunSurfaces], QWidget]) -> None:
         super().__init__()
         self._drawn = False
-        self.state_notice = _state_notice(context)
+        self.state_notice = _state_notice_for(context)
         self._copies = _RunCopies(build, PAGE_SPACING)
         column = _bare_column(self)
         column.addWidget(self.state_notice)
@@ -389,7 +600,7 @@ class _RunSurfaceView(QWidget):
     def owes_a_frame(self) -> bool:
         return not self._drawn
 
-    def frame_width_px(self) -> float | None:
+    def frame_request(self) -> FrameRequest | None:
         return None
 
     def save_state(self) -> SavedState:

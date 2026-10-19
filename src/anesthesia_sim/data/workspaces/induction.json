@@ -42,7 +42,14 @@
           }
         ]
       },
-      "view_state": {},
+      "view_state": {
+        "1": {
+          "concentration_chart": {
+            "state_version": 2,
+            "time_base_s": 900.0
+          }
+        }
+      },
       "pinned_run": null
     }
   ]

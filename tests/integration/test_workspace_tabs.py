@@ -20,6 +20,7 @@ from PySide6.QtGui import QContextMenuEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app.chart_time_base import time_base_for_span
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -494,6 +495,28 @@ def test_a_tab_switches_the_layout_and_leaves_the_run(
         assert not view.layout_container.isAncestorOf(widget)
 
     assert {value: widget.isVisibleTo(view) for value, widget in readouts.items()} == visible
+
+
+def test_the_induction_tab_opens_its_chart_on_the_15_minute_window(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-L59K`: switching to Induction draws its concentration chart from its saved window.
+
+    The shipped file saves the chart at 15 minutes. The chart must draw a
+    15-minute frame, not "Fit run", once the tab loads that state.
+    """
+
+    view = _dashboard(application, shown, _ran(30.0))
+
+    QTest.mouseClick(view.tab_strip.tab_at(1), Qt.MouseButton.LeftButton)
+
+    chart = _concentration(view)
+    frame = chart.chart.frame
+    assert view.workspaces.current.name == "Induction"
+    assert chart.time_base_selector.currentData() == "900.0"
+    assert frame is not None and not frame.fitted
+    assert frame.time_base == time_base_for_span(900.0)
+    assert (frame.start_s, frame.stop_s) == (0.0, 900.0)
 
 
 def test_a_workspace_left_and_come_back_to_is_as_it_was_left(

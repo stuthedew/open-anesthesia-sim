@@ -32,13 +32,14 @@ Areas. A switch changes which Views are drawn and never touches a run
 run's name on every Area's header. If the pinned run is not open, every Area
 says so in place of its Views.
 
-**One frame, every View, then every run.** `_refresh_view` reads one
-snapshot per run and assembles one `ChartFrame` through `app/chart_frame.py`.
-It hands that frame to every View in one `ViewTick`, and only then refreshes
-each run against the frame. So the readouts, the traces and the sentences
-beside them all show one instant of one run (decision D2). Every claim in a
-caption comes from `app/dashboard_frame.py`. This class formats nothing, and
-it decides nothing that a reader interprets.
+**One read, every View, then every run.** `_refresh_view` reads one
+snapshot per run and assembles one `ChartFrame` through `app/chart_frame.py`
+for each time window a View asks for. Each chart's window is its own
+(`PL-L59K`). `_refresh_view` hands each View the frame for its window, and
+only then refreshes each run from the same snapshot. So the readouts, the
+traces and the sentences beside them all show one instant of one run
+(decision D2). Every claim in a caption comes from `app/dashboard_frame.py`.
+This class formats nothing, and it decides nothing that a reader interprets.
 
 **Two cadences, kept apart** (decision D7). Each run's own timer steps that
 run. This view's render timer draws, but only while a run is running or a
@@ -81,8 +82,7 @@ from PySide6.QtWidgets import (
 )
 
 from anesthesia_sim.app.area_layout import AreaLayout
-from anesthesia_sim.app.chart_frame import ChartFrame, RunInput, assemble_chart_frame
-from anesthesia_sim.app.chart_time_base import ChartTimeBase
+from anesthesia_sim.app.chart_frame import RunInput, assemble_chart_frame
 from anesthesia_sim.app.compartment_selection import (
     INITIAL_COMPARTMENT_SELECTION,
     CompartmentSelection,
@@ -127,7 +127,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set, window_region
-from anesthesia_sim.app.view_contract import ViewRequests, ViewTick
+from anesthesia_sim.app.view_contract import ViewRequests
 from anesthesia_sim.app.views import ConcentrationView
 from anesthesia_sim.app.workspace_tabs import WorkspaceTabs
 from anesthesia_sim.core.concentration import fraction_from_percent
@@ -304,14 +304,6 @@ class SimulationView(QWidget):
     legend that has been closed simply stops receiving it (`PL-VN6M`).
     """
 
-    time_base_changed = Signal(object)
-    """Emitted with the time base a frame was drawn at, None for "Fit run", once every View drew it.
-
-    Every View is handed the same time base in its `ViewTick`. A time-base
-    control outside the Areas connects to this signal (`PL-9LNF`), as a
-    legend connects to `compartment_selection_changed`.
-    """
-
     def __init__(
         self,
         controllers: Sequence[SimulationController],
@@ -411,12 +403,11 @@ class SimulationView(QWidget):
         # refusal written into the panel and then overwritten by the next
         # render tick would be gone before a reader could read it.
         self._fork_refusal: str | None = None
-        self._time_base: ChartTimeBase | None = None
-        # Which compartments both runs are drawn with: this view's, handed to
-        # the legend and to every frame, so neither is read back from the
-        # other and closing the legend takes nothing with it (`PL-VN6M`).
+        # The compartments that both runs are drawn with. This view owns the
+        # selection and hands it to the legend and to every frame. So neither
+        # reads it back from the other, and closing the legend loses nothing
+        # (`PL-VN6M`).
         self._compartment_selection = INITIAL_COMPARTMENT_SELECTION
-        self._frame: ChartFrame | None = None
         self._render_pending = False
         # How many runs the last frame attempted was drawn over; `render_tick`
         # draws when the run set has changed since (`PL-0LG6`).
@@ -530,7 +521,7 @@ class SimulationView(QWidget):
             store=self._store,
             notice=self._notice,
         )
-        requests = ViewRequests(self._handle_time_base_request, self._handle_compartment_request)
+        requests = ViewRequests(self._handle_frame_request, self._handle_compartment_request)
         current = self._workspaces.current
         self._areas = AreaLayout(current.layout, requests, states=current.view_state)
         self._areas.views_changed.connect(partial(self.present, False))
@@ -1387,26 +1378,28 @@ class SimulationView(QWidget):
         return self._areas.owes_a_frame
 
     def _refresh_view(self) -> None:
-        """Read every run once, assemble one frame, draw every View, then refresh every run.
+        """Read every run once, assemble a frame per window, draw each View, then refresh each run.
 
-        The frame is assembled for the widest plot that any View draws. A chord
-        is the straight line drawn between two neighbouring samples. Assembling
-        for the widest plot means that no plot draws a chord wider than a pixel
-        (`PL-GS3R`). The dashboard assembles one frame, not one per plot at that
-        plot's own width. The two plots differ by about 53 px at every window
-        width measured. So one frame for each plot would mean two assemblies on
-        every tick, and the two plots would not draw the same instants
-        (`PL-9LNF`). Every View receives the frame in one `ViewTick`
-        (`PL-TH35`). Each legend is told what its plot drew only after the plot
-        has drawn it. So where the frame fails, the legend goes on naming the
-        curves still on the plot (`PL-G3K7`).
+        Each chart View asks for its own window (`PL-L59K`). The dashboard
+        assembles one frame for each distinct window, sampled for the widest
+        plot that asks for it. So no plot draws a chord wider than a pixel
+        (`PL-GS3R`). A chord is the straight line drawn between two
+        neighbouring samples. Charts at the same window share one frame,
+        rather than each having a frame at its own width. The two plots'
+        widths differ by about 53 px at every application-window width
+        measured. So a frame for each plot would mean two assemblies on every
+        tick, and two plots at the same window would not draw the same
+        instants (`PL-9LNF`). The adapter hands each View the frame for its
+        window in its `ViewTick` (`PL-TH35`). Each legend is told what its
+        plot drew only after the plot has drawn it. So where the frame fails,
+        the legend goes on naming the curves still on the plot (`PL-G3K7`).
 
         **A pinned Workspace draws its run alone** (`PL-WV9K` Q6). Its Views
-        are handed a frame assembled from the pinned run only, and the run's
+        are handed frames assembled from the pinned run only, and the run's
         name is on every Area. Where the pinned run is not open, no View is
-        drawn and every Area says so. Either way, the runs themselves are
-        refreshed from a frame assembled over every open run, so a pin never
-        changes a readout.
+        drawn and every Area says so. Either way, a frame is still assembled
+        over every open run for each window, so its checks still run. Each run
+        is refreshed from its own snapshot, so a pin never changes a readout.
 
         Raises:
             ValueError: If the runs have come to use different agents since
@@ -1420,14 +1413,22 @@ class SimulationView(QWidget):
         self._offered_views = self._areas.views()
         self._frame_failed = True
         selection = self._compartment_selection
-        time_base = self._time_base
         snapshots = tuple(run.snapshot() for run in self._runs)
         inputs = tuple(
             RunInput(run_label(run.run_id), run.controller, snapshot, run.adjustments(snapshot))
             for run, snapshot in zip(self._runs, snapshots, strict=True)
         )
-        width_px = self._areas.frame_width_px()
-        frame = assemble_chart_frame(inputs, time_base, selection.shown, plot_width_px=width_px)
+        # With no chart shown, one frame is still assembled, at "Fit run" and
+        # the narrowest sampling. Its checks therefore still run, such as the
+        # check for runs that have come to use different agents, and they halt
+        # the runs whatever the Areas hold.
+        requests = self._areas.frame_requests() or {None: 0.0}
+        frames = {
+            time_base: assemble_chart_frame(
+                inputs, time_base, selection.shown, plot_width_px=width_px
+            )
+            for time_base, width_px in requests.items()
+        }
         shown = self._workspaces.current.shown_runs(self._open_runs())
 
         if isinstance(shown, PinnedRunAbsent):
@@ -1436,36 +1437,34 @@ class SimulationView(QWidget):
             pinned = self._workspaces.current.pinned_run
             self._areas.show_pin(None if pinned is None else run_label(pinned), absent=False)
             drawn = [i for i, run in enumerate(self._runs) if run.run_id in shown]
-            view_frame = frame
+            view_frames = frames
 
             if len(drawn) < len(self._runs):
-                view_frame = assemble_chart_frame(
-                    tuple(inputs[i] for i in drawn),
-                    time_base,
-                    selection.shown,
-                    plot_width_px=width_px,
-                )
+                view_frames = {
+                    time_base: assemble_chart_frame(
+                        tuple(inputs[i] for i in drawn),
+                        time_base,
+                        selection.shown,
+                        plot_width_px=width_px,
+                    )
+                    for time_base, width_px in requests.items()
+                }
 
             self._areas.refresh(
-                ViewTick(
-                    view_frame,
-                    tuple(snapshots[i] for i in drawn),
-                    tuple(self._runs[i] for i in drawn),
-                    time_base,
-                    selection,
-                )
+                view_frames,
+                tuple(snapshots[i] for i in drawn),
+                tuple(self._runs[i] for i in drawn),
+                selection,
             )
 
         self._frame_failed = False
         self.compartment_selection_changed.emit(selection)
-        self.time_base_changed.emit(time_base)
 
-        for index, (run, snapshot) in enumerate(zip(self._runs, snapshots, strict=True)):
-            run.refresh(snapshot, frame, index)
+        for run, snapshot in zip(self._runs, snapshots, strict=True):
+            run.refresh(snapshot)
 
         self._refresh_bookmarks(snapshots)
         self._refresh_fork_panel()
-        self._frame = frame
         self.presented_frames += 1
 
     # -------------------------------------------------------------- bookmarks
@@ -1670,14 +1669,14 @@ class SimulationView(QWidget):
         selected = marks[index]
         self._apply_to_every_run(lambda run: run.remove_mac_target(selected))
 
-    def _handle_time_base_request(self, time_base: ChartTimeBase | None) -> None:
-        """Answer a reader's pick of a width, None for "Fit run": take it and draw at once.
+    def _handle_frame_request(self) -> None:
+        """Draw at once for a View that changed its own drawing setting, such as its window.
 
-        The control only asks. Touches no simulation state: the time base is
-        a view control, never disabled, and Reset leaves it alone (`PL-012`).
+        A chart's window is the chart's own (`PL-L59K`). Changing it touches
+        no simulation state. The time base is a view control. It is never
+        disabled, and Reset leaves it alone (`PL-012`).
         """
 
-        self._time_base = time_base
         self.present(False)
 
     def _handle_compartment_request(self, quantity: RecordedQuantity, shown: bool) -> None:

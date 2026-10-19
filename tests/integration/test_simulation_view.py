@@ -67,6 +67,7 @@ from anesthesia_sim.app.chart_frame import (
 from anesthesia_sim.app.chart_time_base import (
     FIT_RUN_KEY,
     SELECTABLE_TIME_BASES,
+    ChartTimeBase,
     time_base_for_span,
 )
 from anesthesia_sim.app.control_record import ControlChange
@@ -138,7 +139,7 @@ from anesthesia_sim.app.playback import (
     PlaybackRate,
     playback_rate_for,
 )
-from anesthesia_sim.app.qt_chart import TimeBaseSelector, TraceLegend
+from anesthesia_sim.app.qt_chart import TraceLegend
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, MarkListingLabel, ParameterSlider
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
@@ -489,6 +490,15 @@ def _select_playback_rate(run: RunView, multiplier: int) -> None:
     index = combo.findData(multiplier)
     assert index >= 0, f"the playback control does not offer {multiplier}x"
     combo.setCurrentIndex(index)
+
+
+def _chosen_time_base(view: SimulationView) -> ChartTimeBase | None:
+    """The window the concentration chart draws next, None for "Fit run"."""
+
+    request = _concentration(view).frame_request()
+    assert request is not None
+
+    return request.time_base
 
 
 def _select_time_base(view: SimulationView, key: str) -> None:
@@ -1798,7 +1808,7 @@ def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
     second.start()
     view = _shown_view(application, first, second)
 
-    def failing_refresh(snapshot: object, frame: object, run_index: int) -> None:
+    def failing_refresh(snapshot: object) -> None:
         raise RuntimeError("this run's widgets could not be written")
 
     view.runs[0].refresh = failing_refresh  # type: ignore[method-assign]
@@ -2283,14 +2293,6 @@ FRAME_WIDGETS: dict[str, str] = {
         "the accounting panel's amounts, which are the snapshot's mass balance "
         "and so compartment values."
     ),
-    "_off_scale_lines[0]": (
-        "which drawn traces are above the plot, read from the points the frame "
-        "drew (`dashboard_frame.off_scale_notice`)."
-    ),
-    "_wash_in_state_lines[0]": (
-        "what the wash-in plot shows, from the snapshot's alveolar and inspired "
-        "fractions and the frame's undrawn stretches."
-    ),
     "_notice_text": (
         "the banner. `_write_statement` writes it on both paths, worded for "
         "whether a frame drew: `halt_notice` says no frame of the stopped run "
@@ -2395,7 +2397,9 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
     controller.pause()
     view = _shown_view(application, controller)
     run = view.runs[0]
-    assert run._off_scale_lines[0].isHidden() is False, "no trace is above the axis to go stale"
+    assert _concentration(view).off_scale.lines[0].isHidden() is False, (
+        "no trace is above the axis to go stale"
+    )
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
     _select_agent(run, "desflurane")
@@ -3921,16 +3925,16 @@ def test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it(
     controller.set_delivered_concentration_percent(Percent(8.0))
     _advance(controller, 600.0)
     view = _shown_view(application, controller)
-    run = view.runs[0]
+    line = _concentration(view).off_scale.lines[0]
 
-    assert run._off_scale_lines[0].isHidden() is False
-    assert "Circuit" in run._off_scale_lines[0].text()
-    assert "Alveolar" not in run._off_scale_lines[0].text()
-    assert "readouts above" in run._off_scale_lines[0].text()
+    assert line.isHidden() is False
+    assert "Circuit" in line.text()
+    assert "Alveolar" not in line.text()
+    assert "readouts above" in line.text()
 
     _set_trace_shown(application, view, RecordedQuantity.CIRCUIT, False)
 
-    assert run._off_scale_lines[0].isHidden() is True
+    assert line.isHidden() is True
 
 
 def test_the_control_timeline_is_not_regrouped_when_it_has_not_grown(
@@ -3979,7 +3983,7 @@ def test_the_chart_defaults_to_fitting_the_whole_run(application: QApplication) 
     frame = _concentration(view).chart.frame
 
     assert _concentration(view).time_base_selector.currentData() == FIT_RUN_KEY
-    assert view._time_base is None
+    assert _chosen_time_base(view) is None
     assert frame is not None
     assert frame.fitted is True
     assert frame.start_s == 0.0
@@ -4016,7 +4020,7 @@ def test_selecting_a_time_base_makes_the_window_exactly_that_wide(
         assert frame is not None
         assert frame.fitted is False
         assert frame.stop_s - frame.start_s == pytest.approx(time_base.span_s)
-        assert view._time_base == time_base_for_span(time_base.span_s)
+        assert _chosen_time_base(view) == time_base_for_span(time_base.span_s)
 
 
 def test_a_run_shorter_than_the_selected_time_base_shows_whole(application: QApplication) -> None:
@@ -4052,18 +4056,30 @@ def test_both_plots_are_labelled_from_the_same_ticks(application: QApplication) 
     )
 
 
-def test_the_wash_in_plot_spans_the_same_window_as_the_chart_above_it(
+def test_the_two_plots_share_one_frame_while_they_show_the_same_window(
     application: QApplication,
 ) -> None:
+    """Each plot owns its window (`PL-L59K`), and plots at one window draw one frame (`PL-9LNF`)."""
+
     controller = SimulationController()
     controller.start()
     _advance(controller, 300.0)
     view = _shown_view(application, controller)
+    wash_in = _wash_in(view)
 
     for key in (FIT_RUN_KEY, "900.0", "43200.0"):
         _select_time_base(view, key)
+        wash_in.time_base_selector.setCurrentIndex(wash_in.time_base_selector.findData(key))
 
-        assert _wash_in(view).chart.frame is _concentration(view).chart.frame
+        assert wash_in.chart.frame is _concentration(view).chart.frame
+
+    _select_time_base(view, "900.0")
+    frame = wash_in.chart.frame
+
+    assert frame is not None
+    assert frame is not _concentration(view).chart.frame
+    assert frame.time_base == time_base_for_span(43200.0)
+    assert format_time_base(43200.0) in wash_in.time_axis_caption.text()
 
 
 def test_the_time_axis_caption_on_screen_states_the_span_and_the_mode(
@@ -4113,14 +4129,57 @@ def test_the_time_base_is_never_disabled(application: QApplication) -> None:
     assert _concentration(view).time_base_selector.isEnabled() is True
 
 
-def test_the_chosen_time_base_survives_its_selector_being_closed(application: QApplication) -> None:
-    """The dashboard, not the control, owns the width that both plots are drawn at (`PL-9LNF`).
+def test_a_window_pick_whose_frame_fails_leaves_the_control_on_the_window_drawn(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The control names the window on the plot, not one that never drew (`PL-G3K7`, `PL-L59K`)."""
 
-    Before this change, the dropdown held the state, and the handler read the
-    width back out of it. The control sits in the concentration chart's View,
-    so a reader closes it by choosing another View for its Area. The next
-    frame must stay at the width the reader chose, and a chart View brought
-    back must show that width.
+    controller = _paused_run_with_history(1800.0)
+    view = _shown_view(application, controller)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    _select_time_base(view, "900.0")
+
+    frame = _concentration(view).chart.frame
+    assert frame is not None
+    assert frame.fitted is True
+    assert _concentration(view).time_base_selector.currentData() == FIT_RUN_KEY
+
+
+def test_a_frame_is_assembled_and_checked_with_no_chart_shown(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Assembling a frame checks the runs, so a frame is assembled whatever the Areas hold.
+
+    This is `PL-L59K`. With every chart replaced, no View asks for a window. A
+    frame is still assembled at "Fit run". So a run state that the assembly
+    rejects still halts every run, rather than going unnoticed until a chart
+    is shown again.
+    """
+
+    view = _shown_view(application, _paused_run_with_history(60.0))
+
+    for area in (AreaId(1), AreaId(3)):
+        view.layout_container.choose_view(area, PARAMETER_CONTROLS)
+
+    _settle(application)
+    assert view.layout_container.frame_requests() == {}
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.present(False)
+
+    assert all(run.controller.has_failed for run in view.runs)
+
+
+def test_a_chart_s_window_returns_with_the_chart_after_its_area_shows_another_view(
+    application: QApplication,
+) -> None:
+    """A chart's window is the View's own state, saved when the reader replaces it (`PL-L59K`).
+
+    The time-base control sits in the chart View. So a reader closes the
+    control only by choosing another View for the chart's Area. Meanwhile the
+    F_A/F_I plot keeps its own window. A concentration chart brought back to
+    that Area shows the window that the reader chose.
     """
 
     controller = _paused_run_with_history(1800.0)
@@ -4133,42 +4192,14 @@ def test_the_chosen_time_base_survives_its_selector_being_closed(application: QA
 
     frame = _wash_in(view).chart.frame
     assert frame is not None
-    assert frame.fitted is False
-    assert frame.time_base == time_base_for_span(1800.0)
+    assert frame.fitted is True
 
     view.layout_container.choose_view(AreaId(1), CONCENTRATION_CHART)
     view.present(False)
 
-    assert _concentration(view).chart.frame is _wash_in(view).chart.frame
+    assert _chosen_time_base(view) == time_base_for_span(1800.0)
+    assert _concentration(view).time_base_selector.currentData() == "1800.0"
     assert format_time_base(1800.0) in _concentration(view).time_axis_caption.text()
-
-
-def test_a_second_time_base_selector_shows_the_width_a_first_one_chose(
-    application: QApplication,
-) -> None:
-    """Two controls on one dashboard show one width, because each shows what it is handed.
-
-    The second selector stands for a second chart View in another Area. It
-    is told the dashboard's width once a frame has drawn it, and a pick on
-    either is a request the dashboard answers for both.
-    """
-
-    view = _shown_view(application, SimulationController())
-    second = TimeBaseSelector()
-    view.time_base_changed.connect(second.show_time_base)
-    second.time_base_requested.connect(view._handle_time_base_request)
-
-    _select_time_base(view, "1800.0")
-
-    assert second.currentData() == "1800.0"
-
-    second.setCurrentIndex(second.findData(FIT_RUN_KEY))
-
-    assert view._time_base is None
-    assert _concentration(view).time_base_selector.currentData() == FIT_RUN_KEY
-    frame = _concentration(view).chart.frame
-    assert frame is not None
-    assert frame.fitted is True
 
 
 def test_reset_leaves_the_selected_time_base_alone(application: QApplication) -> None:
@@ -4177,7 +4208,7 @@ def test_reset_leaves_the_selected_time_base_alone(application: QApplication) ->
     _select_time_base(view, "1800.0")
     view.runs[0]._reset_button.click()
 
-    assert view._time_base == time_base_for_span(1800.0)
+    assert _chosen_time_base(view) == time_base_for_span(1800.0)
     assert _concentration(view).time_base_selector.currentData() == "1800.0"
 
 
@@ -4289,7 +4320,7 @@ def test_a_real_run_draws_the_ratio_of_its_own_recorded_compartments(
 
     assert last_time == pytest.approx(snapshot.elapsed_s)
     assert last_ratio == pytest.approx(reading.plotted_ratio)
-    assert format_wash_in_ratio(last_ratio) in view.runs[0]._wash_in_state_lines[0].text()
+    assert format_wash_in_ratio(last_ratio) in _wash_in(view).states.lines[0].text()
 
 
 # ------------------------------------------- the whole interface, walked
@@ -4383,7 +4414,11 @@ def test_nothing_between_the_chart_heading_and_the_plot_is_a_sentence(
     strings = _strings_between(
         None,
         _concentration(view).chart,
-        skip=(_concentration(view).hidden_traces_text, view.runs[0]._off_scale_lines[0]),
+        skip=(
+            _concentration(view).hidden_traces_text,
+            *_concentration(view).off_scale.lines,
+            *_concentration(view).unmarked_changes.lines,
+        ),
     )
 
     for value in strings:
@@ -4407,7 +4442,9 @@ def test_nothing_between_the_wash_in_heading_and_its_plot_is_a_sentence(
 
     view = _shown_view(application, SimulationController())
     strings = _strings_between(
-        None, _wash_in(view).chart, skip=(view.runs[0]._wash_in_state_lines[0],)
+        None,
+        _wash_in(view).chart,
+        skip=(*_wash_in(view).states.lines, *_wash_in(view).unmarked_changes.lines),
     )
 
     for value in strings:
@@ -5932,7 +5969,7 @@ def test_taking_a_fork_redraws_the_chart_without_prompting(application: QApplica
 
     assert view.presented_frames == presented + 1, "taking the branch did not draw it"
 
-    frame = view._frame
+    frame = _concentration(view).chart.frame
     assert frame is not None
     assert len(frame.runs) == 2
 
@@ -5955,7 +5992,7 @@ def test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis(application: QApp
     view = _case_view(application, case)
     _take_fork(view, 60.0)
 
-    frame = view._frame
+    frame = _concentration(view).chart.frame
     assert frame is not None
     assert len(frame.runs) == 2
 
@@ -6090,12 +6127,16 @@ def test_the_wash_in_state_and_off_scale_lines_name_their_run(application: QAppl
 
     assert len(view.runs) == 2
 
-    for index, run in enumerate(view.runs):
+    states = _wash_in(view).states.lines
+    off_scale = _concentration(view).off_scale.lines
+    assert len(states) == len(off_scale) == 2
+
+    for index in range(len(view.runs)):
         opening = f"{run_label(RUN_IDS[index])} — "
-        assert run._wash_in_state_lines[0].text().startswith(opening)
-        assert run._off_scale_lines[0].isHidden() is False
-        assert run._off_scale_lines[0].text().startswith(opening)
-        assert "Circuit" in run._off_scale_lines[0].text()
+        assert states[index].text().startswith(opening)
+        assert off_scale[index].isHidden() is False
+        assert off_scale[index].text().startswith(opening)
+        assert "Circuit" in off_scale[index].text()
 
 
 def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplication) -> None:
@@ -6111,13 +6152,14 @@ def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplicat
     controller.set_delivered_concentration_percent(Percent(8.0))
     _advance(controller, 600.0)
     view = _shown_view(application, controller)
-    run = view.runs[0]
+    off_scale = _concentration(view).off_scale.lines[0]
+    state = _wash_in(view).states.lines[0]
 
-    assert run._off_scale_lines[0].isHidden() is False
-    assert run._off_scale_lines[0].text().startswith("Above the top of the plot:")
-    assert run._wash_in_state_lines[0].text().startswith("Now: F_A/F_I =")
-    assert run_label(FIRST_RUN) not in run._off_scale_lines[0].text()
-    assert run_label(FIRST_RUN) not in run._wash_in_state_lines[0].text()
+    assert off_scale.isHidden() is False
+    assert off_scale.text().startswith("Above the top of the plot:")
+    assert state.text().startswith("Now: F_A/F_I =")
+    assert run_label(FIRST_RUN) not in off_scale.text()
+    assert run_label(FIRST_RUN) not in state.text()
 
 
 #: A dial position above every agent's calibrated vaporizer maximum, so the core
@@ -6179,7 +6221,7 @@ def test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped(
     _settle(application)
 
     for run in view.runs:
-        run._frame = None
+        run._presented = False
 
     view._halt_every_run(RuntimeError("the shared render path raised"))
     _settle(application)
@@ -7560,8 +7602,8 @@ def test_a_run_added_to_a_paused_dashboard_is_drawn_on_the_next_tick(
     view.render_tick()
 
     assert view.presented_frames == presented + 1
-    assert view._frame is not None
-    assert len(view._frame.runs) == 2
+    assert _concentration(view).chart.frame is not None
+    assert len(_concentration(view).chart.frame.runs) == 2
     assert _concentration(view).chart.drawn_points(BRANCH_RUN_INDEX, RecordedQuantity.ALVEOLAR)[0]
 
     view.render_tick()
@@ -8165,8 +8207,8 @@ def _copies_by_view(view: SimulationView) -> dict[str, tuple[QWidget, tuple[QWid
 
     return {
         "accounting": (accounting, accounting.copies),
-        "off-scale": (concentration, concentration._off_scale.copies),
-        "wash-in state": (wash_in, wash_in._states.copies),
+        "off-scale": (concentration, concentration.off_scale.lines),
+        "wash-in state": (wash_in, wash_in.states.lines),
     }
 
 

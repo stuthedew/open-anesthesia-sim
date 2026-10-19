@@ -3,14 +3,16 @@ id: PL-L59K
 title: Zoom the shipped Induction Workspace's concentration chart to the first 15 minutes, once the chart saves its own state
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature
 feature: interface-areas
-touches: src/anesthesia_sim/data/workspaces/induction.json, tests/unit/test_layout_shipped.py
+touches: src/anesthesia_sim/app/, src/anesthesia_sim/data/workspaces/induction.json, tests/integration/test_view_contract.py, tests/integration/test_layout_adapter.py, tests/integration/test_run_surfaces.py, tests/integration/test_simulation_view.py, tests/integration/test_dark_appearance.py, tests/unit/test_dashboard_frame.py, tests/unit/test_layout_shipped.py, tools/contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, README.md, tests/unit/test_supported_range_edges.py, tests/integration/test_qt_rendering.py, tests/integration/test_workspace_tabs.py
 blocked-by: PL-TH35
 added: 2026-10-18
+closed: 2026-10-19
+pr: 1650
 payoff: the shipped Induction Workspace opens with its concentration chart on the first minutes of the case, where induction happens, rather than on the same window as every other Workspace
-verify: grep -q '"concentration_chart": {' src/anesthesia_sim/data/workspaces/induction.json
+verify: grep -q '"time_base_s": 900.0' src/anesthesia_sim/data/workspaces/induction.json
 ---
 
 **Problem.** `ROADMAP.md` v0.6.0 Required scope entry 13 asks for an
@@ -126,3 +128,66 @@ would use.
 `app/views.py`, `app/simulation_view.py` and `induction.json` and waits on the
 project owner's read. This build starts on top of it and opens its pull
 request after it merges.
+
+## Built 2026-10-19
+
+**How it works.** Each chart View now holds its own time window.
+`app/views.py`'s `_TimeWindow` reads the window from the View's saved state,
+sets it from the View's own time-base control, and saves it as
+`{"state_version": 2, "time_base_s": 900.0}`, or `"fit"` for "Fit run". Each
+View tells the adapter which frame it draws through a new contract member,
+`View.frame_request`, which returns the window and the plot width. It
+replaces `frame_width_px`. The dashboard assembles one frame for each distinct
+window, sampled at the widest plot that asks for it, so charts at one window
+still share a frame. The adapter hands each View the frame for its own window.
+`ViewRequests.frame` replaces `ViewRequests.time_base`: a View that changes
+its window asks for a frame at once. The dashboard no longer holds a time
+base, and its `time_base_changed` signal is gone, since no shared control is
+left to follow it.
+
+**What moved with it.** Three lines depend on the window, so each chart now
+writes them from its own frame, one line per run, instead of showing a copy
+from the run. The concentration chart writes the off-scale notice. The F_A/F_I
+plot writes the wash-in state line, whose suffix counts the stretches its own
+window left undrawn. Both charts write the count of control changes in their
+window that they could not mark. That count used to sit in the run's
+control-change panel as "N not marked on the chart", which no longer has a
+single answer once two charts show different windows. `RunView.refresh` now
+takes only the snapshot, and `RunView` no longer builds the off-scale or
+wash-in lines. The F_A/F_I plot gains the time-base control and the caption of
+the window in force, as the recommended option said.
+
+**Placeholders decided here** (project owner's rule of 2026-10-18 on look,
+wording and placement). The unmarked-changes line reads "N control change(s)
+in this window not marked" and sits under the off-scale lines on the
+concentration chart and under the state lines on the F_A/F_I plot. The F_A/F_I
+plot's control sits in its heading row, as the concentration chart's does.
+
+**Saved state.** A version 1 chart state held no setting, so a chart reads it
+as "Fit run" without a notice: nothing saved is lost. A version 2 state whose
+window is not one the selector offers, such as 60 s or `true`, starts the chart
+on "Fit run" and shows the unreadable-state notice.
+
+**What a learner sees, and when.** `PL-2KXB` (`#1653`, the Workspace tab
+strip) merged while this pull request waited, and its tab switch loads each
+Workspace's saved View state. So the Induction tab opens its chart on 15
+minutes. `tests/integration/test_workspace_tabs.py`'s
+`test_the_induction_tab_opens_its_chart_on_the_15_minute_window` clicks the
+tab and checks the frame the chart draws. `tests/integration/test_view_contract.py`
+builds the chart from the shipped state and checks that it asks for the
+15-minute window. `#1653` also lets a Workspace pin one run. So when a
+Workspace is pinned, this branch assembles each window's frame from the
+pinned run alone, as `#1653` did for its single frame.
+
+**Whether a zoomed chart mentions an excursion outside its window**
+(project owner, 2026-10-19, ratified, over keeping the note on a chart that
+does not draw the clipped trace). He saw three screenshots: the whole-run
+chart with its off-scale note, the 15-minute chart without it, and a mock of
+the 15-minute chart keeping it. He answered "agree with recs and merge". So
+each chart's advisories describe only what that chart draws.
+
+**Tests.** `test_each_chart_names_only_the_clipped_traces_its_own_window_shows`
+is the regression test for the moved advisory. A case at 8% sevoflurane for
+10 minutes and then 0% for 25 leaves the circuit trace clipped early in the
+run. The chart that fits the run names it, and a 15-minute chart, whose window
+starts after the excursion, does not.
