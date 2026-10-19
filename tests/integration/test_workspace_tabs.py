@@ -31,8 +31,13 @@ from anesthesia_sim.app.workspace_tabs import (
     DUPLICATE_LABEL,
     MOVE_LEFT_LABEL,
     MOVE_RIGHT_LABEL,
+    NEXT_WORKSPACE_LABEL,
+    PREVIOUS_WORKSPACE_LABEL,
     RENAME_LABEL,
+    RESET_ALL_LABEL,
     RESET_LABEL,
+    RESTORE_SHIPPED_LABEL,
+    SAVE_AS_DEFAULT_LABEL,
     TabOperation,
     WorkspaceTabs,
     display_order,
@@ -96,7 +101,12 @@ def _with_mine(workspaces: WorkspaceSet) -> WorkspaceSet:
 
 
 def _entries(strip: WorkspaceTabs, index: int) -> list[tuple[str, bool]]:
-    return [(action.text(), action.isEnabled()) for action in strip.menu_for(index).actions()]
+    """The tab's own entries: those before the first separator of its menu."""
+
+    actions = strip.menu_for(index).actions()
+    end = next((place for place, action in enumerate(actions) if action.isSeparator()), None)
+
+    return [(action.text(), action.isEnabled()) for action in actions[:end]]
 
 
 def _named(operations: tuple[TabOperation, ...], label: str) -> TabOperation:
@@ -169,6 +179,31 @@ def test_the_menu_lists_q3s_entries_in_order(owner: _Owner) -> None:
         (MOVE_RIGHT_LABEL, False),
         ("Pin Run 1", True),
         (DELETE_LABEL, True),
+    ]
+
+
+def test_a_tabs_menu_ends_with_the_entries_for_every_workspace(owner: _Owner) -> None:
+    """`PL-R5G4`: a tab's menu ends with the entries that act on every Workspace.
+
+    The strip has no Layout button, so these entries are on each tab's menu for
+    the keyboard to reach. After the tab's own entries come Previous and Next
+    Workspace, then the three entries that keep or undo a session's changes. A
+    separator comes before each of these two groups.
+    """
+
+    actions = owner.strip.menu_for(0).actions()
+    separators = [place for place, action in enumerate(actions) if action.isSeparator()]
+    assert len(separators) == 2
+    first, second = separators
+
+    assert [action.text() for action in actions[first + 1 : second]] == [
+        PREVIOUS_WORKSPACE_LABEL,
+        NEXT_WORKSPACE_LABEL,
+    ]
+    assert [action.text() for action in actions[second + 1 :]] == [
+        SAVE_AS_DEFAULT_LABEL,
+        RESTORE_SHIPPED_LABEL,
+        RESET_ALL_LABEL,
     ]
 
 
