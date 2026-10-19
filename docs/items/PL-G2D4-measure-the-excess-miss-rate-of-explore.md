@@ -92,6 +92,15 @@ that trial. Until it runs, the default stays where `PL-2D28` leaves it.
 with their bounds, and the effort arm's, are recorded here, `PL-2D28` cites them, and the model
 review has issued its decision on the Explore default.
 
+**Note, 2026-10-19.** The model arm's decision rule no longer decides
+anything. The owner stated that price never justifies a less correct model,
+even at no cost (project owner, 2026-10-19; `docs/maintainer.md`). So the
+break-even lines above cannot adopt Sonnet 5.5 or Haiku 5.5. The model arm
+could matter only by showing a cheaper model is no less correct. Zero excess
+misses in 60 searches bounds the excess rate below about 1 in 20, not at
+zero, so this trial cannot show that. The effort arm is a separate question
+that the owner's statement does not settle; it still stands as written.
+
 **Generator check.** Not a member of a head. It follows from `PL-2D28`'s
 design round deciding on estimates where a measurement was affordable.
 

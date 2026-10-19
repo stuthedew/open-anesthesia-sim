@@ -235,6 +235,8 @@ appears (project owner, 2026-10-19, ratified, over a weekly or a quarterly
 cadence, `PL-63CB`). Until `.claude/skills/model-review/SKILL.md` exists, a
 refresh has three steps:
 
+<!-- absent: .claude/skills/model-review/SKILL.md -->
+
 1. Page through `list_sessions` (`mine: true`, `limit: 100`) from the
    `claude-code-remote` MCP server. A page is too large to show inline, so the
    harness saves it to a file. Copy each file unchanged and parse it with a
@@ -248,7 +250,6 @@ refresh has three steps:
    the harness no longer returns. The harness's retention is unknown, and the
    ledger exists so that this record outlives it.
 
-<!-- absent: .claude/skills/model-review/SKILL.md -->
 
 ## Settings that make sessions cheaper
 
@@ -273,10 +274,12 @@ refresh has three steps:
   and "Built-in subagents", read 2026-10-17), so the file changes no model.
   What it adds is a report footer naming what was searched and what was not,
   and the narrow tool set. A search runs at the session's effort level. The
-  model question is undetermined on estimates: a cheaper model pays only if
-  its excess miss rate on a thorough search is below about 1 in 20 for Sonnet
-  5.5 and about 1 in 11 for Haiku 5.5, and `PL-G2D4` is the pre-registered
-  measurement that would settle it. Until it reports, Opus stays. A cloud
+  model question is settled by correctness, not cost. The owner would rather
+  pay for Opus and correct work than take incorrect work from a cheaper model
+  for free, so price is never the reason to choose a weaker model (project
+  owner, 2026-10-19). So a session never puts a trade of correctness against
+  cost as the case for a cheaper model. Opus stays unless a measurement shows
+  a cheaper model is no less correct at the task. A cloud
   session loads this definition. In an Opus 5.5 cloud session started after
   it merged, the Explore subagent's transcript records the definition's own
   system prompt. Every turn ran on `claude-opus-5-5` at the session's effort
@@ -296,7 +299,9 @@ refresh has three steps:
   does not ask for a cheaper model for any subagent unless the owner approves
   it for that task (project owner, 2026-10-19, ratified, over asking for a
   cheaper model per call; `PL-2D28` reached the same answer for searches on
-  2026-10-17). This covers subagents that copy values as well as those that
+  2026-10-17). The owner then added the reason in their own words: price,
+  even a price of zero, does not justify a model that may be less correct
+  (project owner, 2026-10-19). This covers subagents that copy values as well as those that
   search: on 2026-10-19 a session put Sonnet runners on the session ledger's
   values on the strength of the old wording here, and the owner asked why.
 - **A session asking you to type `/compact` is resetting at its budget**
