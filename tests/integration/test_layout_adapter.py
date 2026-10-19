@@ -27,6 +27,7 @@ from anesthesia_sim.app.area_layout import (
     AREA_MENU_LABEL,
     CLOSE_AREA_LABEL,
     JOIN_WITH_LABEL,
+    RESIZE_LABEL,
     SPLIT_SIDE_BY_SIDE_LABEL,
     SPLIT_STACKED_LABEL,
     SWAP_WITH_LABEL,
@@ -45,7 +46,12 @@ from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
-from anesthesia_sim.app.theme import AREA_HANDLE_LINE_WIDTH, AREA_HANDLE_WIDTH, PRIMARY
+from anesthesia_sim.app.theme import (
+    AREA_HANDLE_LINE_WIDTH,
+    AREA_HANDLE_WIDTH,
+    AREA_KEYBOARD_STEP,
+    PRIMARY,
+)
 from anesthesia_sim.app.view_contract import (
     STATE_VERSION_KEY,
     SavedState,
@@ -1267,7 +1273,8 @@ def test_the_drawn_menu_disables_each_unavailable_entry_and_says_why(
     assert button is not None
     button.fill()
     menu = button.menu()
-    top = {action.text(): action for action in menu.actions()}
+    # The Resize submenu, before Close Area, is `test_layout_keyboard.py`'s.
+    top = {action.text(): action for action in menu.actions() if action.text() != RESIZE_LABEL}
 
     assert list(top) == [
         SPLIT_SIDE_BY_SIDE_LABEL,
@@ -1848,3 +1855,26 @@ def test_the_least_size_is_what_the_views_need_even_where_their_areas_are_too_sm
     assert len(container.too_small()) == 2
     hint = container.minimumSizeHint()
     assert (hint.width(), hint.height()) == (608, 200 + _CHROME_PX)
+
+
+def test_escape_after_a_drag_of_a_focused_border_leaves_the_drag_in_place(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """A drag ends the keyboard resize, so Escape does not go back past it (`PL-M352`)."""
+
+    container = _show(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
+    splitter = _splitters(container)[()]
+    border = splitter.handle(1)
+    container.focus_border(Handle(0, (), 0))
+    application.processEvents()
+    QTest.keyClick(border, Qt.Key.Key_Right)
+    step = AREA_KEYBOARD_STEP
+    assert splitter.sizes() == [400 + step, 400 - step]
+
+    _drag(application, splitter, 1, 100)
+    dragged = container.model
+    assert splitter.sizes() == [500 + step, 300 - step]
+
+    QTest.keyClick(border, Qt.Key.Key_Escape)
+    assert container.model == dragged
+    assert splitter.sizes() == [500 + step, 300 - step]

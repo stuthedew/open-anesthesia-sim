@@ -372,6 +372,44 @@ class LayoutModel:
 
         return tuple(neighbour for _, _, neighbour in sorted(found, key=lambda entry: entry[:2]))
 
+    def edges(self, area_id: AreaId) -> tuple[tuple[Side, Handle], ...]:
+        """The border on each side of this Area that has one, ordered left, above, right, below.
+
+        A side that lies along the window's edge has no border and is left
+        out. The border on a side is the handle nearest the Area in the tree.
+        That handle belongs to the deepest split that lays out the Area's
+        branch along that side's axis. Within that split, it lies between the
+        Area's branch and the next child. So moving it resizes this Area from
+        that side. The Area menu uses these borders to offer a resize without a
+        drag (`PL-M352`).
+
+        Raises:
+            TypeError: `area_id` was not built as an `AreaId`.
+            NotInLayout: no Area of this layout holds `area_id`.
+        """
+
+        place, _ = self._locate(area_id)
+        tree = self.windows[place.window].tree
+        found: dict[Side, Handle] = {}
+
+        for depth in range(len(place.path) - 1, -1, -1):
+            split = _node_at(tree, place.path[:depth])
+
+            if isinstance(split, Area):
+                continue
+
+            index = place.path[depth]
+            row = split.orientation is Orientation.ROW
+            before, after = (Side.LEFT, Side.RIGHT) if row else (Side.ABOVE, Side.BELOW)
+
+            if index > 0:
+                found.setdefault(before, Handle(place.window, place.path[:depth], index - 1))
+
+            if index < len(split.children) - 1:
+                found.setdefault(after, Handle(place.window, place.path[:depth], index))
+
+        return tuple((side, found[side]) for side in Side if side in found)
+
     def handles(self) -> tuple[Handle, ...]:
         """Every handle: the windows in order, each window's splits depth first."""
 
