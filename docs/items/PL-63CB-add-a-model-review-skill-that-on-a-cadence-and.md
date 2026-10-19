@@ -113,9 +113,12 @@ choice that needed rework or unintended behavior. Each monthly run does this:
    stratified comparison. Monthly looks at the same question inflate false
    positives, so correct the significance level for repeated looks.
 5. **Say what it cannot show.** Every session after 2026-10-19 runs at `high`,
-   so the comparison group is historical. The two groups also differ in date,
-   project phase (product focus began 2026-09-25) and the apparatus around
-   them. A significant difference is therefore an association that points at
+   so later comparison groups are historical. Some overlap exists already: from
+   2026-09-22 to 2026-10-19 the ledger holds Opus 5.5 sessions at `high` (189),
+   `max` (242) and `xhigh` (59). But 174 of the 189 at `high` are Projects
+   threads, a different way of working, and only 71 of the 242 at `max` are.
+   So compare within origin as well. The groups also differ in date, project
+   phase (product focus began 2026-09-25) and the apparatus around them. A significant difference is therefore an association that points at
    a cause, not proof of one. The report says so.
 6. **Report.** When the corrected test is significant, put it to the owner:
    the effect with its 95% confidence interval, the counts, the confounders,
