@@ -187,6 +187,25 @@ def owner_ask(root: Path) -> tuple[int, str] | None:
     return done.returncode, lines[0]
 
 
+def mistaken(phrase: str) -> str:
+    """What to do when the message was not an ask, so a wrong refusal is recorded.
+
+    The refused session is the only one that sees a refusal, and it would
+    otherwise reword and carry on, so a pattern of wrong refusals would never
+    reach the owner. Filing an item leaves a record that outlives the session,
+    and `bin/docket` flags a title filed more than once (project owner,
+    2026-10-19, ratified, over a shared refusal log or no record, `PL-TLPH`).
+    """
+    quoted = phrase.replace('"', "'")
+    return (
+        "\n\nIf this message is not an ask, the hook is wrong. Record that before "
+        "rewording, with:\n\n"
+        f'    bin/docket new "owner_ask_guard.py refused a message that asked for nothing: '
+        f'{quoted}"\n\n'
+        "Then reword the message so that it does not read as an ask."
+    )
+
+
 def refusal(text: str, root: Path) -> str | None:
     """Why this message may not go to the owner, or None to let it through."""
     phrase = asked(text)
@@ -205,7 +224,7 @@ def refusal(text: str, root: Path) -> str | None:
             "Open the ask with this line, word for word, and keep the rest short:\n\n"
             f"    {line}\n\n"
             "That line is what the owner judges, so a bare 'read #N' or 'Merge it' without "
-            "it is refused (PL-TLPH)."
+            "it is refused (PL-TLPH)." + mistaken(phrase)
         )
     return (
         opening + "`bin/docket arm --owner-ask` says nothing may be sent to the owner about this "
@@ -214,8 +233,8 @@ def refusal(text: str, root: Path) -> str | None:
         "not through head or tail: it says what to do. Usually that is to record "
         "`Owner-read: not needed - <why>` so the change merges on green, or, for a real "
         "decision or a high-risk change, to record an `Owner-ask:` and then send the line "
-        "arm prints. If this message is not an ask, reword it so that it does not read "
-        "as one. On #1612 and #1676 a bare ask reached the owner this way (PL-TLPH)."
+        "arm prints. On #1612 and #1676 a bare ask reached the owner this way (PL-TLPH)."
+        + mistaken(phrase)
     )
 
 

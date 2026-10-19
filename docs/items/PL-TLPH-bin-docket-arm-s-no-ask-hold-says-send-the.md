@@ -81,6 +81,10 @@ for it there, and `PL-YV90` holds that gap. A phrasing of an ask that none of
 the hook's patterns matches still passes. The first push let "Over to you for
 #1688" and "Your call on #1688" through. The owner asked why on 2026-10-19, so
 a hand-off beside a pull request in one sentence now counts as an ask too.
+Only the refused session sees a refusal, so a wrong one would otherwise leave
+no record. The refusal therefore tells that session to file an item with
+`bin/docket new` when its message was not an ask (project owner, 2026-10-19,
+ratified, over a shared refusal log or no record).
 
 **Done when.** A no-ask hold leads with "send the owner nothing" and exits 3;
 `bin/docket arm | head` is refused by the guard; and a thread's reply that asks

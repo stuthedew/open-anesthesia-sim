@@ -37,6 +37,9 @@ NOTHING = (
     "abc asks for the owner's read: a rule, so its pull request waits on the owner's read"
 )
 
+#: The refusal's instruction for a message that was not an ask.
+MISTAKEN = "If this message is not an ask, the hook is wrong. Record that before rewording"
+
 
 def _fake_arm(tmp_path: Path, code: int, said: str) -> str:
     """A stand-in for `bin/docket arm --owner-ask` that prints `said` and exits `code`."""
@@ -108,6 +111,7 @@ def test_a_reply_asking_for_a_read_without_a_recorded_ask_is_refused(
     reason = decision["permissionDecisionReason"]
     assert "says nothing may be sent to the owner" in reason
     assert NOTHING in reason
+    assert MISTAKEN in reason
 
 
 PROGRESS = (
@@ -148,6 +152,17 @@ def test_an_ask_without_the_recorded_line_is_refused_and_told_the_line(tmp_path:
     assert decision is not None
     assert "does not carry it" in decision["permissionDecisionReason"]
     assert ASK_LINE in decision["permissionDecisionReason"]
+    assert MISTAKEN in decision["permissionDecisionReason"]
+
+
+def test_a_refusal_says_how_to_record_that_it_was_wrong(tmp_path: Path) -> None:
+    """The refused session is the only one that sees a refusal, so it files a wrong one."""
+    decision = _decision(tmp_path, 'Reply "Merge it" when you are happy.')
+    assert decision is not None
+    assert (
+        '    bin/docket new "owner_ask_guard.py refused a message that asked for nothing: '
+        "Reply 'Merge it\"" in decision["permissionDecisionReason"]
+    )
 
 
 def test_a_card_and_an_edit_are_read_as_a_reply_is(tmp_path: Path) -> None:
