@@ -39,6 +39,10 @@ head = ["git", "rev-parse", "--abbrev-ref", "HEAD"]
 branch = subprocess.run(head, capture_output=True, text=True).stdout.strip()
 subprocess.run(["git", "commit", "--allow-empty", "-qm", "work"], check=True)
 subprocess.run(["git", "push", "-q", "-u", "origin", branch], capture_output=True)
+if os.environ.get("FAKE_OUTPUT") == "refused":
+    print(json.dumps({"type": "result", "subtype": "success", "is_error": True,
+                      "result": "Invalid API key", "total_cost_usd": 0, "num_turns": 1}))
+    sys.exit(1)
 if os.environ.get("FAKE_OUTPUT") == "junk":
     print("not json")
 else:
@@ -284,3 +288,19 @@ def test_a_missing_claude_is_refused_by_name(tmp_path: Path) -> None:
     path = _path_with(tmp_path, {"uv": "exit 0", "python3": "exit 0"})
     with pytest.raises(Refused, match="claude"):
         check_tools({"PATH": path})
+
+
+def test_a_failed_run_says_why_and_keeps_its_output(
+    origin: Path, fake_claude: Path, tmp_path: Path
+) -> None:
+    """The first real run printed only "error, $0.00", with no reason (`PL-MZCN`)."""
+    run = _work(origin, fake_claude, tmp_path, no_push=True, output="refused")
+    assert run.reason == "Invalid API key"
+    assert "why: Invalid API key" in headless_worker.describe(run)
+    assert b"Invalid API key" in Path(run.clone + ".log").read_bytes()
+
+
+def test_a_run_that_succeeded_has_no_reason(
+    origin: Path, fake_claude: Path, tmp_path: Path
+) -> None:
+    assert _work(origin, fake_claude, tmp_path, no_push=True).reason is None
