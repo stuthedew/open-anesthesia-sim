@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: safety, anticipated, refactor
 feature: interface-areas
+milestone: v0.5.31
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/run_surfaces.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/main.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py, tests/integration/test_run_surfaces.py, tests/integration/test_qt_rendering.py, tests/unit/test_chart_frame.py, tests/unit/test_stylesheets.py, tools/contrast_check.py, tools/literal_home_check.py
 added: 2026-09-16
 closed: 2026-10-18

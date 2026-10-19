@@ -1320,6 +1320,16 @@ def test_the_version_table_reads_its_release_rows() -> None:
     assert [row.is_baseline for row in rows] == [False, True]
 
 
+def test_a_version_row_reads_its_item_count_cell_where_it_has_one() -> None:
+    """The fourth cell is `| N items |` on newer rows and absent on older ones (`PL-S9X7`)."""
+    text = VERSION_TABLE.replace("| The one before. |", "| The one before. | 1 item |").replace(
+        "| The current one. |", "| The current one. | 12 items |"
+    )
+
+    assert [row.items for row in parse_version_table(text)] == [1, 12]
+    assert [row.items for row in parse_version_table(VERSION_TABLE)] == [None, None]
+
+
 def test_a_row_that_names_no_version_is_passed_over_not_reported() -> None:
     """The table is written by hand; what it must get right is the releases."""
     assert all(row.version != "later" for row in parse_version_table(VERSION_TABLE))

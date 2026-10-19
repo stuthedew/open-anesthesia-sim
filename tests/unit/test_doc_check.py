@@ -19,7 +19,7 @@ import textwrap
 import tomllib
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from functools import cache
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import core_vocabulary_check
@@ -286,6 +286,22 @@ def _versioned(tmp_path: Path, roadmap: str = VERSIONED_ROADMAP, version: str = 
     return root
 
 
+def test_the_digest_is_measured_without_the_calling_virtualenv(tmp_path: Path) -> None:
+    """Under `uv run`, the hook's bare `python3` was the virtualenv's (`PL-HDMP`)."""
+    venv = tmp_path / ".venv"
+    environ = {
+        "VIRTUAL_ENV": str(venv),
+        "PATH": f"{venv / 'bin'}:/usr/local/bin:{tmp_path / '.venvish'}:/usr/bin",
+        "HOME": "/root",
+    }
+
+    assert doc_check.session_environment(environ) == {
+        "PATH": f"/usr/local/bin:{tmp_path / '.venvish'}:/usr/bin",
+        "HOME": "/root",
+    }
+    assert doc_check.session_environment({"PATH": "/usr/bin"}) == {"PATH": "/usr/bin"}
+
+
 def test_clean_repository_reports_nothing(tmp_path: Path) -> None:
     assert _errors(_repo(tmp_path)) == []
 
@@ -326,6 +342,25 @@ def test_package_map_entry_that_no_longer_exists_is_an_error(tmp_path: Path) -> 
 def test_childless_directory_covers_its_whole_subtree(tmp_path: Path) -> None:
     """`tools/harness/` is drawn without children, so `run.py` needs no line."""
     assert not any("harness/run.py" in e for e in _errors(_repo(tmp_path)))
+
+
+def test_a_childless_directory_covers_nothing_outside_its_own_subtree(tmp_path: Path) -> None:
+    """`covered_dirs` holds `tools/harness`, and a sibling named like it is not under it.
+
+    The positive half is the test above. Without this one, a covered-directory
+    match by string prefix rather than by path parent would pass every test
+    while letting `tools/harness_old/` go unmapped (`PL-S5YM`).
+    """
+    root = _repo(tmp_path)
+    (root / "tools" / "harness_old").mkdir()
+    (root / "tools" / "harness_old" / "run.py").write_text("", encoding="utf-8")
+    block = APPARATUS.split("```text\n", 1)[1].split("```", 1)[0].splitlines()
+    tree = doc_check.parse_tree(root, 1, block)
+
+    assert tree is not None
+    assert tree.covered_dirs == frozenset({PurePosixPath("tools/harness")})
+    assert any(e.endswith("does not list tools/harness_old/run.py") for e in _errors(root))
+    assert not any("harness/run.py" in e for e in _errors(root))
 
 
 def test_init_files_are_not_required_in_the_map(tmp_path: Path) -> None:
@@ -3244,6 +3279,60 @@ def _with_workflow(root: Path, body: str = WORKFLOW) -> Path:
     (root / "bin").mkdir(exist_ok=True)
     (root / "bin" / "runner").write_text("", encoding="utf-8")
     return root
+
+
+FLOOR_WORKFLOW = """name: quality
+on: push
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v7.0.0
+      - run: python3 tools/harness/thing.py check
+      - run: bin/runner --fast
+      - uses: astral-sh/setup-uv@v9.0.0
+      - run: uv run pytest
+"""
+
+
+def _floor_list_errors(tmp_path: Path, listed: str | None) -> list[str]:
+    """Run `check_floor_list` over a floor section of two commands and a list in prose."""
+    root = _with_workflow(_repo(tmp_path), body=FLOOR_WORKFLOW)
+    if listed is not None:
+        (root / "docs" / "apparatus.md").write_text(
+            f"The floor runs <!-- floor-commands --> {listed} <!-- /floor-commands -->.\n",
+            encoding="utf-8",
+        )
+    report = doc_check.Report()
+    doc_check.check_floor_list(root, report)
+    return report.errors
+
+
+def test_a_marked_enumeration_missing_a_run_step_fails(tmp_path: Path) -> None:
+    """The list in `docs/apparatus.md` drifted five times with nothing to say so (`PL-5N7T`)."""
+    errors = _floor_list_errors(tmp_path, "`python3 tools/harness/thing.py check`")
+
+    assert errors == [
+        "docs/apparatus.md:1: the floor list leaves out `bin/runner`, which "
+        ".github/workflows/quality.yml:9 runs in the floor section"
+    ]
+
+
+def test_a_marked_enumeration_naming_a_command_the_floor_does_not_run_fails(tmp_path: Path) -> None:
+    """A removal is the worse drift: the prose then names a command as run that is not."""
+    listed = "`python3 tools/harness/thing.py check`, `bin/runner` and `python3 tools/gone.py`"
+
+    assert _floor_list_errors(tmp_path, listed) == [
+        "docs/apparatus.md:1: the floor list names `python3 tools/gone.py`, which the "
+        "floor section of .github/workflows/quality.yml does not run"
+    ]
+
+
+def test_a_floor_section_with_no_marked_list_fails(tmp_path: Path) -> None:
+    root_errors = _floor_list_errors(tmp_path, None)
+
+    assert len(root_errors) == 1
+    assert "no list of the floor section's commands" in root_errors[0]
 
 
 def test_a_workflow_whose_paths_resolve_is_quiet(tmp_path: Path) -> None:
@@ -7278,6 +7367,32 @@ def test_a_family_member_may_declare_no_test_yet_against_a_historical_id(tmp_pat
 
 NOTES_0_2_4 = "## v0.2.4 - 2026-09-01\n\n### defect\n\n- PL-9WX1 The stamped one — #10\n"
 NOTES_0_2_5 = "## v0.2.5 - 2026-09-08\n\n### defect\n\n- PL-7KD2 The late one — #11\n"
+
+
+@pytest.mark.parametrize(
+    ("cell", "reported"),
+    [("| 1 items |", False), ("| 2 items |", True), ("", False)],
+    ids=["agrees", "disagrees", "no-count"],
+)
+def test_a_version_row_item_count_is_held_to_its_notes(
+    tmp_path: Path, cell: str, reported: bool
+) -> None:
+    """The row and the notes file are written by hand from the same items (`PL-S9X7`)."""
+    roadmap = VERSIONED_ROADMAP.replace(
+        "| v0.2.4 | Completed | The one before. |", f"| v0.2.4 | Completed | The one before. {cell}"
+    ).replace(
+        "| v0.2.5 | Completed / current baseline | The current one. |",
+        "| v0.2.5 | Completed / current baseline | The current one. | 3 items |",
+    )
+    root = _versioned(tmp_path, roadmap=roadmap)
+    (root / "docs" / "releases").mkdir(parents=True, exist_ok=True)
+    (root / "docs" / "releases" / "v0.2.4.md").write_text(NOTES_0_2_4, encoding="utf-8")
+    report = doc_check.Report()
+
+    doc_check.check_release_row_item_count(root, report)
+
+    expected = ["ROADMAP.md:20: v0.2.4 says 2 items, but docs/releases/v0.2.4.md claims 1"]
+    assert [e.split(";")[0] for e in report.errors] == (expected if reported else [])
 
 
 def _git_run(root: Path, *command: str) -> None:
