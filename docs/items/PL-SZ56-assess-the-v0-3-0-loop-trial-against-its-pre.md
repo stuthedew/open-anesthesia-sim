@@ -54,6 +54,13 @@ tag; the v0.2.8 window is `v0.2.7`..`v0.2.8`, 2026-08-30 to 2026-09-01.
    that filed 65 items on 2026-08-30 alone. v0.3.0 has no such review planned,
    so a lower number is partly expected and the comparison is weak in v0.3.0's
    favour. Say so in the close-out rather than claiming the improvement.
+   *Counting rule, added 2026-10-19 (`PL-40PL`):* this readout named no
+   command, and the 141 and 104 above were counted from `added:` and
+   `closed:` dates over whole days, which also counts the morning before the
+   opening tag. `docs/releases/v0.3.0.md` § "How readout 2 is counted" gives
+   the rule and commands, which count item ids at the two tags. By that rule
+   t=0 is 94 in, 78 closed, net +16. Read the rule there rather than
+   deriving another.
 3. **Escaped defects.** An item classed `defect` filed during the v0.3.0
    window that a *closed* v0.3.0 entry caused — i.e. the gates passed work
    that was wrong.
