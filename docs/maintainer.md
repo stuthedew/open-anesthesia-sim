@@ -347,7 +347,10 @@ they test: a new test arms, and so does a loosening that no test pins, in
 as an `Owner-ask:` trailer on a commit, and `arm` prints it as the ask's
 opening line. It is either a decision or a risk review. A decision has at
 least two options, each saying what it changes for you or a learner, and a
-recommendation. A risk review says what could go wrong and for whom, what was
+recommendation. It is worded in clinical or learner terms, and a choice
+between approaches to the interface comes with one annotated screenshot per
+option (project owner, 2026-10-19, `PL-KYTY`). A risk review says what could
+go wrong and for whom, what was
 checked, and the one thing to look at. Until a record made after the newest
 change covers it, `arm` tells the session to send you nothing. A question
 whose answer is obvious is wrong, as on `#1516`. When there is nothing to

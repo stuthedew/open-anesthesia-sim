@@ -1163,3 +1163,36 @@ cut, because no other resident sentence says when a repeated failure stops a
 session. The file grows by 819 characters, 54,636 to 55,455. That is the
 price of a stop the owner asked to keep bounded and to end with a real
 question.
+
+## Rule 10's sentence on what the reader is judging, added 2026-10-19
+
+On `#1650` (`PL-L59K`, the chart time-window notes) the project owner had to
+ask twice what they were being asked to judge. The ask named the change in the
+code's terms and showed nothing. The ask that worked showed one concrete run,
+one picture per option and the question in one sentence. The owner then gave
+the rule in their own words: every ask must make plain what they are judging,
+and a question about different approaches to the interface comes with
+annotated screenshots of each (`PL-KYTY`). It is the owner's own request, so
+the pause on new workflow mechanisms does not hold it back.
+
+**The carrier test.** A question can go to the owner in any reply, a card or a
+pull request, and none of those is preceded by a read, so no `paths:` scope
+can carry the rule. A skill loads at its own trigger, which a question does
+not have. Rule 10 already decides how a decision request opens, so the rule
+joins it there. How to render and annotate the screenshots is a procedure
+with its own trigger, so it went to the run-the-app skill. `bin/docket arm`'s
+`READ_ASK` text asks for the same things at the moment a held pull request
+needs its ask written.
+
+**Why nothing more is cut.** No resident sentence said how plainly an ask must
+be worded or that an interface choice comes with pictures, so nothing is
+superseded. The story of `#1650` sits here rather than in rule 10.
+
+**A second sentence, the same day.** A workflow thread asked the owner
+directly what to work on next. The owner's rule: a session running under a
+coordinator sends a question the coordinator can answer to the coordinator,
+and the coordinator brings the owner only a real decision. It joins rule 10
+for the same reason as the first sentence, because a question is written in a
+reply that no read precedes. No resident sentence said where such a session
+sends its questions, so nothing is superseded. With both sentences the rules
+file grows by 1,157 characters.
