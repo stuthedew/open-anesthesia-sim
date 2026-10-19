@@ -89,14 +89,14 @@ _BOX_BORDER_INSET_PX = 2
 #: 100% with the fill taken away (`PL-J0F7`).
 _SHOWING_THROUGH_FRACTION = 0.05
 
-#: The fewest pixels drawn beneath a box for the fill to be tested at all.
-#: The six cases had 239 to 3,271 when this was set at 100. The "top left"
-#: box hangs below the circuit trace, so the trace runs along the box's top
-#: border, and whether its pixels fall inside the read area depends on
-#: sub-pixel placement. Rendered in DejaVu Sans alone, that case covered 228
-#: pixels on `main` and 45 once `PL-L59K` moved two run lines out of the band
-#: above the plots and made the plot 25 px taller. CI measured the same 45.
-#: At 40, 5% still allows only 2 pixels to show through.
+#: The fewest pixels that must be drawn beneath a box before the test checks the box's fill. With
+#: fewer, the test fails, because it could not tell a fill from no fill. When this was set at 100,
+#: the six cases had 239 to 3,271 such pixels each. The "top left" box hangs below the circuit
+#: trace, so the trace runs along the box's top border. Sub-pixel placement decides whether the
+#: trace's pixels fall inside the area the test reads. Rendered in DejaVu Sans alone, that case had
+#: 228 pixels beneath the box on `main`. It had 45 once `PL-L59K` moved each run's off-scale and
+#: wash-in lines out of the band above the plots and made the plot 25 px taller. CI measured the
+#: same 45. With the minimum at 40, the 5% limit still allows only 2 pixels to show through.
 _DRAWN_BENEATH_MIN_PX = 40
 
 #: Sixty times the hover's own cooldown of 1/60 s, the longest it holds a
