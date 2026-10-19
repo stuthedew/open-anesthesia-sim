@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
 closed: 2026-10-19
+pr: 1620
 payoff: docket check refuses a no-successor: id that names no item, the item itself, or a closed item that is not done
 verify: grep -q 'def test_a_no_successor_id_that_answers_nothing_is_refused' subprojects/docket/tests/test_checks.py
 ---
