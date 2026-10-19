@@ -42,8 +42,10 @@ reopen the owner's refusal of a committed analysis tool recorded on `PL-92ZN`.
 heading that names the section, one line per joined session: session id, last served model, effort level and cost in USD.
 It says so plainly when the item has no `pr:`, when no session joins, or when
 a joined session has no ledger row. It must never print an empty list as if
-the item had no sessions. A function in `docket` exposes the join for the model
-review to call. A test covers the joined, unjoined and missing-row cases, and
+the item had no sessions. `bin/docket show`'s help text names the section, so a reader of
+`bin/docket --help` or `bin/docket show --help` learns that it is where to find
+which model and effort worked an item (project owner, 2026-10-19). A
+function in `docket` exposes the join for the model review to call. A test covers the joined, unjoined and missing-row cases, and
 `subprojects/docket/README.md` documents the file it reads.
 
 **Generator check.** Asked for by the project owner on 2026-10-19 as a

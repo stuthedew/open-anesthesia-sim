@@ -302,7 +302,9 @@ refresh has three steps:
   cheaper model per call; `PL-2D28` reached the same answer for searches on
   2026-10-17). The owner then added the reason in their own words: price,
   even a price of zero, does not justify a model that may be less correct
-  (project owner, 2026-10-19). This covers subagents that copy values as well as those that
+  (project owner, 2026-10-19). The same holds for effort: a subagent runs at
+  the session's own effort level unless the owner approves a lower one for
+  that task (project owner, 2026-10-19). This covers subagents that copy values as well as those that
   search: on 2026-10-19 a session put Sonnet runners on the session ledger's
   values on the strength of the old wording here, and the owner asked why.
 - **A session asking you to type `/compact` is resetting at its budget**

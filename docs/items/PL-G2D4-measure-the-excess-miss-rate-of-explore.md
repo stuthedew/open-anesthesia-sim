@@ -3,12 +3,14 @@ id: PL-G2D4
 title: Measure the excess miss rate of Explore subagent search on Sonnet 5.5 and Haiku 5.5 against Opus 5.5 in one dedicated session, on thorough searches drawn from recent design rounds, before any cheaper Explore default is adopted: PL-2D28's third revision names the break-even lines (about 1 in 20 for Sonnet 5.5, 1 in 11 for Haiku 5.5) but decides on estimates and calls the measurement unaffordable, which its own cost table does not support
 priority: P3
 effort: L
-status: blocked
+status: dropped
 classes: session-cost
 feature: model-evidence
 touches: docs/items/PL-G2D4-measure-the-excess-miss-rate-of-explore.md
 blocked-by: v0.7.0
 added: 2026-10-17
+closed: 2026-10-19
+reason: Neither arm can change a decision now. The owner stated on 2026-10-19 that neither a cheaper model nor a lower effort level is chosen to save cost, even at no cost. This trial's decision rules were cost break-evens, and 60 searches with no misses bound the excess miss rate below about 1 in 20, not at zero, so they cannot show a cheaper setting is no less correct.
 payoff: the Explore subagent's model and effort are chosen on measured miss rates with bounds rather than on three multiplied estimates
 verify: grep -qE '^[*][*]Measured on 2026-[0-9]{2}-[0-9]{2}' docs/items/PL-G2D4-*.md
 not-delegable: the trial is one dedicated session that dispatches about 240 subagent searches and checks disputed leads against the source; a delegated worker cannot run it
