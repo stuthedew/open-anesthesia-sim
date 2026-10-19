@@ -630,7 +630,13 @@ auto_merge_command = "python3 tools/open_pull_requests.py --auto-merge"
 # appends the commit carrying the newest `Prose-review:` trailer, where one
 # does, and the script prints how many units added since then need a review.
 # It exits non-zero where it could not count, which `arm` holds on.
-prose_count_command = "python3 tools/new_prose.py --count"
+#
+# It runs under `uv run python` and not the bare `python3`, because it parses
+# the simulator's source with `ast` and that source targets Python 3.14. The
+# bare interpreter is the 3.11 tools floor, which cannot parse every file
+# under `src/`, so the count exited 2 and `arm` held correct work (`PL-Q508`).
+# The `Makefile` runs its source-reading tools the same way (`PL-MB3F`).
+prose_count_command = "uv run python tools/new_prose.py --count"
 
 version_file = "pyproject.toml"
 

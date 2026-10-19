@@ -328,7 +328,7 @@ page and decides which file a session reads.
 
 8. **Have a fresh reviewer read the branch's new long prose in the simulator,
    before step 5's audit**, because the rewrites change files that the audit
-   and `make check` read. Run `python3 tools/new_prose.py`. It prints each
+   and `make check` read. Run `uv run python tools/new_prose.py`. It prints each
    docstring and comment of 30 words or more that the branch added or changed
    in `src/` or in a file under `tests/` that imports the simulator, with its
    rows and the code around it. Where it prints none, this step is done.
@@ -365,7 +365,7 @@ page and decides which file a session reads.
    commit that applies the rewrites, or of the next commit where there were
    none: `Prose-review: read N, rewrote M, rejected K`. `bin/docket arm` holds
    a simulator branch whose long prose was added after the newest such
-   trailer, as `python3 tools/new_prose.py --count` counts it (`PL-W04Z`).
+   trailer, as `uv run python tools/new_prose.py --count` counts it (`PL-W04Z`).
    `PL-PRCS` records what the step costs. `PL-J6CK` measured what it buys on
    2026-10-19: long prose from the branch that ran it was awkward in 22% of
    blind verdicts, against 58% from branches that skipped it, so it is kept.
