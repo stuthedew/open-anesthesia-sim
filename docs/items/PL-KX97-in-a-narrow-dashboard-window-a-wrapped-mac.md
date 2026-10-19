@@ -10,6 +10,7 @@ touches: tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-11
 closed: 2026-10-19
+pr: 1680
 payoff: in a narrow window a mark row's second line, such as Run 2 reached, is shown or scrolled to rather than silently cut off
 verify: grep -q 'def test_a_wrapped_mark_row_is_never_clipped' tests/integration/test_simulation_view.py
 ---

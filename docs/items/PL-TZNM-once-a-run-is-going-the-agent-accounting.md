@@ -10,6 +10,7 @@ touches: tests/integration/test_qt_rendering.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
 closed: 2026-10-19
+pr: 1680
 payoff: the accounting panel shows every line of its readout while a run is going, so the error figure the Valid verdict rests on can be read
 verify: grep -q 'def test_no_readout_value_is_clipped_once_a_run_is_going' tests/integration/test_qt_rendering.py
 ---

@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/qt_widgets.py, 
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
 closed: 2026-10-19
+pr: 1680
 payoff: On a desktop with a wider or larger default font, a mark's entry in the branch selector still reads as a mark instead of being cut before the words that say so.
 verify: grep -q 'def test_the_branch_selector_fits_its_widest_entry_in_a_wider_face' tests/integration/test_simulation_view.py
 ---

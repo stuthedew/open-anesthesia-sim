@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simul
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-18
 closed: 2026-10-19
+pr: 1680
 payoff: Compare mode gives the concentration chart back 24 px on a laptop screen where it is already below its minimum height, without hiding any halt or refusal banner
 verify: grep -q 'def test_hidden_notice_banners_take_no_height' tests/integration/test_simulation_view.py
 ---
