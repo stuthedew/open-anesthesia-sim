@@ -3,13 +3,16 @@ id: PL-92ZN
 title: Record every session's model, served model, mid-session switch, effort, tokens and cost in a per-session ledger written from the harness record by the model review, not by the working session, and backfill it for the sessions behind the 1,759 closed items
 priority: P2
 effort: M
-status: ready
+status: done
 classes: session-cost, infra
 feature: model-evidence
-touches: docs/session-ledger.tsv, docs/maintainer.md, .claude/skills/model-review
+touches: docs/session-ledger.tsv, docs/ci-runs.tsv, docket.toml, tools/rules_paths_check.py, docs/maintainer.md, .claude/skills/model-review, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md, docs/dead-ends.md, docs/items/PL-G2D4-measure-the-excess-miss-rate-of-explore.md, .claude/rules/apparatus-standard.md, .claude/skills/docket/modes/close-out.md, docs/items/PL-70M6-bin-docket-show-prints-for-a-closed-item-the.md, docs/items/PL-5J1S-docs-dead-ends-md-says-raising-its-4-000-byte.md, docs/items/PL-6FX6-make-the-first-month-of-api-credit-runs-the.md
 added: 2026-10-17
+closed: 2026-10-19
+pr: 1669
 payoff: what model and effort worked every closed item is a durable record in the tree, so the model review has data on its first run instead of in a year
 verify: grep -q 'session-ledger' docs/maintainer.md && grep -q 'last_served_model' docs/session-ledger.tsv
+recurrences: 2026-10-19 PL-70M6
 ---
 
 **Problem.** Record every session's model, served model, mid-session switch, effort, tokens and cost in a per-session ledger written from the harness record by the model review, not by the working session, and backfill it for the sessions behind the 1,759 closed items
@@ -69,3 +72,36 @@ the owner's constraint is that this costs working sessions nothing.
 workflow-mechanism pause for this feature. Not an instance of a head: the fact
 nothing records is the harness's own session metadata, an external record no
 reader here has misread.
+
+**Progress, 2026-10-19.** The first commit holds 888 rows: every session
+`list_sessions` returns for this repository, back to 2026-08-22. A script
+parsed them from the saved tool output, so no model retyped a value. 271
+sessions named on `main` were missing, and one probe showed why: they are
+Projects threads, which `list_sessions` leaves out and `get_session` still
+returns. 299 session ids named in `Claude-Session:` trailers and
+`docs/pr-bodies/` have no row yet. They are split into six lists in the
+session's scratchpad, `ledger/threads/ids_1.txt` to `ids_6.txt`.
+
+**Result, 2026-10-19.** The ledger holds 1,188 rows: 893 from
+`list_sessions` and 295 Projects threads from `get_session`. Six Opus 5.5
+runners copied the 299 thread records into JSON lines, and a script wrote the
+rows. A Sonnet 5.5 copy of 279 of them agreed on every field, and a second
+Opus copy of the other 20 agreed too. Four of the 299 were not threads. They
+were desktop sessions whose first source was the references repository and
+whose second was this one. The first builder kept a session only when this
+repository was its first source, so it missed them and one more. It now keeps
+a session when any source is this repository.
+
+The join, run against `origin/main` the same day:
+
+- 1,992 `done` items. 1,878 of them (94.3%) join to at least one ledger row.
+- 114 `done` items, on 69 pull requests between `#3` and `#1587`, have no
+  session id in their squash commit or in `docs/pr-bodies/`. No ledger can
+  join them.
+- No `done` item names a session that has no ledger row.
+- 273 `dropped` items have no `pr:` and so nothing to join.
+
+The join reads any `claude.ai/code/session_...` URL in the squash commit's
+body, not only a `Claude-Session:` line. Squash bodies carry the pull request
+body, where the URL usually stands on a line of its own. `PL-70M6` should
+read it the same way.
