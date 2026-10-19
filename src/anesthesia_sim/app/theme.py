@@ -504,6 +504,30 @@ AREA_HANDLE_WIDTH = 8
 # the pointer is over one of them (`PL-RQT1` Q2). It is drawn in PRIMARY.
 AREA_HANDLE_LINE_WIDTH = 2
 
+# The square at each corner of an Area that a reader drags to split or join it,
+# in px (`PL-30L5` Q1). Twice Blender's, and less than WCAG 2.2 SC 2.5.8's 24
+# px, which the Area menu meets as the equivalent control. The header's end
+# margins are this wide too, so a zone never takes a header control's click.
+AREA_CORNER_ZONE = 16
+
+# The grip a corner draws while the pointer is in its Area: this many strokes,
+# this long and this thick, in px, in MUTED. `PL-30L5` Q1 had it at 40 % alpha; it
+# is drawn opaque so that it meets SC 1.4.11's 3:1 against PANEL, which a
+# reader needs to find the zone. A placeholder for planned-milestone item 33.
+AREA_GRIP_STROKE_LENGTH = 6
+AREA_GRIP_STROKE_WIDTH = 1
+AREA_GRIP_STROKES = 3
+
+# The line a corner drag draws across an Area where a split will fall, in px
+# (`PL-30L5` Q2). PRIMARY while the split can be made, WARNING where a half
+# would be too small. The same width outlines the Area a join would make.
+AREA_PREVIEW_LINE_WIDTH = 2
+
+# How opaque the tint is over an Area a join would close (`PL-30L5` Q2). The
+# PRIMARY outline around the joined Area is what carries the preview; the tint
+# only marks which of the two goes.
+AREA_CLOSING_TINT_ALPHA = 0.4
+
 # One width for the selector and for the chip that stands in its place, so the
 # transport controls beside them do not move when a run starts. A header that
 # reflows on Start announces a mode change by motion in the wrong place, and

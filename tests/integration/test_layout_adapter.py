@@ -23,7 +23,23 @@ from PySide6.QtGui import QEnterEvent, QImage
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QSplitter, QWidget
 
-from anesthesia_sim.app.area_layout import AreaFrame, AreaLayout, AreaNotice, ViewChooser
+from anesthesia_sim.app.area_layout import (
+    AREA_MENU_LABEL,
+    CLOSE_AREA_LABEL,
+    JOIN_WITH_LABEL,
+    SPLIT_SIDE_BY_SIDE_LABEL,
+    SPLIT_STACKED_LABEL,
+    SWAP_WITH_LABEL,
+    AreaFrame,
+    AreaLayout,
+    AreaMenu,
+    AreaNotice,
+    AreaOperation,
+    JoinPreview,
+    SplitPreview,
+    ViewChooser,
+    _AreaHandle,
+)
 from anesthesia_sim.app.chart_frame import RunInput, assemble_chart_frame
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationController
@@ -364,35 +380,142 @@ def test_a_drag_leaves_a_border_on_another_line_where_it_was(
     assert splitters[(1,)].sizes() == [280, 120]
 
 
-def test_a_drag_the_model_refuses_changes_nothing(
+def _press(
+    handle: QWidget, modifier: Qt.KeyboardModifier = Qt.KeyboardModifier.NoModifier
+) -> QPoint:
+    start = handle.rect().center()
+    QTest.mousePress(handle, Qt.MouseButton.LeftButton, modifier, start)
+
+    return start
+
+
+def _along(splitter: QSplitter, by_px: int) -> QPoint:
+    if splitter.orientation() == Qt.Orientation.Horizontal:
+        return QPoint(by_px, 0)
+
+    return QPoint(0, by_px)
+
+
+_PAST_A_NEIGHBOUR = _layout(
+    _column(
+        (0.5, 0.5),
+        _row((0.5, 0.5), _area(1), _area(2)),
+        _row((0.5, 0.1, 0.4), _area(3), _area(4), _area(5)),
+    ),
+    6,
+)
+
+
+def test_a_drag_stops_where_a_neighbour_reaches_its_least_size_and_its_line_turns_warning(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """Dragging the top border to 0.75 would carry the bottom one past its neighbour at 0.6.
+    """`PL-RQT1` Q3: the border goes no further, and both handles on its line say so.
 
     The bottom row's first border is on the top border's line, so it moves
-    with it, and moving it to 0.75 would leave Area 4, between 0.5 and 0.6,
-    with no width. The model refuses the drag, so neither the model nor the
-    dragged splitter changes, and nothing is announced.
+    with it. Area 4 lies between that border and the next one, at 0.6 of
+    the window. A drag of 100 px to the right would carry the line to 0.75,
+    past 0.6. So the line stops where Area 4 is as narrow as Qt would draw
+    it: its frame's minimum size hint, plus the handle width the adapter
+    allows for, short of 0.6 of the container's width.
     """
+
+    container = _show(application, shown, _PAST_A_NEIGHBOUR)
+    splitters = _splitters(container)
+    top, bottom = splitters[(0,)].handle(1), splitters[(1,)].handle(1)
+    least = container.frame(AreaId(4)).minimumSizeHint().width()
+    expected = 0.6 - (least + AREA_HANDLE_WIDTH) / container.width()
+    assert isinstance(top, _AreaHandle) and isinstance(bottom, _AreaHandle)
+
+    start = _press(top)
+    back = top.mapToGlobal(start + _along(splitters[(0,)], 10))
+    QTest.mouseMove(top, start + _along(splitters[(0,)], 100))
+    application.processEvents()
+
+    assert container.model.position(Handle(0, (0,), 0)) == pytest.approx(expected, abs=1e-5)
+    assert container.model.position(Handle(0, (1,), 0)) == pytest.approx(expected, abs=1e-5)
+    assert top.lit and top.warning
+    assert bottom.lit and bottom.warning
+    assert not splitters[()].handle(1).lit
+
+    # The handle has moved, and QTest places the pointer relative to it.
+    QTest.mouseMove(top, top.mapFromGlobal(back))
+    application.processEvents()
+
+    assert not top.warning
+    assert container.model.position(Handle(0, (0,), 0)) == pytest.approx(210 / 400)
+
+    QTest.mouseRelease(
+        top, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start + QPoint(10, 0)
+    )
+    application.processEvents()
+
+    assert not top.warning and not bottom.warning
+
+
+def test_a_drag_with_shift_moves_only_the_border_under_the_pointer(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """The two rows' borders are one line, but with Shift held only the top one moves."""
 
     model = _layout(
         _column(
-            (0.5, 0.5),
-            _row((0.5, 0.5), _area(1), _area(2)),
-            _row((0.5, 0.1, 0.4), _area(3), _area(4), _area(5)),
+            (0.5, 0.5), _row((0.5, 0.5), _area(1), _area(2)), _row((0.5, 0.5), _area(3), _area(4))
         ),
-        6,
+        5,
     )
+    container = _show(application, shown, model)
+    splitters = _splitters(container)
+    top, bottom = splitters[(0,)].handle(1), splitters[(1,)].handle(1)
+    assert isinstance(top, _AreaHandle) and isinstance(bottom, _AreaHandle)
+
+    start = _press(top, Qt.KeyboardModifier.ShiftModifier)
+    QTest.mouseMove(top, start + QPoint(-100, 0))
+    application.processEvents()
+
+    assert top.lit and not bottom.lit
+
+    QTest.mouseRelease(
+        top, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.ShiftModifier, start + QPoint(-100, 0)
+    )
+    application.processEvents()
+
+    tree = _tree(container)
+    assert isinstance(tree, Split)
+    upper, lower = tree.children
+    assert isinstance(upper, Split) and isinstance(lower, Split)
+    assert upper.sizes == pytest.approx((0.25, 0.75), abs=1 / 400)
+    assert lower.sizes == (0.5, 0.5)
+    assert splitters[(0,)].sizes() == [100, 300]
+    assert splitters[(1,)].sizes() == [200, 200]
+
+
+def test_escape_returns_a_border_drag_to_where_it_started(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """The Areas followed the pointer live, so Escape announces the layout it returns to."""
+
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
     container = _show(application, shown, model)
     changed: list[LayoutModel] = []
     container.layout_changed.connect(changed.append)
-    splitters = _splitters(container)
+    splitter = _splitters(container)[()]
+    handle = splitter.handle(1)
 
-    _drag(application, splitters[(0,)], 1, 100)
+    start = _press(handle)
+    QTest.mouseMove(handle, start + QPoint(100, 0))
+    application.processEvents()
+
+    assert splitter.sizes() == [300, 100]
+
+    QTest.keyClick(handle, Qt.Key.Key_Escape)
+    QTest.mouseRelease(
+        handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start + QPoint(100, 0)
+    )
+    application.processEvents()
 
     assert container.model == model
-    assert changed == []
-    assert splitters[(0,)].sizes() == [200, 200]
+    assert splitter.sizes() == [200, 200]
+    assert changed[-1] == model and len(changed) == 2
 
 
 def test_a_resize_keeps_the_fractions_and_changes_no_model(
@@ -940,3 +1063,475 @@ def test_a_removed_or_unknown_kind_offers_no_button(
         notice = container.frame(AreaId(area_id)).content
         assert isinstance(notice, AreaNotice)
         assert notice.offer_button is None
+
+
+# ------------------------------------------------------------ the Area menu
+
+# Three Areas: Area 1 on the left half, and Areas 2 and 3 stacked on the right.
+# Area 1 meets both along part of its right edge, and 2 and 3 share a whole edge.
+_LEFT_AND_STACK = _layout(_row((0.5, 0.5), _area(1), _column((0.5, 0.5), _area(2), _area(3))), 4)
+
+
+def _operation(
+    container: AreaLayout, area_id: int, label: str, group: str | None = None
+) -> AreaOperation:
+    (found,) = [
+        operation
+        for operation in container.operations(AreaId(area_id))
+        if operation.label == label and operation.group == group
+    ]
+
+    return found
+
+
+def _labels(container: AreaLayout, area_id: int) -> list[tuple[str | None, str, bool]]:
+    return [
+        (operation.group, operation.label, operation.available)
+        for operation in container.operations(AreaId(area_id))
+    ]
+
+
+def test_every_header_ends_with_the_area_menu(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-MS34` Q2: chooser first, then a stretch, then the Area menu."""
+
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+
+    for number in (1, 2, 3):
+        frame = container.frame(AreaId(number))
+        row = frame.header.layout()
+        assert row is not None
+
+        assert isinstance(frame.menu, AreaMenu)
+        assert frame.menu.text() == AREA_MENU_LABEL
+        assert row.itemAt(0).widget() is frame.chooser
+        assert row.itemAt(row.count() - 1).widget() is frame.menu
+
+
+def test_the_menu_offers_each_operation_and_shows_a_join_the_layout_cannot_make(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """A neighbour along part of an edge is listed and unavailable, never left out (`PL-2KXB`)."""
+
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+
+    assert _labels(container, 1) == [
+        (None, SPLIT_SIDE_BY_SIDE_LABEL, True),
+        (None, SPLIT_STACKED_LABEL, True),
+        (JOIN_WITH_LABEL, "Test view, on the right", False),
+        (JOIN_WITH_LABEL, "Test view, on the right", False),
+        (SWAP_WITH_LABEL, "Test view, above, on the right", True),
+        (SWAP_WITH_LABEL, "Test view, below, on the right", True),
+        (None, CLOSE_AREA_LABEL, False),
+    ]
+    assert _labels(container, 2) == [
+        (None, SPLIT_SIDE_BY_SIDE_LABEL, True),
+        (None, SPLIT_STACKED_LABEL, True),
+        (JOIN_WITH_LABEL, "Test view, on the left", False),
+        (JOIN_WITH_LABEL, "Test view, below", True),
+        (SWAP_WITH_LABEL, "Test view, below, on the left", True),
+        (SWAP_WITH_LABEL, "Test view, below", True),
+        (None, CLOSE_AREA_LABEL, True),
+    ]
+
+    refused = container.operations(AreaId(1))[2]
+
+    assert "do not share a whole edge" in refused.refusal
+    assert "Area 1" not in refused.refusal
+    assert "only Area" not in _operation(container, 1, CLOSE_AREA_LABEL).refusal
+    assert "none can take its place" in _operation(container, 1, CLOSE_AREA_LABEL).refusal
+
+
+def test_join_split_swap_and_close_each_draw_the_layout_worked_out_by_hand(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """Each expected layout is built here, not read back from the model."""
+
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+    changes: list[LayoutModel] = []
+    container.layout_changed.connect(changes.append)
+
+    container.perform(_operation(container, 2, "Test view, below", JOIN_WITH_LABEL))
+    application.processEvents()
+
+    assert container.model == _layout(_row((0.5, 0.5), _area(1), _area(2)), 4)
+    assert changes == [container.model]
+
+    container.perform(_operation(container, 1, SPLIT_SIDE_BY_SIDE_LABEL))
+    application.processEvents()
+
+    assert container.model == _layout(_row((0.25, 0.25, 0.5), _area(1), _area(4), _area(2)), 5)
+
+    container.perform(_operation(container, 4, CLOSE_AREA_LABEL))
+    application.processEvents()
+
+    # Area 4's first neighbour sharing a whole edge is Area 1 on its left.
+    assert container.model == _layout(_row((0.5, 0.5), _area(1), _area(2)), 5)
+
+    view_of_1 = _content(container.frame(AreaId(1)))
+    container.perform(_operation(container, 1, "Test view, on the right", SWAP_WITH_LABEL))
+    application.processEvents()
+
+    assert container.model == _layout(_row((0.5, 0.5), _area(2), _area(1)), 5)
+    assert _content(container.frame(AreaId(1))) is view_of_1
+    assert len(changes) == 4
+
+
+def _settings(container: AreaLayout) -> dict[int, int]:
+    """Each Area's `_TestView` setting, by Area id, in reading order."""
+
+    shown: dict[int, int] = {}
+
+    for area in container.model.areas():
+        view = container.frame(area.id).content
+        assert isinstance(view, _TestView)
+        shown[int(area.id)] = view.setting
+
+    return shown
+
+
+def test_the_new_half_of_a_split_starts_from_a_copy_of_the_cut_views_state(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-TH35` Q10: a split from the menu or by the corner copies the source's settings.
+
+    Three Areas each hold a different setting, so a copy taken from the wrong
+    Area, or given to an Area the split did not make, changes the result.
+    """
+
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+
+    for area_id, setting in ((1, 5), (2, 7), (3, 9)):
+        view = container.frame(AreaId(area_id)).content
+        assert isinstance(view, _TestView)
+        view.setting = setting
+
+    source = container.frame(AreaId(2)).content
+    container.perform(_operation(container, 2, SPLIT_SIDE_BY_SIDE_LABEL))
+    application.processEvents()
+
+    assert _settings(container) == {1: 5, 2: 7, 4: 7, 3: 9}
+    assert container.frame(AreaId(2)).content is source
+    assert container.frame(AreaId(4)).content is not source
+
+    _corner_drag(container, 1, [(100, 300), (200, 300)])
+    container.corner_released(_global(container, 200, 300))
+    application.processEvents()
+
+    assert _settings(container) == {1: 5, 5: 5, 2: 7, 4: 7, 3: 9}
+
+
+def test_a_split_is_refused_where_a_half_could_not_hold_its_header(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-30L5` Q2: below the header row and one line of a notice, a half is refused."""
+
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 40))
+    stacked = _operation(container, 1, SPLIT_STACKED_LABEL)
+
+    assert not stacked.available
+    assert "too small to hold its header" in stacked.refusal
+    assert _operation(container, 1, SPLIT_SIDE_BY_SIDE_LABEL).available
+
+    with pytest.raises(ValueError, match="unavailable"):
+        container.perform(stacked)
+
+    assert container.model == LayoutModel.single_area(_VIEW)
+
+
+def test_a_lone_area_can_be_split_and_nothing_else(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 600))
+
+    assert _labels(container, 1) == [
+        (None, SPLIT_SIDE_BY_SIDE_LABEL, True),
+        (None, SPLIT_STACKED_LABEL, True),
+        (None, CLOSE_AREA_LABEL, False),
+    ]
+    assert "only Area" in _operation(container, 1, CLOSE_AREA_LABEL).refusal
+
+
+def test_the_drawn_menu_disables_each_unavailable_entry_and_says_why(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """The reader sees the entry, greyed, with its reason as the tooltip."""
+
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+    button = container.frame(AreaId(1)).menu
+    assert button is not None
+    button.fill()
+    menu = button.menu()
+    top = {action.text(): action for action in menu.actions()}
+
+    assert list(top) == [
+        SPLIT_SIDE_BY_SIDE_LABEL,
+        SPLIT_STACKED_LABEL,
+        JOIN_WITH_LABEL,
+        SWAP_WITH_LABEL,
+        CLOSE_AREA_LABEL,
+    ]
+    assert not top[CLOSE_AREA_LABEL].isEnabled()
+    assert "none can take its place" in top[CLOSE_AREA_LABEL].toolTip()
+
+    join = top[JOIN_WITH_LABEL].menu()
+    assert join is not None
+    assert [action.isEnabled() for action in join.actions()] == [False, False]
+    assert all("whole edge" in action.toolTip() for action in join.actions())
+
+    swap = top[SWAP_WITH_LABEL].menu()
+    assert swap is not None
+    swap.actions()[0].trigger()
+    application.processEvents()
+
+    assert container.model == _layout(
+        _row((0.5, 0.5), _area(2), _column((0.5, 0.5), _area(1), _area(3))), 4
+    )
+
+
+def test_a_lone_areas_drawn_menu_shows_join_and_swap_unavailable(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 600))
+    button = container.frame(AreaId(1)).menu
+    assert button is not None
+    button.fill()
+    top = {action.text(): action for action in button.menu().actions()}
+
+    assert not top[JOIN_WITH_LABEL].isEnabled()
+    assert not top[SWAP_WITH_LABEL].isEnabled()
+
+
+# ------------------------------------------------------------ the corner drag
+
+
+def _global(container: AreaLayout, x: int, y: int) -> QPoint:
+    return container.mapToGlobal(QPoint(x, y))
+
+
+def _corner_drag(container: AreaLayout, area: int, path: list[tuple[int, int]]) -> None:
+    """Press in Area `area`'s top-left corner and move through `path`, in container pixels."""
+
+    corner = container.frame_rect(AreaId(area)).topLeft() + QPoint(4, 4)
+    container.corner_pressed(AreaId(area), container.mapToGlobal(corner))
+
+    for x, y in path:
+        container.corner_moved(_global(container, x, y))
+
+
+def test_each_area_has_a_zone_at_every_corner_that_shows_a_grip_only_while_the_pointer_is_in_it(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-30L5` Q1: a cross cursor over a 16 px zone, and a grip only in the Area being handled."""
+
+    from anesthesia_sim.app.theme import AREA_CORNER_ZONE
+
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+    frame = container.frame(AreaId(1))
+
+    assert len(frame.corners) == 4
+    assert {(zone.x(), zone.y()) for zone in frame.corners} == {
+        (0, 0),
+        (frame.width() - AREA_CORNER_ZONE, 0),
+        (0, frame.height() - AREA_CORNER_ZONE),
+        (frame.width() - AREA_CORNER_ZONE, frame.height() - AREA_CORNER_ZONE),
+    }
+    assert all(zone.cursor().shape() == Qt.CursorShape.CrossCursor for zone in frame.corners)
+
+    QApplication.sendEvent(frame, QEvent(QEvent.Type.Leave))
+
+    assert not any(zone.grip_shown for zone in frame.corners)
+
+    QApplication.sendEvent(
+        frame,
+        QEnterEvent(QPointF(50, 50), QPointF(50, 50), QPointF(frame.mapToGlobal(QPoint(50, 50)))),
+    )
+
+    assert all(zone.grip_shown for zone in frame.corners)
+    assert not any(zone.grip_shown for zone in container.frame(AreaId(2)).corners)
+
+    QApplication.sendEvent(frame, QEvent(QEvent.Type.Leave))
+
+    assert not any(zone.grip_shown for zone in frame.corners)
+
+
+def test_a_header_control_starts_after_the_corner_zone(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """The zone must not take the chooser's first click (`PL-30L5` Q1)."""
+
+    from anesthesia_sim.app.theme import AREA_CORNER_ZONE
+
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+    frame = container.frame(AreaId(1))
+    assert frame.menu is not None
+
+    assert frame.chooser.mapTo(frame, QPoint(0, 0)).x() >= AREA_CORNER_ZONE
+    assert frame.menu.mapTo(frame, QPoint(frame.menu.width(), 0)).x() <= (
+        frame.width() - AREA_CORNER_ZONE
+    )
+
+
+def test_a_corner_drag_inside_its_area_previews_the_split_and_makes_it_on_release(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """A sideways drag cuts left and right through the pointer; nothing changes until release."""
+
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 600))
+    before = container.model
+
+    _corner_drag(container, 1, [(100, 50), (200, 60)])
+    preview = container.preview
+
+    assert isinstance(preview, SplitPreview)
+    assert preview.orientation is Orientation.ROW
+    assert preview.at == pytest.approx(200 / 800)
+    assert preview.result is not None
+    assert container.model == before
+
+    container.corner_released(_global(container, 200, 60))
+    application.processEvents()
+
+    assert container.model == _layout(_row((0.25, 0.75), _area(1), _area(2)), 3)
+    assert container.preview is None
+
+
+def test_a_downward_corner_drag_previews_a_cut_into_top_and_bottom(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 600))
+
+    _corner_drag(container, 1, [(30, 300)])
+    preview = container.preview
+
+    assert isinstance(preview, SplitPreview)
+    assert preview.orientation is Orientation.COLUMN
+    assert preview.at == pytest.approx(300 / 600)
+
+
+def test_a_split_too_close_to_an_edge_is_previewed_refused_and_release_does_nothing(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-30L5` Q2: below the header and a line of text, the line turns WARNING."""
+
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 600))
+    before = container.model
+
+    _corner_drag(container, 1, [(30, 20)])
+    preview = container.preview
+
+    assert isinstance(preview, SplitPreview)
+    assert preview.result is None
+
+    container.corner_released(_global(container, 30, 20))
+    application.processEvents()
+
+    assert container.model == before
+
+
+def test_a_corner_drag_into_a_neighbour_previews_the_join_and_makes_it_on_release(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """The Area dragged from keeps its View and takes the other's place."""
+
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+    lower = container.frame_rect(AreaId(3)).center()
+    corner = container.frame_rect(AreaId(2)).topLeft() + QPoint(4, 4)
+    container.corner_pressed(AreaId(2), container.mapToGlobal(corner))
+    container.corner_moved(container.mapToGlobal(lower))
+    preview = container.preview
+
+    assert isinstance(preview, JoinPreview)
+    assert (preview.keep, preview.remove) == (AreaId(2), AreaId(3))
+    assert preview.result is not None
+
+    container.corner_released(container.mapToGlobal(lower))
+    application.processEvents()
+
+    assert container.model == _layout(_row((0.5, 0.5), _area(1), _area(2)), 4)
+
+
+def test_a_join_the_layout_cannot_make_is_previewed_refused_and_release_does_nothing(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """Area 1 meets Area 2 along only part of its edge, so the two cannot be joined."""
+
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+    before = container.model
+    upper = container.frame_rect(AreaId(2)).center()
+    _corner_drag(container, 1, [])
+    container.corner_moved(container.mapToGlobal(upper))
+    preview = container.preview
+
+    assert isinstance(preview, JoinPreview)
+    assert preview.result is None
+
+    container.corner_released(container.mapToGlobal(upper))
+    application.processEvents()
+
+    assert container.model == before
+
+
+def test_escape_cancels_a_corner_drag_and_changes_nothing(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """Driven through the zone itself, with the mouse and the keyboard."""
+
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 600))
+    before = container.model
+    (zone,) = [
+        zone for zone in container.frame(AreaId(1)).corners if (zone.x(), zone.y()) == (0, 0)
+    ]
+
+    QTest.mousePress(zone, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(4, 4))
+    QTest.mouseMove(zone, QPoint(200, 60))
+    application.processEvents()
+
+    assert isinstance(container.preview, SplitPreview)
+
+    QTest.keyClick(zone, Qt.Key.Key_Escape)
+    QTest.mouseRelease(
+        zone, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(200, 60)
+    )
+    application.processEvents()
+
+    assert container.preview is None
+    assert container.model == before
+
+
+def test_a_drag_through_the_zone_with_the_mouse_makes_the_split(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 600))
+    (zone,) = [
+        zone for zone in container.frame(AreaId(1)).corners if (zone.x(), zone.y()) == (0, 0)
+    ]
+
+    QTest.mousePress(zone, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(4, 4))
+    QTest.mouseMove(zone, QPoint(400, 60))
+    QTest.mouseRelease(
+        zone, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(400, 60)
+    )
+    application.processEvents()
+
+    assert container.model == _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+
+
+def test_the_overlay_draws_the_split_line_in_primary_and_a_refused_one_in_warning(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    from anesthesia_sim.app.theme import WARNING
+
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 600))
+
+    _corner_drag(container, 1, [(200, 60)])
+    painted = container.grab().toImage()
+
+    assert painted.pixelColor(200, 300).name().upper() == PRIMARY.upper()
+
+    _corner_drag(container, 1, [(30, 20)])
+    painted = container.grab().toImage()
+
+    assert painted.pixelColor(30, 300).name().upper() == WARNING.upper()
+    container.corner_cancelled()
