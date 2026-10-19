@@ -33,7 +33,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final
 
-from anesthesia_sim.app.chart_frame import COMPARED_COMPARTMENT_CAP, compared_compartments
+from anesthesia_sim.app.chart_frame import COMPARED_COMPARTMENT_CAP, RunCount, compared_compartments
 from anesthesia_sim.app.dashboard_frame import MAX_DISPLAYED_RUNS
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 
@@ -50,7 +50,9 @@ class CompartmentSelection:
             the cap reads (`with_compartment`); what is drawn, and in what
             order, is `shown`'s.
         run_count: How many runs the selection is drawn across, which is
-            what decides whether the cap applies.
+            what decides whether the cap applies. It is passed as an `int`
+            and built here as a `RunCount`, which checks it, so the selection
+            always holds a checked count.
 
     Raises:
         TypeError: If `order` is not a tuple, holds anything but a
@@ -64,7 +66,7 @@ class CompartmentSelection:
     """
 
     order: tuple[RecordedQuantity, ...]
-    run_count: int
+    run_count: RunCount
 
     def __post_init__(self) -> None:
         if not isinstance(self.order, tuple):
@@ -85,14 +87,9 @@ class CompartmentSelection:
                 f"{', '.join(repeated)} more than once"
             )
 
-        _require_run_count(self.run_count)
-
-        if not 1 <= self.run_count <= MAX_DISPLAYED_RUNS:
-            raise ValueError(
-                f"a compartment selection is drawn across 1 to {MAX_DISPLAYED_RUNS} runs, the "
-                f"most the dashboard draws, not {self.run_count}"
-            )
-
+        # A frozen record can write its own field here, once. So the record
+        # holds the checked count rather than the `int` it was given.
+        object.__setattr__(self, "run_count", _drawn_run_count(self.run_count))
         _, undrawn = compared_compartments(self.order, self.run_count)
 
         if undrawn:
@@ -171,25 +168,42 @@ class CompartmentSelection:
             ValueError: If `run_count` is not between 1 and `MAX_DISPLAYED_RUNS`.
         """
 
-        _require_run_count(run_count)
-        drawn, _ = compared_compartments(self.order, run_count)
+        count = _drawn_run_count(run_count)
+        drawn, _ = compared_compartments(self.order, count)
 
         return CompartmentSelection(
-            tuple(quantity for quantity in self.order if quantity in drawn), run_count
+            tuple(quantity for quantity in self.order if quantity in drawn), count
         )
 
 
-def _require_run_count(run_count: object) -> None:
-    """Refuse a run count that is not an `int`, before anything compares it.
+def _drawn_run_count(run_count: int) -> RunCount:
+    """Build `run_count` as a `RunCount`, checking that the dashboard can draw that many runs.
 
-    A `bool` is an `int` to Python, and would make `True` one run.
+    `RunCount` rejects anything that is not a count of at least one run. The
+    upper bound, `MAX_DISPLAYED_RUNS`, is a limit of the dashboard, not of
+    counts in general, so this function checks it. Both error messages give
+    the range of run counts that the dashboard draws, which is what a reader
+    of a selection error needs to know.
 
     Raises:
-        TypeError: If `run_count` is a `bool` or not an `int`.
+        TypeError: If `run_count` is a `bool` or not an `int` (`RunCount`).
+        ValueError: If `run_count` is not between 1 and `MAX_DISPLAYED_RUNS`.
     """
 
-    if isinstance(run_count, bool) or not isinstance(run_count, int):
-        raise TypeError(f"a run count is an int, not {type(run_count).__name__}")
+    out_of_range = ValueError(
+        f"a compartment selection is drawn across 1 to {MAX_DISPLAYED_RUNS} runs, the "
+        f"most the dashboard draws, not {run_count}"
+    )
+
+    try:
+        count = RunCount(run_count)
+    except ValueError as error:
+        raise out_of_range from error
+
+    if count > MAX_DISPLAYED_RUNS:
+        raise out_of_range
+
+    return count
 
 
 def _require_compartment(quantity: object) -> RecordedQuantity:
@@ -220,4 +234,4 @@ def _require_compartment(quantity: object) -> RecordedQuantity:
 #: What the dashboard shows before a reader has chosen anything: every
 #: compartment, on one run, in table order - so a second run's arrival keeps
 #: the top of the table, which is where the circuit and alveolar traces are.
-INITIAL_COMPARTMENT_SELECTION: Final = CompartmentSelection(COMPARTMENT_QUANTITIES, 1)
+INITIAL_COMPARTMENT_SELECTION: Final = CompartmentSelection(COMPARTMENT_QUANTITIES, RunCount(1))
