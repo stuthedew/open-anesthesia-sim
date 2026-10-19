@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, anticipated
 feature: interface-areas
+milestone: v0.5.31
 touches: src/anesthesia_sim/app/, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration, tests/unit/test_view_registry.py, tests/unit/test_contrast_check.py, tools/contrast_check.py
 blocked-by: PL-R1WQ, PL-WV9K
 added: 2026-09-16

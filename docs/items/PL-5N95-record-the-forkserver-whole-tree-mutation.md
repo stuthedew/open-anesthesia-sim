@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: test-effectiveness-measurement
+milestone: v0.5.31
 touches: docs/mutation-testing.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-10-17
