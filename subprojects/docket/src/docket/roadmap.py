@@ -121,6 +121,11 @@ VERSION_TABLE_HEADING = "Versioning decision"
 COMPLETED = "Completed"
 BASELINE_MARK = "current baseline"
 BASELINE_HEADING_RE = re.compile(rf"^Current baseline:\s*v?(?P<version>{SEMVER_PATTERN})\b")
+# The cell after the milestone that says how many items a release shipped,
+# such as `| 5 items |`. The release session writes it by hand from the same
+# items as the notes file, and `doc_check.check_release_row_item_count` holds the
+# two to each other (`PL-S9X7`). Older rows carry no such cell.
+ITEM_COUNT_RE = re.compile(r"^(?P<count>\d+) items?$")
 
 
 @dataclass(frozen=True)
@@ -130,6 +135,8 @@ class VersionRow:
     line: int
     version: str
     status: str
+    # The count in the row's item-count cell, or None where the row has none.
+    items: int | None = None
 
     @property
     def is_baseline(self) -> bool:
@@ -158,7 +165,15 @@ def parse_version_table(text: str) -> list[VersionRow]:
     for line, cells in table_rows(text, VERSION_TABLE_HEADING):
         if len(cells) < 2 or SEMVER_RE.match(cells[0]) is None:
             continue
-        rows.append(VersionRow(line=line, version=cells[0].lstrip("v"), status=cells[1]))
+        counted = ITEM_COUNT_RE.match(cells[3].strip()) if len(cells) > 3 else None
+        rows.append(
+            VersionRow(
+                line=line,
+                version=cells[0].lstrip("v"),
+                status=cells[1],
+                items=None if counted is None else int(counted.group("count")),
+            )
+        )
     return rows
 
 

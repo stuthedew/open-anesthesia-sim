@@ -3,11 +3,14 @@ id: PL-S9X7
 title: The release notes and the version-table row are written from the same 21 items but by different hands, so nothing checks that the row's item count matches the notes' line count
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: release-process
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+milestone: v0.5.31
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-13
+closed: 2026-10-18
+pr: 1601
 verify: grep -q 'def check_release_row_item_count' tools/doc_check.py && uv run pytest tests/unit/test_doc_check.py
 ---
 
@@ -37,3 +40,13 @@ when somebody is next in `tools/doc_check.py` rather than on its own.
 disagrees with the number of item bullets in that version's notes file, rows
 with no count or no notes file are skipped rather than reported, and
 `tests/unit/test_doc_check.py` covers a mismatch.
+
+**Done 2026-10-18 on #1601.** Re-confirmed first: 45 of the 91 version-table
+rows carry a `| N items |` cell, and all 45 agree with their notes files. The
+cell's grammar is `docket.roadmap.ITEM_COUNT_RE`, read into a new
+`VersionRow.items` beside the row's other fields, so the version table keeps
+one reader. `doc_check.check_release_row_item_count` compares it with
+`notes_ids` over the claimed half of the notes file, the count
+`notes_by_version` takes, so a pointer bullet naming another release's item
+is not counted. A row with no count or no notes file is skipped.
+

@@ -3,12 +3,14 @@ id: PL-TH35
 title: Define the common View contract every app/ view implements so any view is interchangeable in any area
 priority: P2
 effort: M
-status: ready
+status: done
 classes: refactor, ux
 feature: interface-areas
-touches: src/anesthesia_sim/app, docs/ARCHITECTURE.md
+touches: src/anesthesia_sim/app, docs/ARCHITECTURE.md, docs/MODEL.md, .claude/rules/ui-areas.md, tests/integration/test_layout_adapter.py, tests/integration/test_qt_rendering.py, tests/integration/test_simulation_view.py, tests/integration/test_view_contract.py, tests/unit/test_view_registry.py, tools/contrast_check.py, tools/literal_home_check.py, docs/items/PL-L59K-zoom-the-shipped-induction-workspace-s.md, docs/items/PL-K285-an-area-that-cannot-be-given-the-size-its-view.md, docs/items/PL-ZBBP-retire-or-re-scope-claude-rules-ui-areas-md-and.md
 blocked-by: PL-R1WQ
 added: 2026-09-16
+closed: 2026-10-19
+pr: 1619
 payoff: every View is built in any Area through the registry's factory from one context, and two existing Views are written to that one contract
 verify: grep -q '    factory:' src/anesthesia_sim/app/view_registry.py && grep -rq 'class ViewContext' src/anesthesia_sim/app
 not-delegable: the deliverable is a contract to be agreed before it is coded, and no command can prove a protocol is the right one; the test arrives with the first two views written to it
@@ -258,3 +260,99 @@ caller's `view_for` for every registered kind. This item adds the `factory`
 field with `ViewContext`, replaces `view_for` with it, and adds `PL-R1WQ`
 Q4's second test, that every registered kind has a factory. `PL-9LNF` makes
 the charts constructible one per Area, which the two validating Views need.
+
+## Built 2026-10-19
+
+`src/anesthesia_sim/app/view_contract.py` is the contract and states it in
+its module docstring. `src/anesthesia_sim/app/views.py` holds four Views
+written to it: the concentration chart, the F_A/F_I plot, the agent
+accounting and the parameter controls. Each registry entry names its View
+class as its `factory`, and `AreaLayout` builds one View per Area from a
+`ViewContext`. It keeps a replaced View's `save_state()` under the Area and
+kind, and draws every View from one `ViewTick`. `view_for`, the
+"shown elsewhere" notice and the "cannot be shown yet" notice are gone,
+because every registered kind now builds a View in every Area.
+`tests/integration/test_view_contract.py` holds Q1's two pruning tests, Q4's
+unreadable-state notice and Q8's one View per Area.
+
+**Q3 was built differently from its ratified sketch, on evidence the case
+did not carry.** The sketch had each chart pull a frame at its own width.
+`PL-9LNF`, which landed after the answer, made both plots draw one frame so
+that they share their instants. One frame per chart would break that where
+two charts differ in width, and would assemble the frame once per chart on
+every tick. So the dashboard assembles one frame per tick, sampled for the
+widest plot any View asks for through `View.frame_width_px`. No plot then
+draws a chord wider than a pixel (`PL-GS3R`). The contract's docstring
+records the same reasoning.
+
+**Left to the items that own them.** The run binding in Q2 and the run's
+name in the header in Q11 are `PL-7Z84`'s, so every View draws every
+displayed run until it lands. Q5's minimum size is `PL-K285`'s, and Q10's
+copy of state on a split, with the swap, is `PL-2KXB`'s. The time base and
+the compartment selection reach a View in each tick rather than in its
+context, and a View asks for a change through `ViewContext.requests`. That
+is Q2's read-only handle and change request, in the one place the frame
+already arrives.
+
+**Placeholders, decided here under the project owner's 2026-10-18 rule.**
+The dashboard's layout is a row of the two charts stacked (0.55 and 0.45 of
+the height) beside the accounting (0.18 of the width). The bookmarks and the
+branch control moved into a section of their own under the Areas, because
+they belong to the case and not to either plot. The unreadable-state notice
+reads "This View's saved settings could not be read, so it shows its default
+settings."
+
+**`app/view_registry.py` now imports the toolkit**, through the View classes
+its entries name. It was toolkit-free while it held only tags and titles, and
+the test that said so is replaced by one that checks every entry has a
+factory. Nothing outside the tests read the registry without a display.
+
+**What the close-out review found, and fixed on this branch.** Three passes
+reviewed the change: lifecycle and state, displayed values and test
+strength, and plain prose. Each finding below was reproduced under the
+offscreen platform before it was fixed.
+
+- A branch dropped by a Reset while every frame failed left its accounting
+  panel, F_A/F_I state line and off-scale line in the Views, the panel still
+  reading "Valid". A View dropped a run's copy only on its next refresh,
+  which a failing frame never reaches. Each copy is now deleted with its run
+  (`_RunCopies._built_for`).
+- A View chosen while every frame failed owed its first frame for good, so
+  every idle render tick assembled the frame again and halted every run
+  again. The dashboard now records that a frame failed for the Views it was
+  attempted for (`SimulationView._views_owe_a_frame`).
+- A factory that raised inside the chooser left the layout half built, with
+  the Area's old View moved into a frame that was never shown. The Area now
+  shows a notice that names the error (`UNBUILT_VIEW_TITLE`, a placeholder).
+- A mutation that never placed the off-scale lines in their View passed
+  every integration test, and so did refreshing the Views in reverse order.
+  `test_each_view_places_one_copy_per_run_inside_itself` and the reading-order
+  assertions now fail on each.
+
+Run against the branch before the fixes (`fcc97787`), with the new tests
+copied in:
+`QT_QPA_PLATFORM=offscreen PYTHONPATH=src .venv/bin/python -m pytest -q
+tests/integration/test_simulation_view.py -k "dropped_while or chosen_while"`
+failed with "accounting: the dropped branch's copy is still shown" and "5 idle
+ticks retried the failed frame".
+`tests/integration/test_layout_adapter.py::test_a_view_that_cannot_be_built_is_a_notice_in_its_area_alone`
+failed with `KeyError: 2`.
+
+The prose pass read 48 docstrings and comments and rewrote 38. One rewrite
+was not applied, because its docstring had changed since the pass read it.
+None was rejected for dropping a fact.
+
+## Self-audit, 2026-10-19
+
+`bin/docket verify --self PL-TH35` passed the item's `verify:` command and
+`make check`, and returned REJECT on one check: 79 assertions in
+`tests/integration/test_layout_adapter.py` and its neighbours read
+differently now. The old assertions named `views.by_id` and `views.asked`,
+which belonged to the adapter's former view provider. That provider no
+longer exists, because each Area now builds its View through its registry
+entry's factory. Each assertion was restated against the Views the factories
+built (`_BUILT`), so none of them can be kept in its old words. The merge of
+`PL-904Y` (#1617) also moved one test: a View that no Area draws is deleted
+and keeps only its saved state, so its strings are no longer held, and the
+test now checks that and checks that a hidden View's painted axis titles are
+held but not visible.
