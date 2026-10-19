@@ -1802,11 +1802,12 @@ def _check_provenance(
     Three things stop this from being a plain set membership test, and all
     three are about refusing to answer rather than answering wrongly.
 
-    A `history` that declined - most often a shallow clone, which is the normal
-    shape of an agent session's container - is recorded as a check that did not
-    run, and no item is judged. Reporting from a truncated history would mark
-    the oldest and best-established provenance in the store as broken, and
-    doing it silently would let that run read as a pass.
+    A `history` that declined is recorded as a check that did not run, and no
+    item is judged. The usual cause is a shallow clone: a session whose
+    session-start unshallow failed, or a checkout made with `--depth`.
+    Reporting from a truncated history would mark the oldest and
+    best-established provenance in the store as broken, and doing it silently
+    would let that run read as a pass.
 
     A `history` of `None` is a caller that did not ask, which every command but
     `check` is: no git read, and nothing to report about one.

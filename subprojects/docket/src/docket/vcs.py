@@ -1318,12 +1318,12 @@ class FlightReport:
     #: Why this reading is partial: git was asked something and did not answer.
     #:
     #: **Distinct from `unreadable`, and the two are not substitutes.** That
-    #: names a ref whose *history* this checkout does not hold, which is the
-    #: normal state of an agent session's shallow container and says nothing
-    #: about git having worked. This says a call failed - a ref deleted between
-    #: the `for-each-ref` that listed it and the `diff` that read it, a timeout,
-    #: no git at all - so every mark here was collected from an incomplete read
-    #: and the absence of a mark proves nothing.
+    #: names a ref whose *history* this checkout does not hold, which a
+    #: shallow clone produces and which says nothing about git having worked.
+    #: This says a call failed - a ref deleted between the `for-each-ref` that
+    #: listed it and the `diff` that read it, a timeout, no git at all - so
+    #: every mark here was collected from an incomplete read and the absence
+    #: of a mark proves nothing.
     #:
     #: The marks are kept rather than withheld, because the error that costs
     #: least is over-reporting: an item wrongly marked costs a session one look,
@@ -2232,14 +2232,15 @@ def _unlanded_refs(
     )
     candidates = [name for name in listing if name not in merged and name not in gone]
 
-    # A truncated clone is the normal state of an agent session's container,
-    # and a ref with no readable merge-base is one whose commits this checkout
-    # simply does not have. Excluding `^base` from a walk that cannot reach
-    # `base` would report the ref's whole visible history as its own work, so
-    # it is named as unread instead of answered wrongly. This is the first of
-    # two guards and not the sufficient one: a merge-base that resolves says
-    # the two share a commit this checkout can see, not that the walk below it
-    # is complete, which is what the second guard tests.
+    # A session's container starts as a truncated clone, and stays one where
+    # its session-start unshallow failed. A ref with no readable merge-base is
+    # one whose commits this checkout simply does not have. Excluding `^base`
+    # from a walk that cannot reach `base` would report the ref's whole
+    # visible history as its own work, so it is named as unread instead of
+    # answered wrongly. This is the first of two guards and not the sufficient
+    # one: a merge-base that resolves says the two share a commit this
+    # checkout can see, not that the walk below it is complete, which is what
+    # the second guard tests.
     #
     # The merge-base is the fork point the content test compares against, so
     # the read that decides whether a ref can be answered at all is the same
@@ -4675,9 +4676,14 @@ def merged_pull_requests(root: Path, *, runner: Runner | None = None) -> PullReq
     git cannot answer and every read here already collapses to silence; in a
     shallow clone git answers confidently and wrongly. The commits it is
     missing are exactly the oldest, so the provenance that has been settled
-    longest is what would be reported as never having landed - and the
-    container an agent session runs in is normally shallow, so that is the
-    common case rather than the exotic one.
+    longest is what would be reported as never having landed.
+
+    A session's container is provisioned with the default branch fetched at
+    depth 50, and `.claude/hooks/docket-digest.sh` unshallows it at session
+    start. So a session sees a full clone unless that fetch failed, and a
+    shallow clone is the exception (measured in three containers, 2026-09-24
+    to 2026-10-19, `PL-2H0K`). The decline still matters, because the hook's
+    fetch fails silently.
 
     So the only state that permits an answer is a repository that says outright
     it is not shallow. Truncation, no git, no repository, or a git too old to
@@ -4917,8 +4923,9 @@ class ClosureReport:
     which a shallow clone answers confidently and wrongly; this one needs a
     single tree read, which `git show <ref>:<path>` answers correctly however
     truncated the history behind the ref is. The distinction earns its own
-    type: a shallow clone is the normal state of an agent session, so a reader
-    that declined there would decline in exactly the case this exists to cover.
+    type: a reader that declined in a shallow clone would decline in a session
+    whose session-start unshallow failed, and in a checkout made with `--depth`,
+    where a single tree read answers correctly.
 
     *Which pull request* landed a closure is not read from history at all, any
     more. The number is recorded before the merge by the branch that closes
@@ -5134,7 +5141,8 @@ def _item_blobs(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, 
     """Every item id the ref's tree holds, mapped to its blob and the path holding it.
 
     `ls-tree` reads one tree and needs no history behind it, which is what
-    makes this work in the shallow clone an agent session starts from. Every
+    makes this work in a shallow clone, such as the depth-50 clone a
+    session's container holds before its session-start hook unshallows it. Every
     commit-graph answer - is this branch merged, how far ahead is it - is
     unreliable there, because the commits that would prove containment are
     exactly the ones a shallow clone is missing.
@@ -5487,8 +5495,7 @@ def records_on_base(
     for the whole store and is read only when something changed.
 
     Needs no history behind the base: one tree listing and one `git show` per
-    changed closed item, which is what lets it answer in the shallow clone an
-    agent session starts from.
+    changed closed item, which is what lets it answer in a shallow clone.
     """
     run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)
