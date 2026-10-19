@@ -2036,6 +2036,34 @@ def test_changes_the_chart_cannot_mark_are_counted_rather_than_dropped() -> None
     assert "not marked" not in timeline_panel(adjustments).overflow
 
 
+def test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared() -> None:
+    """The count sits in a chart the runs share, so it names whose changes it counts (`PL-25DD`)."""
+
+    timeline = tuple(
+        _control_change(
+            float(index), ControlInput.FRESH_GAS_FLOW, 4.0, 4.0 - index * 0.01, adjustment=index + 1
+        )
+        for index in range(MAX_CHART_CONTROL_MARKS + 2)
+    )
+    adjustments = group_adjustments(timeline)
+    busy = _fake_controller(history=_run_history(600), control_timeline=timeline)
+    quiet = _fake_controller(history=_run_history(600))
+    frame = assemble_chart_frame(
+        (
+            RunInput(run_label(FIRST_RUN), busy, busy.snapshot(), adjustments),
+            RunInput(run_label(SECOND_RUN), quiet, quiet.snapshot(), ()),
+        ),
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+
+    assert unmarked_changes_lines(frame) == (
+        "Run 1 — 2 control change(s) in this window not marked",
+        None,
+    )
+
+
 def test_a_chart_whose_window_marks_every_change_says_nothing_about_marks() -> None:
     frame = _frame(_fake_controller(history=_run_history(600)))
 

@@ -34,7 +34,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from types import MappingProxyType
-from typing import Final
+from typing import Final, cast
 
 from PySide6.QtCore import QObject, Qt
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
@@ -308,6 +308,11 @@ class _TimeWindow:
     def _choose(self, time_base: ChartTimeBase | None) -> None:
         self.time_base = time_base
         self._request_frame()
+
+        # A frame that drew has already shown the pick. One that failed drew
+        # nothing, so the control goes back to the window still on the plot.
+        if self._drawn is not self._NOT_DRAWN:
+            self.selector.show_time_base(cast(ChartTimeBase | None, self._drawn))
 
 
 def _state_notice_for(context: ViewContext) -> QLabel:

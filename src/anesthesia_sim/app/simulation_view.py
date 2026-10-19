@@ -74,8 +74,7 @@ from PySide6.QtWidgets import (
 )
 
 from anesthesia_sim.app.area_layout import AreaLayout
-from anesthesia_sim.app.chart_frame import ChartFrame, RunInput, assemble_chart_frame
-from anesthesia_sim.app.chart_time_base import ChartTimeBase
+from anesthesia_sim.app.chart_frame import RunInput, assemble_chart_frame
 from anesthesia_sim.app.compartment_selection import (
     INITIAL_COMPARTMENT_SELECTION,
     CompartmentSelection,
@@ -427,8 +426,6 @@ class SimulationView(QWidget):
         # the legend and to every frame, so neither is read back from the
         # other and closing the legend takes nothing with it (`PL-VN6M`).
         self._compartment_selection = INITIAL_COMPARTMENT_SELECTION
-        # The frames the last tick drew, one for each window a View asked for.
-        self._frames: dict[ChartTimeBase | None, ChartFrame] = {}
         self._render_pending = False
         # How many runs the last frame attempted was drawn over; `render_tick`
         # draws when the run set has changed since (`PL-0LG6`).
@@ -1375,11 +1372,15 @@ class SimulationView(QWidget):
             RunInput(run_label(run.run_id), run.controller, snapshot, run.adjustments(snapshot))
             for run, snapshot in zip(self._runs, snapshots, strict=True)
         )
+        # With no chart shown, one frame is still assembled at "Fit run" and
+        # the narrowest sampling, so its checks, such as runs that have come
+        # to use different agents, halt the runs whatever the Areas hold.
+        requests = self._areas.frame_requests() or {None: 0.0}
         frames = {
             time_base: assemble_chart_frame(
                 inputs, time_base, selection.shown, plot_width_px=width_px
             )
-            for time_base, width_px in self._areas.frame_requests().items()
+            for time_base, width_px in requests.items()
         }
         self._areas.refresh(frames, snapshots, self._runs, selection)
         self._frame_failed = False
@@ -1390,7 +1391,6 @@ class SimulationView(QWidget):
 
         self._refresh_bookmarks(snapshots)
         self._refresh_fork_panel()
-        self._frames = frames
         self.presented_frames += 1
 
     # -------------------------------------------------------------- bookmarks

@@ -4072,6 +4072,47 @@ def test_the_time_base_is_never_disabled(application: QApplication) -> None:
     assert _concentration(view).time_base_selector.isEnabled() is True
 
 
+def test_a_window_pick_whose_frame_fails_leaves_the_control_on_the_window_drawn(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The control names the window on the plot, not one that never drew (`PL-G3K7`, `PL-L59K`)."""
+
+    controller = _paused_run_with_history(1800.0)
+    view = _shown_view(application, controller)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    _select_time_base(view, "900.0")
+
+    frame = _concentration(view).chart.frame
+    assert frame is not None
+    assert frame.fitted is True
+    assert _concentration(view).time_base_selector.currentData() == FIT_RUN_KEY
+
+
+def test_a_frame_is_assembled_and_checked_with_no_chart_shown(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Assembling a frame checks the runs, so it runs whatever the Areas hold (`PL-L59K`).
+
+    With every chart replaced, no View asks for a window. A frame is still
+    assembled at "Fit run", so a run state the assembly refuses still halts
+    every run rather than going unnoticed until a chart is shown again.
+    """
+
+    view = _shown_view(application, _paused_run_with_history(60.0))
+
+    for area in (AreaId(1), AreaId(3)):
+        view.layout_container.choose_view(area, PARAMETER_CONTROLS)
+
+    _settle(application)
+    assert view.layout_container.frame_requests() == {}
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.present(False)
+
+    assert all(run.controller.has_failed for run in view.runs)
+
+
 def test_a_chart_s_window_returns_with_the_chart_after_its_area_shows_another_view(
     application: QApplication,
 ) -> None:

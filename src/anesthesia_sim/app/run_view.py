@@ -464,7 +464,7 @@ class RunView(QWidget):
             readouts(snapshot, self._playback_rate), reservations=READOUT_RESERVATIONS
         )
 
-        # What this run's four surfaces that may sit in an Area last showed,
+        # What this run's two surfaces that may sit in an Area last showed,
         # and the copies of each that Qt has not destroyed. A copy built
         # later is drawn from these, so it shows what the copies already on
         # screen show, and every writer writes every copy (`PL-9LNF`).
