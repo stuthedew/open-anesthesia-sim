@@ -9,6 +9,7 @@ feature: model-evidence
 touches: docs/maintainer.md, .claude/rules/apparatus-standard.md
 added: 2026-10-19
 closed: 2026-10-19
+pr: 1672
 payoff: a later session reads apparatus effort as the owner's own call, not a cost trade it should reopen or copy
 verify: grep -q 'PL-6XZG' docs/maintainer.md && grep -q 'PL-6XZG' .claude/rules/apparatus-standard.md
 ---
