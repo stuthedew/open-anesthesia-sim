@@ -261,6 +261,7 @@ def _concentration(view: SimulationView) -> ConcentrationView:
 
 def _accounting(view: SimulationView) -> AccountingView:
     """The agent accounting View in the dashboard's first Area that shows one."""
+
     return next(v for v in view.layout_container.views() if isinstance(v, AccountingView))
 
 

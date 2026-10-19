@@ -341,3 +341,18 @@ failed with `KeyError: 2`.
 The prose pass read 48 docstrings and comments and rewrote 38. One rewrite
 was not applied, because its docstring had changed since the pass read it.
 None was rejected for dropping a fact.
+
+## Self-audit, 2026-10-19
+
+`bin/docket verify --self PL-TH35` passed the item's `verify:` command and
+`make check`, and returned REJECT on one check: 79 assertions in
+`tests/integration/test_layout_adapter.py` and its neighbours read
+differently now. The old assertions named `views.by_id` and `views.asked`,
+which belonged to the adapter's former view provider. That provider no
+longer exists, because each Area now builds its View through its registry
+entry's factory. Each assertion was restated against the Views the factories
+built (`_BUILT`), so none of them can be kept in its old words. The merge of
+`PL-904Y` (#1617) also moved one test: a View that no Area draws is deleted
+and keeps only its saved state, so its strings are no longer held, and the
+test now checks that and checks that a hidden View's painted axis titles are
+held but not visible.
