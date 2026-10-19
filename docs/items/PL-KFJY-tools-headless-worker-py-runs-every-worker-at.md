@@ -9,6 +9,7 @@ touches: tools/headless_worker.py, tests/unit/test_headless_worker.py, docs/main
 deferred-from: v0.6.0 - a workflow-lane runner defect outside the layout release
 added: 2026-10-19
 closed: 2026-10-19
+pr: 1685
 payoff: each worker runs at the effort the owner chose for the standard its item is held to: high for apparatus work, max for simulator work
 verify: grep -q -- '--effort' tools/headless_worker.py
 ---
