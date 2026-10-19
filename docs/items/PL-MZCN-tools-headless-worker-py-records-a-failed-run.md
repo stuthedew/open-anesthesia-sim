@@ -8,6 +8,7 @@ feature: api-credit-runs
 touches: tools/headless_worker.py, tests/unit/test_headless_worker.py
 added: 2026-10-19
 closed: 2026-10-19
+pr: 1677
 verify: uv run pytest -q tests/unit/test_headless_worker.py
 ---
 
