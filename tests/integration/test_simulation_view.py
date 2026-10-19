@@ -5005,8 +5005,10 @@ def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QAp
     """The unconditional region keeps its own height, and the Areas take the rest.
 
     At the fixed test size the page is taller than the window, so there is no
-    spare height. The Areas then take the smallest size that gives every View
-    the size it needs. A window taller than the page's own size hint has spare
+    spare height. The Areas then stand at the height they ask for, their size
+    hint, from the first frame on. Before `PL-PHPZ` the page laid them out
+    from a hint read before the Views had drawn, so their height depended on
+    when the page was laid out. A window taller than the page's own size hint has spare
     height. Every pixel of it makes the Areas taller, while the region that
     holds the readouts does not move. The readout section is measured inside
     the region, where it has been since `PL-NWTM`. The setting controls have
@@ -5022,6 +5024,7 @@ def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QAp
 
     assert abs(readout_section.height() - readout_section.sizeHint().height()) <= 2
     assert chart_row.height() >= chart_row.minimumSizeHint().height()
+    assert chart_row.height() == chart_row.sizeHint().height()
 
     settled_chart_row_height = chart_row.height()
     spare = 400
@@ -5034,6 +5037,27 @@ def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QAp
 
     view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
     application.processEvents()
+
+
+def test_the_page_takes_the_height_the_areas_ask_for_after_the_views_draw(
+    application: QApplication,
+) -> None:
+    """`PL-PHPZ`: the Areas stand at their size hint straight after the first frame.
+
+    The setting controls, in an Area above the charts, build their per-run
+    copies on their first frame, which changes the Areas' size hint. Before
+    the fix the page kept the hint it read before that frame, so the Areas
+    stood 62 px shorter than their hint after the frame and 45 px taller once
+    the event loop had run. The expected height is the Areas' own size hint,
+    not one the page worked out.
+    """
+
+    view = _shown_view(application, SimulationController())
+    areas = view.layout_container
+
+    assert areas.height() == areas.sizeHint().height()
+    application.processEvents()
+    assert areas.height() == areas.sizeHint().height()
 
 
 # ------------------------------------------------------------- two runs

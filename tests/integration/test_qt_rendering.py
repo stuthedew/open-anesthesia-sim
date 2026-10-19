@@ -312,18 +312,16 @@ def _distance(colour: QColor, to: str) -> float:
     )
 
 
-#: How many paints in a row the page's size must hold before the induction
-#: fixture is settled, and how many paints it may take in all.
-_SETTLE_HELD_PAINTS = 5
-_SETTLE_MAX_PAINTS = 30
+#: How many paints the page's height is followed for after the first frame.
+_FOLLOWED_PAINTS = 5
 
 
-@pytest.fixture
-def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
+def _induction_view(application: QApplication) -> SimulationView:
     """`_INDUCTION_DIAL_PERCENT` for `_INDUCTION_S`, paused, in the following 15-minute width.
 
     Paused, so that no frame is drawn while the pointer waits on the event
-    loop and the points it is aimed at stay where they were.
+    loop and the points it is aimed at stay where they were. The view is
+    shown and drawn, and no event-loop pass follows the last frame.
     """
 
     controller = SimulationController(agent_id=_AGENT_ID)
@@ -346,30 +344,51 @@ def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
         selector.setCurrentIndex(index)
 
     view.present(False)
+
+    return view
+
+
+@pytest.fixture
+def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
+    """`_induction_view`, painted once, so the plots' pixel mapping is the one drawn."""
+
+    view = _induction_view(application)
+    # pyqtgraph's view box updates its mapping from data to pixels only when
+    # it is next painted, so the page is painted before a pixel is read.
+    view.grab()
     application.processEvents()
-    # Painting settles the layout, and the plots in it, before a pixel is read
-    # off them. One paint is not always enough. In a test worker that has
-    # already drawn other dashboards, the page measured 15 px taller for the
-    # first two paints and then shrank. The concentration plot lost 8 px of
-    # it, which moved the hover box after the test had measured it. So the
-    # page is painted until its size has held for several paints.
-    _, page = _page(view)
-    held = 0
-
-    for _ in range(_SETTLE_MAX_PAINTS):
-        size = page.size()
-        view.grab()
-        application.processEvents()
-        held = held + 1 if page.size() == size else 0
-
-        if held == _SETTLE_HELD_PAINTS:
-            break
-
-    assert held == _SETTLE_HELD_PAINTS, "the page did not settle"
 
     yield view
 
     view.close()
+
+
+def test_the_dashboard_page_keeps_its_height_from_its_first_paint(
+    application: QApplication,
+) -> None:
+    """`PL-MXMG`: the page stands at its final height as soon as a frame is drawn.
+
+    Before the fix, the Areas were sized from what each View needed before Qt
+    had handled the layout requests that the View's frame posted. A per-run
+    line that a chart shows and hides again on its first frame still counted
+    then. So the page measured 15 px taller for its first paints and then
+    shrank, and a pixel read off a plot depended on when it was read.
+    """
+
+    view = _induction_view(application)
+
+    try:
+        _, page = _page(view)
+        heights = [page.height()]
+
+        for _ in range(_FOLLOWED_PAINTS):
+            view.grab()
+            application.processEvents()
+            heights.append(page.height())
+    finally:
+        view.close()
+
+    assert heights == [heights[0]] * len(heights)
 
 
 # -------------------------------------------------------------- the grab
