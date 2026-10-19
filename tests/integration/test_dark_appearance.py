@@ -554,7 +554,8 @@ def test_a_selector_popup_draws_the_theme_rather_than_the_host_palette(
 
     popups = [box.view() for box in view.findChildren(QComboBox)]
 
-    assert len(popups) == 4
+    # Two time-base selectors, one on each chart (`PL-L59K`).
+    assert len(popups) == 5
 
     for popup in popups:
         palette = popup.palette()

@@ -1,12 +1,15 @@
 """Integration tests for the run surfaces a reader may place in more than one Area.
 
-`app/run_surfaces.py` holds four of a run's surfaces that will sit in an
-Area: the setting controls, the accounting panel, the off-scale line and the
-wash-in state line (`PL-9LNF`). An Area can be split, so a second Area can
-show the same surface of the same run. These tests build a second copy of
-each through `RunView`'s own build methods and hold both copies to drawing
-the run. Each expected value is built from `app/dashboard_frame.py` or
-`app/formatting.py` and the controller, never read off a copy.
+`app/run_surfaces.py` holds two of a run's surfaces that sit in an Area: the
+setting controls and the accounting panel (`PL-9LNF`). An Area can be split,
+so a second Area can show the same surface of the same run. These tests build
+a second copy of each through `RunView`'s own build methods and hold both
+copies to drawing the run. Each expected value is built from
+`app/dashboard_frame.py` or `app/formatting.py` and the controller, never read
+off a copy.
+
+The lines that depend on a chart's window are each chart's own (`PL-L59K`).
+The last test holds two charts at different windows to their own lines.
 """
 
 from __future__ import annotations
@@ -27,7 +30,10 @@ from anesthesia_sim.app.dashboard_frame import (
 from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS, format_flow
 from anesthesia_sim.app.run_surfaces import AccountingPanel
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.view_registry import CONCENTRATION_CHART
+from anesthesia_sim.app.views import ConcentrationView
 from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.layout.tree import AreaId
 
 _WINDOW_WIDTH_PX = 1400
 _WINDOW_HEIGHT_PX = 1000
@@ -154,30 +160,6 @@ def test_a_drag_on_one_copy_of_the_setting_controls_moves_the_other(
     assert second._fresh_gas_flow_slider.value_label.text() == format_flow(7.0)
 
 
-def test_a_copy_built_later_shows_the_lines_already_on_screen(application: QApplication) -> None:
-    """A second off-scale line and wash-in line show what the first ones show.
-
-    Sevoflurane's 8% dial is 4 MAC against a 3 MAC ceiling, so after ten
-    minutes the circuit trace is above the plot and the off-scale line shows.
-    """
-
-    controller = SimulationController()
-    controller.start()
-    controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
-    view = _shown_view(application, controller)
-    run = view.runs[0]
-
-    off_scale = run.build_off_scale_notice()
-    wash_in_state = run.build_wash_in_state()
-
-    assert off_scale.isHidden() is False
-    assert "Circuit" in off_scale.text()
-    assert off_scale.text() == run._off_scale_lines[0].text()
-    assert wash_in_state.text().startswith("Now: F_A/F_I =")
-    assert wash_in_state.text() == run._wash_in_state_lines[0].text()
-
-
 def test_deleting_one_copy_leaves_the_other_drawing(application: QApplication) -> None:
     """A copy Qt has destroyed is dropped, so the next frame writes only the copies left."""
 
@@ -200,3 +182,39 @@ def test_deleting_one_copy_leaves_the_other_drawing(application: QApplication) -
     view.present(False)
 
     assert _drawn(second) == _expected(controller)
+
+
+def test_each_chart_names_only_the_clipped_traces_its_own_window_shows(
+    application: QApplication,
+) -> None:
+    """`PL-L59K`: the off-scale line belongs to the chart, and is written from its window.
+
+    Sevoflurane's 8% dial is 4 MAC against a 3 MAC ceiling, so ten minutes at
+    it carries the circuit trace above the plot. Twenty-five minutes at 0%
+    then bring every trace back under the ceiling. A chart that fits the run
+    still draws the excursion and says so. A 15-minute chart has moved past
+    the excursion, and a notice there would name a clipped trace that the
+    chart does not draw.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    _advance(controller, 600.0)
+    controller.set_delivered_concentration_percent(Percent(0.0))
+    _advance(controller, 1500.0)
+    view = _shown_view(application, controller)
+    view.layout_container.choose_view(AreaId(3), CONCENTRATION_CHART)
+    charts = [
+        chart for chart in view.layout_container.views() if isinstance(chart, ConcentrationView)
+    ]
+    selector = charts[1].time_base_selector
+    selector.setCurrentIndex(selector.findData("900.0"))
+    fitted, zoomed = charts[0].off_scale.lines, charts[1].off_scale.lines
+
+    assert charts[1].chart.frame is not None
+    assert charts[1].chart.frame.start_s > 600.0, "the 15-minute window still shows the dial at 8%"
+    assert len(fitted) == len(zoomed) == 1
+    assert fitted[0].isHidden() is False
+    assert "Circuit" in fitted[0].text()
+    assert zoomed[0].isHidden() is True

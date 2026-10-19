@@ -41,8 +41,8 @@ were what refused (`PL-7DJK`).
 **The run-state widgets have one writer.** Every widget a run shows is
 either stated from what the run holds - the status word, the transport, the
 agent identity, the dials, the control-change panel and the banner - or from
-the drawn frame - the readouts and their clock, the accounting panel, the
-off-scale and wash-in lines. `_write_statement` writes the first group, from
+the snapshot the frames were drawn from - the readouts and their clock and
+the accounting panel. `_write_statement` writes the first group, from
 `dashboard_frame.run_statement`, for `refresh` and `present_halt` alike, so a
 halted run reads as a drawn one in the same state would. A halt that wrote a
 list of widgets chosen by hand left each widget the list missed stating the
@@ -74,7 +74,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import (
     AdjustmentGrouping,
@@ -110,14 +109,12 @@ from anesthesia_sim.app.dashboard_frame import (
     Transport,
     accounting,
     compared_panel_heading,
-    compared_run_line,
     compared_run_notice,
     delivered_line,
     halt_disposition,
     halt_notice,
     new_case_question,
     notice,
-    off_scale_notice,
     readouts,
     refused_reset_exit,
     refused_setting_notice,
@@ -127,7 +124,6 @@ from anesthesia_sim.app.dashboard_frame import (
     substance_heading,
     timeline_panel,
     transport,
-    wash_in_state,
 )
 from anesthesia_sim.app.formatting import (
     format_mac_reference,
@@ -143,9 +139,7 @@ from anesthesia_sim.app.playback import (
 from anesthesia_sim.app.qt_widgets import NewCaseDialog, NoticeLabel, ReadoutRow, styled_label
 from anesthesia_sim.app.run_surfaces import (
     AccountingPanel,
-    OffScaleLine,
     ParameterControls,
-    WashInStateLine,
     emphasised,
     keep_until_destroyed,
     panel_frame,
@@ -237,9 +231,8 @@ class RunView(QWidget):
     where a run's parts sit relative to another run's is the dashboard's
     decision.
 
-    The four surfaces that may sit in an Area - the setting controls, the
-    accounting panel, the off-scale line and the wash-in state line - are
-    built anew on every call, from what the copies already built show. Each
+    The two surfaces that may sit in an Area - the setting controls and the
+    accounting panel - are built anew on every call, from what the copies already built show. Each
     copy is a class in `app/run_surfaces.py`, and every writer here writes
     every copy Qt has not destroyed, so two Areas can show one run
     (`PL-9LNF`). The rest are content of the unconditional region and stay
@@ -322,11 +315,10 @@ class RunView(QWidget):
         # dialog before acting, so the answer is acted on once.
         self._reset_question: Callable[[], NewCaseQuestion | None] | None = None
         self._reset_dialog: NewCaseDialog | None = None
-        # The frame this run was last refreshed from and its place in it,
-        # so a coalesced slider change can rewrite this run's own labels at
-        # once against the picture still on screen.
-        self._frame: ChartFrame | None = None
-        self._run_index = 0
+        # Whether a frame has drawn this run, so a coalesced slider change
+        # rewrites this run's own labels at once only once the first frame
+        # has written everything.
+        self._presented = False
         # The run's record as this view last wrote it, by `refresh` or by
         # `present_halt`; `None` until the first. The dashboard draws a frame
         # whenever the controller's record differs from it (`owes_a_frame`).
@@ -482,10 +474,6 @@ class RunView(QWidget):
             accounting(snapshot), detail=ACCOUNTING_INITIAL_DETAIL_TEXT
         )
         self._accounting_panels: list[AccountingPanel] = []
-        self._off_scale_shown: str | None = None
-        self._off_scale_lines: list[OffScaleLine] = []
-        self._wash_in_state_shown = ""
-        self._wash_in_state_lines: list[WashInStateLine] = []
 
         # The control-change panel's heading. An instance label rather than a
         # widget built inside `_lay_out_control_record`, because it has to
@@ -498,7 +486,7 @@ class RunView(QWidget):
         # Wraps, because the record column is narrower than its longest
         # lines, and only between their parts (`wrapping_between_parts`).
         self._control_timeline_text = styled_label(
-            wrapping_between_parts(timeline_panel((), 0).entries),
+            wrapping_between_parts(timeline_panel(()).entries),
             color=MUTED,
             size_px=METRIC_QUALIFIER_SIZE,
             wrap=True,
@@ -582,32 +570,26 @@ class RunView(QWidget):
 
     # ---------------------------------------------------------- refreshing
 
-    def refresh(self, snapshot: SimulationSnapshot, frame: ChartFrame, run_index: int) -> None:
-        """Write every widget of this run from one snapshot and the frame drawn from it.
+    def refresh(self, snapshot: SimulationSnapshot) -> None:
+        """Write every widget of this run from the snapshot the tick's frames were drawn from.
 
-        The frame widgets first: the readouts and their clock, the
-        accounting panel and the off-scale and wash-in lines, which state
-        compartment values and so are written from a frame and nowhere else.
-        Then the run-state widgets, through `_write_statement`, which
-        `present_halt` calls too, with the banner `dashboard_frame.notice`
-        words for a frame that drew.
+        The snapshot widgets first: the readouts and their clock, and the
+        accounting panel. Then the run-state widgets, through
+        `_write_statement`, which `present_halt` calls too, with the banner
+        `dashboard_frame.notice` words for a frame that drew. The lines that
+        depend on a chart's window, such as which traces are above the axis,
+        are written by each chart from its own frame (`PL-L59K`).
 
         Args:
             snapshot: The run's state this tick, read once by the caller.
-            frame: The chart frame assembled from that same snapshot.
-            run_index: This run's index in `frame.runs`.
 
         Raises:
-            IndexError: If `run_index` is not one of the frame's runs
-                (`dashboard_frame.off_scale_notice`).
             ValueError: If `setting_readouts` refuses the snapshot: a
                 control with no step of its resolution inside the range the
                 run accepts (`PL-7CRY`), or a MAC that is not positive.
         """
 
-        self._frame = frame
-        self._run_index = run_index
-        run_frame = frame.runs[run_index]
+        self._presented = True
         self._readout_row.set_readouts(readouts(snapshot, self._playback_rate))
 
         self._accounting_shown = accounting(snapshot)
@@ -615,34 +597,14 @@ class RunView(QWidget):
         for accounting_panel in self._accounting_panels:
             accounting_panel.show_accounting(self._accounting_shown)
 
-        # Both lines go into a column the runs share, so each is named while
-        # more than one run is drawn: the value is this run's, and nothing
-        # else in that column says so (`PL-25DD`).
-        off_scale = off_scale_notice(frame, run_index)
-        self._off_scale_shown = (
-            compared_run_line(off_scale, frame, run_index) if off_scale is not None else None
-        )
-        self._wash_in_state_shown = compared_run_line(
-            wash_in_state(snapshot, run_frame.undrawn_wash_in_stretches), frame, run_index
-        )
-
-        for off_scale_line in self._off_scale_lines:
-            off_scale_line.show_text(self._off_scale_shown)
-
-        for wash_in_state_line in self._wash_in_state_lines:
-            wash_in_state_line.show_text(self._wash_in_state_shown)
-
         self._write_statement(
             snapshot,
-            undrawn_control_marks=run_frame.undrawn_control_marks,
             banner=notice(
                 snapshot, self._rejected_setting_notice, refused_reset=self._refused_reset_notice
             ),
         )
 
-    def _write_statement(
-        self, record: RunRecord, *, undrawn_control_marks: int, banner: str | None
-    ) -> None:
+    def _write_statement(self, record: RunRecord, *, banner: str | None) -> None:
         """Write every run-state widget from one record: the one writer of them (`PL-X7D5`).
 
         `refresh` calls it with the snapshot a frame drew from, and
@@ -664,8 +626,6 @@ class RunView(QWidget):
         Args:
             record: The snapshot a frame drew from, or
                 `SimulationController.record()` where none draws.
-            undrawn_control_marks: How many control changes in the chart's
-                window its marks could not draw, or zero where no frame drew.
             banner: The banner the caller's path words: `notice` for a frame
                 that drew, `halt_notice` for a halt no frame has been drawn
                 for.
@@ -679,7 +639,6 @@ class RunView(QWidget):
         statement = run_statement(
             record,
             self.adjustments(record),
-            undrawn_control_marks=undrawn_control_marks,
             is_branch=self._is_branch,
             comparing=self._comparing,
             banner=banner,
@@ -746,20 +705,20 @@ class RunView(QWidget):
             return None
 
     def _refresh_against_last_frame(self, snapshot: SimulationSnapshot) -> None:
-        """Rewrite this run's own widgets now, against the frame still on screen.
+        """Rewrite this run's own widgets now, from `snapshot`, while the charts wait.
 
         What a coalesced slider change owes at once is the view beside the
         dial, which has to agree with the snapshot the moment the setting is
         applied (`PL-018`); the frame itself waits for the render tick
-        (`PL-R2YM`). Before the first presentation there is no frame to
-        refresh against, and the first presentation writes everything.
+        (`PL-R2YM`). Before the first presentation nothing is rewritten here,
+        and the first presentation writes everything.
 
         Args:
             snapshot: This run's state, read by `_snapshot_for_a_control`.
         """
 
-        if self._frame is not None:
-            self.refresh(snapshot, self._frame, self._run_index)
+        if self._presented:
+            self.refresh(snapshot)
 
     def present_halt(self) -> None:
         """Say this run has stopped, from its controller's record alone, with no frame drawn.
@@ -788,7 +747,6 @@ class RunView(QWidget):
         with Pause offered over a failed controller (`PL-7DJK`). The banner
         is `dashboard_frame.halt_notice`'s, which says no frame of the
         stopped run has been drawn; the first frame that draws replaces it.
-        No frame drew, so the control-change panel counts no undrawn marks.
 
         Raises:
             ValueError: If `setting_readouts` refuses the record. Everything
@@ -797,9 +755,7 @@ class RunView(QWidget):
 
         record = self.controller.record()
         self._write_statement(
-            record,
-            undrawn_control_marks=0,
-            banner=halt_notice(record, refused_reset=self._refused_reset_notice),
+            record, banner=halt_notice(record, refused_reset=self._refused_reset_notice)
         )
 
     def _write_settings(self, settings: RunSettings) -> None:
@@ -1686,20 +1642,6 @@ class RunView(QWidget):
         timeline_column.addWidget(self._control_timeline_overflow_text)
 
         return timeline_panel_frame
-
-    def build_off_scale_notice(self) -> OffScaleLine:
-        """A new copy of the line naming this run's traces that are above the plot."""
-
-        return keep_until_destroyed(
-            self._off_scale_lines, OffScaleLine(self._off_scale_shown, parent=self)
-        )
-
-    def build_wash_in_state(self) -> WashInStateLine:
-        """A new copy of the line stating what this run's F_A/F_I plot is showing."""
-
-        return keep_until_destroyed(
-            self._wash_in_state_lines, WashInStateLine(self._wash_in_state_shown, parent=self)
-        )
 
 
 def _bold(font: QFont) -> QFont:

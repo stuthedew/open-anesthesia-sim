@@ -758,7 +758,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "the agent-accounting status word when validation fails "
         "(`_agent_accounting_status_text`, in each `AccountingPanel`), the "
         "notice naming a compartment trace that is above the top of the chart "
-        "(`OffScaleLine`), the line of the new-case "
+        "(the off-scale lines each `ConcentrationView` writes), the line of the new-case "
         "confirmation stating what a switch would discard (`NewCaseDialog`, "
         "PL-R3KB), and the title of the notice an Area shows in place of a "
         "View it cannot draw (`AreaNotice`, PL-DB5G, PL-R1WQ). Also the line a "

@@ -96,13 +96,13 @@ src/anesthesia_sim/
 │   ├── unconditional_set.py        # docs/MODEL.md's unconditional set as data: UnconditionalValue, its tiers, SubstanceInstance and INHALED_AGENT, read by the region that holds it (PL-NWTM); window_region, what each top-level window's region owes (PL-W54S); toolkit-independent
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_UNITS, ControlChange; toolkit-independent
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed, which SimulationController.advance supplies each step
-│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the compartment selection and the time base every View is shown, the one chart frame a tick assembles, the case section of bookmarks and branching under the Areas, the render tick, and the layout model the Areas below the settings are drawn from; no domain logic
+│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the compartment selection every View is shown, the chart frame a tick assembles for each window a chart View asks for (PL-L59K), the case section of bookmarks and branching under the Areas, the render tick, and the layout model the Areas below the settings are drawn from; no domain logic
 │   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6), stopping in WARNING at an Area's least size, moving one border alone with Shift and undone by Escape; each Area's header ends in an AreaMenu that splits, joins, swaps or closes it, and a corner drag splits or joins it with a preview drawn over the Areas (PL-2KXB); each Area is an AreaFrame whose header holds a ViewChooser listing every registered kind, and a choice is LayoutModel.set_view (PL-50PZ); each Area's View is built by its registry entry's factory, saved when replaced, and drawn from each ViewTick (PL-TH35); an Area whose View kind is not registered, or whose factory fails, shows an AreaNotice instead (PL-R1WQ)
-│   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the ViewTick it is drawn from, ViewRequests for a change to shared state, and the saved-state version check (PL-TH35)
-│   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView and AccountingView (PL-TH35)
+│   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the FrameRequest naming the window and width it draws, the ViewTick it is drawn from, ViewRequests for a change to shared state or a frame, and the saved-state version check (PL-TH35)
+│   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView and AccountingView (PL-TH35); each chart View holds and saves its own time window and writes the lines that depend on it from its own frame (PL-L59K)
 │   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry with the factory that builds it, and RETIRED_TAGS for a tag renamed or removed; REQUIRED_REACHABLE, the kinds a build fails on import without (PL-50PZ); the text of the missing-kind and failed-build notices (PL-R1WQ)
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
-│   ├── run_surfaces.py             # the four parts of a run that may sit in an Area, each built any number of times from the values it draws: ParameterControls, AccountingPanel, OffScaleLine, WashInStateLine, and keep_until_destroyed, which keeps the list of live copies RunView writes (PL-9LNF)
+│   ├── run_surfaces.py             # the two parts of a run that may sit in an Area, each built any number of times from the values it draws: ParameterControls, AccountingPanel, and keep_until_destroyed, which keeps the list of live copies RunView writes (PL-9LNF)
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; toolkit-independent
@@ -989,10 +989,11 @@ in it, or a line left behind after a deletion, fails `make check`.
   readouts, settings, transport, the record of what was changed during it -
   belongs to `RunView`, which is instantiated once per run, and the dashboard
   places it by looping over its runs. A panel about the chart both runs are
-  drawn on - an axis, a legend, a reference, the time base, the compartment
-  selection - belongs to `SimulationView`, and so does a control asking one
-  question of the whole case rather than of either run: the bookmark editor
-  is the worked example (`PL-LPLD`), and it writes each mark to every
+  drawn on - an axis, a legend, a reference, the compartment selection -
+  belongs to `SimulationView` or to the chart View that draws it, and a
+  chart's time window belongs to that View alone (`PL-L59K`). A control
+  asking one question of the whole case rather than of either run belongs to
+  `SimulationView` too: the bookmark editor is the worked example (`PL-LPLD`), and it writes each mark to every
   displayed run so the copies the controllers hold stay equal. The branch
   control is the second (`PL-VKJW`): the instants it offers are the trunk's
   keyframes, so duplicating it into each run would give a branch a control

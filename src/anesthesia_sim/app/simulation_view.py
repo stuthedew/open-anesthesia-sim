@@ -24,11 +24,12 @@ Areas from a layout model, so a reader can drag the borders between them
 (`PL-W9P6`). The Areas are the layout container. No widget in the band sits
 inside an Area, so no split, join or close of an Area can affect the band.
 
-**One frame, every View, then every run.** `_refresh_view` reads one
-snapshot per run and assembles one `ChartFrame` through `app/chart_frame.py`.
-It hands that frame to every View in one `ViewTick`, and only then refreshes
-each run against the frame. So the readouts, the traces and the sentences
-beside them all show one instant of one run (decision D2). Every claim in a
+**One read, every View, then every run.** `_refresh_view` reads one
+snapshot per run and assembles one `ChartFrame` through `app/chart_frame.py`
+for each time window a View asks for. Each chart's window is its own
+(`PL-L59K`). It hands each View the frame for its window, and only then
+refreshes each run from the same snapshot. So the readouts, the traces and
+the sentences beside them all show one instant of one run (decision D2). Every claim in a
 caption comes from `app/dashboard_frame.py`. This class formats nothing, and
 it decides nothing that a reader interprets.
 
@@ -119,7 +120,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set, window_region
-from anesthesia_sim.app.view_contract import ViewRequests, ViewTick
+from anesthesia_sim.app.view_contract import ViewRequests
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, CONCENTRATION_CHART, WASH_IN
 from anesthesia_sim.app.views import ConcentrationView
 from anesthesia_sim.core.concentration import fraction_from_percent
@@ -346,14 +347,6 @@ class SimulationView(QWidget):
     legend that has been closed simply stops receiving it (`PL-VN6M`).
     """
 
-    time_base_changed = Signal(object)
-    """Emitted with the time base a frame was drawn at, None for "Fit run", once every View drew it.
-
-    Every View is handed the same time base in its `ViewTick`. A time-base
-    control outside the Areas connects to this signal (`PL-9LNF`), as a
-    legend connects to `compartment_selection_changed`.
-    """
-
     def __init__(
         self,
         controllers: Sequence[SimulationController],
@@ -430,12 +423,12 @@ class SimulationView(QWidget):
         # refusal written into the panel and then overwritten by the next
         # render tick would be gone before a reader could read it.
         self._fork_refusal: str | None = None
-        self._time_base: ChartTimeBase | None = None
         # Which compartments both runs are drawn with: this view's, handed to
         # the legend and to every frame, so neither is read back from the
         # other and closing the legend takes nothing with it (`PL-VN6M`).
         self._compartment_selection = INITIAL_COMPARTMENT_SELECTION
-        self._frame: ChartFrame | None = None
+        # The frames the last tick drew, one for each window a View asked for.
+        self._frames: dict[ChartTimeBase | None, ChartFrame] = {}
         self._render_pending = False
         # How many runs the last frame attempted was drawn over; `render_tick`
         # draws when the run set has changed since (`PL-0LG6`).
@@ -544,7 +537,7 @@ class SimulationView(QWidget):
         self._settings_column = _spaced_column(settings, PAGE_SPACING)
         column.addWidget(settings)
 
-        requests = ViewRequests(self._handle_time_base_request, self._handle_compartment_request)
+        requests = ViewRequests(self._handle_frame_request, self._handle_compartment_request)
         self._areas = AreaLayout(_DASHBOARD_LAYOUT, requests)
         self._areas.views_changed.connect(partial(self.present, False))
         column.addWidget(self._areas, 1)
@@ -1349,16 +1342,18 @@ class SimulationView(QWidget):
         return self._areas.owes_a_frame
 
     def _refresh_view(self) -> None:
-        """Read every run once, assemble one frame, draw every View, then refresh every run.
+        """Read every run once, assemble a frame per window, draw each View, then refresh each run.
 
-        The frame is assembled for the widest plot that any View draws. So no
-        plot draws a chord wider than a pixel (`PL-GS3R`). A chord is the
-        straight line drawn between two neighbouring samples. The dashboard
-        assembles one frame rather than one per plot at that plot's own width.
-        The two plots differ by about 53 px at every window width measured.
-        So one frame for each plot would mean two assemblies on every tick,
-        and the two plots would not draw the same instants (`PL-9LNF`). The
-        adapter hands the frame to every View in one `ViewTick` (`PL-TH35`).
+        Each chart View asks for its own window (`PL-L59K`). The dashboard
+        assembles one frame for each distinct window, sampled for the widest
+        plot that asks for it. So no plot draws a chord wider than a pixel
+        (`PL-GS3R`). A chord is the straight line drawn between two
+        neighbouring samples. Charts at one window share a frame rather than
+        each having one at its own width. The two plots differ by about 53 px
+        at every window width measured, so a frame for each plot would mean
+        two assemblies on every tick, and two plots at the same window would
+        not draw the same instants (`PL-9LNF`). The adapter hands each View
+        the frame for its window in its `ViewTick` (`PL-TH35`).
         Each legend is told what its plot drew only after the plot has drawn
         it. So where the frame fails, the legend goes on naming the curves
         still on the plot (`PL-G3K7`).
@@ -1375,26 +1370,27 @@ class SimulationView(QWidget):
         self._offered_views = self._areas.views()
         self._frame_failed = True
         selection = self._compartment_selection
-        time_base = self._time_base
         snapshots = tuple(run.snapshot() for run in self._runs)
         inputs = tuple(
             RunInput(run_label(run.run_id), run.controller, snapshot, run.adjustments(snapshot))
             for run, snapshot in zip(self._runs, snapshots, strict=True)
         )
-        frame = assemble_chart_frame(
-            inputs, time_base, selection.shown, plot_width_px=self._areas.frame_width_px()
-        )
-        self._areas.refresh(ViewTick(frame, snapshots, self._runs, time_base, selection))
+        frames = {
+            time_base: assemble_chart_frame(
+                inputs, time_base, selection.shown, plot_width_px=width_px
+            )
+            for time_base, width_px in self._areas.frame_requests().items()
+        }
+        self._areas.refresh(frames, snapshots, self._runs, selection)
         self._frame_failed = False
         self.compartment_selection_changed.emit(selection)
-        self.time_base_changed.emit(time_base)
 
-        for index, (run, snapshot) in enumerate(zip(self._runs, snapshots, strict=True)):
-            run.refresh(snapshot, frame, index)
+        for run, snapshot in zip(self._runs, snapshots, strict=True):
+            run.refresh(snapshot)
 
         self._refresh_bookmarks(snapshots)
         self._refresh_fork_panel()
-        self._frame = frame
+        self._frames = frames
         self.presented_frames += 1
 
     # -------------------------------------------------------------- bookmarks
@@ -1599,14 +1595,14 @@ class SimulationView(QWidget):
         selected = marks[index]
         self._apply_to_every_run(lambda run: run.remove_mac_target(selected))
 
-    def _handle_time_base_request(self, time_base: ChartTimeBase | None) -> None:
-        """Answer a reader's pick of a width, None for "Fit run": take it and draw at once.
+    def _handle_frame_request(self) -> None:
+        """Answer a View that changed its own drawing setting, such as its window: draw at once.
 
-        The control only asks. Touches no simulation state: the time base is
-        a view control, never disabled, and Reset leaves it alone (`PL-012`).
+        A chart's window is the chart's own (`PL-L59K`). It touches no
+        simulation state: the time base is a view control, never disabled,
+        and Reset leaves it alone (`PL-012`).
         """
 
-        self._time_base = time_base
         self.present(False)
 
     def _handle_compartment_request(self, quantity: RecordedQuantity, shown: bool) -> None:

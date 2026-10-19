@@ -42,8 +42,9 @@ change to shared state, and the state that this layout kept for that Area and
 kind. So every registered kind can be drawn in any Area, and two Areas that
 name one kind each get their own View. This module is the only caller of the
 View contract's members (`app/view_contract.py`). It hands every View each
-frame's `ViewTick`. It asks each View for the plot width that its frame must
-be sampled for. It saves a View's state when the reader replaces that View
+frame's `ViewTick`, with the frame for the window that View asks for. It asks
+each View which window it draws and the plot width that its frame must be
+sampled for. It saves a View's state when the reader replaces that View
 through the chooser. When that kind returns to that Area, its View is built
 from the saved state. A View that the layout still draws in the same Area
 keeps its instance across a rebuild. An Area whose kind is not registered
@@ -121,6 +122,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from anesthesia_sim.app.chart_frame import ChartFrame
+from anesthesia_sim.app.chart_time_base import ChartTimeBase
+from anesthesia_sim.app.compartment_selection import CompartmentSelection
+from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.qt_widgets import styled_label
 from anesthesia_sim.app.stylesheets import (
     foreground_stylesheet,
@@ -146,7 +151,14 @@ from anesthesia_sim.app.theme import (
     PRIMARY,
     WARNING,
 )
-from anesthesia_sim.app.view_contract import SavedState, View, ViewContext, ViewRequests, ViewTick
+from anesthesia_sim.app.view_contract import (
+    RunSurfaces,
+    SavedState,
+    View,
+    ViewContext,
+    ViewRequests,
+    ViewTick,
+)
 from anesthesia_sim.app.view_registry import (
     MISSING_VIEW_TITLE,
     REGISTERED,
@@ -377,16 +389,32 @@ class AreaLayout(QWidget):
 
         return tuple(_widget(view) for _, view in self._views.values())
 
-    def refresh(self, tick: ViewTick) -> None:
-        """Draw `tick` in every View, in the reading order of their Areas.
+    def refresh(
+        self,
+        frames: Mapping[ChartTimeBase | None, ChartFrame],
+        snapshots: tuple[SimulationSnapshot, ...],
+        runs: tuple[RunSurfaces, ...],
+        selection: CompartmentSelection,
+    ) -> None:
+        """Draw every View, in the reading order of their Areas, each with the frame it asked for.
+
+        Args:
+            frames: The tick's frames, one for each window that
+                `frame_requests` returned.
+            snapshots: As `ViewTick` carries them.
+            runs: As `ViewTick` carries them.
+            selection: As `ViewTick` carries it.
 
         Raises:
+            KeyError: A View asks for a window that `frames` does not hold.
             Exception: whatever a View raises while drawing. The Views after
                 it are not drawn, and the caller halts every run.
         """
 
         for _, view in tuple(self._views.values()):
-            view.refresh(tick)
+            request = view.frame_request()
+            frame = None if request is None else frames[request.time_base]
+            view.refresh(ViewTick(frame, snapshots, runs, selection))
 
     @property
     def owes_a_frame(self) -> bool:
@@ -394,19 +422,26 @@ class AreaLayout(QWidget):
 
         return any(view.owes_a_frame for _, view in self._views.values())
 
-    def frame_width_px(self) -> float:
-        """The widest plot any View needs its frame sampled for, or 0 where none draws one.
+    def frame_requests(self) -> dict[ChartTimeBase | None, float]:
+        """Each window a View asks for, with the widest plot that asks for it.
 
-        At 0, `chart_frame.chart_columns` samples the frame at its floor.
+        The caller assembles one frame per window, sampled at that width, so
+        no plot draws a chord wider than a pixel (`PL-GS3R`), and Views at
+        one window draw the same instants (`PL-9LNF`). Empty where no View
+        draws a frame.
         """
 
-        widths = [
-            width
-            for _, view in self._views.values()
-            if (width := view.frame_width_px()) is not None
-        ]
+        widths: dict[ChartTimeBase | None, float] = {}
 
-        return max(widths, default=0.0)
+        for _, view in self._views.values():
+            request = view.frame_request()
+
+            if request is not None:
+                widths[request.time_base] = max(
+                    widths.get(request.time_base, 0.0), request.width_px
+                )
+
+        return widths
 
     def painted_strings(self) -> tuple[tuple[QWidget, str], ...]:
         """The text every View paints without a label or a button, in reading order.

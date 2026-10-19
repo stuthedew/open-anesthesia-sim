@@ -7732,6 +7732,24 @@ The time base is a mode in exactly the sense the playback rate is, and it is
 displayed for the same reason: a span nobody can see is one a reader supplies
 their own assumption for.
 
+**Each chart holds its own time base** (project owner, 2026-10-19,
+ratified, over one shared window saved per Workspace; `PL-L59K`). The
+concentration chart and the F_A/F_I plot each carry a time-base control, and
+a pick in one sets that chart alone. So one chart can show the first fifteen
+minutes of a case while another fits the whole run, which `ROADMAP.md`
+§ "v0.6.0 - the layout is the reader's", Required scope entry 11, asks for.
+Two charts at different widths no longer share a time axis, so each states
+its own width beside its plot. Every advisory that depends on the window is
+written from that chart's own window and shown on that chart: the notice
+naming traces above the axis, the count of control changes the chart could
+not mark, and the count of F_A/F_I stretches it could not draw. A notice
+naming a clipped trace that the chart in front of the reader does not draw
+would be false of that chart. Charts at the same width are drawn from one
+frame, so they show the same instants. A chart saves its width with its other
+settings. The shipped Induction Workspace opens its concentration chart on the
+15-minute width, which follows the run, so the current values stay on the
+plot after the first fifteen minutes.
+
 ### MAC-awake as a chart reference
 
 The compartment chart carries two horizontal clinical references: a **band**
@@ -7979,7 +7997,9 @@ with its run rather than persisted.
 marks and the list a fixed number of lines, so a run may record more
 adjustments than either can show. What is not shown is counted on the
 display. A chart that quietly stops annotating, or a list that quietly
-ends, is a statement that nothing else happened.
+ends, is a statement that nothing else happened. Each chart counts its own
+unmarked changes and says so on itself, because each chart has a window of
+its own (§ "The chart's time base").
 
 **The record itself carries no ceiling, and that is a decision rather than
 an omission.** The two bounds above are on what is *shown*. Dropping the

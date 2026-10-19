@@ -4,9 +4,9 @@
 of `View` has a call site in the adapter, and every registered kind builds a
 View that satisfies the contract. These tests enforce that rule. They also
 check what each shipped View owes a reader: saved state it can read, and a
-notice where it cannot. In a real dashboard, they check that every View is
-drawn from one shared frame. They render under the `offscreen` platform that
-`tests/conftest.py` selects.
+notice where it cannot. In a real dashboard, they check that charts at one
+window share a frame and that each chart's window is its own (`PL-L59K`).
+They render under the `offscreen` platform that `tests/conftest.py` selects.
 """
 
 import ast
@@ -20,6 +20,7 @@ from PySide6.QtCore import QEvent
 from PySide6.QtWidgets import QApplication, QWidget
 
 from anesthesia_sim.app import area_layout
+from anesthesia_sim.app.chart_time_base import FIT_RUN_KEY, time_base_for_span
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_contract import (
@@ -30,14 +31,21 @@ from anesthesia_sim.app.view_contract import (
     ViewRequests,
     unreadable_state_text,
 )
-from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, REGISTERED, RegisteredView
-from anesthesia_sim.app.views import ConcentrationView
+from anesthesia_sim.app.view_registry import (
+    CONCENTRATION_CHART,
+    REGISTERED,
+    WASH_IN,
+    RegisteredView,
+)
+from anesthesia_sim.app.views import ConcentrationView, WashInView
+from anesthesia_sim.layout.shipped import shipped_workspace
 from anesthesia_sim.layout.tree import AreaId
+from anesthesia_sim.layout.workspace import ShippedWorkspaceId
 
 # The notice, written out here rather than read from the module that writes it.
 _NOTICE = "This View's saved settings could not be read, so it shows its default settings."
 
-_REQUESTS = ViewRequests(lambda _time_base: None, lambda _quantity, _shown: None)
+_REQUESTS = ViewRequests(lambda: None, lambda _quantity, _shown: None)
 
 _ENTRIES = list(REGISTERED.values())
 
@@ -83,7 +91,7 @@ def test_every_member_of_the_contract_has_a_call_site_in_the_adapter() -> None:
     called = {node.attr for node in ast.walk(ast.parse(source)) if isinstance(node, ast.Attribute)}
     members = get_protocol_members(View)
 
-    assert members == {"refresh", "owes_a_frame", "frame_width_px", "save_state", "painted_strings"}
+    assert members == {"refresh", "owes_a_frame", "frame_request", "save_state", "painted_strings"}
     assert members <= called, f"never called by the adapter: {sorted(members - called)}"
 
 
@@ -182,7 +190,7 @@ def test_every_kind_chosen_in_an_area_is_drawn_at_once(
 def test_two_areas_of_the_chart_draw_one_frame_sampled_for_the_wider(
     application: QApplication, dashboard: SimulationView
 ) -> None:
-    """`PL-TH35` Q3 and Q8: one View per Area, and one frame for every plot (`PL-9LNF`)."""
+    """`PL-TH35` Q3 and Q8: one View per Area, and one frame for plots at one window (`PL-9LNF`)."""
 
     dashboard.layout_container.choose_view(AreaId(3), CONCENTRATION_CHART)
     dashboard.present(False)
@@ -194,6 +202,155 @@ def test_two_areas_of_the_chart_draw_one_frame_sampled_for_the_wider(
     assert charts[0] is not charts[1]
     assert charts[0].chart.frame is not None
     assert charts[0].chart.frame is charts[1].chart.frame
-    assert dashboard.layout_container.frame_width_px() == max(
-        view.chart.plot_width_px() for view in charts
+    assert dashboard.layout_container.frame_requests() == {
+        None: max(view.chart.plot_width_px() for view in charts)
+    }
+
+
+# ------------------------------------------------------------- a chart's window
+
+
+_CHARTS = (CONCENTRATION_CHART, WASH_IN)
+
+
+def _chart(kind: str, saved: object = None) -> ConcentrationView | WashInView:
+    view = _built(REGISTERED[kind], saved)
+    assert isinstance(view, ConcentrationView | WashInView)
+
+    return view
+
+
+def _pick(chart: ConcentrationView | WashInView, key: str) -> None:
+    index = chart.time_base_selector.findData(key)
+    assert index >= 0, f"the time-base control does not offer {key!r}"
+    chart.time_base_selector.setCurrentIndex(index)
+
+
+@pytest.mark.parametrize("kind", _CHARTS)
+def test_a_chart_saves_its_window_and_is_built_again_at_it(
+    application: QApplication, kind: str
+) -> None:
+    """`PL-L59K`: the window is the chart's own state, version 2."""
+
+    first = _chart(kind)
+    _pick(first, "900.0")
+    saved = json.loads(json.dumps(dict(first.save_state())))
+    again = _chart(kind, saved)
+
+    try:
+        assert saved == {STATE_VERSION_KEY: 2, "time_base_s": 900.0}
+        assert again.frame_request() is not None
+        assert again.frame_request().time_base == time_base_for_span(900.0)  # type: ignore[union-attr]
+        assert again.time_base_selector.currentData() == "900.0"
+        assert again.state_notice.isHidden()
+    finally:
+        first.deleteLater()
+        again.deleteLater()
+
+
+@pytest.mark.parametrize("kind", _CHARTS)
+def test_a_chart_built_with_nothing_saved_fits_the_run(
+    application: QApplication, kind: str
+) -> None:
+    view = _chart(kind)
+
+    try:
+        assert view.frame_request().time_base is None  # type: ignore[union-attr]
+        assert view.save_state() == {STATE_VERSION_KEY: 2, "time_base_s": FIT_RUN_KEY}
+        assert view.time_base_selector.currentData() == FIT_RUN_KEY
+    finally:
+        view.deleteLater()
+
+
+@pytest.mark.parametrize("kind", _CHARTS)
+def test_a_version_1_chart_state_reads_as_fit_run_without_a_notice(
+    application: QApplication, kind: str
+) -> None:
+    """Version 1 held no setting, so nothing saved is lost and nothing is said."""
+
+    view = _chart(kind, {STATE_VERSION_KEY: 1})
+
+    try:
+        assert view.frame_request().time_base is None  # type: ignore[union-attr]
+        assert view.state_notice.isHidden()
+    finally:
+        view.deleteLater()
+
+
+@pytest.mark.parametrize("kind", _CHARTS)
+@pytest.mark.parametrize(
+    "saved",
+    [
+        {STATE_VERSION_KEY: 2},
+        {STATE_VERSION_KEY: 2, "time_base_s": None},
+        {STATE_VERSION_KEY: 2, "time_base_s": "900"},
+        {STATE_VERSION_KEY: 2, "time_base_s": "Fit run"},
+        # A rung only fitting reaches, which the control cannot show.
+        {STATE_VERSION_KEY: 2, "time_base_s": 60.0},
+        {STATE_VERSION_KEY: 2, "time_base_s": 901.0},
+        {STATE_VERSION_KEY: 2, "time_base_s": True},
+        {STATE_VERSION_KEY: 1, "time_base_s": 900.0},
+        {STATE_VERSION_KEY: 3, "time_base_s": 900.0},
+    ],
+)
+def test_a_chart_whose_saved_window_cannot_be_read_fits_the_run_and_says_so(
+    application: QApplication, kind: str, saved: dict[str, object]
+) -> None:
+    view = _chart(kind, saved)
+
+    try:
+        assert view.frame_request().time_base is None  # type: ignore[union-attr]
+        assert not view.state_notice.isHidden()
+        assert view.state_notice.text() == _NOTICE
+    finally:
+        view.deleteLater()
+
+
+def test_the_shipped_induction_chart_is_built_on_the_15_minute_window(
+    application: QApplication,
+) -> None:
+    """`PL-L59K`: the state `induction.json` ships is one the chart reads without a notice."""
+
+    induction = shipped_workspace(ShippedWorkspaceId("induction"))
+    chart_area = next(
+        area.id for area in induction.layout.areas() if area.view == CONCENTRATION_CHART
     )
+    view = _chart(CONCENTRATION_CHART, induction.view_state[chart_area][CONCENTRATION_CHART])
+
+    try:
+        assert view.frame_request().time_base == time_base_for_span(900.0)  # type: ignore[union-attr]
+        assert view.time_base_selector.currentData() == "900.0"
+        assert view.state_notice.isHidden()
+    finally:
+        view.deleteLater()
+
+
+def test_a_window_picked_in_one_chart_changes_only_that_chart(
+    application: QApplication, dashboard: SimulationView
+) -> None:
+    """`PL-L59K`: each chart owns its window (project owner, 2026-10-19)."""
+
+    dashboard.layout_container.choose_view(AreaId(2), CONCENTRATION_CHART)
+    dashboard.present(False)
+    charts = [
+        view for view in dashboard.layout_container.views() if isinstance(view, ConcentrationView)
+    ]
+    wash_in = next(
+        view for view in dashboard.layout_container.views() if isinstance(view, WashInView)
+    )
+    presented = dashboard.presented_frames
+
+    _pick(charts[1], "900.0")
+
+    assert dashboard.presented_frames == presented + 1, "the pick was not drawn at once"
+    zoomed, fitted = charts[1].chart.frame, charts[0].chart.frame
+    assert zoomed is not None and fitted is not None
+    assert not zoomed.fitted and zoomed.time_base == time_base_for_span(900.0)
+    assert (zoomed.start_s, zoomed.stop_s) == (0.0, 900.0)
+    assert fitted.fitted
+    assert charts[0].time_base_selector.currentData() == FIT_RUN_KEY
+    assert charts[1].time_base_selector.currentData() == "900.0"
+    # The F_A/F_I plot fits the run too, so it shares the first chart's frame.
+    assert wash_in.chart.frame is fitted
+    assert not any(view.owes_a_frame for view in (*charts, wash_in))
+    assert not any(run.controller.has_failed for run in dashboard.runs)

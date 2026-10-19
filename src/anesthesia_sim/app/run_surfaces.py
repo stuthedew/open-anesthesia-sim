@@ -1,9 +1,10 @@
 """The parts of one run that a reader may place in an Area, any number of times, in PySide6.
 
-Four of a run's surfaces will sit in an Area rather than in the
-unconditional region: the setting controls, the accounting panel, the line
-naming the traces above the plot, and the line stating what the F_A/F_I plot
-shows (`PL-9LNF`). An Area can be split, so two Areas can show the same
+Two of a run's surfaces sit in an Area rather than in the unconditional
+region: the setting controls and the accounting panel (`PL-9LNF`). The lines
+that depend on a chart's time window, such as which traces are above the
+axis, are each chart's own, and `app/views.py` writes them from the chart's
+frame (`PL-L59K`). An Area can be split, so two Areas can show the same
 surface of the same run. Each class here is therefore built from nothing but
 the values it draws. It holds no controller and no run state, and a second
 instance of it draws the same values as the first
@@ -35,7 +36,7 @@ from anesthesia_sim.app.dashboard_frame import (
     SettingReadout,
     StatusWord,
 )
-from anesthesia_sim.app.qt_widgets import ParameterSlider, style_label, styled_label
+from anesthesia_sim.app.qt_widgets import ParameterSlider, styled_label
 from anesthesia_sim.app.stylesheets import foreground_stylesheet, panel_stylesheet
 from anesthesia_sim.app.theme import (
     ACCENT_TEXT,
@@ -49,9 +50,7 @@ from anesthesia_sim.app.theme import (
 
 __all__ = [
     "AccountingPanel",
-    "OffScaleLine",
     "ParameterControls",
-    "WashInStateLine",
     "emphasised",
     "keep_until_destroyed",
     "panel_frame",
@@ -238,45 +237,3 @@ class AccountingPanel(QFrame):
         """Write the panel's heading."""
 
         self._accounting_heading_text.setText(heading)
-
-
-class OffScaleLine(QLabel):
-    """The line naming a run's traces that are above the top of the plot, hidden while none is."""
-
-    def __init__(self, text: str | None, parent: QWidget | None = None) -> None:
-        """Build the line.
-
-        Args:
-            text: The line to show, or None while no trace is off the plot.
-            parent: The Qt parent.
-        """
-
-        super().__init__(parent)
-        style_label(self, color=WARNING, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True)
-        self.show_text(text)
-
-    def show_text(self, text: str | None) -> None:
-        """Write the line, or hide it while `text` is None."""
-
-        self.setText(text or "")
-        self.setHidden(text is None)
-
-
-class WashInStateLine(QLabel):
-    """The line stating what a run's F_A/F_I plot is showing."""
-
-    def __init__(self, text: str, parent: QWidget | None = None) -> None:
-        """Build the line.
-
-        Args:
-            text: The line to show.
-            parent: The Qt parent.
-        """
-
-        super().__init__(text, parent)
-        style_label(self, color=MUTED, size_px=METRIC_QUALIFIER_SIZE)
-
-    def show_text(self, text: str) -> None:
-        """Write the line."""
-
-        self.setText(text)

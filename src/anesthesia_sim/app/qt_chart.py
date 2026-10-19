@@ -1575,12 +1575,11 @@ def _legend_entry(swatch: QWidget, label: QWidget) -> QWidget:
 class TimeBaseSelector(QComboBox):
     """The time-base control: "Fit run" and the settled widths, showing a time base it is handed.
 
-    The width both plots are drawn at is the dashboard's, not this
-    control's. The control shows the time base it is handed by
-    `show_time_base` and asks for another through `time_base_requested`,
-    the shape `TraceLegend` has for the compartment selection (`PL-VN6M`).
-    So closing it takes nothing with it, and a second one shows the same
-    width (`PL-9LNF`).
+    The window belongs to the chart View that holds this control
+    (`PL-L59K`), not to the control. The control shows the time base it is
+    handed by `show_time_base`, which is the window the chart last drew, and
+    asks for another through `time_base_requested`. So where a frame fails,
+    the control goes on naming the window that is on the plot (`PL-G3K7`).
 
     Attributes:
         time_base_requested: Emitted with the `ChartTimeBase` a reader
