@@ -54,8 +54,8 @@ and `Loaded` take the type. `UnsupportedSchemaVersion` is handed
 `SchemaVersion`s but is annotated with the `int` the type subclasses, since
 `layout/migrations.py` imports the exceptions module, and a checker-only
 import there broke `test_supported_range_edges.py`, which resolves every
-annotation in the package at run time. `Migration` refuses a
-bare `int` at run time. `kept_file_name` builds its argument through the type
+annotation in the package at run time. `Migration` builds its
+version through the type, so a bare `int` from an unchecked caller is checked. `kept_file_name` builds its argument through the type
 too, so `True` and 0 are refused, and `set_aside_file_name` refuses a `bool`
 or a negative attempt.
 

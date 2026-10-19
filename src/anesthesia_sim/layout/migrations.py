@@ -104,10 +104,13 @@ class Migration:
     `lossy` is `None` for a step that keeps everything, and otherwise the
     sentence the reader is shown saying what the step could not carry over.
 
+    `reads` is built through `SchemaVersion` where it is given as an `int`,
+    so a step can never read a version that does not exist.
+
     Raises:
-        TypeError: a field is not of its declared type, `reads` included,
-            which is built as a `SchemaVersion` rather than passed as an `int`.
-        InvalidLayout: `lossy` is an empty sentence.
+        TypeError: a field is not of its declared type; `reads` is not an
+            `int`, or is a `bool`.
+        InvalidLayout: `reads` is below 1, or `lossy` is an empty sentence.
     """
 
     reads: SchemaVersion
@@ -115,11 +118,9 @@ class Migration:
     lossy: str | None = None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.reads, SchemaVersion):
-            raise TypeError(
-                f"a migration reads a version built as a SchemaVersion, not "
-                f"{type(self.reads).__name__}"
-            )
+        # A frozen dataclass sets its own field this way. A caller the type
+        # checker does not reach may pass an `int`, and it is checked here.
+        object.__setattr__(self, "reads", SchemaVersion(self.reads))
 
         if not callable(self.apply):
             raise TypeError(f"a migration's apply is callable, not {type(self.apply).__name__}")

@@ -116,7 +116,7 @@ def test_steps_apply_in_order_from_the_version_found_and_collect_what_was_lost()
 
 
 def test_a_chain_with_a_gap_is_refused_when_it_is_built() -> None:
-    assert oldest_readable((renaming("a", "b"), Migration(SchemaVersion(2), dict)), 3) == 1
+    assert oldest_readable((renaming("a", "b"), Migration(2, dict)), 3) == 1
 
     with pytest.raises(
         InvalidLayout,
@@ -138,23 +138,23 @@ def test_a_step_that_returns_something_other_than_a_dict_is_refused() -> None:
 
 def test_a_step_says_which_version_it_reads_and_what_it_loses() -> None:
     with pytest.raises(InvalidLayout, match="counts from 1, not 0"):
-        Migration(SchemaVersion(0), dict)
+        Migration(0, dict)
 
     with pytest.raises(InvalidLayout, match="says what it loses"):
-        Migration(SchemaVersion(1), dict, lossy="")
+        Migration(1, dict, lossy="")
 
     with pytest.raises(TypeError, match="not bool"):
         Migration(True, dict)
 
     with pytest.raises(TypeError, match="apply is callable, not str"):
-        Migration(SchemaVersion(1), "rename")  # type: ignore[arg-type]
+        Migration(1, "rename")  # type: ignore[arg-type]
 
     with pytest.raises(TypeError, match="lossy is a str or None, not bool"):
-        Migration(SchemaVersion(1), dict, lossy=True)  # type: ignore[arg-type]
+        Migration(1, dict, lossy=True)  # type: ignore[arg-type]
 
 
-def test_a_schema_version_is_a_whole_number_from_one_and_a_step_takes_only_the_type() -> None:
-    """`PL-8JV2`: the rule is checked once, by `SchemaVersion`, and a step takes the type.
+def test_a_schema_version_is_checked_once_and_a_step_builds_through_it() -> None:
+    """`PL-8JV2`: `SchemaVersion` checks the rule once, and a step builds its version with it.
 
     Before it, `Migration`, the reader's `_check_version` and `oldest_readable`
     each held a copy of the rule or none, and a bare `int` reached the store.
@@ -172,8 +172,10 @@ def test_a_schema_version_is_a_whole_number_from_one_and_a_step_takes_only_the_t
         with pytest.raises(TypeError, match="a schema version is an int"):
             SchemaVersion(value)
 
-    with pytest.raises(TypeError, match="built as a SchemaVersion, not int"):
-        Migration(1, dict)  # type: ignore[arg-type]
+    built = Migration(1, dict)  # type: ignore[arg-type]
+
+    assert isinstance(built.reads, SchemaVersion)
+    assert built.reads == 1
 
     assert isinstance(LAYOUT_SCHEMA_VERSION, SchemaVersion)
     assert isinstance(OLDEST_READABLE_VERSION, SchemaVersion)

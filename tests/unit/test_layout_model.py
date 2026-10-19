@@ -531,7 +531,7 @@ def test_a_layout_holding_an_area_no_wider_than_the_alignment_tolerance_is_refus
     with pytest.raises(InvalidLayout, match=pattern):
         layout(row((edge, 5e-10), area(1), area(2)))
 
-    # `PL-25D9`'s layout, whose join of Areas 1 and 4 was refused, cannot be
+    # PL-25D9's layout, whose join of Areas 1 and 4 was refused, cannot be
     # built, since its Area 2 is 5e-10 of the window wide.
     with pytest.raises(InvalidLayout, match=r"in window 0, Area 2 is [0-9.e-]+ of the window wide"):
         layout(
