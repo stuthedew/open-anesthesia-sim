@@ -1140,6 +1140,30 @@ clause for `PL-KKHD`, which `arming.py`'s decision record and
 `docs/maintainer.md` still carry, paid for the new sentence. The file grows by
 18 characters, 54,160 to 54,178.
 
+## The repeated-failure stop, rewritten 2026-10-19
+
+`PL-M44T` rewrote the second stop in `CLAUDE.md`'s commit-and-push bullet. It
+had stopped a session whenever one check failed twice, and the owner's only
+call there was whether to retry on Opus. On #1650 (`PL-L59K`) the second
+failure had a new cause that the thread, already on Opus, had reproduced and
+fixed, so the stop put a question to the owner that had no answer to weigh.
+The bullet now lets a session carry on past a failure whose cause it
+reproduced and had not met before on that pull request. A repeated or
+unexplained cause, or a need for a stronger model, still stops it. Four failed
+runs of one check stop it whatever the causes, so it cannot loop, and the
+reply at that stop asks a real question with options and a recommendation.
+
+The carrier test is the one the stop already met (above, under 2026-10-03): a
+session meets a red check at a push, after its reads, and would retry before
+thinking to look anything up.
+
+**What was replaced, and the cost.** The old stop's half sentence and its
+"retry clause ... kind unrecorded" provenance are gone. Nothing else can be
+cut, because no other resident sentence says when a repeated failure stops a
+session. The file grows by 819 characters, 54,636 to 55,455. That is the
+price of a stop the owner asked to keep bounded and to end with a real
+question.
+
 ## Rule 10's sentence on what the reader is judging, added 2026-10-19
 
 On `#1650` (`PL-L59K`, the chart time-window notes) the project owner had to
