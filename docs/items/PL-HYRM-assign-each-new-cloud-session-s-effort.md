@@ -144,6 +144,44 @@ The unit stays the session together with its subagents. A subagent's level
 cannot be read from `CLAUDE_EFFORT`: the variable belongs to the session's
 process, and a subagent runs inside that process.
 
+**Decision (project owner, 2026-10-19, ratified, over a setup script that
+writes only `effortLevel`, which the app's picker overrides, and over running
+the trial only on sessions a coordinator starts).** The trial uses the cap
+route. The owner leaves the app's effort picker at `xhigh` for the length of
+the trial. In about three sessions of four, `.claude/settings.local.json` gets
+`"effortLevel": "high"` and `"maxEffortLevel": "high"`. In the fourth it gets
+`"effortLevel": "xhigh"` and `"maxEffortLevel": "xhigh"`. The second cap stops
+a subagent asked for `max`, or a Max picked in the app by mistake, from running
+above the arm. The start is unchanged: nothing is written before Friday
+2026-10-23 at 11 pm CDT (2026-10-24 04:00 UTC), when the owner's weekly usage
+resets. Still unanswered: whether the app keeps the picker's last level for
+new sessions.
+
+**Next steps for the session that builds it.**
+1. Write `tools/effort_trial.py`, standard library only, with tests. It
+   reads `CLAUDE_CODE_REMOTE_SESSION_ID`, strips the `cse_` prefix, and
+   assigns `xhigh` when the first 8 hex digits of the SHA-256 of the
+   remainder, read as an integer, are below 2^32 / 4. Before the start
+   time it writes no settings. At any time it appends one line to
+   `/tmp/effort-trial.log` saying whether the id was visible and which arm
+   it would draw, so the test below can be run before Friday. Where the id
+   is missing, it draws with `secrets` and logs that the draw cannot be
+   recomputed.
+2. Test it from a fresh session started on this branch with `create_session`
+   once the setup-script line below exists. Read `/tmp/effort-trial.log` and
+   `CLAUDE_EFFORT` there.
+3. Propose the setup-script line with `update_environment`, saying in one
+   sentence what it does just before the call. The line is
+   `f=/home/user/open-anesthesia-sim/tools/effort_trial.py; [ -f "$f" ] && python3 "$f" || true`,
+   appended to the existing script.
+4. After the merge, write the trial's start date into `docs/maintainer.md`
+   § "Match effort to the standard the work is held to". Say there that the
+   model review recomputes each session's arm from the ledger's session id
+   with the same function. Update `PL-63CB` § "Effort monitoring" item 6 to
+   match.
+5. Delete the probe branches `claude/pl-hyrm-probe-settings-local` and
+   `claude/pl-hyrm-probe-cap`.
+
 **A route that removes unknown 3.** The draw can be a fixed function of the
 session id instead of a stored random number: hash the id, and assign `xhigh`
 when the hash falls in the lowest quarter. The ledger already holds every
