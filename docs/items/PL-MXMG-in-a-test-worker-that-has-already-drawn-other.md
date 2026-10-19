@@ -3,12 +3,14 @@ id: PL-MXMG
 title: In a test worker that has already drawn other dashboards, the dashboard page measures 15 px taller for its first two paints and only then shrinks
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect, test
 feature: interface-areas
-touches: src/anesthesia_sim/app/, tests/integration/test_qt_rendering.py
+touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_qt_rendering.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-19
+closed: 2026-10-19
+pr: 1686
 payoff: a pixel measurement in a rendering test no longer depends on which tests ran before it in the same worker
 verify: grep -q 'def test_the_dashboard_page_keeps_its_height_from_its_first_paint' tests/integration/test_qt_rendering.py
 ---
@@ -40,3 +42,18 @@ page's height at each of the first paints in a worker that has already run
 **How the work is proven.** The work adds a test that the page keeps its height from its
 first paint. If the cause turns out to be confined to the test suite, rewrite
 this Done-when and the `verify:` for that case before closing.
+
+**Fixed 2026-10-19: the cause is `PL-YJ21`'s, and a reader could see it.**
+`_RunCopies.follow` shows each per-run line of a chart and `_RunLines.show`
+hides the ones with no text, in the same frame. Until Qt handed out the layout
+requests those changes posted, the concentration chart still counted two
+15 px lines, so the page measured taller and shrank a pass later. It is not
+confined to a used test worker. In a fresh process on `main` at `2aab62b3`,
+the `induction_dashboard` sequence gave page heights of 1490, 1550 and then
+1535 px for every later paint. After the fix it is 1535 px from the first
+frame. A reader would have seen the same shift on the first frames after a
+Workspace opens. The fixture no longer paints until the page holds, and paints
+once so that pyqtgraph's mapping is the one drawn.
+
+`test_the_dashboard_page_keeps_its_height_from_its_first_paint` fails on the
+code before the fix with `[1490, 1550, ...5, 1535, 1535] == [1490, 1490, ...]`.
