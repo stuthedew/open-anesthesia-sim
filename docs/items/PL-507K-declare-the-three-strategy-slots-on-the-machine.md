@@ -74,8 +74,8 @@ against a landing that is likely rather than hypothetical.
 
 **On the abstraction's own admission rule.** `docs/machine-abstraction.md`
 admits a field only where something consumes it, and these three are not read
-by the model. The consumer is the validator - the refusal at Question 4 rule 3
-- plus attribution. That is a narrower consumer than the other fields have and
+by the model. The consumer is the validator - the refusal at Question 4 rule 3 -
+plus attribution. That is a narrower consumer than the other fields have and
 the brief says so rather than blurring it; it is also the consumer the design
 document itself specified for these three.
 

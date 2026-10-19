@@ -70,7 +70,7 @@ what created all three claims. Not fixed there: the README was the item, and a
 check is its own change with its own decision in it.
 
 **Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
-Unchanged, and the convention names which of its two options conforms: option 1
-- a test holding the `README.md` sentence to the Python constant - is clause 1
+Unchanged, and the convention names which of its two options conforms: option 1 -
+a test holding the `README.md` sentence to the Python constant - is clause 1
 satisfied by test, and option 2 is clause 1 satisfied by a
 `<!-- provenance: -->` marker. Either is acceptable; pick on cost.

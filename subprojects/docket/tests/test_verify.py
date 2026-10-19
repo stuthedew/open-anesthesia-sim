@@ -2845,6 +2845,61 @@ def test_a_withdrawal_is_not_exempt_though_an_append_past_one_still_is(tmp_path:
     assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == "recurrence"
 
 
+@pytest.mark.parametrize(
+    ("recorded", "appended", "kind"),
+    [
+        pytest.param(
+            "2026-09-19 PL-N3W1", "2026-09-22 PL-N3W2", "recurrence", id="a filing the model reads"
+        ),
+        pytest.param(
+            "2026-09-19 PL-N3W1 withdrawn 2026-09-21 PL-K7QX",
+            "2026-09-22 PL-N3W2",
+            "recurrence",
+            id="a new filing after a withdrawn one",
+        ),
+        pytest.param(
+            "2026-09-19 PL-N3W1",
+            "2026-09-22 PL-N3W2 and also reopened",
+            "",
+            id="a filing with an invented clause",
+        ),
+        pytest.param(
+            "2026-09-19 PL-N3W1", "2026-13-45 PL-N3W2", "", id="a date the model cannot read"
+        ),
+    ],
+)
+def test_a_recurrence_append_is_judged_by_the_models_grammar(
+    tmp_path: Path, recorded: str, appended: str, kind: str
+) -> None:
+    """`PL-FYV7`: an append is a filing only where the store reads each entry as one.
+
+    The audit spelled the entry grammar again in a regex beside
+    `model.recurrences_of`, and the two could disagree. The regex read
+    `2026-13-45` as a date, though the store reads that entry as unreadable
+    and `bin/docket check` refuses it. Now the audit asks
+    `model.recurrence_entry_reads`, which is true exactly where
+    `recurrence_faults` raises neither reading fault.
+    """
+    root = _repo(tmp_path)
+    items = root / "docs" / "items"
+    neighbour = items / "PL-B2B2-do-the-other.md"
+    insert_field(items, parse_item(neighbour.read_text(), neighbour.name), "recurrences", recorded)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: a neighbour carrying one recurrence")
+    path = "docs/items/PL-B2B2-do-the-other.md"
+
+    insert_field(
+        items,
+        parse_item(neighbour.read_text(), neighbour.name),
+        "recurrences",
+        appended,
+        append=True,
+    )
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX a capture matched to the same item")
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == kind
+
+
 def test_each_change_to_an_item_file_has_to_be_a_sanctioned_kind(tmp_path: Path) -> None:
     """Read change by change, so one sanctioned commit cannot carry another that is not.
 
